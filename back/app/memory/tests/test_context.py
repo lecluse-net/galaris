@@ -357,6 +357,7 @@ async def test_memory_brief_has_a_strict_character_budget(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     item_id = uuid4()
+    source_task_id = uuid4()
 
     async def fake_search(_request: object) -> SimpleNamespace:
         hit = SimpleNamespace(
@@ -364,7 +365,7 @@ async def test_memory_brief_has_a_strict_character_budget(
                 id=item_id,
                 title="A long deployment procedure",
             ),
-            source_refs=["task:1"],
+            source_refs=[f"task:{source_task_id}"],
             excerpt="x" * 3_000,
             score=0.9,
         )
@@ -413,7 +414,8 @@ async def test_memory_brief_has_a_strict_character_budget(
     assert brief.truncated
     assert brief.items[0].memory_id == str(item_id)
     assert "consult them before searching memory:// again" in brief.rendered
-    assert "source=task:1" in brief.rendered
+    assert f"source=galaris://task/{source_task_id}" in brief.rendered
+    assert brief.items[0].source_refs == (f"galaris://task/{source_task_id}",)
     assert recorded == [(item_id, 0.9)]
 
 

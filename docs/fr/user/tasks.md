@@ -7,6 +7,24 @@ de méthode, les jalons, les plans, les questions et la reprise. Pour créer vot
 demande, suivre le [guide utilisateur](README.md) ; pour trouver les commandes, consulter
 les [menus et parcours](navigation.md).
 
+## Mémoire utile au travail
+
+Dream peut retenir des faits durables issus des Tasks réussies, de leurs sous-tâches
+et des cycles de Goal. Les instructions préparées par un agent restent attribuées
+à l'IA ; elles ne constituent pas une déclaration personnelle de l'utilisateur.
+Une exclusion de capture sur une Task s'applique aussi à ses descendants.
+
+Les souvenirs sont privés à chaque agent. Les Documents et leurs résumés partagés,
+les Datasets et les définitions de Process conservent leurs propres droits et contenus.
+Les procédures apprises relèvent des Skills. Une ressemblance entre deux souvenirs
+ne suffit pas à supprimer un complément ; un désaccord explicite conserve les deux faits.
+
+Le contexte automatique réserve une place à un souvenir ordinaire lorsqu'un calendrier
+chargé remplit les autres places disponibles. Des résultats proches ne prouvent pas que
+l'agent connaît la réponse : il doit vérifier les sources et signaler les informations
+manquantes. Un conflit rappelé porte ses sources et dates ; le fait le plus récent
+n'est pas automatiquement considéré comme vrai.
+
 ## Standard et high
 
 Le niveau d’effort ne désigne pas deux architectures différentes. Le même driver exécute la

@@ -493,7 +493,7 @@ async def test_task_memory_replays_legacy_success_without_application_proof(
 
 
 @pytest.mark.asyncio
-async def test_task_memory_ignores_ineligible_tasks(
+async def test_task_memory_includes_descendants_but_preserves_opt_out_and_terminal_requirements(
     db: AsyncSession,
 ) -> None:
     owner = await _owner(db)
@@ -508,6 +508,9 @@ async def test_task_memory_ignores_ineligible_tasks(
     opted_out = await _terminal_task(db, owner, label="Opted-out task")
     opted_out.topic_id = topic.id
     opted_out.data = {"memory_capture": False}
+    opted_out_child = await _terminal_task(db, owner, label="Opted-out descendant")
+    opted_out_child.parent_id = opted_out.id
+    opted_out_child.topic_id = topic.id
     failed = Task(
         label="Failed task",
         objective="A failure is not ordinary durable memory.",
@@ -518,10 +521,15 @@ async def test_task_memory_ignores_ineligible_tasks(
     db.add(failed)
     await db.commit()
 
-    assert await task_memory.task_memory_mechanism.count_pending() == 1
+    assert await task_memory.task_memory_mechanism.count_pending() == 2
     claim = await task_memory.task_memory_mechanism.claim_one()
     assert claim is not None
-    assert claim.subject_id == str(parent.id)
+    second = await task_memory.task_memory_mechanism.claim_one()
+    assert second is not None
+    # Both Tasks are eligible; their fixture timestamps can be equal. Protect
+    # coverage and uniqueness rather than a random UUID's tie-breaking order.
+    assert {claim.subject_id, second.subject_id} == {str(parent.id), str(child.id)}
+    assert await task_memory.task_memory_mechanism.claim_one() is None
 
 
 def test_task_memory_requires_explicit_high_future_utility() -> None:

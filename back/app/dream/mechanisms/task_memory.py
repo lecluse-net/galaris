@@ -13,6 +13,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.llm import llm_service
 from app.memory import  search_memory_detailed
 from app.task import ConversationFollowup, Task, TaskStatus, get_conversation_followup
+from app.task.facade import memory_capture_blocked_tasks
 from app.topic import Topic, service as topic_service
 from core.database import get_db, get_db_session
 from core.params import runtime_settings
@@ -72,9 +73,7 @@ def _eligible_task_predicates() -> tuple[ColumnElement[bool], ...]:
             Task.ai.is_(True),
             Task.contact_memory_item_id.is_not(None),
         ),
-        Task.parent_id.is_(None),
-        Task.goal_id.is_(None),
-        Task.data["memory_capture"].as_boolean().is_not(False),
+        Task.id.not_in(memory_capture_blocked_tasks()),
         or_(Task.message_platform.is_(None), ~Task.message_platform.startswith("voice:")),
         ~topic_classification_active,
     )
@@ -82,7 +81,7 @@ def _eligible_task_predicates() -> tuple[ColumnElement[bool], ...]:
 
 def _task_contact(task: Task) -> str:
     data = task.data if isinstance(task.data, dict) else {}
-    if bool(data.get("sender_is_ai")):
+    if task.ai or task.requester_agent_id is not None or bool(data.get("sender_is_ai")):
         return ""
     user_id = str(
         data.get("sender.user_id") or data.get("sender.id") or data.get("user_id") or ""
@@ -159,13 +158,18 @@ def build_task_extraction_input(
     topic: Topic,
 ) -> MemoryExtractionInput:
     result = task.get_execution_result()
-    human_source = safe_memory_text(task.objective or task.label)
+    data = task.data or {}
+    generated = bool(task.ai or task.requester_agent_id is not None or task.parent_id is not None
+                     or task.goal_id is not None or data.get("sender_is_ai"))
+    original = str(data.get("_original_demand") or task.objective or task.label)
+    source = safe_memory_text((task.objective or task.label) if generated else original)
     current = [
         MemoryExtractionMessage(
-            speaker_name=_task_human_name(task),
-            speaker_kind="human",
+            speaker_name=(f"Agent {task.requester_agent_id}" if task.requester_agent_id is not None
+                          else "Task preparation") if generated else _task_human_name(task),
+            speaker_kind="AI" if generated else "human",
             occurred_at=task.created_at,
-            text=human_source,
+            text=source[:8_000],
         )
     ]
     outcome = safe_memory_text(result.result if result is not None else "")
@@ -194,6 +198,20 @@ def build_task_extraction_input(
             "outcome": outcome,
             "feedback": safe_memory_text(task.feedback),
             "recorded_error": safe_memory_text(task.last_error),
+            "task_uri": f"galaris://task/{task.id}",
+            "parent_task_uri": f"galaris://task/{task.parent_id}" if task.parent_id else None,
+            "goal_uri": f"galaris://goal/{task.goal_id}" if task.goal_id else None,
+            "instruction_is_generated": generated,
+            # Only observable tool returns are evidence of effects. The final
+            # narrative and the prepared objective remain attributed AI claims.
+            "tool_evidence": [
+                {"event_index": index, "name": message.tool_name,
+                 "success": message.success, "result": safe_memory_text(message.content)[:1_200]}
+                for index, message in enumerate(result.messages if result else [])
+                if message.type == "tool" and message.tool_name and message.tool_name not in {
+                    "thinking", "reply", "messenger_reply", "final_result", "load_capability", "approval", "budget_guard",
+                }
+            ][:20],
             "contact": _task_contact(task),
             "following_objective": (
                 safe_memory_text(followup.objective)[:_MAX_FOLLOWUP_CHARS]
@@ -377,6 +395,8 @@ class TaskMemoryMechanism:
                     prepared,
                     reason="Task contact scope is no longer available",
                 )
+            if await get_db().scalar(select(Task.id).where(Task.id == task.id, *_eligible_task_predicates())) is None:
+                return memory_extraction_unavailable(prepared, reason="Task memory capture is no longer eligible")
             topic = await get_db().get(Topic, task.topic_id)
             if topic is None:
                 return memory_extraction_unavailable(

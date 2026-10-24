@@ -13,3 +13,6 @@ def pytest_addoption(parser):
     group.addoption("--memory-benchmark-shard", type=int, default=0, help="Zero-based database partition")
     group.addoption("--memory-benchmark-variants", default="baseline,relevance_first,history,entities,time,combined")
     group.addoption("--memory-benchmark-repeats", type=int, default=30, help="Paired admission measurements per scenario")
+    group.addoption("--memory-benchmark-live", action="store_true", help="Prepare or replay synthetic contexts for explicit configured-provider qualification")
+    group.addoption("--memory-benchmark-embedding-recording", default="", help="Frozen real-provider vectors; omit to collect synthetic provider inputs")
+    group.addoption("--memory-benchmark-lexical", action="store_true", help="Measure the actual lexical fallback and prepare paired answer prompts")

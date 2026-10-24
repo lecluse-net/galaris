@@ -3,7 +3,7 @@
 from uuid import UUID
 from collections.abc import Sequence
 from typing import Any
-from sqlalchemy import select
+from sqlalchemy import Select, or_, select
 
 from app.agent import get_agent_record
 from core.i18n import render_prompt, t
@@ -36,6 +36,40 @@ async def memory_scope_for_task(
         )
     ).one_or_none()
     return (row.topic_id, row.contact_memory_item_id) if row is not None else None
+
+
+def memory_capture_blocked_tasks() -> Select[tuple[UUID]]:
+    """A refusal survives archiving and propagates through either lineage edge."""
+    from .models import Task
+
+    roots = Task.__table__.alias("memory_capture_root")
+    descendants = Task.__table__.alias("memory_capture_descendant")
+    blocked = select(roots.c.id).where(roots.c.data["memory_capture"].as_boolean().is_(False)).cte(
+        "memory_capture_blocked", recursive=True, nesting=True,
+    )
+    blocked = blocked.union(select(descendants.c.id).join(blocked, or_(
+        descendants.c.parent_id == blocked.c.id, descendants.c.source_task_id == blocked.c.id,
+    )))
+    return select(blocked.c.id)
+
+
+def memory_evidence_task_tree(root_ids: Select[tuple[UUID]]) -> Select[tuple[UUID]]:
+    """Query live descendants without widening an evidence consumer's agent ACL.
+
+    Nest the CTE inside the consuming subquery: roots can be correlated to a
+    conversation round. Distinct UNION terminates even with historical cycles.
+    """
+    from .models import Task
+
+    blocked = memory_capture_blocked_tasks()
+    tree = select(Task.id).where(Task.id.in_(root_ids), Task.deleted_at.is_(None),
+        Task.id.not_in(blocked)).cte(
+        "memory_evidence_task_tree", recursive=True, nesting=True,
+    )
+    tree = tree.union(select(Task.id).join(tree, or_(Task.parent_id == tree.c.id,
+        Task.source_task_id == tree.c.id)).where(Task.deleted_at.is_(None),
+            Task.id.not_in(blocked)))
+    return select(tree.c.id)
 
 
 async def inspect_workflow_tasks(identities: Sequence[UUID]) -> dict[UUID, dict[str, Any]]:

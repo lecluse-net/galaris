@@ -72,7 +72,8 @@ async def test_document_analysis_does_not_create_a_business_process(runtime, tmp
 
 
 @pytest.mark.asyncio
-async def test_acquired_document_evidence_is_scoped_and_read_without_repreparing(runtime, tmp_path, monkeypatch):
+@pytest.mark.parametrize("lineage", ["direct", "child", "delegated"])
+async def test_acquired_document_evidence_is_scoped_and_read_without_repreparing(runtime, tmp_path, monkeypatch, lineage):
     from app.file_share import resource_info
     from app.llm.facade import acquired_document_evidence
     from app.task import Task
@@ -84,6 +85,15 @@ async def test_acquired_document_evidence_is_scoped_and_read_without_repreparing
     task = Task(agent_id=agent.id, label="Synthetic analysis", objective="<p>Read a synthetic source.</p>")
     db.add(task)
     await db.flush()
+    root_task = task
+    if lineage != "direct":
+        root_task = Task(agent_id=agent.id, label="Synthetic analysis coordinator", objective="<p>Coordinate analysis.</p>")
+        db.add(root_task)
+        await db.flush()
+        if lineage == "child":
+            task.parent_id = root_task.id
+        else:
+            task.source_task_id = root_task.id
     run, reference = await setup_run(db, agent, uri, llm.id)
     run.task_id = task.id
     run.input = {**run.input, "source_version": descriptor.model_dump(
@@ -108,7 +118,7 @@ async def test_acquired_document_evidence_is_scoped_and_read_without_repreparing
     db.add(round_)
     await db.flush()
     db.add_all([ConversationRoundMessage(round_id=round_.id, message_id=source_message.id, role="input", sequence=1),
-        ConversationTaskLink(round_id=round_.id, task_id=task.id, action_key="synthetic-document-analysis")])
+        ConversationTaskLink(round_id=round_.id, task_id=root_task.id, action_key="synthetic-document-analysis")])
     await db.commit()
     unanalysed = await build_conversation_extraction_input(round_, topic)
     assert {part.kind for message in unanalysed.current for part in message.evidence} == {"attachment"}

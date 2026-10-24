@@ -1,5 +1,39 @@
 # Corpus de rappel mémoire conversationnel / Conversational memory recall corpus
 
+## Qualification de la fidélité et du contexte (24 octobre 2026)
+
+Le corpus courant est versionné `galaris-conversation-memory/2` : régénérer les anciennes
+fixtures plutôt que changer leur manifeste. L'adaptateur utilise `core.storage` depuis
+la séparation Memory/Document. Une référence de comparaison peut aussi contenir
+`context.py` ; ce fichier fige l'allocation des places et des caractères, pas seulement
+le classement. Les deux bras utilisent leurs chemins respectifs de calendrier et
+d'assemblage. Les empreintes incluent cette référence.
+
+`app/memory/tests/test_live_relevance.py`, activé explicitement avec
+`--memory-benchmark-live`, prépare un petit contrôle FR/EN sur les API réelles et la
+capsule commune. Les dix rendez-vous doivent être distincts : des textes identiques
+seraient dédupliqués avant la mesure. `--memory-benchmark-lexical` mesure le repli réel ;
+sans ce drapeau ni enregistrement vectoriel, la phase ne fait que collecter les entrées
+du fournisseur avec des vecteurs factices et ne qualifie aucun rappel hybride.
+
+Le module `scripts.memory_benchmark.provider_capture` s'exécute uniquement dans le
+runtime de développement. Il lit du JSON sur stdin et rend des embeddings (`embeddings`)
+ou des réponses structurées (`answers`) sur stdout. Les secrets restent dans les services
+existants. Seuls les textes synthétiques nécessaires sont transmis ; les réponses attendues
+et labels d'évaluation n'entrent jamais dans le prompt. Une panne reste un échec explicite,
+sans changement de fournisseur. Ne pas extraire de clés pour les copier dans les tests.
+
+`--memory-benchmark-embedding-recording` rejoue les vecteurs réellement acquis sur les
+entrées exactes dans la base éphémère ; il ne mesure pas la latence réseau du fournisseur.
+La phase de réponse utilise les prompts effectivement assemblés par chaque bras, le même
+modèle configuré et un ordre alterné. Elle reste un contrôle de questions factuelles,
+distinct d'un parcours Task autonome. Un manifeste partiel, une collecte d'entrées ou une
+campagne interrompue ne constituent pas un résultat qualifié.
+
+Les campagnes et leurs sources figées restent sous `artifacts/memory-benchmark/`.
+Publier les résultats de rappel, d'injection et de réponse séparément, avec le nombre de
+mondes, les domaines, les régimes calendaires, la concurrence et les limites de transfert.
+
 Ce corpus évalue **quels souvenirs doivent parvenir à une conversation**, y compris
 lorsque le message n'est pas une demande explicite de recherche. Il ne modifie pas le
 moteur mémoire. Le générateur, le validateur et le calcul des scores utilisent seulement

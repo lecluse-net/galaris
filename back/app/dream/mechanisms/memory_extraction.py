@@ -375,6 +375,13 @@ async def run_memory_extraction(
         allowed_evidence_refs={part.ref for message in ranked_input.current for part in message.evidence
             if part.text and part.kind != "attachment"},
     )
+    if not any(message.speaker_kind == "human" for message in ranked_input.current):
+        # A model may still misread a generated objective despite correct role
+        # labels. AI-only Task evidence cannot create or edit human facts.
+        personal_reasons = {"explicit_user_preference", "stable_personal_fact",
+                            "explicit_correction", "durable_relationship"}
+        decision = decision.model_copy(update={"operations": [operation for operation in decision.operations
+            if isinstance(operation, MemoryLinkOperation) or operation.retention_reason not in personal_reasons]})
     candidate_ids: list[UUID] = []
     for value in allowed:
         try:

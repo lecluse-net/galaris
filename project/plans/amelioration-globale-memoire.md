@@ -1,7 +1,76 @@
 # Mémoire — extensions et expériences restantes
 
 - Statut : `partial`
-- Revue des sources : 2026-10-11 pour l'acquisition conversationnelle ; 2026-10-08 pour les expériences. Les campagnes ne sont pas rejouées.
+- Revue des sources et comparaison locale : 2026-10-24. Les qualifications historiques ne sont pas rejouées ; la réception ci-dessous distingue les mesures nouvelles des expériences restantes.
+
+## Mise à niveau du 24 octobre 2026 — réalisation et mesures
+
+La réception vise des faits fidèlement acquis, correctement attribués et utiles dans le
+contexte final. Les sources avant changement sont figées sous
+`artifacts/memory-benchmark/relevance-20261024/`. Les données de mesure sont synthétiques.
+Les chiffres de rappel lexical, hybride, d'injection et de réponse finale restent distincts.
+
+| Lot | Garantie à vérifier avant/après |
+|---|---|
+| MEM-003 | Sans preuve d'équivalence complète, une similarité ne transforme pas un complément ou une contradiction en LINK. Vérifier décision absente, rejetée, révision concurrente et rejeu. |
+| MEM-002/018 | Une demande préparée/déléguée ne devient pas une déclaration humaine. Les faits des sous-tâches et cycles de Goal ont une provenance propre, sans réextraire leurs instructions comme faits humains. Vérifier opt-out, isolation, concurrence et rejeu. |
+| MEM-006/007/009 | Un résultat de recherche n'atteste pas la suffisance des preuves. Mesurer séparément les faits retrouvés et injectés, notamment sous saturation du calendrier, sans supprimer des candidats faibles par un seuil universel. |
+| MEM-004 | Les reprises d'une même origine ne valent pas corroborations indépendantes. Les contradictions rappelées restent attribuées, datées et accessibles ; aucune résolution automatique par récence. |
+| Qualification | Comparaison appariée sur les mêmes fixtures/horloges/modèles ; mesures du rappel lexical, des embeddings configurés et de la réponse finale selon les capacités disponibles, avec limites explicites. |
+
+Le périmètre actuel distingue souvenirs privés par agent, Documents et résumés partagés
+indépendants (0223), Datasets JSON, Process BPMN et skills procéduraux appris (0047).
+Les références du graphe sont reconstructibles ; les ACL appartiennent aux ressources sources.
+Les opérations ENRICH et CONTRADICT et leurs tests de contenu, provenance,
+concurrence et rejeu relèvent du chantier conversationnel distinct. Les expériences historiques Memory ne sont plus
+injectées automatiquement. La réaffectation automatique des Topics reste conditionnée à un
+gain mesuré et n'est pas un préalable aux corrections de fidélité.
+
+Les contrats livrés sont dans l'[ADR 0229](../decisions/0229-memory-evidence-and-context-budgets.md) :
+preuve positive avant déduplication sémantique, attribution de la demande originale et des
+instructions générées, garde des catégories personnelles sur sources uniquement IA,
+capture des Tasks enfants/cycles de Goal et opt-out hérité, réemploi des analyses acquises
+dans l'arbre, place ordinaire protégée, diagnostic de suffisance non évaluée, regroupement
+des origines et conflits accessibles avec dates/sources. Aucun seuil universel de rejet,
+oubli supplémentaire, changement d'embeddings ou déplacement automatique de Topic n'est ajouté.
+
+### Réception quantitative
+
+Comparaison appariée avec ordre alterné et état réinitialisé : 1 320 questions synthétiques
+FR/EN, 10 mondes, 2 800 souvenirs chargés dans une base éphémère, quatre domaines et
+quatre workers. Les 33 familles de questions sont conservées. Tous les mondes saturent
+volontairement le calendrier : les taux ci-dessous ne décrivent pas sa fréquence réelle.
+Budget identique : huit souvenirs et 12 000 caractères. La référence fige aussi le rendu
+du contexte ; le corpus a été régénéré dans son format courant `/2`.
+
+| Mesure | Référence avant changement | Candidat |
+|---|---:|---:|
+| Faits nécessaires retrouvés (facettes, 1 160 questions répondables) | 82,30 % | 82,30 % |
+| Faits nécessaires effectivement injectés | 0 % | 42,87 % |
+| Questions avec tous les faits injectés | 0 % | 31,64 % |
+| Requêtes améliorées / régressées en rappel injecté | — | 639 / 0 |
+| Références interdites injectées / erreurs fournisseur du benchmark | 0 / 0 | 0 / 0 |
+| Requêtes SQL moyennes | 31,45 | 33,42 |
+| Latence p95 locale, quatre workers | 1 179 ms | 1 271 ms (+7,8 %) |
+
+Le gain mesuré concerne l'injection, pas une amélioration du classement. Le contexte moyen
+passe de 2 478 à 3 218 caractères ; les limites restent respectées. La mesure ne qualifie
+ni un index unique de 56 000 souvenirs ni les embeddings réels. Une première campagne plus
+large interrompue reste un diagnostic et n'entre pas dans ces chiffres.
+
+Un contrôle aval distinct utilise dix questions synthétiques FR/EN, quatre faits, deux
+questions sans réponse et dix rendez-vous distincts, avec huit places/6 000 caractères.
+Le même modèle configuré `deepseek-deepseek-v4.1-flash` reçoit les prompts réellement assemblés,
+sans réponses attendues ni labels, en ordre alterné. Les huit faits sont retrouvés dans les
+deux bras ; leur injection passe de 0/8 à 8/8. Les réponses correctes passent de 2/10 à 9/10,
+avec 2/2 abstentions correctes dans les deux bras. Le coût estimé des dix réponses est
+respectivement de 0,003018 $ et 0,003060 $. Une seule répétition : ce contrôle factuel n'est
+pas une qualification d'une Task autonome ou de tous les harnais.
+
+Les appels au fournisseur vectoriel configuré ont échoué ; aucune mesure hybride réelle
+n'est revendiquée. Les identifiants restent dans le runtime de développement ; seuls les
+textes synthétiques et réponses sont transmis. Les sources, rapports appariés, erreurs et
+évaluations aval sont conservés sous `artifacts/memory-benchmark/relevance-20261024/`.
 
 ## Socle à réutiliser
 
@@ -33,7 +102,7 @@ Les preuves historiques restent dans les audits de
 Le lecteur commun et l'analyse reprenable existent
 ([0151](../decisions/0151-resumable-document-analysis.md)). Le raccordement des preuves déjà
 acquises au round est réalisé par [0169](../decisions/0169-conversation-memory-acquired-evidence.md) :
-transcriptions persistées, analyses réussies autorisées et liées à une Task directe du round,
+transcriptions persistées, analyses réussies autorisées et liées à l'arbre des Tasks du round,
 passages sélectionnés, provenance, reçus tardifs et revalidation. Le défaut audio seul a été
 reproduit avant correction dans le workflow PostgreSQL. Les scénarios utilisent les services
 réels et un fournisseur HTTP synthétique ; ils ne constituent pas une qualification en production.
@@ -41,7 +110,7 @@ réels et un fournisseur HTTP synthétique ; ils ne constituent pas une qualific
 | Contrat | État et réception sur sources synthétiques |
 |---|---|
 | Transcriptions vers Dream | Réalisé : audio sans texte capturé, auteur/langue/message/URI conservés, écrit et transcription distincts ; sans texte acquis, aucun appel d'extraction. |
-| Réutilisation des analyses acquises | Réalisé pour les analyses réussies de Tasks directes : isolation agent/Task/URI, version obsolète rejetée, passages et interprétation repris sans préparation ni appel fournisseur ; fichier non analysé explicite. |
+| Réutilisation des analyses acquises | Réalisé pour les analyses réussies des Tasks directes, enfants et déléguées du même agent : isolation agent/Task/URI, version obsolète rejetée, passages et interprétation repris sans préparation ni appel fournisseur ; fichier non analysé explicite. |
 | Apport tardif | Réalisé : nouvelle identité de reçu, application répétée idempotente, souvenirs antérieurs conservés ; analyse documentaire après un premier reçu vide. |
 | Provenance par passage | Réalisé : références citées, catégories distinctes, URI canonique, version attestée/inconnue, empreinte et localisateur ; revalidation avant application, lecture, admission et graphe. |
 | Couverture | Couverture et troncatures conservées pour les analyses réussies ; restent la propagation des analyses partielles/échouées et la qualification illisible, vidéo et limite atteinte. |
@@ -55,7 +124,7 @@ La revalidation du round, de l'agent et de la source avant application est réal
 nouveau chemin. Les tests couvrent retrait, révocation, correction et conservation d'une
 provenance indépendante ; l'oubli d'un contenu bloque aussi les révisions tardives du même
 round. Les souvenirs historiques sans marqueur conservent leur contrat existant.
-Restent les Tasks descendantes et les campagnes documentaires étendues, en réutilisant
+Restent les analyses partielles/échouées et les campagnes documentaires étendues, en réutilisant
 `test_dream_attachments.py` et `test_document_structure.py`.
 Les formats et l'isolation du lecteur restent dans le
 [plan documentaire](analyse-documentaire-unifiee.md).
@@ -185,9 +254,10 @@ Les lots MEM-002/003/004/005 ci-dessous portent son volet Memory/Dream :
   expiration supplémentaire, désactivation d'extraction ou fusion/purge du stock n'est
   décidée par ce programme. La provenance, les ACL et l'oubli restent prioritaires.
 
-Ce volet est en conception au 22 octobre 2026 ; aucune campagne ni modification du runtime
-n'est lancée par son ajout au plan. Le protocole et la réception communs restent dans le
-plan conversationnel, sans seconde campagne ou infrastructure indépendante.
+L'attribution des sources Task, la conservation des compléments sans décision d'équivalence
+et l'exposition des conflits sont livrées le 24 octobre (0229). Les campagnes générales
+de sélectivité, de déduplication et d'identité restent coordonnées avec le plan
+conversationnel ; les mesures de rappel et de contrôle factuel ci-dessus ne les remplacent pas.
 
 | ID | Question encore ouverte |
 |---|---|

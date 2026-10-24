@@ -143,6 +143,7 @@ async def search_file_resources(
             "degradation_reason": getattr(page, "degradation_reason", None),
             "ranking_version": getattr(page, "ranking_version", None),
             "relevance_status": getattr(page, "relevance_status", "matched" if page.hits else "no_sufficient_evidence"),
+            "evidence_status": page.evidence_status,
             "candidate_window_exhausted": page.has_more and not has_more,
             "index_coverage": (coverage.model_dump() if (coverage := getattr(page, "index_coverage", None)) is not None else None),
         }
@@ -192,6 +193,7 @@ async def search_file_resources(
                              "temporal": hit.item.temporal.model_dump(mode="json") if hit.item.temporal else None},
                 "retrieval_sources": hit.retrieval_sources,
                 "source_refs": hit.source_refs,
+                "conflicts": [conflict.model_dump(mode="json") for conflict in hit.conflicts],
                 "passages": [] if name_only else [passage.model_dump() for passage in hit.passages],
             }
             for hit in hits

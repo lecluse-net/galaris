@@ -10,6 +10,8 @@ def load_reference(root, clock):
     root.resolve().relative_to(Path('/repo/artifacts/memory-benchmark').resolve())
     modules = {}
     names = ('relevance', 'service', 'retrieval', 'facade')
+    if (root / 'context.py').is_file():
+        names = (*names, 'context')
     if (root / 'admission.py').is_file():
         names = ('admission', *names)
     if (root / 'access.py').is_file():
@@ -43,6 +45,8 @@ def load_reference(root, clock):
 
 def reference_fingerprints(root):
     names = ('relevance', 'service', 'retrieval', 'facade')
+    if (root / 'context.py').is_file():
+        names = (*names, 'context')
     if (root / 'admission.py').is_file():
         names = ('admission', *names)
     if (root / 'access.py').is_file():

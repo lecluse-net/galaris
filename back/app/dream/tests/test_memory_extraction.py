@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 from uuid import uuid4
+import json
 
 import pytest
 from pydantic import ValidationError
@@ -340,6 +341,22 @@ async def test_every_recalled_node_is_shown_for_fact_containment(
     assert candidates[0].content == (
         "Il privilégie des changements simples et vérifiables."
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("speaker_kind", ["AI", "human"])
+async def test_ai_only_evidence_cannot_create_human_preferences(monkeypatch, speaker_kind):
+    async def output(**_kwargs):
+        return StructuredInferenceResult(output=json.dumps({"operations": [{"action": "CREATE",
+            "title": "Reporting preference", "content": "Camille prefers weekly reports.",
+            "retention_reason": "explicit_user_preference", "future_utility": "high"}]}), cost=0.0, messages=[])
+    monkeypatch.setattr(memory_extraction, "run_text", output)
+    prepared, _ = await run_memory_extraction(llm=cast(LLM, object()), use_decision_profile=False,
+        input_data=MemoryExtractionInput(source_kind="task", topic={"title": "Reporting"},
+            current=[MemoryExtractionMessage(speaker_name="Camille", speaker_kind=speaker_kind,
+                text="I prefer weekly reports.")]), system_prompt=MEMORY_EXTRACTION_SYSTEM_PROMPT,
+        task_id=None, agent_id=1, language_instruction="")
+    assert bool(prepared.decision.operations) == (speaker_kind == "human")
 
 
 @pytest.mark.asyncio

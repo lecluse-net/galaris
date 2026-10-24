@@ -2675,6 +2675,7 @@ async def resource_search(
                 excerpt=str(item["excerpt"]),
                 retrieval_sources=cast(list[str], item.get("retrieval_sources", [])),
                 source_refs=cast(list[str], item.get("source_refs", [])),
+                conflicts=cast(list[dict[str, Any]], item.get("conflicts", [])),
                 passages=cast(list[dict[str, Any]], item.get("passages", [])),
             )
             for item in cast(list[dict[str, object]], data["hits"])
@@ -2689,6 +2690,7 @@ async def resource_search(
             degradation_reason=cast(str | None, data.get("degradation_reason")),
             ranking_version=cast(str | None, data.get("ranking_version")),
             relevance_status=cast(Literal["matched", "no_sufficient_evidence"] | None, data.get("relevance_status")),
+            evidence_status=cast(Literal["unassessed", "no_evidence"] | None, data.get("evidence_status")),
             candidate_window_exhausted=bool(data.get("candidate_window_exhausted", False)),
             index_coverage=cast(dict[str, Any] | None, data.get("index_coverage")),
             truncated=bool(data["has_more"]),

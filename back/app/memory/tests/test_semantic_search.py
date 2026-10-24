@@ -36,7 +36,7 @@ from app.memory.models import (
     MemoryItem,
     MemoryLink,
 )
-from app.memory.schemas import MemoryItemCreate, MemoryLinkCreate, MemoryPayload, MemoryRecallRequest
+from app.memory.schemas import MemoryItemCreate, MemoryLinkCreate, MemoryPayload, MemoryRecallRequest, MemoryRecallResult
 from app.document.schemas import DocumentGrantUpdate
 from core.authorize import Privileges
 from core.params import runtime_settings
@@ -228,9 +228,9 @@ async def test_memory_file_search_cannot_downgrade_canonical_recall(
 ) -> None:
     calls: list[dict[str, object]] = []
 
-    async def canonical_recall(query: str, **kwargs: object) -> SimpleNamespace:
+    async def canonical_recall(query: str, **kwargs: object) -> MemoryRecallResult:
         calls.append({"query": query, **kwargs})
-        return SimpleNamespace(hits=[], has_more=False)
+        return MemoryRecallResult(query=query, hits=[], mode="lexical", evidence_status="no_evidence")
 
     async def forbidden_browse(*_args: object, **_kwargs: object) -> object:
         raise AssertionError("A non-empty memory search must use canonical recall.")
@@ -465,7 +465,7 @@ async def test_lexical_fallback_does_not_admit_graph_only_neighbors(
     assert anchor.id in hits
     assert strong_neighbor.id not in hits
     assert weak_neighbor.id not in hits
-    assert result.ranking_version == "memory-query-evidence/v12"
+    assert result.ranking_version == retrieval.RRF_RANKING_VERSION
 
 
 @pytest.mark.asyncio
@@ -553,7 +553,7 @@ async def test_recall_infers_topic_and_fuses_thematic_with_global_ranks(
     )
 
     assert result.mode == "hybrid"
-    assert result.ranking_version == "memory-query-evidence/v12"
+    assert result.ranking_version == retrieval.RRF_RANKING_VERSION
     assert [hit.item.id for hit in result.hits[:2]] == [
         thematic.id,
         transverse.id,

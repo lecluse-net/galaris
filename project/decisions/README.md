@@ -319,3 +319,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0209 — Business object references in Documents](0209-business-document-references.md)
 - [0210 — Load secondary language catalogs as generated JSON](0210-lazy-locale-catalogs.md)
 - [0212 — Direct Topic associations for Documents and Datasets](0212-document-dataset-topics.md)
+- [0229 — Memory evidence, attribution and bounded context](0229-memory-evidence-and-context-budgets.md)

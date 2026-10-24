@@ -21,6 +21,22 @@ waits and references. The response contains `items`, `total`, `page`, `page_size
 the process engine. Access requires `TASK_ACCESS`, `PROCESS_READ` and management scope
 over the agent; process read permissions still apply. Pagination accepts up to 500 items.
 
+## Memory useful for work
+
+Dream may retain durable facts from successful Tasks, their child Tasks and Goal cycles.
+Instructions prepared by an agent remain attributed to AI; they are not personal
+statements by the user. A Task's capture opt-out also applies to its descendants.
+
+Memories are private to each agent. Documents and their shared summaries, Datasets and
+Process definitions retain their own content and permissions. Learned procedures belong
+to Skills. Similarity alone cannot discard complementary information; an explicit
+disagreement preserves both facts.
+
+Automatic context protects one ordinary-memory slot when calendar matches fill the other
+available slots. Nearby results do not prove that the agent knows the answer: it must
+check sources and identify missing information. A recalled conflict carries sources and
+dates; the newest claim is not automatically treated as true.
+
 ## Standard and High
 
 The effort level does not refer to two different architectures. The same driver executes the

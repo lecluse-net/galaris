@@ -39,6 +39,17 @@ This catalogue locates existing evidence before a contract changes. It describes
 guarantees covered by suites; their presence does not mean they have run on your checkout.
 For commands and the scope of their results, see the [testing method](testing.md).
 
+## Memory evidence quality
+
+`app/memory/tests/test_evidence_quality.py` protects complementary facts, negations,
+amounts and dates when equivalence is unconfirmed; generated Task attribution; useful
+memory under calendar saturation; accessible conflicts and same-origin receipt grouping.
+Existing acquisition tests retain exact deduplication, positive decisions and replay.
+`tests/test_document_analysis.py` reuses the same acquired analysis through a direct,
+child or delegated Task without another provider call. The conversation benchmark
+separates retrieval from injection; real-model qualification is a separate opt-in
+campaign that records provider failures explicitly.
+
 | Guarantee to verify |
 |---|
 | [Dataset JSON and permissions](#datasets) |

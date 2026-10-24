@@ -27,6 +27,18 @@ reste dans un souvenir privé, conformément à la séparation Memory/Document.
 Le contrôle central `app/chat/tests/test_authorization.py` vérifie aussi les privilèges Documents
 sur la liste et la création dans une conversation, avec l’assertion d’accès à la room conservée.
 
+## Qualité des preuves mémoire
+
+`app/memory/tests/test_evidence_quality.py` protège la conservation des compléments,
+négations, montants et dates en l'absence de décision d'équivalence ; l'attribution des
+objectifs préparés/délégués/Goal ; le souvenir utile sous saturation du calendrier ; les
+conflits accessibles et le regroupement des reçus d'une même origine. Les tests
+d'acquisition existants gardent la déduplication exacte, la décision positive et le rejeu.
+`tests/test_document_analysis.py` réutilise la même analyse acquise dans une Task directe,
+enfant ou déléguée, sans nouvel appel fournisseur. Le benchmark conversationnel compare
+recherche et injection ; la qualification des modèles réels reste une campagne opt-in
+distincte, avec échecs fournisseurs explicites.
+
 | Garantie à vérifier |
 |---|
 | [JSON et droits Dataset](#datasets) |

@@ -141,6 +141,7 @@ class ResourceTransfer(BaseModel):
 
 
 class ResourceSearchHit(BaseModel):
+    conflicts: list[dict[str, Any]] = Field(default_factory=list[dict[str, Any]])
     resource: ResourceDescriptor
     score: float | None = None
     excerpt: str = ""
@@ -150,6 +151,7 @@ class ResourceSearchHit(BaseModel):
 
 
 class ResourceSearchResult(BaseModel):
+    evidence_status: Literal["unassessed", "no_evidence"] | None = None
     indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     uri: str
     query: str

@@ -90,7 +90,7 @@ def source_fingerprints(reference_sources=None):
             for path in (Path("app/memory/retrieval.py"), Path("app/memory/context.py"),
                          Path("app/memory/service.py"), Path("app/memory/admission.py"),
                          Path("app/memory/access.py"), Path("app/memory/source_access.py"),
-                         Path("app/memory/goal_folders.py"), Path("app/memory/library_queries.py"),
+                         Path("app/document/goal_folders.py"), Path("app/memory/library_queries.py"),
                          Path("app/memory/bootstrap.py"), Path("app/agent/context.py"),
                          Path("app/memory/relevance.py"), Path("app/memory/models.py"),
                          Path("app/memory/lexical_normalization.py"),

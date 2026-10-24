@@ -23,7 +23,8 @@ from tests.sharing_fixtures import bind_private_shares
 from app.agent import context as agent_context
 from app.agent.contracts import AgentContextRequest, AgentSnapshot
 from app.agent.models import Agent, Title
-from app.memory import access, admission, bootstrap, context as memory_context, library_queries, retrieval, service, source_access, storage
+from app.memory import access, admission, bootstrap, context as memory_context, library_queries, retrieval, service, source_access
+from core.storage import resources as storage
 from app.document import goal_folders
 from app.memory.embedding import MemoryEmbeddingNotConfiguredError
 from app.memory.models import MemoryContactItem, MemoryItem, MemoryRevision, MemorySource
@@ -298,8 +299,11 @@ def install_adapter(monkeypatch, root: Path, reference_sources: Path | None = No
         return primary.model_copy(update={"hits": merged, "has_more": primary.has_more or len(seen) > len(merged)})
 
     async def calendar_observer(*args, **kwargs):
-        hits, more = await real_temporal(*args, **kwargs)
         trace = CURRENT.get()
+        function = (previous['retrieval'].temporal_hits
+                    if previous is not None and trace is not None and trace.variant == 'previous'
+                    else real_temporal)
+        hits, more = await function(*args, **kwargs)
         if trace is not None:
             trace.upcoming_ids = [str(h.item.id) for h in hits]
             if trace.plan is not None and trace.plan.relevant_first:
@@ -313,6 +317,19 @@ def install_adapter(monkeypatch, root: Path, reference_sources: Path | None = No
         previous['retrieval']._weighted_rank = rank_observer
     monkeypatch.setattr(memory_context, "search_memory_detailed", search_observer)
     monkeypatch.setattr(memory_context, "temporal_hits", calendar_observer)
+    if previous is not None and 'context' in previous:
+        previous['context'].search_memory_detailed = search_observer
+        previous['context'].temporal_hits = calendar_observer
+        previous['context'].datetime = FixedClock
+        real_brief = bootstrap.build_memory_brief
+
+        async def brief(*args, **kwargs):
+            trace = CURRENT.get()
+            builder = (previous['context'].build_memory_brief
+                       if trace is not None and trace.variant == 'previous' else real_brief)
+            return await builder(*args, **kwargs)
+
+        monkeypatch.setattr(bootstrap, 'build_memory_brief', brief)
 
 
 async def observe(query: Query, variant: str, agent: AgentSnapshot, db):

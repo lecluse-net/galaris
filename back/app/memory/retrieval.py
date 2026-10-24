@@ -11,9 +11,10 @@ from typing import Sequence, TypeAlias, cast
 from uuid import UUID
 from .source_access import readable_evidence_ids
 from .query_policy import prepare_memory_read
+from .provenance import source_origin_expression
 
 from loguru import logger
-from sqlalchemy import Float, cast as sql_cast, exists, func, or_, select
+from sqlalchemy import Float, case, cast as sql_cast, exists, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_db
@@ -45,6 +46,7 @@ from .schemas import (
     MemoryRecallResult,
     MemoryRetrievalSource,
     MemorySearchHit,
+    MemoryConflictReference,
     MemorySearchPassage,
     MemorySearchPage,
     MemorySearchRequest,
@@ -61,7 +63,7 @@ RRF_RANK_CONSTANT = 60
 MAX_HYBRID_CANDIDATES = 500
 MIN_GRAPH_LINK_CONFIDENCE = 0.75
 SUGGESTED_TOPIC_RELATION = "topic_membership_candidate"
-RRF_RANKING_VERSION = "memory-query-evidence/v12"
+RRF_RANKING_VERSION = "memory-query-evidence/v13"
 MIN_INFERRED_TOPIC_SIMILARITY = 0.55
 _SOURCE_WEIGHTS: dict[MemoryRetrievalSource, float] = {
     "thematic_lexical": 1.25,
@@ -845,7 +847,8 @@ async def _weighted_rank(
 
     source_rows = (
         await get_db().execute(
-            select(MemorySource.item_id, func.count(MemorySource.id))
+            select(MemorySource.item_id, func.count(func.distinct(
+                source_origin_expression(MemorySource.source_kind, MemorySource.source_ref, MemorySource.metadata_))))
             .where(MemorySource.item_id.in_(candidate_ids))
             .group_by(MemorySource.item_id)
         )
@@ -1663,6 +1666,46 @@ async def admit_recall_hits(request: MemoryRecallRequest, hits: Sequence[MemoryS
     return await admit_search_hits(request.agent_id, hits, scope_filters=_item_filters(global_request))
 
 
+async def annotate_conflicts(request: MemoryRecallRequest, hits: Sequence[MemorySearchHit]) -> None:
+    """Expose bounded conflicting claims through the same scope and admission.
+
+    References are contextual only: no source, content, validity or link is
+    rewritten, and an inaccessible/obsolete counterpart is never disclosed.
+    """
+    if not hits:
+        return
+    by_id = {hit.item.id: hit for hit in hits}
+    other = case((MemoryLink.source_item_id.in_(by_id), MemoryLink.target_item_id),
+                 else_=MemoryLink.source_item_id)
+    scope, _ = _branch_requests(request, limit=len(hits))
+    rows = (await get_db().execute(select(MemoryLink.source_item_id, MemoryLink.target_item_id, MemoryItem)
+        .join(MemoryItem, MemoryItem.id == other).where(
+            MemoryLink.relation_type == "contradicts", MemoryLink.suggested.is_(False),
+            or_(MemoryLink.source_item_id.in_(by_id), MemoryLink.target_item_id.in_(by_id)),
+            MemoryItem.node_kind == "memory", *_item_filters(scope),
+        ).order_by(MemoryLink.id).limit(min(1_500, len(hits) * 4)))).all()
+    if not rows:
+        return
+    items = {item.id: item for _source, _target, item in rows}
+    evidence_ids = await readable_evidence_ids(set(items), request.agent_id)
+    accesses = await effective_access_many(list(items.values()), request.agent_id, evidence_ids=evidence_ids)
+    candidates = [MemorySearchHit(item=service.item_to_public(item, accesses[item.id]),
+        excerpt=_excerpt(item.search_text, limit=400), score=0.0) for item in items.values()]
+    admitted = {hit.item.id: hit for hit in await admit_recall_hits(request, candidates)}
+    for source, target, _item in rows:
+        for identity, counterpart in ((source, target), (target, source)):
+            hit = by_id.get(identity)
+            alternative = admitted.get(counterpart) or by_id.get(counterpart)
+            if hit is None or alternative is None or len(hit.conflicts) >= 3:
+                continue
+            uri = f"memory://{counterpart}"
+            if any(conflict.uri == uri for conflict in hit.conflicts):
+                continue
+            hit.conflicts.append(MemoryConflictReference(uri=uri, revision=alternative.item.revision,
+                recorded_at=alternative.item.created_at, source_refs=alternative.source_refs[:3],
+                excerpt=alternative.excerpt[:400]))
+
+
 async def temporal_hits(
     request: MemoryRecallRequest, *, limit: int, offset: int = 0,
     now: datetime | None = None,
@@ -1727,7 +1770,9 @@ async def temporal_hits(
             excerpt=_excerpt(item.search_text), score=1.0, temporal_match_at=match,
         ))
     hits.sort(key=lambda hit: (hit.temporal_match_at or start, hit.item.id))
-    return await admit_recall_hits(request, hits), has_more
+    admitted = await admit_recall_hits(request, hits)
+    await annotate_conflicts(request, admitted)
+    return admitted, has_more
 
 
 async def recall_items(
@@ -1754,7 +1799,9 @@ async def recall_items(
         result.degradation_reason = result.degradation_reason or "semantic_index_partial"
     original_count = len(result.hits)
     result.hits = await admit_recall_hits(request, result.hits)
+    await annotate_conflicts(request, result.hits)
     result.relevance_status = "matched" if result.hits else "no_sufficient_evidence"
+    result.evidence_status = "unassessed" if result.hits else "no_evidence"
     result.admission_omitted_count = original_count - len(result.hits)
     if result.admission_omitted_count:
         result.degraded = True

@@ -63,7 +63,9 @@ class ConversationEvidenceUnavailable(ValueError):
 
 def _round_subject() -> Any:
     """Media additions have their own receipt; legacy text identities stay valid."""
-    task_ids = select(ConversationTaskLink.task_id).where(ConversationTaskLink.round_id == ConversationRound.id).correlate(ConversationRound)
+    from app.task.facade import memory_evidence_task_tree
+    task_ids = memory_evidence_task_tree(select(ConversationTaskLink.task_id).where(
+        ConversationTaskLink.round_id == ConversationRound.id).correlate(ConversationRound))
     file_ids = select(Attachment.file_id).join(ConversationRoundMessage, ConversationRoundMessage.message_id == Attachment.message_id).where(
         ConversationRoundMessage.round_id == ConversationRound.id, ConversationRoundMessage.role == "input",
     ).correlate(ConversationRound)
@@ -321,9 +323,10 @@ async def build_conversation_extraction_input(
     if not current:
         raise ConversationEvidenceUnavailable("Conversation evidence is no longer available")
     context = await round_execution_context(round_)
-    task_ids = tuple(await get_db().scalars(select(ConversationTaskLink.task_id).where(
+    from app.task.facade import memory_evidence_task_tree
+    task_ids = tuple(await get_db().scalars(memory_evidence_task_tree(select(ConversationTaskLink.task_id).where(
         ConversationTaskLink.round_id == round_.id,
-    )))
+    ))))
     uris = tuple({part.uri for message in current for part in message.evidence if part.uri})
     acquired = await acquired_document_evidence(context[0], task_ids, uris) if context else []
     for message in current:

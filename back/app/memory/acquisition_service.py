@@ -287,16 +287,19 @@ async def _resolve_semantic_duplicate(
                       "separate": "The fact differs, contradicts, adds detail, or is not demonstrably contained."},
         )},
     )
-    if inference is not None:
-        record.metadata_ = {**record.metadata_, "deduplication_inference": inference.output.model_dump(mode="json")}
-        if inference.output.answers["duplicate"].choice != "merge":
-            return
-        # Recheck after the network wait; a stale candidate cannot justify a merge.
-        current_revision = await get_db().scalar(select(MemoryItem.revision).where(
-            MemoryItem.id == candidate.memory_id, MemoryItem.deleted_at.is_(None),
-        ).with_for_update())
-        if current_revision != candidate.revision:
-            return
+    if inference is None:
+        # Similarity only proposes a candidate. Without an equivalence decision,
+        # preserve the new fact; a LINK would discard its actual content.
+        return
+    record.metadata_ = {**record.metadata_, "deduplication_inference": inference.output.model_dump(mode="json")}
+    if inference.output.answers["duplicate"].choice != "merge":
+        return
+    # Recheck after the network wait; a stale candidate cannot justify a merge.
+    current_revision = await get_db().scalar(select(MemoryItem.revision).where(
+        MemoryItem.id == candidate.memory_id, MemoryItem.deleted_at.is_(None),
+    ).with_for_update())
+    if current_revision != candidate.revision:
+        return
     record.target_item_id = candidate.memory_id
     record.metadata_ = {
         **record.metadata_,

@@ -286,7 +286,18 @@ class MemorySearchPassage(BaseModel):
     section_path: list[str] = Field(default_factory=list[str])
 
 
+class MemoryConflictReference(BaseModel):
+    """An accessible conflicting claim; recency never resolves its truth."""
+
+    uri: str
+    revision: int
+    recorded_at: datetime
+    source_refs: list[str] = Field(default_factory=list[str], max_length=3)
+    excerpt: str
+
+
 class MemorySearchHit(BaseModel):
+    conflicts: list[MemoryConflictReference] = Field(default_factory=list[MemoryConflictReference])
     temporal_match_at: datetime | None = None
     item: MemoryItemPublic
     excerpt: str
@@ -345,6 +356,7 @@ class MemoryIndexCoverage(BaseModel):
 
 
 class MemoryRecallResult(BaseModel):
+    evidence_status: Literal["unassessed", "no_evidence"] = "unassessed"
     relevance_status: Literal["matched", "no_sufficient_evidence"] = "matched"
     admission_omitted_count: int = Field(default=0, ge=0)
     index_coverage: MemoryIndexCoverage | None = None

@@ -154,17 +154,15 @@ async def test_new_acquisition_reports_merge_without_losing_its_idempotency_stat
 
 
 @pytest.mark.asyncio
-async def test_acquisition_uses_global_threshold_to_link_instead_of_create(
+async def test_acquisition_uses_global_threshold_then_requires_verified_equivalence(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     del memory_storage
-    # Exercise threshold-only merging when no decision model is configured.
-    profile = (await db.scalars(select(LlmProfile))).one()
-    profile.decision_llm_id = None
-    await db.flush()
+    # Retire threshold-only merging: candidates still use the global threshold,
+    # but a positive equivalence decision is required before discarding content.
     owner, _peer = agents
     existing, _created = await service.create_item(
         MemoryItemCreate(
@@ -199,6 +197,14 @@ async def test_acquisition_uses_global_threshold_to_link_instead_of_create(
         "find_similar_memory_candidates",
         candidates,
     )
+    from app.llm.decision_contracts import ChoiceAnswer, DecisionResult
+    from app.llm.structured_service import StructuredInferenceResult
+
+    async def equivalent(**_kwargs):
+        return StructuredInferenceResult(output=DecisionResult(
+            model="synthetic", answers={"duplicate": ChoiceAnswer(choice="merge")}), cost=0.0, messages=[])
+
+    monkeypatch.setattr(acquisition_service, "run_profile_decision", equivalent)
 
     result = await acquisition_service.acquire_memory(
         MemoryAcquisitionCreate(
@@ -218,14 +224,14 @@ async def test_acquisition_uses_global_threshold_to_link_instead_of_create(
 
 
 @pytest.mark.asyncio
-async def test_manual_memory_creation_uses_the_same_global_merge_threshold(
+async def test_manual_memory_creation_keeps_a_similar_fact_without_an_equivalence_decision(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     del memory_storage
-    # Exercise the same threshold-only configuration through manual creation.
+    # The same no-decision guarantee applies to manual creation.
     profile = (await db.scalars(select(LlmProfile))).one()
     profile.decision_llm_id = None
     await db.flush()
@@ -272,10 +278,10 @@ async def test_manual_memory_creation_uses_the_same_global_merge_threshold(
         )
     )
 
-    assert item.id == existing.id
+    assert item.id != existing.id
     assert observed_thresholds == [0.99]
-    assert await db.scalar(select(func.count(MemoryItem.id))) == 1
-    assert len(await service.source_refs(existing.id)) == 1
+    assert await db.scalar(select(func.count(MemoryItem.id))) == 2
+    assert await service.source_refs(existing.id) == []
 
 
 @pytest.mark.asyncio
