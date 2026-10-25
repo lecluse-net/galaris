@@ -604,8 +604,10 @@ retain their provider and are never imported by migration. See
 To personalise a document icon, click its icon in the editor header.
 In the list and tree, clicking the icon simply opens the document.
 For a folder, open its icon picker. Use the **+** button to
-upload an SVG. The size limit is the same as for files (100 MB by default); scripts
-and external content remain prohibited.
+upload an image in Documents or Datasets: SVG, PNG, JPEG, GIF, WebP, AVIF, BMP or ICO.
+Other recognised formats, such as TIFF, are converted to PNG. Icons have no specific
+file size limit. SVGs containing scripts, external content or stylesheets remain prohibited.
+Import and save failures stay visible in the picker so you can retry.
 
 Agent selectors follow alphabetical order by first name, then last name. The last selected
 agent is kept in frontend memory and offered when moving to another page, including between

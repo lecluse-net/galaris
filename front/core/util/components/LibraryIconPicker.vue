@@ -13,7 +13,7 @@
         <q-btn flat round dense icon="add" :loading="uploading" :disable="busy" :aria-label="t('libraryIcons.uploadIcon')" @click="fileInput?.click()">
           <q-tooltip>{{ t('libraryIcons.uploadIcon') }}</q-tooltip>
         </q-btn>
-        <input ref="fileInput" type="file" accept="image/svg+xml,.svg" hidden :aria-label="t('libraryIcons.uploadIcon')" @change="upload" />
+        <input ref="fileInput" type="file" accept="image/*,.svg" hidden :aria-label="t('libraryIcons.uploadIcon')" @change="upload" />
       </div>
       <div v-if="error" role="alert" class="q-my-sm">{{ error }} <q-btn v-if="loadError" flat dense :label="t('common.retry')" @click="load" /></div>
       <q-linear-progress v-if="loading" indeterminate />
@@ -47,7 +47,7 @@ import { loadTagEmojiIcons, type TagEmojiIcon } from '../tagEmojiCatalog'
 import { solaireColors } from '@/core/util'
 import DocumentTagIcon from './LibraryIcon.vue'
 const open = defineModel<boolean>({ required: true })
-const props = defineProps<{ busy: boolean; save: (icon: string | null) => Promise<boolean>; defaultIcon?: string; document?: boolean; loadIcons?: () => Promise<UploadedTagIcon[]>; uploadIcon?: (name: string, data: string) => Promise<UploadedTagIcon> }>()
+const props = defineProps<{ busy: boolean; save: (icon: string | null) => Promise<boolean>; currentIcon?: string | null; defaultIcon?: string; document?: boolean; loadIcons?: () => Promise<UploadedTagIcon[]>; uploadIcon?: (name: string, data: string) => Promise<UploadedTagIcon> }>()
 const { t, locale, mergeLocaleMessage } = useI18n()
 const $q = useQuasar()
 const search = ref<string | null>('')
@@ -115,14 +115,21 @@ async function load(): Promise<void> {
   ])
   if (disposed || current !== generation) return
   if (results[0].status === 'fulfilled') emojis.value = results[0].value
-  if (results[1].status === 'fulfilled') uploaded.value = results[1].value
+  if (results[1].status === 'fulfilled' && props.loadIcons) uploaded.value = results[1].value
   if (results.some(result => result.status === 'rejected')) { error.value = t('libraryIcons.iconLoadError'); loadError.value = true }
   loading.value = false
 }
 watch(family, () => { category.value = 'all'; if (open.value) void load() })
 watch(locale, () => { if (open.value) void load() })
-async function choose(icon: string | null): Promise<void> {
-  if (await props.save(icon) && !disposed) open.value = false
+async function choose(icon: string | null): Promise<boolean> {
+  error.value = ''; loadError.value = false
+  try {
+    const saved = await props.save(icon)
+    if (disposed) return false
+    if (saved) open.value = false
+    else error.value = t('libraryIcons.iconSaveError')
+    return saved
+  } catch { if (!disposed) error.value = t('libraryIcons.iconSaveError'); return false }
 }
 async function upload(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
@@ -130,22 +137,26 @@ async function upload(event: Event): Promise<void> {
   input.value = ''
   if (!file || uploading.value) return
   error.value = ''; loadError.value = false
-  if (!file.name.toLowerCase().endsWith('.svg')) { error.value = t('libraryIcons.iconUploadError'); return }
   uploading.value = true
   try {
+    const mediaType = file.name.toLowerCase().endsWith('.svg') ? 'image/svg+xml' : file.type.startsWith('image/') ? file.type : 'image/octet-stream'
     const data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result).replace(/^data:[^;]*;/, 'data:image/svg+xml;'))
+      reader.onload = () => resolve(String(reader.result).replace(/^data:[^;]*;/, `data:${mediaType};`))
       reader.onerror = () => reject(reader.error)
+      reader.onabort = () => reject(new Error('Image reading cancelled'))
       reader.readAsDataURL(file)
     })
     if (disposed) return
-    if (!props.uploadIcon && data.length > 100_000) throw new Error('Icon too large')
-    const icon = !props.uploadIcon ? { id: data, name: file.name, data } : await props.uploadIcon(file.name.replace(/\.svg$/i, '').slice(0, 100) || file.name, data)
+    const icon = !props.uploadIcon ? { id: data, name: file.name, data } : await props.uploadIcon(file.name.replace(/\.[^.]+$/, '').slice(0, 100) || file.name, data)
     if (disposed) return
     ++generation; loading.value = false
     uploaded.value = [icon, ...uploaded.value.filter(value => value.id !== icon.id)]
-    await choose(icon.data)
+    if (await choose(icon.data) && !props.uploadIcon) {
+      await nextTick()
+      const normalized = props.currentIcon
+      if (!disposed && normalized) uploaded.value = uploaded.value.map(value => value.id === icon.id ? { ...value, data: normalized } : value)
+    }
   } catch { if (!disposed) error.value = t('libraryIcons.iconUploadError') }
   finally { if (!disposed) uploading.value = false }
 }

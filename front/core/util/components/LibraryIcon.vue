@@ -2,7 +2,7 @@
   <span v-if="glyph" class="tag-unicode-icon" :style="{ fontSize: size }" aria-hidden="true">{{ glyph }}</span>
   <FolderIcon v-else-if="folder" :tone="folder.tone" :expanded="expanded" :size="size" />
   <q-icon v-else-if="fontName && fontReady" :name="fontName" :size="size" class="tag-monochrome-icon" />
-  <img v-else-if="value.startsWith('data:image/svg+xml;base64,')" :src="value" alt="" :style="{ width: size, height: size }" draggable="false" />
+  <img v-else-if="/^data:image\/[\w.+-]+;base64,/.test(value)" :src="value" alt="" :style="{ width: size, height: size, objectFit: 'contain' }" draggable="false" />
   <DocumentFileIcon v-else-if="defaultIcon === 'description'" :size="size" />
   <q-icon v-else-if="defaultIcon" :name="defaultIcon" :size="size" class="tag-monochrome-icon" />
   <FolderIcon v-else :expanded="expanded" :size="size" />

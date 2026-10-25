@@ -284,7 +284,7 @@ tests remain authoritative for behavior.
 | `app.document` | `core.dbadmin` | `back/app/document/dbadmin.py`, `back/app/document/document_backup.py`, `back/app/document/independence.py`, `back/app/document/privilege_migration.py`, `back/app/document/tool_migration.py` |
 | `app.document` | `core.document` | `back/app/document/document_thumbnail_service.py` |
 | `app.document` | `core.i18n` | `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/resource_service.py` |
-| `app.document` | `core.params` | `back/app/document/document_attachment_service.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/tag_icons.py` |
+| `app.document` | `core.params` | `back/app/document/document_attachment_service.py`, `back/app/document/document_thumbnail_service.py` |
 | `app.document` | `core.preview` | `back/app/document/document_export.py`, `back/app/document/document_image_import.py`, `back/app/document/document_links.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/router.py` |
 | `app.document` | `core.settings` | `back/app/document/document_thumbnail_cache.py` |
 | `app.document` | `core.storage` | `back/app/document/automation.py`, `back/app/document/dataset_migration.py`, `back/app/document/document_attachment_service.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/inline_content.py`, `back/app/document/process_migration.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/summary_service.py`, `back/app/document/topic_assignment.py` |
@@ -1459,32 +1459,32 @@ tests remain authoritative for behavior.
 | POST | `/conversations/rounds/{round_id}/delivery-resolution` | `app.conversation` | `resolve_conversation_delivery` | yes | `back/app/conversation/router.py:136` |
 | PUT | `/conversations/rounds/{round_id}/topic` | `app.conversation` | `update_conversation_round_topic` | yes | `back/app/conversation/router.py:101` |
 | GET | `/dashboard` | `app.dashboard` | `read_dashboard` | yes | `back/app/dashboard/router.py:17` |
-| GET | `/datasets` | `app.dataset` | `list_datasets` | yes | `back/app/dataset/router.py:119` |
-| POST | `/datasets` | `app.dataset` | `create_dataset` | yes | `back/app/dataset/router.py:134` |
-| GET | `/datasets/library/facets` | `app.dataset` | `library_facets` | yes | `back/app/dataset/router.py:160` |
-| POST | `/datasets/library/move` | `app.dataset` | `move_placement` | yes | `back/app/dataset/router.py:192` |
-| GET | `/datasets/tags` | `app.dataset` | `list_tags` | yes | `back/app/dataset/router.py:144` |
-| POST | `/datasets/tags` | `app.dataset` | `create_tag` | yes | `back/app/dataset/router.py:151` |
-| DELETE | `/datasets/tags/{identity}` | `app.dataset` | `delete_tag` | yes | `back/app/dataset/router.py:175` |
-| PUT | `/datasets/tags/{identity}` | `app.dataset` | `update_tag` | yes | `back/app/dataset/router.py:167` |
-| POST | `/datasets/tags/{identity}/sort` | `app.dataset` | `sort_tag` | yes | `back/app/dataset/router.py:184` |
-| DELETE | `/datasets/{identity}` | `app.dataset` | `delete_dataset` | yes | `back/app/dataset/router.py:234` |
-| GET | `/datasets/{identity}` | `app.dataset` | `read_dataset` | yes | `back/app/dataset/router.py:200` |
-| PATCH | `/datasets/{identity}` | `app.dataset` | `update_dataset` | yes | `back/app/dataset/router.py:223` |
-| GET | `/datasets/{identity}/attachments` | `app.dataset` | `attachments` | yes | `back/app/dataset/router.py:319` |
-| POST | `/datasets/{identity}/attachments` | `app.dataset` | `attach` | yes | `back/app/dataset/router.py:327` |
-| PATCH | `/datasets/{identity}/attachments/{attachment_id}` | `app.dataset` | `rename_dataset_attachment` | yes | `back/app/dataset/router.py:337` |
-| PUT | `/datasets/{identity}/classification` | `app.dataset` | `classify` | yes | `back/app/dataset/router.py:345` |
-| PUT | `/datasets/{identity}/content` | `app.dataset` | `write_dataset` | yes | `back/app/dataset/router.py:208` |
-| GET | `/datasets/{identity}/owner` | `app.dataset` | `owner_options` | yes | `back/app/dataset/router.py:274` |
-| PATCH | `/datasets/{identity}/owner` | `app.dataset` | `transfer_owner` | yes | `back/app/dataset/router.py:281` |
-| GET | `/datasets/{identity}/revisions` | `app.dataset` | `read_history` | yes | `back/app/dataset/router.py:242` |
-| GET | `/datasets/{identity}/revisions/{number}` | `app.dataset` | `read_revision` | yes | `back/app/dataset/router.py:249` |
-| POST | `/datasets/{identity}/revisions/{number}/restore` | `app.dataset` | `restore_revision` | yes | `back/app/dataset/router.py:257` |
-| GET | `/datasets/{identity}/sharing` | `app.dataset` | `sharing` | yes | `back/app/dataset/router.py:267` |
-| PUT | `/datasets/{identity}/sharing` | `app.dataset` | `set_grant` | yes | `back/app/dataset/router.py:309` |
-| PUT | `/datasets/{identity}/sharing-level` | `app.dataset` | `sharing_level` | yes | `back/app/dataset/router.py:291` |
-| GET | `/datasets/{identity}/usages` | `app.dataset` | `usages` | yes | `back/app/dataset/router.py:300` |
+| GET | `/datasets` | `app.dataset` | `list_datasets` | yes | `back/app/dataset/router.py:130` |
+| POST | `/datasets` | `app.dataset` | `create_dataset` | yes | `back/app/dataset/router.py:145` |
+| GET | `/datasets/library/facets` | `app.dataset` | `library_facets` | yes | `back/app/dataset/router.py:171` |
+| POST | `/datasets/library/move` | `app.dataset` | `move_placement` | yes | `back/app/dataset/router.py:203` |
+| GET | `/datasets/tags` | `app.dataset` | `list_tags` | yes | `back/app/dataset/router.py:155` |
+| POST | `/datasets/tags` | `app.dataset` | `create_tag` | yes | `back/app/dataset/router.py:162` |
+| DELETE | `/datasets/tags/{identity}` | `app.dataset` | `delete_tag` | yes | `back/app/dataset/router.py:186` |
+| PUT | `/datasets/tags/{identity}` | `app.dataset` | `update_tag` | yes | `back/app/dataset/router.py:178` |
+| POST | `/datasets/tags/{identity}/sort` | `app.dataset` | `sort_tag` | yes | `back/app/dataset/router.py:195` |
+| DELETE | `/datasets/{identity}` | `app.dataset` | `delete_dataset` | yes | `back/app/dataset/router.py:245` |
+| GET | `/datasets/{identity}` | `app.dataset` | `read_dataset` | yes | `back/app/dataset/router.py:211` |
+| PATCH | `/datasets/{identity}` | `app.dataset` | `update_dataset` | yes | `back/app/dataset/router.py:234` |
+| GET | `/datasets/{identity}/attachments` | `app.dataset` | `attachments` | yes | `back/app/dataset/router.py:330` |
+| POST | `/datasets/{identity}/attachments` | `app.dataset` | `attach` | yes | `back/app/dataset/router.py:338` |
+| PATCH | `/datasets/{identity}/attachments/{attachment_id}` | `app.dataset` | `rename_dataset_attachment` | yes | `back/app/dataset/router.py:348` |
+| PUT | `/datasets/{identity}/classification` | `app.dataset` | `classify` | yes | `back/app/dataset/router.py:356` |
+| PUT | `/datasets/{identity}/content` | `app.dataset` | `write_dataset` | yes | `back/app/dataset/router.py:219` |
+| GET | `/datasets/{identity}/owner` | `app.dataset` | `owner_options` | yes | `back/app/dataset/router.py:285` |
+| PATCH | `/datasets/{identity}/owner` | `app.dataset` | `transfer_owner` | yes | `back/app/dataset/router.py:292` |
+| GET | `/datasets/{identity}/revisions` | `app.dataset` | `read_history` | yes | `back/app/dataset/router.py:253` |
+| GET | `/datasets/{identity}/revisions/{number}` | `app.dataset` | `read_revision` | yes | `back/app/dataset/router.py:260` |
+| POST | `/datasets/{identity}/revisions/{number}/restore` | `app.dataset` | `restore_revision` | yes | `back/app/dataset/router.py:268` |
+| GET | `/datasets/{identity}/sharing` | `app.dataset` | `sharing` | yes | `back/app/dataset/router.py:278` |
+| PUT | `/datasets/{identity}/sharing` | `app.dataset` | `set_grant` | yes | `back/app/dataset/router.py:320` |
+| PUT | `/datasets/{identity}/sharing-level` | `app.dataset` | `sharing_level` | yes | `back/app/dataset/router.py:302` |
+| GET | `/datasets/{identity}/usages` | `app.dataset` | `usages` | yes | `back/app/dataset/router.py:311` |
 | GET | `/definitions` | `app.process` | `read_definitions` | yes | `back/app/process/router.py:156` |
 | POST | `/definitions` | `app.process` | `create_definition` | yes | `back/app/process/router.py:170` |
 | POST | `/definitions/sync` | `app.process` | `sync_definitions` | yes | `back/app/process/router.py:181` |

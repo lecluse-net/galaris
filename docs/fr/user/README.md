@@ -729,8 +729,11 @@ par la migration. Voir le [stockage et les sauvegardes](../dev/file-storage.md).
 Pour personnaliser l’icône d’un document, cliquez sur celle de son en-tête dans l’éditeur.
 Dans la liste et l’arbre, cliquer sur l’icône ouvre simplement le document.
 Pour un dossier, ouvrez sa palette d’icônes. Utilisez le
-bouton **+** pour téléverser un SVG. La limite de taille est celle des fichiers
-(100 Mo par défaut) ; les scripts et contenus externes restent refusés.
+bouton **+** pour téléverser une image, dans Documents comme dans Datasets : SVG,
+PNG, JPEG, GIF, WebP, AVIF, BMP ou ICO. Les autres formats reconnus, comme TIFF,
+sont convertis en PNG. Les icônes n’ont pas de limite de taille de fichier propre.
+Les SVG contenant des scripts, du contenu externe ou des feuilles de style restent refusés.
+Un échec d’import ou d’enregistrement reste affiché dans la palette pour permettre de réessayer.
 
 Les sélecteurs d’agents suivent l’ordre alphabétique du prénom puis du nom. Le dernier agent
 sélectionné est conservé en mémoire frontend et proposé lors du passage à une autre page,

@@ -1365,8 +1365,7 @@
       {
         "files": [
           "back/app/document/document_attachment_service.py",
-          "back/app/document/document_thumbnail_service.py",
-          "back/app/document/tag_icons.py"
+          "back/app/document/document_thumbnail_service.py"
         ],
         "source": "app.document",
         "target": "core.params"
@@ -16032,7 +16031,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "list_datasets",
-        "line": 119,
+        "line": 130,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16041,7 +16040,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "create_dataset",
-        "line": 134,
+        "line": 145,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -16050,7 +16049,7 @@
         "declared_path": "/datasets/library/facets",
         "file": "back/app/dataset/router.py",
         "handler": "library_facets",
-        "line": 160,
+        "line": 171,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16059,7 +16058,7 @@
         "declared_path": "/datasets/library/move",
         "file": "back/app/dataset/router.py",
         "handler": "move_placement",
-        "line": 192,
+        "line": 203,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -16068,7 +16067,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "list_tags",
-        "line": 144,
+        "line": 155,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16077,7 +16076,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "create_tag",
-        "line": 151,
+        "line": 162,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -16086,7 +16085,7 @@
         "declared_path": "/datasets/tags/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "delete_tag",
-        "line": 175,
+        "line": 186,
         "method": "DELETE",
         "module": "app.dataset"
       },
@@ -16095,7 +16094,7 @@
         "declared_path": "/datasets/tags/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "update_tag",
-        "line": 167,
+        "line": 178,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -16104,7 +16103,7 @@
         "declared_path": "/datasets/tags/{identity}/sort",
         "file": "back/app/dataset/router.py",
         "handler": "sort_tag",
-        "line": 184,
+        "line": 195,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -16113,7 +16112,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "delete_dataset",
-        "line": 234,
+        "line": 245,
         "method": "DELETE",
         "module": "app.dataset"
       },
@@ -16122,7 +16121,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "read_dataset",
-        "line": 200,
+        "line": 211,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16131,7 +16130,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "update_dataset",
-        "line": 223,
+        "line": 234,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -16140,7 +16139,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attachments",
-        "line": 319,
+        "line": 330,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16149,7 +16148,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attach",
-        "line": 327,
+        "line": 338,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -16158,7 +16157,7 @@
         "declared_path": "/datasets/{identity}/attachments/{attachment_id}",
         "file": "back/app/dataset/router.py",
         "handler": "rename_dataset_attachment",
-        "line": 337,
+        "line": 348,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -16167,7 +16166,7 @@
         "declared_path": "/datasets/{identity}/classification",
         "file": "back/app/dataset/router.py",
         "handler": "classify",
-        "line": 345,
+        "line": 356,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -16176,7 +16175,7 @@
         "declared_path": "/datasets/{identity}/content",
         "file": "back/app/dataset/router.py",
         "handler": "write_dataset",
-        "line": 208,
+        "line": 219,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -16185,7 +16184,7 @@
         "declared_path": "/datasets/{identity}/owner",
         "file": "back/app/dataset/router.py",
         "handler": "owner_options",
-        "line": 274,
+        "line": 285,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16194,7 +16193,7 @@
         "declared_path": "/datasets/{identity}/owner",
         "file": "back/app/dataset/router.py",
         "handler": "transfer_owner",
-        "line": 281,
+        "line": 292,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -16203,7 +16202,7 @@
         "declared_path": "/datasets/{identity}/revisions",
         "file": "back/app/dataset/router.py",
         "handler": "read_history",
-        "line": 242,
+        "line": 253,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16212,7 +16211,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}",
         "file": "back/app/dataset/router.py",
         "handler": "read_revision",
-        "line": 249,
+        "line": 260,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16221,7 +16220,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}/restore",
         "file": "back/app/dataset/router.py",
         "handler": "restore_revision",
-        "line": 257,
+        "line": 268,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -16230,7 +16229,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "sharing",
-        "line": 267,
+        "line": 278,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16239,7 +16238,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "set_grant",
-        "line": 309,
+        "line": 320,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -16248,7 +16247,7 @@
         "declared_path": "/datasets/{identity}/sharing-level",
         "file": "back/app/dataset/router.py",
         "handler": "sharing_level",
-        "line": 291,
+        "line": 302,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -16257,7 +16256,7 @@
         "declared_path": "/datasets/{identity}/usages",
         "file": "back/app/dataset/router.py",
         "handler": "usages",
-        "line": 300,
+        "line": 311,
         "method": "GET",
         "module": "app.dataset"
       },

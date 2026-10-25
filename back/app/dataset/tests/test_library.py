@@ -1,7 +1,10 @@
 """Personal folders never alter JSON, revisions, ownership or another user's tree."""
 from datetime import datetime, timezone
+import base64
+from io import BytesIO
 
 import pytest
+from PIL import Image
 from sqlalchemy import select
 
 from app.dataset import organization, service
@@ -101,6 +104,30 @@ async def test_library_http_enforces_rbac_personal_scope_and_rejects_cycles(clie
         assert response.status_code == 200, response.text
         created.append(response.json()["id"])
     assert (await client.get("/api/datasets/tags", headers=headers[1])).json() == []
+    source = '<svg xmlns="http://www.w3.org/2000/svg">' + ' ' * 100_001 + '</svg>'
+    icon = 'data:image/svg+xml;base64,' + base64.b64encode(source.encode()).decode()
+    response = await client.put(f"/api/datasets/tags/{created[0]}", headers=headers[0],
+        json={"name": "Synthetic Alpha", "icon": icon})
+    assert response.status_code == 200, response.text
+    folders = (await client.get("/api/datasets/tags", headers=headers[0])).json()
+    assert next(folder for folder in folders if folder["id"] == created[0])["icon"] == icon
+    response = await client.put(f"/api/datasets/{identity}/classification", headers=headers[0],
+        json={"tags": [], "icon": icon})
+    assert response.status_code == 200, response.text
+    for format in ("PNG", "TIFF"):
+        source = BytesIO()
+        Image.new("RGB", (16, 16), "blue").save(source, format=format)
+        raster = "data:image/octet-stream;base64," + base64.b64encode(source.getvalue()).decode()
+        response = await client.put(f"/api/datasets/tags/{created[0]}", headers=headers[0],
+            json={"name": "Synthetic Alpha", "icon": raster})
+        assert response.status_code == 200, response.text
+        folders = (await client.get("/api/datasets/tags", headers=headers[0])).json()
+        saved = next(folder for folder in folders if folder["id"] == created[0])["icon"]
+        assert saved.startswith("data:image/png;base64,")
+    for invalid in ("data:image/png;base64,broken!", "javascript:alert(1)"):
+        response = await client.put(f"/api/datasets/tags/{created[0]}", headers=headers[0],
+            json={"name": "Synthetic Alpha", "icon": invalid})
+        assert response.status_code == 422, response.text
     assert (await client.put(f"/api/datasets/tags/{created[0]}", headers=headers[1], json={"name": "Synthetic intrusion"})).status_code == 404
     assert (await client.post("/api/datasets/library/move", headers=headers[1], json={"kind": "dataset", "identity": identity, "parent_id": None})).status_code == 404
     responses = [await client.post("/api/datasets/library/move", headers=headers[0], json={

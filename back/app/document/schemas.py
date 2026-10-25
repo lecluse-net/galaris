@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from core.util import TemporalAnchor as DocumentTemporalAnchor
 from .contracts import DocumentAccess
 from .document_types import DocumentType
-from .tag_icons import validate_icon, SVG_PREFIX
+from .tag_icons import validate_icon
 from app.share import Collaborator, SharingState, GrantUpdate, SharingUpdate, SingleGrantUpdate
 
 DocumentNodeKind = Literal["document"]
@@ -307,8 +307,8 @@ class DocumentTagIconWrite(BaseModel):
     @field_validator("data")
     @classmethod
     def valid_data(cls, value: str) -> str:
-        if not value.startswith(SVG_PREFIX):
-            raise ValueError("Expected an uploaded SVG")
+        if not value.startswith("data:image/"):
+            raise ValueError("Expected an uploaded image")
         return validate_icon(value)
 
 class DocumentTagIconPublic(DocumentTagIconWrite):

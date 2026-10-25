@@ -4,7 +4,7 @@ export default {
   "iconCollection": "Bibliothèque d’icônes",
   "searchIcons": "Rechercher une icône",
   "defaultIcon": "Icône par défaut",
-  "uploadIcon": "Téléverser une icône SVG",
+  "uploadIcon": "Téléverser une image",
   "iconCategories": "Catégories d’icônes",
   "iconGroups": {
     "0": "Visages et émotions",
@@ -43,7 +43,8 @@ export default {
     "gray": "gris"
   },
   "iconLoadError": "Impossible de charger vos icônes.",
-  "iconUploadError": "Choisissez un SVG respectant la limite de taille des fichiers, sans script, image externe ni feuille de style."
+  "iconUploadError": "Impossible d’importer cette image. Choisissez une image valide dans un format pris en charge. Les SVG doivent être sans script, contenu externe ni feuille de style.",
+  "iconSaveError": "Impossible d’enregistrer cette icône. Réessayez."
 },
     resourceOwner: { title: 'Propriétaire', choose: 'Choisir un propriétaire', me: 'Moi', user: 'Utilisateurs', agent: 'Agents', all: 'Tous les propriétaires', clear: 'Effacer le propriétaire', search: 'Rechercher un propriétaire', empty: 'Aucun propriétaire disponible.', pages: 'Pagination : {type}', perPage: 'Résultats par page' },
     fileRename: { label: 'Renommer', action: 'Renommer {name}', title: 'Renommer le fichier', name: 'Nom du fichier', save: 'Renommer', invalid: 'Saisissez un nom de 1 à 500 caractères, sans séparateur de chemin ni caractère de contrôle.', error: 'Impossible de renommer ce fichier. Vérifiez vos droits et réessayez.' },
@@ -243,7 +244,7 @@ unavailable: "Ce contenu est indisponible.",
   "iconCollection": "Icon library",
   "searchIcons": "Search icons",
   "defaultIcon": "Default icon",
-  "uploadIcon": "Upload an SVG icon",
+  "uploadIcon": "Upload an image",
   "iconCategories": "Icon categories",
   "iconGroups": {
     "0": "Faces and emotions",
@@ -282,7 +283,8 @@ unavailable: "Ce contenu est indisponible.",
     "gray": "Gray"
   },
   "iconLoadError": "Could not load your icons.",
-  "iconUploadError": "Choose an SVG within the file size limit, without scripts, external images or stylesheets."
+  "iconUploadError": "Could not import this image. Choose a valid image in a supported format. SVGs must have no scripts, external content or stylesheets.",
+  "iconSaveError": "Could not save this icon. Please try again."
 },
     resourceOwner: { title: 'Owner', choose: 'Choose an owner', me: 'Me', user: 'Users', agent: 'Agents', all: 'All owners', clear: 'Clear owner', search: 'Search owners', empty: 'No owners available.', pages: 'Pagination: {type}', perPage: 'Results per page' },
     fileRename: { label: 'Rename', action: 'Rename {name}', title: 'Rename file', name: 'File name', save: 'Rename', invalid: 'Enter a name of 1–500 characters without path separators or control characters.', error: 'Unable to rename this file. Check your permissions and retry.' },
@@ -482,7 +484,7 @@ unavailable: "This content is unavailable.",
   "iconCollection": "图标库",
   "searchIcons": "搜索图标",
   "defaultIcon": "默认图标",
-  "uploadIcon": "上传 SVG 图标",
+  "uploadIcon": "上传图片",
   "iconCategories": "图标分类",
   "iconGroups": {
     "0": "面孔和情感",
@@ -521,7 +523,8 @@ unavailable: "This content is unavailable.",
     "gray": "灰色"
   },
   "iconLoadError": "无法加载图标。",
-  "iconUploadError": "请选择符合文件大小限制且不含脚本、外部图像或样式表的 SVG。"
+  "iconUploadError": "无法导入此图片。请选择有效且受支持的图片格式。SVG 不能包含脚本、外部内容或样式表。",
+  "iconSaveError": "无法保存此图标，请重试。"
 },
     resourceOwner: { title: '所有者', choose: '选择所有者', me: '我', user: '用户', agent: '智能体', all: '所有所有者', clear: '清除所有者', search: '搜索所有者', empty: '没有可用的所有者。', pages: '分页：{type}', perPage: '每页结果数' },
     fileRename: { label: '重命名', action: '重命名 {name}', title: '重命名文件', name: '文件名', save: '重命名', invalid: '请输入 1–500 个字符的名称，不含路径分隔符或控制字符。', error: '无法重命名此文件。请检查权限并重试。' },

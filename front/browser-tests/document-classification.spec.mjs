@@ -996,6 +996,16 @@ test('each tag creates a child and its icon picker searches Unicode emojis and r
   await page.getByRole('button', { name: 'Triangle', exact: true }).click()
   await expect.poll(() => mutations.at(-1)).toMatchObject({ id: 'work', icon: uploaded })
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
+  const image = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 8
+    canvas.getContext('2d').fillRect(0, 0, 16, 8)
+    return canvas.toDataURL('image/png')
+  })
+  await openFolderIcon(page.getByRole('button', { name: 'Icon for folder Work', exact: true }))
+  await page.locator('input[type=file]').setInputFiles({ name: 'Synthetic raster.png', mimeType: 'image/png', buffer: Buffer.from(image.split(',')[1], 'base64') })
+  await expect.poll(() => mutations.at(-1)).toMatchObject({ id: 'work', icon: image })
+  const rendered = page.getByRole('button', { name: 'Icon for folder Work', exact: true }).locator('img')
+  await expect.poll(() => rendered.evaluate(image => image.naturalWidth)).toBe(16)
   await openFolderIcon(page.getByRole('button', { name: 'Icon for folder Work', exact: true }))
   await page.getByRole('combobox', { name: 'Icon library', exact: true }).click()
   await page.getByRole('option', { name: 'Unicode emoji', exact: true }).click()
@@ -1021,7 +1031,7 @@ test('icon palette recovers a loading error and preserves the tag after a server
   await page.route('**/api/documents/tag-icons', route => {
     if (route.request().method() === 'POST') {
       rejectedUploads++
-      return route.fulfill({ status: 400, json: { detail: 'Synthetic configured file size limit exceeded' } })
+      return route.fulfill({ status: 400, json: { detail: 'Synthetic invalid image' } })
     }
     return route.fulfill(fail ? { status: 500, json: { detail: 'Unavailable' } }
       : { json: [{ id: 'saved', name: 'Saved icon', data: '/tag-icons/openmoji/1F680.svg' }] })
@@ -1038,8 +1048,7 @@ test('icon palette recovers a loading error and preserves the tag after a server
   await page.getByRole('option', { name: 'My icons', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Saved icon', exact: true })).toBeVisible()
   await expect(page.getByRole('alert')).toHaveCount(0)
-  // The API enforces MEMORY_RESOURCE_MAX_BYTES; the obsolete local 64 KiB
-  // ceiling must not replace its configured limit or hide a server refusal.
+  // A server refusal remains visible even for a large upload.
   await page.locator('input[type=file]').setInputFiles({ name: 'Server-rejected.svg', mimeType: 'image/svg+xml',
     buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg">${' '.repeat(65537)}</svg>`) })
   await expect(page.getByRole('alert')).toBeVisible()

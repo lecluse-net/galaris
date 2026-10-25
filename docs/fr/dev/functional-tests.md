@@ -1857,6 +1857,12 @@ les refus HTTP et les cycles concurrents. `front/browser-tests/dataset-library.s
 exerce les menus, sous-dossiers, déplacements, suppression avec retour aux non classés,
 filtres et réponses tardives. `e2e/specs/datasets.spec.mjs` vérifie la persistance des dossiers
 et déplacements dans l'application assemblée, en plus de l'édition et du partage.
+Les tests de classement Document et Dataset couvrent aussi les images d’icônes sans plafond
+de fichier dédié, les octets et formats reconnus, la conversion TIFF en PNG et le refus des
+images invalides. Les parcours de composants couvrent l’import SVG/PNG/JPEG/WebP, le refus
+d’enregistrement visible dans la palette, la conservation de l’ancienne icône et le réessai.
+`e2e/specs/library-icons.spec.mjs` vérifie l’import et la persistance après rechargement dans
+les deux bibliothèques assemblées, sur bureau et mobile, avec un grand SVG et un PNG.
 
 `front/browser-tests/document-navigation.spec.mjs` couvre l’historique précédent/suivant
 sur bureau et mobile : ouvertures depuis la bibliothèque ou une route documentaire,

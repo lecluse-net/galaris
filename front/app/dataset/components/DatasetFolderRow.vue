@@ -4,7 +4,7 @@
       @click="clickIcon">
       <LibraryIcon :icon="tag.icon" :expanded="selected" size="26px" />
       <q-tooltip>{{ t(renaming ? 'datasets.library.iconHint' : 'datasets.library.renameHint') }}</q-tooltip>
-      <LibraryIconPicker v-model="iconOpen" :busy="busy" :save="saveIcon" />
+      <LibraryIconPicker v-model="iconOpen" :busy="busy" :save="saveIcon" :current-icon="tag.icon" />
     </q-btn>
     <q-input v-if="renaming" v-model="name" autofocus dense outlined class="col" maxlength="100" :disable="busy"
       :aria-label="t('datasets.library.name')" @click.stop @dblclick.stop @keydown.stop

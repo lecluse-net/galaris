@@ -1788,6 +1788,12 @@ sorting, JSON and permission preservation, HTTP denials and concurrent cycle pre
 deletion returning resources to the unclassified list, filters and late responses.
 `e2e/specs/datasets.spec.mjs` verifies persistent folders and moves in the assembled
 application alongside editing and sharing.
+Document and Dataset classification tests also cover image icons without a dedicated file
+size limit, recognised bytes and formats, TIFF conversion to PNG and invalid image rejection.
+Component journeys exercise SVG/PNG/JPEG/WebP uploads, visible save errors in the picker,
+retaining the previous icon and retrying. `e2e/specs/library-icons.spec.mjs` verifies upload
+and persistence after reload in both assembled libraries on desktop and mobile, using a
+large SVG and a PNG.
 
 `front/browser-tests/document-navigation.spec.mjs` covers back/forward history on desktop
 and mobile: library and document route openings, keyboard activation, branching after going

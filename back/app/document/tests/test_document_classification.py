@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta, timezone
 import base64
+from io import BytesIO
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
+from PIL import Image
 from sqlalchemy import update
 
 from app.agent import AgentManagementScope
@@ -503,6 +505,42 @@ async def test_icons_survive_rename_moves_and_tag_deletion_and_are_private(db):
     assert [entry.id for entry in await document_tags.list_icons(user.id)] == [icon.id]
 
 
+@pytest.mark.parametrize(("schema", "field", "extra"), [
+    (DocumentTagIconWrite, "data", {"name": "Synthetic image"}),
+    (DocumentTagWrite, "icon", {"name": "Folder"}),
+    (DocumentIconWrite, "icon", {}),
+])
+@pytest.mark.parametrize("format", ["PNG", "JPEG", "GIF", "WEBP", "AVIF", "BMP", "ICO", "TIFF"])
+def test_image_icons_preserve_browser_formats_and_convert_other_images(schema, field, extra, format):
+    source = BytesIO()
+    Image.new("RGB", (32, 32), "blue").save(source, format=format)
+    raw = source.getvalue()
+    # Detection uses the bytes even when the file picker has no useful MIME type.
+    data = "data:image/octet-stream;base64," + base64.b64encode(raw).decode()
+    result = getattr(schema(**extra, **{field: data}), field)
+    media_type, encoded = result.split(";base64,")
+    converted = base64.b64decode(encoded)
+    with Image.open(BytesIO(converted)) as image:
+        assert image.size == (32, 32)
+        assert image.format == ("PNG" if format == "TIFF" else format)
+        image.load()
+    assert media_type == "data:" + {"PNG": "image/png", "JPEG": "image/jpeg", "GIF": "image/gif",
+        "WEBP": "image/webp", "AVIF": "image/avif", "BMP": "image/bmp", "ICO": "image/vnd.microsoft.icon", "TIFF": "image/png"}[format]
+    if format != "TIFF":
+        assert converted == raw
+
+
+@pytest.mark.parametrize("data", [
+    "data:image/png;base64,broken!", "data:image/jpeg;base64," + base64.b64encode(b"not an image").decode(),
+    "data:image/png;base64," + base64.b64encode(b'<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>').decode(),
+])
+def test_uploaded_icons_reject_disguised_or_invalid_images(data):
+    for schema, field, extra in [(DocumentTagIconWrite, "data", {"name": "Synthetic invalid"}),
+                                 (DocumentTagWrite, "icon", {"name": "Folder"}), (DocumentIconWrite, "icon", {})]:
+        with pytest.raises(ValidationError):
+            schema(**extra, **{field: data})
+
+
 @pytest.mark.parametrize("source", [
     '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
     '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>',
@@ -526,23 +564,15 @@ def test_uploaded_icons_reject_active_external_and_invalid_svg(source):
     (DocumentTagWrite, "icon", {"name": "Folder"}),
     (DocumentIconWrite, "icon", {}),
 ])
-def test_svg_icons_follow_the_current_file_size_limit(monkeypatch, schema, field, extra):
+@pytest.mark.parametrize("size", [58_000, 100_001])
+def test_svg_icons_have_no_file_size_limit(monkeypatch, schema, field, extra, size):
     from core.params import runtime_settings
 
     prefix = '<svg xmlns="http://www.w3.org/2000/svg">'
     suffix = '</svg>'
-    limit = 100_000
-    source = prefix + ' ' * (limit - len(prefix) - len(suffix)) + suffix
+    source = prefix + ' ' * (size - len(prefix) - len(suffix)) + suffix
     data = svg_data(source)
-    monkeypatch.setattr(runtime_settings, "MEMORY_RESOURCE_MAX_BYTES", limit)
-    assert getattr(schema(**extra, **{field: data}), field) == data
-    # One extra byte can still fit in the same base64 length.
-    with pytest.raises(ValidationError):
-        schema(**extra, **{field: svg_data(source + ' ')})
-    monkeypatch.setattr(runtime_settings, "MEMORY_RESOURCE_MAX_BYTES", limit - 1)
-    with pytest.raises(ValidationError):
-        schema(**extra, **{field: data})
-    monkeypatch.setattr(runtime_settings, "MEMORY_RESOURCE_MAX_BYTES", limit + 1)
+    monkeypatch.setattr(runtime_settings, "MEMORY_RESOURCE_MAX_BYTES", 1024)
     assert getattr(schema(**extra, **{field: data}), field) == data
 
 

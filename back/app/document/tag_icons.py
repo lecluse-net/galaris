@@ -1,14 +1,15 @@
-"""Bounded SVG images, rendered by the client as images, never inline markup."""
+"""Personal image icons, rendered by the client as images, never inline markup."""
 
 import base64
 import binascii
 import json
 import re
+from io import BytesIO
 from pathlib import Path
 from typing import cast
 from xml.etree import ElementTree
 
-from core.params import runtime_settings
+from PIL import Image, UnidentifiedImageError
 
 SVG_PREFIX = "data:image/svg+xml;base64,"
 BUILTIN_ICONS = frozenset(cast(list[str], json.loads(Path(__file__).with_name("icon_catalog.json").read_text())))
@@ -27,18 +28,18 @@ def validate_icon(value: str) -> str:
         value = "emoji:" + "-".join(part for part in legacy[1].split("-") if part != "FE0F")
     if value in BUILTIN_ICONS:
         return value
-    if not value.startswith(SVG_PREFIX):
-        raise ValueError("Expected a local emoji or an SVG image")
-    max_bytes = runtime_settings.MEMORY_RESOURCE_MAX_BYTES
-    max_uri_length = len(SVG_PREFIX) + 4 * ((max_bytes + 2) // 3)
-    if len(value) > max_uri_length:
-        raise ValueError(f"SVG exceeds the file size limit of {max_bytes} bytes")
+    match = re.fullmatch(r"data:image/([\w.+-]+);base64,(.*)", value, re.DOTALL)
+    if match is None:
+        raise ValueError("Expected a local icon or an image")
     try:
-        raw = base64.b64decode(value[len(SVG_PREFIX):], validate=True)
-        if len(raw) > max_bytes:
-            raise ValueError(f"SVG exceeds the file size limit of {max_bytes} bytes")
+        raw = base64.b64decode(match[2], validate=True)
+    except binascii.Error as exc:
+        raise ValueError("Invalid image encoding") from exc
+    if match[1] != "svg+xml":
+        return _raster_icon(raw)
+    try:
         source = raw.decode("utf-8")
-    except (binascii.Error, UnicodeError) as exc:
+    except UnicodeError as exc:
         raise ValueError("Invalid SVG encoding") from exc
     if "<!DOCTYPE" in source.upper() or "<!ENTITY" in source.upper():
         raise ValueError("SVG must contain no entities")
@@ -68,3 +69,24 @@ def validate_icon(value: str) -> str:
             if re.search(r"url\s*\(", attribute, re.IGNORECASE) and not re.fullmatch(r"url\(#[\w.-]+\)", attribute):
                 raise ValueError("SVG references must stay inside the image")
     return value
+
+
+def _raster_icon(raw: bytes) -> str:
+    """Detect the actual format; convert other Pillow formats for browser display."""
+    try:
+        with Image.open(BytesIO(raw)) as image:
+            media_type = {
+                "PNG": "image/png", "JPEG": "image/jpeg", "GIF": "image/gif",
+                "WEBP": "image/webp", "AVIF": "image/avif", "BMP": "image/bmp",
+                "ICO": "image/vnd.microsoft.icon",
+            }.get(image.format or "")
+            image.verify()
+        with Image.open(BytesIO(raw)) as image:
+            image.load()
+            if media_type is None:
+                output = BytesIO()
+                image.convert("RGBA").save(output, format="PNG")
+                raw, media_type = output.getvalue(), "image/png"
+    except (UnidentifiedImageError, OSError, SyntaxError, Image.DecompressionBombError) as exc:
+        raise ValueError("Invalid or unsupported image") from exc
+    return f"data:{media_type};base64," + base64.b64encode(raw).decode("ascii")

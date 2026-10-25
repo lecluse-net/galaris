@@ -7,11 +7,12 @@ from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.agent import current_management_scope
 from app.memory import MemoryNotFoundError, MemoryPermissionError, MemoryConflictError
 from app.document import DocumentNotFoundError, DocumentPermissionError, DocumentConflictError
+from app.document.interface import validate_icon
 from app.share import SharingUpdate as DocumentSharingLevelUpdate
 from core.authorize import authorize
 from core.database import get_db
@@ -90,7 +91,12 @@ class TagCreate(Request):
 
 
 class TagUpdate(TagCreate):
-    icon: str | None = Field(default=None, max_length=100_000)
+    icon: str | None = None
+
+    @field_validator("icon")
+    @classmethod
+    def valid_icon(cls, value: str | None) -> str | None:
+        return validate_icon(value) if value is not None else None
 
 
 class Move(Request):
@@ -104,8 +110,13 @@ class Move(Request):
 
 class Classification(Request):
     tags: list[UUID] = Field(max_length=100)
-    icon: str | None = Field(default=None, max_length=1000)
+    icon: str | None = None
     position: int = 0
+
+    @field_validator("icon")
+    @classmethod
+    def valid_icon(cls, value: str | None) -> str | None:
+        return validate_icon(value) if value is not None else None
 
 
 class Attach(Request):

@@ -8,6 +8,7 @@ const initial = { id, title: 'Synthetic unplaced data', revision: 1, lock_versio
 test('personal folders classify readable Datasets, persist moves and return data when a branch is removed', async ({ page }, testInfo) => {
   let tags = [{ id: root, name: 'Synthetic root', parent_id: null, position: 1, icon: null }]
   let placement = null
+  let rejectIcon = false
   const moves = []
   await page.route('**/api/datasets/library/facets', route => route.fulfill({ json: { owners: [{ kind: 'user', id: 1, label: 'Synthetic owner', can_write: false }], keywords: ['Synthetic keyword'], current_user_id: 1 } }))
   await page.route('**/api/datasets/tags', async route => {
@@ -19,7 +20,10 @@ test('personal folders classify readable Datasets, persist moves and return data
       if (!new URL(route.request().url()).searchParams.has('confirmed') || new URL(route.request().url()).searchParams.get('confirmed') !== 'true') return route.fulfill({ json: { deleted: false } })
       tags = []; placement = null; return route.fulfill({ json: { deleted: true } })
     }
-    tags[0] = { ...tags[0], ...route.request().postDataJSON() }; await route.fulfill({ json: null })
+    if (rejectIcon) return route.fulfill({ status: 422, json: { detail: 'Synthetic rejected icon' } })
+    const update = route.request().postDataJSON()
+    if (update.icon?.startsWith('data:image/octet-stream;base64,')) update.icon = update.icon.replace('image/octet-stream', 'image/png')
+    tags[0] = { ...tags[0], ...update }; await route.fulfill({ json: null })
   })
   await page.route(`**/api/datasets/tags/${child}`, async route => { tags = tags.map(tag => tag.id === child ? { ...tag, ...route.request().postDataJSON() } : tag); await route.fulfill({ json: null }) })
   await page.route('**/api/datasets/library/move', async route => { const move = route.request().postDataJSON(); moves.push(move); placement = move.parent_id; await route.fulfill({ json: null }) })
@@ -36,6 +40,59 @@ test('personal folders classify readable Datasets, persist moves and return data
   await page.getByRole('button', { name: 'Icon for folder Synthetic root', exact: true }).click()
   await page.getByRole('button', { name: 'Blue folder', exact: true }).click()
   await expect.poll(() => tags[0].icon).toBe('folder:blue')
+  const openIcon = async () => {
+    await page.getByText('Synthetic root', { exact: true }).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Edit folder', exact: true }).click()
+    await page.getByRole('button', { name: 'Icon for folder Synthetic root', exact: true }).click()
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 10L5 0L10 10Z"/>${' '.repeat(100_001)}</svg>`
+  await openIcon()
+  await page.locator('input[type=file]').setInputFiles({ name: 'Synthetic large.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) })
+  const uploaded = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')
+  await expect.poll(() => tags[0].icon === uploaded).toBe(true)
+  await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
+  await openIcon()
+  rejectIcon = true
+  const retryFile = { name: 'Synthetic retry.svg', mimeType: 'image/svg+xml',
+    buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg">${' '.repeat(58_000)}</svg>`) }
+  await page.locator('input[type=file]').setInputFiles(retryFile)
+  await expect(page.locator('.tag-icon-picker').getByRole('alert')).toContainText('Could not save this icon. Please try again.')
+  expect(tags[0].icon).toBe(uploaded)
+  await expect(page.getByLabel('Search icons', { exact: true })).toBeVisible()
+  rejectIcon = false
+  await page.locator('input[type=file]').setInputFiles(retryFile)
+  await expect.poll(() => tags[0].icon).toBe('data:image/svg+xml;base64,' + retryFile.buffer.toString('base64'))
+  await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
+  for (const format of ['png', 'jpeg', 'webp']) {
+    const image = await page.evaluate(format => {
+      const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 8
+      canvas.getContext('2d').fillRect(0, 0, 16, 8)
+      return canvas.toDataURL(`image/${format}`)
+    }, format)
+    await openIcon()
+    await page.locator('input[type=file]').setInputFiles({ name: `Synthetic icon.${format}`, mimeType: `image/${format}`, buffer: Buffer.from(image.split(',')[1], 'base64') })
+    await expect.poll(() => tags[0].icon).toBe(image)
+    await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
+    const rendered = page.getByRole('button', { name: 'Icon for folder Synthetic root', exact: true }).locator('img')
+    await expect.poll(() => rendered.evaluate(image => image.naturalWidth)).toBe(16)
+  }
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 8
+    return canvas.toDataURL('image/png')
+  })
+  await openIcon()
+  await page.locator('input[type=file]').setInputFiles({ name: 'Synthetic unknown-type.png', mimeType: '', buffer: Buffer.from(png.split(',')[1], 'base64') })
+  await expect.poll(() => tags[0].icon).toBe(png)
+  await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
+  await openIcon()
+  await page.getByRole('combobox', { name: 'Icon library', exact: true }).click()
+  await page.getByRole('option', { name: 'My icons', exact: true }).click()
+  const normalized = page.getByRole('button', { name: 'Synthetic unknown-type.png', exact: true }).locator('img')
+  await expect(normalized).toHaveAttribute('src', png)
+  await expect.poll(() => normalized.evaluate(image => image.naturalWidth)).toBe(16)
+  await page.keyboard.press('Escape')
+  await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
+  await page.getByRole('textbox', { name: 'Name', exact: true }).press('Escape')
   await page.getByText('Synthetic root', { exact: true }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Create a subfolder', exact: true }).click()
   const name = page.getByRole('textbox', { name: 'Name', exact: true })
