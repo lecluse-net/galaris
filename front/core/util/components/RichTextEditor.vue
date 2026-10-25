@@ -46,7 +46,7 @@
       </Teleport>
       <Teleport v-for="target in resourceEmbeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" :agent-id="resourceAgentId" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerResourceSnapshot(target.key, capture)" /></Teleport>
     </template>
-      <q-menu v-if="activeContext || pointerTextContext" :id="pointerMenuId" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" max-height="80vh" role="presentation" @escape-key="queueContextFocus" @hide="restoreContextFocus">
+      <q-menu v-if="activeContext || pointerTextContext" :id="pointerMenuId" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" :max-height="pointerMenuMaxHeight" role="presentation" @escape-key="queueContextFocus" @hide="restoreContextFocus">
         <q-list dense role="menu" :aria-label="t(!activeContext ? 'richEditor.content' : activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : 'richEditor.resources.insert')" @mousedown.prevent>
           <EditorialContextActions v-if="activeContext" :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runPointerAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
           <template v-if="pointerTextContext && editor && !readonly">
@@ -177,6 +177,10 @@ function exitFullscreen(): void { fullscreen.value = false }
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
 const pointerMenu = useTemplateRef<QMenu>('pointerMenu')
 const pointerMenuOpen = ref(false)
+const pointerMenuY = ref(0)
+// Quasar's point-positioned menus flip without capping the opposite side.
+// Bound tall editor menus to the roomier side so every action stays reachable.
+const pointerMenuMaxHeight = computed(() => `min(80vh, ${Math.max(pointerMenuY.value, $q.screen.height - pointerMenuY.value) - 8}px)`)
 const pointerMenuId = useContextMenuDismissal(pointerMenuOpen, () => pointerMenu.value)
 const pointerTextContext = ref(false)
 let pointerSelection: Selection | undefined, pointerRequest = 0
@@ -557,6 +561,7 @@ async function restoreContextFocus(): Promise<void> {
 async function showContextMenu(event: MouseEvent, request: number): Promise<void> {
   const current = editor.value
   if (!current || current.isDestroyed) return
+  pointerMenuY.value = event.clientY
   pointerTextContext.value = !readonly && !(current.state.selection instanceof NodeSelection) && !current.isActive('codeBlock')
   if (!activeContext.value && !pointerTextContext.value) return
   event.preventDefault()

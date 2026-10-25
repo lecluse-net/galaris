@@ -88,8 +88,8 @@ prosemirror-keymap 1.2.3
 prosemirror-model 1.25.12
 prosemirror-schema-list 1.5.1
 prosemirror-state 1.4.4
-prosemirror-transform 1.12.2
-prosemirror-view 1.42.6
+prosemirror-transform 1.12.4
+prosemirror-view 1.42.8
 
 Copyright (C) 2015-2017 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
 
@@ -182,7 +182,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-linkifyjs 4.3.3
+linkifyjs 4.4.0
 
 Copyright (c) 2024 Nick Frasser
 
@@ -205,7 +205,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-three 0.185.1
+three 0.186.1
 
 The MIT License
 

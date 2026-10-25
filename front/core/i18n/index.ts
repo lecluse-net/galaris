@@ -23,7 +23,11 @@ export function isSupportedLocale(value: unknown): value is AppLocale {
   return value === 'fr' || value === 'en' || value === 'zh'
 }
 
-const quasarLocales = { fr: quasarFr, en: quasarEn, zh: quasarZh } as const
+// Quasar 2.35 gives Lang.set and its language packs different formatNumber types.
+// These official packs use Quasar's default formatter and remain runtime-compatible.
+const quasarLocales = { fr: quasarFr, en: quasarEn, zh: quasarZh } as Record<
+  AppLocale, Parameters<typeof Lang.set>[0]
+>
 
 /**
  * Return the locale matching the browser's primary language when supported
