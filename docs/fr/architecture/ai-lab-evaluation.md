@@ -428,9 +428,12 @@ les désaccords de verdict et l'écart absolu moyen. Elle n'efface pas l'exposit
 aux résultats. Le rapport d'étalonnage utilise les revues du seul utilisateur et de la
 campagne choisie : couverture, faux passages/rejets, biais et erreurs dimensionnelles.
 Les intervalles regroupent les répétitions par entrée/référence ; ils restent conditionnels
-au corpus et au juge. La répétabilité du juge et les campagnes réellement annotées restent
-distinctes. Voir les ADR [0082](../../../project/decisions/0082-lab-stability-human-review.md)
-et [0230](../../../project/decisions/0230-lab-human-calibration-and-case-uncertainty.md).
+au corpus et au juge. Le rapport API de répétabilité compare les jugements historiques des
+mêmes sorties, séparés par configuration enregistrée : couverture, écarts absolus et désaccords
+pondérés par cas, sans nouvel appel. Les campagnes réellement annotées et la décomposition de
+variance restent distinctes. Voir les ADR [0082](../../../project/decisions/0082-lab-stability-human-review.md),
+[0230](../../../project/decisions/0230-lab-human-calibration-and-case-uncertainty.md) et
+[0236](../../../project/decisions/0236-lab-fixed-output-judge-repeatability.md).
 Les empreintes sont persistées, mais ne constituent pas encore un écran de comparaison automatique.
 Les validations automatisées utilisent des réponses contrôlées ; elles ne qualifient pas la qualité
 d’un modèle distant.

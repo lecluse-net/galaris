@@ -262,7 +262,26 @@ same grouping; false-pass rates use a conservative Hoeffding bound, including wh
 false pass was observed. No interval is reported with fewer than two distinct cases;
 fewer than 20 cases is explicitly marked insufficient for a general conclusion.
 Intervals remain conditional on this corpus and judge. They do not separate candidate
-variation from judge variation; judge repeatability still requires a separate experiment.
+variation from judge variation.
+
+To measure judge repeatability separately, retain multiple campaigns with **Rejudge**,
+then open the benchmark result. The **Judge repeatability** panel beside campaign history
+loads the report with read or edit privileges for that Lab. **Refresh report** reloads
+measurements; errors offer **Retry**. Closing and reopening the result reloads the data.
+`GET /api/evaluation/{mechanism}/runs/{run_id}/judge-repeatability` remains available.
+The report reads
+historical judgments of the same saved outputs without additional calls. Each identical
+configuration group reports coverage, absolute score difference and verdict disagreement,
+with uncertainty by case. Missing or invalid judgments do not count as agreement; metrics
+remain unknown without an output judged at least twice. Changes to judge, rubric, weights,
+threshold or effort create separate groups; incomplete historical configurations are
+excluded and reported. Candidate repetitions of one case do not become independent cases.
+The report measures observed judge variation without certifying correctness or providing
+a full candidate/judge variance decomposition.
+Expand **Configuration and source campaigns** to inspect settings, the fingerprint and
+campaigns used. Campaigns excluded for incomplete configurations are reported separately.
+Measurements update as the open benchmark publishes judgments; they remain partial while
+the campaign is in progress.
 
 ## Evaluate a process with synthetic inputs
 

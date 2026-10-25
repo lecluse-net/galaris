@@ -101,8 +101,21 @@ export interface RunComparison {
     increased: number | null; decreased: number | null; equal: number | null
   }
 }
+export interface JudgeRepeatabilityGroup {
+  configuration_digest: string; configuration: Record<string, unknown>; campaign_ids: string[]
+  outputs: number; expected_judgments: number; recorded_judgments: number; usable_judgments: number
+  missing_judgments: number; unusable_judgments: number; repeated_outputs: number; judgment_pairs: number
+  absolute_score_difference: CaseEstimate; verdict_disagreement_percent: CaseEstimate
+}
+export interface JudgeRepeatabilityReport {
+  run_id: string; method: 'fixed-output-judge-repeatability/v1'
+  groups: JudgeRepeatabilityGroup[]; unqualified_campaign_ids: string[]
+}
 const base = (key: LabKey) => `/evaluation/${key}`
 export const labWorkbenchService = {
+  async judgeRepeatability(key: LabKey, id: string, signal?: AbortSignal) {
+    return (await api.get<JudgeRepeatabilityReport>(`${base(key)}/runs/${id}/judge-repeatability`, { signal })).data
+  },
   async compare(key: LabKey, left_run_id: string, right_run_id: string, axis: ComparisonAxis, offset: number, limit: number, signal?: AbortSignal, filter?: ComparisonFilter) {
     return (await api.get<RunComparison>(`${base(key)}/runs/compare`, { params: { left_run_id, right_run_id, axis, offset, limit, ...filter }, signal })).data
   },

@@ -163,6 +163,15 @@ async def test_repetitions_resume_without_duplicates_and_preserve_coverage(db, b
         await service.process_runs()
     assert calls.count("candidate") == 3
     assert calls.count("judge") == 6
+    from app.lab.judge_repeatability import read_repeatability
+
+    repeatability = await read_repeatability("planner", run.id)
+    assert len(repeatability.groups) == 1
+    assert repeatability.groups[0].repeated_outputs == 3
+    assert repeatability.groups[0].absolute_score_difference.mean == 0
+    assert repeatability.groups[0].absolute_score_difference.cases == 1
+    assert repeatability.groups[0].absolute_score_difference.lower is None
+    assert calls.count("candidate") == 3 and calls.count("judge") == 6
 
 
 @pytest.mark.asyncio

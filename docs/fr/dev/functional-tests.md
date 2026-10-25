@@ -184,6 +184,14 @@ Le Lab complète ses revues avec `test_statistics.py`, `test_stability_and_revie
 et `test_comparison.py` : poids égal des cas malgré les répétitions, intervalle absent
 sans données suffisantes, faux passages non assimilés à une certitude et isolation par
 utilisateur/campagne. `lab-insights.spec.mjs` exerce l'affichage après révélation du juge.
+`test_judge_repeatability.py` vérifie les sorties fixes, les configurations séparées, le poids
+des cas, les métriques inconnues en cas de panne ou d'absence et les vrais droits HTTP du Lab.
+Le scénario de rejugement de `test_stability_and_review.py` vérifie aussi le rapport sur
+l'historique publié, sans appel supplémentaire ni nouvelle génération candidate.
+`lab-insights.spec.mjs` exerce la lecture de ce rapport sur ordinateur/mobile : configurations
+séparées, couverture, inconnus, incertitude, retry et réponses tardives après changement de
+benchmark ou de Lab. Le parcours `e2e/specs/lab.spec.mjs` ouvre et rouvre le panneau avec
+la vraie API et des jugements sauvegardés entièrement synthétiques.
 `tests/test_legacy_spreadsheets.py` protège les caches XLS originaux, formules/tokens,
 feuilles et dimensions cachées, formats, fusions, diagnostics, limites et préparation
 complète d'un XLS produit par le vrai LibreOffice, sans modification de l'original.

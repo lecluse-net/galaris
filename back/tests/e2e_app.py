@@ -343,7 +343,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue", "personal-skills"}:
+    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue", "personal-skills", "lab-repeatability"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -403,6 +403,9 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             rooms.append(str(room.id))
         fixture = {"email": owner.email, "password": "Browser-test-password-42!", "rooms": rooms,
                    "agent_id": agent.id}
+        if mode == "lab-repeatability":
+            from tests.e2e_lab_repeatability import seed_repeatability
+            fixture.update(await seed_repeatability())
         if mode == "personal-skills":
             from app.connection import ConnectionParam
             from app.skill.interface import create_package

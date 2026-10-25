@@ -290,8 +290,26 @@ déterministes. L'étalonnage utilise les mêmes groupes ; le taux de faux passa
 une borne conservatrice de Hoeffding, même sans faux passage observé. Aucun intervalle
 avec moins de deux cas distincts ; moins de 20 cas est signalé comme insuffisant pour
 une conclusion générale. Les intervalles restent conditionnels au corpus et au juge.
-Ils ne séparent pas la variabilité du candidat de celle du juge ; la répétabilité du juge
-exige encore une expérience distincte.
+Ils ne séparent pas la variabilité du candidat de celle du juge.
+
+Pour mesurer séparément la répétabilité du juge, conservez plusieurs campagnes avec
+**Rejuger**, puis ouvrez le résultat du benchmark. Le panneau **Répétabilité du juge**,
+près de l'historique des campagnes, charge le rapport avec les droits de lecture ou
+d'édition du Lab concerné. **Actualiser le rapport** relit les mesures ; une erreur
+propose **Réessayer**. Fermer puis rouvrir le résultat recharge les données.
+L'API `GET /api/evaluation/{mechanism}/runs/{run_id}/judge-repeatability` reste disponible.
+Le rapport lit les jugements historiques des mêmes sorties, sans appel supplémentaire. Chaque groupe
+de configuration identique expose sa couverture, l'écart absolu de score et le taux de
+désaccord de verdict, avec incertitude par cas. Les jugements absents ou invalides ne
+valent pas accord ; sans sortie jugée deux fois, les métriques restent inconnues.
+Une modification de juge, rubrique, poids, seuil ou effort sépare les groupes ; une
+configuration historique incomplète est écartée et signalée. Les répétitions candidates
+d'un cas ne deviennent pas des cas indépendants. Le rapport mesure la variation observée
+du juge, sans certifier sa justesse ni décomposer toute la variance candidat/juge.
+Dépliez **Configuration et campagnes sources** pour retrouver les réglages, l'empreinte
+et les campagnes utilisées. Les campagnes écartées pour configuration incomplète sont
+signalées séparément. Les mesures se mettent à jour quand le benchmark ouvert publie
+de nouveaux jugements ; elles restent partielles tant que la campagne est en cours.
 
 ## Évaluer un processus avec des entrées synthétiques
 

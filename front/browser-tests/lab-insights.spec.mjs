@@ -107,6 +107,7 @@ test('workbench saves dataset roles and item categories and submits bounded repe
   const run = { id: 'run', status: 'completed', repetitions: 3, total_cases: 3, completed_cases: 3, judged_cases: 3, candidate_cost: 0.3, judge_cost: 0.06, llm_snapshot: {}, judge_llm_snapshot: {}, configuration_snapshot: {}, results: [result('Synthetic benchmark case')], campaigns: [], analysis_markdown: 'A detailed benchmark analysis.\n\n'.repeat(80) }
   await page.route('**/api/evaluation/planner/datasets/dataset/runs', async route => { started = route.request().postDataJSON(); await route.fulfill({ json: run }) })
   await jsonRoute(page, '**/api/evaluation/planner/runs/run', run)
+  await jsonRoute(page, '**/api/evaluation/planner/runs/run/judge-repeatability', { run_id: 'run', groups: [], unqualified_campaign_ids: [] })
   await mount(page, 'app/lab/components/LabWorkbench.vue', { props: { mechanism: 'planner', canEdit: true } })
   await page.getByRole('tab', { name: 'Dataset settings', exact: true }).click()
   await page.getByLabel('Dataset role', { exact: true }).click()
@@ -130,6 +131,7 @@ test('workbench saves dataset roles and item categories and submits bounded repe
   await page.getByRole('button', { name: 'Run both passes', exact: true }).click()
   await expect.poll(() => started).toEqual({ llm_id: 1, judge_llm_id: 1, repetitions: 3, max_cost: 0.5 })
   const benchmark = page.getByRole('dialog')
+  await expect(benchmark.getByRole('region', { name: 'Judge repeatability', exact: true })).toBeVisible()
   await benchmark.getByText('Synthetic benchmark case', { exact: true }).last().click()
   const evidence = benchmark.getByText('Sources are present', { exact: true })
   await evidence.click({ trial: true })
@@ -148,6 +150,70 @@ test('workbench saves dataset roles and item categories and submits bounded repe
   await page.screenshot({ path: test.info().outputPath('lab-benchmark-scroll.png') })
   await benchmark.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(benchmark).toHaveCount(0)
+})
+
+test('judge repeatability keeps separate configurations, missing evidence and case uncertainty visible', async ({ page }) => {
+  const estimate = mean => ({ cases: 2, observations: 5, mean, lower: 0, upper: 100, sufficient: false, method: 'case-cluster-hoeffding/v1' })
+  const group = { configuration_digest: 'synthetic-digest', configuration: { model: { label: 'Synthetic judge' }, rubric: { version: 'synthetic/v1' } }, campaign_ids: ['campaign-one', 'campaign-two'],
+    outputs: 6, expected_judgments: 12, recorded_judgments: 11, usable_judgments: 10, missing_judgments: 1, unusable_judgments: 1,
+    repeated_outputs: 5, judgment_pairs: 5, absolute_score_difference: estimate(0), verdict_disagreement_percent: estimate(0) }
+  let report = { run_id: 'run', groups: [group, { ...group, configuration_digest: 'other-digest', configuration: { model: { label: 'Other judge' } }, campaign_ids: ['other-campaign'],
+    expected_judgments: 6, recorded_judgments: 6, usable_judgments: 6, missing_judgments: 0, unusable_judgments: 0,
+    repeated_outputs: 0, judgment_pairs: 0, absolute_score_difference: { ...estimate(null), cases: 0, observations: 0, lower: null, upper: null },
+    verdict_disagreement_percent: { ...estimate(null), cases: 0, observations: 0, lower: null, upper: null } }], unqualified_campaign_ids: ['historical-campaign'] }
+  await page.route('**/api/evaluation/planner/runs/run/judge-repeatability', route => route.fulfill({ json: report }))
+  await mount(page, 'app/lab/components/LabJudgeRepeatabilityPanel.vue', { props: { mechanism: 'planner', run: { id: 'run', status: 'completed', judged_cases: 6, campaigns: [] } } })
+  const panel = page.getByRole('region', { name: 'Judge repeatability', exact: true })
+  await expect(panel.getByRole('heading', { name: 'Configuration 1 · Synthetic judge' })).toBeVisible()
+  await expect(panel.getByRole('heading', { name: 'Configuration 2 · Other judge' })).toBeVisible()
+  await expect(panel.getByText('10/12 usable judgments · 1 missing · 1 invalid').first()).toBeVisible()
+  await expect(panel.getByText(/1 campaigns excluded/)).toBeVisible()
+  await expect(panel.getByText(/Metrics remain unknown/)).toBeVisible()
+  const metric = panel.locator('section').filter({ has: page.getByRole('heading', { name: 'Absolute score difference (points)', exact: true }) }).last()
+  await expect(metric).toContainText('2 distinct cases · 5 observations · mean across cases 0 · 95% interval [0, 100]')
+  await expect(metric).toContainText('Fewer than 20 distinct cases')
+  await panel.getByText('Configuration and source campaigns', { exact: true }).first().click()
+  await expect(panel.getByText('campaign-one', { exact: true })).toBeVisible()
+  await expect(panel.getByText('synthetic/v1', { exact: true })).toBeVisible()
+  await panel.getByText('campaign-one', { exact: true }).click({ trial: true })
+  await page.screenshot({ path: test.info().outputPath('lab-repeatability.png'), fullPage: true, animations: 'disabled' })
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: test.info().outputPath('lab-repeatability-dark.png'), fullPage: true, animations: 'disabled' })
+  report = { run_id: 'run', groups: [], unqualified_campaign_ids: [] }
+  await panel.getByRole('button', { name: 'Refresh report', exact: true }).click()
+  await expect(panel.getByText(/No campaign with a complete configuration/)).toBeVisible()
+  await expect(panel.getByRole('heading', { name: 'Configuration 1 · Synthetic judge' })).toHaveCount(0)
+})
+
+test('judge repeatability retries errors and rejects late responses across runs and Lab context', async ({ page }) => {
+  let failed = true, releaseLate, lateRequested = false
+  await page.route('**/api/evaluation/planner/runs/old/judge-repeatability', async route => {
+    if (failed) { failed = false; return route.fulfill({ status: 503, json: { detail: 'Synthetic unavailable' } }) }
+    lateRequested = true
+    await new Promise(resolve => { releaseLate = resolve })
+    await route.fulfill({ json: { run_id: 'old', groups: [], unqualified_campaign_ids: ['late-old-campaign'] } }).catch(() => {})
+  })
+  let calls = 0
+  await page.route('**/api/evaluation/task_executor/runs/new/judge-repeatability', route => {
+    calls++
+    return route.fulfill({ json: { run_id: 'new', groups: [], unqualified_campaign_ids: [] } })
+  })
+  const run = { id: 'old', status: 'completed', judged_cases: 1, campaigns: [] }
+  await mount(page, 'app/lab/components/LabJudgeRepeatabilityPanel.vue', { props: { mechanism: 'planner', run } })
+  await expect(page.getByRole('alert')).toContainText('Unable to load judge repeatability')
+  await page.getByRole('button', { name: 'Retry', exact: true }).press('Enter')
+  await expect.poll(() => lateRequested).toBe(true)
+  await expect(page.getByText('Loading historical judgments…', { exact: true })).toBeVisible()
+  await page.evaluate(run => window.testApp.setProps({ mechanism: 'task_executor', run }), { ...run, id: 'new' })
+  await expect(page.getByText(/No campaign with a complete configuration/)).toBeVisible()
+  releaseLate()
+  await expect(page.getByText('Excluded campaigns', { exact: true })).toHaveCount(0)
+  // Publication updates reload the report; unrelated parent refreshes do not.
+  await page.evaluate(run => window.testApp.setProps({ run }), { ...run, id: 'new', judged_cases: 2 })
+  await expect.poll(() => calls).toBe(2)
+  await page.evaluate(run => window.testApp.setProps({ run }), { ...run, id: 'new', judged_cases: 2 })
+  await expect(page.getByText(/No campaign with a complete configuration/)).toBeVisible()
+  expect(calls).toBe(2)
 })
 
 test('item lists show readable text for HTML strings and nested messages without changing stored inputs', async ({ page }) => {

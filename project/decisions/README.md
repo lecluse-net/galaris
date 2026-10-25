@@ -331,4 +331,5 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0234 — Administrator-owned default privilege categories](0234-default-privilege-categories.md)
 
 - [0235 — Functional settings and source authorization](0235-functional-settings-and-source-authorization.md)
+- [0236 — Répétabilité du juge sur sorties fixes dans le Lab](0236-lab-fixed-output-judge-repeatability.md)
 - [0237 — Arrêter la piste FUSE après comparaison de navigation](0237-file-share-navigation-experiment.md)

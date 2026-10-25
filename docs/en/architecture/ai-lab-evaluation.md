@@ -421,9 +421,13 @@ verdict disagreements and mean absolute difference. It cannot undo prior exposur
 results. Calibration uses only the current user's reviews for the selected judgment
 campaign: coverage, false passes/rejections, bias and dimension errors. Intervals keep
 repetitions together by input/reference; they remain conditional on the corpus and judge.
-Judge repeatability and genuinely annotated campaigns remain separate work. See ADRs
+The repeatability API compares historical judgments of identical saved outputs, grouped by
+recorded configuration: coverage, absolute score differences and verdict disagreement with
+equal case weighting, without additional calls. Genuinely annotated campaigns and variance
+decomposition remain separate work. See ADRs
 [0082](../../../project/decisions/0082-lab-stability-human-review.md) and
-[0230](../../../project/decisions/0230-lab-human-calibration-and-case-uncertainty.md).
+[0230](../../../project/decisions/0230-lab-human-calibration-and-case-uncertainty.md) and
+[0236](../../../project/decisions/0236-lab-fixed-output-judge-repeatability.md).
 Automated checks use controlled responses; they do not qualify a remote model's quality.
 
 ## 13. Code authority

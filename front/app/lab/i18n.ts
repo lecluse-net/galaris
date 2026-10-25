@@ -32,11 +32,59 @@ const costMessages = {
 }
 
 import { processLabMessages } from './processI18n'
+const repeatabilityFr = {
+  title: 'Répétabilité du juge', refresh: 'Actualiser le rapport', loading: 'Chargement des jugements historiques…',
+  loadError: 'Impossible de charger la répétabilité du juge. Réessayez pour lire le rapport.',
+  help: 'Compare les jugements des mêmes sorties sauvegardées. Rejuger ajoute une campagne sans relancer le candidat ; lire ce rapport ne lance aucun appel de modèle.',
+  empty: 'Aucune campagne avec une configuration complète ne permet encore de mesurer la répétabilité.',
+  unqualified: '{count} campagnes écartées : configuration historique incomplète. Leur absence ne prouve pas la stabilité du juge.',
+  excludedCampaigns: 'Campagnes écartées', group: 'Configuration {number} · {judge}',
+  scope: '{campaigns} campagnes · {outputs} sorties candidates sauvegardées',
+  coverage: '{usable}/{expected} jugements exploitables · {missing} absents · {invalid} invalides',
+  pairs: '{outputs} sorties jugées au moins deux fois · {pairs} paires de jugements',
+  notMeasured: 'Il faut au moins deux jugements exploitables de la même sortie dans cette configuration. Les métriques restent inconnues.',
+  scoreDifference: 'Écart absolu des scores (points)', verdictDisagreement: 'Désaccord des verdicts (%)',
+  sources: 'Configuration et campagnes sources', digest: 'Empreinte de configuration : {digest}',
+  active: 'Campagne en cours : les mesures évoluent avec les jugements publiés. Vous pouvez aussi actualiser le rapport.',
+  limits: 'Chaque configuration enregistrée est mesurée séparément : modèle, rubrique, poids, seuil et effort. Les paires sont moyennées par sortie puis par cas ; les répétitions candidates ne sont pas des cas indépendants. Un accord parfait observé ne prouve ni la justesse du juge ni sa stabilité future. Ces mesures ne décomposent pas toute la variance candidat/juge et ne détectent pas les changements fournisseurs absents des snapshots.',
+}
+const repeatabilityEn: typeof repeatabilityFr = {
+  title: 'Judge repeatability', refresh: 'Refresh report', loading: 'Loading historical judgments…',
+  loadError: 'Unable to load judge repeatability. Retry to read the report.',
+  help: 'Compares judgments of the same saved outputs. Rejudge adds a campaign without rerunning the candidate; reading this report makes no model calls.',
+  empty: 'No campaign with a complete configuration is available to measure repeatability yet.',
+  unqualified: '{count} campaigns excluded: incomplete historical configuration. Their absence does not prove judge stability.',
+  excludedCampaigns: 'Excluded campaigns', group: 'Configuration {number} · {judge}',
+  scope: '{campaigns} campaigns · {outputs} saved candidate outputs',
+  coverage: '{usable}/{expected} usable judgments · {missing} missing · {invalid} invalid',
+  pairs: '{outputs} outputs judged at least twice · {pairs} judgment pairs',
+  notMeasured: 'At least two usable judgments of the same output in this configuration are required. Metrics remain unknown.',
+  scoreDifference: 'Absolute score difference (points)', verdictDisagreement: 'Verdict disagreement (%)',
+  sources: 'Configuration and source campaigns', digest: 'Configuration fingerprint: {digest}',
+  active: 'Campaign in progress: measurements change as judgments are published. You can also refresh the report.',
+  limits: 'Each recorded configuration is measured separately: model, rubric, weights, threshold and effort. Pairs are averaged within outputs, then within cases; candidate repetitions are not independent cases. Perfect observed agreement proves neither judge correctness nor future stability. These measurements do not decompose all candidate/judge variance or detect provider changes absent from snapshots.',
+}
+const repeatabilityZh: typeof repeatabilityFr = {
+  title: '评判重复性', refresh: '刷新报告', loading: '正在加载历史评判…',
+  loadError: '无法加载评判重复性。请重试以读取报告。',
+  help: '比较对相同已保存输出的评判。重新评判会添加一次活动，不会重新运行候选模型；读取报告不会调用模型。',
+  empty: '尚无配置完整的活动可用于测量重复性。',
+  unqualified: '已排除 {count} 次活动：历史配置不完整。这不代表评判稳定。',
+  excludedCampaigns: '已排除的活动', group: '配置 {number} · {judge}',
+  scope: '{campaigns} 次活动 · {outputs} 个已保存候选输出',
+  coverage: '{usable}/{expected} 个可用评判 · {missing} 个缺失 · {invalid} 个无效',
+  pairs: '{outputs} 个输出至少评判两次 · {pairs} 对评判',
+  notMeasured: '同一配置下的相同输出至少需要两个可用评判。指标保持未知。',
+  scoreDifference: '评分绝对差（分）', verdictDisagreement: '结论分歧（%）',
+  sources: '配置和来源活动', digest: '配置指纹：{digest}',
+  active: '活动正在进行：指标随评判发布而变化。您也可以刷新报告。',
+  limits: '分别测量每个记录配置：模型、评分标准、权重、阈值和推理强度。先对同一输出的评判对求平均，再按案例求平均；候选重复执行不是独立案例。观察到完全一致既不证明评判正确，也不保证未来稳定。这些指标不分解全部候选与评判方差，也无法检测快照未记录的供应商变化。',
+}
 const comparisonFr = {
   costs: costMessages.fr,
   uncertaintyTitle: 'Incertitude de l’écart de qualité',
   caseEstimate: '{cases} cas distincts · {observations} observations · moyenne par cas {mean} · intervalle à 95 % [{lower} ; {upper}]',
-  bootstrap: 'Bootstrap par cas, 2 000 rééchantillonnages.', hoeffding: 'Borne de Hoeffding par cas ; conserve une incertitude même sans faux passage observé.',
+  bootstrap: 'Bootstrap par cas, 2 000 rééchantillonnages.', hoeffding: 'Borne de Hoeffding tenant compte du nombre de cas observés.',
   insufficientCases: 'Moins de 20 cas distincts : données insuffisantes pour une conclusion générale. Aucun intervalle avec moins de deux cas.',
   uncertaintyHelp: 'Chaque entrée et référence forme un groupe ; ses répétitions restent ensemble. Intervalle conditionnel au corpus et au juge actuels, sans garantie de représentativité. La variation des scores ne sépare pas la variabilité du candidat de celle du juge.',
   calibrationTitle: 'Étalonnage contre vos évaluations humaines', bias: 'Biais du juge (juge − humain, points)', absoluteError: 'Écart absolu (points)', falsePassRate: 'Faux passages parmi les échecs humains (%)',
@@ -78,7 +126,7 @@ const comparisonEn: typeof comparisonFr = {
   costs: costMessages.en,
   uncertaintyTitle: 'Uncertainty of quality difference',
   caseEstimate: '{cases} distinct cases · {observations} observations · mean across cases {mean} · 95% interval [{lower}, {upper}]',
-  bootstrap: 'Case-cluster bootstrap, 2,000 resamples.', hoeffding: 'Case-level Hoeffding bound; retains uncertainty even when no false pass was observed.',
+  bootstrap: 'Case-cluster bootstrap, 2,000 resamples.', hoeffding: 'Hoeffding bound accounting for the number of observed cases.',
   insufficientCases: 'Fewer than 20 distinct cases: insufficient data for a general conclusion. No interval with fewer than two cases.',
   uncertaintyHelp: 'Each input and reference defines a cluster; its repetitions stay together. The interval is conditional on this corpus and judge, without a guarantee of representativeness. Score variation does not separate candidate variation from judge variation.',
   calibrationTitle: 'Calibration against your human assessments', bias: 'Judge bias (judge − human, points)', absoluteError: 'Absolute difference (points)', falsePassRate: 'False passes among human failures (%)',
@@ -120,7 +168,7 @@ const comparisonZh: typeof comparisonFr = {
   costs: costMessages.zh,
   uncertaintyTitle: '质量差异的不确定性',
   caseEstimate: '{cases} 个不同案例 · {observations} 次观察 · 案例平均值 {mean} · 95% 区间 [{lower}, {upper}]',
-  bootstrap: '按案例分组的自助法，重采样 2,000 次。', hoeffding: '按案例计算 Hoeffding 界限；即使未发现错误通过，也保留不确定性。',
+  bootstrap: '按案例分组的自助法，重采样 2,000 次。', hoeffding: '根据观察到的案例数量计算 Hoeffding 界限。',
   insufficientCases: '少于 20 个不同案例，数据不足以得出一般结论。少于两个案例时不计算区间。',
   uncertaintyHelp: '按输入和参考答案分组，重复测量保留在组内。区间仅针对当前语料和评判，不保证代表性，也不能区分候选模型与评判的变异。',
   calibrationTitle: '与您的人工评估校准', bias: '评判偏差（评判 − 人工，分）', absoluteError: '绝对差异（分）', falsePassRate: '人工失败中的错误通过率（%）',
@@ -312,6 +360,7 @@ export default {
     evaluation: {
       insights: insightsFr,
       comparison: comparisonFr,
+      repeatability: repeatabilityFr,
       synthetic: syntheticFr,
       contract: {
         "variable": "Variable testée",
@@ -976,6 +1025,7 @@ export default {
     evaluation: {
       insights: insightsEn,
       comparison: comparisonEn,
+      repeatability: repeatabilityEn,
       synthetic: syntheticEn,
       contract: {
         "variable": "Tested variable",
@@ -1637,6 +1687,7 @@ export default {
     evaluation: {
       insights: insightsZh,
       comparison: comparisonZh,
+      repeatability: repeatabilityZh,
       synthetic: syntheticZh,
       contract: {
   "variable": "测试变量",

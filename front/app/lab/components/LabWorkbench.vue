@@ -169,6 +169,8 @@
           <Markdown v-if="selectedRun.analysis_markdown" :content="selectedRun.analysis_markdown" class="q-my-md" />
           <LabResultsPanel :run="selectedRun" />
           <q-separator class="q-my-md" />
+          <LabJudgeRepeatabilityPanel v-if="runDialog" :mechanism="mechanism" :run="selectedRun" />
+          <q-separator class="q-my-md" />
           <div class="text-subtitle1">{{ t('evaluation.contract.campaigns') }}</div>
           <q-expansion-item v-for="campaign in selectedRun.campaigns" :key="campaign.id" :label="campaign.created_at" :caption="t('evaluation.contract.status.' + campaign.status)">
             <q-btn flat icon="rate_review" :label="t('evaluation.insights.review')" @click="openReview(selectedRun.id, campaign.id)" />
@@ -210,6 +212,7 @@
 
 <script setup lang="ts">
 import LabResultsPanel from './LabResultsPanel.vue'
+import LabJudgeRepeatabilityPanel from './LabJudgeRepeatabilityPanel.vue'
 import LabSyntheticDatasetDialog from './LabSyntheticDatasetDialog.vue'
 import LabHumanReviewDialog from './LabHumanReviewDialog.vue'
 import LabComparisonDialog from './LabComparisonDialog.vue'

@@ -38,6 +38,7 @@ from . import synthetic_service
 from .synthetic_schemas import SyntheticDatasetRequest, SyntheticDatasetResult
 from . import comparison_service
 from .comparison_schemas import ComparisonAxis, ComparisonFocus, RunComparison
+from .judge_repeatability import JudgeRepeatabilityReport, read_repeatability
 from .capture_service import CaptureParametersMismatch
 from .schemas import CaptureRequest, LabInputPreview, HumanReviewCreate, HumanReviewQueue
 from .schemas import (
@@ -107,6 +108,17 @@ async def compare_benchmarks(
         ))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/{mechanism}/runs/{run_id}/judge-repeatability", response_model=JudgeRepeatabilityReport)
+@authorize(privileges=MECHANISM_READ_PRIVILEGES, assertion=LabMechanismReadPrivilegeAssertion)
+async def read_judge_repeatability(
+    mechanism: EvaluationMechanism, run_id: UUID,
+) -> JudgeRepeatabilityReport:
+    try:
+        return await read_repeatability(mechanism, run_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

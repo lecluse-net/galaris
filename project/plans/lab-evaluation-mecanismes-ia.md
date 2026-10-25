@@ -1,7 +1,7 @@
 # Lab IA — étalonnage, comparaisons et gardes
 
 - Statut : `partial`
-- Revue des sources : 2026-10-08 ; tri du socle Process le 2026-10-24. Les campagnes ne sont pas rejouées par cette revue.
+- Revue des sources : 2026-10-08 ; tri du socle Process le 2026-10-24 ; rapport API et interface de répétabilité du juge le 2026-10-25. Les campagnes fournisseurs ne sont pas rejouées par ces travaux.
 - Extension Process demandée le 2026-10-11 : socle de campagnes avec cas synthétiques et runs réels réalisé ; mocks d'applications conservés en seconde phase.
 
 ## Socle réalisé
@@ -29,7 +29,7 @@ conservent les campagnes annotées réelles, l'arbitrage et la séparation des v
 | Lot | Travail | Réception |
 |---|---|---|
 | Étalonnage humain | Corpus annotés par mécanisme, arbitrage justifié, biais/corrélation/faux passages du juge. | Erreur de passage mesurable contre référence humaine revue, juge/corpus/date versionnés ; panne/couverture faible sans bonne note fictive. |
-| Incertitude | Intervalles par cas et insuffisance d'échantillon réalisés ; restent qualification sur corpus représentatifs et séparation de la variance candidat/juge. | Répétitions d'un épisode non présentées comme observations indépendantes ; répétabilité du juge mesurée séparément. |
+| Incertitude | Intervalles par cas et insuffisance d'échantillon réalisés ; rapport API et interface de répétabilité sur sorties fixes réalisés (0236). Restent expériences réelles, qualification sur corpus représentatifs et séparation de la variance candidat/juge. | Répétitions d'un épisode non présentées comme observations indépendantes ; répétabilité du juge mesurée séparément. |
 | Comparabilité/tendances | Campagnes réelles du protocole FR/EN ; politiques pour changement de rubrique/corpus/juge ; tendances dimensionnelles. | Aucun changement de référence présenté comme gain du candidat ; résultats liés aux snapshots et incertitude publiée. |
 | Gardes | Baseline approuvée/remplaçable, seuils dimensionnels/globaux/erreurs/couverture, verdict machine et export CI. | Nouvelle défaillance critique bloquante malgré une moyenne meilleure ; verdict reconstructible, rapport narratif sans pouvoir de lever la garde. |
 | Portabilité/gouvernance | Import/export versionné des datasets/résultats ; revue des références, rétention, gel/ouverture des holdouts. | Corpus/paramètres/provenance préservés, secrets et droits des sources respectés. |
@@ -39,6 +39,14 @@ conservent les campagnes annotées réelles, l'arbitrage et la séparation des v
 Préparer étalonnage/comparabilité, puis incertitude, avant gardes décisionnelles.
 Les datasets versionnés restent entièrement synthétiques. Une revue masquée ne supprime
 pas l'exposition passée aux réponses.
+
+Le rapport [0236](../decisions/0236-lab-fixed-output-judge-repeatability.md) exploite les
+campagnes de rejugement existantes : mêmes sorties candidates, configurations enregistrées
+strictement identiques, écarts absolus et désaccords de verdict pondérés par cas. Il conserve
+les jugements manquants/invalides dans la couverture et ne lance aucun appel. Disponible
+par API et dans les résultats du benchmark sous droits du Lab concerné ; les mesures fournisseurs et la
+décomposition de variance restent à réaliser. Une configuration historique incomplète
+n'est pas une preuve de stabilité.
 
 ## Extension Process : mocks d'applications
 

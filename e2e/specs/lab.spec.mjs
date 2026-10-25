@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
-async function signIn(page, request) {
-  const fixture = await (await request.post('/api/__test/seed')).json()
+async function signIn(page, request, mode = 'normal') {
+  const fixture = await (await request.post(`/api/__test/seed?mode=${mode}`)).json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
   await page.goto('/user/login')
   await refresh
@@ -9,7 +9,41 @@ async function signIn(page, request) {
   await page.locator('input[type=password]').fill(fixture.password)
   await page.locator('button[type=submit]').click()
   await expect(page.locator('.user-menu-wrapper').first()).toBeVisible()
+  return fixture
 }
+
+test('judge repeatability reads saved campaigns through the real API and reopens on mobile', async ({ page, request }) => {
+  const fixture = await signIn(page, request, 'lab-repeatability')
+  const failures = []
+  page.on('pageerror', error => failures.push(error.message))
+  page.on('response', response => {
+    if (new URL(response.url()).pathname.startsWith('/api/') && response.status() >= 400) failures.push(`${response.status()} ${response.url()}`)
+  })
+  await openLab(page, 'planner')
+  await expect(page.getByRole('combobox', { name: 'Jeu de tests', exact: true })).toHaveValue(fixture.lab_dataset_name)
+  await page.getByRole('tab', { name: 'Benchmarks', exact: true }).click()
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    const results = page.waitForResponse(response => response.url().endsWith(`/runs/${fixture.lab_run_id}/judge-repeatability`))
+    await page.getByRole('button', { name: 'Visualiser', exact: true }).click()
+    expect((await results).ok()).toBeTruthy()
+    const dialog = page.getByRole('dialog')
+    const panel = dialog.getByRole('region', { name: 'Répétabilité du juge', exact: true })
+    await expect(panel.getByText('4/4 jugements exploitables · 0 absents · 0 invalides')).toBeVisible()
+    await expect(panel.getByText('2 sorties jugées au moins deux fois · 2 paires de jugements')).toBeVisible()
+    await expect(panel).toContainText('moyenne par cas 10')
+    await expect(panel).toContainText('Moins de 20 cas distincts')
+    await panel.getByRole('button', { name: 'Actualiser le rapport', exact: true }).press('Enter')
+    await expect(panel.getByText('4/4 jugements exploitables · 0 absents · 0 invalides')).toBeVisible()
+    const scoreEstimate = panel.getByText(/2 cas distincts.*moyenne par cas 10/)
+    await scoreEstimate.scrollIntoViewIfNeeded()
+    await expect(scoreEstimate).toBeInViewport({ ratio: 1 })
+    await page.screenshot({ path: test.info().outputPath(`lab-repeatability-${width}.png`), animations: 'disabled' })
+    await dialog.getByRole('button', { name: 'Fermer', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+  }
+  expect(failures).toEqual([])
+})
 
 async function openLab(page, slug) {
   // Use the app navigation: a full document teardown aborts unrelated dashboard
