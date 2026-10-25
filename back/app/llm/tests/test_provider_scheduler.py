@@ -4,7 +4,8 @@ import asyncio
 
 import pytest
 
-from app.llm.provider_scheduler import ProviderScheduler, call_priority, default_concurrency
+from app.llm.admission import AdmissionClass, AdmissionSource, admission_context
+from app.llm.provider_scheduler import ProviderScheduler, default_concurrency
 
 
 @pytest.mark.asyncio
@@ -109,9 +110,72 @@ def test_defaults_and_audio_files_do_not_receive_voice_priority():
     assert default_concurrency("openai_compatible", "openrouter") == 10
     assert default_concurrency("ollama", None) == 1
     assert default_concurrency("openai_compatible", None) == 1
-    assert call_priority("audio.transcription") == 2
-    assert call_priority("conversation.task_objective", round_origin="voice") == 0
-    assert call_priority("conversation.text", round_origin="text") == 1
+    assert admission_context("audio.transcription").priority == AdmissionClass.BACKGROUND
+    assert admission_context("audio.transcription", voice_dialogue=True).priority == AdmissionClass.VOICE
+    assert admission_context("conversation.text").priority == AdmissionClass.TEXT
+
+
+@pytest.mark.parametrize("voice", [False, True])
+def test_task_ancestry_never_promotes_work_to_dialogue_capacity(voice):
+    from uuid import uuid4
+
+    task, round_, run = uuid4(), uuid4(), uuid4()
+    direct = admission_context(
+        "agent.dispatch", conversation_round_id=round_, agent_run_id=run, round_is_voice=voice,
+    )
+    assert direct.source == (AdmissionSource.VOICE_DIALOGUE if voice else AdmissionSource.TEXT_DIALOGUE)
+    assert direct.priority == (AdmissionClass.VOICE if voice else AdmissionClass.TEXT)
+    assert direct.owner == str(round_)
+    derived = admission_context(
+        "agent.dispatch", task_id=task, conversation_round_id=round_, agent_run_id=run,
+        round_is_voice=voice,
+    )
+    assert derived.source == AdmissionSource.TASK
+    assert derived.priority == AdmissionClass.BACKGROUND
+    assert derived.owner == str(task)
+
+
+@pytest.mark.parametrize("purpose", [None, "audio.transcription", "multimedia.video_generate", "external.operation"])
+def test_detached_work_keeps_run_ownership_without_dialogue_priority(purpose):
+    from uuid import uuid4
+
+    run = uuid4()
+    context = admission_context(purpose, agent_run_id=run)
+    assert context.source == AdmissionSource.BACKGROUND
+    assert context.priority == AdmissionClass.BACKGROUND
+    assert context.owner == str(run)
+
+
+def test_background_work_uses_distinct_owners_without_promoting_its_origin():
+    from uuid import uuid4
+
+    from app.llm.subscription_policy import LLMExecutionAuthority
+
+    key = uuid4()
+    identities = [
+        {"process_run_id": key},
+        {"media_generation_id": key},
+        {"authority": LLMExecutionAuthority(source_kind="conversation_round", source_id=str(key))},
+        {"agent_id": 7},
+        {"requester_user_id": 7},
+    ]
+    contexts = [admission_context("external.operation", **identity) for identity in identities]
+    assert all(context.priority == AdmissionClass.BACKGROUND for context in contexts)
+    assert all(context.owner is not None for context in contexts)
+    assert len({context.owner for context in contexts}) == len(contexts)
+    task = admission_context("agent.exec", task_id=key, **identities[2])
+    assert task.owner == str(key) and task.source == AdmissionSource.TASK
+    run = admission_context("external.operation", agent_run_id=key, **identities[0])
+    assert run.owner == str(key)
+
+
+def test_incomplete_background_provenance_stays_anonymous_and_source_keys_are_unambiguous():
+    from app.llm.subscription_policy import LLMExecutionAuthority
+
+    assert admission_context(None, authority=LLMExecutionAuthority(source_kind="lab_run")).owner is None
+    first, second = [admission_context(None, authority=LLMExecutionAuthority(source_kind=kind, source_id=key))
+                     for kind, key in [("a:b", "c"), ("a", "b:c")]]
+    assert first.owner != second.owner
 
 
 @pytest.mark.asyncio

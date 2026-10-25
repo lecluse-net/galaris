@@ -32,6 +32,16 @@ Les conversations vocales sont prioritaires, puis les conversations textuelles, 
 autres travaux. Le vieillissement des attentes et la rotation entre contextes limitent
 la monopolisation de la file. Une priorité ne préempte pas un appel déjà engagé.
 
+La transcription d'un dialogue vocal est prioritaire dès l'entrée audio ; la
+transcription d'un fichier reste du fond. Une Task lancée depuis une conversation
+reste également du fond. Chaque Task possède son propre contexte de rotation,
+même si plusieurs Tasks proviennent du même round. Un appel direct sans Task
+utilise son round ou, à défaut, son run agentique lorsque celui-ci est connu.
+Les autres travaux utilisent leur génération média, leur run Process ou leur source
+serveur lorsqu'ils en possèdent une, puis l'agent ou le demandeur en repli. Plusieurs
+utilisateurs du même profil ne sont donc pas regroupés sous le nom de ce profil.
+Cette attribution ne change ni leur priorité ni leurs droits.
+
 À partir de trois places, une place voix et une place texte sont protégées. Avec deux
 places, les travaux de fond utilisent au plus une place. Avec une seule place, le
 prochain départ suit l'ordre d'admission ; un appel lent peut toujours retarder une

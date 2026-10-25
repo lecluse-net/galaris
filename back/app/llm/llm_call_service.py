@@ -19,7 +19,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from core import websocket
 from core.database import AsyncSessionLocal, get_db
 from core.i18n import render_prompt, tr
-from core.user import get_current_token_label
+from core.user import get_current_token_label, get_current_user_id
 from .correlation import current_llm_correlation_ref
 from .accounting_scope import record_persisted_call_cost
 from .costing import token_cost
@@ -44,6 +44,7 @@ _STALE_CALL_GRACE_SECONDS = 300
 _PROGRESS_PAYLOAD_ADAPTER = TypeAdapter(dict[str, Any])
 
 if TYPE_CHECKING:
+    from .admission import AdmissionContext
     from .call_capture import TextCallCapture
 
 
@@ -1122,6 +1123,8 @@ async def create_running_call(
     api_token_label = authority.api_token_label if authority is not None else None
     if api_token_label is None:
         api_token_label = await get_current_token_label()
+    if requester_user_id is None:
+        requester_user_id = get_current_user_id() or (authority.requester_user_id if authority else None)
     from .profile_fallback import profile_fallback_route
 
     fallback_route = profile_fallback_route.get()
@@ -1153,14 +1156,21 @@ async def create_running_call(
         system_prompt=stored_system_prompt,
         is_subscription=is_subscription,
     )
-    origin = "voice" if voice_dialogue else None
-    if not voice_dialogue and conversation_round_id is not None and task_id is None and round_ is not None:
-        origin = "voice" if round_.voice_session_id is not None else "text"
-    return await _admit_running_call(call, capture, round_origin=origin)
+    from .admission import admission_context
+
+    context = admission_context(
+        call.purpose, task_id=call.task_id, conversation_round_id=call.conversation_round_id,
+        agent_run_id=call.agent_run_id,
+        media_generation_id=call.media_generation_id, process_run_id=call.process_run_id,
+        authority=authority, agent_id=call.agent_id, requester_user_id=call.requester_user_id,
+        round_is_voice=round_ is not None and round_.voice_session_id is not None,
+        voice_dialogue=voice_dialogue,
+    )
+    return await _admit_running_call(call, capture, context=context)
 
 
 async def _admit_running_call(
-    call: LLMCall, capture: TextCallCapture | None, *, round_origin: str | None,
+    call: LLMCall, capture: TextCallCapture | None, *, context: AdmissionContext,
 ) -> LLMCall:
     from . import provider_scheduler
     from .provider_models import LLM, LLMProvider
@@ -1178,8 +1188,7 @@ async def _admit_running_call(
     provider_id, limit = provider.id, provider.effective_max_concurrent_calls
     await release_db_transaction()
     permit = await provider_scheduler.acquire_call(
-        provider_id, limit, provider_scheduler.call_priority(call.purpose, round_origin=round_origin),
-        owner=str(call.conversation_round_id or call.task_id or call.agent_run_id or "") or None,
+        provider_id, limit, context.priority, owner=context.owner,
     )
     persisted = False
     try:

@@ -47,6 +47,17 @@ immédiats et les fragments déjà committés survivent aux interruptions.
 
 ## Vérification et limites
 
+Précision du 2026-10-25 : `app.llm.admission` porte le contexte typé commun à la
+file durable et au gateway. La rotation utilise d'abord la Task, puis le round
+direct, puis le run agentique. À défaut, elle utilise la génération média, le run
+Process, la source serveur restaurée, l'agent puis le demandeur. Le contexte serveur
+est lu depuis l'inférence durable pour la file et restauré à l'exécution ; le worker
+ne fournit pas sa propre identité. Le demandeur d'un appel natif reste dans sa trace,
+y compris hors abonnement. Une Task ou une source serveur ne reçoit pas de capacité
+dialogue par sa filiation conversationnelle. Les libellés de corrélation libres ne
+constituent pas un propriétaire. Les racines physiques tracées sont inventoriées dans
+le plan ; la preuve exhaustive de provenance en amont reste à compléter.
+
 Les tests traversent SDK, proxy et PostgreSQL avec un fournisseur HTTP synthétique :
 partage entre deux modèles et appel natif, changement à chaud, absence de claim avant
 admission, arrêt/pause/expiration en file et restitution du stream. Les tests du scheduler

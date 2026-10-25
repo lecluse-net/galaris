@@ -252,6 +252,8 @@ async def run_text(
     count_tokens_before_request: bool = True,
     purpose: LLMCallPurpose | str | None = None,
     model_field: str | None = None,
+    agent_run_id: UUID | None = None,
+    conversation_round_id: UUID | None = None,
 ) -> StructuredInferenceResult[str]:
     """Generate plain text through Pydantic AI without tools or an output schema."""
     from .call_capture import text_call_capture
@@ -264,6 +266,7 @@ async def run_text(
 
         return await run_durable_text(TextInferenceRequest(
             llm_id=llm.id, task_id=task_id, agent_id=agent_id,
+            agent_run_id=agent_run_id, conversation_round_id=conversation_round_id,
             prompt=prompt, system_prompt=system_prompt,
             parameters={"temperature": temperature, **capture.parameters},
             request_limit=request_limit, count_tokens_before_request=count_tokens_before_request,
@@ -275,6 +278,8 @@ async def run_text(
         llm,
         task_id=task_id,
         agent_id=agent_id,
+        agent_run_id=agent_run_id,
+        conversation_round_id=conversation_round_id,
         purpose=purpose,
         reasoning_effort=profile_reasoning_effort,
         model_field=model_field,
@@ -284,6 +289,7 @@ async def run_text(
 
         request = TextInferenceRequest(
             llm_id=llm.id, task_id=task_id, agent_id=agent_id,
+            agent_run_id=agent_run_id, conversation_round_id=conversation_round_id,
             prompt=prompt, system_prompt=system_prompt,
             parameters={"temperature": temperature, **capture.parameters},
             request_limit=request_limit, count_tokens_before_request=count_tokens_before_request,

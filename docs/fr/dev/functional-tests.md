@@ -1197,6 +1197,15 @@ préserve les grands fragments Unicode et conserve l'arrêt anticipé du raisonn
 `front/browser-tests/provider-autosave.spec.mjs` vérifie sauvegarde de 0, réouverture,
 validation et préservation des autres paramètres.
 
+`tests/test_provider_admission_context.py` traverse PostgreSQL, la file réelle et un
+fournisseur HTTP synthétique : les Tasks d'un même round gardent leur rotation propre,
+les runs sans Task ni round conservent leur propriétaire, et les dialogues directs
+gardent leur capacité protégée et leurs identités texte/voix. Chaque parcours est
+exercé par l'inférence durable et par l'appel texte direct.
+Les propriétaires Process, source serveur, agent, demandeur restauré et utilisateur
+authentifié exercent le même scénario. Les traces conservent le demandeur des appels
+hors abonnement ; une source serveur issue d'un round reste du fond.
+
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,
 absence de faux positif sur un mot découpé) et `back/app/incident/tests/test_capture.py`

@@ -96,6 +96,8 @@ async def run_inference(
                 count_tokens_before_request=request.count_tokens_before_request,
                 purpose=request.purpose,
                 model_field=request.model_field,
+                agent_run_id=request.agent_run_id,
+                conversation_round_id=request.conversation_round_id,
             )
             if isinstance(request, StructuredInferenceRequest):
                 from .output_registry import resolve
@@ -107,8 +109,6 @@ async def run_inference(
                     output_validator=contract.validator,
                     output_mode=request.output.mode,
                     output_retries=request.output_retries,
-                    agent_run_id=request.agent_run_id,
-                    conversation_round_id=request.conversation_round_id,
                 )
             else:
                 inference = await structured_service.run_text(**arguments)

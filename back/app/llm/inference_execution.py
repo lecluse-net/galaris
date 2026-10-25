@@ -404,8 +404,8 @@ async def _loop() -> None:
                     key = admission.id
                     if admission.provider_id is not None:
                         ticket = provider_scheduler.get_scheduler().enqueue(
-                            admission.provider_id, admission.limit, admission.priority,
-                            owner=admission.owner,
+                            admission.provider_id, admission.limit, admission.context.priority,
+                            owner=admission.context.owner,
                         )
                         ticket.future.add_done_callback(lambda _: notifications.notify("work"))
                         _admissions[key] = ticket, admission.deadline_at

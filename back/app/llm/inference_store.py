@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta
 from collections.abc import Collection
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import Integer, func, select
@@ -12,6 +12,7 @@ from sqlalchemy.orm import defer
 
 from app.agent.contracts import AIMessage, AIResult, AgentUsage
 from core.database import get_db
+from .admission import AdmissionContext
 from .call_capture import InferenceOwner
 from .contracts import (
     InferenceAction,
@@ -486,14 +487,13 @@ class PendingAdmission:
     id: UUID
     provider_id: int | None
     limit: int
-    priority: int
-    owner: str | None
+    context: AdmissionContext
     deadline_at: datetime | None
 
 
 async def pending_admissions(*, exclude: Collection[UUID] = ()) -> list[PendingAdmission]:
     from .provider_models import LLM, LLMProvider
-    from .provider_scheduler import call_priority
+    from .admission import admission_context
     from app.conversation import ConversationRound
     from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
@@ -501,8 +501,11 @@ async def pending_admissions(*, exclude: Collection[UUID] = ()) -> list[PendingA
         select(
             LLMInference.id, LLMInference.request["purpose"].astext,
             LLMInference.request["conversation_round_id"].astext,
-            LLMInference.request["task_id"].astext, LLMInference.deadline_at,
+            LLMInference.request["task_id"].astext,
+            LLMInference.request["agent_run_id"].astext, LLMInference.deadline_at,
             LLMProvider, ConversationRound.voice_session_id,
+            LLMInference.request["process_run_id"].astext,
+            LLMInference.request["agent_id"].astext, LLMInference.requester_user_id, LLMInference.authority,
         ).select_from(LLMInference)
         .outerjoin(LLM, LLM.id == LLMInference.request["llm_id"].astext.cast(Integer))
         .outerjoin(LLMProvider, LLMProvider.id == LLM.llm_provider_id)
@@ -511,13 +514,24 @@ async def pending_admissions(*, exclude: Collection[UUID] = ()) -> list[PendingA
         .order_by(LLMInference.created_at).limit(PENDING_BATCH_SIZE)
     )
     result: list[PendingAdmission] = []
-    for key, purpose, round_id, task_id, expiry, provider, voice_session_id in rows:
-        origin = ("voice" if voice_session_id is not None else "text") if round_id and not task_id else None
+    for (key, purpose, round_id, task_id, run_id, expiry, raw_provider, voice_session_id,
+         process_run_id, agent_id, requester_user_id, authority) in rows:
+        # SQLAlchemy's selected entity type does not encode outer-join nulls.
+        provider = cast(LLMProvider | None, raw_provider)
         result.append(PendingAdmission(
             id=key, provider_id=provider.id if provider is not None else None,
             limit=provider.effective_max_concurrent_calls if provider is not None else 0,
-            priority=call_priority(purpose, round_origin=origin),
-            owner=round_id or task_id, deadline_at=expiry,
+            context=admission_context(
+                purpose, task_id=UUID(task_id) if task_id else None,
+                conversation_round_id=UUID(round_id) if round_id else None,
+                agent_run_id=UUID(run_id) if run_id else None,
+                process_run_id=UUID(process_run_id) if process_run_id else None,
+                authority=LLMExecutionAuthority(**authority) if authority else None,
+                agent_id=int(agent_id) if agent_id else None,
+                requester_user_id=requester_user_id,
+                round_is_voice=voice_session_id is not None,
+            ),
+            deadline_at=expiry,
         ))
     return result
 

@@ -15,22 +15,9 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from uuid import UUID
 
-from .purposes import LLMCallPurpose
-
 
 def default_concurrency(provider_type: str, catalog_code: str | None) -> int:
     return 1 if provider_type == "ollama" or catalog_code is None else 10
-
-
-def call_priority(purpose: str | None, *, round_origin: str | None = None) -> int:
-    if round_origin == "voice" or purpose == LLMCallPurpose.CONVERSATION_AUDIO:
-        return 0
-    if round_origin == "text" or purpose in {
-        LLMCallPurpose.CONVERSATION_TEXT, LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE,
-        LLMCallPurpose.CONVERSATION_PROCESS_ADMISSION,
-    }:
-        return 1
-    return 2
 
 
 @dataclass(eq=False)

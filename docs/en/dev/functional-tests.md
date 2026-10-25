@@ -1138,6 +1138,15 @@ test in `tests/test_protocol_inference.py` measures journal commits, preserves l
 fragments and retains early reasoning cancellation. `front/browser-tests/provider-autosave.spec.mjs`
 covers saving 0, reopening, validation and preservation of other settings.
 
+`tests/test_provider_admission_context.py` exercises PostgreSQL, the real queue and a
+synthetic HTTP provider: Tasks from the same round retain independent rotation,
+runs without a Task or round retain their owner, and direct dialogues keep their
+protected capacity and text/voice identities. Each journey covers both durable
+inference and direct text calls.
+Process, server-owned source, agent, restored requester and authenticated user
+ownership use the same scenario. Traces preserve the requester for non-subscription
+calls; a server-owned source derived from a round remains background work.
+
 The journal and streaming checks include
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,
 no false positive on a fragmented word) and `back/app/incident/tests/test_capture.py`

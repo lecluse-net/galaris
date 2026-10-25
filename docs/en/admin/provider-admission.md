@@ -29,6 +29,16 @@ When capacity is full, requests wait before being sent to the provider. Voice co
 take priority, followed by text conversations, then other work. Aging and rotation between
 contexts limit queue monopolization. Priority does not preempt an already running call.
 
+Live dialogue transcription gets voice priority as soon as audio arrives; file
+transcription remains background work. A Task launched from a conversation also
+remains background work. Each Task has its own rotation context, even when several
+Tasks originate from the same round. A direct call without a Task uses its round
+or, if absent, its agent run when known.
+Other work uses its media generation, Process run or server-owned source when
+available, then falls back to the agent or requester. Users sharing a profile are
+therefore not grouped under that profile's name. This attribution changes neither
+their priority nor their permissions.
+
 With at least three places, one voice and one text place are protected. With two places,
 background work uses at most one. With a single place, admission orders the next departure;
 a slow call can still delay a conversation. Raising the limit does not guarantee better
