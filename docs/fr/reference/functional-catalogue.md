@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **24 octobre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **25 octobre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -292,6 +292,12 @@ renommages, suppressions et déplacements survivent aux synchronisations. Elles 
 aucun droit. Le [guide des privilèges](../admin/privileges.md) détaille les codes, les
 périmètres et la reprise ponctuelle des rôles existants.
 
+Les vues composites conservent les droits de chaque domaine source : un Sujet, un aperçu ou une
+tâche liée n’ouvre pas un historique, Document ou Dataset autrement interdit. Lecture et édition
+se délèguent séparément, y compris pour les réglages par fonction. Une approbation exige aussi le
+privilège de décision actuel du répondant désigné ; rétablir un droit révoqué ne rejoue pas une
+ancienne réponse.
+
 ### Équipes et autorisations de dialogue
 
 - Créer, renommer, supprimer et réordonner des équipes ; le réordonnancement fonctionne par glisser,
@@ -469,6 +475,23 @@ fin que dans un événement terminal d’arguments ou de fonction. Il conserve l
 et les appels distincts ; une contradiction provoque un échec avant l’exécution de l’outil.
 Voir les [contrats du proxy](../../../back/tests/test_llm_call_trace.py).
 
+### Actualisation nocturne des tarifs des modèles
+
+Les modèles configurés peuvent actualiser leurs tarifs d’entrée, de sortie et de lecture du cache
+chaque nuit vers **3 h dans le fuseau de l’installation**, avec rattrapage après une interruption.
+Les tarifs du fournisseur sont prioritaires ; models.dev complète les champs manquants pour le
+même fournisseur et l’identifiant exact du modèle. Chaque tarif importé conserve sa source et sa
+date. Une valeur absente ou invalide préserve le tarif courant ; un zéro explicite reste nul.
+Un échec conserve les tarifs et dates précédents, avec un nouvel essai après 30 minutes.
+
+Dans l’éditeur du modèle, désactiver **Actualiser les tarifs chaque nuit** permet de conserver
+des prix manuels ou négociés. Les appels historiques gardent leurs tarifs et coûts enregistrés.
+La fraîcheur dépend des informations publiées par les sources.
+
+Sources : [configuration des modèles](../user/navigation.md),
+[actualisation des tarifs](../../../back/app/llm/pricing_sync.py),
+[garanties tarifaires](../../../back/app/llm/tests/test_pricing_sync.py).
+
 ### Configuration initiale facultative OpenRouter
 
 Une **installation neuve** reçoit un fournisseur OpenRouter sans clé API, neuf modèles et un
@@ -554,6 +577,12 @@ il répartit la capacité entre propriétaires de travail et conserve leur ordre
 Les fournisseurs ont des files indépendantes ; annuler une attente libère sa réservation.
 Réduire une limite laisse finir les appels engagés ; zéro signifie sans limite applicative.
 Cette admission locale ne remplace ni les quotas ni les limites du service distant.
+
+La transcription en direct reçoit la priorité voix dès l’arrivée du son ; la transcription de
+fichiers et les tâches lancées depuis une conversation restent du travail de fond. Chaque tâche
+possède son propre contexte de rotation. Les autres demandes conservent leur tour, run, Process,
+source, agent ou demandeur selon le cas : des utilisateurs partageant un profil ne deviennent pas
+un propriétaire unique. Cette attribution ne change ni la priorité ni les droits.
 
 Sources : [résolution du secours](../../../back/app/llm/profile_fallback.py),
 [profils d’agent](../../../back/app/agent/schemas.py),
@@ -906,6 +935,11 @@ un flux commencé ou un appel d’outil ne se rejoue pas automatiquement. Les lo
 bornés et une consolidation réunit leurs résultats. La couverture fournie ne certifie pas que
 le modèle a compris correctement chaque page.
 
+Les chiffres, tableaux et citations importants demandent toujours des références de page vérifiées
+dans la source. Les emails EML et archives ne sont pas analysés récursivement : fournir séparément
+les pièces jointes à examiner. Un format pris en charge ne qualifie pas toutes ses mises en page
+ni tous ses résultats OCR ; voir les [limites de qualification](../dev/document-qualification.md).
+
 Pour une grande source, `document_analyze` ouvre une analyse privée dans **app.llm** et renvoie
 son identifiant ; `document_analysis_get` relit progression, réponse et couverture,
 et `document_analysis_cancel` demande l’arrêt. Les lots terminés utilisent leurs inférences
@@ -999,6 +1033,11 @@ thème sombre.
 
 La lecture de l’annuaire par `agent_list` et `agent_get` est disponible en conversation selon
 les autorisations : identifier un collègue ne le contacte pas et ne crée pas de tâche.
+
+Le chargement initial du Chat diffère les inspecteurs d’exécution jusqu’à leur ouverture et lit
+les métadonnées de politique conversationnelle séparément de la configuration complète des
+connexions. L’espacement des messages s’adapte à la largeur disponible de la conversation,
+y compris dans un panneau étroit sur ordinateur.
 
 Le chat natif sert aux conversations **entre un humain et un agent**. L’utilisateur peut :
 
@@ -1340,6 +1379,29 @@ parcours externes pris en charge.
 
 ### Actions et continuité
 
+En mode transcription → agent → synthèse, l’écoute continue pendant une transcription lente.
+La détection locale de parole filtre les bruits en préservant les débuts de mots et les pauses
+naturelles. Le Chat affiche une bulle **Écoute en cours** dès la détection ; les modèles de transcription
+temps réel compatibles actualisent son texte pendant la parole. Les modèles par lots publient le
+texte lorsqu’il est prêt. Le message final remplace la bulle ; une transcription vide ne crée
+ni message ni réponse d’agent.
+
+Une parole détectée met la lecture en pause. Une transcription vide reprend à la position
+interrompue ; un texte final non vide abandonne l’ancienne lecture et déclenche la nouvelle
+réponse. Des fragments tardifs ne réactivent pas une prise de parole terminée. Le mode
+speech-to-speech natif conserve son propre comportement d’interruption.
+
+Sur Android, y compris dans la PWA installée, les appels utilisent les boutons physiques de volume
+système. La sortie Web Audio s’ouvre après l’activation du microphone et conserve la réduction
+d’écho. Le réglage de volume interne est retiré ; les anciennes préférences locales sont ignorées.
+**Activer l’audio** débloque une lecture interdite par le navigateur. Le routage sonore effectif
+et les profils Bluetooth restent gérés par Android et le navigateur.
+
+Le raccrochage par l’agent (`voice_call_stop`) est actif par défaut sans accord supplémentaire.
+Les règles explicites **Demander** ou **Bloqué** restent prioritaires. Tools → Autorisations permet
+de modifier la règle de la connexion Voix ; **Toujours autoriser cette fonction** dans une demande
+mémorise l’accord pour cette connexion.
+
 La voix temps réel accepte une interruption pendant un appel d’outil lent : elle coupe la
 restitution en cours et ne reprend pas l’ancienne phrase quand le résultat arrive. Les effets
 déjà acquis restent enregistrés. Les moteurs distinguent arrêt demandé et libération physique
@@ -1377,6 +1439,7 @@ Le début de parole conservé avant confirmation est borné par la durée du son
 le nombre de trames : changer leur taille ne fait pas perdre les premiers mots.
 
 Sources : [voix](../../../back/app/voice/), [appels natifs](../../../back/app/chat/router.py),
+[parcours vocal](../user/README.md),
 [flux voix](../architecture/flows/messaging.md).
 
 <a id="taches"></a>
@@ -1643,6 +1706,18 @@ planification et dispatcher lorsque sa sortie est invalide. Les finalisations r�
 recomptent pas un appel. Les usages sous abonnement conservent un coût facturé nul selon leur
 contrat ; une estimation de repli reste distinguée d’une facture connue.
 
+Le détail d’une tâche charge **Bilan des coûts** à la demande pour la tâche et ses
+descendantes autorisées, par usage. Chaque appel physique compte une seule fois, y compris les
+échecs et nouvelles tentatives ; les totaux parents et enfants ne s’additionnent pas. Montants
+déclarés, estimés, partiels et inconnus restent distincts : **—** signifie preuve absente, pas
+gratuité. Facturation d’abonnement et valeur d’inférence restent séparées. Les nouvelles preuves
+de facturation survivent à la suppression des traces détaillées ; l’historique déjà supprimé et
+les opérations non tracées ne se reconstruisent pas. Actualiser relit les preuves ; changer de
+tâche efface le rapport précédent. Un statut de tâche réussi ne suffit pas à calculer un coût
+par réussite métier.
+
+Source : [inspection des coûts d’une tâche](../user/tasks.md).
+
 ### Budgets et capacité
 
 Des limites optionnelles portent sur les tokens, le coût et le temps d’un arbre de tâches, avec
@@ -1709,6 +1784,11 @@ Elle contourne les fenêtres horaires mais pas une pause globale explicite. Si e
 récupérer une évaluation en échec, un verdict `CONTINUE` permet le nouveau cycle sans attendre
 le créneau suivant ; `STOP` annule la demande. « Réessayer le suivi » réévalue seulement le travail
 existant. Ces opérations préservent la tâche et le résultat du cycle précédent.
+
+La page Objectifs peut lire la disponibilité de l’ordonnancement sans droit d’édition des réglages,
+en distinguant pause globale et période hors horaires, avec la prochaine activation lorsqu’elle
+est connue. Les changements en direct actualisent cet état. L’éditeur d’horaires conserve le
+brouillon et permet de sélectionner des jours ou heures entiers.
 
 ### Classement personnel des documents d’un objectif
 
@@ -1935,7 +2015,8 @@ la capsule conserve la provenance et la révision du document retrouvé.
 
 ### Structure documentaire et mémoire des pièces jointes
 
-Chaque document possède déjà son identité Memory. Chaque pièce jointe possède **un seul
+Un document existe indépendamment de Memory ; le graphe peut conserver une référence facultative
+soumise aux droits documentaires. Chaque pièce jointe possède **un seul
 compagnon Memory**, avec URI, type MIME, taille et texte acquis ; le texte n’est pas le binaire.
 Les synchronisations préservent les descriptions et leurs révisions. Toutes les catégories de
 pièces jointes admises sont représentées. L’analyse de leur contenu est distincte de cette
@@ -2099,7 +2180,7 @@ Sources : [API Memory](../../../back/app/memory/router.py), [schémas](../../../
 Un document peut servir de texte de travail, de support multimédia ou de **page applicative**.
 Une même page HTML peut réunir une explication éditable, un formulaire, un calculateur et un
 graphique. Ses données durables peuvent vivre dans des **Datasets** indépendants, partagés
-avec d’autres pages. Les Documents HTML appartiennent à Memory ; les Datasets JSON appartiennent
+avec d’autres pages. Les Documents HTML appartiennent à `app.document` ; les Datasets JSON appartiennent
 au domaine Dataset, avec leurs propres droits, historique et bibliothèque.
 
 Deux ressources complémentaires sont disponibles :
@@ -3889,6 +3970,12 @@ antérieur sont disponibles, sans modifier les runs existants ni proposer de lan
 
 ### Activités, variables et exécution native
 
+Diagrammes, miniatures et aperçus de déplacement partagent la référence graphique : en-têtes
+d’acteurs ardoise, couloirs alternés et couleurs de cartes par type d’activité, adaptées au thème
+sombre. Les badges d’état de run restent distincts ; les libellés Vrai/Faux sont décalés des liens
+et les nœuds IF conservent leur titre personnalisé. Voir le
+[parcours des processus internes](../user/internal-processes.md).
+
 Un **IF IA** choisit entre **Tâche agentique** et **Inférence LLM**. Le premier garde agent,
 outils et questions humaines. Le second utilise explicitement un modèle texte ou décisionnel,
 avec uniquement les instructions et les données figées, sans Task ni outil. Sa sortie doit
@@ -4153,6 +4240,24 @@ Une campagne « terminée » n’implique pas que tous les cas sont réussis. Un
 la note absente, et une violation critique peut interdire un verdict de réussite. Les répétitions
 mesurent la stabilité sur ces cas, pas la généralisation à toute situation.
 
+**Bilan des coûts** couvre toutes les observations, échecs payants et nouvelles tentatives,
+en séparant candidat et juge et en incluant les rejugements. Les appels payants de workers ayant
+perdu leur lease sont réconciliés sans recompter les preuves publiées. Le coût candidat par
+réussite vérifiée du benchmark reste inconnu si l’exécution, la vérification ou les preuves de
+coût sont incomplètes, ou sans réussite vérifiée. Médianes et écarts de coût excluent les montants
+sans provenance exploitable. Les coûts historiques ne sont pas recalculés ; réussir le benchmark
+ne prouve pas des effets métier réels.
+
+Les cas d’exécution de tâche et de conversation peuvent aussi porter des contrôles déterministes
+de résultat, cachés au candidat : appels distincts et arguments requis, ordre, effets interdits,
+limites d’appels et faits/références exacts. Des corpus synthétiques FR/EN exercent les décisions
+humaines, le choix des capacités et le transfert à d’autres missions. Ces contrôles examinent
+les actions simulées enregistrées, sans prouver un effet externe réel.
+
+Sources : [contrôles de résultat](../../../back/app/lab/executor_outcomes.py),
+[garanties des exécuteurs synthétiques](../../../back/app/lab/tests/test_executor_outcomes.py),
+[garanties du bilan des coûts](../../../back/app/lab/tests/test_cost_report.py).
+
 ### Comparaisons avant/après et régressions
 
 Les dix labs proposent une comparaison entre évaluations, y compris de jeux distincts, pour
@@ -4175,6 +4280,17 @@ Sources : [parcours avant/après](../user/lab-ai.md),
 [contrat de comparaison](../../../back/app/lab/comparison_schemas.py).
 
 ### Revue humaine et diagnostic
+
+Le panneau **Répétabilité du juge** lit les rejugements historiques des **mêmes sorties conservées**,
+sans nouvel appel de modèle. Pour chaque configuration identique, il présente couverture, écart
+absolu de score et désaccord de verdict, avec incertitude par cas de même poids. Changer de juge,
+grille, poids, seuil ou effort crée un groupe distinct ; les configurations historiques incomplètes
+sont signalées à part. Un jugement absent ou invalide ne vaut jamais accord ; les mesures restent
+inconnues sans sortie jugée au moins deux fois. Empreintes de configuration et campagnes sources
+se consultent ; actualisation, réessai, réouverture et publication en direct mettent le rapport à
+jour. L’accès suit les droits de lecture/édition de ce Lab. Il mesure la variation observée du juge,
+sans certifier sa justesse ni décomposer complètement les variances candidat/juge.
+Voir le [parcours Lab](../user/lab-ai.md).
 
 L'étalonnage compare les jugements révélés avec les revues immuables de l'utilisateur courant
 dans la campagne. Les revues d'agents ne constituent pas une référence humaine. Couverture,
@@ -4289,6 +4405,10 @@ permet pas de conserver une vue appartenant au périmètre précédent.
 
 ### Activité des modèles et des exécutions
 
+La progression conversationnelle affiche **En attente d’autorisation** pendant une demande
+d’accord. Cette suspension reste identifiable après réouverture sans apparaître comme un échec
+d’exécution ; les erreurs réelles restent visibles et la reprise efface l’attente.
+
 Les vues d’activité réunissent tâches, rounds conversationnels, appels vocaux, appels LLM,
 processus et Dream, avec recherche, filtres et détails adaptés.
 
@@ -4388,7 +4508,7 @@ Sources : [dashboard](../../../back/app/dashboard/schemas.py), [appels LLM](../.
 | Persistance | PostgreSQL/pgvector, SQLAlchemy async, transactions, historique et verrouillage optimiste ; leases et claims pour répartir les exécutions durables. DbAdmin dérive le schéma et applique les contributions idempotentes. |
 | Orchestration | Agent fournit façade, registre, résolution, dispatcher, planner et résultat ; Harness exécute Pydantic AI ; tâche possède états, tentatives et scheduler. Les drivers rendent un unique résultat terminal après leurs événements. |
 | Messages | Messenger possède conversations, capacités, journal entrant et déduplication ; les bridges traduisent les protocoles. Les fichiers conservent leur URI et provenance dans la chronologie. |
-| Ressources | Memory possède le HTML éditorial, Dataset le JSON, Process le BPMN et ses runs, Storage les octets ; File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
+| Ressources | Document possède les Documents HTML, Memory les souvenirs personnels, Dataset le JSON, Process le BPMN et ses runs, Storage les octets ; File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
 | Interface | Vue/Quasar, Pinia, routes dérivées des fichiers, navigation déclarée, catalogue i18n par domaine et composants partagés chargés à la demande ; contrôles de parité FR/EN, thème et frontière mobile communs. |
 | Temps réel | Abonnements autorisés par domaine, événements après commit, deltas de progression bornés et resynchronisation par snapshot/cursor ; reconnexion sans restauration d’un droit révoqué. |
 | Extensions | Providers IA/fichiers/aperçus, drivers, harnais, moteurs Process, bridges, mécanismes Dream/Lab et contributions DbAdmin possèdent leurs contrats ; présence sur disque et activation sont distinctes. |
@@ -4604,6 +4724,12 @@ existence n’équivaut pas à une certification de toutes les combinaisons de f
   comparaison équipe/solo utilise la même mission. Les appels sont facturables et les preuves
   restent à relire : un statut réussi ne démontre ni qualité métier ni avantage de l’équipe.
   Voir le [protocole de qualification](../dev/agent-team-qualification.md).
+- **Expérience de navigation File Share.** `make file-share-navigation` compare l’accès MCP avec
+  une copie en lecture seule du même corpus synthétique dans un répertoire, via le vrai SDK Hermès.
+  Pilote et campagnes sur missions réservées conservent preuves d’outils, tokens, coûts et mesures
+  appariées sur des sources figées. Aucun montage FUSE ni ressource métier applicative n’est créé ;
+  les tests d’instrumentation ne remplacent pas une campagne avec modèle réel. Voir
+  [l’expérience et ses limites](../dev/file-share-navigation.md).
 - **Recherche documentaire commune.** En développement, `make docs-update` prépare les sources,
   vérifie leur concordance avec celles du backend actif, synchronise l’index textuel partagé
   et contrôle recherche et lecture des parcours FR/EN. Aucun droit d’agent ni affectation de
@@ -4730,6 +4856,11 @@ le même contexte et les mêmes paramètres, puis les sorties sont jugées et r�
 humaine confronte le jugement aux critères métier. Le diagnostic de l’incident conserve les preuves
 du correctif et son test ; les changements de configuration sont décidés à partir de ces résultats.
 
+Pour distinguer la variation du juge, rejuger les sorties conservées dans plusieurs campagnes de
+configuration identique, puis ouvrir **Répétabilité du juge**. Examiner couverture et incertitude,
+puis comparer le coût candidat par réussite vérifiée du benchmark, en séparant les dépenses du
+juge. Une preuve absente reste inconnue.
+
 ### Demander à un agent comment utiliser Galaris
 
 Un agent équipé de la connexion Galaris Admin et de l’accès documentaire recherche la question,
@@ -4782,7 +4913,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
 | Apprentissage de compétences | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
 | Collaboration documentaire | Sauvegarde, révisions, conflits et partage ; pas une promesse de coédition simultanée caractère par caractère. |
-| Documents et Datasets | Documents HTML `document://` dans Memory et ressources JSON `data://` dans Dataset ; droits et historiques indépendants. |
+| Documents et Datasets | Documents HTML `document://` dans Document et ressources JSON `data://` dans Dataset ; droits et historiques indépendants. |
 | Applications documentaires | Affichage automatique de HTML/CSS/JavaScript isolés et texte éditable, sans vue Source ; les ressources externes ordinaires sont bloquées. Le CPU et la mémoire du navigateur ne sont pas plafonnés par ce mécanisme. |
 | Accès applicatif aux Datasets | Droits actuels du lecteur et accord personnel pour la version du document ; refus par défaut. L’accès en écriture permet aussi un remplacement complet, sans permission « ajout uniquement » distincte. |
 | Données et quotas applicatifs | JSON borné, sans schéma métier imposé ; 30 écritures et 4 000 000 octets résultants par minute et couple utilisateur–Dataset, partagés entre applications. |

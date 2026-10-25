@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **24 October 2026**,
+This catalogue describes features present in the repository as of **25 October 2026**,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -240,6 +240,11 @@ language and remain administrator-owned: renames, deletions and moves survive sy
 Categories grant no access. The [privilege guide](../admin/privileges.md) lists codes, scopes
 and the one-time preservation of existing role grants.
 
+Composite views retain each source domain's rights: a Topic, preview or linked Task does not
+open otherwise forbidden history, Documents or Datasets. Read and edit privileges can be delegated
+separately, including settings by function. Approval also requires the designated responder's
+current decision privilege; restoring revoked rights does not replay an earlier answer.
+
 ### Teams and conversation permissions
 
 - Create, rename, delete and reorder teams using drag, touch or keyboard.
@@ -381,6 +386,21 @@ See the [proxy contracts](../../../back/tests/test_llm_call_trace.py).
 Provider configuration saves automatically after a successful connection test; subsequent changes
 to relevant fields save without a separate save button.
 
+### Nightly model pricing
+
+Configured models can refresh input, output and cache-read rates nightly around **3 a.m. in the
+installation timezone**, with catch-up after downtime. Provider prices take precedence; models.dev
+supplements missing fields for the same provider and exact model identifier. Each imported rate
+retains its source and date. Missing or invalid rates leave existing values unchanged; explicit
+zero remains zero. Failed refreshes preserve prior prices and dates and retry after 30 minutes.
+
+In the model editor, disable **Update prices every night** to retain manual or negotiated prices.
+Historical calls keep their recorded rates and costs. Freshness depends on published source data.
+
+Sources: [model configuration](../user/navigation.md),
+[pricing refresh](../../../back/app/llm/pricing_sync.py),
+[pricing guarantees](../../../back/app/llm/tests/test_pricing_sync.py).
+
 ### Optional initial OpenRouter configuration
 
 A **fresh installation** receives OpenRouter without an API key, nine models and a prefilled
@@ -446,6 +466,11 @@ live voice, text conversations and background work, protects dialogue capacity a
 requests. Equal-priority work shares capacity across owners while retaining each owner's order.
 Providers have independent queues; cancellation releases a reservation. Lowering a limit lets
 engaged calls finish; zero means no application concurrency limit. Remote quotas still apply.
+
+Live transcription receives voice priority from audio arrival; file transcription and Tasks launched
+from conversations remain background work. Each Task has its own rotation context. Other requests
+retain their round, run, Process, source, agent or requester as applicable, so users sharing a model
+profile do not become one owner. Attribution changes neither priority nor permissions.
 
 Sources: [fallback resolution](../../../back/app/llm/profile_fallback.py),
 [agent profile contract](../../../back/app/agent/schemas.py),
@@ -722,6 +747,11 @@ structured reports of incomplete reading; opened streams and tool calls are not 
 replayed. Bounded prepared batches are consolidated. Source-unit coverage never certifies
 that the model understood every page correctly.
 
+Important figures, tables and quotations still require page references checked against the source.
+EML emails and archives are not recursively analysed: supply child attachments separately.
+Format support does not qualify every layout or OCR result; see the
+[qualification limits](../dev/document-qualification.md).
+
 For large sources, `document_analyze` starts a private analysis in **app.llm** and returns its
 identifier. `document_analysis_get` reads progress, answers and coverage; `document_analysis_cancel`
 requests cancellation. Completed batches reuse existing durable inferences and an interrupted
@@ -813,6 +843,10 @@ logout clears them. A full reload retrieves another session's changes
 immediately. Link previews and document thumbnails load near the visible area while messages and
 composition remain usable. Avatar reads are shared and invalidated on replacement/deletion. These
 mechanisms do not establish a measured performance gain.
+
+Initial Chat loading defers execution inspectors until opened and loads conversation-policy metadata
+separately from full connection configuration. Message spacing adapts to the available conversation
+width, including in narrow desktop panels.
 
 The native chat supports several named conversations with an agent, including creation from an
 empty list; search and rename; latest-message previews; archive/unarchive; unread counts and mute;
@@ -1054,6 +1088,25 @@ connection; network traversal may require TURN, and supported channels can auto-
 
 ### Actions and continuity
 
+In transcription → agent → synthesis mode, listening continues during a slow transcription.
+Local speech detection filters noise while retaining word beginnings and natural pauses. Chat
+shows a **Listening** bubble from speech detection; compatible realtime transcription models
+update its text while the person speaks. Batch models publish text when ready. The final message
+replaces the bubble; an empty transcript creates neither a message nor an agent reply.
+
+Detected speech pauses current playback. An empty transcript resumes from the interrupted position;
+a nonempty final transcript discards old playback and starts the new response. Late fragments cannot
+revive a finished utterance. Native speech-to-speech retains its own interruption behavior.
+
+On Android, including the installed PWA, calls use physical system-volume buttons. Web Audio output
+opens after microphone activation and retains echo reduction. There is no internal volume setting;
+previous local settings are ignored. **Enable audio** unlocks browser-blocked playback. Actual audio
+routing and Bluetooth profiles remain controlled by Android and the browser.
+
+Agent hangup (`voice_call_stop`) is active by default without additional approval. Explicit **Ask**
+or **Blocked** rules remain effective. Tools → Authorizations can change the Voice connection's rule;
+**Always allow this function** on a request remembers consent for that connection.
+
 Realtime voice supports interruption during slow tool calls: playback stops and the previous
 phrase does not restart when results arrive. Completed effects remain recorded. Engines distinguish
 requested stop from physical transport release; stale workers cannot publish after audio authority
@@ -1082,6 +1135,7 @@ beginning of spoken words.
 
 Additional references: [Voice implementation](../../../back/app/voice/),
 [Chat API](../../../back/app/chat/router.py),
+[voice journey](../user/README.md),
 [Messaging flow](../architecture/flows/messaging.md).
 
 <a id="taches"></a>
@@ -1275,6 +1329,16 @@ includes all persisted gateway calls, including invalid Dispatcher choices, and 
 Subscription usage can have zero invoiced API cost while retaining an estimate; known charges and
 estimates remain distinguishable.
 
+Task details load **Cost accounting** on demand for the Task and its authorised descendants,
+grouped by purpose. Each physical call counts once, including failed attempts and retries;
+parent and child rollups are not added together. Reported, estimated, partial and unknown costs
+remain distinct: **—** is missing evidence, not free usage. Subscription billing and inference
+value remain separate. New billing evidence survives detailed trace deletion; previously deleted
+history and untraced operations cannot be reconstructed. Refresh rereads evidence, and changing
+Tasks clears the previous report. Successful Task status alone supplies no business cost-per-success.
+
+Source: [Task cost inspection](../user/tasks.md).
+
 ### Budgets and capacity
 
 Optional token, cost and time budgets apply to Task trees and shared Goal cycles. Phase reservations
@@ -1323,6 +1387,10 @@ and validates the same contract without another model call solely for that encod
 global pause. A failed judgement can be recovered as CONTINUE, permitting an immediate cycle, or
 STOP, cancelling continuation. Retrying follow-up only reruns evaluation and keeps the old Task
 and result intact.
+
+The Goal page can read scheduling availability without settings-edit rights, distinguishing global
+pause from being outside active windows and showing the next active time when known. Live changes
+refresh this state. The schedule editor preserves drafts and selects whole days or hours.
 
 ### Personal filing of Goal documents
 
@@ -1482,6 +1550,9 @@ documents retain provenance and revision in the capsule.
 
 ### Documentary structure and attachment memory
 
+A Document exists independently of Memory; the graph may retain an optional reference governed by
+Document rights.
+
 An attachment has one companion Memory identity, MIME type, size and acquired text, not a duplicate
 binary. Descriptions and revisions are preserved for all accepted attachment kinds. Dream 4, off by
 default, can fill empty descriptions. Folders have independent identities.
@@ -1615,7 +1686,7 @@ Additional references: [Memory acquisition](../../../back/app/memory/acquisition
 
 Documents are shared working material: text, multimedia or an application page combining editable
 explanations, forms, calculations and charts. Independent Datasets can hold durable data used
-by several pages. Memory owns HTML Documents; the Dataset domain owns JSON resources with
+by several pages. `app.document` owns HTML Documents; the Dataset domain owns JSON resources with
 their own rights, history and library.
 
 | Resource | Content | Editor |
@@ -3004,6 +3075,11 @@ Owners can grant human/agent/group read/write access or application-public acces
 the former owner as editor. Editors cannot reshare. Paginated history supports inspection, confirmed
 restoration and deletion of older saves, preserving existing runs; launches cannot select old versions.
 
+Diagrams, thumbnails and drag previews share the drawing reference: slate actor headers,
+alternating lanes and activity-specific card colours, adapted to the dark theme. Run status badges
+stay distinct; True/False labels are offset from connections and IF nodes retain custom titles.
+See the [internal Process journey](../user/internal-processes.md).
+
 ### Activities, variables and native execution
 
 An **AI IF** selects **Agent Task** or **LLM inference**. The former retains its agent, tools
@@ -3221,6 +3297,22 @@ amount without deleting results; optional narrative analysis is separate. Comple
 all cases passed. Judge failure leaves scores absent; critical violations can prohibit success.
 Repetition measures stability on these cases, not universal generalisation.
 
+**Cost accounting** covers every observation, paid failures and retries, with candidate and judge
+costs separate and rejudgments included. Paid calls from workers that lost their lease are reconciled
+without double-counting published evidence. Candidate cost per verified benchmark success remains
+unknown with incomplete execution, verification or cost evidence, or no verified success. Cost
+medians/deltas exclude amounts without usable provenance. Historical costs are not repriced;
+benchmark success does not prove real business effects.
+
+Task and conversation executor cases can also carry hidden deterministic outcome checks: required
+distinct calls and arguments, order, forbidden effects, call limits and exact facts/references.
+Synthetic FR/EN corpora exercise human decisions, capability selection and transfer to other
+missions. These checks assess recorded simulated actions without proving real external effects.
+
+Sources: [outcome checks](../../../back/app/lab/executor_outcomes.py),
+[synthetic executor guarantees](../../../back/app/lab/tests/test_executor_outcomes.py),
+[cost report guarantees](../../../back/app/lab/tests/test_cost_report.py).
+
 ### Before/after comparisons and regressions
 
 All ten labs compare evaluations, including different datasets, to examine a model, prompt or
@@ -3242,6 +3334,16 @@ Sources: [before/after journey](../user/lab-ai.md),
 [comparison contract](../../../back/app/lab/comparison_schemas.py).
 
 ### Human review and diagnosis
+
+The **Judge repeatability** panel reads historical rejudgments of the **same saved outputs**, without
+new model calls. Per identical configuration, it reports coverage, absolute score differences and
+verdict disagreement with uncertainty by equally weighted case. Judge, rubric, weight, threshold
+or effort changes form separate groups; incomplete historical configurations are reported separately.
+Missing/invalid judgments never count as agreement, and metrics remain unknown without an output
+judged at least twice. Configuration fingerprints and source campaigns are inspectable; refresh,
+retry, reopening and live publication update the report. Access uses that Lab's read/edit rights.
+This measures observed judge variation without certifying correctness or fully decomposing
+candidate/judge variance. See the [Lab journey](../user/lab-ai.md).
 
 Calibration compares revealed judgements with the current user's immutable reviews in that
 campaign. Agent reviews are not human references. Coverage, false passes/rejections and bias
@@ -3326,6 +3428,10 @@ cannot remain visible.
 
 ### Model and execution activity
 
+Conversation progress shows **Waiting for authorization** while approval is pending. The suspension
+remains identifiable after reopening and is not displayed as an execution failure; genuine errors
+remain visible and resumption clears the wait.
+
 Activity spans Tasks, conversation rounds, calls, model inference, Processes and Dream with search,
 filters and adapted detail. A recovered round is successful while previous errors remain in attempt
 history. Detail distinguishes completed processing, returned text and actions, including no final text.
@@ -3398,7 +3504,7 @@ Sources: [dashboard](../../../back/app/dashboard/schemas.py), [calls](../../../b
 | Persistence | PostgreSQL/pgvector, async SQLAlchemy, transactions, history and optimistic locking; leases/claims distribute durable executions. DbAdmin derives schema and applies idempotent contributions. |
 | Orchestration | Agent owns facade, registry, resolution, dispatcher, planner and result application; Harness runs Pydantic AI; Task owns states, attempts and scheduling. Drivers emit exactly one terminal result after events. |
 | Messaging | Messenger owns conversations, capabilities, inbound journal and deduplication; bridges translate protocols. Attachments retain canonical URIs/provenance in chronology. |
-| Resources | Memory owns editorial HTML, Dataset JSON, Process BPMN/runs and Storage bytes; File Sharing unifies URIs without moving authority or permissions. |
+| Resources | Document owns HTML Documents, Memory personal memories, Dataset JSON, Process BPMN/runs and Storage bytes; File Sharing unifies URIs without moving authority or permissions. |
 | Interface | Vue/Quasar, Pinia, file-derived routes, declared navigation, domain i18n and lazy shared components; common FR/EN parity, theme and mobile boundary. |
 | Live updates | Authorised domain subscriptions, post-commit events, bounded progress deltas and snapshot/cursor resynchronisation; reconnection never restores revoked rights. |
 | Extensions | AI/file/preview providers, drivers, harnesses, Process engines, bridges, Dream/Lab mechanisms and DbAdmin contributions have explicit contracts; disk presence differs from activation. |
@@ -3565,6 +3671,12 @@ is not certification of every provider combination.
   and restart scenarios. Team/solo comparison uses the same mission. Calls incur costs and
   evidence still needs review: a successful status proves neither business quality nor a team
   advantage. See the [qualification protocol](../dev/agent-team-qualification.md).
+- **File Share navigation experiment:** `make file-share-navigation` compares MCP access with a
+  read-only directory copy of the same synthetic corpus through the real Hermes SDK. Pilot and
+  held-out campaigns retain tool evidence, token/cost accounting and paired measurements under
+  frozen sources. This installs no FUSE mount and creates no application business resource;
+  instrumentation tests do not replace a real model campaign. See the
+  [experiment and limits](../dev/file-share-navigation.md).
 - Development `make docs-update` prepares sources, checks agreement with the live backend, synchronises
   shared text search and verifies FR/EN journey search/read. It changes no agent rights/skills;
   stale mounts/images fail explicitly.
@@ -3672,6 +3784,10 @@ A problematic Task/round becomes a Lab case. Candidate models use the same conte
 are judged/repeated, and human review checks business criteria. Incident diagnosis retains fix evidence
 and regression tests; configuration decisions use those observations.
 
+To distinguish judge variation, rejudge the saved outputs in several campaigns with identical
+settings and open **Judge repeatability**. Inspect coverage and uncertainty, then compare candidate
+cost per verified benchmark success with judge expenses separate. Missing evidence stays unknown.
+
 ### Asking an agent how Galaris works
 
 With Admin/documentation access, an agent searches the installed version, reads sources and provides
@@ -3717,7 +3833,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Native chat | Human–agent; external group rooms do not imply universal native human messaging. |
 | Learned skills | Off by default; explicit observation/learning with thresholds and evidence. |
 | Document collaboration | Saves, revisions, conflicts and sharing, not keystroke-level concurrent editing. |
-| Documents and Datasets | Memory owns HTML Documents `document://`; Dataset owns JSON resources `data://`, with independent rights and history. |
+| Documents and Datasets | Document owns HTML Documents `document://`; Dataset owns JSON resources `data://`, with independent rights and history. |
 | Document applications | Automatically rendered isolated HTML/CSS/JS and editable prose, without a Source view; ordinary external loading blocked, browser CPU/memory not capped. |
 | Dataset application access | Reader ACLs plus personal content-version consent, denied by default; write includes replacement, not a separate append-only permission. |
 | Data quotas | Bounded JSON without business schema; 30 writes/4,000,000 resulting bytes per minute per user–Dataset across apps. |
