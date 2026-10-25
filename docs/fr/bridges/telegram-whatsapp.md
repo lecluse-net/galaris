@@ -11,6 +11,10 @@ sont enregistrés dans sa connexion à ce Tool et chiffrés comme paramètres `p
 serveur invariantes sont enregistrées dans l’onglet Messenger du Tool. Le code du Tool est libre et
 ne détermine pas le bridge.
 
+**Tester la réception** vérifie uniquement les connexions actives de la messagerie affichée.
+Les agents sans connexion associée à cette messagerie ne sont pas testés, même s'ils ont
+une connexion à un autre bridge. Sans connexion correspondante, l'écran indique **Aucun test lancé**.
+
 ## Tester depuis une instance locale
 
 Une instance Galaris locale ou sur un réseau privé suffit pour plusieurs passerelles. Le besoin
@@ -47,15 +51,18 @@ Nextcloud Talk nécessitent aussi une connectivité WebRTC adaptée, éventuelle
 ### 1. Créer et configurer le bot
 
 1. Créer le bot auprès de [BotFather](https://t.me/BotFather) et conserver son token.
-2. Dans **Configuration → Messagerie → Telegram**, ouvrir le **Guide de configuration**
-   et cliquer sur **Créer l’outil Telegram** (droit de modification des outils requis).
-   Le bouton prépare le Tool de code `telegrem`, libellé `Telegram`, avec la Messagerie
+2. Dans **Configuration → Messagerie → Telegram**, consulter le **Guide de configuration**, ouvert par défaut comme pour les autres messageries,
+   et cliquer sur **Créer l’outil Telegram** (droit de modification des outils requis),
+   proposé uniquement si aucun Tool n’utilise déjà la messagerie via le bridge `telegram`,
+   quel que soit son code. Le bouton prépare le Tool de code `telegram`, libellé `Telegram`, avec la Messagerie
    activée sur le bridge `telegram` et un paramètre de connexion secret `token`, requis
-   et vide, associé au token du bridge. Un outil de même code est conservé : sa
-   configuration est vérifiée et toute différence doit être corrigée dans **Outils**.
+   et vide, associé au token du bridge. Si un outil utilise déjà ce bridge, créer les
+   connexions sur cet outil. Si seul le code `telegram` est occupé par un autre outil,
+   sa configuration doit être vérifiée dans **Outils** avant de poursuivre.
 3. La même configuration peut être saisie manuellement dans **Outils**.
 4. Dans **Outils → Connexions**, créer une connexion à cet outil pour chaque agent et
    y coller le token transmis par BotFather. Utiliser un bot distinct par agent.
+   Le bouton **Configurer les comptes des agents** du guide ouvre directement cet onglet.
 5. Envoyer un message au bot depuis Telegram. Sans droit de dialogue déjà reconnu, le message
    apparaît dans **Superviser → Activité → Conversations textuelles**, dans un round en pause.
    Le manager reçoit une demande de réponse à ce contact, également visible dans

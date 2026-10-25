@@ -5,6 +5,14 @@
 `app.messenger` est le langage commun de Galaris. Les bridges possèdent le protocole externe,
 pas le workflow métier.
 
+Dans les préférences, **Tester la réception** ne vérifie que les connexions actives du
+bridge affiché. Le serveur ne construit aucun transport pour un agent sans connexion à
+cette messagerie, ni pour une connexion inactive ou une plateforme désactivée. En l'absence
+de connexion correspondante, l'interface indique qu'aucun test n'a été lancé. L'API
+`POST /messenger/configuration/test?provider=<bridge>` porte cette portée ; l'appel sans
+filtre conserve la vérification agrégée des connexions existantes. Un changement d'onglet
+efface le résultat et empêche une réponse tardive d'apparaître dans une autre messagerie.
+
 Un message humain externe sans droit de contact reconnu est conservé dans un round textuel
 `PAUSED` pour autorisation de réponse. Son identité et les informations disponibles sont
 visibles dans le suivi d'activité. Le manager reçoit la même demande persistante que celle

@@ -1194,18 +1194,22 @@ async def _listener_configuration_signatures(
     }
 
 
-async def check_configuration() -> dict[str, Any]:
-    """Check credentials and reception state for every active provider connection."""
+async def check_configuration(provider: str | None = None) -> dict[str, Any]:
+    """Check existing active connections, optionally restricted to one provider."""
     from sqlalchemy import select
 
     from app.connection import Connection
+    normalized_provider = facade.normalize_kind(provider)
+    response_provider = normalized_provider or "multi"
     tool_kind_by_id: dict[int, str] = {}
     for kind in facade.enabled_kinds():
+        if provider is not None and kind != normalized_provider:
+            continue
         for tool in await messaging_tool_records(kind):
             tool_kind_by_id.setdefault(int(tool.id), kind)
     tool_ids = list(tool_kind_by_id)
     if not tool_ids:
-        return {"provider": "multi", "ok": False, "connections": []}
+        return {"provider": response_provider, "ok": False, "connections": []}
 
     from app.messenger.models import ListenerState
     from core.database import get_db
@@ -1280,7 +1284,7 @@ async def check_configuration() -> dict[str, Any]:
                     )
 
     return {
-        "provider": "multi",
+        "provider": response_provider,
         "ok": bool(results) and all(bool(item["ok"]) for item in results),
         "connections": results,
     }

@@ -19378,7 +19378,7 @@
         "declared_path": "/messenger/channels",
         "file": "back/app/messenger/router.py",
         "handler": "list_enabled_messenger_channels",
-        "line": 71,
+        "line": 73,
         "method": "GET",
         "module": "app.messenger"
       },
@@ -19396,7 +19396,7 @@
         "declared_path": "/messenger/users",
         "file": "back/app/messenger/router.py",
         "handler": "search_messenger_users",
-        "line": 44,
+        "line": 46,
         "method": "GET",
         "module": "app.messenger"
       },

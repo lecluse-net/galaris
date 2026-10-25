@@ -64,8 +64,8 @@ export interface MemoryLinkReconciliationRunResult {
 }
 
 export const configurationService = {
-    testMessenger(): Promise<AxiosResponse<MessengerConfigurationCheck>> {
-        return api.post('/messenger/configuration/test')
+    testMessenger(provider: string): Promise<AxiosResponse<MessengerConfigurationCheck>> {
+        return api.post('/messenger/configuration/test', undefined, { params: { provider } })
     },
     getMemoryLinkReconciliationStatus(): Promise<AxiosResponse<MemoryLinkReconciliationStatus>> {
         return api.get('/memory/link-reconciliation')

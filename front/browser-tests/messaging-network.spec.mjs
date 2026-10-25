@@ -1,5 +1,42 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
+test('reception checks are scoped to the selected messaging provider', async ({ page }) => {
+  const providers = []
+  await page.route('**/api/messenger/configuration/test*', route => {
+    const provider = new URL(route.request().url()).searchParams.get('provider')
+    providers.push(provider)
+    return route.fulfill({ json: { provider, ok: false, connections: [] } })
+  })
+  await mount(page, 'core/params/components/MessagingSettingsPanel.vue', { privileges: ['MESSAGING_CONFIG_EDIT'] })
+  for (const [label, provider] of [['Telegram', 'telegram'], ['Matrix', 'matrix'], ['Nextcloud Talk', 'nextcloud_talk'], ['OneBot 11', 'one_bot'], ['WhatsApp', 'whatsapp'], ['Galaris', 'internal']]) {
+    await page.getByRole('tab', { name: label, exact: true }).click()
+    await page.getByRole('button', { name: 'Test reception', exact: true }).click()
+    await expect.poll(() => providers.at(-1)).toBe(provider)
+    await expect(page.getByText('No active agent connection for this messaging provider. Configure an account in Tools → Connections.', { exact: true })).toBeVisible()
+  }
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/messenger/configuration/test?provider=telegram', async route => {
+    await pending
+    await route.fulfill({ json: { provider: 'telegram', ok: true, connections: [
+      { provider: 'telegram', connection_id: 97, agent_id: 7, ok: true, detail: 'Late Telegram result', receiving: true },
+    ] } })
+  })
+  await page.getByRole('tab', { name: 'Telegram', exact: true }).click()
+  const run = page.getByRole('button', { name: 'Test reception', exact: true })
+  const started = page.waitForRequest(request => request.url().endsWith('provider=telegram'))
+  await run.click()
+  await started
+  await page.getByRole('tab', { name: 'Matrix', exact: true }).click()
+  await run.click()
+  await expect(page.getByText('No test run', { exact: true })).toBeVisible()
+  const oldResponse = page.waitForResponse(response => response.url().endsWith('provider=telegram'))
+  release()
+  await (await oldResponse).finished()
+  await expect(page.getByText('No test run', { exact: true })).toBeVisible()
+  await expect(page.getByText('Late Telegram result', { exact: true })).toHaveCount(0)
+})
+
 for (const locale of ['fr', 'en', 'zh']) {
   test(`network warnings follow the bridge and address without blocking local outbound bridges (${locale})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })
@@ -44,7 +81,7 @@ test('messaging preferences switch network notices with the selected provider', 
   await expect(page.getByRole('alert', { name: 'OneBot 11', exact: true })).toContainText('http://localhost:8000')
 })
 
-test('Telegram setup creates a secret connection parameter once and recovers from errors', async ({ page }, testInfo) => {
+test(`Telegram setup creates secret connection parameters once and recovers from errors`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 1000 })
   let fail = true
   const tools = []
@@ -57,48 +94,87 @@ test('Telegram setup creates a secret connection parameter once and recovers fro
     tools.push({ id: 82, ...body })
     return route.fulfill({ json: tools[0] })
   })
-  await mount(page, 'core/params/components/MessagingSettingsPanel.vue', { privileges: ['TOOL_EDIT'] })
+  await mount(page, 'core/params/components/MessagingSettingsPanel.vue', { privileges: ['TOOL_EDIT', 'CONNECTION_ACCESS'] })
   await page.getByRole('tab', { name: 'Telegram', exact: true }).click()
   const guide = page.getByRole('region', { name: 'Setup guide', exact: true })
-  await guide.getByText('Setup guide', { exact: true }).click()
-  const create = page.getByRole('button', { name: 'Create Telegram Tool', exact: true })
-  await create.focus()
-  await page.keyboard.press('Enter')
-  await expect(guide.getByRole('alert')).toContainText('Unable to prepare the Telegram Tool')
-  await expect(create).toBeEnabled()
+  await expect(guide.getByRole('link', { name: 'Configure agent accounts', exact: true })).toHaveAttribute('href', '/tools?tab=connections')
+  const create = page.getByRole('button', { name: `Create Telegram Tool`, exact: true })
+  await expect(guide.getByRole('alert')).toContainText(`Unable to prepare the Telegram Tool`)
+  await expect(create).toHaveCount(0)
   fail = false
+  await guide.getByRole('button', { name: 'Retry', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(create).toBeEnabled()
   await create.click()
-  await expect(guide.getByRole('status')).toContainText('The Telegram Tool is ready')
+  await expect(guide.getByRole('link', { name: 'Open tools and connections', exact: true })).toBeVisible()
   expect(writes).toHaveLength(1)
-  expect(writes[0]).toMatchObject({ code: 'telegrem', label: 'Telegram',
+  expect(writes[0]).toMatchObject({ code: 'telegram', label: 'Telegram',
     messenger_config: { service: 'telegram', settings: {}, param_map: { token: 'token' } },
+  })
+  expect(writes[0]).toMatchObject({
     connection_schema: { params: { token: { type: 'password', required: true, default: '' } } },
   })
-  await page.screenshot({ path: testInfo.outputPath('telegram-tool-ready-mobile.png'), fullPage: true })
+  await page.screenshot({ path: testInfo.outputPath(`telegram-tool-ready-mobile.png`), fullPage: true })
   // Reopening checks persisted configuration before offering another creation.
   await page.getByRole('tab', { name: 'WhatsApp', exact: true }).click()
   await page.getByRole('tab', { name: 'Telegram', exact: true }).click()
-  await guide.getByText('Setup guide', { exact: true }).click()
-  await create.click()
-  await expect(guide.getByRole('status')).toContainText('The Telegram Tool is ready')
+  await expect(guide.getByRole('link', { name: 'Open tools and connections', exact: true })).toBeVisible()
+  await expect(create).toHaveCount(0)
   expect(writes).toHaveLength(1)
   await setPrivileges(page, [])
   await expect(page.getByRole('link', { name: 'Open tools and connections', exact: true })).toHaveCount(0)
 })
 
-test('Telegram setup preserves an existing Tool with conflicting configuration', async ({ page }) => {
+test(`Telegram setup preserves an existing Tool with conflicting configuration`, async ({ page }) => {
   const requests = []
   await page.route('**/api/tools', route => {
     requests.push(route.request().method())
-    return route.fulfill({ json: [{ id: 83, code: 'telegrem', label: 'Synthetic existing Tool',
+    return route.fulfill({ json: [{ id: 83, code: 'telegram', label: 'Synthetic existing Tool',
       messenger_config: null, connection_schema: { params: {} } }] })
   })
-  await mount(page, 'app/tools/components/TelegramToolSetup.vue', { privileges: [] })
-  await expect(page.getByRole('button', { name: 'Create Telegram Tool' })).toHaveCount(0)
+  await mount(page, `app/tools/components/TelegramToolSetup.vue`, { privileges: [] })
+  await expect(page.getByRole('button', { name: `Create Telegram Tool` })).toHaveCount(0)
   await setPrivileges(page, ['TOOL_EDIT'])
-  await page.getByRole('button', { name: 'Create Telegram Tool' }).click()
   await expect(page.getByRole('status')).toContainText('already used by a Tool with different settings')
+  await expect(page.getByRole('button', { name: `Create Telegram Tool` })).toHaveCount(0)
   expect(requests).toEqual(['GET'])
+})
+
+test(`Telegram setup never offers creation when another code already uses the bridge`, async ({ page }) => {
+  const requests = []
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/tools', async route => {
+    requests.push(route.request().method())
+    await pending
+    await route.fulfill({ json: [{ id: 84, code: 'synthetic_legacy_messaging', label: 'Existing channel',
+      messenger_config: { service: 'telegram', settings: {}, param_map: { token: 'bot_secret' } },
+      connection_schema: { params: { bot_secret: { type: 'password', required: true, default: '' } } } }] })
+  })
+  await mount(page, `app/tools/components/TelegramToolSetup.vue`, { privileges: ['TOOL_EDIT'] })
+  const create = page.getByRole('button', { name: `Create Telegram Tool`, exact: true })
+  await expect(create).toHaveCount(0)
+  release()
+  // Existing channels no longer show a confirmation message; keep the usable action.
+  await expect(page.getByRole('link', { name: 'Open tools and connections', exact: true })).toBeVisible()
+  await expect(create).toHaveCount(0)
+  expect(requests).toEqual(['GET'])
+})
+
+test(`Telegram setup rechecks the bridge before creation to avoid a newly configured Tool`, async ({ page }) => {
+  let checks = 0
+  const writes = []
+  await page.route('**/api/tools', route => {
+    if (route.request().method() !== 'GET') writes.push(route.request().method())
+    checks += 1
+    return route.fulfill({ json: checks === 1 ? [] : [{ id: 85, code: 'synthetic_added_later', label: 'New channel',
+      messenger_config: { service: 'telegram', settings: {}, param_map: {} } }] })
+  })
+  await mount(page, `app/tools/components/TelegramToolSetup.vue`, { privileges: ['TOOL_EDIT'] })
+  await page.getByRole('button', { name: `Create Telegram Tool`, exact: true }).click()
+  await expect(page.getByRole('link', { name: 'Open tools and connections', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Create Telegram Tool` })).toHaveCount(0)
+  expect(writes).toEqual([])
 })
 
 test('the Tool messaging warning allows saving and remains accurate on reopening', async ({ page }) => {

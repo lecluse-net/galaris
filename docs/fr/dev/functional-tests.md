@@ -1774,6 +1774,15 @@ installation existante après actualisation du WebAPK.
 
 ## Bridges : tester l’adaptation une fois par protocole
 
+`app/messenger/tests/test_bridge_configuration.py` vérifie sur PostgreSQL, pour les six
+messageries, que les tests de réception n'instancient que les transports des connexions
+actives du bridge demandé : agents connectés ailleurs ou sans connexion, connexions inactives
+et plateformes désactivées ne sont pas testés. L'appel agrégé historique reste couvert.
+`core/authorize/tests/test_domain_authorization.py` vérifie la portée HTTP et le droit de
+modification requis. `messaging-network.spec.mjs` exerce le choix de plateforme, l'absence
+de connexion et les résultats tardifs après changement d'onglet ; le parcours E2E Telegram
+confirme qu'un agent connecté au Chat n'est pas testé pour Telegram sans connexion Telegram.
+
 `app/conversation/tests/test_contact_authorization.py` couvre la réception externe sans compte
 Galaris dans un round en pause, le détail d'identité, la notification native au manager et la
 décision commune de Permissions : accord, refus, doublons, isolation, révocation et changement
@@ -1783,7 +1792,9 @@ du test de suivi sont remplacées par les droits Conversation déjà en vigueur.
 
 `front/browser-tests/messaging-network.spec.mjs` couvre la création préconfigurée du Tool
 Telegram, le paramètre secret vide, la reprise après erreur, la réouverture sans doublon,
-la conservation d’un outil existant incompatible et les droits du bouton.
+la conservation d’un outil existant incompatible et les droits du bouton. La création reste
+masquée pendant le chargement, après une erreur de lecture ou dès qu’un outil exploite déjà
+le bridge Telegram sous un code quelconque ; la vérification est renouvelée avant création.
 `conversation-control.spec.mjs` vérifie aussi l’identifiant distant hors attente d’autorisation,
 pour les messages reçus et les snapshots de rounds. `e2e/specs/contact-authorization.spec.mjs`
 exerce la création réelle depuis la configuration, sa persistance et sa réouverture sur mobile,

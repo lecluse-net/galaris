@@ -1,3 +1,8 @@
+import json
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+from uuid import uuid4
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +19,74 @@ from app.tools import (
 from app.tools import router as tool_router
 from app.tools.secrets import runtime_messenger_config
 from core.util import SECRET_MASK, get_encryption_service
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("provider", ["internal", "telegram", "matrix", "nextcloud_talk", "one_bot", "whatsapp"])
+async def test_reception_checks_only_existing_active_connections_for_the_provider(db, monkeypatch, provider):
+    from app.agent.models import Agent, Title
+    from app.connection import Connection
+    from app.messenger import facade, service
+    from app.tools import ToolModel
+    from core.params import runtime_settings
+
+    kinds = ["internal", "telegram", "matrix", "nextcloud_talk", "one_bot", "whatsapp"]
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", json.dumps(kinds))
+    service.register_messaging()
+    suffix = uuid4().hex
+    title = Title(label="Synthetic reception check", gender="X")
+    tools = {kind: ToolModel(code=f"reception-{kind}-{suffix}", label=f"Synthetic {kind}",
+        description="", connection_schema={}, messenger_config={"service": kind}) for kind in kinds}
+    db.add_all([title, *tools.values()])
+    await db.flush()
+    agents = [Agent(code=f"reception-{index}-{suffix}", title_id=title.id,
+        first_name="Synthetic", last_name=f"Receiver {index}", agent_driver="internal") for index in range(4)]
+    db.add_all(agents)
+    await db.flush()
+    selected = Connection(agent_id=agents[0].id, tool_id=tools[provider].id, active=True)
+    inactive = Connection(agent_id=agents[3].id, tool_id=tools[provider].id, active=False)
+    # Agent 1 has only other providers; agent 2 has no messaging connection at all.
+    others = [Connection(agent_id=agents[1].id, tool_id=tool.id, active=True)
+        for kind, tool in tools.items() if kind != provider]
+    db.add_all([selected, inactive, *others])
+    await db.flush()
+    builders = {}
+    for kind in kinds:
+        transport = SimpleNamespace(kind=kind, self_id="synthetic-bot", tool_id=tools[kind].id,
+            check_connection=AsyncMock(return_value="Synthetic reception available"), close=AsyncMock())
+        factory = facade.get_factory(kind)
+        assert factory is not None
+        builders[kind] = AsyncMock(return_value=transport)
+        monkeypatch.setattr(factory, "from_connection_id", builders[kind])
+
+    result = await service.check_configuration(provider)
+
+    assert result["provider"] == provider
+    assert result["ok"] is True
+    assert [(row["connection_id"], row["agent_id"], row["provider"]) for row in result["connections"]] == [
+        (selected.id, agents[0].id, provider)]
+    builders[provider].assert_awaited_once_with(selected.id)
+    for kind in kinds:
+        if kind != provider:
+            builders[kind].assert_not_awaited()
+        builders[kind].reset_mock()
+
+    selected.active = False
+    await db.flush()
+    assert await service.check_configuration(provider) == {"provider": provider, "ok": False, "connections": []}
+    for builder in builders.values():
+        builder.assert_not_awaited()
+
+    selected.active = True
+    await db.flush()
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", json.dumps([kind for kind in kinds if kind != provider]))
+    assert await service.check_configuration(provider) == {"provider": provider, "ok": False, "connections": []}
+    for builder in builders.values():
+        builder.assert_not_awaited()
+    # The existing aggregate API still checks every configured, enabled connection.
+    aggregate = await service.check_configuration()
+    assert aggregate["provider"] == "multi"
+    assert {row["connection_id"] for row in aggregate["connections"]} == {connection.id for connection in others}
 
 
 def _keys(rows: list[MessengerBridgeParam]) -> list[str]:

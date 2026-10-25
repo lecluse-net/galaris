@@ -1708,6 +1708,15 @@ after its WebAPK updates.
 
 ## Bridges: test each protocol adaptation once
 
+`app/messenger/tests/test_bridge_configuration.py` checks all six messaging providers with
+PostgreSQL: reception checks instantiate transports only for active connections to the
+requested bridge. Agents connected elsewhere or without connections, inactive connections
+and disabled platforms are not tested. The existing aggregate call remains covered.
+`core/authorize/tests/test_domain_authorization.py` checks HTTP scope and the required editing
+privilege. `messaging-network.spec.mjs` exercises provider selection, missing connections and
+late results after tab changes; the Telegram E2E confirms that an agent connected to Chat
+is not tested for Telegram without a Telegram connection.
+
 `app/conversation/tests/test_contact_authorization.py` covers external reception without a
 Galaris account into a paused round, identity details, native manager notification and the
 shared Permissions decision: consent, denial, duplicates, isolation, revocation and manager
@@ -1717,7 +1726,9 @@ expectations are replaced by the Conversation privileges already in effect.
 
 `front/browser-tests/messaging-network.spec.mjs` covers preconfigured Telegram Tool creation,
 the empty secret parameter, recovery from errors, reopening without duplicates, preservation
-of an incompatible existing Tool and button privileges. `conversation-control.spec.mjs`
+of an incompatible existing Tool and button privileges. Creation stays hidden while loading,
+after read errors or when any Tool already uses the Telegram bridge, regardless of its code;
+the check is repeated before creation. `conversation-control.spec.mjs`
 also checks remote identifiers outside pending authorization, for received messages and round
 snapshots. `e2e/specs/contact-authorization.spec.mjs` exercises actual creation from settings,
 persistence and reopening on mobile, alongside external reception and manager denial in Permissions.

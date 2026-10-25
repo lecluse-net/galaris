@@ -5,6 +5,13 @@
 `app.messenger` is Galaris's common language. Bridges own the external protocol,
 not the business workflow.
 
+In preferences, **Test reception** checks only active connections for the displayed bridge.
+The server builds no transport for an agent without a connection to that provider, for an
+inactive connection or for a disabled platform. When no matching connection exists, the UI
+reports that no test ran. `POST /messenger/configuration/test?provider=<bridge>` carries
+this scope; omitting the filter preserves aggregate checks of existing connections. Switching
+tabs clears the result and prevents a late response from appearing under another provider.
+
 An external human message without an existing contact permission is retained in a text round
 `PAUSED` for reply authorization. Its identity and available profile information are visible
 in activity monitoring. The manager receives the same durable request listed in

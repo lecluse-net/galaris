@@ -82,7 +82,7 @@
                 <SettingsFields :key="selectedBridge.kind" :fields="selectedBridge.fields" :columns="2" />
             </SettingsBlock>
 
-            <SettingsBlock :key="`guide-${selectedBridge.kind}`" :title="t('configuration.layout.setupGuide')" icon="help_outline" advanced>
+            <SettingsBlock :key="`guide-${selectedBridge.kind}`" :title="t('configuration.layout.setupGuide')" icon="help_outline" advanced default-opened>
                 <ol class="q-pl-lg q-mb-sm">
                     <li v-for="step in setupSteps" :key="step" class="q-mb-xs">{{ step }}</li>
                 </ol>
@@ -100,8 +100,8 @@
                         no-caps
                     />
                     <q-btn
-                        v-if="canConfigureTools"
-                        to="/tools"
+                        v-if="canConfigureConnections"
+                        to="/tools?tab=connections"
                         outline
                         color="primary"
                         icon="link"
@@ -132,7 +132,7 @@
                 class="q-mt-md"
             >
                 <div class="text-weight-medium">
-                    {{ testResult.ok ? t('configuration.testSuccess') : t('configuration.testNeedsAttention') }}
+                    {{ !testResult.connections.length ? t('configuration.messaging.testNotRun') : testResult.ok ? t('configuration.testSuccess') : t('configuration.testNeedsAttention') }}
                 </div>
                 <div v-if="!testResult.connections.length" class="text-body2 q-mt-xs">
                     {{ t('configuration.messaging.noConnections') }}
@@ -188,15 +188,22 @@ const $q = useQuasar()
 const paramsStore = useParamsStore()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.MESSAGING_CONFIG_EDIT))
-const canConfigureTools = computed(() => (
-    privilegeStore.hasPrivilege(privileges.TOOL_ACCESS)
-    || privilegeStore.hasPrivilege(privileges.TOOL_EDIT)
+const canConfigureConnections = computed(() => (
+    privilegeStore.hasPrivilege(privileges.CONNECTION_ACCESS)
+    || privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT)
 ))
 const selectedKind = ref(messagingBridgeSettings[0]?.kind ?? '')
 const enabledKinds = ref<string[]>([])
 const savingActivation = ref(false)
 const testing = ref(false)
 const testResult = ref<MessengerConfigurationCheck | null>(null)
+let testRequest = 0
+
+watch([selectedKind, canEdit], () => {
+    testRequest += 1
+    testResult.value = null
+    testing.value = false
+})
 
 const selectedBridge = computed(() => messagingBridgeSettings.find(item => item.kind === selectedKind.value))
 const setupSteps = computed(() => {
@@ -267,15 +274,20 @@ function providerLabel(kind: string): string {
 }
 
 async function runTest(): Promise<void> {
-    if (!canEdit.value) return
+    if (!canEdit.value || testing.value || !selectedKind.value) return
+    const request = ++testRequest
+    const provider = selectedKind.value
     testing.value = true
+    testResult.value = null
     try {
-        testResult.value = (await configurationService.testMessenger()).data
+        const result = (await configurationService.testMessenger(provider)).data
+        if (request === testRequest) testResult.value = result
     } catch {
+        if (request !== testRequest) return
         testResult.value = null
         $q.notify({ type: 'negative', message: t('configuration.testError') })
     } finally {
-        testing.value = false
+        if (request === testRequest) testing.value = false
     }
 }
 

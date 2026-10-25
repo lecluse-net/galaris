@@ -1,6 +1,7 @@
 <template>
     <section class="settings-block" :aria-label="title">
         <q-expansion-item v-if="advanced" :label="title" :caption="description" :icon="icon"
+            :default-opened="defaultOpened"
             header-class="settings-block__header" expand-icon="expand_more">
             <div class="settings-block__body"><slot /></div>
         </q-expansion-item>
@@ -18,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{ title: string; description?: string; icon?: string; advanced?: boolean }>()
+defineProps<{ title: string; description?: string; icon?: string; advanced?: boolean; defaultOpened?: boolean }>()
 </script>
 
 <style scoped>

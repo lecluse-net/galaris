@@ -31,9 +31,11 @@ async def list_messenger_bridges() -> list[MessengerBridgeInfo]:
 
 @router.post("/configuration/test", response_model=MessengerConfigurationCheck)
 @authorize(privileges=Privileges.MESSAGING_CONFIG_EDIT)
-async def test_messenger_configuration() -> MessengerConfigurationCheck:
+async def test_messenger_configuration(
+    provider: str | None = Query(default=None, min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_]*$"),
+) -> MessengerConfigurationCheck:
     """Validate active credentials and report inbound-listener health."""
-    return MessengerConfigurationCheck.model_validate(await check_configuration())
+    return MessengerConfigurationCheck.model_validate(await check_configuration(provider))
 
 
 @router.get("/users", response_model=list[MessengerUserSearchResult])

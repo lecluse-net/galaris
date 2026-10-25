@@ -11,6 +11,10 @@ the agent’s connection to that Tool and encrypted as `password` parameters. In
 values are stored in the Tool’s Messenger tab. The Tool code is unrestricted and does not determine
 the bridge.
 
+**Test reception** checks only active connections for the displayed messaging provider.
+Agents without a connection to that provider are not tested, even if they have a connection
+to another bridge. With no matching connection, the screen reports **No test run**.
+
 ## Testing from a local instance
 
 A local Galaris instance or one on a private network is sufficient for several bridges. Whether
@@ -46,15 +50,17 @@ also need suitable WebRTC connectivity, potentially through TURN.
 ### 1. Create and configure the bot
 
 1. Create the bot with [BotFather](https://t.me/BotFather) and retain its token.
-2. In **Configuration → Messaging → Telegram**, open the **Setup guide** and click
-   **Create Telegram Tool** (Tool editing rights required). The button prepares a Tool
-   with code `telegrem`, label `Telegram`, Messaging enabled with the `telegram` bridge,
+2. In **Configuration → Messaging → Telegram**, read the **Setup guide**, open by default for every messaging provider, and click
+   **Create Telegram Tool** (Tool editing rights required). This button is offered only
+   if no Tool already uses messaging through the `telegram` bridge, regardless of its code.
+   It prepares a Tool with code `telegram`, label `Telegram`, Messaging enabled with the `telegram` bridge,
    and an empty, required secret connection parameter `token` mapped to the bridge token.
-   An existing Tool with that code is preserved: its settings are checked and any
-   differences must be corrected in **Tools**.
+   If a Tool already uses this bridge, create connections on that Tool. If only the code
+   `telegram` is occupied by another Tool, review its settings in **Tools** before continuing.
 3. The same configuration can be entered manually in **Tools**.
 4. In **Tools → Connections**, create a connection to this Tool for each agent and
    paste the token supplied by BotFather. Use a separate bot for each agent.
+   The guide’s **Configure agent accounts** button opens this tab directly.
 5. Send a message to the bot from Telegram. Without an existing contact authorization, the
    message appears in **Monitor → Activity → Text conversations**, in a paused round.
    The manager receives a request to reply to this contact, also available in

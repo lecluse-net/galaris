@@ -28,6 +28,16 @@ async def owned_agent(user_id):
 
 
 @pytest.mark.asyncio
+async def test_messaging_reception_check_keeps_provider_scope_and_edit_privilege(client):
+    for grants, status in [(["MESSAGING_CONFIG_ACCESS"], 403), (["MESSAGING_CONFIG_EDIT"], 200)]:
+        headers, _ = await actor(grants)
+        response = await client.post('/api/messenger/configuration/test?provider=telegram', headers=headers)
+        assert response.status_code == status
+        if status == 200:
+            assert response.json() == {"provider": "telegram", "ok": False, "connections": []}
+
+
+@pytest.mark.asyncio
 async def test_memory_source_previews_keep_memory_rights_without_files_access(client):
     for code in ["MEMORY_ACCESS", "MEMORY_EDIT", "MEMORY_ADMIN", "FILE_ACCESS", "CONTACT_EDIT"]:
         headers, user_id = await actor([code])

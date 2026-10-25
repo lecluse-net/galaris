@@ -1830,9 +1830,9 @@ tests restent l’autorité sur le comportement.
 | POST | `/memory/search` | `app.memory` | `search_memory` | oui | `back/app/memory/router.py:322` |
 | GET | `/memory/temporal/defaults` | `app.memory` | `temporal_defaults` | oui | `back/app/memory/router.py:55` |
 | GET | `/messenger/bridges` | `app.messenger` | `list_messenger_bridges` | oui | `back/app/messenger/router.py:23` |
-| GET | `/messenger/channels` | `app.messenger` | `list_enabled_messenger_channels` | oui | `back/app/messenger/router.py:71` |
+| GET | `/messenger/channels` | `app.messenger` | `list_enabled_messenger_channels` | oui | `back/app/messenger/router.py:73` |
 | POST | `/messenger/configuration/test` | `app.messenger` | `test_messenger_configuration` | oui | `back/app/messenger/router.py:34` |
-| GET | `/messenger/users` | `app.messenger` | `search_messenger_users` | oui | `back/app/messenger/router.py:44` |
+| GET | `/messenger/users` | `app.messenger` | `search_messenger_users` | oui | `back/app/messenger/router.py:46` |
 | GET | `/metrics` | `app.process` | `read_metrics` | oui | `back/app/process/router.py:470` |
 | POST | `/multimedia/callback/{run_id}/{token}` | `app.multimedia` | `acknowledge_callback` | non | `back/app/multimedia/router.py:57` |
 | GET | `/multimedia/runs/{run_id}/deliveries` | `app.multimedia` | `list_deliveries` | oui | `back/app/multimedia/router.py:32` |
