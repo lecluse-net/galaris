@@ -4,49 +4,12 @@ import test from 'node:test'
 import {
   createTrickleIceSender,
   hangUpLocalFirst,
-  loadCallAudioPreferences,
   iceCandidatePayload,
   peerConfiguration,
   reconcileRealtimeCall,
-  saveCallAudioPreferences,
 } from './voiceCall.ts'
 
 globalThis.window ??= globalThis
-
-test('call volume and microphone mode survive reopening, including muted volume', t => {
-  const values = new Map()
-  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
-    getItem: key => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, value),
-  } })
-  t.after(() => {
-    if (original) Object.defineProperty(globalThis, 'localStorage', original)
-    else delete globalThis.localStorage
-  })
-  assert.deepEqual(loadCallAudioPreferences(), { volume: 100, handsFree: true })
-  saveCallAudioPreferences({ volume: 0, handsFree: false })
-  assert.deepEqual(loadCallAudioPreferences(), { volume: 0, handsFree: false })
-  saveCallAudioPreferences({ volume: 35, handsFree: true })
-  assert.deepEqual(loadCallAudioPreferences(), { volume: 35, handsFree: true })
-})
-
-test('corrupt or unavailable browser preferences cannot block a call or amplify its output', t => {
-  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-  const storage = { getItem: () => null, setItem: () => { throw new Error('Storage disabled') } }
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
-  t.after(() => {
-    if (original) Object.defineProperty(globalThis, 'localStorage', original)
-    else delete globalThis.localStorage
-  })
-  for (const value of ['broken', 'null', '[]', '{"volume":999,"handsFree":"false"}', '{"volume":-1}', '{"volume":"50"}']) {
-    storage.getItem = () => value
-    assert.deepEqual(loadCallAudioPreferences(), { volume: 100, handsFree: true })
-  }
-  storage.getItem = () => { throw new Error('Storage disabled') }
-  assert.deepEqual(loadCallAudioPreferences(), { volume: 100, handsFree: true })
-  assert.doesNotThrow(() => saveCallAudioPreferences({ volume: 35, handsFree: false }))
-})
 
 test('the browser peer receives every authenticated ICE server from the API', () => {
   assert.deepEqual(

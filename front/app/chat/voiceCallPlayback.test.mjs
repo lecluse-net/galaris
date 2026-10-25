@@ -12,13 +12,13 @@ const code = ts.transpileModule(compileScript(descriptor, { id: 'voice-playback'
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText
 
-async function setup(t, play = async () => {}, { android = true, resume } = {}) {
+async function setup(t, play = async () => {}, { android = true, resume, acquire, autoStart = true } = {}) {
   let connection, cleanup
   const events = []
   const contexts = []
   const captures = []
-  const preferences = new Map()
-  const track = { kind: 'audio', stop() {} }
+  const preferences = new Map([['galaris.chat.call-audio', '{"volume":0,"handsFree":false}']])
+  const track = { kind: 'audio', stopped: false, stop() { this.stopped = true } }
   class FakeStream {
     constructor(tracks = [track]) { this.tracks = tracks }
     getTracks() { return this.tracks }
@@ -36,7 +36,11 @@ async function setup(t, play = async () => {}, { android = true, resume } = {}) 
     localStorage: { getItem: key => preferences.get(key) ?? null, setItem: (key, value) => preferences.set(key, value) },
     navigator: {
       userAgent: android ? 'Mozilla/5.0 (Linux; Android 16; Synthetic Phone)' : 'Mozilla/5.0 (X11; Linux x86_64)',
-      mediaDevices: { getUserMedia: async constraints => { captures.push(constraints); return new FakeStream() } },
+      mediaDevices: { getUserMedia: async constraints => {
+        if (acquire) await acquire()
+        captures.push(constraints)
+        return new FakeStream()
+      } },
     },
     RTCPeerConnection: FakePeer,
     MediaStream: FakeStream,
@@ -44,9 +48,8 @@ async function setup(t, play = async () => {}, { android = true, resume } = {}) 
       state = 'suspended'
       destination = {}
       sources = []
-      gains = []
       resumes = 0
-      constructor() { contexts.push(this) }
+      constructor(options) { this.options = options; this.capturesAtCreation = captures.length; contexts.push(this) }
       async resume() {
         this.resumes++
         if (resume) await resume(this)
@@ -61,15 +64,6 @@ async function setup(t, play = async () => {}, { android = true, resume } = {}) 
         }
         this.sources.push(source)
         return source
-      }
-      createGain() {
-        const gain = {
-          gain: { value: 1 }, output: null,
-          connect(output) { this.output = output },
-          disconnect() { this.output = null },
-        }
-        this.gains.push(gain)
-        return gain
       }
       async close() { this.state = 'closed'; this.onstatechange?.() }
     },
@@ -104,12 +98,12 @@ async function setup(t, play = async () => {}, { android = true, resume } = {}) 
   const audio = vue.markRaw({ srcObject: null, muted: true, volume: 1, play, pause() {} })
   state.remoteAudio.value = audio
   t.after(() => { cleanup(); scope.stop() })
-  await state.start()
+  if (autoStart) await state.start()
   const remote = new FakeStream()
-  return { state, audio, events, remote, connection, track, contexts, captures, props }
+  return { state, audio, events, remote, get connection() { return connection }, track, contexts, captures, props }
 }
 
-test('Android calls unlock Web Audio from the starting tap and have only one audible output', async t => {
+test('Android calls retain one Web Audio output and a silent native consumer', async t => {
   const c = await setup(t, function () { assert.equal(this.muted, true, 'the native WebRTC output must stay silent') })
   assert.equal(c.contexts.length, 1, 'unlock before the remote track arrives')
   const context = c.contexts[0]
@@ -118,14 +112,7 @@ test('Android calls unlock Web Audio from the starting tap and have only one aud
   await new Promise(setImmediate)
   assert.equal(context.sources.length, 1)
   assert.equal(context.sources[0].mediaStream, c.remote)
-  assert.equal(context.sources[0].output, context.gains[0])
-  assert.equal(context.gains[0].output, context.destination)
-  c.state.playbackVolume.value = 25
-  await vue.nextTick()
-  assert.equal(context.gains[0].gain.value, 0.25)
-  c.state.playbackVolume.value = 0
-  await vue.nextTick()
-  assert.equal(context.gains[0].gain.value, 0, 'the output can be silenced independently of Android routing')
+  assert.equal(context.sources[0].output, context.destination)
   assert.equal(c.audio.srcObject, c.remote)
   assert.equal(c.audio.muted, true, 'no parallel native output at full volume')
   await c.state.playRemoteStream(c.remote)
@@ -133,6 +120,34 @@ test('Android calls unlock Web Audio from the starting tap and have only one aud
   assert.equal(c.state.playbackNeedsGesture.value, false)
   assert.equal(c.events.some(([name]) => name === 'error'), false)
 })
+
+test('Android Web Audio opens after microphone capture, ignoring obsolete media preferences', async t => {
+  const c = await setup(t)
+  assert.equal(c.contexts.length, 1)
+  assert.equal(c.contexts[0].capturesAtCreation, 1, 'microphone mode must be established before output opens')
+  assert.deepEqual(c.contexts[0].options, { latencyHint: 'interactive' })
+  await c.state.playRemoteStream(c.remote)
+  assert.equal(c.audio.srcObject, c.remote)
+  assert.equal(c.audio.muted, true, 'native WebRTC stays silent to preserve the Web Audio workaround')
+  assert.equal(c.audio.volume, 1)
+  assert.deepEqual(c.captures[0].audio, { autoGainControl: true, echoCancellation: true, noiseSuppression: true })
+})
+
+for (const cancel of [false, true]) {
+  test(`pending microphone permission cannot open a media-mode output (cancel=${cancel})`, async t => {
+    const permission = deferred()
+    const c = await setup(t, undefined, { acquire: () => permission.promise, autoStart: false })
+    const starting = c.state.start()
+    await vue.nextTick()
+    assert.equal(c.contexts.length, 0)
+    if (cancel) await c.state.stop()
+    permission.resolve()
+    await starting
+    assert.equal(c.contexts.length, cancel ? 0 : 1)
+    assert.equal(c.track.stopped, cancel)
+    if (!cancel) assert.equal(c.contexts[0].capturesAtCreation, 1)
+  })
+}
 
 test('other browsers retain native WebRTC playback', async t => {
   let played = 0
@@ -225,7 +240,6 @@ test('Android hangup disconnects output and a late resume cannot revive it', asy
   const playback = c.state.playRemoteStream(c.remote)
   await c.state.stop()
   assert.equal(source.output, null)
-  assert.equal(context.gains[0].output, null)
   assert.equal(context.state, 'closed')
   pending.reject(new DOMException('Output closed', 'AbortError'))
   await playback
@@ -237,13 +251,13 @@ test('Android hangup disconnects output and a late resume cannot revive it', asy
   assert.equal(c.contexts.length, 2, 'a new call opens a fresh output')
 })
 
-test('Android media capture disables every communication effect only when selected before the call', async t => {
+test('Android reopening retains communication processing and navigation closes the output', async t => {
   const c = await setup(t)
   assert.deepEqual(c.captures[0].audio, { autoGainControl: true, echoCancellation: true, noiseSuppression: true })
   await c.state.stop()
-  c.state.handsFree.value = false
   await c.state.start()
-  assert.deepEqual(c.captures[1].audio, { autoGainControl: false, echoCancellation: false, noiseSuppression: false })
+  assert.deepEqual(c.captures[1].audio, { autoGainControl: true, echoCancellation: true, noiseSuppression: true })
+  assert.equal(c.contexts[1].capturesAtCreation, 2)
   await c.state.playRemoteStream(c.remote)
   c.props.roomId = 'room-2'
   await vue.nextTick()

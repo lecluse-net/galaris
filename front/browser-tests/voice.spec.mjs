@@ -218,7 +218,7 @@ test('a rejected extra ICE route does not hang up an established audio call', as
 test.describe('Android PWA audio output', () => {
   test.use({ userAgent: 'Mozilla/5.0 (Linux; Android 16; Synthetic Phone) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36', viewport: { width: 390, height: 844 } })
 
-  test('remote speech reaches Web Audio and releases its output on hangup', async ({ page }) => {
+  test('remote speech reaches Web Audio opened after capture and releases its output on hangup', async ({ page }) => {
     await page.route('**/api/chat/rooms/room-a/calls', async route => {
       const answer = await page.evaluate(async offer => {
         const remote = new RTCPeerConnection({ iceServers: [] })
@@ -264,13 +264,13 @@ test.describe('Android PWA audio output', () => {
           const analyser = this.createAnalyser()
           const connect = AudioNode.prototype.connect
           const context = this
-          const output = { context, analyser, connected: false }
+          const output = { context, analyser, connected: false, capturedBeforeOutput: window.voiceTracks.some(track => track.readyState === 'live') }
           window.callOutputs.push(output)
           // Observe samples sent to the speaker, using real browser audio nodes.
-          const createGain = this.createGain.bind(this)
-          this.createGain = () => {
-            const gain = createGain()
-            gain.connect = function (destination, ...ports) {
+          const createSource = this.createMediaStreamSource.bind(this)
+          this.createMediaStreamSource = stream => {
+            const source = createSource(stream)
+            source.connect = function (destination, ...ports) {
               const result = connect.call(this, destination, ...ports)
               if (destination === context.destination) {
                 output.connected = true
@@ -278,7 +278,7 @@ test.describe('Android PWA audio output', () => {
               }
               return result
             }
-            return gain
+            return source
           }
         }
       }
@@ -291,40 +291,25 @@ test.describe('Android PWA audio output', () => {
       return Math.max(...samples.map(Math.abs))
     })
     try {
-      await page.getByRole('button', { name: 'Call audio settings', exact: true }).click()
-      const handsFree = page.getByRole('switch', { name: 'Hands-free microphone and echo reduction', exact: true })
-      await handsFree.click()
-      await expect(handsFree).not.toBeChecked()
-      await page.keyboard.press('Escape')
       await page.getByRole('button', { name: 'Call', exact: true }).click()
       await expect.poll(() => page.evaluate(() => window.remoteTestPeer?.connectionState)).toBe('connected')
-      await expect.poll(() => page.evaluate(() => window.callOutputs.map(output => ({ state: output.context.state, connected: output.connected })))).toEqual([{ state: 'running', connected: true }])
+      await expect.poll(() => page.evaluate(() => window.callOutputs.map(output => ({ state: output.context.state, connected: output.connected, capturedBeforeOutput: output.capturedBeforeOutput })))).toEqual([{ state: 'running', connected: true, capturedBeforeOutput: true }])
       await expect.poll(outputLevel).toBeGreaterThan(0.01)
       expect(await page.locator('audio').evaluate(audio => audio.muted)).toBe(true)
       expect(await page.evaluate(() => window.callOutputs.length)).toBe(1)
       expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'error'))).toEqual([])
-      expect(await page.evaluate(() => window.voiceTracks[0].getSettings())).toMatchObject({ echoCancellation: false, autoGainControl: false, noiseSuppression: false })
-      await page.getByRole('button', { name: 'Call audio settings', exact: true }).click()
-      await expect(handsFree).toBeDisabled()
-      const volume = page.getByRole('slider', { name: 'Agent volume', exact: true })
-      await volume.focus()
-      await page.keyboard.press('Home')
-      await expect.poll(outputLevel).toBeLessThan(0.00001)
-      await page.keyboard.press('End')
-      await expect.poll(outputLevel).toBeGreaterThan(0.01)
+      expect(await page.evaluate(() => window.voiceTracks[0].getSettings())).toMatchObject({ echoCancellation: true, autoGainControl: true, noiseSuppression: true })
+      await expect(page.getByRole('slider')).toHaveCount(0)
       await page.screenshot({ path: '/artifacts/android-call-audio-mobile.png' })
-      await page.keyboard.press('Home')
-      await expect.poll(outputLevel).toBeLessThan(0.00001)
-      await page.keyboard.press('Escape')
-      await page.getByRole('button', { name: /hang up/i }).click()
+      await page.getByRole('button', { name: /hang up/i }).focus()
+      await page.keyboard.press('Enter')
       await expect.poll(() => stopped(page)).toBe(true)
       await expect.poll(() => page.evaluate(() => window.callOutputs.every(output => output.context.state === 'closed'))).toBe(true)
       await page.evaluate(() => window.testApp.mount({
         component: 'app/chat/components/VoiceCallPanel.vue', props: { roomId: 'room-a', language: 'en', mobile: true },
       }))
-      await page.getByRole('button', { name: 'Call audio settings', exact: true }).click()
-      await expect(page.getByRole('slider', { name: 'Agent volume', exact: true })).toHaveAttribute('aria-valuenow', '0')
-      await expect(handsFree).not.toBeChecked()
+      await expect(page.getByRole('button', { name: 'Call', exact: true })).toBeVisible()
+      await expect(page.getByRole('slider')).toHaveCount(0)
     } finally {
       await page.evaluate(async () => {
         window.remoteTestPeer?.close()

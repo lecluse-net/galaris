@@ -417,15 +417,12 @@ publiables du round. Archiver une conversation la retire de la liste courante sa
 historique ; vous pouvez la retrouver dans les archives. La création de groupes et la gestion
 des participants ne sont pas proposées dans la messagerie interne.
 
-Sur Android, y compris dans la PWA installée, le bouton **Réglages audio de l’appel**
-(haut-parleur) permet de régler le **Volume de l’agent** pendant la conversation, jusqu’au
-silence. Pour privilégier la qualité Bluetooth et le volume multimédia en voiture,
-désactivez **Micro mains libres et réduction d’écho** avant de démarrer l’appel.
-Le navigateur peut alors utiliser le micro du téléphone ; sur haut-parleur, un écho peut
-devenir audible. Le mode mains libres reste activé par défaut. Ces réglages sont mémorisés
-dans ce navigateur lorsque le stockage local est autorisé. Si la lecture est bloquée,
-touchez **Activer le son**. Le profil Bluetooth et le comportement des autres applications
-audio dépendent du téléphone et du navigateur ; vérifiez-les sur votre équipement.
+Sur Android, y compris dans la PWA installée, utilisez les boutons physiques du téléphone
+pour régler le volume système pendant l’appel. Galaris conserve la lecture Web Audio et
+la réduction d’écho ; la sortie est ouverte après l’activation du microphone pour suivre
+le mode conversation d’Android. Il n’y a plus de réglage de volume dans Galaris et les anciens
+réglages locaux ne sont plus appliqués. Si la lecture est bloquée, touchez **Activer le son**.
+Le routage effectif du volume et le profil Bluetooth restent gérés par Android et le navigateur.
 
 Changer de conversation met son adresse à jour dans le navigateur. Les boutons **Précédent**
 et **Suivant** retrouvent les conversations visitées ; un retour avant la première ouverture

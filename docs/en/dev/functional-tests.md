@@ -824,12 +824,14 @@ exercises hangup confirmation, retained content during cleanup, retries and late
 after navigation. Audio transports and component APIs are synthetic; these scenarios
 do not certify a real two-process audio call with an actual restart.
 
-`front/app/chat/voiceCallPlayback.test.mjs` covers Android Web Audio output and gain,
-Chromium's required silent native WebRTC consumer, gesture unlocking, late resumes,
-teardown and microphone processing selection before calling. The Android scenario in
+`front/app/chat/voiceCallPlayback.test.mjs` covers Android Web Audio output opening after
+microphone acquisition, Chromium's required silent native WebRTC consumer, gesture unlocking,
+late resumes, teardown and communication microphone processing. Pending or cancelled permission
+must not open output prematurely. Previous local volume and media-mode preferences are ignored;
+their persistence tests were removed with that retired contract. The Android scenario in
 `front/browser-tests/voice.spec.mjs` sends a synthetic tone between two real WebRTC peers
-in Chromium, measures samples sent to the output, and checks keyboard mute/resume and
-release on hangup. An Android user agent selects the application path; this Linux test
+in Chromium, measures samples sent to the output, and checks capture before output, absence
+of an internal volume slider and release on keyboard hangup. An Android user agent selects the application path; this Linux test
 does not certify physical Android volume buttons, Bluetooth profiles or PWA audio focus
 on a phone.
 
