@@ -3161,8 +3161,8 @@ async def list_topic_linked_memories(
             title=item.title,
             excerpt=" ".join(item.search_text[:800].split()),
             owner_agent_id=item.owner_agent_id,
-            visibility=item.visibility,
-            node_kind=item.node_kind,
+            visibility=cast(Any, item.visibility),
+            node_kind=cast(Any, item.node_kind),
             filename=item.filename,
             created_at=item.created_at,
         )

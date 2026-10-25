@@ -333,9 +333,10 @@ Pour commencer, enregistrer le code dans la définition de l'activité et dans l
 du run. Les nouveaux lancements utilisent la dernière sauvegarde ; une édition ne change
 pas un run actif. Un sous-processus fige son propre contenu à son admission. Ne pas ajouter
 de sélecteur de version métier.
-Les programmes documentaires réutilisables restent une extension distincte décrite dans
-[leur plan](programmes-documentaires-json.md), pas un prérequis de l'activité Code. Son ancien
-choix JavaScript et son modèle d'enregistrement devront être réalignés avant mutualisation.
+Les [petites applications créées par les agents](programmes-documentaires-json.md)
+utilisent le runtime HTML/JavaScript des Documents et des Datasets indépendants.
+Leur parcours navigateur ne fournit pas le runtime serveur de l'activité Code et
+ne le prend pas comme prérequis.
 Une fonction technique autonome ne devient pas un processus métier.
 
 ### Intermédiaire de confiance pour MCP et REST

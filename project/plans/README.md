@@ -35,12 +35,12 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 | [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Rapports d'étalonnage humain et incertitude par cas réalisés (0230), répétabilité du juge sur sorties fixes par API et interface (0236) ; restent expériences réelles, campagnes annotées, séparation des variances, comparabilité/tendances, gardes et portabilité ; campagnes des modèles de décision et mocks d'applications Process. Le socle de campagnes Process avec Datasets natifs et runs réels est livré (0225). |
 | [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `partial` | Admission partagée, configuration et contexte typé réalisés (0181) ; rotation Task/run/Process/source serveur/agent/demandeur couverte. Restent provenance exhaustive en amont, priorités par opération, transports non tracés, coordination multi-backend et qualification de charge/fournisseur. |
 | [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Accès officiel Suno, références/composition/annulation distante et extensions locales ; recettes des comptes dans le guide. |
+| [programmes-documentaires-json.md](programmes-documentaires-json.md) | `partial` | Objectif précisé : petites applications créées par les agents et utilisables dans Galaris. HTML/JavaScript et Datasets indépendants réalisés ; restent le parcours d'autorisation des nouvelles applications avec données et la qualification création/utilisation/amélioration. Catalogue de programmes et moteur serveur retirés des prérequis. |
 
 ## Conceptions
 
 | Plan | Statut | Portée |
 |---|---|---|
-| [programmes-documentaires-json.md](programmes-documentaires-json.md) | `design` | Programmes dans les Documents, `document_exec` avec nom personnel et entrée/sortie JSON, dernier contenu sauvegardé au démarrage, moteur isolé, suivi Process et amélioration autonome. |
 | [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Comptabilité par appel, bilan Task et coût par réussite du benchmark implémentés (0238). Restent pilote petit/gros exécuteur, vérification métier indépendante, attente fournisseur, parcours persistant, puis supervision et escalade expérimentales ; aucun gain de cette répartition démontré. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundle, SDK/TCK, activation par génération, frontend précompilé, permissions, conservation SQL, rollback et store signé. |
 | [controle-distant-vnc.md](controle-distant-vnc.md) | `design` | Connexion VNC, captures MCP, simulation clavier/souris, sessions isolées et reprise humaine ; client RFB et compatibilité OS/serveurs à qualifier. |
@@ -49,16 +49,16 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 ## Plans retirés et suivi conservé
 
+- **Skills personnels des agents** : fonctionnalité réalisée et plan retiré le 25 octobre 2026.
+  Contrat conservé dans [0222](../decisions/0222-personal-skill-package-boundary.md),
+  parcours dans les guides utilisateur [FR](../../docs/fr/user/skills.md) et
+  [EN](../../docs/en/user/skills.md), garanties dans les tests existants.
+
 - **Navigation File Share par harnais** : expérience terminée sur 120 exécutions ;
   gain de coût du répertoire, mais non-dégradation de réussite non établie. Piste FUSE
   arrêtée dans [0237](../decisions/0237-file-share-navigation-experiment.md), preuves et
   limites dans l'[audit](../audits/2026-10-25-file-share-navigation.md). Le plan est
   retiré des travaux actifs ; sa conception conditionnelle reste dans l'historique Git.
-
-- **Skills personnels des agents** : fonctionnalité réalisée et plan retiré le 25 octobre 2026.
-  Contrat conservé dans [0222](../decisions/0222-personal-skill-package-boundary.md),
-  parcours dans les guides utilisateur [FR](../../docs/fr/user/skills.md) et
-  [EN](../../docs/en/user/skills.md), garanties dans les tests existants.
 
 - **Analyse documentaire unifiée** : préparation commune, Chat/Responses, reprise et
   cache autorisé réalisés dans [0149](../decisions/0149-transient-document-preparation.md)

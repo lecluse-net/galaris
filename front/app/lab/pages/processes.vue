@@ -1,32 +1,34 @@
 <template>
-  <q-page class="q-pa-md q-gutter-y-md">
+  <q-page class="q-pa-md">
     <PageHeader icon="science" :title="t('processLab.title')" :description="t('processLab.description')" />
-    <q-banner v-if="error" role="alert">{{ error }}</q-banner>
-    <template v-if="canEdit">
-      <q-input v-model="agentId" type="number" outlined :label="t('nativeProcesses.agent')" />
-      <q-input v-model="code" outlined :label="t('nativeProcesses.code')" />
-      <q-input v-model="title" outlined :label="t('nativeProcesses.titleField')" />
-      <CodeEditor v-model="cases" language="json" :label="t('processLab.cases')" />
-      <q-btn outline :loading="busy" :label="t('processLab.createDataset')" @click="saveDataset" />
-      <q-expansion-item icon="auto_awesome" :label="t('processLab.generate')">
-        <q-input v-model="instructions" outlined type="textarea" :label="t('processLab.instructions')" />
-        <q-input v-model.number="count" outlined type="number" min="1" max="20" :label="t('processLab.count')" />
-        <q-btn outline :label="t('processLab.generate')" :loading="busy" @click="generate" />
-      </q-expansion-item>
-      <q-input v-model="dataset" outlined :label="t('processLab.dataset')" />
-      <q-banner>{{ t('processLab.notice') }}</q-banner>
-      <q-btn color="primary" icon="play_arrow" :label="t('processLab.start')" :loading="busy" @click="start" />
-    </template>
-    <div class="row q-col-gutter-sm"><q-input v-model="campaignId" class="col" outlined :label="t('processLab.campaignId')" /><q-btn flat icon="search" :label="t('processLab.open')" @click="open" /></div>
-    <template v-if="campaign">
-      <div class="row items-center"><div class="text-h6">{{ campaign.title }}</div><q-badge class="q-ml-md">{{ campaign.status }}</q-badge><q-space />
-        <q-btn v-if="canEdit && !terminal" outline icon="stop" :label="t('nativeProcesses.cancel')" @click="cancel" /></div>
-      <q-table :rows="campaign.items" :columns="columns" row-key="id" v-model:pagination="pagination" :rows-per-page-options="[10, 20, 50, 100, 500]" @request="request">
-        <template #body-cell-run="scope"><q-td :props="scope"><q-btn v-if="scope.row.run_id" flat :label="scope.row.run_id" :to="`/process/internal/run/${scope.row.run_id}`" /></q-td></template>
-        <template #body-cell-evidence="scope"><q-td :props="scope"><q-btn flat icon="visibility" :label="t('processLab.evidence')" @click="selected = scope.row.evidence" /></q-td></template>
-      </q-table>
-      <CodeEditor v-if="selected" :model-value="JSON.stringify(selected, null, 2)" language="json" readonly :label="t('processLab.evidence')" />
-    </template>
+    <div class="q-gutter-y-md">
+      <q-banner v-if="error" role="alert">{{ error }}</q-banner>
+      <template v-if="canEdit">
+        <q-input v-model="agentId" type="number" outlined :label="t('nativeProcesses.agent')" />
+        <q-input v-model="code" outlined :label="t('nativeProcesses.code')" />
+        <q-input v-model="title" outlined :label="t('nativeProcesses.titleField')" />
+        <CodeEditor v-model="cases" language="json" :label="t('processLab.cases')" />
+        <q-btn outline :loading="busy" :label="t('processLab.createDataset')" @click="saveDataset" />
+        <q-expansion-item icon="auto_awesome" :label="t('processLab.generate')">
+          <q-input v-model="instructions" outlined type="textarea" :label="t('processLab.instructions')" />
+          <q-input v-model.number="count" outlined type="number" min="1" max="20" :label="t('processLab.count')" />
+          <q-btn outline :label="t('processLab.generate')" :loading="busy" @click="generate" />
+        </q-expansion-item>
+        <q-input v-model="dataset" outlined :label="t('processLab.dataset')" />
+        <q-banner>{{ t('processLab.notice') }}</q-banner>
+        <q-btn color="primary" icon="play_arrow" :label="t('processLab.start')" :loading="busy" @click="start" />
+      </template>
+      <div class="row q-col-gutter-sm"><q-input v-model="campaignId" class="col" outlined :label="t('processLab.campaignId')" /><q-btn flat icon="search" :label="t('processLab.open')" @click="open" /></div>
+      <template v-if="campaign">
+        <div class="row items-center"><div class="text-h6">{{ campaign.title }}</div><q-badge class="q-ml-md">{{ campaign.status }}</q-badge><q-space />
+          <q-btn v-if="canEdit && !terminal" outline icon="stop" :label="t('nativeProcesses.cancel')" @click="cancel" /></div>
+        <q-table :rows="campaign.items" :columns="columns" row-key="id" v-model:pagination="pagination" :rows-per-page-options="[10, 20, 50, 100, 500]" @request="request">
+          <template #body-cell-run="scope"><q-td :props="scope"><q-btn v-if="scope.row.run_id" flat :label="scope.row.run_id" :to="`/process/internal/run/${scope.row.run_id}`" /></q-td></template>
+          <template #body-cell-evidence="scope"><q-td :props="scope"><q-btn flat icon="visibility" :label="t('processLab.evidence')" @click="selected = scope.row.evidence" /></q-td></template>
+        </q-table>
+        <CodeEditor v-if="selected" :model-value="JSON.stringify(selected, null, 2)" language="json" readonly :label="t('processLab.evidence')" />
+      </template>
+    </div>
   </q-page>
 </template>
 <script setup lang="ts">
