@@ -11,6 +11,28 @@ celles du dernier aperçu approuvé, complétées par le gris neutre ; elles rem
 propositions précédentes.
 La [décision 0081](../../../project/decisions/0081-solaire-color-reference.md) acte leur adoption.
 
+Les diagrammes de processus internes font exception pour leur dessin : ils reprennent la
+charte du SVG de référence « 01 2026-09-23 schéma processus révision » (couloirs ardoise,
+cartes gris bleuté `#F1F5F9` / `#94A3B8`, ambre `#FEF3C7` / `#D97706` et vert profond
+`#DDF3EF` / `#0F766E`). Ces valeurs sont centralisées dans
+`front/app/process/processDiagram.css`, partagées avec les miniatures et l'aperçu de déplacement.
+Les commandes, événements Début/Fin et états d'exécution restent Solaire. Le thème clair
+reproduit les fonds du SVG ; le thème sombre adapte ces familles avec des cartes distinctes
+des couloirs. Cette exception ne crée pas de nouveaux accents pour le reste de l'application.
+Les lignes alternent dès la première entre les deux fonds de couloir ; la ligne système
+ne reçoit pas de fond particulier.
+
+| Surface du diagramme | Fond clair de référence | Fond sombre adapté |
+|---|---|---|
+| Couloir | `#FBFCFD` | `#151C26` |
+| Couloir alterné | `#F6F8FB` | `#1B2431` |
+| Carte gris bleuté | `#F1F5F9` | `#283547` |
+| Carte ambre | `#FEF3C7` | `#463914` |
+| Carte vert profond | `#DDF3EF` | `#153D39` |
+
+Les contours gris et ambre conservent `#94A3B8` et `#D97706` ; le contour vert
+`#0F766E` devient `#4BA99B` en sombre. Les traits SVG conservent leurs épaisseurs fractionnaires.
+
 ## Valeurs exactes
 
 | Clé stable | Couleur | Accent vif | Fond clair | Fond sombre |

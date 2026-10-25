@@ -1,0 +1,71 @@
+/* Diagram-specific charter from refs/01 2026-09-23 schéma processus révision.svg.
+   Application controls and execution statuses continue to use Solaire. */
+.process-diagram-theme {
+  --diagram-surface: #FFFFFF;
+  --diagram-text: #0F172A;
+  --diagram-muted: #64748B;
+  --diagram-line: #475569;
+  --diagram-separator: #E2E8F0;
+  --diagram-lane: #FBFCFD;
+  --diagram-lane-alt: #F6F8FB;
+  --diagram-actor: #334155;
+  --diagram-actor-alt: #3F4B5E;
+  --diagram-actor-system: #1E293B;
+  --diagram-actor-text: #FFFFFF;
+  --diagram-actor-muted: #CBD5E1;
+  --diagram-gray-fill: #F1F5F9;
+  --diagram-gray-border: #94A3B8;
+  --diagram-yellow-fill: #FEF3C7;
+  --diagram-yellow-border: #D97706;
+  --diagram-green-fill: #DDF3EF;
+  --diagram-green-border: #0F766E;
+  --diagram-blue-fill: var(--solaire-blue-light);
+  --diagram-blue-border: var(--solaire-blue-accent);
+  --diagram-red-fill: var(--solaire-red-light);
+  --diagram-red-border: var(--solaire-red-accent);
+  color: var(--diagram-text);
+  font-family: 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
+}
+
+.body--dark .process-diagram-theme {
+  --diagram-surface: #10151D;
+  --diagram-text: #EEEEF0;
+  --diagram-muted: #CBD5E1;
+  --diagram-line: #CBD5E1;
+  --diagram-separator: #354459;
+  --diagram-lane: #151C26;
+  --diagram-lane-alt: #1B2431;
+  --diagram-actor: #29384B;
+  --diagram-actor-alt: #334155;
+  --diagram-actor-system: #1E293B;
+  --diagram-gray-fill: #283547;
+  --diagram-yellow-fill: #463914;
+  --diagram-green-fill: #153D39;
+  --diagram-green-border: #4BA99B;
+  --diagram-blue-fill: var(--solaire-blue-dark);
+  --diagram-red-fill: var(--solaire-red-dark);
+}
+
+.process-diagram-node {
+  --node-accent: var(--diagram-green-border);
+  --node-fill: var(--diagram-green-fill);
+  --node-border-width: 2.2px;
+}
+.process-diagram-node.task {
+  --node-accent: var(--diagram-gray-border);
+  --node-fill: var(--diagram-gray-fill);
+  --node-border-width: 1.5px;
+}
+.process-diagram-node:is(.human_task, .for, .while, .if, .parallel) {
+  --node-accent: var(--diagram-yellow-border);
+  --node-fill: var(--diagram-yellow-fill);
+  --node-border-width: 2px;
+}
+.process-diagram-node.start {
+  --node-accent: var(--diagram-blue-border);
+  --node-fill: var(--diagram-blue-fill);
+}
+.process-diagram-node.end {
+  --node-accent: var(--diagram-red-border);
+  --node-fill: var(--diagram-red-fill);
+}

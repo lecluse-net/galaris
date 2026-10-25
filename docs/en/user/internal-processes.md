@@ -2,6 +2,12 @@
 
 # Internal business processes
 
+Diagrams and their thumbnails share the same styling: slate actor headers, alternating
+light lanes and blue-gray, amber or deep green cards according to activity type.
+Run tracking retains distinct status badges, and diagrams adapt to the dark theme,
+with lane backgrounds distinct from cards. True/False branches use labels without
+backgrounds, offset from connections. An IF displays its custom title when provided.
+
 In run details, files offer **Rename** when you have Process control rights. This changes
 their display and download name without changing their content, URI, variables or run state.
 

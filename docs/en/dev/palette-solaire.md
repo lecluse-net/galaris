@@ -10,6 +10,28 @@ The palette contains exactly **11 colors and 33 shades**. The values below match
 approved preview, with neutral gray added, and supersede earlier proposals.
 [Decision 0081](../../../project/decisions/0081-solaire-color-reference.md) records their adoption.
 
+Internal process diagrams use a drawing-specific exception: they follow the reference SVG
+“01 2026-09-23 schéma processus révision” (slate lanes, blue-gray cards
+`#F1F5F9` / `#94A3B8`, amber `#FEF3C7` / `#D97706` and deep green
+`#DDF3EF` / `#0F766E`). These values are centralized in
+`front/app/process/processDiagram.css`, shared with thumbnails and drag previews.
+Controls, Start/End events and execution states retain Solaire colors. The light theme
+reproduces the SVG backgrounds; the dark theme adapts these families with cards distinct
+from lanes. This exception adds no accents to the rest of the application.
+Rows alternate between the two lane backgrounds from the first row onward; the system
+lane has no separate background.
+
+| Diagram surface | Reference light background | Adapted dark background |
+|---|---|---|
+| Lane | `#FBFCFD` | `#151C26` |
+| Alternating lane | `#F6F8FB` | `#1B2431` |
+| Blue-gray card | `#F1F5F9` | `#283547` |
+| Amber card | `#FEF3C7` | `#463914` |
+| Deep green card | `#DDF3EF` | `#153D39` |
+
+Gray and amber outlines retain `#94A3B8` and `#D97706`; the green outline
+`#0F766E` becomes `#4BA99B` in dark mode. SVG strokes retain their fractional widths.
+
 ## Exact values
 
 | Stable key | Color | Vivid accent | Light background | Dark background |

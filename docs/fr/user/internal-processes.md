@@ -2,6 +2,12 @@
 
 # Processus métier internes
 
+Les diagrammes et leurs miniatures reprennent la même charte : en-têtes d'acteurs ardoise,
+couloirs clairs alternés et cartes gris bleuté, ambre ou vert profond selon le type d'activité.
+Le suivi conserve ses badges d'état distincts et les diagrammes s'adaptent au thème sombre,
+avec des fonds de couloirs distincts des cartes. Les branches True/False sont indiquées sans
+fond, à l'écart des traits. Un IF affiche son titre personnalisé s'il en possède un.
+
 Dans le suivi d’une exécution, les fichiers proposent **Renommer** si vous avez les droits
 de contrôle du processus. Cette action change leur nom affiché et téléchargé sans modifier
 leur contenu, leur URI, les variables ni l’état de l’exécution.

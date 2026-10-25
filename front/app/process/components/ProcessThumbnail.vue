@@ -1,9 +1,9 @@
 <template>
-  <div ref="root" class="process-thumbnail" :aria-label="title" role="img">
+  <div ref="root" class="process-thumbnail process-diagram-theme" :aria-label="title" role="img">
     <svg v-if="preview" :viewBox="bounds" aria-hidden="true">
       <line v-for="flow in edges" :key="flow.id" :x1="flow.x1" :y1="flow.y1" :x2="flow.x2" :y2="flow.y2" class="edge" />
       <g v-for="node in graph?.nodes" :key="node.id" :transform="`translate(${node.x},${node.y})`">
-        <rect width="180" height="72" :rx="['start', 'end'].includes(node.kind) ? 36 : 10" class="node" />
+        <rect width="180" height="72" :rx="['start', 'end'].includes(node.kind) ? 36 : 10" class="node process-diagram-node" :class="node.kind" />
         <text x="90" y="42" text-anchor="middle">{{ node.title.slice(0, 24) }}</text>
       </g>
     </svg>
@@ -12,6 +12,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import '../processDiagram.css'
 import { computed, onBeforeUnmount, onMounted, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { queuePreview } from '@/core/util'
@@ -52,12 +53,10 @@ onMounted(() => {
 onBeforeUnmount(() => { request?.abort(); observer?.disconnect() })
 </script>
 <style scoped>
-.process-thumbnail { position: relative; width: 100%; height: 100%; min-height: 86px; display: grid; place-items: center; }
+.process-thumbnail { position: relative; width: 100%; height: 100%; min-height: 86px; display: grid; place-items: center; background: var(--diagram-lane); }
 svg { width: 100%; height: 100%; }
-.edge { stroke: var(--solaire-gray-accent); stroke-width: 3; }
-.node { fill: var(--solaire-blue-light); stroke: var(--solaire-blue-accent); stroke-width: 2; }
-text { fill: #292C30; font: 16px sans-serif; }
-.body--dark .node { fill: var(--solaire-blue-dark); }
-.body--dark text { fill: #EEEEF0; }
+.edge { stroke: var(--diagram-line); stroke-width: 1.8; }
+.node { fill: var(--node-fill); stroke: var(--node-accent); stroke-width: var(--node-border-width); }
+text { fill: var(--diagram-text); font-size: 15px; font-weight: 700; }
 .process-thumbnail-run { position: absolute; bottom: 4px; right: 4px; }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <section class="diagram-editor" :class="{ fullscreen: isFullscreen, readonly }" :aria-label="t('nativeProcesses.diagram')">
+  <section class="diagram-editor process-diagram-theme" :class="{ fullscreen: isFullscreen, readonly }" :aria-label="t('nativeProcesses.diagram')">
     <div class="diagram-toolbar">
       <div v-if="showGuide || $slots['toolbar-leading']" class="diagram-toolbar-context">
         <slot name="toolbar-leading" />
@@ -46,19 +46,20 @@
             </g>
             <path v-if="linkDrag?.moved" class="flow-line connection-preview" :d="connectionPreviewPath" :marker-end="`url(#${arrowId})`" />
           </svg>
-          <button v-for="flow in modelValue.flows" :key="flow.id" class="flow-label" :class="{ conditional: flow.condition && !modelValue.nodes.find(node => node.id === flow.source)?.config.mode, selected: selectedFlow === flow.id }"
-            :style="{ left: `${flowMidpoint(flow).x}px`, top: `${flowMidpoint(flow).y}px` }" :aria-label="t('nativeProcesses.flow', { source: flow.source, target: flow.target })" @click="emit('flow', flow.id)">
-            {{ modelValue.nodes.find(node => node.id === flow.source)?.config.mode ? t(flow.condition === null ? 'nativeProcesses.falseBranch' : 'nativeProcesses.trueBranch') : flow.condition || t('nativeProcesses.editFlow') }}
+          <button v-for="flow in modelValue.flows" :key="flow.id" class="flow-label" :class="{ conditional: flow.condition || isBinaryFlow(flow), selected: selectedFlow === flow.id }"
+            :style="flowLabelStyles[flow.id]" :aria-label="t('nativeProcesses.flow', { source: flow.source, target: flow.target })" @click="emit('flow', flow.id)">
+            {{ flowLabel(flow) }}
             <q-menu v-if="selectedFlow === flow.id && $slots.inspector" :model-value="true" no-parent-event anchor="bottom middle" self="top middle" :offset="[0, 12]"
               class="process-context-form" max-height="min(420px, 60vh)" role="dialog" :aria-label="t('nativeProcesses.flowSettings')"
               @update:model-value="value => { if (!value) emit('dismiss', 'flow', flow.id) }">
               <slot name="inspector" />
             </q-menu>
           </button>
-          <div v-for="node in modelValue.nodes" :key="node.id" class="node-wrap" :class="[node.kind, statusClass(node), { selected: selected === node.id, dragging: drag?.id === node.id && drag.moved, 'invalid-drop': drag?.id === node.id && drag.moved && !dropTarget?.allowed }]"
+          <div v-for="node in modelValue.nodes" :key="node.id" class="node-wrap process-diagram-node" :class="[node.kind, statusClass(node), { selected: selected === node.id, dragging: drag?.id === node.id && drag.moved, 'invalid-drop': drag?.id === node.id && drag.moved && !dropTarget?.allowed }]"
             :data-process-node="node.id" :style="{ left: `${position(node).x}px`, top: `${position(node).y}px`, width: `${nodeWidth(node)}px` }">
             <button class="node-card" :class="{ 'connect-target': connecting && canConnect(node) }" :aria-label="`${node.title || t('nativeProcesses.kinds.' + node.kind)} · ${node.id}`" :aria-pressed="selected === node.id" :aria-current="node.kind !== 'start' && ['running', 'waiting'].includes(statuses[node.id] ?? '') ? 'step' : undefined"
               @pointerdown="begin($event, node.id)" @lostpointercapture="cancelDrag" @keydown="key($event, node.id)" @click="choose(node.id)">
+              <ProcessNodeFrame :radius="isEvent(node) ? 32 : isGateway(node) ? 0 : 10" />
               <span class="node-symbol"><q-icon :name="nodeIcons[node.kind]" :size="isEvent(node) ? '28px' : isGateway(node) ? '22px' : '14px'" /></span>
               <span v-if="!isEvent(node) && !isGateway(node)" class="node-copy"><strong>{{ node.title || t('nativeProcesses.untitledActivity') }}</strong><span class="node-kind">{{ t('nativeProcesses.kinds.' + node.kind) }}</span></span>
               <span v-if="node.body" class="body-indicator"><q-icon name="add_box" size="16px" /></span>
@@ -68,14 +69,14 @@
                 <slot name="inspector" />
               </q-menu>
             </button>
-            <div v-if="isEvent(node) || isGateway(node)" class="event-title">{{ node.title || t('nativeProcesses.kinds.' + node.kind) }}</div>
+            <div v-if="(isEvent(node) || isGateway(node)) && (node.kind !== 'if' || node.title)" class="event-title">{{ node.title || t('nativeProcesses.kinds.' + node.kind) }}</div>
             <ProcessRunStatusBadge v-if="node.kind !== 'start' && statuses[node.id]" class="node-badge" :status="statuses[node.id]!" variant="diagram" />
             <template v-if="!readonly">
               <button v-for="port in ports(node)" :key="`${port.side}-${port.outcome}`"
                 class="port" :class="[port.side, { 'output-true': port.outcome === true, 'output-false': port.outcome === false }]" :aria-label="t(port.outcome === true ? 'nativeProcesses.trueOutput' : port.outcome === false ? 'nativeProcesses.falseOutput' : port.side === 'input' ? 'nativeProcesses.inputHandle' : 'nativeProcesses.outputHandle', { title: node.title || t('nativeProcesses.kinds.' + node.kind) })"
                 :style="portStyle(node, port.side, port.outcome)" :data-flow-port="port.side" @pointerdown.stop="beginLink($event, node.id, port.side, port.outcome)" @lostpointercapture="cancelLink"
                 @click.capture="portClick" @keydown.stop @keydown.esc.prevent="connecting = null; cancelDrag()">
-                <span v-if="port.outcome !== undefined" class="port-outcome">{{ t(port.outcome ? 'nativeProcesses.trueBranch' : 'nativeProcesses.falseBranch') }}</span>
+                <span v-if="port.outcome !== undefined && !adjacent(node.id, port.side, port.outcome).length" class="port-outcome">{{ t(port.outcome ? 'nativeProcesses.trueBranch' : 'nativeProcesses.falseBranch') }}</span>
                 <q-menu anchor="bottom middle" self="top middle" class="handle-menu">
                   <q-list style="min-width: 240px">
                     <q-item-label header>{{ t(port.side === 'input' ? 'nativeProcesses.insertBefore' : 'nativeProcesses.continueFlow') }}</q-item-label>
@@ -116,13 +117,14 @@
     <div v-if="drag?.moved && dropTarget?.create" role="status" class="drop-message"><q-icon name="group_add" />{{ t('nativeProcesses.dropToCreateActor') }}</div>
     <div v-if="dropError" role="status" class="drop-message"><q-icon name="block" />{{ t('nativeProcesses.incompatibleActorDrop') }}</div>
     <Teleport to="body">
-      <div v-if="drag?.moved && draggedNode" class="node-wrap drag-preview selected" :class="[draggedNode.kind, statusClass(draggedNode), { 'invalid-drop': !dropTarget?.allowed }]" :style="dragPreviewStyle" aria-hidden="true">
+      <div v-if="drag?.moved && draggedNode" class="node-wrap drag-preview selected process-diagram-theme process-diagram-node" :class="[draggedNode.kind, statusClass(draggedNode), { 'invalid-drop': !dropTarget?.allowed }]" :style="dragPreviewStyle" aria-hidden="true">
         <div class="node-card">
+          <ProcessNodeFrame :radius="isEvent(draggedNode) ? 32 : isGateway(draggedNode) ? 0 : 10" />
           <span class="node-symbol"><q-icon :name="nodeIcons[draggedNode.kind]" :size="isEvent(draggedNode) ? '28px' : isGateway(draggedNode) ? '22px' : '14px'" /></span>
           <span v-if="!isEvent(draggedNode) && !isGateway(draggedNode)" class="node-copy"><strong>{{ draggedNode.title || t('nativeProcesses.untitledActivity') }}</strong><span class="node-kind">{{ t('nativeProcesses.kinds.' + draggedNode.kind) }}</span></span>
           <span v-if="draggedNode.body" class="body-indicator"><q-icon name="add_box" size="16px" /></span>
         </div>
-        <div v-if="isEvent(draggedNode) || isGateway(draggedNode)" class="event-title">{{ draggedNode.title || t('nativeProcesses.kinds.' + draggedNode.kind) }}</div>
+        <div v-if="(isEvent(draggedNode) || isGateway(draggedNode)) && (draggedNode.kind !== 'if' || draggedNode.title)" class="event-title">{{ draggedNode.title || t('nativeProcesses.kinds.' + draggedNode.kind) }}</div>
         <ProcessRunStatusBadge v-if="draggedNode.kind !== 'start' && statuses[draggedNode.id]" class="node-badge" :status="statuses[draggedNode.id]!" variant="diagram" />
         <template v-if="!readonly">
           <span v-for="port in ports(draggedNode)" :key="`${port.side}-${port.outcome}`" class="port"
@@ -134,6 +136,7 @@
 </template>
 
 <script setup lang="ts">
+import '../processDiagram.css'
 import { computed, ref, shallowRef, useId, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ContextSubmenu, GraphViewControls } from '@/core/util'
@@ -141,6 +144,7 @@ import ProcessRunStatusBadge from './ProcessRunStatusBadge.vue'
 import type { BpmnGraph, BpmnNode, BpmnFlow, NodeKind, ProcessActor, ProcessAgentOption } from '../services/nativeProcessService'
 import { activityKinds, nodeIcons, graphLayout, insertActivity, canConnectActivities, connectActivities, assignActivityActor, laneHeaderWidth, nodeStartX } from '../graphEditing'
 import ProcessLaneHeader from './ProcessLaneHeader.vue'
+import ProcessNodeFrame from './ProcessNodeFrame.vue'
 const props = withDefaults(defineProps<{ modelValue: BpmnGraph; readonly?: boolean; showGuide?: boolean; autoFit?: boolean; inspectorLabel?: string; selected?: string | null; selectedFlow?: string | null;
   agents?: ProcessAgentOption[]; humans?: { id: number; label: string }[];
   humansLoading?: boolean; humansError?: boolean;
@@ -301,12 +305,43 @@ function flowPath(flow: BpmnFlow): string {
   const mid = end > start + 48 ? (start + end) / 2 : start + 36
   return `M${start} ${y1} H${mid - 8} Q${mid} ${y1} ${mid} ${y1 + (y2 > y1 ? 8 : -8)} V${y2 + (y2 > y1 ? -8 : 8)} Q${mid} ${y2} ${mid + (end > mid ? 8 : -8)} ${y2} H${end}`
 }
-function flowMidpoint(flow: BpmnFlow): { x: number; y: number } {
-  const a = connectionPoint(flow.source, 'output', flow.condition !== null), b = connectionPoint(flow.target, 'input')
-  if (flow.condition === null && props.modelValue.nodes.some(node => node.id === flow.source && node.kind === 'if'))
-    return { x: (a.x + b.x) / 2, y: Math.max(a.y + 36, b.y) - 18 }
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 18 }
+function isBinaryFlow(flow: BpmnFlow): boolean {
+  return props.modelValue.nodes.some(node => node.id === flow.source && node.kind === 'if' && node.config.mode)
 }
+function flowLabel(flow: BpmnFlow): string {
+  return isBinaryFlow(flow) ? t(flow.condition === null ? 'nativeProcesses.falseBranch' : 'nativeProcesses.trueBranch') : flow.condition || t('nativeProcesses.editFlow')
+}
+const flowLabelStyles = computed(() => {
+  // Conservative rectangles include the rounded bends as well as straight segments.
+  // This keeps transparent text clear of neighbouring connections, not just its own.
+  const segments = props.modelValue.flows.flatMap(flow => {
+    const a = connectionPoint(flow.source, 'output', flow.condition !== null), b = connectionPoint(flow.target, 'input')
+    const bottomExit = flow.condition === null && props.modelValue.nodes.some(node => node.id === flow.source && node.kind === 'if')
+    const bottom = Math.max(a.y + 36, b.y), mid = b.x > a.x + 48 ? (a.x + b.x) / 2 : a.x + 36
+    const points = bottomExit ? bottom === b.y ? [a, { x: a.x, y: bottom }, b]
+      : [a, { x: a.x, y: bottom }, { x: mid, y: bottom }, { x: mid, y: b.y }, b]
+      : Math.abs(a.y - b.y) < 1 && b.x > a.x ? [a, b] : [a, { x: mid, y: a.y }, { x: mid, y: b.y }, b]
+    return points.slice(1).map((point, i) => ({ left: Math.min(points[i]!.x, point.x) - 8, right: Math.max(points[i]!.x, point.x) + 8,
+      top: Math.min(points[i]!.y, point.y) - 8, bottom: Math.max(points[i]!.y, point.y) + 8 }))
+  })
+  const obstacles = [...segments, ...props.modelValue.nodes.map(node => {
+    const point = position(node)
+    return { left: point.x - 8, right: point.x + nodeWidth(node) + 8, top: point.y - 8, bottom: point.y + (isGateway(node) ? 88 : 108) }
+  })]
+  return Object.fromEntries(props.modelValue.flows.map(flow => {
+    const a = connectionPoint(flow.source, 'output', flow.condition !== null), b = connectionPoint(flow.target, 'input')
+    const labelWidth = Math.min(150, flowLabel(flow).length * 8 + 12), labelHeight = 20
+    const origin = isBinaryFlow(flow) ? a : { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+    const candidates = [8, 12, 24, 40, 64, 96, 144].flatMap(gap => [
+      { x: origin.x + gap, y: origin.y - gap - labelHeight }, { x: origin.x + gap, y: origin.y + gap },
+      { x: origin.x - gap - labelWidth, y: origin.y - gap - labelHeight }, { x: origin.x - gap - labelWidth, y: origin.y + gap },
+    ])
+    const chosen = candidates.find(point => point.x >= laneHeaderWidth + 8 && point.x + labelWidth <= width.value && point.y >= 0 && point.y + labelHeight <= height.value
+      && !obstacles.some(box => point.x < box.right && point.x + labelWidth > box.left && point.y < box.bottom && point.y + labelHeight > box.top))
+      ?? { x: origin.x + 12, y: Math.max(0, origin.y - 32) }
+    return [flow.id, { left: `${chosen.x}px`, top: `${chosen.y}px`, width: `${labelWidth}px` }]
+  }))
+})
 function ports(node: BpmnNode): { side: 'input' | 'output'; outcome?: boolean }[] {
   return node.kind === 'start' ? [{ side: 'output' }] : node.kind === 'end' ? [{ side: 'input' }] : node.kind === 'if' ? [{ side: 'input' }, { side: 'output', outcome: true }, { side: 'output', outcome: false }] : [{ side: 'input' }, { side: 'output' }]
 }
@@ -561,53 +596,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.diagram-editor, .drag-preview {
-  --diagram-surface: #FFFFFF;
-  --diagram-text: #292C30;
-  --diagram-muted: #64748B;
-  --diagram-line: #475569;
-  --diagram-separator: #E2E8F0;
-  --diagram-lane: var(--diagram-surface);
-  --diagram-lane-alt: var(--solaire-gray-light);
-  --diagram-lane-system: var(--solaire-blue-light);
-  --diagram-actor: #334155;
-  --diagram-actor-alt: #3F4B5E;
-  --diagram-actor-system: #1E293B;
-  --diagram-actor-text: #FFFFFF;
-  --diagram-actor-muted: #CBD5E1;
-  --diagram-gray-fill: var(--solaire-gray-light);
-  --diagram-gray-border: var(--solaire-gray-accent);
-  --diagram-yellow-fill: var(--solaire-yellow-light);
-  --diagram-yellow-border: var(--solaire-yellow-accent);
-  --diagram-green-fill: var(--solaire-green-light);
-  --diagram-green-border: var(--solaire-green-accent);
-  --diagram-blue-fill: var(--solaire-blue-light);
-  --diagram-blue-border: var(--solaire-blue-accent);
-  --diagram-red-fill: var(--solaire-red-light);
-  --diagram-red-border: var(--solaire-red-accent);
-  --diagram-badge-yellow-text: var(--diagram-text);
-  color: var(--diagram-text);
-  font-family: 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
-}
-.body--dark .diagram-editor, .body--dark .drag-preview {
-  --diagram-surface: #101010;
-  --diagram-text: #EEEEF0;
-  --diagram-muted: #CBD5E1;
-  --diagram-line: #CBD5E1;
-  --diagram-separator: rgba(128, 128, 128, .4);
-  --diagram-lane-alt: var(--solaire-gray-dark);
-  --diagram-lane-system: var(--solaire-blue-dark);
-  --diagram-actor: var(--solaire-gray-dark);
-  --diagram-actor-alt: #101010;
-  --diagram-actor-system: var(--solaire-blue-dark);
-  --diagram-gray-fill: var(--solaire-gray-dark);
-  --diagram-yellow-fill: var(--solaire-yellow-dark);
-  --diagram-green-fill: var(--solaire-green-dark);
-  --diagram-blue-fill: var(--solaire-blue-dark);
-  --diagram-red-fill: var(--solaire-red-dark);
-}
 .diagram-editor { border: 1px solid var(--diagram-separator); border-radius: 10px; overflow: hidden; background: var(--diagram-surface); }
-.diagram-toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--q-separator-color, rgba(128, 128, 128, .24)); }
+.diagram-toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; background: var(--galaris-page-background); border-bottom: 1px solid var(--q-separator-color, rgba(128, 128, 128, .24)); }
+.body--dark .diagram-toolbar { color: #EEEEF0; }
 .diagram-toolbar-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .diagram-guide { display: flex; gap: 8px; align-items: center; font-size: 12px; opacity: .75; }
 .diagram-editor.fullscreen { position: fixed; z-index: 5999; inset: 0; width: 100vw; height: 100dvh; display: flex; flex-direction: column; border: 0; border-radius: 0; }
@@ -617,7 +608,7 @@ onBeforeUnmount(() => {
 .diagram-board { position: absolute; inset: 0 auto auto 0; transform-origin: top left; }
 .swimlane { position: absolute; border-bottom: 1px solid var(--diagram-separator); background: var(--diagram-lane); pointer-events: none; }
 .swimlane:nth-child(even) { --diagram-actor: var(--diagram-actor-alt); background: var(--diagram-lane-alt); }
-.swimlane:first-child { --diagram-actor: var(--diagram-actor-system); background: var(--diagram-lane-system); }
+.swimlane:first-child { --diagram-actor: var(--diagram-actor-system); }
 .swimlane.drop-allowed { outline: 2px solid var(--solaire-green-accent); outline-offset: -2px; }
 .swimlane.drop-forbidden { outline: 2px dashed var(--solaire-red-accent); outline-offset: -2px; }
 .new-actor-zone { --hatch-color: var(--diagram-gray-fill); height: 40px; flex-shrink: 0; display: flex; align-items: center; background-color: var(--diagram-surface); background-image: repeating-linear-gradient(135deg, transparent 0 10px, var(--hatch-color) 10px 20px); }
@@ -627,30 +618,25 @@ onBeforeUnmount(() => {
 .connection-preview { stroke: var(--solaire-blue-accent); stroke-width: 2; stroke-dasharray: 6 4; }
 marker path { fill: var(--diagram-line); }
 .flow-selected .flow-line { stroke: var(--solaire-blue-accent); stroke-width: 2.5; }
-.flow-label { position: absolute; transform: translate(-50%, -50%); max-width: 150px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font: inherit; font-size: 12px; border: 0; padding: 2px 8px; border-radius: 5px; background: var(--diagram-surface); color: var(--diagram-line); opacity: 0; cursor: pointer; }
+.flow-label { position: absolute; height: 20px; max-width: 150px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font: inherit; font-size: 12px; line-height: 16px; text-align: left; border: 0; padding: 2px 6px; background: transparent; color: var(--diagram-line); opacity: 0; cursor: pointer; }
 .flow-label:hover, .flow-label:focus-visible, .flow-label.conditional, .flow-label.selected { opacity: 1; }
-.node-wrap { position: absolute; height: 88px; --node-accent: var(--diagram-green-border); --node-fill: var(--diagram-green-fill); --node-border-width: 2.2px; }
+.node-wrap { position: absolute; height: 88px; }
 .node-wrap.dragging { opacity: 0; }
 .drag-preview { position: fixed; z-index: 7000; pointer-events: none; transform-origin: top left; }
 .drag-preview .node-card { cursor: grabbing; }
 .node-wrap.invalid-drop .node-card { cursor: not-allowed; outline-color: var(--solaire-red-accent); }
-.node-card { height: 88px; width: 100%; border: var(--node-border-width) solid var(--node-accent); border-radius: 10px; display: flex; padding: 12px 20px; align-items: center; justify-content: center; background: var(--node-fill); color: var(--diagram-text); text-align: center; cursor: grab; font: inherit; touch-action: none; }
+.node-card { position: relative; height: 88px; width: 100%; border: 0; border-radius: 10px; display: flex; padding: 12px 20px; align-items: center; justify-content: center; background: var(--node-fill); color: var(--diagram-text); text-align: center; cursor: grab; font: inherit; touch-action: none; }
 .node-card:active { cursor: grabbing; }
 .readonly .node-card, .readonly .node-card:active { cursor: pointer; }
-.node-card:hover { border-color: var(--node-accent); }
 .node-card:focus-visible, .node-card.connect-target { outline: 2px solid var(--node-accent); outline-offset: -2px; }
 .node-symbol { color: var(--node-accent); flex-shrink: 0; }
 .node-wrap:not(.start):not(.end):not(.if):not(.parallel) .node-symbol { position: absolute; top: 7px; left: 7px; opacity: .7; }
 .node-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .node-kind { font-size: 12.5px; color: var(--diagram-line); }
 .node-copy strong { font-size: 15px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.task { --node-accent: var(--diagram-gray-border); --node-fill: var(--diagram-gray-fill); --node-border-width: 1.5px; }
-.human_task, .for, .while, .if, .parallel { --node-accent: var(--diagram-yellow-border); --node-fill: var(--diagram-yellow-fill); --node-border-width: 2px; }
 .human_task .node-symbol, .for .node-symbol, .while .node-symbol, .if .node-symbol, .parallel .node-symbol { color: var(--diagram-text); }
-.start { --node-accent: var(--diagram-blue-border); --node-fill: var(--diagram-blue-fill); }
-.end { --node-accent: var(--diagram-red-border); --node-fill: var(--diagram-red-fill); }
-.start .node-card, .end .node-card { height: 64px; width: 64px; margin: 12px 4px; border-radius: 50%; border: 2px solid var(--node-accent); padding: 0; justify-content: center; }
-.if .node-card, .parallel .node-card { width: 58px; height: 58px; margin: 15px; border: var(--node-border-width) solid var(--node-accent); border-radius: 0; transform: rotate(45deg); padding: 0; justify-content: center; }
+.start .node-card, .end .node-card { --node-border-width: 2px; height: 64px; width: 64px; margin: 12px 4px; border-radius: 50%; padding: 0; justify-content: center; }
+.if .node-card, .parallel .node-card { width: 58px; height: 58px; margin: 15px; border-radius: 0; transform: rotate(45deg); padding: 0; justify-content: center; }
 .if .node-symbol, .parallel .node-symbol { transform: rotate(-45deg); }
 .event-title { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); width: 180px; text-align: center; font-size: 12px; line-height: 16px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .if .event-title { top: -32px; }
@@ -658,7 +644,8 @@ marker path { fill: var(--diagram-line); }
 .port::before { content: ''; width: 10px; height: 10px; box-sizing: border-box; border: 1.5px solid currentColor; border-radius: 50%; background: var(--diagram-surface); }
 .port.input { left: -12px; }
 .port.output { right: -12px; }
-.port-outcome { position: absolute; left: 22px; padding: 0 3px; font-size: 11px; color: var(--diagram-text); background: var(--diagram-surface); }
+.port-outcome { position: absolute; left: 22px; bottom: 20px; font-size: 12px; color: var(--diagram-line); }
+.output-false .port-outcome { top: 20px; bottom: auto; }
 .port:hover::before, .port:focus-visible::before { background: currentColor; }
 .port:focus-visible { outline: 2px solid var(--node-accent); outline-offset: 1px; }
 .body-indicator { position: absolute; right: 8px; bottom: 6px; opacity: .55; }
@@ -666,10 +653,9 @@ marker path { fill: var(--diagram-line); }
 .node-badge { position: absolute; top: -10px; right: 4px; z-index: 1; pointer-events: none; }
 .state-success, .state-completed { --status-accent: var(--diagram-green-border); --status-fill: var(--diagram-green-fill); --status-text: var(--diagram-green-border); }
 .state-error, .state-failed { --status-accent: var(--diagram-red-border); --status-fill: var(--diagram-red-fill); --status-text: var(--diagram-red-border); }
-.state-waiting, .state-running { --status-accent: var(--diagram-yellow-border); --status-fill: var(--diagram-yellow-fill); --status-text: var(--diagram-badge-yellow-text); }
 .state-running { --status-accent: var(--solaire-blue-accent); --status-fill: var(--solaire-blue-light); --status-text: var(--diagram-text); }
 .state-waiting { --status-accent: var(--solaire-yellow-accent); --status-fill: var(--solaire-yellow-light); --status-text: var(--diagram-text); }
-.state-running .node-card, .state-waiting .node-card { background: var(--status-fill); border-color: var(--status-accent); outline: 3px solid var(--status-accent); outline-offset: 4px; }
+.state-running .node-card, .state-waiting .node-card { --node-accent: var(--status-accent); background: var(--status-fill); outline: 3px solid var(--status-accent); outline-offset: 4px; }
 .body--dark .state-running { --status-fill: var(--solaire-blue-dark); }
 .body--dark .state-waiting { --status-fill: var(--solaire-yellow-dark); }
 .connect-hint { display: flex; gap: 8px; align-items: center; padding: 8px 16px; background: var(--diagram-gray-fill); font-size: 13px; }

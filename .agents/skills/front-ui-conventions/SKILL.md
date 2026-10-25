@@ -111,3 +111,8 @@ interactions de ses consommateurs. Comparer un même contenu synthétique avant/
 vues concernées, notamment les thèmes, la largeur de page et les commandes contextuelles.
 Des tests de conservation des données ne vérifient pas cette continuité visuelle ; inspecter
 le rendu avant de déclarer la migration terminée, sans figer chaque détail dans un test.
+
+Pour reproduire une référence graphique précise, comparer des exemples côte à côte au même
+zoom et à la même densité de pixels. En cas d'écart, mesurer les styles calculés : une bordure
+CSS fractionnaire peut être arrondie avant le zoom, contrairement à un trait SVG. Copier la
+valeur déclarée ne suffit donc pas à vérifier l'épaisseur réellement dessinée.
