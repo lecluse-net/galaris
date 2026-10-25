@@ -230,11 +230,17 @@ export function contentExtensions(adapters: ContentAdapters): Extensions {
           ? extension.extend({ addKeyboardShortcuts: () => ({}) }) : extension)
       },
     }).configure({ paragraph: false, codeBlock: false, link: false, trailingNode: false }), Link.extend({
-    addAttributes() { return { ...this.parent?.(), href: { default: null, parseHTML: element => element.getAttribute('data-rich-reference') ?? element.getAttribute('href') } } },
+    addAttributes() { return {
+      ...this.parent?.(),
+      href: { default: null, parseHTML: element => element.getAttribute('data-rich-reference') ?? element.getAttribute('href') },
+      title: { default: null, parseHTML: element => element.getAttribute('title'), renderHTML: attrs => ({ title: /^https?:\/\//i.test(attrs.href ?? '') ? attrs.href : attrs.title }) },
+    } },
     renderHTML({ HTMLAttributes }) { const uri = String(HTMLAttributes.href ?? ''); return ['a', mergeAttributes(HTMLAttributes, { href: richLinkHref(uri) ?? uri, 'data-rich-reference': uri, target: '_blank', rel: 'noopener noreferrer' }), 0] },
     addMarkView() { return ({ HTMLAttributes }) => {
       const dom = document.createElement('a'), uri = String(HTMLAttributes.href ?? '')
-      for (const [key, value] of Object.entries(mergeAttributes(HTMLAttributes, { href: richLinkHref(uri) ?? uri, 'data-rich-reference': uri, target: '_blank', rel: 'noopener noreferrer' }))) dom.setAttribute(key, String(value))
+      for (const [key, value] of Object.entries(mergeAttributes(HTMLAttributes, { href: richLinkHref(uri) ?? uri, 'data-rich-reference': uri, target: '_blank', rel: 'noopener noreferrer' }))) {
+        if (value !== null && value !== undefined) dom.setAttribute(key, String(value))
+      }
       const documentUri = documentUriFromLink(uri, window.location.origin)
       const id = documentUri && documentIdFromResourceUri(documentUri)
       if (!id || !adapters.linkIcon) return { dom }

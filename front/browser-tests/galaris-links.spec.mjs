@@ -1,6 +1,21 @@
 import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 import { result, document as documentFixture } from './data.mjs'
 
+for (const mode of ['read', 'edit', 'readonly']) test(`web links expose their destination as a tooltip in ${mode} mode`, async ({ page }) => {
+  const html = '<p><a href="http://example.com/path?x=1&amp;y=2">HTTP reference</a> <a href="https://example.org/page#section" title="null">HTTPS reference</a> <a href="mailto:reader@example.com">Email reference</a></p>'
+  await mount(page, `core/util/components/${mode === 'read' ? 'RichText' : 'RichTextEditor'}.vue`, {
+    props: { profile: 'document', ...(mode === 'read' ? { content: html } : { modelValue: html, readonly: mode === 'readonly' }) },
+  })
+  for (const [name, uri] of [['HTTP reference', 'http://example.com/path?x=1&y=2'], ['HTTPS reference', 'https://example.org/page#section']]) {
+    const link = page.getByRole('link', { name, exact: true })
+    await link.hover()
+    await expect(link).toHaveAttribute('title', uri)
+    await expect(link).toHaveAttribute('href', uri)
+  }
+  await expect(page.getByRole('link', { name: 'Email reference', exact: true })).not.toHaveAttribute('title')
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
+})
+
 for (const mode of ['read', 'edit', 'readonly']) for (const format of ['uri', 'url']) for (const card of [false, true]) {
   test(`a document ${format} ${card ? 'card' : 'link'} navigates without a modal in ${mode} mode`, async ({ page, baseURL }, testInfo) => {
     const id = '00000000-0000-4000-8000-000000000245'

@@ -100,6 +100,7 @@ watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCl
   doc.body.querySelectorAll('a').forEach(link => {
     link.setAttribute('data-rich-reference', link.getAttribute('href') ?? '')
     const uri = link.getAttribute('href') ?? ''
+    if (/^https?:\/\//i.test(uri)) link.setAttribute('title', uri)
     const documentHref = documentNavigationHref(uri, window.location.origin)
     if (documentHref) link.removeAttribute('target')
     else link.setAttribute('target', '_blank')
