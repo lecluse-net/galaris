@@ -9,7 +9,7 @@ from typing import cast
 from collections.abc import AsyncIterator
 from urllib.parse import urlsplit
 
-import httpx
+import httpx2 as httpx
 
 
 def origin(url: str, *, allow_query: bool = False) -> tuple[str, str, int]:

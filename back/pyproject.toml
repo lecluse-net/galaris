@@ -11,19 +11,19 @@ dependencies = [
     # CORE — required infrastructure used by back/core
     # ════════════════════════════════════════════════════════════════
     # Web framework and ASGI server
-    "fastapi~=0.141",
-    "starlette~=1.6",
-    "uvicorn~=0.52",
+    "fastapi~=0.162",
+    "starlette~=1.10",
+    "uvicorn~=0.54",
     "python-multipart~=0.0",          # parsing form/upload (FastAPI)
     "slowapi~=0.1",                   # rate limiting
     # Database (PostgreSQL, SQLAlchemy 2.0, and Atlas schema management)
-    "SQLAlchemy~=2.0",
-    "asyncpg~=0.31",                  # driver async PostgreSQL
+    "SQLAlchemy>=2.0.52,<2.1",         # OpenTelemetry SQLAlchemy instrumentation requires <2.1
+    "asyncpg~=0.32",                  # driver async PostgreSQL
     "greenlet~=3.5",                  # required by asynchronous SQLAlchemy
     # Validation and configuration (Pydantic v2)
-    "pydantic~=2.13",
-    "pydantic-settings~=2.15",
-    "pydantic_core~=2.46",           # version required by latest stable Pydantic
+    "pydantic~=2.14",
+    "pydantic-settings~=2.16",
+    "pydantic_core~=2.50",           # version required by latest stable Pydantic
     "python-dotenv~=1.2",
     "email-validator~=2.3",           # Pydantic EmailStr validation
     # Authentication and cryptography
@@ -32,40 +32,40 @@ dependencies = [
     "bcrypt~=5.0",                   # pwdlib hashing backend
     "cryptography~=50.0",            # encryption (core/util/encryption)
     # Real-time frontend transport and HTTP client
-    "python-socketio~=5.16",
+    "python-socketio~=5.17",
     "httpx~=0.28",
-    "httpx2~=2.12",                  # blocking sentinel transport; bounded response decompression
+    "httpx2~=2.16",                  # blocking sentinel transport; bounded response decompression
     # Logging and serialization
     "loguru~=0.7",
-    "logfire[fastapi,httpx,sqlalchemy,asyncpg,system-metrics]~=4.40",
+    "logfire[fastapi,httpx,sqlalchemy,asyncpg,system-metrics]~=5.3",
     "PyYAML~=6.0",
     # ════════════════════════════════════════════════════════════════
     # APP — business features used by back/app and back/bridge
     # ════════════════════════════════════════════════════════════════
     # AI and LLM
-    "pydantic-ai[groq]~=2.43",
+    "pydantic-ai[groq]~=2.61",
     # Messaging (OneBot/Matrix sockets and Telegram Bot API)
-    "websockets~=16.0",              # latest series compatible with google-genai (<17)
-    "python-telegram-bot~=22.7",
-    "pywebpush~=2.4",               # standards-based encrypted PWA Web Push
+    "websockets~=17.3",              # latest series compatible with google-genai (<18)
+    "python-telegram-bot~=22.8",
+    "pywebpush~=2.5",               # standards-based encrypted PWA Web Push
     # Persistent remote execution and SFTP workspaces
     "asyncssh~=2.24",
     # SMB 2/3 file shares (Samba and Windows servers)
     "smbprotocol~=1.17",
     # MCP — FastMCP servers exposed by Galaris
-    "fastmcp>=3.4.2",
+    "fastmcp~=4.1",
     # Media — PDF documents
-    "pypdf~=6.16",
-    "pypdfium2~=5.13",
+    "pypdf~=6.21",
+    "pypdfium2~=5.14",
     # BIFF5/8 values and formatting; formula token decoding is qualified against this release.
     "xlrd==2.0.2",
     # Media — images
-    "pillow~=12.3",
+    "pillow~=13.0",
     # Media — public YouTube captions
     "requests~=2.34",
     "youtube-transcript-api~=1.2",
     # Calendar — RFC 5545 parsing, recurrence and VALARM expansion
-    "icalendar~=7.0",
+    "icalendar~=7.3",
     "recurring-ical-events~=3.8.2",
     # Voice — WebRTC audio calls
     "aiortc~=1.15",
@@ -76,25 +76,25 @@ dependencies = [
     # ════════════════════════════════════════════════════════════════
     "annotated-doc~=0.0",
     "annotated-types~=0.8",
-    "anyio~=4.13",
-    "cffi~=2.0",
-    "click~=8.4",
-    "dnspython~=2.8",
+    "anyio~=4.15",
+    "cffi~=2.1",
+    "click~=8.5",
+    "dnspython~=2.9",
     "ecdsa~=0.19",
     "h11~=0.16",
-    "httptools~=0.8",
-    "idna~=3.18",
+    "httptools~=0.9",
+    "idna~=3.20",
     "Mako~=1.4",
     "MarkupSafe~=3.0",
     "pyasn1~=0.6",
-    "pycparser~=3.0",
+    "pycparser~=3.12",
     "rsa~=4.9",
     "six~=1.17",
     "typing-inspection~=0.4",
     "typing_extensions~=4.16",
-    "uvloop~=0.22",
-    "watchfiles~=1.2",
-    "pydantic-monty~=1.1.0",
+    "uvloop~=0.23",
+    "watchfiles~=1.3",
+    "pydantic-monty~=1.3.0",
 ]
 
 [build-system]
@@ -111,9 +111,9 @@ dev = [
     "debugpy~=1.8",
     "pytest~=9.1",
     "pytest-asyncio~=1.4",
-    "pytest-cov==7.0.0",
-    "ruff==0.15.0",
-    "devtools~=0.12",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.2",
+    "devtools~=0.13",
     "pyright~=1.1",                   # strict type checking (Pylance engine)
 ]
 

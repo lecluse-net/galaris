@@ -97,8 +97,8 @@ bornée, politique d'incertitude par usage/version/langue, coupe-circuit si beso
 Pas de double appel spéculatif systématique ni cache sémantique de décision.
 Préserver choix texte quand sélection vide, budgets et absence de provider implicite.
 
-Les adaptateurs directs/locaux différés sont conservés dans la
-[convergence SDK](convergence-pydantic-ai.md).
+Un nouvel adaptateur direct ou local exige un besoin démontré et une qualification
+de son contrat fournisseur ; il n'est pas un préalable aux campagnes existantes.
 Usages supplémentaires (ressources/skills/outils, Goal/planner, booléens/ordinaux)
 restent des expériences à justifier par une décision fermée évitant un travail génératif utile.
 

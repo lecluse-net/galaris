@@ -182,12 +182,26 @@ def request_for(llm):
 @pytest.mark.parametrize("sampling_supported", [False, True])
 @pytest.mark.parametrize("protocol", ["chat", "responses"])
 async def test_text_stream_is_durable_and_readback_never_calls_provider(
-    db, provider, subscription, sampling_supported, protocol
+    db, provider, monkeypatch, subscription, sampling_supported, protocol
 ):
+    from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
+
+    # Declare the SDK capability instead of depending on a model family's current
+    # defaults. The real SDK still builds and filters the HTTP request.
+    for model_type in (OpenAIChatModel, OpenAIResponsesModel):
+        original_profile = model_type.profile.func
+
+        def declared_profile(model, original_profile=original_profile):
+            profile = dict(original_profile(model))
+            unsupported = set(profile.get("openai_unsupported_model_settings", ()))
+            if not sampling_supported:
+                unsupported.add("temperature")
+            profile["openai_unsupported_model_settings"] = tuple(unsupported)
+            return profile
+
+        monkeypatch.setattr(model_type, "profile", property(declared_profile))
     llm, requests, _ = provider
     llm.is_subscription = subscription
-    if sampling_supported:
-        llm.llm_name = "gpt-4.1"  # Public SDK profile with sampling support.
     if protocol == "responses":
         llm.provider.base_url = "https://api.openai.com/v1"
     await db.commit()
@@ -205,7 +219,7 @@ async def test_text_stream_is_durable_and_readback_never_calls_provider(
     if sampling_supported:
         assert requests[0]["temperature"] == 0.2
     else:
-        # The SDK's default opaque-model profile enables reasoning and drops sampling.
+        # The SDK applies the declared restriction before the gateway sees it.
         assert "temperature" not in requests[0]
     saved_request = await db.scalar(select(LLMCallEvent).where(LLMCallEvent.sequence == 0))
     assert saved_request.payload["request"]["parameters"]["temperature"] == 0.2

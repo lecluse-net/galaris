@@ -1,7 +1,7 @@
 """Stable connection-domain operations used by other modules."""
 
 from collections.abc import Mapping
-import httpx
+import httpx2 as httpx
 
 
 def mcp_oauth_auth(params: Mapping[str, object], server_url: str) -> httpx.Auth | None:

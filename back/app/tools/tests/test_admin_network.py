@@ -4,7 +4,7 @@ import asyncio
 import gzip
 import socket
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from app.tools.admin_network import PinnedMcpTransport, origin, resolve_destination

@@ -35,7 +35,7 @@ class ExecutionEvidenceMiddleware(Middleware):
             return result
         request = context.fastmcp_context.request_context if context.fastmcp_context else None
         meta = request.meta if request is not None else context.message.meta
-        raw: Any = getattr(meta, EXECUTION_META_KEY, None) if meta else None
+        raw: Any = meta.get(EXECUTION_META_KEY) if meta else None
         try:
             operation_id = (
                 UUID(str(cast(dict[str, Any], raw).get("operation_id")))
@@ -45,7 +45,7 @@ class ExecutionEvidenceMiddleware(Middleware):
         except ValueError:
             operation_id = uuid4()
         execution = ToolExecutionContext(operation_id, context.message.name)
-        control: Any = getattr(meta, AUTHORIZATION_META_KEY, None) if meta else None
+        control: Any = meta.get(AUTHORIZATION_META_KEY) if meta else None
         if isinstance(control, dict) and isinstance(cast(dict[str, Any], control).get("continuation"), str):
             execution.authorization_continuation = cast(str, control["continuation"])
         with tool_execution(execution):

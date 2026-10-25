@@ -30,7 +30,7 @@ def model_parameter_policy(model: str) -> RequestParameterPolicy:
     return RequestParameterPolicy(
         chat=chat, responses=responses, efforts=efforts if reasoning else (),
         reasoning_fields=frozenset(fields),
-        reasoning_default=bool(profile.get("openai_reasoning_enabled_by_default")),
+        reasoning_default=bool(profile.get("thinking_enabled_by_default")),
         drop_when_reasoning=SAMPLING_PARAMETERS,
         chat_token_limit="max_completion_tokens", verbosity=True,
     )

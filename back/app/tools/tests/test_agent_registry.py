@@ -68,6 +68,10 @@ async def test_internal_mcp_toolset_uses_internal_runtime(monkeypatch: pytest.Mo
 async def test_internal_mcp_toolset_defers_tools_outside_preselected_scope(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from pydantic_ai import RunContext
+    from pydantic_ai.models.test import TestModel
+    from pydantic_ai.usage import RunUsage
+
     from app.harness import mcp_toolset
     from app.tools import metrics
     mcp = _server("search_web", "nc_delete")
@@ -91,7 +95,7 @@ async def test_internal_mcp_toolset_defers_tools_outside_preselected_scope(
     )
 
     async with toolset:
-        definitions = await toolset.get_tools(None)
+        definitions = await toolset.get_tools(RunContext(deps=None, model=TestModel(), usage=RunUsage()))
         assert definitions["nc_delete"].tool_def.defer_loading is True
         assert definitions["search_web"].tool_def.defer_loading is not True
     assert observed == [(False, 1)]

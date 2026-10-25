@@ -10,8 +10,8 @@ from fastmcp.prompts import PromptResult
 from fastmcp.resources import ResourceResult
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from fastmcp.tools import ToolResult
-from mcp import McpError
-from mcp.types import CallToolRequestParams, ErrorData, GetPromptRequestParams, ReadResourceRequestParams
+from mcp import MCPError
+from mcp.types import CallToolRequestParams, GetPromptRequestParams, ReadResourceRequestParams
 
 from .authorization import AUTHORIZATION_META_KEY, AuthorizationAction, AuthorizationClosed, AuthorizationRequired, claim_action, finish_action, tool_authorization_configuration
 from .contracts import EXECUTION_META_KEY, current_tool_execution
@@ -32,8 +32,8 @@ class ExternalAuthorizationMiddleware(Middleware):
         execution = current_tool_execution()
         callback = execution.operation_id if execution is not None else uuid4()
         request = context.fastmcp_context.request_context if context.fastmcp_context else None
-        raw: Any = getattr(request.meta, EXECUTION_META_KEY, None) if request is not None and request.meta else None
-        authorization_meta: Any = getattr(request.meta, AUTHORIZATION_META_KEY, None) if request is not None and request.meta else None
+        raw: Any = request.meta.get(EXECUTION_META_KEY) if request is not None and request.meta else None
+        authorization_meta: Any = request.meta.get(AUTHORIZATION_META_KEY) if request is not None and request.meta else None
         continuation = cast(dict[str, Any], authorization_meta).get("continuation") if isinstance(authorization_meta, dict) else None
         if execution is None and isinstance(raw, dict):
             try:
@@ -99,7 +99,7 @@ class ExternalAuthorizationMiddleware(Middleware):
             await finish_action(identifier, receipt=result)
             return result
         except (AuthorizationRequired, AuthorizationClosed) as exc:
-            raise McpError(ErrorData(code=-32001, message=str(exc), data=self._control(exc))) from exc
+            raise MCPError(code=-32001, message=str(exc), data=self._control(exc)) from exc
         except BaseException:
             await finish_action(identifier, outcome="outcome_unknown")
             raise
@@ -125,7 +125,7 @@ class ExternalAuthorizationMiddleware(Middleware):
             await finish_action(identifier, receipt=result)
             return result
         except (AuthorizationRequired, AuthorizationClosed) as exc:
-            raise McpError(ErrorData(code=-32001, message=str(exc), data=self._control(exc))) from exc
+            raise MCPError(code=-32001, message=str(exc), data=self._control(exc)) from exc
         except BaseException:
             await finish_action(identifier, outcome="outcome_unknown")
             raise

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-import httpx
+import httpx2 as httpx
 from collections.abc import Awaitable, Callable
 from typing import Any, Dict, Optional, cast
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse

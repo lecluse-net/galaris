@@ -10,7 +10,7 @@ from pydantic_ai.messages import (
     ModelResponse,
     ToolCallPart,
     ToolReturnPart,
-    RetryPromptPart,
+    ModelMessagesTypeAdapter,
 )
 
 from app.harness import runtime
@@ -24,12 +24,17 @@ from app.harness.runtime import (
 from app.llm import LLM
 
 
-@pytest.mark.parametrize("returned_error", ["retry", "canonical", "canonical_json", "explicit", "explicit_json"])
+@pytest.mark.parametrize("returned_error", ["retry", "legacy_retry", "canonical", "canonical_json", "explicit", "explicit_json"])
 def test_rejected_tool_arguments_remain_available_for_retry(returned_error) -> None:
     content = "<p>Synthetic lesson</p>" * 500
     call = ModelResponse(parts=[ToolCallPart("file_edit", {"content": content}, "retry-1")])
     if returned_error == "retry":
-        retry = ModelRequest(parts=[RetryPromptPart("Permission required", tool_name="file_edit", tool_call_id="retry-1")])
+        retry = ModelRequest(parts=[ToolReturnPart("file_edit", "Permission required", "retry-1", outcome="retried")])
+    elif returned_error == "legacy_retry":
+        retry = ModelMessagesTypeAdapter.validate_python([{"kind": "request", "parts": [{
+            "part_kind": "retry-prompt", "content": "Permission required",
+            "tool_name": "file_edit", "tool_call_id": "retry-1",
+        }]}])[0]
     else:
         error = (
             {"schema": "galaris.tool-error/v1", "status": "error", "outcome": "rejected", "error": "Content requires correction"}

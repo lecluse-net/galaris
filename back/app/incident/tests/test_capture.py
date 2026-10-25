@@ -293,25 +293,16 @@ async def test_failed_llm_finalization_snapshots_full_trace(
 
 
 def test_retry_prompt_keeps_tool_call_identifier() -> None:
-    class RetryPromptPart:
-        tool_name = "skill_galaris_read_file"
-        tool_call_id = "call-42"
-        data = "Unknown section"
+    from pydantic_ai.messages import ToolCallPart, ToolReturnPart
 
-    call_event = cast(
-        FunctionToolCallEvent,
-        SimpleNamespace(
-            part=SimpleNamespace(
-                tool_name="skill_galaris_read_file",
-                tool_call_id="call-42",
-                args={"section": "missing"},
-            )
-        ),
-    )
-    result_event = cast(
-        FunctionToolResultEvent,
-        SimpleNamespace(part=RetryPromptPart()),
-    )
+    call_event = FunctionToolCallEvent(ToolCallPart(
+        tool_name="skill_galaris_read_file", tool_call_id="call-42",
+        args={"section": "missing"},
+    ))
+    result_event = FunctionToolResultEvent(ToolReturnPart(
+        tool_name="skill_galaris_read_file", tool_call_id="call-42",
+        content="Unknown section", outcome="retried",
+    ))
 
     message = runtime._function_to_message(  # pyright: ignore[reportPrivateUsage]
         result_event,

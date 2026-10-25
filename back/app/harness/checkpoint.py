@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
 from pydantic_ai import ModelRetry, ApprovalRequired, DeferredToolResults, ToolDenied
+from pydantic_ai.messages import ModelMessage
 from app.tools.facade import AuthorizationRequired, authorization_status
 from pydantic_core import to_jsonable_python
 from app.tools.contracts import ToolExecutionContext, tool_execution
@@ -237,7 +238,7 @@ class HarnessRunCheckpoint:
             return checkpoint.runtime_run_id
         return str(self.request.run_id)
 
-    def restored_messages(self) -> list[Any]:
+    def restored_messages(self) -> list[ModelMessage]:
         if not self.history:
             return []
         from pydantic_ai import messages
@@ -295,7 +296,8 @@ class HarnessRunCheckpoint:
             following = history[index + 1]
             failure = next((part for part in following.parts
                 if isinstance(following, messages.ModelRequest)
-                and isinstance(part, messages.RetryPromptPart)
+                and isinstance(part, messages.ToolReturnPart)
+                and part.outcome == "retried"
                 and part.tool_name == effect.get("tool_name")
                 and part.tool_call_id == effect.get("tool_call_id")
                 and isinstance(part.content, list)), None)
@@ -303,7 +305,7 @@ class HarnessRunCheckpoint:
                 continue
             effect["status"] = "failed"
             effect["outcome"] = "rejected"
-            effect["error"] = failure.model_response()
+            effect["error"] = failure.model_response_str()
             self._replay[str(effect.get("signature") or "")].append(effect)
             self._repaired = True
 
@@ -394,7 +396,7 @@ class HarnessRunCheckpoint:
         if index < len(restored) and isinstance(restored[index], messages.ModelRequest):
             following = restored[index]
             parts = [part for part in following.parts if not (
-                isinstance(part, (messages.ToolReturnPart, messages.RetryPromptPart))
+                isinstance(part, messages.ToolReturnPart)
                 and part.tool_call_id == replacement.tool_call_id
                 and part.tool_name == replacement.tool_name
             )]
@@ -439,7 +441,7 @@ class HarnessRunCheckpoint:
             answered: dict[tuple[str | None, str], Any] = {
                 (part.tool_name, part.tool_call_id): part
                 for part in following.parts
-                if isinstance(part, (messages.ToolReturnPart, messages.RetryPromptPart))
+                if isinstance(part, messages.ToolReturnPart)
             } if isinstance(following, messages.ModelRequest) else {}
             for part in response.parts:
                 if not isinstance(part, messages.ToolCallPart):
@@ -461,9 +463,9 @@ class HarnessRunCheckpoint:
                 if effect is not None and effect.get("status") in {"completed", "error_reported"}:
                     self._append_recovered_result(effect)
                 elif effect is not None and effect.get("status") == "failed":
-                    self._replace_tool_return(messages.RetryPromptPart(
+                    self._replace_tool_return(messages.ToolReturnPart(
                         tool_name=part.tool_name, tool_call_id=part.tool_call_id,
-                        content=str(effect["error"]),
+                        content=str(effect["error"]), outcome="retried",
                     ), effect)
                 else:
                     self._replace_tool_return(messages.ToolReturnPart(
@@ -658,10 +660,11 @@ class HarnessRunCheckpoint:
             response_index = next((index for index in range(len(messages) - 1, -1, -1)
                 if isinstance(messages[index], model_messages.ModelResponse)), None)
             returns = [
-                model_messages.RetryPromptPart(
+                model_messages.ToolReturnPart(
                     tool_name=str(effect.get("tool_name") or "?"),
                     content=str(effect["error"]),
                     tool_call_id=str(effect.get("tool_call_id") or effect["id"]),
+                    outcome="retried",
                 )
                 if effect.get("status") == "failed"
                 else model_messages.ToolReturnPart(
@@ -676,10 +679,11 @@ class HarnessRunCheckpoint:
             ]
             if not returns:
                 returns = [
-                    model_messages.RetryPromptPart(
+                    model_messages.ToolReturnPart(
                         tool_name=name,
                         content=retry_error,
                         tool_call_id=tool_call_id or effect_id,
+                        outcome="retried",
                     )
                     if retry_error is not None
                     else model_messages.ToolReturnPart(
@@ -697,7 +701,7 @@ class HarnessRunCheckpoint:
                 following = completed_history[-1]
                 identities = {(part.tool_name, part.tool_call_id) for part in returns}
                 parts = [part for part in following.parts if not (
-                    isinstance(part, (model_messages.ToolReturnPart, model_messages.RetryPromptPart))
+                    isinstance(part, model_messages.ToolReturnPart)
                     and (part.tool_name, part.tool_call_id) in identities
                 )]
                 completed_history[-1] = replace(following, parts=[*parts, *returns])

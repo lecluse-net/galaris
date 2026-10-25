@@ -11,8 +11,8 @@ def model_parameter_policy(model: str) -> RequestParameterPolicy:
         chat=CHAT_PARAMETERS - {"parallel_tool_calls", "user", "seed", "logit_bias"},
         responses=RESPONSES_PARAMETERS - {"store", "metadata", "user", "truncation", "top_logprobs"},
         efforts=("none", "low", "high", "max") if adjustable_thinking else (),
-        reasoning_default=profile.get("openai_reasoning_enabled_by_default", False) or profile.get("thinking_always_enabled", False),
+        reasoning_default=profile.get("thinking_enabled_by_default", False) or profile.get("thinking_always_enabled", False),
         drop_when_reasoning=frozenset({"temperature", "top_p", "presence_penalty", "frequency_penalty", "logprobs", "top_logprobs"}),
         thinking_toggle=adjustable_thinking,
-        forced_tools_when_reasoning=profile.get("openai_supports_forced_tool_choice_with_thinking", True),
+        forced_tools_when_reasoning=profile.get("supports_forced_tool_choice_with_thinking", True),
     )

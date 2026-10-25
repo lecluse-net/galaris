@@ -134,7 +134,7 @@ async def test_mcp_disconnect_resumes_pending_safe_call_before_model_decision(ef
     @server.tool(annotations={"idempotentHint": replay_safe, "destructiveHint": not replay_safe})
     async def submit(objective: str) -> str:
         ctx = get_context()
-        operation_id = getattr(ctx.request_context.meta, EXECUTION_META_KEY)["operation_id"]
+        operation_id = ctx.request_context.meta[EXECUTION_META_KEY]["operation_id"]
         invocations.append((operation_id, objective))
         if not interrupted or effect_committed:
             effects.setdefault(operation_id, objective)

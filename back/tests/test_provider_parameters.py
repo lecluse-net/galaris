@@ -413,8 +413,8 @@ def test_deepseek_parameter_controls_follow_sdk_capabilities_for_opaque_model(mo
         return OpenAIModelProfile(
             supports_thinking=thinking != "unsupported",
             thinking_always_enabled=thinking == "always",
-            openai_reasoning_enabled_by_default=thinking == "adjustable",
-            openai_supports_forced_tool_choice_with_thinking=thinking != "adjustable",
+            thinking_enabled_by_default=thinking == "adjustable",
+            supports_forced_tool_choice_with_thinking=thinking != "adjustable",
         )
 
     monkeypatch.setattr(DeepSeekProvider, "model_profile", staticmethod(profile))
@@ -495,16 +495,24 @@ async def test_sdk_inference_composes_with_provider_contract(
         value = {**expected, "conclusion": ""} if len(requests) == 1 else expected
         content = "Report completed" if output_mode == "text" else json.dumps(value)
         tools = body.get("tools", [])
+        uses_output_tool = output_mode == "tool" and bool(tools)
         if output_mode == "tool":
-            assert tools, "Structured output must preserve its output tool/schema"
-            tool = tools[0] if protocol == "responses" else tools[0]["function"]
-            assert set(tool["parameters"]["properties"]) == {"conclusion", "resources"}
+            # The SDK may select native structured output when forcing an output
+            # tool would disable thinking. Preserve the schema in either mode.
+            if uses_output_tool:
+                tool = tools[0] if protocol == "responses" else tools[0]["function"]
+                schema = tool["parameters"]
+            else:
+                native_format = body.get("text", {}).get("format", {}) if protocol == "responses" else body.get("response_format", {})
+                assert native_format.get("type") == "json_schema"
+                schema = native_format.get("schema") or native_format["json_schema"]["schema"]
+            assert set(schema["properties"]) == {"conclusion", "resources"}
         else:
             assert not tools, "Text and prompted output must not introduce tool effects"
         if protocol == "responses":
             output = ([{"type": "function_call", "id": f"fc_{len(requests)}",
                 "call_id": f"call_{len(requests)}", "name": tool["name"],
-                "arguments": content, "status": "completed"}] if output_mode == "tool" else
+                "arguments": content, "status": "completed"}] if uses_output_tool else
                 [{"type": "message", "id": f"msg_{len(requests)}", "role": "assistant",
                   "status": "completed", "content": [{"type": "output_text", "text": content, "annotations": []}]}])
             terminal = {"id": f"resp_{len(requests)}", "object": "response",
@@ -514,10 +522,10 @@ async def test_sdk_inference_composes_with_provider_contract(
                     content=responses_sse(terminal))
             return httpx.Response(200, json=terminal)
         delta = ({"tool_calls": [{"index": 0, "id": f"call_{len(requests)}", "type": "function",
-            "function": {"name": tool["name"], "arguments": content}}]} if output_mode == "tool" else {"content": content})
+            "function": {"name": tool["name"], "arguments": content}}]} if uses_output_tool else {"content": content})
         chunk = {"id": f"chat_{len(requests)}", "object": "chat.completion.chunk", "created": 1,
             "model": model_name, "choices": [{"index": 0, "delta": delta,
-            "finish_reason": "tool_calls" if output_mode == "tool" else "stop"}]}
+            "finish_reason": "tool_calls" if uses_output_tool else "stop"}]}
         return httpx.Response(200, headers={"content-type": "text/event-stream"},
             content=f"data: {json.dumps(chunk)}\n\ndata: [DONE]\n\n")
 

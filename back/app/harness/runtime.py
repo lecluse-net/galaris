@@ -246,6 +246,7 @@ def compact_completed_tool_arguments(
             (part.tool_name, part.tool_call_id)
             for part in following.parts
             if isinstance(part, _pydantic_messages.ToolReturnPart)
+            and part.outcome == "success"
             and reported_tool_failure(part.content) is None
         } if isinstance(following, _pydantic_messages.ModelRequest) else set()
         parts: list[_pydantic_messages.ModelResponsePart] = []
@@ -339,7 +340,7 @@ def compact_stale_tool_returns(
     for message_index, message in enumerate(messages):
         if isinstance(message, _pydantic_messages.ModelRequest):
             for part_index, part in enumerate(message.parts):
-                if isinstance(part, _pydantic_messages.ToolReturnPart):
+                if isinstance(part, _pydantic_messages.ToolReturnPart) and part.outcome == "success":
                     positions.append((message_index, part_index))
     if len(positions) <= _HISTORY_TOOL_RETURNS_KEPT_INTACT:
         return messages
@@ -435,7 +436,6 @@ def _history_chunks(
                     part,
                     (
                         _pydantic_messages.ToolReturnPart,
-                        _pydantic_messages.RetryPromptPart,
                     ),
                 )
                 for part in messages[index + 1].parts
@@ -507,7 +507,7 @@ def compact_agent_history(
                 if isinstance(message, _pydantic_messages.ModelRequest):
                     parts = [
                         replace(part, content=compact_tool_return(part.content, max_chars=max(4_000, budget // 8)))
-                        if isinstance(part, _pydantic_messages.ToolReturnPart) else part
+                        if isinstance(part, _pydantic_messages.ToolReturnPart) and part.outcome == "success" else part
                         for part in message.parts
                     ]
                     message = replace(message, parts=parts)
@@ -539,7 +539,6 @@ def _close_dangling_tool_calls(
                     part,
                     (
                         _pydantic_messages.ToolReturnPart,
-                        _pydantic_messages.RetryPromptPart,
                     ),
                 ):
                     tool_call_id = getattr(part, "tool_call_id", None)
@@ -576,7 +575,7 @@ def _response_only_history(
             following.parts if isinstance(following, _pydantic_messages.ModelRequest) else []
         )
         answered = {part.tool_call_id for part in answers
-                    if isinstance(part, (_pydantic_messages.ToolReturnPart, _pydantic_messages.RetryPromptPart))}
+                    if isinstance(part, _pydantic_messages.ToolReturnPart)}
         missing = [_pydantic_messages.ToolReturnPart(
             tool_name=part.tool_name, tool_call_id=part.tool_call_id,
             content={"status": "not_executed", "reason": "The user requested a reply without new tools."},
@@ -855,6 +854,7 @@ class Agent(AgentRuntime):
         self._cancellation_token = CancellationToken()
         self._manual_call_recovery_requested = False
         self._model_generation_active = False
+        self._request_start_usage = 0
         self._active_checkpoint: HarnessRunCheckpoint | None = None
         self.manual_call_recoveries = 0
         self._agent: PydanticAgent[Any, str | DeferredToolRequests] | None = None
@@ -1038,6 +1038,7 @@ class Agent(AgentRuntime):
 
     async def _observe_model_request(self, _ctx: Any, request: ModelRequestContext) -> ModelRequestContext:
         self._model_generation_active = True
+        self._request_start_usage = _ctx.usage.requests
         return request
 
     def request_call_recovery(self) -> bool:
@@ -1087,19 +1088,15 @@ class Agent(AgentRuntime):
         return [hit.entry.name for hit in result.hits]
 
     async def _guide_repeated_tools(
-        self, _ctx: Any, request_context: ModelRequestContext,
+        self, ctx: Any, request_context: ModelRequestContext,
     ) -> ModelRequestContext:
         """Advise after the whole tool batch, with its original results intact."""
         if not self._pending_tool_guidance:
             return request_context
         guidance = "\n\n".join(self._pending_tool_guidance)
         self._pending_tool_guidance.clear()
-        return replace(request_context, messages=[
-            *request_context.messages,
-            _pydantic_messages.ModelRequest(parts=[
-                _pydantic_messages.UserPromptPart(content=guidance),
-            ]),
-        ])
+        ctx.enqueue(guidance)
+        return request_context
 
     @property
     def profile_fallback_used(self) -> bool:
@@ -1153,10 +1150,7 @@ class Agent(AgentRuntime):
                 from core.database import release_db_transaction
                 await release_db_transaction()
         if active_checkpoint is not None and active_checkpoint.history:
-            pydantic_history = cast(
-                List[_pydantic_messages.ModelMessage],
-                active_checkpoint.restored_messages(),
-            )
+            pydantic_history = active_checkpoint.restored_messages()
             if active_checkpoint.request.data.get("reasoning_recovery_requested"):
                 pydantic_history = _reasoning_recovery_history(pydantic_history)
             if self._response_only:
@@ -1228,6 +1222,9 @@ class Agent(AgentRuntime):
                     manual = isinstance(interruption, RunCancelled)
                     if manual and not self._manual_call_recovery_requested:
                         raise
+                    # The SDK counts committed responses now. An interrupted request
+                    # still consumes Galaris's original budget before a recovery call.
+                    run_usage.requests = max(run_usage.requests, self._request_start_usage + 1)
                     # The SDK context has closed the provider stream before we resume.
                     # Keep the journal: a reasoning interruption must never reset effects.
                     guidance = t("agent_runtime.manual_call_recovery_prompt" if manual else "agent_runtime.reasoning_recovery_prompt", self._language)
@@ -1983,7 +1980,7 @@ def _function_to_message(
         )
 
     reported_error = reported_tool_failure(data) is not None
-    success = type(result).__name__ != "RetryPromptPart" and not reported_error
+    success = getattr(result, "outcome", "success") == "success" and not reported_error
 
     msg = AIMessage(
         type="tool",

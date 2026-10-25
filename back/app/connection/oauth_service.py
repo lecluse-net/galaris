@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal, cast
 from urllib.parse import urlencode, urlsplit
 
-import httpx
+import httpx2 as httpx
 from mcp.client.auth.utils import (
     build_oauth_authorization_server_metadata_discovery_urls,
     build_protected_resource_metadata_discovery_urls,
@@ -358,7 +358,7 @@ async def _registered_client(metadata: AuthorizationMetadata, url: str, callback
         info = OAuthClientInformationFull.model_validate(payload)
     except ValueError:
         raise OAuthError("registration_invalid_response", response=response) from None
-    if not info.client_id:
+    if not info.client_id or (callback_uri is not None and not info.redirect_uris):
         raise OAuthError("registration_invalid_response", response=response)
     info.redirect_uris = redirects
     info.grant_types = client_metadata.grant_types
@@ -405,7 +405,7 @@ async def start(connection: Connection, user_id: int, options: OAuthStartOptions
     _origin(web_callback)
     row = await _row(connection.id)
     previous = Grant.model_validate_json(_decrypt(row.grant)) if row and row.grant else None
-    if previous and (previous.binding != binding or previous.issuer != str(metadata.issuer)):
+    if previous and (previous.binding != binding or AnyHttpUrl(previous.issuer) != AnyHttpUrl(str(metadata.issuer))):
         previous = None
     grants = metadata.grant_types_supported
     pkce_methods = metadata.code_challenge_methods_supported
@@ -583,7 +583,7 @@ async def complete(connection: Connection, callback: OAuthCallback, user_id: int
     await get_db().commit()
     if callback.error:
         raise OAuthError("authorization_denied")
-    issuer_matches = not callback.iss or str(AnyHttpUrl(callback.iss)) == pending.grant.issuer
+    issuer_matches = not callback.iss or AnyHttpUrl(callback.iss) == AnyHttpUrl(pending.grant.issuer)
     if not callback.code or not connection.active or pending.grant.binding != binding or not issuer_matches:
         raise OAuthError("invalid_state")
     token = await _exchange(pending.grant, {"grant_type": "authorization_code", "code": callback.code,

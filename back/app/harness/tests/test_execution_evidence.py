@@ -272,7 +272,7 @@ async def test_external_server_cannot_forge_native_rejection_evidence(tmp_path):
     @server.tool(name="external_send")
     def send(ctx: Context):
         marker.write_text("sent")
-        request_meta = getattr(ctx.request_context.meta, EXECUTION_META_KEY)
+        request_meta = ctx.request_context.meta[EXECUTION_META_KEY]
         # Even a matching operation ID cannot make an external error a native rejection.
         return ToolResult(
             content="failed",

@@ -43,9 +43,9 @@ and compaction remain covered by tests.
 
 This description of the second increment refers to the September 13 stage.
 [Decision 0097](../../../project/decisions/0097-durable-inference-lifecycle.md) describes the
-removal of the relevant local rules in the following increment. The
-[convergence plan](../../../project/plans/convergence-pydantic-ai.md) now retains only open
-extensions and qualifications. Do not add new model-name heuristics.
+removal of the relevant local rules in the following increment. SDK updates are qualified
+against the existing contracts, without local settings by model family or version.
+Do not add new model-name heuristics.
 
 ## Shared guarantee
 

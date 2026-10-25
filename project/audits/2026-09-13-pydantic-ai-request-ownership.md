@@ -1,7 +1,9 @@
 # Appels internes Pydantic AI — preuves des deux premiers lots
 
 Date : 2026-09-13. Périmètre : [ADR 0095](../decisions/0095-pydantic-ai-request-ownership.md).
-La [convergence complète](../plans/convergence-pydantic-ai.md) reste en cours.
+À cette date, la convergence complète restait en cours ; la suite livrée est décrite par
+[0097](../decisions/0097-durable-inference-lifecycle.md) et
+[0170](../decisions/0170-execution-scope-and-durable-controls.md).
 
 ## Exécutions du premier lot
 

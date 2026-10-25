@@ -10,7 +10,7 @@ from uuid import UUID
 import anyio
 from loguru import logger
 from fastmcp import Client
-from mcp.shared.exceptions import McpError
+from mcp.shared.exceptions import MCPError
 from mcp.types import CONNECTION_CLOSED, TextContent
 
 from app.agent.contracts import normalize_tool_name
@@ -42,7 +42,7 @@ class ExecutionEvidenceClient(Client[Any]):
         kwargs["raise_on_error"] = False
         try:
             result = cast(Any, await super().call_tool(name, arguments, **kwargs))
-        except McpError as exc:
+        except MCPError as exc:
             if exc.error.code != CONNECTION_CLOSED:
                 raise
             # The SDK would turn this into ModelRetry, acknowledging a business

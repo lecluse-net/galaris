@@ -2,7 +2,7 @@
 
 import pytest
 from pydantic_ai import Agent
-from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, ToolCallPart, UserPromptPart, RetryPromptPart
+from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart, UserPromptPart
 from pydantic_ai.models.function import FunctionModel
 
 from app.harness.conversation_protocol import ConversationTurnProtocol
@@ -26,7 +26,8 @@ async def test_invented_human_turn_cannot_launch_an_unrequested_process_and_real
             return ModelResponse(parts=[*parts, ToolCallPart("conversation_process_start", {"workflow_id": "weather"})])
         assert "NEW_FAKE_DEMAND" not in str(messages)
         if requests == 2:
-            assert any(isinstance(part, RetryPromptPart) for message in messages for part in message.parts)
+            assert any(isinstance(part, ToolReturnPart) and part.outcome == "retried"
+                       for message in messages for part in message.parts)
             return ModelResponse(parts=[ToolCallPart("conversation_process_respond", {"age": 34})])
         return ModelResponse(parts=[TextPart("Âge transmis.")])
 

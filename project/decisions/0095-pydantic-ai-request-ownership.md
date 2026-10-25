@@ -61,8 +61,9 @@ les sélecteurs de protocole DeepSeek/Perplexity et certains profils de routeurs
 encore. La cible est de les supprimer, sans déplacer les mêmes heuristiques ailleurs.
 Leur suppression immédiate ferait perdre des protections que Pydantic AI 2.43 ne reproduit
 pas encore dans cette étape du 13 septembre. L'évolution du 14 septembre est décrite par
-[0097](0097-durable-inference-lifecycle.md) ; les seules extensions et qualifications
-restantes sont suivies dans [le plan de convergence](../plans/convergence-pydantic-ai.md).
+[0097](0097-durable-inference-lifecycle.md). Le plan de convergence a été retiré le
+25 octobre 2026 ; les mises à jour du SDK sont qualifiées sur les contrats existants,
+sans réglages locaux par famille ou version de modèle.
 
 L’adoption d’une intégration native qui change le protocole, la compaction, l’authentification
 ou la restitution des éléments de raisonnement doit être qualifiée séparément. Les harnais

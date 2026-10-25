@@ -34,7 +34,6 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 | [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Mission/Goals : consignes, 12 familles FR/EN et contrôles de contenu/effets réalisés. Contrat de cycle ciblé : question humaine FR 0/10 → 10/10, EN 2/10 → 10/10, appels 97 → 26 ; consommateurs Goal 60/60, droits/Process/injection 18/18, transfert/reprise 50/50 après correction du faux positif EUR/€. Aucun échec apparié nouveau observé. Constructeur réel : réussite conservée 6/6, appels 17 → 7. Parcours Goal natif : 12/12 → 12/12 ; C8 retire 12 écritures et 14 autorisations redondantes, appels 86 → 64 ; livraison requise 6/6. Historiques interne/Hermes/OpenAI : attribution corrigée et sept reproductions vérifiées ; quatre SDK réels testés hors réseau extérieur. Premier message corrigé : quatre lectures invalides → zéro, parcours assemblé 3/3 navigateurs. Quartz : les deux défauts initiaux sont absents du nouvel essai (deux contributions, 20 appels, 0,05559 USD) ; classement court après précision finale 8/9 → 9/9, vrais conflits conservés 3/3. Recette et limites dans la [qualification élargie](../audits/2026-10-24-conversation-qualification.md). Autres contextes, réserve indépendante et autres parcours natifs restent ouverts. Première mission sur Welcome et extraction ENRICH/CONTRADICT réalisées (0228). Identité sémantique, comptes externes et coordination de Goal restent ouverts. |
 | [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Rapports d'étalonnage humain et incertitude par cas réalisés (0230) ; restent campagnes annotées, séparation des variances, comparabilité/tendances, gardes et portabilité ; campagnes des modèles de décision et mocks d'applications Process. Le socle de campagnes Process avec Datasets natifs et runs réels est livré (0225). |
 | [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `partial` | Admission partagée et configuration réalisées (0181) ; restent provenance exhaustive, priorités par opération, transports non tracés, coordination multi-backend et qualification de charge/fournisseur. |
-| [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, transport Codex alternatif, projection des réglages, surfaces supplémentaires et adaptateurs de décision différés. Extensions médias durables, futurs consommateurs du rejeu et mesures du journal regroupés ici. |
 | [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Accès officiel Suno, références/composition/annulation distante et extensions locales ; recettes des comptes dans le guide. |
 
 ## Conceptions
@@ -83,9 +82,15 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 - **Inférences durables** : cycle persistant, commandes, préparation, révisions et
   échéance globale réalisés dans [0097](../decisions/0097-durable-inference-lifecycle.md)
   et [0170](../decisions/0170-execution-scope-and-durable-controls.md).
-  Extensions médias, réception des futurs consommateurs du rejeu et mesures du journal
-  regroupées dans le [plan SDK/fournisseurs](convergence-pydantic-ai.md), sans chantier
-  distinct pour le cycle livré.
+  Le journal et la supervision bornés sont décrits par
+  [0207](../decisions/0207-bounded-stream-supervision.md).
+- **Convergence SDK/fournisseurs** : plan retiré le 25 octobre 2026. Les contrats livrés
+  restent décrits par [0095](../decisions/0095-pydantic-ai-request-ownership.md),
+  [0097](../decisions/0097-durable-inference-lifecycle.md) et
+  [0170](../decisions/0170-execution-scope-and-durable-controls.md).
+  Les mises à jour des dépendances sont qualifiées sur les contrats existants, sans
+  réglages locaux par famille ou version de modèle. Les extensions prospectives ne
+  constituent plus un chantier de convergence à réaliser.
 - **Éditeur de code conversationnel** : intégration, reprise et profils réalisés ;
   contrat et limites dans [0173](../decisions/0173-conversational-code-workspaces.md),
   parcours dans le [guide utilisateur](../../docs/fr/user/code-editor.md).

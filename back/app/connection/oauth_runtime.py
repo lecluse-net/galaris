@@ -6,7 +6,7 @@ import asyncio
 from collections.abc import AsyncGenerator, Mapping
 from urllib.parse import urlsplit
 
-import httpx
+import httpx2 as httpx
 
 from core.database import get_db_session
 from core.i18n import t

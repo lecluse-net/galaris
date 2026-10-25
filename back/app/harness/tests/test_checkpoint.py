@@ -457,7 +457,9 @@ async def test_legacy_unknown_effect_uses_only_its_own_recorded_failure(
     await resumed.prepare_resume()
     repaired = cast(AgentRunCheckpoint, save.await_args.args[0])
     assert checkpoint_is_safe(repaired)
-    assert resumed.restored_messages() == history
+    from pydantic_ai.messages import ModelMessagesTypeAdapter
+    assert resumed.restored_messages() == ModelMessagesTypeAdapter.validate_python(
+        ModelMessagesTypeAdapter.dump_python(history, mode="json"))
     with pytest.raises(ModelRetry, match="command required"):
         resumed.take_replay("console_exec", {})
 
@@ -549,7 +551,9 @@ async def test_parallel_tool_results_become_resumable_only_when_all_are_durable(
         for part in restored[-1].parts
         if isinstance(part, (ToolReturnPart, RetryPromptPart))
     } == {"call-a", "call-b"}
-    assert isinstance(restored[-1].parts[0], RetryPromptPart if first_failed else ToolReturnPart)
+    returned = restored[-1].parts[0]
+    assert isinstance(returned, ToolReturnPart)
+    assert returned.outcome == ("retried" if first_failed else "success")
 
 
 def test_unknown_internal_checkpoint_version_is_not_replayed() -> None:

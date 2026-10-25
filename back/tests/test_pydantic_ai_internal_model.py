@@ -112,7 +112,7 @@ async def test_chat_sdk_applies_profile_before_internal_transport(monkeypatch) -
     # Deliberately opaque name: the profile, not Galaris model-name matching, owns this.
     model.profile.update(OpenAIModelProfile(
         openai_supports_reasoning=True,
-        openai_reasoning_enabled_by_default=True,
+        thinking_enabled_by_default=True,
         openai_chat_supports_max_completion_tokens=True,
     ))
     with pytest.warns(UserWarning, match="Sampling parameters"):

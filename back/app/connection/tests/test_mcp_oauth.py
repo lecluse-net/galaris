@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
-import httpx
+import httpx2 as httpx
 import pytest
 import pytest_asyncio
 from fastmcp import Client

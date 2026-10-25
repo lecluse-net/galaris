@@ -66,8 +66,8 @@ def _compatible_model_profile(llm: LLM, profile: ModelProfile | None) -> ModelPr
     return merge_profile(
         profile,
         OpenAIModelProfile(
-            openai_supports_forced_tool_choice_with_thinking=False,
-            openai_reasoning_enabled_by_default=policy.reasoning_default,
+            supports_forced_tool_choice_with_thinking=False,
+            thinking_enabled_by_default=policy.reasoning_default,
         ),
     )
 

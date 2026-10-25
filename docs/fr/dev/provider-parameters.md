@@ -44,9 +44,9 @@ du raisonnement chiffré Codex et la compaction restent couvertes par les tests.
 
 Cette description du second lot concerne l'étape du 13 septembre. La
 [décision 0097](../../../project/decisions/0097-durable-inference-lifecycle.md) décrit la
-suppression des règles locales concernées au lot suivant. Le
-[plan de convergence](../../../project/plans/convergence-pydantic-ai.md) conserve uniquement
-les extensions et qualifications ouvertes. Il ne faut pas ajouter de nouvelles heuristiques de nom.
+suppression des règles locales concernées au lot suivant. Les mises à jour du SDK sont
+qualifiées sur les contrats existants, sans réglages locaux par famille ou version de modèle.
+Il ne faut pas ajouter de nouvelles heuristiques de nom.
 
 ## Garantie commune
 

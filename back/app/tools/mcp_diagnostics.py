@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, Mapping
 from urllib.parse import urlparse
 
-import httpx
+import httpx2 as httpx
 from loguru import logger
 from pydantic_ai.mcp import MCPToolset
 
@@ -561,13 +561,13 @@ async def _diagnose_mcp_connection(
                             truncated = True
                             break
                         tools.append(tool)
-                    if truncated or not page.nextCursor:
+                    if truncated or not page.next_cursor:
                         break
-                    if page.nextCursor in seen:
+                    if page.next_cursor in seen:
                         truncated = True
                         break
-                    seen.add(page.nextCursor)
-                    cursor = page.nextCursor
+                    seen.add(page.next_cursor)
+                    cursor = page.next_cursor
                 else:
                     truncated = True
     except Exception as exc:
@@ -671,7 +671,7 @@ _DIAGNOSTIC_SLOTS = asyncio.Semaphore(4)
 
 def function_detail(tool: Any) -> ToolMcpTestFunction:
     def read(name: str, alternate: str) -> Any:
-        return getattr(tool, name, getattr(tool, alternate, None))
+        return getattr(tool, name) if hasattr(tool, name) else getattr(tool, alternate, None)
 
     payload = {
         "input_schema": read("input_schema", "inputSchema"),
