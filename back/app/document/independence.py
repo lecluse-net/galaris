@@ -55,6 +55,10 @@ async def relax_legacy_memory_policy(session: AsyncSession, delta: SchemaTransit
     # allow their inserts before contraction. Preserve and verify sources first;
     # this action must work independently of other BEFORE_EXPAND action ordering.
     await backup(session, delta)
+    # Backup normalizes both sides of deferred legacy sharing FKs. Check them
+    # now: PostgreSQL forbids ALTER TABLE while their trigger events are pending.
+    # Keep archive, normalization and DDL in the same rollback boundary.
+    await session.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
     for column in await _required_legacy_memory_policy_columns(session):
         await session.execute(text(f'ALTER TABLE public.memory_items ALTER COLUMN "{column}" DROP NOT NULL'))
 

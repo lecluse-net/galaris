@@ -88,6 +88,10 @@ async def old_schema(session):
     await session.execute(text("ALTER TABLE document_tags DROP COLUMN share_id CASCADE, DROP COLUMN share_kind CASCADE, DROP COLUMN lock_version"))
     await session.execute(text("UPDATE share_configs SET resource_kind='memory' WHERE id=:policy"),{"policy":folder.share_id})
     await session.execute(text("ALTER TABLE memory_items ADD UNIQUE(id,share_id)"))
+    # The retired ShareReference also checked the policy kind at commit. Its
+    # trigger events must be drained after backup normalizes both sides, before
+    # the nullable-policy action can alter memory_items in that transaction.
+    await session.execute(text("ALTER TABLE memory_items ADD CONSTRAINT fk_memory_items_share_kind FOREIGN KEY(share_id,share_kind) REFERENCES share_configs(id,resource_kind) DEFERRABLE INITIALLY DEFERRED"))
     await session.execute(text("ALTER TABLE documents ADD CONSTRAINT synthetic_legacy_document_identity FOREIGN KEY(memory_item_id,share_id) REFERENCES memory_items(id,share_id) DEFERRABLE INITIALLY DEFERRED"))
     await session.execute(text("CREATE TABLE memory_summary_revisions (LIKE document_summary_revisions INCLUDING DEFAULTS)"))
     await session.execute(text("INSERT INTO memory_summary_revisions SELECT * FROM document_summary_revisions"))
@@ -108,7 +112,7 @@ async def old_schema(session):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("interrupted",[False,True,"reconciler"])
+@pytest.mark.parametrize("interrupted",[False,True,"nullable-policy","reconciler"])
 async def test_real_upgrade_preserves_document_summary_history_policies_and_replay(committed_database,monkeypatch,interrupted):
     engine=committed_database.kw["bind"]
     monkeypatch.setattr(orchestrator,"engine",engine)
@@ -120,21 +124,28 @@ async def test_real_upgrade_preserves_document_summary_history_policies_and_repl
     registry=DbAdminRegistry();register_independence(registry)
     from app.messenger.dbadmin import _reconcile_contacts
     registry.register_reconciler(DbAdminReconciler(key="synthetic.upgrade_contacts", handler=_reconcile_contacts))
-    if interrupted is True:
+    if interrupted is True or interrupted == "nullable-policy":
+        failing_key = (
+            "app.document.independence_memory_policy_nullable"
+            if interrupted == "nullable-policy" else "app.document.independence_transfer"
+        )
         interrupted_registry=DbAdminRegistry()
         for action in registry.actions:
-            if action.key=="app.document.independence_transfer":
+            if action.key==failing_key:
                 original=action.handler
-                async def fail_after_copy(session,delta):
+                async def fail_before_commit(session,delta):
                     await original(session,delta)
-                    raise RuntimeError("Synthetic failure after transfer, before commit")
-                action=replace(action,handler=fail_after_copy)
+                    raise RuntimeError("Synthetic failure after handler, before commit")
+                action=replace(action,handler=fail_before_commit)
             interrupted_registry.register_action(action)
         result=await orchestrator.synchronize_database(target_registry=interrupted_registry)
         assert result.verdict is DbAdminVerdict.FATAL
+        assert any(issue.object_name == failing_key for issue in result.issues)
         async with committed_database() as session:
             assert await session.scalar(text("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='memory_items' AND column_name='share_id')"))
             assert await session.scalar(text("SELECT resource_id FROM memory_items WHERE id=:id"),{"id":expected["id"]})==expected["summary_pointer"]
+            if interrupted == "nullable-policy":
+                assert await session.scalar(text("SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='memory_items' AND column_name IN ('share_id','share_kind') AND is_nullable='NO'")) == 2
     elif interrupted == "reconciler":
         previous_registry = DbAdminRegistry()
         for action in registry.actions:
