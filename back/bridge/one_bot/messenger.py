@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Literal, Optional, cast
 
 from core.i18n import render_prompt, t
 from core.util import as_dict, as_list
-from app.messenger.interface import HistoryPage, Messenger
+from app.messenger.interface import DeliveryOutcomeUnknown, HistoryPage, Messenger
 from app.messenger._observations import (
     ObservedMessengerMessage,
     ObservedMessengerRoom,
@@ -20,7 +20,7 @@ from app.messenger._observations import (
 )
 from app.messenger.models import Capability
 
-from .client import OneBot, OneBotMessage
+from .client import OneBot, OneBotMessage, action_data
 
 
 def _error(key: str, **values: Any) -> str:
@@ -48,25 +48,10 @@ def _parse_room_id(room_id: str) -> tuple[Literal["group", "direct"], str]:
 
 
 def _message_id_from_response(response: Any) -> str:
-    payload = as_dict(response)
-    status = str(payload.get("status") or "").lower()
-    raw_retcode = payload.get("retcode")
-    try:
-        retcode = int(raw_retcode) if raw_retcode is not None else -1
-    except (TypeError, ValueError):
-        retcode = -1
-    if status != "ok" or retcode != 0:
-        detail = str(
-            payload.get("message")
-            or payload.get("wording")
-            or payload.get("msg")
-            or retcode
-        )
-        raise RuntimeError(_error("onebot_action_failed", error=detail))
-    data = as_dict(payload.get("data"))
+    data = as_dict(action_data(response))
     remote_id = data.get("message_id")
     if remote_id is None or not str(remote_id).strip():
-        raise RuntimeError(_error("onebot_message_id_missing"))
+        raise DeliveryOutcomeUnknown(_error("onebot_message_id_missing"))
     return str(remote_id).strip()
 
 
@@ -93,6 +78,7 @@ def onebot_to_message(
     tool_id: int = 0,
     connection_id: int | None = None,
     conversation_remote_id: str | None = None,
+    agent_id: int | None = None,
 ) -> ObservedMessengerMessage:
     """Convert a wire-format ``OneBotMessage`` to a canonical ObservedMessengerMessage.
 
@@ -100,7 +86,7 @@ def onebot_to_message(
     """
     is_group = event.message_type == "group"
     remote_room_id = str(
-        event.group_id
+        event.group_id or ""
         if is_group
         else conversation_remote_id or event.user_id
     ).strip()
@@ -115,11 +101,13 @@ def onebot_to_message(
             display_name=event.sender.nickname or "",
             connection_id=connection_id,
             tool_id=tool_id,
+            agent_id=agent_id if event.user_id == event.self_id else None,
         ),
         recipient=ObservedMessengerUser(
-            id=str(event.self_id),
+            id=remote_room_id if event.user_id == event.self_id and not is_group else event.self_id,
             connection_id=connection_id,
             tool_id=tool_id,
+            agent_id=agent_id if event.user_id != event.self_id or is_group else None,
         ),
         room=ObservedMessengerRoom(
             id=onebot_room_id(event.message_type, remote_room_id),
@@ -139,18 +127,21 @@ class OneBotMessenger(Messenger):
     """
 
     kind = "one_bot"
+    provider_history = False
     capabilities = {
         Capability.SEND,
         Capability.HISTORY,
         Capability.SEARCH_USERS,
     }
     def __init__(
-        self, one_bot: OneBot, tool_id: int, self_id: str, connection_id: Optional[int] = None
+        self, one_bot: OneBot, tool_id: int, self_id: str, connection_id: Optional[int] = None,
+        agent_id: int | None = None,
     ) -> None:
         self._one_bot = one_bot
         self.tool_id = tool_id
         self.self_id = self_id
         self.connection_id = connection_id
+        self.agent_id = agent_id
 
     @classmethod
     async def from_connection_id(cls, connection_id: int) -> "OneBotMessenger":
@@ -167,16 +158,13 @@ class OneBotMessenger(Messenger):
             tool_id=int(connection.tool_id),
             self_id=one_bot.user_id,
             connection_id=connection_id,
+            agent_id=int(connection.agent_id),
         )
 
     async def check_connection(self) -> str:
-        response = await self._one_bot.get_group_list()
-        if isinstance(response, dict):
-            response_dict = cast("Dict[str, Any]", response)
-            if response_dict.get("status") == "failed":
-                raise RuntimeError(
-                    str(response_dict.get("msg") or "OneBot adapter check failed")
-                )
+        data = as_dict(action_data(await self._one_bot.get_login_info()))
+        if str(data.get("user_id") or "") != self.self_id:
+            raise RuntimeError(_error("onebot_identity_mismatch"))
         return self.self_id
 
     async def search_users(self, query: str) -> List[ObservedMessengerUser]:
@@ -186,8 +174,7 @@ class OneBotMessenger(Messenger):
         rows: list[dict[str, Any]] = []
 
         def response_rows(payload: Any) -> list[dict[str, Any]]:
-            value = as_dict(payload)
-            data = value.get("data") if value else payload
+            data = action_data(payload)
             return [as_dict(item) for item in as_list(data) if as_dict(item)]
 
         rows.extend(response_rows(await self._one_bot.get_friend_list()))
@@ -230,7 +217,7 @@ class OneBotMessenger(Messenger):
         room_kind, remote_id = _parse_room_id(room_id)
         if not remote_id:
             raise ValueError("OneBot room identifier is empty")
-        wire_message: Any = text
+        wire_message: Any = [{"type": "text", "data": {"text": text}}]
         if reply_to:
             wire_message = [
                 {"type": "reply", "data": {"id": reply_to}},
@@ -249,7 +236,11 @@ class OneBotMessenger(Messenger):
                 id=self.self_id,
                 connection_id=self.connection_id,
                 tool_id=self.tool_id,
+                agent_id=self.agent_id,
             ),
+            recipient=ObservedMessengerUser(
+                id=remote_id, connection_id=self.connection_id, tool_id=self.tool_id,
+            ) if room_kind == "direct" else None,
             room=ObservedMessengerRoom(
                 id=onebot_room_id(room_kind, remote_id),
                 kind=room_kind,
@@ -261,7 +252,7 @@ class OneBotMessenger(Messenger):
         )
 
     async def send_to_user(self, user_id: str, text: str) -> ObservedMessengerMessage:
-        response = await self._one_bot.send_private_msg(user_id, text)
+        response = await self._one_bot.send_private_msg(user_id, [{"type": "text", "data": {"text": text}}])
         return ObservedMessengerMessage(
             id=_message_id_from_response(response),
             platform=self.kind,
@@ -270,6 +261,7 @@ class OneBotMessenger(Messenger):
                 id=self.self_id,
                 connection_id=self.connection_id,
                 tool_id=self.tool_id,
+                agent_id=self.agent_id,
             ),
             recipient=ObservedMessengerUser(
                 id=user_id,
@@ -300,6 +292,7 @@ class OneBotMessenger(Messenger):
                 self.tool_id,
                 self.connection_id,
                 conversation_remote_id=remote_id,
+                agent_id=self.agent_id,
             )
             for event in events
         ]

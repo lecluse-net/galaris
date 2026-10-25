@@ -1,6 +1,6 @@
 <p align="right"><a href="../../fr/bridges/telegram-whatsapp.md">Français</a> · <strong>English</strong></p>
 
-# Telegram, WhatsApp Cloud, and Matrix
+# Telegram, WhatsApp Cloud, Matrix, and OneBot
 
 Galaris can run all configured bridges of an agent simultaneously. The technical values remain
 `nextcloud_talk`, `matrix`, `one_bot`, `telegram`, and `whatsapp`; the order displayed in
@@ -150,6 +150,14 @@ The old policy and template fields are still read on migrated connections, witho
 the new identity mapping. Numbers are normalized to digits. Logs display only an HMAC fingerprint
 of the sender, calculated using the application secret.
 
+A connection with only `access_token` and `phone_number_id` receives messages without an
+additional phone allowlist. The manager must authorize dialogue in **Supervise → Permissions**
+before the agent can reply to an unknown contact; receipt remains visible in pending
+conversations. A non-empty legacy `allowed_phone_numbers` list retains its inbound and outbound
+restrictions.
+The agent’s remote account is linked to its Galaris identity; dialogue checks do not treat it
+as an additional human contact.
+
 ### 3. Webhook security and lifecycle
 
 The subscription `GET` compares the verify token in constant time. Each `POST`:
@@ -179,6 +187,19 @@ Local images, documents, videos, and audio are uploaded to `/{phone_number_id}/m
 referenced by their ID in `/{phone_number_id}/messages`. Temporary incoming URLs are resolved and
 downloaded with the token in a bounded stream before being cached. TTS voice notes are converted to
 OGG/Opus and sent with `audio.voice=true`.
+
+### 5. Verify without exposing the server
+
+Local tests use an ephemeral database, synthetic signed webhooks and a simulated Meta transport:
+
+```bash
+make tests ARGS='bridge/whatsapp/tests app/conversation/tests/test_contact_authorization.py'
+```
+
+They cover reception, duplicates, manager approval or denial, replies and transport errors.
+They do not qualify Meta account configuration, actual delivery or Graph version compatibility
+with the live service. Without a public HTTPS webhook reachable by Meta, live reception remains
+impossible; this bridge has no polling mode. It can remain disabled in **Preferences → Messaging**.
 
 Reference: [Official Meta WhatsApp Business Platform collection](https://www.postman.com/meta/whatsapp-business-platform/overview).
 
@@ -249,6 +270,60 @@ emission to prevent a plaintext leak. DMs created by Galaris use a private, unen
 are recorded in `m.direct`.
 
 Reference: [Matrix Client-Server specification](https://spec.matrix.org/latest/client-server-api/).
+
+## OneBot 11
+
+### 1. Configure the account and adapter
+
+1. In **Tools**, enable Messaging, select `one_bot` and enter the Tool’s `platform` setting,
+   for example `qq`.
+2. Map `user_id` and `token` to the connection schema. In **Tools → Connections**, each agent
+   provides its bot identifier and Bearer secret.
+3. Configure the adapter for **Universal reverse WebSocket**, with **segment array** messages.
+   The endpoint is `wss://your-galaris/ws/onebot/<platform>/<user_id>`; `ws://` is suitable on a
+   trusted local network without TLS. A local network or VPN reachable by the adapter is
+   sufficient, without a public URL.
+4. Send `Authorization: Bearer <token>`, `X-Self-ID: <user_id>` and `X-Client-Role: Universal`.
+   Separate `API` and `Event` connections are refused.
+
+The former global settings remain a compatibility mechanism; new configurations use the Tool
+and its agents’ connections. **Test reception** calls `get_login_info` and verifies the bot’s
+identity; this check does not prove that a human message has arrived.
+
+### 2. Reception, permissions and reconnection
+
+Numeric identifiers are normalized to strings in Galaris, which also preserves other adapters’
+alphanumeric identifiers. The bot account is linked to its agent. Each event is checked against
+the active connection and its current configuration. Dialogue with an unknown contact waits
+for manager approval in **Supervise → Permissions**; denial produces no reply. The canonical
+journal deduplicates messages and provides paginated history without requiring NapCat or
+Lagrange history extensions.
+
+Calls and responses are isolated by connection, secret and socket. Reconnection replaces the
+old socket without allowing it to resolve the new socket’s requests. A send whose response is
+lost becomes uncertain and is not retried automatically. Outbound `text` segments preserve
+strings resembling CQ codes as literal text.
+
+The reader remains available during admission, with a queue of 64 events and frames of at
+most 1 MiB. Queue saturation closes the socket with code `1013`. On disconnect, processing has
+five seconds to drain the queue; exceeding that deadline is logged. OneBot has no durable
+event acknowledgement: messages still absent from the journal at an interruption, or sent
+while disconnected, are not guaranteed recoverable. Files and voice notes are not among
+this bridge’s declared capabilities.
+
+### 3. Verify locally
+
+```bash
+make tests ARGS='bridge/one_bot/tests app/conversation/tests/test_contact_authorization.py'
+```
+
+The shared journey uses a synthetic adapter over a real local WebSocket to the assembled API:
+authentication, numeric reception, duplicates, permissions, history and replies. Tests also
+cover socket isolation, invalid frames, timeouts and reconnection. Testing against the actual
+NapCat or Lagrange version remains necessary to qualify remote account access and adapter
+extensions.
+
+Reference: [official OneBot 11 specification](https://github.com/botuniverse/onebot-11).
 
 ## Common voice notes
 

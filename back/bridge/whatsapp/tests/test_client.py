@@ -75,6 +75,36 @@ async def test_media_download_is_rejected_from_content_length() -> None:
             await _client(http).download_media("media-id", max_bytes=10)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("to_file", [False, True])
+@pytest.mark.parametrize("status_code", [302, 400])
+async def test_media_non_success_body_is_bounded_and_uses_domain_errors(tmp_path, to_file, status_code) -> None:
+    reads = []
+
+    class ErrorBody(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            for _ in range(16):
+                reads.append(4096)
+                yield b"x" * 4096
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/media-id"):
+            return httpx.Response(200, json={"url": "https://lookaside.facebook.com/media"})
+        return httpx.Response(status_code, stream=ErrorBody())
+
+    async with httpx.AsyncClient(
+        base_url="https://graph.facebook.com/v23.0", transport=httpx.MockTransport(handler),
+    ) as http:
+        with pytest.raises(WhatsAppAPIError) as raised:
+            if to_file:
+                await _client(http).download_media_to_file("media-id", tmp_path / "media", max_bytes=10)
+            else:
+                await _client(http).download_media("media-id", max_bytes=10)
+    assert raised.value.status_code == status_code
+    assert sum(reads) <= 8192
+    assert not (tmp_path / "media").exists()
+
+
 def test_remote_errors_redact_numbers_and_secrets() -> None:
     error = WhatsAppAPIError(
         400,

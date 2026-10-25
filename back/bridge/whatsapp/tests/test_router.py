@@ -11,13 +11,22 @@ from core.params.runtime_settings import runtime_settings
 from bridge.whatsapp import router as whatsapp_router
 
 
+@pytest.fixture(autouse=True)
+def enable_whatsapp(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    del client
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["whatsapp"]')
+
+
 def _signature(raw: bytes, secret: str) -> str:
     return "sha256=" + hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("tool_id, expected", [(None, None), (7, 42), (8, 43)])
 async def test_phone_number_lookup_uses_the_tool_mapping(
     monkeypatch: pytest.MonkeyPatch,
+    tool_id: int | None,
+    expected: int | None,
 ) -> None:
     from app import messenger
     from app.connection import connection_service
@@ -29,18 +38,23 @@ async def test_phone_number_lookup_uses_the_tool_mapping(
             "param_map": {"phone_number_id": "meta_phone"},
         },
     )
-    connection = SimpleNamespace(id=42, active=True)
+    other_tool = SimpleNamespace(id=8, messenger_config={
+        "service": "whatsapp", "param_map": {"phone_number_id": "other_phone"},
+    })
 
     async def records(_kind: str) -> list[SimpleNamespace]:
-        return [tool]
+        return [tool, other_tool]
 
     async def connections(
         tool_id: int,
         param_name: str,
         param_value: str,
     ) -> list[SimpleNamespace]:
-        assert (tool_id, param_name, param_value) == (7, "meta_phone", "123")
-        return [connection]
+        assert (tool_id, param_name, param_value) in {
+            (7, "meta_phone", "123"), (8, "other_phone", "123"),
+        }
+        return [SimpleNamespace(id=42 if tool_id == 7 else 43, active=True),
+                SimpleNamespace(id=99, active=False)]
 
     monkeypatch.setattr(messenger, "messaging_tool_records", records)
     monkeypatch.setattr(
@@ -50,15 +64,17 @@ async def test_phone_number_lookup_uses_the_tool_mapping(
     )
 
     assert (
-        await whatsapp_router._connection_for_phone_number_id("123")  # pyright: ignore[reportPrivateUsage]
-        == 42
+        await whatsapp_router._connection_for_phone_number_id("123", tool_id=tool_id)  # pyright: ignore[reportPrivateUsage]
+        == expected
     )
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("wrong_token", ["wrong", "mauvais-é"])
 async def test_webhook_verification_handshake(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    wrong_token: str,
 ) -> None:
     monkeypatch.setattr(
         runtime_settings,
@@ -80,7 +96,7 @@ async def test_webhook_verification_handshake(
         "/api/whatsapp/webhook",
         params={
             "hub.mode": "subscribe",
-            "hub.verify_token": "wrong",
+            "hub.verify_token": wrong_token,
             "hub.challenge": "challenge-123",
         },
     )

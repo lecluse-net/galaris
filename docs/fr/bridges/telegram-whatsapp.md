@@ -1,6 +1,6 @@
 <p align="right"><strong>Français</strong> · <a href="../../en/bridges/telegram-whatsapp.md">English</a></p>
 
-# Telegram, WhatsApp Cloud et Matrix
+# Telegram, WhatsApp Cloud, Matrix et OneBot
 
 Galaris peut faire fonctionner simultanément tous les bridges configurés d'un agent. Les valeurs
 techniques restent `nextcloud_talk`, `matrix`, `one_bot`, `telegram` et `whatsapp`; l'ordre affiché
@@ -153,6 +153,14 @@ Les anciens champs de politique et de template restent lus sur les connexions mi
 partie du nouveau mapping d’identité. Les numéros sont normalisés en chiffres. Les logs n’affichent
 qu’une empreinte HMAC de l’expéditeur, calculée avec le secret applicatif.
 
+Une connexion avec les seuls `access_token` et `phone_number_id` reçoit les messages sans
+liste de numéros supplémentaire. Le manager doit autoriser le dialogue dans **Superviser →
+Permissions** avant que l’agent puisse répondre à un contact inconnu ; la réception reste visible
+dans les conversations en attente. Une ancienne liste `allowed_phone_numbers` non vide conserve
+ses restrictions à la réception et à l’envoi.
+Le compte distant de l’agent est relié à son identité Galaris ; il n’est pas traité comme un
+contact humain supplémentaire dans les contrôles de dialogue.
+
 ### 3. Sécurité et cycle du webhook
 
 Le `GET` de souscription compare le verify token en temps constant. Chaque `POST` :
@@ -182,6 +190,21 @@ Images, documents, vidéos et audio locaux sont téléversés sur `/{phone_numbe
 référencés par leur ID dans `/{phone_number_id}/messages`. Les URLs entrantes temporaires sont
 résolues et téléchargées avec le token dans un flux borné avant mise en cache. Les notes vocales
 TTS sont converties en OGG/Opus et envoyées avec `audio.voice=true`.
+
+### 5. Vérifier sans exposer le serveur
+
+Les tests locaux utilisent une base éphémère, des webhooks signés synthétiques et un transport
+Meta simulé :
+
+```bash
+make tests ARGS='bridge/whatsapp/tests app/conversation/tests/test_contact_authorization.py'
+```
+
+Ils couvrent la réception, les doublons, l’accord ou le refus du manager, les réponses et les
+erreurs de transport. Ils ne qualifient ni la configuration du compte Meta, ni la livraison
+effective, ni la compatibilité de la version Graph avec le service réel. Sans webhook HTTPS
+public accessible par Meta, la réception réelle reste impossible ; ce bridge ne possède pas de
+mode polling. Il peut rester désactivé dans **Préférences → Messagerie**.
 
 Référence : [collection officielle WhatsApp Business Platform de Meta](https://www.postman.com/meta/whatsapp-business-platform/overview).
 
@@ -255,6 +278,60 @@ l’upload ou l’émission pour éviter une fuite en clair. Les DM créés par 
 privée non chiffrée et sont enregistrés dans `m.direct`.
 
 Référence : [spécification Matrix Client-Server](https://spec.matrix.org/latest/client-server-api/).
+
+## OneBot 11
+
+### 1. Configurer le compte et l’adaptateur
+
+1. Dans **Outils**, activer la Messagerie, sélectionner `one_bot` et renseigner le réglage
+   Tool `platform`, par exemple `qq`.
+2. Associer `user_id` et `token` au schéma de connexion. Dans **Outils → Connexions**,
+   chaque agent fournit l’identifiant de son bot et son secret Bearer.
+3. Configurer l’adaptateur en **WebSocket inverse Universal**, avec les messages au format
+   **tableau de segments**. L’endpoint est `wss://votre-galaris/ws/onebot/<platform>/<user_id>` ;
+   `ws://` convient sur un réseau local de confiance sans TLS. Un réseau local ou VPN joignable
+   depuis l’adaptateur suffit, sans URL publique.
+4. Envoyer `Authorization: Bearer <token>`, `X-Self-ID: <user_id>` et
+   `X-Client-Role: Universal`. Les connexions séparées `API` et `Event` sont refusées.
+
+Les anciens réglages globaux restent un mécanisme de compatibilité ; une nouvelle configuration
+utilise le Tool et les connexions de ses agents. **Tester la réception** appelle `get_login_info`
+et vérifie l’identité du bot ; ce contrôle ne prouve pas qu’un message humain est arrivé.
+
+### 2. Réception, droits et reconnexion
+
+Les identifiants numériques sont normalisés en chaînes dans Galaris, qui conserve aussi les
+identifiants alphanumériques des autres adaptateurs. Le compte du bot est relié à l’agent.
+Chaque événement est revérifié contre la connexion active et sa configuration courante.
+Le dialogue avec un contact inconnu attend l’accord du manager dans **Superviser → Permissions** ;
+un refus ne produit aucune réponse. Le journal canonique déduplique les messages et fournit
+l’historique paginé, sans exiger les extensions d’historique de NapCat ou Lagrange.
+
+Les appels et réponses sont isolés par connexion, secret et socket. Une reconnexion remplace
+l’ancien socket sans lui permettre de résoudre les appels du nouveau. Un envoi dont la réponse
+est perdue devient incertain et n’est pas réessayé automatiquement. Les segments `text` utilisés
+à l’envoi conservent comme texte toute chaîne ressemblant à un code CQ.
+
+Le lecteur reste disponible pendant l’admission, avec une file de 64 événements et des trames
+d’au plus 1 Mio. Une saturation ferme le socket avec le code `1013`. À la déconnexion, le
+traitement dispose de cinq secondes pour vider la file ; un délai dépassé est journalisé.
+OneBot ne fournit pas d’acquittement durable des événements : les messages encore absents du
+journal lors d’une interruption ou envoyés pendant une déconnexion ne sont pas garantis
+récupérables. Les fichiers et notes vocales ne font pas partie des capacités déclarées.
+
+### 3. Vérifier localement
+
+```bash
+make tests ARGS='bridge/one_bot/tests app/conversation/tests/test_contact_authorization.py'
+```
+
+Le parcours commun utilise un adaptateur synthétique sur un vrai WebSocket local de l’API
+assemblée : authentification, réception numérique, doublons, permissions, historique et réponse.
+Les tests couvrent aussi l’isolation des sockets, les trames invalides, les délais et les
+reconnexions. Un essai avec la version réelle de NapCat ou Lagrange reste nécessaire pour
+qualifier son accès au compte distant et ses extensions propres.
+
+Référence : [spécification officielle OneBot 11](https://github.com/botuniverse/onebot-11).
 
 ## Notes vocales communes
 

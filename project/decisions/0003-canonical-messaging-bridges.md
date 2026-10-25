@@ -37,6 +37,12 @@ Messenger est une capacité déclarative de `app.tools`, indépendante du code d
 cumuler MCP, File Share et Messenger. Chaque capacité choisit son bridge et ses mappings sans
 partager implicitement son URL ni ses identifiants avec les autres.
 
+Le hub OneBot isole chaque canal par connexion Galaris et identifiants d’authentification,
+puis corrèle chaque appel à son socket d’origine. Une identité distante identique ne suffit
+pas à partager un canal entre agents. La réception utilise un lecteur indépendant et une file
+bornée d’admission pour conserver le traitement des réponses API pendant le dispatch métier.
+Les livraisons incertaines ne sont pas rejouées automatiquement.
+
 `bridge.nextcloud` expose Talk vers `app.messenger` et WebDAV/OCS vers `app.file_share`. Ces deux
 adaptations peuvent être sélectionnées sur le même Tool tout en utilisant des configurations et
 des mappings distincts.

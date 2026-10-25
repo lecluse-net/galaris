@@ -144,7 +144,7 @@ default: dict[str, object] = {
                 "Le service de messagerie par défaut de l’application n’est pas configuré"
             ),
             "onebot_platform_required": (
-                "Configurez la plateforme OneBot dans Préférences → Messagerie"
+                "Configurez la plateforme OneBot dans les paramètres Messagerie de l’outil"
             ),
             "matrix_homeserver_required": (
                 "Configurez le serveur Matrix dans Préférences → Messagerie"
@@ -195,6 +195,8 @@ default: dict[str, object] = {
             "hpb_connection_closed": "Connexion HPB fermée",
             "adapter_not_connected": "L’adaptateur ${adapter} n’est pas connecté",
             "onebot_action_failed": "OneBot a refusé l’action de messagerie : ${error}",
+            "onebot_identity_mismatch": "L’identité de l’adaptateur OneBot ne correspond pas au bot configuré",
+            "onebot_connection_changed": "Les paramètres de connexion OneBot ont changé ; rechargez la connexion",
             "onebot_message_id_missing": (
                 "OneBot a accepté l’action sans renvoyer de message_id"
             ),

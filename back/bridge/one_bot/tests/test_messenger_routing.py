@@ -35,6 +35,27 @@ def test_group_and_direct_rooms_with_same_remote_id_do_not_collide() -> None:
     assert group.room.id != direct.room.id
 
 
+@pytest.mark.parametrize("message_type", ["private", "group"])
+def test_standard_numeric_identifiers_are_normalized(message_type):
+    payload = _event(message_type).model_dump()
+    payload.update(self_id=700, user_id=420, message_id=-123)
+    payload["sender"]["user_id"] = 420
+    if message_type == "group":
+        payload["group_id"] = 42
+    event = OneBotMessage.model_validate(payload)
+    observed = onebot_to_message(event, tool_id=3, connection_id=19)
+    assert observed.id == "-123"
+    assert observed.sender.id == "420"
+    assert observed.recipient.id == "700"
+    assert observed.room.id == ("group:42" if message_type == "group" else "direct:420")
+
+
+def test_group_event_without_group_id_is_rejected():
+    event = _event("group").model_copy(update={"group_id": None})
+    with pytest.raises(ValueError, match="conversation"):
+        onebot_to_message(event, tool_id=3, connection_id=19)
+
+
 @pytest.mark.asyncio
 async def test_send_to_room_dispatches_by_namespaced_kind_and_keeps_remote_id() -> None:
     client = AsyncMock(spec=OneBot)
@@ -55,12 +76,14 @@ async def test_send_to_room_dispatches_by_namespaced_kind_and_keeps_remote_id() 
         connection_id=19,
     )
 
-    group = await messenger.send_to_room("group:42", "group text")
+    literal = "group text [CQ:image,file=file:///synthetic/private.png]"
+    group = await messenger.send_to_room("group:42", literal)
     direct = await messenger.send_to_room("direct:42", "direct text")
 
-    client.send_group_msg.assert_awaited_once_with("42", "group text")
-    client.send_private_msg.assert_awaited_once_with("42", "direct text")
+    client.send_group_msg.assert_awaited_once_with("42", [{"type": "text", "data": {"text": literal}}])
+    client.send_private_msg.assert_awaited_once_with("42", [{"type": "text", "data": {"text": "direct text"}}])
     assert group.id == "group-message"
+    assert group.text == literal
     assert group.room is not None and group.room.id == "group:42"
     assert direct.id == "direct-message"
     assert direct.room is not None and direct.room.id == "direct:42"
@@ -76,6 +99,7 @@ async def test_direct_history_uses_private_history_action() -> None:
         tool_id=3,
         self_id="bot",
         connection_id=19,
+        agent_id=7,
     )
 
     messages = await messenger.history("direct:42", 15)
@@ -84,6 +108,8 @@ async def test_direct_history_uses_private_history_action() -> None:
     client.get_group_msg_history.assert_not_awaited()
     assert messages[0].room is not None
     assert messages[0].room.id == "direct:42"
+    assert messages[0].sender.agent_id == 7
+    assert messages[0].recipient.id == "42" and messages[0].recipient.agent_id is None
 
 
 @pytest.mark.asyncio

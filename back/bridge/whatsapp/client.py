@@ -74,6 +74,16 @@ class WhatsAppClient:
             pass
         return WhatsAppAPIError(response.status_code, code, message)
 
+    @classmethod
+    async def _media_error(cls, response: httpx.Response) -> WhatsAppAPIError:
+        """Bound provider error bodies just like successful media downloads."""
+        body = bytearray()
+        async for chunk in response.aiter_bytes(chunk_size=4096):
+            body.extend(chunk[:8192 - len(body)])
+            if len(body) >= 8192:
+                break
+        return cls._error(httpx.Response(response.status_code, content=bytes(body)))
+
     async def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
         replay_safe = method.upper() in {"GET", "HEAD"}
         headers = {**self._headers(), **kwargs.pop("headers", {})}
@@ -226,9 +236,8 @@ class WhatsAppClient:
                 async with self._http.stream(
                     "GET", url, headers=self._headers()
                 ) as response:
-                    if response.status_code >= 400:
-                        await response.aread()
-                        error = self._error(response)
+                    if not response.is_success:
+                        error = await self._media_error(response)
                         retryable = response.status_code == 429 or response.status_code >= 500
                         if not retryable or attempt == 3:
                             raise error
@@ -290,5 +299,6 @@ class WhatsAppClient:
             if not url:
                 raise WhatsAppAPIError(metadata.status_code, "missing_media_url", "No media URL")
             async with self._http.stream("GET", url, headers=self._headers()) as response:
-                response.raise_for_status()
+                if not response.is_success:
+                    raise await self._media_error(response)
                 return await copy_download(response.aiter_bytes(min(64 * 1024, max_bytes + 1)), dest, max_bytes=max_bytes)

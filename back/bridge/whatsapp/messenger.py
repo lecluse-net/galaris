@@ -79,6 +79,7 @@ def whatsapp_to_message(
     phone_number_id: str,
     tool_id: int,
     connection_id: int,
+    agent_id: int | None = None,
 ) -> ObservedMessengerMessage | None:
     """Map one supported Meta webhook message to the canonical model."""
     remote_id = str(raw.get("id") or "")
@@ -128,6 +129,7 @@ def whatsapp_to_message(
             id=phone_number_id,
             connection_id=connection_id,
             tool_id=tool_id,
+            agent_id=agent_id,
         ),
         room=ObservedMessengerRoom(
             id=sender_id,
@@ -154,11 +156,13 @@ class WhatsAppMessenger(Messenger):
         *,
         tool_id: int,
         connection_id: int,
+        agent_id: int | None = None,
     ) -> None:
         self.client = client
         self.config = config
         self.tool_id = tool_id
         self.connection_id = connection_id
+        self.agent_id = agent_id
         self.self_id = config.phone_number_id
 
     @property
@@ -198,6 +202,7 @@ class WhatsAppMessenger(Messenger):
             config,
             tool_id=resolved.tool_id,
             connection_id=connection_id,
+            agent_id=resolved.agent_id,
         )
 
     async def check_connection(self) -> str:
@@ -208,7 +213,12 @@ class WhatsAppMessenger(Messenger):
 
     def is_allowed(self, phone: str) -> bool:
         normalized = normalize_phone(phone)
-        return bool(normalized and normalized in self.config.allowed_phones)
+        # New connections rely on canonical contact consent. Keep explicit legacy
+        # restrictions, including invalid non-empty lists, fail-closed.
+        return bool(normalized) and (
+            not self.config.allowed_phone_numbers.strip()
+            or normalized in self.config.allowed_phones
+        )
 
     def _require_allowed(self, phone: str) -> str:
         normalized = normalize_phone(phone)
@@ -241,6 +251,7 @@ class WhatsAppMessenger(Messenger):
                 id=self.self_id,
                 connection_id=self.connection_id,
                 tool_id=self.tool_id,
+                agent_id=self.agent_id,
             ),
             recipient=ObservedMessengerUser(
                 id=room_id,

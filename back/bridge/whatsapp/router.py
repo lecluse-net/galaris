@@ -27,7 +27,7 @@ def verify_signature(raw: bytes, signature: str, secret: str) -> bool:
     if not signature.startswith("sha256=") or not secret:
         return False
     expected = "sha256=" + hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(signature.lower(), expected.lower())
+    return hmac.compare_digest(signature.lower().encode(), expected.encode())
 
 
 def _phone_ref(value: str, secret: str) -> str:
@@ -90,7 +90,7 @@ async def verify_webhook(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
     if mode != "subscribe" or not challenge:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
-    if not hmac.compare_digest(verify_token, configured):
+    if not hmac.compare_digest(verify_token.encode(), configured.encode()):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return Response(content=challenge, media_type="text/plain")
 
@@ -112,7 +112,7 @@ async def verify_tool_webhook(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
     if mode != "subscribe" or not challenge:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
-    if not hmac.compare_digest(verify_token, configured):
+    if not hmac.compare_digest(verify_token.encode(), configured.encode()):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return Response(content=challenge, media_type="text/plain")
 
@@ -185,6 +185,7 @@ async def _process_value(
                 phone_number_id=phone_number_id,
                 tool_id=messenger.tool_id,
                 connection_id=connection_id,
+                agent_id=messenger.agent_id,
             )
             if message is None:
                 continue

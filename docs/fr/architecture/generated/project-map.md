@@ -710,7 +710,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.one_bot` | `app.messenger` | `back/bridge/one_bot/__init__.py`, `back/bridge/one_bot/client.py`, `back/bridge/one_bot/messenger.py`, `back/bridge/one_bot/router.py` |
 | `bridge.one_bot` | `core.database` | `back/bridge/one_bot/router.py` |
 | `bridge.one_bot` | `core.i18n` | `back/bridge/one_bot/client.py`, `back/bridge/one_bot/messenger.py` |
-| `bridge.one_bot` | `core.util` | `back/bridge/one_bot/client.py`, `back/bridge/one_bot/messenger.py` |
+| `bridge.one_bot` | `core.util` | `back/bridge/one_bot/client.py`, `back/bridge/one_bot/messenger.py`, `back/bridge/one_bot/router.py` |
 | `bridge.openai` | `app.llm` | `back/bridge/openai/__init__.py`, `back/bridge/openai/codex.py`, `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/image.py`, `back/bridge/openai/parameters.py`, `back/bridge/openai/realtime.py`, `back/bridge/openai/resources.py` |
 | `bridge.openai` | `core.database` | `back/bridge/openai/codex_oauth.py` |
 | `bridge.openai` | `core.i18n` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py` |
@@ -1987,11 +1987,11 @@ tests restent l’autorité sur le comportement.
 | PUT | `/voice/conversations/turns/{turn_id}/topic` | `app.voice` | `update_voice_conversation_turn_topic` | oui | `back/app/voice/router.py:98` |
 | GET | `/voice/conversations/{conversation_id}` | `app.voice` | `read_voice_conversation` | oui | `back/app/voice/router.py:183` |
 | GET | `/whatsapp/webhook` | `bridge.whatsapp` | `verify_webhook` | non | `back/bridge/whatsapp/router.py:81` |
-| POST | `/whatsapp/webhook` | `bridge.whatsapp` | `receive_webhook` | non | `back/bridge/whatsapp/router.py:253` |
+| POST | `/whatsapp/webhook` | `bridge.whatsapp` | `receive_webhook` | non | `back/bridge/whatsapp/router.py:254` |
 | GET | `/whatsapp/webhook/{tool_id}` | `bridge.whatsapp` | `verify_tool_webhook` | non | `back/bridge/whatsapp/router.py:100` |
-| POST | `/whatsapp/webhook/{tool_id}` | `bridge.whatsapp` | `receive_tool_webhook` | non | `back/bridge/whatsapp/router.py:261` |
+| POST | `/whatsapp/webhook/{tool_id}` | `bridge.whatsapp` | `receive_tool_webhook` | non | `back/bridge/whatsapp/router.py:262` |
 | POST | `/workflows/{workflow_id}/runs/{engine_run_id}/sync` | `app.process` | `sync_engine_run` | oui | `back/app/process/router.py:254` |
-| WEBSOCKET | `/ws/onebot/{platform}/{user_id}` | `bridge.one_bot` | `onebot_endpoint` | non | `back/bridge/one_bot/router.py:134` |
+| WEBSOCKET | `/ws/onebot/{platform}/{user_id}` | `bridge.one_bot` | `onebot_endpoint` | non | `back/bridge/one_bot/router.py:161` |
 
 ## Modèles SQLAlchemy
 

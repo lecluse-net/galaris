@@ -8,7 +8,7 @@ export default {
                 steps: [
                     'Créez une application Meta, activez WhatsApp Cloud API et relevez l’App Secret.',
                     'Choisissez un jeton de vérification puis déclarez https://votre-galaris/api/whatsapp/webhook/TOOL_ID comme callback Meta, avec l’identifiant du Tool.',
-                    'Ajoutez le jeton permanent, le phone number ID et les expéditeurs autorisés dans Outils → Messagerie.',
+                    'Dans Outils → Connexions, créez une connexion à cet outil pour chaque agent avec son jeton d’accès et son phone number ID. Le dialogue avec un nouveau contact nécessite l’accord du manager.',
                 ],
                 fields: {
                     graphVersion: 'Version de Graph API', appSecret: 'App Secret Meta', verifyToken: 'Jeton de vérification du webhook',
@@ -26,7 +26,7 @@ export default {
                 steps: [
                     'Create a Meta app, enable WhatsApp Cloud API, and copy the App Secret.',
                     'Choose a verification token, then register https://your-galaris/api/whatsapp/webhook/TOOL_ID as the Meta callback, using the Tool identifier.',
-                    'Add the permanent token, phone number ID, and allowed senders in Tools → Messaging.',
+                    'In Tools → Connections, create a connection to this Tool for each agent with its access token and phone number ID. Dialogue with a new contact requires manager approval.',
                 ],
                 fields: {
                     graphVersion: 'Graph API version', appSecret: 'Meta App Secret', verifyToken: 'Webhook verification token',
@@ -41,7 +41,7 @@ export default {
                 networkHint: "WhatsApp Business Cloud 接收消息需要 Meta 能够访问、带有效证书的公开 HTTPS webhook：/api/whatsapp/webhook/TOOL_ID。测试本地实例时，只需将此端点通过 HTTPS 隧道公开。此桥接不连接个人 WhatsApp 账户。",
                 networkWarning: "此浏览器使用的地址（{origin}）是本地、私有地址或未使用 HTTPS。Meta 无法直接将其作为 webhook。请在 Meta 中注册公开 HTTPS URL 或隧道。如果已有其他公开 URL，请使用它：此提示仅检查浏览器地址，不验证 DNS 或可达性。",
                 guide: 'WhatsApp 使用 Meta Cloud API 和签名的公共 webhook。访问令牌和电话号码由各智能体分别管理。',
-                steps: ['创建 Meta 应用，启用 WhatsApp Cloud API，并复制 App Secret。', '选择验证令牌，然后将 https://your-galaris/api/whatsapp/webhook/TOOL_ID 注册为 Meta 回调，使用工具标识符。', '在“工具 → 消息”中添加永久令牌、电话号码 ID 和允许的发送者。'],
+                steps: ['创建 Meta 应用，启用 WhatsApp Cloud API，并复制 App Secret。', '选择验证令牌，然后将 https://your-galaris/api/whatsapp/webhook/TOOL_ID 注册为 Meta 回调，使用工具标识符。', '在“工具 → 连接”中为每个智能体创建此工具的连接，填写访问令牌和电话号码 ID。与新联系人对话需要管理员批准。'],
                 fields: { graphVersion: 'Graph API 版本', appSecret: 'Meta App Secret', verifyToken: 'Webhook 验证令牌', graphUrl: 'Graph API URL', webhookMaxBytes: 'Webhook 最大大小（MB）', httpTimeout: 'HTTP 超时（秒）' },
             },
         },

@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import hmac
 
+import pytest
+
 from bridge.whatsapp.messenger import whatsapp_to_message
 from bridge.whatsapp.router import verify_signature
 from bridge.whatsapp.schemas import WhatsAppConnectionConfig, normalize_phone
@@ -15,6 +17,11 @@ def test_signature_is_verified_over_raw_body() -> None:
     assert verify_signature(raw, signature, secret)
     assert not verify_signature(raw + b" ", signature, secret)
     assert not verify_signature(raw, "", secret)
+
+
+@pytest.mark.parametrize("signature", ["sha256=é", "sha256=🤔"])
+def test_malformed_signature_is_rejected(signature: str) -> None:
+    assert not verify_signature(b"{}", signature, "synthetic-secret")
 
 
 def test_cloud_audio_maps_to_lazy_canonical_attachment() -> None:
@@ -31,6 +38,7 @@ def test_cloud_audio_maps_to_lazy_canonical_attachment() -> None:
         phone_number_id="phone-id",
         tool_id=4,
         connection_id=9,
+        agent_id=12,
     )
 
     assert message is not None
@@ -39,9 +47,10 @@ def test_cloud_audio_maps_to_lazy_canonical_attachment() -> None:
     assert message.attachments[0].kind == "audio"
     assert message.reply_to == "wamid.parent"
     assert message.recipient is not None and message.recipient.connection_id == 9
+    assert message.recipient.agent_id == 12
 
 
-def test_phone_allowlist_is_restrictive_by_default() -> None:
+def test_legacy_phone_allowlist_normalizes_numbers() -> None:
     empty = WhatsAppConnectionConfig(access_token="token", phone_number_id="id")
     allowed = WhatsAppConnectionConfig(
         access_token="token",

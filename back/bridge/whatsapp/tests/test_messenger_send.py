@@ -35,6 +35,7 @@ def _messenger(*, template: str = "") -> tuple[WhatsAppMessenger, SimpleNamespac
             config=config,
             tool_id=3,
             connection_id=7,
+            agent_id=11,
         ),
         client,
     )
@@ -56,6 +57,7 @@ async def test_free_text_is_used_inside_service_window(
     result = await messenger.send_to_room("+33 6 12 34 56 78", "Bonjour")
 
     assert result.id == "wamid.text"
+    assert result.sender is not None and result.sender.agent_id == 11
     client.send_text.assert_awaited_once_with("33612345678", "Bonjour", reply_to=None)
     client.send_template.assert_not_awaited()
     persisted.assert_awaited_once()
@@ -96,3 +98,14 @@ async def test_outbound_number_must_be_allowlisted() -> None:
     messenger, _client = _messenger()
     with pytest.raises(ValueError, match="allow"):
         await messenger.send_to_room("12025550100", "Nope")
+
+
+@pytest.mark.parametrize("allowlist, expected", [
+    ("", True), ("  ", True), ("+33 6 12 34 56 78", True),
+    ("12025550100", False), ("invalid", False),
+])
+def test_absent_legacy_allowlist_defers_to_canonical_contact_permissions(allowlist, expected):
+    messenger, _client = _messenger()
+    messenger.config.allowed_phone_numbers = allowlist
+    assert messenger.is_allowed("33612345678") is expected
+    assert not messenger.is_allowed("")

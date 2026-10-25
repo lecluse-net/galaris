@@ -5686,7 +5686,8 @@
       {
         "files": [
           "back/bridge/one_bot/client.py",
-          "back/bridge/one_bot/messenger.py"
+          "back/bridge/one_bot/messenger.py",
+          "back/bridge/one_bot/router.py"
         ],
         "source": "bridge.one_bot",
         "target": "core.util"
@@ -20792,7 +20793,7 @@
         "declared_path": "/whatsapp/webhook",
         "file": "back/bridge/whatsapp/router.py",
         "handler": "receive_webhook",
-        "line": 253,
+        "line": 254,
         "method": "POST",
         "module": "bridge.whatsapp"
       },
@@ -20810,7 +20811,7 @@
         "declared_path": "/whatsapp/webhook/{tool_id}",
         "file": "back/bridge/whatsapp/router.py",
         "handler": "receive_tool_webhook",
-        "line": 261,
+        "line": 262,
         "method": "POST",
         "module": "bridge.whatsapp"
       },
@@ -20828,7 +20829,7 @@
         "declared_path": "/ws/onebot/{platform}/{user_id}",
         "file": "back/bridge/one_bot/router.py",
         "handler": "onebot_endpoint",
-        "line": 134,
+        "line": 161,
         "method": "WEBSOCKET",
         "module": "bridge.one_bot"
       }
