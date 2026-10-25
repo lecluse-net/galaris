@@ -337,6 +337,15 @@ Permissions remain configurable, and updates preserve previously saved choices.
 
 The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create separate direct conversations with an Agent, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and Tools from the round. Archiving a conversation removes it from the current list without deleting its history; you can find it again in the archives. Internal messaging does not offer group creation or participant management.
 
+On Android, including the installed PWA, **Call audio settings** (speaker button) lets you
+adjust **Agent volume** during a conversation, down to silence. To favor Bluetooth quality
+and media volume in a car, turn off **Hands-free microphone and echo reduction** before
+starting the call. The browser may then use the phone microphone; echo may become audible
+on speakerphone. Hands-free mode remains enabled by default. Settings are saved in this
+browser when local storage is allowed. If playback is blocked, tap **Enable audio**.
+Bluetooth profiles and other audio apps' behavior depend on the phone and browser;
+check them on your equipment.
+
 Switching conversations updates the browser address. **Back** and **Forward** return to
 visited conversations; going back before the first opening returns to the Chat home.
 Selecting the current conversation again does not add a visit. Any open document is saved

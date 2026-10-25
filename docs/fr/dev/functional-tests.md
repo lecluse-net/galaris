@@ -860,6 +860,15 @@ la conservation du tour pendant un nettoyage, le réessai et les réponses tardi
 navigation. Les transports audio et API des composants sont synthétiques ; aucun appel
 réel réparti entre deux processus avec redémarrage n'est certifié par ces scénarios.
 
+`front/app/chat/voiceCallPlayback.test.mjs` couvre la sortie Web Audio Android, son gain,
+le consommateur WebRTC natif silencieux requis par Chromium, le déblocage par geste,
+les reprises tardives, la fermeture et le choix des traitements micro avant l'appel.
+Le scénario Android de `front/browser-tests/voice.spec.mjs` transmet une tonalité synthétique
+entre deux vrais pairs WebRTC dans Chromium, mesure le signal envoyé à la sortie,
+vérifie silence/reprise au clavier et libération au raccrochage. L'user-agent Android
+sélectionne le chemin applicatif ; ce test sur Linux ne certifie ni les touches physiques
+de volume Android, ni les profils Bluetooth, ni le focus audio d'une PWA sur téléphone.
+
 `back/app/image/tests/test_image_mcp.py` couvre les références d'image sous forme d'URI,
 de liste ou de liste JSON encodée, le nettoyage des temporaires et le nom conforme au format
 natif sans conversion ni remplacement d'un fichier voisin. Le parcours de

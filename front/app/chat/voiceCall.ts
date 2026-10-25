@@ -1,5 +1,37 @@
 import type { ActiveCall, RealtimeCallEvent, VoiceCallStatus, WebRtcIceCandidate } from './types'
 
+interface CallAudioPreferences {
+  volume: number
+  handsFree: boolean
+}
+
+const callAudioPreferencesKey = 'galaris.chat.call-audio'
+
+export function loadCallAudioPreferences(): CallAudioPreferences {
+  const defaults = { volume: 100, handsFree: true }
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(callAudioPreferencesKey) ?? 'null')
+    if (!saved || typeof saved !== 'object') return defaults
+    return {
+      volume: 'volume' in saved && typeof saved.volume === 'number'
+        && Number.isFinite(saved.volume) && saved.volume >= 0 && saved.volume <= 100
+        ? saved.volume : defaults.volume,
+      handsFree: 'handsFree' in saved && typeof saved.handsFree === 'boolean'
+        ? saved.handsFree : defaults.handsFree,
+    }
+  } catch {
+    return defaults
+  }
+}
+
+export function saveCallAudioPreferences(preferences: CallAudioPreferences): void {
+  try {
+    localStorage.setItem(callAudioPreferencesKey, JSON.stringify(preferences))
+  } catch {
+    // Audio remains usable when this browser disallows preference storage.
+  }
+}
+
 export interface ReconciledCallState {
   activeCall: ActiveCall | null
   stoppingCallId: string | null

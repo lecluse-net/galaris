@@ -1,5 +1,15 @@
 <template>
   <div class="row q-gutter-sm">
+    <q-btn v-if="useWebAudioOutput" flat round color="primary" icon="volume_up" :aria-label="t('chat.callAudioSettings')">
+      <q-menu>
+        <div class="q-pa-md" style="width: 280px; max-width: 90vw">
+          <div>{{ t('chat.callVolume') }}</div>
+          <q-slider v-model="playbackVolume" :min="0" :max="100" :step="1" label color="primary" :aria-label="t('chat.callVolume')" />
+          <q-toggle v-model="handsFree" :disable="loading || Boolean(displayedCallId)" color="primary" :label="t('chat.callHandsFree')" />
+          <div class="text-caption">{{ t('chat.callHandsFreeHint') }}</div>
+        </div>
+      </q-menu>
+    </q-btn>
     <q-btn
       v-if="stoppingCallId"
       color="negative"
@@ -64,7 +74,9 @@ import { chatService } from '../services/chatService'
 import {
   createTrickleIceSender,
   hangUpLocalFirst,
+  loadCallAudioPreferences,
   peerConfiguration,
+  saveCallAudioPreferences,
   type TrickleIceSender,
 } from '../voiceCall'
 
@@ -86,6 +98,9 @@ const { t } = useI18n()
 const loading = ref(false)
 const muted = ref(false)
 const playbackNeedsGesture = ref(false)
+const audioPreferences = loadCallAudioPreferences()
+const playbackVolume = ref(audioPreferences.volume)
+const handsFree = ref(audioPreferences.handsFree)
 const callId = ref<string | null>(null)
 const ignoredCallId = ref<string | null>(null)
 const displayedCallId = computed(() => {
@@ -96,6 +111,13 @@ const displayedCallId = computed(() => {
 const remoteAudio = ref<HTMLAudioElement>()
 let peer: RTCPeerConnection | null = null
 let stream: MediaStream | null = null
+// Android's native WebRTC output can ignore the media volume in installed PWAs.
+// Use the same Web Audio output as message speech, without parallel audible output.
+const useWebAudioOutput = /Android/i.test(navigator.userAgent)
+let playbackContext: AudioContext | null = null
+let playbackSource: MediaStreamAudioSourceNode | null = null
+let playbackGain: GainNode | null = null
+let remoteStream: MediaStream | null = null
 let playbackAttempt = 0
 let iceSender: TrickleIceSender | null = null
 let disconnectTimer: number | null = null
@@ -126,24 +148,75 @@ function cleanup(endedCallId: string | null = null): void {
   muted.value = false
   playbackAttempt += 1
   playbackNeedsGesture.value = false
+  remoteStream = null
+  playbackSource?.disconnect()
+  playbackSource = null
+  playbackGain?.disconnect()
+  playbackGain = null
+  const context = playbackContext
+  playbackContext = null
+  if (context) {
+    context.onstatechange = null
+    void context.close().catch(() => undefined)
+  }
   if (remoteAudio.value) {
     remoteAudio.value.pause()
     remoteAudio.value.srcObject = null
   }
 }
 
-async function playRemoteStream(remoteStream: MediaStream): Promise<void> {
-  const audio = remoteAudio.value
-  if (!audio) return
+async function unlockRemoteAudio(): Promise<AudioContext> {
+  if (!playbackContext || playbackContext.state === 'closed') {
+    playbackSource?.disconnect()
+    playbackSource = null
+    playbackGain?.disconnect()
+    playbackGain = null
+    const context = new AudioContext()
+    playbackContext = context
+    const gain = context.createGain()
+    gain.gain.value = playbackVolume.value / 100
+    gain.connect(context.destination)
+    playbackGain = gain
+    context.onstatechange = () => {
+      if (playbackContext === context && remoteStream && peer) {
+        playbackNeedsGesture.value = context.state !== 'running'
+      }
+    }
+  }
+  const context = playbackContext
+  if (context.state !== 'running') await context.resume()
+  if (context.state !== 'running') throw new Error('Audio output is unavailable')
+  return context
+}
+
+async function playRemoteStream(incomingStream: MediaStream): Promise<void> {
+  remoteStream = incomingStream
   const attempt = ++playbackAttempt
-  // Keep WebRTC on the native media element, including installed Android PWAs.
-  // Android owns output routing and hardware volume; a separate AudioContext
-  // cannot select the system volume channel and can silently suspend playback.
-  if (audio.srcObject !== remoteStream) audio.srcObject = remoteStream
-  audio.muted = false
-  audio.volume = 1
   try {
-    await audio.play()
+    if (useWebAudioOutput) {
+      const audio = remoteAudio.value
+      if (!audio) return
+      // Chromium needs a playing media element to pull remote WebRTC samples.
+      // Mute it before attaching the stream: only Web Audio may be audible.
+      audio.muted = true
+      if (audio.srcObject !== incomingStream) audio.srcObject = incomingStream
+      const [context] = await Promise.all([unlockRemoteAudio(), audio.play()])
+      if (attempt !== playbackAttempt) return
+      if (!playbackGain) throw new Error('Audio output is unavailable')
+      if (playbackSource?.mediaStream !== incomingStream) {
+        playbackSource?.disconnect()
+        playbackSource = null
+        const source = context.createMediaStreamSource(incomingStream)
+        source.connect(playbackGain)
+        playbackSource = source
+      }
+    } else {
+      const audio = remoteAudio.value
+      if (!audio) return
+      if (audio.srcObject !== incomingStream) audio.srcObject = incomingStream
+      audio.muted = false
+      await audio.play()
+    }
     if (attempt === playbackAttempt) playbackNeedsGesture.value = false
   } catch {
     if (attempt !== playbackAttempt) return
@@ -153,9 +226,8 @@ async function playRemoteStream(remoteStream: MediaStream): Promise<void> {
 }
 
 function retryRemoteAudio(): void {
-  const remoteStream = remoteAudio.value?.srcObject
-  if (!peer || !(remoteStream instanceof MediaStream)) return
-  // Invoke play synchronously from the tap to satisfy mobile autoplay policies.
+  if (!peer || !remoteStream) return
+  // Invoke resume/play synchronously from the tap for mobile autoplay policies.
   void playRemoteStream(remoteStream)
 }
 
@@ -192,11 +264,17 @@ async function start(): Promise<void> {
   ignoredCallId.value = null
   emit('starting')
   try {
+    // Unlock inside the starting gesture, before mic permission and signaling.
+    // A blocked output is retried when the track arrives and can be enabled by tap.
+    if (useWebAudioOutput) void unlockRemoteAudio().catch(() => undefined)
+    // All three effects must be disabled to avoid Chromium's Android
+    // communication mode. This trades hands-free echo reduction for media audio.
+    const processMicrophone = !useWebAudioOutput || handsFree.value
     const mediaRequest = navigator.mediaDevices.getUserMedia({
       audio: {
-        autoGainControl: true,
-        echoCancellation: true,
-        noiseSuppression: true,
+        autoGainControl: processMicrophone,
+        echoCancellation: processMicrophone,
+        noiseSuppression: processMicrophone,
       },
     })
     void mediaRequest.then((acquiredStream) => {
@@ -282,6 +360,11 @@ function toggleMute(): void {
   muted.value = !muted.value
   for (const track of stream?.getAudioTracks() ?? []) track.enabled = !muted.value
 }
+
+watch([playbackVolume, handsFree], ([volume, handsFree]) => {
+  if (playbackGain) playbackGain.gain.value = volume / 100
+  saveCallAudioPreferences({ volume, handsFree })
+})
 
 async function stop(): Promise<void> {
   const attempt = startAttempt
