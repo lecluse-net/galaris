@@ -2,6 +2,19 @@
 
 # Functional guarantees catalogue
 
+## Nightly model pricing
+
+`app/llm/tests/test_pricing_sync.py` exercises real HTTP bridges against synthetic
+responses and PostgreSQL: provider priority, models.dev cache-rate fallback, explicit
+zero, missing/invalid rates, catch-up after downtime, retry cooldown, manual mode,
+late responses and timezone/DST boundaries. A new call uses imported rates while
+the historical call retains its costs and rates. The null/empty/boolean-price scenario
+reproduces the previous normalization defect that confused missing rates with free
+usage; it fails before the parser correction.
+`front/browser-tests/llm-multimodal.spec.mjs` covers selecting and reopening manual
+mode in components. `e2e/specs/llm-pricing.spec.mjs` checks it in the assembled
+application, preserving typed prices with keyboard use on desktop and mobile.
+
 ## Default privilege categories
 
 `core/authorize/tests/test_default_lists.py` checks default category installation,

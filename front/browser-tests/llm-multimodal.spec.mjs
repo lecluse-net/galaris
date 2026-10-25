@@ -35,9 +35,12 @@ for (const width of [1440, 390]) {
     await page.getByRole('option', { name: /Synthetic multimodal/ }).click()
     await expect(dialog.locator('.llm-modalities')).toContainText('Chat')
     await expect(dialog.locator('.llm-modalities')).toContainText('Vision')
+    const nightly = dialog.getByRole('switch', { name: 'Update prices every night', exact: true })
+    await expect(nightly).toBeChecked()
+    await nightly.click()
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog).toHaveCount(0)
-    expect(writes[0]).toMatchObject({ service_capabilities: ['chat', 'vision'], ...model.modalities })
+    expect(writes[0]).toMatchObject({ pricing_auto_update: false, service_capabilities: ['chat', 'vision'], ...model.modalities })
 
     // Remount from the API response, then edit and save the existing model.
     await mount(page, 'app/llm/components/ConfiguredLlmManager.vue', options)
@@ -45,6 +48,8 @@ for (const width of [1440, 390]) {
     await expect(item).toContainText('Chat')
     await expect(item).toContainText('Vision')
     await item.getByRole('button', { name: 'Edit', exact: true }).click()
+    await expect(nightly).not.toBeChecked()
+    await expect(dialog.getByText('Manual prices: automatic updates are disabled.', { exact: true })).toBeVisible()
     await expect(dialog.locator('.llm-modalities')).toContainText('Chat')
     await expect(dialog.locator('.llm-modalities')).toContainText('Vision')
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()

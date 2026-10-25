@@ -247,6 +247,11 @@ export interface LLM extends LLMModalities {
     cost_per_cached_input_token?: number | null
     cost_per_output_token?: number | null
     is_subscription: boolean
+    pricing_auto_update: boolean
+    pricing_updated_at?: string | null
+    pricing_last_attempt_at?: string | null
+    pricing_refresh_error?: string | null
+    pricing_provenance?: Record<string, { source: string; updated_at: string }>
     created_at: string
     updated_at: string | null
 }
@@ -269,6 +274,7 @@ export interface LLMCreate extends Partial<LLMModalities> {
     cost_per_cached_input_token?: number | null
     cost_per_output_token?: number | null
     is_subscription?: boolean
+    pricing_auto_update?: boolean
 }
 
 export interface LLMUpdate extends Partial<LLMModalities> {
@@ -285,6 +291,7 @@ export interface LLMUpdate extends Partial<LLMModalities> {
     cost_per_cached_input_token?: number | null
     cost_per_output_token?: number | null
     is_subscription?: boolean
+    pricing_auto_update?: boolean
 }
 
 // Metadata returned by the normalized model-metadata endpoint.

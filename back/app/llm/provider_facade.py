@@ -145,6 +145,12 @@ class ModelMetadata(Protocol):
 class ModelCatalogMetadata(Protocol):
     """Optional third-party metadata catalog for model enrichment."""
 
+    async def get_model_pricing(
+        self, connection: ProviderConnection, model_names: tuple[str, ...],
+    ) -> dict[str, dict[str, float]]:
+        """Return fresh prices for exact provider/model matches; raise on refresh failure."""
+        ...
+
     async def enrich_models(
         self,
         connection: ProviderConnection,

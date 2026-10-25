@@ -106,6 +106,16 @@ designated approver identity.
 | Available models | Manage models exposed to Galaris | `/llm?tab=models` |
 | Models in use | Choose models for usages and profiles | `/llm?tab=usage` |
 
+Configured model input, output and cache-read prices refresh nightly around 3 a.m.
+in the installation timezone. In a model's edit dialog, disable **Update prices
+every night** to retain manual or negotiated prices. The dialog shows the source
+and date of each imported rate. Provider API prices take precedence, supplemented
+by models.dev for the same provider and exact model identifier. Missing fields
+remain unchanged; an explicit zero remains zero. Failed checks preserve previous
+prices and dates and retry after 30 minutes. Missed checks are caught up after a
+restart. Historical costs are never recalculated. Freshness depends on the
+information published by the sources.
+
 Provider configuration is saved automatically after a successful connection test, on each
 change while the provider is active and required fields are complete, and when disabling
 the provider, even with incomplete fields. Changes to an already inactive provider remain

@@ -121,6 +121,12 @@ async def create_llm(data: LLMCreate) -> LLM:
     """Create a configured LLM."""
     db = get_db()
     await _assert_llm_code_available(data.code)
+    pricing = dict(data.pricing)
+    for key, value in (("input", data.cost_per_input_token),
+                       ("cached_input", data.cost_per_cached_input_token),
+                       ("output", data.cost_per_output_token)):
+        if value is not None:
+            pricing[key] = value
     llm = LLM(
         llm_provider_id=data.llm_provider_id,
         code=data.code,
@@ -131,11 +137,12 @@ async def create_llm(data: LLMCreate) -> LLM:
         service_capabilities=(
             list(dict.fromkeys([data.primary_capability, *data.service_capabilities]))
         ),
-        pricing=data.pricing,
+        pricing=pricing,
         context_length=data.context_length,
         cost_per_input_token=data.cost_per_input_token,
         cost_per_cached_input_token=data.cost_per_cached_input_token,
         cost_per_output_token=data.cost_per_output_token,
+        pricing_auto_update=data.pricing_auto_update,
         is_subscription=data.is_subscription,
         input_text=data.input_text if data.input_text is not None else True,
         input_image=bool(data.input_image),
@@ -429,6 +436,32 @@ async def update_llm(llm_id: int, data: LLMUpdate) -> Optional[LLM]:
         return None
 
     update_data = data.model_dump(exclude_unset=True)
+
+    if any(field in update_data and update_data[field] != getattr(llm, field)
+           for field in ("llm_provider_id", "llm_name", "primary_capability")):
+        llm.pricing_provenance = {}
+        llm.pricing_updated_at = None
+        llm.pricing_last_attempt_at = None
+        llm.pricing_refresh_error = None
+    if update_data.get("pricing_auto_update") is True and not llm.pricing_auto_update:
+        llm.pricing_updated_at = None
+        llm.pricing_last_attempt_at = None
+    pricing = dict(data.pricing if data.pricing is not None else llm.pricing)
+    provenance = dict(llm.pricing_provenance)
+    for key, field in (("input", "cost_per_input_token"),
+                       ("cached_input", "cost_per_cached_input_token"),
+                       ("output", "cost_per_output_token")):
+        if field not in update_data:
+            continue
+        value = update_data[field]
+        if value != getattr(llm, field):
+            provenance.pop(key, None)
+        if value is None:
+            pricing.pop(key, None)
+        else:
+            pricing[key] = value
+    update_data["pricing"] = pricing
+    llm.pricing_provenance = provenance
 
     if "code" in update_data:
         raw_code = update_data.get("code")

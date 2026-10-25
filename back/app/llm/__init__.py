@@ -89,6 +89,9 @@ def register_scheduler_jobs(register: PeriodicJobRegistrar) -> None:
     register(
         "llm-document-analysis", analysis_tick, interval=1.0, timeout=1250.0,
     )
+    from .pricing_sync import refresh_pricing
+
+    register("llm-nightly-pricing", refresh_pricing, interval=60.0)
 
 
 from .media_contracts import (

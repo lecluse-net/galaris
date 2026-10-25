@@ -7,6 +7,19 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+## Tarification nocturne des modèles
+
+`app/llm/tests/test_pricing_sync.py` exerce les vrais bridges HTTP sur des réponses
+synthétiques et PostgreSQL : priorité fournisseur, complément models.dev pour le cache,
+zéro explicite, tarifs absents/invalides, reprise après arrêt, délai de nouvelle tentative,
+mode manuel, réponses tardives et limites horaires avec changements d’heure. Un nouvel
+appel utilise les prix importés tandis que l’appel historique garde ses coûts et tarifs.
+Le scénario prix nul/vide/booléen reproduit l’ancien défaut de normalisation qui confondait
+absence et gratuité ; il échoue avant la correction du parseur.
+`front/browser-tests/llm-multimodal.spec.mjs` couvre le choix et la réouverture du mode
+manuel en composants. `e2e/specs/llm-pricing.spec.mjs` le vérifie dans l’application
+assemblée avec conservation du prix saisi, clavier et vues ordinateur/mobile.
+
 ## Catégories de privilèges par défaut
 
 `core/authorize/tests/test_default_lists.py` vérifie l’installation des rubriques par défaut,

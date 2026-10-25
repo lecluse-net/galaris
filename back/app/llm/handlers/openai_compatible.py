@@ -1,4 +1,5 @@
 """Canonical OpenAI-compatible model-catalog handler."""
+import math
 import httpx
 from typing import List, Optional, Dict, Any
 from .base import BaseLLMHandler, LLMModelInfo
@@ -144,31 +145,21 @@ class OpenAICompatibleHandler(BaseLLMHandler):
 
         pricing_dict = as_dict(pricing)
         parsed: Dict[str, Any] = {}
-        if "prompt" in pricing_dict:
-            parsed["input"] = float(pricing_dict.get("prompt") or 0.0) * TOKENS_PER_MILLION
-        if "completion" in pricing_dict:
-            parsed["output"] = float(pricing_dict.get("completion") or 0.0) * TOKENS_PER_MILLION
-
-        cached_input = next(
-            (
-                pricing_dict[key]
-                for key in ("input_cache_read", "prompt_cache_read", "cache_read")
-                if pricing_dict.get(key) is not None
-            ),
-            None,
-        )
-        if cached_input is not None:
-            parsed["cached_input"] = float(cached_input) * TOKENS_PER_MILLION
-
-        cache_write = next(
-            (
-                pricing_dict[key]
-                for key in ("input_cache_write", "prompt_cache_write", "cache_write")
-                if pricing_dict.get(key) is not None
-            ),
-            None,
-        )
-        if cache_write is not None:
-            parsed["cache_write"] = float(cache_write) * TOKENS_PER_MILLION
+        for target, keys in {
+            "input": ("prompt",), "output": ("completion",),
+            "cached_input": ("input_cache_read", "prompt_cache_read", "cache_read"),
+            "cache_write": ("input_cache_write", "prompt_cache_write", "cache_write"),
+        }.items():
+            for key in keys:
+                value = pricing_dict.get(key)
+                if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+                    continue
+                try:
+                    amount = float(value) * TOKENS_PER_MILLION
+                except (ValueError, OverflowError):
+                    continue
+                if math.isfinite(amount) and amount >= 0:
+                    parsed[target] = amount
+                    break
 
         return parsed or pricing_dict

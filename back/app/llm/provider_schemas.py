@@ -336,6 +336,7 @@ class LLMCreate(BaseModel):
     cost_per_input_token: Optional[float] = None
     cost_per_cached_input_token: Optional[float] = None
     cost_per_output_token: Optional[float] = None
+    pricing_auto_update: bool = True
     is_subscription: bool = False
     input_text: Optional[bool] = None
     input_image: Optional[bool] = None
@@ -363,6 +364,7 @@ class LLMUpdate(BaseModel):
     cost_per_input_token: Optional[float] = None
     cost_per_cached_input_token: Optional[float] = None
     cost_per_output_token: Optional[float] = None
+    pricing_auto_update: bool = True
     is_subscription: Optional[bool] = None
     input_text: Optional[bool] = None
     input_image: Optional[bool] = None
@@ -391,6 +393,11 @@ class LLMResponse(LLMModalities):
     cost_per_input_token: Optional[float] = None
     cost_per_cached_input_token: Optional[float] = None
     cost_per_output_token: Optional[float] = None
+    pricing_auto_update: bool
+    pricing_updated_at: datetime | None = None
+    pricing_last_attempt_at: datetime | None = None
+    pricing_refresh_error: str | None = None
+    pricing_provenance: dict[str, Any] = Field(default_factory=dict)
     is_subscription: bool
     created_at: datetime
     updated_at: Optional[datetime] = None

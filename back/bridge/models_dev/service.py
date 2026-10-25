@@ -9,6 +9,7 @@ provider catalog unchanged.
 from __future__ import annotations
 
 import time
+import math
 from typing import Any, Optional
 
 import httpx
@@ -33,7 +34,7 @@ def clear_cache() -> None:
     _cache_loaded_at = 0.0
 
 
-async def _registry(*, force_refresh: bool = False) -> dict[str, Any]:
+async def _registry(*, force_refresh: bool = False, strict: bool = False) -> dict[str, Any]:
     global _cache, _cache_loaded_at
     now = time.monotonic()
     if _cache and not force_refresh and now - _cache_loaded_at < _CACHE_TTL_SECONDS:
@@ -44,10 +45,14 @@ async def _registry(*, force_refresh: bool = False) -> dict[str, Any]:
             response = await client.get(MODELS_DEV_URL)
             response.raise_for_status()
             payload = response.json()
-        if isinstance(payload, dict):
+        if isinstance(payload, dict) and payload:
             _cache = as_dict(payload)
             _cache_loaded_at = now
+        elif strict:
+            raise ValueError("Invalid models.dev catalog")
     except Exception as exc:
+        if strict:
+            raise
         logger.debug("Unable to refresh models.dev metadata: {}", exc)
     return _cache
 
@@ -98,11 +103,12 @@ def _raw_model(models: dict[str, Any], model_id: str) -> Optional[dict[str, Any]
 
 
 def _price(raw_cost: dict[str, Any], key: str) -> Optional[float]:
-    if key not in raw_cost or raw_cost.get(key) is None:
+    if key not in raw_cost or raw_cost.get(key) is None or isinstance(raw_cost[key], bool):
         return None
     try:
-        return float(raw_cost[key])
-    except (TypeError, ValueError):
+        value = float(raw_cost[key])
+        return value if math.isfinite(value) and value >= 0 else None
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
@@ -245,6 +251,23 @@ async def get_model_metadata(
 
 class ModelsDevMetadata:
     """Object adapter registered against the app.llm metadata contract."""
+
+    async def get_model_pricing(
+        self, connection: ProviderConnection, model_names: tuple[str, ...],
+    ) -> dict[str, dict[str, float]]:
+        if _provider_metadata_id(connection) is None:
+            return {}
+        models = _models_for_provider(await _registry(strict=True), connection)
+        prices: dict[str, dict[str, float]] = {}
+        for name in model_names:
+            # Nightly writes must not guess a model alias or strip a vendor prefix.
+            raw = models.get(name)
+            if not isinstance(raw, dict):
+                continue
+            pricing = _pricing(as_dict(raw)) or {}
+            prices[name] = {key: value for key, value in pricing.items()
+                            if math.isfinite(value) and value >= 0}
+        return prices
 
     async def enrich_models(
         self,

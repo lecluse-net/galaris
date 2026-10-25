@@ -1,6 +1,7 @@
 """Database models for provider connections and configured LLMs."""
+from datetime import datetime
 from typing import Any, Optional, List
-from sqlalchemy import String, Boolean, CheckConstraint, Index, Integer, Text, ForeignKey, text
+from sqlalchemy import String, Boolean, CheckConstraint, DateTime, Index, Integer, Text, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 from core.database import Base, HistoryMixin
@@ -165,6 +166,16 @@ class LLM(HistoryMixin, Base):
     cost_per_input_token: Mapped[Optional[float]] = mapped_column(nullable=True)
     cost_per_cached_input_token: Mapped[Optional[float]] = mapped_column(nullable=True)
     cost_per_output_token: Mapped[Optional[float]] = mapped_column(nullable=True)
+    pricing_auto_update: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true"), nullable=False,
+    )
+    pricing_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pricing_last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pricing_refresh_error: Mapped[str | None] = mapped_column(String(30))
+    # Per-rate provenance: a missing upstream field retains its previous source and date.
+    pricing_provenance: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb"), nullable=False,
+    )
     # A subscription absorbs per-request billing while the configured rates remain useful for
     # comparing this resource with usage-billed alternatives.
     is_subscription: Mapped[bool] = mapped_column(

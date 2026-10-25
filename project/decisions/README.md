@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0240 — Actualisation nocturne des tarifs LLM](0240-nightly-llm-pricing.md)
+
 - [0238 — Preuves de coûts par appel et bilan économique du Lab](0238-physical-call-cost-evidence.md)
 
 - [0232 — Dernière conversation par document et utilisateur](0232-personal-document-conversation.md)

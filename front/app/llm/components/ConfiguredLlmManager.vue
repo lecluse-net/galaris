@@ -375,6 +375,17 @@
                 <div class="llm-form-field__help">{{ t('llm.subscriptionHint') }}</div>
               </div>
 
+              <div v-if="showTokenPricing" class="llm-form-field llm-form-field--full">
+                <q-toggle v-model="form.pricing_auto_update" :label="t('llm.nightlyPricing')" />
+                <div class="llm-form-field__help">{{ t('llm.nightlyPricingHint') }}</div>
+                <div v-if="editing" class="text-caption q-mt-sm">
+                  <div>{{ pricingStatus }}</div>
+                  <div v-for="entry in pricingProvenance" :key="entry.key">
+                    {{ t('llm.pricingOrigin', entry) }}
+                  </div>
+                </div>
+              </div>
+
               <div v-if="showTokenPricing" class="llm-form-field llm-form-field--cost">
                 <div class="llm-form-field__label">{{ t('llm.inputCost') }}</div>
                 <q-input
@@ -524,6 +535,7 @@ type LlmForm = LLMModalities & {
   cost_per_cached_input_token: number | null
   cost_per_output_token: number | null
   is_subscription: boolean
+  pricing_auto_update: boolean
   resource_type: AIResourceType
   primary_capability: AICapability
   service_capabilities: AICapability[]
@@ -551,6 +563,23 @@ const modelsLoadError = ref<string | null>(null)
 const selectedProviderName = ref('')
 const availability = ref(new Map<number, boolean>())
 const llmToDelete = ref<LLMWithProvider | null>(null)
+const pricingDetails = ref<LLMWithProvider | null>(null)
+const pricingStatus = computed(() => {
+  if (!form.pricing_auto_update) return t('llm.pricingManual')
+  const model = pricingDetails.value
+  if (model?.pricing_refresh_error) return t('llm.pricingRefreshFailed')
+  if (!model?.pricing_updated_at) return t('llm.pricingNotVerified')
+  return t('llm.pricingVerified', { date: new Date(model.pricing_updated_at).toLocaleString(locale.value) })
+})
+const pricingProvenance = computed(() => {
+  const labels: Record<string, string> = {
+    input: t('llm.costInShort'), cached_input: t('llm.costCacheShort'), output: t('llm.costOutShort'),
+  }
+  return Object.entries(pricingDetails.value?.pricing_provenance || {}).map(([key, value]) => ({
+    key, rate: labels[key] || key, source: value.source,
+    date: new Date(value.updated_at).toLocaleString(locale.value),
+  }))
+})
 let initialized = false
 let initializationPromise: Promise<void> | null = null
 let modelLoadGeneration = 0
@@ -647,6 +676,7 @@ function emptyForm(): LlmForm {
     cost_per_cached_input_token: null,
     cost_per_output_token: null,
     is_subscription: false,
+    pricing_auto_update: true,
     resource_type: 'model',
     primary_capability: 'chat',
     service_capabilities: ['chat'],
@@ -665,6 +695,7 @@ function emptyForm(): LlmForm {
 }
 
 function resetForm(): void {
+  pricingDetails.value = null
   modelLoadGeneration += 1
   Object.assign(form, emptyForm())
   availableModels.value = []
@@ -733,6 +764,7 @@ async function openForModel(providerId: number, model: LLMModelInfo): Promise<vo
 async function openEdit(llm: LLMWithProvider): Promise<void> {
   if (!canEdit.value) return
   resetForm()
+  pricingDetails.value = llm
   editing.value = true
   selectedProviderName.value = llm.provider_name
   Object.assign(form, {
@@ -746,6 +778,7 @@ async function openEdit(llm: LLMWithProvider): Promise<void> {
     cost_per_cached_input_token: llm.cost_per_cached_input_token ?? null,
     cost_per_output_token: llm.cost_per_output_token ?? null,
     is_subscription: llm.is_subscription,
+    pricing_auto_update: llm.pricing_auto_update ?? true,
     resource_type: llm.resource_type,
     primary_capability: llm.primary_capability,
     service_capabilities: [...llm.service_capabilities],
@@ -872,6 +905,7 @@ function withSelectedModel(models: LLMModelInfo[]): LLMModelInfo[] {
 }
 
 function applyModel(model: LLMModelInfo): void {
+  pricingDetails.value = null
   form.llm_name = model.id
   form.context_length = model.context_length ?? null
   form.cost_per_input_token = price(model, 'input')
@@ -1018,6 +1052,7 @@ async function saveLlm(): Promise<void> {
     cost_per_cached_input_token: form.cost_per_cached_input_token,
     cost_per_output_token: form.cost_per_output_token,
     is_subscription: form.is_subscription,
+    pricing_auto_update: form.pricing_auto_update,
     resource_type: form.resource_type,
     primary_capability: form.primary_capability,
     service_capabilities: form.service_capabilities,

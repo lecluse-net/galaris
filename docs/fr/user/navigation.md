@@ -118,6 +118,17 @@ demande aussi `PERMISSION_DECIDE` et le statut de valideur désigné.
 | Modèles disponibles | Gérer les modèles exposés à Galaris | `/llm?tab=models` |
 | Modèles utilisés | Choisir les modèles employés par les usages et profils | `/llm?tab=usage` |
 
+Les tarifs d’entrée, de sortie et de lecture du cache des modèles configurés sont
+actualisés chaque nuit vers 3 h, dans le fuseau horaire de l’installation. Dans la
+fiche d’un modèle, désactivez **Actualiser les tarifs chaque nuit** pour conserver
+des prix manuels ou négociés. La fiche présente la source et la date de chaque tarif
+importé. L’API du fournisseur est prioritaire, avec complément par models.dev pour
+le même fournisseur et l’identifiant exact du modèle. Une valeur absente reste
+inchangée ; un tarif explicitement nul est conservé comme zéro. En cas d’échec,
+les derniers prix et leurs dates sont conservés, avec une nouvelle tentative après
+30 minutes. Un arrêt est rattrapé au redémarrage. Les coûts historiques ne sont pas
+recalculés. La fraîcheur dépend des informations publiées par les sources.
+
 La configuration d’un fournisseur s’enregistre automatiquement après un test de connexion
 réussi, à chaque modification lorsqu’il est actif et que les champs requis sont remplis,
 ainsi que lors de sa désactivation, même si des champs sont incomplets. Les modifications

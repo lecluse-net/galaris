@@ -2806,6 +2806,7 @@
           "back/app/llm/mcp.py",
           "back/app/llm/models.py",
           "back/app/llm/personal_service.py",
+          "back/app/llm/pricing_sync.py",
           "back/app/llm/profile_gateway.py",
           "back/app/llm/profile_models.py",
           "back/app/llm/profile_service.py",
@@ -2915,6 +2916,7 @@
           "back/app/llm/media_transport.py",
           "back/app/llm/message_cleanup.py",
           "back/app/llm/personal_service.py",
+          "back/app/llm/pricing_sync.py",
           "back/app/llm/provider_quota.py",
           "back/app/llm/proxy_service.py",
           "back/app/llm/responses_stream.py",
@@ -11127,7 +11129,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 9,
+        "line": 10,
         "module": "app.llm",
         "table": "llm_providers"
       },
@@ -11138,7 +11140,7 @@
           "llm_providers.id"
         ],
         "history_mixin": true,
-        "line": 123,
+        "line": 124,
         "module": "app.llm",
         "table": "llms"
       },
