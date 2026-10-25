@@ -1110,10 +1110,10 @@ onBeforeUnmount(() => {
 .attachment-preview-html,.attachment-preview-pdf { display: block; width: 1280px; height: 800px; background: var(--chat-surface-raised, #fff); border: 0; }
 .attachment-preview-html.attachment-preview-content--fit,.attachment-preview-pdf.attachment-preview-content--fit { width: 100vw; height: var(--galaris-preview-height, 100dvh); }
 
-@media (max-width: 599px) {
-  .message-timeline { padding: 14px 10px 24px; }
-  .message-row { padding-right: calc(3% + 20px); }
-  .message-row--sent { padding-right: 0; padding-left: calc(3% + 20px); }
+@media (max-width: 1023px) {
+  .message-timeline { padding: 14px 6px 24px; }
+  .message-row { gap: 4px; padding-right: 8px; }
+  .message-row--sent { padding-right: 0; padding-left: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .conversation-loading-bubble span { animation: none; opacity: .75; }
