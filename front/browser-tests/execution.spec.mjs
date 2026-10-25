@@ -254,6 +254,13 @@ test('agent selection clears revoked choices and ignores a response from an obso
 test('live conversation progress survives delayed detail loading and stale snapshots', async ({ page }) => {
   let release
   const pending = new Promise(resolve => { release = resolve })
+  let releaseView, viewReads = 0
+  const viewPending = new Promise(resolve => { releaseView = resolve })
+  await page.route('**/app/task/components/ExecutionResult.vue', async route => {
+    viewReads++
+    await viewPending
+    await route.continue()
+  })
   const requested = []
   await page.route('**/api/conversations/rounds/round-a', async route => {
     requested.push('round')
@@ -274,14 +281,18 @@ test('live conversation progress survives delayed detail loading and stale snaps
     ai_result: { ...result, result: '', messages: [{ type: 'text', content: 'Current progress' }] } }
   await mount(page, 'app/chat/components/AgentExecutionTrace.vue', { props: { roomId: 'room-a', liveRound } })
   try {
+    expect(viewReads).toBe(0)
     await page.locator('.trace-summary').click()
     await expect.poll(() => requested.length).toBe(2)
+    await expect.poll(() => viewReads).toBe(1)
+    await expect(page.locator('.trace-summary')).toHaveAttribute('aria-expanded', 'true')
+    releaseView()
     await expect(page.locator('.trace-detail p').filter({ hasText: /^Current progress$/ })).toBeVisible()
     await expect(page.getByRole('tab', { name: /memory/i })).toBeVisible()
     await expect(page.locator('.summary-metrics')).not.toContainText('$')
     await page.getByRole('tab', { name: 'Details', exact: true }).click()
     await expect(page.getByRole('region', { name: 'Detailed state', exact: true })).toContainText('Running')
-  } finally { release() }
+  } finally { releaseView(); release() }
   await expect(page.getByRole('region', { name: 'Detailed state', exact: true })).toContainText('2 attempt(s)')
   await expect(page.getByRole('region', { name: 'Initial startup', exact: true })).toContainText('galaris://task/task-a')
   await expect(page.getByRole('region', { name: 'Recorded usage', exact: true })).toContainText('118 tokens · $0.0001')

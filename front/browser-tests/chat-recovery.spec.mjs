@@ -30,8 +30,60 @@ async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = 
   await jsonRoute(page, '**/api/chat/agents/7/avatar', {})
   await mount(page, 'app/chat/pages/index.vue', { route: options.route ?? '/chat?room=room-a', browserHistory: true, privileges })
   if (options.empty) await expect(page.locator('.conversation-empty-state')).toBeVisible()
-  else if (options.route !== '/chat') await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+  else if (options.route !== '/chat' && options.waitForConversation !== false) await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
   return { rooms, messages }
+}
+
+for (const privileges of [['CHAT_SEND'], ['CHAT_SEND', 'CHAT_MANAGE']]) {
+test(`opening a conversation does not fetch the unused home catalogues (${privileges.join(', ')})`, async ({ page }) => {
+  const reads = []
+  page.on('request', request => {
+    const url = new URL(request.url())
+    if (['/api/chat/rooms', '/api/chat/recipients'].includes(url.pathname)) reads.push(url.pathname)
+  })
+  await conversation(page, privileges)
+  console.log('Conversation startup catalogue reads:', JSON.stringify(reads))
+  expect(reads).toEqual(['/api/chat/rooms'])
+  await page.evaluate(() => window.testApp.router.push('/chat'))
+  await expect(page.locator('.room-item').filter({ hasText: 'Conversation a' })).toBeVisible()
+  if (privileges.includes('CHAT_MANAGE')) await expect.poll(() => reads.includes('/api/chat/recipients')).toBe(true)
+})
+}
+
+test('a failed conversation link leaves the home catalogues available', async ({ page }) => {
+  await page.route('**/api/chat/rooms/missing', route => route.fulfill({ status: 404, json: { detail: 'Conversation unavailable' } }))
+  await conversation(page, ['CHAT_SEND', 'CHAT_MANAGE'], null, null, { route: '/chat?room=missing', waitForConversation: false })
+  await expect(page.getByRole('alert')).toContainText('Conversation unavailable')
+  await expect(page.locator('.chat-home .room-item').filter({ hasText: 'Conversation a' })).toBeVisible()
+})
+
+for (const status of [200, 503]) {
+  test(`conversation opens while the viewer catalogue is pending (${status})`, async ({ page }) => {
+    let release
+    const pending = new Promise(resolve => { release = resolve })
+    await page.route('**/api/chat/viewer-agents', async route => {
+      await pending
+      await route.fulfill({ status, json: status === 200
+        ? [{ agent_id: 7, display_name: 'Alice', has_avatar: false }]
+        : { detail: 'Temporarily unavailable' } })
+    })
+    try {
+      await conversation(page, ['CHAT_SEND', 'CHAT_IMPERSONATE'])
+      const composer = page.getByPlaceholder('Write a message…')
+      await composer.fill('Draft while the viewer catalogue is pending')
+      release()
+      if (status === 503) await expect(page.getByRole('alert')).toContainText('Temporarily unavailable')
+      await expect(composer).toHaveValue('Draft while the viewer catalogue is pending')
+      await page.locator('.room-item').filter({ hasText: 'Conversation b' }).click()
+      await expect(page.locator('.conversation-pane')).toContainText('Content room-b')
+      if (status === 200) {
+        await page.getByRole('button', { name: 'Conversation display options', exact: true }).click()
+        await page.locator('.viewer-select').click()
+        await page.getByRole('option', { name: /Alice/ }).click()
+        await expect(page.locator('.chat-home .room-item').filter({ hasText: 'Conversation a' })).toBeVisible()
+      }
+    } finally { release() }
+  })
 }
 
 test('a first message keeps temporary identifiers local and loads its resources after the canonical receipt', async ({ page }) => {

@@ -165,7 +165,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRe
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { apiErrorDetail } from '@/core/api'
+import { apiErrorDetail, sessionGeneration } from '@/core/api'
 import { websocket } from '@/core/websocket'
 import { privileges } from '@/core/authorize'
 import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
@@ -192,6 +192,7 @@ const $q=useQuasar(); const {t,locale}=useI18n(); const route=useRoute(); const 
 const roomFiltersVisible = ref(false)
 const router = useRouter()
 let chatReady = false
+const initializingChat = ref(true)
 let roomSelectionRequest = 0
 let roomNavigationRequest = 0
 function requestedRoomId(value: unknown): string | null {
@@ -528,11 +529,14 @@ function finishColumnResize(event:PointerEvent){if(resizingPointerId!==event.poi
 function resizeColumnsWithKeyboard(event:KeyboardEvent){if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;event.preventDefault();setConversationRatio(conversationRatio.value+(event.key==='ArrowLeft'?-2:2))}
 const canManagePrivilege=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_MANAGE)); const canSend=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_SEND)); const canCall=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_CALL)); const canImpersonate=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_IMPERSONATE)); const canCreateRoom=computed(()=>canManagePrivilege.value&&store.viewerAgentId===null&&store.status?.chat_enabled===true); const canCustomizeSelectedRoom=computed(()=>store.viewerAgentId===null&&store.selectedRoom!==null); const canWriteSelectedRoom=computed(()=>canSend.value&&store.viewerAgentId===null&&store.selectedRoom?.writable===true); const canReadTasks=computed(()=>privilegeStore.hasPrivilege(privileges.TASK_ACCESS)||privilegeStore.hasPrivilege(privileges.TASK_EDIT)); const canReadDocuments=computed(()=>privilegeStore.hasPrivilege(privileges.DOCUMENT_ACCESS)||privilegeStore.hasPrivilege(privileges.DOCUMENT_EDIT)||privilegeStore.hasPrivilege(privileges.DOCUMENT_ADMIN)); const canEditDocuments=computed(()=>privilegeStore.hasPrivilege(privileges.DOCUMENT_EDIT)&&store.viewerAgentId===null); const canReadProcesses=computed(()=>privilegeStore.hasPrivilege(privileges.PROCESS_READ)||privilegeStore.hasPrivilege(privileges.PROCESS_LAUNCH)||privilegeStore.hasPrivilege(privileges.PROCESS_ADMIN)); const canSelectTopic=computed(()=>privilegeStore.hasPrivilege(privileges.TOPIC_ACCESS)||privilegeStore.hasPrivilege(privileges.TOPIC_EDIT))
 const canEditConversationTopic=computed(()=>privilegeStore.hasPrivilege(privileges.TOPIC_EDIT)&&store.viewerAgentId===null)
-watch([canCreateRoom, () => store.selectedRoom?.id, recipientsRevision, agentsPage, agentsPageSize], ([canCreate, roomId], _, onCleanup) => {
+// A deep link resolves its conversation before the home catalogues are needed.
+// Once initialized, the home remains available after errors or a viewer change.
+const homeVisible = computed(() => !store.selectedRoom && (!initializingChat.value || !requestedRoomId(route.query.room)))
+watch([canCreateRoom, homeVisible, recipientsRevision, agentsPage, agentsPageSize], ([canCreate, showHome], _, onCleanup) => {
   let cancelled = false
   onCleanup(() => { cancelled = true })
   loadingRecipients.value = false
-  if (!canCreate || roomId) return
+  if (!canCreate || !showHome) return
   loadingRecipients.value = true
   recipientsError.value = false
   void service.recipientPage(agentsPage.value, agentsPageSize.value).then(result => {
@@ -547,13 +551,13 @@ watch([canCreateRoom, () => store.selectedRoom?.id, recipientsRevision, agentsPa
     if (!cancelled) loadingRecipients.value = false
   })
 }, { immediate: true })
-watch([() => store.enabled, () => store.selectedRoom?.id, () => store.rooms, roomSearch,
+watch([() => store.enabled, homeVisible, () => store.rooms, roomSearch,
   () => store.viewerAgentId, () => store.includeExternalRooms, () => store.includeArchivedRooms,
   homeRoomsPage, homeRoomsPageSize, homeRoomsRevision], (_, __, onCleanup) => {
   let cancelled = false
   onCleanup(() => { cancelled = true })
   loadingHomeRooms.value = false
-  if (!store.enabled || store.selectedRoom) return
+  if (!store.enabled || !homeVisible.value) return
   loadingHomeRooms.value = true
   homeRoomsError.value = false
   homeRooms.value = []
@@ -674,8 +678,13 @@ onMounted(() => {
   void report(async () => {
     await store.initialize()
     if (documentPageDisposed) return
-    if (canImpersonate.value) viewerAgents.value = await service.viewerAgents()
-    if (documentPageDisposed) return
+    if (canImpersonate.value) {
+      const session = sessionGeneration()
+      const current = () => !documentPageDisposed && canImpersonate.value && session === sessionGeneration()
+      void service.viewerAgents().then(agents => {
+        if (current()) viewerAgents.value = agents
+      }).catch(error => { if (current()) reportError(error) })
+    }
     chatReady = true
     const requestedRoomSelected = await selectRequestedRoom(true)
     if (!requestedRoomSelected && !requestedRoomId(route.query.room) && store.selectedRoom) {
@@ -683,7 +692,7 @@ onMounted(() => {
       mobileView.value = 'conversation'
       await scrollInitialChatZonesToBottom()
     }
-  })
+  }).finally(() => { initializingChat.value = false })
 })
 onBeforeUnmount(() => {
   chatReady = false

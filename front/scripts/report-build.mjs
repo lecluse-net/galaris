@@ -36,6 +36,14 @@ async function sizes(files) {
 }
 const all = new Set(Object.values(manifest).flatMap(entry => [entry.file, ...(entry.css ?? [])]))
 const startupByLocale = {}
+const routeAdditional = {}
+const routeGzipLimits = { chat: 200_000 }
+for (const [name, key] of Object.entries({ chat: 'app/chat/pages/index.vue' })) {
+  if (!manifest[key]) continue
+  const files = new Set()
+  visit(key, files)
+  routeAdditional[name] = await sizes(new Set([...files].filter(file => !eager.has(file))))
+}
 // Leave room above the measured baseline while rejecting accidental eager views.
 const startupGzipLimits = { en: 460_000, fr: 600_000, zh: 600_000 }
 for (const locale of ['en', 'fr', 'zh']) {
@@ -49,9 +57,15 @@ console.log(JSON.stringify({
   eager: await sizes(eager), all: await sizes(all),
   startup_by_locale: startupByLocale,
   startup_gzip_limits: startupGzipLimits,
+  route_additional: routeAdditional,
+  route_gzip_limits: routeGzipLimits,
   note: 'Static imports and CSS; startup_by_locale also includes the selected language. Excludes other dynamic imports, fonts, API traffic and PWA precache downloads. Gzip is measured per file.',
 }, null, 2))
 for (const [locale, limit] of Object.entries(startupGzipLimits)) {
   const measured = startupByLocale[locale].gzip_bytes
   assert.ok(measured <= limit, `${locale} startup exceeds gzip budget: ${measured} > ${limit} bytes`)
+}
+for (const [route, measurement] of Object.entries(routeAdditional)) {
+  const limit = routeGzipLimits[route]
+  assert.ok(measurement.gzip_bytes <= limit, `${route} route exceeds gzip budget: ${measurement.gzip_bytes} > ${limit} bytes`)
 }

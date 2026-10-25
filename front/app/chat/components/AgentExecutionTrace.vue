@@ -34,7 +34,7 @@
     <div v-if="controlError" class="trace-error" role="alert">{{ controlError }}</div>
 
     <q-slide-transition>
-      <div v-show="expanded" class="trace-detail">
+      <div v-if="detailsOpened" v-show="expanded" class="trace-detail">
         <div v-if="loading && !displayedExecutionResult" class="trace-loading"><q-spinner color="primary" size="22px" /></div>
         <div v-else>
           <div v-if="loadError" class="trace-error">{{ loadError }}</div>
@@ -111,6 +111,7 @@ async function control(action: ConversationControlAction): Promise<void> {
   }
 }
 const expanded = ref(false)
+const detailsOpened = ref(false)
 const loading = ref(false)
 const loadError = ref('')
 const roundDetail = ref<ConversationRoundDetail | null>(null)
@@ -257,7 +258,10 @@ async function loadDetail(): Promise<void> {
 
 async function toggleTrace(): Promise<void> {
   expanded.value = !expanded.value
-  if (expanded.value) await loadDetail()
+  if (expanded.value) {
+    detailsOpened.value = true
+    await loadDetail()
+  }
 }
 
 function toolPresentation(name: string): Pick<ToolSummary, 'icon' | 'tone'> {
@@ -284,6 +288,7 @@ watch(roundId, () => {
   roundDetail.value = null
   llmCalls.value = []
   expanded.value = false
+  detailsOpened.value = false
   loadError.value = ''
   llmCallsError.value = ''
 })

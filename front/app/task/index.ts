@@ -1,5 +1,7 @@
-export { default as ExecutionResultComponent } from './components/ExecutionResult.vue'
-export { default as TaskDetail } from './components/TaskDetail.vue'
+import { defineAsyncView } from '@/core/util'
+
+export const ExecutionResultComponent = defineAsyncView(() => import('./components/ExecutionResult.vue'))
+export const TaskDetail = defineAsyncView(() => import('./components/TaskDetail.vue'))
 export { default as TaskActivitySummary } from './components/TaskActivitySummary.vue'
 export { default as TaskStartupTimingPanel } from './components/TaskStartupTiming.vue'
 export type { TaskStartupTiming } from './activity'

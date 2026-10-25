@@ -835,7 +835,7 @@ tests remain authoritative for behavior.
 | `app/conversation` | `app/topic` | `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue` |
 | `app/conversation` | `core/api` | `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/components/DeliveryResolution.vue`, `front/app/conversation/services/conversationService.ts` |
 | `app/conversation` | `core/authorize` | `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue` |
-| `app/conversation` | `core/util` | `front/app/conversation/components/ConversationExecutionDetails.vue`, `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/richContent.ts` |
+| `app/conversation` | `core/util` | `front/app/conversation/components/ConversationExecutionDetails.vue`, `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/index.ts`, `front/app/conversation/richContent.ts` |
 | `app/dataset` | `app/share` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetLibraryFilters.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetSharing.vue`, `front/app/dataset/services/datasetService.ts`, `front/app/dataset/types.ts` |
 | `app/dataset` | `core/api` | `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/services/datasetService.ts` |
 | `app/dataset` | `core/authorize` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetLibraryRow.vue` |
@@ -940,7 +940,7 @@ tests remain authoritative for behavior.
 | `app/task` | `core/i18n` | `front/app/task/services/taskStatusService.ts` |
 | `app/task` | `core/navigation` | `front/app/task/navigation.ts`, `front/app/task/pages/index.vue` |
 | `app/task` | `core/user` | `front/app/task/components/TaskDetail.vue`, `front/app/task/stores/taskStore.ts` |
-| `app/task` | `core/util` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/DispatchResult.vue`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/MemoryItemCard.vue`, `front/app/task/components/PlannerResult.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/components/TaskRowMenu.vue`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskStatusService.ts` |
+| `app/task` | `core/util` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/DispatchResult.vue`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/MemoryItemCard.vue`, `front/app/task/components/PlannerResult.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/components/TaskRowMenu.vue`, `front/app/task/index.ts`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskStatusService.ts` |
 | `app/task` | `core/websocket` | `front/app/task/stores/taskStore.ts`, `front/app/task/useTaskActivity.ts` |
 | `app/tools` | `app/connection` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/pages/index.vue`, `front/app/tools/stores/toolStore.ts` |
 | `app/tools` | `core/api` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/services/toolService.ts` |
@@ -950,7 +950,7 @@ tests remain authoritative for behavior.
 | `app/topic` | `core/api` | `front/app/topic/components/TopicBadge.vue`, `front/app/topic/components/TopicSelect.vue`, `front/app/topic/services/topicService.ts` |
 | `app/topic` | `core/authorize` | `front/app/topic/components/TopicBadge.vue`, `front/app/topic/components/TopicSelect.vue`, `front/app/topic/navigation.ts`, `front/app/topic/pages/index.vue` |
 | `app/topic` | `core/navigation` | `front/app/topic/components/TopicDetail.vue`, `front/app/topic/navigation.ts`, `front/app/topic/pages/index.vue` |
-| `app/topic` | `core/util` | `front/app/topic/components/TopicDetail.vue`, `front/app/topic/components/TopicFormDialog.vue`, `front/app/topic/components/TopicParticipants.vue`, `front/app/topic/pages/index.vue`, `front/app/topic/richContent.ts` |
+| `app/topic` | `core/util` | `front/app/topic/components/TopicDetail.vue`, `front/app/topic/components/TopicFormDialog.vue`, `front/app/topic/components/TopicParticipants.vue`, `front/app/topic/index.ts`, `front/app/topic/pages/index.vue`, `front/app/topic/richContent.ts` |
 | `app/voice` | `app/agent` | `front/app/voice/components/VoiceCallHistory.vue`, `front/app/voice/components/VoiceConversationDetail.vue` |
 | `app/voice` | `app/lab` | `front/app/voice/components/VoiceConversationDetail.vue` |
 | `app/voice` | `app/llm` | `front/app/voice/components/VoiceConversationDetail.vue`, `front/app/voice/services/voiceConversationService.ts`, `front/app/voice/types.ts` |

@@ -30,12 +30,14 @@ test('startup measurement includes the selected JSON catalog and counts shared a
   const directory = await mkdtemp(join(tmpdir(), 'locale-build-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   await mkdir(join(directory, '.vite'))
-  const files = { 'index.js': 'entry', 'shared.js': 'shared', 'shared.css': 'styles', 'fr.json': '{"hello":"Bonjour"}', 'zh.json': '{"hello":"你好"}' }
+  const files = { 'index.js': 'entry', 'shared.js': 'shared', 'shared.css': 'styles', 'chat.js': 'chat', 'optional.js': 'optional view', 'fr.json': '{"hello":"Bonjour"}', 'zh.json': '{"hello":"你好"}' }
   for (const [name, value] of Object.entries(files)) await writeFile(join(directory, name), value)
   await writeFile(join(directory, 'manifest.webmanifest'), JSON.stringify({ theme_color: '#202020', background_color: '#202020' }))
   await writeFile(join(directory, '.vite/manifest.json'), JSON.stringify({
     'index.html': { file: 'index.js', isEntry: true, imports: ['shared'], css: ['shared.css'] },
     shared: { file: 'shared.js', css: ['shared.css'] },
+    'app/chat/pages/index.vue': { file: 'chat.js', imports: ['shared'], dynamicImports: ['optional'] },
+    optional: { file: 'optional.js' },
     'core/i18n/catalogs/fr.json': { file: 'fr.json' },
     'core/i18n/catalogs/zh.json': { file: 'zh.json' },
   }))
@@ -43,6 +45,8 @@ test('startup measurement includes the selected JSON catalog and counts shared a
   const eagerBytes = files['index.js'].length + files['shared.js'].length + files['shared.css'].length
   assert.equal(report.eager.bytes, eagerBytes)
   assert.deepEqual(report.startup_by_locale.en, report.eager)
+  assert.equal(report.route_additional.chat.bytes, files['chat.js'].length)
+  assert.equal(report.route_additional.chat.gzip_bytes, gzipSync(files['chat.js']).length)
   for (const locale of ['fr', 'zh']) {
     const data = Buffer.from(files[`${locale}.json`])
     assert.equal(report.startup_by_locale[locale].bytes, eagerBytes + data.length)
@@ -50,7 +54,7 @@ test('startup measurement includes the selected JSON catalog and counts shared a
   }
 })
 
-test('startup budgets reject eager code and each secondary language independently', async t => {
+test('build budgets reject eager code, secondary languages and chat dependencies independently', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'startup-budget-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   await mkdir(join(directory, '.vite'))
@@ -64,16 +68,19 @@ test('startup budgets reject eager code and each secondary language independentl
   const report = () => execFileSync(process.execPath, [
     fileURLToPath(new URL('./report-build.mjs', import.meta.url)), directory,
   ], { encoding: 'utf8', stdio: 'pipe' })
-  for (const locale of ['en', 'fr', 'zh']) {
+  for (const locale of ['en', 'fr', 'zh', 'chat']) {
     await t.test(locale, async () => {
       const manifest = { 'index.html': { file: 'index.js', isEntry: true } }
       await writeFile(join(directory, 'index.js'), locale === 'en' ? `export const text = ${JSON.stringify(noise)}` : 'export const text = "small"')
-      if (locale !== 'en') {
+      if (locale === 'chat') {
+        manifest['app/chat/pages/index.vue'] = { file: 'chat.js', imports: ['index.html'] }
+        await writeFile(join(directory, 'chat.js'), `export const text = ${JSON.stringify(noise)}`)
+      } else if (locale !== 'en') {
         manifest[`core/i18n/catalogs/${locale}.json`] = { file: `${locale}.json` }
         await writeFile(join(directory, `${locale}.json`), JSON.stringify({ text: noise }))
       }
       await writeFile(join(directory, '.vite/manifest.json'), JSON.stringify(manifest))
-      assert.throws(report, new RegExp(`${locale} startup exceeds gzip budget`))
+      assert.throws(report, new RegExp(`${locale} ${locale === 'chat' ? 'route' : 'startup'} exceeds gzip budget`))
     })
   }
 })

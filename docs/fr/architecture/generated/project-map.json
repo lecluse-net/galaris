@@ -21268,6 +21268,7 @@
           "front/app/conversation/components/ConversationExecutionDetails.vue",
           "front/app/conversation/components/ConversationHistory.vue",
           "front/app/conversation/components/ConversationRoundDetail.vue",
+          "front/app/conversation/index.ts",
           "front/app/conversation/richContent.ts"
         ],
         "source": "app/conversation",
@@ -22337,6 +22338,7 @@
           "front/app/task/components/TaskDetail.vue",
           "front/app/task/components/TaskFormDialog.vue",
           "front/app/task/components/TaskRowMenu.vue",
+          "front/app/task/index.ts",
           "front/app/task/pages/index.vue",
           "front/app/task/richContent.ts",
           "front/app/task/services/taskStatusService.ts"
@@ -22427,6 +22429,7 @@
           "front/app/topic/components/TopicDetail.vue",
           "front/app/topic/components/TopicFormDialog.vue",
           "front/app/topic/components/TopicParticipants.vue",
+          "front/app/topic/index.ts",
           "front/app/topic/pages/index.vue",
           "front/app/topic/richContent.ts"
         ],
