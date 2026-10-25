@@ -110,6 +110,12 @@ adaptée. Une action indispensable en échec avant l’expansion arrête le DDL.
 différée conserve les sources et permet les ajouts. La contraction destructive et les actions
 `AFTER_CONTRACT` attendent la fin des préparations et du remplissage des colonnes obligatoires.
 
+Les modifications de clés étrangères existantes attendent également la contraction. Une
+référence redirigée vers une nouvelle table conserve ainsi sa cible source jusqu'à la copie
+des données par les actions. Cela évite aussi qu'Atlas tente de remplacer la contrainte avant
+de créer sa nouvelle table lorsque le delta contient des dépendances cycliques. Les clés
+étrangères des nouvelles tables sont créées pendant l'expansion.
+
 Une colonne retirée du modèle peut rester présente pendant cette phase et bloquer les nouvelles
 écritures si elle est encore `NOT NULL` sans défaut. La transition Memory/Document traite ce cas
 par une action `BEFORE_EXPAND` : après vérification de l'archive, les anciens `share_id` et

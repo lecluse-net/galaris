@@ -523,6 +523,11 @@ attachments. `e2e/specs/datasets.spec.mjs` exercises the assembled editor. Memor
 suites preserve consent, concurrent quotas, access revocation, historical profiles and
 engine integration. HTML input and
 collection remain covered by document application tests.
+`test_upgrade.py` reconstructs missing Dataset tables, historical document references and
+the Process cycle added in the same delta. The real Atlas/DbAdmin pipeline must preserve
+JSON, history, access, consents and quotas, then converge on replay, including after an
+interruption between expansion and transfer. The scenario reproduces `42P01` before the
+expansion policy fix.
 `test_management.py` checks atomic replacement of agent/user/group grants, rejection of editor
 and read-only resharing, stale versions, deletion and usage filtering before pagination.
 The Dataset E2E journey exercises the same sharing component as Documents, discovers a Document

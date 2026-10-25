@@ -816,3 +816,52 @@ async def test_expansion_can_still_replace_an_index_with_the_same_name():
     finally:
         await apply_target(render_target_sql(canonical),scope=scope)
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_expansion_preserves_foreign_key_until_cyclic_replacement_is_populated():
+    from sqlalchemy import ForeignKey
+
+    canonical = load_target_metadata()
+    initial = _copy_metadata(canonical)
+    Table("dbadmin_legacy_parent", initial, Column("id", Integer, primary_key=True))
+    Table("dbadmin_existing_child", initial,
+          Column("id", Integer, primary_key=True),
+          Column("parent_id", Integer, ForeignKey(
+              "dbadmin_legacy_parent.id", name="fk_dbadmin_retarget")))
+    evolved = _copy_metadata(canonical)
+    Table("dbadmin_legacy_parent", evolved, Column("id", Integer, primary_key=True))
+    Table("dbadmin_new_parent", evolved, Column("id", Integer, primary_key=True),
+          Column("child_id", Integer, ForeignKey(
+              "dbadmin_existing_child.id", name="fk_dbadmin_cycle")))
+    Table("dbadmin_existing_child", evolved,
+          Column("id", Integer, primary_key=True),
+          Column("parent_id", Integer, ForeignKey(
+              "dbadmin_new_parent.id", name="fk_dbadmin_retarget")))
+    scope = DbAdminDdlFilters()
+    try:
+        await apply_target(render_target_sql(initial), scope=scope)
+        async with engine.begin() as connection:
+            await connection.execute(text("INSERT INTO dbadmin_legacy_parent VALUES (1)"))
+            await connection.execute(text("INSERT INTO dbadmin_existing_child VALUES (2, 1)"))
+        await apply_target(render_target_sql(evolved), scope=scope, preserve_data=True)
+        async with engine.begin() as connection:
+            assert await connection.scalar(text(
+                "SELECT confrelid::regclass::text FROM pg_constraint "
+                "WHERE conname='fk_dbadmin_retarget'"
+            )) == "dbadmin_legacy_parent"
+            await connection.execute(text("INSERT INTO dbadmin_new_parent VALUES (1, 2)"))
+        await apply_target(render_target_sql(evolved), scope=scope)
+        async with engine.connect() as connection:
+            assert await connection.scalar(text(
+                "SELECT confrelid::regclass::text FROM pg_constraint "
+                "WHERE conname='fk_dbadmin_retarget'"
+            )) == "dbadmin_new_parent"
+            assert await connection.scalar(text(
+                "SELECT parent_id FROM dbadmin_existing_child WHERE id=2"
+            )) == 1
+        replay = await apply_target(render_target_sql(evolved), scope=scope, preserve_data=True)
+        assert not replay.changed
+    finally:
+        await apply_target(render_target_sql(canonical), scope=scope)
+        await engine.dispose()

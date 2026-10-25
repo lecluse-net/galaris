@@ -545,6 +545,11 @@ Les tests HTML vérifient aussi la lecture d'une valeur native actuelle sans Doc
 vérifiés, les droits, les révisions et la restauration. `test_schema_removal.py` vérifie la
 contraction DbAdmin et son rejeu sur une base synthétique peuplée, sans perte de contenus,
 d'historique, de droits ou de PJ. `e2e/specs/datasets.spec.mjs` exerce l'éditeur assemblé.
+`test_upgrade.py` reconstruit l'absence des tables Dataset avec les anciennes références
+documentaires et le cycle Process ajouté dans le même delta. Le vrai pipeline Atlas/DbAdmin
+doit préserver JSON, historique, droits, consentements et quotas, puis converger au rejeu,
+y compris après interruption entre expansion et transfert. Le scénario reproduit l'erreur
+`42P01` avant la correction de la politique d'expansion.
 Les suites Memory et Process conservent les contrôles de consentement, quotas concurrents,
 révocation des droits, profils historiques et intégration moteur.
 La saisie et la collecte HTML restent couvertes par les tests des applications documentaires.

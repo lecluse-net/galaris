@@ -91,6 +91,11 @@ All phases receive the same `SchemaTransitionSet`, calculated before the first A
 
 The first Atlas pass prevents table and column drops and temporarily keeps the relevant required columns nullable. This does not make type conversions lossless: those still require an appropriate action. A failed indispensable pre-expansion action stops DDL. Deferred contributions preserve source data while allowing additions. Destructive contraction and `AFTER_CONTRACT` actions wait for preparation and required-column backfills to complete.
 
+Changes to existing foreign keys also wait for contraction. A reference redirected to a new
+table therefore retains its source target until actions have copied the data. This also
+prevents Atlas from replacing a constraint before creating its new target table when the
+delta contains cyclic dependencies. Foreign keys on new tables are created during expansion.
+
 A column removed from the model can remain during this phase and block new inserts if it is
 still `NOT NULL` without a default. The Memory/Document transition handles this with a
 `BEFORE_EXPAND` action: after verifying the archive, the old `share_id` and `share_kind`
