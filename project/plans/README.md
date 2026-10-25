@@ -41,6 +41,7 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 | Plan | Statut | Portée |
 |---|---|---|
+| [migration-progressive-rust.md](migration-progressive-rust.md) | `design` | Piste exploratoire par bibliothèque PyO3 : lots ascendants, contrats et mesures, pont async, workers et domaines ; étude précoce des dépendances à Pydantic AI, maintien hybride possible et remplacement facultatif conditionné à une conformité démontrée. Aucune implémentation engagée. |
 | [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Comptabilité par appel, bilan Task et coût par réussite du benchmark implémentés (0238). Restent pilote petit/gros exécuteur, vérification métier indépendante, attente fournisseur, parcours persistant, puis supervision et escalade expérimentales ; aucun gain de cette répartition démontré. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundle, SDK/TCK, activation par génération, frontend précompilé, permissions, conservation SQL, rollback et store signé. |
 | [controle-distant-vnc.md](controle-distant-vnc.md) | `design` | Connexion VNC, captures MCP, simulation clavier/souris, sessions isolées et reprise humaine ; client RFB et compatibilité OS/serveurs à qualifier. |
