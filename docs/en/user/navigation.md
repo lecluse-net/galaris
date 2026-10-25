@@ -619,6 +619,10 @@ WhatsApp requires a public HTTPS webhook; its warning appears for a local or pri
 or one without HTTPS. OneBot needs an address reachable from the adapter, including through
 a local network or VPN. These warnings use the browser address and do not block saving.
 
+The **OneBot 11** and **WhatsApp** preference tabs display an **Experimental messaging**
+notice. If you encounter a problem, use **Report a problem on GitHub** to provide feedback
+in the [project issues](https://github.com/lecluse-net/galaris/issues).
+
 Under **Tasks and execution → Planner**, planning is bounded by maximum depth and maximum leaves.
 There is no separate limit on the total number of steps.
 

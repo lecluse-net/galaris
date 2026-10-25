@@ -47,6 +47,7 @@ export interface BridgeSettingsContribution {
     guideKey: string
     stepsKey: string
     docsUrl?: string
+    experimental?: boolean
     fields: SettingField[]
     groups?: SettingGroup[]
     test?: () => Promise<BridgeSettingsTestResult>

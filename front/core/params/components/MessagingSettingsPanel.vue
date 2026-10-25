@@ -56,6 +56,25 @@
         </q-tabs>
 
         <template v-if="selectedBridge">
+            <q-banner v-if="selectedBridge.experimental" rounded class="experimental-notice q-mb-lg" role="note">
+                <template #avatar>
+                    <q-icon name="warning" class="experimental-notice__icon" />
+                </template>
+                <div class="text-subtitle1 text-weight-medium">{{ t('configuration.messaging.experimentalTitle') }}</div>
+                <div class="text-body2 q-mt-xs">{{ t('configuration.messaging.experimentalHint', { provider: selectedBridge.label }) }}</div>
+                <q-btn
+                    href="https://github.com/lecluse-net/galaris/issues"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    outline
+                    color="primary"
+                    icon="open_in_new"
+                    :label="t('configuration.messaging.reportIssue')"
+                    no-caps
+                    class="q-mt-sm"
+                />
+            </q-banner>
+
             <q-banner rounded class="configuration-guide q-mb-lg">
                 <template #avatar>
                     <q-avatar color="primary" text-color="white" :icon="selectedBridge.icon" />
@@ -312,4 +331,8 @@ function receptionStatus(receiving: boolean | null): string {
     background: var(--solaire-blue-light);
 }
 body.body--dark .configuration-guide { background: var(--solaire-blue-dark); }
+
+.experimental-notice { background: var(--solaire-orange-light); }
+.experimental-notice__icon { color: var(--solaire-orange-accent); }
+body.body--dark .experimental-notice { background: var(--solaire-orange-dark); }
 </style>

@@ -4,6 +4,7 @@ export default {
     area: 'messaging',
     kind: 'one_bot',
     label: 'OneBot 11',
+    experimental: true,
     icon: 'smart_toy',
     guideKey: 'messagingProviders.oneBot.guide',
     stepsKey: 'messagingProviders.oneBot.steps',

@@ -4,6 +4,7 @@ export default {
     area: 'messaging',
     kind: 'whatsapp',
     label: 'WhatsApp',
+    experimental: true,
     icon: 'chat',
     guideKey: 'messagingProviders.whatsapp.guide',
     stepsKey: 'messagingProviders.whatsapp.steps',

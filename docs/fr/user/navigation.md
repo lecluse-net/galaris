@@ -673,6 +673,10 @@ privée ou sans HTTPS. OneBot demande une adresse joignable depuis l’adaptateu
 un réseau local ou un VPN. Ces avertissements se basent sur l’adresse du navigateur et ne bloquent
 pas l’enregistrement.
 
+Les onglets **OneBot 11** et **WhatsApp** des préférences affichent un panneau
+**Messagerie expérimentale**. En cas de problème, utilisez **Signaler un problème sur GitHub**
+pour faire un retour dans les [issues du projet](https://github.com/lecluse-net/galaris/issues).
+
 Dans **Tâches et exécution → Planner**, la planification se règle avec la profondeur maximale et
 le nombre maximal de feuilles. Il n’y a pas de plafond distinct sur le nombre total d’étapes.
 
