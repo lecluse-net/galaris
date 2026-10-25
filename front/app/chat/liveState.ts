@@ -51,7 +51,7 @@ export function applyVoiceTranscriptionEvent(
 ): PendingVoiceTranscription[] {
   const data = event.data
   if (!data?.room_id || !data.transcription_id || !data.status) return [...current]
-  if (data.status === 'failed') {
+  if (data.status === 'failed' || (data.status === 'completed' && !data.message_id)) {
     return current.filter(item => item.id !== data.transcription_id)
   }
   const existing = current.find(item => item.id === data.transcription_id)

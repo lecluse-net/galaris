@@ -59,6 +59,7 @@ class _TextSegmenter:
     def __init__(self, max_chars: int = 160) -> None:
         self._text = ""
         self._max_chars = max_chars
+        self._emitted = False
 
     def feed(self, delta: str) -> list[str]:
         self._text += delta
@@ -70,20 +71,22 @@ class _TextSegmenter:
     def _ready(self, *, force: bool) -> list[str]:
         segments: list[str] = []
         while self._text:
+            limit = self._max_chars if self._emitted else min(64, self._max_chars)
             boundary: int | None = None
             match = re.search(r"[.!?;:\n]+(?:\s+|$)", self._text)
             if match is not None:
                 boundary = match.end()
-            elif len(self._text) >= self._max_chars:
-                split = self._text.rfind(" ", 0, self._max_chars)
-                boundary = split if split >= self._max_chars // 2 else self._max_chars
-            elif force:
+            if (boundary is None or boundary > limit) and len(self._text) >= limit:
+                split = self._text.rfind(" ", 0, limit)
+                boundary = split if split >= limit // 2 else limit
+            elif boundary is None and force:
                 boundary = len(self._text)
             if boundary is None:
                 break
             text = " ".join(self._text[:boundary].split()).strip()
             self._text = self._text[boundary:]
             if text:
+                self._emitted = True
                 segments.append(text)
         return segments
 

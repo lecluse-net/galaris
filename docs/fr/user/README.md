@@ -587,6 +587,11 @@ agent → synthèse, soit une session audio native à faible latence. Le second 
 aucune transcription intermédiaire : l’absence de texte dans un tour natif n’indique donc pas une
 perte de l’appel.
 
+Dans le mode transcription → agent → synthèse, l'écoute reste active pendant la
+transcription : vous pouvez reprendre la parole sans attendre son résultat. La détection
+locale de parole limite les déclenchements dus au bruit et conserve les pauses naturelles.
+Une transcription vide ne crée pas de message ni de réponse de l'agent.
+
 L’onglet **Appels téléphoniques** montre les appels actifs ou terminés, leurs tours, interruptions,
 réponses, appels LLM et erreurs. Un tour vocal peut aussi créer une tâche de fond ; celle-ci apparaît
 alors dans l’onglet **tâches** et continue après la fin de l’appel.

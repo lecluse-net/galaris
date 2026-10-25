@@ -447,9 +447,9 @@ class TranscriptionProvider(Protocol):
 
 
 class RealtimeTranscriber(Protocol):
-    """One live provider session fed while the caller is speaking."""
+    """Live STT; local speech hints suppress silent segments, empty commits are valid."""
 
-    async def send_audio(self, pcm: bytes) -> None: ...
+    async def send_audio(self, pcm: bytes, *, speech_detected: bool = True) -> None: ...
 
     async def commit(self) -> str: ...
 

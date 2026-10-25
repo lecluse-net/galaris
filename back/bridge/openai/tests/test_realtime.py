@@ -72,6 +72,11 @@ async def test_openai_realtime_session_uses_native_audio_without_input_stt(
         "rate": 24_000,
     }
     assert "transcription" not in configured["audio"]["input"]
+    assert configured["audio"]["input"]["noise_reduction"] == {"type": "near_field"}
+    assert configured["audio"]["input"]["turn_detection"] == {
+        "type": "semantic_vad", "eagerness": "high",
+        "create_response": True, "interrupt_response": True,
+    }
     assert configured["audio"]["output"]["format"] == {
         "type": "audio/pcm",
         "rate": 24_000,

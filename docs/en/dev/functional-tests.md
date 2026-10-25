@@ -775,6 +775,21 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Media and acquired evidence
 
+`tests/test_transcription_service.py` verifies that an empty ElevenLabs commit keeps the session
+usable for the next turn. `app/voice/tests/test_engine.py` prevents that result from retrying
+transcription or creating a round, message, or spoken reply. `front/app/chat/liveState.test.mjs`
+covers removing its indicator without an empty message. These synthetic tests do not measure
+real-call latency or STT hallucinations.
+
+`app/voice/tests/test_turn_detection.py` runs the real Silero model on entirely synthetic
+Flite speech at normal/attenuated volume, and on silence, hum, white noise and clicks.
+Transport packet sizes vary without changing the signal. Segmentation tests inject a
+classifier to preserve pre-roll and pause guarantees without calling constant amplitude
+speech. `test_engine.py` covers listening during slow batch/streaming STT, retained late
+text, no obsolete reply after cleanup, cancellation on hangup, bounded queue overflow and
+earlier first TTS segments without text loss. The ElevenLabs test also covers 40 seconds
+of speech or silence before the final commit and the following turn.
+
 `app/voice/tests/test_audio_pacing.py` exercises the actual Chat, Matrix and Nextcloud
 tracks with a shared synthetic clock: cadence without accumulated encoding or wake-up
 delays, resumption without a burst after a stall, preserved PCM and timestamps,

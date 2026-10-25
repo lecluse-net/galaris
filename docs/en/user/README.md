@@ -495,6 +495,11 @@ do not prove delivery.
 
 When Matrix or Nextcloud Talk and a voice capability are configured, an Agent can participate in a call. Depending on the voice selected on its profile, Galaris uses either the transcription → Agent → synthesis pipeline or a low-latency native audio session. The second mode may retain no intermediate transcription: the absence of text in a native turn therefore does not indicate a lost call.
 
+In transcription → Agent → synthesis mode, listening stays active during transcription:
+you can speak again without waiting for its result. Local speech detection limits noise
+activations while preserving natural pauses. An empty transcript creates neither a message
+nor an Agent response.
+
 The **Phone Calls** tab shows active or completed calls, their turns, interruptions, responses, LLM calls, and errors. A voice turn can also create a background Task; it then appears in the **Tasks** tab and continues after the call ends.
 
 

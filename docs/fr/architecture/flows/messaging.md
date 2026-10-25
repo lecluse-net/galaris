@@ -831,12 +831,46 @@ parole continue peut être découpée en blocs audio bornés, mais ces blocs res
 seuls le silence, l'arrêt du flux ou sa fin valident le transcript puis déclenchent la réponse.
 Une coupure technique ne doit donc ni relancer le barge-in, ni supprimer le début du message.
 
+La confirmation de parole repose sur le modèle Silero local, embarqué dans la dépendance
+`pysilero-vad`, avec un état privé par appel et un rééchantillonnage continu en 16 kHz pour
+le classificateur. Le PCM canonique reste intact. Le bruit de fond ne devient plus une
+intervention sur le seul critère du volume. La segmentation interne utilise des trames de
+20 ms indépendamment du transport ; le début confirmé et la durée minimale valent 240 ms,
+et la tolérance de pause de 800 ms est conservée.
+
+La capture et la détection continuent pendant les attentes STT. Une file ordonnée transporte
+PCM et frontières de tours, avec au plus 30 secondes de PCM en attente et un nombre borné
+d'événements. Un dépassement ferme explicitement l'appel. Une prise de parole plus récente
+empêche une ancienne transcription de déclencher une réponse ; son texte est repris dans
+la prochaine réponse courante. Le raccrochage annule le STT, ferme l'itérateur entrant et
+termine les indicateurs en attente. Les mesures de premier texte/audio incluent l'attente STT
+et la file depuis la détection de fin de tour.
+
 Lorsque la ressource sélectionnée expose le streaming natif, chaque trame entrante alimente le STT
 exactement une fois, y compris avant la confirmation locale de parole et sous le seuil du détecteur.
 Le VAD local décide uniquement du point de commit manuel ; il ne filtre jamais le flux envoyé au
 transcripteur. Le tour PCM détecté reste disponible pour un repli batch si la session temps réel
 échoue. L'agent ne démarre qu'après ce commit afin qu'une correction de transcript ne réexécute
 jamais un outil à effet de bord.
+
+Un commit STT temps réel sans texte reconnu signifie qu'aucune parole n'a été retenue :
+la session reste ouverte, aucun repli batch ni round conversationnel n'est déclenché,
+et l'indicateur de transcription disparaît sans créer de message vide. Les erreurs
+fournisseur continuent de déclencher le repli prévu.
+
+ElevenLabs reçoit aussi un commit technique toutes les 20 secondes d'audio envoyé, avant
+son commit automatique d'environ 36 secondes. Les textes de ces segments sont assemblés
+jusqu'à la fin du tour local ; ils ne déclenchent aucun outil indépendamment. Un silence
+prolongé ne laisse ainsi pas de segment périmé à attribuer à la phrase suivante.
+Chaque trame porte aussi le résultat de classification local : le provider écarte le
+texte d'un segment entièrement sans parole, même s'il a inventé des mots pendant ce silence.
+
+Le chemin natif OpenAI demande la réduction de bruit `near_field` et le VAD sémantique avec
+`eagerness=high`, tout en conservant l'interruption fournisseur et l'entrée audio directe.
+Ces réglages ne constituent pas une mesure de latence sur un appel réel.
+
+Le premier segment de synthèse peut partir dès 64 caractères sans attendre une phrase longue ;
+les suivants conservent la limite de 160 caractères. Le texte restant est intégralement conservé.
 
 La sortie de l'agent est déjà un flux de deltas. Pour une voix ElevenLabs, des segments parlables
 sont transmis sur un WebSocket TTS unique utilisant le modèle faible latence et du PCM brut

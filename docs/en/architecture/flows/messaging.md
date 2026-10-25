@@ -794,11 +794,43 @@ speech may be split into bounded audio blocks, but these blocks remain one turn:
 stream stoppage, or its end validate the transcript and trigger the response. A technical
 interruption must therefore neither restart barge-in nor remove the beginning of the message.
 
+Speech confirmation uses the local Silero model bundled in `pysilero-vad`, with private
+state per call and continuous resampling to 16 kHz for classification. Canonical PCM stays
+intact. Background noise no longer becomes an intervention solely because of its volume.
+Internal segmentation uses 20 ms frames independently of transport packets. Confirmed onset
+and minimum speech both use 240 ms; the 800 ms pause tolerance is preserved.
+
+Capture and detection continue while STT is pending. An ordered queue carries PCM and turn
+boundaries, bounded to 30 seconds of pending PCM and a finite event count. Overflow explicitly
+ends the call. A newer onset prevents an earlier transcript from starting an obsolete reply;
+its text is retained for the next current response. Hangup cancels STT, closes the inbound
+iterator and terminates pending progress indicators. First-text/audio timings include STT
+and queue delay from the detected endpoint.
+
 When the selected resource exposes native streaming, each incoming frame feeds STT exactly once,
 including before local speech confirmation and below the detector threshold. Local VAD decides only
 the manual commit point; it never filters the stream sent to the transcriber. The detected PCM
 turn remains available for a batch fallback if the real-time session fails. The agent starts only
 after this commit so that a transcript correction never reexecutes a side-effecting tool.
+
+A real-time STT commit without recognized text means no speech was retained: the session
+stays open, no batch fallback or conversation round starts, and the transcription
+indicator disappears without creating an empty message. Provider errors still trigger
+the existing fallback.
+
+ElevenLabs also receives an internal commit every 20 seconds of transmitted audio, before
+its automatic commit at approximately 36 seconds. Text from these segments is assembled
+until the local endpoint; segments never independently invoke tools. Long silence therefore
+cannot leave an old segment to be mistaken for the next sentence.
+Each frame also carries its local classification: the provider discards text from segments
+with no detected speech, even if it invented words during that silence.
+
+The native OpenAI path requests `near_field` noise reduction and semantic VAD with
+`eagerness=high`, preserving provider interruption and direct audio input. These settings
+are not a live-call latency measurement.
+
+The first TTS segment can be emitted after 64 characters rather than waiting for a long
+sentence; subsequent segments retain the 160-character limit. All remaining text is preserved.
 
 The agent output is already a delta stream. For an ElevenLabs voice, speakable segments are sent
 over a single TTS WebSocket using the low-latency model and raw 24 kHz PCM resampled on the fly to

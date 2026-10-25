@@ -123,8 +123,10 @@ class OpenAIRealtimeSession:
             audio: dict[str, Any] = {
                 "input": {
                     "format": {"type": "audio/pcm", "rate": 24_000},
+                    "noise_reduction": {"type": "near_field"},
                     "turn_detection": {
                         "type": "semantic_vad",
+                        "eagerness": "high",
                         "create_response": True,
                         "interrupt_response": True,
                     },

@@ -337,23 +337,25 @@ test('a human voice placeholder stays until its durable transcription is loaded'
   )
 })
 
-test('a failed voice transcription removes its human placeholder', () => {
-  const started = applyVoiceTranscriptionEvent([], {
-    data: {
-      room_id: 'room-1',
-      transcription_id: 'transcription-1',
-      status: 'started',
-    },
-  }, null)
+for (const status of ['failed', 'completed']) {
+  test(`a voice transcription ending without a message removes its human placeholder (${status})`, () => {
+    const started = applyVoiceTranscriptionEvent([], {
+      data: {
+        room_id: 'room-1',
+        transcription_id: 'transcription-1',
+        status: 'started',
+      },
+    }, null)
 
-  assert.deepEqual(applyVoiceTranscriptionEvent(started, {
-    data: {
-      room_id: 'room-1',
-      transcription_id: 'transcription-1',
-      status: 'failed',
-    },
-  }, null), [])
-})
+    assert.deepEqual(applyVoiceTranscriptionEvent(started, {
+      data: {
+        room_id: 'room-1',
+        transcription_id: 'transcription-1',
+        status,
+      },
+    }, null), [])
+  })
+}
 
 test('an optimistic question remains before a response regardless of browser clock skew', () => {
   const historical = { id: 'before', created_at: '2026-08-24T10:00:00Z' }

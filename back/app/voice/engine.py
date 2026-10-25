@@ -7,6 +7,7 @@ import re
 import time
 import unicodedata
 from dataclasses import dataclass
+from contextlib import aclosing
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Literal, cast
 from uuid import UUID, uuid4
@@ -31,12 +32,27 @@ class _OutboundFrame:
     frame: AudioFrame
 
 
+@dataclass(frozen=True, slots=True)
+class _DetectedTurn:
+    utterance: SpeechUtterance
+    generation: int
+    transcription_id: UUID | None
+    detected_at: float
+
+
+@dataclass(frozen=True, slots=True)
+class _ClassifiedAudio:
+    pcm: bytes
+    speech_detected: bool
+
+
 class _SentenceBuffer:
     """Turn streamed text into short, speakable TTS requests."""
 
     def __init__(self, max_chars: int = 160) -> None:
         self._text = ""
         self._max_chars = max_chars
+        self._emitted = False
 
     def feed(self, delta: str) -> list[str]:
         self._text += delta
@@ -48,11 +64,12 @@ class _SentenceBuffer:
     def _ready(self, *, force: bool) -> list[str]:
         segments: list[str] = []
         while self._text:
+            limit = self._max_chars if self._emitted else min(64, self._max_chars)
             boundary = self._sentence_boundary()
-            if boundary is None and len(self._text) >= self._max_chars:
-                boundary = self._text.rfind(" ", 0, self._max_chars)
-                if boundary < self._max_chars // 2:
-                    boundary = self._max_chars
+            if (boundary is None or boundary > limit) and len(self._text) >= limit:
+                boundary = self._text.rfind(" ", 0, limit)
+                if boundary < limit // 2:
+                    boundary = limit
             if boundary is None:
                 if force:
                     boundary = len(self._text)
@@ -62,6 +79,7 @@ class _SentenceBuffer:
             self._text = self._text[boundary:]
             spoken = prepare_spoken_text(raw)
             if spoken:
+                self._emitted = True
                 segments.append(spoken)
         return segments
 
@@ -364,6 +382,7 @@ class AgentVoiceEngine:
         from app.llm import transcription_service
 
         realtime: transcription_service.RealtimeTranscriber | None = None
+        pending_transcriptions: set[UUID] = set()
         try:
             try:
                 async with get_db_session():
@@ -385,12 +404,12 @@ class AgentVoiceEngine:
                     self._room_id,
                 )
 
-            async def stream_speech_audio(pcm: bytes) -> None:
+            async def stream_speech_audio(pcm: bytes, *, speech_detected: bool) -> None:
                 nonlocal realtime
                 if realtime is None:
                     return
                 try:
-                    await realtime.send_audio(pcm)
+                    await realtime.send_audio(pcm, speech_detected=speech_detected)
                 except asyncio.CancelledError:
                     raise
                 except Exception:
@@ -403,47 +422,121 @@ class AgentVoiceEngine:
                     )
                     await failed.close()
 
-            chunks: list[SpeechUtterance] = []
-            async for utterance in detect_speech_turns(
-                self._transport.inbound_audio(self._handle),
-                on_speech_start=self._on_speech_start,
-                on_audio=stream_speech_audio,
-            ):
-                chunks.append(utterance)
-                if utterance.reason == "max_duration":
-                    continue
+            # Capture/VAD must keep running during slow STT commits and provider
+            # cleanup. Keep PCM and turn boundaries in one ordered, bounded queue
+            # so the next turn's audio cannot leak into the previous commit.
+            incoming: asyncio.Queue[_ClassifiedAudio | _DetectedTurn | None] = asyncio.Queue(maxsize=1600)
+            pending_audio_bytes = 0
 
-                transcript: str | None = None
-                if realtime is not None:
-                    committed_at = time.monotonic()
+            async def capture() -> None:
+                nonlocal pending_audio_bytes
+
+                async def enqueue_audio(pcm: bytes, speech_detected: bool) -> None:
+                    nonlocal pending_audio_bytes
+                    pending_audio_bytes += len(pcm)
+                    if pending_audio_bytes > 48_000 * 2 * 30:
+                        raise RuntimeError("voice transcription is more than 30 seconds behind")
+                    incoming.put_nowait(_ClassifiedAudio(pcm=pcm, speech_detected=speech_detected))
+
+                chunks: list[SpeechUtterance] = []
+                async with aclosing(detect_speech_turns(
+                    self._transport.inbound_audio(self._handle),
+                    on_speech_start=self._on_speech_start,
+                    on_classified_audio=enqueue_audio,
+                )) as turns:
+                    async for utterance in turns:
+                        chunks.append(utterance)
+                        if utterance.reason == "max_duration":
+                            continue
+                        incoming.put_nowait(_DetectedTurn(
+                            utterance=_merge_utterance_chunks(chunks),
+                            generation=self._generation,
+                            transcription_id=self._pending_transcription_id,
+                            detected_at=time.monotonic(),
+                        ))
+                        if self._pending_transcription_id is not None:
+                            pending_transcriptions.add(self._pending_transcription_id)
+                        self._pending_transcription_id = None
+                        chunks.clear()
+                incoming.put_nowait(None)
+
+            async def transcribe() -> None:
+                nonlocal realtime, pending_audio_bytes
+                deferred: list[str] = []
+                while (item := await incoming.get()) is not None:
+                    if isinstance(item, _ClassifiedAudio):
+                        pending_audio_bytes -= len(item.pcm)
+                        await stream_speech_audio(item.pcm, speech_detected=item.speech_detected)
+                        continue
+                    transcript: str | None = None
+                    if realtime is not None:
+                        committed_at = time.monotonic()
+                        try:
+                            transcript = await realtime.commit()
+                            logger.info(
+                                "Voice agent: realtime transcript committed room={} latency={:.2f}s",
+                                self._room_id,
+                                time.monotonic() - committed_at,
+                            )
+                        except asyncio.CancelledError:
+                            raise
+                        except Exception:
+                            failed = realtime
+                            realtime = None
+                            logger.opt(exception=True).warning(
+                                "Voice agent: realtime transcript commit failed room={} "
+                                "(using complete-audio fallback)",
+                                self._room_id,
+                            )
+                            await failed.close()
                     try:
-                        transcript = await realtime.commit()
-                        logger.info(
-                            "Voice agent: realtime transcript committed room={} latency={:.2f}s",
-                            self._room_id,
-                            time.monotonic() - committed_at,
-                        )
+                        if transcript is None:
+                            transcript = await self._transcribe(item.utterance)
                     except asyncio.CancelledError:
                         raise
                     except Exception:
-                        failed = realtime
-                        realtime = None
                         logger.opt(exception=True).warning(
-                            "Voice agent: realtime transcript commit failed room={} "
-                            "(using complete-audio fallback)",
+                            "Voice agent: transcription failed room={} (call kept alive)",
                             self._room_id,
                         )
-                        await failed.close()
+                        await self._finish_transcription_progress(item.transcription_id, status="failed")
+                        if item.transcription_id is not None:
+                            pending_transcriptions.discard(item.transcription_id)
+                        continue
+                    if transcript.strip():
+                        deferred.append(transcript)
+                    if item.generation != self._generation or not transcript.strip():
+                        await self._finish_transcription_progress(item.transcription_id, status="completed")
+                        if item.transcription_id is not None:
+                            pending_transcriptions.discard(item.transcription_id)
+                        continue
+                    accepted = await self._start_response(
+                        item.utterance,
+                        transcript="\n".join(deferred),
+                        generation=item.generation,
+                        transcription_id=item.transcription_id,
+                        started_at=item.detected_at,
+                    )
+                    if accepted:
+                        deferred.clear()
+                    else:
+                        await self._finish_transcription_progress(item.transcription_id, status="completed")
+                    if item.transcription_id is not None:
+                        pending_transcriptions.discard(item.transcription_id)
 
-                merged = _merge_utterance_chunks(chunks)
-                if transcript is None:
-                    await self._start_response(merged)
-                else:
-                    await self._start_response(merged, transcript=transcript)
-                chunks.clear()
+            try:
+                async with asyncio.TaskGroup() as group:
+                    group.create_task(capture(), name="voice_capture")
+                    group.create_task(transcribe(), name="voice_transcription")
+            except ExceptionGroup as exc:
+                # VoiceSession persists str(exc): retain the actual failure,
+                # rather than just "unhandled errors in a TaskGroup".
+                raise RuntimeError(_format_turn_exception(exc)) from exc
         finally:
             if realtime is not None:
                 await realtime.close()
+            for transcription_id in pending_transcriptions:
+                await self._finish_transcription_progress(transcription_id, status="failed")
 
     async def _on_speech_start(self) -> None:
         """Cut playback immediately, without waiting for provider cleanup."""
@@ -464,14 +557,17 @@ class AgentVoiceEngine:
         utterance: SpeechUtterance,
         *,
         transcript: str | None = None,
-    ) -> None:
+        generation: int | None = None,
+        transcription_id: UUID | None = None,
+        started_at: float | None = None,
+    ) -> bool:
+        generation = self._generation if generation is None else generation
         previous = self._response_task
         if previous is not None:
             await asyncio.gather(previous, return_exceptions=True)
-        generation = self._generation
+        if generation != self._generation:
+            return False
         self._turn_index += 1
-        transcription_id = self._pending_transcription_id
-        self._pending_transcription_id = None
         self._response_task = asyncio.create_task(
             self._respond(
                 utterance,
@@ -479,9 +575,11 @@ class AgentVoiceEngine:
                 self._turn_index,
                 transcript=transcript,
                 transcription_id=transcription_id,
+                started_at=started_at,
             ),
             name=f"voice_agent_response:{self._turn_index}",
         )
+        return True
 
     async def _respond(
         self,
@@ -491,8 +589,9 @@ class AgentVoiceEngine:
         *,
         transcript: str | None = None,
         transcription_id: UUID | None = None,
+        started_at: float | None = None,
     ) -> None:
-        started_at = time.monotonic()
+        started_at = time.monotonic() if started_at is None else started_at
         response_parts: list[str] = []
         first_text_at: float | None = None
         first_audio_at: float | None = None
@@ -509,6 +608,13 @@ class AgentVoiceEngine:
             if transcript is None:
                 transcript = await self._transcribe(utterance)
             if generation != self._generation:
+                return
+            if not transcript.strip():
+                await self._finish_transcription_progress(
+                    transcription_id,
+                    status="completed",
+                )
+                transcription_finished = True
                 return
             hangup_after_response = _requests_hangup(transcript)
             logger.info(

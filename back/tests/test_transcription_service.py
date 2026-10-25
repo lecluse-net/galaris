@@ -64,8 +64,9 @@ class _LLMCalls:
 
 
 class _RealtimeConnection:
-    def __init__(self) -> None:
+    def __init__(self, transcript: str = "Bonjour en direct") -> None:
         self.incoming: asyncio.Queue[str] = asyncio.Queue()
+        self.transcript = transcript
         self.incoming.put_nowait(
             json.dumps(
                 {
@@ -88,7 +89,7 @@ class _RealtimeConnection:
                 json.dumps(
                     {
                         "message_type": "committed_transcript",
-                        "text": "Bonjour en direct",
+                        "text": self.transcript,
                     }
                 )
             )
@@ -331,12 +332,14 @@ async def test_elevenlabs_uses_batch_model_and_language_code(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("transcript", ["Bonjour en direct", "", "   "])
 async def test_elevenlabs_realtime_streams_native_pcm_and_manual_commit(
     monkeypatch: pytest.MonkeyPatch,
+    transcript: str,
 ) -> None:
     resource = _resource("elevenlabs")
     resource.llm_name = "scribe_v2_realtime"
-    connection = _RealtimeConnection()
+    connection = _RealtimeConnection(transcript)
     connection_args: list[dict[str, Any]] = []
 
     async def selected(_agent_id: int | None = None) -> SimpleNamespace:
@@ -358,7 +361,11 @@ async def test_elevenlabs_realtime_streams_native_pcm_and_manual_commit(
     await realtime.send_audio(b"\x01\x00" * 2_400)
     assert connection.sent == []
     await realtime.send_audio(b"\x02\x00" * 2_400)
-    transcript = await realtime.commit()
+    result = await realtime.commit()
+    # A no-speech result must leave this same session usable for the next turn.
+    connection.transcript = "La suite"
+    await realtime.send_audio(b"\x02\x00" * 4_800)
+    following = await realtime.commit()
     await realtime.close()
 
     parsed = urlsplit(connection_args[0]["url"])
@@ -374,9 +381,81 @@ async def test_elevenlabs_realtime_streams_native_pcm_and_manual_commit(
     assert connection_args[0]["additional_headers"] == {
         "xi-api-key": "provider-token"
     }
-    assert len(connection.sent) == 2
+    assert len(connection.sent) == 4
     assert connection.sent[0]["message_type"] == "input_audio_chunk"
     assert len(base64.b64decode(connection.sent[0]["audio_base_64"])) == 9_600
     assert connection.sent[1]["commit"] is True
-    assert transcript == "Bonjour en direct"
+    assert result == transcript.strip()
+    assert following == "La suite"
     assert connection.closed is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("payload", [
+    {"message_type": "committed_transcript"},
+    {"message_type": "committed_transcript", "text": None},
+    {"message_type": "committed_transcript", "text": 42},
+    {"message_type": "transcriber_error", "error": "Synthetic provider failure"},
+])
+async def test_elevenlabs_invalid_commit_is_still_a_provider_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: dict[str, object],
+) -> None:
+    connection = _RealtimeConnection()
+
+    async def connect(*_args: object, **_kwargs: object) -> _RealtimeConnection:
+        return connection
+
+    monkeypatch.setattr(elevenlabs_transcription, "connect", connect)
+    realtime = await elevenlabs_transcription.ElevenLabsRealtimeTranscriber.open(
+        url="wss://speech.example/v1/speech-to-text/realtime",
+        api_key="synthetic-token",
+        sample_rate=48_000,
+        channels=1,
+    )
+    try:
+        connection.incoming.put_nowait(json.dumps(payload))
+        await realtime.send_audio(b"\x00\x00" * 960)
+        with pytest.raises(transcription_service.TranscriptionFailed):
+            await realtime.commit()
+    finally:
+        await realtime.close()
+    assert connection.closed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("parts,speech_detected", [
+    (("First part", "second part"), True),
+    (("Invented words in silence", "More invented words"), False),
+])
+async def test_elevenlabs_long_turn_commits_bounded_segments_without_losing_text(
+    monkeypatch: pytest.MonkeyPatch,
+    parts: tuple[str, str],
+    speech_detected: bool,
+) -> None:
+    connection = _RealtimeConnection()
+
+    async def connect(*_args: object, **_kwargs: object) -> _RealtimeConnection:
+        return connection
+
+    monkeypatch.setattr(elevenlabs_transcription, "connect", connect)
+    realtime = await elevenlabs_transcription.ElevenLabsRealtimeTranscriber.open(
+        url="wss://speech.example/v1/speech-to-text/realtime",
+        api_key="synthetic-token", sample_rate=48_000, channels=1,
+    )
+    try:
+        for text in parts:
+            connection.transcript = text
+            for _ in range(200):
+                await realtime.send_audio(b"\x01\x00" * 4_800, speech_detected=speech_detected)
+        connection.transcript = "last part"
+        await realtime.send_audio(b"\x02\x00" * 4_800)
+        expected = " ".join((*parts, "last part")) if speech_detected else "last part"
+        assert await realtime.commit() == expected
+        assert len([message for message in connection.sent if message.get("commit")]) == 3
+        # A later turn cannot repeat text retained from an earlier segment.
+        connection.transcript = "Next turn"
+        await realtime.send_audio(b"\x03\x00" * 4_800)
+        assert await realtime.commit() == "Next turn"
+    finally:
+        await realtime.close()

@@ -153,12 +153,9 @@ async def main() -> None:
                 peer_handle.in_queue.get_nowait()
             except asyncio.QueueEmpty:
                 break
-        # The peer receives an already encoded/decoded Talk stream, whose RMS
-        # is lower than a local microphone capture. Use a sensitive threshold
-        # here so the transport probe can segment the synthetic TTS reliably.
+        # Use the same speech classifier as real calls after both Opus hops.
         turns = detect_speech_turns(
             peer_transport.inbound_audio(peer_handle),
-            rms_threshold=50,
         )
         for turn_index, (source, (_, expected)) in enumerate(
             zip(sources, probes, strict=True),

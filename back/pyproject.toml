@@ -69,6 +69,7 @@ dependencies = [
     "recurring-ical-events~=3.8.2",
     # Voice — WebRTC audio calls
     "aiortc~=1.15",
+    "pysilero-vad==3.4.0",           # bundled local Silero model; no runtime download
     # Directly imported for voice-note and WebRTC frame conversion.
     "av~=17.1",                     # latest series compatible with aiortc 1.15 (<18)
     # ════════════════════════════════════════════════════════════════

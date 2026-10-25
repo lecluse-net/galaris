@@ -173,6 +173,10 @@ class ElevenLabsRealtimeTranscriber:
         self._connection = connection
         self._pending = bytearray()
         self._chunk_bytes = max(2, sample_rate * channels * 2 // 10)
+        self._segment_bytes = sample_rate * channels * 2 * 20
+        self._uncommitted_bytes = 0
+        self._segment_has_speech = False
+        self._transcript_parts: list[str] = []
         self._committed: asyncio.Queue[
             str | ProviderTranscriptionError
         ] = asyncio.Queue()
@@ -229,15 +233,34 @@ class ElevenLabsRealtimeTranscriber:
             ) from exc
         return cls(connection, sample_rate=sample_rate, channels=channels)
 
-    async def send_audio(self, pcm: bytes) -> None:
+    async def send_audio(self, pcm: bytes, *, speech_detected: bool = True) -> None:
         if not pcm:
             return
         self._raise_if_failed()
         self._pending.extend(pcm)
+        self._uncommitted_bytes += len(pcm)
+        self._segment_has_speech |= speech_detected
         if len(self._pending) >= self._chunk_bytes:
             await self._send_pending(commit=False)
+        # Scribe auto-commits after ~36 seconds even in manual mode. Commit
+        # earlier so those unsolicited segments cannot be mistaken for the
+        # next human turn. Only the engine's endpoint releases the full text.
+        if self._uncommitted_bytes >= self._segment_bytes:
+            text = await self._commit_segment()
+            if text:
+                self._transcript_parts.append(text)
 
     async def commit(self) -> str:
+        self._raise_if_failed()
+        if self._uncommitted_bytes:
+            text = await self._commit_segment()
+            if text:
+                self._transcript_parts.append(text)
+        result = " ".join(self._transcript_parts)
+        self._transcript_parts.clear()
+        return result
+
+    async def _commit_segment(self) -> str:
         self._raise_if_failed()
         await self._send_pending(commit=True)
         try:
@@ -249,12 +272,12 @@ class ElevenLabsRealtimeTranscriber:
             ) from exc
         if isinstance(result, ProviderTranscriptionError):
             raise result
-        text = result.strip()
-        if not text:
-            raise ProviderTranscriptionError(
-                "the realtime transcription provider returned no text"
-            )
-        return text
+        self._uncommitted_bytes = 0
+        has_speech = self._segment_has_speech
+        self._segment_has_speech = False
+        # A completed segment without recognized speech is not a transport
+        # failure: keep the live session instead of retrying the audio in batch.
+        return result.strip() if has_speech else ""
 
     async def close(self) -> None:
         if self._closing:
@@ -295,7 +318,12 @@ class ElevenLabsRealtimeTranscriber:
                 if error:
                     raise ProviderTranscriptionError(error)
                 if payload.get("message_type") == "committed_transcript":
-                    await self._committed.put(str(payload.get("text") or ""))
+                    text = payload.get("text")
+                    if not isinstance(text, str):
+                        raise ProviderTranscriptionError(
+                            "the realtime transcription provider returned an invalid transcript"
+                        )
+                    await self._committed.put(text)
         except asyncio.CancelledError:
             raise
         except Exception as exc:

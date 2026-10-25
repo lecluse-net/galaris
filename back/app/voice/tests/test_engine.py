@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import wave
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
@@ -124,6 +126,49 @@ async def _db_session() -> AsyncIterator[None]:
     yield None
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("transcript", ["", "   "])
+async def test_no_speech_finishes_progress_without_retry_or_conversation(
+    monkeypatch: pytest.MonkeyPatch,
+    transcript: str,
+) -> None:
+    from app.llm import transcription_service
+
+    voice = AgentVoiceEngine(
+        transport=_Transport(),
+        handle=object(),
+        agent_id=7,
+        session_id=uuid4(),
+        room_id="room-1",
+    )
+    transcribe = AsyncMock()
+    start_turn = AsyncMock(side_effect=AssertionError("No speech must not start a conversation"))
+    finish_progress = AsyncMock()
+    monkeypatch.setattr(transcription_service, "transcribe_audio", transcribe)
+    monkeypatch.setattr(conversation_service, "start_turn", start_turn)
+    monkeypatch.setattr(voice, "_finish_transcription_progress", finish_progress)
+    transcription_id = uuid4()
+
+    await voice._respond(
+        SpeechUtterance(
+            pcm=b"\x00\x00" * 960,
+            duration_s=0.02,
+            voiced_s=0.0,
+            reason="silence",
+        ),
+        generation=0,
+        turn_index=1,
+        transcript=transcript,
+        transcription_id=transcription_id,
+    )
+
+    transcribe.assert_not_awaited()
+    start_turn.assert_not_awaited()
+    assert voice._history == []
+    assert voice._outbound.empty()
+    finish_progress.assert_awaited_once_with(transcription_id, status="completed")
+
+
 @pytest.fixture(autouse=True)
 def _mock_voice_persistence(monkeypatch: pytest.MonkeyPatch) -> None:
     import app.conversation as conversation
@@ -186,6 +231,19 @@ def test_sentence_buffer_emits_short_speakable_segments() -> None:
     assert prepare_spoken_text("**Bien sûr** 😀 — [ouvrez ce lien](https://example.test)") == (
         "Bien sûr — ouvrez ce lien"
     )
+
+
+def test_long_reply_can_start_speaking_before_the_sentence_is_complete() -> None:
+    from app.voice.realtime_engine import _TextSegmenter
+
+    text = " ".join(["A useful answer can start speaking while the rest is still being written"] * 4)
+    for buffer in (_SentenceBuffer(), _TextSegmenter()):
+        segments = buffer.feed(text[:80])
+        assert segments
+        assert " ".join(segments) in text[:80]
+        segments.extend(buffer.feed(text[80:]))
+        segments.extend(buffer.flush())
+        assert " ".join(segments) == text
 
 
 @pytest.mark.parametrize(
@@ -675,8 +733,9 @@ async def test_continuous_speech_chunks_start_one_complete_response(
 
     responses: list[SpeechUtterance] = []
 
-    async def start_response(utterance: SpeechUtterance) -> None:
+    async def start_response(utterance: SpeechUtterance, **_kwargs: Any) -> bool:
         responses.append(utterance)
+        return True
 
     monkeypatch.setattr(engine_module, "detect_speech_turns", speech_turns)
     monkeypatch.setattr(engine_module, "get_db_session", _db_session)
@@ -686,6 +745,7 @@ async def test_continuous_speech_chunks_start_one_complete_response(
         AsyncMock(return_value=None),
     )
     monkeypatch.setattr(voice, "_start_response", start_response)
+    monkeypatch.setattr(voice, "_transcribe", AsyncMock(return_value="One complete thought"))
 
     await voice._consume_speech_turns()
 
@@ -719,6 +779,199 @@ async def test_barge_in_cancels_response_and_clears_playback() -> None:
     assert transport.interrupts == 1
     assert voice._outbound.empty()
     assert voice._generation == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("streaming", [True, False])
+async def test_listening_continues_during_stt_and_late_text_is_preserved(
+    monkeypatch: pytest.MonkeyPatch, streaming: bool,
+) -> None:
+    from app.llm import transcription_service
+    from app.voice.audio import pcm_rms
+    from app.voice.turn_detection import detect_speech_turns
+
+    class Transport(_Transport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.incoming: asyncio.Queue[AudioFrame | None] = asyncio.Queue()
+
+        async def inbound_audio(self, handle: Any) -> AsyncIterator[AudioFrame]:
+            while (frame := await self.incoming.get()) is not None:
+                yield frame
+
+    transport = Transport()
+    voice = AgentVoiceEngine(
+        transport=transport, handle=object(), agent_id=7,
+        session_id=uuid4(), room_id="room-1",
+    )
+    blocked = asyncio.Event()
+    release = asyncio.Event()
+    second_onset = asyncio.Event()
+    audio_sent: list[bytes] = []
+    commits = 0
+
+    async def recognize(*_args: object, **_kwargs: object) -> str:
+        nonlocal commits
+        commits += 1
+        if commits == 1:
+            blocked.set()
+            await release.wait()
+            return "The first sentence"
+        return "and its continuation"
+
+    provider = SimpleNamespace(send_audio=AsyncMock(side_effect=lambda pcm, **_kwargs: audio_sent.append(pcm)),
+                               commit=recognize, close=AsyncMock())
+    monkeypatch.setattr(engine_module, "get_db_session", _db_session)
+    monkeypatch.setattr(transcription_service, "create_realtime_transcriber",
+                        AsyncMock(return_value=provider if streaming else None))
+    monkeypatch.setattr(transcription_service, "transcribe_audio", recognize)
+    start_response = AsyncMock(return_value=True)
+    monkeypatch.setattr(voice, "_start_response", start_response)
+    original_onset = voice._on_speech_start
+
+    async def on_speech_start() -> None:
+        await original_onset()
+        if voice._generation == 2:
+            second_onset.set()
+
+    monkeypatch.setattr(voice, "_on_speech_start", on_speech_start)
+
+    async def detected(frames: AsyncIterator[AudioFrame], **kwargs: Any) -> AsyncIterator[SpeechUtterance]:
+        async for turn in detect_speech_turns(
+            frames, speech_detector=lambda pcm: pcm_rms(pcm) >= 80, **kwargs,
+        ):
+            yield turn
+
+    monkeypatch.setattr(engine_module, "detect_speech_turns", detected)
+    running = asyncio.create_task(voice._consume_speech_turns())
+
+    def say_turn() -> None:
+        for pcm in [b"\x00\x10" * 960] * 30 + [b"\x00\x00" * 960] * 45:
+            transport.incoming.put_nowait(AudioFrame(pcm))
+
+    try:
+        say_turn()
+        await asyncio.wait_for(blocked.wait(), 3)
+        sent_before = len(audio_sent)
+        say_turn()
+        await asyncio.wait_for(second_onset.wait(), 3)
+        assert transport.interrupts == 2
+        start_response.assert_not_awaited()
+        # Next-turn audio remains behind the first commit boundary.
+        assert len(audio_sent) == sent_before
+        transport.incoming.put_nowait(None)
+        release.set()
+        await asyncio.wait_for(running, 3)
+    finally:
+        running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
+    start_response.assert_awaited_once()
+    assert start_response.await_args.kwargs["transcript"] == "The first sentence\nand its continuation"
+    assert start_response.await_args.kwargs["generation"] == 2
+    assert commits == 2
+    if streaming:
+        provider.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_audio_backlog_is_bounded_and_closes_the_transcriber(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.llm import transcription_service
+
+    class Transport(_Transport):
+        async def inbound_audio(self, handle: Any) -> AsyncIterator[AudioFrame]:
+            yield AudioFrame(b"\x00\x00" * (48_000 * 31))
+
+    async def blocked_send(*_args: object, **_kwargs: object) -> None:
+        await asyncio.Event().wait()
+
+    provider = SimpleNamespace(send_audio=blocked_send, close=AsyncMock())
+    monkeypatch.setattr(engine_module, "get_db_session", _db_session)
+    monkeypatch.setattr(transcription_service, "create_realtime_transcriber", AsyncMock(return_value=provider))
+    voice = AgentVoiceEngine(
+        transport=Transport(), handle=object(), agent_id=7,
+        session_id=uuid4(), room_id="room-1",
+    )
+    with pytest.raises(RuntimeError, match="30 seconds behind"):
+        await asyncio.wait_for(voice._consume_speech_turns(), 3)
+    provider.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_voice_stop_cancels_inflight_stt_and_releases_capture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.llm import transcription_service
+
+    closed = asyncio.Event()
+    transcribing = asyncio.Event()
+    with wave.open(str(Path(__file__).parent / "fixtures" / "speech.wav")) as wav:
+        pcm_speech = wav.readframes(wav.getnframes()) + b"\x00\x00" * 48_000
+
+    class Transport(_Transport):
+        async def inbound_audio(self, handle: Any) -> AsyncIterator[AudioFrame]:
+            try:
+                for offset in range(0, len(pcm_speech), 1920):
+                    yield AudioFrame(pcm_speech[offset:offset + 1920])
+                await asyncio.Event().wait()
+            finally:
+                closed.set()
+
+    async def commit() -> str:
+        transcribing.set()
+        await asyncio.Event().wait()
+        return ""
+
+    provider = SimpleNamespace(send_audio=AsyncMock(), commit=commit, close=AsyncMock())
+    monkeypatch.setattr(engine_module, "get_db_session", _db_session)
+    monkeypatch.setattr(transcription_service, "create_realtime_transcriber", AsyncMock(return_value=provider))
+
+    voice = AgentVoiceEngine(
+        transport=Transport(), handle=object(), agent_id=7,
+        session_id=uuid4(), room_id="room-1",
+    )
+    running = asyncio.create_task(voice._consume_speech_turns())
+    try:
+        await asyncio.wait_for(transcribing.wait(), 3)
+    finally:
+        running.cancel()
+        await asyncio.wait_for(asyncio.gather(running, return_exceptions=True), 3)
+    assert closed.is_set()
+    provider.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_response_preempted_during_cleanup_cannot_start_late() -> None:
+    cleaning = asyncio.Event()
+    release = asyncio.Event()
+
+    async def previous_response() -> None:
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cleaning.set()
+            await release.wait()
+
+    voice = AgentVoiceEngine(
+        transport=_Transport(), handle=object(), agent_id=7,
+        session_id=uuid4(), room_id="room-1",
+    )
+    previous = asyncio.create_task(previous_response())
+    voice._response_task = previous
+    await asyncio.sleep(0)
+    previous.cancel()
+    await asyncio.wait_for(cleaning.wait(), 3)
+    starting = asyncio.create_task(voice._start_response(
+        SpeechUtterance(pcm=b"", duration_s=1, voiced_s=1, reason="silence"),
+        transcript="Earlier speech", generation=0,
+    ))
+    await asyncio.sleep(0)
+    voice._generation = 1
+    release.set()
+    assert await asyncio.wait_for(starting, 3) is False
+    assert voice._response_task is previous
+    assert voice._turn_index == 0
 
 
 @pytest.mark.asyncio

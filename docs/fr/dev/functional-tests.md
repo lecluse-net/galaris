@@ -821,6 +821,22 @@ présence au catalogue ne remplace pas une exécution réussie.
 
 ## Médias et preuves acquises
 
+`tests/test_transcription_service.py` vérifie qu'un commit ElevenLabs vide conserve la session
+et permet de transcrire le tour suivant. `app/voice/tests/test_engine.py` empêche ce résultat
+de relancer une transcription ou de créer un round, un message ou une réponse vocale.
+`front/app/chat/liveState.test.mjs` couvre le retrait de son indicateur sans message vide.
+Ces tests synthétiques ne mesurent pas la latence d'un appel réel ni les hallucinations STT.
+
+`app/voice/tests/test_turn_detection.py` exécute le vrai modèle Silero sur une voix Flite
+entièrement synthétique, normale ou atténuée, et sur silence, bourdonnement, souffle et clics.
+Les découpages de transport varient sans changer le signal. Les tests de segmentation
+injectent leur classificateur pour conserver leurs garanties de pré-roll et de pause sans
+assimiler une amplitude constante à de la parole. `test_engine.py` vérifie l'écoute pendant
+un STT batch ou streaming lent, la conservation du texte arrivé tard, l'absence de réponse
+périmée après nettoyage, l'annulation au raccrochage, le dépassement borné de la file et le
+départ anticipé du premier segment TTS sans perte de texte. Le test ElevenLabs couvre aussi
+40 secondes de parole ou de silence avant le commit final et le tour suivant.
+
 `app/voice/tests/test_audio_pacing.py` exerce les pistes réelles du Chat, de Matrix et
 de Nextcloud avec une horloge synthétique commune : cadence sans dérive due à l'encodage
 ou aux réveils tardifs, reprise sans rafale après une suspension, PCM et timestamps

@@ -4,11 +4,18 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
+from typing import Protocol, runtime_checkable
 
-from .audio import BYTES_PER_SECOND, pcm_rms
+from .audio import BYTES_PER_SECOND, FRAME_BYTES
 from .models import AudioFrame, DEFAULT_CHANNELS, DEFAULT_SAMPLE_RATE
+from .speech_detection import SpeechDetector
+
+
+@runtime_checkable
+class _ClosableStream(Protocol):
+    async def aclose(self) -> None: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,13 +35,14 @@ async def detect_speech_turns(
     *,
     on_speech_start: Callable[[], Awaitable[None]] | None = None,
     on_audio: Callable[[bytes], Awaitable[None]] | None = None,
-    rms_threshold: int = 80,
-    min_speech_s: float = 0.25,
+    on_classified_audio: Callable[[bytes, bool], Awaitable[None]] | None = None,
+    speech_detector: Callable[[bytes], bool] | None = None,
+    min_speech_s: float = 0.24,
     speech_start_s: float = 0.24,
     silence_s: float = 0.8,
     max_utterance_s: float = 20.0,
     pre_roll_s: float = 0.8,
-) -> AsyncIterator[SpeechUtterance]:
+) -> AsyncGenerator[SpeechUtterance, None]:
     """Segment a full-duplex inbound stream and signal barge-in immediately.
 
     Durations are measured from received audio rather than wall-clock time. A
@@ -48,6 +56,28 @@ async def detect_speech_turns(
     transcription provider therefore sees the complete input stream; the
     detector only decides when to commit a turn.
     """
+    classify = speech_detector if speech_detector is not None else SpeechDetector()
+
+    async def normalized_frames() -> AsyncGenerator[AudioFrame, None]:
+        pending = bytearray()
+        try:
+            async for frame in frames:
+                if frame.sample_rate != DEFAULT_SAMPLE_RATE or frame.channels != DEFAULT_CHANNELS:
+                    raise ValueError("voice input must use canonical 48 kHz mono PCM")
+                if len(frame.pcm) % 2:
+                    raise ValueError("voice input ended with an incomplete PCM sample")
+                if on_audio is not None:
+                    await on_audio(frame.pcm)
+                pending.extend(frame.pcm)
+                while len(pending) >= FRAME_BYTES:
+                    yield AudioFrame(pcm=bytes(pending[:FRAME_BYTES]))
+                    del pending[:FRAME_BYTES]
+            if pending:
+                yield AudioFrame(pcm=bytes(pending))
+        finally:
+            if isinstance(frames, _ClosableStream):
+                await frames.aclose()
+
     active = False
     continuing = False
     buffer = bytearray()
@@ -85,7 +115,7 @@ async def detect_speech_turns(
             reason=reason,
         )
 
-    iterator = aiter(frames)
+    iterator = normalized_frames()
     next_frame: asyncio.Task[AudioFrame] | None = None
     try:
         while True:
@@ -110,8 +140,6 @@ async def detect_speech_turns(
                 return
             next_frame = None
 
-            if on_audio is not None:
-                await on_audio(frame.pcm)
             pre_roll.append(frame.pcm)
             pre_roll_bytes += len(frame.pcm)
             # Transports need not deliver 20 ms frames. Retain audio duration,
@@ -123,7 +151,9 @@ async def detect_speech_turns(
                 pre_roll_bytes -= removed
                 if removed < len(first):
                     pre_roll.appendleft(first[removed:])
-            voiced = pcm_rms(frame.pcm) >= rms_threshold
+            voiced = classify(frame.pcm)
+            if on_classified_audio is not None:
+                await on_classified_audio(frame.pcm, voiced)
             started_now = False
             if not active:
                 # A single loud frame (keyboard, click, comfort noise...) must
@@ -171,3 +201,4 @@ async def detect_speech_turns(
         if next_frame is not None:
             next_frame.cancel()
             await asyncio.gather(next_frame, return_exceptions=True)
+        await iterator.aclose()
