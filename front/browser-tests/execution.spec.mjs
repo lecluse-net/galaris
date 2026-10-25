@@ -344,6 +344,46 @@ test('a context change rewrites the response without reporting an execution fail
   await expect(page.getByText('Rewriting response…')).toHaveCount(0)
 })
 
+for (const width of [390, 1280]) {
+  test(`authorization waits stay distinct from conversation failures (${width})`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const waiting = { ...result, success: false, disposition: 'waiting_for_authorization', result: '' }
+    await jsonRoute(page, '**/api/conversations/rounds/round-a', {
+      id: 'round-a', status: 'WAITING_APPROVAL', attempt_count: 1, execution_result: waiting,
+    })
+    await jsonRoute(page, '**/api/llm-calls?*', [])
+    const liveRound = { room_id: 'room-a', round_id: 'round-a', active: false, success: false,
+      last_sequence: 2, topic_id: null, ai_result: waiting }
+    const activity = { id: 'round-a', status: 'RUNNING', tools_used: [], cost: 0, execution_time: 1 }
+    await mount(page, 'app/chat/components/AgentExecutionTrace.vue', { props: { roomId: 'room-a', liveRound, activity } })
+    // The wait reaches the browser before the durable activity refresh.
+    const summary = page.getByRole('button', { name: /Waiting for authorization/ })
+    await expect(summary).toBeVisible()
+    await expect(page.getByText('The execution encountered a problem')).toHaveCount(0)
+    await summary.click()
+    await expect(page.getByText('Failure', { exact: true })).toHaveCount(0)
+    await page.getByRole('tab', { name: 'Details', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Detailed state', exact: true })).toContainText('Waiting for authorization')
+    await expect(page.getByRole('region', { name: 'Detailed state', exact: true })
+      .locator('.galaris-status-badge--error')).toHaveCount(0)
+    await page.screenshot({ path: test.info().outputPath(`authorization-wait-${width}.png`) })
+    // Reopening relies on durable status without an ephemeral runtime event.
+    await page.evaluate(activity => window.testApp.setProps({ liveRound: null,
+      activity: { ...activity, status: 'WAITING_APPROVAL' },
+    }), activity)
+    await expect(summary).toBeVisible()
+    // A resumed attempt clears the wait, and its real failures remain visible.
+    const resumed = { ...liveRound, active: true, success: true, attempt: 2, ai_result: result }
+    await page.evaluate(({ liveRound, activity }) => window.testApp.setProps({ liveRound, activity }),
+      { liveRound: resumed, activity })
+    await expect(page.getByRole('button', { name: /Thinking/ })).toBeVisible()
+    await page.evaluate(liveRound => window.testApp.setProps({ liveRound: {
+      ...liveRound, active: false, success: false,
+    } }), resumed)
+    await expect(page.getByRole('button', { name: /The execution encountered a problem/ })).toBeVisible()
+  })
+}
+
 test('chat execution details ignore a late previous round and recover usage after a failed load', async ({ page }) => {
   let release
   const pending = new Promise(resolve => { release = resolve })
@@ -464,7 +504,7 @@ for (const canWrite of [true, false]) {
   })
 }
 
-test('a successful round keeps its outcome when its reconstructed calls include a failed attempt', async ({ page }) => {
+test('execution outcomes distinguish authorization waits and failed intermediate attempts', async ({ page }) => {
   await mount(page, 'app/task/components/ExecutionResult.vue', { props: {
     executionResult: null, executionSuccess: true,
     llmCalls: [{ ...call, id: 'failed-call', status: 'error' }, { ...call, id: 'successful-call', status: 'completed' }],
@@ -474,6 +514,11 @@ test('a successful round keeps its outcome when its reconstructed calls include 
   await expect(header).not.toContainText('Failure')
   await page.evaluate(() => window.testApp.setProps({ executionSuccess: false }))
   await expect(header).toContainText('Failure')
+  await page.evaluate(result => window.testApp.setProps({ executionSuccess: undefined,
+    executionResult: { ...result, success: false, disposition: 'waiting_for_authorization' },
+  }), result)
+  await expect(header).not.toContainText('Failure')
+  await expect(header).not.toContainText('Success')
   await page.evaluate(result => window.testApp.setProps({ executionSuccess: undefined, executionResult: result }), result)
   await expect(header).toContainText('Success')
 })

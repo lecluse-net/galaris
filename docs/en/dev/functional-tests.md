@@ -1080,6 +1080,13 @@ each releases a real waiting task without dispatching the action. Cancellation a
 after native tool dispatch preserve an unknown outcome and prevent replay.
 `app/voice/tests/test_conversation_service.py` verifies that approval or denial received
 before a turn suspends remains queued and wakes that turn once it enters its waiting state.
+`app/tools/tests/test_action_authorizations.py` also checks that `voice_call_stop` arms
+hangup without approval by default, while preserving an explicit Ask or Blocked rule;
+after one-action approval, the same operation cannot be replayed.
+`front/browser-tests/execution.spec.mjs` checks on mobile and desktop that this wait
+produces no false failure in Chat or the shared result, before the activity refresh
+and after reopening. Resumption clears the wait and real errors remain visible;
+`runtimeState.test.mjs` covers the transition between attempts.
 `bridge/hermes/tests/test_executor_history.py` simulates a remote run disappearing at
 resumption: the wait ends in error without replay, preserving recorded effects and costs.
 A copy resumes after one-action or permanent consent only if the observed source

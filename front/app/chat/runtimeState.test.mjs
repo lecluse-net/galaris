@@ -10,6 +10,21 @@ function apply(round, event) {
   })?.round ?? round
 }
 
+test('an authorization wait ends on resume without masking the next failure', () => {
+  let round = apply(null, { kind: 'started', sequence: 0 })
+  round = apply(round, { kind: 'finished', sequence: 1, success: false,
+    result: { ...emptyAIResult(), success: false, disposition: 'waiting_for_authorization' },
+  })
+  assert.equal(round.ai_result.disposition, 'waiting_for_authorization')
+  round = apply(round, { kind: 'started', sequence: 0, attempt: 2 })
+  assert.equal(round.active, true)
+  assert.equal(round.ai_result.disposition, 'completed')
+  round = apply(round, { kind: 'finished', sequence: 1, attempt: 2, success: false })
+  assert.equal(round.active, false)
+  assert.equal(round.success, false)
+  assert.notEqual(round.ai_result.disposition, 'waiting_for_authorization')
+})
+
 test('every partition of a short Unicode response converges despite duplicate delivery', () => {
   const characters = Array.from('Été🙂漢字')
   // Exhaust all contiguous partitions, preserving the order guaranteed by the transport.

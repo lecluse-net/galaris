@@ -41,6 +41,7 @@
           <ExecutionResultComponent
             :execution-result="displayedExecutionResult"
             :running="Boolean(liveRound?.active)"
+            :suspended="waitingForAuthorization"
             :llm-calls="llmCalls"
             :llm-calls-loading="llmCallsLoading"
             :llm-calls-error="llmCallsError"
@@ -120,9 +121,17 @@ const llmCalls = ref<Awaited<ReturnType<typeof conversationService.llmCalls>>>([
 const llmCallsLoading = ref(false)
 const llmCallsError = ref('')
 const roundId = computed(() => conversationRoundId(props.activity, props.liveRound))
+const waitingForAuthorization = computed(() => {
+  if (props.liveRound?.active) return false
+  if (props.liveRound?.ai_result.disposition) {
+    return props.liveRound.ai_result.disposition === 'waiting_for_authorization'
+  }
+  return (props.activity?.status ?? roundDetail.value?.status) === 'WAITING_APPROVAL'
+})
 const detailStatus = computed(() => {
   if (props.activity && ['PAUSED', 'CANCELLED'].includes(props.activity.status)) return props.activity.status
   if (props.liveRound?.active) return 'RUNNING'
+  if (waitingForAuthorization.value) return 'WAITING_APPROVAL'
   if (props.liveRound) return props.liveRound.success ? 'SUCCEEDED' : 'FAILED'
   return props.activity?.status ?? roundDetail.value?.status
 })
@@ -138,17 +147,18 @@ const rewriting = computed(() => !props.activity?.control_action && !props.activ
   props.activity?.status === 'SUPERSEDED'
   || props.liveRound?.ai_result.metadata?.interrupted_by_new_input === true,
 ))
-const hasError = computed(() => !['PAUSED', 'CANCELLED'].includes(props.activity?.status ?? '') && !rewriting.value && Boolean(
+const hasError = computed(() => !waitingForAuthorization.value && !['PAUSED', 'CANCELLED'].includes(props.activity?.status ?? '') && !rewriting.value && Boolean(
   props.liveRound && !props.liveRound.active && !props.liveRound.success
   || props.activity && ['FAILED', 'ERROR_RESOLVED', 'CANCELLED'].includes(props.activity.status),
 ))
-const summaryIcon = computed(() => props.activity?.status === 'PAUSED' ? 'pause' : props.activity?.status === 'CANCELLED' ? 'stop' : rewriting.value ? 'autorenew' : hasError.value ? 'error' : props.liveRound?.active ? 'psychology' : 'settings_suggest')
+const summaryIcon = computed(() => props.activity?.status === 'PAUSED' ? 'pause' : props.activity?.status === 'CANCELLED' ? 'stop' : waitingForAuthorization.value ? 'hourglass_top' : rewriting.value ? 'autorenew' : hasError.value ? 'error' : props.liveRound?.active ? 'psychology' : 'settings_suggest')
 const summaryLabel = computed(() => {
   if (props.activity?.control_action === 'pause') return t('chat.responseControl.pausing')
   if (props.activity?.control_action === 'stop') return t('chat.responseControl.stopping')
   if (props.activity?.control_action === 'respond') return t('chat.responseControl.responding')
   if (props.activity?.status === 'PAUSED') return t('chat.responseControl.paused')
   if (props.activity?.status === 'CANCELLED') return t('chat.responseControl.stopped')
+  if (waitingForAuthorization.value) return t('conversation.history.statuses.WAITING_APPROVAL')
   if (props.liveRound?.active && props.activity?.response_only) return t('chat.responseControl.responding')
   if (rewriting.value) return t('chat.rewritingResponse')
   if (hasError.value) return t('chat.executionProblem')

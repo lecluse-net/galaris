@@ -564,7 +564,7 @@ function messageStatusTone(message: ConversationMessage): StatusBadgeTone {
   if (!message.round_status) return 'warning'
   if (['SUCCEEDED', 'COMPLETED'].includes(message.round_status)) return 'success'
   if (['RUNNING', 'CLAIMED'].includes(message.round_status)) return 'active'
-  if (message.round_status === 'FROZEN') return 'warning'
+  if (message.round_status === 'FROZEN' || message.round_status === 'WAITING_APPROVAL') return 'warning'
   if (['SUPERSEDED', 'CANCELLED', 'PAUSED'].includes(message.round_status)) return 'neutral'
   if (message.round_status === 'INTERRUPTED') return 'warning'
   return 'error'

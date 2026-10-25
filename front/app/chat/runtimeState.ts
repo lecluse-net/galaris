@@ -33,6 +33,7 @@ export function applyConversationRuntimeEvent(
       last_sequence: -1,
       ai_result: {
         ...resetAIResultText(current.ai_result),
+        disposition: 'completed',
         metadata: { ...current.ai_result.metadata, interrupted_by_new_input: false },
       },
     }

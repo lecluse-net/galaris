@@ -1135,6 +1135,13 @@ ils libèrent une vraie tâche en attente sans exécuter l’action. L’annulat
 d’un outil natif après son envoi conservent un résultat incertain et interdisent son rejeu.
 `app/voice/tests/test_conversation_service.py` vérifie qu’un accord ou un refus reçu avant
 la suspension du tour reste à traiter, puis réveille ce tour après sa mise en attente.
+`app/tools/tests/test_action_authorizations.py` vérifie aussi que `voice_call_stop`
+arme le raccrochage sans accord par défaut, tout en respectant une règle explicite
+Sur demande ou Bloqué ; après un accord ponctuel, la même opération ne peut pas être rejouée.
+`front/browser-tests/execution.spec.mjs` vérifie sur mobile et ordinateur que cette attente
+ne produit aucun faux échec dans le Chat ni dans le résultat partagé, avant le rafraîchissement
+de l’activité et après réouverture. La reprise retire l’attente et les véritables erreurs
+restent visibles ; `runtimeState.test.mjs` couvre la transition entre tentatives.
 `bridge/hermes/tests/test_executor_history.py` simule la disparition d’une exécution distante
 à la reprise : l’attente se termine en erreur sans rejeu, en conservant les effets et coûts tracés.
 Une copie reprend après un accord ponctuel ou permanent seulement si la source observée

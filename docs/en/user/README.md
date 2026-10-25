@@ -163,6 +163,8 @@ Tool functions use Active, Blocked or On request policies. Handle one-time and p
 approvals under **Monitor → Permissions**; there is no global auto-approval mode. Consent
 remains limited to its connection or action type and does not automatically authorize
 agents receiving delegated work.
+Conversation progress displays **Waiting for authorization** while approval is pending,
+without presenting this suspension as an execution failure.
 
 From the list, click a Task to open its details. There you will find the current phase, subtasks, Tool calls, related Processes, known LLM costs, and final response. The pause and resume buttons act on the work tree. **Force finish** is an administrative recovery action for a genuinely blocked execution: it marks the Task as failed and releases its lease; it is not an ordinary cancellation of the external work.
 
@@ -500,6 +502,13 @@ do not prove delivery.
 ### Talking to an Agent in Real Time
 
 When Matrix or Nextcloud Talk and a voice capability are configured, an Agent can participate in a call. Depending on the voice selected on its profile, Galaris uses either the transcription → Agent → synthesis pipeline or a low-latency native audio session. The second mode may retain no intermediate transcription: the absence of text in a native turn therefore does not indicate a lost call.
+
+Agent hangup (`voice_call_stop`) is active by default, without an additional approval
+request. To change a saved rule, open **Tools → Authorizations**, select the **Voice**
+connection, search for `voice_call_stop`, and choose **Active** for this connection or
+under **Global (all)**. Explicit **Ask** and **Blocked** choices still override the
+software default. An approval request also offers **Always allow this function**,
+limited to that connection.
 
 In transcription → Agent → synthesis mode, listening stays active during transcription:
 you can speak again without waiting for its result. Local speech detection limits noise

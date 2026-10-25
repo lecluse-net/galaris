@@ -1189,9 +1189,10 @@ async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, 
 
 
 @pytest.mark.asyncio
-async def test_realtime_native_effect_waits_for_the_same_human_agreement(action):
+@pytest.mark.parametrize("mode", [None, "ask", "disabled"])
+async def test_realtime_hangup_defaults_to_enabled_and_preserves_explicit_policy(action, mode):
     import json
-    from app.connection import Connection
+    from app.connection import Connection, facade as connections
     from app.tools.models import Tool
     from app.voice.realtime_tools import realtime_tools, execute_realtime_tool
     async with get_db_session() as db:
@@ -1200,13 +1201,27 @@ async def test_realtime_native_effect_waits_for_the_same_human_agreement(action)
             tool = Tool(code="voice", label="Synthetic voice")
             db.add(tool)
             await db.flush()
-        db.add(Connection(agent_id=action.agent_id, tool_id=tool.id, active=True))
+        connection = Connection(agent_id=action.agent_id, tool_id=tool.id, active=True)
+        db.add(connection)
+        await db.flush()
+        if mode is not None:
+            await connections.set_connection_function_state(connection.id, "voice_call_stop", mode)
         await db.commit()
     hangup = asyncio.Event()
     tools = realtime_tools(agent_id=action.agent_id, conversation_id="synthetic-room", transport_kind="synthetic",
         language="en", hangup_requested=hangup)
     operation = uuid4()
     first = json.loads(await execute_realtime_tool(tools, name="voice_call_stop", arguments="{}", operation_id=operation))
+    if mode != "ask":
+        assert hangup.is_set() is (mode is None)
+        assert first["ok"] is (mode is None)
+        assert "authorization_required" not in first
+        async with get_db_session() as db:
+            assert await db.scalar(select(ActionAuthorization).where(
+                ActionAuthorization.agent_id == action.agent_id,
+                ActionAuthorization.capability_name == "voice_call_stop",
+            )) is None
+        return
     assert not hangup.is_set()
     identifier = UUID(first["authorization_required"])
     async with get_db_session() as db:

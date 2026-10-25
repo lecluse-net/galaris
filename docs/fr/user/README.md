@@ -189,6 +189,8 @@ Les fonctions d'outils utilisent leurs règles Actif, Bloqué ou Sur demande. Le
 ponctuels et permanents se traitent dans **Superviser → Permissions** ; il n'existe plus de
 mode global d'auto-approbation. Un accord reste limité à sa connexion ou son type d'action
 et ne donne pas automatiquement les mêmes droits aux agents délégataires.
+Le suivi d’une conversation affiche **En attente d’autorisation** pendant la demande
+d’accord, sans présenter cette suspension comme une erreur d’exécution.
 
 Depuis la liste, cliquez sur une tâche pour ouvrir son détail. Vous y retrouvez la phase
 courante, les sous-tâches, les appels d’outils, les processus liés, les coûts LLM connus et le
@@ -593,6 +595,14 @@ Lorsque Matrix ou Nextcloud Talk et une capacité vocale sont configurés, un ag
 agent → synthèse, soit une session audio native à faible latence. Le second mode peut ne conserver
 aucune transcription intermédiaire : l’absence de texte dans un tour natif n’indique donc pas une
 perte de l’appel.
+
+Le raccrochage par l’agent (`voice_call_stop`) est actif par défaut, sans demande
+d’autorisation supplémentaire. Pour modifier une règle déjà enregistrée, ouvrez
+**Outils → Autorisations**, sélectionnez la connexion **Voice**, recherchez
+`voice_call_stop`, puis choisissez **Actif** pour cette connexion ou au niveau
+**Global (tous)**. Les choix explicites **Sur demande** et **Bloqué** restent prioritaires
+sur le défaut logiciel. Une demande d’accord propose aussi **Toujours autoriser cette
+fonction**, limité à la connexion concernée.
 
 Dans le mode transcription → agent → synthèse, l'écoute reste active pendant la
 transcription : vous pouvez reprendre la parole sans attendre son résultat. La détection

@@ -310,7 +310,7 @@ async def mcp_start_voice_call(
     )
 
 
-@mcp_tool("voice", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("voice", approval="enabled", approval_reason="Hangup releases an existing call without a new sensitive effect",
 
     name="voice_call_stop",
     description=(

@@ -226,6 +226,7 @@ export interface AIResult {
   cost: number
   tools_used: string[]
   metadata?: Record<string, unknown>
+  disposition?: 'completed' | 'waiting_for_authorization'
   success: boolean
 }
 

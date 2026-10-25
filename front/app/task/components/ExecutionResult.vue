@@ -35,7 +35,7 @@
             <q-item-section side v-if="displayedExecutionResult && !running">
                 <div class="row q-gutter-xs">
                     <StatusBadge
-                        v-if="!suspended"
+                        v-if="!executionSuspended"
                         :tone="executionSucceeded ? 'success' : 'error'"
                         :icon="executionSucceeded ? 'check_circle' : 'error'"
                         :label="executionSucceeded ? $t('task.dispatch.success') : $t('task.dispatch.failure')"
@@ -366,6 +366,9 @@ const reconstructedExecutionResult = computed<ExecutionResult | null>(() => {
 
 const displayedExecutionResult = computed(
     () => props.executionResult || reconstructedExecutionResult.value
+)
+const executionSuspended = computed(
+    () => props.suspended || displayedExecutionResult.value?.disposition === 'waiting_for_authorization',
 )
 const executionSucceeded = computed(
     () => props.executionSuccess ?? displayedExecutionResult.value?.success ?? false,

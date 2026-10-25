@@ -306,7 +306,7 @@ const statusLabel = computed(() => {
 })
 const statusVisual = computed(() => {
   const status = effectiveStatus.value
-  if (!status) return { color: 'warning', icon: 'pending' }
+  if (!status || status === 'WAITING_APPROVAL') return { color: 'warning', icon: 'pending' }
   if (status === 'SUCCEEDED' || status === 'COMPLETED') return { color: 'positive', icon: 'check_circle' }
   if (['RUNNING', 'CLAIMED', 'FROZEN'].includes(status)) {
     return { color: 'primary', icon: 'pending' }
@@ -318,7 +318,7 @@ const statusVisual = computed(() => {
 })
 const statusTone = computed<StatusBadgeTone>(() => {
   const status = effectiveStatus.value
-  if (!status || status === 'FROZEN') return 'warning'
+  if (!status || status === 'FROZEN' || status === 'WAITING_APPROVAL') return 'warning'
   if (status === 'SUCCEEDED' || status === 'COMPLETED') return 'success'
   if (['RUNNING', 'CLAIMED'].includes(status)) return 'active'
   if (status === 'SUPERSEDED' || status === 'CANCELLED' || status === 'PAUSED') return 'neutral'
