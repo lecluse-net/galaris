@@ -732,11 +732,11 @@ async def test_stream_keeps_two_thoughts_fifteen_tools_and_one_answer_as_eightee
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("protocol", ["chat", "responses"])
-@pytest.mark.parametrize("slow_terminal", [False, True])
+@pytest.mark.parametrize("delay", ["none", "terminal_journal", "provider_cleanup"])
 async def test_sdk_models_use_durable_requests_without_changing_their_outputs(
-    runtime, protocol, monkeypatch, slow_terminal,
+    runtime, protocol, monkeypatch, delay,
 ):
-    if slow_terminal:
+    if delay == "terminal_journal":
         from app.llm import text_inference
 
         persist = text_inference.persist_events
@@ -747,6 +747,18 @@ async def test_sdk_models_use_durable_requests_without_changing_their_outputs(
             return await persist(call_id, payloads)
 
         monkeypatch.setattr(text_inference, "persist_events", delayed_terminal)
+    elif delay == "provider_cleanup":
+        from app.llm import llm_call_service
+
+        finalize = llm_call_service.finalize_call
+
+        async def delayed_cleanup(*args, **kwargs):
+            # The SDK drains HTTP/1.1 after [DONE] while the same provider
+            # iterator is still persisting its terminal trace.
+            await asyncio.sleep(0.6)
+            return await finalize(*args, **kwargs)
+
+        monkeypatch.setattr(llm_call_service, "finalize_call", delayed_cleanup)
     db, llm, requests, _ = runtime
     if protocol == "responses":
         llm.provider.base_url = "https://api.openai.com/v1"
@@ -762,6 +774,11 @@ async def test_sdk_models_use_durable_requests_without_changing_their_outputs(
     assert saved.request.protocol == protocol
     assert saved.request.sdk_request is True
     assert saved.cost == accounting.cost
+    async with lifecycle.get_db_session() as session:
+        call = await session.get(LLMCall, saved.attempts[-1].call_ids[0])
+        assert call.status == "completed"
+        assert call.completed_at is not None
+        assert call.error is None
     assert requests[0]["stream"] is True
     events = [event async for event in stream_inference(key)]
     assert sum(event.kind == "result" for event in events) == 1

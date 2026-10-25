@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import re
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from typing import Any, Literal
@@ -50,27 +51,38 @@ class _WireStream(httpx2.AsyncByteStream):
         self.response = response
         self.capture = capture
         self._producer: asyncio.Task[None] | None = None
+        self._producer_scope: anyio.CancelScope | None = None
+        self._iterator = self._iterate()
 
-    async def __aiter__(self) -> AsyncIterator[bytes]:
+    def __aiter__(self) -> AsyncIterator[bytes]:
+        # The SDK iterates response.stream again to drain HTTP/1.1 after
+        # [DONE]. Resume the same reader; a second producer would concurrently
+        # enter (and then try to close) the provider's async generator.
+        return self._iterator
+
+    async def _iterate(self) -> AsyncGenerator[bytes, None]:
         # One producer owns the provider iterator for its whole lifetime. Moving
         # successive anext calls between tasks would break transport deadlines.
         # Keep read-ahead to one fragment: recovery guards must be able to stop
         # an upstream generation before it runs far ahead of the consumer.
         queue: asyncio.Queue[bytes | Exception | None] = asyncio.Queue(maxsize=1)
+        producer_scope = anyio.CancelScope()
 
         async def produce() -> None:
-            try:
-                async for part in self.response.body_iterator:
-                    chunk = part.encode() if isinstance(part, str) else bytes(part)
-                    for offset in range(0, len(chunk), 65536):
-                        await queue.put(chunk[offset:offset + 65536])
-            except Exception as exc:
-                await queue.put(exc)
-            else:
-                await queue.put(None)
+            with producer_scope:
+                try:
+                    async for part in self.response.body_iterator:
+                        chunk = part.encode() if isinstance(part, str) else bytes(part)
+                        for offset in range(0, len(chunk), 65536):
+                            await queue.put(chunk[offset:offset + 65536])
+                except Exception as exc:
+                    await queue.put(exc)
+                else:
+                    await queue.put(None)
 
         producer = asyncio.create_task(produce(), name="llm-protocol-buffer")
         self._producer = producer
+        self._producer_scope = producer_scope
         loop = asyncio.get_running_loop()
         carry: bytes | None = None
         try:
@@ -108,20 +120,25 @@ class _WireStream(httpx2.AsyncByteStream):
                 if finished:
                     return
         finally:
-            producer.cancel()
+            # Respect the proxy's bounded, shielded trace finalization even
+            # when the SDK's drain deadline expires after a terminal frame.
+            producer_scope.cancel()
             with anyio.CancelScope(shield=True):
                 await asyncio.gather(producer, return_exceptions=True)
             if self._producer is producer:
                 self._producer = None
+                self._producer_scope = None
 
     async def aclose(self) -> None:
         producer = self._producer
         if producer is not None:
-            producer.cancel()
+            assert self._producer_scope is not None
+            self._producer_scope.cancel()
             with anyio.CancelScope(shield=True):
                 await asyncio.gather(producer, return_exceptions=True)
             if self._producer is producer:
                 self._producer = None
+                self._producer_scope = None
         close = getattr(self.response.body_iterator, "aclose", None)
         if close is not None:
             await close()
@@ -287,6 +304,7 @@ async def protocol_response(request: ProtocolInferenceRequest) -> JSONResponse |
     key = uuid4()
     attempt_id: UUID | None = None
     completed = False
+    terminal_received = False
 
     async def cleanup() -> None:
         with anyio.CancelScope(shield=True):
@@ -297,7 +315,7 @@ async def protocol_response(request: ProtocolInferenceRequest) -> JSONResponse |
                         # SDKs close after their terminal frame. If generation is
                         # already committed, wait for the journal writer instead
                         # of turning its successful response into a stop command.
-                        if not await execution.transaction(lambda: _generation_completed(attempt_id)):
+                        if not terminal_received and not await execution.transaction(lambda: _generation_completed(attempt_id)):
                             await execution.command(key, "stop", uuid4())
                         async for _ in execution.events(key):
                             pass
@@ -350,11 +368,22 @@ async def protocol_response(request: ProtocolInferenceRequest) -> JSONResponse |
                                 headers=response_headers)
 
         async def relay() -> AsyncIterator[bytes]:
-            nonlocal completed
+            nonlocal completed, terminal_received
+            terminal_tail = b""
             try:
                 async for item in stream:
                     if item["phase"] == "chunk":
-                        yield base64.b64decode(item["data"])
+                        chunk = base64.b64decode(item["data"])
+                        if request.protocol == "chat" and not terminal_received:
+                            # The SDK can close its journal subscription after
+                            # [DONE], before physical trace finalization commits.
+                            # Keep a bounded suffix for markers split by batching.
+                            data = terminal_tail + chunk
+                            terminal_received = re.search(
+                                rb"(?:^|\n)data:[ \t]*\[DONE\]\r?\n\r?\n", data,
+                            ) is not None
+                            terminal_tail = data[-64:]
+                        yield chunk
                 completed = True
             finally:
                 await stream.aclose()
