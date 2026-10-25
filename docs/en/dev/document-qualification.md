@@ -53,6 +53,30 @@ reviewed reference and `qualify` combines evidence. Provider failures and missin
 answers are failures. Synthetic tests live in `tests/test_document_pipeline.py` and
 `tests/test_document_qualification.py`.
 
+### Qualifying a source/model combination
+
+Define the tested combination: format and structure, reader version, profile,
+model, mode, language and budgets. Compare direct and prepared reading with identical
+sources and FR/EN questions, an independently reviewed reference and a held-out corpus
+that was not used for adjustments. Check facts, numbers, units, tables and citations
+against the source, including expected absences. HTTP 200 or a claim of complete
+reading cannot replace this review.
+
+For large sources, include a 500-page text PDF, a 500-page scan, a mixed report larger
+than 100 MB and multipage tables. Check final pages and consolidation for hidden
+omissions and double counting. Exercise interruption/reopening, progress, errors and
+authorized recovery, changed sources and revoked access; partial results must remain
+identifiable. Record conversion, OCR and inference times, p50/p95, RAM, disk, bytes
+and cost per page. Also assess whether estimates and progress adequately distinguish
+preparation, processing, verification and unreadable parts.
+
+The `qualify` command requires at least three independent successful trials for the
+same combination; replaying one result does not count as another trial. Publish only
+the formats, structures and conditions actually qualified, with measurements and
+limitations. Synthetic 500-page tests prove preparation and recovery, rather than
+comprehension. Local artifacts remain unversioned; published conclusions contain
+only aggregate measurements and technical findings.
+
 ## Current scope
 
 Chat/Tasks, Messenger/Hermes and Dream share local preparation. Inline contexts remain
@@ -95,5 +119,38 @@ Tests cover a 500-page analysis with a simulated provider, recovery, access cont
 changed sources, cancellation, corrupt/encrypted files and multi-frame TIFF. Real
 trials and independent review remain in local artifacts. They do not qualify every
 fact in arbitrary reports or every format. See the
-[plan](../../../project/plans/analyse-documentaire-unifiee.md) and
 [decision](../../../project/decisions/0151-resumable-document-analysis.md).
+
+## Limitations and conditional extensions
+
+| Scope | Current limitation and evidence required before extending support |
+|---|---|
+| Legacy XLS | BIFF5 is read, but historical variants remain to be qualified; undecodable expressions retain their tokens and a diagnostic, without recalculation or invented expressions. |
+| Office, drawings and diagrams | DOC/ODG can be converted; qualify fonts, notes, objects, charts and pagination for the relevant structures before claiming fidelity. |
+| PDF, scans, handwriting and images | Reproduce a loss of reading order, tables, figures, rotation or OCR before extending the reader; check against the source rendering. |
+| XLSX/ODS and multi-frame TIFF | Readers and scenarios exist; support alone does not establish fidelity for complex structures. |
+| EML/MIME and archives | The preparer does not inventory or recursively analyse child attachments. An extension must supply per-child locators and coverage, with bounded expansion and recursion. |
+| Other formats | Qualified adapter or explicit diagnostic; no universal support claim. Audio and video use their dedicated facades. |
+
+### Conversion isolation
+
+A subprocess and disabled macros do not provide network isolation. The LibreOffice
+conversion path does not establish explicit network confinement. Qualifying isolation
+requires synthetic sources with remote references, excessive archives and hostile
+files, observing that no implicit network access occurs. Retain CPU/RAM/size/time
+limits and verify cleanup after interruption without invalidating completed checkpoints.
+
+### Accuracy and transports
+
+Existing fallback does not detect every incorrect or insufficient HTTP 200 answer.
+Additional semantic checks must use independent evidence, preserve successful units
+and fallback reasons, and bound alternatives. Access or authentication denials do not
+trigger conversion; open streams or ambiguous effects do not permit automatic
+resubmission. Stateful Responses inputs and hosted files retain their transport and
+history; any preparation of these inputs requires separate qualification.
+
+The catalogue and record maintenance belong to
+[File Share indexing](../../../project/decisions/0155-durable-file-indexing.md).
+Memory acquisition, provenance and extracted-text recall follow the
+[Memory plan](../../../project/plans/amelioration-globale-memoire.md); mechanism
+comparisons follow the [Lab](../../../project/plans/lab-evaluation-mecanismes-ia.md).

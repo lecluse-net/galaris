@@ -53,8 +53,10 @@ passerelle limite les fichiers incorporés et les appels. Le rendu des fichiers 
 peut modifier la pagination. Les données XLSX brutes et formules complètent le rendu,
 sans garantir les formats numériques ou la fraîcheur des valeurs calculées.
 
-Les checkpoints Process, la couverture persistante, l'isolation réseau des convertisseurs,
-les contrôles de fidélité, les autres SDK et la qualification complète restent dans
-le [plan documentaire](../plans/analyse-documentaire-unifiee.md).
+L'analyse reprenable, ses checkpoints privés dans `app.llm`, la couverture persistante
+et le routage Responses sont réalisés selon la [décision 0151](0151-resumable-document-analysis.md).
+Les limites actuelles de formats, d'isolation réseau, de fidélité sémantique et de transport,
+ainsi que les critères de qualification, sont décrits dans le
+[guide de qualification](../../docs/fr/dev/document-qualification.md).
 Les benchmarks du corpus privé restent dans les artefacts locaux ; les fixtures
 versionnées sont synthétiques.

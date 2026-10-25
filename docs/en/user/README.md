@@ -540,6 +540,10 @@ and version remain checked; moving or modifying the file can invalidate results.
 units supplied to the model without certifying answer accuracy. See
 [reading formats and limits](../dev/document-qualification.md).
 
+For an important table, amount or quotation, request page references and check them
+against the original file, even when coverage includes every page. Attachments inside
+an EML email or archive are not analysed recursively; attach the files to examine separately.
+
 ### Launching a Business Process
 
 The **Processes** page combines internal BPMN workflows and external workflows, including n8n.

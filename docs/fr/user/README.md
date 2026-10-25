@@ -658,6 +658,11 @@ la source pendant le traitement peut invalider les résultats. La couverture ind
 fournies au modèle, sans certifier la justesse des réponses. Voir les
 [formats et limites de lecture](../dev/document-qualification.md).
 
+Pour un tableau, un montant ou une citation importante, demandez les pages et vérifiez-les
+dans le fichier d'origine, même si toutes les pages sont couvertes. Les pièces contenues
+dans un courriel EML ou une archive ne sont pas analysées récursivement : joignez séparément
+les fichiers à examiner.
+
 ### Lancer un processus métier
 
 La page **Processus** réunit workflows BPMN internes et workflows externes, dont n8n.

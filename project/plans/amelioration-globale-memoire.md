@@ -126,8 +126,8 @@ provenance indépendante ; l'oubli d'un contenu bloque aussi les révisions tard
 round. Les souvenirs historiques sans marqueur conservent leur contrat existant.
 Restent les analyses partielles/échouées et les campagnes documentaires étendues, en réutilisant
 `test_dream_attachments.py` et `test_document_structure.py`.
-Les formats et l'isolation du lecteur restent dans le
-[plan documentaire](analyse-documentaire-unifiee.md).
+Les limites de formats, l'isolation du lecteur et les critères des campagnes documentaires
+sont décrits dans le [guide de qualification](../../docs/fr/dev/document-qualification.md).
 
 ## MEM-006 / MEM-007 / MEM-009 — Pertinence et contexte utile
 

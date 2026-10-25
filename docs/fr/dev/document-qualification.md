@@ -59,6 +59,31 @@ les preuves. Une erreur fournisseur ou une réponse manquante ne vaut pas réuss
 Les tests synthétiques sont dans `tests/test_document_pipeline.py` et
 `tests/test_document_qualification.py`.
 
+### Qualification d'une combinaison source/modèle
+
+Définir la combinaison testée : format et structure, version du lecteur, profil,
+modèle, mode, langue et budgets. Comparer lecture directe et préparée sur les mêmes
+sources et questions FR/EN, avec un référentiel indépendant et un corpus réservé
+qui n'a pas servi aux ajustements. Vérifier faits, nombres, unités, tableaux et
+citations contre la source, y compris les absences attendues. Un HTTP 200 ou une
+affirmation de lecture complète ne remplace pas cette vérification.
+
+Pour les grandes sources, inclure un PDF texte de 500 pages, un scan de 500 pages,
+un rapport mixte de plus de 100 Mo et des tableaux multipages. Contrôler les dernières
+pages et la consolidation : aucune omission cachée ni double compte. Exercer
+interruption/réouverture, progression, erreur et reprise autorisée, source modifiée et
+droits révoqués ; les résultats partiels doivent rester identifiables. Relever les temps
+de conversion, OCR et inférence, p50/p95, RAM, disque, octets et coût par page.
+Évaluer aussi si l'estimation préalable et la progression distinguent suffisamment
+préparation, traitement, vérification et parties illisibles.
+
+La commande `qualify` exige au moins trois essais indépendants réussis pour une même
+combinaison ; rejouer le même résultat ne compte pas comme un essai supplémentaire.
+Publier uniquement les formats, structures et conditions effectivement qualifiés,
+avec mesures et limites. Les tests synthétiques de 500 pages prouvent préparation
+et reprise, pas compréhension. Les artefacts locaux restent hors versionnement ;
+les conclusions publiées ne contiennent que mesures agrégées et constats techniques.
+
 ## Portée actuelle
 
 Chat/tâches, Messenger/Hermès et Dream partagent le lecteur local. Les contextes inline
@@ -105,5 +130,40 @@ Les tests couvrent une analyse de 500 pages avec fournisseur simulé, la reprise
 droits, les sources modifiées, l'annulation, les fichiers corrompus/chiffrés et le TIFF
 multipage. Les essais réels et leur revue sont consignés dans les artefacts locaux.
 Ils ne qualifient pas tous les faits de rapports arbitraires ni tous les formats.
-Voir le [plan](../../../project/plans/analyse-documentaire-unifiee.md) et la
-[décision](../../../project/decisions/0151-resumable-document-analysis.md).
+Voir la [décision](../../../project/decisions/0151-resumable-document-analysis.md).
+
+## Limites et extensions conditionnelles
+
+| Périmètre | Limite actuelle et preuve attendue avant extension |
+|---|---|
+| XLS ancien | BIFF5 est lu mais ses variantes historiques restent à qualifier ; les expressions indécodables gardent leurs tokens et un diagnostic, sans recalcul ni expression inventée. |
+| Office, dessins et diagrammes | DOC/ODG sont convertibles ; qualifier polices, notes, objets, graphiques et pagination sur les structures concernées avant d'en annoncer la fidélité. |
+| PDF, scans, manuscrit et images | Reproduire une perte d'ordre, de tableau, de figure, de rotation ou d'OCR avant de compléter le lecteur ; vérifier contre le rendu source. |
+| XLSX/ODS et TIFF multipage | Lecteurs et scénarios existants ; la fidélité des structures complexes ne découle pas de leur seule prise en charge. |
+| EML/MIME et archives | Pas d'inventaire ni d'analyse récursive des pièces enfants dans le préparateur. Une extension doit fournir localisateurs et couverture par enfant, avec expansion et récursion bornées. |
+| Autres formats | Adaptateur qualifié ou diagnostic explicite ; aucune prise en charge universelle. Audio et vidéo utilisent leurs façades dédiées. |
+
+### Isolation des conversions
+
+Un sous-processus et des macros désactivées ne constituent pas une isolation réseau.
+Le chemin de conversion LibreOffice ne met pas en place de confinement réseau explicite.
+Pour qualifier une isolation, utiliser des sources synthétiques avec références distantes,
+archives excessives et fichiers hostiles ; observer l'absence d'accès réseau implicite.
+Conserver les limites CPU/RAM/taille/temps et vérifier le nettoyage après interruption
+sans invalider les checkpoints terminés.
+
+### Exactitude et transports
+
+Le repli existant ne détecte pas toute réponse HTTP 200 incorrecte ou insuffisante.
+Tout contrôle sémantique supplémentaire doit s'appuyer sur des preuves indépendantes,
+conserver les unités réussies et les causes de repli, et borner les alternatives.
+Un refus de droits ou d'authentification ne déclenche pas de conversion ; un flux ouvert
+ou un effet ambigu ne permet pas une resoumission automatique. Les entrées Responses
+stateful et les fichiers hébergés conservent leur transport et leur historique ;
+leur préparation éventuelle nécessite une qualification propre.
+
+Le catalogue et l'entretien des fiches relèvent de
+l'[indexation File Share](../../../project/decisions/0155-durable-file-indexing.md).
+L'acquisition dans Memory, la provenance et le rappel du texte extrait suivent le
+[plan mémoire](../../../project/plans/amelioration-globale-memoire.md) ; les comparaisons
+de mécanismes suivent le [Lab](../../../project/plans/lab-evaluation-mecanismes-ia.md).
