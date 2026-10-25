@@ -1,5 +1,5 @@
 <template>
-  <q-splitter v-model="split" horizontal :limits="[15, 65]" class="library-navigation" :class="{ 'library-navigation--dark': $q.dark.isActive }">
+  <q-splitter v-model="split" horizontal :limits="[0, 100]" class="library-navigation" :class="{ 'library-navigation--dark': $q.dark.isActive }">
     <template #before>
       <div class="q-pa-sm">
         <q-banner v-if="tagError" dense class="library-error" role="alert">{{ t('documents.library.tagError') }}<q-btn flat :label="t('documents.retry')" @click="loadTags" /></q-banner>
@@ -49,7 +49,7 @@
     </template>
     <template #separator>
       <DocumentSplitterHandle horizontal role="separator" tabindex="0" aria-orientation="horizontal" :aria-label="t('documents.library.resize')"
-        :aria-valuenow="split" aria-valuemin="15" aria-valuemax="65" @keydown.up.prevent="split = Math.max(15, split - 5)" @keydown.down.prevent="split = Math.min(65, split + 5)" />
+        :aria-valuenow="split" aria-valuemin="0" aria-valuemax="100" @keydown.up.prevent="split = Math.max(0, split - 5)" @keydown.down.prevent="split = Math.min(100, split + 5)" />
     </template>
     <template #after>
       <div class="document-list-panel" :class="{ 'tag-row--drop': dropTarget === 'root' }"
@@ -683,7 +683,13 @@ watch(() => [...expanded.value], (value, previous) => {
   for (const id of value) if (!previous.includes(id)) void branches.load(id)
 })
 const storageKey = computed(() => `galaris:document-library-split:${userId.value ?? 'session'}`)
-function restoreSplit(): void { try { const value = Number(localStorage.getItem(storageKey.value)); split.value = value >= 15 && value <= 65 ? value : 35 } catch { split.value = 35 } }
+function restoreSplit(): void {
+  try {
+    const stored = localStorage.getItem(storageKey.value)
+    const value = stored === null ? NaN : Number(stored)
+    split.value = value >= 0 && value <= 100 ? value : 35
+  } catch { split.value = 35 }
+}
 watch(split, value => { try { localStorage.setItem(storageKey.value, String(value)) } catch { /* Storage may be unavailable. */ } })
 async function changeSession(event: Event): Promise<void> {
   const currentSession = authSessionGeneration()

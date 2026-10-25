@@ -679,6 +679,36 @@ test('compact filters keep the orphan list unclassified while filtering owner, d
   await expectUnclassified(page)
 })
 
+test('folder and document separator can use the full height and restores the chosen position', async ({ page }, testInfo) => {
+  await fixture(page)
+  const splitter = page.getByRole('separator', { name: 'Resize folders and documents' })
+  await expect(splitter).toHaveAttribute('aria-valuenow', '35')
+  const navigation = page.locator('.library-navigation')
+  const bounds = await navigation.boundingBox()
+  if (!bounds) throw new Error('Document navigation must be visible')
+  for (const ratio of [0.05, 0.95]) {
+    const handle = await splitter.boundingBox()
+    if (!handle) throw new Error('The separator must remain reachable')
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height * ratio, { steps: 10 })
+    await page.mouse.up()
+    await expect.poll(async () => Number(await splitter.getAttribute('aria-valuenow'))).toBeCloseTo(ratio * 100, 0)
+  }
+  await page.screenshot({ path: testInfo.outputPath('document-separator-expanded.png'), animations: 'disabled' })
+  await splitter.focus()
+  for (const [key, value] of [['ArrowDown', '100'], ['ArrowUp', '0']]) {
+    for (let step = 0; step < 21; step++) await page.keyboard.press(key)
+    await expect(splitter).toHaveAttribute('aria-valuenow', value)
+    await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px', maxWidth: '100vw' } })
+    await expect(splitter).toHaveAttribute('aria-valuenow', value)
+    await splitter.focus()
+  }
+  await page.keyboard.press('ArrowDown')
+  await expect.poll(async () => Number(await splitter.getAttribute('aria-valuenow'))).toBeGreaterThan(0)
+  await expect.poll(async () => Number(await splitter.getAttribute('aria-valuenow'))).toBeLessThan(15)
+})
+
 test('tag creation, inline rename, reparenting and confirmed recursive deletion preserve documents', async ({ page }) => {
   const { mutations, assignments, deletions } = await fixture(page)
   await page.getByRole('button', { name: 'Create a folder', exact: true }).click()
