@@ -1,6 +1,12 @@
 export default {
   fr: {
     conversation: {
+      contactAuthorization: {
+        title: 'Autorisation de réponse au contact', pending: 'Réponse en pause : autorisation du manager attendue.',
+        allowed: 'Le manager a autorisé les échanges avec cette personne.', denied: 'Le manager a refusé les échanges avec cette personne.',
+        noManager: 'Réponse en pause : aucun manager disponible pour autoriser ce contact.', permissions: 'Ouvrir les permissions',
+        fields: { display_name: 'Nom affiché', external_id: 'Identifiant d’utilisateur distant', first_name: 'Prénom', last_name: 'Nom', username: 'Nom d’utilisateur', language_code: 'Langue indiquée', is_bot: 'Compte bot', is_premium: 'Compte Premium' },
+      },
       delivery: {
         unknown: 'La livraison a un résultat inconnu. Vérifiez le canal destinataire avant toute nouvelle tentative.',
         taskNotification: 'Notification de la tâche {id}',
@@ -119,6 +125,12 @@ export default {
   },
   en: {
     conversation: {
+      contactAuthorization: {
+        title: 'Contact reply authorization', pending: 'Reply paused: waiting for the manager’s consent.',
+        allowed: 'The manager authorized exchanges with this person.', denied: 'The manager denied exchanges with this person.',
+        noManager: 'Reply paused: no manager is available to authorize this contact.', permissions: 'Open permissions',
+        fields: { display_name: 'Display name', external_id: 'Remote user identifier', first_name: 'First name', last_name: 'Last name', username: 'Username', language_code: 'Reported language', is_bot: 'Bot account', is_premium: 'Premium account' },
+      },
       delivery: {
         unknown: 'Delivery has an unknown outcome. Check the destination channel before trying again.',
         taskNotification: 'Task notification {id}',
@@ -237,6 +249,11 @@ export default {
   },
   zh: {
     conversation: {
+      contactAuthorization: {
+        title: '联系人回复授权', pending: '回复已暂停：等待管理者授权。', allowed: '管理者已允许与此人交流。', denied: '管理者已拒绝与此人交流。',
+        noManager: '回复已暂停：没有可授权此联系人的管理者。', permissions: '打开权限',
+        fields: { display_name: '显示名称', external_id: '远程用户标识符', first_name: '名字', last_name: '姓氏', username: '用户名', language_code: '报告的语言', is_bot: '机器人账户', is_premium: '高级账户' },
+      },
       delivery: {
         unknown: '发送结果未知。重试前请检查目标频道。', resolve: '处理发送结果',
         taskNotification: '任务通知 {id}',

@@ -785,6 +785,7 @@
       {
         "files": [
           "back/app/conversation/artifact_delivery.py",
+          "back/app/conversation/contact_authorization.py",
           "back/app/conversation/context.py",
           "back/app/conversation/contracts.py",
           "back/app/conversation/directives.py",
@@ -812,6 +813,7 @@
       },
       {
         "files": [
+          "back/app/conversation/contact_authorization.py",
           "back/app/conversation/context.py",
           "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
@@ -819,6 +821,7 @@
           "back/app/conversation/process_admission.py",
           "back/app/conversation/process_interactions.py",
           "back/app/conversation/resource_facade.py",
+          "back/app/conversation/scheduler.py",
           "back/app/conversation/service.py",
           "back/app/conversation/task_projection.py"
         ],
@@ -851,6 +854,7 @@
       },
       {
         "files": [
+          "back/app/conversation/contact_authorization.py",
           "back/app/conversation/context.py",
           "back/app/conversation/document_display.py",
           "back/app/conversation/facade.py",
@@ -861,6 +865,7 @@
           "back/app/conversation/process_interactions.py",
           "back/app/conversation/repository_display.py",
           "back/app/conversation/resource_facade.py",
+          "back/app/conversation/scheduler.py",
           "back/app/conversation/service.py",
           "back/app/conversation/task_projection.py",
           "back/app/conversation/work_projection.py"
@@ -923,6 +928,7 @@
       {
         "files": [
           "back/app/conversation/activity_facade.py",
+          "back/app/conversation/contact_authorization.py",
           "back/app/conversation/context.py",
           "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
@@ -952,6 +958,7 @@
       },
       {
         "files": [
+          "back/app/conversation/contact_authorization.py",
           "back/app/conversation/process_interactions.py",
           "back/app/conversation/router.py",
           "back/app/conversation/service.py",
@@ -3309,6 +3316,7 @@
       {
         "files": [
           "back/app/messenger/configuration.py",
+          "back/app/messenger/contact_access.py",
           "back/app/messenger/contact_memory.py",
           "back/app/messenger/directory.py",
           "back/app/messenger/journal.py",
@@ -10181,7 +10189,7 @@
           "process_runs.id"
         ],
         "history_mixin": false,
-        "line": 319,
+        "line": 321,
         "module": "app.conversation",
         "table": "conversation_process_links"
       },
@@ -10192,7 +10200,7 @@
           "conversation_rounds.id"
         ],
         "history_mixin": false,
-        "line": 241,
+        "line": 243,
         "module": "app.conversation",
         "table": "conversation_round_attempts"
       },
@@ -10204,7 +10212,7 @@
           "messenger_messages.id"
         ],
         "history_mixin": false,
-        "line": 181,
+        "line": 183,
         "module": "app.conversation",
         "table": "conversation_round_messages"
       },
@@ -10233,7 +10241,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 271,
+        "line": 273,
         "module": "app.conversation",
         "table": "conversation_task_links"
       },
@@ -21258,6 +21266,7 @@
       },
       {
         "files": [
+          "front/app/conversation/components/ContactAuthorization.vue",
           "front/app/conversation/components/ConversationHistory.vue",
           "front/app/conversation/components/ConversationRoundDetail.vue"
         ],
@@ -22374,6 +22383,7 @@
       },
       {
         "files": [
+          "front/app/tools/components/TelegramToolSetup.vue",
           "front/app/tools/components/ToolsList.vue",
           "front/app/tools/navigation.ts",
           "front/app/tools/pages/index.vue"

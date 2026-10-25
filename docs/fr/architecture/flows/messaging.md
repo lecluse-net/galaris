@@ -5,6 +5,14 @@
 `app.messenger` est le langage commun de Galaris. Les bridges possèdent le protocole externe,
 pas le workflow métier.
 
+Un message humain externe sans droit de contact reconnu est conservé dans un round textuel
+`PAUSED` pour autorisation de réponse. Son identité et les informations disponibles sont
+visibles dans le suivi d'activité. Le manager reçoit la même demande persistante que celle
+listée dans `/connection/permissions`. Un accord reprend le round ; un refus le clôt sans
+réponse. L'accord s'applique à la personne sur cette connexion, reste révocable et ne crée
+ni compte Galaris ni partage de ressource. Les pauses manuelles, le Chat interne et le
+consentement Mail gardent leurs règles distinctes.
+
 Galaris expose le provider natif dans `app.chat`, identifié par le Tool intégré `chat`. Il
 réutilise le journal et les rooms canoniques, sans listener réseau ni secret. L’application
 utilisateur `/chat` est aussi la vue unifiée en lecture seule des rooms issues des bridges

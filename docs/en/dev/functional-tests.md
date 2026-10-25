@@ -1708,6 +1708,20 @@ after its WebAPK updates.
 
 ## Bridges: test each protocol adaptation once
 
+`app/conversation/tests/test_contact_authorization.py` covers external reception without a
+Galaris account into a paused round, identity details, native manager notification and the
+shared Permissions decision: consent, denial, duplicates, isolation, revocation and manager
+changes. Conversation privileges are exercised over HTTP by
+`core/authorize/tests/test_domain_authorization.py`; obsolete `TASK_ACCESS/EDIT` monitoring
+expectations are replaced by the Conversation privileges already in effect.
+
+`front/browser-tests/messaging-network.spec.mjs` covers preconfigured Telegram Tool creation,
+the empty secret parameter, recovery from errors, reopening without duplicates, preservation
+of an incompatible existing Tool and button privileges. `conversation-control.spec.mjs`
+also checks remote identifiers outside pending authorization, for received messages and round
+snapshots. `e2e/specs/contact-authorization.spec.mjs` exercises actual creation from settings,
+persistence and reopening on mobile, alongside external reception and manager denial in Permissions.
+
 Bridge suites are under `back/bridge/<module>/tests/`. Shared messaging and process rules
 belong in their canonical domains. Network doubles prove local requests, conversions,
 denials and retries, not delivery to a real remote account.

@@ -45,6 +45,9 @@ def start() -> None:
     if not _watching_changes:
         from app.task import Task
         from app.process import ProcessRun
+        from app.messenger import PermissionDecision
+        from app.agent import Agent
+        from app.connection import Connection
         from .models import ConversationRound, ConversationRoundMessage, ConversationTaskLink, ConversationProcessLink
 
         watch_committed_changes({
@@ -54,6 +57,9 @@ def start() -> None:
             ConversationProcessLink: ("notification_state",),
             Task: ("status", "lease_token", "attempt_count", "deleted_at"),
             ProcessRun: ("status",),
+            PermissionDecision: ("allowed", "deleted_at", "approver_user_id"),
+            Agent: ("user_id",),
+            Connection: ("active", "agent_id"),
         }, wake)
         _watching_changes = True
     _scheduler_task = asyncio.create_task(_run_loop(), name="conversation-scheduler")
@@ -398,6 +404,8 @@ async def _run_loop() -> None:
             event = _wake_event
             if event is not None:
                 event.clear()
+            from .contact_authorization import reconcile_contact_authorizations
+            await reconcile_contact_authorizations()
             claimed_any = False
             while len(_running) < _MAX_CONCURRENCY:
                 claimed = await _claim()

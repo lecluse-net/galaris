@@ -3,7 +3,7 @@ export default {
     permissions: {
       title: 'Permissions', description: 'Répondez aux demandes en attente et gérez les autorisations permanentes des agents',
       pendingApprovals: 'Approbations en attente', permanentPermissions: 'Autorisations permanentes',
-      functionPermissions: 'Fonctions autorisées', pendingNetwork: 'Demandes d’accès réseau en attente', networkPermissions: 'Accès réseau autorisés',
+      functionPermissions: 'Fonctions autorisées', pendingNetwork: 'Demandes de contact et d’accès réseau', networkPermissions: 'Contacts et accès réseau autorisés',
       technicalDetails: 'Détails techniques',
       sendMail: 'Envoyer un e-mail',
       remembered: 'Permissions mémorisées', oneAction: 'Autorisation pour une action', cancelAction: 'Annuler la demande',
@@ -232,7 +232,7 @@ export default {
     permissions: {
       title: 'Permissions', description: 'Answer pending requests and manage permanent agent permissions',
       pendingApprovals: 'Pending approvals', permanentPermissions: 'Permanent permissions',
-      functionPermissions: 'Allowed functions', pendingNetwork: 'Pending network requests', networkPermissions: 'Allowed network access',
+      functionPermissions: 'Allowed functions', pendingNetwork: 'Contact and network requests', networkPermissions: 'Allowed contacts and network access',
       technicalDetails: 'Technical details',
       sendMail: 'Send an email',
       remembered: 'Remembered permissions', oneAction: 'Authorization for one action', cancelAction: 'Cancel request',
@@ -461,7 +461,7 @@ export default {
     permissions: {
       title: '权限', description: '回复待审批请求并管理智能体的永久权限',
       pendingApprovals: '待审批请求', permanentPermissions: '永久权限',
-      functionPermissions: '已允许的功能', pendingNetwork: '待审批的网络请求', networkPermissions: '已允许的网络访问',
+      functionPermissions: '已允许的功能', pendingNetwork: '联系人和网络请求', networkPermissions: '已允许的联系人和网络访问',
       technicalDetails: '技术详情',
       sendMail: '发送电子邮件',
       remembered: '已记住的权限', oneAction: '单次操作授权', cancelAction: '取消请求',

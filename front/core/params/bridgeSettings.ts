@@ -1,7 +1,9 @@
 import type { BridgeSettingsContribution } from './settingsTypes'
+import type { Component } from 'vue'
 
 interface SettingsModule {
-    default: BridgeSettingsContribution
+    default?: BridgeSettingsContribution
+    messagingSetupComponents?: Record<string, Component>
 }
 
 const modules = import.meta.glob<SettingsModule>(
@@ -12,6 +14,10 @@ const modules = import.meta.glob<SettingsModule>(
 const contributions = Object.values(modules)
     .map(module => module.default)
     .filter((item): item is BridgeSettingsContribution => Boolean(item?.kind))
+
+export const messagingSetupComponents = Object.fromEntries(
+    Object.values(modules).flatMap(module => Object.entries(module.messagingSetupComponents ?? {})),
+)
 
 export const messagingBridgeSettings = contributions
     .filter(item => item.area === 'messaging')

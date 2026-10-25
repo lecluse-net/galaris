@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0242 — Autorisation de réponse aux contacts externes](0242-external-contact-reply-consent.md)
+
 - [0241 — Volume système des appels Android avec Web Audio](0241-android-call-system-volume.md)
 
 - [0240 — Actualisation nocturne des tarifs LLM](0240-nightly-llm-pricing.md)

@@ -48,6 +48,12 @@ avec la connexion du serveur comme source de l’agent destinataire. Une identit
 non rattachée ou absente ne peut pas engager un dialogue avec l’agent. Cette règle concerne
 aussi les messages humains reçus par un canal asynchrone.
 
+Depuis l'[ADR 0242](0242-external-contact-reply-consent.md), une personne externe sans ce
+droit peut être reçue dans un round textuel en pause. Le manager autorise ou refuse les
+réponses via les permissions ; cet accord reste propre à l'identité et à la connexion,
+sans créer de compte Galaris. Les règles ci-dessus restent applicables au Chat interne
+et aux échanges entre agents.
+
 Une révocation interdit les nouveaux envois et délégations, filtre les émissions websocket,
 annule la notification push avant envoi et termine le flux API avant son prochain fragment.
 Les appels audio dépendent uniquement de `CHAT_CALL`, vérifié au plus toutes les secondes

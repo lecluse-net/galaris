@@ -54,6 +54,16 @@ export interface ConversationRound {
   last_error: string | null
   created_at: string
   finished_at: string | null
+  contact_authorization?: ContactAuthorizationDetails | null
+}
+
+export interface ContactAuthorizationDetails {
+  permission_id: string | null
+  allowed: boolean | null
+  manager_user_id: number | null
+  external_id: string
+  display_name: string
+  profile: Record<string, string | boolean>
 }
 
 export interface ConversationUnknownNotification {

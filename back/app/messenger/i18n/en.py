@@ -1,6 +1,9 @@
 """English messages for agent-facing messaging tools."""
 
 default: dict[str, object] = {
+    "messenger_contact_approval": {
+        "question": "Allow ${agent} to reply to this person on ${channel}?\n\nName: ${name}\nIdentifier: ${identifier}\n${details}\n\nConsent applies to this person on this connection. It does not create a Galaris account or share any resource.",
+    },
     "permissions": {
         "title": "Permission request",
         "allow": "Allow and remember",

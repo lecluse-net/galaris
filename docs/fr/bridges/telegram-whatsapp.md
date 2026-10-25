@@ -47,11 +47,29 @@ Nextcloud Talk nécessitent aussi une connectivité WebRTC adaptée, éventuelle
 ### 1. Créer et configurer le bot
 
 1. Créer le bot auprès de [BotFather](https://t.me/BotFather) et conserver son token.
-2. Activer Messenger sur un Tool et sélectionner le bridge `telegram`.
-3. Ajouter un paramètre de connexion chiffré au Tool, puis le faire correspondre à `token`.
-4. Dans la connexion de chaque agent, renseigner son token BotFather.
-5. Associer son identité Telegram au compte Galaris dans **Mon profil**, puis envoyer un
-   nouveau message au bot depuis Telegram. Les droits de dialogue avec l’agent restent requis.
+2. Dans **Configuration → Messagerie → Telegram**, ouvrir le **Guide de configuration**
+   et cliquer sur **Créer l’outil Telegram** (droit de modification des outils requis).
+   Le bouton prépare le Tool de code `telegrem`, libellé `Telegram`, avec la Messagerie
+   activée sur le bridge `telegram` et un paramètre de connexion secret `token`, requis
+   et vide, associé au token du bridge. Un outil de même code est conservé : sa
+   configuration est vérifiée et toute différence doit être corrigée dans **Outils**.
+3. La même configuration peut être saisie manuellement dans **Outils**.
+4. Dans **Outils → Connexions**, créer une connexion à cet outil pour chaque agent et
+   y coller le token transmis par BotFather. Utiliser un bot distinct par agent.
+5. Envoyer un message au bot depuis Telegram. Sans droit de dialogue déjà reconnu, le message
+   apparaît dans **Superviser → Activité → Conversations textuelles**, dans un round en pause.
+   Le manager reçoit une demande de réponse à ce contact, également visible dans
+   **Superviser → Permissions** (`/connection/permissions`).
+6. Le manager autorise ou refuse : l'accord reprend le round, le refus le clôt sans réponse.
+   Le détail présente l'identifiant, le nom et les informations de profil fournies par Telegram.
+
+L'interlocuteur n'a pas besoin d'un compte Galaris. L'identifiant d'utilisateur distant reste
+visible dans le détail des messages, même après autorisation. Si le correspondant est aussi
+utilisateur Galaris, il peut renseigner son identifiant numérique Telegram dans **Mon profil** :
+cette association facultative indique que les deux comptes représentent la même personne.
+Il faut saisir l'identifiant de la personne, pas celui du bot. Les droits de dialogue restent
+gérés séparément. L'autorisation d'un contact ne donne aucun accès à l'interface ni aux documents.
+Utiliser un bot distinct par instance active : deux listeners sur le même bot provoquent un conflit.
 
 Les anciens champs de politique d’accès (`allowed_user_ids`, `allowed_chat_ids`,
 `require_group_mention`) restent lus sur les connexions migrées, mais ne font pas partie du

@@ -46,11 +46,28 @@ also need suitable WebRTC connectivity, potentially through TURN.
 ### 1. Create and configure the bot
 
 1. Create the bot with [BotFather](https://t.me/BotFather) and retain its token.
-2. Enable Messenger on a Tool and select the `telegram` bridge.
-3. Add an encrypted connection parameter to the Tool, then map it to `token`.
-4. In each agent’s connection, enter its BotFather token.
-5. Link your Telegram identity to your Galaris account in **My profile**, then send a new
-   message to the bot from Telegram. Permission to contact the agent is still required.
+2. In **Configuration → Messaging → Telegram**, open the **Setup guide** and click
+   **Create Telegram Tool** (Tool editing rights required). The button prepares a Tool
+   with code `telegrem`, label `Telegram`, Messaging enabled with the `telegram` bridge,
+   and an empty, required secret connection parameter `token` mapped to the bridge token.
+   An existing Tool with that code is preserved: its settings are checked and any
+   differences must be corrected in **Tools**.
+3. The same configuration can be entered manually in **Tools**.
+4. In **Tools → Connections**, create a connection to this Tool for each agent and
+   paste the token supplied by BotFather. Use a separate bot for each agent.
+5. Send a message to the bot from Telegram. Without an existing contact authorization, the
+   message appears in **Monitor → Activity → Text conversations**, in a paused round.
+   The manager receives a request to reply to this contact, also available in
+   **Monitor → Permissions** (`/connection/permissions`).
+6. The manager allows or denies: consent resumes the round; denial closes it without a reply.
+   Its detail shows the identifier, name and profile information provided by Telegram.
+
+The person does not need a Galaris account. Their remote user identifier remains visible
+in message details even after authorization. If the contact is also a Galaris user, they
+can enter their numeric Telegram user identifier in **My profile**: this optional mapping
+identifies both accounts as the same person. Enter the person’s identifier, not the bot’s.
+Dialogue rights remain separate. Contact consent grants no access to the interface or
+documents. Use a separate bot per active instance: two listeners using the same bot conflict.
 
 The old access policy fields (`allowed_user_ids`, `allowed_chat_ids`,
 `require_group_mention`) are still read on migrated connections, but are not part of the bridge’s

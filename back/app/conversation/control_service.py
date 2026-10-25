@@ -7,6 +7,8 @@ REQUESTED_ACTIONS = ("pause", "stop", "respond")
 
 
 def available_round_actions(round_: ConversationRound) -> list[ConversationControlAction]:
+    if round_.contact_authorization_pending and round_.status in {"PAUSED", "CANCELLED"}:
+        return ["stop"] if round_.status == "PAUSED" else []
     if round_.voice_session_id is not None or round_.delivery_state in {"SENDING", "UNKNOWN", "DELIVERED"}:
         return []
     if round_.control_action in REQUESTED_ACTIONS:

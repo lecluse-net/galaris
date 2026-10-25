@@ -86,6 +86,7 @@
                 <ol class="q-pl-lg q-mb-sm">
                     <li v-for="step in setupSteps" :key="step" class="q-mb-xs">{{ step }}</li>
                 </ol>
+                <component :is="messagingSetupComponents[selectedBridge.kind]" v-if="messagingSetupComponents[selectedBridge.kind]" :key="selectedBridge.kind" class="q-mb-md" />
                 <div class="row q-gutter-sm">
                     <q-btn
                         :href="selectedBridge.docsUrl"
@@ -172,7 +173,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { messagingBridgeSettings } from '../bridgeSettings'
+import { messagingBridgeSettings, messagingSetupComponents } from '../bridgeSettings'
 import { commonMessagingFields } from '../settingsCatalog'
 import { useParamsStore } from '../stores/paramsStore'
 import { configurationService, type MessengerConfigurationCheck } from '../services/configurationService'

@@ -268,6 +268,11 @@ async def record(
         "sender_display_name": sender.display_name if sender is not None else "",
         "sender_agent_id": sender.agent_id if sender is not None else None,
         "sender_is_ai": sender.is_ai if sender is not None else False,
+        "sender_profile": {
+            key: value[:500] if isinstance(value, str) else value
+            for key, value in (sender.profile.items() if sender is not None else ())
+            if key in {"first_name", "last_name", "username", "language_code", "is_bot", "is_premium"}
+        },
         "recipient_id": recipient.id if recipient is not None else "",
         "recipient_display_name": recipient.display_name if recipient is not None else "",
         "recipient_agent_id": recipient.agent_id if recipient is not None else None,

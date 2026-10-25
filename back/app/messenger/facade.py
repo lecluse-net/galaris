@@ -685,4 +685,4 @@ class MessengerFacade:
         room = await get_db().scalar(select(Room).where(Room.connection_id == self._connection_id, Room.external_id == external_id))
         if room is None:
             raise PermissionError("Room not found")
-        await require_outgoing_room(self._connection_id, room.id)
+        await require_outgoing_room(self._connection_id, room.id, self_external_id=getattr(self._delegate, "self_id", ""))

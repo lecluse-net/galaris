@@ -2,8 +2,15 @@
 
 # Messaging Flow
 
-`app.messenger` is Galaris’s common language. Bridges own the external protocol,
+`app.messenger` is Galaris's common language. Bridges own the external protocol,
 not the business workflow.
+
+An external human message without an existing contact permission is retained in a text round
+`PAUSED` for reply authorization. Its identity and available profile information are visible
+in activity monitoring. The manager receives the same durable request listed in
+`/connection/permissions`. Consent resumes the round; denial closes it without a reply.
+Consent applies to this person on this connection, remains revocable and creates no Galaris
+account or resource share. Manual pauses, native Chat and Mail consent retain separate rules.
 
 Galaris exposes the native provider in `app.chat`, identified by the built-in `chat` Tool. It
 reuses the canonical journal and rooms, without a network listener or secret. The user application

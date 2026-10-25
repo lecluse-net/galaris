@@ -80,6 +80,7 @@ from .models import (
     ConversationTaskLink,
 )
 from .service import linked_work_snapshot, control_round
+from .contact_authorization import pause_for_contact_authorization as pause_for_contact_authorization
 
 __all__ = [
     "delete_round",

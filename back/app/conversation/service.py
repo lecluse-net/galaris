@@ -141,6 +141,8 @@ async def admit_message(
     agent_id: int,
     connection_id: int,
     language: str | None = None,
+    contact_permission_key: str | None = None,
+    awaiting_contact: bool = False,
 ) -> bool:
     """Attach one canonical inbound message to one pending room round exactly once."""
 
@@ -175,11 +177,22 @@ async def admit_message(
         .where(
             ConversationRound.room_id == room.id,
             ConversationRound.voice_session_id.is_(None),
-            ConversationRound.status == "FROZEN",
+            ConversationRound.status == ("PAUSED" if awaiting_contact else "FROZEN"),
+            *([ConversationRound.contact_permission_key == contact_permission_key] if awaiting_contact else []),
+            *([ConversationRound.contact_authorization_pending.is_(True)] if awaiting_contact else []),
         )
         .with_for_update()
         .execution_options(populate_existing=True)
     )
+    if round_ is None and contact_permission_key is not None and not awaiting_contact:
+        round_ = await get_db().scalar(select(ConversationRound).where(
+            ConversationRound.room_id == room.id, ConversationRound.status == "PAUSED",
+            ConversationRound.contact_permission_key == contact_permission_key,
+            ConversationRound.contact_authorization_pending.is_(True),
+        ).with_for_update())
+        if round_ is not None:
+            round_.status = "FROZEN"
+            round_.contact_authorization_pending = False
     if round_ is not None and round_.effect_started:
         # A safely suspended run may already have completed effects. A new post
         # must get its own round, just as it would while the old worker was live.
@@ -194,7 +207,9 @@ async def admit_message(
         round_ = ConversationRound(
             room_id=room.id,
             language=await current_language(language, user_id=message.requester_user_id),
-            status="FROZEN",
+            status="PAUSED" if awaiting_contact else "FROZEN",
+            contact_permission_key=contact_permission_key,
+            contact_authorization_pending=awaiting_contact,
             topic_id=effective_topic_id,
             contact_memory_item_id=topic_source.contact_memory_item_id,
             requester_user_id=message.requester_user_id,
@@ -202,6 +217,8 @@ async def admit_message(
         get_db().add(round_)
         await get_db().flush()
     else:
+        if contact_permission_key is not None:
+            round_.contact_permission_key = contact_permission_key
         round_.language = await current_language(
             language or round_.language, user_id=message.requester_user_id,
         )
@@ -231,9 +248,13 @@ async def admit_message(
         )
     )
     await get_db().flush()
+    if awaiting_contact:
+        await get_db().commit()
+        return True
     waiting = (await get_db().scalars(select(ConversationRound).where(
         ConversationRound.room_id == room.id,
         ConversationRound.status.in_(("WAITING_APPROVAL", "PAUSED")),
+        ConversationRound.contact_authorization_pending.is_(False),
     ).with_for_update())).all()
     if waiting:
         from app.tools.facade import invalidate_authorization_context
@@ -387,7 +408,15 @@ async def _merge_inputs(source: ConversationRound, target: ConversationRound) ->
     source.resolved_by_round_id = target.id
 
 
-async def _claim_round(round_: ConversationRound, worker_id: str) -> ConversationRound:
+async def _claim_round(round_: ConversationRound, worker_id: str) -> ConversationRound | None:
+    if round_.contact_permission_key is not None:
+        from .contact_authorization import contact_round_authorized
+        if not await contact_round_authorized(round_):
+            round_.status = "PAUSED"
+            round_.contact_authorization_pending = True
+            _clear_round_lease(round_)
+            await get_db().commit()
+            return None
     token = uuid4()
     round_.status = "CLAIMED"
     round_.lease_token = token
@@ -894,6 +923,10 @@ async def _mark_effect_if_fresh(round_id: UUID, *, lease_token: UUID) -> bool:
             or round_.control_action in {"pause", "stop", "respond"}):
         return False
     await _room_scope(round_.room_id, lock=True)
+    if round_.contact_permission_key is not None:
+        from .contact_authorization import contact_round_authorized
+        if not await contact_round_authorized(round_):
+            return False
     if await _pending_successor(round_) is not None:
         return False
     if not round_.effect_started:

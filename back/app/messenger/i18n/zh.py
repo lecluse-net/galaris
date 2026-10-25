@@ -1,6 +1,9 @@
 """Chinese human-choice and permission messages."""
 
 default: dict[str, object] = {
+    "messenger_contact_approval": {
+        "question": "是否允许 ${agent} 在 ${channel} 回复此人？\n\n姓名：${name}\n标识符：${identifier}\n${details}\n\n此授权仅适用于此连接中的此人，不创建 Galaris 账户或共享任何资源。",
+    },
     "permissions": {
         "title": "授权请求",
         "allow": "允许并记住",

@@ -55,10 +55,17 @@ Personal history remains
 available; already admitted tasks are not cancelled. Personal preferences and documents
 retain their own authorization rules.
 
-External contacts must be linked to a verified Galaris identity to engage an agent, including
-through asynchronous messages. Mail has its own Contacts and consent procedure before admission,
+External human contacts without an authorized Galaris identity are received in paused text
+rounds, visible in activity monitoring with the available identity information. The manager
+receives a request and allows or denies exchanges in `/connection/permissions`. Consent is
+specific to this person on this connection and remains revocable. It creates no Galaris
+account and shares no resource. Mail has its own Contacts and consent procedure before admission,
 described in the [Mail journal](tasks.md). Permissions do not enable new channels: native Chat remains
 human ↔ agent. Delegated agent tasks also enforce contact permissions.
+The remote user identifier remains visible in message details. The optional mapping in
+**My profile** only identifies a remote account and a Galaris account as the same person.
+For Telegram, the [setup guide](../bridges/telegram-whatsapp.md) prepares the Tool and explains
+each agent's connection and BotFather token.
 
 ## Privileges
 

@@ -90,6 +90,8 @@ class ConversationRound(Base):
     requester_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    contact_permission_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    contact_authorization_pending: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     language: Mapped[str] = mapped_column(
         String(10), nullable=False, default="fr", server_default="fr"
     )

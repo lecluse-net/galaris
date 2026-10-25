@@ -105,6 +105,15 @@ def _empty_rendered_input() -> list[dict[str, object]]:
     return []
 
 
+class ContactAuthorizationDetails(BaseModel):
+    permission_id: UUID | None = None
+    allowed: bool | None = None
+    manager_user_id: int | None = None
+    external_id: str
+    display_name: str
+    profile: dict[str, str | bool] = Field(default_factory=dict[str, str | bool])
+
+
 class ConversationRoundRead(BaseModel):
     id: UUID
     requester_user_id: int | None = None
@@ -121,6 +130,7 @@ class ConversationRoundRead(BaseModel):
     last_error: str | None = None
     created_at: datetime
     finished_at: datetime | None = None
+    contact_authorization: ContactAuthorizationDetails | None = None
 
 
 class ConversationRoundDetail(ConversationRoundRead):

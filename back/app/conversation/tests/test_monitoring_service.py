@@ -542,7 +542,7 @@ async def test_monitoring_success_keeps_retry_errors_in_attempt_history(db: Asyn
     assert attempt is not None and attempt.error == "Temporary failure"
 
 
-def test_monitoring_routes_require_task_access() -> None:
+def test_monitoring_routes_require_conversation_privileges() -> None:
     from app.conversation.router import (
         export_conversation_round,
         read_conversation_messages,
@@ -555,7 +555,7 @@ def test_monitoring_routes_require_task_access() -> None:
         export_conversation_round,
     ):
         assert endpoint._authorize_meta["privileges"] == [  # pyright: ignore[reportFunctionMemberAccess]
-            Privileges.TASK_ACCESS
+            Privileges.CONVERSATION_ACCESS, Privileges.CONVERSATION_CONTROL
         ]
 
     from app.conversation.router import (
@@ -565,7 +565,7 @@ def test_monitoring_routes_require_task_access() -> None:
 
     for endpoint in (delete_conversation_round, update_conversation_round_topic):
         assert endpoint._authorize_meta["privileges"] == [  # pyright: ignore[reportFunctionMemberAccess]
-            Privileges.TASK_EDIT
+            Privileges.CONVERSATION_CONTROL
         ]
 
 
@@ -580,6 +580,6 @@ async def test_monitoring_rejects_unauthenticated_requests(
 @pytest.mark.asyncio
 async def test_delivery_resolution_requires_authentication(client):
     from app.conversation.router import resolve_conversation_delivery
-    assert resolve_conversation_delivery._authorize_meta["privileges"] == [Privileges.TASK_EDIT]
+    assert resolve_conversation_delivery._authorize_meta["privileges"] == [Privileges.CONVERSATION_CONTROL]
     response = await client.post(f"/api/conversations/rounds/{uuid4()}/delivery-resolution", json={"decision": "SKIPPED", "evidence": "An unauthenticated operation"})
     assert response.status_code == 401

@@ -111,12 +111,18 @@ async def admit_messenger_input(
     """Persist one human input and wake its independent scheduler."""
 
     from .service import admit_message
+    from app.messenger import external_contact_permission_key, has_external_contact_permission
+
+    permission_key = None
+    if message.platform != "internal" and message.sender is not None and await has_external_contact_permission(agent_id, connection_id, message.sender):
+        permission_key = external_contact_permission_key(connection_id, message.sender.id)
 
     admitted = await admit_message(
         message,
         agent_id=agent_id,
         connection_id=connection_id,
         language=language,
+        contact_permission_key=permission_key,
     )
     if admitted:
         wake()

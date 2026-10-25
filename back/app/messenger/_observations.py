@@ -22,6 +22,7 @@ class ObservedMessengerUser(BaseModel):
     is_ai: bool = False
     connection_id: int | None = None
     tool_id: int | None = None
+    profile: dict[str, str | bool] = Field(default_factory=dict[str, str | bool])
 
     model_config = ConfigDict(extra="ignore", validate_assignment=True)
 

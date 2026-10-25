@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
 for (const locale of ['fr', 'en', 'zh']) {
   test(`network warnings follow the bridge and address without blocking local outbound bridges (${locale})`, async ({ page }, testInfo) => {
@@ -42,6 +42,63 @@ test('messaging preferences switch network notices with the selected provider', 
   await page.getByRole('tab', { name: 'OneBot 11', exact: true }).click()
   await expect(page.getByRole('alert', { name: 'OneBot 11', exact: true })).toContainText('VPN')
   await expect(page.getByRole('alert', { name: 'OneBot 11', exact: true })).toContainText('http://localhost:8000')
+})
+
+test('Telegram setup creates a secret connection parameter once and recovers from errors', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 1000 })
+  let fail = true
+  const tools = []
+  const writes = []
+  await page.route('**/api/tools', route => {
+    if (fail) return route.fulfill({ status: 503, json: { detail: 'Synthetic temporary failure' } })
+    if (route.request().method() === 'GET') return route.fulfill({ json: tools })
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    tools.push({ id: 82, ...body })
+    return route.fulfill({ json: tools[0] })
+  })
+  await mount(page, 'core/params/components/MessagingSettingsPanel.vue', { privileges: ['TOOL_EDIT'] })
+  await page.getByRole('tab', { name: 'Telegram', exact: true }).click()
+  const guide = page.getByRole('region', { name: 'Setup guide', exact: true })
+  await guide.getByText('Setup guide', { exact: true }).click()
+  const create = page.getByRole('button', { name: 'Create Telegram Tool', exact: true })
+  await create.focus()
+  await page.keyboard.press('Enter')
+  await expect(guide.getByRole('alert')).toContainText('Unable to prepare the Telegram Tool')
+  await expect(create).toBeEnabled()
+  fail = false
+  await create.click()
+  await expect(guide.getByRole('status')).toContainText('The Telegram Tool is ready')
+  expect(writes).toHaveLength(1)
+  expect(writes[0]).toMatchObject({ code: 'telegrem', label: 'Telegram',
+    messenger_config: { service: 'telegram', settings: {}, param_map: { token: 'token' } },
+    connection_schema: { params: { token: { type: 'password', required: true, default: '' } } },
+  })
+  await page.screenshot({ path: testInfo.outputPath('telegram-tool-ready-mobile.png'), fullPage: true })
+  // Reopening checks persisted configuration before offering another creation.
+  await page.getByRole('tab', { name: 'WhatsApp', exact: true }).click()
+  await page.getByRole('tab', { name: 'Telegram', exact: true }).click()
+  await guide.getByText('Setup guide', { exact: true }).click()
+  await create.click()
+  await expect(guide.getByRole('status')).toContainText('The Telegram Tool is ready')
+  expect(writes).toHaveLength(1)
+  await setPrivileges(page, [])
+  await expect(page.getByRole('link', { name: 'Open tools and connections', exact: true })).toHaveCount(0)
+})
+
+test('Telegram setup preserves an existing Tool with conflicting configuration', async ({ page }) => {
+  const requests = []
+  await page.route('**/api/tools', route => {
+    requests.push(route.request().method())
+    return route.fulfill({ json: [{ id: 83, code: 'telegrem', label: 'Synthetic existing Tool',
+      messenger_config: null, connection_schema: { params: {} } }] })
+  })
+  await mount(page, 'app/tools/components/TelegramToolSetup.vue', { privileges: [] })
+  await expect(page.getByRole('button', { name: 'Create Telegram Tool' })).toHaveCount(0)
+  await setPrivileges(page, ['TOOL_EDIT'])
+  await page.getByRole('button', { name: 'Create Telegram Tool' }).click()
+  await expect(page.getByRole('status')).toContainText('already used by a Tool with different settings')
+  expect(requests).toEqual(['GET'])
 })
 
 test('the Tool messaging warning allows saving and remains accurate on reopening', async ({ page }) => {

@@ -68,8 +68,8 @@ export default {
       },
       identity: {
         title: "Mes identités de messagerie",
-        hint: "Associez votre identifiant dans chaque outil à votre compte Galaris. Cette correspondance filtre vos conversations et identifie correctement vos contacts pour la mémoire.",
-        externalId: "Mon identifiant dans cet outil",
+        hint: "Cette association facultative indique que votre compte de messagerie distant et votre compte Galaris appartiennent à la même personne. Pour Telegram, saisissez votre identifiant numérique d’utilisateur, pas celui du bot. Un correspondant peut discuter sans posséder de compte Galaris ; l’autorisation de réponse est gérée séparément par le manager.",
+        externalId: "Mon identifiant d’utilisateur distant",
         unlink: "Retirer la correspondance",
         noTools: "Aucun outil de messagerie externe n’est configuré.",
         saved: "Correspondance enregistrée.",
@@ -440,8 +440,8 @@ export default {
       },
       identity: {
         title: "My messaging identities",
-        hint: "Link your identifier in each tool to your Galaris account. This mapping filters your conversations and identifies contacts correctly for memory.",
-        externalId: "My identifier in this tool",
+        hint: "This optional mapping identifies your remote messaging account and your Galaris account as the same person. For Telegram, enter your numeric user identifier, not the bot’s. A contact can chat without a Galaris account; reply authorization is managed separately by the manager.",
+        externalId: "My remote user identifier",
         unlink: "Remove mapping",
         noTools: "No external messaging tool is configured.",
         saved: "Mapping saved.",
@@ -803,8 +803,8 @@ export default {
       },
       identity: {
         title: "我的消息身份",
-        hint: "将各工具中的标识符关联到您的 Galaris 账户。此映射用于筛选对话，并在记忆中正确识别联系人。",
-        externalId: "我在此工具中的标识符", unlink: "移除映射", noTools: "尚未配置外部消息工具。", saved: "映射已保存。", cleared: "映射已移除。",
+        hint: "此可选映射表示远程消息账户与 Galaris 账户属于同一人。对于 Telegram，请填写您的数字用户标识符，而非机器人的。联系人无需 Galaris 账户即可交流；回复授权由管理者单独处理。",
+        externalId: "我的远程用户标识符", unlink: "移除映射", noTools: "尚未配置外部消息工具。", saved: "映射已保存。", cleared: "映射已移除。",
         loadError: "无法加载消息身份。", saveError: "无法保存此身份。",
       },
       viewAs: "以此身份查看对话", myself: "我", readOnly: "只读", search: "搜索对话…", listOptions: "对话显示选项",

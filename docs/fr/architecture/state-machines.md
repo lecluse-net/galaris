@@ -236,6 +236,9 @@ toute l'exécution ; la perte de ce token annule le flux local avant toute récu
 
 | État du round | Transition |
 |---|---|
+| réception externe sans droit de contact | `PAUSED`, motif d'autorisation de réponse ; messages visibles dans le suivi |
+| `PAUSED` pour autorisation de contact | accord du manager → `FROZEN` ; refus → `CANCELLED`, sans réponse |
+| `PAUSED` pour autorisation de contact | autre message de cette personne → même attente ; Reprendre/Répondre/Relancer ne contournent pas l'accord |
 | `CLAIMED` | construction du tour → `RUNNING` |
 | `FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL` | commande humaine Pause, après l’outil engagé → `PAUSED` |
 | `PAUSED` | Reprendre, checkpoint sûr et aucun successeur en attente → `FROZEN` |

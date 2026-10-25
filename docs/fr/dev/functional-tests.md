@@ -1774,6 +1774,21 @@ installation existante après actualisation du WebAPK.
 
 ## Bridges : tester l’adaptation une fois par protocole
 
+`app/conversation/tests/test_contact_authorization.py` couvre la réception externe sans compte
+Galaris dans un round en pause, le détail d'identité, la notification native au manager et la
+décision commune de Permissions : accord, refus, doublons, isolation, révocation et changement
+de manager. Les contrôles HTTP de privilèges de Conversation sont exercés par
+`core/authorize/tests/test_domain_authorization.py` ; les anciennes attentes `TASK_ACCESS/EDIT`
+du test de suivi sont remplacées par les droits Conversation déjà en vigueur.
+
+`front/browser-tests/messaging-network.spec.mjs` couvre la création préconfigurée du Tool
+Telegram, le paramètre secret vide, la reprise après erreur, la réouverture sans doublon,
+la conservation d’un outil existant incompatible et les droits du bouton.
+`conversation-control.spec.mjs` vérifie aussi l’identifiant distant hors attente d’autorisation,
+pour les messages reçus et les snapshots de rounds. `e2e/specs/contact-authorization.spec.mjs`
+exerce la création réelle depuis la configuration, sa persistance et sa réouverture sur mobile,
+ainsi que la réception externe et le refus du manager depuis Permissions.
+
 Les suites propres aux bridges vivent dans `back/bridge/<module>/tests/`. Les règles de
 messagerie et de processus restent testées dans leurs domaines canoniques : ne pas les copier
 pour chaque provider. Les doubles réseau prouvent requêtes, conversions, refus et retries

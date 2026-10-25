@@ -6,6 +6,7 @@ facade. Application code uses only this package's canonical models and unified A
 
 # Canonical model, interface, facade, and signals.
 from .models import (
+    PermissionDecision as PermissionDecision,
     CONVERSATION_OUTPUT_PENDING_METADATA_KEY,
     CONVERSATION_ROUND_METADATA_KEY,
     TASK_REQUESTED_METADATA_KEY,
@@ -28,6 +29,12 @@ from .events import Signal, message_journaled, message_received, message_sent, i
 from .native_interactions import read_internal_interaction, answer_internal_interaction
 from .inbound import on_message, dispatch_incoming
 from .contact_access import register_inbound_contact_authorizer as register_inbound_contact_authorizer
+from .contact_access import (
+    can_request_external_contact as can_request_external_contact,
+    external_contact_permission_key as external_contact_permission_key,
+    has_external_contact_permission as has_external_contact_permission,
+    require_incoming_contact as require_incoming_contact,
+)
 from .facade import (
     MessengerFacade,
     register_bridge,

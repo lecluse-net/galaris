@@ -232,6 +232,9 @@ execution; loss of that token cancels the local flow before any concurrent recov
 
 | Round state | Transition |
 |---|---|
+| external receipt without contact permission | `PAUSED` for reply authorization; messages visible in activity monitoring |
+| `PAUSED` for contact authorization | manager consent → `FROZEN`; denial → `CANCELLED`, without a reply |
+| `PAUSED` for contact authorization | another message from this person → same wait; Resume/Reply/Restart cannot bypass consent |
 | `CLAIMED` | turn construction → `RUNNING` |
 | `FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL` | human Pause, after the running tool → `PAUSED` |
 | `PAUSED` | Resume, safe checkpoint and no pending successor → `FROZEN` |

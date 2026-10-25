@@ -55,9 +55,16 @@ revérifié pendant l’appel et son retrait coupe l’audio.
 L’historique personnel reste disponible ; une tâche déjà admise n’est pas annulée.
 Les préférences personnelles et les documents conservent leurs règles d’accès propres.
 
-Un contact externe doit être rattaché à une identité Galaris vérifiée pour solliciter un agent,
-y compris par message asynchrone. Le Mail possède sa procédure distincte de Contacts et de
+Un contact humain externe sans identité Galaris autorisée est reçu dans un round textuel en pause,
+visible dans le suivi d'activité avec les informations disponibles sur son identité. Le manager
+reçoit une demande et autorise ou refuse les échanges dans `/connection/permissions`.
+L'accord est propre à cette personne sur cette connexion et reste révocable. Il ne crée pas de
+compte Galaris et ne partage aucune ressource. Le Mail possède sa procédure distincte de Contacts et de
 consentement avant admission, décrite dans le [Journal des mails](tasks.md).
+L'identifiant d'utilisateur distant reste visible dans le détail des messages. L'association
+facultative dans **Mon profil** indique seulement qu'un compte distant et un compte Galaris
+appartiennent à la même personne. Pour Telegram, le [guide de configuration](../bridges/telegram-whatsapp.md)
+prépare l'outil puis explique la connexion propre à chaque agent et son token BotFather.
 Une permission n’active pas de nouveau canal : le Chat
 natif reste humain ↔ agent. Les délégations de tâches entre agents respectent aussi ces droits.
 

@@ -1,6 +1,9 @@
 """French messages for agent-facing messaging tools."""
 
 default: dict[str, object] = {
+    "messenger_contact_approval": {
+        "question": "Autorisez-vous ${agent} à répondre à cette personne sur ${channel} ?\n\nNom : ${name}\nIdentifiant : ${identifier}\n${details}\n\nL’accord concerne cette personne sur cette connexion. Il ne crée pas de compte Galaris et ne partage aucune ressource.",
+    },
     "permissions": {
         "title": "Demande d’autorisation",
         "allow": "Autoriser et mémoriser",

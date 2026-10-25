@@ -108,6 +108,8 @@
         </div>
       </div>
 
+      <ContactAuthorization v-if="round?.contact_authorization" :authorization="round.contact_authorization" />
+
       <TopicAssignmentEditor
         :key="roundId ?? message.id"
         :topic-id="round?.topic_id || message.topic_id"
@@ -143,6 +145,7 @@
             :key="`${message.id}-${index}`"
             :speaker="senderName(input)"
           >
+            <div v-if="senderExternalId(input)" class="text-caption text-grey-7 q-mb-xs">{{ t('conversation.contactAuthorization.fields.external_id') }} : {{ senderExternalId(input) }}</div>
             <div>{{ messageText(input) }}</div>
           </ConversationBubble>
 
@@ -244,6 +247,7 @@ import type { ConversationMessage, ConversationRoundDetail } from '../types'
 import { conversationService } from '../services/conversationService'
 import TopicAssignmentEditor from '@/app/topic/components/TopicAssignmentEditor.vue'
 import DeliveryResolution from './DeliveryResolution.vue'
+import ContactAuthorization from './ContactAuthorization.vue'
 
 const props = defineProps<{
   message: ConversationMessage
@@ -341,6 +345,13 @@ const userName = computed(() => {
     })
   return input ? senderName(input) : t('conversation.history.detail.user')
 })
+
+function senderExternalId(payload: Record<string, unknown>): string {
+  if (props.message.channel_kind === 'internal') return ''
+  const sender = payload.sender
+  const nested = sender && typeof sender === 'object' ? sender as Record<string, unknown> : null
+  return String(payload.sender_external_id || nested?.id || '').trim()
+}
 
 function senderName(payload: Record<string, unknown>): string {
   const sender = payload.sender

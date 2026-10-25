@@ -356,6 +356,7 @@ async def list_messages(
 
 
 async def get_round(round_id: UUID) -> ConversationRoundDetail | None:
+    from .contact_authorization import contact_authorization_details
     row = (
         await get_db().execute(
             select(
@@ -457,6 +458,7 @@ async def get_round(round_id: UUID) -> ConversationRoundDetail | None:
         created_at=cast(datetime, round_.created_at),
         finished_at=round_.finished_at,
         unknown_notifications=notifications,
+        contact_authorization=await contact_authorization_details(round_),
     )
 
 

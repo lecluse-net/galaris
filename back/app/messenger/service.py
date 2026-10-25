@@ -350,6 +350,11 @@ async def _process_incoming(message: Message) -> None:
     try:
         await require_incoming_contact(connection.agent_id, message, connection_id=connection.id)
     except PermissionError:
+        from app.conversation import pause_for_contact_authorization
+        if await pause_for_contact_authorization(
+            message, agent_id=connection.agent_id, connection_id=connection.id,
+        ):
+            return
         logger.info("Incoming contact denied by admission policy: agent={}", connection.agent_id)
         return
 

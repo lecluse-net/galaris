@@ -145,6 +145,7 @@ def telegram_to_message(
     self_user: TelegramUser,
     tool_id: int,
     connection_id: int,
+    agent_id: int | None = None,
 ) -> ObservedMessengerMessage:
     """Convert one native message or one media album to a canonical message."""
     if not messages:
@@ -168,12 +169,18 @@ def telegram_to_message(
             display_name=display_name,
             connection_id=connection_id,
             tool_id=tool_id,
+            profile={
+                key: value
+                for key in ("first_name", "last_name", "username", "language_code", "is_bot", "is_premium")
+                if isinstance(value := getattr(sender, key, None), (str, bool))
+            },
         ),
         recipient=ObservedMessengerUser(
             id=str(self_user.id),
             display_name=self_user.full_name,
             connection_id=connection_id,
             tool_id=tool_id,
+            agent_id=agent_id,
         ),
         room=ObservedMessengerRoom(
             id=str(chat.id),
@@ -204,6 +211,7 @@ class TelegramMessenger(Messenger):
         *,
         tool_id: int,
         connection_id: int,
+        agent_id: int | None = None,
     ) -> None:
         self.client = client
         self.config = config
@@ -211,6 +219,7 @@ class TelegramMessenger(Messenger):
         self.self_id = str(self_user.id)
         self.tool_id = tool_id
         self.connection_id = connection_id
+        self.agent_id = agent_id
 
     @property
     def _content_max_bytes(self) -> int:
@@ -246,6 +255,7 @@ class TelegramMessenger(Messenger):
             self_user,
             tool_id=resolved.tool_id,
             connection_id=connection_id,
+            agent_id=resolved.agent_id,
         )
 
     async def check_connection(self) -> str:
@@ -273,6 +283,7 @@ class TelegramMessenger(Messenger):
                 display_name=self.self_user.full_name,
                 connection_id=self.connection_id,
                 tool_id=self.tool_id,
+                agent_id=self.agent_id,
             ),
             room=ObservedMessengerRoom(
                 id=room_id,
@@ -495,6 +506,7 @@ class TelegramMessenger(Messenger):
             self_user=self.self_user,
             tool_id=self.tool_id,
             connection_id=self.connection_id,
+            agent_id=self.agent_id,
         )
         canonical.attachments = [
             item

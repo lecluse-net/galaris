@@ -24,12 +24,15 @@ _RECIPIENT_ID = UUID("00000000-0000-0000-0000-000000000103")
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def contact_policy(db):
+async def contact_policy(db, monkeypatch):
     """Exercise the real policy while the existing workflow ports stay isolated."""
     from core.team.models import Team, TeamUser
     from core.user import UserModel
     from app.agent.models import Agent, Title
     from app.agent import AgentTeamModel as AgentTeam
+    from core.params import runtime_settings
+
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["internal","nextcloud_talk","telegram","matrix"]')
 
     human = UserModel(id=8432, email="contact@example.com", hashed_password="unused", is_active=True)
     team = Team(name="Conversation participants")
