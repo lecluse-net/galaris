@@ -343,9 +343,6 @@ onBeforeUnmount(() => { disposed = true; searchGeneration++; websocket.offEvent(
 }
 .document-conversation-header, .document-conversation-filter { background: var(--chat-surface); }
 .document-conversation-messages { flex: 1; min-height: 150px; }
-.document-conversation-messages :deep(.message-timeline) { padding-inline: 8px; }
-.document-conversation-messages :deep(.message-row) { padding-right: 12px; }
-.document-conversation-messages :deep(.message-row--sent) { padding-right: 0; padding-left: 12px; }
 .document-conversation :deep(.composer-shell) { max-height: 45%; overflow: auto; }
 .document-conversation-pagination { position: sticky; top: 0; z-index: 1; margin-top: 0; padding: 8px; background: white; }
 :global(body.body--dark) .document-conversation-pagination { background: var(--solaire-gray-dark); }
