@@ -8,10 +8,12 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Collection
 from contextlib import AbstractContextManager
 from uuid import UUID, uuid4
 from pydantic import BaseModel, JsonValue
-from .accounting_scope import llm_call_accounting
+from .accounting_scope import llm_call_accounting, CallAccounting
+from .cost_accounting import CostSummary, CallCost, call_cost, summarize_costs
+from .cost_report import task_cost_evidence, costs_by_purpose, correlated_cost_evidence
 from .timing import LLMExecutionTiming, LLMProcessingTiming, execution_timing, first_output_timestamp
 
-from . import llm_call_service, llm_provider_service
+from . import llm_provider_service
 from .dataset_usage import find_dataset_agent_usages as find_dataset_agent_usages
 from .provider_facade import (
     ManagedRuntimeCredential,
@@ -282,16 +284,25 @@ async def aggregate_agent_run_usage(
     Harness drivers pass the frozen agent identity from their run envelope.
     """
 
-    calls = await llm_call_service.list_calls(agent_run_id=agent_run_id, limit=10_000)
+    from sqlalchemy import select
+    from sqlalchemy.orm import load_only
+    from core.database import get_db
+    from .models import LLMCall
+
+    fields = ("id", "agent_id", "status", "input_tokens", "output_tokens", "cache_read_tokens",
+              "cache_write_tokens", "reasoning_tokens", "tool_calls", "cost", "inference_cost",
+              "cost_estimated", "is_subscription", "usage", "purpose")
+    calls = list(await get_db().scalars(select(LLMCall).where(LLMCall.agent_run_id == agent_run_id)
+        .options(load_only(*(getattr(LLMCall, name) for name in fields), raiseload=True))))
     if agent_id is not None and any(call.agent_id != agent_id for call in calls):
         raise PermissionError("The agent run belongs to another runtime.")
     completed = bool(calls) and all(
         str(call.status or "").lower() == "completed" for call in calls
     )
-    billable_estimated = any(
-        bool(call.cost_estimated) and not bool(call.is_subscription)
-        for call in calls
-    )
+    accounting = summarize_costs(call_cost(call_id=call.id, cost=call.cost,
+        inference_cost=call.inference_cost, cost_estimated=call.cost_estimated,
+        is_subscription=call.is_subscription, status=call.status, usage=call.usage, purpose=call.purpose)
+        for call in calls)
     return {
         "input_tokens": sum(max(0, int(call.input_tokens or 0)) for call in calls),
         "output_tokens": sum(max(0, int(call.output_tokens or 0)) for call in calls),
@@ -313,9 +324,7 @@ async def aggregate_agent_run_usage(
         "token_quality": (
             "exact" if completed else "partial" if calls else "unknown"
         ),
-        "cost_quality": (
-            "estimated" if billable_estimated else "exact" if calls else "unknown"
-        ),
+        "cost_quality": accounting.quality,
     }
 
 
@@ -363,6 +372,9 @@ __all__ = [
     "record_text_inferences", "run_text_inference", "read_inference_events", "read_inference_result",
     "LLMProcessingTiming", "task_processing_timings", "LLMExecutionTiming", "execution_timing", "conversation_execution_timing",
     "llm_call_accounting",
+    "CallAccounting", "CostSummary", "CallCost", "call_cost", "summarize_costs",
+    "task_cost_evidence", "costs_by_purpose",
+    "correlated_cost_evidence",
     "ProviderResponsesPolicy", "register_image_generation_provider", "register_model_metadata",
     "register_openai_protocol_adapter", "register_responses_policy",
     "AICapability", "with_capability", "LLMModelInfo", "ProviderProfile", "register_provider", "register_resource_discovery",

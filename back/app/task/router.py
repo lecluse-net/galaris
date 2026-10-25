@@ -24,6 +24,7 @@ from .schemas import (
 from . import task_service
 from .activity_snapshot import TaskActivityQuery, TaskActivitySnapshot, activity_snapshots, readable_activity_tasks
 from .call_recovery import TaskCallRecoveryCommand, TaskCallRecoveryState, request_recovery
+from .cost_report import TaskCostReport, cost_report
 
 from loguru import logger
 
@@ -170,6 +171,13 @@ async def read_task_budget(task_id: UUID) -> TaskBudget:
 
     task, _ = await _task_scope_or_404(task_id)
     return await inspect_budget(get_db(), task)
+
+
+@router.get("/{task_id}/costs", response_model=TaskCostReport)
+@authorize(privileges=[Privileges.TASK_ACCESS, Privileges.TASK_EDIT])
+async def read_task_costs(task_id: UUID) -> TaskCostReport:
+    task, scope = await _task_scope_or_404(task_id)
+    return await cost_report(task.id, scope.agent_ids)
 
 
 @router.post("", dependencies=[Depends(require_editorial_client)], response_model=TaskSchema, status_code=status.HTTP_201_CREATED)

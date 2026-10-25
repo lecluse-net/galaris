@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 
 from loguru import logger
 from pydantic import TypeAdapter
-from sqlalchemy import Select, and_, delete as sa_delete, exists, false, func, or_, select
+from sqlalchemy import Select, and_, case, delete as sa_delete, exists, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
 from sqlalchemy.sql.elements import ColumnElement
@@ -23,6 +23,7 @@ from core.user import get_current_token_label
 from .correlation import current_llm_correlation_ref
 from .accounting_scope import record_persisted_call_cost
 from .costing import token_cost
+from .cost_accounting import COST_EVIDENCE_KEY
 from .image_trace import compact_request_images, compact_trace_images
 from .models import LLMCall
 from .purposes import LLMCallPurpose
@@ -626,6 +627,7 @@ async def _cancel_running_calls(
         call.completed_at = now
         call.duration = max(0.0, (now - call.started_at).total_seconds())
         call.error = call.error or reason
+        await persist_cost_evidence(db, call)
     await db.commit()
     for call in calls:
         await websocket.emit("llm_call", "update", _public(call), None)
@@ -736,6 +738,7 @@ async def reconcile_stale_running_calls(
                 )
             )
         calls.append(call)
+        await persist_cost_evidence(get_db(), call)
     await get_db().commit()
     for call in calls:
         await websocket.emit("llm_call", "update", _public(call), None)
@@ -936,10 +939,10 @@ async def update_running_call(
     response_text, reasoning, current_tools = await asyncio.to_thread(_compact_trace_output, trace)
     # Do not fetch prompts, input messages or raw responses on every heartbeat.
     fields = (
-        "id", "status", "task_id", "agent_id", "agent_run_id", "conversation_round_id",
+        "id", "status", "purpose", "task_id", "agent_id", "agent_run_id", "conversation_round_id", "correlation_ref",
         "process_run_id", "response_text", "reasoning", "tool_calls", "updated_at",
         "usage", "is_subscription", "provider_code", "first_token_at", "started_at",
-        "duration", "cost", "inference_cost", "cost_estimated", "finish_reason",
+        "duration", "completed_at", "cost", "inference_cost", "cost_estimated", "finish_reason",
         "upstream_request_id", "input_tokens", "output_tokens", "total_tokens",
         "cache_read_tokens", "cache_write_tokens", "reasoning_tokens",
     )
@@ -971,7 +974,7 @@ async def update_running_call(
             started_at=now,
         )
         call.finish_reason = trace.get("finish_reason")
-        call.usage = usage
+        call.usage = _cost_usage(usage, input_rate, cached_input_rate, output_rate, estimated, inference_cost)
         call.upstream_request_id = trace.get("upstream_request_id")
         call.first_token_at = first_token_at or call.first_token_at
         call.duration = max(0.0, (now - call.started_at).total_seconds())
@@ -980,8 +983,11 @@ async def update_running_call(
         call.cost_estimated = estimated
         for key, value in counters.items():
             setattr(call, key, value)
+        await persist_cost_evidence(db, call)
         await db.commit()
-        record_persisted_call_cost(call.id, call.cost)
+        record_persisted_call_cost(call.id, call.cost, inference_cost=call.inference_cost,
+            cost_estimated=call.cost_estimated, is_subscription=call.is_subscription,
+            status=call.status, usage=call.usage, purpose=call.purpose)
         payload: dict[str, Any] = {
             name: getattr(call, name) for name in fields
             if name not in {"response_text", "reasoning", "tool_calls", "started_at", "provider_code", "is_subscription"}
@@ -1212,6 +1218,8 @@ async def _persist_running_call(call: LLMCall, capture: TextCallCapture | None) 
         await owned(owner)
         call.inference_attempt_id = owner.attempt_id
     db.add(call)
+    await db.flush()
+    await persist_cost_evidence(db, call)
     if capture is not None:
         from .models import LLMCallEvent
 
@@ -1261,7 +1269,7 @@ def _amount(value: Any) -> float | None:
         return None
     try:
         amount = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     return amount if math.isfinite(amount) and amount >= 0 else None
 
@@ -1289,8 +1297,10 @@ def _cost(
     provider_cost = _reported_cost(usage, provider_code)
     if provider_cost is not None:
         return provider_cost, False
-    if input_rate is None or output_rate is None:
+    if (_amount(input_rate) is None or _amount(output_rate) is None
+            or (cached_input_rate is not None and _amount(cached_input_rate) is None)):
         return 0.0, True
+    assert input_rate is not None and output_rate is not None
     prompt_details = as_dict(usage.get("prompt_tokens_details") or usage.get("input_tokens_details"))
     input_includes_cache = "prompt_tokens" in usage or "cached_tokens" in prompt_details
     value = token_cost(
@@ -1304,6 +1314,25 @@ def _cost(
         input_includes_cache=input_includes_cache,
     )
     return value, True
+
+
+def _cost_usage(
+    usage: dict[str, Any], input_rate: float | None, cached_input_rate: float | None,
+    output_rate: float | None, estimated: bool, inference_cost: float,
+) -> dict[str, Any]:
+    """Freeze only the rates actually used; overwrite any provider-owned namesake."""
+    tokens_present = (any(_amount(usage.get(key)) is not None for key in ("input_tokens", "prompt_tokens"))
+                      and any(_amount(usage.get(key)) is not None for key in ("output_tokens", "completion_tokens")))
+    valid_rates = (_amount(input_rate) is not None and _amount(output_rate) is not None
+                   and (cached_input_rate is None or _amount(cached_input_rate) is not None))
+    source = "provider" if not estimated else "pricing" if valid_rates and tokens_present else "unknown"
+    return {**usage, COST_EVIDENCE_KEY: {"version": "llm-cost/v1", "currency": "USD", "source": source,
+        **({"reported_inference_cost": inference_cost} if source == "provider" else {}),
+        **({"input_rate": input_rate, "cached_input_rate": cached_input_rate,
+            "output_rate": output_rate, "counters": usage_counters(usage),
+            "input_includes_cache": "prompt_tokens" in usage or "cached_tokens" in
+                as_dict(usage.get("prompt_tokens_details") or usage.get("input_tokens_details"))}
+           if source == "pricing" else {})}}
 
 
 async def finalize_call(
@@ -1365,7 +1394,7 @@ async def finalize_call(
                 output_rate,
                 call.provider_code,
             )
-            call.usage = usage
+            call.usage = _cost_usage(usage, input_rate, cached_input_rate, output_rate, estimated, inference_cost)
             call.inference_cost = inference_cost
             call.cost = 0.0 if call.is_subscription else inference_cost
             call.cost_estimated = estimated
@@ -1380,11 +1409,45 @@ async def finalize_call(
         call.duration = max(0.0, (now - call.started_at).total_seconds())
         if status not in {"running", "completed", "cancelled"}:
             await _record_failure_incident(db, call)
+        await persist_cost_evidence(db, call)
         await db.commit()
         await db.refresh(call)
-        record_persisted_call_cost(call.id, call.cost)
+        record_persisted_call_cost(call.id, call.cost, inference_cost=call.inference_cost,
+            cost_estimated=call.cost_estimated, is_subscription=call.is_subscription,
+            status=call.status, usage=call.usage, purpose=call.purpose)
         payload = _public(call)
     await websocket.emit("llm_call", "update", payload, None)
+
+
+async def persist_cost_evidence(db: AsyncSession, call: LLMCall) -> None:
+    """Commit billing and its retention-independent evidence atomically, once per call."""
+    from sqlalchemy.dialects.postgresql import insert
+    from .models import LLMCallCost
+
+    statement = insert(LLMCallCost).values(id=call.id, call_id=call.id, task_id=call.task_id,
+        agent_id=call.agent_id, correlation_ref=call.correlation_ref, purpose=call.purpose,
+        conversation_round_id=call.conversation_round_id,
+        started_at=call.started_at, completed_at=call.completed_at,
+        status=call.status, cost=call.cost, inference_cost=call.inference_cost,
+        cost_estimated=call.cost_estimated, is_subscription=call.is_subscription,
+        evidence=({COST_EVIDENCE_KEY: call.usage[COST_EVIDENCE_KEY]}
+                  if COST_EVIDENCE_KEY in (call.usage or {}) else {}))
+    columns = (LLMCallCost.cost, LLMCallCost.inference_cost, LLMCallCost.cost_estimated, LLMCallCost.evidence)
+    retained = (await db.execute(statement.on_conflict_do_update(index_elements=[LLMCallCost.id],
+        set_={name: getattr(statement.excluded, name) for name in (
+            "completed_at", "cost", "inference_cost", "cost_estimated", "is_subscription", "evidence")} | {
+            "status": case((LLMCallCost.status == "running", statement.excluded.status), else_=LLMCallCost.status)},
+        where=or_(LLMCallCost.status == "running", and_(
+            func.coalesce(LLMCallCost.evidence[COST_EVIDENCE_KEY]["source"].astext, "unknown") != "provider",
+            statement.excluded.evidence[COST_EVIDENCE_KEY]["source"].astext == "provider")))
+        .returning(*columns))).mappings().one_or_none()
+    if retained is None:
+        retained = (await db.execute(select(*columns).where(LLMCallCost.id == call.id))).mappings().one()
+    # Keep legacy numeric consumers consistent with the authoritative receipt too.
+    call.cost = retained["cost"]
+    call.inference_cost = retained["inference_cost"]
+    call.cost_estimated = retained["cost_estimated"]
+    call.usage = {**(call.usage or {}), **retained["evidence"]}
 
 
 async def _record_failure_incident(db: AsyncSession, call: LLMCall) -> None:

@@ -256,3 +256,29 @@ class LLMCall(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+
+class LLMCallCost(Base):
+    """Minimal billing evidence survives deletion of the detailed provider trace.
+
+    The primary identity is the physical call UUID, retained after call_id is cleared.
+    No prompts, credentials, responses or tool arguments belong in this register.
+    """
+
+    __tablename__ = "llm_call_costs"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    call_id: Mapped[UUID | None] = mapped_column(ForeignKey("llm_calls.id", ondelete="SET NULL"), unique=True)
+    task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), index=True)
+    agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"), index=True)
+    conversation_round_id: Mapped[UUID | None] = mapped_column(ForeignKey("conversation_rounds.id", ondelete="SET NULL"), index=True)
+    correlation_ref: Mapped[str | None] = mapped_column(String(300), index=True)
+    purpose: Mapped[str | None] = mapped_column(String(120))
+    status: Mapped[str] = mapped_column(String(30))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cost: Mapped[float] = mapped_column(Float)
+    inference_cost: Mapped[float] = mapped_column(Float)
+    cost_estimated: Mapped[bool] = mapped_column(Boolean)
+    is_subscription: Mapped[bool] = mapped_column(Boolean)
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSONB)

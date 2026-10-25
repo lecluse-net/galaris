@@ -1,5 +1,6 @@
 <template>
   <section v-if="comparison.comparable" class="q-my-md">
+    <LabCostComparison :comparison="comparison" />
     <template v-if="comparison.quality_uncertainty">
       <h3>{{ t('evaluation.comparison.uncertaintyTitle') }}</h3>
       <LabCaseEstimate :value="comparison.quality_uncertainty" />
@@ -35,6 +36,7 @@
 import { useI18n } from 'vue-i18n'
 import type { ComparisonFilter, RunComparison } from '../services/labWorkbenchService'
 import LabCaseEstimate from './LabCaseEstimate.vue'
+import LabCostComparison from './LabCostComparison.vue'
 defineProps<{ comparison: RunComparison }>()
 const emit = defineEmits<{ focus: [filter: ComparisonFilter] }>()
 const { t, locale } = useI18n()

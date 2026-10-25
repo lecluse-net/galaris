@@ -11,6 +11,22 @@ const risks = { assessed_pairs: 12, introduced_critical: 1, pass_to_fail: 1, dim
 const metric = { pairs: 12, left_median: 2, right_median: 1, median_delta: -1 }
 const performance = { first_output: metric, duration: metric, cost: { ...metric, left_median: 0.02, right_median: 0.01, median_delta: -0.01 }, quality: { ...metric, left_median: 70, right_median: 75, median_delta: 5 } }
 
+test('whole-run costs distinguish unknown economics from a verified benchmark ratio', async ({ page }) => {
+  const costs = { calls: 3, estimated_calls: 0, unknown_calls: 0, running_calls: 0,
+    failed_calls: 1, subscription_calls: 0, recorded_cost: .9, total_cost: .9, quality: 'exact' }
+  const economics = { observations: 2, benchmark_successes: 1, failed_candidates: 1, unverified: 0,
+    candidate: costs, judge: { ...costs, recorded_cost: .1 }, cost_per_success: .9, unavailable_reason: null }
+  await mount(page, 'app/lab/components/LabComparisonInsights.vue', { props: { comparison: {
+    comparable: true, economics: { left: economics, right: { ...economics,
+      candidate: { ...costs, quality: 'partial', unknown_calls: 1, total_cost: null },
+      cost_per_success: null, unavailable_reason: 'incomplete_costs' } },
+  } } })
+  await expect(page.getByText('Incomplete or unknown costs.', { exact: true })).toBeVisible()
+  await expect(page.getByText('—', { exact: true })).toBeVisible()
+  await expect(page.getByText('1/2 benchmark successes · 0 unverified results · 1 candidate errors.', { exact: true })).toHaveCount(2)
+  await page.screenshot({ path: test.info().outputPath('cost-comparison.png'), fullPage: true })
+})
+
 async function routes(page, mechanism = 'planner') {
   await jsonRoute(page, `**/api/evaluation/${mechanism}/datasets/baseline/runs?*`, [before, after])
   await jsonRoute(page, `**/api/evaluation/${mechanism}/datasets/variant/runs?*`, [after])

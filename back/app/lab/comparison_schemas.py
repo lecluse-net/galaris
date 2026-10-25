@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 from .schemas import EvaluationRunRead
 from .statistics import CaseEstimate
+from .cost_report import RunEconomics
 
 ComparisonAxis = Literal["model", "prompt", "parameters"]
 ComparisonFocus = Literal["all", "critical", "verdict", "dimension"]
@@ -90,6 +91,7 @@ class ComparisonItem(BaseModel):
 
 
 class RunComparison(BaseModel):
+    economics: dict[str, RunEconomics] | None = None
     quality_uncertainty: CaseEstimate | None = None
     axis: ComparisonAxis
     comparable: bool

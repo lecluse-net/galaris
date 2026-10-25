@@ -609,6 +609,8 @@ async def _close_abandoned_calls(
             call.completed_at = completed_at
             call.duration = max(0, (completed_at - call.started_at).total_seconds())
             call.error = error
+            from .llm_call_service import persist_cost_evidence
+            await persist_cost_evidence(db, call)
         if not rows or rows[-1].payload["kind"] == "result":
             continue
         result = AIResult(

@@ -1,5 +1,8 @@
 <template>
   <section :aria-label="t('task.budget.title')">
+      <q-expansion-item v-model="showCosts" :label="t('task.costs.title')">
+        <TaskCosts v-if="showCosts" :task-id="taskId" />
+      </q-expansion-item>
       <q-btn flat icon="refresh" :label="t('common.refresh')" :loading="loading" @click="load" />
       <p v-if="error" role="alert">{{ error }}</p>
       <template v-if="budget">
@@ -26,12 +29,14 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { taskService, type TaskBudget } from '../services/taskService'
+import TaskCosts from './TaskCosts.vue'
 
 const props = defineProps<{ taskId: string }>()
 const { t } = useI18n()
 const loading = ref(false)
 const error = ref('')
 const budget = ref<TaskBudget | null>(null)
+const showCosts = ref(false)
 let request = 0
 
 async function load() {

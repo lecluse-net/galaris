@@ -214,6 +214,17 @@ ce n'est pas une confirmation de réussite. Les mesures absentes restent « — 
 celui du candidat enregistré. Le [protocole FR/EN](../dev/lab-reference-corpus.md)
 fournit quatre parcours synthétiques pour préparer une comparaison reproductible.
 
+**Bilan des coûts** affiche les montants enregistrés pour toutes les observations du
+run, y compris erreurs et reprises, et les coûts du juge séparément, rejugements inclus.
+Les nouvelles preuves distinguent coûts déclarés, estimés et inconnus ; elles survivent
+à la suppression des traces détaillées. Les appels payés d'un worker qui a perdu son
+bail sont rapprochés sans compter deux fois les appels déjà publiés.
+Le coût candidat par réussite reste « — » si les exécutions, vérifications ou coûts
+sont incomplets, ou sans réussite vérifiée. La réussite est celle du benchmark selon
+ses contrôles et son juge ; elle ne prouve pas un effet métier réel. Les médianes et
+écarts de coût excluent également les montants sans provenance exploitable. Aucun coût
+historique n'est recalculé avec les tarifs courants ; l'analyse Markdown reste séparée.
+
 ## Tâches
 
 L’analyse interactive d’une tâche reste disponible : sélectionnez la tâche, ajoutez

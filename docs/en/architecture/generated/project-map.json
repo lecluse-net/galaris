@@ -2481,6 +2481,7 @@
       {
         "files": [
           "back/app/lab/analysis_service.py",
+          "back/app/lab/cost_report.py",
           "back/app/lab/dispatcher_evaluation_service.py",
           "back/app/lab/evaluation_service.py",
           "back/app/lab/evidence_service.py",
@@ -2590,6 +2591,7 @@
           "back/app/lab/comparison_evidence.py",
           "back/app/lab/comparison_service.py",
           "back/app/lab/comparison_summary.py",
+          "back/app/lab/cost_report.py",
           "back/app/lab/dataset_counts.py",
           "back/app/lab/diagnosis_service.py",
           "back/app/lab/dispatcher_evaluation_service.py",
@@ -2699,6 +2701,7 @@
       },
       {
         "files": [
+          "back/app/llm/cost_report.py",
           "back/app/llm/events.py",
           "back/app/llm/facade.py",
           "back/app/llm/inference_store.py",
@@ -2785,6 +2788,7 @@
         "files": [
           "back/app/llm/anthropic_router.py",
           "back/app/llm/call_router.py",
+          "back/app/llm/cost_report.py",
           "back/app/llm/dataset_usage.py",
           "back/app/llm/document_evidence.py",
           "back/app/llm/document_service.py",
@@ -3949,6 +3953,7 @@
       {
         "files": [
           "back/app/task/budget.py",
+          "back/app/task/cost_report.py",
           "back/app/task/mcp.py",
           "back/app/task/startup_timing.py",
           "back/app/task/task_service.py"
@@ -3994,6 +3999,7 @@
           "back/app/task/call_recovery.py",
           "back/app/task/collab.py",
           "back/app/task/conversation.py",
+          "back/app/task/cost_report.py",
           "back/app/task/execution_scope.py",
           "back/app/task/facade.py",
           "back/app/task/input_requests.py",
@@ -11008,6 +11014,20 @@
         "line": 187,
         "module": "app.skill",
         "table": "learned_skills"
+      },
+      {
+        "class_name": "LLMCallCost",
+        "file": "back/app/llm/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "conversation_rounds.id",
+          "llm_calls.id",
+          "tasks.id"
+        ],
+        "history_mixin": false,
+        "line": 261,
+        "module": "app.llm",
+        "table": "llm_call_costs"
       },
       {
         "class_name": "LLMCallEvent",
@@ -20086,7 +20106,7 @@
         "declared_path": "/tasks",
         "file": "back/app/task/router.py",
         "handler": "read_tasks",
-        "line": 59,
+        "line": 60,
         "method": "GET",
         "module": "app.task"
       },
@@ -20095,7 +20115,7 @@
         "declared_path": "/tasks",
         "file": "back/app/task/router.py",
         "handler": "create_task",
-        "line": 177,
+        "line": 185,
         "method": "POST",
         "module": "app.task"
       },
@@ -20104,7 +20124,7 @@
         "declared_path": "/tasks/active",
         "file": "back/app/task/router.py",
         "handler": "read_active_tasks",
-        "line": 129,
+        "line": 130,
         "method": "GET",
         "module": "app.task"
       },
@@ -20113,7 +20133,7 @@
         "declared_path": "/tasks/activity",
         "file": "back/app/task/router.py",
         "handler": "read_task_activity",
-        "line": 140,
+        "line": 141,
         "method": "POST",
         "module": "app.task"
       },
@@ -20122,7 +20142,7 @@
         "declared_path": "/tasks/cleanup",
         "file": "back/app/task/router.py",
         "handler": "cleanup_tasks",
-        "line": 287,
+        "line": 295,
         "method": "DELETE",
         "module": "app.task"
       },
@@ -20131,7 +20151,7 @@
         "declared_path": "/tasks/recent",
         "file": "back/app/task/router.py",
         "handler": "read_recent_tasks",
-        "line": 79,
+        "line": 80,
         "method": "GET",
         "module": "app.task"
       },
@@ -20140,7 +20160,7 @@
         "declared_path": "/tasks/{task_id}",
         "file": "back/app/task/router.py",
         "handler": "delete_task",
-        "line": 297,
+        "line": 305,
         "method": "DELETE",
         "module": "app.task"
       },
@@ -20149,7 +20169,7 @@
         "declared_path": "/tasks/{task_id}",
         "file": "back/app/task/router.py",
         "handler": "read_task",
-        "line": 147,
+        "line": 148,
         "method": "GET",
         "module": "app.task"
       },
@@ -20158,7 +20178,7 @@
         "declared_path": "/tasks/{task_id}",
         "file": "back/app/task/router.py",
         "handler": "update_task",
-        "line": 201,
+        "line": 209,
         "method": "PUT",
         "module": "app.task"
       },
@@ -20167,7 +20187,7 @@
         "declared_path": "/tasks/{task_id}/budget",
         "file": "back/app/task/router.py",
         "handler": "read_task_budget",
-        "line": 167,
+        "line": 168,
         "method": "GET",
         "module": "app.task"
       },
@@ -20176,7 +20196,7 @@
         "declared_path": "/tasks/{task_id}/cancel",
         "file": "back/app/task/router.py",
         "handler": "cancel_task",
-        "line": 255,
+        "line": 263,
         "method": "POST",
         "module": "app.task"
       },
@@ -20185,7 +20205,16 @@
         "declared_path": "/tasks/{task_id}/children",
         "file": "back/app/task/router.py",
         "handler": "read_task_children",
-        "line": 371,
+        "line": 379,
+        "method": "GET",
+        "module": "app.task"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/tasks/{task_id}/costs",
+        "file": "back/app/task/router.py",
+        "handler": "read_task_costs",
+        "line": 178,
         "method": "GET",
         "module": "app.task"
       },
@@ -20194,7 +20223,7 @@
         "declared_path": "/tasks/{task_id}/force-terminate",
         "file": "back/app/task/router.py",
         "handler": "force_terminate_task",
-        "line": 270,
+        "line": 278,
         "method": "POST",
         "module": "app.task"
       },
@@ -20203,7 +20232,7 @@
         "declared_path": "/tasks/{task_id}/full",
         "file": "back/app/task/router.py",
         "handler": "read_task_full",
-        "line": 361,
+        "line": 369,
         "method": "GET",
         "module": "app.task"
       },
@@ -20212,7 +20241,7 @@
         "declared_path": "/tasks/{task_id}/pause",
         "file": "back/app/task/router.py",
         "handler": "pause_task",
-        "line": 328,
+        "line": 336,
         "method": "POST",
         "module": "app.task"
       },
@@ -20221,7 +20250,7 @@
         "declared_path": "/tasks/{task_id}/recover-call",
         "file": "back/app/task/router.py",
         "handler": "recover_task_call",
-        "line": 157,
+        "line": 158,
         "method": "POST",
         "module": "app.task"
       },
@@ -20230,7 +20259,7 @@
         "declared_path": "/tasks/{task_id}/restore",
         "file": "back/app/task/router.py",
         "handler": "restore_task",
-        "line": 314,
+        "line": 322,
         "method": "POST",
         "module": "app.task"
       },
@@ -20239,7 +20268,7 @@
         "declared_path": "/tasks/{task_id}/resume",
         "file": "back/app/task/router.py",
         "handler": "resume_task",
-        "line": 342,
+        "line": 350,
         "method": "POST",
         "module": "app.task"
       },
@@ -20248,7 +20277,7 @@
         "declared_path": "/tasks/{task_id}/retry",
         "file": "back/app/task/router.py",
         "handler": "retry_task",
-        "line": 221,
+        "line": 229,
         "method": "POST",
         "module": "app.task"
       },
@@ -20257,7 +20286,7 @@
         "declared_path": "/tasks/{task_id}/run",
         "file": "back/app/task/router.py",
         "handler": "run_task",
-        "line": 387,
+        "line": 395,
         "method": "POST",
         "module": "app.task"
       },
@@ -22242,6 +22271,7 @@
         "files": [
           "front/app/task/components/TaskActivitySummary.vue",
           "front/app/task/components/TaskBudget.vue",
+          "front/app/task/components/TaskCosts.vue",
           "front/app/task/components/TaskDetail.vue",
           "front/app/task/pages/index.vue",
           "front/app/task/richContent.ts",

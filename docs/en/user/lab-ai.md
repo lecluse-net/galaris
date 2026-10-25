@@ -193,6 +193,16 @@ confirm success. Missing measurements stay “—”. Cost is the recorded candi
 The [FR/EN protocol](../dev/lab-reference-corpus.md) provides
 four synthetic journeys to prepare a reproducible comparison.
 
+**Cost accounting** shows recorded amounts across every observation, including failed
+attempts and retries, with judge costs separate and rejudgments included. New evidence
+distinguishes reported, estimated and unknown charges and survives detailed trace deletion.
+Paid calls from workers that lost their lease are reconciled without counting published
+calls twice. Candidate cost per success stays “—” for incomplete execution, verification
+or costs, or with no verified success. Success follows the benchmark checks and judge;
+it does not prove real business effects. Cost medians and deltas also exclude amounts
+without usable provenance. Historical costs are not repriced using current tariffs;
+Markdown analysis remains separate.
+
 ## Tasks
 
 Interactive Task analysis remains available: select a Task, optionally supply human

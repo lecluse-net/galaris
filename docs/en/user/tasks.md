@@ -30,6 +30,20 @@ waits and references. The response contains `items`, `total`, `page`, `page_size
 the process engine. Access requires `TASK_ACCESS`, `PROCESS_READ` and management scope
 over the agent; process read permissions still apply. Pagination accepts up to 500 items.
 
+## Inspect recorded costs
+
+In Task details, open **Details**, then expand **Cost accounting** in the usage area.
+The report loads this Task and its authorized descendants on demand, counting each
+physical call once and grouping by purpose. Failed calls and retries remain included;
+parent Task totals are not added to child totals.
+
+Reported, estimated and unknown amounts remain distinct. **—** means missing evidence,
+not a free call. Subscription billing per call is zero; inference value stays separate.
+New billing evidence survives detailed trace deletion. Previously deleted historical
+data and untraced operations cannot be reconstructed. **Refresh** rereads the evidence;
+changing Tasks clears the previous report. Successful status alone does not independently
+verify a business outcome, so no business cost-per-success is inferred from it.
+
 ## Memory useful for work
 
 Dream may retain durable facts from successful Tasks, their child Tasks and Goal cycles.

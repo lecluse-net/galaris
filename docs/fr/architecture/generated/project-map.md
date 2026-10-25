@@ -17,8 +17,8 @@ tests restent l’autorité sur le comportement.
 - 28 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 756 handlers HTTP/WebSocket détectés ;
-- 179 tables SQLAlchemy détectées ;
+- 757 handlers HTTP/WebSocket détectés ;
+- 180 tables SQLAlchemy détectées ;
 - 278 outils MCP natifs détectés ;
 - 52 pages Vue détectées.
 
@@ -391,7 +391,7 @@ tests restent l’autorité sur le comportement.
 | `app.lab` | `app.dataset` | `back/app/lab/process_evaluation.py`, `back/app/lab/process_evaluation_router.py` |
 | `app.lab` | `app.dream` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/run_inference.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.goal` | `back/app/lab/mechanism_registry.py` |
-| `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
+| `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/cost_report.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.memory` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `app.messenger` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.process` | `back/app/lab/evidence_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/process_evaluation.py` |
@@ -401,7 +401,7 @@ tests restent l’autorité sur le comportement.
 | `app.lab` | `app.topic` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.voice` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `core.authorize` | `back/app/lab/access.py`, `back/app/lab/assertions.py`, `back/app/lab/process_evaluation_router.py`, `back/app/lab/router.py` |
-| `app.lab` | `core.database` | `back/app/lab/agent_review_service.py`, `back/app/lab/capture_service.py`, `back/app/lab/comparison_evidence.py`, `back/app/lab/comparison_service.py`, `back/app/lab/comparison_summary.py`, `back/app/lab/dataset_counts.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/models.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_models.py`, `back/app/lab/operation_store.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/process_evaluation_models.py`, `back/app/lab/run_claims.py`, `back/app/lab/run_lease.py`, `back/app/lab/run_publication.py`, `back/app/lab/synthetic_service.py`, `back/app/lab/transactions.py` |
+| `app.lab` | `core.database` | `back/app/lab/agent_review_service.py`, `back/app/lab/capture_service.py`, `back/app/lab/comparison_evidence.py`, `back/app/lab/comparison_service.py`, `back/app/lab/comparison_summary.py`, `back/app/lab/cost_report.py`, `back/app/lab/dataset_counts.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/models.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_models.py`, `back/app/lab/operation_store.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/process_evaluation_models.py`, `back/app/lab/run_claims.py`, `back/app/lab/run_lease.py`, `back/app/lab/run_publication.py`, `back/app/lab/synthetic_service.py`, `back/app/lab/transactions.py` |
 | `app.lab` | `core.i18n` | `back/app/lab/analysis_service.py`, `back/app/lab/diagnosis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/human_review_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/router.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `core.params` | `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py` |
 | `app.lab` | `core.scheduling` | `back/app/lab/__init__.py` |
@@ -409,7 +409,7 @@ tests restent l’autorité sur le comportement.
 | `app.lab` | `core.util` | `back/app/lab/mechanism_registry.py`, `back/app/lab/synthetic_service.py` |
 | `app.llm` | `app.agent` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/contracts.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/decision_service.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_facade.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/profile_fallback.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/text_inference.py`, `back/app/llm/tts_service.py` |
 | `app.llm` | `app.connection` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py` |
-| `app.llm` | `app.conversation` | `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `app.conversation` | `back/app/llm/cost_report.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.file_share` | `back/app/llm/document_analysis.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py` |
 | `app.llm` | `app.mcp` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py` |
 | `app.llm` | `app.messenger` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
@@ -417,7 +417,7 @@ tests restent l’autorité sur le comportement.
 | `app.llm` | `app.task` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.tools` | `back/app/llm/document_service.py`, `back/app/llm/mcp.py` |
 | `app.llm` | `core.authorize` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/provider_router.py` |
-| `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py`, `back/app/llm/document_store.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_notifications.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
+| `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/cost_report.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py`, `back/app/llm/document_store.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_notifications.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
 | `app.llm` | `core.dbadmin` | `back/app/llm/dbadmin.py`, `back/app/llm/initial_configuration.py` |
 | `app.llm` | `core.document` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py` |
 | `app.llm` | `core.failure_journal` | `back/app/llm/llm_call_service.py` |
@@ -520,11 +520,11 @@ tests restent l’autorité sur le comportement.
 | `app.skill` | `core.util` | `back/app/skill/interface.py`, `back/app/skill/ownership_recovery.py`, `back/app/skill/projection.py`, `back/app/skill/skill_service.py` |
 | `app.task` | `app.agent` | `back/app/task/__init__.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/budget.py`, `back/app/task/call_recovery.py`, `back/app/task/execution_scope.py`, `back/app/task/facade.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/replacement.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/runner.py`, `back/app/task/scheduler.py`, `back/app/task/schemas.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
 | `app.task` | `app.goal` | `back/app/task/models.py`, `back/app/task/router.py`, `back/app/task/task_service.py` |
-| `app.task` | `app.llm` | `back/app/task/budget.py`, `back/app/task/mcp.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py` |
+| `app.task` | `app.llm` | `back/app/task/budget.py`, `back/app/task/cost_report.py`, `back/app/task/mcp.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.messenger` | `back/app/task/collab.py`, `back/app/task/facade.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.tools` | `back/app/task/access.py`, `back/app/task/agent_adapter.py`, `back/app/task/mcp.py`, `back/app/task/work_tracking.py` |
 | `app.task` | `core.authorize` | `back/app/task/router.py`, `back/app/task/run_events.py` |
-| `app.task` | `core.database` | `back/app/task/active_lease.py`, `back/app/task/activity.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/call_recovery.py`, `back/app/task/collab.py`, `back/app/task/conversation.py`, `back/app/task/execution_scope.py`, `back/app/task/facade.py`, `back/app/task/input_requests.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/outcome.py`, `back/app/task/progress.py`, `back/app/task/replacement.py`, `back/app/task/replacement_tree.py`, `back/app/task/resource_facade.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/scheduler.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py`, `back/app/task/work_projection.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
+| `app.task` | `core.database` | `back/app/task/active_lease.py`, `back/app/task/activity.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/call_recovery.py`, `back/app/task/collab.py`, `back/app/task/conversation.py`, `back/app/task/cost_report.py`, `back/app/task/execution_scope.py`, `back/app/task/facade.py`, `back/app/task/input_requests.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/outcome.py`, `back/app/task/progress.py`, `back/app/task/replacement.py`, `back/app/task/replacement_tree.py`, `back/app/task/resource_facade.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/scheduler.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py`, `back/app/task/work_projection.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
 | `app.task` | `core.dbadmin` | `back/app/task/dbadmin.py`, `back/app/task/html_migration.py` |
 | `app.task` | `core.i18n` | `back/app/task/budget.py`, `back/app/task/call_recovery.py`, `back/app/task/collab.py`, `back/app/task/facade.py`, `back/app/task/mcp.py`, `back/app/task/router.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.params` | `back/app/task/budget.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/scheduler.py`, `back/app/task/settings_service.py` |
@@ -935,7 +935,7 @@ tests restent l’autorité sur le comportement.
 | `app/task` | `app/process` | `front/app/task/pages/index.vue` |
 | `app/task` | `app/topic` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/TaskDetail.vue` |
 | `app/task` | `app/voice` | `front/app/task/pages/index.vue` |
-| `app/task` | `core/api` | `front/app/task/components/TaskActivitySummary.vue`, `front/app/task/components/TaskBudget.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskService.ts` |
+| `app/task` | `core/api` | `front/app/task/components/TaskActivitySummary.vue`, `front/app/task/components/TaskBudget.vue`, `front/app/task/components/TaskCosts.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskService.ts` |
 | `app/task` | `core/authorize` | `front/app/task/components/TaskActivitySummary.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/components/TaskRowMenu.vue`, `front/app/task/navigation.ts`, `front/app/task/pages/index.vue`, `front/app/task/useTaskActivity.ts` |
 | `app/task` | `core/i18n` | `front/app/task/services/taskStatusService.ts` |
 | `app/task` | `core/navigation` | `front/app/task/navigation.ts`, `front/app/task/pages/index.vue` |
@@ -1912,26 +1912,27 @@ tests restent l’autorité sur le comportement.
 | GET | `/skills/{skill_id}/file` | `app.skill` | `download_skill_file` | oui | `back/app/skill/router.py:684` |
 | GET | `/skills/{skill_id}/files` | `app.skill` | `list_skill_files` | oui | `back/app/skill/router.py:662` |
 | POST | `/skills/{skill_id}/release-ownership` | `app.skill` | `release_skill_ownership` | oui | `back/app/skill/router.py:100` |
-| GET | `/tasks` | `app.task` | `read_tasks` | oui | `back/app/task/router.py:59` |
-| POST | `/tasks` | `app.task` | `create_task` | oui | `back/app/task/router.py:177` |
-| GET | `/tasks/active` | `app.task` | `read_active_tasks` | oui | `back/app/task/router.py:129` |
-| POST | `/tasks/activity` | `app.task` | `read_task_activity` | oui | `back/app/task/router.py:140` |
-| DELETE | `/tasks/cleanup` | `app.task` | `cleanup_tasks` | oui | `back/app/task/router.py:287` |
-| GET | `/tasks/recent` | `app.task` | `read_recent_tasks` | oui | `back/app/task/router.py:79` |
-| DELETE | `/tasks/{task_id}` | `app.task` | `delete_task` | oui | `back/app/task/router.py:297` |
-| GET | `/tasks/{task_id}` | `app.task` | `read_task` | oui | `back/app/task/router.py:147` |
-| PUT | `/tasks/{task_id}` | `app.task` | `update_task` | oui | `back/app/task/router.py:201` |
-| GET | `/tasks/{task_id}/budget` | `app.task` | `read_task_budget` | oui | `back/app/task/router.py:167` |
-| POST | `/tasks/{task_id}/cancel` | `app.task` | `cancel_task` | oui | `back/app/task/router.py:255` |
-| GET | `/tasks/{task_id}/children` | `app.task` | `read_task_children` | oui | `back/app/task/router.py:371` |
-| POST | `/tasks/{task_id}/force-terminate` | `app.task` | `force_terminate_task` | oui | `back/app/task/router.py:270` |
-| GET | `/tasks/{task_id}/full` | `app.task` | `read_task_full` | oui | `back/app/task/router.py:361` |
-| POST | `/tasks/{task_id}/pause` | `app.task` | `pause_task` | oui | `back/app/task/router.py:328` |
-| POST | `/tasks/{task_id}/recover-call` | `app.task` | `recover_task_call` | oui | `back/app/task/router.py:157` |
-| POST | `/tasks/{task_id}/restore` | `app.task` | `restore_task` | oui | `back/app/task/router.py:314` |
-| POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | oui | `back/app/task/router.py:342` |
-| POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | oui | `back/app/task/router.py:221` |
-| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | oui | `back/app/task/router.py:387` |
+| GET | `/tasks` | `app.task` | `read_tasks` | oui | `back/app/task/router.py:60` |
+| POST | `/tasks` | `app.task` | `create_task` | oui | `back/app/task/router.py:185` |
+| GET | `/tasks/active` | `app.task` | `read_active_tasks` | oui | `back/app/task/router.py:130` |
+| POST | `/tasks/activity` | `app.task` | `read_task_activity` | oui | `back/app/task/router.py:141` |
+| DELETE | `/tasks/cleanup` | `app.task` | `cleanup_tasks` | oui | `back/app/task/router.py:295` |
+| GET | `/tasks/recent` | `app.task` | `read_recent_tasks` | oui | `back/app/task/router.py:80` |
+| DELETE | `/tasks/{task_id}` | `app.task` | `delete_task` | oui | `back/app/task/router.py:305` |
+| GET | `/tasks/{task_id}` | `app.task` | `read_task` | oui | `back/app/task/router.py:148` |
+| PUT | `/tasks/{task_id}` | `app.task` | `update_task` | oui | `back/app/task/router.py:209` |
+| GET | `/tasks/{task_id}/budget` | `app.task` | `read_task_budget` | oui | `back/app/task/router.py:168` |
+| POST | `/tasks/{task_id}/cancel` | `app.task` | `cancel_task` | oui | `back/app/task/router.py:263` |
+| GET | `/tasks/{task_id}/children` | `app.task` | `read_task_children` | oui | `back/app/task/router.py:379` |
+| GET | `/tasks/{task_id}/costs` | `app.task` | `read_task_costs` | oui | `back/app/task/router.py:178` |
+| POST | `/tasks/{task_id}/force-terminate` | `app.task` | `force_terminate_task` | oui | `back/app/task/router.py:278` |
+| GET | `/tasks/{task_id}/full` | `app.task` | `read_task_full` | oui | `back/app/task/router.py:369` |
+| POST | `/tasks/{task_id}/pause` | `app.task` | `pause_task` | oui | `back/app/task/router.py:336` |
+| POST | `/tasks/{task_id}/recover-call` | `app.task` | `recover_task_call` | oui | `back/app/task/router.py:158` |
+| POST | `/tasks/{task_id}/restore` | `app.task` | `restore_task` | oui | `back/app/task/router.py:322` |
+| POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | oui | `back/app/task/router.py:350` |
+| POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | oui | `back/app/task/router.py:229` |
+| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | oui | `back/app/task/router.py:395` |
 | GET | `/teams` | `core.team` | `list_teams` | oui | `back/core/team/router.py:13` |
 | POST | `/teams` | `core.team` | `create_team` | oui | `back/core/team/router.py:25` |
 | GET | `/teams/humans` | `core.team` | `search_humans` | oui | `back/core/team/router.py:19` |
@@ -2090,6 +2091,7 @@ tests restent l’autorité sur le comportement.
 | `lab_tasks` | `LabTask` | `app.lab` | non | `tasks.id` | `back/app/lab/models.py:30` |
 | `learned_skill_evidences` | `LearnedSkillEvidence` | `app.skill` | non | `learned_skills.id` | `back/app/skill/models.py:246` |
 | `learned_skills` | `LearnedSkill` | `app.skill` | oui | `agents.id` | `back/app/skill/models.py:187` |
+| `llm_call_costs` | `LLMCallCost` | `app.llm` | non | `agents.id`, `conversation_rounds.id`, `llm_calls.id`, `tasks.id` | `back/app/llm/models.py:261` |
 | `llm_call_events` | `LLMCallEvent` | `app.llm` | non | `llm_calls.id`, `llm_inferences.id` | `back/app/llm/models.py:95` |
 | `llm_calls` | `LLMCall` | `app.llm` | non | `agents.id`, `conversation_rounds.id`, `llm_inference_attempts.id`, `llm_profiles.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:121` |
 | `llm_document_analyses` | `LLMDocumentAnalysis` | `app.llm` | non | `agents.id`, `tasks.id` | `back/app/llm/models.py:26` |

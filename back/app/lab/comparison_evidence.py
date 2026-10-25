@@ -209,6 +209,12 @@ async def summarize_evidence(
         )
         if name == "quality":
             valid = and_(valid, assessed(pairs))
+        if name == "cost":
+            for side in ("left", "right"):
+                accounting = pairs.c[f"{side}_details"]["candidate_cost_accounting"]
+                valid = and_(valid, accounting["version"].astext == "llm-cost-summary/v1",
+                    accounting["quality"].astext.in_(("exact", "estimated")),
+                    json_number(accounting["total_cost"]) == pairs.c[f"{side}_cost"])
         row = (
             (
                 await get_db().execute(

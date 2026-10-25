@@ -1,6 +1,12 @@
 import api from '@/core/api'
 import type { LabConfig } from './evaluationService'
 import type { EvaluationMechanism } from './mechanismEvaluationService'
+export interface CostSummary {
+  calls: number; estimated_calls: number; unknown_calls: number; running_calls: number
+  failed_calls: number; subscription_calls: number; recorded_cost: number
+  total_cost: number | null; inference_cost: number | null
+  quality: 'exact' | 'estimated' | 'partial' | 'unknown'
+}
 
 export type LabKey = EvaluationMechanism | 'dispatcher' | 'task_analysis'
 export interface JsonSchema {
@@ -80,6 +86,10 @@ export interface ComparisonItem {
   left_error: string | null; right_error: string | null
 }
 export interface RunComparison {
+  economics?: Record<'left' | 'right', {
+    observations: number; benchmark_successes: number; unverified: number; failed_candidates: number
+    candidate: CostSummary; judge: CostSummary; cost_per_success: number | null; unavailable_reason: string | null
+  }> | null
   quality_uncertainty?: CaseEstimate | null
   risks: { assessed_pairs: number; introduced_critical: number; pass_to_fail: number; dimensions: { code: string; pairs: number; decreased: number; increased: number; equal: number; mean_delta: number }[] } | null
   performance: Record<'first_output' | 'cost' | 'duration' | 'quality', PairedMetric> | null

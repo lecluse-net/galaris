@@ -12,6 +12,7 @@ from core.database import get_db
 from .models import LabEvaluationDataset, LabEvaluationRun, LabEvaluationRunCase, LabJudgmentCampaign
 from .schemas import EvaluationMechanism, EvaluationRunRead, EvaluationRunCaseRead
 from .comparison_summary import summarize
+from .cost_report import economics, comparable_cost
 from .comparison_schemas import ComparisonFocus
 from .comparison_evidence import assessed, critical_regression, dimension_evidence, first_output, paired_evidence, summarize_evidence, verdict_regression
 from .comparison_evidence import quality_uncertainty
@@ -217,7 +218,9 @@ async def compare(
                 "score_delta": target.score_percent - item["score_percent"]
                 if target and target.score_percent is not None and item["score_percent"] is not None
                 else None,
-                "cost_delta": target.cost - item["cost"] if target else None,
+                "cost_delta": (target.cost - item["cost"] if target
+                    and comparable_cost(item["score_details"], item["cost"])
+                    and comparable_cost(target.score_details, target.cost) else None),
                 "duration_delta": target.duration - item["duration"] if target else None,
                 "left_score": item["score_percent"],
                 "right_score": target.score_percent if target else None,
@@ -244,6 +247,8 @@ async def compare(
             })
     return {
         "axis": axis,
+        "economics": {"left": (await economics(left)).model_dump(mode="json"),
+                      "right": (await economics(right)).model_dump(mode="json")},
         "quality_uncertainty": (await quality_uncertainty(paired_evidence(left_id, right_id))).model_dump() if not blockers else None,
         "comparable": not blockers,
         "differences": differences,

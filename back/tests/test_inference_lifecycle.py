@@ -520,7 +520,7 @@ async def test_call_stop_http_requires_edit_privilege_and_management_scope(runti
         async with AsyncClient(transport=ASGITransport(app=api), base_url="http://test") as client:
             url = f"/llm-calls/{first.call_id}/stop"
             assert (await client.post(url)).status_code == 403
-            assert privilege.await_args.args[1] == [Privileges.TASK_EDIT]
+            assert privilege.await_args.args[1] == [Privileges.LLM_CALL_CONTROL]
             privilege.return_value = True
             assert (await client.post(url)).status_code == 404
             assert (await read_inference(key)).status == "running"

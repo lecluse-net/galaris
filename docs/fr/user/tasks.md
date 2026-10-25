@@ -16,6 +16,21 @@ de méthode, les jalons, les plans, les questions et la reprise. Pour créer vot
 demande, suivre le [guide utilisateur](README.md) ; pour trouver les commandes, consulter
 les [menus et parcours](navigation.md).
 
+## Consulter les coûts enregistrés
+
+Dans le détail d'une tâche, ouvrir **Détails**, puis **Bilan des coûts** dans la zone
+de consommation. Le bilan charge à la demande les appels de cette tâche et de ses
+descendants autorisés, une seule fois par appel physique, avec une ventilation par usage.
+Il conserve les échecs et reprises ; les totaux des tâches parentes ne sont pas additionnés.
+
+Les montants déclarés, estimés et inconnus sont distingués. **—** indique une information
+absente, pas un coût nul. Sur abonnement, la facturation par appel est nulle ; la valeur
+d'inférence reste séparée. Les nouveaux montants survivent à la suppression des traces
+détaillées. Les anciennes données déjà supprimées et les opérations non tracées ne sont
+pas reconstituées. **Actualiser** relit les preuves ; changer de tâche efface l'ancien bilan.
+Un statut réussi ne suffit pas à prouver un résultat métier, donc aucun coût par réussite
+métier n'est déduit de ce statut.
+
 ## Mémoire utile au travail
 
 Dream peut retenir des faits durables issus des tâches réussies, de leurs sous-tâches

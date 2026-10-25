@@ -20,6 +20,35 @@ def claim(**changes):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("phase", ["candidate", "judge"])
+async def test_failed_inference_keeps_every_paid_call_once(monkeypatch, phase):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from app.llm.accounting_scope import record_persisted_call_cost
+    from app.lab.mechanism_rubrics import get_rubric
+
+    first, second = uuid4(), uuid4()
+
+    async def fail_after_billing(*args, **kwargs):
+        record_persisted_call_cost(first, 0.1)
+        record_persisted_call_cost(first, 0.2)  # Streaming updates replace, not add.
+        record_persisted_call_cost(second, 0.3)
+        raise RuntimeError("Synthetic failure after paid retries")
+
+    monkeypatch.setattr(run_inference.llm_service, "get_llm", AsyncMock(return_value=SimpleNamespace()))
+    monkeypatch.setattr(run_inference, "validate_binding", lambda *args: None)
+    monkeypatch.setattr(run_inference, "evaluate_mechanism", fail_after_billing)
+    monkeypatch.setattr(run_inference, "_judge", fail_after_billing)
+    work = claim(judgment_configuration={"model": {}, "rubric": get_rubric("planner").prompt_value()},
+        case_snapshot={"id": str(uuid4()), "input_data": {"variable_value": "Report"},
+                       "resolved_input": {"objective": "Report"}})
+    result = await (run_inference.evaluate_claim(work) if phase == "candidate"
+                    else run_inference.evaluate_judgment(work))
+    assert "Synthetic failure" in result.error
+    assert result.cost == pytest.approx(0.5)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("changes", [{"candidate_error": "Provider failed"}, {"actual_output": None}])
 async def test_unusable_candidate_is_skipped_without_inventing_score_or_cost(db, changes):
     work = claim(**changes)

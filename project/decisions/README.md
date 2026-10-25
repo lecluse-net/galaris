@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0238 — Preuves de coûts par appel et bilan économique du Lab](0238-physical-call-cost-evidence.md)
+
 - [0232 — Dernière conversation par document et utilisateur](0232-personal-document-conversation.md)
 
 - [0230 — Étalonnage humain et incertitude par cas du Lab](0230-lab-human-calibration-and-case-uncertainty.md)

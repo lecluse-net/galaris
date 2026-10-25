@@ -2,6 +2,17 @@ import { api } from '@/core/api'
 import type { TaskActivitySnapshot, TaskCallRecoveryState } from '../activity'
 import type { Task, TaskCreate, TaskUpdate, TaskWithAssignments, TaskFull, TaskPage } from '../types'
 import type { Agent } from '@/app/agent/services/agentService'
+export interface CostSummary {
+  calls: number; estimated_calls: number; unknown_calls: number; running_calls: number
+  failed_calls: number; subscription_calls: number; recorded_cost: number
+  total_cost: number | null; inference_cost: number | null
+  quality: 'exact' | 'estimated' | 'partial' | 'unknown'
+}
+
+export interface TaskCostReport {
+  tasks_without_calls: number; restricted: boolean; summary: CostSummary
+  by_purpose: Record<string, CostSummary>
+}
 
 export interface TaskBudget {
   enabled: boolean
@@ -18,6 +29,9 @@ export interface TaskBudget {
 }
 
 export class TaskService {
+  async getCosts(id: string): Promise<TaskCostReport> {
+    return (await api.get<TaskCostReport>(`/tasks/${id}/costs`)).data
+  }
   async recoverCall(id: string, runId: string, requestId: string, expectedControlVersion: number): Promise<TaskCallRecoveryState> {
     return (await api.post<TaskCallRecoveryState>(`/tasks/${id}/recover-call`, {
       run_id: runId, request_id: requestId, expected_control_version: expectedControlVersion,

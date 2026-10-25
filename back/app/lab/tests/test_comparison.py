@@ -81,13 +81,15 @@ async def test_regressions_and_paired_performance_cover_the_run_before_paginatio
                 verdict="fail" if changed and index in (10, 11) else "pass",
                 score_details={"candidate_status": "completed", "checks": [
                     {"code": "tool_evidence", "passed": not (changed and index == 11), "critical": True}],
+                    "candidate_cost_accounting": {"version": "llm-cost-summary/v1", "quality": "exact",
+                        "total_cost": 0.02 if changed else 0.04},
                     "performance": {"version": "lab-executor-stream/v1",
                         "first_output_seconds": (1 if changed else 2) if index < 12 else None}},
                 cost=0.02 if changed else 0.04, duration=3 if changed else 4))
     await db.flush()
     async with measured_reads(db, "lab-comparison-10") as reads:
         first = await compare("conversation_executor", before.id, after.id, "model", limit=10)
-    assert len(reads) <= 16, "Pairing reads must remain bounded as the page grows"
+    assert len(reads) <= 24, "Pairing and whole-run accounting reads must remain bounded as the page grows"
     assert len(first["items"]) == 10
     assert not any(row["introduced_critical"] for row in first["items"])
     assert first["risks"] == {"assessed_pairs": 13, "introduced_critical": 2, "pass_to_fail": 2,
@@ -175,7 +177,7 @@ async def test_http_comparison_preserves_evidence_and_missing_scores(client, mec
     assert len(items) == 11
     assert items["Case 0"]["left_score"] == 0
     assert items["Case 0"]["score_delta"] == 20
-    assert items["Case 0"]["cost_delta"] == pytest.approx(-0.1)
+    assert items["Case 0"]["cost_delta"] is None  # Historical totals lack cost provenance.
     assert items["Case 0"]["duration_delta"] == -1
     assert items["Case 0"]["left_output"] == {"result": "Before answer"}
     assert items["Case 0"]["right_output"] == {"result": "After answer"}

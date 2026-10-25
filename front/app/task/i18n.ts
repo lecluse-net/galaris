@@ -1,3 +1,33 @@
+const costMessages = {
+  fr: {
+    title: 'Bilan des coûts', recorded: 'Montant enregistré (USD)', total: 'Total calculable (USD)', inference: 'Valeur d’inférence (USD)',
+    quality: { exact: 'Déclaré / abonnement', estimated: 'Estimé sur les tarifs figés', partial: 'Partiel', unknown: 'Inconnu' },
+    coverage: '{calls} appels · {estimated_calls} estimés · {unknown_calls} sans coût connu · {running_calls} en cours · {failed_calls} en échec ou interrompus · {subscription_calls} sur abonnement.',
+    help: 'Un montant enregistré peut être incomplet. — signifie inconnu. Sur abonnement, la facturation par appel est nulle ; la valeur d’inférence reste séparée.',
+    taskHelp: 'Coûts enregistrés de la tâche et de ses descendants autorisés, comptés une fois. Les nouveaux montants survivent à la suppression des traces. Les anciennes données déjà supprimées et opérations non tracées restent inconnues. Le statut réussi ne prouve pas la réussite métier.',
+    missing: '{count} tâches sans appel conservé. Couverture complète non garantie.', restricted: 'Les coûts des descendants hors de votre périmètre sont exclus.',
+    error: 'Impossible de charger les coûts.', byPurpose: 'Coûts par usage',
+  },
+  en: {
+    title: 'Cost accounting', recorded: 'Recorded amount (USD)', total: 'Computable total (USD)', inference: 'Inference value (USD)',
+    quality: { exact: 'Reported / subscription', estimated: 'Estimated using frozen rates', partial: 'Partial', unknown: 'Unknown' },
+    coverage: '{calls} calls · {estimated_calls} estimated · {unknown_calls} with unknown cost · {running_calls} running · {failed_calls} failed or interrupted · {subscription_calls} on subscription.',
+    help: 'Recorded amounts may be incomplete. — means unknown. Subscription billing per call is zero; inference value remains separate.',
+    taskHelp: 'Recorded costs for this task and authorized descendants, counted once. New amounts survive trace deletion. Previously deleted historical data and untraced operations remain unknown. Successful status does not prove business success.',
+    missing: '{count} tasks have no retained calls. Full coverage is not guaranteed.', restricted: 'Costs of descendants outside your scope are excluded.',
+    error: 'Unable to load costs.', byPurpose: 'Costs by purpose',
+  },
+  zh: {
+    title: '费用核算', recorded: '已记录金额（美元）', total: '可计算总额（美元）', inference: '推理价值（美元）',
+    quality: { exact: '供应商报告 / 订阅', estimated: '按固定费率估算', partial: '部分', unknown: '未知' },
+    coverage: '{calls} 次调用 · {estimated_calls} 次估算 · {unknown_calls} 次费用未知 · {running_calls} 次进行中 · {failed_calls} 次失败或中断 · {subscription_calls} 次订阅调用。',
+    help: '已记录金额可能不完整。— 表示未知。订阅的单次计费为零，推理价值单独列出。',
+    taskHelp: '本任务及授权子任务的费用仅计一次。新费用记录在删除跟踪后保留；已删除的历史数据和未跟踪操作仍未知。成功状态不能证明业务成功。',
+    missing: '{count} 个任务没有调用记录，无法保证完整覆盖。', restricted: '不含权限范围外子任务的费用。',
+    error: '无法加载费用。', byPurpose: '按用途划分费用',
+  },
+}
+
 export default {
   fr: {
     contextHelpPages: {
@@ -8,6 +38,7 @@ export default {
       task_desc: 'Suivi des conversation, tâches, appels LLM & processus',
     },
     task: {
+      costs: costMessages.fr,
       title: 'Gestion des Tâches',
       startup: {
         claimedToOutput: 'Prise en charge → première sortie utile',
@@ -439,6 +470,7 @@ export default {
         PLAN_STEP: 'Plan step running',
         CLARIFICATION: 'Waiting for clarification',
       },
+      costs: costMessages.en,
       budget: {
         title: 'Usage and budgets', enabled: 'Admission limits enabled', unlimited: 'No budget imposed',
         task_tree: 'Scope: root task and all delegated work', goal: 'Scope: all cycles of this goal',
@@ -803,6 +835,7 @@ export default {
         PLAN_STEP: '计划步骤进行中',
         CLARIFICATION: '等待澄清',
       },
+      costs: costMessages.zh,
       budget: {
         title: '用量与预算', enabled: '已启用准入限制', unlimited: '未设置预算限制',
         task_tree: '范围：根任务及所有委派任务', goal: '范围：此目标的所有周期',

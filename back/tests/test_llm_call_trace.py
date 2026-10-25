@@ -1214,18 +1214,19 @@ async def test_adapted_responses_stream_persists_reconstructed_final_result() ->
 
 @pytest.mark.asyncio
 async def test_run_usage_aggregates_gateway_cost_with_quality(
-    monkeypatch: pytest.MonkeyPatch,
+    db, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from app.llm.models import LLMCall
+    from app.task.tests.test_resource_facade import _agents
+    owner, _, _ = await _agents(db)
     run_id = uuid4()
 
     async def authenticate(request: object) -> int:
-        return 7
+        return owner.id
 
-    async def list_calls(**kwargs):
-        assert kwargs["agent_run_id"] == run_id
-        return [
-            SimpleNamespace(
-                agent_id=7,
+    db.add_all([
+            LLMCall(
+                agent_run_id=run_id, agent_id=owner.id,
                 status="completed",
                 input_tokens=10,
                 output_tokens=4,
@@ -1238,8 +1239,8 @@ async def test_run_usage_aggregates_gateway_cost_with_quality(
                 cost_estimated=False,
                 is_subscription=False,
             ),
-            SimpleNamespace(
-                agent_id=7,
+            LLMCall(
+                agent_run_id=run_id, agent_id=owner.id,
                 status="completed",
                 input_tokens=5,
                 output_tokens=1,
@@ -1252,10 +1253,10 @@ async def test_run_usage_aggregates_gateway_cost_with_quality(
                 cost_estimated=False,
                 is_subscription=False,
             ),
-        ]
+        ])
+    await db.flush()
 
     monkeypatch.setattr(call_router, "_llm_api_auth", authenticate)
-    monkeypatch.setattr(call_router.llm_call_service, "list_calls", list_calls)
 
     usage = await call_router.llm_run_usage(run_id, SimpleNamespace())  # type: ignore[arg-type]
 

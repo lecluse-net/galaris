@@ -15,6 +15,7 @@ from app.llm import (
     run_structured,
     reasoning_effort_scope,
     ReasoningEffort,
+    llm_correlation_scope,
 )
 from .mechanism_registry import evaluate_mechanism, get_mechanism
 from .mechanism_rubrics import MechanismRubric, get_rubric
@@ -22,6 +23,7 @@ from .schemas import EvaluationMechanism, MechanismJudgeOutput
 from .run_contracts import CaseEvaluation, RunClaim
 from .objective_checks import check_output
 from .inference_profile import validate_binding
+from app.llm.facade import CallAccounting, CostSummary, llm_call_accounting
 
 
 def _flatten(value: Any, prefix: str = "$") -> dict[str, Any]:
@@ -196,6 +198,7 @@ async def evaluate_claim(run: RunClaim) -> CaseEvaluation:
         "reference_role": "non_normative_example",
         "rubric": rubric.prompt_value(),
     }
+    accounting: CallAccounting | None = None
     try:
         llm = await llm_service.get_llm(cast(int, run.llm_id))
         if llm is None:
@@ -217,6 +220,8 @@ async def evaluate_claim(run: RunClaim) -> CaseEvaluation:
         input_data = snapshot["resolved_input"]
         expected = snapshot.get("expected_output")
         with (
+            llm_call_accounting() as accounting,
+            llm_correlation_scope(f"lab://run/{run.run_id}/candidate/{case_id}/{snapshot.get('repetition', 1)}/{run.token}"),
             reasoning_effort_scope(cast(ReasoningEffort | None, snapshot.get("reasoning_effort"))),
             llm_execution_scope(
                 requester_user_id=run.created_by,
@@ -286,6 +291,13 @@ async def evaluate_claim(run: RunClaim) -> CaseEvaluation:
         score = None
         score_details["candidate_status"] = "failed"
 
+    if accounting is not None and accounting.costs:
+        cost = accounting.cost
+    score_details["candidate_cost_accounting"] = (
+        accounting.snapshot() if accounting is not None else CostSummary(total_cost=0, quality="exact")
+    ).model_dump(mode="json")
+    score_details["candidate_cost_accounting"]["recorded_cost"] = cost
+
     return CaseEvaluation(
         case_id=case_id,
         case_snapshot=snapshot,
@@ -311,6 +323,7 @@ async def evaluate_judgment(run: RunClaim) -> CaseEvaluation:
     output: dict[str, Any] | None = None
     error: str | None = None
     details: dict[str, Any] = {}
+    accounting: CallAccounting | None = None
     if run.candidate_error or run.actual_output is None:
         details["judge_status"] = "skipped"
         details["reason"] = "Candidate produced no usable output"
@@ -325,6 +338,8 @@ async def evaluate_judgment(run: RunClaim) -> CaseEvaluation:
             validate_binding(judge, configuration["model"])
             rubric = MechanismRubric.from_snapshot(run.mechanism, configuration["rubric"])
             with (
+                llm_call_accounting() as accounting,
+                llm_correlation_scope(f"lab://run/{run.run_id}/judge/{run.campaign_id}/{run.result_id}/{run.token}"),
                 reasoning_effort_scope(
                     cast(ReasoningEffort | None, configuration.get("reasoning_effort"))
                 ),
@@ -374,6 +389,12 @@ async def evaluate_judgment(run: RunClaim) -> CaseEvaluation:
             error = str(exc)[:4_000]
             output = {"error": error}
             details["judge_status"] = "failed"
+    if accounting is not None and accounting.costs:
+        cost = accounting.cost
+    details["judge_cost_accounting"] = (
+        accounting.snapshot() if accounting is not None else CostSummary(total_cost=0, quality="exact")
+    ).model_dump(mode="json")
+    details["judge_cost_accounting"]["recorded_cost"] = cost
     return CaseEvaluation(
         case_id=UUID(str(snapshot["id"])),
         case_snapshot=snapshot,

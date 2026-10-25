@@ -1,5 +1,39 @@
+const costMessages = {
+  fr: {
+    title: 'Bilan des coûts', recorded: 'Montant enregistré (USD)', total: 'Total calculable (USD)', inference: 'Valeur d’inférence (USD)',
+    quality: { exact: 'Déclaré / abonnement', estimated: 'Estimé sur les tarifs figés', partial: 'Partiel', unknown: 'Inconnu' },
+    coverage: '{calls} appels · {estimated_calls} estimés · {unknown_calls} sans coût connu · {running_calls} en cours · {failed_calls} en échec ou interrompus · {subscription_calls} sur abonnement.',
+    help: 'Un montant enregistré peut être incomplet. — signifie inconnu. Sur abonnement, la facturation par appel est nulle ; la valeur d’inférence reste séparée.',
+    economicsHelp: 'Toutes les observations candidates, échecs et reprises inclus ; juge séparé, rejugements inclus. Réussite du benchmark selon ses contrôles et son juge ; effets métier réels non prouvés.',
+    successes: '{successes}/{observations} réussites du benchmark · {unverified} résultats non vérifiés · {failed} erreurs candidat.',
+    candidate: 'Candidat', judge: 'Juge', perSuccess: 'Coût candidat par réussite du benchmark (USD)',
+    reasons: { no_success: 'Aucune réussite vérifiée.', incomplete_execution: 'Exécutions incomplètes.', incomplete_verification: 'Vérifications incomplètes.', incomplete_costs: 'Coûts incomplets ou inconnus.' },
+  },
+  en: {
+    title: 'Cost accounting', recorded: 'Recorded amount (USD)', total: 'Computable total (USD)', inference: 'Inference value (USD)',
+    quality: { exact: 'Reported / subscription', estimated: 'Estimated using frozen rates', partial: 'Partial', unknown: 'Unknown' },
+    coverage: '{calls} calls · {estimated_calls} estimated · {unknown_calls} with unknown cost · {running_calls} running · {failed_calls} failed or interrupted · {subscription_calls} on subscription.',
+    help: 'Recorded amounts may be incomplete. — means unknown. Subscription billing per call is zero; inference value remains separate.',
+    economicsHelp: 'All candidate observations, including failures and retries; judge separate, including rejudgments. Benchmark success follows its checks and judge; actual business effects are not proven.',
+    successes: '{successes}/{observations} benchmark successes · {unverified} unverified results · {failed} candidate errors.',
+    candidate: 'Candidate', judge: 'Judge', perSuccess: 'Candidate cost per benchmark success (USD)',
+    reasons: { no_success: 'No verified success.', incomplete_execution: 'Incomplete executions.', incomplete_verification: 'Incomplete verification.', incomplete_costs: 'Incomplete or unknown costs.' },
+  },
+  zh: {
+    title: '费用核算', recorded: '已记录金额（美元）', total: '可计算总额（美元）', inference: '推理价值（美元）',
+    quality: { exact: '供应商报告 / 订阅', estimated: '按固定费率估算', partial: '部分', unknown: '未知' },
+    coverage: '{calls} 次调用 · {estimated_calls} 次估算 · {unknown_calls} 次费用未知 · {running_calls} 次进行中 · {failed_calls} 次失败或中断 · {subscription_calls} 次订阅调用。',
+    help: '已记录金额可能不完整。— 表示未知。订阅的单次计费为零，推理价值单独列出。',
+    economicsHelp: '所有候选观察，包括失败和重试；评审费用单列，包含重新评审。基准成功依据检查和评审，不能证明实际业务效果。',
+    successes: '{successes}/{observations} 次基准成功 · {unverified} 个结果未验证 · {failed} 次候选错误。',
+    candidate: '候选', judge: '评审', perSuccess: '每次基准成功的候选费用（美元）',
+    reasons: { no_success: '没有已验证的成功。', incomplete_execution: '执行不完整。', incomplete_verification: '验证不完整。', incomplete_costs: '费用不完整或未知。' },
+  },
+}
+
 import { processLabMessages } from './processI18n'
 const comparisonFr = {
+  costs: costMessages.fr,
   uncertaintyTitle: 'Incertitude de l’écart de qualité',
   caseEstimate: '{cases} cas distincts · {observations} observations · moyenne par cas {mean} · intervalle à 95 % [{lower} ; {upper}]',
   bootstrap: 'Bootstrap par cas, 2 000 rééchantillonnages.', hoeffding: 'Borne de Hoeffding par cas ; conserve une incertitude même sans faux passage observé.',
@@ -41,6 +75,7 @@ const comparisonFr = {
   pageSize: 'Cas par page', previous: 'Précédent', next: 'Suivant', page: 'Page {number}', loadError: 'Impossible de charger la comparaison.',
 }
 const comparisonEn: typeof comparisonFr = {
+  costs: costMessages.en,
   uncertaintyTitle: 'Uncertainty of quality difference',
   caseEstimate: '{cases} distinct cases · {observations} observations · mean across cases {mean} · 95% interval [{lower}, {upper}]',
   bootstrap: 'Case-cluster bootstrap, 2,000 resamples.', hoeffding: 'Case-level Hoeffding bound; retains uncertainty even when no false pass was observed.',
@@ -82,6 +117,7 @@ const comparisonEn: typeof comparisonFr = {
   pageSize: 'Cases per page', previous: 'Previous', next: 'Next', page: 'Page {number}', loadError: 'Unable to load the comparison.',
 }
 const comparisonZh: typeof comparisonFr = {
+  costs: costMessages.zh,
   uncertaintyTitle: '质量差异的不确定性',
   caseEstimate: '{cases} 个不同案例 · {observations} 次观察 · 案例平均值 {mean} · 95% 区间 [{lower}, {upper}]',
   bootstrap: '按案例分组的自助法，重采样 2,000 次。', hoeffding: '按案例计算 Hoeffding 界限；即使未发现错误通过，也保留不确定性。',

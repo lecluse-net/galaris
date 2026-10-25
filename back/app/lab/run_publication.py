@@ -128,7 +128,9 @@ async def publish_judgment(work: RunClaim, evaluation: CaseEvaluation) -> None:
                 result_id=work.result_id,
                 status=str(evaluation.score_details["judge_status"]),
                 verdict=verdict,
-                output=evaluation.judge_output,
+                output=({**evaluation.judge_output,
+                         "_cost_accounting": evaluation.score_details.get("judge_cost_accounting")}
+                        if evaluation.judge_output is not None else None),
                 score_percent=evaluation.score_percent,
                 cost=evaluation.cost,
                 duration=evaluation.duration,
