@@ -25,6 +25,7 @@
                 <li v-for="step in setupSteps" :key="step" class="q-mb-xs">{{ step }}</li>
             </ol>
             <q-btn
+                v-if="contribution.docsUrl"
                 :href="contribution.docsUrl"
                 target="_blank"
                 rel="noopener noreferrer"

@@ -89,6 +89,7 @@
                 <component :is="messagingSetupComponents[selectedBridge.kind]" v-if="messagingSetupComponents[selectedBridge.kind]" :key="selectedBridge.kind" class="q-mb-md" />
                 <div class="row q-gutter-sm">
                     <q-btn
+                        v-if="selectedBridge.docsUrl"
                         :href="selectedBridge.docsUrl"
                         target="_blank"
                         rel="noopener noreferrer"

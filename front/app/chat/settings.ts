@@ -4,11 +4,10 @@ import { chatAvailable, refreshChatAvailability } from './availability'
 export default {
   area: 'messaging',
   kind: 'internal',
-  label: 'Chat',
+  label: 'Galaris',
   icon: 'forum',
   guideKey: 'messagingProviders.chat.guide',
   stepsKey: 'messagingProviders.chat.steps',
-  docsUrl: '/chat',
   fields: [
     { name: 'WEB_PUSH_VAPID_SUBJECT', labelKey: 'webPushSettings.subject', descriptionKey: 'webPushSettings.subjectHint', input: 'text' },
     { name: 'WEB_PUSH_DELAY_SECONDS', labelKey: 'webPushSettings.delay', descriptionKey: 'webPushSettings.delayHint', input: 'number', min: 1, max: 30, step: 0.5 },
