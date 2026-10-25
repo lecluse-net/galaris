@@ -50,10 +50,18 @@ Nextcloud Talk nécessitent aussi une connectivité WebRTC adaptée, éventuelle
 2. Activer Messenger sur un Tool et sélectionner le bridge `telegram`.
 3. Ajouter un paramètre de connexion chiffré au Tool, puis le faire correspondre à `token`.
 4. Dans la connexion de chaque agent, renseigner son token BotFather.
+5. Associer son identité Telegram au compte Galaris dans **Mon profil**, puis envoyer un
+   nouveau message au bot depuis Telegram. Les droits de dialogue avec l’agent restent requis.
 
 Les anciens champs de politique d’accès (`allowed_user_ids`, `allowed_chat_ids`,
 `require_group_mention`) restent lus sur les connexions migrées, mais ne font pas partie du
 nouveau contrat de correspondance du bridge.
+
+Sans liste renseignée, le bridge reçoit les messages humains et peut répondre sans configuration
+supplémentaire d’identifiants. Les autorisations canoniques Galaris restent appliquées avant
+l’admission et l’envoi. Une liste historique non vide conserve ses restrictions ; en groupe,
+la mention du bot ou une réponse à son message reste requise par défaut. Le test de connexion
+valide le token et l’identité du bot ; il ne prouve pas qu’un message a été reçu ou autorisé.
 
 ### 2. Exploitation
 

@@ -1782,7 +1782,7 @@ locaux ; ils ne prouvent pas la réception sur un compte distant réel.
 | `matrix` | Identités, envoi/réception et voix | `test_client.py`, `test_messenger.py`, `test_voice.py` |
 | `nextcloud` | Talk, credentials, messages, appels et signalisation | `test_credentials.py`, `test_messenger.py`, `test_call_listener.py`, `test_signaling.py` |
 | `one_bot` | Routage d’événement/API et connexion du hub | `test_hub.py`, `test_router_routing.py`, `test_messenger_routing.py` |
-| `telegram` | Messages et reprise de livraison | `test_messenger.py`, `test_delivery_retry.py` |
+| `telegram` | Réception et réponse avec token seul, restrictions historiques explicites, mention en groupe et reprise de livraison | `test_messenger.py`, `test_delivery_retry.py` |
 | `whatsapp` | Authentification du bridge, API et livraison Messenger | `test_router.py`, `test_client.py`, `test_messenger_send.py` |
 | `mail` | MIME, identités, connexion autorisée, messages, fichiers et validation privée Chat/journal ; réception avant lecture, contacts propres à l’agent, accord ponctuel/permanent, refus, doublons concurrents et reprise après interruption | `test_assertions.py`, `test_connection_resolution.py`, `test_mime.py`, `test_messenger.py`, `test_file_transport.py`, `test_chat_approvals.py`, `test_inbound.py` ; navigateur `mail-inbound.spec.mjs` ; E2E `mail-approval.spec.mjs`, `mail-inbound.spec.mjs` |
 | `calendar` | Dates/récurrences, limites et opérations autorisées | `test_ical.py`, `test_calculation_limits.py`, `test_service.py`, `test_mcp.py` |

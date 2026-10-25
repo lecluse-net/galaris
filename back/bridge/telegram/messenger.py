@@ -298,7 +298,8 @@ class TelegramMessenger(Messenger):
             target = int(room_id)
         except ValueError as exc:
             raise ValueError("Telegram targets must be numeric chat IDs") from exc
-        if target not in self.config.users and target not in self.config.chats:
+        users, chats = self.config.users, self.config.chats
+        if (users or chats) and target not in users and target not in chats:
             raise ValueError("Telegram target is not present in an allowlist")
 
     async def send_to_room(
@@ -440,12 +441,13 @@ class TelegramMessenger(Messenger):
         sender = native.from_user
         if sender is None or sender.is_bot:
             return False
+        users, chats = self.config.users, self.config.chats
         chat_type = str(native.chat.type)
         if chat_type == "private":
-            return sender.id in self.config.users or native.chat.id in self.config.chats
-        if native.chat.id not in self.config.chats:
+            return not (users or chats) or sender.id in users or native.chat.id in chats
+        if (users or chats) and native.chat.id not in chats:
             return False
-        if self.config.users and sender.id not in self.config.users:
+        if users and sender.id not in users:
             return False
         return self._mentioned(native)
 

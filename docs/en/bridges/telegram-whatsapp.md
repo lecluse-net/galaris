@@ -49,10 +49,18 @@ also need suitable WebRTC connectivity, potentially through TURN.
 2. Enable Messenger on a Tool and select the `telegram` bridge.
 3. Add an encrypted connection parameter to the Tool, then map it to `token`.
 4. In each agent’s connection, enter its BotFather token.
+5. Link your Telegram identity to your Galaris account in **My profile**, then send a new
+   message to the bot from Telegram. Permission to contact the agent is still required.
 
 The old access policy fields (`allowed_user_ids`, `allowed_chat_ids`,
 `require_group_mention`) are still read on migrated connections, but are not part of the bridge’s
 new matching contract.
+
+With no configured allowlist, the bridge receives human messages and can reply without additional
+identifier settings. Canonical Galaris permissions still apply before admission and sending.
+A nonempty legacy allowlist retains its restrictions; groups still require a bot mention or
+a reply to the bot by default. The connection test validates the token and bot identity;
+it does not prove that a message has been received or authorized.
 
 ### 2. Operation
 

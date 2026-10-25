@@ -1715,7 +1715,7 @@ denials and retries, not delivery to a real remote account.
 | `matrix` | Identity, messaging and voice | `test_client.py`, `test_messenger.py`, `test_voice.py` |
 | `nextcloud` | Talk credentials, messages, calls and signaling | `test_credentials.py`, `test_messenger.py`, `test_call_listener.py`, `test_signaling.py` |
 | `one_bot` | Event/API routing and hub connections | `test_hub.py`, `test_router_routing.py`, `test_messenger_routing.py` |
-| `telegram` | Messaging and delivery retry | `test_messenger.py`, `test_delivery_retry.py` |
+| `telegram` | Token-only reception and replies, explicit legacy restrictions, group mentions and delivery retry | `test_messenger.py`, `test_delivery_retry.py` |
 | `whatsapp` | Bridge authentication, API and Messenger delivery | `test_router.py`, `test_client.py`, `test_messenger_send.py` |
 | `mail` | MIME, identity, authorized connections, files and private Chat/journal approval; reception before reading, agent-private contacts, one-time/permanent consent, rejection, concurrent duplicates and crash recovery | `test_assertions.py`, `test_connection_resolution.py`, `test_mime.py`, `test_messenger.py`, `test_file_transport.py`, `test_chat_approvals.py`, `test_inbound.py`; browser `mail-inbound.spec.mjs`; E2E `mail-approval.spec.mjs`, `mail-inbound.spec.mjs` |
 | `calendar` | Dates/recurrence, limits and authorized operations | `test_ical.py`, `test_calculation_limits.py`, `test_service.py`, `test_mcp.py` |

@@ -85,9 +85,6 @@ def test_mapping_uses_chat_scoped_id_and_combines_album() -> None:
 
 
 def test_allowlists_are_restrictive_and_group_requires_mention() -> None:
-    denied = _messenger(TelegramConnectionConfig(bot_token="x"))
-    assert not denied._authorized(_native_message())  # pyright: ignore[reportPrivateUsage]
-
     allowed = _messenger(
         TelegramConnectionConfig(
             bot_token="x",
@@ -99,6 +96,104 @@ def test_allowlists_are_restrictive_and_group_requires_mention() -> None:
     assert not allowed._authorized(  # pyright: ignore[reportPrivateUsage]
         _native_message(text="bonjour")
     )
+    assert not allowed._authorized(  # pyright: ignore[reportPrivateUsage]
+        _native_message(chat=SimpleNamespace(id=-200, type="supergroup"))
+    )
+
+
+@pytest.mark.asyncio
+async def test_token_only_connection_receives_and_replies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The advertised token-only setup must support a complete private exchange."""
+    from app.messenger import journal
+    from bridge.telegram import messenger as telegram_module
+
+    dispatch = AsyncMock()
+    persist = AsyncMock()
+    monkeypatch.setattr(telegram_module, "dispatch_incoming", dispatch)
+    monkeypatch.setattr(journal, "persist_outbound", persist)
+    private_chat = SimpleNamespace(
+        id=42, type="private", title=None, full_name="Alice", username=None,
+    )
+    incoming = _native_message(chat=private_chat, text="bonjour")
+    outgoing = _native_message(chat=private_chat, message_id=8, text="Bonjour !")
+    bot = SimpleNamespace(send_message=AsyncMock(return_value=outgoing))
+    messenger = _messenger(TelegramConnectionConfig(bot_token="x"))
+    messenger.client = TelegramClient("unused", bot=bot)  # type: ignore[arg-type]
+    monkeypatch.setattr(telegram_module.time, "time", lambda: incoming.date.timestamp())
+
+    await messenger._process_batch(  # pyright: ignore[reportPrivateUsage]
+        [SimpleNamespace(effective_message=incoming)],  # type: ignore[list-item]
+    )
+
+    dispatch.assert_awaited_once()
+    received = dispatch.await_args.args[0]
+    assert received.text == "bonjour"
+    assert received.room.id == "42"
+    assert received.sender.id == "42"
+    sent = await messenger.send_to_room("42", "Bonjour !", reply_to=received.id)
+    assert sent.text == "Bonjour !"
+    assert sent.reply_to == received.id
+    bot.send_message.assert_awaited_once()
+    assert bot.send_message.await_args.kwargs["reply_parameters"].message_id == 7
+    persist.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    ("users", "chats", "chat_type", "chat_id", "text", "sender_id", "is_bot", "authorized"),
+    [
+        ("", "", "private", 42, "bonjour", 42, False, True),
+        ("", "", "supergroup", -100, "@galaris_bot bonjour", 42, False, True),
+        ("", "", "supergroup", -100, "bonjour", 42, False, False),
+        ("", "", "private", 42, "bonjour", 42, True, False),
+        ("7", "", "private", 42, "bonjour", 42, False, False),
+        ("42", "", "private", 42, "bonjour", 42, False, True),
+        ("", "42", "private", 42, "bonjour", 42, False, True),
+        ("", "-100", "private", 42, "bonjour", 42, False, False),
+        ("42", "", "supergroup", -100, "@galaris_bot bonjour", 42, False, False),
+        ("7", "-100", "supergroup", -100, "@galaris_bot bonjour", 42, False, False),
+        ("42", "-100", "supergroup", -100, "@galaris_bot bonjour", 42, False, True),
+    ],
+)
+def test_optional_legacy_allowlists_preserve_explicit_restrictions(
+    users: str, chats: str, chat_type: str, chat_id: int, text: str,
+    sender_id: int, is_bot: bool, authorized: bool,
+) -> None:
+    messenger = _messenger(TelegramConnectionConfig(
+        bot_token="x", allowed_user_ids=users, allowed_chat_ids=chats,
+    ))
+    native = _native_message(
+        chat=SimpleNamespace(id=chat_id, type=chat_type),
+        from_user=SimpleNamespace(id=sender_id, is_bot=is_bot),
+        text=text,
+    )
+    assert messenger._authorized(native) is authorized  # pyright: ignore[reportPrivateUsage]
+
+
+@pytest.mark.parametrize(
+    ("users", "chats", "target", "allowed"),
+    [
+        ("", "", "42", True),
+        ("", "", "-100", True),
+        ("", "", "username", False),
+        ("42", "", "42", True),
+        ("7", "", "42", False),
+        ("", "-100", "-100", True),
+        ("", "-100", "-200", False),
+    ],
+)
+def test_outbound_targets_respect_optional_legacy_allowlists(
+    users: str, chats: str, target: str, allowed: bool,
+) -> None:
+    messenger = _messenger(TelegramConnectionConfig(
+        bot_token="x", allowed_user_ids=users, allowed_chat_ids=chats,
+    ))
+    if allowed:
+        messenger._require_allowed_target(target)  # pyright: ignore[reportPrivateUsage]
+    else:
+        with pytest.raises(ValueError):
+            messenger._require_allowed_target(target)  # pyright: ignore[reportPrivateUsage]
 
 
 def test_id_parser_and_long_message_chunks() -> None:
