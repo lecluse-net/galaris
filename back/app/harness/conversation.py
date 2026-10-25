@@ -1215,6 +1215,10 @@ async def stream_voice_conversation(
         reasoning_effort=request.model.reasoning_effort,
         checkpoint=HarnessRunCheckpoint(request),
     )
+    # Context retrieval writes MemoryUsage rows whose foreign keys lock the agent.
+    # Native tools authorize on another connection and need to lock that same
+    # agent. Commit preparation before the runtime can call them, as in text turns.
+    await release_db_transaction()
     chunks: list[str] = []
     started_at = time.monotonic()
     failure = ""

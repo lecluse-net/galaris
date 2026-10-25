@@ -112,10 +112,32 @@ async def test_conversation_only_request_uses_dedicated_voice_conversation_runti
 
 
 @pytest.mark.asyncio
-async def test_voice_conversation_runtime_is_traced_as_audio(
+async def test_voice_conversation_releases_context_locks_and_keeps_audio_trace(
     monkeypatch: pytest.MonkeyPatch,
+    committed_database: object,
 ) -> None:
     from app.harness import conversation
+    from app.agent import Agent, Title, authorization_policy
+    from app.memory.models import MemoryItem, MemoryUsage
+    from core.database import get_db_session
+    from core.user import UserModel
+    from sqlalchemy import select, text
+
+    async with get_db_session() as db:
+        user = UserModel(email=f"voice-{uuid4().hex}@example.test", hashed_password="synthetic")
+        title = Title(label="Synthetic voice", gender="X")
+        db.add_all([user, title])
+        await db.flush()
+        agent = Agent(user_id=user.id, title_id=title.id, code=f"voice-{uuid4().hex}",
+                      first_name="Synthetic", last_name="Caller")
+        db.add(agent)
+        await db.flush()
+        memory = MemoryItem(owner_agent_id=agent.id, resource_id=str(uuid4()),
+                            content="Synthetic context", title="Synthetic memory",
+                            content_hash="0" * 64)
+        db.add(memory)
+        await db.flush()
+        agent_id, memory_id = agent.id, memory.id
 
     request = _request(
         taskless=True,
@@ -124,6 +146,7 @@ async def test_voice_conversation_runtime_is_traced_as_audio(
     )
     request = replace(
         request,
+        agent=replace(request.agent, id=agent_id),
         task_data={
             **request.task_data,
             "linked_work": (
@@ -147,6 +170,15 @@ async def test_voice_conversation_runtime_is_traced_as_audio(
         error = ""
 
         async def run(self, *_args: object, **_kwargs: object) -> AsyncIterator[AIMessage]:
+            # Native tools authorize on another connection. Context usage holds a
+            # foreign-key lock on this agent until preparation has committed.
+            async with get_db_session() as db:
+                await db.execute(text("SET LOCAL lock_timeout = '100ms'"))
+                policy = await authorization_policy(agent_id, lock=True)
+                assert policy.manager_user_id == user.id
+                assert await db.scalar(select(MemoryUsage.id).where(
+                    MemoryUsage.agent_id == agent_id, MemoryUsage.item_id == memory_id,
+                )) is not None
             yield AIMessage(type="text", content="Spoken answer")
 
     async def fake_create_agent(**kwargs: object) -> FakeRuntime:
@@ -193,9 +225,12 @@ async def test_voice_conversation_runtime_is_traced_as_audio(
     )
     monkeypatch.setattr(learning_service, "list_injectable", AsyncMock(return_value=[]))
 
-    events = [
-        event async for event in conversation.stream_voice_conversation(request)
-    ]
+    async with get_db_session() as db:
+        db.add(MemoryUsage(item_id=memory_id, agent_id=agent_id, access_kind="context"))
+        await db.flush()
+        events = [
+            event async for event in conversation.stream_voice_conversation(request)
+        ]
 
     assert captured["purpose"] == LLMCallPurpose.CONVERSATION_AUDIO
     assigned_skills.assert_any_await(request.agent_id)  # Resource reads revalidate after construction.
@@ -214,6 +249,7 @@ async def test_voice_conversation_runtime_is_traced_as_audio(
     assert str(turn.round_id) == request.task_data["conversation_round_id"]
     assert turn.linked_work == request.task_data["linked_work"]
     assert events[-1].result is not None
+    assert events[-1].result.success, events[-1].result.metadata.get("error")
     assert events[-1].result.result == "Spoken answer"
 
 
