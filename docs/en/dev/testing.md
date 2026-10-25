@@ -11,6 +11,8 @@ to detect, and assert the resulting behavior.
 The [functional catalogue](functional-tests.md) connects business responsibilities to existing
 suites. It provides starting points, not an exhaustive certification. Describe the actor,
 action and observable result first, including denied access or forbidden effects where relevant.
+The [File Share MCP/directory comparison](file-share-navigation.md) distinguishes fixture
+instrumentation checks from campaigns with a real harness and model.
 Find the existing proof and strengthen or parameterize it before adding another test.
 
 Keep domain tests alongside their module and cross-domain scenarios in `back/tests/` or

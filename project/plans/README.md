@@ -43,13 +43,18 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 |---|---|---|
 | [programmes-documentaires-json.md](programmes-documentaires-json.md) | `design` | Programmes dans les Documents, `document_exec` avec nom personnel et entrée/sortie JSON, dernier contenu sauvegardé au démarrage, moteur isolé, suivi Process et amélioration autonome. |
 | [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Conversation conservée, petits exécuteurs et supervision par gros modèle à comparer ; corpus synthétiques, benchmarks de tâches complètes, escalade, coût par réussite et décision par famille. |
-| [navigation-file-share-harnais.md](navigation-file-share-harnais.md) | `design` | Hypothèse à confirmer : premier essai non concluant, aucun chantier FUSE engagé avant un gain utile démontré par une comparaison MCP/répertoire fiable. |
 | [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundle, SDK/TCK, activation par génération, frontend précompilé, permissions, conservation SQL, rollback et store signé. |
 | [controle-distant-vnc.md](controle-distant-vnc.md) | `design` | Connexion VNC, captures MCP, simulation clavier/souris, sessions isolées et reprise humaine ; client RFB et compatibilité OS/serveurs à qualifier. |
 | [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Gain à mesurer, corpus gouverné, trainer/serving à qualifier, invalidation et promotion dépendant des gardes du Lab. |
 | [cible.md](cible.md) | `design` | Distribution publique, gouvernance d'effets, releases d'agents, autonomie événementielle, collaboration, interopérabilité, flotte et écosystème ; piste 3D optionnelle. |
 
 ## Plans retirés et suivi conservé
+
+- **Navigation File Share par harnais** : expérience terminée sur 120 exécutions ;
+  gain de coût du répertoire, mais non-dégradation de réussite non établie. Piste FUSE
+  arrêtée dans [0237](../decisions/0237-file-share-navigation-experiment.md), preuves et
+  limites dans l'[audit](../audits/2026-10-25-file-share-navigation.md). Le plan est
+  retiré des travaux actifs ; sa conception conditionnelle reste dans l'historique Git.
 
 - **Skills personnels des agents** : fonctionnalité réalisée et plan retiré le 25 octobre 2026.
   Contrat conservé dans [0222](../decisions/0222-personal-skill-package-boundary.md),

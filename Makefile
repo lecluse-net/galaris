@@ -75,6 +75,10 @@ memory-benchmark: ## Generate, validate or score an entirely synthetic memory re
 	@bash bin/memory-benchmark.sh $(ARGS)
 .PHONY: memory-benchmark
 
+file-share-navigation: ## Compare real Hermes navigation on synthetic MCP/directory inputs (ARGS: pilot|decision <model-code> [upstream])
+	@bash -c "$$(cat bin/file-share-navigation.sh)" bin/file-share-navigation.sh $(ARGS)
+.PHONY: file-share-navigation
+
 
 
 

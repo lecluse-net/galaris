@@ -17,6 +17,7 @@ and tests remain authoritative; plans describe extensions still open.
 | Share resources | [ACL contracts and migration](sharing.md) |
 | Delegate domains and settings | [Functional privileges](../admin/privileges.md) |
 | Choose evidence and test commands | [Testing behavior](testing.md) |
+| Compare MCP and directory navigation with a real harness | [Synthetic File Share campaign](file-share-navigation.md) |
 | Observe a mission with real collaborating agents | [Teamwork pilot](agent-team-qualification.md) |
 
 The [Lab reference corpus](lab-reference-corpus.md) supplies reproducible editorial and

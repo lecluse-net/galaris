@@ -17,6 +17,7 @@ font foi ; les plans décrivent les extensions encore ouvertes.
 | Partager des ressources | [Contrats et migration des ACL](sharing.md) |
 | Déléguer les domaines et les réglages | [Privilèges par fonction](../admin/privileges.md) |
 | Choisir une preuve et une commande de test | [Tester un comportement](testing.md) |
+| Comparer la navigation MCP et répertoire avec un vrai harnais | [Campagne File Share synthétique](file-share-navigation.md) |
 | Observer une mission avec de vrais agents collaborateurs | [Pilote de travail d'équipe](agent-team-qualification.md) |
 
 Le [corpus de référence du Lab](lab-reference-corpus.md) fournit des cas reproductibles sur

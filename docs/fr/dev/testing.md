@@ -10,6 +10,8 @@ fonction de la panne que l'on veut détecter, puis vérifier un effet observable
 
 Le [catalogue fonctionnel](functional-tests.md) relie les responsabilités métier aux suites
 existantes. Ce sont les points de départ d’une modification, pas une certification exhaustive.
+La [comparaison File Share MCP/répertoire](file-share-navigation.md) distingue la preuve
+d'instrumentation sur fixtures et les campagnes avec un vrai harnais et un vrai modèle.
 Pour chaque évolution, écrire « dans cette situation, cet acteur peut faire cette action et
 retrouve ce résultat », avec le refus ou l’effet interdit lorsque pertinent.
 

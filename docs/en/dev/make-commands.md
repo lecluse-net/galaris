@@ -72,6 +72,7 @@ These commands use the Compose files selected for the current environment.
 | `test-hermes-management` | Diagnose Hermes adapter configuration and connectivity. |
 | `test-harness-management` | Diagnose the generic harness manager. |
 | `qualify-lab` | Start an explicitly budgeted Lab exercise or compare runs; `ARGS`, `LAB_ACCESS_TOKEN`. |
+| `file-share-navigation` | Compare MCP and directory access with the real Hermes SDK; [synthetic pilot and campaign](file-share-navigation.md), `ARGS='pilot\|decision <model-code> <endpoint>'`. |
 | `qualify-matrix` | Send synthetic text/file to an explicitly authorized Matrix test room. |
 
 Management diagnostics use the active backend. Manual scripts remain available through
