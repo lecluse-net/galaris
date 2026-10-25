@@ -13,6 +13,10 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
   const rooms = [room, ...Array.from({ length: roomCount - 1 }, (_, index) => ({
     ...room, id: `room-${index + 2}`, label: `Conversation ${String(index + 2).padStart(3, '0')}`,
   }))]
+  state.rooms = rooms
+  state.documentAgents = new Map()
+  state.recipients = [{ agent_id: 7, display_name: 'Synthetic agent', active: true, suggested_room_label: 'New conversation' }]
+  const allowed = (documentId, agentId) => !documentId || (state.documentAgents.get(documentId) ?? [7]).includes(agentId)
   const message = { id: 'message-a', room_id: room.id, text: 'Earlier exchange', files: [], sender: null,
     created_at: '2026-09-01T12:00:00Z', is_mine: true, status: 'sent' }
   const messages = [message]
@@ -55,7 +59,8 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
       state.preferenceWrites.push({ documentId, ...value })
       return route.fulfill({ json: value })
     }
-    const roomId = state.preferences.get(documentId) ?? null
+    const saved = state.preferences.get(documentId)
+    const roomId = saved && allowed(documentId, rooms.find(room => room.id === saved)?.agent_id) ? saved : null
     state.preferenceReads.push(documentId)
     if (state.refusePreferenceRead) return route.fulfill({ status: 503, json: { detail: 'Read unavailable' } })
     if (state.waitPreferenceRead) await state.waitPreferenceRead(documentId)
@@ -72,10 +77,13 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
     const search = query.get('search') ?? ''
     state.roomRequests.push({ page: currentPage, size, search })
     if (state.refuseRooms) return route.fulfill({ status: state.refuseRooms, json: { detail: 'List unavailable' } })
-    const matches = rooms.filter(room => room.label.toLowerCase().includes(search.toLowerCase()))
+    const matches = rooms.filter(room => allowed(query.get('document_id'), room.agent_id) && room.label.toLowerCase().includes(search.toLowerCase()))
     return route.fulfill({ json: { items: matches.slice((currentPage - 1) * size, currentPage * size), total: matches.length, page: currentPage, page_size: size } })
   })
-  await page.route(/\/api\/chat\/rooms\/room-(?:[ab]|\d+)(?:\?.*)?$/, route => route.fulfill({ json: rooms.find(room => new URL(route.request().url()).pathname.endsWith(`/${room.id}`)) }))
+  await page.route(/\/api\/chat\/rooms\/room-(?:[ab]|\d+)(?:\?.*)?$/, route => {
+    const url = new URL(route.request().url()), room = rooms.find(room => url.pathname.endsWith(`/${room.id}`))
+    return route.fulfill(allowed(url.searchParams.get('document_id'), room?.agent_id) ? { json: room } : { status: 403, json: { detail: 'Document access denied' } })
+  })
   await jsonRoute(page, '**/api/chat/rooms/*/activity?*', { items: [], total: 0 })
   await jsonRoute(page, '**/api/chat/rooms/*/documents?*', { items: [], total: 0 })
   await jsonRoute(page, '**/api/documents/*/attachments*', [])
@@ -95,7 +103,12 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
   await jsonRoute(page, '**/api/chat/rooms/*/speech/status*', { available_agent_ids: [] })
   await page.route('**/api/chat/agents/7/avatar', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="#0466c8"/><circle cx="20" cy="20" r="10" fill="white"/></svg>' }))
-  await jsonRoute(page, '**/api/chat/recipients?*', { agents: [{ agent_id: 7, display_name: 'Synthetic agent', active: true, suggested_room_label: 'New conversation' }] })
+  await page.route('**/api/chat/recipients?*', async route => {
+    const documentId = new URL(route.request().url()).searchParams.get('document_id')
+    if (state.waitRecipients) await state.waitRecipients(documentId)
+    const agents = state.recipients.filter(agent => allowed(documentId, agent.agent_id))
+    return route.fulfill({ json: { agents, total: agents.length } })
+  })
   await page.route('**/api/chat/rooms', route => {
     state.created.push(route.request().postDataJSON())
     const created = { ...room, id: 'room-b', label: state.created.at(-1).label }
@@ -169,6 +182,7 @@ for (const mobile of [false]) test(`Documents saves before conversing and can cr
   await page.getByRole('option').filter({ hasText: 'Synthetic agent' }).click()
   await create.getByRole('button', { name: 'Chat', exact: true }).click()
   await expect.poll(() => state.created.length).toBe(1)
+  expect(state.created[0].document_id).toBe(state.item.id)
   await expect(panel.getByText('New conversation', { exact: true })).toBeVisible()
   await expect.poll(() => state.preferences.get(state.item.id)).toBe('room-b')
   await panel.locator('textarea').fill('Continue here')
@@ -188,6 +202,66 @@ for (const mobile of [false]) test(`Documents saves before conversing and can cr
   await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
   await expect(panel).toBeHidden()
   await expect(title).toHaveValue('Edited report')
+})
+
+test('Documents offers only document readers and drops a conversation after access is revoked', async ({ page }) => {
+  const state = await workspace(page, undefined, 2)
+  state.rooms[1].agent_id = 8
+  state.rooms[1].agent_name = 'Agent without access'
+  state.recipients.push({ agent_id: 8, display_name: 'Agent without access', active: true })
+  const panel = await openConversation(page)
+  await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
+  await expect(page.getByRole('option').filter({ hasText: 'Existing conversation' })).toBeVisible()
+  await expect(page.getByRole('option').filter({ hasText: 'Conversation 002' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await panel.getByRole('button', { name: 'New conversation with an agent', exact: true }).click()
+  const create = page.getByRole('dialog').filter({ hasText: 'New conversation' })
+  await create.getByRole('combobox').click()
+  await expect(page.getByRole('option').filter({ hasText: 'Synthetic agent' })).toBeVisible()
+  await expect(page.getByRole('option').filter({ hasText: 'Agent without access' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  const recipientsReloaded = page.waitForResponse(response => response.url().includes('/chat/recipients'))
+  await page.evaluate(id => window.testApp.emitSocket('document.update', { data: { id } }), state.item.id)
+  await recipientsReloaded
+  await expect(create).toBeVisible()
+  await create.getByRole('button', { name: 'Close', exact: true }).click()
+  await panel.locator('textarea').fill('Must not be sent')
+  const roomUrl = /\/api\/chat\/rooms\/room-a(?:\?.*)?$/
+  await page.route(roomUrl, route => route.fulfill({ status: 503, json: { detail: 'Temporary verification failure' } }))
+  await panel.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect(panel.getByRole('alert')).toBeVisible()
+  await expect(panel.locator('textarea')).toHaveValue('Must not be sent')
+  await expect(panel).toContainText('Earlier exchange')
+  expect(state.writes).toEqual([])
+  await page.unroute(roomUrl)
+  state.documentAgents.set(state.item.id, [])
+  await panel.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect(panel).not.toContainText('Earlier exchange')
+  expect(state.writes).toEqual([])
+  await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await expect(panel).toContainText('Choose a conversation or start one with an agent.')
+  await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
+  await expect(page.getByRole('option')).toHaveCount(0)
+})
+
+test('a late agent list cannot open creation for a different document', async ({ page }) => {
+  const state = await workspace(page)
+  const panel = await openConversation(page)
+  let release, entered
+  const started = new Promise(resolve => { entered = resolve })
+  const gate = new Promise(resolve => { release = resolve })
+  state.waitRecipients = async () => { entered(); await gate }
+  await panel.getByRole('button', { name: 'New conversation with an agent', exact: true }).click()
+  await started
+  const secondId = '00000000-0000-4000-8000-000000000322'
+  state.documents.set(secondId, { ...state.item, id: secondId, title: 'Second synthetic document' })
+  await page.evaluate(id => window.testApp.navigate(`/documents?document_id=${id}`), secondId)
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
+  const response = page.waitForResponse(url => url.url().includes('/chat/recipients'))
+  release(); await response
+  await expect(page.getByRole('dialog').filter({ hasText: 'New conversation' })).toHaveCount(0)
+  expect(state.created).toEqual([])
 })
 
 test('Documents loads the last conversation per document only after a manual opening', async ({ page }) => {

@@ -87,7 +87,7 @@ const { documentId = null, beforeSend, captureDocumentFocus, visible = true } = 
 const emit = defineEmits<{ close: []; 'open-document': [id: string] }>()
 const { t, locale } = useI18n()
 const privilegeStore = usePrivilegeStore()
-const store = reactive(useChatState())
+const store = reactive(useChatState(() => documentId))
 const { markVisibleMessageRead: markVisibleRead } = useConversationVisibility({
   roomId: () => store.selectedRoom?.id ?? null,
   visible: () => visible,
@@ -108,7 +108,7 @@ const rooms = ref<MessengerRoom[]>([])
 const roomsPage = ref(1), roomsPageSize = ref(50), roomsTotal = ref(0)
 const roomOptions = computed(() => rooms.value.filter(room => room.conversation_type !== 'audio'))
 let roomSearch = ''
-let disposed = false, searchGeneration = 0
+let disposed = false, searchGeneration = 0, recipientsGeneration = 0
 let contextGeneration = 0, contextDocumentId: string | null = documentId, restored = false
 let preferenceWrites: Promise<void> = Promise.resolve()
 let following = true, preparedDocumentId: string | null = null
@@ -179,7 +179,7 @@ async function restoreRoom(id: string | null, generation: number): Promise<void>
       if (!current()) return
       if (roomId) {
         let room: MessengerRoom
-        try { room = await chatService.room(roomId) }
+        try { room = await chatService.room(roomId, null, id) }
         catch (failure) {
           if (isAxiosError(failure) && [403, 404].includes(failure.response?.status ?? 0)) {
             if (current()) restored = true
@@ -207,7 +207,7 @@ async function loadRooms(search = roomSearch, page = roomsPage.value, pageSize =
   error.value = ''
   retryAction = () => loadRooms(search, page, pageSize)
   try {
-    const result = await chatService.rooms(page, pageSize, search)
+    const result = await chatService.rooms(page, pageSize, search, null, false, false, null, documentId)
     if (disposed || generation !== searchGeneration) return
     rooms.value = result.items
     roomsTotal.value = result.total
@@ -233,10 +233,12 @@ function changePageSize(size: number): void { void loadRooms(roomSearch, 1, size
 function refresh(): void { void run(() => store.refreshSelected()) }
 async function openCreate(): Promise<void> {
   if (!canCreate.value || openingCreate.value) return
+  const id = documentId, generation = contextGeneration, session = sessionGeneration()
+  const request = ++recipientsGeneration
   openingCreate.value = true
   await run(async () => {
-    const result = await chatService.recipients()
-    if (!disposed && canCreate.value) { recipients.value = result.agents; createOpen.value = true }
+    const result = await chatService.recipients('', id)
+    if (!disposed && canCreate.value && request === recipientsGeneration && id === documentId && generation === contextGeneration && visible && session === sessionGeneration()) { recipients.value = result.agents; createOpen.value = true }
   })
   openingCreate.value = false
 }
@@ -250,7 +252,7 @@ async function createRoom(agentId: number, label: string, topicId: string | null
   restored = true
   restoring.value = false
   try {
-    const room = await chatService.createRoom(agentId, label, topicId, showLastMessage)
+    const room = await chatService.createRoom(agentId, label, topicId, showLastMessage, id)
     if (disposed || generation !== contextGeneration || documentId !== id || session !== sessionGeneration()) return
     createOpen.value = false
     await Promise.all([
@@ -266,6 +268,20 @@ async function prepare(): Promise<boolean> {
   preparedDocumentId = null
   preparedDocumentFocus = null
   if (!await beforeSend() || disposed || room !== store.selectedRoom?.id || id !== documentId) return false
+  if (room && id) {
+    try { await chatService.room(room, null, id) }
+    catch (failure) {
+      if (!disposed && room === store.selectedRoom?.id && id === documentId) {
+        if (isAxiosError(failure) && [403, 404].includes(failure.response?.status ?? 0)) {
+          void store.selectRoom(null)
+          void loadRooms()
+        }
+        reportError()
+      }
+      return false
+    }
+    if (disposed || room !== store.selectedRoom?.id || id !== documentId) return false
+  }
   preparedDocumentId = id
   preparedDocumentFocus = id ? captureDocumentFocus?.() ?? null : null
   return true
@@ -297,17 +313,46 @@ async function onScroll(info: ReturnType<QScrollArea['getScroll']>): Promise<voi
 function showDocument(event: { data?: { room_id?: string; document_id?: string } }): void {
   if (visible && canReadDocuments.value && !store.selectedRoom?.source && event.data?.room_id === store.selectedRoom?.id && event.data?.document_id) emit('open-document', event.data.document_id)
 }
+function documentAccessChanged(event: { data?: { id?: string } }): void {
+  if (event.data?.id && event.data.id !== documentId) return
+  const request = ++recipientsGeneration, id = documentId
+  if (createOpen.value) {
+    const current = () => !disposed && request === recipientsGeneration && id === documentId
+    void run(async () => {
+      try {
+        const result = await chatService.recipients('', id)
+        if (!current()) return
+        if (recipients.value.some(previous => !result.agents.some(agent => agent.agent_id === previous.agent_id))) createOpen.value = false
+        recipients.value = result.agents
+      } catch (failure) {
+        if (current()) { createOpen.value = false; recipients.value = []; throw failure }
+      }
+    })
+  } else recipients.value = []
+  if (visible && initialized.value) {
+    void loadRooms()
+    if (store.selectedRoom) void run(() => store.refreshSelected())
+  }
+}
 watch(() => store.selectedRoom?.id, () => { replyingTo.value = null; following = true })
 watch(() => [documentId, visible, initialized.value] as const, ([id, shown, ready]) => {
   const generation = ++contextGeneration
+  recipientsGeneration++
   if (id !== contextDocumentId) {
     contextDocumentId = id
     restored = false
     createOpen.value = false
+    recipients.value = []
+    searchGeneration++
+    rooms.value = []
+    roomsTotal.value = 0
+    store.purge()
     void store.selectRoom(null)
+    if (shown && ready) void loadRooms('', 1)
   }
   restoring.value = false
   if (shown && ready && !restored) void run(() => restoreRoom(id, generation))
+  else if (shown && ready) documentAccessChanged({})
 }, { flush: 'sync' })
 watch(() => store.enabled, enabled => {
   if (!enabled) {
@@ -318,8 +363,17 @@ watch(() => store.enabled, enabled => {
   }
 })
 watch(() => [store.messages.length, store.liveRound, visible], followBottom)
-onMounted(() => { websocket.onEvent('chat', 'document_show', showDocument); void run(initialize) })
-onBeforeUnmount(() => { disposed = true; searchGeneration++; websocket.offEvent('chat', 'document_show', showDocument); store.releaseSelectedRoom() })
+onMounted(() => {
+  websocket.onEvent('chat', 'document_show', showDocument)
+  for (const event of ['update', 'delete', 'invalidate']) websocket.onEvent('document', event, documentAccessChanged)
+  void run(initialize)
+})
+onBeforeUnmount(() => {
+  disposed = true; searchGeneration++; recipientsGeneration++
+  websocket.offEvent('chat', 'document_show', showDocument)
+  for (const event of ['update', 'delete', 'invalidate']) websocket.offEvent('document', event, documentAccessChanged)
+  store.releaseSelectedRoom()
+})
 </script>
 
 <style scoped src="../conversationBackground.css"></style>

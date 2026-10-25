@@ -1,6 +1,7 @@
 """Personal Document/Chat selection, independent of document content and sharing."""
 
 from uuid import UUID
+from collections.abc import Collection
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -27,6 +28,15 @@ async def _require_document(document_id: UUID, scope: AgentManagementScope) -> N
         raise PermissionError("Document access denied.")
 
 
+async def document_conversation_agents(
+    document_id: UUID, scope: AgentManagementScope, candidates: Collection[int] | None,
+) -> tuple[int, ...]:
+    """Intersect current document rights with the caller's candidate agents."""
+    await _require_document(document_id, scope)
+    readable, _ = await managed_agents(document_id, candidates)
+    return readable
+
+
 async def read_document_conversation(document_id: UUID, scope: AgentManagementScope) -> UUID | None:
     await _require_document(document_id, scope)
     room_id = await get_db().scalar(select(ChatDocumentConversation.room_id).where(
@@ -36,7 +46,10 @@ async def read_document_conversation(document_id: UUID, scope: AgentManagementSc
     if room_id is None:
         return None
     room = await get_chat_room(scope.user_id, room_id)
-    return room_id if room is not None and room.conversation_type == "text" else None
+    if room is None or room.conversation_type != "text":
+        return None
+    access = await document_access(document_id, room.agent_id)
+    return room_id if access.can_read else None
 
 
 async def write_document_conversation(
@@ -47,6 +60,8 @@ async def write_document_conversation(
         room = await get_chat_room(scope.user_id, room_id)
         if room is None or room.conversation_type != "text":
             raise PermissionError("Conversation access denied.")
+        if not (await document_access(document_id, room.agent_id)).can_read:
+            raise PermissionError("The conversation agent cannot read this document.")
     await get_db().execute(insert(ChatDocumentConversation).values(
         document_id=document_id, user_id=scope.user_id, room_id=room_id,
     ).on_conflict_do_update(

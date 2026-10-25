@@ -63,6 +63,7 @@ class RoomCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     agent_id: int = Field(gt=0)
+    document_id: UUID | None = None
     label: str | None = Field(default=None, min_length=1, max_length=500)
     topic_id: UUID | None = None
     show_last_message: bool = True

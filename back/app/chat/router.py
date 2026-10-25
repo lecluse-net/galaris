@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Collection
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -93,7 +93,7 @@ from app.conversation import (
 )
 
 from . import storage
-from .document_conversation import read_document_conversation, write_document_conversation
+from .document_conversation import document_conversation_agents, read_document_conversation, write_document_conversation
 from .document_previews import with_deleted_document_previews
 from .assertions import (
     ChatRoomAccessAssertion,
@@ -227,6 +227,16 @@ async def _require_document_privilege() -> None:
         for privilege in ("DOCUMENT_ACCESS", "DOCUMENT_EDIT", "DOCUMENT_ADMIN")
     ]):
         raise HTTPException(status_code=403, detail="Document access denied.")
+
+
+async def _document_agent_ids(document_id: UUID, candidates: Collection[int] | None) -> tuple[int, ...]:
+    await _require_document_privilege()
+    try:
+        return await document_conversation_agents(document_id, await current_management_scope(), candidates)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 def _room_for_scope(
@@ -419,11 +429,13 @@ async def read_recipients(
     search: str = Query(default="", max_length=200),
     page: int = Query(default=1, ge=1),
     page_size: int | None = Query(default=None, ge=1, le=500),
+    document_id: UUID | None = None,
 ) -> RecipientCatalog:
     _require_enabled()
     scope = await current_dialogue_scope()
+    agent_ids = await _document_agent_ids(document_id, scope.agent_ids) if document_id is not None else scope.agent_ids
     agents, total = await list_internal_agent_page(
-        actor_user_id=await _user_id(), agent_ids=scope.agent_ids,
+        actor_user_id=await _user_id(), agent_ids=agent_ids,
         search=search, active_only=True, page=page, page_size=page_size,
     )
     return RecipientCatalog(agents=agents, total=total)
@@ -466,8 +478,12 @@ async def read_rooms(
     include_external: bool = Query(default=True),
     include_archived: bool = Query(default=False),
     recent_days: int | None = Query(default=None, ge=1, le=365),
+    document_id: UUID | None = None,
 ) -> NativeMessengerRoomPage:
     scope = await current_management_scope() if agent_id is not None else await current_dialogue_scope()
+    agent_ids = scope.agent_ids if agent_id is not None else None
+    if document_id is not None:
+        agent_ids = await _document_agent_ids(document_id, agent_ids)
     result = await list_chat_rooms(
         await _user_id(),
         agent_id=agent_id,
@@ -477,7 +493,7 @@ async def read_rooms(
         include_external=include_external,
         include_archived=include_archived,
         recent_days=recent_days,
-        agent_ids=scope.agent_ids if agent_id is not None else None,
+        agent_ids=agent_ids,
     )
     return result.model_copy(update={"items": [_room_for_scope(room, scope) for room in result.items]})
 
@@ -489,6 +505,8 @@ async def create_room(data: RoomCreate) -> NativeMessengerRoom:
     scope = await current_dialogue_scope()
     if not scope.allows(data.agent_id):
         raise _not_found()
+    if data.document_id is not None and data.agent_id not in await _document_agent_ids(data.document_id, (data.agent_id,)):
+        raise HTTPException(status_code=403, detail="The conversation agent cannot read this document.")
     if data.topic_id is not None:
         current_user = await user_service.get_current_user()
         if current_user is None or not await check_privilege(
@@ -515,6 +533,7 @@ async def create_room(data: RoomCreate) -> NativeMessengerRoom:
 async def read_room(
     room_id: UUID,
     agent_id: int | None = Query(default=None, ge=1),
+    document_id: UUID | None = None,
 ) -> NativeMessengerRoom:
     room = (
         await get_agent_chat_room(agent_id, room_id)
@@ -523,6 +542,8 @@ async def read_room(
     )
     if room is None:
         raise _not_found()
+    if document_id is not None and room.agent_id not in await _document_agent_ids(document_id, (room.agent_id,)):
+        raise HTTPException(status_code=403, detail="The conversation agent cannot read this document.")
     scope = await current_dialogue_scope()
     return _room_for_scope(room, scope)
 

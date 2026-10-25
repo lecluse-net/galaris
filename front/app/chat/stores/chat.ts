@@ -27,7 +27,7 @@ function compareMessages(left: MessengerMessage, right: MessengerMessage): numbe
 }
 
 /** Each conversation surface owns its selection and subscriptions. */
-export function useChatState() {
+export function useChatState(documentId: () => string | null = () => null) {
   const privilegeStore = usePrivilegeStore()
   const status = ref<MessengerStatus | null>(null)
   const rooms = ref<MessengerRoom[]>([])
@@ -295,6 +295,8 @@ export function useChatState() {
         viewerAgentId.value,
         includeExternal,
         includeArchived,
+        null,
+        documentId(),
       )
       if (sequence !== roomsRequestSequence) return
       rooms.value = result.items
@@ -315,6 +317,8 @@ export function useChatState() {
         viewerAgentId.value,
         includeExternalRooms.value,
         includeArchivedRooms.value,
+        null,
+        documentId(),
       )
       if (sequence !== roomsRequestSequence || !canApply()) return
       rooms.value = result.items
@@ -334,6 +338,8 @@ export function useChatState() {
         viewerAgentId.value,
         includeExternalRooms.value,
         includeArchivedRooms.value,
+        null,
+        documentId(),
       )
       if (sequence !== roomsRequestSequence) return
       const merged = new Map(rooms.value.map(room => [room.id, room]))
@@ -356,7 +362,7 @@ export function useChatState() {
         && selectedRoom.value.kind === 'direct' && privilegeStore.hasPrivilege('CHAT_CALL')
       const canLoadCommands = selectedRoom.value.writable && scopeAgentId === null
       const [room, [messageResult, activityResult]] = await Promise.all([
-        service.room(id, scopeAgentId),
+        service.room(id, scopeAgentId, documentId()),
         loadMessageActivitySnapshot(
           () => service.messages(id, 1, messagesPageSize, scopeAgentId),
           () => service.activity(id, activityPage.value, activityPageSize.value, scopeAgentId),
@@ -665,7 +671,7 @@ export function useChatState() {
       : rooms.value.find(item => item.id === roomId) ?? null
     if (!room) {
       try {
-        room = await service.room(roomId, viewerAgentId.value)
+        room = await service.room(roomId, viewerAgentId.value, documentId())
       } catch {
         return
       }
@@ -961,4 +967,4 @@ export function useChatState() {
   return { status, enabled, viewerAgentId, rooms, roomsTotal, hasMoreRooms, loadingMoreRooms, includeExternalRooms, includeArchivedRooms, selectedRoom, loadingSelectedRoom, messages, messagesTotal, latestDisplayedMessageId, hasOlderMessages, loadingOlderMessages, loadingRecentMessages, activity, activityTotal, activityPage, activityPageSize, commands, activeCall, stoppingCallId, endedCallId, callAvailable, liveRound, pendingVoiceTranscriptions, incomingMessageNotification, loading, sending, initialize, loadRooms, loadMoreRooms, selectRoom, setDisplayedRoom, markSelectedRoomRead, updateRoomPreferences, setRoomArchived, updateRoomTopic, prepareCallStart, markCallStopping, refreshSelected, loadRecentMessages, loadOlderMessages, setActivityPage, setViewerAgent, send, applyMessageTopicChange, disconnect, releaseSelectedRoom, purge }
 }
 
-export const useChatStore = defineStore('chat', useChatState)
+export const useChatStore = defineStore('chat', () => useChatState())

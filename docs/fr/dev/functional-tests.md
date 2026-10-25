@@ -274,7 +274,9 @@ le contrôle historique du texte seul ne détectait pas le compteur non lu rest�
 `document-authoring.spec.mjs` vérifie les cases à cocher, leur annulation/rétablissement,
 leur imbrication, la réouverture et l'export, ainsi que la navigation hiérarchique dans le
 plan. `document-conversation.spec.mjs` couvre le choix et la création de conversations dans
-Documents, l'ouverture exclusivement manuelle et la restauration par document après clic,
+Documents, le filtrage des conversations et destinataires par accès documentaire, le refus
+d'envoi après révocation, les listes d'agents tardives après navigation,
+l'ouverture exclusivement manuelle et la restauration par document après clic,
 l'absence de chargement à l'ouverture ou au changement de document, le panneau vide sans
 conversation mémorisée, la pagination et la recherche parmi plus de 100 échanges sur mobile et bureau,
 la sélection souris/clavier conservée avant l'ouverture du chat, sa transmission après

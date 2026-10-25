@@ -19,13 +19,17 @@ The **Conversation** icon in the editor toolbar's **Reading** group opens a pane
 right of the document on desktop. Drag the handle between the document and chat to adjust
 their widths, just as between the library and document. Focus the handle and use the
 left/right arrow keys to resize with the keyboard. Search
-for an existing conversation or select **New conversation with an agent**. The picker shows
+for an existing conversation or select **New conversation with an agent**. Both pickers only
+offer agents who can read or edit the document through personal, team or global permissions.
+Creation also retains the usual dialogue permissions. Selecting an agent does not grant new
+document access. The picker shows
 each agent's avatar and paginates long lists: 50 conversations by default, with a choice of
 10, 20, 50, 100 or 500 per page. Paging or searching preserves the open conversation and its
 draft. The last conversation selected or created is saved per document and per user.
 The panel always stays closed when loading or switching documents: no conversation is
 loaded until you click the **Conversation** icon. Clicking restores the last saved
-conversation for that document if you still have access; otherwise, the panel opens empty.
+conversation for that document if you still have access and its agent can still read the document;
+otherwise, the panel opens empty.
 You can hide it with its close button. This preference changes neither document content nor permissions.
 These are the
 same conversations available in **Chat**. Documents focuses on writing around the open
