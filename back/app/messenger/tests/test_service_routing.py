@@ -20,6 +20,9 @@ async def test_task_messaging_keeps_exact_connection_and_platform(
     messenger_kind: str,
     expected_resolved: bool,
 ) -> None:
+    from core.params import runtime_settings
+
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["matrix", "telegram"]')
     connection = SimpleNamespace(id=73, agent_id=7, tool_id=9, active=True)
     messenger = SimpleNamespace(kind=messenger_kind)
     get_connection = AsyncMock(return_value=connection)

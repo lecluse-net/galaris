@@ -519,6 +519,13 @@ agent: the addresses then become durable aliases of the retained contact, and fu
 do not recreate the duplicate. This merge repoints sealed memories, Topic/contact scopes, memory
 edges, messages, rounds, and Tasks in one transaction before forgetting the old projection.
 
+In model context, human messages are attributed to the canonical contact label and UUID,
+both for the current input and projected history. Remote names and identifiers remain in the
+server journal and routing data. They never name an interlocutor whose contact is missing,
+forgotten or owned by another agent; that attribution stays neutral. Each new turn rereads
+the contact without semantic retrieval or a name cache. This projection does not change the
+authenticated `requester_user_id` or contact permissions.
+
 The address book also creates a private contact from a name and validated email address,
 without a `users`, `agents`, or `messenger_users` row. The normalized address is a
 `messenger / mail` identity; its uniqueness constraint per agent also protects concurrent

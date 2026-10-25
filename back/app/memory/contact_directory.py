@@ -221,6 +221,19 @@ async def list_messenger_contacts(
     return tuple(records), total
 
 
+async def contact_labels(*, owner_agent_id: int, contact_item_ids: Collection[UUID]) -> dict[UUID, str]:
+    """Read authoritative contact labels in one owner-scoped query, without aliases."""
+    if not contact_item_ids:
+        return {}
+    items = (await get_db().scalars(MemoryItem.histo_filter(select(MemoryItem).where(
+        MemoryItem.id.in_(contact_item_ids),
+        MemoryItem.owner_agent_id == owner_agent_id,
+        MemoryItem.source_managed.is_(True),
+        MemoryItem.managed_source_kind == MESSENGER_CONTACT_SOURCE_KIND,
+    )))).all()
+    return {item.id: _display_name(item, ()) for item in items}
+
+
 async def get_messenger_contact(contact_item_id: UUID) -> MessengerContactRecord | None:
     """Resolve one contact through the same public administrative projection."""
 
@@ -775,6 +788,7 @@ async def forget_messenger_contact(
 
 
 __all__ = [
+    "contact_labels",
     "get_messenger_contact",
     "forget_messenger_contact",
     "list_messenger_contacts",

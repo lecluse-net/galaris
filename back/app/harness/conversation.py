@@ -478,7 +478,7 @@ def _system_prompt(
         location=str(runtime_settings.LOCALIZATION or ""),
         channel=str(turn.messaging_context.get("platform") or "messenger"),
         room_id=str(turn.messaging_context.get("room_id") or ""),
-        sender_id=str(latest_message.get("sender.id") or ""),
+        sender_id=str(latest_message.get("contact.id") or "") if latest_message.get("sender_contact_label") is not None else str(latest_message.get("sender.id") or ""),
         conversation_state=(
             "two-way live audio call already in progress; reply to the caller's latest turn; "
             "the opening greeting has already been handled; the call remains open unless the "

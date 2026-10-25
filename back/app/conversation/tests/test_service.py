@@ -677,7 +677,8 @@ async def test_admission_uses_only_canonical_room_messages_and_is_idempotent(
     assert latest_text in turn.source_request
     assert turn.omitted_input_count == (1 if bounded else 0)
     if not bounded:
-        assert turn.objective == "[Nicolas] premier\n[Nicolas] dernier"
+        # With no resolved contact, remote sender names no longer label model input.
+        assert turn.objective == "[Interlocutor] premier\n[Interlocutor] dernier"
 
 
 @pytest.mark.asyncio
@@ -988,6 +989,10 @@ async def test_admission_copies_exact_contact_before_topic_classification(
     _install_messenger(monkeypatch, db, connection, room, sent)
     claimed = await claim_next_round("contact-output-worker")
     assert claimed is not None and claimed.id == round_.id
+    turn = await build_turn(claimed.id, lease_token=claimed.lease_token)
+    assert turn.messages[-1]["sender_contact_id"] == str(contact_id)
+    assert turn.messages[-1]["sender_contact_label"] == "Nicolas"
+    assert f"contact:{contact_id}" in turn.source_request
     assert await complete_round(
         claimed.id,
         ConversationOutcome(text="réponse liée au contact"),

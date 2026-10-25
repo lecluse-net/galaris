@@ -252,9 +252,11 @@ async def test_shutdown_prevents_listener_from_starting_after_construction(
 async def test_resolver_builds_registered_bridge_tool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from core.params import runtime_settings
     from app.connection import connection_service
     from app.tools import tool_service
 
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["one_bot"]')
     connection = SimpleNamespace(id=7, tool_id=3, active=True)
     tool = SimpleNamespace(
         code="custom-chat",

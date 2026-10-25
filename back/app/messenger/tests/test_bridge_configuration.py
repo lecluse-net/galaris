@@ -71,6 +71,15 @@ async def test_reception_checks_only_existing_active_connections_for_the_provide
             builders[kind].assert_not_awaited()
         builders[kind].reset_mock()
 
+    # A bridge diagnostic must reach the UI even when account authentication works.
+    builders[provider].return_value.check_connection.side_effect = ValueError("Synthetic unsupported encrypted room")
+    failed = await service.check_configuration(provider)
+    assert failed["ok"] is False
+    assert failed["connections"][0]["ok"] is False
+    assert failed["connections"][0]["detail"] == "Synthetic unsupported encrypted room"
+    builders[provider].return_value.check_connection.side_effect = None
+    builders[provider].reset_mock()
+
     selected.active = False
     await db.flush()
     assert await service.check_configuration(provider) == {"provider": provider, "ok": False, "connections": []}

@@ -139,13 +139,18 @@ def test_message_prompt_sanitizes_untrusted_author_envelope_delimiters() -> None
     assert prompt.count("\n") == 0
 
 
-def test_current_message_line_uses_flattened_sender_name() -> None:
+@pytest.mark.parametrize("canonical", [False, True])
+def test_current_message_line_uses_flattened_sender_name(canonical: bool) -> None:
+    contact_id = "93f22299-c2b5-42f7-ab85-f70ed499e659"
     task = SimpleNamespace(
         data={
             "text": "Bonjour",
             "sender_display_name": "Nicolas",
             "sender_external_id": "nicolas",
+            **({"sender_contact_id": contact_id, "sender_contact_label": "Canonical Nicolas"} if canonical else {}),
         },
     )
 
-    assert current_message_line(task, [], max_chars=500) == "Nicolas: Bonjour"
+    assert current_message_line(task, [], max_chars=500) == (
+        f"Canonical Nicolas (contact:{contact_id}): Bonjour" if canonical else "Nicolas: Bonjour"
+    )

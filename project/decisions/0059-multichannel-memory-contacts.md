@@ -27,6 +27,14 @@ arêtes du graphe et les références `contact_memory_item_id` des messages, rou
 oublie ensuite la projection source. Les anciennes adresses restent des alias du contact conservé,
 donc un rejeu Messenger ne recrée pas le doublon.
 
+Le modèle reçoit le libellé du contact canonique et son UUID dans l’attribution des messages
+humains courants et de l’historique projeté. Cette présentation est résolue dans le périmètre
+de l’agent, indépendamment du rappel mémoire, et relue pour chaque nouveau tour. Le nom et
+l’identifiant de transport restent des données serveur de routage et de journalisation ; ils
+ne servent pas de repli pour nommer un interlocuteur sans contact résolu. Celui-ci reçoit une
+attribution neutre. Cette projection ne modifie ni les données historiques ni l’authentification
+ou les droits de l’expéditeur. Les messages des agents conservent leur attribution agentique.
+
 Les privilèges Memory existants protègent cette entité secondaire : lecture avec `MEMORY_ACCESS`
 et fusion ou oubli avec `MEMORY_EDIT`. Le périmètre de management de l’agent est vérifié par le
 backend. L’oubli explicite efface toutes les mémoires conversationnelles scellées à ce contact,

@@ -181,6 +181,8 @@ class TaskMessage(BaseModel):
     sender_id: UUID | None = None
     sender_external_id: str = ""
     sender_display_name: str = ""
+    sender_contact_id: UUID | None = None
+    sender_contact_label: str | None = None
     sender_agent_id: int | None = None
     sender_is_ai: bool = False
     recipient_id: UUID | None = None
@@ -278,6 +280,8 @@ class TaskMessage(BaseModel):
             "sender_id": _uuid(sender.get("local_id")),
             "sender_external_id": str(sender.get("id") or ""),
             "sender_display_name": str(sender.get("display_name") or ""),
+            "sender_contact_id": source.get("sender_contact_id"),
+            "sender_contact_label": source.get("sender_contact_label"),
             "sender_agent_id": sender.get("agent_id"),
             "sender_is_ai": bool(
                 sender.get("is_ai") or sender.get("agent_id") is not None
@@ -310,6 +314,7 @@ class TaskMessage(BaseModel):
             sender_id=sender.id if sender is not None else None,
             sender_external_id=sender.external_id if sender is not None else "",
             sender_display_name=sender.display_name if sender is not None else "",
+            sender_contact_id=getattr(message, "contact_memory_item_id", None) if not (sender and sender.is_ai) else None,
             sender_agent_id=sender.agent_id if sender is not None else None,
             sender_is_ai=bool(sender.is_ai) if sender is not None else False,
             recipient_id=recipient.id if recipient is not None else None,

@@ -555,6 +555,12 @@ async def _process_incoming(message: Message) -> None:
     # Keep canonical message data plus flat aliases required by legacy OneBot templates.
     sender = message.sender
     message_snapshot = TaskMessage.from_messenger(message)
+    from .agent_identity import project_agent_messages
+
+    projected = await project_agent_messages(
+        [message_snapshot.model_dump(mode="json")], owner_agent_id=connection.agent_id,
+    )
+    message_snapshot = TaskMessage.model_validate(projected[0])
     data: dict[str, Any] = message_snapshot.model_dump(mode="json")
     data.update({
         "text": message.text,
@@ -576,8 +582,8 @@ async def _process_incoming(message: Message) -> None:
         "sender_is_ai": sender_is_ai,
         "sender.id": str(sender.id) if sender else "",
         "sender.user_id": str(sender.id) if sender else "",
-        "sender.nickname": sender.display_name if sender else "",
-        "sender.display_name": sender.display_name if sender else "",
+        "sender.nickname": message_snapshot.sender_display_name,
+        "sender.display_name": message_snapshot.sender_display_name,
         "sender.agent_id": sender.agent_id if sender else None,
         "sender.connection_id": message.connection_id if sender else None,
         "recipient.agent_id": recipient.agent_id,
@@ -630,7 +636,10 @@ async def _process_incoming(message: Message) -> None:
         ai=sender_is_ai,
         cost=0.0,
         messages=(
-            [TaskMessage.from_messenger(item) for item in history]
+            [TaskMessage.model_validate(item) for item in await project_agent_messages(
+                [TaskMessage.from_messenger(item).model_dump(mode="json") for item in history],
+                owner_agent_id=connection.agent_id,
+            )]
             if history
             else None
         ),
@@ -1468,7 +1477,9 @@ def register_messaging() -> None:
     message_received.connect(handle_incoming)
     from app.agent import register_context_provider
     from app.messenger.session import session_context_provider
+    from .agent_identity import contact_identity_context_provider
 
+    register_context_provider("contact_identity", contact_identity_context_provider, priority=5)
     register_context_provider(
         "messenger_session", session_context_provider, priority=10
     )

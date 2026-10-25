@@ -26,6 +26,7 @@ from app.messenger.inbound import dispatch_incoming
 from app.messenger.interface import HistoryPage, Messenger
 from app.messenger.media import normalized_voice_note
 from app.messenger.models import Capability, kind_from_mime
+from core.i18n import render_prompt, tr
 from core.params import runtime_settings
 from core.util import as_dict, as_list
 
@@ -183,6 +184,14 @@ class MatrixMessenger(Messenger):
 
     async def check_connection(self) -> str:
         self.self_id = await self._matrix.whoami()
+        encrypted_rooms = await self._matrix.encrypted_room_ids()
+        if self._matrix.allowed_room_ids:
+            encrypted_rooms &= self._matrix.allowed_room_ids
+        if encrypted_rooms:
+            raise ValueError(render_prompt(
+                await tr("messenger_bridge.errors.matrix_encrypted_rooms_unsupported"),
+                count=len(encrypted_rooms),
+            ))
         return self.self_id
 
     async def close(self) -> None:
@@ -709,9 +718,22 @@ class MatrixMessenger(Messenger):
             raise RuntimeError("A Matrix listener requires a connection ID")
 
         try:
-            self.self_id = await self._matrix.whoami()
-            self._direct_room_ids = await self._matrix.direct_room_ids()
-            since = await journal.listener_cursor(self.connection_id)
+            try:
+                self.self_id = await self._matrix.whoami()
+                self._direct_room_ids = await self._matrix.direct_room_ids()
+                since = await journal.listener_cursor(self.connection_id)
+            except Exception as exc:
+                try:
+                    await journal.update_listener_state(
+                        self.connection_id, self.kind, available=False,
+                        error=str(exc), reconnect=True,
+                    )
+                except Exception as state_exc:
+                    logger.warning(
+                        "Matrix startup health update failed connection={} type={}",
+                        self.connection_id, type(state_exc).__name__,
+                    )
+                raise
             logger.info(
                 "Matrix listener started connection={} resumed={}",
                 self.connection_id,

@@ -1790,11 +1790,28 @@ de manager. Les contrôles HTTP de privilèges de Conversation sont exercés par
 `core/authorize/tests/test_domain_authorization.py` ; les anciennes attentes `TASK_ACCESS/EDIT`
 du test de suivi sont remplacées par les droits Conversation déjà en vigueur.
 
+Le contexte interlocuteur est également couvert par les tests Contact et Conversation : après
+fusion, l’attribution au modèle suit le libellé et l’UUID du contact conservé, sans nom ni
+identifiant distant ; les contacts absents ou d’un autre agent restent anonymes. Les tests
+`app/agent/tests/test_history_attribution.py` exercent la même attribution dans les projections
+Pydantic AI, OpenAI et Hermès, tout en préservant les rôles des agents et les pièces jointes.
+
 `front/browser-tests/messaging-network.spec.mjs` couvre la création préconfigurée du Tool
-Telegram, le paramètre secret vide, la reprise après erreur, la réouverture sans doublon,
+Telegram et Matrix, les paramètres secrets vides, le homeserver requis et repris pour Matrix,
+la reprise après erreur, la réouverture sans doublon,
 la conservation d’un outil existant incompatible et les droits du bouton. La création reste
 masquée pendant le chargement, après une erreur de lecture ou dès qu’un outil exploite déjà
-le bridge Telegram sous un code quelconque ; la vérification est renouvelée avant création.
+le bridge concerné sous un code quelconque ; la vérification est renouvelée avant création.
+Le scénario Matrix vérifie aussi l’affichage de l’erreur de chiffrement et sa disparition
+après un contrôle réussi. `bridge/matrix/tests/test_client.py` exerce le vrai client et le
+bridge face à un homeserver synthétique : diagnostic des salons chiffrés, respect de la liste
+de salons autorisés, exclusion des salons quittés et invités, absence de téléchargement des
+messages et réévaluation sans modifier le curseur de réception. Le contrôle API conserve
+le diagnostic du bridge et le parcours E2E vérifie son affichage dans la page assemblée.
+Ces tests couvrent également les connexions simultanées par mot de passe : un appareil et
+un jeton partagés par compte, des comptes isolés, la réutilisation de l’appareil nommé Galaris après
+perte du jeton local et le motif du refus distant sans secret. Le test de démarrage du listener
+vérifie son état indisponible et la fermeture du client en cas d’échec d’authentification.
 `conversation-control.spec.mjs` vérifie aussi l’identifiant distant hors attente d’autorisation,
 pour les messages reçus et les snapshots de rounds. `e2e/specs/contact-authorization.spec.mjs`
 exerce la création réelle depuis la configuration, sa persistance et sa réouverture sur mobile,

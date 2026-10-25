@@ -11,7 +11,7 @@ tests remain authoritative for behavior.
 
 - 78 declared backend modules;
 - 40 declared frontend modules;
-- 632 backend dependency edges;
+- 633 backend dependency edges;
 - 219 frontend dependency edges;
 - 301 edges between `app`/`bridge` domains;
 - 28 directly bidirectional domain pairs;
@@ -452,12 +452,12 @@ tests remain authoritative for behavior.
 | `app.memory` | `core.team` | `back/app/memory/bootstrap.py` |
 | `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/contact_directory.py`, `back/app/memory/events.py`, `back/app/memory/maintenance.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
 | `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/content_migration.py`, `back/app/memory/context.py`, `back/app/memory/document_structure.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py` |
-| `app.messenger` | `app.agent` | `back/app/messenger/contact_access.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
+| `app.messenger` | `app.agent` | `back/app/messenger/agent_identity.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.connection` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/ingest.py`, `back/app/messenger/journal.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.conversation` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `app.file_share` | `back/app/messenger/journal.py`, `back/app/messenger/link_preview.py`, `back/app/messenger/mcp.py` |
 | `app.messenger` | `app.llm` | `back/app/messenger/ingest.py`, `back/app/messenger/mcp.py` |
-| `app.messenger` | `app.memory` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
+| `app.messenger` | `app.memory` | `back/app/messenger/agent_identity.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `app.task` | `back/app/messenger/contact_memory.py`, `back/app/messenger/mcp.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `app.tools` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py` |
 | `app.messenger` | `core.authorize` | `back/app/messenger/interactions.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py` |
@@ -681,8 +681,9 @@ tests remain authoritative for behavior.
 | `bridge.matrix` | `app.tools` | `back/bridge/matrix/voice_listener.py`, `back/bridge/matrix/voice_provider.py` |
 | `bridge.matrix` | `app.voice` | `back/bridge/matrix/__init__.py`, `back/bridge/matrix/call.py`, `back/bridge/matrix/voice_listener.py`, `back/bridge/matrix/voice_provider.py` |
 | `bridge.matrix` | `core.database` | `back/bridge/matrix/voice_listener.py` |
-| `bridge.matrix` | `core.i18n` | `back/bridge/matrix/client.py` |
+| `bridge.matrix` | `core.i18n` | `back/bridge/matrix/client.py`, `back/bridge/matrix/messenger.py` |
 | `bridge.matrix` | `core.params` | `back/bridge/matrix/client.py`, `back/bridge/matrix/messenger.py`, `back/bridge/matrix/voice_listener.py` |
+| `bridge.matrix` | `core.settings` | `back/bridge/matrix/client.py` |
 | `bridge.matrix` | `core.util` | `back/bridge/matrix/call.py`, `back/bridge/matrix/client.py`, `back/bridge/matrix/messenger.py`, `back/bridge/matrix/voice_listener.py` |
 | `bridge.mistral` | `app.llm` | `back/bridge/mistral/__init__.py` |
 | `bridge.models_dev` | `app.llm` | `back/bridge/models_dev/__init__.py`, `back/bridge/models_dev/service.py` |
@@ -944,7 +945,7 @@ tests remain authoritative for behavior.
 | `app/task` | `core/websocket` | `front/app/task/stores/taskStore.ts`, `front/app/task/useTaskActivity.ts` |
 | `app/tools` | `app/connection` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/pages/index.vue`, `front/app/tools/stores/toolStore.ts` |
 | `app/tools` | `core/api` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/services/toolService.ts` |
-| `app/tools` | `core/authorize` | `front/app/tools/components/TelegramToolSetup.vue`, `front/app/tools/components/ToolsList.vue`, `front/app/tools/navigation.ts`, `front/app/tools/pages/index.vue` |
+| `app/tools` | `core/authorize` | `front/app/tools/components/MatrixToolSetup.vue`, `front/app/tools/components/TelegramToolSetup.vue`, `front/app/tools/components/ToolsList.vue`, `front/app/tools/navigation.ts`, `front/app/tools/pages/index.vue` |
 | `app/tools` | `core/navigation` | `front/app/tools/navigation.ts`, `front/app/tools/pages/index.vue` |
 | `app/tools` | `core/util` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/pages/index.vue` |
 | `app/topic` | `core/api` | `front/app/topic/components/TopicBadge.vue`, `front/app/topic/components/TopicSelect.vue`, `front/app/topic/services/topicService.ts` |

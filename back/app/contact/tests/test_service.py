@@ -491,6 +491,36 @@ async def test_merge_repoints_identities_memory_and_conversation_lineage(
         assert message.contact_memory_item_id == target_id
         assert round_.contact_memory_item_id == target_id
         assert task.contact_memory_item_id == target_id
+        from app.messenger import project_agent_messages
+        from app.agent.conversation_context import message_prompt
+
+        raw = {"sender_contact_id": str(message.contact_memory_item_id),
+            "sender_display_name": "Remote alias", "sender_external_id": "remote-account",
+            "sender": {"id": "remote-account", "display_name": "Remote alias"},
+            "text": "Bonjour", "requester_user_id": None}
+        projected = (await project_agent_messages([raw], owner_agent_id=owner.id))[0]
+        assert projected["sender_contact_id"] == str(target_id)
+        assert projected["sender_contact_label"] == "Alice Telegram"
+        assert projected["requester_user_id"] is None
+        prompt = message_prompt(projected)
+        assert "Alice Telegram" in prompt and str(target_id) in prompt
+        assert "Remote alias" not in prompt and "remote-account" not in prompt
+        assert raw["sender_display_name"] == "Remote alias"
+        from app.agent.contracts import AgentContextRequest, AgentSnapshot
+        from app.messenger.agent_identity import contact_identity_context_provider
+
+        context = await contact_identity_context_provider(AgentContextRequest(
+            task_id=None,
+            agent=AgentSnapshot(id=owner.id, code=owner.code, first_name="Synthetic", last_name="Agent", driver_code="internal"),
+            objective="Answer", contact_memory_item_id=target_id, include_historical_context=False,
+        ))
+        assert "Alice Telegram" in context.shared_context and str(target_id) in context.shared_context
+        assert "Remote alias" not in context.shared_context
+        for identity in [None, str(uuid4()), str(target_id)]:
+            unresolved = (await project_agent_messages([{**raw, "sender_contact_id": identity}], owner_agent_id=owner.id + 1000000))[0]
+            assert unresolved["sender_display_name"] == "Interlocutor"
+            assert unresolved["sender_contact_id"] is None
+            assert "Remote alias" not in message_prompt(unresolved)
         assert await db.scalar(
             select(func.count(MemoryContactIdentity.id)).where(
                 MemoryContactIdentity.contact_item_id == target_id

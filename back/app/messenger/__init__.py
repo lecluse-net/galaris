@@ -206,7 +206,10 @@ from .mcp import (
     reset_context,
 )
 
+from .agent_identity import project_agent_messages
+
 __all__ = [
+    "project_agent_messages",
     "rename_internal_file",
     "NativeMessengerInteraction",
     "read_internal_interaction",

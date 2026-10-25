@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +14,103 @@ from bridge.matrix.client import (
     MATRIX_MEDIA_UPLOAD_API,
     Matrix,
 )
+from bridge.matrix.messenger import MatrixMessenger
+
+
+@pytest.mark.asyncio
+async def test_password_clients_share_one_named_device_and_token_per_account() -> None:
+    logins: list[dict[str, Any]] = []
+    users_by_token: dict[str, str] = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == f"{MATRIX_API}/login":
+            logins.append(json.loads(request.content))
+            await asyncio.sleep(0)
+            user = json.loads(request.content)["identifier"]["user"]
+            token = f"token-{len(logins)}"
+            users_by_token[token] = user
+            return httpx.Response(200, json={"access_token": token, "user_id": user})
+        token = request.headers["Authorization"].removeprefix("Bearer ")
+        return httpx.Response(200, json={"user_id": users_by_token[token]})
+
+    clients = [Matrix(homeserver="https://matrix.example.test", user_id="@bot:example.test", password="synthetic-password") for _ in range(3)]
+    clients.append(Matrix(homeserver="https://matrix.example.test", user_id="@other:example.test", password="synthetic-password"))
+    for client in clients:
+        client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url=client.homeserver)
+    try:
+        assert await asyncio.gather(*(client.whoami() for client in clients[:3])) == ["@bot:example.test"] * 3
+        assert len(logins) == 1
+        device_id = logins[0]["device_id"]
+        assert device_id and logins[0]["initial_device_display_name"] == "Galaris"
+        assert await clients[3].whoami() == "@other:example.test"
+        assert len(logins) == 2 and logins[1]["device_id"] != device_id
+        # A fresh process loses the token, but must reuse the device on the server.
+        clients[0]._password_session.access_token = ""
+        clients[0].access_token = ""
+        await clients[0].whoami()
+        assert len(logins) == 3 and logins[2]["device_id"] == device_id
+    finally:
+        for client in clients:
+            await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_password_login_exposes_bounded_provider_reason_without_credentials() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(403, json={"errcode": "M_FORBIDDEN", "error": "Hard device limit: synthetic-password"})
+
+    matrix = Matrix(homeserver="https://matrix.example.test", user_id="@limited:example.test", password="synthetic-password")
+    matrix._client = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url=matrix.homeserver)
+    try:
+        with pytest.raises(httpx.HTTPStatusError) as caught:
+            await matrix.whoami()
+        assert "Hard device limit" in str(caught.value)
+        assert "M_FORBIDDEN" in str(caught.value)
+        assert "synthetic-password" not in str(caught.value)
+    finally:
+        await matrix.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("allowed_rooms", [frozenset(), frozenset({"!clear:test"})])
+async def test_reception_check_reports_encrypted_rooms_and_recovers(allowed_rooms: frozenset[str]) -> None:
+    encrypted = True
+    paths: list[str] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        assert request.method == "GET"
+        assert request.headers["Authorization"] == "Bearer secret"
+        if request.url.path == f"{MATRIX_API}/account/whoami":
+            return httpx.Response(200, json={"user_id": "@agent:example.test"})
+        assert request.url.path == f"{MATRIX_API}/sync"
+        assert request.url.params["timeout"] == "0"
+        assert request.url.params["set_presence"] == "offline"
+        assert "since" not in request.url.params
+        filters = json.loads(request.url.params["filter"])
+        assert filters["room"]["state"]["types"] == ["m.room.encryption"]
+        assert filters["room"]["timeline"]["not_types"] == ["*"]
+        encryption = {"state": {"events": [{"type": "m.room.encryption", "content": {"algorithm": "m.megolm.v1.aes-sha2"}}]}}
+        return httpx.Response(200, json={"next_batch": "diagnostic-only", "rooms": {
+            "join": {"!clear:test": {"state": {"events": []}}, **({"!encrypted:test": encryption} if encrypted else {})},
+            "leave": {"!departed:test": encryption},
+            "invite": {"!invited:test": encryption},
+        }})
+
+    matrix = _matrix(handler)
+    matrix.allowed_room_ids = allowed_rooms
+    messenger = MatrixMessenger(matrix, 41)
+    try:
+        if not allowed_rooms:
+            with pytest.raises(ValueError, match="Encrypted Matrix rooms.*no conversation round"):
+                await messenger.check_connection()
+        else:
+            assert await messenger.check_connection() == "@agent:example.test"
+        encrypted = False
+        assert await messenger.check_connection() == "@agent:example.test"
+    finally:
+        await messenger.close()
+    assert paths.count(f"{MATRIX_API}/sync") == 2
 
 
 def _matrix(

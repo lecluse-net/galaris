@@ -89,6 +89,8 @@ default: dict[str, object] = {
             "onebot_platform_required": "请在偏好设置 → 消息中配置 OneBot 平台",
             "matrix_homeserver_required": "请在偏好设置 → 消息中配置 Matrix 主服务器",
             "matrix_credentials_required": "Matrix 需要 access_token 或密码",
+            "matrix_encrypted_rooms_unsupported": "Galaris 不支持加密的 Matrix 聊天室（检测到：${count}）。这些消息无法解密，也不会创建对话轮次。请使用未加密的聊天室。",
+            "matrix_login_failed": "Matrix 登录失败（HTTP ${status}，${code}）：${reason}",
             "talk_config_required": "请配置 nextcloud_talk 工具的文件共享 URL 及其代理连接凭据",
             "talk_hpb_required": "Nextcloud Talk 通话需要 HPB 信令服务器，但未找到。请在偏好设置 → 消息中配置，或向 TalkCall.from_connection_id() 传入 hpb_url。",
             "talk_mcu_required": "此 Talk 语音传输需要支持 MCU 的 HPB。服务器未声明 mcu 功能，尚未实现 P2P 或内部信令。",

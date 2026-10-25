@@ -18,11 +18,15 @@ Connection parameters:
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field
+import hashlib
+import json
 import os
 import uuid
 from pathlib import Path
 from typing import Any, AsyncIterator, List, Optional
 from urllib.parse import quote, urlsplit
+from weakref import WeakValueDictionary
 
 import httpx
 from loguru import logger
@@ -30,6 +34,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.i18n import render_prompt, t
 from core.params import runtime_settings
+from core.settings import settings
 from core.util import as_dict, as_list
 
 from .schemas import MatrixConnectionConfig
@@ -49,6 +54,19 @@ MATRIX_MEDIA_UPLOAD_API = "/_matrix/media/v3"
 MATRIX_TIMEOUT = httpx.Timeout(connect=10.0, read=70.0, write=30.0, pool=10.0)
 _MEDIA_CHUNK_BYTES = 64 * 1024
 _MATRIX_CONTENT_MAX_BYTES = 100_000_000
+
+
+@dataclass(slots=True, weakref_slot=True, repr=False)
+class _PasswordSession:
+    """Share one login between active clients without retaining unused secrets."""
+
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    access_token: str = ""
+    user_id: str = ""
+
+
+_password_sessions: WeakValueDictionary[str, _PasswordSession] = WeakValueDictionary()
+
 # --- Matrix wire models (m.room.message events) ---
 
 
@@ -104,6 +122,18 @@ class Matrix:
         self.user_id: str = user_id
         self.access_token = access_token
         self.password = password
+        # Login without device_id creates a device on every short-lived client.
+        # Connections for the same account share one device in this deployment.
+        device_scope = json.dumps([settings.APP_HOST, self.homeserver, user_id])
+        self._device_id = "GALARIS_" + hashlib.sha256(device_scope.encode()).hexdigest()
+        self._password_session: _PasswordSession | None = None
+        if password and not access_token:
+            session_key = hashlib.sha256(json.dumps([self._device_id, password]).encode()).hexdigest()
+            session = _password_sessions.get(session_key)
+            if session is None:
+                session = _PasswordSession()
+                _password_sessions[session_key] = session
+            self._password_session = session
         self.sync_timeout_ms = sync_timeout_ms
         self.platform = ""
         self.tool_id = 0
@@ -197,7 +227,14 @@ class Matrix:
             return
         if not self.password:
             raise RuntimeError(_error("matrix_credentials_required"))
-        await self.login()
+        session = self._password_session
+        if session is None:
+            raise RuntimeError(_error("matrix_credentials_required"))
+        async with session.lock:
+            if not session.access_token:
+                await self.login()
+            self.access_token = session.access_token
+            self.user_id = session.user_id or self.user_id
 
     # -- API Matrix --
 
@@ -207,12 +244,35 @@ class Matrix:
             "type": "m.login.password",
             "identifier": {"type": "m.id.user", "user": self.user_id},
             "password": self.password,
+            "device_id": self._device_id,
+            "initial_device_display_name": "Galaris",
         }
         resp = await self._http().post(f"{MATRIX_API}/login", json=payload)
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            try:
+                failure = as_dict(resp.json())
+            except ValueError:
+                failure = {}
+            reason = str(failure.get("error") or resp.reason_phrase)
+            code = str(failure.get("errcode") or "")
+            for secret in (self.password, self.access_token):
+                if secret:
+                    reason = reason.replace(secret, "[redacted]")
+                    code = code.replace(secret, "[redacted]")
+            raise httpx.HTTPStatusError(
+                _error("matrix_login_failed", status=resp.status_code, code=code[:100], reason=reason[:1000]),
+                request=exc.request, response=resp,
+            ) from None
         data: dict[str, Any] = resp.json()
         self.access_token = data.get("access_token", "")
+        if not self.access_token:
+            raise ValueError("Matrix login response has no access_token")
         self.user_id = str(data.get("user_id") or self.user_id)
+        if self._password_session is not None:
+            self._password_session.access_token = self.access_token
+            self._password_session.user_id = self.user_id
         return data
 
     async def whoami(self) -> str:
@@ -499,6 +559,42 @@ class Matrix:
             return False
         resp.raise_for_status()
         return True
+
+    async def encrypted_room_ids(self) -> frozenset[str]:
+        """Inspect joined-room encryption without downloading message history.
+
+        This independent snapshot never reads or advances the listener cursor.
+        """
+        await self._ensure_token()
+        excluded_events = {"not_types": ["*"]}
+        room_filter: dict[str, Any] = {
+            "state": {"types": ["m.room.encryption"]},
+            "timeline": excluded_events,
+            "ephemeral": excluded_events,
+            "account_data": excluded_events,
+        }
+        if self.allowed_room_ids:
+            room_filter["rooms"] = sorted(self.allowed_room_ids)
+        filters = {
+            "room": room_filter,
+            "presence": excluded_events,
+            "account_data": excluded_events,
+        }
+        resp = await self._http().get(
+            f"{MATRIX_API}/sync",
+            headers=self._auth_headers(),
+            params={"timeout": "0", "set_presence": "offline", "filter": json.dumps(filters)},
+        )
+        resp.raise_for_status()
+        joined = as_dict(as_dict(as_dict(resp.json()).get("rooms")).get("join"))
+        return frozenset(
+            str(room_id)
+            for room_id, raw_room in joined.items()
+            if any(
+                as_dict(event).get("type") == "m.room.encryption"
+                for event in as_list(as_dict(as_dict(raw_room).get("state")).get("events"))
+            )
+        )
 
     async def turn_server(self) -> dict[str, Any]:
         """Retrieve short-lived TURN credentials advertised by the homeserver."""

@@ -241,7 +241,8 @@ async def test_outbound_delivery_populates_bounded_canonical_session(
         ("in-1", "user", "Bonsoir"),
         ("out-1", "assistant", "Bonsoir Nicolas"),
     ]
-    assert cast(dict[str, object], snapshot.messages[0]["sender"])["display_name"] == "Nicolas"
+    # No resolved contact: the runtime must not use the remote display name.
+    assert cast(dict[str, object], snapshot.messages[0]["sender"])["display_name"] == "Interlocutor"
     assert snapshot.messages[0]["messenger_message_id"]
     assert snapshot.messages[0]["room_id"]
     assert len(cast(list[object], snapshot.messages[0]["file_ids"])) == 1

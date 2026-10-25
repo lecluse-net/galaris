@@ -152,6 +152,12 @@ default: dict[str, object] = {
             "matrix_credentials_required": (
                 "Matrix requiert un access_token ou un mot de passe"
             ),
+            "matrix_login_failed": "Connexion Matrix refusée (HTTP ${status}, ${code}) : ${reason}",
+            "matrix_encrypted_rooms_unsupported": (
+                "Les salons Matrix chiffrés ne sont pas pris en charge par Galaris (détectés : ${count}). "
+                "Leurs messages ne peuvent pas être déchiffrés et ne créent aucun round. "
+                "Utilisez un salon non chiffré."
+            ),
             "talk_config_required": (
                 "Configurez l’URL de partage de l’outil nextcloud_talk et les identifiants de sa "
                 "connexion agent"

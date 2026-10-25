@@ -1,4 +1,5 @@
 import TelegramToolSetup from './components/TelegramToolSetup.vue'
+import MatrixToolSetup from './components/MatrixToolSetup.vue'
 
 // Tool creation belongs to this domain; bridge settings provide the setup guide.
-export const messagingSetupComponents = { telegram: TelegramToolSetup }
+export const messagingSetupComponents = { telegram: TelegramToolSetup, matrix: MatrixToolSetup }

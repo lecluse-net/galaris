@@ -544,6 +544,13 @@ observations ne recréent pas le doublon. Cette fusion repointe dans une transac
 scellés, scopes Topic/contact, arêtes mémoire, messages, rounds et tâches avant d'oublier l'ancienne
 projection.
 
+Dans le contexte transmis au modèle, un humain est attribué au libellé et à l’UUID de son
+contact canonique, pour le message courant comme pour l’historique. Les noms et identifiants
+distants restent dans le journal et le routage serveur. Ils ne remplacent pas une identité de
+contact absente, oubliée ou appartenant à un autre agent : l’attribution reste alors neutre.
+La projection relit le contact à chaque nouveau tour, sans recherche sémantique ni cache de nom.
+Elle ne change pas le `requester_user_id` authentifié ni les permissions de contact.
+
 Le carnet d’adresses permet aussi de créer un contact privé par nom et adresse mail validée,
 sans ligne `users`, `agents` ou `messenger_users`. L’adresse normalisée est une identité
 `messenger / mail` du contact ; sa contrainte d’unicité par agent protège aussi les créations

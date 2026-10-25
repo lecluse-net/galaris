@@ -19,6 +19,7 @@ from core.params import runtime_settings
 
 from .models import Attachment, Message, Room
 from .resource_reference import attachment_resource_uri
+from .agent_identity import project_agent_messages
 
 
 @dataclass(frozen=True)
@@ -113,6 +114,7 @@ def _fallback_message(
         "platform": str(raw.get("platform") or ""),
         "tool_code": tool_code,
         "room_external_id": room_id,
+        "sender_contact_id": raw.get("sender_contact_id"),
         "sender": {
             "id": sender_external_id,
             "display_name": sender_display_name,
@@ -172,6 +174,7 @@ def _record_message(
         "tool_code": tool_code,
         "sender_external_id": "" if assistant else (row.user_id or ""),
         "sender_display_name": sender_display_name,
+        "sender_contact_id": str(row.contact_memory_item_id) if row.contact_memory_item_id and not assistant else None,
         "sender_agent_id": agent_id if assistant else metadata.get("sender_agent_id"),
         "sender_is_ai": assistant or bool(metadata.get("sender_is_ai")),
         "room_id": str(row.messenger_room_id) if row.messenger_room_id else None,
@@ -396,7 +399,7 @@ async def build_conversation_session(
         ),
     )
     bounded, truncated = _bounded_messages(
-        ordered,
+        await project_agent_messages(ordered, owner_agent_id=agent_id),
         preserve_complete_messages=preserve_complete_messages,
     )
     return ConversationSessionSnapshot(

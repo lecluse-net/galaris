@@ -105,7 +105,7 @@
                 <ol class="q-pl-lg q-mb-sm">
                     <li v-for="step in setupSteps" :key="step" class="q-mb-xs">{{ step }}</li>
                 </ol>
-                <component :is="messagingSetupComponents[selectedBridge.kind]" v-if="messagingSetupComponents[selectedBridge.kind]" :key="selectedBridge.kind" class="q-mb-md" />
+                <component :is="messagingSetupComponents[selectedBridge.kind]" v-if="messagingSetupComponents[selectedBridge.kind]" :key="selectedBridge.kind" :settings="setupSettings" class="q-mb-md" />
                 <div class="row q-gutter-sm">
                     <q-btn
                         v-if="selectedBridge.docsUrl"
@@ -147,6 +147,7 @@
             <q-banner
                 v-if="testResult"
                 rounded
+                :role="testResult.ok ? 'status' : 'alert'"
                 :class="testResult.ok ? 'bg-green-1 text-positive' : 'bg-orange-1 text-warning'"
                 class="q-mt-md"
             >
@@ -165,7 +166,7 @@
                             <q-item-label>
                                 {{ t('configuration.messaging.agentConnection', { agent: connection.agent_id, connection: connection.connection_id, provider: providerLabel(connection.provider) }) }}
                             </q-item-label>
-                            <q-item-label caption>{{ connection.detail || connection.identity }}</q-item-label>
+                            <q-item-label caption :class="{ 'text-negative': !connection.ok }">{{ connection.detail || connection.identity }}</q-item-label>
                             <q-item-label
                                 caption
                                 :class="connection.receiving === false ? 'text-negative' : connection.receiving === true ? 'text-positive' : ''"
@@ -225,6 +226,9 @@ watch([selectedKind, canEdit], () => {
 })
 
 const selectedBridge = computed(() => messagingBridgeSettings.find(item => item.kind === selectedKind.value))
+const setupSettings = computed(() => Object.fromEntries(
+    (selectedBridge.value?.fields ?? []).map(field => [field.name, paramsStore.getParamValue(field.name)]),
+))
 const setupSteps = computed(() => {
     if (!selectedBridge.value) return []
     const translated = tm(selectedBridge.value.stepsKey)

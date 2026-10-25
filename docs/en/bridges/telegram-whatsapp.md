@@ -186,12 +186,27 @@ Reference: [Official Meta WhatsApp Business Platform collection](https://www.pos
 
 ### 1. Configure the homeserver and the agent account
 
+In **Preferences → Messaging → Matrix**, enter the homeserver. When no Tool already
+uses the `matrix` bridge, the guide offers **Create Matrix Tool** to users with Tool editing
+privileges. This button creates the `matrix` Tool, copies the entered homeserver and sets up
+the connection parameters below with empty credentials. An existing Matrix Tool hides creation
+regardless of its code; if another Tool already uses the `matrix` code, the guide asks you to
+review its configuration. Then open **Tools → Connections** to configure agent accounts.
+
 The Tool selects `matrix` and carries the `homeserver` setting. The sync timeout remains a global
 technical parameter. Each agent uses its own connection to the Tool:
 
 - `user_id`: full bot identifier, for example `@agent:example.org`;
 - `token`: optional long-lived token;
 - `password`: optional fallback when the token is not provided.
+
+With a password, Galaris reuses one device named **Galaris**, stable for each installation
+and Matrix account. Active clients for that account share the resulting token across connections:
+testing reception or sending a reply creates no additional device and does not revoke
+the listener token. Login failures expose the provider reason without credentials;
+a startup failure marks reception unavailable without clearing its cursor.
+If the server reports an existing device limit, sign out unused older sessions from
+the Matrix account page, then retry the reception check.
 
 The old Matrix policy fields are still read on migrated connections, but are not part of the new
 matching contract.
@@ -203,7 +218,14 @@ encryption is always refused.
 
 ### 2. Messages, responses, and resumption
 
-Connection validation uses `whoami`. Reception relies on a single `/sync` per connection, shared
+In **Preferences → Messaging → Matrix → Test reception**, validation uses `whoami`, followed
+by a `/sync` snapshot filtered to the encryption state of joined rooms, without downloading
+messages or advancing the listener cursor. If an allowed room is encrypted, the check displays
+an explicit error: Galaris cannot decrypt its messages and creates no conversation round for
+that room. This diagnostic does not interrupt reception in unencrypted rooms. Retrying the
+check evaluates the current room state again.
+
+Continuous reception relies on a single `/sync` per connection, shared
 with call events. Its `next_batch` is stored in the Galaris log and advances only after the batch
 has been fully admitted. A connection created before this guarantee establishes a single baseline
 during the upgrade; a new connection processes its first batch immediately. A replayed batch is

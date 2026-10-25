@@ -712,6 +712,11 @@ async def build_turn(
         )
         for message in hydrated
     ]
+    from app.messenger import project_agent_messages
+
+    source_messages = [TaskMessage.model_validate(message) for message in await project_agent_messages(
+        [message.model_dump(mode="json") for message in source_messages], owner_agent_id=connection.agent_id,
+    )]
     source_request = "\n\n".join(message_prompt(message) for message in source_messages)
     task_messages, omitted = _project_recent_messages(source_messages)
     if not task_messages:

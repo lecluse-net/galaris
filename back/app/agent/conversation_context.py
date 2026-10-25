@@ -215,7 +215,21 @@ def current_message_data(
     )
     if language is not None:
         data["language"] = language
+    if message.get("sender_contact_label") is not None:
+        data["sender.display_name"] = message["sender_contact_label"]
+        data["contact.id"] = message.get("sender_contact_id")
+        data["contact.label"] = message["sender_contact_label"]
     return data
+
+
+def _contact_author(message: object) -> str | None:
+    mapping = _as_mapping(message)
+    label = mapping.get("sender_contact_label") if mapping is not None else getattr(message, "sender_contact_label", None)
+    if label is None:
+        return None
+    contact_id = mapping.get("sender_contact_id") if mapping is not None else getattr(message, "sender_contact_id", None)
+    name = _compact_metadata_value(label)[:128] or "Interlocutor"
+    return f"{name} (contact:{contact_id})" if contact_id else name
 
 
 def message_text(message: object) -> str:
@@ -387,12 +401,13 @@ def message_history_prefix(
             timestamp = datetime.fromtimestamp(epoch, tz=timezone.utc).astimezone().isoformat(timespec="minutes")
         except (OverflowError, OSError, ValueError):
             pass  # Missing or invalid dates must not erase the author.
-    author = _compact_metadata_value(name)[:64] if name else "unknown"
+    contact_author = _contact_author(message)
+    author = contact_author or (_compact_metadata_value(name)[:64] if name else "unknown")
     agent_id = _sender_field(message, "sender_agent_id", "agent_id")
     identities: list[str] = []
     if agent_id is not None:
         identities.append(f"agent:{_compact_metadata_identity(agent_id)}")
-    if sender_id is not None:
+    if sender_id is not None and contact_author is None:
         identities.append(f"id:{_compact_metadata_identity(sender_id)}")
     if identities:
         author += f" ({'; '.join(identities)})"
@@ -543,7 +558,7 @@ def message_line(
     sender = mapping.get("sender") if mapping is not None else getattr(message, "sender", None)
     sender_mapping = _as_mapping(sender) if sender is not None else None
     role = str(mapping.get("role") or "") if mapping is not None else ""
-    who = (
+    who = _contact_author(message) or (
         (
             (sender_mapping.get("display_name") or sender_mapping.get("id"))
             if sender_mapping is not None
@@ -628,7 +643,7 @@ def current_message_line(
     if task.data is not None:
         current = message_history_text(task.data)
         sender = _as_mapping(task.data.get("sender"))
-        who = (
+        who = _contact_author(task.data) or (
             task.data.get("sender.display_name")
             or task.data.get("sender.id")
             or task.data.get("sender_display_name")

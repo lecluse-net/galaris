@@ -3242,6 +3242,7 @@
       },
       {
         "files": [
+          "back/app/messenger/agent_identity.py",
           "back/app/messenger/contact_access.py",
           "back/app/messenger/mcp.py",
           "back/app/messenger/native_facade.py",
@@ -3298,6 +3299,7 @@
       },
       {
         "files": [
+          "back/app/messenger/agent_identity.py",
           "back/app/messenger/contact_memory.py",
           "back/app/messenger/service.py"
         ],
@@ -5439,7 +5441,8 @@
       },
       {
         "files": [
-          "back/bridge/matrix/client.py"
+          "back/bridge/matrix/client.py",
+          "back/bridge/matrix/messenger.py"
         ],
         "source": "bridge.matrix",
         "target": "core.i18n"
@@ -5452,6 +5455,13 @@
         ],
         "source": "bridge.matrix",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/bridge/matrix/client.py"
+        ],
+        "source": "bridge.matrix",
+        "target": "core.settings"
       },
       {
         "files": [
@@ -22383,6 +22393,7 @@
       },
       {
         "files": [
+          "front/app/tools/components/MatrixToolSetup.vue",
           "front/app/tools/components/TelegramToolSetup.vue",
           "front/app/tools/components/ToolsList.vue",
           "front/app/tools/navigation.ts",

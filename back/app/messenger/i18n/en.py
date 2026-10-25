@@ -146,6 +146,12 @@ default: dict[str, object] = {
             "matrix_credentials_required": (
                 "Matrix requires either an access_token or a password"
             ),
+            "matrix_login_failed": "Matrix login failed (HTTP ${status}, ${code}): ${reason}",
+            "matrix_encrypted_rooms_unsupported": (
+                "Encrypted Matrix rooms are not supported by Galaris (detected: ${count}). "
+                "Their messages cannot be decrypted and create no conversation round. "
+                "Use an unencrypted room."
+            ),
             "talk_config_required": (
                 "Configure the nextcloud_talk tool's file-sharing URL and its agent connection "
                 "credentials"

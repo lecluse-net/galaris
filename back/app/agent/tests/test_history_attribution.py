@@ -1,7 +1,7 @@
 """Participant identity must survive the actual provider projections."""
 
 from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from pydantic_ai.messages import ModelRequest, ModelResponse
@@ -18,6 +18,7 @@ def _participants(timestamp, language):
                   if language == 'fr' else ['I own the venue decision.', 'I own the transport estimate.', 'I coordinate the mission.'])
     return [
         TaskMessage(sender_external_id="human-same-name", sender_display_name="Synthetic Alex",
+                    sender_contact_id=UUID("8ba71f53-d057-4c8f-8daa-822139970893"), sender_contact_label="Synthetic Alex",
                     text=statements[0], timestamp=timestamp),
         TaskMessage(sender_external_id="peer-account", sender_display_name="Synthetic Alex",
                     sender_agent_id=8, sender_is_ai=True, text=statements[1], timestamp=timestamp),
@@ -53,7 +54,9 @@ def test_peer_agent_is_external_and_homonyms_keep_their_own_statements(timestamp
     for message, content in zip(history, contents, strict=True):
         assert message.text in content
         assert message.sender_display_name in content
-        assert message.sender_external_id in content or str(message.sender_agent_id) in content
+        assert str(message.sender_contact_id or message.sender_agent_id) in content
+        if message.sender_contact_id:
+            assert message.sender_external_id not in content
     assert contents[0] != contents[1]
 
 

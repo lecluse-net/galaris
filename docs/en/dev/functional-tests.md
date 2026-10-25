@@ -1724,11 +1724,25 @@ changes. Conversation privileges are exercised over HTTP by
 `core/authorize/tests/test_domain_authorization.py`; obsolete `TASK_ACCESS/EDIT` monitoring
 expectations are replaced by the Conversation privileges already in effect.
 
-`front/browser-tests/messaging-network.spec.mjs` covers preconfigured Telegram Tool creation,
-the empty secret parameter, recovery from errors, reopening without duplicates, preservation
+Contact and Conversation tests also cover model attribution after a merge: the retained
+contact label and UUID replace remote names and identifiers, while missing or foreign contacts
+remain anonymous. `app/agent/tests/test_history_attribution.py` exercises that attribution
+through Pydantic AI, OpenAI and Hermes projections while preserving agent roles and attachments.
+
+`front/browser-tests/messaging-network.spec.mjs` covers preconfigured Telegram and Matrix Tool creation,
+empty secret parameters, the required homeserver copied for Matrix, recovery from errors, reopening without duplicates, preservation
 of an incompatible existing Tool and button privileges. Creation stays hidden while loading,
-after read errors or when any Tool already uses the Telegram bridge, regardless of its code;
-the check is repeated before creation. `conversation-control.spec.mjs`
+after read errors or when any Tool already uses the relevant bridge, regardless of its code;
+the check is repeated before creation.
+Password client tests also cover concurrent login sharing, isolation between accounts,
+reuse of the named Galaris device after losing the local token, and credential-free provider error details.
+Listener startup coverage checks unavailable health and client cleanup after authentication failure.
+The Matrix scenario also checks that encryption errors are visible and disappear after a
+successful retry. `bridge/matrix/tests/test_client.py` exercises the actual client and bridge
+against a synthetic homeserver: encrypted-room diagnostics, room allowlists, exclusion of
+departed and invited rooms, no message download and rechecking without updating the reception
+cursor. The API preserves the bridge diagnostic and the E2E journey checks its display in the
+assembled page. `conversation-control.spec.mjs`
 also checks remote identifiers outside pending authorization, for received messages and round
 snapshots. `e2e/specs/contact-authorization.spec.mjs` exercises actual creation from settings,
 persistence and reopening on mobile, alongside external reception and manager denial in Permissions.

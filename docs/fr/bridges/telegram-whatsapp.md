@@ -189,12 +189,28 @@ Référence : [collection officielle WhatsApp Business Platform de Meta](https:/
 
 ### 1. Configurer le homeserver et le compte de l’agent
 
+Dans **Préférences → Messagerie → Matrix**, renseignez le homeserver. Si aucun Tool
+n’utilise déjà le bridge `matrix`, le guide propose **Créer l’outil Matrix** aux utilisateurs
+disposant du droit de modifier les Tools. Ce bouton crée le Tool `matrix`, reprend le
+homeserver renseigné et configure les paramètres de connexion ci-dessous, sans identifiants
+préremplis. Un Tool Matrix existant, quel que soit son code, masque la création ; un code
+`matrix` déjà occupé par un autre Tool invite à vérifier sa configuration.
+Ouvrez ensuite **Outils → Connexions** pour configurer les comptes des agents.
+
 Le Tool sélectionne `matrix` et porte le réglage `homeserver`. Le timeout de sync demeure un
 paramètre technique global. Chaque agent utilise sa propre connexion au Tool :
 
 - `user_id` : identifiant complet du bot, par exemple `@agent:example.org` ;
 - `token` : token longue durée facultatif ;
 - `password` : repli facultatif lorsque le token n’est pas fourni.
+
+Avec un mot de passe, Galaris réutilise un appareil nommé **Galaris**, stable par installation
+et compte Matrix. Les clients actifs de ce compte partagent le jeton obtenu, même entre connexions :
+tester la réception ou envoyer une réponse ne crée pas d’appareil supplémentaire et ne
+révoque pas le jeton du listener. Le motif d’un refus de connexion est affiché sans secret ;
+un échec au démarrage marque la réception indisponible sans effacer son curseur.
+Si le serveur indique une limite d’appareils déjà atteinte, déconnectez d’anciennes sessions
+inutilisées depuis la page de compte Matrix, puis relancez le test de réception.
 
 Les anciens champs de politique Matrix restent lus sur les connexions migrées, mais ne font pas
 partie du nouveau contrat de correspondance.
@@ -206,7 +222,14 @@ annonçant le chiffrement de la room est toujours refusée.
 
 ### 2. Messages, réponses et reprise
 
-La validation de connexion utilise `whoami`. La réception repose sur un unique `/sync` par
+Dans **Préférences → Messagerie → Matrix → Tester la réception**, la validation utilise
+`whoami`, puis un instantané `/sync` filtré sur l’état de chiffrement des salons rejoints,
+sans télécharger les messages ni avancer le curseur du listener. Si un salon autorisé est
+chiffré, le contrôle affiche une erreur explicite : Galaris ne peut pas déchiffrer ses
+messages et aucun round n’est créé pour ce salon. Le diagnostic n’interrompt pas la réception
+des salons non chiffrés. Un nouveau contrôle réévalue la situation.
+
+La réception continue repose sur un unique `/sync` par
 connexion, partagé avec les événements d’appel. Son `next_batch` est conservé dans le journal
 Galaris et n’avance qu’après admission complète du lot. Une connexion créée avant cette garantie
 établit une seule baseline lors de l’upgrade ; une nouvelle connexion traite immédiatement son

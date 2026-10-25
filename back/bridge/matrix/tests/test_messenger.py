@@ -273,16 +273,19 @@ async def test_matrix_messenger_requires_a_connection_for_listening() -> None:
 
 
 @pytest.mark.asyncio
-async def test_listener_closes_client_when_identity_check_fails() -> None:
+async def test_listener_closes_client_when_identity_check_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     matrix = FakeMatrix()
     matrix.whoami = AsyncMock(  # type: ignore[method-assign]
         side_effect=RuntimeError("invalid token")
     )
+    update_state = AsyncMock()
+    monkeypatch.setattr(matrix_messenger.journal, "update_listener_state", update_state)
 
     with pytest.raises(RuntimeError, match="invalid token"):
         await _messenger(matrix).listen()
 
     assert matrix.closed
+    update_state.assert_awaited_once_with(41, "matrix", available=False, error="invalid token", reconnect=True)
 
 
 def test_matrix_bridge_declares_only_per_agent_credentials() -> None:
