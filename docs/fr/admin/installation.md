@@ -103,6 +103,10 @@ déjà configurés ; l’agent Galaris utilise ce profil. Vous pourrez ensuite p
 configuration. Le token est celui de votre compte OpenRouter ; aucune clé ni aucun compte
 OpenRouter n’est fourni avec Galaris.
 
+Seul le Chat interne est activé à l'installation. Pour utiliser Nextcloud Talk, Matrix,
+OneBot, Telegram ou WhatsApp, activez et configurez le canal dans **Préférences → Messagerie**.
+Les mises à jour conservent les choix de canaux déjà enregistrés.
+
 ### Configuration fournie
 
 Les quatre niveaux texte utilisent DeepSeek V4.1 Flash avec les efforts de raisonnement

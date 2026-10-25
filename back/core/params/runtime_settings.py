@@ -133,9 +133,7 @@ class RuntimeSettings(BaseModel):
     ] = "nextcloud_talk"
     # Global bridge availability. Disabled channels keep their durable configuration but are
     # excluded from runtime discovery, routing, search, and agent-facing capabilities.
-    MESSENGER_ENABLED_CHANNELS: str = (
-        '["internal","nextcloud_talk","telegram","matrix","whatsapp","one_bot"]'
-    )
+    MESSENGER_ENABLED_CHANNELS: str = '["internal"]'
     MESSENGER_NEXTCLOUD_TALK_BASE_URL: str = ""
     MESSENGER_NEXTCLOUD_TALK_INBOUND: Literal["polling", "signaling"] = "polling"
     MESSENGER_NEXTCLOUD_TALK_HPB_URL: str = ""

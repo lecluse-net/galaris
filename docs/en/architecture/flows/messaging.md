@@ -241,7 +241,9 @@ the generic `messenger` Tool when it is enabled; bridge-specific Tools declare t
 explicitly.
 
 `MESSENGER_ENABLED_CHANNELS` is the global availability indicator. It contains a duplicate-free
-subset of supported kinds and equals the full list on a new installation. A bridge removed from
+subset of supported kinds and equals `["internal"]` on a new installation: only internal Chat
+is active. External messengers must be explicitly enabled in **Preferences → Messaging**.
+Updates preserve previously saved channels. A bridge removed from
 this list retains its settings and connections, but disappears from messaging searches, tools, and
 connections. Its MCP aliases, webhooks, WebSockets, text/voice listeners, and active calls are
 stopped or refused. It remains visible only in preferences, where its tab allows it to be

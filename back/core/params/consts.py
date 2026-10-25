@@ -473,7 +473,7 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
         "choices": ("nextcloud_talk", "matrix", "one_bot", "telegram", "whatsapp"),
     },
     Params.MESSENGER_ENABLED_CHANNELS: {
-        "value": '["internal","nextcloud_talk","telegram","matrix","whatsapp","one_bot"]',
+        "value": '["internal"]',
         "runtime_field": "MESSENGER_ENABLED_CHANNELS",
     },
     Params.MESSENGER_NEXTCLOUD_TALK_BASE_URL: {

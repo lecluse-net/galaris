@@ -245,7 +245,9 @@ du Tool générique `messenger` lorsqu’il est activé ; les Tools propres aux 
 service explicitement.
 
 `MESSENGER_ENABLED_CHANNELS` est le témoin global de disponibilité. Il contient un sous-ensemble
-sans doublon des kinds pris en charge et vaut la liste complète sur une installation neuve.
+sans doublon des kinds pris en charge et vaut `["internal"]` sur une installation neuve :
+seul le Chat interne est actif. Les messageries externes s'activent explicitement dans
+**Préférences → Messagerie**. Une mise à jour conserve les canaux déjà enregistrés.
 Un bridge retiré de cette liste conserve ses paramètres et ses connexions, mais disparaît des
 recherches, outils et connexions de messagerie. Ses aliases MCP, webhooks, WebSockets,
 listeners texte/voix et appels actifs sont arrêtés ou refusés. Il reste visible uniquement dans

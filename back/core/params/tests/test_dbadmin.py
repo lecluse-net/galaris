@@ -8,6 +8,29 @@ from core.params.dbadmin import _reload_runtime_params, datasets
 
 
 @pytest.mark.asyncio
+async def test_new_installation_enables_only_internal_chat_and_preserves_channel_choices(db):
+    from sqlalchemy import delete, select
+    from core.dbadmin import reconcile_dataset
+    from core.params.models import Param
+    from core.params.runtime_settings import RuntimeSettings, runtime_settings
+
+    assert RuntimeSettings().MESSENGER_ENABLED_CHANNELS == '["internal"]'
+    await db.execute(delete(Param).where(Param.name == Params.MESSENGER_ENABLED_CHANNELS))
+    await reconcile_dataset(db, datasets()[0])
+    row = await db.scalar(select(Param).where(Param.name == Params.MESSENGER_ENABLED_CHANNELS))
+    assert row is not None
+    assert row.value == '["internal"]'
+    assert runtime_settings.MESSENGER_ENABLED_CHANNELS == '["internal"]'
+
+    row.value = '["internal","matrix","telegram"]'
+    await db.flush()
+    for _ in range(2):
+        await reconcile_dataset(db, datasets()[0])
+        assert row.value == '["internal","matrix","telegram"]'
+        assert runtime_settings.MESSENGER_ENABLED_CHANNELS == row.value
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("selected_mode", ["off", "manual", "automatic"])
 async def test_duplicate_mode_is_retired_without_changing_the_merge_threshold(db, selected_mode):
     from sqlalchemy import select
