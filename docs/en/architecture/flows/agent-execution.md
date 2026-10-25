@@ -989,7 +989,10 @@ reconciliation applies the same treatment to traces without persisted activity b
 configured action timeout plus a finalization margin, and also serves as a safety net if the
 process crashes between Task deletion and this closure.
 
-Speaking during the response cancels the current run and ends the round as
+In the STT pipeline, local detection during playback first pauses output without
+consuming retained audio or cancelling the run. An empty final transcript removes
+the provisional indicator and resumes retained playback. A nonempty final transcript
+confirms the interruption: it cancels the current run and ends the round as
 `INTERRUPTED`, not as `Task.ERROR`. Its effective objective remains pending in the session and
 is prefixed to the next transcript. Only a complete response clears this objective. The shared
 prompt authorizes speech and bounded consultations. Any other action must launch an assigned

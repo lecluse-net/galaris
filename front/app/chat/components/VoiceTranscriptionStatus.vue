@@ -1,8 +1,8 @@
 <template>
   <section class="execution-trace voice-transcription-status" role="status" aria-live="polite">
     <div class="trace-summary">
-      <q-icon name="graphic_eq" class="summary-icon" />
-      <span class="summary-label">{{ t('chat.transcriptionInProgress') }}</span>
+      <q-icon name="psychology" class="summary-icon" />
+      <span class="summary-label">{{ t('chat.listeningInProgress') }}</span>
       <q-spinner-dots color="primary" size="22px" />
     </div>
   </section>

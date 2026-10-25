@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode, urlsplit, urlunsplit
@@ -139,6 +140,7 @@ class ElevenLabsTranscription:
         language: str,
         sample_rate: int,
         channels: int,
+        on_partial: Callable[[str], Awaitable[None]] | None = None,
     ) -> RealtimeTranscriber | None:
         if not model.endswith("_realtime"):
             return None
@@ -159,6 +161,7 @@ class ElevenLabsTranscription:
             api_key=(connection.api_key or "").strip(),
             sample_rate=sample_rate,
             channels=channels,
+            on_partial=on_partial,
         )
 
 
@@ -169,6 +172,7 @@ class ElevenLabsRealtimeTranscriber:
         *,
         sample_rate: int,
         channels: int,
+        on_partial: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
         self._connection = connection
         self._pending = bytearray()
@@ -177,6 +181,8 @@ class ElevenLabsRealtimeTranscriber:
         self._uncommitted_bytes = 0
         self._segment_has_speech = False
         self._transcript_parts: list[str] = []
+        self._on_partial = on_partial
+        self._last_partial = ""
         self._committed: asyncio.Queue[
             str | ProviderTranscriptionError
         ] = asyncio.Queue()
@@ -195,6 +201,7 @@ class ElevenLabsRealtimeTranscriber:
         api_key: str,
         sample_rate: int,
         channels: int,
+        on_partial: Callable[[str], Awaitable[None]] | None = None,
     ) -> ElevenLabsRealtimeTranscriber:
         headers = {"xi-api-key": api_key} if api_key else None
         connection: ClientConnection | None = None
@@ -231,7 +238,7 @@ class ElevenLabsRealtimeTranscriber:
             raise ProviderTranscriptionError(
                 "the realtime transcription provider connection failed"
             ) from exc
-        return cls(connection, sample_rate=sample_rate, channels=channels)
+        return cls(connection, sample_rate=sample_rate, channels=channels, on_partial=on_partial)
 
     async def send_audio(self, pcm: bytes, *, speech_detected: bool = True) -> None:
         if not pcm:
@@ -258,6 +265,7 @@ class ElevenLabsRealtimeTranscriber:
                 self._transcript_parts.append(text)
         result = " ".join(self._transcript_parts)
         self._transcript_parts.clear()
+        self._last_partial = ""
         return result
 
     async def _commit_segment(self) -> str:
@@ -317,13 +325,22 @@ class ElevenLabsRealtimeTranscriber:
                 error = _event_error(payload)
                 if error:
                     raise ProviderTranscriptionError(error)
-                if payload.get("message_type") == "committed_transcript":
+                message_type = payload.get("message_type")
+                if message_type in {"partial_transcript", "committed_transcript"}:
                     text = payload.get("text")
                     if not isinstance(text, str):
                         raise ProviderTranscriptionError(
                             "the realtime transcription provider returned an invalid transcript"
                         )
-                    await self._committed.put(text)
+                    if self._segment_has_speech and self._on_partial is not None:
+                        # Partials replace the current segment; earlier bounded
+                        # commits belong to this same human turn.
+                        partial = " ".join((*self._transcript_parts, text.strip())).strip()
+                        if partial != self._last_partial:
+                            await self._on_partial(partial)
+                            self._last_partial = partial
+                    if message_type == "committed_transcript":
+                        await self._committed.put(text)
         except asyncio.CancelledError:
             raise
         except Exception as exc:

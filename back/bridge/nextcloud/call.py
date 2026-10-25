@@ -176,6 +176,7 @@ def _build_out_track(
             self._queue: "asyncio.Queue[tuple[int, bytes]]" = asyncio.Queue(maxsize=100)
             self._generation = 0
             self._buffer = bytearray()
+            self._paused = False
             self._pts = 0
             self._pacer = AudioFramePacer()
             self._silence = b"\x00" * _PCM_FRAME_BYTES
@@ -222,11 +223,16 @@ def _build_out_track(
         async def wait_drained(self) -> None:
             await self._drained.wait()
 
+        def set_paused(self, paused: bool) -> None:
+            self._paused = paused
+
         def stop(self) -> None:
             super().stop()
             self.clear()
 
         def _next_pcm_frame(self) -> bytes:
+            if self._paused:
+                return self._silence
             while len(self._buffer) < _PCM_FRAME_BYTES:
                 try:
                     generation, pcm = self._queue.get_nowait()
@@ -815,6 +821,14 @@ class TalkCall(CallTransport):
                 "Talk call: outbound audio interrupted; cleared {} queued frame(s)",
                 cleared_frames,
             )
+
+    async def pause_output(self, handle: _CallHandle) -> None:
+        if handle.out_track is not None:
+            handle.out_track.set_paused(True)
+
+    async def resume_output(self, handle: _CallHandle) -> None:
+        if handle.out_track is not None:
+            handle.out_track.set_paused(False)
 
     async def wait_output_ready(self, handle: _CallHandle) -> None:
         """Let Talk subscribers attach before emitting the first greeting."""

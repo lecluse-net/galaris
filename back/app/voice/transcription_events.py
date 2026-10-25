@@ -11,7 +11,7 @@ from uuid import UUID
 from loguru import logger
 
 
-VoiceTranscriptionStatus = Literal["started", "completed", "failed"]
+VoiceTranscriptionStatus = Literal["started", "updated", "completed", "failed"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +23,7 @@ class VoiceTranscriptionEvent:
     status: VoiceTranscriptionStatus
     started_at: datetime
     message_id: UUID | None = None
+    text: str = ""
 
 
 VoiceTranscriptionListener = Callable[[VoiceTranscriptionEvent], Awaitable[None]]

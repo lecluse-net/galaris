@@ -132,6 +132,7 @@
               :interaction="entry.message.interaction"
               :readonly="!allowReply || viewerAgentId !== null"
             />
+            <div v-else-if="entry.pendingTranscription && entry.text" class="message-text">{{ entry.text }}</div>
             <SafeMessageContent v-else-if="entry.text" class="message-text" :content="entry.text" :streaming="Boolean(entry.liveRound?.active)" />
             <MessageResourcePreviews
               v-if="entry.message && !entry.message.id.startsWith('pending:') && hasPreviewableReference(entry.message.text)"

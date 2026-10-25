@@ -826,6 +826,19 @@ et permet de transcrire le tour suivant. `app/voice/tests/test_engine.py` empêc
 de relancer une transcription ou de créer un round, un message ou une réponse vocale.
 `front/app/chat/liveState.test.mjs` couvre le retrait de son indicateur sans message vide.
 Ces tests synthétiques ne mesurent pas la latence d'un appel réel ni les hallucinations STT.
+Le scénario d'annulation immédiate sur détection locale est remplacé par la garantie
+pause → reprise sans texte, ou annulation après transcription finale non vide,
+en STT batch et streaming. Les tests couvrent les détections successives, les
+résultats périmés et le raccrochage pendant une pause. `test_audio_pacing.py`
+vérifie aussi la conservation exacte du PCM et des fragments de trame durant la
+pause sur les pistes réelles Chat, Matrix et Nextcloud, puis leur reprise ou abandon.
+
+Ces suites couvrent aussi la transcription partielle avant commit, le cumul des longs
+segments et le rattachement à la bonne prise de parole pendant un commit lent.
+`liveState.test.mjs` vérifie le remplacement des fragments et le relais au message
+persisté sans réapparition due à un fragment tardif. `chat-transcription.spec.mjs`
+exerce la bulle d'écoute, le texte littéral progressif et le message définitif sur
+mobile et ordinateur. Les événements fournisseurs sont synthétiques, sans compte ElevenLabs réel.
 
 `app/voice/tests/test_turn_detection.py` exécute le vrai modèle Silero sur une voix Flite
 entièrement synthétique, normale ou atténuée, et sur silence, bourdonnement, souffle et clics.

@@ -317,12 +317,23 @@ test('a human voice placeholder stays until its durable transcription is loaded'
   assert.equal(started.length, 1)
   assert.equal(started[0].sender, sender)
   assert.equal(started[0].message_id, null)
+  const updated = applyVoiceTranscriptionEvent(started, {
+    data: { room_id: 'room-1', transcription_id: 'transcription-1', status: 'updated', text: 'Hello' },
+  }, sender)
+  const revised = applyVoiceTranscriptionEvent(updated, {
+    data: { room_id: 'room-1', transcription_id: 'transcription-1', status: 'updated', text: 'Hello world' },
+  }, sender)
+  assert.equal(revised.length, 1)
+  assert.equal(revised[0].started_at, started[0].started_at)
+  assert.equal(conversationTimelineEntryText(
+    conversationTimelineEntries('room-1', [], [], null, revised)[0],
+  ), 'Hello world')
   assert.equal(
     conversationTimelineEntries('room-1', [], [], null, started).at(-1).key,
     'voice-transcription:transcription-1',
   )
 
-  const completed = applyVoiceTranscriptionEvent(started, {
+  const completed = applyVoiceTranscriptionEvent(revised, {
     data: {
       room_id: 'room-1',
       transcription_id: 'transcription-1',
@@ -330,6 +341,13 @@ test('a human voice placeholder stays until its durable transcription is loaded'
       message_id: 'message-1',
     },
   }, sender)
+  assert.equal(conversationTimelineEntryText(
+    conversationTimelineEntries('room-1', [], [], null, completed)[0],
+  ), 'Hello world')
+  // Delayed partials cannot revive a transcription already handed to persistence.
+  assert.deepEqual(applyVoiceTranscriptionEvent(completed, {
+    data: { room_id: 'room-1', transcription_id: 'transcription-1', status: 'updated', text: 'stale' },
+  }, sender), completed)
   assert.equal(reconcileVoiceTranscriptions(completed, []).length, 1)
   assert.deepEqual(
     reconcileVoiceTranscriptions(completed, [{ id: 'message-1' }]),

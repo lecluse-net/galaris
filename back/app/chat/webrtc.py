@@ -240,6 +240,7 @@ class _OutgoingAudioTrack(MediaStreamTrack):
         super().__init__()
         self._queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._buffer = bytearray()
+        self._paused = False
         self._pts = 0
         self._pacer = AudioFramePacer()
         self._drained = asyncio.Event()
@@ -274,7 +275,12 @@ class _OutgoingAudioTrack(MediaStreamTrack):
     async def wait_drained(self) -> None:
         await self._drained.wait()
 
+    def set_paused(self, paused: bool) -> None:
+        self._paused = paused
+
     def _next_pcm_frame(self) -> bytes:
+        if self._paused:
+            return b"\x00" * _PCM_FRAME_BYTES
         while len(self._buffer) < _PCM_FRAME_BYTES:
             try:
                 self._buffer.extend(self._queue.get_nowait())
@@ -449,6 +455,14 @@ class BrowserCallTransport(CallTransport):
     async def interrupt_output(self, handle: Any) -> None:
         del handle
         self._outgoing_track.clear()
+
+    async def pause_output(self, handle: Any) -> None:
+        del handle
+        self._outgoing_track.set_paused(True)
+
+    async def resume_output(self, handle: Any) -> None:
+        del handle
+        self._outgoing_track.set_paused(False)
 
     async def _ensure_permission_monitor(self) -> None:
         if self._permission_error is not None:

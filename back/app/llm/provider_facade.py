@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from collections.abc import AsyncIterator, Callable, Iterable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from typing import Annotated, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
 import httpx
@@ -467,6 +467,7 @@ class RealtimeTranscriptionProvider(Protocol):
         language: str,
         sample_rate: int,
         channels: int,
+        on_partial: Callable[[str], Awaitable[None]] | None = None,
     ) -> RealtimeTranscriber | None: ...
 
 

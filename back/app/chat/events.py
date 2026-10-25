@@ -136,6 +136,7 @@ async def _publish_voice_transcription(event: VoiceTranscriptionEvent) -> None:
             "transcription_id": str(event.transcription_id),
             "status": event.status,
             "started_at": event.started_at.isoformat(),
+            "text": event.text,
             "message_id": (
                 str(event.message_id) if event.message_id is not None else None
             ),

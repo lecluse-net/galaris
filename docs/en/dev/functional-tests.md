@@ -780,6 +780,19 @@ usable for the next turn. `app/voice/tests/test_engine.py` prevents that result 
 transcription or creating a round, message, or spoken reply. `front/app/chat/liveState.test.mjs`
 covers removing its indicator without an empty message. These synthetic tests do not measure
 real-call latency or STT hallucinations.
+The immediate-cancellation-on-detection scenario is replaced by the guarantee
+of pause → resume without text, or cancellation after a nonempty final transcript,
+in batch and streaming STT. Tests cover successive detections, stale results and
+hangup while paused. `test_audio_pacing.py` also verifies exact PCM and partial-frame
+retention during pause on the real Chat, Matrix and Nextcloud tracks, followed by
+resumption or discard.
+
+These suites also cover partial transcription before commit, accumulated text across
+long segments and correct utterance identity when speech overlaps a slow commit.
+`liveState.test.mjs` verifies replacement of partial snapshots and the handoff to the
+durable message without revival by late fragments. `chat-transcription.spec.mjs`
+exercises the listening bubble, incremental literal text and final message on mobile
+and desktop. These scenarios use synthetic provider events, not a live ElevenLabs account.
 
 `app/voice/tests/test_turn_detection.py` runs the real Silero model on entirely synthetic
 Flite speech at normal/attenuated volume, and on silence, hum, white noise and clicks.

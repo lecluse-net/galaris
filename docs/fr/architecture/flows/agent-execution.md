@@ -1033,7 +1033,10 @@ réconciliation périodique applique le même traitement aux traces sans activit
 du timeout d'action configuré, augmenté d'une marge de finalisation, et sert aussi de filet de
 sécurité si le processus tombe entre la suppression de la tâche et cette fermeture.
 
-Une prise de parole pendant la réponse annule le run courant et termine le round en
+Dans le pipeline STT, la détection locale pendant la lecture met d'abord la sortie
+en pause sans consommer l'audio restant ni annuler le run. Une transcription finale
+vide retire l'indicateur provisoire et reprend la lecture conservée. Une transcription
+finale non vide confirme la prise de parole : elle annule le run courant et termine le round en
 `INTERRUPTED`, pas en `Task.ERROR`. Son objectif effectif reste en attente dans la session et est
 préfixé au transcript suivant. Seule une réponse complète efface cet objectif. Le prompt commun
 autorise la parole et les consultations bornées. Toute autre action doit lancer sans attente un

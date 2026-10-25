@@ -178,8 +178,11 @@ async def test_call_ended_refreshes_the_canonical_chat_room(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status,text", [("started", ""), ("updated", "Hello world")])
 async def test_voice_transcription_progress_is_scoped_to_the_chat_room(
     monkeypatch: pytest.MonkeyPatch,
+    status: str,
+    text: str,
 ) -> None:
     emitted: list[tuple[tuple[object, ...], dict[str, object]]] = []
     room_id = uuid4()
@@ -193,8 +196,9 @@ async def test_voice_transcription_progress_is_scoped_to_the_chat_room(
     event = VoiceTranscriptionEvent(
         room_id=room_id,
         transcription_id=transcription_id,
-        status="started",
+        status=status,
         started_at=started_at,
+        text=text,
     )
 
     await events._publish_voice_transcription(event)
@@ -207,8 +211,9 @@ async def test_voice_transcription_progress_is_scoped_to_the_chat_room(
         {
             "room_id": str(room_id),
             "transcription_id": str(transcription_id),
-            "status": "started",
+            "status": status,
             "started_at": started_at.isoformat(),
+            "text": text,
             "message_id": None,
         },
     )

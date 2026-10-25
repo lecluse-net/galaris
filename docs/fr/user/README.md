@@ -601,6 +601,15 @@ Dans le mode transcription → agent → synthèse, l'écoute reste active penda
 transcription : vous pouvez reprendre la parole sans attendre son résultat. La détection
 locale de parole limite les déclenchements dus au bruit et conserve les pauses naturelles.
 Une transcription vide ne crée pas de message ni de réponse de l'agent.
+Si un bruit déclenche malgré tout une détection pendant la lecture, celle-ci se
+met en pause. Sans texte transcrit, elle reprend à l'endroit interrompu. Une
+transcription finale non vide arrête l'ancienne lecture et déclenche la réponse
+au nouveau message.
+
+Dans le chat, une bulle **Écoute en cours** apparaît dès la détection de parole.
+Avec un modèle de transcription temps réel tel que Scribe v2 Realtime, son texte
+se met à jour pendant que vous parlez. Sinon, le texte apparaît d'un bloc lorsque
+la transcription est prête. La bulle est remplacée par le message définitif.
 
 L’onglet **Appels téléphoniques** montre les appels actifs ou terminés, leurs tours, interruptions,
 réponses, appels LLM et erreurs. Un tour vocal peut aussi créer une tâche de fond ; celle-ci apparaît

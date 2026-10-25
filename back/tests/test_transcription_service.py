@@ -352,15 +352,26 @@ async def test_elevenlabs_realtime_streams_native_pcm_and_manual_commit(
     monkeypatch.setattr(transcription_service.llm_service, "get_transcription_llm", selected)
     monkeypatch.setattr(elevenlabs_transcription, "connect", connect)
 
+    partials: list[str] = []
+    partial_received = asyncio.Event()
+
+    async def on_partial(text: str) -> None:
+        partials.append(text)
+        partial_received.set()
+
     realtime = await transcription_service.create_realtime_transcriber(
         language="fr-FR",
         sample_rate=48_000,
+        on_partial=on_partial,
     )
 
     assert realtime is not None
     await realtime.send_audio(b"\x01\x00" * 2_400)
     assert connection.sent == []
     await realtime.send_audio(b"\x02\x00" * 2_400)
+    async with asyncio.timeout(1):
+        await partial_received.wait()
+    assert partials == ["Bonjour"]  # Visible before the endpoint/commit.
     result = await realtime.commit()
     # A no-speech result must leave this same session usable for the next turn.
     connection.transcript = "La suite"
@@ -439,9 +450,15 @@ async def test_elevenlabs_long_turn_commits_bounded_segments_without_losing_text
         return connection
 
     monkeypatch.setattr(elevenlabs_transcription, "connect", connect)
+    partials: list[str] = []
+
+    async def on_partial(text: str) -> None:
+        partials.append(text)
+
     realtime = await elevenlabs_transcription.ElevenLabsRealtimeTranscriber.open(
         url="wss://speech.example/v1/speech-to-text/realtime",
         api_key="synthetic-token", sample_rate=48_000, channels=1,
+        on_partial=on_partial,
     )
     try:
         for text in parts:
@@ -452,10 +469,14 @@ async def test_elevenlabs_long_turn_commits_bounded_segments_without_losing_text
         await realtime.send_audio(b"\x02\x00" * 4_800)
         expected = " ".join((*parts, "last part")) if speech_detected else "last part"
         assert await realtime.commit() == expected
+        assert partials[-1] == expected
+        if not speech_detected:
+            assert partials == ["Bonjour", "last part"]
         assert len([message for message in connection.sent if message.get("commit")]) == 3
         # A later turn cannot repeat text retained from an earlier segment.
         connection.transcript = "Next turn"
         await realtime.send_audio(b"\x03\x00" * 4_800)
         assert await realtime.commit() == "Next turn"
+        assert partials[-1] == "Next turn"
     finally:
         await realtime.close()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from pathlib import Path
 
@@ -92,6 +93,7 @@ async def create_realtime_transcriber(
     language: str = "",
     sample_rate: int = 48_000,
     channels: int = 1,
+    on_partial: Callable[[str], Awaitable[None]] | None = None,
 ) -> RealtimeTranscriber | None:
     """Open a live STT session when the selected bridge exposes that capability."""
 
@@ -110,6 +112,7 @@ async def create_realtime_transcriber(
         language=language,
         sample_rate=sample_rate,
         channels=channels,
+        on_partial=on_partial,
     )
 
 

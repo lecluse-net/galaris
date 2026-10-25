@@ -55,6 +55,19 @@ class CallTransport(ABC):
         """
         del handle
 
+    async def pause_output(self, handle: Any) -> None:
+        """Emit silence while retaining unsent audio pending transcription.
+
+        Buffered transports must pause their playback queue without consuming
+        it. The engine also suspends submission of new frames; bufferless
+        transports can keep this default no-op.
+        """
+        del handle
+
+    async def resume_output(self, handle: Any) -> None:
+        """Resume retained audio after an unconfirmed speech detection."""
+        del handle
+
     async def wait_output_ready(self, handle: Any) -> None:
         """Wait until newly connected listeners can receive the first audio.
 

@@ -73,9 +73,9 @@ export interface ConversationProcessList extends Page<ConversationProcess> {}
 export interface RealtimeMessageEvent { data?: { room_id?: string; message_id?: string; is_new?: boolean } }
 export type RealtimeCallStatus = 'active' | 'stopping' | 'ended'
 export interface RealtimeCallEvent { data?: { room_id?: string; call_id?: string; status?: RealtimeCallStatus } }
-export type VoiceTranscriptionStatus = 'started' | 'completed' | 'failed'
-export interface RealtimeVoiceTranscriptionEvent { data?: { room_id?: string; transcription_id?: string; status?: VoiceTranscriptionStatus; started_at?: string; message_id?: string | null } }
-export interface PendingVoiceTranscription { id: string; room_id: string; started_at: string; message_id: string | null; sender: MessengerMember | null; is_mine: boolean }
+export type VoiceTranscriptionStatus = 'started' | 'updated' | 'completed' | 'failed'
+export interface RealtimeVoiceTranscriptionEvent { data?: { room_id?: string; transcription_id?: string; status?: VoiceTranscriptionStatus; started_at?: string; message_id?: string | null; text?: string } }
+export interface PendingVoiceTranscription { id: string; room_id: string; started_at: string; message_id: string | null; text: string; sender: MessengerMember | null; is_mine: boolean }
 export interface LiveAgentRound { room_id: string; round_id: string; attempt?: number; terminal_received?: boolean; topic_id: string | null; active: boolean; success: boolean; last_sequence: number; ai_result: AIResult }
 export interface RealtimeRuntimeEvent { data?: { room_id?: string; round_id?: string; attempt?: number; topic_id?: string | null; kind?: 'started' | 'message' | 'reset' | 'snapshot' | 'finished'; sequence?: number; success?: boolean; message?: AIMessage | null; result?: AIResult | null } }
 export interface ConversationActivityPage extends Page<ConversationActivity> { runtime?: RealtimeRuntimeEvent['data'] | null }

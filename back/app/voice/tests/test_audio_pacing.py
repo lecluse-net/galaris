@@ -91,6 +91,44 @@ async def test_barge_in_during_pacing_does_not_send_cleared_speech(output, clock
 
 
 @pytest.mark.asyncio
+async def test_paused_transport_retains_exact_audio_and_resumes_without_repeating(output, clock):
+    track, push = output
+    first = b"\x01\x00" * 960
+    remainder = b"\x02\x00" * 480
+    following = b"\x03\x00" * 480
+    await push(first + remainder)
+    assert bytes((await track.recv()).planes[0])[:len(first)] == first
+
+    # Pause while a frame is being paced, retaining partial frames as well as
+    # speech queued/generated after the pause began.
+    clock.on_sleep = lambda: track.set_paused(True)
+    assert not any(bytes((await track.recv()).planes[0]))
+    clock.on_sleep = None
+    await push(following)
+    assert not any(bytes((await track.recv()).planes[0]))
+    drained = asyncio.create_task(track.wait_drained())
+    await asyncio.sleep(0)
+    assert not drained.done()
+    track.set_paused(False)
+    resumed = await track.recv()
+    assert bytes(resumed.planes[0])[:1920] == remainder + following
+    assert resumed.pts == 3 * 960
+    await drained
+    assert not any(bytes((await track.recv()).planes[0]))
+
+
+@pytest.mark.asyncio
+async def test_confirmed_interruption_discards_paused_audio(output, clock):
+    track, push = output
+    await push(b"\x01\x00" * 960)
+    track.set_paused(True)
+    track.clear()
+    track.set_paused(False)
+    assert not any(bytes((await track.recv()).planes[0]))
+    await track.wait_drained()
+
+
+@pytest.mark.asyncio
 async def test_cancelled_send_preserves_unsent_audio(output, clock, monkeypatch):
     track, push = output
     pcm = b"\x01\x00" * 960

@@ -41,6 +41,7 @@ export function conversationTimelineEntryText(
   entry: ConversationTimelineEntry,
 ): string {
   if (entry.message) return entry.message.text
+  if (entry.pendingTranscription) return entry.pendingTranscription.text
   return entry.liveRound ? currentAIResponse(entry.liveRound.ai_result) : ''
 }
 
@@ -55,6 +56,11 @@ export function applyVoiceTranscriptionEvent(
     return current.filter(item => item.id !== data.transcription_id)
   }
   const existing = current.find(item => item.id === data.transcription_id)
+  if (data.status === 'updated') {
+    const text = data.text
+    if (!existing || existing.message_id !== null || typeof text !== 'string') return [...current]
+    return current.map(item => item.id === data.transcription_id ? { ...item, text } : item)
+  }
   if (data.status === 'completed') {
     if (!existing || !data.message_id) return [...current]
     return current.map(item => item.id === data.transcription_id
@@ -69,6 +75,7 @@ export function applyVoiceTranscriptionEvent(
       room_id: data.room_id,
       started_at: data.started_at ?? new Date().toISOString(),
       message_id: null,
+      text: '',
       sender,
       is_mine: true,
     },

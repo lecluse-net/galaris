@@ -508,6 +508,14 @@ In transcription → Agent → synthesis mode, listening stays active during tra
 you can speak again without waiting for its result. Local speech detection limits noise
 activations while preserving natural pauses. An empty transcript creates neither a message
 nor an Agent response.
+If a noise still triggers detection during playback, audio pauses. An empty
+transcript resumes playback at the interrupted position. A nonempty final
+transcript stops the old playback and starts the response to the new message.
+
+In chat, a **Listening** bubble appears as soon as speech is detected. With a realtime
+transcription model such as Scribe v2 Realtime, its text updates while you speak.
+Otherwise, the text appears all at once when transcription is ready. The final
+message replaces the listening bubble.
 
 The **Phone Calls** tab shows active or completed calls, their turns, interruptions, responses, LLM calls, and errors. A voice turn can also create a background Task; it then appears in the **Tasks** tab and continues after the call ends.
 

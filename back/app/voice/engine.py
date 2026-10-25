@@ -46,6 +46,11 @@ class _ClassifiedAudio:
     speech_detected: bool
 
 
+@dataclass(frozen=True, slots=True)
+class _TranscriptionStarted:
+    transcription_id: UUID | None
+
+
 class _SentenceBuffer:
     """Turn streamed text into short, speakable TTS requests."""
 
@@ -244,6 +249,11 @@ class AgentVoiceEngine:
         self._caller_external_id = caller_external_id.strip() or "voice-caller"
         self._caller_name = caller_name.strip() or self._caller_external_id
         self._generation = 0
+        # Input detections advance immediately; an existing response remains
+        # valid until a completed transcription confirms actual speech.
+        self._response_generation = 0
+        self._playback_ready = asyncio.Event()
+        self._playback_ready.set()
         self._outbound: asyncio.Queue[_OutboundFrame | None] = asyncio.Queue(maxsize=4000)
         self._outbound_idle = asyncio.Event()
         self._outbound_idle.set()
@@ -310,7 +320,7 @@ class AgentVoiceEngine:
                 error = task.exception()
                 if error is not None:
                     raise error
-            if stop_waiter in done:
+            if stop_waiter in done and self._playback_ready.is_set():
                 await asyncio.gather(
                     self._response_task,
                     return_exceptions=True,
@@ -352,10 +362,10 @@ class AgentVoiceEngine:
             await self._transport.wait_input_ready(self._handle)
             await self._transport.wait_output_ready(self._handle)
             async for frame in encoded_audio_frames(speech.content):
-                if generation != self._generation:
+                if generation != self._response_generation:
                     return
                 await self._queue_outbound(generation, frame)
-            if generation != self._generation:
+            if generation != self._response_generation:
                 return
             self._append_assistant_message(greeting, 0)
             async with get_db_session():
@@ -383,12 +393,18 @@ class AgentVoiceEngine:
 
         realtime: transcription_service.RealtimeTranscriber | None = None
         pending_transcriptions: set[UUID] = set()
+        streaming_transcription_id: UUID | None = None
+
+        async def on_partial(text: str) -> None:
+            await self._update_transcription_progress(streaming_transcription_id, text)
+
         try:
             try:
                 async with get_db_session():
                     realtime = await transcription_service.create_realtime_transcriber(
                         agent_id=self._agent_id,
                         language=self._language,
+                        on_partial=on_partial,
                     )
                 if realtime is not None:
                     logger.info(
@@ -425,11 +441,15 @@ class AgentVoiceEngine:
             # Capture/VAD must keep running during slow STT commits and provider
             # cleanup. Keep PCM and turn boundaries in one ordered, bounded queue
             # so the next turn's audio cannot leak into the previous commit.
-            incoming: asyncio.Queue[_ClassifiedAudio | _DetectedTurn | None] = asyncio.Queue(maxsize=1600)
+            incoming: asyncio.Queue[_ClassifiedAudio | _TranscriptionStarted | _DetectedTurn | None] = asyncio.Queue(maxsize=1600)
             pending_audio_bytes = 0
 
             async def capture() -> None:
                 nonlocal pending_audio_bytes
+
+                async def on_speech_start() -> None:
+                    await self._on_speech_start()
+                    incoming.put_nowait(_TranscriptionStarted(self._pending_transcription_id))
 
                 async def enqueue_audio(pcm: bytes, speech_detected: bool) -> None:
                     nonlocal pending_audio_bytes
@@ -441,7 +461,7 @@ class AgentVoiceEngine:
                 chunks: list[SpeechUtterance] = []
                 async with aclosing(detect_speech_turns(
                     self._transport.inbound_audio(self._handle),
-                    on_speech_start=self._on_speech_start,
+                    on_speech_start=on_speech_start,
                     on_classified_audio=enqueue_audio,
                 )) as turns:
                     async for utterance in turns:
@@ -461,9 +481,12 @@ class AgentVoiceEngine:
                 incoming.put_nowait(None)
 
             async def transcribe() -> None:
-                nonlocal realtime, pending_audio_bytes
+                nonlocal realtime, pending_audio_bytes, streaming_transcription_id
                 deferred: list[str] = []
                 while (item := await incoming.get()) is not None:
+                    if isinstance(item, _TranscriptionStarted):
+                        streaming_transcription_id = item.transcription_id
+                        continue
                     if isinstance(item, _ClassifiedAudio):
                         pending_audio_bytes -= len(item.pcm)
                         await stream_speech_audio(item.pcm, speech_detected=item.speech_detected)
@@ -489,6 +512,9 @@ class AgentVoiceEngine:
                                 self._room_id,
                             )
                             await failed.close()
+                    # commit() has consumed the final provider event for this
+                    # turn. Ignore keepalives while awaiting batch/persistence.
+                    streaming_transcription_id = None
                     try:
                         if transcript is None:
                             transcript = await self._transcribe(item.utterance)
@@ -500,13 +526,17 @@ class AgentVoiceEngine:
                             self._room_id,
                         )
                         await self._finish_transcription_progress(item.transcription_id, status="failed")
+                        await self._resume_playback(item.generation)
                         if item.transcription_id is not None:
                             pending_transcriptions.discard(item.transcription_id)
                         continue
                     if transcript.strip():
                         deferred.append(transcript)
-                    if item.generation != self._generation or not transcript.strip():
+                        await self._confirm_interruption()
+                    if item.generation != self._generation or not deferred:
                         await self._finish_transcription_progress(item.transcription_id, status="completed")
+                        if not deferred:
+                            await self._resume_playback(item.generation)
                         if item.transcription_id is not None:
                             pending_transcriptions.discard(item.transcription_id)
                         continue
@@ -539,18 +569,34 @@ class AgentVoiceEngine:
                 await self._finish_transcription_progress(transcription_id, status="failed")
 
     async def _on_speech_start(self) -> None:
-        """Cut playback immediately, without waiting for provider cleanup."""
-        await self._start_transcription_progress()
+        """Pause on local detection; keep the response until STT confirms speech."""
         self._generation += 1
+        self._playback_ready.clear()
+        await self._transport.pause_output(self._handle)
+        await self._start_transcription_progress()
+
+    async def _confirm_interruption(self) -> None:
+        """Discard the old reply only after a nonempty final transcription."""
+        self._response_generation = self._generation
         self._drain_outbound()
         await self._transport.interrupt_output(self._handle)
-        if self._response_task is not None and not self._response_task.done():
+        if (self._response_task is not None and not self._response_task.done()
+                and not self._response_task.cancelling()):
             self._response_task.cancel()
             logger.info(
-                "Voice agent: barge-in interrupted generation={} room={}",
-                self._generation - 1,
+                "Voice agent: confirmed speech interrupted response room={}",
                 self._room_id,
             )
+
+    async def _resume_playback(self, generation: int) -> bool:
+        if generation != self._generation or self._stop_requested.is_set():
+            return False
+        await self._transport.resume_output(self._handle)
+        if generation != self._generation or self._stop_requested.is_set():
+            await self._transport.pause_output(self._handle)
+            return False
+        self._playback_ready.set()
+        return True
 
     async def _start_response(
         self,
@@ -567,6 +613,9 @@ class AgentVoiceEngine:
             await asyncio.gather(previous, return_exceptions=True)
         if generation != self._generation:
             return False
+        if not await self._resume_playback(generation):
+            return False
+        self._response_generation = generation
         self._turn_index += 1
         self._response_task = asyncio.create_task(
             self._respond(
@@ -607,7 +656,7 @@ class AgentVoiceEngine:
             transcription_mode = "realtime" if transcript is not None else "batch"
             if transcript is None:
                 transcript = await self._transcribe(utterance)
-            if generation != self._generation:
+            if generation != self._response_generation:
                 return
             if not transcript.strip():
                 await self._finish_transcription_progress(
@@ -648,6 +697,7 @@ class AgentVoiceEngine:
                     transcript,
                 )
             self._pending_message_ids.add(message_id)
+            await self._update_transcription_progress(transcription_id, transcript)
             await self._finish_transcription_progress(
                 transcription_id,
                 status="completed",
@@ -707,7 +757,7 @@ class AgentVoiceEngine:
                                 None,
                             ),
                         ):
-                            if generation != self._generation:
+                            if generation != self._response_generation:
                                 return
                             if event.kind == "result" and event.result is not None:
                                 execution_result = live_progress.snapshot(event.result).model_dump(
@@ -760,7 +810,7 @@ class AgentVoiceEngine:
 
                 async def enqueue(frame: AudioFrame) -> None:
                     nonlocal first_audio_at, first_audio_timestamp
-                    if generation != self._generation:
+                    if generation != self._response_generation:
                         return
                     if first_audio_at is None:
                         first_audio_at = time.monotonic()
@@ -795,7 +845,7 @@ class AgentVoiceEngine:
                             sample_rate=speech_stream.sample_rate,
                             channels=speech_stream.channels,
                         ):
-                            if generation != self._generation:
+                            if generation != self._response_generation:
                                 return
                             await enqueue(frame)
                         return
@@ -825,7 +875,7 @@ class AgentVoiceEngine:
                         yield segment
 
                 async for segment in batch_segments():
-                    if generation != self._generation:
+                    if generation != self._response_generation:
                         return
                     async with get_db_session():
                         speech = await tts_service.generate_for_agent(
@@ -834,7 +884,7 @@ class AgentVoiceEngine:
                             tts_service.TTSOptions(language=self._language),
                         )
                     async for frame in encoded_audio_frames(speech.content):
-                        if generation != self._generation:
+                        if generation != self._response_generation:
                             return
                         await enqueue(frame)
 
@@ -973,6 +1023,22 @@ class AgentVoiceEngine:
             )
         )
 
+    async def _update_transcription_progress(
+        self, transcription_id: UUID | None, text: str,
+    ) -> None:
+        room_id = self._conversation_room_id
+        if room_id is None or transcription_id is None:
+            return
+        from .transcription_events import VoiceTranscriptionEvent, publish_voice_transcription
+
+        await publish_voice_transcription(VoiceTranscriptionEvent(
+            room_id=room_id,
+            transcription_id=transcription_id,
+            status="updated",
+            started_at=datetime.now(timezone.utc),
+            text=text,
+        ))
+
     async def _finish_transcription_progress(
         self,
         transcription_id: UUID | None,
@@ -1004,7 +1070,8 @@ class AgentVoiceEngine:
             if item is None:
                 self._outbound_idle.set()
                 return
-            if item.generation == self._generation:
+            await self._playback_ready.wait()
+            if item.generation == self._response_generation:
                 yield item.frame
             if self._outbound.empty():
                 self._outbound_idle.set()
@@ -1030,6 +1097,8 @@ class AgentVoiceEngine:
 
     async def _interrupt_response(self) -> None:
         self._generation += 1
+        self._response_generation = self._generation
+        self._playback_ready.set()
         self._drain_outbound()
         await self._transport.interrupt_output(self._handle)
         task = self._response_task
