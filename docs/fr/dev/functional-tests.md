@@ -7,6 +7,15 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+## Renommer les Documents et Datasets par un agent
+
+Le renommage agentique des titres est couvert par
+`app/file_share/tests/test_resource_rename.py` : parcours MCP et persistance Document/Dataset,
+URI stable, conservation du corps, des révisions, des pièces jointes et de l'accès partagé,
+conflits de métadonnées, titres pilotés par un Goal et jeux en lecture seule. Les fichiers
+à chemins vérifient la conservation du parent et le refus des collisions et traversées.
+Les tests de catalogue MCP vérifient l'exposition de `file_rename` dans les deux runtimes.
+
 ## Tarification nocturne des modèles
 
 `app/llm/tests/test_pricing_sync.py` exerce les vrais bridges HTTP sur des réponses

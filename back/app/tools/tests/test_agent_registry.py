@@ -131,6 +131,7 @@ async def test_resource_uri_tools_are_available_to_both_runtimes() -> None:
         "file_edit",
         "file_copy",
         "file_move",
+        "file_rename",
         "file_delete",
     } <= internal_names
     assert {
@@ -145,6 +146,7 @@ async def test_resource_uri_tools_are_available_to_both_runtimes() -> None:
         "file_edit",
         "file_copy",
         "file_move",
+        "file_rename",
         "file_delete",
     } <= hermes_names
 

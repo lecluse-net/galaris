@@ -153,6 +153,7 @@ async def record_tool_resources(
         "file_edit",
         "file_read",
         "file_info",
+        "file_rename",
     }:
         resource_reference = str(payload.get("uri") or "").strip() or _resource_uri(
             arguments.get("uri") or arguments.get("path")
@@ -172,7 +173,7 @@ async def record_tool_resources(
             tool_name in {"file_copy", "file_move"}
             and scheme not in {"console", "document", "memory"}
         )
-        label = PurePosixPath(normalized.partition("://")[2].rstrip("/")).name
+        label = str(payload.get("name") or PurePosixPath(normalized.partition("://")[2].rstrip("/")).name)
         role = "final_artifact" if is_delivery else _file_role(normalized)
         if scheme == "document":
             working_set = await task_port.get_working_set(ctx.task_id)
@@ -192,7 +193,7 @@ async def record_tool_resources(
                 role = "primary_working_document"
             else:
                 role = f"referenced_document:{label[:8]}"
-            label = str(arguments.get("name") or label)
+            label = str(payload.get("name") or arguments.get("name") or label)
         await _record(
             ctx,
             WorkingResource(
@@ -221,6 +222,7 @@ async def record_tool_resources(
                             "file_copy",
                             "file_move",
                         }
+                        or (tool_name == "file_rename" and payload.get("source_uri") != normalized)
                         else {}
                     ),
                     **({"delivered": True} if is_delivery else {}),
@@ -228,7 +230,9 @@ async def record_tool_resources(
             ),
         )
 
-    if tool_name == "file_move":
+    if tool_name == "file_move" or (
+        tool_name == "file_rename" and payload.get("source_uri") != resource_reference
+    ):
         source_uri = str(payload.get("source_uri") or "").strip() or _resource_uri(
             arguments.get("source")
         )

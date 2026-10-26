@@ -27,6 +27,7 @@ from .resource_service import (
     resource_list,
     resource_move,
     resource_read,
+    resource_rename,
     resource_search,
     resource_write,
     materialize_resource,
@@ -75,7 +76,7 @@ async def _file_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dic
                 snapshots[key] = {"uri": uri, "exists": False}
                 continue
             raise
-        snapshot = descriptor.model_dump(include={"uri", "is_collection", "size", "modified_at", "revision", "etag", "capabilities"})
+        snapshot = descriptor.model_dump(include={"uri", "name", "is_collection", "size", "modified_at", "revision", "lock_version", "etag", "capabilities"})
         if descriptor.is_collection:
             listing = await resource_list(context, uri, recursive=True, max_entries=200)
             if listing.truncated:
@@ -468,6 +469,26 @@ async def copy_file(
     )
 
 
+@mcp_tool("file_sharing", approval="ask", approval_reason="Renaming changes an existing resource",
+    name="file_rename",
+    effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",), reversible=True, receipt="resource"),
+    authorization_preflight=_file_preflight,
+    description=(
+        "Rename one existing resource. On document://<uuid> and data://<uuid>, change only its "
+        "title: the canonical URI, content, content revision, attachments and sharing stay unchanged. "
+        "Read file_info first and pass its lock_version as expected_lock_version for either type. "
+        "Goal-controlled titles remain protected. On mutable path-based files, change the basename "
+        "within the same parent without overwriting another entry; use the returned URI afterward. "
+        "Use file_edit for body changes and file_move for relocation."
+    ),
+)
+async def rename_file(ctx: McpToolContext, uri: str, name: str,
+                      expected_lock_version: int | None = None) -> str:
+    """Rename through the provider and retain the canonical resource identity."""
+    return _json_model(await resource_rename(await _resource_context(ctx), uri, name,
+        expected_lock_version=expected_lock_version))
+
+
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="file_move",
@@ -479,7 +500,7 @@ async def copy_file(
         "existing collection is given without its trailing /. Cross-provider moves require "
         "deletion "
         "support; memory://, document://, Galaris business snapshots, SKILL.md, and Web sources "
-        "must use file_copy instead."
+        "must use file_copy instead. To change a Document or Dataset title, use file_rename."
     ),
 )
 async def move_file(

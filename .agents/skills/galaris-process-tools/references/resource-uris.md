@@ -57,9 +57,15 @@ manipulée. `galaris://` reste un schéma/provider et n'attribue pas les fonctio
 `galaris`.
 
 `file_schemes` décrit les capacités effectives. `file_list`, `file_info`, `file_search`,
-`file_read`, `file_create`, `file_write`, `file_append`, `file_edit`, `file_copy`, `file_move` et `file_delete`
+`file_read`, `file_create`, `file_write`, `file_append`, `file_edit`, `file_copy`, `file_move`, `file_rename` et `file_delete`
 acceptent des URI et rendent du JSON contenant les URI canoniques. Les limites de pagination,
 lecture et écriture sont imposées par le serveur.
+
+`file_rename(uri, name, expected_lock_version=...)` change le titre d'un Document ou Dataset
+sans modifier son URI, son contenu, ses révisions de contenu, ses pièces jointes ni ses droits.
+Le jeton `lock_version` vient de `file_info` ; `revision` ne protège que le contenu.
+Pour un fichier mutable à chemin, le renommage conserve le parent et rend la nouvelle URI,
+sans remplacement d'une entrée existante. Les titres pilotés par un Goal restent protégés.
 
 `file_create` crée une nouvelle ressource et renvoie son URI canonique complète. `file_write`
 remplace une ressource existante ; son contenu est soit UTF-8, soit encodé en base64. `file_read`

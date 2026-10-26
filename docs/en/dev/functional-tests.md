@@ -2,6 +2,14 @@
 
 # Functional guarantees catalogue
 
+## Agent renaming of Documents and Datasets
+
+Agent title renaming is covered by `app/file_share/tests/test_resource_rename.py`:
+the MCP path and Document/Dataset persistence, stable URIs, preserved bodies, revisions,
+attachments and shared read access, metadata conflicts, Goal-controlled titles and read-only
+Datasets. Path-based files cover parent preservation and collision/traversal rejection.
+MCP catalogue tests verify `file_rename` exposure in both runtimes.
+
 ## Nightly model pricing
 
 `app/llm/tests/test_pricing_sync.py` exercises real HTTP bridges against synthetic

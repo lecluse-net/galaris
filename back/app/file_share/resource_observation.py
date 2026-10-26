@@ -160,7 +160,11 @@ async def observe_result(ctx: ResourceContext, scopes: dict[str, ObservationScop
         descriptors = [await resource_info(ctx, result.uri)]
         if isinstance(result, ResourceTransfer) and not result.moved:
             descriptors.append(await resource_info(ctx, result.source_uri))
-        if isinstance(result, ResourceTransfer) and result.moved:
+        if (isinstance(result, ResourceTransfer) and result.moved) or (
+            isinstance(result, ResourceMutation) and result.operation == "rename"
+            and result.source_uri is not None and result.source_uri != result.uri
+        ):
+            assert result.source_uri is not None
             scope = scopes.get(parse_resource_uri(result.source_uri).scheme)
             if scope is not None:
                 if parse_resource_uri(result.uri).scheme == parse_resource_uri(result.source_uri).scheme:

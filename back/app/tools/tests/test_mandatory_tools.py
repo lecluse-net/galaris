@@ -119,6 +119,7 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
         "file_edit",
         "file_copy",
         "file_move",
+        "file_rename",
         "file_delete",
     } == set(specs["file_sharing"].mcp_tools)
     assert specs["file_sharing"].default_active is True

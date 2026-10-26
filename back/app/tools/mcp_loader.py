@@ -185,7 +185,7 @@ _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
         name: "short"
         for name in (
             "file_list", "file_info", "file_search", "file_read", "file_create",
-            "file_write", "file_append", "file_edit", "memory_remember", "memory_forget",
+            "file_write", "file_append", "file_edit", "file_rename", "memory_remember", "memory_forget",
             "memory_summarize", "memory_upcoming", "document_share", "document_sharing",
         )
     },

@@ -59,7 +59,7 @@ from .transport import ByteRangeFileTransport, FileTransport, VersionedFileTrans
 from .file_contracts import FileResourceTransport, FileEntry
 from .web_transport import PublicHttpsFileTransport
 from .resource_observation import observe_operation
-from .native_providers import NativeResourceProvider, native_provider, native_descriptions, resolve_native_alias
+from .native_providers import NativeResourceProvider, NativeResourceRenamer, native_provider, native_descriptions, resolve_native_alias
 from .process_provider import ProcessRunProvider
 
 
@@ -96,6 +96,7 @@ _MUTABLE_FILE_CAPABILITIES: list[ResourceCapability] = [
     "info",
     "list",
     "move",
+    "rename",
     "read",
     "search",
     "write",
@@ -127,6 +128,7 @@ _DOCUMENT_SCHEME_CAPABILITIES: list[ResourceCapability] = [
     "create",
     "delete",
     "list",
+    "rename",
     *_DOCUMENT_CAPABILITIES,
 ]
 _DOCUMENT_ATTACHMENT_CAPABILITIES: list[ResourceCapability] = [
@@ -167,8 +169,8 @@ def _transport_capabilities(service: str, entry: FileEntry) -> list[ResourceCapa
         return _MAIL_CAPABILITIES
     if service in {"nextcloud", "samba"}:
         if entry.is_dir:
-            return ["create", "info", "list", "search", "move", "delete"] if entry.path.strip("/.") else ["create", "info", "list", "search"]
-        return ["append", "copy", "delete", "edit", "info", "move", "read", "write"]
+            return ["create", "info", "list", "search", "move", "rename", "delete"] if entry.path.strip("/.") else ["create", "info", "list", "search"]
+        return ["append", "copy", "delete", "edit", "info", "move", "rename", "read", "write"]
     return _TRANSPORT_CAPABILITIES
 
 
@@ -720,13 +722,16 @@ async def resource_info(
             if reference.scheme == "document" and bool(data["can_write"])
             else list(_MEMORY_CAPABILITIES)
         )
+        if reference.scheme == "document" and data.get("can_rename"):
+            capabilities.append("rename")
         return ResourceDescriptor(
             uri=str(reference),
-            name=str(data["filename"] or data["title"]),
+            name=str(data["title"] if reference.scheme == "document" else data["filename"] or data["title"]),
             media_type=str(data["media_type"]),
             size=_as_int(data["size"]),
             modified_at=cast(str | None, data["updated_at"]),
             revision=_as_int(data["revision"]),
+            lock_version=_as_optional_int(data.get("lock_version")),
             checksum=str(data["checksum"]) if include_checksum else None,
             capabilities=capabilities,
             metadata=cast(dict[str, Any], data["metadata"]),
@@ -892,7 +897,7 @@ async def resource_list(
         entries = [
             ResourceDescriptor(
                 uri=_uri(reference.scheme, str(item["id"])),
-                name=str(item["filename"] or item["title"]),
+                name=str(item["title"] if reference.scheme == "document" else item["filename"] or item["title"]),
                 media_type=str(item["media_type"]),
                 size=_as_int(item["size"]),
                 modified_at=cast(str | None, item["updated_at"]),
@@ -2436,6 +2441,61 @@ async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: s
 
 
 @observe_operation
+async def resource_rename(
+    ctx: ResourceContext,
+    uri: object,
+    name: str,
+    *,
+    expected_lock_version: int | None = None,
+) -> ResourceMutation:
+    """Change a title or basename without replacing content or crossing parents."""
+    reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
+    if reference.scheme in {"document", "data"}:
+        if len(reference.segments) != 1 or reference.is_collection:
+            raise PermissionError("Rename requires a Document or Dataset resource URI, not a collection or attachment")
+        name = name.strip()
+        if not name or len(name) > 500 or any(ord(char) < 32 for char in name):
+            raise ResourceValidationError("A title must contain 1 to 500 characters without control characters")
+        if expected_lock_version is None or isinstance(expected_lock_version, bool) or expected_lock_version < 1:
+            raise ResourceValidationError("Read file_info first and pass its lock_version as expected_lock_version")
+        if provider := _resource_provider(reference):
+            if not isinstance(provider, NativeResourceRenamer):
+                raise PermissionError("This provider does not support renaming")
+            return await provider.rename(ctx, reference, name, expected_lock_version=expected_lock_version)
+        if reference.scheme == "data":
+            raise PermissionError("The Dataset provider is unavailable")
+        descriptor = await resource_info(ctx, reference)
+        if descriptor.metadata.get("document_type") != "html":
+            raise PermissionError("Use the owning domain to rename this resource; only editorial Document titles can be renamed here")
+        from app.document import DocumentUpdate, update_item
+
+        item = await update_item(UUID(reference.locator),
+            DocumentUpdate(title=name, expected_lock_version=expected_lock_version),
+            actor_agent_id=ctx.agent_id, actor_task_id=ctx.task_id, include_revisions=False)
+        return ResourceMutation(uri=str(reference), source_uri=str(reference), operation="rename",
+            state="renamed", name=item.title, size=item.size_bytes,
+            revision=item.revision, lock_version=item.lock_version)
+    if expected_lock_version is not None:
+        raise ResourceValidationError("expected_lock_version applies only to Document and Dataset titles")
+    from core.storage import validate_file_name
+    from .resource_uri import NATIVE_RESOURCE_SCHEMES
+
+    name = validate_file_name(name)
+    if reference.scheme in NATIVE_RESOURCE_SCHEMES and reference.scheme != "console":
+        raise PermissionError("Use the owning domain to rename this resource")
+    descriptor = await resource_info(ctx, reference)
+    reference = parse_resource_uri(descriptor.uri)
+    if "move" not in descriptor.capabilities or not reference.locator.strip("/."):
+        raise PermissionError("This resource cannot be renamed")
+    parent = reference.locator.rstrip("/").rpartition("/")[0]
+    destination = f"{reference.scheme}://{parent + '/' if parent else ''}{quote(name, safe='')}"
+    result = await resource_move(ctx, reference, destination, overwrite=False, exact_destination=True)
+    renamed_uri = result.uri.rstrip("/") + "/" if descriptor.is_collection else result.uri
+    return ResourceMutation(uri=renamed_uri, source_uri=result.source_uri, operation="rename",
+        state="renamed", name=name, size=result.size)
+
+
+@observe_operation
 async def resource_move(
     ctx: ResourceContext,
     source: object,
@@ -2713,7 +2773,7 @@ async def resource_search(
             ResourceSearchHit(
                 resource=ResourceDescriptor(
                     uri=str(item["uri"]),
-                    name=str(item["filename"] or item["title"]),
+                    name=str(item["title"] if reference.scheme == "document" else item["filename"] or item["title"]),
                     media_type=str(item["media_type"]),
                     size=_as_int(item["size"]),
                     modified_at=cast(str | None, item["updated_at"]),

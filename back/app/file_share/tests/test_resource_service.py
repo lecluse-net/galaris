@@ -445,6 +445,7 @@ async def test_console_is_the_only_advertised_local_scheme_with_ssh(
         "info",
         "list",
         "move",
+        "rename",
         "read",
         "search",
         "write",
@@ -904,7 +905,7 @@ async def test_document_collection_lists_canonical_resource_uris(
     documents = result.entries[1:]
     assert [entry.uri for entry in documents] == [f"document://{identifier}" for identifier in identifiers]
     assert len({entry.entry_name for entry in documents}) == len(identifiers)
-    assert [entry.name for entry in documents] == ["release.md", "release.md"]
+    assert [entry.name for entry in documents] == ["Release notes", "Release notes"]
     assert {"read", "write", "append", "edit"} <= set(
         documents[0].capabilities
     )

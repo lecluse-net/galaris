@@ -63,7 +63,7 @@ async def resolve_alias(ctx: ResourceContext, reference: ResourceUri) -> Resourc
 class DatasetProvider:
     def description(self) -> ResourceSchemeDescription:
         return ResourceSchemeDescription(scheme="data", label="Galaris Datasets", example="data://<uuid>", native=True,
-            capabilities=["create", "info", "list", "search", "read", "write", "append", "edit", "copy", "delete"])
+            capabilities=["create", "info", "list", "search", "read", "write", "append", "edit", "copy", "delete", "rename"])
 
     async def info(self, ctx: ResourceContext, uri: ResourceUri, **options: Any) -> ResourceDescriptor:
         if not uri.locator:
@@ -86,10 +86,18 @@ class DatasetProvider:
             return ResourceDescriptor(uri=attachment.uri, name=name, media_type=attachment.media_type,
                 size=attachment.size_bytes, checksum=attachment.sha256, capabilities=["info", "read", "copy"], metadata=rename_metadata)
         return ResourceDescriptor(uri=f"data://{dataset.id}", name=dataset.title, media_type="application/json",
-            size=state["size"], revision=dataset.revision, checksum=state["checksum"],
-            capabilities=["info", "read", "copy", *(["write", "append", "edit"] if state["can_write"] else []), *(["delete"] if state["can_delete"] else [])],
+            size=state["size"], revision=dataset.revision, lock_version=dataset.lock_version, checksum=state["checksum"],
+            capabilities=["info", "read", "copy", *(["write", "append", "edit", "rename"] if state["can_write"] else []), *(["delete"] if state["can_delete"] else [])],
             metadata={"resource_type": "dataset", "document_type": "dataset",
                 "lock_version": dataset.lock_version, "can_manage": state["can_manage"], "can_write": state["can_write"]})
+
+    async def rename(self, ctx: ResourceContext, uri: ResourceUri, name: str,
+                     *, expected_lock_version: int) -> ResourceMutation:
+        dataset = await service.metadata(root_id(uri), ctx.management_scope or ctx.agent_id,
+            expected_lock_version=expected_lock_version, values={"title": name})
+        return ResourceMutation(uri=f"data://{dataset.id}", source_uri=str(uri), operation="rename",
+            state="renamed", name=dataset.title, size=len(dataset.content.encode("utf-8")),
+            revision=dataset.revision, lock_version=dataset.lock_version)
 
     async def _attachment(self, uri: ResourceUri, ctx: ResourceContext) -> DatasetAttachment:
         await service.record(UUID(uri.segments[0]), ctx.management_scope or ctx.agent_id)

@@ -389,12 +389,17 @@ loading them into model context.
   expected_revision: int | None = None, expected_etag: str | None = None) -> str`
 - `file_copy(source: str, destination: str, overwrite: bool = False) -> str`
 - `file_move(source: str, destination: str, overwrite: bool = False) -> str`
+- `file_rename(uri: str, name: str, expected_lock_version: int | None = None) -> str`
 - `file_delete(uri: str) -> str`
 
 Results are structured JSON and contain canonical URIs, capability metadata, pagination offsets or
 transfer receipts. `file_copy` is the persistent cross-provider copy primitive. File-consuming
 tools resolve the same URI through file_share and materialize a bounded temporary automatically;
 do not create a local copy merely to call image, audio, Messenger, Mail, or Process tools.
+`file_rename` changes a Document or Dataset title without changing its URI or body. Read
+`file_info` and pass its `lock_version` as `expected_lock_version`; the content `revision`
+is a different token. For mutable path-based files it changes the basename within the same
+parent and returns the new URI. Use `file_move` when the parent must change.
 Generic delete does not erase Memory items, working-document records or content, Messenger
 attachments, or Galaris objects: use their domain tools.
 Business snapshots under `galaris://` are read-only; copy an object to another scheme when a
@@ -1257,6 +1262,13 @@ the durable identity.
   `file_edit` on the relevant blocks. Read the current revision first.
 - Every actual document-content change creates an immutable restorable content revision. Title,
   folder, ownership, sharing, keywords, and attachment changes never create content revisions.
+- To change a Document or Dataset title, read `file_info(uri)` and call
+  `file_rename(uri, name="ARCHIVE — Synthetic report", expected_lock_version=LOCK_VERSION)`.
+  Use the exact `document://` or `data://` URI and metadata token returned by the read.
+  This changes the library title, not an HTML heading, JSON field or link label. The URI,
+  body, content revision, attachments and rights remain unchanged. A conflict requires
+  rereading metadata and reconsidering the intended title; do not drop the precondition.
+  Titles controlled by another resource, such as Goal documents, remain protected.
 - `file_list("document://<uuid>/attachments/")` lists the document's attachments. Pass an exact
   returned attachment URI to `file_info`, `file_read`, `file_copy`, or a specialized image/audio
   tool; do not invent its UUID.
@@ -1337,6 +1349,16 @@ Missing evidence does not refute a claim. Mark an unsupported contributor infere
 not as a contradiction, unless a source actually states an incompatible fact.
 Respect resource rights and the admitted write scope throughout. Never recreate an inaccessible
 document to bypass a refusal, or claim a successful update before its write receipt.
+
+Match the operation to the requested change: `file_rename` for the displayed resource title,
+`file_edit` for a passage or archive banner, and `file_write` for a complete body replacement.
+Renaming an archive does not by itself update its banner or references. For duplicate cleanup,
+compare current contents before choosing a canonical resource; similar titles do not prove
+equivalence. Preserve distinct historical information and attachments, and reuse stable URIs
+when updating references. Renaming grants no additional write scope. On a scope rejection,
+report the exact blocked URI and continue independently authorized work. Consult `task_get`
+before proposing an amendment: a terminal Task cannot be amended and needs a follow-up Task
+carrying the user's authorization and the outstanding work.
 
 For prose updates, read the relevant passages and integrate corrections within the requested
 scope. Merge repetition and remove obsolete execution notes when they no longer help the reader. Preserve useful facts,

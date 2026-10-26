@@ -247,7 +247,8 @@ _TOOL_CONTEXT_TEMPLATE = """
 ## File tools
 
 file_schemes, file_list, file_info, file_search, file_read, file_create, file_write,
-file_append, file_edit, file_copy, file_move and file_delete operate on canonical resource URIs.
+file_append, file_edit, file_copy, file_move, file_rename and file_delete operate on canonical resource URIs.
+file_rename changes Document and Dataset titles while preserving their canonical URI and body.
 Text reads are bounded; use next_offset to continue. file_create creates a new URI and file_write
 replaces an existing complete UTF-8 or base64-encoded resource, while file_copy streams bytes across providers,
 including the advertised local scheme, document:// and connected Tool-code schemes.

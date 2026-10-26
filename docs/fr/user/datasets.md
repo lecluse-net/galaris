@@ -38,6 +38,11 @@ titre et le JSON. La pagination propose 50 éléments par défaut, avec les choi
 
 ## Créer et modifier du JSON
 
+Un agent peut renommer un jeu avec `file_rename`, après lecture de `file_info` et de son
+`lock_version`. Seul le titre change : l'URI `data://`, le JSON, son historique, les pièces
+jointes et les droits sont conservés. Un renommage concurrent impose de relire les métadonnées.
+Le droit d'écriture reste nécessaire ; un jeu en lecture seule ne peut pas être renommé.
+
 L’éditeur propose trois onglets : **Contenu**, **Historique** et **Utilisations**.
 Dans **Contenu**, l’éditeur JSON occupe la hauteur disponible jusqu’en bas de la vue.
 Changer d’onglet conserve votre brouillon, y compris un JSON invalide.

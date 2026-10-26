@@ -2,7 +2,7 @@
 
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 from .resource_contracts import (MaterializedResource, ResourceContext, ResourceDescriptor,
     ResourceListing, ResourceMutation, ResourceRead, ResourceSchemeDescription, ResourceSearchResult)
@@ -21,6 +21,14 @@ class NativeResourceProvider(Protocol):
     async def delete(self, ctx: ResourceContext, uri: ResourceUri, **options: Any) -> ResourceMutation: ...
     async def search(self, ctx: ResourceContext, uri: ResourceUri, query: str, **options: Any) -> ResourceSearchResult: ...
     async def materialize(self, ctx: ResourceContext, uri: ResourceUri, destination: Path, **options: Any) -> MaterializedResource: ...
+
+
+@runtime_checkable
+class NativeResourceRenamer(Protocol):
+    """Optional metadata mutation; content providers need not support renaming."""
+
+    async def rename(self, ctx: ResourceContext, uri: ResourceUri, name: str,
+                     *, expected_lock_version: int) -> ResourceMutation: ...
 
 
 _providers: dict[str, NativeResourceProvider] = {}

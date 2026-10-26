@@ -197,8 +197,10 @@ async def describe_file_resource(
         "media_type": media_type,
         "size": item.size_bytes,
         "revision": item.revision,
+        "lock_version": item.lock_version,
         "checksum": item.content_hash,
         "can_write": access.can_write and item.node_kind == "document",
+        "can_rename": service.can_rename_document(item, access),
         "updated_at": item.updated_at.isoformat() if item.updated_at else None,
         "metadata": {
             "temporal": item.temporal,

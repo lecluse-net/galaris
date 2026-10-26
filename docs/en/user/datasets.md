@@ -36,6 +36,11 @@ with 10, 20, 50, 100 or 500 available.
 
 ## Create and edit JSON
 
+An agent can rename a Dataset with `file_rename`, after reading `file_info` and its
+`lock_version`. Only the title changes: the `data://` URI, JSON, content history,
+attachments and permissions remain unchanged. A concurrent rename requires rereading
+metadata. Write access is required; a read-only Dataset cannot be renamed.
+
 The editor has three tabs: **Content**, **History** and **Usages**.
 In **Content**, the JSON editor fills the available height to the bottom of the view.
 Switching tabs preserves your draft, including invalid JSON.

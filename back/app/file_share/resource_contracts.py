@@ -28,6 +28,7 @@ ResourceCapability = Literal[
     "list",
     "move",
     "read",
+    "rename",
     "search",
     "share",
     "write",
@@ -69,6 +70,7 @@ class ResourceDescriptor(BaseModel):
     size: int | None = Field(default=None, ge=0)
     modified_at: str | None = None
     revision: int | None = Field(default=None, ge=1)
+    lock_version: int | None = Field(default=None, ge=1)
     checksum: str | None = None
     etag: str | None = None
     capabilities: list[ResourceCapability] = Field(default_factory=_empty_capabilities)
@@ -125,11 +127,13 @@ class EditorialResourceRead(ResourceRead):
 class ResourceMutation(BaseModel):
     indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     uri: str
-    operation: Literal["append", "create", "delete", "edit", "move", "write"]
+    operation: Literal["append", "create", "delete", "edit", "move", "rename", "write"]
     state: str
     source_uri: str | None = None
     size: int | None = Field(default=None, ge=0)
     revision: int | None = Field(default=None, ge=1)
+    lock_version: int | None = Field(default=None, ge=1)
+    name: str | None = None
 
 
 class ResourceTransfer(BaseModel):

@@ -116,7 +116,9 @@ ou un runtime.
 Le Tool intégré `file_sharing` possède et expose l'unique surface MCP générique :
 `file_schemes`, `file_list`, `file_info`,
 `file_search`, `file_read`, `file_create`, `file_write`, `file_append`, `file_edit`, `file_copy`,
-`file_move` et `file_delete`. Ne pas réintroduire un lecteur ou un transfert dédié lorsqu'une URI couvre déjà
+`file_move`, `file_rename` et `file_delete`. `file_rename` modifie le titre des Documents et Datasets
+à URI stable, avec `expected_lock_version` issu de `file_info`, sans révision de contenu.
+Ne pas réintroduire un lecteur ou un transfert dédié lorsqu'une URI couvre déjà
 l'intention. Les actions métier qui portent une sémantique supplémentaire restent dans leur
 domaine et dans leur propre Tool. En particulier, `galaris://` est un schéma pris en charge par
 `app.file_share`, pas une raison de rattacher les fonctions `file_*` au Tool `galaris`.

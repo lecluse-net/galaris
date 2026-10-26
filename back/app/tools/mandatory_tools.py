@@ -212,7 +212,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         mcp_tools=(
             "file_schemes", "file_list", "file_info", "file_search",
             "file_read", "file_create", "file_write", "file_append", "file_edit",
-            "file_copy", "file_move", "file_delete",
+            "file_copy", "file_move", "file_rename", "file_delete",
         ),
         default_active=True,
     ),

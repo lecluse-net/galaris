@@ -73,6 +73,11 @@ def _is_goal_document(item: Document) -> bool:
         "tracking",
     }
 
+
+def can_rename_document(item: Document, access: DocumentAccess) -> bool:
+    """Expose title editability without confusing content rights with Goal ownership."""
+    return access.can_write and item.node_kind == "document" and item.document_type == "html" and not _is_goal_document(item)
+
 def decode_payload(payload: DocumentPayload) -> bytes:
     if payload.text is not None:
         return payload.text.encode("utf-8")

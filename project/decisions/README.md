@@ -342,3 +342,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0236 — Répétabilité du juge sur sorties fixes dans le Lab](0236-lab-fixed-output-judge-repeatability.md)
 - [0237 — Arrêter la piste FUSE après comparaison de navigation](0237-file-share-navigation-experiment.md)
 - [0243 — Collections de répertoires documentaires partagés](0243-shared-document-folder-collections.md)
+- [0244 — Renommage des ressources sans remplacement de contenu](0244-resource-title-renaming.md)

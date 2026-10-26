@@ -70,6 +70,12 @@ commands remain available through right-click.
 
 ## Create and find Documents
 
+To change a title through an agent, ask it to rename the document. It uses `file_info`,
+then `file_rename` with the metadata version. The library title changes while the
+`document://` URI, body, content history, attachments and sharing remain unchanged.
+Editing a heading in the body or a link label is a separate action. Titles of
+Goal-controlled documents remain controlled by that Goal.
+
 In the **Documents** library, every folder offers a **New document** icon among its
 actions. Enter the title and owner: the document is automatically placed in that folder,
 which expands, and opens in the editor. The general creation button keeps new documents

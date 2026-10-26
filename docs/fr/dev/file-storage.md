@@ -10,6 +10,14 @@ possédées par `app.dataset` ; voir les [contrats Dataset](datasets.md).
 
 ## Stockage
 
+La façade MCP expose `file_rename(uri, name, expected_lock_version=...)` pour les titres
+`document://` et `data://`. Le jeton provient de `file_info.lock_version` ; une révision
+de contenu ne suffit pas à détecter deux renommages concurrents. L'opération délègue au
+domaine propriétaire, conserve l'identité et le corps, et retourne le titre enregistré,
+l'URI et le nouveau jeton. Les ACL, le périmètre de tâche et les titres contrôlés par un Goal
+restent appliqués. Pour les fichiers mutables à chemin, seul le dernier segment change,
+sans écrasement, et l'appelant conserve la nouvelle URI retournée.
+
 Les contenus textuels courants et historiques de Memory et Documents sont désormais
 stockés dans leurs colonnes PostgreSQL `content`. Le transfert conserve les sources
 de `/data/memory` et une sauvegarde SQL vérifiée. Voir le

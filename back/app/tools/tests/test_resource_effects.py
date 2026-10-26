@@ -80,6 +80,41 @@ async def test_document_result_records_exact_role_and_revision(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("source,target", [
+    ("document://11111111-1111-4111-8111-111111111111", "document://11111111-1111-4111-8111-111111111111"),
+    ("data://11111111-1111-4111-8111-111111111111", "data://11111111-1111-4111-8111-111111111111"),
+    ("console://old.txt", "console://new.txt"),
+])
+async def test_rename_updates_working_label_and_only_retires_changed_uris(monkeypatch, source, target):
+    from app.tools import resource_effects
+    from app.agent.contracts import WorkingResource
+
+    recorded = AsyncMock()
+    existing = WorkingResource(resource_type="memory_document", role="primary_working_document",
+        reference=source, label="Before")
+    monkeypatch.setattr(resource_effects.task_port, "get_working_set",
+        AsyncMock(return_value=WorkingSet(resources=[existing])))
+    monkeypatch.setattr(resource_effects.task_port, "upsert_working_resource", recorded)
+    await record_tool_resources(McpToolContext(agent_id=1, runtime="internal", task_id=uuid4()),
+        "file_rename", {"uri": source, "name": "New label"},
+        {"uri": target, "source_uri": source, "name": "New label", "revision": 3})
+
+    resources = [call.args[1] for call in recorded.await_args_list]
+    assert resources[0].reference == target and resources[0].label == "New label"
+    assert resources[0].state == "active"
+    assert all(item.resource_type != "delivery_receipt" for item in resources)
+    if source == target:
+        assert not resources[0].metadata.get("produced")
+        assert len(resources) == 1
+        if source.startswith("document://"):
+            assert resources[0].role == "primary_working_document"
+    else:
+        assert resources[0].metadata["produced"] is True
+        assert len(resources) == 2
+        assert resources[1].reference == source and resources[1].state == "stale"
+
+
+@pytest.mark.asyncio
 async def test_file_delivery_records_artifact_and_receipt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

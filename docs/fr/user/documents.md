@@ -79,6 +79,12 @@ ordinateur, les commandes contextuelles restent accessibles au clic droit.
 
 ## Créer et retrouver
 
+Pour changer le titre avec un agent, demandez-lui de renommer le document. Il utilise
+`file_info`, puis `file_rename` avec la version des métadonnées. Le titre de bibliothèque
+change sans modifier l'URI `document://`, le corps, son historique, les pièces jointes
+ni le partage. Modifier un titre dans le texte ou le libellé d'un lien est une autre action.
+Les titres des documents pilotés par un Goal restent contrôlés par ce Goal.
+
 Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
 parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement
 classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création

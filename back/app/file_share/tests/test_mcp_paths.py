@@ -337,6 +337,7 @@ def test_legacy_file_wrappers_are_not_exposed() -> None:
         "file_edit",
         "file_copy",
         "file_move",
+        "file_rename",
         "file_delete",
     } <= names
     assert {"file_read_text", "file_write_text", "file_append_text"}.isdisjoint(

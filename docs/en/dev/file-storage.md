@@ -9,6 +9,14 @@ are independent `data://` resources owned by `app.dataset`; see the [Dataset con
 
 ## Storage
 
+The MCP facade exposes `file_rename(uri, name, expected_lock_version=...)` for
+`document://` and `data://` titles. Read the token from `file_info.lock_version`;
+a content revision cannot detect concurrent renames. The operation delegates to the
+owning domain, preserves identity and content, and returns the saved title, URI and
+new token. ACLs, Task scope and Goal-controlled titles still apply. For mutable
+path-based files, only the basename changes, without overwriting an existing entry,
+and callers retain the returned URI.
+
 Current and historical Memory/Document text now lives in PostgreSQL `content`
 columns. Transfer preserves `/data/memory` sources and a verified SQL backup.
 See [text storage in the database](memory-text-storage.md).
