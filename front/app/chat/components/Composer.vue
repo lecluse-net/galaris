@@ -59,7 +59,9 @@
           </q-btn>
           <div class="attachment-empty gt-sm">
             <q-btn flat round dense color="primary" icon="upload_file" :disable="sending"
-              :aria-label="t('chat.addAttachments')" @click.stop="openFilePicker" />
+              :aria-label="t('chat.addAttachments')" @click.stop="openFilePicker">
+              <q-tooltip>{{ t('chat.addExternalAttachment') }}</q-tooltip>
+            </q-btn>
             <span class="attachment-empty-copy text-weight-medium">{{ t('chat.dropAttachments') }}</span>
             <q-btn flat round dense color="primary" icon="folder_shared" :disable="sending"
               :aria-label="t('documents.internalAttachments.add')" @click.stop="resourcePickerOpen = true">
@@ -74,7 +76,6 @@
             >
               <q-icon name="attach_file" size="17px" color="primary" />
               <span class="attachment-name">{{ pendingFile.name }}</span>
-              <RenameFileButton :name="pendingFile.name" :disabled="sending" :rename="name => renamePendingFile(pendingFile, name)" />
               <q-btn
                 flat
                 round
@@ -262,7 +263,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RenameFileButton, DocumentResourceReferences } from '@/core/util'
+import { DocumentResourceReferences } from '@/core/util'
 import { TopicSelect } from '@/app/topic'
 import { chatService, DictationNotConfiguredError } from '../services/chatService'
 import { visibleMessageText } from '../messageDirectives'
@@ -324,10 +325,6 @@ function pendingFileKey(file: File): number {
   let key = pendingFileKeys.get(file)
   if (key === undefined) { key = ++nextFileKey; pendingFileKeys.set(file, key) }
   return key
-}
-async function renamePendingFile(file: File, name: string): Promise<void> {
-  if (props.sending) return
-  files.value = files.value.map(value => value === file ? new File([file], name, { type: file.type, lastModified: file.lastModified }) : value)
 }
 const reasoningEffortIndex = ref(DEFAULT_REASONING_LEVEL)
 const dictating = ref(false)
