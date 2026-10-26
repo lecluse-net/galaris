@@ -2,6 +2,9 @@
 .rich-content { color: var(--rich-foreground); background: var(--rich-background); overflow-wrap: anywhere; font-family: Helvetica, Arial, Tahoma, Verdana, sans-serif; font-size: 16px; line-height: 1.6; }
 .rich-content > :first-child { margin-top: 0; }
 .rich-content p { margin: 0 0 1em; }
+/* A flex baseline follows the typeset formula even when long formulas scroll. */
+.rich-content span[data-math="inline"] { display: inline-flex; align-items: baseline; max-width: 100%; vertical-align: baseline; overflow-x: auto; overflow-y: hidden; }
+.rich-content p[data-math="block"] { display: block; text-align: center; max-width: 100%; overflow-x: auto; padding-block: .5em; break-inside: avoid; }
 .rich-content ul.galaris-checklist { list-style: none; padding-inline-start: 1.6em; }
 .rich-content ul.galaris-checklist > li { position: relative; }
 .rich-content ul.galaris-checklist > li::before { content: '☐'; position: absolute; inset-inline-start: -1.4em; }

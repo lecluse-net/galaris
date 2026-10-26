@@ -398,6 +398,13 @@ participants et les portraits d’agents. Images et cartes y restent sans liens 
 que les liens textuels ordinaires restent utilisables. Le scénario produit un vrai PDF
 synthétique pour contrôler son rendu et ses annotations de liens.
 
+`equations.spec.mjs` vérifie les équations inline/bloc avec le vrai MathLive : saisie,
+modification, menu contextuel, saisie avant/après, suppression annulable, réouverture,
+lecture seule et mobile, isolement des brouillons
+lors d’un changement de contenu et export statique avec polices intégrées sans réseau.
+`core/util/tests/test_rich_text.py` valide leur contrat HTML ;
+`app/document/tests/test_editorial_content.py` vérifie persistance, révisions et droits.
+
 `front/browser-tests/tiptap-preservation.spec.mjs` couvre la conservation du corpus HTML
 dans Tiptap, la sérialisation, la réouverture et la lecture : références canoniques, tableaux et
 HTML/CSS/JavaScript opaque. Une vraie scène Three.js exerce le runtime isolé hors ligne,

@@ -14,6 +14,7 @@ import { EditorialTableView } from './editorialTableView'
 import { attachmentReference, richLinkHref, sanitizeRichHtml, type ContentProfile } from './richText'
 import { documentIdFromResourceUri, documentUriFromLink } from './documentResource'
 import { Checklist, ChecklistItem } from './editorialChecklist'
+import { mathNode } from './editorialMath'
 
 export type EditorToolbarGroupName = 'reading' | 'editing' | 'text' | 'paragraph' | 'insert'
 export const calloutKinds = ['info', 'warning', 'question', 'error', 'stop', 'forbidden', 'search'] as const
@@ -28,6 +29,7 @@ export interface ContentAdapters {
   readonly: () => boolean
   codeCopy: (element: HTMLElement, source: () => string) => () => void
   linkIcon?: (element: HTMLElement, documentId: string) => () => void
+  editMath?: (position: number) => void
 }
 let sequence = 0
 
@@ -270,7 +272,7 @@ export function contentExtensions(adapters: ContentAdapters): Extensions {
   }).configure({ resizable: true, View: EditorialTableView }),
   Node.create({ name: 'tableFigure', group: 'block', content: 'table caption?', parseHTML: () => [{ tag: 'figure.table' }], renderHTML: ({ HTMLAttributes }) => ['figure', mergeAttributes({ class: 'table' }, HTMLAttributes), 0] }),
   Node.create({ name: 'caption', content: 'inline*', parseHTML: () => [{ tag: 'figcaption' }, { tag: 'caption' }], renderHTML: () => ['figcaption', 0] }),
-  HtmlAttributes(adapters), CodeBlock, RawObject(adapters), ResourceCard(adapters), ...(adapters.profile === 'document' ? [Checklist, ChecklistItem, DocumentImage(adapters, false), DocumentImage(adapters, true)] : [])]
+  HtmlAttributes(adapters), CodeBlock, RawObject(adapters), ResourceCard(adapters), mathNode('inline', adapters.editMath), mathNode('block', adapters.editMath), ...(adapters.profile === 'document' ? [Checklist, ChecklistItem, DocumentImage(adapters, false), DocumentImage(adapters, true)] : [])]
 }
 
 /** Resolve links in the editing view only; the model continues to carry canonical URIs. */

@@ -80,7 +80,12 @@ export default defineConfig({
         'import.meta.env.VITE_APP_ENV': JSON.stringify(appEnv),
         'import.meta.env.VITE_BUILD_VERSION': JSON.stringify(process.env.GALARIS_BUILD_VERSION || 'unknown'),
     },
-    build: { manifest: true },
+    build: {
+        manifest: true,
+        // Keep even the smallest math fonts on our origin: the application CSP
+        // deliberately does not allow data: fonts. Exports embed their own copy.
+        assetsInlineLimit: filePath => filePath.includes('/mathlive/fonts/') ? false : undefined,
+    },
     plugins: [
         localeCatalogs(),
         documentRuntimeLibraries(),

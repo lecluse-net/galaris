@@ -31,9 +31,17 @@ The previous CKEditor integration is replaced as follows:
 | Personal dictation and reading | Existing application-owned voice provider |
 | Printing, PDF/ZIP, native sharing and attachment materialization | Existing snapshot/export services |
 | Arbitrary HTML/CSS/JavaScript and Three.js | Opaque source nodes and the isolated document runtime |
+| Inline and block equations | Atomic formula nodes, a MathLive visual dialog and portable LaTeX source |
 
 No paid Tiptap extension, cloud account or license key is used. Existing content is
 parsed on opening; no database rewrite is part of this change.
+
+Equations store escaped LaTeX text in `span[data-math="inline"]` or
+`p[data-math="block"]` in both editorial profiles, with 10,000 characters per formula.
+Load pinned MIT-licensed MathLive on demand for visual editing and static rendering;
+bundle its fonts locally. Rendering DOM remains transient. Print, PDF and portable HTML
+embed the static markup, styles and fonts so export needs neither JavaScript nor network
+access. Preserve the MathLive and KaTeX font notices under `public/licenses/`.
 
 Keep `protectInteractiveHtml` / `restoreInteractiveHtml`: related custom HTML, CSS and
 scripts travel together as opaque nodes. Their editing DOM hosts the existing isolated

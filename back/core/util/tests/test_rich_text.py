@@ -16,6 +16,24 @@ DOCUMENT = "4e98431c-c16c-4a6e-936e-15a595723340"
 ATTACHMENT = "ae6942a7-b8c9-463f-8f08-8494d08ed186"
 
 
+@pytest.mark.parametrize("profile", ["document", "rich-text"])
+def test_equations_keep_their_source_and_layout_through_normalization(profile):
+    source = '<p>Area <span data-math="inline">x^2 &lt; y</span>.</p><p data-math="block">\\frac{a}{b}</p>'
+    normalized = normalize_html(source, profile=profile)
+    assert normalized == source
+    assert normalize_html(normalized, profile=profile) == source
+    assert "x^2 < y" in visible_text(normalized)
+    assert "\\frac{a}{b}" in visible_text(normalized)
+    assert "".join(html_blocks(normalized)) == normalized
+
+
+@pytest.mark.parametrize("profile", ["document", "rich-text"])
+@pytest.mark.parametrize("source", ['<p data-math="inline">x</p>', '<span data-math="block">x</span>', '<p data-math="unknown">x</p>', '<a data-math="inline">x</a>', '<span data-math="inline"><strong>x</strong></span>', '<p data-math="block">' + 'x' * 10_001 + '</p>'])
+def test_equations_reject_invalid_formats(profile, source):
+    with pytest.raises(RichTextError):
+        normalize_html(source, profile=profile)
+
+
 def test_checklist_state_round_trips_in_editable_html():
     source = '<ul class="galaris-checklist"><li data-checked="true"><p>First</p><ul class="galaris-checklist"><li data-checked="false"><p>Nested</p></li></ul></li></ul>'
     normalized = normalize_html(source, profile="document")

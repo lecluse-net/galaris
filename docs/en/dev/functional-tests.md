@@ -391,6 +391,13 @@ navigation, without opening a nested search modal.
 and agent portraits. Images and cards have no active links while ordinary text links remain
 usable. The scenario generates a real synthetic PDF for visual and link-annotation checks.
 
+`equations.spec.mjs` exercises inline/block equations with real MathLive: input, editing,
+cancellation, contextual actions, typing before/after, undoable deletion, reopening,
+read-only and mobile views, draft isolation on content changes
+and static exports with embedded fonts and no network access. `core/util/tests/test_rich_text.py`
+validates their HTML contract; `app/document/tests/test_editorial_content.py` covers persistence,
+revisions and permissions.
+
 `front/browser-tests/tiptap-preservation.spec.mjs` covers the HTML corpus through Tiptap,
 serialization, reopening and reading: canonical references, tables and opaque HTML/CSS/JavaScript.
 A real Three.js scene exercises the offline isolated runtime, controls and a nonempty

@@ -27,6 +27,15 @@ Un document Goal utilise `rich-text`, même
 ouvert depuis la bibliothèque ou le Chat. Les ressources binaires/JSON/code et les compétences
 ne passent pas dans cette conversion.
 
+Les deux profils acceptent les équations sous forme de texte LaTeX échappé :
+`<span data-math="inline">x^2</span>` dans un paragraphe et
+`<p data-math="block">\frac{a}{b}</p>` pour un bloc. Ces nœuds contiennent uniquement
+du texte, avec une limite de 10 000 caractères par formule. MathLive est chargé à la
+demande ; son DOM de rendu, ses contrôles et les polices ne sont jamais enregistrés
+dans le corps. Les instantanés d’impression/PDF/HTML incluent le rendu statique et les
+polices locales intégrées, sans script ni téléchargement externe. Voir aussi la
+[décision 0203](../../../project/decisions/0203-tiptap-html-editor.md).
+
 ## Documents comme pivot de l'information
 
 Les profils d'agents sont des ressources virtuelles `galaris://agent/<id>`, sans document

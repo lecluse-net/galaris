@@ -9,6 +9,7 @@ import { layoutDocumentRendering } from './layoutDocumentRendering'
 import type { RenderedDocumentResolver } from './renderedDocument'
 import { embeddedResourceCards, prepareDocumentCard } from './resourceCards'
 import { webLinkCardImage, prependWebLinkImage } from './webLinkPreview'
+import { renderMath, mathSnapshotStyles } from './mathRendering'
 
 const MAX_SNAPSHOT_BYTES = 12_000_000
 
@@ -66,6 +67,8 @@ export async function prepareDocumentSnapshot(
   ))) : []
   if (!resolveRenderedContent) hideInteractiveSource(doc.body, title)
   highlightDocumentCode(doc.body)
+  await renderMath(doc.body)
+  const mathCss = await mathSnapshotStyles(doc.body, signal)
   doc.querySelectorAll('a').forEach(link => {
     if (portableAttachments && attachmentReference(link.getAttribute('href') ?? '')) return
     const href = richLinkHref(link.getAttribute('href') ?? '')
@@ -106,10 +109,10 @@ export async function prepareDocumentSnapshot(
     if (link.closest('.galaris-link-card') || link.querySelector('img, svg, canvas, iframe, object, embed')) link.removeAttribute('href')
   })
   signal.throwIfAborted()
-  const csp = "default-src 'none'; style-src 'unsafe-inline'; img-src blob: data:; base-uri 'none'; form-action 'none'"
+  const csp = "default-src 'none'; style-src 'unsafe-inline'; img-src blob: data:; font-src data:; base-uri 'none'; form-action 'none'"
   const heading = document.createElement('title')
   heading.textContent = title
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}">${heading.outerHTML}<style>${solaireStyles}\n${contentCss}\n${richCss}\n${printCss}</style></head><body><main class="rich-content">${doc.body.innerHTML}</main></body></html>`
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}">${heading.outerHTML}<style>${solaireStyles}\n${contentCss}\n${richCss}\n${printCss}\n${mathCss}</style></head><body><main class="rich-content">${doc.body.innerHTML}</main></body></html>`
   if (new Blob([html]).size > MAX_SNAPSHOT_BYTES) throw new Error('Document snapshot too large')
   return html
 }

@@ -1,5 +1,6 @@
 @import './editorialContent.css';
 @import './richText.css';
+.rich-content[contenteditable="true"] [data-math] { cursor: pointer; }
 .tiptap-galaris-editor { --editorial-canvas: #fafafa; width: 100%; min-width: 0; isolation: isolate; background: transparent; color: var(--rich-foreground); }
 .body--dark .tiptap-galaris-editor { --editorial-canvas: #292e36; }
 .editorial-toolbar {

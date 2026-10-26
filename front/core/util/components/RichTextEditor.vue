@@ -53,7 +53,7 @@
       <Teleport v-for="target in resourceEmbeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" :agent-id="resourceAgentId" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerResourceSnapshot(target.key, capture)" /></Teleport>
     </template>
       <q-menu v-if="activeContext || pointerTextContext" :id="pointerMenuId" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" :max-height="pointerMenuMaxHeight" role="presentation" @escape-key="queueContextFocus" @hide="restoreContextFocus">
-        <q-list dense role="menu" :aria-label="t(!activeContext ? 'richEditor.content' : activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : 'richEditor.resources.insert')" @mousedown.prevent>
+        <q-list dense role="menu" :aria-label="t(!activeContext ? 'richEditor.content' : activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : activeContext.kind === 'equation' ? 'richEditor.equation.context' : 'richEditor.resources.insert')" @mousedown.prevent>
           <EditorialContextActions v-if="activeContext" :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runPointerAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
           <template v-if="pointerTextContext && editor && !readonly">
             <q-separator v-if="activeContext" />
@@ -67,6 +67,7 @@
         </q-list>
       </q-menu>
     <ResourceDetailDialog v-if="resourceDetail" :target="resourceDetail" @close="resourceDetail = null" />
+    <EquationDialog v-if="mathOpen" :kind="mathKind" :latex="mathLatex" @apply="applyMath" @close="closeMath" />
     <RenderedObjectPreview v-if="objectPreview" :key="objectPreview.key" :source="objectPreview.source" :language="objectPreview.language" :capture="capturePreview" :title="t('richEditor.interactivePreview')" @close="objectPreview = null" />
     <PdfPreview v-model="pdfPreview" />
     <FullscreenPreview v-model="imagePreviewOpen" :viewer-label="t('richEditor.resources.openImage')">
@@ -101,7 +102,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useSlots, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useSlots, useTemplateRef, watch } from 'vue'
 import { useQuasar, copyToClipboard, type QInput, type QMenu } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { Editor } from '@tiptap/vue-3'
@@ -112,6 +113,7 @@ import { closeHistory } from '@tiptap/pm/history'
 import { marked } from 'marked'
 import EditorialToolButton from './EditorialToolButton.vue'
 import EditorialToolbar from './EditorialToolbar.vue'
+import type { MathKind } from '../mathRendering'
 import DocumentOutline from './DocumentOutline.vue'
 import EditorialSource from './EditorialSource.vue'
 import EditorialContextActions from './EditorialContextActions.vue'
@@ -149,6 +151,7 @@ import { exportDocumentBundle } from '../exportDocumentBundle'
 import { saveBlobAsResource } from '../resourceViewer'
 import type { RenderedDocumentCapture, RenderedDocumentResolver } from '../renderedDocument'
 import '../editorialTheme.css'
+const EquationDialog = defineAsyncComponent(() => import('./EquationDialog.vue'))
 const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, hiddenToolbarGroups = [], singleRowToolbar = false, resourceAgentId = null, pickResources } = defineProps<{
   resourceAgentId?: number | null; modelValue: string; mediaType?: string; profile?: ContentProfile; readonly?: boolean; minHeight?: string; maxHeight?: string; autoGrow?: boolean; ariaLabel?: string; attachments?: DocumentResource[]; hiddenToolbarGroups?: readonly EditorToolbarGroupName[]; singleRowToolbar?: boolean
   createLinkCard?: (url: string) => Promise<string>; pickResources?: () => Promise<string>; exportBundle?: (html: string, signal: AbortSignal) => Promise<Blob>; documentTitle?: string; documentUrl?: string
@@ -212,8 +215,39 @@ const anchors = new Set<Anchor>()
 function anchor(from = editor.value?.state.selection.from ?? 1, to = editor.value?.state.selection.to ?? from): Anchor { const value = { from, to, valid: true, generation }; anchors.add(value); return value }
 function valid(value: Anchor): boolean { return value.valid && value.generation === generation && Boolean(editor.value?.isEditable) && !sourceMode.value }
 function release(value?: Anchor): void { if (value) { value.valid = false; anchors.delete(value) } }
+const mathOpen = ref(false), mathKind = ref<MathKind>('inline'), mathLatex = ref('')
+let mathAnchor: Anchor | undefined, mathOriginal: ProseMirrorNode | undefined
+function closeMath(restoreFocus = true): void {
+  const opened = mathOpen.value, current = editor.value, started = generation
+  mathOpen.value = false; release(mathAnchor); mathAnchor = undefined; mathOriginal = undefined
+  if (opened && restoreFocus) void nextTick(() => {
+    if (current && editor.value === current && !current.isDestroyed && generation === started && current.isEditable && !mathOpen.value) current.view.focus()
+  })
+}
+function openMath(kind: MathKind, position?: number): void {
+  const current = editor.value
+  if (!current || readonly || sourceMode.value) return
+  closeMath(false)
+  const selection = current.state.selection
+  const node = position !== undefined ? current.state.doc.nodeAt(position) : selection instanceof NodeSelection ? selection.node : undefined
+  const existing = node && ['inlineMath', 'blockMath'].includes(node.type.name) ? node : undefined
+  mathKind.value = position !== undefined && existing ? existing.type.name === 'inlineMath' ? 'inline' : 'block' : kind
+  mathLatex.value = existing ? String(existing.attrs.latex) : ''
+  mathAnchor = existing ? anchor(position ?? selection.from, (position ?? selection.from) + existing.nodeSize) : anchor()
+  mathOriginal = existing
+  mathOpen.value = true
+}
+function applyMath(latex: string): void {
+  const at = mathAnchor, current = editor.value
+  if (!current || !at || !valid(at) || !latex.trim() || latex.length > 10_000) return
+  if (mathOriginal && !current.state.doc.nodeAt(at.from)?.eq(mathOriginal)) { closeMath(); return }
+  const node = document.createElement(mathKind.value === 'inline' ? 'span' : 'p')
+  node.dataset.math = mathKind.value; node.textContent = latex
+  insertAt(at, node.outerHTML)
+  closeMath()
+}
 function request(): AbortController { const value = new AbortController(); requests.add(value); return value }
-function stop(): void { pointerRequest++; pointerMenu.value?.hide(); pointerTextContext.value = false; pointerSelection = undefined; generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; findOpen.value = false; linkOpen.value = false; objectPreview.value = null }
+function stop(): void { closeMath(false); pointerRequest++; pointerMenu.value?.hide(); pointerTextContext.value = false; pointerSelection = undefined; generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; findOpen.value = false; linkOpen.value = false; objectPreview.value = null }
 function inputHtml(value: string): string {
   if (mediaType === 'text/markdown') value = marked.parse(value, { async: false })
   if (mediaType === 'text/plain') { const paragraph = document.createElement('p'); paragraph.textContent = value; value = paragraph.outerHTML }
@@ -290,7 +324,7 @@ function createEditor(): void {
     element: editorHost.value!,
     content: inputHtml(modelValue), editable: !readonly, enableInputRules: profile === 'document',
     extensions: contentExtensions({ profile, object: (target, mounted) => { embeddedTargets.value = mounted ? [...embeddedTargets.value, target] : embeddedTargets.value.filter(value => value.key !== target.key); if (!mounted) captures.delete(target.key) },
-      card: mountCard, image: resolveAttachment, openImage: navigate, readonly: () => readonly, codeCopy: mountCodeCopy, linkIcon: mountDocumentLinkIcon }),
+      card: mountCard, image: resolveAttachment, openImage: navigate, readonly: () => readonly, codeCopy: mountCodeCopy, linkIcon: mountDocumentLinkIcon, editMath: position => openMath('inline', position) }),
     editorProps: { attributes: { class: 'rich-content', 'aria-label': ariaLabel || t('richEditor.content'), 'data-editor-surface': '', tabindex: '0' },
       decorations: state => {
         if (!findOpen.value) return null
@@ -375,8 +409,9 @@ const activeContext = computed(() => {
   void revision.value
   const current = editor.value
   if (readonly || !current || current.isDestroyed || sourceMode.value) return null
-  let kind: 'code' | 'table' | 'resource' | 'object'
+  let kind: 'code' | 'table' | 'resource' | 'object' | 'equation'
   if (selectedType.value === 'codeBlock') kind = 'code'
+  else if (['inlineMath', 'blockMath'].includes(selectedType.value)) kind = 'equation'
   else if (['documentImage', 'inlineImage', 'resourceCard'].includes(selectedType.value) || current.isActive('link')) kind = 'resource'
   else if (selectedType.value === 'rawObject') kind = 'object'
   else if (current.isActive('table')) kind = 'table'
@@ -389,7 +424,7 @@ watch(mobileDocument, () => pointerMenu.value?.hide())
 const canInsertBeside = computed(() => {
   void revision.value
   const selection = editor.value?.state.selection
-  return Boolean(selection instanceof NodeSelection && selection.node.isBlock) || ['code', 'table'].includes(activeContext.value?.kind ?? '')
+  return Boolean(selection instanceof NodeSelection && (selection.node.isBlock || selection.node.type.name === 'inlineMath')) || ['code', 'table'].includes(activeContext.value?.kind ?? '')
 })
 const canConvertCard = computed(() => { void revision.value; const uri = selectionUri(); return profile === 'document' && (richLinkHasCard(uri) || Boolean(createLinkCard) && /^https?:\/\//i.test(uri)) })
 const selectedDocumentUri = computed(() => { void revision.value; return documentUriFromLink(selectionUri(), window.location.origin) })
@@ -523,7 +558,7 @@ async function openContextMenu(event: MouseEvent): Promise<void> {
   if (readonly) { event.preventDefault(); event.stopPropagation(); return }
   const current = editor.value, target = event.target
   if (!current || current.isDestroyed || sourceMode.value || !(target instanceof Element) || !current.view.dom.contains(target)) return
-  const object = target.closest('.galaris-image-object, blockquote.galaris-link-card, .embedded-code-widget')
+  const object = target.closest('.galaris-image-object, blockquote.galaris-link-card, .embedded-code-widget, [data-math="inline"], [data-math="block"]')
   const request = ++pointerRequest
   pointerMenu.value?.hide()
   pointerSelection = undefined
@@ -606,6 +641,11 @@ function insertBeside(after: boolean): void {
   const current = editor.value
   if (!current || readonly) return
   const { selection } = current.state
+  if (selection instanceof NodeSelection && selection.node.type.name === 'inlineMath') {
+    current.commands.setTextSelection(after ? selection.to : selection.from)
+    current.view.focus()
+    return
+  }
   let position: number
   if (selection instanceof NodeSelection && selection.node.isBlock) position = after ? selection.to : selection.from
   else {
@@ -851,6 +891,15 @@ const contextActions = computed(() => {
     add('copy', editorialIcon('copy', 'content_copy'), 'codeTools.copy', copyCode)
   } else if (activeContext.value?.kind === 'table') {
     for (const item of tableActions.value) add(item.key, editorialIcon(item.key, item.icon), item.key, () => tableAction(item.key), item.disabled)
+  } else if (activeContext.value?.kind === 'equation') {
+    add('edit', editorialIcon('edit', 'edit'), 'equation.edit', () => openMath('inline', editor.value?.state.selection.from))
+    for (const key of ['cut', 'copy'] as const) add(key, editorialIcon(key, key === 'cut' ? 'content_cut' : 'content_copy'), 'clipboard.' + key, () => { void clipboardAction(key) })
+    add('remove', 'delete', 'equation.remove', () => {
+      const current = editor.value
+      if (!current || readonly || !(current.state.selection instanceof NodeSelection) || !['inlineMath', 'blockMath'].includes(current.state.selection.node.type.name)) return
+      current.view.dispatch(closeHistory(current.state.tr))
+      current.chain().deleteSelection().focus().run()
+    })
   } else if (activeContext.value?.kind === 'resource') {
     add('open', editorialIcon('open', 'open_in_new'), 'open', openSelection)
     add('copyReference', 'link', 'copy', () => { void copyToClipboard(selectionUri()).then(() => $q.notify({ type: 'positive', message: t('common.copied') })).catch(() => $q.notify({ type: 'negative', message: t('richEditor.copyError') })) })
@@ -861,8 +910,8 @@ const contextActions = computed(() => {
     add('remove', 'delete', selectedType.value === 'resourceCard' || selectedType.value.includes('Image') ? 'remove' : 'removeLink', removeSelected, readonly)
   }
   if (canInsertBeside.value && !readonly) {
-    add('insertBefore', editorialIcon('insertBefore', 'vertical_align_top'), 'insertBefore', () => insertBeside(false))
-    add('insertAfter', editorialIcon('insertAfter', 'vertical_align_bottom'), 'insertAfter', () => insertBeside(true))
+    add('insertBefore', editorialIcon('insertBefore', 'vertical_align_top'), selectedType.value === 'inlineMath' ? 'equation.before' : 'insertBefore', () => insertBeside(false))
+    add('insertAfter', editorialIcon('insertAfter', 'vertical_align_bottom'), selectedType.value === 'inlineMath' ? 'equation.after' : 'insertAfter', () => insertBeside(true))
   }
   return actions
 })
@@ -902,7 +951,10 @@ async function clipboardAction(key: typeof clipboardActions[number]): Promise<vo
       else await copyToClipboard(text)
       // A delayed clipboard response must never cut another document or selection.
       if (unchanged()) {
-        if (key === 'cut') current.chain().focus().deleteSelection().run()
+        if (key === 'cut') {
+          current.view.dispatch(closeHistory(current.state.tr))
+          current.chain().focus().deleteSelection().run()
+        }
         else current.view.focus()
       }
     }
@@ -947,6 +999,8 @@ function action(key: string, value?: string): void {
   const chain = current.chain()
   if (!current.view.hasFocus()) chain.focus()
   switch (key) {
+    case 'equation.inline': openMath('inline'); break
+    case 'equation.block': openMath('block'); break
     case 'bold': chain.toggleBold().run(); break; case 'italic': chain.toggleItalic().run(); break; case 'underline': chain.toggleUnderline().run(); break; case 'strike': chain.toggleStrike().run(); break; case 'subscript': chain.toggleSubscript().run(); break; case 'superscript': chain.toggleSuperscript().run(); break; case 'shortcuts.inlineCode': chain.toggleCode().run(); break
     case 'undo': chain.undo().run(); break; case 'redo': chain.redo().run(); break
     case 'removeFormat': case 'shortcuts.clearDirectFormat': clearDirectFormat(); break

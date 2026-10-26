@@ -63,6 +63,24 @@ bordure du document. Cliquer sur
 un titre rejoint sa section ; le plan suit les modifications des titres et peut être masqué.
 L'icône de bibliothèque permet aussi de masquer les dossiers sur ordinateur.
 
+Dans la barre d’outils, **Texte** regroupe les **Caractères spéciaux** et l’équation en ligne.
+**Citation** termine la première ligne de **Paragraphe** ; sa seconde ligne regroupe
+**Bloc de code** et l’équation en bloc.
+**Insérer un tableau** se trouve sur la seconde ligne d’**Insertion**.
+
+**Équation en ligne** insère une formule au milieu du texte ; **Équation en bloc**
+l’affiche sur une ligne séparée. Les deux boutons ouvrent l’éditeur visuel MathLive,
+avec son clavier de symboles et un champ **Source LaTeX** synchronisé. Un clic sélectionne
+la formule ; un double-clic ou **Entrée** sur la sélection ouvre son éditeur.
+Le clic droit ou **Maj+F10** ouvre son menu : modifier, couper, copier, supprimer et écrire
+avant ou après. Ces deux dernières actions placent le curseur à côté d’une formule en ligne
+ou créent un paragraphe à côté d’un bloc. Sur mobile, les actions apparaissent dans la barre
+contextuelle après sélection de la formule. **Ctrl/Cmd+Z** permet d’annuler une suppression.
+**Valider** applique la formule ; **Annuler**, **Échap** ou un clic sur l’arrière-plan
+conservent le contenu précédent. Les équations restent modifiables après réouverture
+et sont rendues dans les vues en lecture seule, l’impression et les exports PDF/HTML.
+L’éditeur et ses polices sont hébergés localement.
+
 **Liste à cocher** transforme le paragraphe ou la liste sélectionnés en checklist. Cocher
 une ligne enregistre son état dans le document, avec sa sauvegarde et ses révisions.
 **Entrée** ajoute une ligne ; **Tab** et **Maj+Tab** imbriquent ou désimbriquent les lignes.

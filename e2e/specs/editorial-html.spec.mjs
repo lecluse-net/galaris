@@ -14,6 +14,7 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
   const corpus = '<h2>Été</h2>' + '<p>Synthetic document paragraph</p>'.repeat(40)
+    + '<p>Inline <span data-math="inline">x^2</span>.</p><p data-math="block">\\frac{a}{b}</p>'
     + '<p><u>Texte souligné</u></p><table><tbody><tr><th colspan="2" colwidth="150,200"><p>En-tête</p></th></tr><tr><td><p>A</p></td><td><p>B</p></td></tr></tbody></table><pre><code>  &lt;p&gt;\n    a  b\n</code></pre>'
   {
     const response = await request.post('/api/memory/items', { headers, data: { owner_agent_id: fixture.agent_id, title: 'HTML memory', media_type: 'text/html', payload: { text: corpus } } })
@@ -41,6 +42,8 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await page.goto(`/documents?document_id=${item.id}`)
   const editor = page.locator('.document-editor [data-editor-surface]')
   await expect(editor.locator('u')).toHaveText('Texte souligné')
+  await expect(editor.locator('[data-math] .ML__latex')).toHaveCount(2)
+  await page.evaluate(() => document.fonts.load('16px KaTeX_Size3'))
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
   const find = page.getByRole('button', { name: /^(Find|Rechercher)$/, exact: true }).first()
   await find.click()
@@ -79,6 +82,18 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   expect(persisted.payload.text).toContain('<h3>Été!</h3>')
   await page.reload()
   await expect(editor.locator('h3')).toHaveText('Été!')
+  await editor.locator('[data-math="inline"]').click({ button: 'right' })
+  await page.getByRole('menu', { name: /^(Equation|Équation)$/ }).getByRole('menuitem', { name: /^(Edit equation|Modifier l’équation)$/ }).click()
+  const equation = page.getByRole('dialog', { name: /^(Equation editor|Éditeur d’équations)$/ })
+  await equation.getByRole('textbox', { name: /^(LaTeX source|Source LaTeX)$/ }).fill('x^3')
+  const formulaSaved = page.waitForResponse(response => response.request().method() === 'PATCH'
+    && response.url().includes(`/documents/${item.id}`)
+    && response.request().postDataJSON()?.payload?.text?.includes('x^3'))
+  await equation.getByRole('button', { name: /^(Apply|Valider)$/ }).click()
+  expect((await formulaSaved).ok()).toBeTruthy()
+  await page.reload()
+  await expect(editor.locator('[data-math="inline"]')).toHaveAttribute('data-math-source', 'x^3')
+  await expect(editor.locator('[data-math="block"] .ML__latex')).toBeVisible()
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
   expect(await page.evaluate(() => window.editorialE2E)).toBeUndefined()
   await editor.locator('h3').click({ button: 'right' })

@@ -56,6 +56,23 @@ All headings remain visible, and the panel uses the document's background and bo
 heading to navigate to its section. The outline follows heading edits and can be hidden.
 The library icon also hides the desktop folder pane to make more room.
 
+In the toolbar, **Text** includes **Special characters** and the inline equation.
+**Quote** is at the end of the first row of **Paragraph**; its second row includes
+**Code block** and the block equation.
+**Insert table** is on the second row of **Insert**.
+
+**Inline equation** inserts a formula within the text; **Block equation** displays it
+on a separate line. Both buttons open the MathLive visual editor, with its symbol
+keyboard and a synchronized **LaTeX source** field. A click selects a formula; double-click
+or press **Enter** on the selection to open its editor. Right-click or **Shift+F10** opens
+its menu: edit, cut, copy, delete and write before or after. The last two actions place the
+cursor beside an inline formula or create a paragraph beside a block. On mobile, the actions
+appear in the contextual toolbar after selecting a formula. **Ctrl/Cmd+Z** undoes deletion.
+**Apply** saves the formula; **Cancel**, **Escape**
+or clicking the backdrop preserves the previous content. Equations remain editable
+after reopening and render in read-only views, printing and PDF/HTML exports.
+The editor and its fonts are hosted locally.
+
 **Checklist** turns the selected paragraph or list into a checklist. Checking a line saves
 its state in the document, including autosave and revisions. **Enter** adds a line;
 **Tab** and **Shift+Tab** nest or unnest lines. States survive reopening and remain visible

@@ -71,18 +71,28 @@ export async function searchRichLinks(query: string, scheme?: string, formatting
   return results.flatMap(value => value.status === 'fulfilled' ? value.value : [])
 }
 export function sanitizeRichHtml(html: string, profile: ContentProfile = 'rich-text'): string {
+  // A copied rendered formula carries its original source; never persist its layout DOM.
+  if (html.includes('data-math')) {
+    const formulas = new DOMParser().parseFromString('<body>' + html, 'text/html')
+    for (const element of formulas.body.querySelectorAll<HTMLElement>('span[data-math="inline"], p[data-math="block"]')) {
+      element.textContent = element.dataset.mathSource ?? element.textContent
+      element.removeAttribute('data-math-source')
+    }
+    html = formulas.body.innerHTML
+  }
   if (profile === 'document') html = protectInteractiveHtml(html)
   const clean = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: 'p h1 h2 h3 h4 h5 h6 strong em u s blockquote ul ol li hr a table thead tbody tfoot tr th td pre code br mark span figure figcaption caption colgroup col sub sup b i del'.split(' ').concat(profile === 'document' ? ['img'] : []),
     ALLOWED_ATTR: ['href', 'title', 'rel', 'target', 'start', 'colspan', 'rowspan', 'colwidth', 'class', 'src', 'alt', 'width', 'style', 'data-color', 'data-rich-reference', 'height', 'value', 'reversed'],
-    ADD_ATTR: ['data-code-lines', 'data-code-nowrap', ...(profile === 'document' ? ['data-checked'] : [])],
+    ADD_ATTR: ['data-math', 'data-code-lines', 'data-code-nowrap', ...(profile === 'document' ? ['data-checked'] : [])],
     FORCE_BODY: true,
     ALLOW_DATA_ATTR: false,
-    ADD_URI_SAFE_ATTR: ['start', 'colspan', 'rowspan', 'colwidth', 'width', 'height', 'value', 'data-color', 'data-code-lines', 'data-code-nowrap', 'data-checked', 'type', 'async', 'defer'],
+    ADD_URI_SAFE_ATTR: ['start', 'colspan', 'rowspan', 'colwidth', 'width', 'height', 'value', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', 'type', 'async', 'defer'],
     ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|document:\/\/|memory:\/\/|data:\/\/|galaris:\/\/)/,
   })
   const doc = new DOMParser().parseFromString('<body>' + clean, 'text/html')
   for (const element of doc.body.querySelectorAll<HTMLElement>('*')) {
+    if (element.hasAttribute('data-math') && !((element.tagName === 'SPAN' && element.dataset.math === 'inline') || (element.tagName === 'P' && element.dataset.math === 'block'))) element.removeAttribute('data-math')
     if (element.hasAttribute('data-checked') && (element.tagName !== 'LI' || !['true', 'false'].includes(element.getAttribute('data-checked')!))) element.removeAttribute('data-checked')
     for (const attribute of ['data-code-lines', 'data-code-nowrap']) {
       if (element.tagName !== 'CODE' || element.getAttribute(attribute) !== 'true') element.removeAttribute(attribute)

@@ -2,6 +2,14 @@
 
 # Editorial HTML contract
 
+Both profiles support equations as escaped LaTeX text:
+`<span data-math="inline">x^2</span>` within a paragraph and
+`<p data-math="block">\frac{a}{b}</p>` for a block. These nodes contain text only,
+with a limit of 10,000 characters per formula. MathLive loads on demand; its rendering
+DOM, controls and fonts never enter the stored body. Print/PDF/HTML snapshots include
+static rendering and embedded local fonts without scripts or external downloads.
+See [decision 0203](../../../project/decisions/0203-tiptap-html-editor.md).
+
 An internal Process citation uses a titled link to `galaris://processes/<code>` or
 `galaris://processes/runs/<uuid>`. To display its diagram in a Document, retain the
 link inside

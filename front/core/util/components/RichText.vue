@@ -29,6 +29,7 @@ import WorkingDocumentIcon from './WorkingDocumentIcon.vue'
 import { useDocumentLinkIcons } from '../documentLinkIcons'
 import '../editorialTheme.css'
 import { webLinkCardImage, prependWebLinkImage } from '../webLinkPreview'
+import { renderMath } from '../mathRendering'
 const { content, profile = 'rich-text', resolveImage } = defineProps<{
   content: string
   profile?: ContentProfile
@@ -94,6 +95,7 @@ watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCl
   const doc = new DOMParser().parseFromString('<body>' + sanitizeRichHtml(content, profile), 'text/html')
   hideInteractiveSource(doc.body, t('richEditor.embeddedApplication'))
   highlightDocumentCode(doc.body)
+  const mathRendering = renderMath(doc.body).catch(() => { /* Keep the visible source fallback if math assets fail. */ })
   const targets = [...doc.body.querySelectorAll('blockquote.galaris-link-card')].map(card =>
     [...card.querySelectorAll('a[href]')].map(link => documentPlayer(
       link.getAttribute('href') ?? '', link.textContent ?? '', [...card.classList],
@@ -115,7 +117,7 @@ watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCl
   const references = images.map(image => attachmentReference(image.getAttribute('src') ?? ''))
   images.forEach(image => image.removeAttribute('src'))
   rendered.value = doc.body.innerHTML
-  await Promise.all([...images.map(async (image, index) => {
+  await Promise.all([mathRendering, ...images.map(async (image, index) => {
     const reference = references[index]
     if (!reference || !resolveImage) return
     try {

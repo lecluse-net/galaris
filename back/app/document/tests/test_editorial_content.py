@@ -15,11 +15,15 @@ def png():
 
 
 @pytest.mark.asyncio
-async def test_checklist_state_is_document_content_with_independent_revisions(agents, memory_storage, db):
+@pytest.mark.parametrize("equation", [False, True])
+async def test_editorial_state_is_document_content_with_independent_revisions(agents, memory_storage, db, equation):
     owner, reader = agents
     unchecked = '<ul class="galaris-checklist"><li data-checked="false"><p>Review draft</p></li></ul>'
     checked = unchecked.replace('data-checked="false"', 'data-checked="true"')
-    document = await create_document(owner_agent_id=owner.id, title="Synthetic checklist", content=unchecked, task_id=None)
+    if equation:
+        unchecked = '<p>Area <span data-math="inline">x^2</span>.</p><p data-math="block">\\frac{a}{b}</p>'
+        checked = unchecked.replace('x^2', 'x^3')
+    document = await create_document(owner_agent_id=owner.id, title="Synthetic editorial state", content=unchecked, task_id=None)
     updated = await service.update_item(document.id, DocumentUpdate(expected_revision=1, payload=DocumentPayload(text=checked)), actor_agent_id=owner.id)
     assert updated.revision == 2
     await service.set_item_grant(document.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)

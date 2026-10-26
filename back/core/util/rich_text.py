@@ -40,6 +40,8 @@ ATTRIBUTES: dict[str, set[str]] = {
     "code": {"class", "data-code-lines", "data-code-nowrap"},
     "img": {"src", "alt", "title", "width", "height"},
     "mark": {"data-color"},
+    "span": {"data-math"},
+    "p": {"data-math"},
 }
 ALIGNMENTS = {"left", "center", "right", "justify"}
 HIGHLIGHTS = {"#fff59d", "#a5d6a7", "#90caf9", "#f48fb1"}
@@ -356,6 +358,8 @@ class _Parser(HTMLParser):
         for key, raw in attrs:
             value = raw or ""
             if self.validate:
+                if key == "data-math" and (tag, value) not in {("span", "inline"), ("p", "block")}:
+                    raise RichTextError("Unsupported equation format.")
                 if self.profile == "document" and tag != "img":
                     if key in attributes or not re.fullmatch(r"[a-z_][a-z0-9_.:-]*", key):
                         raise RichTextError("Invalid or duplicate HTML attribute.")
@@ -428,6 +432,12 @@ class _Parser(HTMLParser):
             return
         if len(self.stack) < 2 or self.stack[-1].tag != tag:
             raise RichTextError("HTML must contain complete, correctly nested blocks.")
+        node = self.stack[-1]
+        if self.validate and "data-math" in node.attributes:
+            if any(isinstance(child, HtmlNode) for child in node.children):
+                raise RichTextError("An equation must contain only LaTeX text.")
+            if len("".join(child for child in node.children if isinstance(child, str))) > 10_000:
+                raise RichTextError("An equation exceeds its character limit.")
         self.stack.pop()
 
     def handle_data(self, data: str) -> None:

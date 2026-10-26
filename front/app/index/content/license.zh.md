@@ -1,5 +1,9 @@
 # 许可证
 
+公式编辑器 MathLive 采用 MIT 许可证，版权所有者为 Arno Gourdol。
+附带的 KaTeX 字体保留上游声明。完整声明：
+[MathLive](/licenses/mathlive.txt)、[KaTeX 字体](/licenses/katex-fonts.txt)。
+
 ## CeCILL 许可证 2.1 版
 
 本软件依据 CeCILL 许可证（CEA CNRS INRIA 自由软件许可证）发布。该自由软件许可证符合法国法律。

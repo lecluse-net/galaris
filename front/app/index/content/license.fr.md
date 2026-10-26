@@ -1,5 +1,9 @@
 # Licence
 
+L’éditeur d’équations MathLive est sous licence MIT, copyright Arno Gourdol.
+Ses polices KaTeX conservent leurs mentions amont. Notices complètes :
+[MathLive](/licenses/mathlive.txt), [polices KaTeX](/licenses/katex-fonts.txt).
+
 ## CeCILL Licence Version 2.1
 
 Ce logiciel est distribué sous la licence CeCILL (CEA CNRS INRIA Logiciel Libre), une licence de logiciel libre conforme au droit français.

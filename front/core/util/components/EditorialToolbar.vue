@@ -137,20 +137,25 @@ const groups = computed(() => {
     { name: 'text' as const, rows: [[
       menu('fontFamily', 'font_download', ['default', 'Arial', 'Georgia', 'Times New Roman', 'Courier New'].map(value => [value === 'default' ? '' : value, value === 'default' ? t('richEditor.defaultFont') : value]), editor.getAttributes('textStyle').fontFamily || t('richEditor.defaultFont')),
       menu('fontSize', 'format_size', ['10', '12', '14', '16', '18', '24', '32', '48'].map(value => [value, value]), String(editor.getAttributes('textStyle').fontSize ?? '').replace('px', '') || '16'),
-      ...(['bold', 'italic', 'underline'] as const).map((key, i) => button(key, ['format_bold', 'format_italic', 'format_underlined'][i]!, editor.isActive(key))),
+      ...(['bold', 'italic', 'underline', 'strike'] as const).map((key, i) => button(key, ['format_bold', 'format_italic', 'format_underlined', 'strikethrough_s'][i]!, editor.isActive(key))),
     ], [
-      ...(['strike', 'subscript', 'superscript', 'code'] as const).map((key, i) => button(key === 'code' ? 'shortcuts.inlineCode' : key, ['strikethrough_s', 'subscript', 'superscript', 'code'][i]!, editor.isActive(key))),
+      button('equation.inline', 'functions', editor.isActive('inlineMath')),
+      ...(['subscript', 'superscript', 'code'] as const).map((key, i) => button(key === 'code' ? 'shortcuts.inlineCode' : key, ['subscript', 'superscript', 'code'][i]!, editor.isActive(key))),
       button('fontColor', 'format_color_text'), button('backgroundColor', 'format_color_fill'), button('highlight', 'border_color', editor.isActive('highlight')),
+      ...(document ? [button('specialCharacters', 'emoji_symbols')] : []),
     ]] },
     { name: 'paragraph' as const, rows: [[
       heading, ...(document ? [] : [callout]),
       button('bulletList', 'format_list_bulleted', editor.isActive('bulletList')), button('orderedList', 'format_list_numbered', editor.isActive('orderedList')), ...(document ? [button('checklist', 'checklist', editor.isActive('checklist'))] : []), button('listProperties', 'format_list_numbered_rtl'),
+      ...(document ? [button('quote', 'format_quote', editor.isActive('blockquote'))] : []),
     ], [
       ...alignments.map(value => button(value, 'format_align_' + value, image ? imageAlignment(image) === value : editor.isActive({ textAlign: value }) || value === 'left' && editor.isActive({ textAlign: null }))),
       button('shortcuts.outdent', 'format_indent_decrease'), button('shortcuts.indent', 'format_indent_increase'),
+      ...(document ? [button('code', 'code', editor.isActive('codeBlock'))] : []),
+      button('equation.block', 'calculate', editor.isActive('blockMath')),
     ]] },
-    { name: 'insert' as const, rows: [[button('link', 'link'), button('galarisLink', 'folder_open'), ...(document ? [button('resources.uploadFile', 'upload_file'), button('insertTable', 'table_chart')] : [])],
-      ...(document ? [[button('quote', 'format_quote', editor.isActive('blockquote')), button('code', 'code', editor.isActive('codeBlock')), button('separator', 'horizontal_rule'), button('specialCharacters', 'emoji_symbols')]] : [])] },
+    { name: 'insert' as const, rows: [[button('link', 'link'), button('galarisLink', 'folder_open'), ...(document ? [button('resources.uploadFile', 'upload_file')] : [])],
+      ...(document ? [[button('insertTable', 'table_chart'), button('separator', 'horizontal_rule')]] : [])] },
   ].filter(group => !hiddenGroups.includes(group.name))
 })
 const readingHelp = computed(() => groups.value.find(group => group.name === 'reading')?.rows.flat().find(item => item.key === 'help'))

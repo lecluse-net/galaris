@@ -79,6 +79,7 @@ export default {
       reload: 'Recharger les droits',
     },
     richEditor: {
+      equation: { title: 'Éditeur d’équations', context: 'Équation', edit: 'Modifier l’équation', remove: 'Supprimer l’équation', before: 'Écrire avant l’équation', after: 'Écrire après l’équation', inline: 'Équation en ligne', block: 'Équation en bloc', input: 'Formule mathématique', latex: 'Source LaTeX', invalid: 'Vérifiez la syntaxe de la formule (10 000 caractères maximum).', loadFailed: 'Impossible de charger l’éditeur d’équations.' },
       clipboard: { copy: 'Copier', cut: 'Couper', paste: 'Coller', failed: 'Accès au presse-papiers refusé. Utilisez les raccourcis clavier pour copier, couper ou coller.' },
       defaultFont: 'Par défaut', moreTools: 'Autres outils',
       checklist: 'Liste à cocher', outline: 'Plan du document', hideOutline: 'Masquer le plan', outlineEmpty: 'Ajoutez des titres pour construire le plan.', outlineUntitled: 'Titre sans texte',
@@ -320,6 +321,7 @@ unavailable: "Ce contenu est indisponible.",
       reload: 'Reload access',
     },
     richEditor: {
+      equation: { title: 'Equation editor', context: 'Equation', edit: 'Edit equation', remove: 'Delete equation', before: 'Write before equation', after: 'Write after equation', inline: 'Inline equation', block: 'Block equation', input: 'Math formula', latex: 'LaTeX source', invalid: 'Check the formula syntax (10,000 characters maximum).', loadFailed: 'Unable to load the equation editor.' },
       clipboard: { copy: 'Copy', cut: 'Cut', paste: 'Paste', failed: 'Clipboard access denied. Use keyboard shortcuts to copy, cut or paste.' },
       defaultFont: 'Default', moreTools: 'More tools',
       checklist: 'Checklist', outline: 'Document outline', hideOutline: 'Hide outline', outlineEmpty: 'Add headings to build the outline.', outlineUntitled: 'Untitled heading',
@@ -561,6 +563,7 @@ unavailable: "This content is unavailable.",
       reload: '重新加载权限',
     },
     richEditor: {
+      equation: { title: '公式编辑器', context: '公式', edit: '编辑公式', remove: '删除公式', before: '在公式前输入', after: '在公式后输入', inline: '行内公式', block: '块级公式', input: '数学公式', latex: 'LaTeX 源码', invalid: '请检查公式语法（最多 10,000 个字符）。', loadFailed: '无法加载公式编辑器。' },
       clipboard: { copy: '复制', cut: '剪切', paste: '粘贴', failed: '无法访问剪贴板。请使用键盘快捷键复制、剪切或粘贴。' },
       defaultFont: '默认', moreTools: '更多工具',
       checklist: '清单', outline: '文档大纲', hideOutline: '隐藏大纲', outlineEmpty: '添加标题以生成大纲。', outlineUntitled: '无标题',
