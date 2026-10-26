@@ -13,8 +13,12 @@ for (const width of [1440, 390]) test(`conversation internal files stay outside 
   await page.route('**/api/file-share/browser/thumbnail?*', route => route.fulfill({ status: 404 }))
   await mount(page, 'app/chat/components/Composer.vue', { props: { roomId: 'room-a', agentId: 7, sending: false } })
   const input = page.locator('textarea')
-  const add = page.getByRole('button', { name: 'Add an internal attachment', exact: true })
-  await add.click()
+  if (width < 1024) {
+    await page.getByRole('button', { name: 'Add attachments', exact: true }).click()
+    await page.getByText('Add an internal attachment', { exact: true }).click()
+  } else {
+    await page.getByRole('button', { name: 'Add an internal attachment', exact: true }).click()
+  }
   if (width < 1024) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
   await page.locator('.file-scheme-label').filter({ hasText: /^Managed files$/ }).click()
   await page.getByRole('button', { name: 'Select Synthetic image.png', exact: true }).click()

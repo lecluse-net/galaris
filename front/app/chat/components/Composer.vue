@@ -36,7 +36,28 @@
           @change="handleFileSelection"
         />
         <div class="attachment-content">
-          <div class="attachment-empty">
+          <q-btn
+            v-if="$q.screen.lt.md"
+            flat round dense color="primary" icon="attach_file"
+            class="mobile-attachment-button"
+            :disable="sending"
+            :aria-label="t('chat.addAttachments')"
+            @click.stop
+          >
+            <q-menu @click.stop>
+              <q-list>
+                <q-item clickable v-close-popup :disable="sending" @click="resourcePickerOpen = true">
+                  <q-item-section avatar><q-icon name="folder_shared" color="primary" /></q-item-section>
+                  <q-item-section>{{ t('documents.internalAttachments.add') }}</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup :disable="sending" @click="openFilePicker">
+                  <q-item-section avatar><q-icon name="upload_file" color="primary" /></q-item-section>
+                  <q-item-section>{{ t('chat.attachFromDevice') }}</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+          <div class="attachment-empty gt-sm">
             <q-btn flat round dense color="primary" icon="upload_file" :disable="sending"
               :aria-label="t('chat.addAttachments')" @click.stop="openFilePicker" />
             <span class="attachment-empty-copy text-weight-medium">{{ t('chat.dropAttachments') }}</span>
@@ -1204,15 +1225,30 @@ watch(() => props.roomId, () => {
 
 @media (max-width: 1023.98px) {
   .composer-layout {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
   }
 
-  .attachment-drop-zone {
-    align-self: start;
+  .attachment-drop-zone,
+  .attachment-content {
+    display: contents;
+  }
+
+  .mobile-attachment-button {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 40px;
+  }
+
+  .composer-fields {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .attachment-list {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
     max-height: 72px;
   }
 }

@@ -147,6 +147,7 @@ for (const width of [390, 1280]) {
     const upload = page.getByRole('button', { name: 'Add attachments', exact: true })
     const nextFile = page.waitForEvent('filechooser')
     await upload.click()
+    if (width < 1024) await page.getByText('From device', { exact: true }).click()
     await (await nextFile).setFiles({ name: 'extra.txt', mimeType: 'text/plain', buffer: Buffer.from('Extra') })
     await page.getByRole('button', { name: 'Rename extra.txt', exact: true }).click()
     await page.getByRole('dialog').getByRole('textbox', { name: 'File name', exact: true }).fill('Final notes.txt')
