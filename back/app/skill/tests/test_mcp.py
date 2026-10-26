@@ -180,10 +180,14 @@ async def test_global_release_is_explicit_collision_safe_and_replay_does_not_res
 @pytest.mark.asyncio
 async def test_actual_fastmcp_server_enforces_live_scope_after_tool_discovery(db, agents):
     from fastmcp import Client
-    from app.connection import Connection, ConnectionFunctionState
+    from app.connection import Connection, ConnectionFunctionState, ConnectionParam
+    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
     from app.tools import ToolModel, build_agent_galaris_fastmcp
-    a, _, _ = agents
-    functions = {'skills': ['skills_list', 'skill_read', 'skill_set_enabled'],
+    a, other, admin = agents
+    generic = await interface.create_package(personal('protocol-shared'), actor_agent_id=admin.id, generic=True)
+    await skill_service.set_agent_authorization(generic.id, a.id, 'enabled')
+    functions = {'skills': ['skills_list', 'skill_read', 'skill_update', 'skill_set_enabled',
+                            'skill_delete', 'skill_set_authorization'],
                  'file_sharing': ['file_create', 'file_read', 'file_write']}
     for code, names in functions.items():
         tool = await db.scalar(select(ToolModel).where(ToolModel.code == code))
@@ -194,12 +198,17 @@ async def test_actual_fastmcp_server_enforces_live_scope_after_tool_discovery(db
             await db.flush()
         for name in names:
             db.add(ConnectionFunctionState(connection_id=connection.id, function_name=name, state='enabled', enabled=True))
+    policy = await db.scalar(select(ConnectionParam).join(Connection).where(
+        Connection.agent_id == a.id, ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM))
+    await db.delete(policy)
     await db.commit()
     actor_id = a.id
+    admin_id = admin.id
     server = await build_agent_galaris_fastmcp(actor_id, runtime='internal',
         allowed_tool_names=set(sum(functions.values(), [])))
     uri = f'galaris://skill/personnal/{actor_id}/protocol-guide/SKILL.md'
     async with Client(server) as client:
+        assert await interface.get_agent_scope(actor_id) == SkillScope.PERSONAL
         names = {tool.name for tool in await client.list_tools()}
         assert {'file_create', 'skills_list', 'skill_read'} <= names
         created = await client.call_tool('file_create', {'path': uri, 'content': personal('protocol-guide').markdown}, raise_on_error=False)
@@ -209,7 +218,42 @@ async def test_actual_fastmcp_server_enforces_live_scope_after_tool_discovery(db
         package = await interface.resolve_package('protocol-guide', owner_agent_id=actor_id, actor_agent_id=actor_id)
         read = await client.call_tool('skill_read', {'skill_id': package.id}, raise_on_error=False)
         assert not read.is_error
+        updated_markdown = personal('protocol-guide', body='Updated private procedure').markdown
+        written = await client.call_tool('file_write', {'uri': uri, 'content': updated_markdown,
+            'expected_revision': package.revision}, raise_on_error=False)
+        assert not written.is_error, written
+        assert (await interface.read_package_file(package.id, 'SKILL.md', actor_agent_id=actor_id)).content.decode() == updated_markdown
+        # The default allows ordinary generic usage but never edits, suspension,
+        # deletion or reassignment of the administrator's shared package.
+        shared_read = await client.call_tool('skill_read', {'skill_id': generic.id}, raise_on_error=False)
+        assert not shared_read.is_error, shared_read
+        for name, arguments in [
+            ('file_write', {'uri': generic.uri + 'SKILL.md', 'content': personal('protocol-shared', body='Forbidden').markdown,
+                            'expected_revision': generic.revision}),
+            ('skill_update', {'skill_id': generic.id, 'label': 'Forbidden', 'expected_revision': generic.revision}),
+            ('skill_set_enabled', {'skill_id': generic.id, 'enabled': False,
+                                   'administration': True, 'expected_revision': generic.revision}),
+            ('skill_delete', {'skill_id': generic.id, 'expected_revision': generic.revision}),
+            ('skill_set_authorization', {'skill_id': generic.id, 'agent_id': actor_id, 'state': 'disabled'}),
+            ('skill_set_authorization', {'skill_id': generic.id, 'agent_id': other.id, 'state': 'enabled'}),
+            ('file_create', {'path': 'galaris://skill/forbidden-shared/SKILL.md',
+                             'content': personal('forbidden-shared').markdown}),
+        ]:
+            refused = await client.call_tool(name, arguments, raise_on_error=False)
+            assert refused.is_error, (name, refused)
+        preserved = await interface.resolve_package(generic.code, actor_agent_id=admin_id, administration=True)
+        assert preserved.revision == generic.revision
+        assert (await interface.read_package_file(generic.id, 'SKILL.md', actor_agent_id=admin_id,
+                                                  administration=True)).content.decode() == personal('protocol-shared').markdown
+        assert await db.scalar(select(AgentSkill.active).where(
+            AgentSkill.skill_id == generic.id, AgentSkill.agent_id == actor_id)) is True
+        assert await db.scalar(select(AgentSkill.active).where(
+            AgentSkill.skill_id == generic.id, AgentSkill.agent_id == other.id)) is not True
+        assert await db.scalar(select(Skill.id).where(
+            Skill.owner_agent_id.is_(None), Skill.code == 'forbidden-shared')) is None
+        assert not storage.skill_dir('forbidden-shared').exists()
         await set_scope(actor_id, SkillScope.USAGE)
+        package = await interface.resolve_package('protocol-guide', owner_agent_id=actor_id, actor_agent_id=actor_id)
         refused = await client.call_tool('file_write', {'uri': uri, 'content': personal('protocol-guide', body='Forbidden').markdown,
             'expected_revision': package.revision}, raise_on_error=False)
         assert refused.is_error

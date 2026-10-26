@@ -210,7 +210,7 @@ async def test_failed_creation_rolls_back_index_and_private_files(db, agents, mo
 
 
 @pytest.mark.asyncio
-async def test_missing_delegation_defaults_to_usage_and_all_revocation_is_immediate(db, agents):
+async def test_missing_scope_defaults_to_personal_and_explicit_revocation_is_immediate(db, agents):
     a, b, admin = agents
     package = await interface.create_package(personal(), actor_agent_id=a.id)
     await set_scope(admin.id, "personal")
@@ -221,9 +221,13 @@ async def test_missing_delegation_defaults_to_usage_and_all_revocation_is_immedi
         ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM))
     await db.delete(policy)
     await db.commit()
+    assert await interface.get_agent_scope(b.id) == SkillScope.PERSONAL
+    own = await interface.create_package(personal(), actor_agent_id=b.id)
+    assert own.owner_agent_id == b.id
+    await set_scope(b.id, "usage")
     assert await interface.get_agent_scope(b.id) == SkillScope.USAGE
     with pytest.raises(PermissionError):
-        await interface.create_package(personal(), actor_agent_id=b.id)
+        await interface.create_package(personal("another"), actor_agent_id=b.id)
 
 
 @pytest.mark.asyncio

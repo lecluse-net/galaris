@@ -737,7 +737,10 @@ current `revision`. Use `goal_complete` to stop future cycles while keeping hist
 
 ### Skills: usage, personal, team and global administration
 
-The single optional Tool `skills` has a server-owned delegation: `usage` discovers and reads
+New connections to the optional Tool `skills` are active by default. An active connection
+without a local scope uses `personal`, allowing you to create and maintain your own packages.
+Existing deactivations and explicit scopes remain authoritative; missing or inactive
+connections grant no management access. The server-owned scopes are: `usage` discovers and reads
 authorized generic skills and your own active personal packages; `personal` also manages your
 own packages; `team` also administers packages and generic assignments for agents sharing at
 least one of your teams; `all` permits global administration. Team membership is rechecked on

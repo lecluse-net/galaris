@@ -65,13 +65,21 @@ conversion. Transferring between agents remains separate from publishing in the 
 
 ## Delegate management to an agent
 
-Under **Tools & connections → Connections**, configure **Skills** (`skills`). Its local
+Under **Tools & connections → Connections**, configure **Skills** (`skills`).
+New connections are active by default. Without an explicit local scope, agents can manage
+their own packages with `personal`. An explicit `usage` scope removes management access.
+**Use skills and manage own personal skills** allows agents to create, edit, enable or delete
+their own skills while using authorized general skills. It cannot change the files,
+activation or assignments of administered general skills. Those operations require team
+or global management depending on the action.
+Updates preserve existing connections, including deactivations, and their explicit scopes;
+reactivate an older disabled connection when needed. Its local
 `tools.management_scope` has no global value or inheritance:
 
 | Scope | Capability |
 |---|---|
-| `usage` | Discover and read usable skills; default when scope is absent |
-| `personal` | Administer its own personal packages |
+| `usage` | Discover and read usable skills, without management |
+| `personal` | Administer its own personal packages; default for an active connection without an explicit scope |
 | `team` | Also administer personal packages and generic assignments for agents sharing an active team |
 | `all` | Administer all user packages and the generic catalogue; release ownership |
 

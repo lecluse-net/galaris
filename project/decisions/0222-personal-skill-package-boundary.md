@@ -34,7 +34,12 @@ de Tools ou un ancien générique nommé `personnal` bloque explicitement la mig
 sans effacement des données.
 
 Le paramètre dédié `tools.management_scope` appartient à la connexion Skills et propose
-`usage`, `personal`, `team`, `all`. Son absence signifie `usage`. Sa déclaration est
+`usage`, `personal`, `team`, `all`. Depuis le 26 octobre 2026, les nouvelles connexions Skills
+sont actives par défaut et l'absence de portée locale sur une connexion active signifie
+`personal`. Une connexion absente ou inactive reste en `usage` sans droit de gestion.
+Les portées explicites, notamment `usage`, et les désactivations existantes sont conservées.
+Ce défaut personnel ne donne ni gestion d'autres agents ni administration générique.
+Sa déclaration est
 réutilisable par d'autres Tools internes, qui devront appliquer leurs règles métier.
 Il n'a ni valeur globale ni héritage. Seul un humain authentifié par session web ayant
 édition des connexions et management global peut le modifier. Les écritures par les services

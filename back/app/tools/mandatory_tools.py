@@ -296,7 +296,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         description=DESCRIPTIONS["skills"],
         mcp_tools=("skills_list", "skill_read", "skill_update", "skill_set_enabled", "skill_delete",
                    "skill_set_authorization", "skill_set_category_authorization", "skill_release_ownership"),
-        default_active=False,
+        default_active=True,
     ),
     IntegratedToolSpec(
         code="galaris_admin",
@@ -689,8 +689,16 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
         )
         params = cast(dict[str, dict[str, Any]], connection_schema.get("params") or {})
         if spec.management_scopes:
+            from .contracts import default_management_scope
             from .parameter_definitions import management_scope_parameter
-            params["tools.management_scope"] = management_scope_parameter(spec.management_scopes)
+            params["tools.management_scope"] = management_scope_parameter(
+                spec.management_scopes, default=default_management_scope(spec.code))
+            if spec.code == "skills":
+                scope = params["tools.management_scope"]
+                scope["label"] = "tools.connectionParamLabels.skillsScope"
+                scope["description"] = "tools.connectionParamDescriptions.skillsScope"
+                for option in scope["options"]:
+                    option["label"] = f"tools.connectionParamOptions.skillsScope.{option['value']}"
             connection_schema["params"] = params
         for order, (name, definition) in enumerate(params.items()):
             definition["order"] = order

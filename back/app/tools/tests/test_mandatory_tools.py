@@ -37,7 +37,7 @@ async def test_sync_integrated_connections_delegates_to_dbadmin_merge(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("tool_code", [
-    "browser", "search", "image", "multimedia",
+    "browser", "search", "image", "multimedia", "skills",
     "galaris", "conversation", "memory", "document", "file_sharing",
 ])
 async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
@@ -77,7 +77,11 @@ async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
     assert integrated_connection.active is True
     tool = await db.get(Tool, integrated_connection.tool_id)
     assert tool is not None
-    assert tool.conversation_enabled is (tool_code not in {"image", "multimedia"})
+    assert tool.conversation_enabled is (tool_code not in {"image", "multimedia", "skills"})
+    if tool_code == "skills":
+        from app.skill.interface import get_agent_scope
+        from app.skill.contracts import SkillScope
+        assert await get_agent_scope(agent.id) == SkillScope.PERSONAL
     if tool_code == "conversation":
         from app.tools.mcp_loader import list_enabled_native_mcp_definitions
         definitions = await list_enabled_native_mcp_definitions(agent.id, runtime="internal", conversation_only=True)
@@ -94,7 +98,7 @@ async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
     assert integrated_connection.active is (tool_code in mandatory_tools.SYSTEM_TOOL_CODES)
 
 
-def test_management_tool_packages_are_connected_inactive_by_default() -> None:
+def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inactive() -> None:
     specs = {spec.code: spec for spec in mandatory_tools.INTEGRATED_TOOL_SPECS}
 
     assert {
@@ -138,7 +142,7 @@ def test_management_tool_packages_are_connected_inactive_by_default() -> None:
         "goal_complete",
     }
     assert specs["skills"].auto_connect_agents is True
-    assert specs["skills"].default_active is False
+    assert specs["skills"].default_active is True
     assert specs["process_admin"].auto_connect_agents is True
     assert specs["process_admin"].default_active is False
     assert specs["galaris_admin"].auto_connect_agents is True
@@ -153,7 +157,6 @@ def test_management_tool_packages_are_connected_inactive_by_default() -> None:
     }
     assert {
         "goal_management",
-        "skills",
         "process_admin",
         "galaris_admin",
     } <= (
@@ -275,7 +278,7 @@ def test_administration_scopes_are_explicit_local_and_domain_bounded() -> None:
         if row["code"] not in scopes:
             continue
         parameter = row["connection_schema"]["params"]["tools.management_scope"]
-        assert parameter["default"] == "usage"
+        assert parameter["default"] == ("personal" if row["code"] == "skills" else "usage")
         assert [item["value"] for item in parameter["options"]] == scopes[row["code"]]
         assert "tools.management_scope" not in row["global_params"]
 

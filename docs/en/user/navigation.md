@@ -346,6 +346,11 @@ owner changes and, with global management, conversion between personal and gener
 The [Skills guide](skills.md) explains revisions, quotas and local `skills` Tool delegation.
 Administration does not grant usage of another agent's personal package.
 
+New Skills connections default to **Use skills and manage own personal skills** (`personal`),
+allowing agents to create and maintain their own packages without changing or reassigning
+administered general skills. Existing deactivations and explicit scopes remain authoritative;
+change them in **Tools & connections → Connections** when needed.
+
 Its **Global (all)**, **Category** and **This agent** columns offer Active/Blocked and highlight
 the applicable rule. Category rules concern the selected agent. Agent skill exceptions take
 precedence over that agent's category rules, then global settings.

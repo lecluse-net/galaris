@@ -5,9 +5,11 @@ from typing import Any
 from .contracts import FILE_INDEXING_PARAM, MANAGEMENT_SCOPE_PARAM, FileIndexingMode
 
 
-def management_scope_parameter(scopes: tuple[str, ...]) -> dict[str, Any]:
+def management_scope_parameter(scopes: tuple[str, ...], *, default: str = "usage") -> dict[str, Any]:
     """Opt a native Tool into an explicitly delegated, connection-only scope."""
-    return {"type": "string", "required": False, "default": "usage",
+    if default not in scopes:
+        raise ValueError("The default management scope must be an available scope")
+    return {"type": "string", "required": False, "default": default,
             "label": "tools.connectionParamLabels.managementScope",
             "description": "tools.connectionParamDescriptions.managementScope",
             "options": [{"value": scope, "label": f"tools.connectionParamOptions.managementScope.{scope}"}

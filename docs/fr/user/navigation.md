@@ -378,6 +378,12 @@ entre personnel et générique. Le [guide des compétences](skills.md) précise 
 les quotas et la délégation locale du Tool `skills`. La gestion ne donne pas l'usage d'un
 package personnel étranger.
 
+Les nouvelles connexions Compétences sont actives par défaut avec le choix
+**Usage + gestion de ses compétences personnelles** (`personal`) :
+l'agent peut créer et entretenir ses propres packages sans modifier ni réaffecter les
+compétences générales administrées. Les désactivations existantes et les
+portées explicites restent prioritaires ; voir **Outils & connexions → Connexions** pour les changer.
+
 Ses colonnes **Global (tous)**, **Catégorie** et **Cet agent** proposent Actif/Bloqué et mettent
 en évidence la règle applicable. La règle de catégorie concerne l’agent sélectionné.
 Une exception de compétence pour cet agent prévaut sur sa règle de catégorie, puis sur le global.

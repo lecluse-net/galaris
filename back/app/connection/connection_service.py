@@ -228,14 +228,14 @@ async def has_active_tool_connection(
 
 async def get_management_scope(
     agent_id: int, tool_code: str | None = None, *,
-    connection_id: int | None = None, default: str = "usage",
+    connection_id: int | None = None, default: str | None = None,
 ) -> str:
     """Read local scope from a live connection; never inherit global parameters."""
     from app.tools import ToolModel
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM, default_management_scope
     if tool_code is None and connection_id is None:
         raise ValueError("An exact connection or Tool code is required")
-    query = select(Connection.id, ConnectionParam.param_value).select_from(Connection)
+    query = select(Connection.id, ToolModel.code, ConnectionParam.param_value).select_from(Connection)
     query = (query
         .join(ToolModel, ToolModel.id == Connection.tool_id)
         .outerjoin(ConnectionParam, (ConnectionParam.connection_id == Connection.id)
@@ -248,7 +248,9 @@ async def get_management_scope(
     row = (await get_db().execute(query)).one_or_none()
     if row is None:
         return "usage"
-    return default if row.param_value is None else row.param_value
+    if row.param_value is not None:
+        return row.param_value
+    return default if default is not None else default_management_scope(row.code)
 
 
 async def has_active_tool_function(agent_id: int, tool_code: str, function_name: str) -> bool:

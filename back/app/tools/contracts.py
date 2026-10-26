@@ -16,6 +16,11 @@ FILE_INDEXING_PARAM = "tools.fileindexing"
 MANAGEMENT_SCOPE_PARAM = "tools.management_scope"
 
 
+def default_management_scope(tool_code: str) -> str:
+    """Software defaults for active connections without a local scope override."""
+    return "personal" if tool_code == "skills" else "usage"
+
+
 @dataclass
 class ToolExecutionContext:
     operation_id: UUID

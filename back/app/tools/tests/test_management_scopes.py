@@ -52,10 +52,15 @@ async def delegate(db, agent, code, level):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("code", ["process_admin", "tool_admin", "goal_management", "galaris_admin"])
+@pytest.mark.parametrize("code", ["process_admin", "tool_admin", "goal_management", "galaris_admin", "skills"])
 async def test_scope_is_local_live_and_never_granted_by_membership(db, scope_agents, code):
     (caller, peer, outsider), team = scope_agents
     assert (await administration_scope(caller.id, code)).agent_ids == frozenset()
+    tool = await db.scalar(select(Tool).where(Tool.code == code))
+    initial = await connections.get_or_create_connection(tool.id, caller.id, active=True)
+    default = "personal" if code == "skills" else "usage"
+    assert await connections.get_management_scope(caller.id, connection_id=initial.id) == default
+    assert (await administration_scope(caller.id, code)).level == default
     connection = await delegate(db, caller, code, "personal")
     assert (await administration_scope(caller.id, code)).agent_ids == {caller.id}
     await delegate(db, caller, code, "team")

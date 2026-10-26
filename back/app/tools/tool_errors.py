@@ -225,30 +225,23 @@ def classify_tool_failure(exc: Exception) -> ToolFailure:
     if status_code is not None and status_code >= 500:
         return ToolFailure("provider", error_type, http_status=status_code)
 
-    if any(isinstance(item, FileExistsError) for item in chain):
-        return ToolFailure("already_exists", error_type, _declared_boundary_detail(exc))
-    if any(isinstance(item, FileNotFoundError) for item in chain) or _has_exception_name(
-        chain,
-        "SFTPNoSuchFile",
-        "SFTPNoSuchPath",
-        "SFTPNoMedia",
-    ):
-        return ToolFailure("not_found", error_type, _declared_boundary_detail(exc))
-    if _has_exception_name(chain, "SFTPFileAlreadyExists"):
-        return ToolFailure("already_exists", error_type, _declared_boundary_detail(exc))
-    if any(isinstance(item, PermissionError) for item in chain) or _has_exception_name(
-        chain,
-        "SFTPPermissionDenied",
-        "SFTPWriteProtect",
-        "SFTPCannotDelete",
-        "SFTPOwnerInvalid",
-        "SFTPGroupInvalid",
-    ):
-        return ToolFailure(
-            "permission_denied",
-            error_type,
-            _declared_boundary_detail(exc),
-        )
+    # Preserve the current filesystem failure before inspecting a handled lookup.
+    # Creating a missing package may fail with PermissionError while the earlier
+    # FileNotFoundError remains in __context__. The inverse also matters: an ACL
+    # may deliberately hide a resource with FileNotFoundError from PermissionError.
+    for cause in chain:
+        name = type(cause).__name__
+        if isinstance(cause, FileExistsError) or name == "SFTPFileAlreadyExists":
+            return ToolFailure("already_exists", error_type, _declared_boundary_detail(exc))
+        if isinstance(cause, FileNotFoundError) or name in {
+            "SFTPNoSuchFile", "SFTPNoSuchPath", "SFTPNoMedia",
+        }:
+            return ToolFailure("not_found", error_type, _declared_boundary_detail(exc))
+        if isinstance(cause, PermissionError) or name in {
+            "SFTPPermissionDenied", "SFTPWriteProtect", "SFTPCannotDelete",
+            "SFTPOwnerInvalid", "SFTPGroupInvalid",
+        }:
+            return ToolFailure("permission_denied", error_type, _declared_boundary_detail(exc))
     if any(isinstance(item, NotImplementedError) for item in chain) or _has_exception_name(
         chain,
         "SFTPOpUnsupported",

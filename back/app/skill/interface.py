@@ -45,10 +45,10 @@ def _reference(record: Skill) -> SkillPackageRef:
 
 
 async def get_agent_scope(actor_agent_id: int) -> SkillScope:
-    """Fail closed without delegation or a currently active Skills connection.
+    """Use personal scope by default, but fail closed without an active connection.
 
     Ordinary usage remains independent of management delegation. Only the protected
-    local connection parameter carries this policy. Unknown values are errors.
+    local connection parameter carries explicit overrides. Unknown values are errors.
     """
     from app.connection.facade import get_management_scope
     return SkillScope(await get_management_scope(actor_agent_id, SKILLS_TOOL_CODE))

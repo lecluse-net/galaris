@@ -988,6 +988,36 @@ def test_native_tool_failures_have_stable_actionable_categories(
     assert failure.kind == kind
 
 
+@pytest.mark.parametrize("wrapped", [False, True])
+@pytest.mark.parametrize("current,previous,kind", [
+    (PermissionError, FileNotFoundError, "permission_denied"),
+    (PermissionError, FileExistsError, "permission_denied"),
+    (FileNotFoundError, PermissionError, "not_found"),
+    (FileExistsError, FileNotFoundError, "already_exists"),
+])
+def test_filesystem_diagnostic_preserves_current_failure(wrapped, current, previous, kind):
+    from app.tools.tool_errors import classify_tool_failure, render_tool_failure
+
+    try:
+        try:
+            raise previous("Synthetic previous failure")
+        except previous:
+            raise current("Synthetic current failure")
+    except current as error:
+        failure = error
+        if wrapped:
+            failure = RuntimeError("Synthetic provider wrapper")
+            failure.__cause__ = error
+        diagnostic = classify_tool_failure(failure)
+
+    assert diagnostic.kind == kind
+    message = render_tool_failure(tool_name="file_create", failure=diagnostic,
+                                  language="fr", reference="synthetic-ref")
+    if kind != "not_found":
+        assert "répertoire parent" not in message
+    assert "Synthetic" not in message
+
+
 @pytest.mark.parametrize("language,remote_reason", [
     ("fr", "Le service distant a refusé l’accès (HTTP 403)."),
     ("en", "The remote service denied access (HTTP 403)."),

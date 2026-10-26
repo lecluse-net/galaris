@@ -169,6 +169,7 @@ export default {
       removeParamOption: 'Supprimer ce choix',
       connectionParamLabels: {
         managementScope: 'Portée de gestion',
+        skillsScope: 'Droits sur les compétences',
         peerCommunication: 'Communication inter-agents',
         fileindexing: 'Indexation des fichiers',
         host: 'Serveur', port: 'Port', username: 'Nom d’utilisateur', login: 'Identifiant',
@@ -196,6 +197,12 @@ export default {
           personal: "Gestion pour l'agent uniquement",
           team: 'Gestion de niveau équipe',
           all: 'Gestion globale sans restriction',
+        },
+        skillsScope: {
+          usage: 'Usage des compétences autorisées (lecture seule)',
+          personal: 'Usage + gestion de ses compétences personnelles',
+          team: 'Gestion des compétences de ses équipes',
+          all: 'Administration globale des compétences',
         },
         fileindexing: { excluded: 'Désactivée', known_uris: 'Uniquement les fichiers déjà connus', recursive: 'Découverte & indexation de tous les contenus disponibles' },
         browser: {
@@ -358,6 +365,7 @@ export default {
       },
       connectionParamDescriptions: {
         managementScope: 'Portée propre à cette connexion : usage, gestion personnelle, agents de toutes ses équipes ou administration globale. Une connexion inactive ne donne aucun pouvoir de gestion.',
+        skillsScope: 'Par défaut : utiliser les compétences autorisées et créer, modifier ou supprimer ses propres compétences personnelles. Ce niveau ne permet ni de modifier les compétences générales ni de changer leurs affectations. Le niveau équipe étend la gestion aux compétences personnelles et affectations génériques de ses équipes ; le niveau global permet aussi de modifier le catalogue général.',
         peerCommunication: 'Communication inter-agents sur cette connexion : aucune, agents partageant une équipe ou tous les agents. Les droits de contact avec les humains restent indépendants.',
         fileindexing: 'Désactiver l’indexation, indexer uniquement les fichiers déjà connus, ou découvrir et indexer tous les contenus accessibles via cette connexion. La connexion peut hériter du réglage du Tool ou le personnaliser.',
         browser: {
@@ -612,6 +620,7 @@ export default {
       removeParamOption: 'Remove this choice',
       connectionParamLabels: {
         managementScope: 'Management scope',
+        skillsScope: 'Skill permissions',
         peerCommunication: 'Inter-agent communication',
         fileindexing: 'File indexing',
         host: 'Server', port: 'Port', username: 'Username', login: 'Login',
@@ -639,6 +648,12 @@ export default {
           personal: 'Management for this agent only',
           team: 'Team management',
           all: 'Global management without restrictions',
+        },
+        skillsScope: {
+          usage: 'Use authorized skills (read only)',
+          personal: 'Use skills and manage own personal skills',
+          team: 'Manage skills for its teams',
+          all: 'Global skill administration',
         },
         fileindexing: { excluded: 'Disabled', known_uris: 'Only files already known', recursive: 'Discover & index all available content' },
         browser: {
@@ -801,6 +816,7 @@ export default {
       },
       connectionParamDescriptions: {
         managementScope: 'Scope for this connection: usage, personal management, agents in any of its teams, or global administration. An inactive connection grants no management power.',
+        skillsScope: 'By default: use authorized skills and create, edit or delete your own personal skills. This level cannot modify general skills or change their assignments. Team scope also manages personal skills and generic assignments within your teams; global scope can also edit the general catalogue.',
         peerCommunication: 'Inter-agent communication on this connection: none, agents sharing a team, or all agents. Human contact rights remain independent.',
         fileindexing: 'Disable indexing, index only files already known, or discover and index all content accessible through this connection. The connection can inherit or override the Tool setting.',
         browser: {
@@ -956,6 +972,7 @@ export default {
       paramOptionsHint: '选项替代自由文本输入。保存值，显示标签。', paramOptionValue: '值 *', paramOptionLabel: '选项标签', removeParamOption: '删除此选项',
       connectionParamLabels: {
         managementScope: '管理范围',
+        skillsScope: '技能权限',
         peerCommunication: '智能体间通信',
         fileindexing: '文件索引',
         host: '服务器', port: '端口', username: '用户名', login: '登录名', password: '密码', access_token: '访问令牌', bot_token: '机器人令牌',
@@ -978,6 +995,12 @@ export default {
           personal: '仅管理当前智能体',
           team: '团队级管理',
           all: '全局管理（无限制）',
+        },
+        skillsScope: {
+          usage: '使用已授权技能（只读）',
+          personal: '使用技能并管理自己的个人技能',
+          team: '管理所在团队的技能',
+          all: '全局技能管理',
         },
         fileindexing: { excluded: '禁用', known_uris: '仅已知文件', recursive: '发现并索引所有可用内容' },
         browser: {
@@ -1135,6 +1158,7 @@ export default {
       },
       connectionParamDescriptions: {
         managementScope: '此连接的权限：使用、个人管理、所在任一团队的智能体管理或全局管理。未启用的连接不授予管理权限。',
+        skillsScope: '默认可使用已授权技能，并创建、修改或删除自己的个人技能；不能修改通用技能或更改其分配。团队范围还可管理所在团队的个人技能和通用技能分配；全局范围还可编辑通用技能目录。',
         peerCommunication: '此连接上的智能体间通信：禁止、共享团队的智能体或所有智能体。与人类联系的权限单独管理。',
         fileindexing: '禁用索引、仅索引已知文件，或发现并索引通过此连接可访问的所有内容。连接可以继承或覆盖工具设置。',
         browser: { default_output: '操作后的默认回复：内容或截图',

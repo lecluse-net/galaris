@@ -70,12 +70,20 @@ dans le catalogue générique.
 ## Déléguer la gestion à un agent
 
 Dans **Outils & connexions → Connexions**, configurez la connexion **Compétences** (`skills`).
+Les nouvelles connexions sont actives par défaut. Sans portée locale explicite, l'agent peut
+gérer ses propres packages avec `personal`. Une portée `usage` explicite retire cette gestion.
+Le choix **Usage + gestion de ses compétences personnelles** permet de créer, modifier,
+activer ou supprimer ses propres skills tout en utilisant les compétences générales autorisées.
+Il ne permet de modifier ni les fichiers, ni l'activation, ni les affectations des compétences
+générales administrées. Leur gestion relève des niveaux équipe ou global selon l'opération.
+Les connexions existantes, y compris leurs désactivations, et leurs portées explicites sont
+conservées lors des mises à jour ; réactivez une ancienne connexion désactivée si nécessaire.
 Sa portée locale `tools.management_scope` n'a ni valeur globale ni héritage :
 
 | Portée | Possibilité |
 |---|---|
-| `usage` | Découvrir et lire les compétences utilisables ; défaut si la portée est absente |
-| `personal` | Administrer ses propres packages personnels |
+| `usage` | Découvrir et lire les compétences utilisables, sans gestion |
+| `personal` | Administrer ses propres packages personnels ; défaut d'une connexion active sans portée explicite |
 | `team` | Administrer aussi les personnels et affectations génériques des agents partageant une équipe active |
 | `all` | Administrer tous les packages utilisateurs et le catalogue générique ; retirer la propriété |
 
