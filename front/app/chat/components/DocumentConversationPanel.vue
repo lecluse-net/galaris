@@ -50,7 +50,7 @@
             @message-visible="markVisibleRead" />
         </q-scroll-area>
         <q-separator />
-        <Composer v-if="canSend" :room-id="store.selectedRoom.id" :sending="store.sending" :commands="store.commands"
+        <Composer v-if="canSend" :room-id="store.selectedRoom.id" :agent-id="store.selectedRoom.agent_id" :sending="store.sending" :commands="store.commands"
           :reply-to="replyingTo" :before-send="prepare" :max-attachment-bytes="store.status?.max_attachment_bytes ?? 0"
           @cancel-reply="replyingTo = null" @send="send" @error="reportError" />
         <div v-else class="q-pa-sm text-caption">{{ t('chat.readOnly') }}</div>
@@ -286,14 +286,14 @@ async function prepare(): Promise<boolean> {
   preparedDocumentFocus = id ? captureDocumentFocus?.() ?? null : null
   return true
 }
-async function send(text: string, files: File[] | undefined, effort: ReasoningEffort | undefined, taskRequested: boolean, acknowledge: (accepted: boolean) => void): Promise<void> {
+async function send(text: string, files: File[] | undefined, effort: ReasoningEffort | undefined, taskRequested: boolean, acknowledge: (accepted: boolean) => void, resourceUris: string[]): Promise<void> {
   let accepted = false
   const roomId = store.selectedRoom?.id
   error.value = ''
   try {
     accepted = await store.send(text, files, replyingTo.value?.id ?? null, null, effort ?? null, taskRequested,
       documentId === preparedDocumentId ? preparedDocumentId : null, locale.value,
-      documentId === preparedDocumentId ? preparedDocumentFocus : null)
+      documentId === preparedDocumentId ? preparedDocumentFocus : null, null, resourceUris)
     if (accepted && store.selectedRoom?.id === roomId) { replyingTo.value = null; following = true; followBottom() }
   } catch { reportError() }
   finally { acknowledge(accepted) }

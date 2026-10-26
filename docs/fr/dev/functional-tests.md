@@ -861,6 +861,13 @@ présence au catalogue ne remplace pas une exécution réussie.
 
 ## Médias et preuves acquises
 
+`chat-internal-attachments.spec.mjs` vérifie la sélection de fichiers internes hors du
+texte, l’envoi sans texte, le maintien du brouillon après refus et les cartes avec
+miniature en mobile et desktop. Le scénario « internal image attachments » de
+`e2e/specs/chat.spec.mjs` vérifie la publication réelle d’une URI `file://` et sa carte
+après rechargement. `test_native_resources.py` couvre les droits de publication ;
+`test_native_facade.py` conserve la séparation texte/références dans le journal et le runtime.
+
 `tests/test_transcription_service.py` vérifie qu'un commit ElevenLabs vide conserve la session
 et permet de transcrire le tour suivant. `app/voice/tests/test_engine.py` empêche ce résultat
 de relancer une transcription ou de créer un round, un message ou une réponse vocale.

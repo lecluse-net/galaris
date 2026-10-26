@@ -48,6 +48,11 @@ test('text and attachment messages preserve task intent, effort and idempotency 
   })
   assert.equal(form.get('files').name, 'example.txt')
   assert.equal(await form.get('files').text(), 'example')
+  const resources = ['file://synthetic-image', 'document://00000000-0000-4000-8000-000000000001']
+  await service.send('room-a', '', null, null, 'client-c', null, false, null, 'fr', null, null, resources)
+  assert.deepEqual(requests.pop().args[1].resource_uris, resources)
+  await service.upload('room-a', [new File(['example'], 'example.txt')], 'Caption', null, null, 'client-d', null, false, null, 'fr', null, null, resources)
+  assert.deepEqual(JSON.parse(requests.pop().args[1].get('resource_uris')), resources)
 })
 
 test('displayed document context is optional for both text and attachment messages', async () => {

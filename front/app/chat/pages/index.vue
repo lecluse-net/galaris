@@ -48,7 +48,7 @@
             <q-scroll-area ref="messageScrollArea" class="message-scroll" @scroll="onMessageScroll" @wheel.passive="beginConversationHistoryNavigation" @touchstart.passive="beginConversationHistoryNavigation"><div v-if="store.loadingOlderMessages" class="history-loader"><q-spinner color="primary" size="20px" /></div><MessageTimeline :room-id="store.selectedRoom.id" :messages="store.messages" :activity="store.activity" :live-round="store.liveRound" :pending-transcriptions="store.pendingVoiceTranscriptions" :agent-id="store.selectedRoom.agent_id" :agent-name="store.selectedRoom.agent_name" :loading="store.loadingSelectedRoom" :viewer-agent-id="store.viewerAgentId" :show-agent-avatars="!store.selectedRoom.source" :allow-reply="canWriteSelectedRoom" @controlled="store.refreshSelected" :can-read-documents="canReadDocuments" :can-edit-documents="canEditDocuments" @open-document="openConversationDocument" @open-repository="openRepository" @open-directory="openDirectory" @reply="message => replyingTo = message" @topic-changed="refreshMessageTopics" @history-navigation="beginConversationHistoryNavigation" @block-rendered="scrollRenderedConversationToBottom" @layout-changed="keepConversationAtBottom" @message-visible="markVisibleMessageRead" /></q-scroll-area>
             <ScrollToBottomButton :visible="showScrollToBottom" @click="scrollConversationToBottom" />
           </div>
-          <template v-if="canWriteSelectedRoom"><q-separator /><Composer :before-send="prepareMessage" :room-id="store.selectedRoom.id" :sending="store.sending" :commands="store.commands" :reply-to="replyingTo" :topic-id="selectedTopicId" :can-select-topic="canSelectTopic" :max-attachment-bytes="store.status?.max_attachment_bytes ?? 0" @send="sendMessage" @cancel-reply="replyingTo=null" @update:topic-id="selectedTopicId=$event" @error="reportError" /></template>
+          <template v-if="canWriteSelectedRoom"><q-separator /><Composer :before-send="prepareMessage" :room-id="store.selectedRoom.id" :agent-id="store.selectedRoom.agent_id" :sending="store.sending" :commands="store.commands" :reply-to="replyingTo" :topic-id="selectedTopicId" :can-select-topic="canSelectTopic" :max-attachment-bytes="store.status?.max_attachment_bytes ?? 0" @send="sendMessage" @cancel-reply="replyingTo=null" @update:topic-id="selectedTopicId=$event" @error="reportError" /></template>
         </template>
       </main>
           <div v-if="integratedWorkspace" class="document-resizer" :class="{ 'document-resizer--rows': effectiveDocumentLayout === 'rows' }"
@@ -646,13 +646,13 @@ async function prepareMessage(): Promise<boolean> {
   }
   return store.selectedRoom?.id === roomId
 }
-async function sendMessage(text:string,files:File[]|undefined,reasoningEffortOverride:ReasoningEffort|undefined,taskRequested:boolean,acknowledge:(accepted:boolean)=>void){
+async function sendMessage(text:string,files:File[]|undefined,reasoningEffortOverride:ReasoningEffort|undefined,taskRequested:boolean,acknowledge:(accepted:boolean)=>void,resourceUris:string[]){
   let accepted = false
   const roomId = store.selectedRoom?.id
   try {
     const documentId = integratedDocument.value?.id === displayedDocumentId.value
       ? displayedDocumentId.value : null
-    accepted = await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null, codeStore.active?.loaded && !codeStore.active.error ? selectedCodeId.value : null)
+    accepted = await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null, codeStore.active?.loaded && !codeStore.active.error ? selectedCodeId.value : null,resourceUris)
     if (accepted && store.selectedRoom?.id === roomId) { replyingTo.value=null;selectedTopicId.value=null }
   } catch(error) { reportError(error) }
   finally { acknowledge(accepted) }

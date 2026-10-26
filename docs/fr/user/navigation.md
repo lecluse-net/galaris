@@ -428,6 +428,14 @@ L’envoi du message reprend automatiquement avec la demande initiale et votre c
 **Reprendre la réponse** permet de continuer sans nouveau message ; **Arrêter la réponse**
 abandonne la réponse en cours. L’outil déjà engagé termine avant la pause ou l’arrêt.
 
+Dans la saisie des conversations, **Ajouter une PJ interne** se trouve dans la zone de dépôt
+de fichiers, hors du champ texte. Les fichiers locaux et les ressources internes sélectionnées
+s’affichent ensemble dans cette zone et restent des pièces jointes
+du brouillon et peuvent être retirées avant l’envoi, même sans texte. Après publication,
+leurs cartes et miniatures apparaissent sous le message. Les fichiers conservent leur URI
+source (`file://`, `console://` ou le schéma du service), sans copie ni remplacement par
+une URL de page Galaris. Les droits de la source et de l’agent destinataire restent requis.
+
 À l’ouverture d’une discussion, les messages s’affichent sans attendre le catalogue des
 commandes ni l’état des appels. Les aperçus de liens et les miniatures de documents se
 chargent progressivement à proximité de la zone visible ; vous pouvez lire et rédiger

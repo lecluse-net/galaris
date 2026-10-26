@@ -77,6 +77,46 @@ async function final(page) {
   await expect(response).toHaveAttribute('data-message-id', /.+/)
 }
 
+test('internal image attachments retain their canonical URI and cards after sending and reload', async ({ page, request }, testInfo) => {
+  const errors = collectPageErrors(page)
+  const fixture = await prepare(page, request)
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')
+  const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}` }
+  const upload = await request.post(`/api/file-share/files?agent_id=${fixture.agent_id}`, {
+    headers, multipart: { upload: { name: 'Synthetic attachment.png', mimeType: 'image/png', buffer: png } },
+  })
+  expect(upload.ok(), await upload.text()).toBeTruthy()
+  const resource = await upload.json()
+  expect(resource.uri).toMatch(/^file:\/\//)
+  await page.getByRole('button', { name: /^(Ajouter une PJ interne|Add an internal attachment)$/ }).click()
+  await page.locator('.file-scheme-uri').filter({ hasText: /^file:\/\/$/ }).click()
+  await page.getByRole('button', { name: /^(Select|Sélectionner) Synthetic attachment.png$/ }).click()
+  await page.getByRole('dialog').getByRole('button', { name: /^(Select|Sélectionner)$/ }).click()
+  const input = page.locator('.composer-fields textarea')
+  await expect(input).toHaveValue('')
+  await expect(page.getByRole('button', { name: /^(Remove|Retirer) Synthetic attachment.png$/ })).toBeVisible()
+  const publication = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/chat/rooms/${fixture.rooms[0]}/messages`)
+  await input.press('Enter')
+  const response = await publication
+  expect(response.ok(), await response.text()).toBeTruthy()
+  const message = await response.json()
+  expect(message.text).toBe('')
+  expect(message.resource_uris).toEqual([resource.uri])
+  const row = page.locator(`[data-message-id="${message.id}"]`)
+  const image = row.getByRole('img', { name: 'Synthetic attachment.png', exact: true })
+  await expect(image).toBeVisible()
+  await expect(image).toHaveJSProperty('naturalWidth', 1)
+  await release(request, fixture.rooms[0])
+  await final(page)
+  await page.reload()
+  await expect(image).toBeVisible()
+  await expect(image).toHaveJSProperty('naturalWidth', 1)
+  await page.screenshot({ path: testInfo.outputPath('internal-image-attachment.png') })
+  await errors.settle()
+  expect(errors()).toEqual([])
+})
+
 test('progress is visible before completion and survives durable handoff and reload', async ({ page, request }) => {
   const fixture = await prepare(page, request)
   await send(page)

@@ -11,14 +11,18 @@ import { processReferenceHtml } from '@/app/process/interface'
 import { resourceTarget, type FileEntry } from '@/app/file_share/interface'
 import ResourcePicker from './resourcePicker.vue'
 
-const { documentId, agentId, editable } = defineProps<{ documentId?: string; agentId: number | null; editable: boolean }>()
+const { documentId, agentId, editable, resourcesOnly = false } = defineProps<{ documentId?: string; agentId: number | null; editable: boolean; resourcesOnly?: boolean }>()
 const adding = defineModel<boolean>('pickerOpen', { default: false })
-const emit = defineEmits<{ picked: [html: string] }>()
+const emit = defineEmits<{ picked: [html: string]; 'resources-picked': [resources: { uri: string; name: string }[]] }>()
 const { t } = useI18n()
 const error = ref(''), busy = ref(false)
 let generation = 0
 function selectReference(value: RichLinkTarget): void {
   if (!editable || busy.value || !validRichLink(value.uri)) return
+  if (resourcesOnly) {
+    emit('resources-picked', [{ uri: value.uri, name: value.title }]); adding.value = false
+    return
+  }
   const link = document.createElement('a'); link.href = value.uri; link.textContent = value.title
   emit('picked', `<p>${link.outerHTML}</p>`); adding.value = false
 }
@@ -40,6 +44,11 @@ function reference(entry: FileEntry, selectedAgent: number): string {
 }
 async function select(entries: FileEntry[], selectedAgent: number): Promise<void> {
   if (!editable || busy.value) return
+  if (resourcesOnly) {
+    emit('resources-picked', entries.map(entry => ({ uri: entry.uri, name: String(entry.metadata?.label ?? entry.name) })))
+    adding.value = false
+    return
+  }
   busy.value = true; error.value = ''
   const current = ++generation
   try {

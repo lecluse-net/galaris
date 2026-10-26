@@ -146,13 +146,7 @@ for (const width of [390, 1280]) {
     await expect(post).toBeEnabled()
     const upload = page.getByRole('button', { name: 'Add attachments', exact: true })
     const nextFile = page.waitForEvent('filechooser')
-    if (width >= 1024) {
-      const zone = await upload.boundingBox()
-      const lastFile = await upload.locator('.attachment-item').last().boundingBox()
-      await upload.click({ position: { x: zone.width / 2, y: lastFile.y + lastFile.height - zone.y + 10 } })
-    } else {
-      await upload.click()
-    }
+    await upload.click()
     await (await nextFile).setFiles({ name: 'extra.txt', mimeType: 'text/plain', buffer: Buffer.from('Extra') })
     await page.getByRole('button', { name: 'Rename extra.txt', exact: true }).click()
     await page.getByRole('dialog').getByRole('textbox', { name: 'File name', exact: true }).fill('Final notes.txt')

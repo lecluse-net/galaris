@@ -60,7 +60,7 @@ def test_every_route_has_the_expected_privilege_and_resource_assertion() -> None
     expected = {
         "read_document_conversation_preference": (ACCESS, None),
         "update_document_conversation_preference": (ACCESS, None),
-        "read_status": (ACCESS, None),
+        "read_status": ([ACCESS, "MESSAGING_CONFIG_ACCESS", "MESSAGING_CONFIG_EDIT"], None),
         "read_inbox": (ACCESS, None),
         "read_push_configuration": (ACCESS, None),
         "create_push_subscription": (ACCESS, None),
@@ -137,10 +137,12 @@ def test_private_file_previews_are_limited_to_agent_messages() -> None:
     inbound = Mock(
         text=f"See console://private/report.html and document://{document_id}",
         direction="inbound",
+        resource_uris=[],
     )
     outbound = Mock(
         text=f"See console://private/report.html and document://{document_id}",
         direction="outbound",
+        resource_uris=[],
     )
 
     assert router_module._message_preview_references(inbound) == (
@@ -154,6 +156,23 @@ def test_private_file_previews_are_limited_to_agent_messages() -> None:
     assert router_module._message_preview_content_references(outbound) == (
         "console://private/report.html",
     )
+
+    # Only an explicitly attached URI can expose an inbound provider file.
+    inbound.resource_uris = ["file://synthetic-image"]
+    assert router_module._message_preview_references(inbound) == (
+        "file://synthetic-image", f"document://{document_id}",
+    )
+    assert router_module._message_preview_content_references(inbound) == ("file://synthetic-image",)
+    attachment = f"document://{document_id}/attachments/{uuid4()}"
+    inbound.resource_uris = [attachment]
+    assert router_module._message_preview_content_references(inbound) == (attachment,)
+
+
+def test_resource_only_messages_are_valid_but_empty_messages_are_not():
+    reference = "document://00000000-0000-4000-8000-000000000001"
+    assert MessageCreate(client_message_id=uuid4(), resource_uris=[reference]).text == ""
+    with pytest.raises(ValidationError):
+        MessageCreate(client_message_id=uuid4(), text="  ")
 
 
 @pytest.mark.asyncio
@@ -199,7 +218,7 @@ async def test_directory_editor_open_requires_a_referenced_directory_and_preserv
     monkeypatch.setattr(router_module, "_user_id", AsyncMock(return_value=17))
     monkeypatch.setattr(router_module, "get_chat_room", AsyncMock(return_value=Mock(agent_id=9)))
     monkeypatch.setattr(router_module, "get_chat_message", AsyncMock(return_value=None if case == "missing" else
-        Mock(text="No directory reference" if case == "unreferenced" else uri, direction="outbound")))
+        Mock(text="No directory reference" if case == "unreferenced" else uri, direction="outbound", resource_uris=[])))
     monkeypatch.setattr(router_module, "preview_reference", AsyncMock(return_value=MessageResourcePreview(
         uri=uri, kind="file", title="Synthetic project", metadata={"is_collection": case != "file"},
     )))
@@ -243,7 +262,7 @@ async def test_external_html_thumbnail_is_scheduled_after_preview_listing(
     monkeypatch.setattr(
         router_module,
         "get_chat_message",
-        AsyncMock(return_value=Mock(text=url, direction="outbound")),
+        AsyncMock(return_value=Mock(text=url, direction="outbound", resource_uris=[])),
     )
     monkeypatch.setattr(
         router_module,
@@ -286,7 +305,7 @@ async def test_private_html_thumbnail_is_scheduled_after_preview_listing(
     monkeypatch.setattr(
         router_module,
         "get_chat_message",
-        AsyncMock(return_value=Mock(text=uri, direction="outbound")),
+        AsyncMock(return_value=Mock(text=uri, direction="outbound", resource_uris=[])),
     )
     monkeypatch.setattr(
         router_module,
@@ -328,7 +347,7 @@ async def test_external_html_image_endpoint_reads_only_the_generated_cache(
     monkeypatch.setattr(
         router_module,
         "get_chat_message",
-        AsyncMock(return_value=Mock(text=url, direction="outbound")),
+        AsyncMock(return_value=Mock(text=url, direction="outbound", resource_uris=[])),
     )
     monkeypatch.setattr(
         router_module,

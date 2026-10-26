@@ -410,13 +410,23 @@ class Message(HistoryMixin, Base):
         return bool(self.sender and self.sender.is_ai)
 
     @property
+    def resource_uris(self) -> list[str]:
+        """Canonical resources explicitly attached to this message, without copying them."""
+
+        values: object = (self.metadata_ or {}).get("resource_uris")
+        if not isinstance(values, list):
+            return []
+        return [value for value in cast(list[object], values) if isinstance(value, str)]
+
+    @property
     def conversation_text(self) -> str:
-        """Return text plus durable STT results for model-facing conversation history."""
+        """Return text, attached resource URIs and STT results for model-facing history."""
 
         transcripts = conversation_audio_transcripts(self.metadata_)
-        if not transcripts:
+        if not transcripts and not self.resource_uris:
             return self.text
         sections = [self.text.strip()] if self.text.strip() else []
+        sections.extend(self.resource_uris)
         for file in self.files:
             transcript = transcripts.get(str(file.id), "")
             if not transcript:

@@ -257,6 +257,13 @@ comes from the provider's reported usage.
 
 In history, an attachment remains nested in the message that transported it and exposes its URI constructed with the exact Tool code, the room's provider locator, and the file's local UUID. The projection provided to runtimes prefixes the message with its posting timestamp, sender, and human or AI nature; this rule applies to conversational executions, Tasks, and audio-turn history. Messenger and file-share are capabilities and create no schemes. File-only messages are not eliminated by session or runtime projections.
 
+Internal resources attached from a Chat composer are stored in the message's
+`resource_uris` metadata and exposed separately from its text. Publication checks the
+human's privileges and the receiving agent's access to each canonical URI without
+copying bytes. The `conversation_text` projection keeps these URIs in their original
+message for the runtime. Previews allow these explicit references, including inbound
+ones, without granting access to private links merely typed into the text.
+
 ## Voice Notes
 
 The common normalization:

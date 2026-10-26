@@ -119,10 +119,11 @@ async def test_resource_preview_preserves_document_format_and_revision(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("uri", ["console://reports/demo.html", "document://00000000-0000-4000-8000-000000000001/attachments/00000000-0000-4000-8000-000000000002"])
 async def test_resource_preview_exposes_html_file_for_bounded_browser_loading(
     monkeypatch: pytest.MonkeyPatch,
+    uri: str,
 ) -> None:
-    uri = "console://reports/demo.html"
 
     async def info(*_args: object, **_kwargs: object) -> ResourceDescriptor:
         return ResourceDescriptor(

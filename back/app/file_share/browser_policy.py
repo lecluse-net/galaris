@@ -24,6 +24,9 @@ def resource_privileges(uri: str, *, write: bool = False) -> tuple[str, ...]:
         read, edit = (Privileges.MEMORY_ACCESS,), (Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN)
     elif reference.scheme == "galaris":
         domains = {
+            "code": (Privileges.CODE_ACCESS,),
+            "agent": (Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT),
+            "process": (Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN),
             "task": (Privileges.TASK_ACCESS, Privileges.TASK_EDIT),
             "text": (Privileges.CONVERSATION_ACCESS, Privileges.CONVERSATION_CONTROL),
             "voice": (Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL),

@@ -34,6 +34,7 @@ from app.browser import (
     schedule_public_page_thumbnail,
 )
 from app.messenger import (
+    prepare_resource_attachments,
     rename_internal_file,
     NativeMessengerFileAccess,
     NativeMessengerInteraction,
@@ -258,12 +259,13 @@ def _room_for_scope(
 def _message_preview_references(
     message: NativeMessengerMessage,
 ) -> tuple[str, ...]:
-    """Allow private file providers only for content published by the agent."""
+    """Include authorized attachments; bare private links still require agent publication."""
 
-    return extract_preview_references(
+    text_references = extract_preview_references(
         message.text,
         include_file_resources=message.direction == "outbound",
     )
+    return tuple(dict.fromkeys((*message.resource_uris, *text_references)))
 
 
 def _message_preview_content_references(
@@ -276,8 +278,11 @@ def _message_preview_content_references(
         for uri in _message_preview_references(message)
         if uri.partition("://")[0] == "https"
         or (
-            message.direction == "outbound"
-            and uri.partition("://")[0] not in {"document", "memory", "galaris"}
+            (message.direction == "outbound" or uri in message.resource_uris)
+            and (
+                uri.partition("://")[0] not in {"document", "memory", "galaris"}
+                or (uri.startswith("document://") and "/attachments/" in uri)
+            )
         )
     )
 
@@ -1169,6 +1174,17 @@ async def answer_interaction(
 async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerMessage:
     _require_enabled()
     await _validate_topic(data.topic_id)
+    resource_uris: list[str] = []
+    if data.resource_uris:
+        room = await get_internal_room(await _user_id(), room_id)
+        if room is None:
+            raise _not_found()
+        try:
+            resource_uris = await prepare_resource_attachments(data.resource_uris, agent_id=room.agent_id)
+        except (PermissionError, FileNotFoundError) as exc:
+            raise HTTPException(403, "Resource unavailable") from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
     try:
         if data.displayed_document_id is not None and data.displayed_repository_id is not None:
             raise PermissionError("Only one displayed work context is allowed")
@@ -1179,6 +1195,7 @@ async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerM
             room_id=room_id,
             client_message_id=data.client_message_id,
             text=data.text,
+            resource_uris=resource_uris,
             topic_id=data.topic_id,
             reply_to_message_id=data.reply_to_message_id,
             reasoning_effort_override=data.reasoning_effort_override,
@@ -1263,12 +1280,19 @@ async def create_attachment_message(
     displayed_repository_id: UUID | None = Form(default=None),
     language: str = Form(default="", max_length=10),
     document_focus: Annotated[Json[DocumentFocus] | None, Form()] = None,
+    resource_uris: Annotated[Json[list[str]] | None, Form()] = None,
 ) -> NativeMessengerMessage:
     _require_enabled()
     await _validate_topic(topic_id)
     room = await get_internal_room(await _user_id(), room_id)
     if room is None or not room.agent_active:
         raise _not_found()
+    try:
+        prepared_resources = await prepare_resource_attachments(resource_uris or [], agent_id=room.agent_id)
+    except (PermissionError, FileNotFoundError) as exc:
+        raise HTTPException(403, "Resource unavailable") from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     if displayed_document_id is not None and displayed_repository_id is not None:
         raise HTTPException(422, "Only one displayed work resource is allowed")
     try:
@@ -1310,6 +1334,7 @@ async def create_attachment_message(
             topic_id=topic_id,
             reply_to_message_id=reply_to_message_id,
             attachments=observations,
+            resource_uris=prepared_resources,
             reasoning_effort_override=reasoning_effort_override,
             task_requested=task_requested,
             displayed_document_id=displayed_document_id,

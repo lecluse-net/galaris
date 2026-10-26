@@ -1833,6 +1833,7 @@ async def test_message_publish_preserves_an_explicit_topic(
         room_id=room.id,
         client_message_id=uuid4(),
         text="@eff @effort Message classé manuellement",
+        resource_uris=["file://synthetic-image", "file://synthetic-image"],
         topic_id=topic.id,
         reasoning_effort_override="xhigh",
         displayed_document_id=displayed_document_id,
@@ -1844,6 +1845,7 @@ async def test_message_publish_preserves_an_explicit_topic(
     assert published.is_mine is True
     assert published.topic_id == topic.id
     assert published.text == "Message classé manuellement"
+    assert published.resource_uris == ["file://synthetic-image"]
     stored = await journal.stored_message(
         connection_id=room.connection_id,
         remote_message_id=published.external_id,
@@ -1851,6 +1853,8 @@ async def test_message_publish_preserves_an_explicit_topic(
     )
     assert stored is not None
     assert stored.text == "@eff @effort Message classé manuellement"
+    assert stored.resource_uris == ["file://synthetic-image"]
+    assert stored.conversation_text == "@eff @effort Message classé manuellement\n\nfile://synthetic-image"
     assert stored.topic_id == topic.id
     assert stored.topic_overridden is True
     assert stored.metadata_[TASK_REQUESTED_METADATA_KEY] is True

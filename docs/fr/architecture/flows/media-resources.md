@@ -319,6 +319,13 @@ les tâches et l'historique des tours audio. Messenger et file-share sont des ca
 créent aucun schéma. Les messages fichier seul ne sont pas éliminés par les projections de session
 ou de runtime.
 
+Les ressources internes jointes depuis un composeur Chat sont conservées dans les
+métadonnées `resource_uris` du message et exposées séparément de son texte. La publication
+vérifie les privilèges humains et l’accès de l’agent destinataire à chaque URI canonique,
+sans copier les octets. La projection `conversation_text` conserve ces URI dans leur
+message d’origine pour le runtime. Les aperçus autorisent ces références explicites,
+y compris entrantes, sans ouvrir l’accès aux liens privés simplement saisis dans le texte.
+
 ## Notes vocales
 
 La normalisation commune :

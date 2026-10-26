@@ -17,14 +17,10 @@
         :class="{
           'attachment-drop-zone--active': dragActive,
           'attachment-drop-zone--disabled': sending,
-          'attachment-drop-zone--populated': files.length > 0,
         }"
-        role="button"
-        :tabindex="sending ? -1 : 0"
+        role="group"
         :aria-label="t('chat.addAttachments')"
         @click="openFilePicker"
-        @keydown.enter.prevent="openFilePicker"
-        @keydown.space.prevent="openFilePicker"
         @dragenter.prevent="dragActive = true"
         @dragover.prevent="dragActive = true"
         @dragleave.prevent="dragActive = false"
@@ -39,36 +35,44 @@
           :disabled="sending"
           @change="handleFileSelection"
         />
-        <q-icon name="attach_file" size="22px" class="portrait-attachment-icon" />
-        <q-badge v-if="files.length" floating rounded color="primary" class="portrait-attachment-count">
-          {{ files.length }}
-        </q-badge>
-        <div v-if="!files.length" class="attachment-empty">
-          <q-icon name="upload_file" size="22px" color="primary" />
-          <div class="attachment-empty-copy">
-            <span class="text-weight-medium">{{ t('chat.dropAttachments') }}</span>
-          </div>
-        </div>
-        <div v-else class="attachment-list">
-          <div
-            v-for="(pendingFile, index) in files"
-            :key="pendingFileKey(pendingFile)"
-            class="attachment-item"
-          >
-            <q-icon name="attach_file" size="17px" color="primary" />
-            <span class="attachment-name">{{ pendingFile.name }}</span>
-            <RenameFileButton :name="pendingFile.name" :disabled="sending" :rename="name => renamePendingFile(pendingFile, name)" />
-            <q-btn
-              flat
-              round
-              dense
-              size="xs"
-              icon="close"
-              :aria-label="t('chat.removeAttachment', { name: pendingFile.name })"
-              @click.stop="removeFile(index)"
-            >
-              <q-tooltip>{{ t('chat.removeAttachment', { name: pendingFile.name }) }}</q-tooltip>
+        <div class="attachment-content">
+          <div class="attachment-empty">
+            <q-btn flat round dense color="primary" icon="upload_file" :disable="sending"
+              :aria-label="t('chat.addAttachments')" @click.stop="openFilePicker" />
+            <span class="attachment-empty-copy text-weight-medium">{{ t('chat.dropAttachments') }}</span>
+            <q-btn flat round dense color="primary" icon="folder_shared" :disable="sending"
+              :aria-label="t('documents.internalAttachments.add')" @click.stop="resourcePickerOpen = true">
+              <q-tooltip>{{ t('documents.internalAttachments.add') }}</q-tooltip>
             </q-btn>
+          </div>
+          <div v-if="files.length || resources.length" class="attachment-list" @click.stop>
+            <div
+              v-for="(pendingFile, index) in files"
+              :key="pendingFileKey(pendingFile)"
+              class="attachment-item"
+            >
+              <q-icon name="attach_file" size="17px" color="primary" />
+              <span class="attachment-name">{{ pendingFile.name }}</span>
+              <RenameFileButton :name="pendingFile.name" :disabled="sending" :rename="name => renamePendingFile(pendingFile, name)" />
+              <q-btn
+                flat
+                round
+                dense
+                size="xs"
+                icon="close"
+                :aria-label="t('chat.removeAttachment', { name: pendingFile.name })"
+                @click.stop="removeFile(index)"
+              >
+                <q-tooltip>{{ t('chat.removeAttachment', { name: pendingFile.name }) }}</q-tooltip>
+              </q-btn>
+            </div>
+            <div v-for="resource in resources" :key="resource.uri" class="attachment-item">
+              <q-icon name="attach_file" size="17px" color="primary" />
+              <span class="attachment-name" :title="resource.uri">{{ resource.name }}</span>
+              <q-btn flat round dense size="xs" icon="close" :disable="sending"
+                :aria-label="t('chat.removeAttachment', { name: resource.name })"
+                @click="resources = resources.filter(value => value.uri !== resource.uri)" />
+            </div>
           </div>
         </div>
       </div>
@@ -88,7 +92,6 @@
           >
             <template #prepend>
               <EmojiPicker @select="insertEmoji" @error="$emit('error', $event)" />
-              <q-btn flat round dense icon="folder_shared" :disable="sending" :aria-label="t('documents.internalAttachments.add')" @click="resourcePickerOpen = true"><q-tooltip>{{ t('documents.internalAttachments.add') }}</q-tooltip></q-btn>
             </template>
             <template #append>
               <div
@@ -231,31 +234,8 @@
         </div>
       </div>
     </div>
-
-    <div v-if="files.length" class="portrait-attachment-list">
-      <div
-        v-for="(pendingFile, index) in files"
-        :key="pendingFileKey(pendingFile)"
-        class="attachment-item"
-      >
-        <q-icon name="attach_file" size="17px" color="primary" />
-        <span class="attachment-name">{{ pendingFile.name }}</span>
-        <RenameFileButton :name="pendingFile.name" :disabled="sending" :rename="name => renamePendingFile(pendingFile, name)" />
-        <q-btn
-          flat
-          round
-          dense
-          size="xs"
-          icon="close"
-          :aria-label="t('chat.removeAttachment', { name: pendingFile.name })"
-          @click="removeFile(index)"
-        >
-          <q-tooltip>{{ t('chat.removeAttachment', { name: pendingFile.name }) }}</q-tooltip>
-        </q-btn>
-      </div>
-    </div>
   </div>
-  <DocumentResourceReferences v-if="resourcePickerOpen" v-model:picker-open="resourcePickerOpen" :agent-id="null" :editable="!sending" @picked="insertResourceReferences" />
+  <DocumentResourceReferences v-if="resourcePickerOpen" v-model:picker-open="resourcePickerOpen" :agent-id="agentId" :editable="!sending" resources-only @resources-picked="addResources" />
 </template>
 
 <script setup lang="ts">
@@ -284,6 +264,7 @@ const DEFAULT_REASONING_LEVEL = 2
 
 const props = withDefaults(defineProps<{
   roomId: string
+  agentId?: number | null
   sending: boolean
   beforeSend?: () => Promise<boolean>
   commands?: readonly ChatCommandCode[]
@@ -297,20 +278,20 @@ const props = withDefaults(defineProps<{
   topicId: null,
   canSelectTopic: false,
   maxAttachmentBytes: 0,
+  agentId: null,
 })
 const emit = defineEmits<{
-  send: [text: string, files: File[] | undefined, reasoningEffortOverride: ReasoningEffort | undefined, taskRequested: boolean, acknowledge: (accepted: boolean) => void]
+  send: [text: string, files: File[] | undefined, reasoningEffortOverride: ReasoningEffort | undefined, taskRequested: boolean, acknowledge: (accepted: boolean) => void, resourceUris: string[]]
   error: [error: unknown]
   'cancel-reply': []
   'update:topicId': [value: string | null]
 }>()
 const text = ref('')
 const resourcePickerOpen = ref(false)
-function insertResourceReferences(html: string): void {
-  if (!html || props.sending) return
-  const document = new DOMParser().parseFromString(html, 'text/html')
-  const links = [...document.querySelectorAll<HTMLAnchorElement>('a[href]')].map(link => link.getAttribute('href')!)
-  if (links.length) text.value = [text.value.trimEnd(), ...links].filter(Boolean).join('\n')
+const resources = ref<{ uri: string; name: string }[]>([])
+function addResources(selected: { uri: string; name: string }[]): void {
+  if (props.sending) return
+  resources.value = [...new Map([...resources.value, ...selected].map(value => [value.uri, value])).values()].slice(0, MAX_ATTACHMENTS)
 }
 const preparingSend = ref(false)
 const submitting = ref(false)
@@ -350,7 +331,7 @@ const outgoingText = computed(() => {
   return withoutTopic.trim()
 })
 const canSubmit = computed(() => (
-  !props.sending && !submitting.value && !dictationBusy.value && Boolean(outgoingText.value || files.value.length)
+  !props.sending && !submitting.value && !dictationBusy.value && Boolean(outgoingText.value || files.value.length || resources.value.length)
 ))
 type MessageInputRef = {
   getNativeElement: () => HTMLInputElement | HTMLTextAreaElement
@@ -415,7 +396,7 @@ function updateComposerLayout(): void {
       + parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom)
     const dropZone = attachmentDropZone.value
     const dropStyle = dropZone ? getComputedStyle(dropZone) : null
-    const attachmentContent = dropZone?.querySelector<HTMLElement>('.attachment-list, .attachment-empty')
+    const attachmentContent = dropZone?.querySelector<HTMLElement>('.attachment-content')
     // Use the upload content's natural height, not its stretched height, which
     // may still reflect text wrapping in the previous action layout.
     const uploadHeight = dropStyle?.alignSelf === 'stretch' && attachmentContent
@@ -452,7 +433,7 @@ onMounted(() => {
   scheduleComposerLayout()
 })
 
-watch([text, commandHelpAvailable, files], scheduleComposerLayout, { flush: 'post' })
+watch([text, commandHelpAvailable, files, resources], scheduleComposerLayout, { flush: 'post' })
 
 function fileKey(file: File): string {
   return `${file.name}:${file.size}:${file.lastModified}:${file.type}`
@@ -906,16 +887,18 @@ async function submit(): Promise<void> {
     cancelDictation()
     const submittedText = text.value
     const submittedFiles = [...files.value]
+    const submittedResources = [...resources.value]
     const submittedEffort = reasoningEffortIndex.value
     const accepted = await new Promise<boolean>(acknowledge => emit(
       'send', outgoingText.value, submittedFiles.length ? submittedFiles : undefined,
       effortSelectOpen.value ? reasoningEffort.value : undefined, taskRequested.value,
-      acknowledge,
+      acknowledge, submittedResources.map(resource => resource.uri),
     ))
     if (!accepted || generation !== roomGeneration) return
     // Acknowledging this message must not erase text typed while it was in flight.
     if (text.value === submittedText) text.value = ''
     files.value = files.value.filter(file => !submittedFiles.includes(file))
+    resources.value = resources.value.filter(resource => !submittedResources.includes(resource))
     if (reasoningEffortIndex.value === submittedEffort) reasoningEffortIndex.value = DEFAULT_REASONING_LEVEL
     commandHelpOpen.value = false
   } catch (error) {
@@ -963,6 +946,7 @@ watch(effortSelectOpen, (visible, wasVisible) => {
 
 watch(() => props.roomId, () => {
   resourcePickerOpen.value = false
+  resources.value = []
   roomGeneration += 1
   cancelDictation()
   commandHelpOpen.value = false
@@ -1044,12 +1028,8 @@ watch(() => props.roomId, () => {
   transition: border-color .15s ease, background-color .15s ease;
 }
 
-.attachment-drop-zone--populated {
-  padding-bottom: 16px;
-}
-
 .attachment-drop-zone:hover,
-.attachment-drop-zone:focus-visible,
+.attachment-drop-zone:focus-within,
 .attachment-drop-zone--active {
   border-color: var(--q-primary);
   outline: none;
@@ -1065,10 +1045,10 @@ watch(() => props.roomId, () => {
   display: none;
 }
 
-.portrait-attachment-icon,
-.portrait-attachment-count,
-.portrait-attachment-list {
-  display: none;
+.attachment-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .attachment-empty {
@@ -1080,9 +1060,8 @@ watch(() => props.roomId, () => {
 }
 
 .attachment-empty-copy {
-  display: flex;
   min-width: 0;
-  flex-direction: column;
+  flex: 1;
   line-height: 1;
 }
 
@@ -1225,49 +1204,16 @@ watch(() => props.roomId, () => {
 
 @media (max-width: 1023.98px) {
   .composer-layout {
-    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 
   .attachment-drop-zone {
-    position: relative;
-    display: flex;
-    width: 40px;
-    height: 40px;
-    min-height: 40px;
-    align-items: center;
-    justify-content: center;
     align-self: start;
-    padding: 0;
-    overflow: visible;
-    border-style: solid;
-    border-radius: 50%;
-    color: var(--q-primary);
-    background: transparent;
   }
 
-  .attachment-empty,
-  .attachment-drop-zone > .attachment-list {
-    display: none;
-  }
-
-  .portrait-attachment-icon {
-    display: inline-flex;
-  }
-
-  .portrait-attachment-count {
-    display: flex;
-    top: -7px;
-    right: -7px;
-  }
-
-  .portrait-attachment-list {
-    display: flex;
+  .attachment-list {
     max-height: 72px;
-    margin: 6px 0 0 48px;
-    flex-direction: column;
-    gap: 3px;
-    overflow-y: auto;
   }
 }
 </style>

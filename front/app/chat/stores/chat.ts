@@ -514,7 +514,7 @@ export function useChatState(documentId: () => string | null = () => null) {
     } catch (error) { if (request.canApply()) handleScopeError(error) }
     finally { loadingRecentMessages.value = false }
   }
-  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null): Promise<boolean> {
+  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null, resourceUris: readonly string[] = []): Promise<boolean> {
     if (!selectedRoom.value?.writable || viewerAgentId.value !== null || sending.value) return false
     const room = selectedRoom.value
     const session = sessionGeneration()
@@ -524,7 +524,7 @@ export function useChatState(documentId: () => string | null = () => null) {
     const current = (): boolean => active() && generation === selectedRoomGeneration && selectedRoom.value?.id === room.id
     const attachments = files ?? []
     const signature = JSON.stringify([session, room.id, text, replyToMessageId, topicId, reasoningEffortOverride,
-      taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId])
+      taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId, resourceUris])
     // An explicit retry of unchanged content retains its admission identity. It
     // can recover a lost HTTP receipt without creating a second message/round.
     const retry = unconfirmedSend?.signature === signature
@@ -544,6 +544,7 @@ export function useChatState(documentId: () => string | null = () => null) {
       room_id: room.id,
       direction: 'inbound',
       text,
+      resource_uris: [...resourceUris],
       topic_id: topicId ?? room.topic_id,
       topic_overridden: topicId !== null,
       sender,
@@ -558,8 +559,8 @@ export function useChatState(documentId: () => string | null = () => null) {
     sending.value = true
     try {
       const sentMessage = files?.length
-        ? await service.upload(room.id, files, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId)
-        : await service.send(room.id, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId)
+        ? await service.upload(room.id, files, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId, resourceUris)
+        : await service.send(room.id, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId, resourceUris)
       if (!active()) return false
       unconfirmedSend = null
       if (current()) {

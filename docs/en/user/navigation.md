@@ -385,6 +385,14 @@ you can close its dialog during loading and reopen it.
 installed bridge. The [external engine guide](../dev/process-engines.md)
 explains that preparation for administrators and developers.
 
+In conversation composers, **Add an internal attachment** sits inside the file drop area,
+outside the text field. Local files and selected internal resources appear together in
+that area, remain draft attachments and can be removed
+before sending, including messages without text. Their cards and thumbnails appear below
+the published message. Files retain their source URI (`file://`, `console://` or the service's
+scheme), without copying or replacing it with a Galaris page URL. Source permissions and
+the receiving agent's access still apply.
+
 The Chat home screen shows all conversations, like the chat window's **Conversations** section,
 then agents. Older and empty conversations are included, with the same filters and usual pagination.
 

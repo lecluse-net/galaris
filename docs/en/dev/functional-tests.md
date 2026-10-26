@@ -813,6 +813,13 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Media and acquired evidence
 
+`chat-internal-attachments.spec.mjs` covers selecting internal files separately from
+text, sending without text, retaining the draft after rejection and thumbnail cards
+on mobile and desktop. The “internal image attachments” scenario in
+`e2e/specs/chat.spec.mjs` checks real publication of a `file://` URI and its card after
+reload. `test_native_resources.py` covers publication permissions;
+`test_native_facade.py` preserves separate text and references in the journal and runtime.
+
 `tests/test_transcription_service.py` verifies that an empty ElevenLabs commit keeps the session
 usable for the next turn. `app/voice/tests/test_engine.py` prevents that result from retrying
 transcription or creating a round, message, or spoken reply. `front/app/chat/liveState.test.mjs`

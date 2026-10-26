@@ -800,6 +800,7 @@ async def _message_dto(
         room_id=message.messenger_room_id,
         direction=message.direction,
         text=_visible_message_text(message.text),
+        resource_uris=message.resource_uris,
         topic_id=effective_topic_id,
         topic_overridden=message.topic_overridden,
         sender=sender_dto,
@@ -1902,6 +1903,7 @@ async def publish_internal_message(
     topic_id: UUID | None = None,
     reply_to_message_id: UUID | None = None,
     attachments: list[ObservedMessengerFile] | None = None,
+    resource_uris: list[str] | None = None,
     reasoning_effort_override: str | None = None,
     task_requested: bool = False,
     displayed_document_id: UUID | None = None,
@@ -1987,6 +1989,8 @@ async def publish_internal_message(
 
     direct_task_requested = task_requested or reasoning_effort_override is not None
     metadata: dict[str, object] = {}
+    if resource_uris:
+        metadata["resource_uris"] = list(dict.fromkeys(resource_uris))
     if repository_context is not None:
         metadata["repository_context"] = repository_context
     if language:

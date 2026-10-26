@@ -96,6 +96,7 @@ class NativeMessengerMessage(BaseModel):
     room_id: UUID
     direction: str
     text: str
+    resource_uris: list[str] = Field(default_factory=list[str])
     topic_id: UUID | None = None
     topic_overridden: bool = False
     sender: NativeMessengerMember | None = None

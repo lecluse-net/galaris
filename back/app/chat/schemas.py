@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.agent.contracts import ReasoningEffort
 from app.conversation import ConversationControlAction
@@ -92,7 +92,8 @@ class MessageCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     client_message_id: UUID
-    text: str = Field(min_length=1, max_length=100_000)
+    text: str = Field(default="", max_length=100_000)
+    resource_uris: list[str] = Field(default_factory=list[str], max_length=20)
     language: str = Field(default="", max_length=10)
     topic_id: UUID | None = None
     reply_to_message_id: UUID | None = None
@@ -101,6 +102,12 @@ class MessageCreate(BaseModel):
     displayed_document_id: UUID | None = None
     displayed_repository_id: UUID | None = None
     document_focus: DocumentFocus | None = None
+
+    @model_validator(mode="after")
+    def require_content(self) -> MessageCreate:
+        if not self.text.strip() and not self.resource_uris:
+            raise ValueError("A message needs text or attachments")
+        return self
 
 
 class InteractionAnswer(BaseModel):

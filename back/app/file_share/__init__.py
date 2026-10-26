@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.agent import AgentManagementScope
 
 from . import file_share_service
+from .browser_policy import resource_privileges as resource_privileges
 from .native_providers import register_native_provider, register_resource_aliases
 from .models import FileCatalogEntry, FileIndexRun, FileObservationRepair
 from .indexing import indexing_tick, repair_tick, start_index_run, cancel_index_run, prune_index_history, refresh_known_tick
@@ -108,6 +109,7 @@ async def read_internal_attachment(uri: str, agent_id: int, scope: "AgentManagem
 register_internal_attachment_reader(read_internal_attachment)
 
 __all__ = [
+    "resource_privileges",
     "register_native_provider", "register_resource_aliases",
     "FileCatalogEntry", "annotate_catalogue_entry", "reconcile_catalogue_root_titles",
     "record_resource_description",
