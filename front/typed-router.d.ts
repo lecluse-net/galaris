@@ -192,6 +192,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//file_share/settings': RouteRecordInfo<
+      '//file_share/settings',
+      '/params/files',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//goal/': RouteRecordInfo<
       '//goal/',
       '/goal',
@@ -594,6 +601,14 @@ declare module 'vue-router/auto-routes' {
     'app/file_share/pages/index.vue': {
       routes:
         | '//file_share/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/file_share/pages/settings.vue': {
+      routes:
+        | '//file_share/settings'
       views:
         | never
       pathParamNames:

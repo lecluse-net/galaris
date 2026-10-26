@@ -1,7 +1,7 @@
 import { test, expect, mount } from './fixtures.mjs'
 
 for (const width of [1440, 390]) {
-  test(`Dream opens tracking and separates history and indexing at ${width}px`, async ({ page }, testInfo) => {
+  test(`Dream preserves tracking and history without loading file indexing at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     const overview = {
       runtime: { status: 'stopped', phase: 'stopped', reason: 'not_started', worker_running: false,
@@ -28,15 +28,11 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: /Erreurs/ }).click()
     await expect(page.getByRole('tab', { name: 'Historique', exact: true })).toHaveAttribute('aria-selected', 'true')
     await expect(page.locator('.dream-history-card')).toBeVisible()
-    const indexingTab = page.getByRole('tab', { name: 'Indexation', exact: true })
-    await indexingTab.focus()
-    await indexingTab.press('Enter')
-    await expect(page.getByText('Aucun parcours pour cet agent.')).toBeVisible()
-    await expect(page.locator('.dream-history-card')).toHaveCount(0)
+    expect(indexingReads).toBe(0)
     await page.screenshot({ path: testInfo.outputPath('dream-tabs.png'), animations: 'disabled' })
     await page.getByRole('tab', { name: 'Suivi', exact: true }).click()
-    await indexingTab.click()
-    await expect(page.getByText('Aucun parcours pour cet agent.')).toBeVisible()
+    await expect(page.locator('.dream-history-card')).toHaveCount(0)
+    expect(indexingReads).toBe(0)
   })
 }
 
@@ -60,7 +56,7 @@ for (const width of [1440, 390]) {
       run.status = 'cancelled'
       return route.fulfill({ json: { cancelled: true } })
     })
-    await mount(page, 'app/dream/components/FileIndexPanel.vue', { props: { agentId: 7, editable: true } })
+    await mount(page, 'app/file_share/components/FileIndexPanel.vue', { props: { agentId: 7, editable: true } })
     await expect(page.getByText('No traversal for this agent.')).toBeVisible()
     await page.getByLabel('Source root (URI)').fill('scan-test://folder/')
     await page.getByRole('button', { name: 'Index now', exact: true }).click()
@@ -79,7 +75,7 @@ test('file indexing read-only viewer can retry a failed load without mutation co
     attempts++
     return attempts === 1 ? route.fulfill({ status: 503, json: {} }) : route.fulfill({ json: { runs: [], total: 0, pending_repairs: 0, failed_repairs: 0 } })
   })
-  await mount(page, 'app/dream/components/FileIndexPanel.vue', { props: { agentId: 7, editable: false } })
+  await mount(page, 'app/file_share/components/FileIndexPanel.vue', { props: { agentId: 7, editable: false } })
   await expect(page.getByRole('alert')).toContainText('could not be loaded')
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(page.getByText('No traversal for this agent.')).toBeVisible()
@@ -95,7 +91,7 @@ test('switching agents discards a late indexing response', async ({ page }) => {
     if (agent === '7') { started(); await gate }
     return route.fulfill({ json: { runs: [{ id: agent, root_uri: `scan-test://agent-${agent}/`, status: 'success', scanned: 1, directories: 1, error_type: null }], total: 1, pending_repairs: 0, failed_repairs: 0 } })
   })
-  await mount(page, 'app/dream/components/FileIndexPanel.vue', { props: { agentId: 7, editable: false } })
+  await mount(page, 'app/file_share/components/FileIndexPanel.vue', { props: { agentId: 7, editable: false } })
   await waiting
   await page.evaluate(() => window.testApp.setProps({ agentId: 8 }))
   await expect(page.getByText('scan-test://agent-8/', { exact: true })).toBeVisible()
@@ -111,7 +107,7 @@ test('a manager can explicitly retry terminal observation failures', async ({ pa
     failed = 0; retries++
     return route.fulfill({ json: { retried: 1 } })
   })
-  await mount(page, 'app/dream/components/FileIndexPanel.vue', { props: { agentId: 7, editable: true } })
+  await mount(page, 'app/file_share/components/FileIndexPanel.vue', { props: { agentId: 7, editable: true } })
   await page.getByRole('button', { name: 'Retry repairs', exact: true }).click()
   await expect.poll(() => retries).toBe(1)
   await expect(page.getByText('Pending repairs: 1; failed: 0.', { exact: true })).toBeVisible()

@@ -12,7 +12,7 @@ tests restent l’autorité sur le comportement.
 - 78 modules backend déclarés ;
 - 40 modules frontend déclarés ;
 - 633 arêtes de dépendance backend ;
-- 219 arêtes de dépendance frontend ;
+- 217 arêtes de dépendance frontend ;
 - 301 arêtes entre domaines `app`/`bridge` ;
 - 28 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
@@ -20,7 +20,7 @@ tests restent l’autorité sur le comportement.
 - 761 handlers HTTP/WebSocket détectés ;
 - 180 tables SQLAlchemy détectées ;
 - 279 outils MCP natifs détectés ;
-- 53 pages Vue détectées.
+- 54 pages Vue détectées.
 
 ## Modules backend
 
@@ -125,13 +125,13 @@ tests restent l’autorité sur le comportement.
 | `app/conversation` | oui | `components`, `i18n.ts`, `services` | 0 |
 | `app/chat` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/voice` | oui | `components`, `i18n.ts`, `services` | 0 |
-| `app/dream` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
+| `app/dream` | oui | `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `app/topic` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 2 |
 | `app/goal` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/share` | oui | `components` | 0 |
 | `app/document` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 3 |
 | `app/memory` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 2 |
-| `app/file_share` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
+| `app/file_share` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 2 |
 | `app/dataset` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `app/lab` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 4 |
 | `app/incident` | oui | `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
@@ -849,19 +849,17 @@ tests restent l’autorité sur le comportement.
 | `app/document` | `core/navigation` | `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/navigation.ts` |
 | `app/document` | `core/util` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentApplicationBlock.vue`, `front/app/document/components/DocumentAttachments.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderCollection.vue`, `front/app/document/components/DocumentFolderSelect.vue`, `front/app/document/components/DocumentFolderThumbnail.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentSplitterHandle.vue`, `front/app/document/components/DocumentTagIcon.vue`, `front/app/document/components/DocumentTagIconPicker.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/documentAppResources.ts`, `front/app/document/documentAppSandbox.ts`, `front/app/document/documentEditor.ts`, `front/app/document/documentFolders.ts`, `front/app/document/libraryShortcuts.ts`, `front/app/document/richContent.ts`, `front/app/document/services/documentService.ts`, `front/app/document/tagEmojiCatalog.ts`, `front/app/document/tagIcon.ts` |
 | `app/document` | `core/websocket` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentThumbnail.vue` |
-| `app/dream` | `app/agent` | `front/app/dream/components/FileIndexTab.vue` |
-| `app/dream` | `app/file_share` | `front/app/dream/components/FileIndexTab.vue` |
 | `app/dream` | `app/llm` | `front/app/dream/pages/index.vue`, `front/app/dream/types.ts` |
 | `app/dream` | `core/api` | `front/app/dream/services/dreamService.ts` |
-| `app/dream` | `core/authorize` | `front/app/dream/components/FileIndexTab.vue`, `front/app/dream/navigation.ts`, `front/app/dream/pages/index.vue` |
+| `app/dream` | `core/authorize` | `front/app/dream/navigation.ts`, `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/navigation` | `front/app/dream/navigation.ts`, `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/util` | `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/websocket` | `front/app/dream/pages/index.vue` |
-| `app/file_share` | `app/agent` | `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue` |
-| `app/file_share` | `core/api` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/services/fileBrowserService.ts`, `front/app/file_share/services/fileIndexService.ts` |
-| `app/file_share` | `core/authorize` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/navigation.ts`, `front/app/file_share/pages/index.vue` |
+| `app/file_share` | `app/agent` | `front/app/file_share/components/FileIndexSettings.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue` |
+| `app/file_share` | `core/api` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/services/fileBrowserService.ts`, `front/app/file_share/services/fileIndexService.ts` |
+| `app/file_share` | `core/authorize` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileIndexSettings.vue`, `front/app/file_share/navigation.ts`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue` |
 | `app/file_share` | `core/navigation` | `front/app/file_share/navigation.ts` |
-| `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/presentation.ts` |
+| `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/presentation.ts` |
 | `app/goal` | `app/agent` | `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/api` | `front/app/goal/pages/index.vue`, `front/app/goal/services/goalService.ts`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/authorize` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
@@ -1174,13 +1172,13 @@ tests restent l’autorité sur le comportement.
 | `app/index` | 4 | `app/agent`, `app/llm`, `app/onboarding`, `app/task` |
 | `app/process` | 4 | `app/agent`, `app/dataset`, `app/share`, `app/task` |
 | `app/connection` | 3 | `app/agent`, `app/console`, `app/tools` |
-| `app/dream` | 3 | `app/agent`, `app/file_share`, `app/llm` |
 | `app/memory` | 3 | `app/agent`, `app/document`, `app/share` |
 | `app/agent` | 2 | `app/harnesses`, `app/llm` |
 | `app/document` | 2 | `app/agent`, `app/share` |
 | `app/llm` | 2 | `app/agent`, `app/task` |
 | `app/browser` | 1 | `app/connection` |
 | `app/dataset` | 1 | `app/share` |
+| `app/dream` | 1 | `app/llm` |
 | `app/file_share` | 1 | `app/agent` |
 | `app/goal` | 1 | `app/agent` |
 | `app/lab` | 1 | `app/task` |
@@ -1193,7 +1191,7 @@ tests restent l’autorité sur le comportement.
 
 | Module | Nombre | Dépendants |
 |---|---:|---|
-| `app/agent` | 15 | `app/chat`, `app/connection`, `app/conversation`, `app/document`, `app/dream`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
+| `app/agent` | 14 | `app/chat`, `app/connection`, `app/conversation`, `app/document`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
 | `app/llm` | 7 | `app/agent`, `app/conversation`, `app/dream`, `app/index`, `app/task`, `app/voice`, `bridge/ollama` |
 | `app/task` | 7 | `app/chat`, `app/conversation`, `app/index`, `app/lab`, `app/llm`, `app/process`, `app/voice` |
 | `app/share` | 4 | `app/dataset`, `app/document`, `app/memory`, `app/process` |
@@ -1204,7 +1202,6 @@ tests restent l’autorité sur le comportement.
 | `app/console` | 1 | `app/connection` |
 | `app/dataset` | 1 | `app/process` |
 | `app/document` | 1 | `app/memory` |
-| `app/file_share` | 1 | `app/dream` |
 | `app/harnesses` | 1 | `app/agent` |
 | `app/memory` | 1 | `app/task` |
 | `app/onboarding` | 1 | `app/index` |
@@ -2650,6 +2647,7 @@ tests restent l’autorité sur le comportement.
 | `/memory/documents` | `app/document` | `front/app/document/pages/legacy-documents.vue` |
 | `/params` | `core/params` | `front/core/params/pages/index.vue` |
 | `/params/:section` | `core/params` | `front/core/params/pages/[section].vue` |
+| `/params/files` | `app/file_share` | `front/app/file_share/pages/settings.vue` |
 | `/params/harnesses/:provider` | `core/params` | `front/core/params/pages/harnesses/[provider].vue` |
 | `/process` | `app/process` | `front/app/process/pages/index.vue` |
 | `/process/external/:id` | `app/process` | `front/app/process/pages/external/[id].vue` |

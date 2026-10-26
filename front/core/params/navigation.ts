@@ -23,7 +23,7 @@ const navigation: NavigationTree = {
                 to: '/params',
                 order: 10,
                 description: 'nav.params_desc',
-                privileges: [...preferencePrivileges, 'BROWSER_CONFIG_ACCESS', 'BROWSER_CONFIG_EDIT'],
+                privileges: [...preferencePrivileges, 'BROWSER_CONFIG_ACCESS', 'BROWSER_CONFIG_EDIT', 'FILE_INDEX_ACCESS', 'FILE_INDEX_RUN'],
                 children: preferenceChildren,
             }
         }

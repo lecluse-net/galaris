@@ -13,7 +13,7 @@
   />
   <q-banner v-if="error" rounded class="q-mb-md">
     {{ t('dream.indexing.agentError') }}
-    <q-btn flat :label="t('common.retry')" @click="loadAgents" />
+    <q-btn outline color="primary" :label="t('common.retry')" @click="loadAgents" />
   </q-banner>
   <div v-else-if="!loading && !agentOptions.length" class="q-mb-md">{{ t('agent.noAgent') }}</div>
   <FileIndexPanel v-if="selectedAgentId !== null" :agent-id="selectedAgentId" :editable="canEdit" />
@@ -25,7 +25,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { FileIndexPanel } from '@/app/file_share/interface'
+import FileIndexPanel from './FileIndexPanel.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -49,7 +49,8 @@ async function loadAgents(): Promise<void> {
     if (disposed) return
     agents.value = result
     if (agents.value.some(agent => agent.id === selectedAgentId.value)) return
-    const raw = Array.isArray(route.query.agent) ? route.query.agent[0] : route.query.agent
+    const query = route.query.agent_id ?? route.query.agent
+    const raw = Array.isArray(query) ? query[0] : query
     const requested = raw ? Number(raw) : null
     selectedAgentId.value = agents.value.some(agent => agent.id === requested)
       ? requested : agentSelectionStore.defaultAgentId(agents.value)

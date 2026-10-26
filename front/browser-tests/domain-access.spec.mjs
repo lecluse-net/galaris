@@ -76,7 +76,7 @@ test('model-only and profile-only roles open their allowed tab without loading p
   await expect(page.getByRole('tab', { name: 'Available models', exact: true })).toHaveCount(0)
 })
 
-for (const width of [1440, 390]) test(`indexing can be delegated without Files or Dream access at ${width}px`, async ({ page }) => {
+for (const width of [1440, 390]) test(`indexing preferences can be delegated without Files or Dream access at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   const writes = []
   await page.route('**/api/file-share/indexing*', route => {
@@ -86,14 +86,22 @@ for (const width of [1440, 390]) test(`indexing can be delegated without Files o
     }
     return route.fulfill({ json: { runs: [], total: 0, pending_repairs: 0, failed_repairs: 0 } })
   })
-  await mount(page, 'app/file_share/pages/index.vue', { route: '/files?agent_id=7', privileges: ['FILE_INDEX_ACCESS'] })
-  await expect(page.getByRole('tab', { name: 'Indexing', exact: true })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('tab')).toHaveCount(1)
+  await mount(page, 'core/params/pages/index.vue', { route: '/params', privileges: ['FILE_INDEX_ACCESS'] })
+  const files = page.getByRole('link', { name: /Files/ })
+  await files.press('Enter')
+  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/params/files')
+  await mount(page, 'app/file_share/pages/settings.vue', { route: '/params/files?agent_id=7', privileges: ['FILE_INDEX_ACCESS'] })
+  await expect(page.getByText('No traversal for this agent.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Index now', exact: true })).toHaveCount(0)
   await setPrivileges(page, ['FILE_INDEX_RUN'])
   await page.getByRole('textbox', { name: 'Source root (URI)', exact: true }).fill('console://reports/')
   await page.getByRole('button', { name: 'Index now', exact: true }).click()
   await expect.poll(() => writes).toEqual([{ agent_id: 7, root_uri: 'console://reports/' }])
+  await expect(page.getByRole('button', { name: 'Index now', exact: true })).toBeEnabled()
+  await page.screenshot({ path: testInfo.outputPath('file-preferences.png'), animations: 'disabled' })
+  await setPrivileges(page, [])
+  await expect(page.getByRole('button', { name: 'Index now', exact: true })).toHaveCount(0)
+  await expect(page.getByLabel('Agent', { exact: true })).toHaveCount(0)
 })
 
 test('text history access mounts only its own activity and no Agent or Topic administration', async ({ page }) => {

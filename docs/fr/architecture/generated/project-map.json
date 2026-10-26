@@ -21490,20 +21490,6 @@
       },
       {
         "files": [
-          "front/app/dream/components/FileIndexTab.vue"
-        ],
-        "source": "app/dream",
-        "target": "app/agent"
-      },
-      {
-        "files": [
-          "front/app/dream/components/FileIndexTab.vue"
-        ],
-        "source": "app/dream",
-        "target": "app/file_share"
-      },
-      {
-        "files": [
           "front/app/dream/pages/index.vue",
           "front/app/dream/types.ts"
         ],
@@ -21519,7 +21505,6 @@
       },
       {
         "files": [
-          "front/app/dream/components/FileIndexTab.vue",
           "front/app/dream/navigation.ts",
           "front/app/dream/pages/index.vue"
         ],
@@ -21550,6 +21535,7 @@
       },
       {
         "files": [
+          "front/app/file_share/components/FileIndexSettings.vue",
           "front/app/file_share/components/FileTile.vue",
           "front/app/file_share/pages/index.vue"
         ],
@@ -21560,6 +21546,7 @@
         "files": [
           "front/app/file_share/components/FileEntryActions.vue",
           "front/app/file_share/pages/index.vue",
+          "front/app/file_share/pages/settings.vue",
           "front/app/file_share/services/fileBrowserService.ts",
           "front/app/file_share/services/fileIndexService.ts"
         ],
@@ -21569,8 +21556,10 @@
       {
         "files": [
           "front/app/file_share/components/FileEntryActions.vue",
+          "front/app/file_share/components/FileIndexSettings.vue",
           "front/app/file_share/navigation.ts",
-          "front/app/file_share/pages/index.vue"
+          "front/app/file_share/pages/index.vue",
+          "front/app/file_share/pages/settings.vue"
         ],
         "source": "app/file_share",
         "target": "core/authorize"
@@ -21588,6 +21577,7 @@
           "front/app/file_share/components/FileEntryActions.vue",
           "front/app/file_share/components/FileTile.vue",
           "front/app/file_share/pages/index.vue",
+          "front/app/file_share/pages/settings.vue",
           "front/app/file_share/presentation.ts"
         ],
         "source": "app/file_share",
@@ -23022,17 +23012,16 @@
           "app/voice"
         ]
       ],
-      "domain_edges": 54,
+      "domain_edges": 52,
       "fan_in": [
         {
-          "count": 15,
+          "count": 14,
           "module": "app/agent",
           "modules": [
             "app/chat",
             "app/connection",
             "app/conversation",
             "app/document",
-            "app/dream",
             "app/file_share",
             "app/goal",
             "app/index",
@@ -23135,13 +23124,6 @@
           "module": "app/document",
           "modules": [
             "app/memory"
-          ]
-        },
-        {
-          "count": 1,
-          "module": "app/file_share",
-          "modules": [
-            "app/dream"
           ]
         },
         {
@@ -23265,15 +23247,6 @@
         },
         {
           "count": 3,
-          "module": "app/dream",
-          "modules": [
-            "app/agent",
-            "app/file_share",
-            "app/llm"
-          ]
-        },
-        {
-          "count": 3,
           "module": "app/memory",
           "modules": [
             "app/agent",
@@ -23317,6 +23290,13 @@
           "module": "app/dataset",
           "modules": [
             "app/share"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app/dream",
+          "modules": [
+            "app/llm"
           ]
         },
         {
@@ -23789,7 +23769,6 @@
       },
       {
         "capabilities": [
-          "components",
           "i18n.ts",
           "navigation.ts",
           "pages",
@@ -23937,6 +23916,11 @@
             "file": "front/app/file_share/pages/index.vue",
             "module": "app/file_share",
             "route_hint": "/files"
+          },
+          {
+            "file": "front/app/file_share/pages/settings.vue",
+            "module": "app/file_share",
+            "route_hint": "/params/files"
           }
         ],
         "path": "front/app/file_share"
@@ -24382,6 +24366,11 @@
         "file": "front/core/params/pages/[section].vue",
         "module": "core/params",
         "route_hint": "/params/:section"
+      },
+      {
+        "file": "front/app/file_share/pages/settings.vue",
+        "module": "app/file_share",
+        "route_hint": "/params/files"
       },
       {
         "file": "front/core/params/pages/harnesses/[provider].vue",

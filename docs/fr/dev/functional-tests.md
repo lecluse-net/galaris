@@ -2099,14 +2099,13 @@ un clavier de téléphone réel.
 
 ## Catalogue privé de fichiers et maintenance
 
-L'indexation se pilote dans **Dream → Indexation**. **Suivi** s'ouvre par
-défaut ; **Historique** conserve les filtres et le détail des opérations. Le parcours
-assemblé `e2e/specs/file-indexing.spec.mjs` vérifie ces onglets, leur réouverture et
-l'absence du panneau d'indexation dans Mémoire, sur ordinateur et mobile.
-
-Revue de dépendance : le sélecteur d'agent de Dream utilise uniquement les exports publics
-`AgentSelect` et `useAgentStore` de `app/agent`. Le lien `app/dream → app/agent` est nécessaire
-pour choisir le propriétaire du catalogue ; il n'ajoute ni import privé ni cycle.
+L'indexation se pilote dans **Préférences → Fichiers** (`/params/files`), avec ses droits
+propres. Le sélecteur d'agent et les commandes restent dans le module File Sharing.
+Dream conserve **Suivi** et **Historique**, sans charger le catalogue de fichiers.
+Le parcours assemblé `e2e/specs/file-indexing.spec.mjs` vérifie l'ouverture depuis les
+préférences, la réouverture et les erreurs/réessais sur ordinateur et mobile.
+`front/browser-tests/domain-access.spec.mjs` protège l'accès délégué sans droit Fichiers,
+Dream ou Paramètres, et la disparition des commandes après révocation.
 
 `back/app/memory/tests/test_memory_urls.py` vérifie l'unique table de rattachement
 des URL, le SHA-256 des octets texte et binaires sur le nœud, la colonne nullable

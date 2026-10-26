@@ -229,7 +229,7 @@ and no full-screen viewer. Other formats without a viewer remain downloadable.
 Each access rechecks the connection and source resource; no file bytes are added to Memory.
 Previews are bounded to 512 MiB, and converter-specific limits still apply.
 
-In **Monitor → Dream → Indexing**, select the agent. Enter an eligible root, such as
+In **Preferences → Files** (`/params/files`), select the agent. Enter an eligible root, such as
 `nextcloud://`, and choose **Index now**. The table shows encountered entries, complete
 directories and errors; active runs can be cancelled. Partial coverage indicates a volume,
 depth or pagination limit. Terminal diagnostics are retained for 30 days. Observation

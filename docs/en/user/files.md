@@ -5,9 +5,10 @@
 **Files** requires `FILE_ACCESS` or `FILE_EDIT`; the latter also permits file mutations.
 Documents, Datasets and memories retain their own privileges: Files access does not open
 them, and reading an attachment through its domain does not require global Files access.
-Agent scopes and resource ACLs still apply. The **Indexing** tab separately requires
-`FILE_INDEX_ACCESS` or `FILE_INDEX_RUN`; the latter permits starting, cancelling and repairing
-indexing runs. Dream access is not required.
+Agent scopes and resource ACLs still apply. **Preferences → Files** (`/params/files`)
+groups file indexing: select an agent to inspect traversals, start or cancel indexing,
+and retry repairs. This page separately requires `FILE_INDEX_ACCESS` or `FILE_INDEX_RUN`;
+the latter allows actions. Neither file browsing nor Dream access is required.
 
 When deletion is confirmed, or indexing detects that an external file has disappeared,
 its linked Memory item is deleted with its content and indexes if no other resource

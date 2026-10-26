@@ -230,14 +230,6 @@
     },
     {
       "source": "app/dream",
-      "target": "app/agent"
-    },
-    {
-      "source": "app/dream",
-      "target": "app/file_share"
-    },
-    {
-      "source": "app/dream",
       "target": "app/llm"
     },
     {

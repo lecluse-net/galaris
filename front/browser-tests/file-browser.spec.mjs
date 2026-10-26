@@ -49,7 +49,7 @@ for (const width of [1440, 390]) test(`browser history restores agents and direc
       entry('console://Reports/', 'Reports', true),
     ] : [entry(uri + 'Notes.txt', 'Notes.txt'), entry(uri + 'Slow/', 'Slow', true), entry(uri + 'Denied/', 'Denied', true)]) })
   })
-  await mount(page, routeComponent, { route: '/files', browserHistory: true, privileges: ['MEMORY_ACCESS'] })
+  await mount(page, routeComponent, { route: '/files', browserHistory: true, privileges: ['FILE_ACCESS'] })
   const location = () => page.evaluate(() => ({
     agent: new URL(location.href).searchParams.get('agent_id'), uri: new URL(location.href).searchParams.get('uri'),
   }))
@@ -105,7 +105,7 @@ for (const width of [1440, 390]) test(`browser history restores agents and direc
   await expect(page.getByRole('button', { name: 'Open Notes.txt', exact: true })).toBeVisible()
   // Reopening the copied URL restores the same agent and folder from fresh state.
   const restored = new URL(page.url())
-  await mount(page, routeComponent, { route: restored.pathname + restored.search, browserHistory: true, privileges: ['MEMORY_ACCESS'] })
+  await mount(page, routeComponent, { route: restored.pathname + restored.search, browserHistory: true, privileges: ['FILE_ACCESS'] })
   await expect(page.getByRole('combobox')).toHaveValue('Alice Example')
   await expect(page.getByRole('button', { name: 'Open Notes.txt', exact: true })).toBeVisible()
 })
@@ -123,7 +123,7 @@ for (const width of [1440, 390]) test(`browser Back protects an unsaved Dataset 
   await jsonRoute(page, `**/api/datasets/${id}/owner`, { owner: null, options: [] })
   await jsonRoute(page, `**/api/datasets/${id}/sharing`, { lock_version: 1, can_manage: true, level: 'private', can_write: false,
     grants: [], options: [], owner: null, owner_groups: [] })
-  await mount(page, routeComponent, { route: '/files?agent_id=7', browserHistory: true, privileges: ['MEMORY_ACCESS', 'DATASET_EDIT'] })
+  await mount(page, routeComponent, { route: '/files?agent_id=7', browserHistory: true, privileges: ['FILE_ACCESS', 'DATASET_EDIT'] })
   if (width < 1024) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
   await page.getByText('data://', { exact: true }).click()
   await page.getByRole('button', { name: `Open ${dataset.title}`, exact: true }).click()
@@ -175,13 +175,13 @@ for (const width of [1440, 390]) test(`file and directory menus rename, confirm 
     items = items.filter(item => item.uri !== uri)
     return route.fulfill({ json: { uri, operation: 'delete', state: 'deleted' } })
   })
-  await mount(page, component, { route: '/files?agent_id=7', privileges: ['MEMORY_ACCESS'] })
+  await mount(page, component, { route: '/files?agent_id=7', privileges: ['FILE_ACCESS'] })
   if (width < 1024) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
   await page.getByText('console://', { exact: true }).click()
   await page.getByRole('button', { name: 'Open Notes.txt', exact: true }).click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: /Rename|Delete/ })).toHaveCount(0)
   await page.keyboard.press('Escape')
-  await setPrivileges(page, ['MEMORY_ACCESS', 'MEMORY_EDIT'])
+  await setPrivileges(page, ['FILE_ACCESS', 'FILE_EDIT'])
   await page.getByRole('button', { name: 'Open Read-only.txt', exact: true }).click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: /Rename|Delete/ })).toHaveCount(0)
   await page.keyboard.press('Escape')
@@ -235,7 +235,7 @@ test('opening a cached internal file rereads its registered name before previewi
   await jsonRoute(page, '**/api/file-share/browser/entries?*', pageOf('file://', [entry(uri, 'Old name.txt')]))
   await jsonRoute(page, '**/api/file-share/browser/info?*', entry(uri, 'Current registered name.txt'))
   await page.route('**/api/file-share/browser/content?*', route => route.fulfill({ contentType: 'text/plain', body: 'Synthetic file content' }))
-  await mount(page, component, { route: '/files?agent_id=7', privileges: ['MEMORY_ACCESS'] })
+  await mount(page, component, { route: '/files?agent_id=7', privileges: ['FILE_ACCESS'] })
   await page.getByText('file://', { exact: true }).click()
   await page.getByRole('button', { name: 'Open Old name.txt', exact: true }).click()
   await expect(page.getByRole('article', { name: 'Current registered name.txt', exact: true })).toBeVisible()
@@ -259,7 +259,7 @@ test('an existing file citation opens through authorized file sharing and retrie
     expect(new URL(route.request().url()).searchParams.get('uri')).toBe(uri)
     return route.fulfill({ contentType: 'text/plain', body: 'Existing source content' })
   })
-  await mount(page, component, { route: `/files?agent_id=7&uri=${encodeURIComponent(uri)}`, privileges: ['MEMORY_ACCESS'] })
+  await mount(page, component, { route: `/files?agent_id=7&uri=${encodeURIComponent(uri)}`, privileges: ['FILE_ACCESS'] })
   await expect(page.getByRole('alert')).toBeVisible()
   expect(reads).toBe(0)
   denied = false
@@ -270,7 +270,7 @@ test('an existing file citation opens through authorized file sharing and retrie
 
 test('shared videos play from range URLs, release access on closing and reopen without a full download', async ({ page }) => {
   await setup(page)
-  await mount(page, component, { privileges: ['MEMORY_ACCESS'] })
+  await mount(page, component, { privileges: ['FILE_ACCESS'] })
   const bytes = Buffer.from(await page.evaluate(async () => {
     const canvas = document.createElement('canvas')
     canvas.width = 64; canvas.height = 64
@@ -342,7 +342,7 @@ for (const width of [1440, 390]) test(`tree folders collapse and reopen on repea
       entry('console://reports/archive/', 'Archive', true), entry('console://reports/notes.txt', 'Notes.txt'),
     ]) })
   })
-  await mount(page, component, { route: '/files?agent_id=7', privileges: ['MEMORY_ACCESS'] })
+  await mount(page, component, { route: '/files?agent_id=7', privileges: ['FILE_ACCESS'] })
   if (width === 390) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
   await page.locator('.file-tree').getByText('Console', { exact: true }).click()
   const tree = page.locator('.file-tree')
@@ -383,7 +383,7 @@ for (const width of [1440, 390]) test(`browse folders, scroll, retry and preview
     return route.fulfill({ json: pageOf(uri, Array.from({ length: 50 }, (_, n) => entry(`console://reports/report-${n}.txt`, `Report ${n}.txt`)), 'next-reports') })
   })
   await page.route('**/api/file-share/browser/content?*', route => route.fulfill({ contentType: 'text/plain', body: 'Synthetic report preview content' }))
-  await mount(page, component, { privileges: ['MEMORY_ACCESS'], dark: width === 390 })
+  await mount(page, component, { privileges: ['FILE_ACCESS'], dark: width === 390 })
   await expect(page.getByRole('button', { name: 'Browse files for Alice Example', exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('file-browser-agents.png'), fullPage: true })
   await selectAgent(page, 'Alice Example')
@@ -434,7 +434,7 @@ test('a Galaris document opens its existing modal with the selected agent scope'
   await jsonRoute(page, '**/api/documents/keywords?*', [])
   await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
   await jsonRoute(page, '**/api/documents/doc-a/content/revisions?*', { items: [], total: 0 })
-  await mount(page, component, { privileges: ['MEMORY_ACCESS'] })
+  await mount(page, component, { privileges: ['FILE_ACCESS'] })
   await selectAgent(page, 'Alice Example')
   await page.locator('.file-tree').getByText('Galaris', { exact: true }).click()
   await page.locator('.file-main').getByRole('button', { name: 'Open Synthetic document', exact: true }).click()
@@ -460,7 +460,7 @@ test('agent changes discard late responses and browsable scheme accordions reope
       entry('console://.cache/', '.cache', true), entry('console://.settings', '.settings'),
     ]) })
   })
-  await mount(page, component, { privileges: ['MEMORY_ACCESS'] })
+  await mount(page, component, { privileges: ['FILE_ACCESS'] })
   await selectAgent(page, 'Alice Example')
   const requested = page.waitForRequest(request => request.url().includes('/browser/entries'))
   await page.locator('.file-tree').getByText('Console', { exact: true }).click()

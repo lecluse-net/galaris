@@ -21,7 +21,7 @@ const cases = [
   ].flatMap(([prefix, path]) => ['ACCESS', 'EDIT'].map(suffix => [`${prefix}_${suffix}`, path])),
   ['DATASET_READ', '/dataset'], ['DATASET_EDIT', '/dataset'],
   ['PROCESS_READ', '/process'], ['PROCESS_EDIT', '/process'],
-  ['FILE_INDEX_ACCESS', '/files?tab=indexing'], ['FILE_INDEX_RUN', '/files?tab=indexing'],
+  ['FILE_INDEX_ACCESS', '/params/files'], ['FILE_INDEX_RUN', '/params/files'],
   ['CONVERSATION_ACCESS', '/task?tab=conversations'], ['CONVERSATION_CONTROL', '/task?tab=conversations'],
   ['VOICE_HISTORY_ACCESS', '/task?tab=voice'], ['VOICE_HISTORY_CONTROL', '/task?tab=voice'],
   ['LLM_CALL_ACCESS', '/task?tab=llm'], ['LLM_CALL_CONTROL', '/task?tab=llm'],

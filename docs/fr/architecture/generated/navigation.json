@@ -343,9 +343,7 @@
       "privilege_groups": [
         [
           "FILE_ACCESS",
-          "FILE_EDIT",
-          "FILE_INDEX_ACCESS",
-          "FILE_INDEX_RUN"
+          "FILE_EDIT"
         ]
       ],
       "conditions": [],
@@ -757,13 +755,16 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ]
       ],
       "conditions": [],
       "sources": [
         "front/core/params/navigation.ts",
-        "front/app/browser/navigation.ts"
+        "front/app/browser/navigation.ts",
+        "front/app/file_share/navigation.ts"
       ]
     },
     {
@@ -824,7 +825,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "PARAMS_ACCESS",
@@ -894,7 +897,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "LANGUAGE_CONFIG_ACCESS",
@@ -964,7 +969,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "MESSAGING_CONFIG_ACCESS",
@@ -1034,7 +1041,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "MEMORY_CONFIG_ACCESS",
@@ -1104,7 +1113,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "DREAM_CONFIG_ACCESS",
@@ -1114,6 +1125,78 @@
       "conditions": [],
       "sources": [
         "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.files",
+      "labels": {
+        "fr": "Fichiers",
+        "en": "Files"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Fichiers"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Files"
+        ]
+      },
+      "route": "/params/files",
+      "href": null,
+      "description": {
+        "fr": "Consulter et piloter l’indexation des fichiers de chaque agent",
+        "en": "View and manage file indexing for each agent"
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
+        ],
+        [
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/file_share/navigation.ts"
       ]
     },
     {
@@ -1174,7 +1257,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "VOICE_CONFIG_ACCESS",
@@ -1244,7 +1329,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "AUDIO_CONFIG_ACCESS",
@@ -1314,7 +1401,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "PROCESS_CONFIG_ACCESS",
@@ -1384,7 +1473,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "TASK_CONFIG_ACCESS",
@@ -1454,7 +1545,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "HARNESS_CONFIG_ACCESS",
@@ -1524,7 +1617,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "SEARCH_CONFIG_ACCESS",
@@ -1594,7 +1689,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "BROWSER_CONFIG_ACCESS",
@@ -1669,7 +1766,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "JANUS_CONFIG_ACCESS",
@@ -1739,7 +1838,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "INSTRUCTION_CONFIG_ACCESS",
@@ -1809,7 +1910,9 @@
           "LLM_CALL_PURGE",
           "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT"
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ],
         [
           "LOG_CONFIG_ACCESS",

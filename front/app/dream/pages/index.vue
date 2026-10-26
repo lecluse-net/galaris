@@ -12,11 +12,10 @@
     <q-tabs v-model="activeTab" class="dream-tabs text-primary" active-color="primary" indicator-color="primary" align="left">
       <q-tab name="tracking" icon="bedtime" :label="t('dream.tabs.tracking')" />
       <q-tab name="history" icon="history" :label="t('dream.tabs.history')" />
-      <q-tab v-if="canViewIndexing" name="indexing" icon="folder_open" :label="t('dream.tabs.indexing')" />
     </q-tabs>
     <q-separator class="q-mb-md" />
 
-    <q-banner v-if="error && activeTab !== 'indexing'" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
       <template #avatar><q-icon name="error" /></template>
       {{ error }}
     </q-banner>
@@ -345,9 +344,6 @@
         </q-card>
 
       </q-tab-panel>
-      <q-tab-panel v-if="canViewIndexing" name="indexing" class="q-pa-none">
-        <FileIndexTab v-model="selectedIndexAgentId" />
-      </q-tab-panel>
     </q-tab-panels>
 
     <q-dialog v-model="detailOpen">
@@ -557,7 +553,6 @@ import { LlmCalls } from '@/app/llm'
 import { BaseRoom, websocket } from '@/core/websocket'
 import { ExecutionDateFilters, PageHeader } from '@/core/util'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import FileIndexTab from '../components/FileIndexTab.vue'
 import { dreamService } from '../services/dreamService'
 import type {
   DreamOverview,
@@ -583,10 +578,8 @@ const { t, locale } = useI18n()
 const $q = useQuasar()
 const route = useRoute()
 const privilegeStore = usePrivilegeStore()
-const canViewIndexing = computed(() => privilegeStore.hasAnyPrivilege([privileges.FILE_INDEX_ACCESS, privileges.FILE_INDEX_RUN]))
 const canViewTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
-const activeTab = ref<'tracking' | 'history' | 'indexing'>('tracking')
-const selectedIndexAgentId = ref<number | null>(null)
+const activeTab = ref<'tracking' | 'history'>('tracking')
 const overview = ref<DreamOverview | null>(null)
 const receipts = ref<DreamReceiptSummary[]>([])
 const selectedReceipt = ref<DreamReceiptDetail | null>(null)
