@@ -382,6 +382,9 @@ Ses colonnes **Global (tous)**, **Catégorie** et **Cet agent** proposent Actif/
 en évidence la règle applicable. La règle de catégorie concerne l’agent sélectionné.
 Une exception de compétence pour cet agent prévaut sur sa règle de catégorie, puis sur le global.
 Modifier une règle globale ou de catégorie conserve les exceptions plus spécifiques.
+Dans le catalogue **Compétences**, **Désactiver pour tous** suspend un générique malgré ces
+exceptions, y compris un package système. L'édition des compétences et la gestion globale des
+agents sont requises ; fichiers, affectations et gestion MCP administrative sont conservés.
 
 Les compétences fournies **Galaris**, **Galaris Lab** et **Connaissance de Galaris** sont
 regroupées par défaut dans la catégorie **Galaris**. La synchronisation classe aussi les

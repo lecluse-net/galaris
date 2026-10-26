@@ -42,6 +42,10 @@ export const useSkillStore = defineStore('skill', {
         getById: state => (id: number): Skill | undefined => state.skills.find(skill => skill.id === id),
     },
     actions: {
+        async setSkillEnabled(skill: Skill, enabled: boolean): Promise<void> {
+            const result = await skillService.setSkillEnabled(skill.id, enabled, skill.revision)
+            this._replaceSkill(result.data)
+        },
         _replaceSkill(skill: Skill): void {
             const index = this.skills.findIndex(item => item.id === skill.id)
             if (index === -1) this.skills.push(skill)

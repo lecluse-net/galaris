@@ -49,8 +49,8 @@ async def mcp_skill_update(ctx: McpToolContext, skill_id: int, label: str, expec
         expected_revision=expected_revision, administration=administration)).model_dump(mode="json")
 
 
-@mcp_tool("skills", approval="ask", approval_reason="Change personal skill activation",
-          name="skill_set_enabled", description="Enable or disable a personal package for its owner only. Requires personal scope for your own package, or team within your teams, or all, with administration=True for another owner's package. Generic authorization uses skill_set_authorization.")
+@mcp_tool("skills", approval="ask", approval_reason="Change skill activation",
+          name="skill_set_enabled", description="Enable or disable a personal package for its owner, or a generic package for everyone. Generic packages (including system packages) require all scope and administration=True: disabling hides them from runtime skills regardless of agent/category grants, while administrative MCP listing and reading remain available. Personal packages require personal scope for your own, or team within your teams, or all, with administration=True for another owner. Use skill_set_authorization for generic per-agent grants.")
 async def mcp_skill_set_enabled(ctx: McpToolContext, skill_id: int, enabled: bool, expected_revision: int,
                                 administration: bool = False) -> dict[str, Any]:
     return (await interface.set_package_enabled(skill_id, enabled, actor_agent_id=ctx.agent_id,

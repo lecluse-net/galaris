@@ -32,6 +32,7 @@ const { skill, target, canEdit, categories } = defineProps<{
 const emit = defineEmits<{
   view: [skill: Skill]; edit: [skill: Skill]; personal: [skill: Skill]
   download: [skill: Skill]; delete: [skill: Skill]; category: [skill: Skill, category: number | null]
+  toggle: [skill: Skill]
 }>()
 const { t } = useI18n()
 const categoryOptions = computed(() => [{ id: null, label: t('skills.categories.none') }, ...categories])
@@ -42,6 +43,10 @@ const actions = computed<ContextAction[]>(() => [
     { key: 'personal', label: t('skills.personal.assign'), icon: 'person', run: () => emit('personal', skill) },
   ] : []),
   { key: 'download', label: t('skills.download'), icon: 'download', run: () => emit('download', skill) },
+  ...(canEdit ? [
+    { key: 'toggle', label: t(skill.enabled ? 'skills.disableAll' : 'skills.enableAll'),
+      icon: skill.enabled ? 'pause_circle' : 'play_circle', run: () => emit('toggle', skill) },
+  ] : []),
   ...(canEdit && !skill.system ? [
     { key: 'delete', label: t('skills.delete'), icon: 'delete', negative: true, separator: true, run: () => emit('delete', skill) },
   ] : []),

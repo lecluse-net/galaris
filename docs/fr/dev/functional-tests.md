@@ -179,6 +179,14 @@ conversationnelles couvrent le reçu et l'audit des instructions en attente ou a
 
 ## Compétences personnelles, étalonnage du Lab et sources XLS
 
+La désactivation globale des génériques est couverte par `app/skill/tests/test_mcp.py` :
+priorité sur les droits d'agent/catégorie/global, retrait des projections et capacités,
+révocation d'un lecteur déjà chargé, maintien de la gestion MCP et des affectations après
+rescan et réactivation, y compris pour les packages système. `test_agent_reads.py` vérifie
+les droits HTTP et conflits de révision ; `skills.spec.mjs` vérifie l'action et la reprise
+après conflit. `e2e/specs/personal-skills.spec.mjs` vérifie la persistance après rechargement
+et les autorisations effectives dans l'application assemblée, sur mobile et ordinateur.
+
 Les mutations humaines des compétences personnelles sont couvertes par
 `app/skill/tests/test_agent_reads.py` (droits, périmètre, révisions, contenu, activation
 et suppression), `skills.spec.mjs` (brouillon conservé après conflit et reçu de conversion

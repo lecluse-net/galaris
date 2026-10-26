@@ -111,7 +111,7 @@
         <q-td :props="props">
           <SkillRowMenu target="tr" :skill="props.row" :can-edit="canEdit" :categories="store.categories"
             @view="openViewer" @edit="openEdit" @personal="ownershipSkill = $event"
-            @download="downloadSkill" @delete="confirmDelete" @category="onCategoryChange" />
+            @download="downloadSkill" @delete="confirmDelete" @category="onCategoryChange" @toggle="toggleSkill" />
           <div class="row items-center q-gutter-xs">
             <span class="text-weight-medium">{{ props.row.label }}</span>
             <q-chip
@@ -138,8 +138,9 @@
           <q-chip
             dense
             :color="statusColor(props.row)"
-            text-color="white"
-            :icon="props.row.valid ? 'check_circle' : 'warning'"
+            :class="{ 'skill-disabled-status': !props.row.enabled }"
+            :text-color="!props.row.enabled && !$q.dark.isActive ? 'dark' : 'white'"
+            :icon="!props.row.enabled ? 'pause_circle' : props.row.valid ? 'check_circle' : 'warning'"
           >
             {{ statusLabel(props.row) }}
             <q-tooltip v-if="props.row.validation_error">{{ props.row.validation_error }}</q-tooltip>
@@ -154,6 +155,12 @@
       <template #body-cell-actions="props">
         <q-td :props="props" class="skill-actions-cell">
           <div class="skill-actions" @click.stop>
+          <q-btn v-if="canEdit" flat round color="primary" size="sm"
+            :icon="props.row.enabled ? 'pause_circle' : 'play_circle'"
+            :aria-label="t(props.row.enabled ? 'skills.disableAll' : 'skills.enableAll')"
+            :loading="togglingSkillId === props.row.id" :disable="togglingSkillId !== null" @click="toggleSkill(props.row)">
+            <q-tooltip>{{ t(props.row.enabled ? 'skills.disableAll' : 'skills.enableAll') }}</q-tooltip>
+          </q-btn>
           <q-btn flat round color="primary" icon="visibility" size="sm" :aria-label="t('skills.view')" @click="openViewer(props.row)">
             <q-tooltip>{{ t('skills.view') }}</q-tooltip>
           </q-btn>
@@ -217,7 +224,7 @@
           <q-card flat bordered class="skill-mobile-card cursor-pointer" @click="openViewer(props.row)">
             <SkillRowMenu target=".skill-mobile-card" :skill="props.row" :can-edit="canEdit" :categories="store.categories"
               @view="openViewer" @edit="openEdit" @personal="ownershipSkill = $event"
-              @download="downloadSkill" @delete="confirmDelete" @category="onCategoryChange" />
+              @download="downloadSkill" @delete="confirmDelete" @category="onCategoryChange" @toggle="toggleSkill" />
             <q-card-section class="q-gutter-md">
               <div class="row items-start no-wrap q-gutter-sm">
                 <div class="col skill-mobile-heading">
@@ -239,8 +246,9 @@
                 <q-chip
                   dense
                   :color="statusColor(props.row)"
-                  text-color="white"
-                  :icon="props.row.valid ? 'check_circle' : 'warning'"
+                  :class="{ 'skill-disabled-status': !props.row.enabled }"
+                  :text-color="!props.row.enabled && !$q.dark.isActive ? 'dark' : 'white'"
+                  :icon="!props.row.enabled ? 'pause_circle' : props.row.valid ? 'check_circle' : 'warning'"
                 >
                   {{ statusLabel(props.row) }}
                   <q-tooltip v-if="props.row.validation_error">{{ props.row.validation_error }}</q-tooltip>
@@ -258,6 +266,12 @@
                   <div>{{ props.row.file_count }} · {{ formatSize(props.row.total_size) }}</div>
                 </div>
                 <div class="skill-mobile-actions" @click.stop>
+                  <q-btn v-if="canEdit" flat round color="primary" size="sm"
+                    :icon="props.row.enabled ? 'pause_circle' : 'play_circle'"
+                    :aria-label="t(props.row.enabled ? 'skills.disableAll' : 'skills.enableAll')"
+                    :loading="togglingSkillId === props.row.id" :disable="togglingSkillId !== null" @click="toggleSkill(props.row)">
+                    <q-tooltip>{{ t(props.row.enabled ? 'skills.disableAll' : 'skills.enableAll') }}</q-tooltip>
+                  </q-btn>
                   <q-btn flat round color="primary" icon="visibility" size="sm" :aria-label="t('skills.view')" @click="openViewer(props.row)">
                     <q-tooltip>{{ t('skills.view') }}</q-tooltip>
                   </q-btn>
@@ -702,6 +716,7 @@ const filterCategoryId = ref<number | 'uncategorized' | null>(null)
 const defaultPagination = { page: 1, rowsPerPage: 50 }
 const categoryManagerDialog = ref(false)
 const assigningSkillId = ref<number | null>(null)
+const togglingSkillId = ref<number | null>(null)
 const editorDialog = ref(false)
 const editingSkill = ref<Skill | null>(null)
 const ownershipSkill = ref<Skill | null>(null)
@@ -844,13 +859,28 @@ function escapeRegExp(value: string): string {
 }
 
 function statusColor(skill: Skill): string {
+  if (!skill.enabled) return ''
   if (!skill.available) return 'grey-7'
   return skill.valid ? 'positive' : 'negative'
 }
 
 function statusLabel(skill: Skill): string {
+  if (!skill.enabled) return t('skills.disabledAll')
   if (!skill.available) return t('skills.missing')
   return skill.valid ? t('skills.valid') : t('skills.invalid')
+}
+
+async function toggleSkill(skill: Skill): Promise<void> {
+  if (!canEdit.value || togglingSkillId.value !== null) return
+  togglingSkillId.value = skill.id
+  try {
+    await store.setSkillEnabled(skill, !skill.enabled)
+  } catch (error) {
+    notifyError(error)
+    await refreshCatalogue()
+  } finally {
+    togglingSkillId.value = null
+  }
 }
 
 async function onCategoryChange(skill: Skill, categoryId: number | null): Promise<void> {
@@ -1203,6 +1233,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.skill-disabled-status {
+  background: var(--solaire-gray-light);
+}
+
+:global(.body--dark) .skill-disabled-status {
+  background: var(--solaire-gray-dark);
+}
+
 .skill-editor-dialog {
   width: 1100px;
   max-width: 95vw;

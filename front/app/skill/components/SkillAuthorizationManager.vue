@@ -446,6 +446,7 @@ async function loadAuthorizations(): Promise<void> {
 
 function applyResult(row: SkillAuthorization, result: SkillAuthorizationResult): void {
   Object.assign(row, {
+    enabled: result.enabled,
     global_state: result.global_state,
     category_state: result.category_state,
     agent_state: result.agent_state,
@@ -457,13 +458,14 @@ function inheritedEffective(authorization: SkillAuthorization): boolean {
   const enabled = authorization.category_state === 'default'
     ? authorization.global_state === 'enabled'
     : authorization.category_state === 'enabled'
-  return enabled && authorization.available && authorization.valid
+  return authorization.enabled && enabled && authorization.available && authorization.valid
 }
 
 function applyGlobalResult(result: SkillAuthorizationResult): void {
   for (const authorization of authorizations.value) {
     if (authorization.skill_id !== result.skill_id) continue
     authorization.global_state = result.global_state
+    authorization.enabled = result.enabled
     if (authorization.agent_id === result.agent_id) {
       applyResult(authorization, result)
     } else if (authorization.agent_state === 'default') {
@@ -564,7 +566,7 @@ watch(
 
 watch(
   () => ({
-    skills: store.skills.map(skill => `${skill.id}:${skill.category_id ?? 'none'}`),
+    skills: store.skills.map(skill => `${skill.id}:${skill.category_id ?? 'none'}:${skill.enabled}`),
     categories: store.categories.map(category => `${category.id}:${category.label}`),
   }),
   () => {

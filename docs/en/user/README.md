@@ -271,6 +271,10 @@ In the **Skills** and **Personal skills** lists, left-click a row or card to ope
 Right-click opens its action menu; Shift+F10 from a row action button also opens it.
 Choose **View** to read the skill, its files and references. Available actions respect your
 permissions; direct action buttons keep their own behavior.
+With skill editing and global agent management privileges, **Disable for everyone** hides a
+generic package, including a system package, from every agent's usable skills regardless of
+their grants. Files and assignments are preserved for reactivation; MCP management remains
+available with the required permissions and administrative view.
 With skill editing and global agent management privileges, **Make personal** lets you select
 one owner for a non-system skill. Confirmation removes all its individual authorizations,
 global activation and category, then enables it only for that owner. Files and the label are

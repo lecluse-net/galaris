@@ -321,6 +321,10 @@ Dans les listes **Compétences** et **Compétences personnelles**, le clic gauch
 ouvre le skill en lecture. Le clic droit ouvre son menu d'actions ; Maj+F10 depuis un bouton
 de la ligne ouvre aussi ce menu. Choisissez **Visualiser** pour lire le skill, ses fichiers et références.
 Les actions proposées respectent vos droits ; les boutons directs gardent leur action propre.
+Avec l'édition des compétences et la gestion globale des agents, **Désactiver pour tous**
+masque un générique, y compris système, dans les compétences utilisables de tous les agents,
+quelles que soient leurs autorisations. Les fichiers et affectations sont conservés pour la
+réactivation ; la gestion MCP reste accessible avec les droits et la vue d'administration.
 Avec les droits d'édition des compétences et de gestion globale des agents, **Passer en personnel**
 permet de choisir un propriétaire unique pour une compétence non système. La confirmation supprime
 toutes ses autorisations individuelles, son activation globale et sa catégorie, puis l'active

@@ -350,6 +350,9 @@ Its **Global (all)**, **Category** and **This agent** columns offer Active/Block
 the applicable rule. Category rules concern the selected agent. Agent skill exceptions take
 precedence over that agent's category rules, then global settings.
 Changing a global or category rule preserves more specific exceptions.
+In the **Skills** catalogue, **Disable for everyone** suspends a generic package despite
+those exceptions, including a system package. This requires skill editing and global agent
+management; files, assignments and administrative MCP management remain available.
 
 The bundled **Galaris**, **Galaris Lab**, and **Connaissance de Galaris** skills belong to
 the **Galaris** category by default. Synchronization also groups existing uncategorized

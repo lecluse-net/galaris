@@ -1,7 +1,7 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
 async function skillFixtures(page) {
-  await jsonRoute(page, '**/api/skills', [{ id: 1, code: 'sample', label: 'Sample skill', description: 'A useful procedure', system: false, valid: true, available: true, category_id: null, file_count: 1, total_size: 200 }])
+  await jsonRoute(page, '**/api/skills', [{ id: 1, revision: 1, enabled: true, code: 'sample', label: 'Sample skill', description: 'A useful procedure', system: false, valid: true, available: true, category_id: null, file_count: 1, total_size: 200 }])
   await jsonRoute(page, '**/api/skills/agents', [])
   await jsonRoute(page, '**/api/skills/categories', [])
   await jsonRoute(page, '**/api/skills/learned/status', { enabled: false, mode: 'off' })
@@ -10,7 +10,7 @@ async function skillFixtures(page) {
 test('making a library skill personal chooses one owner and retains the operation on retry', async ({ page }) => {
   await skillFixtures(page)
   await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic owner', has_avatar: false }])
-  await jsonRoute(page, '**/api/skills/1', { id: 1, code: 'sample', label: 'Sample skill', revision: 7 })
+  await jsonRoute(page, '**/api/skills/1', { id: 1, enabled: true, code: 'sample', label: 'Sample skill', revision: 7 })
   const attempts = []
   await page.route('**/api/skills/1/assign-ownership', route => {
     attempts.push(route.request().postDataJSON())
@@ -267,7 +267,7 @@ for (const [device, width] of [['mobile', 390], ['desktop', 1440]]) {
     await page.route('**/api/skills', route => {
       expect(route.request().method()).toBe('POST')
       saved.push(route.request().postDataJSON())
-      return route.fulfill({ json: { id: 2, ...saved.at(-1), system: false, valid: true, available: true, file_count: 1, total_size: 200 } })
+      return route.fulfill({ json: { id: 2, revision: 1, enabled: true, ...saved.at(-1), system: false, valid: true, available: true, file_count: 1, total_size: 200 } })
     })
     await page.getByRole('button', { name: 'New skill' }).click()
     const dialog = page.getByRole('dialog')
@@ -303,7 +303,7 @@ test('dismissing a new skill creates nothing and read-only users cannot create o
 test('skill descriptions remain readable and actions usable in a narrow desktop panel', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1024, height: 900 })
   await skillFixtures(page)
-  const skill = { id: 1, code: 'sample', label: 'Sample skill', description: 'Read troubleshooting instructions before proceeding with the installation.', system: false, valid: true, available: true, category_id: null, file_count: 1, total_size: 200 }
+  const skill = { id: 1, revision: 1, enabled: true, code: 'sample', label: 'Sample skill', description: 'Read troubleshooting instructions before proceeding with the installation.', system: false, valid: true, available: true, category_id: null, file_count: 1, total_size: 200 }
   await jsonRoute(page, '**/api/skills', [skill])
   await jsonRoute(page, '**/api/skills/categories', [{ id: 3, label: 'Synthetic procedures', skill_count: 0 }])
   const changes = []
@@ -319,7 +319,7 @@ test('skill descriptions remain readable and actions usable in a narrow desktop 
   const table = page.getByRole('table')
   expect(await table.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
   await table.getByRole('button').filter({ has: page.locator('.q-icon', { hasText: 'drive_file_move' }) }).click()
-  await expect(page.getByRole('menu')).toContainText('Uncategorized')
+  await expect(page.getByRole('button', { name: 'Uncategorized', exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.keyboard.press('Escape')
   await page.getByText('Sample skill', { exact: true }).click({ button: 'right' })
@@ -335,7 +335,7 @@ test('skill authorization descriptions and controls remain usable in a narrow de
   await skillFixtures(page)
   await jsonRoute(page, '**/api/agents?*', [])
   await jsonRoute(page, '**/api/skills/categories', [{ id: 3, label: 'Procedures', skill_count: 1 }])
-  const row = { skill_id: 1, agent_id: 7, agent_label: 'Sample assistant', agent_code: 'sample-assistant', code: 'sample', label: 'Sample skill', description: 'Read troubleshooting instructions before proceeding with the installation.', category_id: 3, category_label: 'Procedures', global_state: 'enabled', category_state: 'disabled', agent_state: 'default', effective: false, available: true, valid: true }
+  const row = { enabled: true, skill_id: 1, agent_id: 7, agent_label: 'Sample assistant', agent_code: 'sample-assistant', code: 'sample', label: 'Sample skill', description: 'Read troubleshooting instructions before proceeding with the installation.', category_id: 3, category_label: 'Procedures', global_state: 'enabled', category_state: 'disabled', agent_state: 'default', effective: false, available: true, valid: true }
   await jsonRoute(page, '**/api/skills/authorizations', { authorizations: [row] })
   const changes = []
   await page.route('**/api/skills/1/authorization/agents/7', route => {
@@ -361,3 +361,44 @@ test('skill authorization descriptions and controls remain usable in a narrow de
   await expect(agent.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await page.screenshot({ path: testInfo.outputPath('authorizations-narrow-desktop.png'), fullPage: true })
 })
+
+for (const width of [390, 1440]) {
+  test(`generic activation keeps server state and permissions at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    await skillFixtures(page)
+    let skill = { id: 1, revision: 1, enabled: true, code: 'sample', label: 'Sample skill',
+      system: true, valid: true, available: true, category_id: null, file_count: 1, total_size: 200 }
+    await page.route('**/api/skills', route => route.fulfill({ json: [skill] }))
+    const changes = []
+    await page.route('**/api/skills/1/enabled', route => {
+      const data = route.request().postDataJSON()
+      changes.push(data)
+      if (changes.length === 1) {
+        skill = { ...skill, revision: 2 }
+        return route.fulfill({ status: 409, json: { detail: 'Synthetic revision conflict' } })
+      }
+      expect(data.expected_revision).toBe(skill.revision)
+      skill = { ...skill, enabled: data.enabled, revision: skill.revision + 1 }
+      return route.fulfill({ json: skill })
+    })
+    await mount(page, 'app/skill/pages/index.vue', { privileges: ['SKILL_EDIT', 'AGENT_MANAGE_ALL'] })
+    const disable = page.getByRole('button', { name: 'Disable for everyone', exact: true })
+    await disable.click()
+    await expect(page.getByText('Synthetic revision conflict', { exact: true })).toBeVisible()
+    await expect(disable).toBeEnabled()
+    await disable.click()
+    await expect(page.getByText('Disabled for everyone', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Enable for everyone', exact: true })).toBeVisible()
+    expect(changes).toEqual([{ enabled: false, expected_revision: 1 }, { enabled: false, expected_revision: 2 }])
+    await page.screenshot({ path: testInfo.outputPath(`generic-disabled-${width}.png`), fullPage: true })
+    await page.getByRole('button', { name: 'Enable for everyone', exact: true }).focus()
+    await page.keyboard.press('Shift+F10')
+    await page.getByRole('menuitem', { name: 'Enable for everyone', exact: true }).click()
+    await expect(disable).toBeVisible()
+    expect(changes.at(-1)).toEqual({ enabled: true, expected_revision: 3 })
+    await setPrivileges(page, ['SKILL_EDIT'])
+    await expect(disable).toHaveCount(0)
+    await page.getByText('Sample skill', { exact: true }).click({ button: 'right' })
+    await expect(page.getByRole('menuitem', { name: 'Disable for everyone', exact: true })).toHaveCount(0)
+  })
+}

@@ -12,12 +12,72 @@ from app.file_share.resource_service import resource_copy, resource_move
 from app.harness.skills import build_internal_skill_capabilities
 from app.skill import interface, skill_service, storage
 from app.skill import mcp
-from app.skill.contracts import SkillScope
+from app.skill.contracts import SkillScope, SkillRevisionConflict
 from app.skill.models import Skill, AgentSkill
 from app.skill.projection import build_skill_projection
-from app.skill.schemas import SkillCreate
+from app.skill.schemas import SkillCreate, SkillCategoryCreate
 from app.tools.mcp_loader import McpToolContext
 from .test_personal_packages import agents, personal, set_scope
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('system', [False, True])
+async def test_generic_disable_overrides_grants_and_preserves_mcp_management(db, agents, system):
+    a, b, admin = agents
+    package = await interface.create_package(personal('global-guide'), actor_agent_id=admin.id, generic=True)
+    record = await skill_service.get(package.id)
+    record.system = system
+    await db.commit()
+    category = await skill_service.create_category(SkillCategoryCreate(label='Synthetic procedures'))
+    await skill_service.set_skill_category(package.id, category.id)
+    await skill_service.set_global_authorization(package.id, admin.id, 'enabled')
+    await skill_service.set_category_authorization(category.id, b.id, 'enabled')
+    await skill_service.set_agent_authorization(package.id, a.id, 'enabled')
+    ctx = McpToolContext(agent_id=admin.id, runtime='internal')
+    original = await build_skill_projection(a.id)
+    capabilities = await build_internal_skill_capabilities(a.id)
+    assert 'global-guide' in original.skill_codes
+    assert 'global-guide' in {item.id for item in capabilities}
+    assert skill_service.to_public(await skill_service.get(package.id)).enabled
+    for scope in ('usage', 'personal', 'team'):
+        await set_scope(a.id, scope)
+        with pytest.raises(PermissionError):
+            await mcp.mcp_skill_set_enabled(McpToolContext(agent_id=a.id, runtime='internal'),
+                                            package.id, False, package.revision, administration=True)
+    with pytest.raises(PermissionError):
+        await mcp.mcp_skill_set_enabled(ctx, package.id, False, package.revision)
+    disabled = await mcp.mcp_skill_set_enabled(ctx, package.id, False, package.revision, administration=True)
+    assert disabled['revision'] == package.revision + 1
+    with pytest.raises(SkillRevisionConflict):
+        await mcp.mcp_skill_set_enabled(ctx, package.id, True, package.revision, administration=True)
+    for agent in agents:
+        assert 'global-guide' not in await skill_service.get_assigned_codes(agent.id)
+        assert package.id not in {item['id'] for item in await mcp.mcp_skills_list(
+            McpToolContext(agent_id=agent.id, runtime='internal'))}
+        assert 'global-guide' not in (await build_skill_projection(agent.id)).skill_codes
+        assert 'global-guide' not in {item.id for item in await build_internal_skill_capabilities(agent.id)}
+    assert (await build_skill_projection(a.id)).revision != original.revision
+    capability = next(item for item in capabilities if item.id == 'global-guide')
+    with pytest.raises(PermissionError):
+        await next(iter(capability.get_toolset().tools.values())).function(path='SKILL.md')
+    with pytest.raises(FileNotFoundError):
+        await mcp.mcp_skill_read(ctx, skill_id=package.id)
+    assert 'Synthetic procedure' in await mcp.mcp_skill_read(ctx, skill_id=package.id, administration=True)
+    summary = next(item for item in await mcp.mcp_skills_list(ctx, administration=True) if item['id'] == package.id)
+    assert summary['enabled'] is False
+    assert 'Synthetic procedure' in json.loads(await files.read_file(ctx, package.uri + 'SKILL.md'))['content']
+    assert all(not row.effective and not row.enabled for row in await skill_service.list_authorizations(skill_id=package.id))
+    # Neither grants nor rescans can undo global suspension.
+    assert not (await skill_service.set_agent_authorization(package.id, a.id, 'enabled')).effective
+    await skill_service.set_category_authorization(category.id, b.id, 'enabled')
+    await skill_service.sync_from_disk()
+    assert not (await skill_service.get(package.id)).enabled
+    assert 'global-guide' not in await skill_service.get_assigned_codes(a.id)
+    revision = (await skill_service.get(package.id)).revision
+    await mcp.mcp_skill_set_enabled(ctx, package.id, True, revision, administration=True)
+    for agent in agents:
+        assert 'global-guide' in await skill_service.get_assigned_codes(agent.id)
+    assert (await build_skill_projection(a.id)).revision == original.revision
 
 
 @pytest.mark.asyncio

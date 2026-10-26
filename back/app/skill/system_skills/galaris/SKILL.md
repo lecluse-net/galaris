@@ -755,6 +755,10 @@ or revocation blocks subsequent management calls.
   Personal budgets are 100 packages and 200 MiB per owner, in addition to per-package limits.
 - `skill_update(skill_id, label, expected_revision)` changes metadata.
   `skill_set_enabled(skill_id, enabled, expected_revision)` controls use by the owner.
+  For a generic package, use `administration=true` with `all` scope to enable or disable
+  it for everyone, including system packages. Disabling overrides agent/category grants and
+  removes the package from usable skills and runtime projections. Files and grants survive;
+  administrative `skills_list`/`skill_read` and File Sharing remain available to manage it.
   `skill_delete(skill_id, expected_revision)` deletes the entire user package.
 - `skill_set_authorization(skill_id, agent_id, state)` and
   `skill_set_category_authorization(category_id, agent_id, state)` distribute generic skills

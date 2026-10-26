@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 28 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 760 detected HTTP/WebSocket handlers;
+- 761 detected HTTP/WebSocket handlers;
 - 180 detected SQLAlchemy tables;
 - 278 detected native MCP tools;
 - 53 detected Vue pages.
@@ -1882,39 +1882,40 @@ tests remain authoritative for behavior.
 | POST | `/runtime-authorizations/receipt` | `app.tools` | `action_receipt` | no | `back/app/tools/runtime_authorization_router.py:96` |
 | GET | `/runtime-authorizations/{identifier}` | `app.tools` | `action_status` | no | `back/app/tools/runtime_authorization_router.py:84` |
 | GET | `/skills` | `app.skill` | `list_skills` | yes | `back/app/skill/router.py:164` |
-| POST | `/skills` | `app.skill` | `create_skill` | yes | `back/app/skill/router.py:524` |
-| GET | `/skills/agents` | `app.skill` | `list_skill_agents` | yes | `back/app/skill/router.py:295` |
-| GET | `/skills/authorizations` | `app.skill` | `list_skill_authorizations` | yes | `back/app/skill/router.py:310` |
-| GET | `/skills/categories` | `app.skill` | `list_skill_categories` | yes | `back/app/skill/router.py:334` |
-| POST | `/skills/categories` | `app.skill` | `create_skill_category` | yes | `back/app/skill/router.py:347` |
-| DELETE | `/skills/categories/{category_id}` | `app.skill` | `delete_skill_category` | yes | `back/app/skill/router.py:377` |
-| PUT | `/skills/categories/{category_id}` | `app.skill` | `update_skill_category` | yes | `back/app/skill/router.py:358` |
-| PUT | `/skills/categories/{category_id}/authorization/agents/{agent_id}` | `app.skill` | `update_category_authorization` | yes | `back/app/skill/router.py:394` |
-| POST | `/skills/import` | `app.skill` | `import_skill` | yes | `back/app/skill/router.py:276` |
-| GET | `/skills/learned` | `app.skill` | `list_learned_skills` | yes | `back/app/skill/router.py:456` |
-| GET | `/skills/learned/status` | `app.skill` | `get_learned_skill_status` | yes | `back/app/skill/router.py:480` |
-| GET | `/skills/learned/{learned_skill_id}` | `app.skill` | `get_learned_skill` | yes | `back/app/skill/router.py:487` |
-| PUT | `/skills/learned/{learned_skill_id}/suspension` | `app.skill` | `suspend_learned_skill` | yes | `back/app/skill/router.py:505` |
+| POST | `/skills` | `app.skill` | `create_skill` | yes | `back/app/skill/router.py:525` |
+| GET | `/skills/agents` | `app.skill` | `list_skill_agents` | yes | `back/app/skill/router.py:296` |
+| GET | `/skills/authorizations` | `app.skill` | `list_skill_authorizations` | yes | `back/app/skill/router.py:311` |
+| GET | `/skills/categories` | `app.skill` | `list_skill_categories` | yes | `back/app/skill/router.py:335` |
+| POST | `/skills/categories` | `app.skill` | `create_skill_category` | yes | `back/app/skill/router.py:348` |
+| DELETE | `/skills/categories/{category_id}` | `app.skill` | `delete_skill_category` | yes | `back/app/skill/router.py:378` |
+| PUT | `/skills/categories/{category_id}` | `app.skill` | `update_skill_category` | yes | `back/app/skill/router.py:359` |
+| PUT | `/skills/categories/{category_id}/authorization/agents/{agent_id}` | `app.skill` | `update_category_authorization` | yes | `back/app/skill/router.py:395` |
+| POST | `/skills/import` | `app.skill` | `import_skill` | yes | `back/app/skill/router.py:277` |
+| GET | `/skills/learned` | `app.skill` | `list_learned_skills` | yes | `back/app/skill/router.py:457` |
+| GET | `/skills/learned/status` | `app.skill` | `get_learned_skill_status` | yes | `back/app/skill/router.py:481` |
+| GET | `/skills/learned/{learned_skill_id}` | `app.skill` | `get_learned_skill` | yes | `back/app/skill/router.py:488` |
+| PUT | `/skills/learned/{learned_skill_id}/suspension` | `app.skill` | `suspend_learned_skill` | yes | `back/app/skill/router.py:506` |
 | GET | `/skills/personal` | `app.skill` | `list_personal_skills` | yes | `back/app/skill/router.py:170` |
-| DELETE | `/skills/personal/{skill_id}` | `app.skill` | `delete_personal_skill` | yes | `back/app/skill/router.py:255` |
+| DELETE | `/skills/personal/{skill_id}` | `app.skill` | `delete_personal_skill` | yes | `back/app/skill/router.py:256` |
 | GET | `/skills/personal/{skill_id}` | `app.skill` | `get_personal_skill` | yes | `back/app/skill/router.py:188` |
 | PUT | `/skills/personal/{skill_id}` | `app.skill` | `rename_personal_skill` | yes | `back/app/skill/router.py:225` |
 | GET | `/skills/personal/{skill_id}/content` | `app.skill` | `get_personal_skill_content` | yes | `back/app/skill/router.py:200` |
 | PUT | `/skills/personal/{skill_id}/content` | `app.skill` | `write_personal_skill` | yes | `back/app/skill/router.py:214` |
 | PUT | `/skills/personal/{skill_id}/enabled` | `app.skill` | `enable_personal_skill` | yes | `back/app/skill/router.py:234` |
-| POST | `/skills/personal/{skill_id}/owner` | `app.skill` | `transfer_personal_skill` | yes | `back/app/skill/router.py:243` |
-| POST | `/skills/rescan` | `app.skill` | `rescan_skills` | yes | `back/app/skill/router.py:264` |
-| DELETE | `/skills/{skill_id}` | `app.skill` | `delete_skill` | yes | `back/app/skill/router.py:557` |
-| GET | `/skills/{skill_id}` | `app.skill` | `get_skill` | yes | `back/app/skill/router.py:535` |
-| PUT | `/skills/{skill_id}` | `app.skill` | `update_skill` | yes | `back/app/skill/router.py:541` |
+| POST | `/skills/personal/{skill_id}/owner` | `app.skill` | `transfer_personal_skill` | yes | `back/app/skill/router.py:244` |
+| POST | `/skills/rescan` | `app.skill` | `rescan_skills` | yes | `back/app/skill/router.py:265` |
+| DELETE | `/skills/{skill_id}` | `app.skill` | `delete_skill` | yes | `back/app/skill/router.py:570` |
+| GET | `/skills/{skill_id}` | `app.skill` | `get_skill` | yes | `back/app/skill/router.py:536` |
+| PUT | `/skills/{skill_id}` | `app.skill` | `update_skill` | yes | `back/app/skill/router.py:542` |
 | POST | `/skills/{skill_id}/assign-ownership` | `app.skill` | `assign_skill_ownership` | yes | `back/app/skill/router.py:119` |
-| PUT | `/skills/{skill_id}/authorization/agents/{agent_id}` | `app.skill` | `update_agent_authorization` | yes | `back/app/skill/router.py:618` |
-| PUT | `/skills/{skill_id}/authorization/global` | `app.skill` | `update_global_authorization` | yes | `back/app/skill/router.py:593` |
-| PUT | `/skills/{skill_id}/category` | `app.skill` | `assign_skill_category` | yes | `back/app/skill/router.py:570` |
-| GET | `/skills/{skill_id}/content` | `app.skill` | `read_skill_file` | yes | `back/app/skill/router.py:672` |
-| GET | `/skills/{skill_id}/download` | `app.skill` | `download_skill` | yes | `back/app/skill/router.py:646` |
-| GET | `/skills/{skill_id}/file` | `app.skill` | `download_skill_file` | yes | `back/app/skill/router.py:684` |
-| GET | `/skills/{skill_id}/files` | `app.skill` | `list_skill_files` | yes | `back/app/skill/router.py:662` |
+| PUT | `/skills/{skill_id}/authorization/agents/{agent_id}` | `app.skill` | `update_agent_authorization` | yes | `back/app/skill/router.py:631` |
+| PUT | `/skills/{skill_id}/authorization/global` | `app.skill` | `update_global_authorization` | yes | `back/app/skill/router.py:606` |
+| PUT | `/skills/{skill_id}/category` | `app.skill` | `assign_skill_category` | yes | `back/app/skill/router.py:583` |
+| GET | `/skills/{skill_id}/content` | `app.skill` | `read_skill_file` | yes | `back/app/skill/router.py:685` |
+| GET | `/skills/{skill_id}/download` | `app.skill` | `download_skill` | yes | `back/app/skill/router.py:659` |
+| PUT | `/skills/{skill_id}/enabled` | `app.skill` | `enable_generic_skill` | yes | `back/app/skill/router.py:558` |
+| GET | `/skills/{skill_id}/file` | `app.skill` | `download_skill_file` | yes | `back/app/skill/router.py:697` |
+| GET | `/skills/{skill_id}/files` | `app.skill` | `list_skill_files` | yes | `back/app/skill/router.py:675` |
 | POST | `/skills/{skill_id}/release-ownership` | `app.skill` | `release_skill_ownership` | yes | `back/app/skill/router.py:100` |
 | GET | `/tasks` | `app.task` | `read_tasks` | yes | `back/app/task/router.py:60` |
 | POST | `/tasks` | `app.task` | `create_task` | yes | `back/app/task/router.py:185` |
@@ -2002,8 +2003,8 @@ tests remain authoritative for behavior.
 | `agent_groups` | `Team` | `core.team` | yes | — | `back/core/team/models.py:10` |
 | `agent_harnesses` | `AgentHarness` | `app.harnesses` | no | `agents.id`, `harnesses.id` | `back/app/harnesses/models.py:69` |
 | `agent_mcp_tokens` | `AgentMcpToken` | `app.mcp` | no | `agents.id` | `back/app/mcp/models.py:17` |
-| `agent_skill_categories` | `AgentSkillCategory` | `app.skill` | no | `agents.id`, `skill_categories.id` | `back/app/skill/models.py:157` |
-| `agent_skills` | `AgentSkill` | `app.skill` | no | `agents.id`, `skills.id` | `back/app/skill/models.py:128` |
+| `agent_skill_categories` | `AgentSkillCategory` | `app.skill` | no | `agents.id`, `skill_categories.id` | `back/app/skill/models.py:161` |
+| `agent_skills` | `AgentSkill` | `app.skill` | no | `agents.id`, `skills.id` | `back/app/skill/models.py:132` |
 | `agent_teams` | `AgentTeam` | `app.agent` | no | `agent_groups.id`, `agents.id` | `back/app/agent/models.py:17` |
 | `agents` | `Agent` | `app.agent` | yes | `agent_groups.id`, `harnesses.id`, `llm_profiles.id`, `memory_items.id`, `titles.id`, `users.id` | `back/app/agent/models.py:37` |
 | `assignments` | `Assignment` | `core.authorize` | yes | `roles.id`, `users.id` | `back/core/authorize/models.py:91` |
@@ -2093,8 +2094,8 @@ tests remain authoritative for behavior.
 | `lab_process_cases` | `LabProcessCase` | `app.lab` | yes | `lab_process_campaigns.id`, `process_runs.id` | `back/app/lab/process_evaluation_models.py:34` |
 | `lab_task_diagnoses` | `LabTaskDiagnosis` | `app.lab` | yes | `tasks.id` | `back/app/lab/models.py:46` |
 | `lab_tasks` | `LabTask` | `app.lab` | no | `tasks.id` | `back/app/lab/models.py:30` |
-| `learned_skill_evidences` | `LearnedSkillEvidence` | `app.skill` | no | `learned_skills.id` | `back/app/skill/models.py:246` |
-| `learned_skills` | `LearnedSkill` | `app.skill` | yes | `agents.id` | `back/app/skill/models.py:187` |
+| `learned_skill_evidences` | `LearnedSkillEvidence` | `app.skill` | no | `learned_skills.id` | `back/app/skill/models.py:250` |
+| `learned_skills` | `LearnedSkill` | `app.skill` | yes | `agents.id` | `back/app/skill/models.py:191` |
 | `llm_call_costs` | `LLMCallCost` | `app.llm` | no | `agents.id`, `conversation_rounds.id`, `llm_calls.id`, `tasks.id` | `back/app/llm/models.py:261` |
 | `llm_call_events` | `LLMCallEvent` | `app.llm` | no | `llm_calls.id`, `llm_inferences.id` | `back/app/llm/models.py:95` |
 | `llm_calls` | `LLMCall` | `app.llm` | no | `agents.id`, `conversation_rounds.id`, `llm_inference_attempts.id`, `llm_profiles.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:121` |
@@ -2159,7 +2160,7 @@ tests remain authoritative for behavior.
 | `share_configs` | `ShareConfig` | `app.share` | yes | — | `back/app/share/models.py:23` |
 | `share_grants` | `ShareGrant` | `app.share` | no | `agent_groups.id`, `agents.id`, `share_configs.id`, `users.id` | `back/app/share/models.py:46` |
 | `skill_categories` | `SkillCategory` | `app.skill` | yes | — | `back/app/skill/models.py:31` |
-| `skill_ownership_releases` | `SkillOwnershipRelease` | `app.skill` | no | `agents.id`, `skills.id`, `users.id` | `back/app/skill/models.py:107` |
+| `skill_ownership_releases` | `SkillOwnershipRelease` | `app.skill` | no | `agents.id`, `skills.id`, `users.id` | `back/app/skill/models.py:111` |
 | `skills` | `Skill` | `app.skill` | yes | `agents.id`, `skill_categories.id` | `back/app/skill/models.py:52` |
 | `task_amendments` | `TaskAmendment` | `app.task` | no | `tasks.id` | `back/app/task/models.py:249` |
 | `task_attempts` | `TaskAttempt` | `app.task` | no | `tasks.id` | `back/app/task/models.py:282` |

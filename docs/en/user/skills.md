@@ -19,6 +19,19 @@ Personal skills are separate from memories and Documents. Generic packages can b
 to multiple agents; personal packages are usable only by their owner. Administration of
 that owner does not make their skills usable by your other agents.
 
+## Disable a generic package for everyone
+
+In **Skills**, use **Disable for everyone** on a row or in its context menu.
+This requires `SKILL_EDIT` and global agent management, and also applies to system packages.
+The package disappears from agents' usable skills even when explicitly allowed for an agent
+or category. Its files and assignments are preserved. **Enable for everyone** restores the
+application of those assignments; the global value in **Authorizations** remains a default.
+
+MCP management remains available with the usual permissions:
+`skills_list(administration=true)` and `skill_read(..., administration=true)` can inspect
+disabled packages. `skill_set_enabled(skill_id, enabled, expected_revision, administration=true)`
+lets an agent with `all` scope disable or re-enable a generic package for everyone.
+
 ## Edit a personal package
 
 Under **Personal skills**, search packages or filter by owner agent. Pagination defaults to

@@ -55,6 +55,7 @@ class SkillPublic(SkillBase):
     id: int
     revision: int
     system: bool
+    enabled: bool
     available: bool
     valid: bool
     validation_error: Optional[str] = None
@@ -143,6 +144,7 @@ class SkillAuthorization(BaseModel):
     category_label: Optional[str] = None
     available: bool
     valid: bool
+    enabled: bool
     global_state: SkillGlobalAuthorizationState
     category_state: SkillCategoryAuthorizationState
     agent_state: SkillAuthorizationState

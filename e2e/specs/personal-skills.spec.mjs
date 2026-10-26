@@ -78,6 +78,26 @@ for (const width of [1440, 390]) {
       headers, params: { agent_id: fixture.agent_id }, data: { state: 'enabled' },
     })
     expect(grant.ok()).toBe(true)
+    await page.getByRole('textbox', { name: 'Rechercher une compétence', exact: true }).fill(editedLabel)
+    await page.getByRole('button', { name: 'Désactiver pour tous', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Activer pour tous', exact: true })).toBeVisible()
+    expect((await (await request.get(`/api/skills/${guide.id}`, { headers })).json()).enabled).toBe(false)
+    const authorizations = await (await request.get('/api/skills/authorizations', {
+      headers, params: { skill_id: guide.id },
+    })).json()
+    expect(authorizations.authorizations.length).toBeGreaterThan(0)
+    expect(authorizations.authorizations.every(row => !row.effective)).toBe(true)
+    await page.reload()
+    if (width < 1024) {
+      const backdrop = page.locator('.q-drawer__backdrop')
+      if (await backdrop.isVisible()) await backdrop.click({ position: { x: 380, y: 400 } })
+    }
+    await page.getByRole('textbox', { name: 'Rechercher une compétence', exact: true }).fill(editedLabel)
+    await expect(page.getByText('Désactivée pour tous', { exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('generic-skill-disabled.png'), fullPage: true, animations: 'disabled' })
+    await page.getByRole('button', { name: 'Activer pour tous', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Désactiver pour tous', exact: true })).toBeVisible()
+    expect((await (await request.get(`/api/skills/${guide.id}`, { headers })).json()).enabled).toBe(true)
     await page.getByRole('button', { name: 'Passer en personnel', exact: true }).click()
     const ownership = page.getByRole('dialog')
     await ownership.getByRole('combobox', { name: 'Agent propriétaire', exact: true }).click()
@@ -92,6 +112,9 @@ for (const width of [1440, 390]) {
     expect(privatized.skill.enabled).toBe(true)
     expect((await request.get('/api/skills/authorizations', { headers, params: { skill_id: guide.id } })).status()).toBe(404)
     await page.getByRole('tab', { name: 'Compétences personnelles', exact: true }).click()
+    // The reload used to verify global activation clears this local filter.
+    await page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }).click()
+    await page.getByRole('option', { name: fixture.agent_label, exact: true }).click()
     await page.getByText(editedLabel, { exact: true }).click()
     await expect(page.getByRole('dialog').getByText('Verified human edit', { exact: true })).toBeVisible()
     const ownerSelect = page.getByRole('dialog').getByRole('combobox', { name: 'Agent propriétaire', exact: true })

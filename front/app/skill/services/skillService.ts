@@ -7,6 +7,7 @@ export interface Skill {
     code: string
     label: string
     system: boolean
+    enabled: boolean
     available: boolean
     valid: boolean
     validation_error: string | null
@@ -94,6 +95,7 @@ export interface SkillCategory {
 }
 
 export interface SkillAuthorization {
+    enabled: boolean
     skill_id: number
     code: string
     label: string
@@ -201,6 +203,9 @@ export interface LearnedSkillLearningStatus {
 }
 
 export const skillService = {
+    setSkillEnabled(id: number, enabled: boolean, expected_revision: number): Promise<AxiosResponse<Skill>> {
+        return api.put(`/skills/${id}/enabled`, { enabled, expected_revision })
+    },
     transferPersonalSkill(id: number, owner_agent_id: number, expected_revision: number, operation_id: string, new_code: string) {
         return api.post<{ cleanup_pending: boolean }>(`/skills/personal/${id}/owner`,
             { owner_agent_id, expected_revision, operation_id, new_code })

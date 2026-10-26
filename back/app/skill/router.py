@@ -233,7 +233,8 @@ async def rename_personal_skill(skill_id: int, data: PersonalSkillLabelUpdate) -
 @authorize(privileges=Privileges.SKILL_EDIT)
 async def enable_personal_skill(skill_id: int, data: PersonalSkillEnabledUpdate) -> SkillPackageRef:
     try:
-        return await interface.set_package_enabled(skill_id, data.enabled, actor_agent_id=None, expected_revision=data.expected_revision)
+        return await interface.set_package_enabled(skill_id, data.enabled, actor_agent_id=None,
+            expected_revision=data.expected_revision, expected_kind="personal")
     except (FileNotFoundError, ValueError, PermissionError, SkillRevisionConflict) as exc:
         raise _http_error(exc) from exc
 
@@ -550,6 +551,18 @@ async def update_skill(
     if record is None:
         raise HTTPException(status_code=404, detail="Compétence introuvable")
     return skill_service.to_public(record)
+
+
+@router.put("/{skill_id}/enabled", response_model=SkillPublic)
+@authorize(privileges=Privileges.SKILL_EDIT)
+async def enable_generic_skill(skill_id: int, data: PersonalSkillEnabledUpdate) -> SkillPublic:
+    await _require_global_scope()
+    try:
+        await interface.set_package_enabled(skill_id, data.enabled, actor_agent_id=None,
+            expected_revision=data.expected_revision, expected_kind="generic")
+    except (FileNotFoundError, PermissionError, SkillRevisionConflict) as exc:
+        raise _http_error(exc) from exc
+    return skill_service.to_public(await _record(skill_id))
 
 
 @router.delete("/{skill_id}", response_model=SkillDeleteResult)

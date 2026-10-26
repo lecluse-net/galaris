@@ -148,6 +148,11 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
     assert (await client.get(f"{personal_path}/{package_ids[0]}/content", headers=headers[0], params={"path": "../secret"})).status_code == 422
     generic = await client.get("/api/skills", headers=headers[0])
     assert {row["id"] for row in generic.json()}.isdisjoint(package_ids)
+    generic_skill = generic.json()[0]
+    enabled_path = f'/api/skills/{generic_skill["id"]}/enabled'
+    activation = {"enabled": False, "expected_revision": generic_skill["revision"]}
+    assert (await client.put(enabled_path, json=activation)).status_code == 401
+    assert (await client.put(enabled_path, headers=headers[0], json=activation)).status_code == 403
     scope_path = f"/api/connections/{connection_id}/params/bulk"
     mutation_path = f"{personal_path}/{package_ids[0]}"
     assert (await client.put(mutation_path, headers=headers[0], json={"expected_revision": 1, "label": "Forbidden"})).status_code == 403
@@ -170,6 +175,7 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
         await db.flush()
         same_manager_id = same_manager.id
     assert (await client.put(f"{personal_path}/{package_ids[1]}", headers=headers[0], json={"expected_revision": 1, "label": "Forbidden"})).status_code == 404
+    assert (await client.put(enabled_path, headers=headers[0], json=activation)).status_code == 403
     assert (await client.put(mutation_path, headers=headers[0], json={"expected_revision": 1, "label": "Human edited guide"})).status_code == 200
     source = "---\nname: private-guide\ndescription: Synthetic edited guide.\n---\nHuman source\n"
     rejected = await client.put(f"{mutation_path}/content", headers=headers[0], json={"expected_revision": 2, "path": "SKILL.md", "content": "invalid frontmatter", "label": "Must not be saved"})
@@ -247,6 +253,16 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
     async with get_db_session() as db:
         reader_role = await db.scalar(select(Role).where(Role.code == "synthetic-skill-reader").options(selectinload(Role.privileges)))
         reader_role.privileges.append(await db.scalar(select(Privilege).where(Privilege.code == "AGENT_MANAGE_ALL")))
+    disabled = await client.put(enabled_path, headers=headers[0], json=activation)
+    assert disabled.status_code == 200, disabled.text
+    assert not disabled.json()["enabled"]
+    assert disabled.json()["revision"] == activation["expected_revision"] + 1
+    assert (await client.get(enabled_path.removesuffix('/enabled'), headers=headers[0])).json()["enabled"] is False
+    assert (await client.put(enabled_path, headers=headers[0], json=activation)).status_code == 409
+    assert (await client.put(f'/api/skills/personal/{generic_skill["id"]}/enabled', headers=headers[0],
+                             json={"enabled": True, "expected_revision": disabled.json()["revision"]})).status_code == 404
+    assert (await client.put(f'/api/skills/{package_ids[0]}/enabled', headers=headers[0],
+                             json={"enabled": False, "expected_revision": 6})).status_code == 404
     assert (await client.post(scope_path, headers=headers[0], json=scope_data('personal'))).status_code == 201
     assert (await client.get(f'/api/connections/{connection_id}/params', headers=headers[0])).json()['params']['tools.management_scope'] == 'personal'
     assert (await client.post(scope_path, headers=headers[0], json=scope_data('team'))).status_code == 201

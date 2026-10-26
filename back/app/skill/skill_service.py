@@ -172,6 +172,7 @@ def to_public(skill: Skill) -> SkillPublic:
         code=skill.code,
         label=skill.label,
         system=skill.system,
+        enabled=skill.enabled,
         available=inspection.available,
         valid=inspection.valid,
         validation_error=inspection.validation_error,
@@ -337,6 +338,8 @@ def _category_active_for_agent(skill: Skill, agent_id: int) -> bool | None:
 
 
 def _configured_enabled(skill: Skill, agent_id: int) -> bool:
+    if not skill.enabled:
+        return False
     agent_active = _agent_skill_active(skill, agent_id)
     if agent_active is not None:
         return agent_active
@@ -395,10 +398,11 @@ def to_authorization(
         category_label=skill.category.label if skill.category is not None else None,
         available=inspection.available,
         valid=inspection.valid,
+        enabled=skill.enabled,
         global_state="enabled" if skill.global_enabled else "disabled",
         category_state=category_state,
         agent_state=agent_state,
-        effective=effective and inspection.available and inspection.valid,
+        effective=skill.enabled and effective and inspection.available and inspection.valid,
     )
 
 
@@ -516,6 +520,7 @@ async def get_assigned_codes(agent_id: int) -> list[str]:
         )
         .where(
             Skill.owner_agent_id.is_(None),
+            Skill.enabled.is_(True),
             or_(
                 AgentSkill.active.is_(True),
                 and_(

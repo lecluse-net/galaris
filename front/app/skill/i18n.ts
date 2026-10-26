@@ -8,6 +8,9 @@ export default {
             skills_desc: 'Bibliothèque de compétences pour les agents',
         },
         skills: {
+            enableAll: 'Activer pour tous',
+            disableAll: 'Désactiver pour tous',
+            disabledAll: 'Désactivée pour tous',
             personal: {
                 rename: 'Enregistrer le libellé', enable: 'Activer', disable: 'Désactiver',
                 release: 'Convertir en compétence générique',
@@ -133,7 +136,7 @@ export default {
                 },
             },
             auth: {
-                intro: 'Filtrez les autorisations par agent, compétence ou catégorie. Les droits de catégorie sont propres à chaque agent. La priorité est : compétence pour l’agent, catégorie pour l’agent, puis valeur globale de la compétence.',
+                intro: 'Filtrez les autorisations par agent, compétence ou catégorie. La désactivation pour tous dans le catalogue rend la compétence indisponible quels que soient ces réglages. Sinon, la priorité est : compétence pour l’agent, catégorie pour l’agent, puis valeur globale de la compétence.',
                 filters: 'Filtres',
                 selectAgent: 'Filtrer par agent',
                 selectSkill: 'Filtrer par compétence',
@@ -172,6 +175,9 @@ export default {
             skills_desc: 'Knowledge library for agents',
         },
         skills: {
+            enableAll: 'Enable for everyone',
+            disableAll: 'Disable for everyone',
+            disabledAll: 'Disabled for everyone',
             personal: {
                 rename: 'Save label', enable: 'Enable', disable: 'Disable',
                 release: 'Convert to generic skill',
@@ -297,7 +303,7 @@ export default {
                 },
             },
             auth: {
-                intro: 'Filter authorizations by agent, skill, or category. Category permissions are scoped to each agent. Priority is: agent skill, agent category, then the skill global value.',
+                intro: 'Filter authorizations by agent, skill, or category. Disabling a skill for everyone in the catalogue overrides these settings. Otherwise, priority is: agent skill, agent category, then the skill global value.',
                 filters: 'Filters',
                 selectAgent: 'Filter by agent',
                 selectSkill: 'Filter by skill',
@@ -333,6 +339,7 @@ export default {
       },
         nav: { skills: '技能', skills_desc: '智能体知识库' },
         skills: {
+            enableAll: '为所有智能体启用', disableAll: '为所有智能体停用', disabledAll: '已为所有智能体停用',
             personal: {
                 rename: '保存名称', enable: '启用', disable: '停用',
                 release: '转换为通用技能',

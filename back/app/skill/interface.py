@@ -188,6 +188,7 @@ def _summary(record: Skill) -> dict[str, object]:
             "description": inspected.description, "available": inspected.available,
             "valid": inspected.valid, "file_count": inspected.file_count,
             "system": record.system, "total_size": inspected.total_size,
+            **({"enabled": record.enabled} if record.owner_agent_id is None else {}),
             "modified_at": (record.updated_at or record.created_at).isoformat()}
 
 
@@ -276,19 +277,36 @@ async def create_package(
 async def set_package_enabled(
     skill_id: int, enabled: bool, *, actor_agent_id: int | None, expected_revision: int,
     administration: bool = False,
+    expected_kind: Literal["generic", "personal"] | None = None,
 ) -> SkillPackageRef:
     record = await _package(skill_id, lock=True)
-    await _authorize_mutation(record, actor_agent_id, administration)
+    if expected_kind is not None and _reference(record).kind != expected_kind:
+        raise FileNotFoundError("Skill not found")
     if record.owner_agent_id is None:
-        raise ValueError("Generic skills use the authorization cascade")
+        # Global suspension overrides the cascade, including explicit grants.
+        # Bundled packages keep read-only contents but can be suspended too.
+        if actor_agent_id is not None:
+            if not administration:
+                raise PermissionError("Explicit global Skills administration is required")
+            await require_global_administration(actor_agent_id)
+        else:
+            from app.agent import current_management_scope
+            from core.user import get_current_user_id
+            if get_current_user_id() is None or not (await current_management_scope()).is_global:
+                raise PermissionError("Global Skills administration is required")
+    else:
+        await _authorize_mutation(record, actor_agent_id, administration)
     if record.revision != expected_revision:
         raise SkillRevisionConflict("Skill package revision conflict")
-    assignment = next((item for item in record.assignments
-                       if item.agent_id == record.owner_agent_id), None)
-    if assignment is None:
-        record.assignments.append(AgentSkill(agent_id=record.owner_agent_id, active=enabled))
+    if record.owner_agent_id is None:
+        record.enabled = enabled
     else:
-        assignment.active = enabled
+        assignment = next((item for item in record.assignments
+                           if item.agent_id == record.owner_agent_id), None)
+        if assignment is None:
+            record.assignments.append(AgentSkill(agent_id=record.owner_agent_id, active=enabled))
+        else:
+            assignment.active = enabled
     record.revision += 1
     await get_db().commit()
     return _reference(record)

@@ -19,6 +19,20 @@ Les personnels ne sont ni des souvenirs ni des Documents. Un package générique
 attribué à plusieurs agents ; un personnel est utilisable uniquement par son propriétaire.
 Pouvoir administrer ce propriétaire ne rend pas ses compétences utilisables par vos autres agents.
 
+## Désactiver un générique pour tous
+
+Dans **Compétences**, utilisez **Désactiver pour tous** sur la ligne ou dans son menu
+contextuel. Cette action demande `SKILL_EDIT` et la gestion globale des agents ; elle est
+aussi disponible pour les packages système. Le package devient invisible dans les compétences
+utilisables des agents, même si une catégorie ou un agent l'autorise explicitement.
+Ses fichiers et ses affectations sont conservés. **Activer pour tous** rétablit l'application
+de ces affectations ; la valeur globale dans **Autorisations** reste une valeur par défaut.
+
+La gestion MCP reste disponible avec les droits habituels : `skills_list(administration=true)`
+et `skill_read(..., administration=true)` permettent de consulter le package désactivé.
+`skill_set_enabled(skill_id, enabled, expected_revision, administration=true)` permet à un
+agent de portée `all` de le désactiver ou de le réactiver pour tous.
+
 ## Modifier un package personnel
 
 Dans **Compétences personnelles**, recherchez le package ou filtrez son agent propriétaire.

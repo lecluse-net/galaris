@@ -167,6 +167,14 @@ resumes. Conversation admission and resource tests cover receipts and pending/ap
 
 ## Personal skills, Lab calibration and XLS sources
 
+Global generic suspension is covered by `app/skill/tests/test_mcp.py`: it overrides
+agent/category/global grants, removes runtime projections and capabilities, revokes an
+already loaded reader and preserves MCP management and grants across rescans and reactivation,
+including system packages. `test_agent_reads.py` checks HTTP permissions and revision conflicts;
+`skills.spec.mjs` checks the action and conflict recovery. `e2e/specs/personal-skills.spec.mjs`
+checks persistence after reload and effective authorizations in the assembled application
+on mobile and desktop.
+
 Human personal-skill mutations are covered by `app/skill/tests/test_agent_reads.py`
 (privileges, management scope, revisions, content, activation and deletion),
 `skills.spec.mjs` (draft preservation after conflicts and conversion receipt reuse),
