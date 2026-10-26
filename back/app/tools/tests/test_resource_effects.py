@@ -10,6 +10,25 @@ from app.tools.resource_effects import record_tool_resources
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name", ["document_analyze", "document_analysis_get", "document_analysis_cancel"])
+async def test_analysis_failure_snapshots_remain_readable_without_artifact_evidence(monkeypatch, tool_name):
+    from app.tools import resource_effects
+
+    recorded = AsyncMock()
+    monkeypatch.setattr(resource_effects.task_port, "upsert_working_resource", recorded)
+    payload = {"analysis_id": str(uuid4()), "status": "error", "output": {"complete": False},
+               "error": {"code": "document_inference_empty", "message": "No usable evidence returned."}}
+
+    await record_tool_resources(
+        McpToolContext(agent_id=1, runtime="internal", task_id=uuid4()),
+        tool_name, {}, payload,
+    )
+
+    assert payload["error"]["code"] == "document_inference_empty"
+    recorded.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_multimedia_generation_promotes_only_completed_canonical_outputs(monkeypatch):
     from app.tools import resource_effects
     recorded = AsyncMock()

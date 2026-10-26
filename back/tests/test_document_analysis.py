@@ -220,6 +220,59 @@ async def test_document_analysis_reopens_completed_batches_without_refactoring_o
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("empty_response", [False, True])
+async def test_document_reasoning_budget_and_empty_evidence_diagnostics(runtime, tmp_path, monkeypatch, empty_response):
+    from uuid import UUID
+    from app.llm import LLMProvider
+    from app.llm.document_service import read_analysis
+
+    db, llm, _, _ = runtime
+    llm.provider = (await db.scalars(select(LLMProvider).where(
+        LLMProvider.catalog_code == "openrouter",
+    ))).one()
+    llm.llm_name = "synthetic/document-reasoner"
+    await db.commit()
+    agent, uri = await setup_source(db, tmp_path, monkeypatch, count=2)
+    run, reference = await setup_run(db, agent, uri, llm.id)
+    requests = []
+
+    def respond(request):
+        if request.method == "GET":
+            return httpx.Response(200, json={"data": [{
+                "id": llm.llm_name, "context_length": 131072,
+                "top_provider": {"max_completion_tokens": 16384},
+            }]})
+        payload = json.loads(request.content)
+        requests.append(payload)
+        enough = payload.get("max_tokens", 512) >= 16384 and not empty_response
+        return httpx.Response(200, json={"id": "synthetic-document-capacity", "object": "chat.completion",
+            "created": 1, "model": llm.llm_name, "choices": [{"index": 0,
+                "message": {"role": "assistant", "content": "Synthetic page two evidence." if enough else ""},
+                "finish_reason": "stop" if enough else "length"}]})
+
+    provider_http(monkeypatch, respond)
+    for _ in range(10):
+        result = await advance_analysis(reference)
+        if result.status != "running":
+            break
+        await db.refresh(run)
+        if run.checkpoint.get("pending_inference"):
+            await state(UUID(run.checkpoint["pending_inference"]), "completed")
+    if empty_response:
+        assert result.status == "error"
+        assert result.error.code == "document_inference_empty"
+        assert result.output["coverage"]["completed_batches"] == 0
+    else:
+        assert result.status == "success", result
+        assert result.output["answer"] == "Synthetic page two evidence."
+    snapshot = await read_analysis(agent.id, reference, runtime="internal")
+    assert snapshot["status"] == result.status
+    submitted = len(requests)
+    assert await advance_analysis(reference) == result
+    assert len(requests) == submitted  # Reading/reopening never replays a paid batch.
+
+
+@pytest.mark.asyncio
 async def test_temporary_cache_reuses_preparation_and_rechecks_source_access(db, tmp_path, monkeypatch):
     from pathlib import Path
     from tempfile import gettempdir

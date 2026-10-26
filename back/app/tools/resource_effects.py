@@ -71,6 +71,10 @@ async def record_tool_resources(
 
     if ctx.task_id is None:
         return
+    # Analysis commands return status snapshots, including expected domain errors.
+    # Preserve those diagnostics for the caller; a snapshot creates no artifact.
+    if tool_name in {"document_analyze", "document_analysis_get", "document_analysis_cancel"}:
+        return
     payload = _result_mapping(result)
     if payload.get("error"):
         raise RuntimeError(str(payload["error"]))
