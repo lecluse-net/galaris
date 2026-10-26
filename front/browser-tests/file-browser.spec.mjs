@@ -192,7 +192,8 @@ for (const width of [1440, 390]) test(`file and directory menus rename, confirm 
   await page.getByRole('dialog').getByRole('textbox').fill('Renamed.txt')
   await page.getByRole('dialog').getByRole('button', { name: 'Rename', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Open Renamed.txt', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Actions for Renamed.txt', exact: true }).click()
+  if (width < 1024) await page.getByRole('button', { name: 'Open Renamed.txt', exact: true }).click({ button: 'right' })
+  else await page.getByRole('button', { name: 'Actions for Renamed.txt', exact: true }).click()
   await page.screenshot({ path: testInfo.outputPath('file-actions.png'), fullPage: true, animations: 'disabled' })
   await page.getByRole('menuitem', { name: 'Delete', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()
@@ -312,7 +313,7 @@ test('shared videos play from range URLs, release access on closing and reopen w
     } })
   })
   await selectAgent(page, 'Alice Example')
-  await page.getByText('Console', { exact: true }).click()
+  await page.locator('.file-tree').getByText('Console', { exact: true }).click()
   for (let attempt = 1; attempt <= 2; attempt++) {
     await page.getByRole('button', { name: 'Open Synthetic.webm', exact: true }).click()
     const video = page.getByRole('dialog').locator('video')
@@ -343,7 +344,7 @@ for (const width of [1440, 390]) test(`tree folders collapse and reopen on repea
   })
   await mount(page, component, { route: '/files?agent_id=7', privileges: ['MEMORY_ACCESS'] })
   if (width === 390) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
-  await page.getByText('Console', { exact: true }).click()
+  await page.locator('.file-tree').getByText('Console', { exact: true }).click()
   const tree = page.locator('.file-tree')
   const reports = tree.getByText('Reports', { exact: true })
   await reports.click()
@@ -387,7 +388,7 @@ for (const width of [1440, 390]) test(`browse folders, scroll, retry and preview
   await page.screenshot({ path: testInfo.outputPath('file-browser-agents.png'), fullPage: true })
   await selectAgent(page, 'Alice Example')
   if (width === 390) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
-  await page.getByText('Console', { exact: true }).click()
+  await page.locator('.file-tree').getByText('Console', { exact: true }).click()
   const main = page.locator('.file-main')
   await expect(main.getByRole('button', { name: 'Open Reports', exact: true })).toBeVisible()
   await expect(page.getByText('.cache', { exact: true })).toHaveCount(0)
@@ -435,7 +436,7 @@ test('a Galaris document opens its existing modal with the selected agent scope'
   await jsonRoute(page, '**/api/documents/doc-a/content/revisions?*', { items: [], total: 0 })
   await mount(page, component, { privileges: ['MEMORY_ACCESS'] })
   await selectAgent(page, 'Alice Example')
-  await page.getByText('Galaris', { exact: true }).click()
+  await page.locator('.file-tree').getByText('Galaris', { exact: true }).click()
   await page.locator('.file-main').getByRole('button', { name: 'Open Synthetic document', exact: true }).click()
   await expect(page.getByRole('dialog').getByText('Initial body', { exact: true })).toBeVisible()
   expect(actors).toContain('7')
@@ -462,11 +463,11 @@ test('agent changes discard late responses and browsable scheme accordions reope
   await mount(page, component, { privileges: ['MEMORY_ACCESS'] })
   await selectAgent(page, 'Alice Example')
   const requested = page.waitForRequest(request => request.url().includes('/browser/entries'))
-  await page.getByText('Console', { exact: true }).click()
+  await page.locator('.file-tree').getByText('Console', { exact: true }).click()
   await requested
   await selectAgent(page, 'Bob Example')
   release()
-  await page.getByText('Console', { exact: true }).click()
+  await page.locator('.file-tree').getByText('Console', { exact: true }).click()
   await expect(page.getByText('This directory is empty.', { exact: true })).toBeVisible()
   const consoleHeader = page.getByRole('button', { name: 'Console', exact: true })
   await expect(consoleHeader).toHaveAttribute('aria-expanded', 'true')
@@ -491,4 +492,61 @@ test('agent changes discard late responses and browsable scheme accordions reope
   await expect(main.getByRole('alert')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Clear', exact: true })).toHaveCount(0)
   await expect(page.getByRole('combobox')).toHaveValue('Bob Example')
+})
+
+for (const width of [1440, 390]) test(`file locations recover from errors and open without the tree (${width}px)`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  let failed = true
+  await page.route('**/api/file-share/browser/schemes?*', route => route.fulfill(failed
+    ? { status: 503, json: { detail: 'Synthetic provider failure' } }
+    : { json: [
+      { scheme: 'file', label: 'Synthetic files', capabilities: ['list', 'info'], native: true },
+      { scheme: 'https', label: 'Direct access', capabilities: ['read', 'info'], native: false },
+      { scheme: 'hidden', label: 'Unlistable root', capabilities: ['list'], root_listable: false, native: false },
+    ] }))
+  const folder = { uri: 'file://reports/', name: 'Synthetic reports', is_collection: true, media_type: '', size: null, capabilities: ['list', 'info'] }
+  await jsonRoute(page, '**/api/file-share/browser/entries?*', { entries: [folder], truncated: false, next_cursor: null })
+  await mount(page, 'app/file_share/components/AgentFileBrowser.vue', {
+    props: { agentId: 7 }, privileges: ['FILE_ACCESS'], containerStyle: { height: '100vh', display: 'flex' },
+  })
+  const main = page.getByRole('main')
+  await expect(main.getByRole('alert')).toBeVisible()
+  failed = false
+  await main.getByRole('button', { name: 'Retry', exact: true }).click()
+  const root = main.getByRole('button', { name: 'Open Synthetic files', exact: true })
+  await expect(root).toBeVisible()
+  await expect(main.getByRole('button', { name: /Direct access|Unlistable root/ })).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('locations.png') })
+  await root.focus()
+  await page.keyboard.press('Enter')
+  const entry = main.getByRole('button', { name: 'Open Synthetic reports', exact: true })
+  await expect(entry).toBeVisible()
+  await entry.focus()
+  await page.keyboard.press('Shift+F10')
+  await expect(page.getByRole('menuitem', { name: 'Copy reference', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('files.png') })
+  // Restoring an empty location must reveal the roots again without remounting.
+  await page.evaluate(async () => {
+    await window.testApp.setProps({ initialUri: 'file://' })
+    await window.testApp.setProps({ initialUri: null })
+  })
+  await expect(root).toBeVisible()
+})
+
+test('the attachment picker opens locations directly and handles an empty scheme catalogue', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [])
+  const options = { props: { agentId: 7, selection: true }, containerStyle: { height: '100vh', display: 'flex' } }
+  await mount(page, 'app/file_share/components/AgentFileBrowser.vue', options)
+  await expect(page.getByRole('main').getByText('No visible directories.', { exact: true })).toBeVisible()
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [
+    { scheme: 'file', label: 'Synthetic files', capabilities: ['list', 'info'], native: true },
+  ])
+  await jsonRoute(page, '**/api/file-share/browser/entries?*', { entries: [], truncated: false, next_cursor: null })
+  await mount(page, 'app/file_share/components/AgentFileBrowser.vue', options)
+  await page.getByRole('main').getByRole('button', { name: 'Open Synthetic files', exact: true }).click()
+  await expect(page.getByRole('main').getByText('This directory is empty.', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:selected'))).toEqual([])
 })

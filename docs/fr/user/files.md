@@ -23,7 +23,9 @@ schémas connus de son système de fichiers virtuel : console SSH, documents, do
 ressources Galaris et fournisseurs connectés. Elle respecte le périmètre des agents
 que vous pouvez gérer et les droits propres à chaque ressource.
 
-Ouvrez une racine, puis un répertoire dans l’arborescence ou dans la grille centrale.
+Lorsqu’aucun emplacement n’est sélectionné, la grille centrale affiche les schémas
+disponibles sous forme de dossiers. Cliquez sur l’un d’eux pour ouvrir sa racine,
+puis un répertoire dans l’arborescence ou dans la grille centrale.
 Le fil d’Ariane et le bouton de répertoire parent permettent de remonter. Les fichiers
 disposent d’une miniature lorsque leur format peut être rendu ; une icône reste
 disponible sinon. Cliquez sur un fichier pour afficher son aperçu, sur un Document,
@@ -39,8 +41,9 @@ Si un jeu de données ouvert contient un brouillon non enregistré, le retour de
 confirmation avant de le fermer ; annuler conserve le brouillon et l’emplacement courant.
 
 Un clic droit sur un fichier ou un répertoire ouvre son menu contextuel ; au clavier,
-utilisez **Maj+F10** sur l’élément. Dans la grille, le bouton **⋮** donne accès aux mêmes
-actions, y compris sur mobile. Le menu propose **Renommer** et **Supprimer** selon vos
+utilisez **Maj+F10** sur l’élément. Sur mobile, un appui prolongé ouvre ce menu ; les
+icônes sont plus petites et le bouton **⋮** est masqué. Sur ordinateur, ce bouton donne
+accès aux mêmes actions dans la grille. Le menu propose **Renommer** et **Supprimer** selon vos
 droits d’édition et les capacités du fournisseur. Les répertoires de la console SSH,
 de Nextcloud et de Samba peuvent ainsi être renommés et supprimés ; les racines restent protégées.
 

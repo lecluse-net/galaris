@@ -3,10 +3,10 @@
     <div class="file-tile-content">
       <q-icon v-if="selectable && !entry.is_collection" class="file-tile-check" :name="selected ? 'check_box' : 'check_box_outline_blank'" color="primary" size="18px" />
       <div class="file-tile-preview">
-        <FolderIcon v-if="entry.is_collection" size="88px" />
+        <FolderIcon v-if="entry.is_collection" size="var(--file-icon-size)" />
         <ResourceThumbnail v-else-if="process || resourceAgent !== null" :uri="entry.uri" :agent-id="selectable ? null : agentId" :title="displayName" />
         <img v-else-if="thumbnail" class="file-tile-image" :src="thumbnail" :alt="entry.name" loading="lazy" />
-        <q-icon v-else class="file-tile-image" :name="icon" size="88px" color="primary" />
+        <q-icon v-else class="file-tile-image" :name="icon" size="var(--file-icon-size)" color="primary" />
       </div>
       <div class="file-tile-name">{{ displayName }}</div>
       <div v-if="!entry.is_collection" class="file-tile-meta text-caption">{{ entry.size === null ? entry.media_type : formatFileSize(entry.size, locale) }}</div>
@@ -63,14 +63,15 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect(); if (thumbnail.
 </script>
 
 <style scoped>
-.file-tile { width: 100%; min-width: 0; color: inherit; }
+.file-tile { --file-icon-size: 88px; --file-preview-height: 120px; width: 100%; min-width: 0; color: inherit; }
 .file-tile-content { width: 100%; min-width: 0; padding: 6px 0; text-align: center; }
-.file-tile-preview { height: 120px; display: grid; place-items: center; margin-bottom: 4px; }
-.file-tile-preview img { width: 100%; height: 120px; object-fit: contain; }
+.file-tile-preview { height: var(--file-preview-height); display: grid; place-items: center; margin-bottom: 4px; }
+.file-tile-preview img { width: 100%; height: var(--file-preview-height); object-fit: contain; }
 .file-tile-image { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .14)); }
 :global(body.body--dark .file-tile-image) { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .32)); }
 .file-tile-name { font-weight: 400; overflow-wrap: anywhere; line-height: 1.4; }
 .file-tile-meta { color: var(--solaire-gray-accent); font-weight: 400; }
+.file-tile--compact { --file-icon-size: 48px; }
 .file-tile--compact .file-tile-content { padding: 4px 0; }
 .file-tile--compact .file-tile-preview { height: 64px; margin-bottom: 6px; }
 .file-tile--compact .file-tile-preview :deep(svg), .file-tile--compact .file-tile-preview :deep(img) { max-height: 64px; }
@@ -80,4 +81,7 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect(); if (thumbnail.
 .file-tile-check { position: absolute; top: 4px; right: 4px; }
 .file-tile--selected { background: var(--solaire-blue-light); color: var(--solaire-blue-accent); }
 :global(body.body--dark .file-tile--selected) { background: var(--solaire-blue-dark); }
+@media (max-width: 1023px) {
+  .file-tile:not(.file-tile--compact) { --file-icon-size: 64px; --file-preview-height: 88px; }
+}
 </style>

@@ -80,7 +80,13 @@
             {{ t('files.loadError') }}
             <template #action><q-btn color="negative" :label="t('common.retry')" @click="loadSchemes" /></template>
           </q-banner>
-          <div v-else-if="!currentUri" class="file-state">{{ t('files.selectRoot') }}</div>
+          <template v-else-if="!currentUri">
+            <div v-if="schemesLoading" class="file-state"><q-spinner color="primary" size="32px" :aria-label="t('files.loading')" /></div>
+            <div v-else-if="treeNodes.length" class="file-grid" :aria-label="t('files.roots')">
+              <FileTile v-for="root in treeNodes" :key="root.id" :entry="root.entry" :agent-id="agentId" :compact="selection" @open="navigate(root.id)" />
+            </div>
+            <div v-else class="file-state">{{ t('files.noDirectories') }}</div>
+          </template>
           <q-banner v-else-if="unlistable" class="file-warning" role="alert">
             <template #avatar><q-icon name="warning" style="color: var(--solaire-orange-accent)" /></template>
             {{ t('files.noListing') }}
@@ -95,7 +101,7 @@
               <div class="file-grid">
                 <div v-for="entry in sortedEntries" :key="`${entry.uri}:${current.version}`" class="file-entry">
                   <FileTile :entry="entry" :agent-id="agentId" :compact="selection" :selectable="selection" :selected="selected.some(value => value.uri === entry.uri)" @open="openEntry" @activate="activateEntry" />
-                  <FileEntryActions v-if="!selection" :entry="entry" :agent-id="agentId" target=".file-entry"
+                  <FileEntryActions v-if="!selection" :entry="entry" :agent-id="agentId" target=".file-entry" :context-only="$q.screen.lt.md"
                     :open="() => openEntry(entry)" @changed="entryChanged"
                     :download="!entry.is_collection && entry.capabilities.includes('read') ? () => downloadEntry(entry) : undefined"
                   />
@@ -391,6 +397,7 @@ onBeforeUnmount(() => { active = false; schemesRequest?.abort(); searchRequest?.
 .file-browser-container--compact .file-tree { padding-top: 6px; font-size: 12px; }
 :global(body.body--dark .file-splitter-handle) { background: var(--q-dark-page); box-shadow: 0 2px 8px rgba(0, 0, 0, .38); }
 @media (max-width: 1023px) {
+  .file-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); }
   .file-browser { flex-direction: column; }
   .file-browser :deep(> .q-splitter__before) { flex: 0 1 auto; height: auto; width: 100% !important; max-height: 40%; }
   .file-browser :deep(> .q-splitter__after) { flex: 1; min-height: 0; height: auto; }

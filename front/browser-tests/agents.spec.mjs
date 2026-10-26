@@ -84,7 +84,7 @@ for (const source of ['file', 'citation']) for (const width of [1440, 390]) test
   if (source === 'file') {
     await mount(page, 'app/file_share/components/AgentFileBrowser.vue', { props: { agentId: 7 }, privileges: ['AGENT_EDIT'] })
     if (width < 1024) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
-    await page.getByText('Galaris', { exact: true }).click()
+    await page.locator('.file-tree').getByText('Galaris', { exact: true }).click()
   } else await mount(page, 'core/util/components/RichText.vue', { props: { content: '<p><a href="galaris://agent/7">Alice Example</a></p>', profile: 'document' }, privileges: ['AGENT_EDIT'] })
   const open = () => source === 'file' ? page.getByRole('button', { name: 'Open Alice Example', exact: true }).click() : page.getByRole('link', { name: 'Alice Example', exact: true }).click()
   await open()

@@ -21,7 +21,8 @@ their virtual filesystem: SSH console, documents, datasets, Galaris resources an
 connected providers. It respects the agents you can manage and each resource’s own
 access rules.
 
-Open a root and then a directory in the tree or the central grid. Use the breadcrumbs
+When no location is selected, the central grid displays available schemes as folders.
+Click one to open its root, then a directory in the tree or the central grid. Use the breadcrumbs
 or parent directory button to go back up. Files have a thumbnail when their format
 can be rendered and an icon otherwise. Click a file to preview it, or a Document,
 Task, Dataset or conversation to open its existing domain view. Formats without an
@@ -36,8 +37,9 @@ If an open Dataset contains an unsaved draft, browser traversal asks for confirm
 before closing it; cancelling preserves both the draft and the current location.
 
 Right-click a file or directory to open its context menu, or use **Shift+F10** while
-the item has focus. In the grid, the **⋮** button provides the same actions on desktop
-and mobile. **Rename** and **Delete** appear according to your edit access and the
+the item has focus. On mobile, a long press opens this menu; icons are smaller and
+the **⋮** button is hidden. On desktop, this button provides the same actions in the grid.
+**Rename** and **Delete** appear according to your edit access and the
 provider's capabilities. SSH console, Nextcloud and Samba directories support both
 actions; their roots remain protected.
 
