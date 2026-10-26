@@ -44,6 +44,24 @@
       </ul>
     </section>
 
+    <section class="about-technologies" aria-labelledby="about-technologies-title">
+      <h2 id="about-technologies-title">{{ t('index.about.technologiesTitle') }}</h2>
+      <p class="about-section-intro">{{ t('index.about.technologiesIntro') }}</p>
+      <ul class="about-technology-grid">
+        <li v-for="technology in technologies" :key="technology.key">
+          <a :href="technology.url" target="_blank" rel="noopener noreferrer" class="about-technology">
+            <span class="about-technology__logo" aria-hidden="true">
+              <img :src="'/technology-logos/' + technology.logo" alt="" width="40" height="40" loading="lazy" />
+            </span>
+            <span>
+              <span class="about-technology__name">{{ t(`index.about.technologies.${technology.key}.name`) }} <q-icon name="open_in_new" size="14px" aria-hidden="true" /></span>
+              <span class="about-technology__role">{{ t(`index.about.technologies.${technology.key}.role`) }}</span>
+            </span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
     <footer class="about-footer">
       <div>
         <p class="about-footer__title">{{ t('index.about.openSource') }}</p>
@@ -52,8 +70,8 @@
         </a>
       </div>
       <div class="about-footer__actions">
-        <q-btn flat no-caps color="primary" to="/license" icon="description" :label="t('nav.license')" />
-        <q-btn flat no-caps color="primary" to="/" icon="arrow_back" :label="t('index.backHome')" />
+        <q-btn outline no-caps color="primary" to="/license" icon="description" :label="t('nav.license')" />
+        <q-btn outline no-caps color="primary" to="/" icon="arrow_back" :label="t('index.backHome')" />
       </div>
     </footer>
   </q-page>
@@ -76,6 +94,20 @@ const features = [
   { key: 'memory', icon: 'psychology', color: 'iris' },
   { key: 'models', icon: 'hub', color: 'fuchsia' },
   { key: 'control', icon: 'shield', color: 'salmon' },
+] as const
+const technologies = [
+  { key: 'vue', logo: 'vue.svg', url: 'https://vuejs.org/' },
+  { key: 'quasar', logo: 'quasar.svg', url: 'https://quasar.dev/' },
+  { key: 'tiptap', logo: 'tiptap.png', url: 'https://tiptap.dev/' },
+  { key: 'mathlive', logo: 'mathlive.webp', url: 'https://mathlive.io/mathfield/' },
+  { key: 'libreoffice', logo: 'libreoffice.svg', url: 'https://www.libreoffice.org/' },
+  { key: 'vscode', logo: 'vscode.png', url: 'https://github.com/coder/code-server' },
+  { key: 'pydanticAi', logo: 'pydantic-ai.svg', url: 'https://ai.pydantic.dev/' },
+  { key: 'fastapi', logo: 'fastapi.svg', url: 'https://fastapi.tiangolo.com/' },
+  { key: 'postgresql', logo: 'postgresql.svg', url: 'https://www.postgresql.org/' },
+  { key: 'searxng', logo: 'searxng.svg', url: 'https://docs.searxng.org/' },
+  { key: 'n8n', logo: 'n8n.svg', url: 'https://n8n.io/' },
+  { key: 'docker', logo: 'docker.svg', url: 'https://www.docker.com/' },
 ] as const
 </script>
 
@@ -164,11 +196,13 @@ const features = [
   line-height: 1.25;
 }
 
-.about-features {
+.about-features,
+.about-technologies {
   padding: 32px 0;
 }
 
-.about-features h2 {
+.about-features h2,
+.about-technologies h2 {
   margin: 0 0 8px;
   font-size: 24px;
   font-weight: 600;
@@ -217,6 +251,73 @@ const features = [
   line-height: 1.65;
 }
 
+.about-technologies {
+  border-top: 1px solid var(--solaire-gray-light);
+}
+
+.about-technology-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-technology {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 100%;
+  padding: 16px;
+  border: 1px solid var(--solaire-gray-light);
+  border-radius: 16px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.about-technology:hover {
+  background: var(--solaire-blue-light);
+  border-color: var(--solaire-blue-accent);
+}
+
+.about-technology:focus-visible {
+  outline: 2px solid var(--solaire-blue-accent);
+  outline-offset: 3px;
+}
+
+.about-technology__logo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: var(--solaire-gray-light);
+}
+
+.about-technology__logo img {
+  object-fit: contain;
+}
+
+.about-technology__name,
+.about-technology__role {
+  display: block;
+}
+
+.about-technology__name {
+  font-weight: 600;
+}
+
+.about-technology__name .q-icon {
+  color: var(--solaire-blue-accent);
+}
+
+.about-technology__role {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .about-footer {
   display: flex;
   align-items: center;
@@ -252,8 +353,15 @@ body.body--dark .about-feature__icon {
 }
 
 body.body--dark .about-hero,
-body.body--dark .about-footer {
+body.body--dark .about-footer,
+body.body--dark .about-technologies,
+body.body--dark .about-technology {
   border-color: var(--solaire-gray-dark);
+}
+
+body.body--dark .about-technology:hover {
+  background: var(--solaire-blue-dark);
+  border-color: var(--solaire-blue-accent);
 }
 
 @media (max-width: 1023px) {
@@ -264,6 +372,10 @@ body.body--dark .about-footer {
   .about-hero,
   .about-feature-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .about-technology-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .about-brand {
@@ -278,6 +390,12 @@ body.body--dark .about-footer {
   .about-version {
     grid-column: 1;
     grid-row: auto;
+  }
+}
+
+@media (max-width: 599px) {
+  .about-technology-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

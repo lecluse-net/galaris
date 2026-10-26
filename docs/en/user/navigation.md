@@ -43,6 +43,11 @@ that view unavailable; other actions remain accessible.
 
 ## Opening the menus
 
+The **About** page (`/about`) shows the version, features and a **Technologies and
+acknowledgements** section with logos, roles and links to the main projects used,
+including LibreOffice and VS Code through code-server. The **License** button opens
+Galaris licensing information and available third-party notices.
+
 Once signed in, use the left sidebar. If only icons are visible, expand it with the menu
 button. Below 1024 CSS pixels in viewport width, the top toolbar's menu button opens the
 navigation drawer. The sections stay the same; visibility depends on the active role and

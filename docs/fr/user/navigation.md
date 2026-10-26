@@ -48,6 +48,11 @@ Une erreur persistante laisse la vue en échec ; les autres actions restent acce
 
 ## Ouvrir les menus
 
+La page **À propos** (`/about`) présente la version, les fonctionnalités et une rubrique
+**Technologies et remerciements** : logos, rôles et liens vers les principaux projets
+utilisés, dont LibreOffice et VS Code via code-server. Le bouton **Licence** ouvre les
+informations de licence de Galaris et les notices tierces disponibles.
+
 Une fois connecté, utilisez la barre latérale à gauche. Si elle ne montre que des icônes,
 dépliez-la avec le bouton menu. Sur un écran de moins de 1024 pixels CSS de large,
 le bouton menu de la barre supérieure ouvre le tiroir de navigation. Les sections restent
