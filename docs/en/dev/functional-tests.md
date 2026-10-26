@@ -416,7 +416,15 @@ diagrams. `process-references.spec.mjs` covers thumbnails, modals, link/diagram
 choices, zoom and HTML round trips without injected UI.
 `e2e/specs/process-document-references.spec.mjs` exercises the real API journey.
 `internal-file-picker.spec.mjs` covers multiple selection across folders and searches
-on mobile and desktop. `dataset-documents.spec.mjs` checks citation insertion without
+on mobile and desktop. `document-folder-collections.spec.mjs` protects collection readers
+against late responses and checks access denial followed by recovery. The E2E journey
+`document-folder-sharing.spec.mjs` covers stable links, insertion and reopening in Documents
+and Chat on desktop and mobile, plus revocation for the agent.
+`app/document/tests/test_folder_resources.py` also checks MCP reads of nested JSON, page
+boundaries at 200, 201 and 405 placements, lossless reconstruction, repeated placements and
+readable descendants below a denied parent.
+
+`dataset-documents.spec.mjs` checks citation insertion without
 membership writes or copies of existing files, preserving the formatted selection.
 `file-browser.spec.mjs` covers opening by URI, denied access and retry. The attachment
 collection excludes historical internal manifests; backend reference tests retain their

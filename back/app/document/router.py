@@ -85,6 +85,29 @@ from .document_app_security import AppConsentRequired, AppWriteLimitError
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
+@router.get("/folder-collections")
+@router.get("/folder-collections/{folder_id}")
+@authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def read_folder_collection(folder_id: UUID | None = None,
+    agent_id: int | None = Query(default=None, gt=0), offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500), query: str = Query(default="", max_length=500),
+    metadata_only: bool = False) -> dict[str, object]:
+    from .folder_resources import describe_folder, list_folder
+    scope = await current_management_scope()
+    if agent_id is not None:
+        await _require_agent_scope(agent_id)
+        from app.agent import get_agent_record
+        if await get_agent_record(agent_id) is None:
+            raise HTTPException(404, "Agent not found")
+    actor = agent_id if agent_id is not None else HumanActor(scope.user_id)
+    try:
+        folder = await describe_folder(folder_id, actor)
+        page: dict[str, object] = {"entries": [], "total": 0} if metadata_only else await list_folder(folder_id, actor, limit=limit, offset=offset, query=query)
+        return {**page, "folder": folder}
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "Folder unavailable") from exc
+
+
 @router.post("/goal-folders/reconcile", status_code=202, response_model=GoalFolderReconciliationResult)
 @authorize(privileges=Privileges.DOCUMENT_ADMIN)
 async def launch_goal_folder_reconciliation(data: GoalFolderReconciliationRequest) -> GoalFolderReconciliationResult:

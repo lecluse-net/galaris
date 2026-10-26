@@ -142,6 +142,8 @@ async def test_public_folder_applies_to_late_documents_and_is_revoked_on_move(db
 
 @pytest.mark.asyncio
 async def test_team_membership_agent_owner_and_subtree_move(db, agents, memory_storage):
+    from app.document.folder_resources import describe_folder
+    from core.user import HumanActor
     from app.agent import AgentTeamModel
     from app.document.access import effective_access, human_document_clause, readable_item_clause
     from app.document import Document
@@ -163,17 +165,23 @@ async def test_team_membership_agent_owner_and_subtree_move(db, agents, memory_s
     await document_nesting.move(scope, child.id, parent.id)
     await rule(root, scope, [("team", team.id, True)])
     assert not (await human_document_access(child, reader.id)).can_read
+    with pytest.raises(FileNotFoundError):
+        await describe_folder(root.id, HumanActor(reader.id))
     # Recipient membership is evaluated live, without another reconciliation.
     membership = TeamUserModel(user_id=reader.id, team_id=team.id)
     db.add_all([membership, AgentTeamModel(agent_id=agents[1].id, team_id=team.id)])
     await db.flush()
     assert (await human_document_access(child, reader.id)).can_write
+    assert (await describe_folder(root.id, HumanActor(reader.id)))["name"] == root.name
+    assert (await describe_folder(root.id, agents[1].id))["name"] == root.name
     child = await service.item_record(child.id)
     assert (await effective_access(child, agents[1].id)).can_write
     assert await db.scalar(select(Document.id).where(Document.id == child.id, readable_item_clause(agents[1].id))) == child.id
     assert await db.scalar(select(Document.id).where(Document.id == child.id, human_document_clause(reader.id))) == child.id
     await db.delete(membership)
     await db.flush()
+    with pytest.raises(FileNotFoundError):
+        await describe_folder(root.id, HumanActor(reader.id))
     assert not (await human_document_access(child, reader.id)).can_read
     await document_tags.write_tag(owner.id, DocumentTagWrite(name=sub.name, parent_id=None), sub.id)
     assert not (await effective_access(await service.item_record(child.id), agents[1].id)).can_read

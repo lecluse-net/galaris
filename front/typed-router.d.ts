@@ -171,6 +171,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//document/folders/[id]': RouteRecordInfo<
+      '//document/folders/[id]',
+      '/documents/folders/:id',
+      { id: ParamValue<true> },
+      { id: ParamValue<false> },
+      | never
+    >,
     '//dream/': RouteRecordInfo<
       '//dream/',
       '/dream',
@@ -567,6 +574,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | never
+    }
+    'app/document/pages/folders/[id].vue': {
+      routes:
+        | '//document/folders/[id]'
+      views:
+        | never
+      pathParamNames:
+        | 'id'
     }
     'app/dream/pages/index.vue': {
       routes:

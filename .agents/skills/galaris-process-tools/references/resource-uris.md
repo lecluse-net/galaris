@@ -27,7 +27,7 @@
 |---|---|---|
 | `console://` | `console://path/file.ext` | home SSH de la console |
 | `memory://` | `memory://uuid` | souvenir gouverné, lecture générique |
-| `document://` | `document://uuid`, `document://uuid/attachments/`, `document://uuid/attachments/attachment-uuid` | document de travail révisé et ses pièces jointes |
+| `document://` | `document://uuid`, `document://uuid/attachments/`, `document://uuid/attachments/attachment-uuid`, `document://folders/`, `document://folders/uuid/` | document révisé, ses pièces jointes et collections de répertoires autorisés en lecture seule |
 | `data://` | `data://uuid`, `data://uuid/attachments/attachment-uuid` | jeu de données JSON, droits et historique de `app.dataset` |
 | `file://` | `file://uuid` | fichier interne indépendant enregistré par `core.storage` |
 | `https://` | URL publique sans credentials ni fragment | source Web en lecture seule |
@@ -65,6 +65,13 @@ lecture et écriture sont imposées par le serveur.
 remplace une ressource existante ; son contenu est soit UTF-8, soit encodé en base64. `file_read`
 détecte le texte et renvoie les petits binaires en base64 ; les gros binaires sont passés par URI à
 un outil spécialisé ou copiés vers la console quand elle existe.
+Pour `document://folders/<uuid>/`, `file_read` rend un JSON hiérarchique valide contenant au
+plus 200 placements lisibles par page, sous-répertoires et sous-documents compris. Les offsets
+comptent ici les éléments (`offset_unit=item`), avec `next_offset` pour continuer ; ce budget
+fixe remplace `max_chars` et le JSON n'est jamais coupé. Les `children` sont imbriqués et les
+`continuations` rattachent les enfants des pages suivantes aux `parent_key` / `parent_uri`
+déjà lus. Une clé de placement distingue les classements multiples. Le contenu documentaire
+reste lisible séparément par son URI. Après une réorganisation concurrente, reprendre à zéro.
 `file_edit` remplace une plage inclusive de lignes UTF-8 (blocs pour les documents HTML).
 `file_create(path="data://", name=..., content=...)` crée un Dataset JSON indépendant.
 Dataset possède contenu, droits, historique et pièces jointes ; le JSON reste libre, sans

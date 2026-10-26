@@ -131,7 +131,8 @@ import { useQuasar, type QTreeNode } from 'quasar'
 import { FolderIcon, ResourceAttachments, ResourceDetailDialog, richLinkTarget, saveBlobAsResource, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
 import { fileBrowserService, type FileEntry, type FileScheme } from '../services/fileBrowserService'
 import { useFileDirectories } from '../browserState'
-import { parentDirectory, resourceTarget, skillCollectionLabel } from '../presentation'
+import { parentDirectory, resourceTarget, collectionLabel } from '../presentation'
+import { documentFolderId } from '@/core/util'
 import FileTile from './FileTile.vue'
 import FileEntryActions from './FileEntryActions.vue'
 
@@ -197,7 +198,7 @@ const breadcrumbs = computed(() => {
     const path = uri.replace(/\/$/, '')
     let label = path.includes('://') && !path.endsWith(':/') ? path.split('/').at(-1) || uri : uri
     try { label = decodeURIComponent(label) } catch { /* Keep the provider's original label. */ }
-    crumbs.unshift({ uri, label: skillCollectionLabel(uri, t) ?? label })
+    crumbs.unshift({ uri, label: collectionLabel(uri, t) ?? label })
     uri = parentDirectory(uri)
   }
   return crumbs
@@ -207,7 +208,7 @@ function isVisible(entry: FileEntry): boolean { return !entry.name.startsWith('.
 function treeNode(entry: FileEntry, ancestors: Set<string> = new Set()): BrowserNode {
   const state = directory(entry.uri)
   const disabledRoot = schemes.value.some(scheme => `${scheme.scheme}://` === entry.uri && (!scheme.capabilities.includes('list') || scheme.root_listable === false))
-  const node: BrowserNode = { id: entry.uri, label: skillCollectionLabel(entry.uri, t) ?? entry.name, entry, disabledRoot,
+  const node: BrowserNode = { id: entry.uri, label: collectionLabel(entry.uri, t) ?? entry.name, entry, disabledRoot,
     icon: entry.is_collection ? 'folder' : 'insert_drive_file', lazy: entry.is_collection && !disabledRoot && !state.loaded }
   if (entry.is_collection && state.loaded && !ancestors.has(entry.uri) && ancestors.size < 64) {
     const next = new Set([...ancestors, entry.uri])
@@ -253,8 +254,8 @@ function navigate(uri: string, closeTree = true, history: false | 'push' | 'repl
 }
 async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false): Promise<void> {
   if (!metadataFresh) { uriRequest?.abort(); uriLoading.value = false; uriError.value = false }
-  if (selection && !entry.is_collection) {
-    if (!entry.capabilities.includes('read')) return
+  if (selection && (!entry.is_collection || documentFolderId(entry.uri))) {
+    if (!entry.capabilities.includes('read') && !documentFolderId(entry.uri)) return
     const mouse = event as MouseEvent | undefined
     if (mouse?.shiftKey && anchor) {
       const entries = sortedEntries.value

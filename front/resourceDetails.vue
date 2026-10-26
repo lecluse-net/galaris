@@ -16,6 +16,7 @@
       <template #action><q-btn flat :label="t('common.retry')" @click="retry++" /></template>
     </q-banner>
     <TopicDetail v-else-if="target.kind === 'topic'" :key="target.id" :topic-id="target.id" embedded @loaded="resolvedTitle = $event" />
+    <DocumentFolderCollection v-else-if="target.kind === 'document_folder'" :key="target.id + ':' + target.agentId" :folder-id="target.id" :agent-id="target.agentId" />
     <TaskDetail v-else-if="target.kind === 'task'" :task-id="taskId"
       @task-change="taskId = $event" @refresh="emit('changed')" @delete="taskToDelete = $event" />
     <AgentPreview v-else-if="target.kind === 'agent'" :key="target.id" :agent-id="Number(target.id)" @loaded="resolvedTitle = $event" @deleted="changedAndClose" />
@@ -84,6 +85,7 @@ import type { LLMCall } from '@/app/llm'
 
 const TaskDetail = defineAsyncView(async () => (await import('@/app/task')).TaskDetail)
 const TopicDetail = defineAsyncView(async () => (await import('@/app/topic')).TopicDetail)
+const DocumentFolderCollection = defineAsyncView(async () => (await import('@/app/document')).DocumentFolderCollection)
 const AgentPreview = defineAsyncView(async () => (await import('@/app/agent')).AgentPreview)
 const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).GoalPreview)
 const NativeRunDialog = defineAsyncView(async () => (await import('@/app/process')).NativeRunDialog)
@@ -162,7 +164,7 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
   memory.value = null
   room.value = null
   taskId.value = target.id
-  loading.value = !['agent', 'goal', 'task', 'topic', 'process', 'process_run', 'dataset'].includes(target.kind)
+  loading.value = !['agent', 'goal', 'task', 'topic', 'process', 'process_run', 'dataset', 'document_folder'].includes(target.kind)
   try {
     if (target.kind === 'round') {
       const { conversationService } = await import('@/app/conversation')

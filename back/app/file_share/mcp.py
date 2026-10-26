@@ -238,6 +238,10 @@ async def search_files(
         "them. Use next_offset to continue text reads. Dataset JSON pages retain character offsets and include "
         "one-based start_line/end_line, total_lines and start_line_complete/end_line_complete flags for file_edit; "
         "a false flag means the first/last line is partial, so read its missing text before replacing that line. "
+        "A document://folders/<uuid>/ read returns a complete JSON hierarchy page of up to 200 items, "
+        "including subfolders and nested Documents, filtered by live access rights. Its fixed item budget "
+        "replaces max_chars: offset and next_offset count items (offset_unit=item). Follow all pages; "
+        "continuations attach to parent_key from earlier pages, and keys distinguish repeated placements. "
         "HTML Memory/document pages contain complete numbered blocks, format, profile and revision. Their offsets count blocks, not characters. A large indivisible block reports its required max_chars (up to 2 MB); the default budget stays 20,000."
     ),
     effect_policy="read",

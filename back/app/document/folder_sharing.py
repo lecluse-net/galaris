@@ -1,4 +1,4 @@
-"""Sharing rules for a private folder; the tree itself remains private."""
+"""Owner-managed sharing of a folder collection and its eligible documents."""
 
 from uuid import UUID
 

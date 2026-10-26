@@ -15,6 +15,9 @@ An agent card stores `galaris://agent/<id>`, its name and job title inside
 `blockquote.galaris-link-card.galaris-agent-card`. Its avatar loads at rendering time
 with the reader's access rights, without a saved blob or new attachment. Opening a modal
 and providing a card are independent contribution capabilities.
+A folder card retains a `document://folders/<uuid>/` link inside
+`blockquote.galaris-link-card`. Its icon loads at rendering time with the reader's rights;
+no image or copy of its documents is saved in the HTML.
 
 [Decision 0080](../../../project/decisions/0080-editorial-html.md) defines the scope.
 For editorial fields and `html` documents, the authoritative body is a UTF-8 `text/html` fragment with `content_profile_version: 1`.

@@ -88,6 +88,7 @@
           >
             <template #prepend>
               <EmojiPicker @select="insertEmoji" @error="$emit('error', $event)" />
+              <q-btn flat round dense icon="folder_shared" :disable="sending" :aria-label="t('documents.internalAttachments.add')" @click="resourcePickerOpen = true"><q-tooltip>{{ t('documents.internalAttachments.add') }}</q-tooltip></q-btn>
             </template>
             <template #append>
               <div
@@ -254,12 +255,13 @@
       </div>
     </div>
   </div>
+  <DocumentResourceReferences v-if="resourcePickerOpen" v-model:picker-open="resourcePickerOpen" :agent-id="null" :editable="!sending" @picked="insertResourceReferences" />
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RenameFileButton } from '@/core/util'
+import { RenameFileButton, DocumentResourceReferences } from '@/core/util'
 import { TopicSelect } from '@/app/topic'
 import { chatService, DictationNotConfiguredError } from '../services/chatService'
 import { visibleMessageText } from '../messageDirectives'
@@ -303,6 +305,13 @@ const emit = defineEmits<{
   'update:topicId': [value: string | null]
 }>()
 const text = ref('')
+const resourcePickerOpen = ref(false)
+function insertResourceReferences(html: string): void {
+  if (!html || props.sending) return
+  const document = new DOMParser().parseFromString(html, 'text/html')
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('a[href]')].map(link => link.getAttribute('href')!)
+  if (links.length) text.value = [text.value.trimEnd(), ...links].filter(Boolean).join('\n')
+}
 const preparingSend = ref(false)
 const submitting = ref(false)
 let roomGeneration = 0
@@ -953,6 +962,7 @@ watch(effortSelectOpen, (visible, wasVisible) => {
 })
 
 watch(() => props.roomId, () => {
+  resourcePickerOpen.value = false
   roomGeneration += 1
   cancelDictation()
   commandHelpOpen.value = false

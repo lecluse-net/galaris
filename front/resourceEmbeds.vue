@@ -1,6 +1,7 @@
 <template>
   <ProcessPreview v-if="target" ref="process" :uri="uri" :agent-id="agentId" inline />
   <div v-else-if="agent !== null" ref="avatar" class="agent-citation-avatar"><ResourceThumbnail :uri="uri" :title="title" /></div>
+  <div v-else-if="folderId" ref="folderThumbnail" class="folder-citation-thumbnail"><ResourceThumbnail :uri="uri" :agent-id="agentId" :title="title" /></div>
   <div v-else-if="documentId" class="document-citation-preview">
     <div ref="documentThumbnail" class="document-citation-thumbnail" aria-hidden="true"><WorkingDocumentThumbnail :document-id="documentId" fill /></div>
     <q-btn flat dense no-caps class="document-citation-identifier" :label="documentId" :aria-label="t('common.copy')" @click.stop.prevent="copyIdentifier"><q-tooltip>{{ t('common.copy') }}</q-tooltip></q-btn>
@@ -10,7 +11,7 @@
 import { computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { defineAsyncView, ResourceThumbnail, WorkingDocumentThumbnail, documentIdFromResourceUri, captureElementRendering, type RegisterDocumentCapture, type RenderedDocumentCapture } from '@/core/util'
+import { defineAsyncView, ResourceThumbnail, WorkingDocumentThumbnail, documentIdFromResourceUri, documentFolderId, captureElementRendering, type RegisterDocumentCapture, type RenderedDocumentCapture } from '@/core/util'
 import { agentResourceId } from '@/app/agent'
 import { processResourceTarget } from '@/app/process/interface'
 const { uri, agentId = null, title = '', registerSnapshot } = defineProps<{ uri: string; agentId?: number | null; title?: string; registerSnapshot?: RegisterDocumentCapture }>()
@@ -18,6 +19,8 @@ const ProcessPreview = defineAsyncView(async () => (await import('@/app/process'
 const target = computed(() => processResourceTarget(uri))
 const agent = computed(() => agentResourceId(uri))
 const documentId = computed(() => documentIdFromResourceUri(uri))
+const folderId = computed(() => documentFolderId(uri))
+const folderThumbnail = useTemplateRef<HTMLElement>('folderThumbnail')
 const { t } = useI18n(), $q = useQuasar()
 const documentThumbnail = useTemplateRef<HTMLElement>('documentThumbnail')
 async function copyIdentifier(): Promise<void> {
@@ -27,6 +30,7 @@ async function copyIdentifier(): Promise<void> {
 }
 const process = useTemplateRef<{ capture: RenderedDocumentCapture }>('process'), avatar = useTemplateRef('avatar')
 async function capture(signal: AbortSignal): Promise<string> {
+  if (folderId.value && folderThumbnail.value) return captureElementRendering(folderThumbnail.value, signal)
   if (target.value && process.value) return process.value.capture(signal)
   if (documentId.value && documentThumbnail.value) return captureElementRendering(documentThumbnail.value, signal)
   const element = avatar.value?.querySelector<HTMLElement>('.q-avatar')
@@ -38,6 +42,7 @@ onBeforeUnmount(() => registerSnapshot?.(undefined))
 </script>
 <style scoped>
 .agent-citation-avatar { display: block; width: 100%; height: 100%; }
+.folder-citation-thumbnail { height: 84px; width: 100%; }
 .document-citation-thumbnail { position: absolute; inset: 8px auto 8px 8px; width: 100px; }
 .document-citation-identifier { max-width: 100%; font-family: monospace; font-size: 10px; color: var(--solaire-gray-accent); opacity: .75; }
 .document-citation-identifier :deep(.q-btn__content) { overflow-wrap: anywhere; }

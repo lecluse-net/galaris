@@ -264,7 +264,7 @@ function mountCard(target: ObjectHost): () => void {
   const link = links[0], uri = link?.getAttribute('href') ?? ''
   for (const image of target.element.querySelectorAll('img')) { const src = image.getAttribute('src') ?? ''; image.dataset.editorAttachment = src; image.removeAttribute('src'); disposals.push(resolveAttachment(src, image)) }
   if (profile === 'document') disposals.push(mountWebLinkPreview(target.element, resourceAgentId))
-  if ((target.element.matches('.galaris-process-diagram, .galaris-agent-card') || richLinkTarget(uri)?.kind === 'document') && richLinkTarget(uri)) {
+  if ((target.element.matches('.galaris-process-diagram, .galaris-agent-card') || ['document', 'document_folder'].includes(richLinkTarget(uri)?.kind ?? '')) && richLinkTarget(uri)) {
     prepareDocumentCard(target.element)
     const element = document.createElement('div'); element.className = 'galaris-resource-embed'; target.element.append(element)
     const embed = { key: ++hostKey, element, uri, title: link?.textContent ?? '' }

@@ -258,6 +258,15 @@ def parse_resource_uri(
             raise ResourceUriError("memory:// requires a valid UUID.") from exc
     if scheme in {"document", "data"} and normalized:
         parts = [part for part in normalized.strip("/").split("/") if part]
+        if scheme == "document" and unquote(parts[0]) == "folders":
+            if len(parts) == 1:
+                return ResourceUri(scheme, "folders/")
+            if len(parts) == 2:
+                try:
+                    return ResourceUri(scheme, f"folders/{UUID(unquote(parts[1]))}/")
+                except ValueError as exc:
+                    raise ResourceUriError("A folder URI requires a valid folder UUID.") from exc
+            raise ResourceUriError("A folder URI accepts exactly one folder UUID.")
         try:
             document_id = str(UUID(unquote(parts[0])))
         except (IndexError, ValueError) as exc:

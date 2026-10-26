@@ -424,7 +424,16 @@ figés. Les scénarios `process-references.spec.mjs` couvrent miniatures, modale
 choix lien/diagramme, zoom et sauvegarde HTML sans UI injectée.
 `e2e/specs/process-document-references.spec.mjs` exerce le parcours avec les vraies API.
 `internal-file-picker.spec.mjs` couvre la sélection multiple à travers les dossiers et
-les recherches, sur mobile et bureau. `dataset-documents.spec.mjs` vérifie l'insertion
+les recherches, sur mobile et bureau.
+`document-folder-collections.spec.mjs` protège le lecteur de collections contre les réponses
+tardives et vérifie le refus d'accès suivi d'une reprise. Le parcours E2E
+`document-folder-sharing.spec.mjs` couvre les liens stables, l'insertion et la réouverture
+dans Documents et Discussion, sur bureau et mobile, ainsi que la révocation côté agent.
+`app/document/tests/test_folder_resources.py` vérifie aussi la lecture MCP du JSON imbriqué,
+les frontières de pages à 200, 201 et 405 placements, leur reconstruction sans perte, les
+classements multiples et les descendants lisibles sous un parent interdit.
+
+`dataset-documents.spec.mjs` vérifie l'insertion
 de citations sans écriture de manifeste ni copie des fichiers existants, avec conservation
 de la sélection mise en forme. `file-browser.spec.mjs` couvre leur ouverture par URI,
 le refus d'accès et la reprise. La collection de PJ exclut les anciens manifestes internes ;

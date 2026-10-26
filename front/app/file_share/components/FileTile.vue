@@ -1,9 +1,10 @@
 <template>
   <q-btn ref="tile" :flat="!selectable" :outline="selectable" no-caps :ripple="false" class="file-tile" :class="{ 'file-tile--compact': compact, 'file-tile--selected': selected }" :aria-pressed="selectable ? selected : undefined" :aria-label="t(selectable ? 'files.selectItem' : 'files.openItem', { name: displayName })" @click="emit('open', entry, $event)" @dblclick="emit('activate', entry)">
     <div class="file-tile-content">
-      <q-icon v-if="selectable && !entry.is_collection" class="file-tile-check" :name="selected ? 'check_box' : 'check_box_outline_blank'" color="primary" size="18px" />
+      <q-icon v-if="selectable && (!entry.is_collection || documentFolderId(entry.uri))" class="file-tile-check" :name="selected ? 'check_box' : 'check_box_outline_blank'" color="primary" size="18px" />
       <div class="file-tile-preview">
-        <FolderIcon v-if="entry.is_collection" size="var(--file-icon-size)" />
+        <LibraryIcon v-if="documentFolderId(entry.uri)" :icon="typeof entry.metadata?.icon === 'string' ? entry.metadata.icon : null" size="var(--file-icon-size)" />
+        <FolderIcon v-else-if="entry.is_collection" size="var(--file-icon-size)" />
         <ResourceThumbnail v-else-if="process || resourceAgent !== null" :uri="entry.uri" :agent-id="selectable ? null : agentId" :title="displayName" />
         <img v-else-if="thumbnail" class="file-tile-image" :src="thumbnail" :alt="entry.name" loading="lazy" />
         <q-icon v-else class="file-tile-image" :name="icon" size="var(--file-icon-size)" color="primary" />
@@ -19,10 +20,10 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { QBtn } from 'quasar'
-import { FolderIcon, ResourceThumbnail, browserResourceKind, formatFileSize, queuePreview } from '@/core/util'
+import { FolderIcon, LibraryIcon, documentFolderId, ResourceThumbnail, browserResourceKind, formatFileSize, queuePreview } from '@/core/util'
 import { agentResourceId } from '@/app/agent'
 import { fileBrowserService, type FileEntry } from '../services/fileBrowserService'
-import { resourceTarget, skillCollectionLabel } from '../presentation'
+import { resourceTarget, collectionLabel } from '../presentation'
 
 const { entry, agentId, compact = false, selectable = false, selected = false } = defineProps<{ entry: FileEntry; agentId: number; compact?: boolean; selectable?: boolean; selected?: boolean }>()
 const emit = defineEmits<{ open: [entry: FileEntry, event: Event]; activate: [entry: FileEntry] }>()
@@ -31,7 +32,7 @@ const tile = useTemplateRef<QBtn>('tile')
 const thumbnail = ref('')
 const process = computed(() => ['process', 'process_run'].includes(resourceTarget(entry, agentId)?.kind ?? ''))
 const resourceAgent = computed(() => agentResourceId(entry.uri))
-const displayName = computed(() => skillCollectionLabel(entry.uri, t) ?? ((process.value || resourceAgent.value !== null) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name))
+const displayName = computed(() => collectionLabel(entry.uri, t) ?? ((process.value || resourceAgent.value !== null) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name))
 let request: AbortController | undefined
 let observer: IntersectionObserver | undefined
 const icon = computed(() => {

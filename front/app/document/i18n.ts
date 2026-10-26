@@ -433,6 +433,7 @@ documents: {
       required: 'Ce champ est obligatoire.',
       attachments: 'Pièces jointes',
       addAttachments: 'Téléverser',
+      collections: { title: 'Répertoires', search: 'Rechercher par nom ou titre', open: 'Ouvrir le répertoire', hint: 'Documents accessibles dans ce répertoire et ses sous-répertoires. Le lien ne modifie pas les droits d’accès.' },
       internalAttachments: { add: 'Ajouter une PJ interne', unavailable: 'Ressource indisponible', error: 'Impossible de charger ou de joindre ces ressources. Vérifiez les droits et réessayez.' },
       cancelUpload: "Annuler l’envoi", dropAttachments: "Déposez des fichiers ici pour les joindre au document.", loadingAttachment: "Chargement du contenu…", attachmentInUse: "Ce fichier est encore utilisé dans le texte. Son retrait de la liste ne supprime pas les références existantes.", noAttachments: 'Aucune pièce jointe.',
       openAttachment: 'Ouvrir l’aperçu de {name}',
@@ -903,6 +904,7 @@ documents: {
       required: 'This field is required.',
       attachments: 'Attachments',
       addAttachments: 'Upload',
+      collections: { title: 'Folders', search: 'Search by name or title', open: 'Open folder', hint: 'Accessible documents in this folder and its subfolders. Linking never changes access permissions.' },
       internalAttachments: { add: 'Add an internal attachment', unavailable: 'Resource unavailable', error: 'Unable to load or attach these resources. Check permissions and retry.' },
       cancelUpload: "Cancel upload", dropAttachments: "Drop files here to attach them to the document.", loadingAttachment: "Loading content…", attachmentInUse: "This file is still used in the text. Removing it from the list does not remove existing references.", noAttachments: 'No attachment.',
       openAttachment: 'Open preview of {name}',
@@ -1125,6 +1127,7 @@ documents: {
         conflict: '文档或数据集已更改。请读取最新数据后重新提交。',
         denied: '访问被拒绝或撤销。应用已停止。', failed: '操作失败。重试前请检查权限、数据格式和连接。',
       },
+      collections: { title: '文件夹', search: '按名称或标题搜索', open: '打开文件夹', hint: '此文件夹及其子文件夹中可访问的文档。链接不会更改访问权限。' },
       internalAttachments: { add: '添加内部附件', unavailable: '资源不可用', error: '无法加载或添加这些资源。请检查权限后重试。' },
       types: { html: 'HTML', dataset: '数据集', process: '流程' },
       datasetAttachments: {

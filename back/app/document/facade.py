@@ -3,6 +3,8 @@ from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .folder_tree import read_folder_tree as read_folder_tree
+    from .folder_resources import describe_folder as describe_folder_resource, list_folder as list_folder_resources
     from . import resource_service as resource_service
     from .lifecycle import register_document_observer as register_document_observer
     from .file_facade import describe_file_resource as describe_file_resource, read_file_resource_text as read_file_resource_text, search_file_resources as search_file_resources
@@ -129,3 +131,8 @@ def __getattr__(name: str) -> object:
 if TYPE_CHECKING:
     from .document_thumbnail_service import register_web_thumbnail_capture as register_web_thumbnail_capture
 _EXPORTS["register_web_thumbnail_capture"]=("document_thumbnail_service","register_web_thumbnail_capture")
+_EXPORTS["describe_folder_resource"] = ("folder_resources", "describe_folder")
+_EXPORTS["list_folder_resources"] = ("folder_resources", "list_folder")
+__all__.extend(["describe_folder_resource", "list_folder_resources"])
+_EXPORTS["read_folder_tree"] = ("folder_tree", "read_folder_tree")
+__all__.append("read_folder_tree")

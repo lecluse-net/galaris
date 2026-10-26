@@ -336,6 +336,19 @@ is no local filesystem or implicit fallback. Relative paths are rejected. Common
 `<connected-tool-code>://path`. Messenger and file-share are capabilities: the URI scheme is always
 the exact connected Tool code, never `messenger`. A trailing `/` denotes a collection.
 Never invent a scheme or attachment UUID; call `file_schemes` or list the collection first.
+Discover shared document folders with `file_list("document://folders/")`. Each folder has a
+stable `document://folders/<uuid>/` URI. Use `file_info` for its name and icon. Reading that URI
+with `file_read` returns a complete JSON hierarchy page of up to 200 readable placements,
+including all levels of subfolders and nested Documents. Folder reads use item offsets,
+not character offsets: pass each `next_offset` as `offset` until it is absent/null.
+Their fixed 200-item page budget replaces `max_chars`; the JSON is never split or truncated.
+Children are nested within each page; `continuations` attaches later-page children to an
+earlier `parent_key` / `parent_uri`. Placement keys distinguish a Document classified in
+several branches. Reconstruct all pages before assuming a branch is empty; restart at offset
+zero if the tree is reorganized during reading. Read each exact `document://<uuid>` URI for
+its content. `file_list` also remains available for flat discovery. These are live,
+read-only collections: linking or attaching one does not grant access or copy its contents.
+The owner manages folder sharing in Documents; source ACLs are checked again on every read.
 `http://` is disabled and HTTPS is read-only. Parent traversal, host filesystem paths,
 credentials in URLs, and unsafe/private Web destinations are rejected.
 `console://` is exactly the SSH user's home. Prefer paths relative to it; `~/path`, the

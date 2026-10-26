@@ -152,6 +152,8 @@ def extract_preview_references(
 def _resource_kind(uri: str) -> ResourcePreviewKind:
     reference = parse_resource_uri(uri)
     if reference.scheme == "document":
+        if reference.segments[:1] == ("folders",):
+            return "resource"
         return "document"
     if reference.scheme == "memory":
         return "memory"

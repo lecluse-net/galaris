@@ -95,6 +95,7 @@ export const EditorialContent = defineAsyncView(() => import('./components/Edito
 export { attachmentReference, richTextExcerpt, richLinkHref, searchRichLinks, type RichContentContribution } from './richText'
 export { richLinkTarget, richLinkCard } from './richText'
 export { ResourceThumbnail, DocumentResourceReferences } from './resourceContributions'
+export { documentFolderId, documentFolderHref, canonicalFolderLink } from './documentFolderResource'
 export { documentResourceHtml } from './documentResources'
 export { formatFileSize, sizeInMegabytes, sizeFromMegabytes } from './fileSize'
 export type { FileSizeUnit } from './fileSize'

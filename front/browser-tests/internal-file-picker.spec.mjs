@@ -17,7 +17,7 @@ for (const width of [1440, 390]) test(`internal file picker keeps multiple selec
   })
   await mount(page, 'resourcePicker.vue', { route: '/chat', browserHistory: true, props: { modelValue: true, agentId: 7 } })
   if (width < 1024) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
-  await page.getByText('Managed files', { exact: true }).click()
+  await page.locator('.file-scheme-label').filter({ hasText: /^Managed files$/ }).click()
   const main = page.locator('.file-main')
   await main.getByRole('button', { name: 'Select One.txt', exact: true }).click()
   await main.getByRole('button', { name: 'Select Synthetic folder', exact: true }).dblclick()

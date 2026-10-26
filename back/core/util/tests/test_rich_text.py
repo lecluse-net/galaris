@@ -203,7 +203,7 @@ def test_editorial_references_preserve_distinct_resource_schemes(scheme):
         assert not valid_link(uri + suffix)
 
 
-@pytest.mark.parametrize(("uri", "card_class"), [("galaris://processes/synthetic_process", "galaris-process-diagram"), (f"galaris://processes/runs/{DOCUMENT}", "galaris-process-diagram"), ("galaris://agent/7", "galaris-agent-card")])
+@pytest.mark.parametrize(("uri", "card_class"), [("galaris://processes/synthetic_process", "galaris-process-diagram"), (f"galaris://processes/runs/{DOCUMENT}", "galaris-process-diagram"), ("galaris://agent/7", "galaris-agent-card"), (f"document://folders/{DOCUMENT}/", "galaris-link-card")])
 def test_resource_references_keep_the_card_choice_and_validate_the_exact_target(uri, card_class):
     html = f'<blockquote class="galaris-link-card {card_class}"><p><a href="{uri}">Synthetic resource</a></p></blockquote>'
     assert valid_link(uri)

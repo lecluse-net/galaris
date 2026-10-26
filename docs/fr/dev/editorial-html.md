@@ -15,6 +15,9 @@ Une carte d'agent conserve `galaris://agent/<id>`, son nom et son poste dans
 `blockquote.galaris-link-card.galaris-agent-card`. Son avatar est chargé au rendu avec
 les droits du lecteur, sans blob enregistré ni nouvelle PJ. L'ouverture en modale et
 la possibilité d'afficher une carte sont deux capacités indépendantes des contributions.
+Une carte de répertoire conserve un lien `document://folders/<uuid>/` dans
+`blockquote.galaris-link-card`. Son icône est chargée au rendu avec les droits du lecteur ;
+aucune image ni copie de ses documents n'est enregistrée dans le HTML.
 
 La décision [0080](../../../project/decisions/0080-editorial-html.md) définit le périmètre.
 Pour les contenus éditoriaux et les documents de type `html`, le corps autoritaire est un fragment UTF-8 `text/html`, `content_profile_version: 1`.

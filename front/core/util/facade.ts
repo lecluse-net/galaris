@@ -13,6 +13,7 @@ export { default as PersonAvatar } from './components/PersonAvatar.vue'
 export { solaireCss } from './solaireTheme'
 export { referenceId, referenceCardHtml, referenceDate, referenceStatus } from './resourceReference'
 export { documentIdFromResourceUri } from './documentResource'
+export { documentFolderId, documentFolderHref, canonicalFolderLink } from './documentFolderResource'
 export { browserResourceKind } from './resourceViewer'
 export { defineAsyncView } from './asyncView'
 

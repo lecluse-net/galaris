@@ -6,7 +6,7 @@ Ouvrez **Connaissances → Documents** (`/documents`) pour créer et classer les
 HTML accessibles. Les [jeux de données JSON](datasets.md) et les [processus](internal-processes.md)
 ont leurs bibliothèques propres. Le classement est personnel et ne change pas
 l'organisation des autres lecteurs. Un répertoire peut accorder automatiquement des droits
-supplémentaires sur vos documents, sans partager votre arborescence.
+supplémentaires sur vos documents et exposer sa collection aux destinataires autorisés.
 
 Les documents et leurs résumés partagés sont indépendants des souvenirs personnels
 des agents. Partager un document ne partage aucun souvenir ; supprimer une référence
@@ -172,7 +172,25 @@ ou un accès public aux utilisateurs authentifiés. Ces droits se propagent aux 
 documents et sous-documents, y compris ceux ajoutés ensuite. Un document cumule les partages
 de tous les répertoires dans lesquels il est classé ; le droit le plus permissif gagne.
 Classer un document appartenant à autrui, même modifiable, ne permet pas de le repartager.
-Votre arborescence reste personnelle.
+Votre classement reste personnel ; seuls les répertoires autorisés sont consultables comme
+collections, sans dévoiler leurs ancêtres privés ni les documents interdits au lecteur.
+
+Chaque répertoire a une URL stable `/documents/folders/<uuid>` et une référence
+`document://folders/<uuid>/`. Dans sa liste (**F4**), l'icône de lien copie la référence
+et **Ouvrir le répertoire** ouvre sa page dédiée. Le nom, l'icône et le contenu peuvent évoluer
+sans changer le lien. Cette page liste les sous-répertoires et les documents accessibles de toute
+la branche, y compris les sous-documents, avec recherche et pagination.
+
+Pour joindre un répertoire, utilisez **Ajouter une PJ interne** dans Discussion, ou
+**Lien Galaris** dans un document, puis l'onglet **Répertoires**. La carte conserve une
+référence vivante et affiche l'icône du répertoire comme miniature. Elle ne copie aucun
+document et n'accorde aucun droit : partagez d'abord le répertoire avec l'agent concerné.
+Les agents découvrent leurs collections avec `file_list("document://folders/")`, puis
+lisent le répertoire avec `file_read("document://folders/<uuid>/")`. La réponse contient
+l'arborescence JSON avec les sous-répertoires et sous-documents accessibles, par pages de
+200 éléments maximum. Ils passent le `next_offset` retourné comme `offset` à la lecture
+suivante, puis lisent les URI documentaires souhaitées. Chaque consultation
+revérifie les droits ; une révocation empêche les lectures suivantes.
 
 Retirer un partage du répertoire, déplacer un document ou supprimer son répertoire retire
 uniquement la contribution correspondante. Les partages propres et les autres sources restent

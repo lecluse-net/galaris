@@ -641,6 +641,9 @@ async def resource_info(
     include_checksum: bool = False,
 ) -> ResourceDescriptor:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri, allow_empty=True))
+    from .document_folders import is_document_folder, folder_info
+    if is_document_folder(reference):
+        return await folder_info(ctx, reference)
     if provider := _resource_provider(reference):
         return await provider.info(ctx, reference, include_checksum=include_checksum)
     if reference.scheme == "file":
@@ -785,6 +788,9 @@ async def resource_list(
     cursor: str | None = None,
 ) -> ResourceListing:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri, allow_empty=True))
+    from .document_folders import is_document_folder, folder_list
+    if is_document_folder(reference):
+        return await folder_list(ctx, reference, limit=max(1, min(max_entries, _LIST_LIMIT)), cursor=cursor)
     if provider := _resource_provider(reference):
         return await provider.list(ctx, reference, recursive=recursive, max_entries=max_entries, cursor=cursor)
     limit = max(1, min(max_entries, _LIST_LIMIT))
@@ -868,6 +874,9 @@ async def resource_list(
         else:
             from app.memory import search_file_resources
 
+        # The folder collection occupies one stable slot before existing Documents.
+        root_folders = reference.scheme == "document" and not reference.locator
+        page_offset = max(0, int(cursor or "0"))
         data = await search_file_resources(
             agent_id=ctx.agent_id,
             task_id=ctx.task_id,
@@ -877,8 +886,8 @@ async def resource_list(
             ),
             query="",
             mode="name",
-            limit=limit,
-            offset=max(0, int(cursor or "0")),
+            limit=max(1, limit - 1) if root_folders and page_offset == 0 else limit,
+            offset=max(0, page_offset - 1) if root_folders else page_offset,
         )
         entries = [
             ResourceDescriptor(
@@ -898,6 +907,14 @@ async def resource_list(
             )
             for item in cast(list[dict[str, object]], data["hits"])
         ]
+        document_count = len(entries)
+        if root_folders and page_offset == 0:
+            from .document_folders import folder_info
+            entries = [await folder_info(ctx, ResourceUri("document", "folders/")), *entries][:limit]
+        if root_folders:
+            more = bool(data["has_more"]) or (page_offset == 0 and document_count > limit - 1)
+            return ResourceListing(uri=str(reference), entries=entries, truncated=more,
+                next_cursor=str(page_offset + len(entries)) if more else None)
         return ResourceListing(
             uri=str(reference),
             entries=entries,
@@ -1153,6 +1170,9 @@ async def resource_read(
     """Read UTF-8 text by page, or return a small binary resource as base64."""
 
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
+    from .document_folders import is_document_folder, folder_read
+    if is_document_folder(reference):
+        return await folder_read(ctx, reference, offset=offset)
     if provider := _resource_provider(reference):
         return await provider.read(ctx, reference, offset=offset, max_chars=max_chars)
     start = max(0, offset)
@@ -2608,6 +2628,15 @@ async def resource_search(
     cursor: str | None = None,
 ) -> ResourceSearchResult:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri, allow_empty=True))
+    from .document_folders import is_document_folder, folder_list
+    if is_document_folder(reference):
+        if mode != "name":
+            raise NotImplementedError("Document folder collections support name search")
+        listing = await folder_list(ctx, reference, limit=max(1, min(max_results or 50, 500)),
+            cursor=cursor, query=query)
+        return ResourceSearchResult(uri=listing.uri, query=query, mode=mode,
+            hits=[ResourceSearchHit(resource=entry) for entry in listing.entries],
+            truncated=listing.truncated, next_cursor=listing.next_cursor)
     if provider := _resource_provider(reference):
         return await provider.search(ctx, reference, query, mode=mode, recursive=recursive, max_results=max_results, cursor=cursor)
     normalized_query = query.strip()

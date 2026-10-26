@@ -3,6 +3,8 @@
     <div class="row items-center q-gutter-sm q-mb-sm">
       <q-btn flat round icon="arrow_back" :aria-label="t('documents.bulk.closeList')" :disable="busy" @click="emit('close')" />
       <h2 class="text-h6 col q-ma-none bulk-heading">{{ heading }}</h2>
+      <CopyResourceReference v-if="folder" :uri="`document://folders/${folder.id}/`" />
+      <q-btn v-if="folder" flat round icon="open_in_new" :href="documentFolderHref(folder.id)" target="_blank" :aria-label="t('documents.collections.open')" />
       <q-btn flat round icon="refresh" :aria-label="t('documents.retry')" :disable="busy" @click="load" />
     </div>
     <q-card v-if="folder" :key="folder.id" flat bordered class="q-mb-md">
@@ -65,7 +67,7 @@ import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { defineAsyncView, documentResourceHref } from '@/core/util'
+import { defineAsyncView, documentResourceHref, documentFolderHref, CopyResourceReference } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { documentService } from '../services/documentService'
 import { applyDocumentBulkOperation, documentEntryActor, type DocumentBulkOperation } from '@/app/document/services/documentBulkService'

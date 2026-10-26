@@ -37,7 +37,7 @@ def root_id(uri: ResourceUri) -> UUID:
 
 
 async def resolve_alias(ctx: ResourceContext, reference: ResourceUri) -> ResourceUri:
-    if reference.scheme != "document" or not reference.segments:
+    if reference.scheme != "document" or not reference.segments or reference.segments[0] == "folders":
         return reference
     try:
         db = get_db()

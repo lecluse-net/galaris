@@ -54,7 +54,9 @@ async def browser_delete(ctx: ResourceContext, uri: str, *, recursive: bool) -> 
 async def read_internal_attachment(uri: str, agent_id: int, scope: AgentManagementScope | None) -> dict[str, object]:
     async with asyncio.timeout(20), browser_context(agent_id, scope=scope) as ctx:
         descriptor = await resource_info(ctx, uri)
-        if descriptor.is_collection or "read" not in descriptor.capabilities:
+        from .document_folders import is_document_folder
+        folder = is_document_folder(parse_resource_uri(descriptor.uri)) and "list" in descriptor.capabilities
+        if not folder and (descriptor.is_collection or "read" not in descriptor.capabilities):
             raise ValueError("Select a readable resource, not a directory")
         return descriptor.model_dump(mode="json")
 

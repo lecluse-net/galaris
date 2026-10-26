@@ -84,6 +84,12 @@ def valid_link(value: str) -> bool:
         return bool(uri.path) and not uri.netloc
     if uri.scheme == "document" and attachment_reference(value) is not None:
         return True
+    if uri.scheme == "document" and uri.netloc == "folders":
+        try:
+            identity = UUID(uri.path.strip("/"))
+        except ValueError:
+            return False
+        return value in {f"document://folders/{identity}", f"document://folders/{identity}/"}
     if uri.scheme in {"document", "memory", "data"}:
         try:
             identity = UUID(uri.netloc)

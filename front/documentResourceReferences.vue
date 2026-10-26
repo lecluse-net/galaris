@@ -4,7 +4,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { validRichLink } from '@/core/util/richText'
+import { validRichLink, richLinkCard } from '@/core/util/richText'
+import { documentFolderId } from '@/core/util'
 import type { RichLinkTarget } from '@/core/util/richText'
 import { processReferenceHtml } from '@/app/process/interface'
 import { resourceTarget, type FileEntry } from '@/app/file_share/interface'
@@ -15,6 +16,7 @@ const adding = defineModel<boolean>('pickerOpen', { default: false })
 const emit = defineEmits<{ picked: [html: string] }>()
 const { t } = useI18n()
 const error = ref(''), busy = ref(false)
+let generation = 0
 function selectReference(value: RichLinkTarget): void {
   if (!editable || busy.value || !validRichLink(value.uri)) return
   const link = document.createElement('a'); link.href = value.uri; link.textContent = value.title
@@ -36,17 +38,20 @@ function reference(entry: FileEntry, selectedAgent: number): string {
   anchor.textContent = title
   return `<p>${anchor.outerHTML}</p>`
 }
-function select(entries: FileEntry[], selectedAgent: number): void {
+async function select(entries: FileEntry[], selectedAgent: number): Promise<void> {
   if (!editable || busy.value) return
   busy.value = true; error.value = ''
+  const current = ++generation
   try {
-    emit('picked', entries.map(entry => reference(entry, selectedAgent)).join(''))
+    const html = await Promise.all(entries.map(entry => documentFolderId(entry.uri) ? richLinkCard(entry.uri, null) : reference(entry, selectedAgent)))
+    if (!editable || !adding.value || current !== generation) return
+    emit('picked', html.join(''))
     adding.value = false
-  } catch { error.value = t('documents.internalAttachments.error') }
-  finally { busy.value = false }
+  } catch { if (current === generation) error.value = t('documents.internalAttachments.error') }
+  finally { if (current === generation) busy.value = false }
 }
-function finishPicker(): void { emit('picked', '') }
-watch(adding, value => { if (value) error.value = '' })
+function finishPicker(): void { generation++; busy.value = false; emit('picked', '') }
+watch(adding, value => { generation++; busy.value = false; if (value) error.value = '' })
 watch(() => [documentId, agentId], () => { finishPicker(); adding.value = false; error.value = '' })
 onBeforeUnmount(finishPicker)
 </script>

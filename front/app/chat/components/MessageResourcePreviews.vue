@@ -14,14 +14,17 @@
         :subtitle="preview.deleted ? t('chat.resourcePreview.documentDeleted') : [kindLabel(preview.kind), preview.subtitle].filter(Boolean).join(' · ')"
         :uri="preview.uri"
         :image="imageUrls[preview.uri]"
-        :icon="isDirectory(preview) ? 'folder' : kindIcon(preview.kind)"
+        :icon="documentFolderId(preview.uri) || isDirectory(preview) ? 'folder' : kindIcon(preview.kind)"
         :href="preview.open_mode === 'external' ? preview.external_url ?? undefined : undefined"
         :open-label="preview.open_mode === 'external'
           ? t('chat.resourcePreview.openExternal')
           : t(canOpenDirectory(preview) ? 'code.openDirectory' : downloadOnly(preview) ? 'chat.resourcePreview.download' : 'chat.resourcePreview.open', { title: preview.title })"
         @open="handlePreviewClick($event, preview)"
       >
-        <template v-if="preview.deleted" #preview>
+        <template v-if="documentFolderId(preview.uri)" #preview>
+          <LibraryIcon :icon="typeof preview.metadata.icon === 'string' ? preview.metadata.icon : null" size="80px" />
+        </template>
+        <template v-else-if="preview.deleted" #preview>
           <q-icon name="delete_outline" size="32px" style="color: var(--solaire-gray-accent)" />
         </template>
         <template v-else-if="documentId(preview) && canReadDocuments" #preview>
@@ -277,12 +280,13 @@
   />
   <ResourceDetailDialog v-if="datasetDialogOpen && datasetTarget" :target="datasetTarget"
     @close="datasetDialogOpen = false" @changed="invalidateMessagePreviewReaders" />
+  <ResourceDetailDialog v-if="folderTarget" :target="folderTarget" @close="folderTarget = null" />
 </template>
 
 <script setup lang="ts">
 import { WorkingDocumentIcon as DocumentIcon, WorkingDocumentThumbnail } from '@/core/util'
 import { RichText, richTextExcerpt } from '@/core/util'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
@@ -301,7 +305,10 @@ import {
   queuePreview,
   ResourceDetailDialog,
   richLinkTarget,
+  documentFolderId,
+  LibraryIcon,
 } from '@/core/util'
+import type { ResourceDetailTarget } from '@/core/util'
 import type { BrowserResourceKind, Model3dSource, WorkingDocumentSnapshot } from '@/core/util'
 import { invalidateMessagePreviewReaders, useMessagePreviewFreshness } from '../useMessagePreviewFreshness'
 import { useAuthStore } from '@/core/user'
@@ -402,6 +409,7 @@ function kindLabel(kind: MessageResourcePreviewKind): string {
 }
 
 const documentAgentId = computed(() => props.viewerAgentId ?? props.conversationAgentId)
+const folderTarget = shallowRef<ResourceDetailTarget | null>(null)
 
 function resourceKind(preview: MessageResourcePreview | null): BrowserResourceKind | null {
   if (!preview?.download_available) return null
@@ -486,6 +494,7 @@ async function load(resetDialog = true): Promise<void> {
   const currentGeneration = ++generation
   const selectedUri = resetDialog ? null : selected.value?.uri ?? null
   if (resetDialog) {
+    folderTarget.value = null
     loading.value = true
     previews.value = []
     selected.value = null
@@ -597,6 +606,10 @@ function handlePreviewClick(event: MouseEvent, preview: MessageResourcePreview):
 }
 
 function openPreview(preview: MessageResourcePreview): void {
+  if (documentFolderId(preview.uri)) {
+    folderTarget.value = richLinkTarget(preview.uri, preview.title, props.viewerAgentId)
+    return
+  }
   if (isDirectory(preview)) {
     if (canOpenDirectory(preview)) emit('openDirectory', preview.uri, props.messageId)
     return

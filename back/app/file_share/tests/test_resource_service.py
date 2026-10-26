@@ -888,11 +888,14 @@ async def test_document_collection_lists_canonical_resource_uris(
         "document://",
     )
 
-    assert [entry.uri for entry in result.entries] == [f"document://{identifier}" for identifier in identifiers]
-    assert len({entry.entry_name for entry in result.entries}) == len(identifiers)
-    assert [entry.name for entry in result.entries] == ["release.md", "release.md"]
+    assert result.entries[0].uri == "document://folders/"
+    assert result.entries[0].is_collection
+    documents = result.entries[1:]
+    assert [entry.uri for entry in documents] == [f"document://{identifier}" for identifier in identifiers]
+    assert len({entry.entry_name for entry in documents}) == len(identifiers)
+    assert [entry.name for entry in documents] == ["release.md", "release.md"]
     assert {"read", "write", "append", "edit"} <= set(
-        result.entries[0].capabilities
+        documents[0].capabilities
     )
 
 

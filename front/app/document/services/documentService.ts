@@ -22,9 +22,29 @@ export interface DocumentInternalAttachments {
   lock_version: number
 }
 
+export interface DocumentFolderEntry {
+  uri: string
+  name: string
+  is_collection: boolean
+  media_type: string
+  size: number | null
+  capabilities: string[]
+  metadata: { document_folder?: boolean; icon?: string | null }
+}
+export interface DocumentFolderPage {
+  folder: DocumentFolderEntry
+  entries: DocumentFolderEntry[]
+  total: number
+}
+
 const ownerOptionsCache = createOwnerOptionsCache<DocumentOwnerOptions>()
 
 export const documentService = {
+async folderCollection(id: string | null, agentId: number | null, options: { offset?: number; limit?: number; query?: string; metadata_only?: boolean } = {}, signal?: AbortSignal): Promise<DocumentFolderPage> {
+  return (await api.get<DocumentFolderPage>(`/documents/folder-collections${id ? '/' + encodeURIComponent(id) : ''}`, {
+    params: { agent_id: agentId, ...options }, signal,
+  })).data
+},
 async linkThumbnail(url: string, agentId: number | null, signal: AbortSignal): Promise<Blob | null> {
   const response = await api.post<Blob>('/documents/link-card/thumbnail', { url }, {
     params: { agent_id: agentId }, responseType: 'blob', signal,

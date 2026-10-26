@@ -17,10 +17,10 @@ tests restent l’autorité sur le comportement.
 - 28 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 758 handlers HTTP/WebSocket détectés ;
+- 760 handlers HTTP/WebSocket détectés ;
 - 180 tables SQLAlchemy détectées ;
 - 278 outils MCP natifs détectés ;
-- 52 pages Vue détectées.
+- 53 pages Vue détectées.
 
 ## Modules backend
 
@@ -129,7 +129,7 @@ tests restent l’autorité sur le comportement.
 | `app/topic` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 2 |
 | `app/goal` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/share` | oui | `components` | 0 |
-| `app/document` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 2 |
+| `app/document` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 3 |
 | `app/memory` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 2 |
 | `app/file_share` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
 | `app/dataset` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
@@ -272,15 +272,15 @@ tests restent l’autorité sur le comportement.
 | `app.dataset` | `core.team` | `back/app/dataset/service.py` |
 | `app.dataset` | `core.user` | `back/app/dataset/access.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/contracts.py`, `back/app/dataset/service.py` |
 | `app.dataset` | `core.util` | `back/app/dataset/attachments.py`, `back/app/dataset/provider.py` |
-| `app.document` | `app.agent` | `back/app/document/access.py`, `back/app/document/assertions.py`, `back/app/document/bootstrap.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_policy.py`, `back/app/document/document_service.py`, `back/app/document/document_sharing.py`, `back/app/document/document_tags.py`, `back/app/document/events.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/internal_attachments.py`, `back/app/document/item_sharing.py`, `back/app/document/library_queries.py`, `back/app/document/process_references.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/topic_assignment.py`, `back/app/document/workflow_documents.py` |
+| `app.document` | `app.agent` | `back/app/document/access.py`, `back/app/document/assertions.py`, `back/app/document/bootstrap.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_policy.py`, `back/app/document/document_service.py`, `back/app/document/document_sharing.py`, `back/app/document/document_tags.py`, `back/app/document/events.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/internal_attachments.py`, `back/app/document/item_sharing.py`, `back/app/document/library_queries.py`, `back/app/document/process_references.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/topic_assignment.py`, `back/app/document/workflow_documents.py` |
 | `app.document` | `app.conversation` | `back/app/document/bootstrap.py`, `back/app/document/conversation_document_adapter.py`, `back/app/document/resource_service.py` |
 | `app.document` | `app.goal` | `back/app/document/bootstrap.py`, `back/app/document/dbadmin.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py` |
 | `app.document` | `app.process` | `back/app/document/internal_attachments.py`, `back/app/document/process_references.py` |
-| `app.document` | `app.share` | `back/app/document/access.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/item_sharing.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/resource_service.py`, `back/app/document/schemas.py`, `back/app/document/sharing_inheritance.py` |
+| `app.document` | `app.share` | `back/app/document/access.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/item_sharing.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/resource_service.py`, `back/app/document/schemas.py`, `back/app/document/sharing_inheritance.py` |
 | `app.document` | `app.task` | `back/app/document/goal_folders.py`, `back/app/document/resource_service.py` |
 | `app.document` | `app.tools` | `back/app/document/item_sharing.py`, `back/app/document/mcp.py` |
 | `app.document` | `core.authorize` | `back/app/document/access.py`, `back/app/document/assertions.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_policy.py`, `back/app/document/goal_folders.py`, `back/app/document/item_sharing.py`, `back/app/document/router.py` |
-| `app.document` | `core.database` | `back/app/document/access.py`, `back/app/document/automation.py`, `back/app/document/conversation_document_adapter.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_security.py`, `back/app/document/document_app_service.py`, `back/app/document/document_attachment_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_library_filters.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_service.py`, `back/app/document/document_structure.py`, `back/app/document/document_tags.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/events.py`, `back/app/document/file_facade.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/inline_content.py`, `back/app/document/interface.py`, `back/app/document/item_sharing.py`, `back/app/document/library_queries.py`, `back/app/document/lifecycle.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/query_policy.py`, `back/app/document/resource_service.py`, `back/app/document/revision_queries.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/summary_service.py`, `back/app/document/topic_assignment.py`, `back/app/document/workflow_documents.py` |
+| `app.document` | `core.database` | `back/app/document/access.py`, `back/app/document/automation.py`, `back/app/document/conversation_document_adapter.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_security.py`, `back/app/document/document_app_service.py`, `back/app/document/document_attachment_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_library_filters.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_service.py`, `back/app/document/document_structure.py`, `back/app/document/document_tags.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/events.py`, `back/app/document/file_facade.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_sharing.py`, `back/app/document/folder_tree.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/inline_content.py`, `back/app/document/interface.py`, `back/app/document/item_sharing.py`, `back/app/document/library_queries.py`, `back/app/document/lifecycle.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/query_policy.py`, `back/app/document/resource_service.py`, `back/app/document/revision_queries.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/summary_service.py`, `back/app/document/topic_assignment.py`, `back/app/document/workflow_documents.py` |
 | `app.document` | `core.dbadmin` | `back/app/document/dbadmin.py`, `back/app/document/document_backup.py`, `back/app/document/independence.py`, `back/app/document/privilege_migration.py`, `back/app/document/tool_migration.py` |
 | `app.document` | `core.document` | `back/app/document/document_thumbnail_service.py` |
 | `app.document` | `core.i18n` | `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/resource_service.py` |
@@ -289,7 +289,7 @@ tests restent l’autorité sur le comportement.
 | `app.document` | `core.settings` | `back/app/document/document_thumbnail_cache.py` |
 | `app.document` | `core.storage` | `back/app/document/automation.py`, `back/app/document/dataset_migration.py`, `back/app/document/document_attachment_service.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/inline_content.py`, `back/app/document/process_migration.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/summary_service.py`, `back/app/document/topic_assignment.py` |
 | `app.document` | `core.team` | `back/app/document/access.py`, `back/app/document/bootstrap.py`, `back/app/document/sharing_inheritance.py` |
-| `app.document` | `core.user` | `back/app/document/access.py`, `back/app/document/bootstrap.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_attachment_service.py`, `back/app/document/document_export.py`, `back/app/document/document_image_import.py`, `back/app/document/document_links.py`, `back/app/document/document_policy.py`, `back/app/document/document_sharing.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/events.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/interface.py`, `back/app/document/internal_attachments.py`, `back/app/document/item_sharing.py`, `back/app/document/library_queries.py`, `back/app/document/process_references.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/summary_service.py`, `back/app/document/workflow_documents.py` |
+| `app.document` | `core.user` | `back/app/document/access.py`, `back/app/document/bootstrap.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_attachment_service.py`, `back/app/document/document_export.py`, `back/app/document/document_image_import.py`, `back/app/document/document_links.py`, `back/app/document/document_policy.py`, `back/app/document/document_sharing.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/events.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_tree.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/interface.py`, `back/app/document/internal_attachments.py`, `back/app/document/item_sharing.py`, `back/app/document/library_queries.py`, `back/app/document/process_references.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/summary_service.py`, `back/app/document/workflow_documents.py` |
 | `app.document` | `core.util` | `back/app/document/document_attachment_service.py`, `back/app/document/document_links.py`, `back/app/document/document_service.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/file_facade.py`, `back/app/document/models.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/schemas.py`, `back/app/document/topic_assignment.py` |
 | `app.documentation` | `core.database` | `back/app/documentation/__main__.py`, `back/app/documentation/models.py`, `back/app/documentation/search.py` |
 | `app.dream` | `app.agent` | `back/app/dream/events.py`, `back/app/dream/manual.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/router.py` |
@@ -319,7 +319,7 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `app.connection` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/indexing.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `app.console` | `back/app/file_share/browser.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.conversation` | `back/app/file_share/galaris_provider.py` |
-| `app.file_share` | `app.document` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py` |
+| `app.file_share` | `app.document` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/document_folders.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.documentation` | `back/app/file_share/documentation_provider.py` |
 | `app.file_share` | `app.goal` | `back/app/file_share/galaris_provider.py` |
 | `app.file_share` | `app.image` | `back/app/file_share/file_share_service.py` |
@@ -340,7 +340,7 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `core.secrets` | `back/app/file_share/media_access.py` |
 | `app.file_share` | `core.settings` | `back/app/file_share/media_router.py` |
 | `app.file_share` | `core.storage` | `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `core.user` | `back/app/file_share/browser_router.py`, `back/app/file_share/media_access.py` |
+| `app.file_share` | `core.user` | `back/app/file_share/browser_router.py`, `back/app/file_share/document_folders.py`, `back/app/file_share/media_access.py` |
 | `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/models.py` |
@@ -844,10 +844,10 @@ tests restent l’autorité sur le comportement.
 | `app/dataset` | `core/util` | `front/app/dataset/components/DatasetDialog.vue`, `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetFolderRow.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetLibraryRow.vue`, `front/app/dataset/pages/[[id]].vue`, `front/app/dataset/richContent.ts` |
 | `app/document` | `app/agent` | `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentSharingPanel.vue` |
 | `app/document` | `app/share` | `front/app/document/components/DocumentBulkDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryFilters.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/services/documentService.ts`, `front/app/document/types.ts` |
-| `app/document` | `core/api` | `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/services/documentService.ts`, `front/app/document/stores/documentIcons.ts`, `front/app/document/stores/documentMutations.ts` |
+| `app/document` | `core/api` | `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderCollection.vue`, `front/app/document/components/DocumentFolderThumbnail.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/services/documentService.ts`, `front/app/document/stores/documentIcons.ts`, `front/app/document/stores/documentMutations.ts` |
 | `app/document` | `core/authorize` | `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/navigation.ts` |
 | `app/document` | `core/navigation` | `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/navigation.ts` |
-| `app/document` | `core/util` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentApplicationBlock.vue`, `front/app/document/components/DocumentAttachments.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderSelect.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentSplitterHandle.vue`, `front/app/document/components/DocumentTagIcon.vue`, `front/app/document/components/DocumentTagIconPicker.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/documentAppResources.ts`, `front/app/document/documentAppSandbox.ts`, `front/app/document/documentEditor.ts`, `front/app/document/documentFolders.ts`, `front/app/document/libraryShortcuts.ts`, `front/app/document/richContent.ts`, `front/app/document/services/documentService.ts`, `front/app/document/tagEmojiCatalog.ts`, `front/app/document/tagIcon.ts` |
+| `app/document` | `core/util` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentApplicationBlock.vue`, `front/app/document/components/DocumentAttachments.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderCollection.vue`, `front/app/document/components/DocumentFolderSelect.vue`, `front/app/document/components/DocumentFolderThumbnail.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentSplitterHandle.vue`, `front/app/document/components/DocumentTagIcon.vue`, `front/app/document/components/DocumentTagIconPicker.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/documentAppResources.ts`, `front/app/document/documentAppSandbox.ts`, `front/app/document/documentEditor.ts`, `front/app/document/documentFolders.ts`, `front/app/document/libraryShortcuts.ts`, `front/app/document/richContent.ts`, `front/app/document/services/documentService.ts`, `front/app/document/tagEmojiCatalog.ts`, `front/app/document/tagIcon.ts` |
 | `app/document` | `core/websocket` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentThumbnail.vue` |
 | `app/dream` | `app/agent` | `front/app/dream/components/FileIndexTab.vue` |
 | `app/dream` | `app/file_share` | `front/app/dream/components/FileIndexTab.vue` |
@@ -1492,70 +1492,72 @@ tests restent l’autorité sur le comportement.
 | DELETE | `/definitions/{process_id}` | `app.process` | `delete_definition` | oui | `back/app/process/router.py:215` |
 | GET | `/definitions/{process_id}` | `app.process` | `read_definition` | oui | `back/app/process/router.py:193` |
 | PUT | `/definitions/{process_id}` | `app.process` | `update_definition` | oui | `back/app/process/router.py:199` |
-| POST | `/documents` | `app.document` | `create_managed_document` | oui | `back/app/document/router.py:204` |
-| GET | `/documents/folders` | `app.document` | `read_document_folders` | oui | `back/app/document/router.py:423` |
-| POST | `/documents/goal-folders/reconcile` | `app.document` | `launch_goal_folder_reconciliation` | oui | `back/app/document/router.py:90` |
-| POST | `/documents/icons/resolve` | `app.document` | `resolve_document_icons` | oui | `back/app/document/router.py:291` |
-| GET | `/documents/keywords` | `app.document` | `read_document_keywords` | oui | `back/app/document/router.py:257` |
-| POST | `/documents/library` | `app.document` | `browse_managed_documents` | oui | `back/app/document/router.py:275` |
-| POST | `/documents/link-card/thumbnail` | `app.document` | `read_link_card_thumbnail` | oui | `back/app/document/router.py:595` |
-| PUT | `/documents/order` | `app.document` | `reorder_personal_documents` | oui | `back/app/document/router.py:308` |
-| PUT | `/documents/order/sort` | `app.document` | `sort_personal_documents` | oui | `back/app/document/router.py:318` |
-| GET | `/documents/owner-options` | `app.document` | `read_document_owner_options` | oui | `back/app/document/router.py:438` |
-| GET | `/documents/tag-icons` | `app.document` | `read_personal_tag_icons` | oui | `back/app/document/router.py:328` |
-| POST | `/documents/tag-icons` | `app.document` | `upload_personal_tag_icon` | oui | `back/app/document/router.py:333` |
-| GET | `/documents/tags` | `app.document` | `read_personal_document_tags` | oui | `back/app/document/router.py:359` |
-| POST | `/documents/tags` | `app.document` | `create_personal_document_tag` | oui | `back/app/document/router.py:365` |
-| DELETE | `/documents/tags/{tag_id}` | `app.document` | `delete_personal_document_tag` | oui | `back/app/document/router.py:399` |
-| PUT | `/documents/tags/{tag_id}` | `app.document` | `update_personal_document_tag` | oui | `back/app/document/router.py:391` |
-| GET | `/documents/tags/{tag_id}/sharing` | `app.document` | `read_folder_sharing` | oui | `back/app/document/router.py:373` |
-| PUT | `/documents/tags/{tag_id}/sharing` | `app.document` | `update_folder_sharing` | oui | `back/app/document/router.py:382` |
-| DELETE | `/documents/{document_id}` | `app.document` | `delete_managed_document` | oui | `back/app/document/router.py:781` |
-| GET | `/documents/{document_id}` | `app.document` | `read_managed_document` | oui | `back/app/document/router.py:757` |
-| PATCH | `/documents/{document_id}` | `app.document` | `update_human_document` | oui | `back/app/document/router.py:795` |
-| GET | `/documents/{document_id}/app-permissions` | `app.document` | `read_app_permissions` | oui | `back/app/document/router.py:130` |
-| PUT | `/documents/{document_id}/app-permissions/{app_key}/{alias}` | `app.document` | `update_app_permission` | oui | `back/app/document/router.py:138` |
-| POST | `/documents/{document_id}/apps/{app_id}/datasets/{alias}` | `app.document` | `access_app_dataset` | oui | `back/app/document/router.py:149` |
-| GET | `/documents/{document_id}/attachments` | `app.document` | `list_document_attachments` | oui | `back/app/document/router.py:1030` |
-| POST | `/documents/{document_id}/attachments` | `app.document` | `add_document_attachment` | oui | `back/app/document/router.py:1049` |
-| DELETE | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `delete_document_attachment` | oui | `back/app/document/router.py:1162` |
-| GET | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `read_document_attachment` | oui | `back/app/document/router.py:1131` |
-| PATCH | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `rename_document_attachment` | oui | `back/app/document/router.py:1100` |
-| GET | `/documents/{document_id}/attachments/{attachment_id}/info` | `app.document` | `read_document_attachment_info` | oui | `back/app/document/router.py:1114` |
-| GET | `/documents/{document_id}/attachments/{attachment_id}/thumbnail` | `app.document` | `read_document_attachment_thumbnail` | oui | `back/app/document/router.py:1069` |
-| DELETE | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `remove_managed_document_grant` | oui | `back/app/document/router.py:999` |
-| PUT | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `set_managed_document_grant` | oui | `back/app/document/router.py:965` |
-| GET | `/documents/{document_id}/content-revisions` | `app.document` | `list_managed_document_content_revisions` | oui | `back/app/document/router.py:484` |
-| GET | `/documents/{document_id}/content-revisions/{revision}` | `app.document` | `read_managed_document_content_revision` | oui | `back/app/document/router.py:510` |
-| GET | `/documents/{document_id}/content-revisions/{revision}/diff` | `app.document` | `diff_managed_document_content_revision` | oui | `back/app/document/router.py:534` |
-| POST | `/documents/{document_id}/content-revisions/{revision}/restore` | `app.document` | `restore_managed_document_content_revision` | oui | `back/app/document/router.py:558` |
-| GET | `/documents/{document_id}/dataset-attachments` | `app.document` | `read_document_datasets` | oui | `back/app/document/router.py:671` |
-| PUT | `/documents/{document_id}/dataset-attachments` | `app.document` | `attach_document_dataset` | oui | `back/app/document/router.py:726` |
-| DELETE | `/documents/{document_id}/dataset-attachments/{dataset_id}` | `app.document` | `detach_document_dataset` | oui | `back/app/document/router.py:738` |
-| POST | `/documents/{document_id}/export-bundle` | `app.document` | `export_document_bundle` | oui | `back/app/document/router.py:620` |
-| POST | `/documents/{document_id}/export-pdf` | `app.document` | `export_managed_document_pdf` | oui | `back/app/document/router.py:633` |
-| PATCH | `/documents/{document_id}/folder` | `app.document` | `move_managed_document` | oui | `back/app/document/router.py:837` |
-| PATCH | `/documents/{document_id}/global-access` | `app.document` | `set_managed_document_global_access` | oui | `back/app/document/router.py:936` |
-| DELETE | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `remove_document_grant` | oui | `back/app/document/router.py:1219` |
-| PUT | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `set_document_grant` | oui | `back/app/document/router.py:1187` |
-| PUT | `/documents/{document_id}/icon` | `app.document` | `save_document_icon` | oui | `back/app/document/router.py:298` |
-| POST | `/documents/{document_id}/import-image` | `app.document` | `import_document_image` | oui | `back/app/document/router.py:585` |
-| GET | `/documents/{document_id}/internal-attachments` | `app.document` | `read_internal_attachments` | oui | `back/app/document/router.py:681` |
-| PUT | `/documents/{document_id}/internal-attachments` | `app.document` | `change_internal_attachments` | oui | `back/app/document/router.py:692` |
-| POST | `/documents/{document_id}/link-card` | `app.document` | `create_document_link_card` | oui | `back/app/document/router.py:610` |
-| PATCH | `/documents/{document_id}/owner` | `app.document` | `change_document_owner` | oui | `back/app/document/router.py:874` |
-| PUT | `/documents/{document_id}/parent` | `app.document` | `move_personal_subdocument` | oui | `back/app/document/router.py:349` |
-| GET | `/documents/{document_id}/process-attachments` | `app.document` | `read_document_processes` | oui | `back/app/document/router.py:704` |
-| PUT | `/documents/{document_id}/process-attachments` | `app.document` | `attach_document_process` | oui | `back/app/document/router.py:714` |
-| GET | `/documents/{document_id}/sharing` | `app.document` | `read_document_sharing` | oui | `back/app/document/router.py:810` |
-| PUT | `/documents/{document_id}/sharing` | `app.document` | `update_document_sharing` | oui | `back/app/document/router.py:818` |
-| PUT | `/documents/{document_id}/sharing-level` | `app.document` | `update_document_sharing_level` | oui | `back/app/document/router.py:826` |
-| GET | `/documents/{document_id}/summary` | `app.document` | `read_document_summary` | oui | `back/app/document/router.py:99` |
-| PUT | `/documents/{document_id}/summary` | `app.document` | `edit_document_summary` | oui | `back/app/document/router.py:111` |
-| PUT | `/documents/{document_id}/tags` | `app.document` | `move_personal_document` | oui | `back/app/document/router.py:341` |
-| DELETE | `/documents/{document_id}/tags/{tag_id}` | `app.document` | `remove_personal_document_tag` | oui | `back/app/document/router.py:415` |
-| PUT | `/documents/{document_id}/tags/{tag_id}` | `app.document` | `add_personal_document_tag` | oui | `back/app/document/router.py:407` |
-| POST | `/documents/{document_id}/thumbnail` | `app.document` | `read_document_thumbnail` | oui | `back/app/document/router.py:650` |
+| POST | `/documents` | `app.document` | `create_managed_document` | oui | `back/app/document/router.py:227` |
+| GET | `/documents/folder-collections` | `app.document` | `read_folder_collection` | oui | `back/app/document/router.py:91` |
+| GET | `/documents/folder-collections/{folder_id}` | `app.document` | `read_folder_collection` | oui | `back/app/document/router.py:91` |
+| GET | `/documents/folders` | `app.document` | `read_document_folders` | oui | `back/app/document/router.py:446` |
+| POST | `/documents/goal-folders/reconcile` | `app.document` | `launch_goal_folder_reconciliation` | oui | `back/app/document/router.py:113` |
+| POST | `/documents/icons/resolve` | `app.document` | `resolve_document_icons` | oui | `back/app/document/router.py:314` |
+| GET | `/documents/keywords` | `app.document` | `read_document_keywords` | oui | `back/app/document/router.py:280` |
+| POST | `/documents/library` | `app.document` | `browse_managed_documents` | oui | `back/app/document/router.py:298` |
+| POST | `/documents/link-card/thumbnail` | `app.document` | `read_link_card_thumbnail` | oui | `back/app/document/router.py:618` |
+| PUT | `/documents/order` | `app.document` | `reorder_personal_documents` | oui | `back/app/document/router.py:331` |
+| PUT | `/documents/order/sort` | `app.document` | `sort_personal_documents` | oui | `back/app/document/router.py:341` |
+| GET | `/documents/owner-options` | `app.document` | `read_document_owner_options` | oui | `back/app/document/router.py:461` |
+| GET | `/documents/tag-icons` | `app.document` | `read_personal_tag_icons` | oui | `back/app/document/router.py:351` |
+| POST | `/documents/tag-icons` | `app.document` | `upload_personal_tag_icon` | oui | `back/app/document/router.py:356` |
+| GET | `/documents/tags` | `app.document` | `read_personal_document_tags` | oui | `back/app/document/router.py:382` |
+| POST | `/documents/tags` | `app.document` | `create_personal_document_tag` | oui | `back/app/document/router.py:388` |
+| DELETE | `/documents/tags/{tag_id}` | `app.document` | `delete_personal_document_tag` | oui | `back/app/document/router.py:422` |
+| PUT | `/documents/tags/{tag_id}` | `app.document` | `update_personal_document_tag` | oui | `back/app/document/router.py:414` |
+| GET | `/documents/tags/{tag_id}/sharing` | `app.document` | `read_folder_sharing` | oui | `back/app/document/router.py:396` |
+| PUT | `/documents/tags/{tag_id}/sharing` | `app.document` | `update_folder_sharing` | oui | `back/app/document/router.py:405` |
+| DELETE | `/documents/{document_id}` | `app.document` | `delete_managed_document` | oui | `back/app/document/router.py:804` |
+| GET | `/documents/{document_id}` | `app.document` | `read_managed_document` | oui | `back/app/document/router.py:780` |
+| PATCH | `/documents/{document_id}` | `app.document` | `update_human_document` | oui | `back/app/document/router.py:818` |
+| GET | `/documents/{document_id}/app-permissions` | `app.document` | `read_app_permissions` | oui | `back/app/document/router.py:153` |
+| PUT | `/documents/{document_id}/app-permissions/{app_key}/{alias}` | `app.document` | `update_app_permission` | oui | `back/app/document/router.py:161` |
+| POST | `/documents/{document_id}/apps/{app_id}/datasets/{alias}` | `app.document` | `access_app_dataset` | oui | `back/app/document/router.py:172` |
+| GET | `/documents/{document_id}/attachments` | `app.document` | `list_document_attachments` | oui | `back/app/document/router.py:1053` |
+| POST | `/documents/{document_id}/attachments` | `app.document` | `add_document_attachment` | oui | `back/app/document/router.py:1072` |
+| DELETE | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `delete_document_attachment` | oui | `back/app/document/router.py:1185` |
+| GET | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `read_document_attachment` | oui | `back/app/document/router.py:1154` |
+| PATCH | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `rename_document_attachment` | oui | `back/app/document/router.py:1123` |
+| GET | `/documents/{document_id}/attachments/{attachment_id}/info` | `app.document` | `read_document_attachment_info` | oui | `back/app/document/router.py:1137` |
+| GET | `/documents/{document_id}/attachments/{attachment_id}/thumbnail` | `app.document` | `read_document_attachment_thumbnail` | oui | `back/app/document/router.py:1092` |
+| DELETE | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `remove_managed_document_grant` | oui | `back/app/document/router.py:1022` |
+| PUT | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `set_managed_document_grant` | oui | `back/app/document/router.py:988` |
+| GET | `/documents/{document_id}/content-revisions` | `app.document` | `list_managed_document_content_revisions` | oui | `back/app/document/router.py:507` |
+| GET | `/documents/{document_id}/content-revisions/{revision}` | `app.document` | `read_managed_document_content_revision` | oui | `back/app/document/router.py:533` |
+| GET | `/documents/{document_id}/content-revisions/{revision}/diff` | `app.document` | `diff_managed_document_content_revision` | oui | `back/app/document/router.py:557` |
+| POST | `/documents/{document_id}/content-revisions/{revision}/restore` | `app.document` | `restore_managed_document_content_revision` | oui | `back/app/document/router.py:581` |
+| GET | `/documents/{document_id}/dataset-attachments` | `app.document` | `read_document_datasets` | oui | `back/app/document/router.py:694` |
+| PUT | `/documents/{document_id}/dataset-attachments` | `app.document` | `attach_document_dataset` | oui | `back/app/document/router.py:749` |
+| DELETE | `/documents/{document_id}/dataset-attachments/{dataset_id}` | `app.document` | `detach_document_dataset` | oui | `back/app/document/router.py:761` |
+| POST | `/documents/{document_id}/export-bundle` | `app.document` | `export_document_bundle` | oui | `back/app/document/router.py:643` |
+| POST | `/documents/{document_id}/export-pdf` | `app.document` | `export_managed_document_pdf` | oui | `back/app/document/router.py:656` |
+| PATCH | `/documents/{document_id}/folder` | `app.document` | `move_managed_document` | oui | `back/app/document/router.py:860` |
+| PATCH | `/documents/{document_id}/global-access` | `app.document` | `set_managed_document_global_access` | oui | `back/app/document/router.py:959` |
+| DELETE | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `remove_document_grant` | oui | `back/app/document/router.py:1242` |
+| PUT | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `set_document_grant` | oui | `back/app/document/router.py:1210` |
+| PUT | `/documents/{document_id}/icon` | `app.document` | `save_document_icon` | oui | `back/app/document/router.py:321` |
+| POST | `/documents/{document_id}/import-image` | `app.document` | `import_document_image` | oui | `back/app/document/router.py:608` |
+| GET | `/documents/{document_id}/internal-attachments` | `app.document` | `read_internal_attachments` | oui | `back/app/document/router.py:704` |
+| PUT | `/documents/{document_id}/internal-attachments` | `app.document` | `change_internal_attachments` | oui | `back/app/document/router.py:715` |
+| POST | `/documents/{document_id}/link-card` | `app.document` | `create_document_link_card` | oui | `back/app/document/router.py:633` |
+| PATCH | `/documents/{document_id}/owner` | `app.document` | `change_document_owner` | oui | `back/app/document/router.py:897` |
+| PUT | `/documents/{document_id}/parent` | `app.document` | `move_personal_subdocument` | oui | `back/app/document/router.py:372` |
+| GET | `/documents/{document_id}/process-attachments` | `app.document` | `read_document_processes` | oui | `back/app/document/router.py:727` |
+| PUT | `/documents/{document_id}/process-attachments` | `app.document` | `attach_document_process` | oui | `back/app/document/router.py:737` |
+| GET | `/documents/{document_id}/sharing` | `app.document` | `read_document_sharing` | oui | `back/app/document/router.py:833` |
+| PUT | `/documents/{document_id}/sharing` | `app.document` | `update_document_sharing` | oui | `back/app/document/router.py:841` |
+| PUT | `/documents/{document_id}/sharing-level` | `app.document` | `update_document_sharing_level` | oui | `back/app/document/router.py:849` |
+| GET | `/documents/{document_id}/summary` | `app.document` | `read_document_summary` | oui | `back/app/document/router.py:122` |
+| PUT | `/documents/{document_id}/summary` | `app.document` | `edit_document_summary` | oui | `back/app/document/router.py:134` |
+| PUT | `/documents/{document_id}/tags` | `app.document` | `move_personal_document` | oui | `back/app/document/router.py:364` |
+| DELETE | `/documents/{document_id}/tags/{tag_id}` | `app.document` | `remove_personal_document_tag` | oui | `back/app/document/router.py:438` |
+| PUT | `/documents/{document_id}/tags/{tag_id}` | `app.document` | `add_personal_document_tag` | oui | `back/app/document/router.py:430` |
+| POST | `/documents/{document_id}/thumbnail` | `app.document` | `read_document_thumbnail` | oui | `back/app/document/router.py:673` |
 | GET | `/dream/memory/{item_id}/actions` | `app.dream` | `read_memory_dream_actions` | oui | `back/app/dream/router.py:81` |
 | POST | `/dream/memory/{item_id}/actions/{action}` | `app.dream` | `run_memory_dream_action` | oui | `back/app/dream/router.py:92` |
 | GET | `/dream/overview` | `app.dream` | `read_dream_overview` | oui | `back/app/dream/router.py:123` |
@@ -2263,18 +2265,18 @@ tests restent l’autorité sur le comportement.
 | `repository_show` | `conversation` | `app.conversation` | `repository_show` | `back/app/conversation/mcp.py:121` |
 | `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:35` |
 | `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:20` |
-| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:382` |
-| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:449` |
-| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:300` |
-| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:511` |
-| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:410` |
+| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:386` |
+| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:453` |
+| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:304` |
+| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:515` |
+| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:414` |
 | `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:169` |
 | `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:141` |
-| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:481` |
-| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:246` |
+| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:485` |
+| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:250` |
 | `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:120` |
 | `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:201` |
-| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:347` |
+| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:351` |
 | `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:38` |
 | `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:19` |
 | `document_analysis_cancel` | `galaris` | `app.llm` | `document_analysis_cancel` | `back/app/llm/mcp.py:54` |
@@ -2622,6 +2624,7 @@ tests restent l’autorité sur le comportement.
 | `/console/executor` | `app/console` | `front/app/console/pages/executor.vue` |
 | `/dataset/:id?` | `app/dataset` | `front/app/dataset/pages/[[id]].vue` |
 | `/documents` | `app/document` | `front/app/document/pages/documents.vue` |
+| `/documents/folders/:id` | `app/document` | `front/app/document/pages/folders/[id].vue` |
 | `/dream` | `app/dream` | `front/app/dream/pages/index.vue` |
 | `/files` | `app/file_share` | `front/app/file_share/pages/index.vue` |
 | `/goal` | `app/goal` | `front/app/goal/pages/index.vue` |

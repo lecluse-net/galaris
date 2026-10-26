@@ -5,11 +5,13 @@
         <q-toolbar-title>{{ t('documents.internalAttachments.add') }}</q-toolbar-title>
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-toolbar>
-      <q-tabs v-if="references" v-model="tab" dense align="left">
+      <q-tabs v-model="tab" dense align="left">
         <q-tab name="files" :label="t('richEditor.referenceFiles')" />
-        <q-tab name="objects" :label="t('richEditor.referenceObjects')" />
+        <q-tab name="folders" :label="t('documents.collections.title')" />
+        <q-tab v-if="references" name="objects" :label="t('richEditor.referenceObjects')" />
       </q-tabs>
       <BusinessReferencePicker v-if="tab === 'objects'" :busy="busy" @select="emit('reference', $event)" />
+      <DocumentFolderCollection v-else-if="tab === 'folders'" class="col scroll" selection :inert="busy || undefined" @select="entry => emit('select', [entry], selectedAgent ?? 0)" />
       <template v-else>
       <div class="q-pa-sm">
         <AgentSelect v-model="selectedAgent" :options="agentOptions" :load-agents="false" outlined dense :label="t('agent.selectPlaceholder')" :loading="loadingAgents" :disable="busy" />
@@ -34,6 +36,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
+import { DocumentFolderCollection } from '@/app/document'
 import { AgentFileBrowser, type FileEntry } from '@/app/file_share/interface'
 import BusinessReferencePicker from './BusinessReferencePicker.vue'
 import type { RichLinkTarget } from '@/core/util/richText'
