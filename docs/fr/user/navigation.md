@@ -340,6 +340,9 @@ publics passent sans accord par site, sous réserve des filtres et refus explici
 existantes gardent leur politique ; un paramètre auparavant absent devient **Autorisation par site**.
 Le réseau local est bloqué par défaut ; activez `allow_local_network` pour permettre une demande
 de permission distincte. Le mode public ne donne aucun accès local.
+Un blocage de configuration ne crée pas de demande d'autorisation : aucun bouton n'attend
+votre réponse tant que ce réglage bloque l'accès. Les fichiers joints peuvent être lus par
+leur URI source sans ouvrir leur page dans le navigateur.
 Le filtre de destinations reste prioritaire. Répondez à la question dans la messagerie ou avec
 les boutons du chat interne : accord et refus sont mémorisés par agent, type d’accès et origine
 (domaine, protocole, port). Les GET publics ne posent pas de question avec les réglages par défaut.
@@ -435,6 +438,9 @@ du brouillon et peuvent être retirées avant l’envoi, même sans texte. Aprè
 leurs cartes et miniatures apparaissent sous le message. Les fichiers conservent leur URI
 source (`file://`, `console://` ou le schéma du service), sans copie ni remplacement par
 une URL de page Galaris. Les droits de la source et de l’agent destinataire restent requis.
+Un modèle compatible reçoit directement l’image, le PDF, l’audio ou la vidéo. Sinon, les
+spécialistes configurés fournissent une description ou une transcription textuelle ;
+les analyses indisponibles et les couvertures incomplètes sont signalées explicitement.
 
 À l’ouverture d’une discussion, les messages s’affichent sans attendre le catalogue des
 commandes ni l’état des appels. Les aperçus de liens et les miniatures de documents se

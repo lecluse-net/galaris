@@ -700,9 +700,15 @@ async def _update_task_after_execution(
     waiting_for_input = await task_port.suspend_on_pending_input(task)
     if waiting_for_authorization:
         task_port.suspend(task, "approval")
-        task.data = {**(task.data or {}), "authorization_requests": [str(identifier) for identifier in execution_result.authorization_requests]}
+        task.data = {**_string_keyed_dict(task.data), "authorization_requests": [str(identifier) for identifier in execution_result.authorization_requests]}
     elif not waiting_for_input:
         task_port.clear_pauses(task)
+    if not waiting_for_authorization and "authorization_requests" in (task.data or {}):
+        # Current wait metadata must not outlive the resumed result. The original
+        # attempt and its checkpoint retain their authorization history.
+        data = _string_keyed_dict(task.data)
+        data.pop("authorization_requests")
+        task.data = data
     # Drivers may persist partial snapshots. Rebase on pre-attempt cost to preserve planning
     # cost without counting executor snapshots twice.
     task.cost = base_cost + execution_result.cost

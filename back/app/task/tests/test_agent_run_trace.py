@@ -108,7 +108,8 @@ async def test_finalization_preserves_run_cleanup_and_a_concurrent_input_reply(c
 
 
 @pytest.mark.asyncio
-async def test_authorization_wait_survives_checkpoint_and_releases_claim(committed_database):
+@pytest.mark.parametrize("success", [True, False])
+async def test_authorization_wait_survives_checkpoint_and_releases_claim(committed_database, success):
     """A driver's authorization UUIDs must survive real JSONB persistence."""
     from app.agent import executor_service
     from app.task import scheduler, task_service
@@ -158,7 +159,8 @@ async def test_authorization_wait_survives_checkpoint_and_releases_claim(committ
     async with get_db_session() as db:
         task = await db.get(Task, task_id)
         attempt = await db.get(TaskAttempt, attempt_id)
-        assert task.status == TaskStatus.EXEC
+        # An approval wait releases transient EXEC into the resumable phase.
+        assert task.status == TaskStatus.DISPATCH
         assert task_service.is_paused_for(task, task_service.PAUSE_APPROVAL)
         assert task.execution_result["authorization_requests"] == [str(value) for value in authorization_ids]
         assert task.get_execution_result() == result
@@ -173,6 +175,25 @@ async def test_authorization_wait_survives_checkpoint_and_releases_claim(committ
         assert task.lease_expires_at is None
         assert task.next_attempt_at is None
         assert task.consecutive_failures == 0
+
+    # A resumed outcome replaces the current wait, while its original attempt
+    # remains an immutable historical record of that wait.
+    async with get_db_session() as db:
+        task = await db.get(Task, task_id)
+        task_service.release(task, task_service.PAUSE_APPROVAL)
+        await executor_service._update_task_status(task, executor_service.TaskPhase.EXEC)
+        await executor_service._update_task_after_execution(task, ExecutionResult(
+            prompt=result.prompt, result="Synthetic resumed outcome", success=success,
+            schema_version="galaris.execution-result/v2",
+        ), base_cost=task.cost)
+    async with get_db_session() as db:
+        task = await db.get(Task, task_id)
+        attempt = await db.get(TaskAttempt, attempt_id)
+        assert task.status == (TaskStatus.SUCCESS if success else TaskStatus.ERROR)
+        assert "authorization_requests" not in task.data
+        assert task.data["existing"] == "keep"
+        assert attempt.status == TaskAttemptStatus.WAITING_APPROVAL.value
+        assert attempt.data["agent_checkpoint"] == checkpoint
 
 
 @pytest.mark.asyncio

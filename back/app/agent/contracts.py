@@ -191,6 +191,7 @@ class TaskMessage(BaseModel):
     room_external_id: str = ""
     room_kind: str = "group"
     text: str = ""
+    resource_uris: list[str] = Field(default_factory=list[str])
     file_ids: list[UUID] = Field(default_factory=list[UUID])
     attachments: list[TaskMessageAttachment] = Field(
         default_factory=list[TaskMessageAttachment]
@@ -292,6 +293,7 @@ class TaskMessage(BaseModel):
             "room_external_id": str(room.get("id") or ""),
             "room_kind": str(room.get("kind") or "group"),
             "text": str(source.get("text") or ""),
+            "resource_uris": source.get("resource_uris") or [],
             "file_ids": file_ids,
             "attachments": normalized_attachments,
             "reply_to_external_id": source.get("reply_to"),
@@ -325,6 +327,7 @@ class TaskMessage(BaseModel):
             room_external_id=room.external_id if room is not None else "",
             room_kind=room.kind if room is not None else "group",
             text=message.text,
+            resource_uris=(cast(list[str], references) if isinstance(references := getattr(message, "resource_uris", None), list) else []),
             file_ids=[file.id for file in message.files],
             attachments=[
                 TaskMessageAttachment(
@@ -344,6 +347,13 @@ class TaskMessage(BaseModel):
             reply_to_external_id=message.reply_to,
             timestamp=int(cast(datetime, message.created_at).timestamp()),
         )
+
+    @property
+    def resource_references(self) -> tuple[str, ...]:
+        """All files in this message, without turning external resources into Messenger IDs."""
+
+        return tuple(dict.fromkeys(uri for uri in
+            [*(attachment.uri for attachment in self.attachments), *self.resource_uris] if uri))
 
     @property
     def is_ai(self) -> bool:

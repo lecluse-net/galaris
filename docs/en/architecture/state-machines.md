@@ -25,6 +25,9 @@ UUIDs are serialized as JSON strings before JSONB result persistence; their iden
 reloading.
 The Task attempt ends in `WAITING_APPROVAL`, releases its lease and retains its checkpoint;
 the Task returns to the resumable `DISPATCH` phase with an authorization pause reason.
+When resumed execution returns an outcome without an authorization wait, old
+`authorization_requests` are removed from current Task data; historical attempt states
+and checkpoints retain the evidence of their wait.
 Agreement remains recorded, but the runtime still sees its call as pending until an attempt
 starts after the decision and its grant transfers to that active lease.
 Orphan recovery ignores suspended Tasks. An independent human pause

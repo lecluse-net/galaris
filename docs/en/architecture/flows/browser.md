@@ -116,7 +116,12 @@ Checks retain the socket's original destination even after DNS changes. HTTP req
 forwarded are not cancelled retroactively.
 
 Results expose `network_issues` for pending questions, denied permissions and configuration
-blocks. Blocked actions are not replayed automatically after an answer: the agent must wait
+blocks. MCP content and screenshot manifests add `authorization_status` and `guidance`
+for known codes. `local_network_blocked` reports `not_requested`: no human request is
+created while `allow_local_network` is disabled. `permission_required` reports `pending`
+with the relevant permission keys; a denial reports `denied`. The model must not confuse
+another tool's approval with browser permission or bypass the block through an HTTP client
+or shell. Blocked actions are not replayed automatically after an answer: the agent must wait
 for the decision and retry the appropriate action, without blindly resubmitting a form.
 Human sessions without an agent connection keep the default restrictions and cannot create
 permissions for an invented agent.

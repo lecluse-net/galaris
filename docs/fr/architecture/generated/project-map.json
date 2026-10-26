@@ -11,7 +11,8 @@
       },
       {
         "files": [
-          "back/app/agent/avatar_generation.py"
+          "back/app/agent/avatar_generation.py",
+          "back/app/agent/input_analysis.py"
         ],
         "source": "app.agent",
         "target": "app.image"
@@ -2927,6 +2928,7 @@
           "back/app/llm/image_trace.py",
           "back/app/llm/llm_call_service.py",
           "back/app/llm/llm_provider_service.py",
+          "back/app/llm/media_facade.py",
           "back/app/llm/media_transport.py",
           "back/app/llm/message_cleanup.py",
           "back/app/llm/personal_service.py",
@@ -8021,7 +8023,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_back",
-        "line": 434,
+        "line": 478,
         "module": "app.browser",
         "name": "browser_back",
         "namespace": "browser"
@@ -8029,7 +8031,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_click",
-        "line": 364,
+        "line": 408,
         "module": "app.browser",
         "name": "browser_click",
         "namespace": "browser"
@@ -8037,7 +8039,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_close",
-        "line": 447,
+        "line": 491,
         "module": "app.browser",
         "name": "browser_close",
         "namespace": "browser"
@@ -8045,7 +8047,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_content",
-        "line": 284,
+        "line": 328,
         "module": "app.browser",
         "name": "browser_content",
         "namespace": "browser"
@@ -8053,7 +8055,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_navigate",
-        "line": 268,
+        "line": 312,
         "module": "app.browser",
         "name": "browser_navigate",
         "namespace": "browser"
@@ -8061,7 +8063,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_open",
-        "line": 234,
+        "line": 278,
         "module": "app.browser",
         "name": "browser_open",
         "namespace": "browser"
@@ -8069,7 +8071,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_press",
-        "line": 404,
+        "line": 448,
         "module": "app.browser",
         "name": "browser_press",
         "namespace": "browser"
@@ -8077,7 +8079,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_screenshot",
-        "line": 329,
+        "line": 373,
         "module": "app.browser",
         "name": "browser_screenshot",
         "namespace": "browser"
@@ -8085,7 +8087,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_scroll",
-        "line": 419,
+        "line": 463,
         "module": "app.browser",
         "name": "browser_scroll",
         "namespace": "browser"
@@ -8093,7 +8095,7 @@
       {
         "file": "back/app/browser/mcp.py",
         "handler": "browser_type",
-        "line": 379,
+        "line": 423,
         "module": "app.browser",
         "name": "browser_type",
         "namespace": "browser"

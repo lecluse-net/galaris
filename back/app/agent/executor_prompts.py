@@ -289,6 +289,37 @@ def build_executor_prompt_tree(
 
         ),
     ))
+    nodes.append(section(
+        "resource-uri-policy", title="Use canonical file resources directly",
+        text=(
+            "A canonical resource URI is an input to compatible mounted file, media and delivery "
+            "tools, not necessarily a Web URL. Pass the exact URI directly; Galaris resolves access "
+            "and stages bounded temporary bytes when needed. Use the supplied console://, file://, "
+            "document://, data:// or connected-provider URI instead of constructing a Galaris "
+            "/files page URL, searching the runtime filesystem, inspecting credentials, or copying "
+            "the file merely to make a media tool accept it. A console:// locator belongs to the "
+            "connected SSH home; it is not a path in the Harness shell or /workspace. Discover "
+            "schemes only when the source or required provider capability is unknown. An instruction "
+            "to open or read a known file normally means consume that resource; browser rendering "
+            "and screenshots are required only when the user actually requests them. Interface "
+            "links identify a UI route, not a public download or an authenticated browser session. "
+            "Respect the mounted schema and source ACLs; a URI does not grant permission."
+        ),
+    ))
+    nodes.append(section(
+        "authorization-evidence-policy", title="Report the actual authorization state",
+        text=(
+            "Report a human approval as pending only from a current structured waiting receipt "
+            "identifying that action, or a browser permission_required result. An earlier wait "
+            "or approval for another tool does not establish a current wait. After resume, use "
+            "the action's latest receipt. A configuration block, including local_network_blocked, "
+            "creates no permission request: explain the required connection setting rather than "
+            "claiming a human decision is pending. An approval cannot override source ACLs or "
+            "network configuration. Do not bypass a blocked browser request through shell or "
+            "another HTTP client. Reading the original canonical file through its authorized "
+            "resource tool remains a separate, valid operation."
+        ),
+    ))
     nodes.append(
         section(
             "dataset-consideration-policy",

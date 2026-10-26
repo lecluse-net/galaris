@@ -93,7 +93,12 @@ async def test_browser_tool_schema_exposes_bounded_optional_viewport() -> None:
         assert height == {"maximum": 2_160, "minimum": 240, "type": "integer"}
 
 
-def test_content_output_includes_session_and_continuation() -> None:
+@pytest.mark.parametrize("code, status", [
+    ("local_network_blocked", "not_requested"),
+    ("permission_required", "pending"),
+    ("permission_denied", "denied"),
+])
+def test_content_output_includes_session_and_continuation(code, status) -> None:
     result = browser_mcp._content_text(  # pyright: ignore[reportPrivateUsage]
         browser_mcp.BrowserContent(
             session_id="session-1",
@@ -106,12 +111,19 @@ def test_content_output_includes_session_and_continuation() -> None:
             total=48,
             truncated=True,
             next_offset=24,
+            network_issues=[{"code": code, "origin": "https://example.test", "permission_keys": []}],
         )
     )
 
     assert '"session_id": "session-1"' in result
     assert '"next_offset": 24' in result
     assert '[ref=e3]' in result
+    issue = json.loads(result.split("\n\n", 1)[0])["network_issues"][0]
+    assert issue["code"] == code
+    assert issue["authorization_status"] == status
+    assert issue["guidance"]
+    if code == "local_network_blocked":
+        assert "no permission request" in issue["guidance"]
 
 
 def test_context_keeps_task_owner_boundary() -> None:
@@ -227,6 +239,7 @@ async def test_screenshot_returns_image_block_and_console_uri(
         page_height=4_000,
         captured_height=3_000,
         truncated=True,
+        network_issues=[{"code": "local_network_blocked", "permission_keys": []}],
         parts=[
             BrowserScreenshotPart(
                 index=0,
@@ -251,6 +264,7 @@ async def test_screenshot_returns_image_block_and_console_uri(
     assert isinstance(result, ToolResult)
     assert len(result.content) == 2
     assert result.structured_content["truncated"] is True
+    assert result.structured_content["network_issues"][0]["authorization_status"] == "not_requested"
     assert result.structured_content["parts"][0]["path"].endswith(
         "capture-r3-part-001.jpg"
     )

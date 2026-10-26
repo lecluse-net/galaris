@@ -84,7 +84,8 @@ def _fallback_message(
                 )
             except ValueError:
                 pass
-    if not text and not attachments:
+    resource_uris = raw.get("resource_uris")
+    if not text and not attachments and not resource_uris:
         return None
     sender_raw = raw.get("sender")
     sender: Mapping[str, Any] = (
@@ -126,6 +127,7 @@ def _fallback_message(
         },
         "time": timestamp,
         "attachments": attachments,
+        "resource_uris": resource_uris if isinstance(resource_uris, list) else [],
     }
 
 
@@ -169,6 +171,7 @@ def _record_message(
         "id": row.remote_message_id,
         "role": "assistant" if assistant else "user",
         "text": row.conversation_text,
+        "resource_uris": row.resource_uris,
         "platform": row.platform,
         "tool_id": row.tool_id,
         "tool_code": tool_code,

@@ -233,8 +233,17 @@ cancellation. Checkpoint resume reuses its multimodal history without adding dup
 
 Admission intersects model `input_*` flags with transport formats. PNG/JPEG/WebP/GIF and PDF use
 the SDK; WAV/MP3 audio uses Chat Completions. OpenRouter additionally declares AIFF/AAC/OGG/FLAC/M4A
-audio and MP4/MPEG/MOV/WebM video. Other video transports, unknown formats and unavailable files
-remain explicit references. Hermes retains its text/image transport and existing fallbacks.
+audio and MP4/MPEG/MOV/WebM video. Other video transports use a specialist text fallback.
+Unknown formats and unavailable files remain explicit references. Hermes retains its
+text/image transport and existing fallbacks.
+
+When the model or transport cannot accept the media, preparation automatically supplies
+an image description from the configured vision model, an audio transcript or a specialist
+video analysis. The conversation model stays unchanged. For PDFs and Office documents without
+compatible file input, it supplies extracted/OCR text and at most eight rendered pages:
+images when vision is available, otherwise textual descriptions from the vision specialist.
+Incomplete visual coverage is explicit. Video analysis requires a video track and a duration
+of at most twenty minutes.
 
 During model discovery, an absent modality stays unknown until catalog enrichment. Chat defaults
 must not fabricate image, file, audio or video refusals; explicit provider values take precedence.
@@ -247,8 +256,10 @@ and other settings are preserved. Newly created models use the discovered capabi
 No schema change or automatic migration is required.
 
 `PYDANTIC_AI_BINARY_INPUT_MAX_BYTES` bounds the total unique native bytes per run (20,000,000 by
-default), prioritizing current messages. Unsupported, oversized or inaccessible files carry an
-explicit notice. `image_read`, `audio_read`, `video_read`, `audio_transcribe` and appropriate file
+default), including media staged for specialist fallback. Prepared text is limited to 120,000
+characters per run, prioritizing current messages. Oversized or inaccessible files,
+unavailable fallback and empty analysis carry an explicit notice.
+`image_read`, `audio_read`, `video_read`, `audio_transcribe` and appropriate file
 readers remain available with their existing effects, including image descriptions in Memory.
 A URI alone is never treated as already observed content. Automatic STT is skipped only for
 audio whose format and declared size qualify for native input. Preflight counting reserves an
@@ -260,9 +271,16 @@ In history, an attachment remains nested in the message that transported it and 
 Internal resources attached from a Chat composer are stored in the message's
 `resource_uris` metadata and exposed separately from its text. Publication checks the
 human's privileges and the receiving agent's access to each canonical URI without
-copying bytes. The `conversation_text` projection keeps these URIs in their original
-message for the runtime. Previews allow these explicit references, including inbound
+copying bytes. `TaskMessage` snapshots retain these structured references for media
+preparation alongside their presence in `conversation_text`.
+Previews allow these explicit references, including inbound
 ones, without granting access to private links merely typed into the text.
+
+Shared instructions for Task, text and voice executors explain direct URI use with compatible
+tools without waiting for a skill to load. A `console://` URI addresses the connected SSH home,
+not the Harness filesystem. A `/files` interface route is not a public download URL.
+Task objective preparation must not turn “open/read this file” into mandatory browser rendering,
+a screenshot or a local copy unless the user explicitly requested that method or deliverable.
 
 ## Voice Notes
 

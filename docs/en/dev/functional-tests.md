@@ -1109,6 +1109,9 @@ It also verifies public mode without questions, global inheritance and agent ove
 returning to per-site requests, explicit denials and preserved local-network blocking.
 The public default for new installations and preserved policy on existing instances, including
 those without a saved parameter, are verified through two consecutive synchronizations.
+`app/browser/tests/test_mcp.py` verifies that content and screenshots distinguish a local
+configuration block with no request created from an actual pending or denied permission,
+with explicit recovery guidance.
 `browser-executor/network-proxy.test.mjs` uses Chromium and synthetic servers to verify POST,
 redirects, owner isolation, HTTPS certificate validation, WebSockets and revocation.
 `front/browser-tests/permissions.spec.mjs` exercises pending requests, one-time answers excluded
@@ -1512,6 +1515,11 @@ competing objects within one provider response.
 
 `back/app/agent/tests/test_prompt_tree.py` verifies that the document revision policy reaches
 Task, text and voice executors, including with a custom personality and without a loaded skill.
+The same guarantee covers direct URI use and actual authorization states.
+`app/conversation/tests/test_task_objective.py` verifies delivery to objective preparation
+without imposing an unrequested browser method. The authorization-wait scenario in
+`app/task/tests/test_agent_run_trace.py` also verifies, in the database, that resumed success
+or failure clears old request UUIDs from current data while preserving the historical attempt.
 This proves instruction delivery; it does not measure a model's editorial quality after
 successive updates to the same document.
 
@@ -1621,7 +1629,7 @@ are in `front/browser-tests/`.
 | `llm` | Provider/model resolution, functional parameter preservation, budgets and access policy, traces and costs; pause/resume, readback and rejection of late writes | `test_subscription_policy.py`, `test_structured_service.py`, `test_call_lineage.py`, `back/tests/test_provider_catalog.py`, `back/tests/test_provider_parameters.py`, `back/tests/test_inference_lifecycle.py`, `back/tests/test_protocol_inference.py`, `back/tests/test_structured_inference.py`, `back/tests/test_dispatcher_inference.py`, `execution.spec.mjs` |
 | `audio` | Canonical media transcription and result delivery | `test_audio_mcp.py`, `test_audio_service.py`, `test_summary_service.py` |
 | `image` | Image generation/reading, resource identity and call trace | `test_image_mcp.py`, `test_image_service_trace.py` |
-| Native multimodal inputs | Supply images, audio, video and PDFs to compatible models; retain provenance, access checks, byte budgets and media on resume without an analysis tool prerequisite | `app/harness/tests/test_native_media.py`, `test_media_resource_policy.py`, `tests/test_pydantic_ai_internal_model.py`, `app/messenger/tests/test_ingest.py` |
+| Native multimodal inputs | Supply uploaded and internally referenced images, audio, video and PDFs to compatible models; otherwise supply specialist text analysis/transcription, including visual PDF pages; retain provenance, access checks, byte budgets and media on resume; validate video sources with real FFprobe | `app/harness/tests/test_native_media.py`, `test_media_resource_policy.py`, `app/llm/tests/test_input_video.py`, `tests/test_pydantic_ai_internal_model.py`, `app/messenger/tests/test_ingest.py` |
 | `multimedia` | MCP tool launch and domain-owned tracking, long-running generations, authenticated callbacks and publication | `test_multimedia.py`, `test_callback_security.py`, `test_providers.py` |
 | `lab` | Dataset/item isolation, parameters, rights and two passes; resume repetitions without duplicates, stop at budget and preserve independent reviews before judge disclosure; generate complete synthetic datasets for each contract without overwriting saved data or drafts; retain original inputs while showing plain previews, per-result percentages and a filter-independent mean that excludes absent scores and counts zero | `test_authorization.py`, `test_contracts_and_passes.py`, `test_run_publication.py`, `test_stability_and_review.py`, `test_synthetic_datasets.py`, `lab.spec.mjs`, `lab-access.spec.mjs`, `lab-insights.spec.mjs`, `lab-synthetic.spec.mjs` |
 | Lab comparison | Read two evaluations in each of the ten Labs with mechanism-specific privileges; preserve zero/absent scores, incompatibility and missing results; page-independent global counts distinguish cases/repetitions, missing judgments and errors; ambiguity across complete runs; find off-page critical and criterion regressions despite higher overall scores; paired medians and counts; navigation without stale responses | `app/lab/tests/test_comparison.py`, `app/lab/tests/test_mcp.py`, `lab-comparison.spec.mjs` |

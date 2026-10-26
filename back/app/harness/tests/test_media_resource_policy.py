@@ -53,7 +53,7 @@ async def test_unavailable_media_preserves_reference_and_cleans_temporary(monkey
         notice = str(message_native_parts(message, inputs))
         assert uri in notice
         assert "private diagnostic" not in notice
-    if failure in {"unsupported", "oversized", "denied"}:
+    if failure in {"oversized", "denied"}:
         assert not paths
     assert all(not path.exists() for path in paths)
 

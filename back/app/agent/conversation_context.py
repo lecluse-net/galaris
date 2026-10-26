@@ -250,7 +250,7 @@ def message_attachment_lines(message: object) -> list[str]:
     if not isinstance(raw_attachments, Sequence) or isinstance(
         raw_attachments, (str, bytes)
     ):
-        return []
+        raw_attachments = []
     attachment_items = cast(Sequence[object], raw_attachments)
     lines: list[str] = []
     for raw in attachment_items:
@@ -269,6 +269,11 @@ def message_attachment_lines(message: object) -> list[str]:
             continue
         label = str(name or "file").strip() or "file"
         lines.append(f"[file: {label}] {uri}")
+    raw_references = mapping.get("resource_uris") if mapping is not None else getattr(message, "resource_uris", None)
+    if isinstance(raw_references, (list, tuple)):
+        for uri in cast(Sequence[object], raw_references):
+            if isinstance(uri, str) and uri and uri not in message_text(message) and not any(uri in line for line in lines):
+                lines.append(f"[file] {uri}")
     return lines
 
 

@@ -202,6 +202,8 @@ async def test_task_fields_use_standard_model_and_complete_conversation_context(
     assert "Le rapport doit également être livré en PDF." in kwargs["prompt"]
     assert "document://report/current" in kwargs["prompt"]
     assert "matrix://room/chiffres.xlsx" in kwargs["prompt"]
+    assert "Pass canonical resource URIs directly" in kwargs["prompt"]
+    assert "Do not turn 'open/read this file' into a requirement" in kwargs["prompt"]
     system_prompt = " ".join(kwargs["system_prompt"].split())
     assert "automatically returns the terminal result" in system_prompt
     assert "not work to add to the objective" in system_prompt

@@ -121,6 +121,12 @@ terme du délai de contrôle de 15 secondes. La vérification conserve leur adre
 même si le DNS change. Les requêtes HTTP déjà transmises ne sont pas annulées rétroactivement.
 
 Le résultat `network_issues` distingue demande en attente, refus et blocage de configuration.
+La présentation MCP fournit `authorization_status` et `guidance` pour les codes connus,
+dans le contenu comme dans les captures. `local_network_blocked` expose `not_requested` :
+aucune demande humaine n'est créée tant que `allow_local_network` est désactivé.
+`permission_required` expose `pending` et les clés de permission concernées ; un refus
+expose `denied`. Le modèle ne doit pas confondre une autorisation d'un autre outil avec
+une permission navigateur, ni contourner le blocage par un client HTTP ou un shell.
 L’action bloquée n’est pas rejouée automatiquement après la réponse : l’agent doit attendre la
 décision et retenter l’action appropriée, sans resoumettre aveuglément un formulaire. Les
 sessions humaines sans connexion agent conservent les restrictions par défaut et ne créent

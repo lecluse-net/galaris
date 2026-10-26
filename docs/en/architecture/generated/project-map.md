@@ -155,7 +155,7 @@ tests remain authoritative for behavior.
 | Source | Target | Files |
 |---|---|---|
 | `app.agent` | `app.file_share` | `back/app/agent/mcp.py`, `back/app/agent/resource_facade.py` |
-| `app.agent` | `app.image` | `back/app/agent/avatar_generation.py` |
+| `app.agent` | `app.image` | `back/app/agent/avatar_generation.py`, `back/app/agent/input_analysis.py` |
 | `app.agent` | `app.llm` | `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/conversation_dispatch.py`, `back/app/agent/dispatcher.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/models.py`, `back/app/agent/openai_router.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
 | `app.agent` | `app.messenger` | `back/app/agent/planner_service.py` |
 | `app.agent` | `app.process` | `back/app/agent/janus.py`, `back/app/agent/openai_router.py`, `back/app/agent/realtime.py` |
@@ -425,7 +425,7 @@ tests remain authoritative for behavior.
 | `app.llm` | `core.params` | `back/app/llm/call_deadline.py`, `back/app/llm/dbadmin.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/profile_service.py`, `back/app/llm/retention.py` |
 | `app.llm` | `core.scheduling` | `back/app/llm/__init__.py` |
 | `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_service.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
-| `app.llm` | `core.util` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py`, `back/app/llm/document_responses.py`, `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_generation_service.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_stream.py`, `back/app/llm/responses_trace.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
+| `app.llm` | `core.util` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py`, `back/app/llm/document_responses.py`, `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_generation_service.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_facade.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_stream.py`, `back/app/llm/responses_trace.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
 | `app.mcp` | `app.agent` | `back/app/mcp/router.py` |
 | `app.mcp` | `app.tools` | `back/app/mcp/router.py`, `back/app/mcp/runtime_adapter.py` |
 | `app.mcp` | `core.authorize` | `back/app/mcp/router.py` |
@@ -2225,16 +2225,16 @@ tests remain authoritative for behavior.
 | `agent_tool_list` | `agent_admin` | `app.connection` | `agent_tool_list` | `back/app/connection/agent_admin_mcp.py:11` |
 | `agent_update` | `agent_admin` | `app.agent` | `agent_update` | `back/app/agent/mcp.py:69` |
 | `audio_transcribe` | `audio` | `app.audio` | `transcribe_audio_file` | `back/app/audio/mcp.py:289` |
-| `browser_back` | `browser` | `app.browser` | `browser_back` | `back/app/browser/mcp.py:434` |
-| `browser_click` | `browser` | `app.browser` | `browser_click` | `back/app/browser/mcp.py:364` |
-| `browser_close` | `browser` | `app.browser` | `browser_close` | `back/app/browser/mcp.py:447` |
-| `browser_content` | `browser` | `app.browser` | `browser_content` | `back/app/browser/mcp.py:284` |
-| `browser_navigate` | `browser` | `app.browser` | `browser_navigate` | `back/app/browser/mcp.py:268` |
-| `browser_open` | `browser` | `app.browser` | `browser_open` | `back/app/browser/mcp.py:234` |
-| `browser_press` | `browser` | `app.browser` | `browser_press` | `back/app/browser/mcp.py:404` |
-| `browser_screenshot` | `browser` | `app.browser` | `browser_screenshot` | `back/app/browser/mcp.py:329` |
-| `browser_scroll` | `browser` | `app.browser` | `browser_scroll` | `back/app/browser/mcp.py:419` |
-| `browser_type` | `browser` | `app.browser` | `browser_type` | `back/app/browser/mcp.py:379` |
+| `browser_back` | `browser` | `app.browser` | `browser_back` | `back/app/browser/mcp.py:478` |
+| `browser_click` | `browser` | `app.browser` | `browser_click` | `back/app/browser/mcp.py:408` |
+| `browser_close` | `browser` | `app.browser` | `browser_close` | `back/app/browser/mcp.py:491` |
+| `browser_content` | `browser` | `app.browser` | `browser_content` | `back/app/browser/mcp.py:328` |
+| `browser_navigate` | `browser` | `app.browser` | `browser_navigate` | `back/app/browser/mcp.py:312` |
+| `browser_open` | `browser` | `app.browser` | `browser_open` | `back/app/browser/mcp.py:278` |
+| `browser_press` | `browser` | `app.browser` | `browser_press` | `back/app/browser/mcp.py:448` |
+| `browser_screenshot` | `browser` | `app.browser` | `browser_screenshot` | `back/app/browser/mcp.py:373` |
+| `browser_scroll` | `browser` | `app.browser` | `browser_scroll` | `back/app/browser/mcp.py:463` |
+| `browser_type` | `browser` | `app.browser` | `browser_type` | `back/app/browser/mcp.py:423` |
 | `calendar_create_event` | `calendar` | `bridge.calendar` | `calendar_create_event` | `back/bridge/calendar/mcp.py:132` |
 | `calendar_delete_event` | `calendar` | `bridge.calendar` | `calendar_delete_event` | `back/bridge/calendar/mcp.py:192` |
 | `calendar_events` | `calendar` | `bridge.calendar` | `calendar_events` | `back/bridge/calendar/mcp.py:49` |

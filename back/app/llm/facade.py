@@ -25,7 +25,7 @@ from .resource_discovery import provider_connection
 from .provider_quota import amount_window, quota_number, quota_reset, read_quota_payload
 from .subscription_policy import ensure_subscription_confirmation
 from .media_transport import GenerationProvider, media_http, media_json
-from .media_facade import SelectedMediaResource, start_media_call, finish_media_call
+from .media_facade import SelectedMediaResource, start_media_call, finish_media_call, analyze_input_video as analyze_input_video
 from .media_contracts import MediaRequestRejected
 from .capabilities import AICapability, with_capability
 from .handlers import LLMModelInfo

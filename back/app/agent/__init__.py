@@ -9,6 +9,7 @@ from .reasoning_guard import ReasoningPatternGuard as ReasoningPatternGuard
 from .scope_contracts import ExecutionScopeV1, EffectDescriptorV1, ScopePreflightV1
 from .execution_scope import SCOPE_KEY, PREFLIGHT_KEY, admitted_scope, amend_scope, parse_scope, preflight
 from .active_run import get_current_task
+from .input_analysis import describe_input_image as describe_input_image
 from .planner_inventory_port import register_plan_inventory_reader as register_plan_inventory_reader
 from .defaults import register_default_agent
 from .capabilities import driver_capabilities, effective_capabilities, effective_tool_profile, negotiate_capabilities, normalize_capabilities

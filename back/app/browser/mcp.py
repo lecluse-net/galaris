@@ -72,13 +72,56 @@ def _track_owner_cleanup(ctx: McpToolContext) -> None:
     )
 
 
+def _network_issues(result: BrowserContent | BrowserScreenshot) -> list[dict[str, str | list[str]]]:
+    """Separate a real human wait from a connection policy rejection."""
+
+    guidance = {
+        "local_network_blocked": (
+            "not_requested",
+            "Local-network access is disabled by the browser connection configuration; "
+            "no permission request was created. An authorized administrator must enable "
+            "allow_local_network before a site permission can be requested. Do not bypass "
+            "this block through shell or another HTTP client. For a file resource, use its "
+            "original canonical URI with an authorized file or media tool instead of a UI page URL.",
+        ),
+        "destination_blocked": (
+            "not_requested",
+            "The browser connection filter blocks this destination; no permission request "
+            "was created. An authorized administrator must change the filter before retrying.",
+        ),
+        "connection_inactive": (
+            "not_requested",
+            "The browser connection is inactive; no permission request was created.",
+        ),
+        "permission_required": (
+            "pending",
+            "A human decision is pending for the reported permission_keys. Wait for that "
+            "decision before retrying; do not automatically replay an uncertain write.",
+        ),
+        "permission_denied": (
+            "denied",
+            "The required browser permission was denied. That denial is not a pending decision; do not "
+            "repeat or bypass the denied action.",
+        ),
+    }
+    issues: list[dict[str, str | list[str]]] = []
+    for raw in result.network_issues:
+        issue = dict(raw)
+        code = raw.get("code")
+        detail = guidance.get(code) if isinstance(code, str) else None
+        if detail is not None:
+            issue["authorization_status"], issue["guidance"] = detail
+        issues.append(issue)
+    return issues
+
+
 def _content_text(result: BrowserContent) -> str:
     header = {
         "session_id": result.session_id,
         "url": result.url,
         "title": result.title,
         "revision": result.revision,
-        "network_issues": result.network_issues,
+        "network_issues": _network_issues(result),
         "slice": {
             "start": result.start,
             "end": result.end,
@@ -158,7 +201,7 @@ async def _screenshot_result(
         "captured_height": result.captured_height,
         "truncated": result.truncated,
         "parts": files,
-        "network_issues": result.network_issues,
+        "network_issues": _network_issues(result),
     }
     blocks.insert(
         0,
@@ -227,6 +270,7 @@ async def _action(
         "dimensions in CSS pixels select a responsive desktop or mobile layout. "
         "Connection policy applies to every network request: local access is blocked by default. "
         "network_issues reports blocked requests and pending remembered human permissions. "
+        "local_network_blocked is a configuration rejection, with no permission request created. "
         "When permission_required is reported, wait for the human decision before retrying; "
         "never repeatedly submit a form or automatically replay an uncertain write."
     ),

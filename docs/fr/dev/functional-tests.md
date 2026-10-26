@@ -1168,6 +1168,8 @@ des gestionnaires. Il vérifie aussi le mode public sans question, l’héritage
 par agent, le retour aux demandes par site, les refus explicites et le maintien du blocage local.
 Le défaut public des installations neuves et la conservation du mode des instances existantes,
 y compris sans paramètre enregistré, sont vérifiés avec deux synchronisations successives.
+`app/browser/tests/test_mcp.py` vérifie que contenu et capture distinguent un blocage local
+sans demande créée d'une vraie attente ou d'un refus, avec consigne de résolution explicite.
 `browser-executor/network-proxy.test.mjs` utilise Chromium et des serveurs
 synthétiques pour vérifier POST, redirections, isolation, HTTPS avec validation du certificat,
 WebSocket et révocation. `front/browser-tests/permissions.spec.mjs` vérifie la liste réelle,
@@ -1584,7 +1586,12 @@ comptes réels ni plusieurs objets concurrents dans une même réponse fournisse
 
 `back/app/agent/tests/test_prompt_tree.py` vérifie que la politique de révision documentaire
 atteint les exécuteurs tâche, texte et voix, même avec une personnalité personnalisée et sans
-compétence chargée. Cette preuve porte sur la transmission des consignes ; elle ne mesure pas la
+compétence chargée, comme les consignes d'usage direct des URI et d'état réel des autorisations.
+`app/conversation/tests/test_task_objective.py` vérifie leur transmission à la préparation
+d'objectif sans imposer de méthode navigateur non demandée. Le scénario d'attente de
+`app/task/tests/test_agent_run_trace.py` vérifie aussi, en base, le retrait des anciens UUIDs
+de l'état courant après succès ou échec repris, en conservant la tentative historique.
+Cette preuve porte sur la transmission des consignes ; elle ne mesure pas la
 qualité éditoriale d'un modèle après plusieurs mises à jour du même document.
 
 `back/app/lab/tests/test_executor_outcomes.py` protège les effets utiles : inventaire effectif,
@@ -1694,7 +1701,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Consommation et crédits fournisseurs | Lire fenêtres, budgets et soldes avec les droits fournisseur, sans exposer les identifiants ; afficher les crédits supplémentaires ChatGPT à côté des fenêtres sans jauge de solde ; préserver unités, portée compte/clé, zéro et dépassement ; ne pas fabriquer de jauge sans plafond ; ne pas afficher de panneau de solde ou de consommation Fireworks ; actualiser et ignorer les réponses obsolètes ; masquer les clés enregistrées, conserver une clé omise et supprimer explicitement chaque clé après confirmation ; désactiver le fournisseur si la clé supprimée est obligatoire ; préserver les saisies après une erreur ; chiffrer, remplacer et supprimer la clé de gestion OpenRouter sans changer la clé d’inférence | `back/bridge/openai/tests/test_quota.py`, `back/app/llm/tests/test_provider_quotas.py`, `front/browser-tests/provider-quota.spec.mjs`, `front/browser-tests/provider-autosave.spec.mjs`, `e2e/specs/provider-usage.spec.mjs` |
 | `audio` | Lire/transcrire un média canonique et livrer son résultat sans perte ni fuite de fichier | `test_audio_mcp.py`, `test_audio_service.py`, `test_summary_service.py` |
 | `image` | Générer/lire des images et conserver ressources et traçabilité de l’appel | `test_image_mcp.py`, `test_image_service_trace.py` |
-| Entrées multimodales natives | Fournir images, audio, vidéo et PDF au modèle compatible ; conserver provenance, droits, budget et médias à la reprise, sans outil d'analyse préalable | `app/harness/tests/test_native_media.py`, `test_media_resource_policy.py`, `tests/test_pydantic_ai_internal_model.py`, `app/messenger/tests/test_ingest.py` |
+| Entrées multimodales natives | Fournir images, audio, vidéo et PDF uploadés ou joints par référence interne au modèle compatible ; sinon fournir une analyse/transcription textuelle spécialisée, y compris les pages visuelles des PDF ; conserver provenance, droits, budget et médias à la reprise ; valider la source vidéo avec FFprobe réel | `app/harness/tests/test_native_media.py`, `test_media_resource_policy.py`, `app/llm/tests/test_input_video.py`, `tests/test_pydantic_ai_internal_model.py`, `app/messenger/tests/test_ingest.py` |
 | `multimedia` | Lancer et suivre les générations par les tools MCP, suivre les générations longues, authentifier les callbacks et publier les médias | `test_multimedia.py`, `test_callback_security.py`, `test_providers.py` |
 | `lab` | Isoler les jeux/items, conserver les paramètres, appliquer droits et deux passes ; reprendre les répétitions sans doublon, arrêter au budget et conserver les revues indépendantes avant révélation du juge ; générer des jeux synthétiques complets, propres à chaque contrat et à relire, sans écraser un jeu ni une saisie en cours ; afficher les aperçus sans HTML en conservant les entrées originales, les pourcentages par résultat et la moyenne indépendante du filtre, en excluant les notes absentes et en comptant les zéros | `test_authorization.py`, `test_contracts_and_passes.py`, `test_run_publication.py`, `test_stability_and_review.py`, `test_synthetic_datasets.py`, `lab.spec.mjs`, `lab-access.spec.mjs`, `lab-insights.spec.mjs`, `lab-synthetic.spec.mjs` |
 | Comparaison Lab | Lire deux évaluations de chacun des dix Labs avec les droits du mécanisme ; préserver scores nuls et absents, incompatibilités et manquants ; bilan global indépendant de la page distinguant cas/répétitions, jugements absents et erreurs ; ambiguïtés sur les deux runs complets ; retrouver les régressions critiques et par critère hors page malgré un meilleur score global ; médianes appariées et effectifs ; navigation sans réponse périmée | `app/lab/tests/test_comparison.py`, `app/lab/tests/test_mcp.py`, `lab-comparison.spec.mjs` |

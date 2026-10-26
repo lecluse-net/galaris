@@ -16,6 +16,14 @@ l'analyse dédiée, la persistance des descriptions/transcripts et les replis.
 - `app.harness.media` matérialise les ressources autorisées via `app.file_share`, une fois par URI
   et dans un budget total d'octets, en privilégiant les messages courants puis l'historique récent.
   Il conserve les références et la provenance chronologique, et nettoie immédiatement les temporaires.
+- Les références internes `resource_uris` restent structurées dans les snapshots `TaskMessage`,
+  au même titre que les pièces jointes uploadées, sans fabriquer d'identifiants de fichiers.
+  Leur présence dans le texte ne suffit pas à déclencher la préparation multimodale.
+- Sans entrée native compatible, le runtime fournit automatiquement une description d'image
+  par le modèle de vision configuré, une transcription audio ou une analyse vidéo spécialisée.
+  Les PDF/documents bureautiques fournissent leur texte extrait/OCR et au plus huit pages
+  rendues, soit comme images, soit comme descriptions textuelles de vision. Le modèle principal
+  reste inchangé. Les limites, échecs et couvertures visuelles incomplètes restent explicites.
 - Les capacités effectives croisent les drapeaux du modèle et la politique de formats du bridge.
   L'interdiction absolue audio/vidéo est retirée, ainsi que les tests qui la figeaient. Les garanties
   de références canoniques, limites, contrôle des droits et nettoyage sont reprises dans les tests
@@ -34,7 +42,11 @@ l'analyse dédiée, la persistance des descriptions/transcripts et les replis.
 
 Les tests observent les contenus reçus par Pydantic AI et les payloads envoyés au proxy, les
 réouvertures, la déduplication, les droits refusés, les formats modifiés, les tailles et annulations.
-Les checkpoints conservent leur historique multimodal existant à la reprise. Les tests de
+La matrice couvre les sources uploadées et les références internes pour les images, PDF,
+audio et vidéo, avec et sans capacité native. Cette distinction protège contre la régression
+où les tests limitaient les sources aux uploads et laissaient les références internes dans
+le seul texte. La validation vidéo utilise aussi les véritables exécutables FFmpeg/FFprobe
+sur une source entièrement synthétique. Les checkpoints conservent leur historique multimodal existant à la reprise. Les tests de
 sérialisation remplacent la frontière fournisseur ; ils n'attestent pas d'un appel commercial réel.
 
 Le contrat concerne les pièces jointes canoniques, pas le téléchargement implicite de toute URI

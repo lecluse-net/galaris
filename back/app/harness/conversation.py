@@ -278,7 +278,7 @@ def _stop_target(turn: ConversationTurn) -> str | None:
 
     # Multiple inputs or attachments need the normal controller to interpret the
     # whole request. A matching prefix is never sufficient to consume a turn.
-    if len(turn.messages) > 1 or any(message.get("attachments") for message in turn.messages):
+    if len(turn.messages) > 1 or any(message.get("attachments") or message.get("resource_uris") for message in turn.messages):
         return None
     if re.fullmatch(
         r"\s*(?:stop|annule|annuler|arrête|arrete|cancel)"

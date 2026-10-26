@@ -312,7 +312,10 @@ For browser access, open the agent's **Browser** connection. **Public sites allo
 initial choice for new installations: public HTTP methods and WebSocket pass without per-site
 consent, subject to filters and explicit denials. Existing instances keep their policy; a previously
 absent parameter becomes **Per-site approval**. Local networking is blocked by default; enable
-`allow_local_network` to allow a separate permission request. Public mode permits no local access. Destination filters stay
+`allow_local_network` to allow a separate permission request. Public mode permits no local access.
+A configuration block creates no permission request: no approval button awaits your answer
+while that setting blocks access. Attached files can be read through their source URI without
+opening their page in the browser. Destination filters stay
 authoritative. Answer through messaging or the internal-chat buttons: both approvals and denials
 are remembered per agent, access type and origin (domain, protocol, port). Public GET requests
 need no question with the default settings. The third choice, **Always allow all sites**,
@@ -391,7 +394,9 @@ that area, remain draft attachments and can be removed
 before sending, including messages without text. Their cards and thumbnails appear below
 the published message. Files retain their source URI (`file://`, `console://` or the service's
 scheme), without copying or replacing it with a Galaris page URL. Source permissions and
-the receiving agent's access still apply.
+the receiving agent's access still apply. A compatible model receives the image, PDF,
+audio or video directly. Otherwise, configured specialists supply a textual description
+or transcription; unavailable analysis and incomplete coverage are reported explicitly.
 
 The Chat home screen shows all conversations, like the chat window's **Conversations** section,
 then agents. Older and empty conversations are included, with the same filters and usual pagination.

@@ -483,8 +483,10 @@ async def test_session_provider_keeps_connection_scope_server_side(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("source", ["uploaded", "internal"])
 async def test_session_provider_keeps_file_only_message_only_in_native_history(
     monkeypatch: pytest.MonkeyPatch,
+    source: str,
 ) -> None:
     room_id = uuid4()
     file_id = uuid4()
@@ -509,6 +511,9 @@ async def test_session_provider_keeps_file_only_message_only_in_native_history(
             },
         ),
     )
+    if source == "internal":
+        snapshot.messages[0]["resource_uris"] = ["console://synthetic-report.pdf"]
+        snapshot.messages[0]["attachments"] = []
     monkeypatch.setattr(
         session_module,
         "build_conversation_session",
@@ -539,6 +544,9 @@ async def test_session_provider_keeps_file_only_message_only_in_native_history(
 
     assert contribution.conversation_history == snapshot.messages
     assert contribution.candidates == ()
+    if source == "internal":
+        projected = session_module._fallback_message(snapshot.messages[0], agent_id=7, current_id="")
+        assert projected is not None and projected["resource_uris"] == ["console://synthetic-report.pdf"]
 
 
 @pytest.mark.asyncio

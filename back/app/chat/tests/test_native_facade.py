@@ -1854,6 +1854,9 @@ async def test_message_publish_preserves_an_explicit_topic(
     assert stored is not None
     assert stored.text == "@eff @effort Message classé manuellement"
     assert stored.resource_uris == ["file://synthetic-image"]
+    from app.agent.contracts import TaskMessage
+    assert TaskMessage.from_messenger(stored).resource_uris == stored.resource_uris
+    assert not TaskMessage.from_messenger(stored).file_ids
     assert stored.conversation_text == "@eff @effort Message classé manuellement\n\nfile://synthetic-image"
     assert stored.topic_id == topic.id
     assert stored.topic_overridden is True

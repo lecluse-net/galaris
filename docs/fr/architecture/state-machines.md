@@ -26,6 +26,9 @@ Les UUIDs sont sérialisés en chaînes JSON avant la persistance du résultat e
 identité reste conservée lors du rechargement.
 La tentative tâche termine en `WAITING_APPROVAL`, libère son lease et conserve son checkpoint ;
 la tâche revient à la phase reprenable `DISPATCH`, avec une raison de pause d’autorisation.
+Quand une exécution reprise rend une issue sans attente d'autorisation, les anciennes
+`authorization_requests` sont retirées des données courantes de la tâche ; les checkpoints
+et états des tentatives historiques conservent la preuve de leur attente.
 L'accord reste acquis, mais le runtime voit encore l'appel en attente jusqu'à la reprise
 d'une tentative après la décision et le transfert de son grant vers ce lease actif.
 La récupération des orphelins ignore les tâches suspendues. Une pause humaine

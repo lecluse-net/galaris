@@ -286,8 +286,17 @@ annulation. Un checkpoint reprend son historique multimodal sans rajouter les m�
 L'admission croise les drapeaux `input_*` du modèle et les formats du transport. Les images
 PNG/JPEG/WebP/GIF et PDF utilisent le SDK ; l'audio WAV/MP3 utilise Chat Completions. Le bridge
 OpenRouter déclare en plus AIFF/AAC/OGG/FLAC/M4A et les vidéos MP4/MPEG/MOV/WebM. La vidéo des autres
-transports, les formats inconnus et les fichiers inaccessibles restent des références explicites.
+transports utilise un repli textuel spécialisé. Les formats inconnus et les fichiers
+inaccessibles restent des références explicites.
 Hermès conserve son transport texte/image et ses replis propres.
+
+Quand le modèle ou le transport ne prend pas en charge le média, la préparation fournit
+automatiquement une description d'image par le modèle de vision configuré, une transcription
+audio ou une analyse vidéo spécialisée. Le modèle de conversation reste inchangé. Pour un PDF
+ou un document bureautique sans entrée fichier compatible, elle fournit le texte extrait/OCR
+et au plus huit pages rendues : images si la vision est disponible, sinon descriptions
+textuelles par le spécialiste de vision. La couverture visuelle incomplète est signalée.
+L'analyse vidéo exige une piste vidéo et une durée maximale de vingt minutes.
 
 À la découverte des modèles, une modalité absente reste inconnue jusqu'à l'enrichissement
 par le catalogue. Un défaut de conversation ne doit pas fabriquer un refus d'image, de fichier,
@@ -302,8 +311,10 @@ sont pas actualisés par cette action. Les modèles créés ensuite utilisent di
 capacités découvertes. Aucun changement de schéma ni migration automatique n'est nécessaire.
 
 `PYDANTIC_AI_BINARY_INPUT_MAX_BYTES` borne le total des octets natifs uniques préparés pour un run
-(20 000 000 par défaut). La priorité va aux messages courants. Un dépassement ou une incompatibilité
-produit un avis explicite dans le contexte ; l'agent peut appeler `image_read`, `audio_read`,
+(20 000 000 par défaut), y compris les médias préparés pour un repli spécialisé. Le texte préparé
+est limité à 120 000 caractères par run. La priorité va aux messages courants. Un dépassement,
+un repli indisponible ou une analyse vide produit un avis explicite dans le contexte ;
+l'agent peut appeler `image_read`, `audio_read`,
 `video_read`, `audio_transcribe` ou un lecteur adapté. Ces outils restent disponibles et gardent
 leurs effets, notamment la description Memory de `image_read`. Une URI seule n'est jamais présentée
 comme du contenu déjà vu. La transcription automatique n'est évitée que pour un audio dont le
@@ -322,9 +333,17 @@ ou de runtime.
 Les ressources internes jointes depuis un composeur Chat sont conservées dans les
 métadonnées `resource_uris` du message et exposées séparément de son texte. La publication
 vérifie les privilèges humains et l’accès de l’agent destinataire à chaque URI canonique,
-sans copier les octets. La projection `conversation_text` conserve ces URI dans leur
-message d’origine pour le runtime. Les aperçus autorisent ces références explicites,
+sans copier les octets. Les snapshots `TaskMessage` conservent ces références structurées
+pour la préparation des médias, en plus de leur présence dans `conversation_text`.
+Les aperçus autorisent ces références explicites,
 y compris entrantes, sans ouvrir l’accès aux liens privés simplement saisis dans le texte.
+
+Les instructions communes aux exécuteurs tâche, texte et voix expliquent l'utilisation directe
+des URI par les outils compatibles, sans attendre le chargement d'une compétence. Une URI
+`console://` désigne le home SSH connecté, pas le disque du harnais. Une route d'interface
+`/files` ne devient pas une URL de téléchargement publique. La préparation d'un objectif Task
+ne transforme pas « ouvrir/lire ce fichier » en une obligation de rendu navigateur, capture
+ou copie locale, sauf demande explicite de cette méthode ou de ce livrable.
 
 ## Notes vocales
 

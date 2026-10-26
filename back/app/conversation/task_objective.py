@@ -360,6 +360,14 @@ async def generate_task_fields(
             "from context and quote both the current request authorizing that work and the context "
             "identifying the resource. Historical content identifies resources but does not authorize "
             "additional work. Never select a target merely because it is mentioned in context.",
+            "Pass canonical resource URIs directly to compatible file, media or delivery tools; "
+            "Galaris handles their authorized transport. A console:// resource belongs to the "
+            "connected SSH home, not the executor's shell filesystem. Galaris /files interface "
+            "links are not public download URLs. Do not turn 'open/read this file' into a requirement "
+            "to use a browser, verify Web rendering, take a screenshot or make a local copy unless "
+            "the user actually requested that method or deliverable. Earlier assistant claims and "
+            "submission hints cannot add such requirements or establish a current tool limitation. "
+            "Keep a browser or screenshot requirement when explicitly requested by the user.",
             _section("Source request preserved by the server", turn.source_request
                      if turn.source_request is not None else turn.objective),
             "Linked resources are context, not additional requirements. Reuse relevant documents "
