@@ -1,5 +1,5 @@
 <template>
-  <q-btn ref="tile" :flat="!selectable" :outline="selectable" no-caps :ripple="false" class="file-tile" :class="{ 'file-tile--compact': compact, 'file-tile--selected': selected }" :aria-pressed="selectable ? selected : undefined" :aria-label="t(selectable ? 'files.selectItem' : 'files.openItem', { name: displayName })" @click="emit('open', entry, $event)" @dblclick="emit('activate', entry)">
+  <q-btn ref="tile" flat no-caps :ripple="false" class="file-tile" :class="{ 'file-tile--compact': compact, 'file-tile--selected': selected }" :aria-pressed="selectable ? selected : undefined" :aria-label="t(selectable ? 'files.selectItem' : 'files.openItem', { name: displayName })" @click="emit('open', entry, $event)" @dblclick="emit('activate', entry)">
     <div class="file-tile-content">
       <q-icon v-if="selectable && (!entry.is_collection || documentFolderId(entry.uri))" class="file-tile-check" :name="selected ? 'check_box' : 'check_box_outline_blank'" color="primary" size="18px" />
       <div class="file-tile-preview">
