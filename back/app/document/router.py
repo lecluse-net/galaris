@@ -363,7 +363,7 @@ async def upload_personal_tag_icon(data: DocumentTagIconWrite) -> DocumentTagIco
 @authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN], assertion=ManagedDocumentAccessAssertion)
 async def move_personal_document(document_id: UUID, data: DocumentTagMove) -> None:
     try:
-        await document_tags.move_document(await current_management_scope(), document_id, data.tag_id)
+        await document_tags.move_document(await current_management_scope(), document_id, data.tag_id, at_root=data.at_root)
     except Exception as exc:
         raise _http_error(exc) from exc
 

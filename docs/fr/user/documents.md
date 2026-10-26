@@ -88,7 +88,12 @@ Les titres des documents pilotés par un Goal restent contrôlés par ce Goal.
 Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
 parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement
 classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création
-général conserve les nouveaux documents parmi les documents non classés.
+général conserve les nouveaux documents parmi les non classés, hors de l'arborescence.
+La racine contient uniquement les documents que vous y placez explicitement. Utilisez
+**Créer un document à la racine** au pied de l'arborescence ou déposez-y un document depuis
+la liste ou un dossier. Pour retirer ce classement, déposez le document dans la zone de
+la liste des non classés. Le choix est personnel, conservé après rechargement et indépendant
+des filtres de la liste ; les autres documents sans dossier restent non classés.
 
 Dans les filtres de la bibliothèque, le champ unique **Propriétaire** remplace le choix
 séparé du type et du nom. Il affiche **Moi**, les utilisateurs, puis les agents ; la recherche

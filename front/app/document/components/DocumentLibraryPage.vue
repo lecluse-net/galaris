@@ -224,6 +224,7 @@ const createDocumentActorAgentId = ref<number | null>(null)
 const createDocumentTitle = ref('')
 const createDocumentTag = ref<DocumentTag | null>(null)
 const createDocumentParent = ref<DocumentLibraryEntry | null>(null)
+const createDocumentAtRoot = ref(false)
 const createOwnerOptions = ref<DocumentOwnerOptions>({ agents: [], users: [] })
 const createOwnerOptionsLoading = ref(false)
 let pageMounted = false
@@ -347,9 +348,10 @@ async function documentRowAction(entry: DocumentLibraryEntry, action: DocumentRo
   const editor = $q.screen.lt.md ? mobileDocumentEditor.value : documentEditor.value
   editor?.requestRowAction(action, entry.item.id)
 }
-async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry): Promise<void> {
+async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false): Promise<void> {
   createDocumentTag.value = tag ?? null
   createDocumentParent.value = parent ?? null
+  createDocumentAtRoot.value = atRoot
   createDocumentActorAgentId.value = selectedAgentId.value ?? agentStore.sortedAgents[0]?.id ?? null
   createDocumentTitle.value = ''
   createDocumentOwner.value = ''
@@ -379,6 +381,7 @@ async function createDocument(): Promise<void> {
   const title = createDocumentTitle.value.trim()
   const tag = createDocumentTag.value
   const parent = createDocumentParent.value
+  const atRoot = createDocumentAtRoot.value
   if (!owner || actorAgentId === null || !title || creatingDocument.value) return
   creatingDocument.value = true
   try {
@@ -392,22 +395,23 @@ async function createDocument(): Promise<void> {
     })
     createDocumentOpen.value = false
     let classified = false
-    if (tag || parent) {
+    if (tag || parent || atRoot) {
       try {
         if (parent) await documentService.moveDocumentUnderDocument(document.id, parent.item.id)
         else if (tag) await documentService.moveDocumentToTag(document.id, tag.id)
+        else await documentService.moveDocumentToTag(document.id, null, true)
         classified = true
       } catch {
         $q.notify({ type: 'warning', message: parent
           ? t('documents.createdUnnested', { name: parent.item.title })
-          : t('documents.createdUnclassified', { name: tag?.name }) })
+          : t('documents.createdUnclassified', { name: tag?.name ?? t('documents.library.root') }) })
       }
     }
     navigation.value?.refreshDocuments([document.id], classified ? tag?.id : undefined, classified ? parent?.item.id : undefined)
     const documentActor = owner.kind === 'user' ? null : actorAgentId
     if ($q.screen.lt.md) await openMobileDocument(document.id, documentActor)
     else await selectDocument(document.id, documentActor)
-    if ((!tag && !parent) || classified) $q.notify({ type: 'positive', message: t('documents.created') })
+    if ((!tag && !parent && !atRoot) || classified) $q.notify({ type: 'positive', message: t('documents.created') })
   } catch {
     $q.notify({ type: 'negative', message: t('documents.createError') })
   } finally {

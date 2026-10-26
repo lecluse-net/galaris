@@ -40,12 +40,12 @@ for (const width of [1440, 390]) {
     const title = page.getByRole('textbox', { name: 'Title', exact: true })
     const search = page.getByRole('textbox', { name: 'Search', exact: true })
     await search.fill('Synthetic')
-    await page.getByRole('link', { name: items[0].title, exact: true }).click()
+    await page.getByRole('list', { name: 'Unclassified Datasets', exact: true }).getByRole('link', { name: items[0].title, exact: true }).click()
     await expect(title).toHaveValue(items[0].title)
     if (width < 1024) await page.evaluate(() => window.testApp.router.push('/dataset'))
-    await page.getByRole('link', { name: items[1].title, exact: true }).click()
+    await page.getByRole('list', { name: 'Unclassified Datasets', exact: true }).getByRole('link', { name: items[1].title, exact: true }).click()
     await expect(title).toHaveValue(items[1].title)
-    if (width >= 1024) await page.getByRole('link', { name: items[1].title, exact: true }).click()
+    if (width >= 1024) await page.getByRole('list', { name: 'Unclassified Datasets', exact: true }).getByRole('link', { name: items[1].title, exact: true }).click()
     await page.evaluate(() => window.history.back())
     if (width < 1024) {
       await expect(title).toHaveCount(0)
@@ -78,7 +78,7 @@ for (const width of [1440, 390]) {
     await mount(page, 'test-support/browser/DatasetRouteHarness.vue', {
       route: '/dataset', browserHistory: true, privileges: ['DATASET_EDIT'],
     })
-    await page.getByRole('link', { name: state.items[0].title, exact: true }).click()
+    await page.getByRole('list', { name: 'Unclassified Datasets', exact: true }).getByRole('link', { name: state.items[0].title, exact: true }).click()
     const json = page.getByRole('textbox', { name: 'JSON content', exact: true })
     await expect(json).toHaveValue(/Alpha/)
     await json.fill('{')

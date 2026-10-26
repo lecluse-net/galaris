@@ -57,7 +57,7 @@ async def classify(identity: UUID, actor: DataActor, *, tags: list[UUID], icon: 
     if appearance is None:
         appearance = DatasetAppearance(dataset_id=identity, user_id=user_id)
         get_db().add(appearance)
-    appearance.icon, appearance.position = icon, position
+    appearance.icon, appearance.position, appearance.at_root = icon, position, False
 
 
 async def lock_tree(actor: DataActor) -> None:
@@ -119,8 +119,10 @@ async def remove_tag(actor: DataActor, identity: UUID, *, confirmed: bool = Fals
 
 
 async def move(actor: DataActor, *, kind: str, identity: UUID, parent_id: UUID | None,
-               anchor_kind: str | None = None, anchor_id: UUID | None = None, after: bool = True) -> None:
+               anchor_kind: str | None = None, anchor_id: UUID | None = None, after: bool = True, at_root: bool = False) -> None:
     """Move only the caller's placement; content, grants and revisions stay intact."""
+    if at_root and (kind != "dataset" or parent_id is not None):
+        raise ValueError("Root placement only accepts Datasets without a folder")
     await lock_tree(actor)
     if parent_id:
         await require_tag(actor, parent_id)
@@ -132,6 +134,10 @@ async def move(actor: DataActor, *, kind: str, identity: UUID, parent_id: UUID |
         moving: DatasetTag | DatasetTagAssignment | DatasetAppearance = folder
     else:
         await service.record(identity, actor)
+        appearance = await get_db().scalar(select(DatasetAppearance).where(
+            DatasetAppearance.dataset_id == identity, DatasetAppearance.user_id == user(actor)))
+        if appearance is not None:
+            appearance.at_root = at_root
         own = select(DatasetTag.id).where(DatasetTag.user_id == user(actor))
         await get_db().execute(delete(DatasetTagAssignment).where(
             DatasetTagAssignment.dataset_id == identity, DatasetTagAssignment.tag_id.in_(own)))
@@ -141,7 +147,7 @@ async def move(actor: DataActor, *, kind: str, identity: UUID, parent_id: UUID |
         else:
             appearance = await get_db().scalar(select(DatasetAppearance).where(
                 DatasetAppearance.dataset_id == identity, DatasetAppearance.user_id == user(actor)))
-            moving = appearance or DatasetAppearance(dataset_id=identity, user_id=user(actor))
+            moving = appearance or DatasetAppearance(dataset_id=identity, user_id=user(actor), at_root=at_root)
             get_db().add(moving)
     moving.position = await next_position(actor, parent_id)
     await get_db().flush()

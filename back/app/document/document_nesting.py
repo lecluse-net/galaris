@@ -75,6 +75,7 @@ async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
         DocumentTagAssignment.tag_id.in_(select(DocumentTag.id).where(DocumentTag.user_id == scope.user_id)),
     )))
     previous_parent = await clear_parent(scope.user_id, data.node.id)
+    await document_tags.set_root_placement(scope.user_id, data.node.id, False)
     await db.execute(delete(DocumentTagAssignment).where(
         DocumentTagAssignment.document_id == data.node.id,
         DocumentTagAssignment.tag_id.in_(select(DocumentTag.id).where(DocumentTag.user_id == scope.user_id)),

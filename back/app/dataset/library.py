@@ -5,7 +5,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import Select, func, literal, select
+from sqlalchemy import Select, func, literal, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.share import sharing_directory
@@ -16,7 +16,7 @@ from .models import Dataset, DatasetAppearance, DatasetTag, DatasetTagAssignment
 
 
 class LibraryFilters(BaseModel):
-    classification: Literal["all", "unclassified", "classified"] = "all"
+    classification: Literal["all", "unclassified", "classified", "root"] = "all"
     keyword: str | None = Field(default=None, max_length=200)
     owner_kind: Literal["agent", "user"] | None = None
     owner: int | None = Field(default=None, gt=0)
@@ -41,8 +41,11 @@ async def filter_statement(statement: Select[tuple[Dataset]], actor: DataActor, 
     if filters.classification != "all":
         from .organization import user
         assignments = select(DatasetTagAssignment.dataset_id).join(DatasetTag).where(DatasetTag.user_id == user(actor))
-        classified = Dataset.id.in_(assignments)
-        statement = statement.where(classified if filters.classification == "classified" else ~classified)
+        root = Dataset.id.in_(select(DatasetAppearance.dataset_id).where(
+            DatasetAppearance.user_id == user(actor), DatasetAppearance.at_root.is_(True)))
+        classified = or_(root, Dataset.id.in_(assignments))
+        statement = statement.where(root & ~Dataset.id.in_(assignments) if filters.classification == "root"
+            else classified if filters.classification == "classified" else ~classified)
     if filters.keyword:
         statement = statement.where(Dataset.keywords.contains([filters.keyword]))
     if filters.owner_kind:
@@ -78,6 +81,7 @@ async def decorate(items: list[dict[str, Any]], actor: DataActor) -> None:
     for item in items:
         item["tag_ids"] = [str(tag) for dataset, tag in assignments if str(dataset) == item["id"]]
         item["icon"] = appearances[item["id"]].icon if item["id"] in appearances else None
+        item["at_root"] = appearances[item["id"]].at_root if item["id"] in appearances else False
 
 
 async def facets(actor: DataActor) -> dict[str, Any]:

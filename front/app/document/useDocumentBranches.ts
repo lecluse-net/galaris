@@ -27,9 +27,9 @@ export function useDocumentBranches(changed: (incoming?: DocumentLibraryEntry[])
       const documents: DocumentLibraryEntry[] = []
       let more = true
       while (more) {
-        const parent = id.startsWith('doc:') ? { parent_document_id: id.slice(4) } : { tag_id: id }
+        const parent = id === 'root' ? {} : id.startsWith('doc:') ? { parent_document_id: id.slice(4) } : { tag_id: id }
         const result = await documentService.browseDocumentLibrary({ ...parent, include_descendants: false,
-          classification: 'classified', sort_by: 'position', include_keywords: false,
+          classification: id === 'root' ? 'root' : 'classified', sort_by: 'position', include_keywords: false,
           limit: 500, offset: documents.length }, controller.signal)
         if (!valid()) return
         documents.push(...result.entries)

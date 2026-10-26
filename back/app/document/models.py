@@ -162,6 +162,7 @@ class DocumentListPosition(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id"), index=True)
     position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    at_root: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     __table_args__ = (UniqueConstraint("user_id", "document_id"),)
 
 class DocumentAttachment(Base):

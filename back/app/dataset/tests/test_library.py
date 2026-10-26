@@ -14,6 +14,44 @@ from core.user import HumanActor, UserModel
 
 
 @pytest.mark.asyncio
+async def test_root_requires_an_explicit_personal_choice_and_survives_reads(db, agents):
+    owner, other = agents
+    user = UserModel(email="synthetic-root-reader@example.test", hashed_password="unused", is_active=True)
+    db.add(user)
+    await db.flush()
+    actor, reader = HumanActor(owner.user_id), HumanActor(user.id)
+    pinned = await service.create(actor, title="Synthetic selected root", content='{"selected":true}')
+    untouched = await service.create(actor, title="Synthetic inbox")
+    pinned.global_access = 1
+    await db.flush()
+    before = (pinned.content, pinned.revision, pinned.lock_version, pinned.owner_user_id)
+
+    async def identities(classification, current=actor):
+        result = await service.list_datasets(current, filters=LibraryFilters(classification=classification))
+        return {item["id"] for item in result["items"]}
+
+    # Appearance and manual ordering are not a root placement.
+    await organization.classify(untouched.id, actor, tags=[], icon="emoji:1F680", position=12)
+    assert await identities("root") == set()
+    await organization.move(actor, kind="dataset", identity=pinned.id, parent_id=None, at_root=True)
+    await db.commit()
+    assert await identities("root") == {str(pinned.id)}
+    assert await identities("unclassified") == {str(untouched.id)}
+    assert await identities("classified") == {str(pinned.id)}
+    assert await identities("root", reader) == set()
+    folder = await organization.save_tag(actor, name="Synthetic destination")
+    await organization.move(actor, kind="dataset", identity=pinned.id, parent_id=folder.id)
+    assert await identities("root") == set()
+    await organization.move(actor, kind="dataset", identity=pinned.id, parent_id=None)
+    assert await identities("root") == set()
+    assert await identities("unclassified") == {str(pinned.id), str(untouched.id)}
+    await organization.move(actor, kind="dataset", identity=pinned.id, parent_id=None, at_root=True)
+    await organization.classify(pinned.id, actor, tags=[])
+    assert await identities("root") == set()
+    assert (pinned.content, pinned.revision, pinned.lock_version, pinned.owner_user_id) == before
+
+
+@pytest.mark.asyncio
 async def test_folder_lifecycle_preserves_resources_and_isolates_classification(db, agents):
     owner, other = agents
     users = [UserModel(email=f"synthetic-folder-{index}@example.test", hashed_password="unused", is_active=True) for index in range(2)]

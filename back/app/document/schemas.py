@@ -269,6 +269,13 @@ class DocumentIconRequest(BaseModel):
 class DocumentTagMove(BaseModel):
     model_config = ConfigDict(extra="forbid")
     tag_id: UUID | None
+    at_root: bool = False
+
+    @model_validator(mode="after")
+    def validate_root(self) -> DocumentTagMove:
+        if self.at_root and self.tag_id is not None:
+            raise ValueError("Root placement cannot have a folder")
+        return self
 
 class DocumentParentMove(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -285,11 +292,14 @@ class DocumentOrderMove(BaseModel):
     parent_id: UUID | None = None
     parent_document_id: UUID | None = None
     list_only: bool = False
+    at_root: bool = False
     anchor: DocumentOrderNode | None = None
     after: bool = False
 
     @model_validator(mode="after")
     def validate_parent(self) -> DocumentOrderMove:
+        if self.at_root and (self.parent_id is not None or self.parent_document_id is not None or self.list_only or self.node.kind != "document"):
+            raise ValueError("Root placement only accepts documents without a parent")
         if self.parent_document_id is not None and (self.parent_id is not None or self.list_only or self.node.kind != "document"):
             raise ValueError("A document parent only accepts documents outside the flat list")
         return self
@@ -346,7 +356,7 @@ class DocumentLibraryRequest(BaseModel):
     include_descendants: bool = True
     include_owners: bool = False
     include_keywords: bool = True
-    classification: Literal["all", "classified", "unclassified"] = "all"
+    classification: Literal["all", "classified", "unclassified", "root"] = "all"
     owner_kind: Literal["agent", "user"] | None = None
     owner: int | None = Field(default=None, gt=0)
     created_from: datetime | None = None

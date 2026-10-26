@@ -79,7 +79,11 @@ Goal-controlled documents remain controlled by that Goal.
 In the **Documents** library, every folder offers a **New document** icon among its
 actions. Enter the title and owner: the document is automatically placed in that folder,
 which expands, and opens in the editor. The general creation button keeps new documents
-in the unclassified list.
+in the unclassified list, outside the tree. The root contains only documents you explicitly
+place there. Use **Create a document at the root** below the tree, or drop a document there
+from the list or a folder. Drop it back into the unclassified list area to remove that
+placement. This personal choice survives reloads and is independent of list filters;
+other documents without a folder remain unclassified.
 
 Library filters use a single **Owner** field to choose a person or agent. It lists **Me**,
 then users and agents, with search and independent pagination for each large list.

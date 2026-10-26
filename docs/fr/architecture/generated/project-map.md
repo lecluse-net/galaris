@@ -1457,32 +1457,32 @@ tests restent l’autorité sur le comportement.
 | POST | `/conversations/rounds/{round_id}/delivery-resolution` | `app.conversation` | `resolve_conversation_delivery` | oui | `back/app/conversation/router.py:136` |
 | PUT | `/conversations/rounds/{round_id}/topic` | `app.conversation` | `update_conversation_round_topic` | oui | `back/app/conversation/router.py:101` |
 | GET | `/dashboard` | `app.dashboard` | `read_dashboard` | oui | `back/app/dashboard/router.py:17` |
-| GET | `/datasets` | `app.dataset` | `list_datasets` | oui | `back/app/dataset/router.py:130` |
-| POST | `/datasets` | `app.dataset` | `create_dataset` | oui | `back/app/dataset/router.py:145` |
-| GET | `/datasets/library/facets` | `app.dataset` | `library_facets` | oui | `back/app/dataset/router.py:171` |
-| POST | `/datasets/library/move` | `app.dataset` | `move_placement` | oui | `back/app/dataset/router.py:203` |
-| GET | `/datasets/tags` | `app.dataset` | `list_tags` | oui | `back/app/dataset/router.py:155` |
-| POST | `/datasets/tags` | `app.dataset` | `create_tag` | oui | `back/app/dataset/router.py:162` |
-| DELETE | `/datasets/tags/{identity}` | `app.dataset` | `delete_tag` | oui | `back/app/dataset/router.py:186` |
-| PUT | `/datasets/tags/{identity}` | `app.dataset` | `update_tag` | oui | `back/app/dataset/router.py:178` |
-| POST | `/datasets/tags/{identity}/sort` | `app.dataset` | `sort_tag` | oui | `back/app/dataset/router.py:195` |
-| DELETE | `/datasets/{identity}` | `app.dataset` | `delete_dataset` | oui | `back/app/dataset/router.py:245` |
-| GET | `/datasets/{identity}` | `app.dataset` | `read_dataset` | oui | `back/app/dataset/router.py:211` |
-| PATCH | `/datasets/{identity}` | `app.dataset` | `update_dataset` | oui | `back/app/dataset/router.py:234` |
-| GET | `/datasets/{identity}/attachments` | `app.dataset` | `attachments` | oui | `back/app/dataset/router.py:330` |
-| POST | `/datasets/{identity}/attachments` | `app.dataset` | `attach` | oui | `back/app/dataset/router.py:338` |
-| PATCH | `/datasets/{identity}/attachments/{attachment_id}` | `app.dataset` | `rename_dataset_attachment` | oui | `back/app/dataset/router.py:348` |
-| PUT | `/datasets/{identity}/classification` | `app.dataset` | `classify` | oui | `back/app/dataset/router.py:356` |
-| PUT | `/datasets/{identity}/content` | `app.dataset` | `write_dataset` | oui | `back/app/dataset/router.py:219` |
-| GET | `/datasets/{identity}/owner` | `app.dataset` | `owner_options` | oui | `back/app/dataset/router.py:285` |
-| PATCH | `/datasets/{identity}/owner` | `app.dataset` | `transfer_owner` | oui | `back/app/dataset/router.py:292` |
-| GET | `/datasets/{identity}/revisions` | `app.dataset` | `read_history` | oui | `back/app/dataset/router.py:253` |
-| GET | `/datasets/{identity}/revisions/{number}` | `app.dataset` | `read_revision` | oui | `back/app/dataset/router.py:260` |
-| POST | `/datasets/{identity}/revisions/{number}/restore` | `app.dataset` | `restore_revision` | oui | `back/app/dataset/router.py:268` |
-| GET | `/datasets/{identity}/sharing` | `app.dataset` | `sharing` | oui | `back/app/dataset/router.py:278` |
-| PUT | `/datasets/{identity}/sharing` | `app.dataset` | `set_grant` | oui | `back/app/dataset/router.py:320` |
-| PUT | `/datasets/{identity}/sharing-level` | `app.dataset` | `sharing_level` | oui | `back/app/dataset/router.py:302` |
-| GET | `/datasets/{identity}/usages` | `app.dataset` | `usages` | oui | `back/app/dataset/router.py:311` |
+| GET | `/datasets` | `app.dataset` | `list_datasets` | oui | `back/app/dataset/router.py:131` |
+| POST | `/datasets` | `app.dataset` | `create_dataset` | oui | `back/app/dataset/router.py:146` |
+| GET | `/datasets/library/facets` | `app.dataset` | `library_facets` | oui | `back/app/dataset/router.py:172` |
+| POST | `/datasets/library/move` | `app.dataset` | `move_placement` | oui | `back/app/dataset/router.py:204` |
+| GET | `/datasets/tags` | `app.dataset` | `list_tags` | oui | `back/app/dataset/router.py:156` |
+| POST | `/datasets/tags` | `app.dataset` | `create_tag` | oui | `back/app/dataset/router.py:163` |
+| DELETE | `/datasets/tags/{identity}` | `app.dataset` | `delete_tag` | oui | `back/app/dataset/router.py:187` |
+| PUT | `/datasets/tags/{identity}` | `app.dataset` | `update_tag` | oui | `back/app/dataset/router.py:179` |
+| POST | `/datasets/tags/{identity}/sort` | `app.dataset` | `sort_tag` | oui | `back/app/dataset/router.py:196` |
+| DELETE | `/datasets/{identity}` | `app.dataset` | `delete_dataset` | oui | `back/app/dataset/router.py:246` |
+| GET | `/datasets/{identity}` | `app.dataset` | `read_dataset` | oui | `back/app/dataset/router.py:212` |
+| PATCH | `/datasets/{identity}` | `app.dataset` | `update_dataset` | oui | `back/app/dataset/router.py:235` |
+| GET | `/datasets/{identity}/attachments` | `app.dataset` | `attachments` | oui | `back/app/dataset/router.py:331` |
+| POST | `/datasets/{identity}/attachments` | `app.dataset` | `attach` | oui | `back/app/dataset/router.py:339` |
+| PATCH | `/datasets/{identity}/attachments/{attachment_id}` | `app.dataset` | `rename_dataset_attachment` | oui | `back/app/dataset/router.py:349` |
+| PUT | `/datasets/{identity}/classification` | `app.dataset` | `classify` | oui | `back/app/dataset/router.py:357` |
+| PUT | `/datasets/{identity}/content` | `app.dataset` | `write_dataset` | oui | `back/app/dataset/router.py:220` |
+| GET | `/datasets/{identity}/owner` | `app.dataset` | `owner_options` | oui | `back/app/dataset/router.py:286` |
+| PATCH | `/datasets/{identity}/owner` | `app.dataset` | `transfer_owner` | oui | `back/app/dataset/router.py:293` |
+| GET | `/datasets/{identity}/revisions` | `app.dataset` | `read_history` | oui | `back/app/dataset/router.py:254` |
+| GET | `/datasets/{identity}/revisions/{number}` | `app.dataset` | `read_revision` | oui | `back/app/dataset/router.py:261` |
+| POST | `/datasets/{identity}/revisions/{number}/restore` | `app.dataset` | `restore_revision` | oui | `back/app/dataset/router.py:269` |
+| GET | `/datasets/{identity}/sharing` | `app.dataset` | `sharing` | oui | `back/app/dataset/router.py:279` |
+| PUT | `/datasets/{identity}/sharing` | `app.dataset` | `set_grant` | oui | `back/app/dataset/router.py:321` |
+| PUT | `/datasets/{identity}/sharing-level` | `app.dataset` | `sharing_level` | oui | `back/app/dataset/router.py:303` |
+| GET | `/datasets/{identity}/usages` | `app.dataset` | `usages` | oui | `back/app/dataset/router.py:312` |
 | GET | `/definitions` | `app.process` | `read_definitions` | oui | `back/app/process/router.py:156` |
 | POST | `/definitions` | `app.process` | `create_definition` | oui | `back/app/process/router.py:170` |
 | POST | `/definitions/sync` | `app.process` | `sync_definitions` | oui | `back/app/process/router.py:181` |
@@ -2028,13 +2028,13 @@ tests restent l’autorité sur le comportement.
 | `conversation_rounds` | `ConversationRound` | `app.conversation` | non | `conversation_rounds.id`, `memory_items.id`, `messenger_rooms.id`, `topics.id`, `users.id`, `voice_sessions.id` | `back/app/conversation/models.py:58` |
 | `conversation_task_links` | `ConversationTaskLink` | `app.conversation` | non | `conversation_rounds.id`, `messenger_messages.id`, `tasks.id` | `back/app/conversation/models.py:273` |
 | `dataset_aliases` | `DatasetAlias` | `app.dataset` | non | `datasets.id`, `documents.id` | `back/app/dataset/models.py:70` |
-| `dataset_app_consents` | `DatasetAppConsent` | `app.dataset` | oui | `datasets.id`, `documents.id`, `users.id` | `back/app/dataset/models.py:135` |
+| `dataset_app_consents` | `DatasetAppConsent` | `app.dataset` | oui | `datasets.id`, `documents.id`, `users.id` | `back/app/dataset/models.py:136` |
 | `dataset_appearances` | `DatasetAppearance` | `app.dataset` | non | `datasets.id`, `users.id` | `back/app/dataset/models.py:106` |
 | `dataset_attachments` | `DatasetAttachment` | `app.dataset` | oui | `datasets.id`, `document_attachments.id`, `files.id` | `back/app/dataset/models.py:81` |
 | `dataset_grants` | `DatasetGrant` | `app.dataset` | non | `agent_groups.id`, `agents.id`, `datasets.id`, `users.id` | `back/app/dataset/models.py:56` |
 | `dataset_revisions` | `DatasetRevision` | `app.dataset` | non | `agents.id`, `datasets.id`, `document_revisions.id`, `users.id` | `back/app/dataset/models.py:43` |
-| `dataset_tag_assignments` | `DatasetTagAssignment` | `app.dataset` | non | `dataset_tags.id`, `datasets.id` | `back/app/dataset/models.py:126` |
-| `dataset_tags` | `DatasetTag` | `app.dataset` | oui | `dataset_tags.id`, `users.id` | `back/app/dataset/models.py:116` |
+| `dataset_tag_assignments` | `DatasetTagAssignment` | `app.dataset` | non | `dataset_tags.id`, `datasets.id` | `back/app/dataset/models.py:127` |
+| `dataset_tags` | `DatasetTag` | `app.dataset` | oui | `dataset_tags.id`, `users.id` | `back/app/dataset/models.py:117` |
 | `dataset_write_budgets` | `DatasetWriteBudget` | `app.dataset` | non | `datasets.id`, `users.id` | `back/app/dataset/models.py:95` |
 | `datasets` | `Dataset` | `app.dataset` | oui | `agents.id`, `topics.id`, `users.id` | `back/app/dataset/models.py:15` |
 | `dbadmin_action_revisions` | `DbAdminActionRevision` | `core.dbadmin` | non | `dbadmin_actions.key` | `back/core/dbadmin/models.py:86` |
@@ -2043,21 +2043,21 @@ tests restent l’autorité sur le comportement.
 | `dbadmin_runs` | `DbAdminRun` | `core.dbadmin` | non | — | `back/core/dbadmin/models.py:16` |
 | `document_app_grants` | `DocumentAppGrant` | `app.document` | oui | `datasets.id`, `documents.id`, `users.id` | `back/app/document/models.py:127` |
 | `document_app_write_budgets` | `DocumentAppWriteBudget` | `app.document` | non | `datasets.id`, `users.id` | `back/app/document/models.py:144` |
-| `document_attachments` | `DocumentAttachment` | `app.document` | non | `documents.id`, `memory_items.id` | `back/app/document/models.py:167` |
-| `document_automation_jobs` | `DocumentAutomationJob` | `app.document` | non | — | `back/app/document/models.py:413` |
+| `document_attachments` | `DocumentAttachment` | `app.document` | non | `documents.id`, `memory_items.id` | `back/app/document/models.py:168` |
+| `document_automation_jobs` | `DocumentAutomationJob` | `app.document` | non | — | `back/app/document/models.py:414` |
 | `document_icons` | `DocumentIcon` | `app.document` | non | `documents.id`, `users.id` | `back/app/document/models.py:116` |
 | `document_list_positions` | `DocumentListPosition` | `app.document` | non | `documents.id`, `users.id` | `back/app/document/models.py:156` |
 | `document_nesting` | `DocumentNesting` | `app.document` | non | `documents.id`, `users.id` | `back/app/document/models.py:101` |
-| `document_revisions` | `DocumentRevision` | `app.document` | non | `agents.id`, `documents.id`, `tasks.id` | `back/app/document/models.py:282` |
+| `document_revisions` | `DocumentRevision` | `app.document` | non | `agents.id`, `documents.id`, `tasks.id` | `back/app/document/models.py:283` |
 | `document_sharing_intents` | `DocumentSharingIntent` | `app.document` | non | `share_configs.id` | `back/app/document/models.py:38` |
-| `document_sources` | `DocumentSource` | `app.document` | non | `conversation_rounds.id`, `documents.id`, `tasks.id` | `back/app/document/models.py:363` |
-| `document_summary_revisions` | `DocumentSummaryRevision` | `app.document` | non | `agents.id`, `documents.id`, `tasks.id` | `back/app/document/models.py:341` |
+| `document_sources` | `DocumentSource` | `app.document` | non | `conversation_rounds.id`, `documents.id`, `tasks.id` | `back/app/document/models.py:364` |
+| `document_summary_revisions` | `DocumentSummaryRevision` | `app.document` | non | `agents.id`, `documents.id`, `tasks.id` | `back/app/document/models.py:342` |
 | `document_tag_assignments` | `DocumentTagAssignment` | `app.document` | non | `document_tags.id`, `documents.id` | `back/app/document/models.py:92` |
 | `document_tag_icons` | `DocumentTagIcon` | `app.document` | oui | `users.id` | `back/app/document/models.py:82` |
 | `document_tags` | `DocumentTag` | `app.document` | oui | `document_tags.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/document/models.py:48` |
-| `document_urls` | `DocumentURL` | `app.document` | non | `documents.id` | `back/app/document/models.py:271` |
+| `document_urls` | `DocumentURL` | `app.document` | non | `documents.id` | `back/app/document/models.py:272` |
 | `documentation_passages` | `DocumentationPassage` | `app.documentation` | non | — | `back/app/documentation/models.py:12` |
-| `documents` | `Document` | `app.document` | oui | `agents.id`, `topics.id`, `users.id` | `back/app/document/models.py:181` |
+| `documents` | `Document` | `app.document` | oui | `agents.id`, `topics.id`, `users.id` | `back/app/document/models.py:182` |
 | `dream_receipts` | `DreamReceipt` | `app.dream` | non | — | `back/app/dream/models.py:26` |
 | `failure_incident_traces` | `FailureIncidentTrace` | `app.incident` | non | `failure_incidents.id` | `back/app/incident/models.py:172` |
 | `failure_incidents` | `FailureIncident` | `app.incident` | non | `agents.id`, `conversation_rounds.id`, `failure_incidents.id`, `failure_patterns.id`, `llm_calls.id`, `process_runs.id`, `task_attempts.id`, `tasks.id` | `back/app/incident/models.py:81` |

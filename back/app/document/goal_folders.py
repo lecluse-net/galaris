@@ -27,7 +27,7 @@ from core.user import UserModel
 
 from .access import human_document_clause, readable_item_for_agents_clause
 from .document_tags import lock_tree, next_position
-from .models import DocumentTag, DocumentTagAssignment, DocumentAutomationJob, DocumentSource
+from .models import DocumentTag, DocumentTagAssignment, DocumentAutomationJob, DocumentSource, DocumentListPosition
 from .tag_icons import inherited_folder_icon
 
 
@@ -164,7 +164,11 @@ async def _file_pair(request: GoalFolderRequest) -> tuple[UUID | None, GoalFolde
     assigned = exists(select(DocumentTagAssignment.id).join(DocumentTag).where(
         DocumentTagAssignment.document_id == Document.id, DocumentTag.user_id == user.id,
     ))
-    query = select(Document.id).where(*base, ~assigned)
+    at_root = exists(select(DocumentListPosition.id).where(
+        DocumentListPosition.document_id == Document.id, DocumentListPosition.user_id == user.id,
+        DocumentListPosition.at_root.is_(True),
+    ))
+    query = select(Document.id).where(*base, ~assigned, ~at_root)
     if request.after_document is not None:
         query = query.where(Document.id > request.after_document)
     documents = list(await db.scalars(query.order_by(Document.id).limit(BATCH_SIZE + 1)))

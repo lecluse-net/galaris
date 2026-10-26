@@ -58,10 +58,10 @@ const selectedId = computed(() => typeof route.params.id === 'string' ? route.pa
 const splitter = ref(30), title = ref(''), creating = ref(false), creatingBusy = ref(false), createError = ref('')
 const navigation = useTemplateRef<InstanceType<typeof DatasetLibraryNavigation>>('navigation')
 const editor = useTemplateRef<InstanceType<typeof DatasetEditor>>('editor')
-let mounted = true, createFolderId: string | undefined, pendingAction: { id: string; action: 'rename' | 'delete' } | null = null
+let mounted = true, createFolderId: string | undefined, createAtRoot = false, pendingAction: { id: string; action: 'rename' | 'delete' } | null = null
 function pageStyle(offset: number, height: number): { height: string } { return { height: `${height - offset}px` } }
 function refresh(): void { void navigation.value?.refresh() }
-function openCreate(folderId?: string): void { createFolderId = folderId; createError.value = ''; title.value = ''; creating.value = true }
+function openCreate(folderId?: string, atRoot = false): void { createFolderId = folderId; createAtRoot = atRoot; createError.value = ''; title.value = ''; creating.value = true }
 function resizeList(event: KeyboardEvent): void {
   const values: Record<string, number> = { ArrowLeft: splitter.value - 2, ArrowRight: splitter.value + 2, Home: 20, End: 55 }
   const value = values[event.key]
@@ -83,11 +83,11 @@ async function editorLoaded(item: Dataset): Promise<void> {
 async function create(): Promise<void> {
   if (!title.value.trim() || creatingBusy.value) return
   creatingBusy.value = true; createError.value = ''
-  const path = route.fullPath, folderId = createFolderId
+  const path = route.fullPath, folderId = createFolderId, atRoot = createAtRoot
   try {
     const item = await datasetService.create(title.value.trim())
-    if (folderId) {
-      try { await datasetService.move({ kind: 'dataset', identity: item.id, parent_id: folderId }) }
+    if (folderId || atRoot) {
+      try { await datasetService.move({ kind: 'dataset', identity: item.id, parent_id: folderId ?? null, ...(atRoot ? { at_root: true } : {}) }) }
       catch { if (mounted) $q.notify({ type: 'warning', message: t('datasets.library.error') }) }
     }
     if (!mounted) return

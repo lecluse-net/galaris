@@ -71,7 +71,7 @@ for (const component of ['DocumentEditor', 'DocumentLibraryPage', 'DocumentDialo
     await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
     await jsonRoute(page, '**/api/documents/library', { entries: [], total: 0, has_more: false, keywords: [] })
     await jsonRoute(page, `**/api/documents/${id}*`, { resource_type: 'dataset', resource_uri: `data://${id}` })
-    await mount(page, `app/memory/components/${component}.vue`, {
+    await mount(page, `app/document/components/${component}.vue`, {
       props: component === 'DocumentLibraryPage' ? {} : { documentId: id, agentId: null, ...(component === 'DocumentDialog' ? { modelValue: true } : {}) },
       route: `/documents?document_id=${id}`, privileges: ['DOCUMENT_EDIT', 'DATASET_READ'],
     })
@@ -128,7 +128,7 @@ test('internal insertion preserves citations and existing files without creating
   const choose = async (location, name) => {
     await page.getByRole('button', { name: 'Galaris link', exact: true }).click()
     const dialog = page.getByRole('dialog')
-    await dialog.getByText(location, { exact: true }).click()
+    await dialog.getByRole('button', { name: location, exact: true }).click()
     await dialog.locator('.file-main').getByRole('button', { name: 'Select ' + name, exact: true }).click()
     await dialog.getByRole('button', { name: 'Select', exact: true }).click()
     await expect(dialog).toHaveCount(0)
@@ -179,7 +179,7 @@ test('the native Dataset editor preserves invalid JSON drafts and writes valid s
   await expect(input).toHaveValue('{\n  "amount": 1200,\n  "literal": "<b>Data</b>"\n}')
   await jsonRoute(page, `**/api/datasets/${id}/revisions?*`, { items: [{ revision: 1, created_at: '2026-01-01' }], total: 1 })
   await jsonRoute(page, `**/api/datasets/${id}/revisions/1`, { content: '{"amount":0}' })
-  await page.getByRole('button', { name: 'Expand "History"' }).click()
+  await page.getByRole('tab', { name: 'History', exact: true }).click()
   await page.getByRole('button', { name: '1', exact: true }).click()
   await expect(page.getByRole('dialog').getByRole('textbox', { name: 'JSON content' })).toHaveValue('{\n  "amount": 0\n}')
 })

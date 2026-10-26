@@ -169,8 +169,8 @@ async assignDocumentTag(documentId: string, tagId: string, remove = false): Prom
     else await api.put(url)
   },
 
-async moveDocumentToTag(documentId: string, tagId: string | null): Promise<void> {
-    await api.put(`/documents/${documentId}/tags`, { tag_id: tagId })
+async moveDocumentToTag(documentId: string, tagId: string | null, atRoot = false): Promise<void> {
+    await api.put(`/documents/${documentId}/tags`, { tag_id: tagId, ...(atRoot ? { at_root: true } : {}) })
   },
 
 async moveDocumentUnderDocument(documentId: string, parentDocumentId: string | null): Promise<void> {

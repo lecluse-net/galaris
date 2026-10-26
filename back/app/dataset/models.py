@@ -110,6 +110,7 @@ class DatasetAppearance(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     icon: Mapped[str | None] = mapped_column(Text)
     position: Mapped[int] = mapped_column(Integer, default=0)
+    at_root: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     __table_args__ = (UniqueConstraint("user_id", "dataset_id"),)
 
 

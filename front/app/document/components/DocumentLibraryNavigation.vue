@@ -1,7 +1,7 @@
 <template>
   <q-splitter v-model="split" horizontal :limits="[0, 100]" class="library-navigation" :class="{ 'library-navigation--dark': $q.dark.isActive }">
     <template #before>
-      <div class="q-pa-sm">
+      <div class="q-pa-sm" @dragover.self="dragOver($event, 'root')" @drop.prevent.self="drop(null, true)">
         <q-banner v-if="tagError" dense class="library-error" role="alert">{{ t('documents.library.tagError') }}<q-btn flat :label="t('documents.retry')" @click="loadTags" /></q-banner>
         <q-tree v-model:expanded="treeExpanded" :nodes="tree" node-key="id" dense no-transition class="document-tree">
           <template #default-header="{ node }">
@@ -16,8 +16,8 @@
             </div>
           </template>
           <template #header-document="{ node }">
-            <div class="full-width" :aria-label="node.parentDocumentId ? t('documents.library.subdocuments', { name: node.parentDocumentTitle }) : t('documents.library.tagDocuments', { name: node.tag.name })">
-              <DocumentLibraryDocument :entry="node.entry" compact tree-row :tag-id="node.parentDocumentId ? null : node.tag.id" :parent-document-id="node.parentDocumentId" :selected-document-id="selectedDocumentId" :busy="busy"
+            <div class="full-width" :aria-label="node.parentDocumentId ? t('documents.library.subdocuments', { name: node.parentDocumentTitle }) : node.tag ? t('documents.library.tagDocuments', { name: node.tag.name }) : t('documents.folderRoot')">
+              <DocumentLibraryDocument :entry="node.entry" compact tree-row :tag-id="node.parentDocumentId ? null : node.tag?.id" :parent-document-id="node.parentDocumentId" :selected-document-id="selectedDocumentId" :busy="busy"
                 :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
                 @select="emit('select', $event)" @create="emit('create', undefined, $event)" @action="(entry, action) => emit('action', entry, action)"
                 @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
@@ -40,9 +40,12 @@
             </div>
           </template>
         </q-tree>
-        <div v-if="!tags.length && !tagError" class="text-caption q-pa-sm">{{ t('documents.library.emptyTags') }}</div>
-        <div class="row items-center justify-end" :class="{ 'tag-row--drop': dropTarget === 'root' }"
-          @dragover="dragOver($event, 'root')" @dragleave="dropTarget = null" @drop.prevent="drop(null)">
+        <q-spinner v-if="branches.loading.value.root" size="16px" />
+        <q-banner v-else-if="branchErrors.root" dense role="alert">{{ t('documents.loadError') }}<q-btn outline color="primary" :label="t('documents.retry')" @click="branches.refresh('root')" /></q-banner>
+        <div v-if="!tree.length && !tagError && !branchErrors.root && !branches.loading.value.root" class="text-caption q-pa-sm">{{ t('documents.empty') }}</div>
+        <div role="group" :aria-label="t('documents.library.root')" class="row items-center justify-end" :class="{ 'tag-row--drop': dropTarget === 'root' }"
+          @dragover="dragOver($event, 'root')" @dragleave="dropTarget = null" @drop.prevent="drop(null, true)">
+          <q-btn flat round dense icon="note_add" :disable="busy" :aria-label="t('documents.library.newRootDocument')" @click="emit('create', undefined, undefined, true)"><q-tooltip>{{ t('documents.library.newRootDocument') }}</q-tooltip></q-btn>
           <DocumentTagCreateButton :key="userId ?? 'session'" :parent-id="null" :busy="busy" :save="createTag" />
         </div>
       </div>
@@ -109,7 +112,7 @@ import DocumentLibraryDocument from '@/app/document/components/DocumentLibraryDo
 import DocumentSplitterHandle from '@/app/document/components/DocumentSplitterHandle.vue'
 import type { DocumentRowAction } from '@/app/document/libraryShortcuts'
 defineProps<{ selectedDocumentId: string | null }>()
-const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; browse: [folder: DocumentTag | null]; select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry] }>()
+const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; browse: [folder: DocumentTag | null]; select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot?: boolean] }>()
 const { t } = useI18n()
 const $q = useQuasar()
 const userId = ref<number | null>(null)
@@ -180,13 +183,13 @@ interface ClassificationChange { tag_ids?: string[]; document_ids?: string[]; co
 let pendingChanges: ClassificationChange[] = []
 let refreshTimer: ReturnType<typeof setTimeout> | undefined
 interface TagNode {
-  id: string; label: string; tag: DocumentTag; position: number; entry?: DocumentLibraryEntry
+  id: string; label: string; tag?: DocumentTag; position: number; entry?: DocumentLibraryEntry
   parentDocumentId?: string; parentDocumentTitle?: string; branchKey?: string
   children?: TagNode[]; header?: string; selectable?: boolean
 }
-function documentTreeNode(entry: DocumentLibraryEntry, tag: DocumentTag, ancestors: string[] = [], parent?: DocumentLibraryEntry): TagNode {
+function documentTreeNode(entry: DocumentLibraryEntry, tag?: DocumentTag, ancestors: string[] = [], parent?: DocumentLibraryEntry): TagNode {
   const branchKey = `doc:${entry.item.id}`
-  const node: TagNode = { id: `document:${tag.id}:${entry.item.id}`, label: entry.item.title, tag, entry,
+  const node: TagNode = { id: `document:${tag?.id ?? 'root'}:${entry.item.id}`, label: entry.item.title, tag, entry,
     parentDocumentId: parent?.item.id, parentDocumentTitle: parent?.item.title, branchKey,
     position: entry.position ?? 0, header: 'document', selectable: false }
   const cached = branchEntries.value[branchKey]
@@ -218,6 +221,7 @@ const tree = computed<TagNode[]>(() => {
       node.children!.push({ id: `status:${node.id}`, label: '', tag: node.tag, position: 0, header: 'status', selectable: false })
     }
   }
+  roots.push(...(branchEntries.value.root ?? []).map(entry => documentTreeNode(entry)))
   roots.sort(compare)
   return roots
 })
@@ -307,12 +311,12 @@ async function loadTags(): Promise<void> {
     if (userId.value !== result.user_id) { userId.value = result.user_id; restoreSplit() }
     tags.value = reconcileLibrarySnapshot(tags.value, result.tags, tag => tag.id); tagError.value = false
     expanded.value = expanded.value.filter(id => result.tags.some(tag => tag.id === id))
-    for (const id of Object.keys(branchSnapshots.value)) if (!id.startsWith('doc:') && !result.tags.some(tag => tag.id === id)) branches.forget(id)
+    for (const id of Object.keys(branchSnapshots.value)) if (id !== 'root' && !id.startsWith('doc:') && !result.tags.some(tag => tag.id === id)) branches.forget(id)
   } catch { if (!disposed && current === tagGeneration) tagError.value = true }
 }
-async function refreshTree(ids = [...expanded.value, ...expandedDocuments.value]): Promise<void> {
+async function refreshTree(ids = ['root', ...expanded.value, ...expandedDocuments.value]): Promise<void> {
   await Promise.all([...new Set(ids)].map(id => {
-    if (!expanded.value.includes(id) && !expandedDocuments.value.includes(id)) { branches.forget(id); return }
+    if (id !== 'root' && !expanded.value.includes(id) && !expandedDocuments.value.includes(id)) { branches.forget(id); return }
     return branches.refresh(id)
   }))
 }
@@ -331,7 +335,7 @@ function applyDocumentMove(move: DocumentOrderMove): void {
   const id = move.node.id
   const entry = [...entries.value, ...Object.values(branchSnapshots.value).flat()].find(value => value.item.id === id)
   if (!entry) return
-  const target = move.parent_document_id ? `doc:${move.parent_document_id}` : move.parent_id
+  const target = move.parent_document_id ? `doc:${move.parent_document_id}` : move.parent_id ?? (move.at_root ? 'root' : null)
   const affected = move.list_only ? [] : [...new Set([...documentFolders([id]), ...(target ? [target] : [])])]
   supersedeReads(affected)
   if (!move.list_only && target) {
@@ -431,8 +435,9 @@ async function flushChanges(): Promise<void> {
 async function applyChanges(changes: ClassificationChange[]): Promise<void> {
   const session = sessionGeneration
   const access = accessGeneration
-  const ids = [...new Set(changes.flatMap(change => [...(change.tag_ids ?? []), ...documentFolders([...(change.document_ids ?? []), ...(change.content_ids ?? [])]),
-    ...(change.document_ids ?? []).map(id => `doc:${id}`)]))]
+  const rootChanged = changes.some(change => change.list_changed || change.document_ids?.length || change.content_ids?.length)
+  const ids = [...new Set([...(rootChanged ? ['root'] : []), ...changes.flatMap(change => [...(change.tag_ids ?? []), ...documentFolders([...(change.document_ids ?? []), ...(change.content_ids ?? [])]),
+    ...(change.document_ids ?? []).map(id => `doc:${id}`)])])]
   if (changes.some(change => change.tags_changed)) await loadTags()
   if (disposed || session !== sessionGeneration || access !== accessGeneration) return
   await Promise.all([refreshTree(ids), ...(changes.some(change => change.list_changed) ? [reload()] : [])])
@@ -578,11 +583,10 @@ function startDocumentDrag(event: DragEvent, id: string): void {
   documentFromTree = event.target instanceof Element && Boolean(event.target.closest('.document-tree, .document-children'))
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copyMove'
 }
-async function moveDocument(documentId: string, tagId: string | null): Promise<void> {
-  const entry = [...entries.value, ...Object.values(branchSnapshots.value).flat()].find(value => value.item.id === documentId)
-  const change = { document_ids: [documentId], tag_ids: tagId ? [tagId] : [], list_changed: !entry || Boolean(entry.parent_document_id) || Boolean(entry.tags?.length) !== Boolean(tagId) }
-  if (await mutate(() => documentService.moveDocumentToTag(documentId, tagId), change,
-    () => applyDocumentMove({ node: { kind: 'document', id: documentId }, parent_id: tagId })) && tagId) {
+async function moveDocument(documentId: string, tagId: string | null, atRoot = false): Promise<void> {
+  const change = { document_ids: [documentId], tag_ids: tagId ? [tagId] : [], list_changed: true }
+  if (await mutate(() => documentService.moveDocumentToTag(documentId, tagId, atRoot), change,
+    () => applyDocumentMove({ node: { kind: 'document', id: documentId }, parent_id: tagId, at_root: atRoot })) && tagId) {
     let tag = tags.value.find(value => value.id === tagId)
     while (tag) {
       if (!expanded.value.includes(tag.id)) expanded.value.push(tag.id)
@@ -603,7 +607,7 @@ function dragOverNode(event: DragEvent, anchor: DocumentOrderNode, parentId: str
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
   const ratio = (event.clientY - bounds.top) / bounds.height
   const inside = anchor.kind === 'tag' && ratio >= 0.25 && ratio <= 0.75
-  // Root documents belong to the lower list, not beside root folders in the tree.
+  // Folders precede root documents; only their center accepts a document.
   if (!inside && anchor.kind === 'tag' && parentId === null && drag.kind === 'document') return
   const parent = inside ? anchor.id : parentId
   if (drag.kind === 'tag' && parent && isDescendant(parent, drag.id)) return
@@ -636,6 +640,7 @@ function dragOverDocument(event: DragEvent, entry: DocumentLibraryEntry, parentD
     parent_id: parent ? null : tagId ?? null,
     ...(parent ? { parent_document_id: parent } : {}),
     list_only: !inside && !parent && listOnly && !documentFromTree,
+    ...(!inside && !parent && !tagId && !listOnly ? { at_root: true } : {}),
     ...(inside ? {} : { anchor: { kind: 'document', id: entry.item.id }, after: ratio >= 0.5 }),
   }
 }
@@ -654,7 +659,7 @@ async function dropNode(): Promise<void> {
     return
   }
   if (!target.anchor && !target.list_only) {
-    if (node.kind === 'document') { await moveDocument(node.id, target.parent_id); return }
+    if (node.kind === 'document') { await moveDocument(node.id, target.parent_id, target.at_root); return }
     const tag = tags.value.find(value => value.id === node.id)
     if (tag) await mutate(() => documentService.saveDocumentTag({ name: tag.name, parent_id: target.parent_id }, tag.id))
   } else if (await mutate(() => documentService.reorderDocuments({ node, ...target }), {
@@ -668,10 +673,10 @@ async function dropNode(): Promise<void> {
   if (target.parent_id && !expanded.value.includes(target.parent_id)) expanded.value.push(target.parent_id)
 }
 function clearDrag(): void { drag = null; documentFromTree = false; dropTarget.value = null; pendingDrop = null }
-async function drop(parentId: string | null): Promise<void> {
+async function drop(parentId: string | null, atRoot = false): Promise<void> {
   const value = drag; clearDrag()
   if (!value) return
-  if (value.kind === 'document') { await moveDocument(value.id, parentId); return }
+  if (value.kind === 'document') { await moveDocument(value.id, parentId, atRoot); return }
   const tag = tags.value.find(tag => tag.id === value.id)
   if (!tag || (parentId && isDescendant(parentId, tag.id))) return
   await mutate(() => documentService.saveDocumentTag({ name: tag.name, parent_id: parentId }, tag.id))
@@ -705,12 +710,12 @@ async function changeSession(event: Event): Promise<void> {
   expandedDocuments.value = []
   ready = false; reset(); page.value = 1; await loadTags()
   if (disposed || session !== sessionGeneration) return
-  ready = true; await reload()
+  ready = true; await Promise.all([reload(), branches.load('root')])
 }
 onMounted(async () => {
   window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession)
   ready = true
-  await Promise.all([loadTags(), reload()])
+  await Promise.all([loadTags(), reload(), branches.load('root')])
 })
 onBeforeUnmount(() => { disposed = true; ++generation; ++tagGeneration; listController?.abort(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession) })
 defineExpose({ reload: refresh, refreshDocuments, removeDocument, updateDocument })

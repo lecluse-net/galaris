@@ -26,6 +26,44 @@ async def human(db):
 
 
 @pytest.mark.asyncio
+async def test_root_is_an_explicit_personal_placement_not_an_unclassified_document(db, agents, memory_storage):
+    owner, reader = agents
+    user, other = await human(db), await human(db)
+    scope = AgentManagementScope(user_id=user.id, agent_ids=frozenset({owner.id}))
+    pinned, unclassified = [await document(owner, title) for title in ("Synthetic selected root", "Synthetic inbox")]
+    before = (pinned.revision, pinned.lock_version, pinned.updated_at)
+
+    async def identities(classification, user_id=user.id):
+        page = await service.browse_document_library(DocumentLibraryRequest(classification=classification),
+            managed_agent_ids=scope.agent_ids, user_id=user_id)
+        return {entry.item.id for entry in page.entries}
+
+    # Existing personal list positions must never opt documents into the tree.
+    await document_order.reorder(scope, DocumentOrderMove(node=DocumentOrderNode(kind="document", id=unclassified.id), list_only=True))
+    assert await identities("root") == set()
+    await document_tags.move_document(scope, pinned.id, None, at_root=True)
+    assert await identities("root") == {pinned.id}
+    assert await identities("unclassified") == {unclassified.id}
+    assert await identities("classified") == {pinned.id}
+    assert await identities("root", other.id) == set()
+    await document_order.reorder(scope, DocumentOrderMove(node=DocumentOrderNode(kind="document", id=pinned.id), list_only=True))
+    assert await identities("root") == {pinned.id}
+    folder = await document_tags.write_tag(user.id, DocumentTagWrite(name="Synthetic folder"))
+    await document_tags.assign_tag(scope, pinned.id, folder.id)
+    assert await identities("root") == set()
+    await document_tags.move_document(scope, pinned.id, None)
+    assert await identities("root") == set()
+    assert await identities("unclassified") == {pinned.id, unclassified.id}
+    await document_order.reorder(scope, DocumentOrderMove(node=DocumentOrderNode(kind="document", id=pinned.id), at_root=True))
+    assert await identities("root") == {pinned.id}
+    await document_nesting.move(scope, pinned.id, unclassified.id)
+    assert await identities("root") == set()
+    await document_nesting.move(scope, pinned.id, None)
+    assert await identities("root") == set()
+    assert (pinned.revision, pinned.lock_version, pinned.updated_at) == before
+
+
+@pytest.mark.asyncio
 async def test_subdocuments_recheck_both_accesses_and_survive_missing_parents(db, agents, memory_storage):
     owner, reader = agents
     user = await human(db)

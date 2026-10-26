@@ -1,7 +1,7 @@
 <template>
   <q-splitter v-model="split" horizontal :limits="[15, 65]" class="dataset-navigation">
     <template #before>
-      <div class="q-pa-sm">
+      <div class="q-pa-sm" @dragover.self="overRoot($event, true)" @drop.prevent.self="drop">
         <q-banner v-if="tagError" dense role="alert">{{ t('datasets.library.tagError') }}<q-btn outline :label="t('datasets.reload')" @click="loadTags" /></q-banner>
         <q-tree v-model:expanded="expanded" :nodes="tree" node-key="id" dense no-transition>
           <template #default-header="{ node }">
@@ -17,7 +17,7 @@
           <template #header-dataset="{ node }">
             <DatasetLibraryRow compact class="full-width" :class="{ 'dataset-drop': dropTarget === node.id }" :item="node.item" :selected-id="selectedId" :busy="busy"
               @action="rowAction" @drag="(event, id) => startDrag(event, 'dataset', id)" @dragend="clearDrag"
-              @dragover="(event, id) => overDataset(event, id, node.folderId)" @drop="drop" />
+              @dragover="(event, id) => overDataset(event, id, node.folderId, true)" @drop="drop" />
           </template>
           <template #header-status="{ node }">
             <q-spinner v-if="branchLoading[node.folderId]" size="16px" />
@@ -26,8 +26,11 @@
             <span v-else class="text-caption">{{ t('datasets.library.emptyFolder') }}</span>
           </template>
         </q-tree>
-        <div v-if="!folders.length && !tagError" class="text-caption q-pa-sm">{{ t('datasets.library.emptyTags') }}</div>
-        <div class="row justify-end" :class="{ 'dataset-drop': dropTarget === 'root' }" @dragover="overRoot" @drop.prevent="drop">
+        <q-spinner v-if="branchLoading.root" size="16px" />
+        <q-banner v-else-if="branchErrors.root" dense role="alert">{{ t('datasets.error') }}<q-btn outline color="primary" :label="t('datasets.reload')" @click="loadBranch('root')" /></q-banner>
+        <div v-if="!tree.length && !tagError && !branchErrors.root && !branchLoading.root" class="text-caption q-pa-sm">{{ t('datasets.empty') }}</div>
+        <div role="group" :aria-label="t('datasets.library.root')" class="row justify-end" :class="{ 'dataset-drop': dropTarget === 'root' }" @dragover="overRoot($event, true)" @drop.prevent="drop">
+          <q-btn v-if="canEdit" flat round dense icon="data_object" :disable="busy" :aria-label="t('datasets.library.newRootDocument')" @click="emit('create', undefined, true)"><q-tooltip>{{ t('datasets.library.newRootDocument') }}</q-tooltip></q-btn>
           <q-btn flat round dense icon="add" :disable="busy" :aria-label="t('datasets.library.newTag')" @click="createFolder(t('datasets.library.newFolderName'), null)" />
         </div>
       </div>
@@ -99,7 +102,7 @@ import DatasetLibraryFilters from './DatasetLibraryFilters.vue'
 import DatasetFolderRow from './DatasetFolderRow.vue'
 import DatasetLibraryRow from './DatasetLibraryRow.vue'
 defineProps<{ selectedId: string }>()
-const emit = defineEmits<{ create: [folderId?: string]; action: [item: Dataset, action: 'rename' | 'delete'] }>()
+const emit = defineEmits<{ create: [folderId?: string, atRoot?: boolean]; action: [item: Dataset, action: 'rename' | 'delete'] }>()
 const { t } = useI18n(), $q = useQuasar(), auth = usePrivilegeStore()
 const canEdit = computed(() => auth.hasPrivilege('DATASET_EDIT') || auth.hasPrivilege('DATASET_ADMIN'))
 const split = ref(35), folders = ref<DatasetFolder[]>([]), expanded = ref<string[]>([]), renameId = ref<string | null>(null)
@@ -113,7 +116,7 @@ let drag: { kind: 'tag' | 'dataset'; id: string } | null = null, pendingMove: Da
 let generation = 0, epoch = 0, disposed = false, tagGeneration = 0, facetsGeneration = 0
 let authSession = sessionGeneration()
 const branchGenerations = new Map<string, number>()
-interface TreeNode { id: string; label: string; tag: DatasetFolder; folderId: string; header?: string; item?: Dataset; children?: TreeNode[] }
+interface TreeNode { id: string; label: string; tag?: DatasetFolder; folderId: string | null; header?: string; item?: Dataset; children?: TreeNode[] }
 const tree = computed(() => {
   const nodes = new Map<string, TreeNode>(folders.value.map(tag => [tag.id, { id: tag.id, label: tag.name, tag, folderId: tag.id, children: [] }]))
   const roots: TreeNode[] = []
@@ -126,10 +129,11 @@ const tree = computed(() => {
     node.children!.push(...(branch?.items ?? []).map(item => ({ id: `dataset:${node.id}:${item.id}`, label: item.title, tag: node.tag, folderId: node.id, item, header: 'dataset' })))
     if (!branch || branchErrors.value[node.id] || !node.children!.length || branch.items.length < branch.total) node.children!.push({ id: `status:${node.id}`, label: '', tag: node.tag, folderId: node.id, header: 'status' })
   }
+  roots.push(...(branches.value.root?.items ?? []).map(item => ({ id: `dataset:root:${item.id}`, label: item.title, folderId: null, item, header: 'dataset' })))
   return roots
 })
 const hasFilters = computed(() => activeFolder.value || query.value || !onlyUnclassified.value || JSON.stringify(filters.value) !== JSON.stringify(defaultLibraryFilters()))
-const folderOptions = computed(() => [{ label: t('datasets.library.unclassified'), value: null }, ...folders.value.map(folder => {
+const folderOptions = computed(() => [{ label: t('datasets.library.unclassified'), value: null }, { label: t('datasets.library.root'), value: 'root' }, ...folders.value.map(folder => {
   const names = [folder.name]; let parent = folders.value.find(tag => tag.id === folder.parent_id)
   while (parent) { names.unshift(parent.name); parent = folders.value.find(tag => tag.id === parent?.parent_id) }
   return { label: names.join(' / '), value: folder.id }
@@ -158,14 +162,28 @@ async function loadFacets(): Promise<void> {
 }
 async function loadBranch(id: string): Promise<void> {
   const token = (branchGenerations.get(id) ?? 0) + 1, session = epoch; branchGenerations.set(id, token); branchLoading.value[id] = true; branchErrors.value[id] = false
-  try { const result = await service.list(1, 500, '', null, { tag_id: id, sort_by: 'position', sort_desc: false }); if (!disposed && session === epoch && token === branchGenerations.get(id)) branches.value[id] = result }
+  const valid = () => !disposed && session === epoch && token === branchGenerations.get(id)
+  try {
+    const filters = id === 'root' ? { classification: 'root' } : { tag_id: id }
+    const result = await service.list(1, 500, '', null, { ...filters, sort_by: 'position', sort_desc: false })
+    if (!valid()) return
+    // Root items have no folder list to open: retain every page in the tree.
+    let next = 2
+    while (id === 'root' && result.items.length < result.total) {
+      const more = await service.list(next++, 500, '', null, { ...filters, sort_by: 'position', sort_desc: false })
+      if (!valid()) return
+      if (!more.items.length) break
+      result.items.push(...more.items); result.total = more.total
+    }
+    branches.value[id] = result
+  }
   catch { if (!disposed && session === epoch && token === branchGenerations.get(id)) { branchErrors.value[id] = true; delete branches.value[id] } }
   finally { if (!disposed && session === epoch && token === branchGenerations.get(id)) branchLoading.value[id] = false }
 }
 function search(): void { if (page.value === 1) void load(); else page.value = 1 }
 function reset(): void { query.value = ''; filters.value = defaultLibraryFilters(); onlyUnclassified.value = true; activeFolder.value = null; search() }
 function browse(folder: DatasetFolder): void { activeFolder.value = folder; search() }
-async function refresh(): Promise<void> { await loadTags(); if (disposed) return; await Promise.all([load(), loadFacets(), ...expanded.value.filter(id => folders.value.some(tag => tag.id === id)).map(loadBranch)]) }
+async function refresh(): Promise<void> { const session = epoch; await loadTags(); if (disposed || session !== epoch) return; await Promise.all([load(), loadFacets(), loadBranch('root'), ...expanded.value.filter(id => folders.value.some(tag => tag.id === id)).map(loadBranch)]) }
 async function mutate(action: () => Promise<void>): Promise<boolean> {
   if (busy.value) return false
   const session = epoch; busy.value = true
@@ -198,8 +216,8 @@ function isDescendant(id: string, ancestor: string): boolean {
   return false
 }
 function expandFolder(id: string, open: boolean): void { const ids = folders.value.filter(tag => isDescendant(tag.id, id)).map(tag => tag.id); expanded.value = open ? [...new Set([...expanded.value, ...ids])] : expanded.value.filter(id => !ids.includes(id)) }
-function rowAction(item: Dataset, action: 'rename' | 'delete' | 'move'): void { if (action === 'move') { moving.value = item; destination.value = item.tag_ids?.[0] ?? null } else emit('action', item, action) }
-async function moveSelected(): Promise<void> { const identity = moving.value?.id, parent_id = destination.value; if (identity && await mutate(() => service.move({ kind: 'dataset', identity, parent_id }))) moving.value = null }
+function rowAction(item: Dataset, action: 'rename' | 'delete' | 'move'): void { if (action === 'move') { moving.value = item; destination.value = item.at_root ? 'root' : item.tag_ids?.[0] ?? null } else emit('action', item, action) }
+async function moveSelected(): Promise<void> { const identity = moving.value?.id, atRoot = destination.value === 'root', parent_id = atRoot ? null : destination.value; if (identity && await mutate(() => service.move({ kind: 'dataset', identity, parent_id, ...(atRoot ? { at_root: true } : {}) }))) moving.value = null }
 function clearDrag(): void { drag = null; pendingMove = null; dropTarget.value = null }
 function startDrag(event: DragEvent, kind: 'tag' | 'dataset', id: string): void { if (busy.value) { event.preventDefault(); return } drag = { kind, id }; event.dataTransfer?.setData('text/plain', id); if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move' }
 function overFolder(event: DragEvent, folder: DatasetFolder): void {
@@ -209,15 +227,16 @@ function overFolder(event: DragEvent, folder: DatasetFolder): void {
   const ratio = bounds ? (event.clientY - bounds.top) / bounds.height : .5
   pendingMove = ratio < .25 || ratio > .75 ? { kind: drag.kind, identity: drag.id, parent_id: folder.parent_id, anchor_kind: 'tag', anchor_id: folder.id, after: ratio > .75 }
     : { kind: drag.kind, identity: drag.id, parent_id: folder.id }
+  if (drag.kind === 'dataset' && pendingMove.parent_id === null) pendingMove.at_root = true
 }
-function overDataset(event: DragEvent, id: string, parent: string | null): void {
+function overDataset(event: DragEvent, id: string, parent: string | null, inTree = false): void {
   if (!drag || busy.value || drag.id === id) return
   if (drag.kind === 'tag' && parent && isDescendant(parent, drag.id)) return
   event.preventDefault(); dropTarget.value = `dataset:${id}`
   const bounds = event.currentTarget instanceof Element ? event.currentTarget.getBoundingClientRect() : null
-  pendingMove = { kind: drag.kind, identity: drag.id, parent_id: parent, anchor_kind: 'dataset', anchor_id: id, after: bounds ? event.clientY > bounds.top + bounds.height / 2 : true }
+  pendingMove = { kind: drag.kind, identity: drag.id, parent_id: parent, ...(inTree && !parent && drag.kind === 'dataset' ? { at_root: true } : {}), anchor_kind: 'dataset', anchor_id: id, after: bounds ? event.clientY > bounds.top + bounds.height / 2 : true }
 }
-function overRoot(event: DragEvent): void { if (!drag || busy.value) return; event.preventDefault(); dropTarget.value = 'root'; pendingMove = { kind: drag.kind, identity: drag.id, parent_id: null } }
+function overRoot(event: DragEvent, atRoot = false): void { if (!drag || busy.value) return; event.preventDefault(); dropTarget.value = 'root'; pendingMove = { kind: drag.kind, identity: drag.id, parent_id: null, ...(atRoot && drag.kind === 'dataset' ? { at_root: true } : {}) } }
 async function drop(): Promise<void> { const move = pendingMove; clearDrag(); if (move) await mutate(() => service.move(move)) }
 function sessionChanged(event: Event): void {
   const current = sessionGeneration()
@@ -227,7 +246,7 @@ function sessionChanged(event: Event): void {
   folders.value = []; branches.value = {}; rows.value = []; owners.value = []; keywords.value = []; expanded.value = []
   branchErrors.value = {}; branchLoading.value = {}; total.value = 0; currentUserId.value = undefined
   activeFolder.value = null; moving.value = null; deleting.value = null; busy.value = false
-  reset(); void loadTags(); void loadFacets()
+  reset(); void loadTags(); void loadFacets(); void loadBranch('root')
 }
 watch(expanded, (next, previous) => { for (const id of next) if (!previous.includes(id) && folders.value.some(tag => tag.id === id)) void loadBranch(id) }, { deep: true })
 watch([filters, onlyUnclassified, pageSize], search, { deep: true })

@@ -30,6 +30,12 @@ créer un sous-dossier ou un dossier voisin, renommer et changer l'icône, trier
 déplier/replier une branche et la supprimer. **Afficher en liste** ouvre le contenu d'un dossier.
 Déplacez les dossiers et les jeux par glisser-déposer, ou utilisez **Déplacer vers un dossier**
 sur un jeu. Supprimer une branche conserve ses jeux et les remet parmi vos non classés.
+La racine contient uniquement les jeux que vous y placez explicitement. Utilisez
+**Créer un jeu de données à la racine**, déposez un jeu près des boutons de création, ou
+choisissez **Racine** dans **Déplacer vers un dossier**. Le choix est personnel et conservé
+après rechargement. Les autres jeux sans dossier restent non classés, hors de l'arborescence.
+Pour retirer un jeu de la racine, déposez-le dans la zone de liste ou choisissez **Non classés**
+dans **Déplacer vers un dossier**. La création générale conserve aussi les jeux parmi les non classés.
 
 La liste affiche les **Non classés** par défaut. **Filtres** permet de désactiver cette option,
 choisir un propriétaire utilisateur ou agent, un mot-clé, des dates de création/modification

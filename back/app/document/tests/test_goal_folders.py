@@ -119,7 +119,8 @@ async def test_background_filing_notifies_only_its_owner_and_changed_folder(db, 
 
 
 @pytest.mark.asyncio
-async def test_filing_is_personal_idempotent_and_preserves_manual_classification(db, agents, memory_storage):
+@pytest.mark.parametrize("at_root", [False, True])
+async def test_filing_is_personal_idempotent_and_preserves_manual_classification(db, agents, memory_storage, at_root):
     goal, user, other = await setup_goal(db, agents)
     await document_tags.write_tag(user.id, DocumentTagWrite(name="Objectifs", icon="folder:cyan"))
     await document_tags.write_tag(other.id, DocumentTagWrite(name="Objectifs", icon="emoji:1F4C1"))
@@ -131,7 +132,8 @@ async def test_filing_is_personal_idempotent_and_preserves_manual_classification
     await db.commit()
     manual = await document_tags.write_tag(user.id, DocumentTagWrite(name="Mes projets"))
     await document_tags.move_document(
-        AgentManagementScope(user.id, frozenset({agents[0].id})), goal.description_document_id, manual.id,
+        AgentManagementScope(user.id, frozenset({agents[0].id})), goal.description_document_id,
+        None if at_root else manual.id, at_root=at_root,
     )
     documents = [await db.get(Document, identity) for identity in (goal.description_document_id, goal.tracking_document_id)]
     before = [(item.revision, item.lock_version, item.content_hash) for item in documents]
@@ -139,7 +141,10 @@ async def test_filing_is_personal_idempotent_and_preserves_manual_classification
         await filing.enqueue_goal_folder_reconciliation(goal_id=goal.id)
         await drain(db)
     first, second = await locations(db, user.id), await locations(db, other.id)
-    assert first[goal.description_document_id] == manual.id
+    if at_root:
+        assert goal.description_document_id not in first
+    else:
+        assert first[goal.description_document_id] == manual.id
     assert first[goal.tracking_document_id] != manual.id
     assert second[goal.description_document_id] == second[goal.tracking_document_id]
     assert first[goal.tracking_document_id] != second[goal.tracking_document_id]

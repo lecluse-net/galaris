@@ -165,7 +165,7 @@ test('slow refreshes coalesce notifications and retain fresh filter catalogues a
   let release, slowReads = 0
   const gate = new Promise(resolve => { release = resolve })
   await page.route('**/api/documents/library', async route => {
-    slowReads++
+    if (route.request().postDataJSON().limit === 50) slowReads++
     await gate
     return route.fallback()
   })
@@ -180,9 +180,10 @@ test('slow refreshes coalesce notifications and retain fresh filter catalogues a
   expect(slowReads).toBe(1)
   release()
   await expect.poll(() => slowReads).toBe(2)
-  await expect.poll(() => state.reads.length).toBe(3)
+  const listReads = () => state.reads.filter(read => read.limit === 50)
+  await expect.poll(() => listReads().length).toBe(3)
   await page.getByRole('textbox', { name: 'Search document titles and content', exact: true }).fill('Test')
-  await expect.poll(() => state.reads.length).toBe(4)
+  await expect.poll(() => listReads().length).toBe(4)
   expect(state.reads.at(-1)).toMatchObject({ include_owners: false, include_keywords: false })
   await testInfo.attach('refresh-requests.json', { body: JSON.stringify({ notificationsDuringRead: 8,
     refreshRequests: slowReads - 1, searchRequest: state.reads.at(-1) }), contentType: 'application/json' })
@@ -201,7 +202,7 @@ test('a saved title updates every occurrence before the authoritative list and f
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Test document')
   await page.getByText('Reports', { exact: true }).click()
   const list = page.getByRole('list', { name: 'Unclassified documents', exact: true })
-  const tree = page.getByRole('tree')
+  const tree = page.getByLabel('Documents in folder Reports', { exact: true })
   await expect(list.getByText('Test document', { exact: true })).toBeVisible()
   await expect(tree.getByText('Test document', { exact: true })).toBeVisible()
   let release

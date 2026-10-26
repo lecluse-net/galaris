@@ -260,6 +260,7 @@ documents: {
         errors: { permission: 'Droits insuffisants pour cette opération.', conflict: 'Le document a changé. Vérifiez-le avant de réessayer.', missing: 'Document ou destinataire indisponible.', keywordLimit: 'Limite de 50 mots-clés de 100 caractères par document.', other: 'Opération échouée. Vérifiez le document avant de réessayer.' },
       },
       library: {
+        newRootDocument: 'Créer un document à la racine',
         tags: 'Mes dossiers', all: 'Tous les documents', filters: 'Filtres', reset: 'Réinitialiser', apply: 'Appliquer',
         newSubtag: "Créer un sous-dossier de {name}",
         newDocument: 'Nouveau document dans {name}',
@@ -731,6 +732,7 @@ documents: {
         errors: { permission: 'Insufficient permissions for this operation.', conflict: 'The document changed. Review it before retrying.', missing: 'Document or recipient unavailable.', keywordLimit: 'Maximum 50 keywords of 100 characters per document.', other: 'Operation failed. Check the document before retrying.' },
       },
       library: {
+        newRootDocument: 'Create a document at the root',
         tags: 'My folders', all: 'All documents', filters: 'Filters', reset: 'Reset', apply: 'Apply',
         newSubtag: "Create a subfolder of {name}",
         newDocument: 'New document in {name}',
@@ -1050,6 +1052,7 @@ documents: {
         errors: { permission: '没有执行此操作的权限。', conflict: '文档已更改，请检查后重试。', missing: '文档或共享对象不可用。', keywordLimit: '每个文档最多 50 个关键词，每个最长 100 个字符。', other: '操作失败，请检查文档后重试。' },
       },
       library: {
+        newRootDocument: '在根目录创建文档',
         tags: '我的文件夹', all: '全部文档', filters: '筛选', reset: '重置', apply: '应用',
         newSubtag: "创建 {name} 的子文件夹",
         newDocument: '在 {name} 中新建文档',

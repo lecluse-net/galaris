@@ -9,7 +9,7 @@ from core.database import get_db
 
 from . import document_sharing, resource_service as service
 from .events import emit_classification
-from .models import DocumentTag, DocumentTagAssignment, DocumentTagIcon
+from .models import DocumentTag, DocumentTagAssignment, DocumentTagIcon, DocumentListPosition
 from .tag_icons import inherited_folder_icon
 from .schemas import DocumentTagDeletionResult, DocumentTagPublic, DocumentTagWrite, DocumentTagIconPublic, DocumentTagIconWrite
 
@@ -132,14 +132,32 @@ async def assign_tag(scope: AgentManagementScope, document_id: UUID, tag_id: UUI
     elif existing is None:
         db.add(DocumentTagAssignment(tag_id=tag_id, document_id=document_id,
             position=await next_position(scope.user_id, tag_id)))
+    if not remove:
+        await set_root_placement(scope.user_id, document_id, False)
     await sync_classified_document(document_id)
     await db.commit()
     await emit_classification(scope.user_id, tag_ids=[tag_id], document_ids=[document_id, *([previous_parent] if previous_parent else [])], list_changed=True)
 
 
-async def move_document(scope: AgentManagementScope, document_id: UUID, tag_id: UUID | None) -> None:
+async def set_root_placement(user_id: int, document_id: UUID, at_root: bool) -> bool:
+    """Store an explicit personal root choice, never infer it from list ordering."""
+    db = get_db()
+    row = await db.scalar(select(DocumentListPosition).where(
+        DocumentListPosition.user_id == user_id, DocumentListPosition.document_id == document_id,
+    ))
+    previous = row.at_root if row is not None else False
+    if row is not None:
+        row.at_root = at_root
+    elif at_root:
+        db.add(DocumentListPosition(user_id=user_id, document_id=document_id, at_root=True))
+    return previous
+
+
+async def move_document(scope: AgentManagementScope, document_id: UUID, tag_id: UUID | None, *, at_root: bool = False) -> None:
     """Replace only this user's classification, atomically and without writing the document."""
     db = get_db()
+    if at_root and tag_id is not None:
+        raise ValueError("Root placement cannot have a folder")
     await lock_tree(scope.user_id)
     if tag_id is not None:
         await require_tag(scope.user_id, tag_id)
@@ -157,10 +175,12 @@ async def move_document(scope: AgentManagementScope, document_id: UUID, tag_id: 
     if tag_id is not None:
         db.add(DocumentTagAssignment(tag_id=tag_id, document_id=document_id,
             position=await next_position(scope.user_id, tag_id)))
+    was_root = await set_root_placement(scope.user_id, document_id, at_root)
     await sync_classified_document(document_id)
     await db.commit()
     await emit_classification(scope.user_id, tag_ids=[*previous, *([tag_id] if tag_id else [])],
-        document_ids=[document_id, *([previous_parent] if previous_parent else [])], list_changed=bool(previous_parent) or bool(previous) != bool(tag_id))
+        document_ids=[document_id, *([previous_parent] if previous_parent else [])],
+        list_changed=bool(previous_parent) or (bool(previous) or was_root) != (bool(tag_id) or at_root))
 
 
 async def sync_classified_document(document_id: UUID) -> None:

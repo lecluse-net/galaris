@@ -72,7 +72,7 @@ test('row rename and delete shortcuts survive a slow document opening on a small
     return route.fallback()
   })
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
-  const row = page.getByText('Test document', { exact: true })
+  const row = page.getByRole('list', { name: 'Unclassified documents', exact: true }).getByText('Test document', { exact: true })
   await row.hover()
   await page.keyboard.press('F2')
   await expect(page.getByRole('dialog')).toBeVisible()
@@ -145,18 +145,19 @@ for (const realtime of [false, true]) {
   test(`deleting a personal document removes it from the ${mobile ? 'mobile' : 'desktop'} library (${realtime ? 'server event' : 'HTTP only'})`, async ({ page }) => {
     await setup(page, { human: true })
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
-    let deleted = false, holdRefresh = false, releaseRefresh
+    let deleted = false, holdRefresh = false, heldReadStarted = false, deletedReadStarted = false, releaseRefresh
     const refreshGate = new Promise(resolve => { releaseRefresh = resolve })
     const reads = []
     const item = { ...documentFixture, owner_agent_id: null, owner_user_id: 1 }
     await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
     await page.route('**/api/documents/library', async route => {
       reads.push(route.request().postDataJSON())
+      if (deleted) deletedReadStarted = true
       const snapshot = {
         entries: deleted ? [] : [{ item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: item.access }],
         total: deleted ? 0 : 1, has_more: false, keywords: [],
       }
-      if (holdRefresh) await refreshGate
+      if (holdRefresh) { heldReadStarted = true; await refreshGate }
       return route.fulfill({ json: snapshot })
     })
     await page.route('**/api/documents/doc-a', async route => {
@@ -168,11 +169,11 @@ for (const realtime of [false, true]) {
       await route.fulfill({ json: {} })
     })
     await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
-    if (mobile) await page.getByText('Test document', { exact: true }).click()
+    if (mobile) await page.getByRole('list', { name: 'Unclassified documents', exact: true }).getByText('Test document', { exact: true }).click()
     // A list read started before the deletion must never resurrect its captured row.
     holdRefresh = true
     await page.evaluate(() => window.testApp.emitSocket('document.classification', { data: { user_id: 1, list_changed: true } }))
-    await expect.poll(() => reads.length).toBe(2)
+    await expect.poll(() => heldReadStarted).toBe(true)
     await page.getByRole('button', { name: 'Delete document', exact: true }).click()
     const confirmation = page.getByRole('dialog').filter({ hasText: 'Permanently delete' })
     await confirmation.getByRole('button', { name: 'Delete document', exact: true }).click()
@@ -181,7 +182,7 @@ for (const realtime of [false, true]) {
     await expect(page.getByText('Test document', { exact: true })).toHaveCount(0)
     // Mobile returns to the library; only desktop has an empty editor pane.
     if (!mobile) await expect(page.getByText('Select a document in the tree.', { exact: true })).toBeVisible()
-    await expect.poll(() => reads.length).toBe(3)
+    await expect.poll(() => deletedReadStarted).toBe(true)
     releaseRefresh()
     await expect(page.getByRole('list', { name: 'Unclassified documents', exact: true })).toContainText('No document matches this search.')
     await expect(page.getByText('Test document', { exact: true })).toHaveCount(0)

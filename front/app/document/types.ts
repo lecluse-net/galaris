@@ -131,6 +131,7 @@ export interface DocumentOrderMove {
   parent_id: string | null
   parent_document_id?: string | null
   list_only?: boolean
+  at_root?: boolean
   anchor?: DocumentOrderNode
   after?: boolean
 }
@@ -146,7 +147,7 @@ export interface DocumentLibraryFilters {
   include_descendants?: boolean
   include_owners?: boolean
   include_keywords?: boolean
-  classification?: 'all' | 'classified' | 'unclassified'
+  classification?: 'all' | 'classified' | 'unclassified' | 'root'
   owner_kind?: DocumentOwnerKind | null
   owner?: number | null
   created_from?: string | null

@@ -5,7 +5,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from .document_tags import list_tags, require_tag
-from .models import DocumentNesting, DocumentTag, DocumentTagAssignment, Document
+from .models import DocumentNesting, DocumentTag, DocumentTagAssignment, Document, DocumentListPosition
 from .schemas import DocumentLibraryRequest
 
 
@@ -20,8 +20,13 @@ async def library_filters(request: DocumentLibraryRequest, user_id: int | None, 
     # A personal folder or a visible document parent already proves that every
     # result is classified. Rechecking global nesting membership multiplies joins.
     explicit_branch = request.tag_id is not None or request.parent_document_id is not None
+    root = Document.id.in_(select(DocumentListPosition.document_id).where(
+        DocumentListPosition.user_id == user_id, DocumentListPosition.at_root.is_(True),
+    ))
+    if request.classification == "root":
+        filters.extend([root, ~Document.id.in_(assignments), ~Document.id.in_(nesting)])
     if request.classification == "unclassified" or (request.classification == "classified" and not explicit_branch):
-        classified = or_(Document.id.in_(assignments), Document.id.in_(nesting))
+        classified = or_(root, Document.id.in_(assignments), Document.id.in_(nesting))
         filters.append(classified if request.classification == "classified" else ~classified)
     if request.tag_id is not None:
         if user_id is None:

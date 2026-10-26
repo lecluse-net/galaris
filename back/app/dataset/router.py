@@ -106,6 +106,7 @@ class Move(Request):
     anchor_kind: Literal["tag", "dataset"] | None = None
     anchor_id: UUID | None = None
     after: bool = True
+    at_root: bool = False
 
 
 class Classification(Request):
@@ -128,7 +129,7 @@ class Attach(Request):
 @router.get("")
 @authorize(privileges=READ)
 async def list_datasets(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500), q: str = Query("", max_length=500), tag_id: UUID | None = None, owner_agent_id: int | None = Query(None, gt=0),
-    classification: Literal["all", "unclassified", "classified"] = "all", keyword: str | None = Query(None, max_length=200),
+    classification: Literal["all", "unclassified", "classified", "root"] = "all", keyword: str | None = Query(None, max_length=200),
     owner_kind: Literal["agent", "user"] | None = None, owner: int | None = Query(None, gt=0),
     created_from: datetime | None = None, created_until: datetime | None = None,
     updated_from: datetime | None = None, updated_until: datetime | None = None,

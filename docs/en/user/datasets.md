@@ -28,6 +28,11 @@ or sibling folders, rename and change icons, sort by name, expand/collapse branc
 them. **Show as a list** opens a folder's contents. Drag folders and Datasets to move them,
 or use a Dataset's **Move to a folder** action. Deleting a branch preserves its Datasets and
 returns them to your unclassified list.
+The root contains only Datasets you explicitly place there. Use **Create a Dataset at the root**,
+drop a Dataset beside the creation buttons, or select **Root** in **Move to a folder**.
+This personal choice survives reloads. Other Datasets without a folder remain unclassified,
+outside the tree. To remove a root placement, drop the Dataset into the list area or select
+**Unclassified** in **Move to a folder**. General creation also leaves Datasets unclassified.
 
 The list shows **Unclassified** Datasets by default. **Filters** can disable this restriction,
 select a user or agent owner, a keyword, creation/modification dates and manual, title or date

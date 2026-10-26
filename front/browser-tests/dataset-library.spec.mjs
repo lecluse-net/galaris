@@ -29,11 +29,11 @@ test('personal folders classify readable Datasets, persist moves and return data
   await page.route('**/api/datasets/library/move', async route => { const move = route.request().postDataJSON(); moves.push(move); placement = move.parent_id; await route.fulfill({ json: null }) })
   await page.route('**/api/datasets?*', async route => {
     const params = new URL(route.request().url()).searchParams
-    const visible = params.get('tag_id') ? params.get('tag_id') === placement : params.get('classification') !== 'unclassified' || placement === null
+    const visible = params.get('classification') !== 'root' && (params.get('tag_id') ? params.get('tag_id') === placement : params.get('classification') !== 'unclassified' || placement === null)
     await route.fulfill({ json: { items: visible ? [{ ...initial, tag_ids: placement ? [placement] : [] }] : [], total: visible ? 1 : 0 } })
   })
   await mount(page, 'app/dataset/components/DatasetLibraryNavigation.vue', { props: { selectedId: '' }, privileges: ['DATASET_READ'] })
-  const row = page.getByRole('link', { name: initial.title, exact: true })
+  const row = page.getByRole('list', { name: 'Unclassified Datasets', exact: true }).getByRole('link', { name: initial.title, exact: true })
   await expect(row).toBeVisible()
   await page.getByText('Synthetic root', { exact: true }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Edit folder', exact: true }).click()
@@ -109,7 +109,7 @@ test('personal folders classify readable Datasets, persist moves and return data
   // Reopen the branch through its context menu and verify the retained resource.
   await page.getByText('Synthetic child', { exact: true }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Expand all in this folder', exact: true }).click()
-  await expect(row).toBeVisible()
+  await expect(page.getByRole('tree').getByRole('link', { name: initial.title, exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('dataset-folders.png'), animations: 'disabled' })
   await page.getByText('Synthetic root', { exact: true }).click({ button: 'right' })
   await expect(page.getByRole('menu', { name: 'Actions for folder Synthetic child', exact: true })).toHaveCount(0)
@@ -130,7 +130,7 @@ test('the same library filters apply together and stale searches cannot overwrit
     await route.fulfill({ json: { items: [{ ...initial, title: params.q || initial.title }], total: 1 } })
   })
   await mount(page, 'app/dataset/components/DatasetLibraryNavigation.vue', { props: { selectedId: '' }, privileges: ['DATASET_READ'] })
-  await expect(page.getByRole('link', { name: initial.title, exact: true })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Unclassified Datasets', exact: true }).getByRole('link', { name: initial.title, exact: true })).toBeVisible()
   expect(requests[0].classification).toBe('unclassified')
   const search = page.getByRole('textbox', { name: 'Search', exact: true })
   await search.fill('Synthetic')
