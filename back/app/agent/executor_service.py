@@ -12,12 +12,14 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import AsyncIterator, Any, Optional, cast
 from loguru import logger
+from pydantic import ValidationError
 from core.params import params_service, Params
 from core.i18n import current_language, t
 from app.agent.contracts import (
     AIMessage,
     AIResult,
     ExecutionResult,
+    HarnessFailure,
     TaskPhase,
     TaskTransition,
 )
@@ -33,6 +35,7 @@ from app.agent.prompt_tree import (
 )
 from app.agent.task_port import task_port
 from .delivery_evidence import receipt_matches_artifact
+from .work_contracts import WorkPlan
 
 
 # Tool calls that constitute a response delivered to the user. ``messenger_reply`` is no
@@ -709,6 +712,21 @@ async def _update_task_after_execution(
     # children; fan-in later resumes synthesis without replaying side effects.
     waiting_for_children = False if waiting_for_input else await task_port.suspend_on_pending_children(task)
     if not waiting_for_children and not waiting_for_authorization and not waiting_for_input:
+        # Input reconciliation reloads progress committed by native tools. A declared
+        # blocker cannot be overridden by the model's otherwise successful final text.
+        # This creates no wait or retry and does not turn incidental tool errors into failures.
+        raw_plan = _string_keyed_dict(getattr(task, "data", None)).get("work_plan")
+        if execution_result.success and raw_plan is not None:
+            try:
+                plan = WorkPlan.model_validate(raw_plan)
+            except ValidationError:
+                plan = None  # Optional historical tracking must remain readable.
+            blocked = [item.key for item in plan.milestones if item.state == "blocked"] if plan else []
+            if blocked:
+                execution_result.success = False
+                execution_result.failure = HarnessFailure(code="runtime", retry="never",
+                    message="Work remains blocked: " + ", ".join(blocked))
+                execution_result.metadata = {**execution_result.metadata, "blocked_milestones": blocked}
         task_port.transition(
             task,
             TaskTransition.EXECUTION_SUCCEEDED

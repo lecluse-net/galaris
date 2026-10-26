@@ -52,6 +52,15 @@ de répéter une action. Un jalon coché est une déclaration du modèle, jamais
 réussite terminale. Le contrat de résultat et les reçus d'effets restent les autorités.
 Un outil indisponible ne doit pas être présenté comme un checkpoint persistant.
 
+Précision du 26 octobre 2026 : après relecture des attentes et du suivi persistés par
+les outils, un jalon explicitement `blocked` interdit la clôture de la Task en succès.
+Sans attente durable d'entrée, d'autorisation ou d'enfants, la clôture conserve le bilan,
+les coûts et les effets acquis, mais termine en erreur sans retry automatique. Elle
+ne crée aucune attente humaine. Un suivi absent, historique invalide ou simplement
+non actualisé (`pending`/`doing`) ne suffit pas à invalider un résultat du harnais.
+Le suivi ne prouve toujours pas un succès ; cette garde empêche seulement de contredire
+un blocage déclaré. Les tâches déjà terminales ne sont pas réécrites.
+
 ## Validation et limites
 
 Les scénarios synthétiques couvrent le choix, l'attente, l'expiration, la réponse tardive,

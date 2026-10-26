@@ -172,6 +172,10 @@ expose le suivi par jalons enregistré. L’exécuteur peut le mettre à jour
 avec `task_work_update`, sur sa tâche active, avec contrôle de révision. Jusqu’à vingt jalons
 sont conservés ; un jalon déclaré terminé ne remplace pas la preuve du résultat ou de sa livraison.
 Le suivi possède sa propre révision : les sauvegardes d’exécution ne bloquent pas ses mises à jour.
+Si un jalon reste explicitement bloqué à la clôture, la tâche termine en erreur et conserve
+son bilan partiel, sans réessai automatique. Les attentes durables existantes restent prioritaires.
+Une tâche terminée ne peut plus être amendée : pour autoriser les cibles encore hors périmètre,
+formulez une nouvelle demande explicite en référençant le travail déjà réalisé.
 
 Dans les étapes de réflexion, ouvrir un appel d’outil affiche son nom, ses arguments et son
 retour, avec son état de réussite ou d’échec. Ces détails restent disponibles pendant le suivi

@@ -37,6 +37,9 @@ ne demandent pas de clarification humaine. `task_get` expose révision et suivi 
 contrôlent propriétaire, phase et révision, et préservent les checkpoints. La progression
 des jalons reste déclarative : elle ne remplace pas la vérification des ressources ni le
 résultat terminal. Voir [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
+À la clôture, un jalon persisté explicitement `blocked` empêche un succès contradictoire :
+hors attente durable existante, la tâche termine en erreur sans retry automatique, en conservant
+son bilan et les effets acquis. Cette garde ne crée ni attente ni autorisation.
 
 Le harnais interne applique la politique `runtime.yaml` des compétences effectivement
 attribuées : `loading: eager` les charge dès la première requête en tâche, conversation texte

@@ -206,6 +206,60 @@ async def test_final_cost_uses_attempt_base_cost(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("milestone_state,wait", [
+    ("done", None), ("blocked", None), ("pending", None),
+    ("blocked", "input"), ("blocked", "children"), ("blocked", "authorization"),
+])
+async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, milestone_state, wait):
+    """A model's successful response cannot override its current declared blocker."""
+    from app.agent import WorkPlan, planner_service
+    from app.task import collab
+
+    task = Task(id=uuid4(), label="Synthetic archive maintenance", status=TaskStatus.EXEC, cost=0.0)
+    plan = WorkPlan.model_validate({"milestones": [{
+        "key": "archives", "label": "Update selected archives", "acceptance": "Changes saved",
+        "state": milestone_state, "observation": "Missing target authorization" if milestone_state == "blocked" else "Checked",
+    }], "next_action": "Request authorization" if milestone_state == "blocked" else "Check remaining work"})
+
+    async def refresh_progress(_task):
+        # Native tools save progress in another transaction during execution.
+        task.data = {"work_plan": plan.model_dump(mode="json")}
+        return wait == "input"
+
+    monkeypatch.setattr(executor_service.task_port, "suspend_on_pending_input", refresh_progress)
+    monkeypatch.setattr(executor_service.task_port, "save", AsyncMock(return_value=task))
+    monkeypatch.setattr(collab, "suspend_on_pending_children", AsyncMock(return_value=wait == "children"))
+    monkeypatch.setattr(collab, "resolve_from_peer_task", AsyncMock())
+    monkeypatch.setattr(collab, "maybe_fan_in", AsyncMock())
+    monkeypatch.setattr(planner_service, "resume_parent", AsyncMock())
+    result = ExecutionResult(prompt="Update archives", result="Partial work retained",
+        success=wait != "authorization", cost=0.25,
+        **({"schema_version": "galaris.execution-result/v2", "disposition": "waiting_for_authorization",
+            "authorization_requests": [uuid4()]} if wait == "authorization" else {}))
+
+    await executor_service._update_task_after_execution(task, result, base_cost=0.5)
+
+    stored = task.get_execution_result()
+    assert stored is not None
+    assert stored.result == "Partial work retained"
+    assert task.cost == pytest.approx(0.75)
+    if wait:
+        assert task.status not in {TaskStatus.ERROR, TaskStatus.SUCCESS}
+        assert stored.failure is None
+        assert "blocked_milestones" not in stored.metadata
+    elif milestone_state == "blocked":
+        assert task.status == TaskStatus.ERROR
+        assert stored.success is False
+        assert stored.failure is not None and stored.failure.retry == "never"
+        assert stored.metadata["blocked_milestones"] == ["archives"]
+        from app.task.scheduler import _retry_is_safe
+        assert _retry_is_safe(task, TaskStatus.DISPATCH) is False
+    else:
+        assert task.status == TaskStatus.SUCCESS
+        assert stored.success is True
+
+
+@pytest.mark.asyncio
 async def test_failed_stream_waits_for_children_instead_of_ending_parent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

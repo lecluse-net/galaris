@@ -150,6 +150,10 @@ The executor can update it with
 `task_work_update` on its active Task, with revision checks. Up to twenty milestones are
 retained; declaring one complete does not replace evidence of the result or its delivery.
 Tracking has its own revision, so execution checkpoints do not block progress updates.
+If a milestone remains explicitly blocked at completion, the Task ends in error and retains
+its partial report, without automatic retry. Existing durable waits take precedence.
+A terminal Task cannot be amended: to authorize remaining targets outside its scope,
+submit a new explicit request referencing the work already completed.
 
 In reasoning steps, expanding a tool call shows its name, arguments and returned content,
 with its success or failure state. These details remain available during live monitoring and

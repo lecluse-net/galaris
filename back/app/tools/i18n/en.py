@@ -74,6 +74,7 @@ default: dict[str, object] = {
             "scope_clarification": (
                 "No effect occurred. Do not retry this target with different arguments or another tool. "
                 "The requester must explicitly authorize its exact URI in an amendment to the root Task. "
+                "If that Task is terminal, it cannot be amended: request a new Task explicitly authorizing the remaining targets. "
                 "If this step requires the action, report BLOCKED with the target and missing authorization; "
                 "do not create substitute artifacts to bypass the restriction."
             ),

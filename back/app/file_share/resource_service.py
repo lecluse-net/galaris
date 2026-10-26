@@ -1329,6 +1329,13 @@ async def resource_write_text(
     overwrite: bool = False,
 ) -> ResourceMutation:
     require_complete_content(content)
+    return await _write_complete_text(ctx, uri, content, overwrite=overwrite)
+
+
+async def _write_complete_text(
+    ctx: ResourceContext, uri: object, content: str, *, overwrite: bool = False,
+) -> ResourceMutation:
+    """Write full provider content, including literal history markers in copies."""
     if len(content) > _TEXT_WRITE_LIMIT:
         raise ValueError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
@@ -1453,6 +1460,16 @@ async def resource_create(
 ) -> ResourceMutation:
     """Create a new resource and return the provider's complete canonical URI."""
     require_complete_content(content)
+    return await _create_complete_resource(ctx, path, content, name=name,
+        document_type=document_type, max_bytes=max_bytes)
+
+
+async def _create_complete_resource(
+    ctx: ResourceContext, path: object, content: bytes = b"", *, name: str = "",
+    document_type: Literal["html", "dataset"] | None = None,
+    max_bytes: int = _FILE_WRITE_LIMIT,
+) -> ResourceMutation:
+    """Create from complete bytes; callers validate model-authored content separately."""
     limit = min(max(0, max_bytes), 100_000_000)
     if len(content) > limit:
         raise ValueError(f"File content exceeds {limit} bytes.")
@@ -1640,6 +1657,15 @@ async def resource_write(
 ) -> ResourceMutation:
     """Replace one existing complete resource from bounded bytes."""
     require_complete_content(content)
+    return await _write_complete_resource(ctx, uri, content,
+        expected_revision=expected_revision, expected_etag=expected_etag)
+
+
+async def _write_complete_resource(
+    ctx: ResourceContext, uri: object, content: bytes, *,
+    expected_revision: int | None = None, expected_etag: str | None = None,
+) -> ResourceMutation:
+    """Replace from complete bytes while retaining provider and revision checks."""
     if len(content) > _FILE_WRITE_LIMIT:
         raise ValueError(f"File content exceeds {_FILE_WRITE_LIMIT} bytes.")
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
@@ -2061,12 +2087,12 @@ async def resource_copy(
         descriptor = await resource_info(ctx, source_ref)
         data = await _materialize_complete_bytes(ctx, source_ref)
         if destination_ref.is_collection:
-            mutation = await resource_create(ctx, destination_ref, data, name=descriptor.name)
+            mutation = await _create_complete_resource(ctx, destination_ref, data, name=descriptor.name)
         else:
             if not overwrite:
                 raise FileExistsError(str(destination_ref))
             current = await resource_info(ctx, destination_ref)
-            mutation = await resource_write(ctx, destination_ref, data, expected_revision=current.revision)
+            mutation = await _write_complete_resource(ctx, destination_ref, data, expected_revision=current.revision)
         return ResourceTransfer(source_uri=str(source_ref), uri=mutation.uri, size=mutation.size or len(data))
     if destination_ref.scheme == "file":
         if destination_ref.locator:
@@ -2099,7 +2125,7 @@ async def resource_copy(
             )
         data = await _materialize_complete_bytes(ctx, source_ref)
         source_name = (await resource_info(ctx, source_ref)).name
-        mutation = await resource_create(
+        mutation = await _create_complete_resource(
             ctx,
             destination_ref,
             data,
@@ -2121,9 +2147,9 @@ async def resource_copy(
                 _uri("galaris", f"{target.decoded_locator.rstrip('/')}/{source_name}")
             )
         mutation = (
-            await resource_write(ctx, target, data)
+            await _write_complete_resource(ctx, target, data)
             if overwrite
-            else await resource_create(ctx, target, data)
+            else await _create_complete_resource(ctx, target, data)
         )
         return ResourceTransfer(
             source_uri=str(source_ref),
@@ -2136,7 +2162,7 @@ async def resource_copy(
         target_descriptor = None if destination_ref.is_collection else await resource_info(ctx, destination_ref)
         dataset = (target_descriptor or source_descriptor).media_type == "application/json"
         if dataset and destination_ref.is_collection and native_provider("data") is not None:
-            mutation = await resource_create(ctx, "data://", await _materialize_complete_bytes(ctx, source_ref), name=source_descriptor.name)
+            mutation = await _create_complete_resource(ctx, "data://", await _materialize_complete_bytes(ctx, source_ref), name=source_descriptor.name)
             return ResourceTransfer(source_uri=str(source_ref), uri=mutation.uri, size=mutation.size or 0)
         text = await _read_complete_text(ctx, source_ref)
         if not dataset:
@@ -2157,7 +2183,7 @@ async def resource_copy(
                 uri=_uri("document", str(data["id"])),
                 size=_as_int(data["size"]),
             )
-        mutation = await resource_write_text(
+        mutation = await _write_complete_text(
             ctx,
             destination_ref,
             text,
@@ -2179,9 +2205,9 @@ async def resource_copy(
                 _uri(target.scheme, f"{target.decoded_locator}{source_name}")
             )
         mutation = (
-            await resource_write(ctx, target, data)
+            await _write_complete_resource(ctx, target, data)
             if overwrite
-            else await resource_create(ctx, target, data)
+            else await _create_complete_resource(ctx, target, data)
         )
         return ResourceTransfer(
             source_uri=str(source_ref),
@@ -2199,9 +2225,9 @@ async def resource_copy(
                 _uri(target.scheme, f"{target.decoded_locator.rstrip('/')}/{source_name}")
             )
         mutation = (
-            await resource_write(ctx, target, data)
+            await _write_complete_resource(ctx, target, data)
             if overwrite
-            else await resource_create(ctx, target, data)
+            else await _create_complete_resource(ctx, target, data)
         )
         return ResourceTransfer(
             source_uri=str(source_ref),
@@ -2217,9 +2243,9 @@ async def resource_copy(
                 _uri(target.scheme, f"{target.decoded_locator}{name}"), allow_empty=False
             )
         mutation = (
-            await resource_write(ctx, target, data)
+            await _write_complete_resource(ctx, target, data)
             if overwrite
-            else await resource_create(ctx, target, data)
+            else await _create_complete_resource(ctx, target, data)
         )
         return ResourceTransfer(
             source_uri=str(source_ref), uri=mutation.uri, size=mutation.size or 0

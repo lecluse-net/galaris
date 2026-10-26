@@ -972,6 +972,11 @@ existing inference, waiting without execution, expiry and late answers.
 `back/app/task/tests/test_work_tracking.py` checks PostgreSQL milestone recovery,
 concurrent writes, revisions, ownership, pauses, idempotency and checkpoint preservation,
 including an execution checkpoint between reading and updating progress.
+`back/app/agent/tests/test_executor_lifecycle.py` checks that an explicitly blocked milestone
+prevents success and automatic retry while preserving the report and costs.
+`back/app/file_share/tests/test_resource_service.py` checks complete snapshot exports containing
+historical markers, both creation and replacement; abbreviated content supplied by the model
+is still rejected on writes.
 Import the synthetic `task_organization_corpus.json` with
 `scripts/import_lab_reference.py --corpus task-organization --install`. Its eight cases
 complement fifteen routing boundaries; real-model comparison measures decisions and

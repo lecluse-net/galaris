@@ -81,6 +81,7 @@ default: dict[str, object] = {
             "scope_clarification": (
                 "Aucun effet n’a eu lieu. Ne réessayez pas sur cette cible avec d’autres arguments ou un autre outil. "
                 "Le demandeur doit autoriser explicitement son URI exacte par un amendement de la tâche racine. "
+                "Si cette tâche est terminée, elle ne peut plus être amendée : demandez une nouvelle tâche autorisant explicitement les cibles restantes. "
                 "Si cette étape exige l’action, signalez BLOCKED avec la cible et l’autorisation manquante ; "
                 "ne créez pas de document de remplacement pour contourner la restriction."
             ),

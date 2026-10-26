@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -451,13 +452,16 @@ async def test_console_is_the_only_advertised_local_scheme_with_ssh(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("overwrite", [False, True])
 async def test_galaris_json_resource_can_be_copied_to_console(
     resource_console: TemporaryFileTransport,
     monkeypatch: pytest.MonkeyPatch,
+    overwrite: bool,
 ) -> None:
     import app.task as task
 
     identifier = uuid4()
+    marker = "[content omitted after execution: 2010 characters, sha256=0123456789abcdef]"
 
     async def read_task_resource(
         task_id: object,
@@ -472,13 +476,18 @@ async def test_galaris_json_resource_can_be_copied_to_console(
             "label": "Release / unsafe filename",
             "status": "SUCCESS",
             "snapshot": "x" * (resource_service._TEXT_WRITE_LIMIT + 1),
+            "history": {"tool_arguments": {"content": marker}},
         }
 
     monkeypatch.setattr(task, "read_task_resource", read_task_resource)
+    destination = f"console://exports/task-{identifier}.json" if overwrite else "console://exports/"
+    if overwrite:
+        resource_console.resolve_path(f"exports/task-{identifier}.json").write_text("old snapshot")
     result = await resource_service.resource_copy(
         ResourceContext(agent_id=1, runtime="internal", console_resource=object()),
         f"galaris://task/{identifier}",
-        "console://exports/",
+        destination,
+        overwrite=overwrite,
     )
 
     assert result.uri == f"console://exports/task-{identifier}.json"
@@ -488,6 +497,8 @@ async def test_galaris_json_resource_can_be_copied_to_console(
     )
     assert '"label": "Release / unsafe filename"' in exported.read_text()
     assert exported.stat().st_size > resource_service._TEXT_WRITE_LIMIT
+    assert json.loads(exported.read_text())["history"]["tool_arguments"]["content"] == marker
+    assert json.loads(exported.read_text()) == await read_task_resource(identifier, actor_agent_id=1)
 
 
 @pytest.mark.asyncio
@@ -1022,7 +1033,7 @@ async def test_messenger_listing_uses_tool_code_room_locator_and_local_file_uuid
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["create", "write", "append", "edit"])
+@pytest.mark.parametrize("operation", ["create", "write", "write_text", "append", "edit"])
 async def test_history_omission_marker_cannot_be_written(operation):
     from app.file_share import resource_service as service
     from app.file_share.resource_contracts import ResourceContext
@@ -1034,6 +1045,8 @@ async def test_history_omission_marker_cannot_be_written(operation):
             await service.resource_create(ctx, "document://", marker.encode(), name="Synthetic lesson")
         elif operation == "write":
             await service.resource_write(ctx, uri, marker.encode(), expected_revision=2)
+        elif operation == "write_text":
+            await service.resource_write_text(ctx, uri, marker, overwrite=True)
         elif operation == "append":
             await service.resource_append(ctx, uri, marker, expected_revision=2)
         else:
