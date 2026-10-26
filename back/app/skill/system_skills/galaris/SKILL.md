@@ -337,7 +337,12 @@ is no local filesystem or implicit fallback. Relative paths are rejected. Common
 the exact connected Tool code, never `messenger`. A trailing `/` denotes a collection.
 Never invent a scheme or attachment UUID; call `file_schemes` or list the collection first.
 Discover shared document folders with `file_list("document://folders/")`. Each folder has a
-stable `document://folders/<uuid>/` URI. Use `file_info` for its name and icon. Reading that URI
+stable `document://folders/<uuid>/` URI. When the user names a folder, find it with
+`file_search(uri="document://folders/", query="Entreprise", mode="name")`, replacing the
+example name with the requested one. Name search is case-insensitive and accepts partial
+names. Follow search `next_cursor` pages; if several folders have the requested name, resolve
+the ambiguity before choosing. Use the returned URI without asking the user for a UUID.
+Use `file_info` for its name and icon. Reading that URI
 with `file_read` returns a complete JSON hierarchy page of up to 200 readable placements,
 including all levels of subfolders and nested Documents. Folder reads use item offsets,
 not character offsets: pass each `next_offset` as `offset` until it is absent/null.
@@ -349,6 +354,9 @@ zero if the tree is reorganized during reading. Read each exact `document://<uui
 its content. `file_list` also remains available for flat discovery. These are live,
 read-only collections: linking or attaching one does not grant access or copy its contents.
 The owner manages folder sharing in Documents; source ACLs are checked again on every read.
+Cite the returned folder URI in conversations. In authored HTML, use a titled link inside
+`blockquote.galaris-link-card` for a folder card; the UI supplies its icon at rendering time.
+Keep the live reference instead of copying the branch or embedding icon bytes in the HTML.
 `http://` is disabled and HTTPS is read-only. Parent traversal, host filesystem paths,
 credentials in URLs, and unsafe/private Web destinations are rejected.
 `console://` is exactly the SSH user's home. Prefer paths relative to it; `~/path`, the

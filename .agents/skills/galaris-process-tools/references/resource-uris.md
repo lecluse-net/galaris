@@ -65,6 +65,10 @@ lecture et écriture sont imposées par le serveur.
 remplace une ressource existante ; son contenu est soit UTF-8, soit encodé en base64. `file_read`
 détecte le texte et renvoie les petits binaires en base64 ; les gros binaires sont passés par URI à
 un outil spécialisé ou copiés vers la console quand elle existe.
+`file_list("document://folders/")` découvre les répertoires autorisés. Pour un nom fourni par
+l'utilisateur, utiliser `file_search(uri="document://folders/", query="Entreprise", mode="name")`
+en remplaçant le nom d'exemple. La recherche accepte les noms partiels sans distinction de casse ;
+suivre `next_cursor` et lever toute ambiguïté entre homonymes avant de choisir l'URI retournée.
 Pour `document://folders/<uuid>/`, `file_read` rend un JSON hiérarchique valide contenant au
 plus 200 placements lisibles par page, sous-répertoires et sous-documents compris. Les offsets
 comptent ici les éléments (`offset_unit=item`), avec `next_offset` pour continuer ; ce budget
@@ -72,6 +76,9 @@ fixe remplace `max_chars` et le JSON n'est jamais coupé. Les `children` sont im
 `continuations` rattachent les enfants des pages suivantes aux `parent_key` / `parent_uri`
 déjà lus. Une clé de placement distingue les classements multiples. Le contenu documentaire
 reste lisible séparément par son URI. Après une réorganisation concurrente, reprendre à zéro.
+Pour citer le répertoire, transmettre son URI en conversation ou enregistrer un lien titré
+dans `blockquote.galaris-link-card` dans un Document. Le rendu fournit l'icône ; ne pas copier
+les documents de la branche ni embarquer les octets de l'icône. Le lien n'accorde aucun droit.
 `file_edit` remplace une plage inclusive de lignes UTF-8 (blocs pour les documents HTML).
 `file_create(path="data://", name=..., content=...)` crée un Dataset JSON indépendant.
 Dataset possède contenu, droits, historique et pièces jointes ; le JSON reste libre, sans
