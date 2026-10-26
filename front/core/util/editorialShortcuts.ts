@@ -27,8 +27,10 @@ export const readingShortcutCommands = new Set(['help', 'print', 'fullscreen', '
 /** Firefox also reports AltGraph for Ctrl+Alt (Windows) and Option (macOS).
  * Track the actual AltGr key separately so those shortcuts remain usable. */
 export function isAltGraphInput(event: KeyboardEvent, altGraphPressed: boolean): boolean {
+  // ProseMirror also calls key handlers with legacy synthetic events when
+  // interpreting native deletion. Those events have no getModifierState.
   return altGraphPressed || event.key === 'AltGraph'
-    || event.getModifierState('AltGraph') && !event.ctrlKey && !event.metaKey
+    || Boolean(event.getModifierState?.('AltGraph')) && !event.ctrlKey && !event.metaKey
 }
 
 export function documentShortcut(event: KeyboardEvent, altGraphPressed = false): typeof editorialShortcuts[number] | undefined {

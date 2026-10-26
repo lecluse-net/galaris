@@ -2071,6 +2071,21 @@ L’annulation et le changement de document empêchent de proposer un PDF devenu
 Garanties : `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 `rich-text.spec.mjs` et `document-print.spec.mjs` dans `front/browser-tests/`.
 
+Pour le profil `document` uniquement, la sous-barre mobile suit la sélection de texte,
+tableau, image et code, conserve la sélection pendant les commandes tactiles et laisse
+l'appui long au navigateur, y compris en lecture seule. Les champs `rich-text` et le
+clic droit desktop conservent leur comportement. Cette sous-barre défile horizontalement
+pour garder une hauteur stable lors des changements de contexte. Couverture : `mobile-editor-toolbar.spec.mjs`
+et `editor-toolbar.spec.mjs`.
+
+`document-flows.spec.mjs` vérifie les suppressions répétées pendant une réponse de sauvegarde
+retardée, leur sauvegarde finale et la réouverture. Ce scénario détecte aussi l'erreur des
+événements clavier synthétiques de ProseMirror, qui ne proposent pas `getModifierState`.
+Les anciens parcours de mise en forme utilisaient des événements clavier natifs et ne
+couvraient pas ce traitement d'effacement. Les simulations de composition et d'entrée
+virtuelle dans `mobile-editor-toolbar.spec.mjs` complètent cette garantie sans qualifier
+un clavier de téléphone réel.
+
 <a id="files"></a>
 
 ## Catalogue privé de fichiers et maintenance

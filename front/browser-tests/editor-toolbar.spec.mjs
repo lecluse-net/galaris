@@ -14,7 +14,9 @@ test('clicking elsewhere in the same editor closes a right-click menu and its su
   await expect(editor.locator('p')).toContainText('Usable ')
 })
 
-for (const width of [1440, 390]) test(`text context menu preserves the selection and changes heading styles (${width}px)`, async ({ page }, testInfo) => {
+// Mobile documents use the cursor toolbar; its selection/actions are exercised
+// in mobile-editor-toolbar.spec.mjs rather than requiring a right-click there.
+for (const width of [1440]) test(`text context menu preserves the selection and changes heading styles (${width}px)`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: {
     profile: 'document', modelValue: '<h2>Synthetic heading</h2><p>Selected words stay here</p><p>Untouched paragraph</p>',
@@ -131,7 +133,7 @@ const contextCases = [
   ['object', '<section><details><summary>Synthetic object</summary>Preserved content</details></section>', '.embedded-code-widget', 'Embedded application'],
 ]
 
-for (const mode of ['read', 'readonly']) for (const width of [1440, 390]) test(`document ${mode} suppresses all context menus and opens cards with a left click (${width}px)`, async ({ page }, testInfo) => {
+for (const mode of ['read', 'readonly']) for (const width of [1440, 390]) test(`document ${mode} preserves native mobile selection and opens cards with a left click (${width}px)`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const html = '<p>Ordinary text</p>' + contextCases.filter(([kind]) => !['agent', 'process', 'object'].includes(kind)).map(([, html]) => html).join('')
   await mount(page, `core/util/components/${mode === 'read' ? 'RichText' : 'RichTextEditor'}.vue`, {
@@ -145,7 +147,7 @@ for (const mode of ['read', 'readonly']) for (const width of [1440, 390]) test(`
       const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
       element.dispatchEvent(event)
       return event.defaultPrevented
-    })).toBe(true)
+    })).toBe(width >= 1024)
     await target.click({ button: 'right' })
     await expect(page.getByRole('menu')).toBeHidden()
     await expect(page.locator('.editorial-context')).toHaveCount(0)
@@ -161,7 +163,7 @@ for (const mode of ['read', 'readonly']) for (const width of [1440, 390]) test(`
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
 })
 
-for (const width of [1440, 390]) for (const [kind, html, selector, label] of contextCases) {
+for (const width of [1440]) for (const [kind, html, selector, label] of contextCases) {
   test(`right-click ${kind} preserves content and exposes its editing commands (${width}px)`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
     await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ status: 404 }))

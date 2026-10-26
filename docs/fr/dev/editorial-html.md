@@ -191,8 +191,10 @@ les classes de coloration ne sont jamais enregistrées dans le document.
 En édition, le menu au clic droit d’un bloc propose langage, numéros de ligne, retour à la
 ligne et copie. Le changement de langage cible explicitement ce bloc sans en créer ni en
 fusionner d’autres. `Maj+F10` ouvre le menu au clavier et `Échap` le ferme. En lecture
-seule, aucune barre contextuelle ni aucun menu au clic droit n’est affiché, y compris sur
-le texte. La copie reste disponible au clavier et via le bouton dédié du bloc.
+seule, aucune barre contextuelle ni aucun menu applicatif au clic droit n'est affiché.
+Sur mobile, le profil `document` utilise une sous-barre contextuelle liée à la sélection
+au lieu d'intercepter l'appui long ; le menu natif et la sélection restent disponibles,
+y compris en lecture seule. La copie reste aussi disponible au clavier et via le bouton dédié du bloc.
 
 Les options sont conservées sur `<code>` par `data-code-lines="true"` et
 `data-code-nowrap="true"`, validés par les deux filtres HTML. Les numéros sont des éléments
@@ -375,7 +377,7 @@ Les tâches, objectifs, sujets, discussions, rounds texte, appels et tours vocau
 Le sélecteur **Lien Galaris → Objets Galaris** les recherche également. Les URI et les
 URL de cette installation sont normalisées avant insertion. Le menu contextuel et la
 barre d'outils basculent entre lien et carte en édition. En lecture seule ou visualisation,
-le clic gauche sur un lien ou le fond d’une carte ouvre sa cible ; le clic droit est bloqué
+le clic gauche sur un lien ou le fond d’une carte ouvre sa cible ; le clic droit est bloqué sur ordinateur
 et les barres contextuelles sont absentes. Ces références ouvrent leur fiche en modale avec les droits actuels du
 lecteur, sans changer le document consulté.
 

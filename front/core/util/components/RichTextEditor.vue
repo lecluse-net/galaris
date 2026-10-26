@@ -16,6 +16,12 @@
         </EditorialToolButton>
       </template>
       <template v-if="$slots['toolbar-actions']" #actions><slot name="toolbar-actions" :exit-fullscreen="exitFullscreen" /></template>
+      <template v-if="mobileDocument && !readonly && !sourceMode" #context>
+        <div class="editorial-mobile-context" role="toolbar" :aria-label="t('richEditor.contextActions')" @mousedown.prevent>
+          <EditorialContextActions v-if="activeContext" toolbar :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
+          <EditorialToolbar v-if="mobileTextContext" contextual :editor="editor" :revision="revision" document :hidden-groups="hiddenToolbarGroups" :disabled-actions="disabledActions" @action="action" />
+        </div>
+      </template>
     </EditorialToolbar>
     <div v-if="findOpen" class="editorial-search-bar" role="search" :aria-label="t('richEditor.find')">
       <q-input ref="searchInput" v-model="fields.search" class="editorial-search-input" dense outlined :label="t('richEditor.find')" @keydown.enter.prevent="findNext" />
@@ -377,6 +383,9 @@ const activeContext = computed(() => {
   else return null
   return { kind }
 })
+const mobileDocument = computed(() => profile === 'document' && $q.screen.lt.md)
+const mobileTextContext = computed(() => { void revision.value; return editor.value && !(editor.value.state.selection instanceof NodeSelection) && !editor.value.isActive('codeBlock') })
+watch(mobileDocument, () => pointerMenu.value?.hide())
 const canInsertBeside = computed(() => {
   void revision.value
   const selection = editor.value?.state.selection
@@ -510,6 +519,7 @@ function openSelectionDialog(): void {
   resourceDetail.value = richLinkTarget(uri)
 }
 async function openContextMenu(event: MouseEvent): Promise<void> {
+  if (mobileDocument.value) return
   if (readonly) { event.preventDefault(); event.stopPropagation(); return }
   const current = editor.value, target = event.target
   if (!current || current.isDestroyed || sourceMode.value || !(target instanceof Element) || !current.view.dom.contains(target)) return

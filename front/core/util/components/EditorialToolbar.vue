@@ -12,6 +12,13 @@
       </ContextSubmenu>
     </q-item>
   </template>
+  <div v-else-if="contextual" class="editorial-context-text-tools">
+    <EditorialToolButton v-for="group in contextGroups" :key="group.name" flat dense color="primary" :icon="contextGroupIcons[group.name]" :label="t('richEditor.groups.' + group.name)">
+      <q-menu :model-value="contextGroup === group.name" no-refocus :transition-duration="0" @update:model-value="contextGroup = $event ? group.name : null"><q-list dense role="menu" :aria-label="t('richEditor.groups.' + group.name)" @mousedown.prevent>
+        <EditorialCommand v-for="item in group.items" :key="item.key" menu :item="item" :option-active="optionActive" @action="dispatch" />
+      </q-list></q-menu>
+    </EditorialToolButton>
+  </div>
   <div v-else class="editorial-toolbar" :class="{ 'editorial-toolbar-single-row': singleRow }" role="toolbar" :aria-label="t('richEditor.content')" @mousedown.prevent @keydown="navigateToolbar">
     <template v-if="!mobile">
     <div v-for="group in groups" :key="group.name" role="group" :aria-label="t('richEditor.groups.' + group.name)" class="editorial-toolbar-group">
@@ -44,6 +51,7 @@
         </div></q-menu>
       </q-btn>
     </div>
+    <slot v-if="$q.screen.lt.md" name="context" />
   </div>
 </template>
 <script setup lang="ts">
@@ -53,22 +61,25 @@ import { useI18n } from 'vue-i18n'
 import type { Editor } from '@tiptap/core'
 import { calloutKinds, type EditorToolbarGroupName } from '../tiptapContent'
 import EditorialCommand, { type EditorialCommandItem as Item } from './EditorialCommand.vue'
+import EditorialToolButton from './EditorialToolButton.vue'
 import ContextSubmenu from './ContextSubmenu.vue'
 import pdfIcon from '../icons/bootstrap/file-earmark-pdf-fill.svg?raw'
 import zipIcon from '../icons/bootstrap/file-zip-fill.svg?raw'
 import { solaire } from '../solaire'
 import { editorialIcon } from '../editorialIcons'
 import { imageAlignment } from '../imageAlignment'
-const { editor, revision, document = false, outlineOpen = false, source = false, findOpen = false, singleRow = false, hiddenGroups = [], fullWidth = false, fullscreen = false, fits = true, disabledActions = [], menu = false } = defineProps<{
-  editor: Editor; revision: number; document?: boolean; outlineOpen?: boolean; source?: boolean; findOpen?: boolean; singleRow?: boolean; hiddenGroups?: readonly EditorToolbarGroupName[]; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]; menu?: boolean
+const { editor, revision, document = false, outlineOpen = false, source = false, findOpen = false, singleRow = false, hiddenGroups = [], fullWidth = false, fullscreen = false, fits = true, disabledActions = [], menu = false, contextual = false } = defineProps<{
+  editor: Editor; revision: number; document?: boolean; outlineOpen?: boolean; source?: boolean; findOpen?: boolean; singleRow?: boolean; hiddenGroups?: readonly EditorToolbarGroupName[]; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]; menu?: boolean; contextual?: boolean
 }>()
 const emit = defineEmits<{ action: [key: string, value?: string] }>()
 const { t } = useI18n()
 const $q = useQuasar()
 const moreOpen = ref(false)
+const contextGroup = ref<string | null>(null)
 const alignments = ['left', 'center', 'right', 'justify'] as const
 function dispatch(key: string, value?: string): void {
   moreOpen.value = false
+  contextGroup.value = null
   const alignment = alignments.some(alignment => alignment === key)
   emit('action', alignment ? 'alignment' : key, alignment ? key : value)
 }
@@ -82,7 +93,7 @@ function navigateToolbar(event: KeyboardEvent): void {
   buttons[next]?.focus(); event.preventDefault()
 }
 const coloredIcon = (svg: string, color: string) => 'img:data:image/svg+xml,' + encodeURIComponent(svg.replaceAll('<path ', `<path fill="${color}" `))
-const mobileKeys = ['undo', 'redo', 'bold', 'italic', 'removeFormat', 'heading', 'callout', 'bulletList', 'orderedList', 'checklist', 'outline', ...alignments, 'galarisLink', 'share.action', 'help']
+const mobileKeys = ['undo', 'redo', 'find', 'bold', 'italic', 'removeFormat', 'heading', 'callout', 'bulletList', 'orderedList', 'checklist', 'outline', ...alignments, 'galarisLink', 'share.action', 'help']
 const mobileItems = computed(() => {
   const items = groups.value.flatMap(group => group.rows.flat())
   return mobileKeys.flatMap(key => items.find(item => item.key === key) ?? [])
@@ -144,6 +155,7 @@ const groups = computed(() => {
 })
 const readingHelp = computed(() => groups.value.find(group => group.name === 'reading')?.rows.flat().find(item => item.key === 'help'))
 const contextPrimaryKeys = ['heading', 'bold', 'italic', 'underline', 'removeFormat']
+const contextGroupIcons = { editing: 'edit', text: 'text_format', paragraph: 'format_align_left', insert: 'add', reading: 'visibility' }
 const contextPrimary = computed(() => contextPrimaryKeys.flatMap(key => groups.value.flatMap(group => group.rows.flat()).find(item => item.key === key) ?? []))
 const contextGroups = computed(() => groups.value.filter(group => group.name !== 'reading').map(group => ({
   name: group.name,

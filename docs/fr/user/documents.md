@@ -69,6 +69,14 @@ une ligne enregistre son état dans le document, avec sa sauvegarde et ses révi
 Les états restent visibles après réouverture, en lecture seule et dans les exports.
 Ces listes ne nécessitent aucun jeu de données.
 
+Sur mobile (largeur inférieure à 1024 px), une sous-barre d'icônes apparaît sous la barre
+d'outils des documents modifiables. Ses commandes suivent le curseur ou la sélection :
+tableau et cellule, image, lien ou bloc de code. Les menus d'icônes donnent accès aux
+options de texte et de paragraphe ; les styles courants restent dans la barre principale.
+Faites glisser la sous-barre horizontalement pour atteindre toutes ses commandes.
+L'appui long conserve la sélection et les commandes natives de copier/coller. Sur
+ordinateur, les commandes contextuelles restent accessibles au clic droit.
+
 ## Créer et retrouver
 
 Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**

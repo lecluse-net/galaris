@@ -1987,6 +1987,18 @@ changes prevent an outdated PDF from being offered.
 Coverage: `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 `rich-text.spec.mjs` and `document-print.spec.mjs` in `front/browser-tests/`.
 
+For the `document` profile only, the mobile icon row follows text, table, image and code
+selections, preserves the selection during touch commands and leaves long press to the
+browser, including in read-only views. Other `rich-text` fields and desktop right-click
+retain their behavior. The icon row scrolls horizontally to keep its height stable when
+the context changes. Coverage: `mobile-editor-toolbar.spec.mjs` and `editor-toolbar.spec.mjs`.
+
+`document-flows.spec.mjs` checks repeated deletion during a delayed save response, the final
+saved content and reopening. It also detects the failure on ProseMirror's synthetic key
+events, which do not provide `getModifierState`. Earlier formatting journeys used native
+key events and did not cover this deletion path. Composition and virtual input simulations
+in `mobile-editor-toolbar.spec.mjs` extend this coverage without qualifying a real phone keyboard.
+
 <a id="files"></a>
 
 ## Private file catalogue and maintenance

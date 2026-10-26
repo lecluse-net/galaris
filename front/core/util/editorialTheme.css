@@ -22,6 +22,9 @@
 .editorial-toolbar .q-btn-dropdown .q-btn__content { gap: 2px; }
 .editorial-toolbar .q-btn-dropdown .q-icon { margin: 0; }
 .editorial-mobile-toolbar { display: flex; flex-wrap: wrap; width: 100%; gap: 0; }
+.editorial-mobile-context { display: flex; align-items: center; width: 100%; min-height: 37px; overflow-x: auto; gap: 2px; border-top: 1px solid var(--rich-editor-border); padding-block: 2px; }
+.editorial-mobile-context > * { flex-shrink: 0; }
+.editorial-context-text-tools { display: flex; gap: 2px; }
 .editorial-toolbar-overflow { max-width: min(360px, 95vw); padding: 8px; }
 .editorial-toolbar-overflow > [role="group"] { margin-bottom: 8px; }
 .editorial-body { min-width: 0; background: var(--editorial-canvas); }

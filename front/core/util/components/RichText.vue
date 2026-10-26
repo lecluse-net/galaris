@@ -11,6 +11,7 @@
 </template>
 <script setup lang="ts">
 import { ref, shallowRef, watch, onBeforeUnmount, nextTick, useTemplateRef } from 'vue'
+import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useDocumentNavigation } from '../documentNavigation'
 import { documentNavigationHref } from '../documentResource'
@@ -34,6 +35,7 @@ const { content, profile = 'rich-text', resolveImage } = defineProps<{
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>
 }>()
 const rendered = ref('')
+const $q = useQuasar()
 const navigateDocument = useDocumentNavigation()
 const embeds = shallowRef<ResourceEmbedTarget[]>([]), detail = shallowRef<ResourceDetailTarget | null>(null)
 function openReference(event: MouseEvent): void {
@@ -51,7 +53,7 @@ function openReference(event: MouseEvent): void {
   }
 }
 function suppressDocumentContextMenu(event: MouseEvent): void {
-  if (profile === 'document') { event.preventDefault(); event.stopPropagation() }
+  if (profile === 'document' && !$q.screen.lt.md) { event.preventDefault(); event.stopPropagation() }
 }
 function openUri(uri: string): void {
   if (!navigateDocument(uri)) detail.value = richLinkTarget(uri)

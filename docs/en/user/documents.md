@@ -61,6 +61,13 @@ its state in the document, including autosave and revisions. **Enter** adds a li
 **Tab** and **Shift+Tab** nest or unnest lines. States survive reopening and remain visible
 in read-only views and exports. These lists require no Dataset.
 
+On mobile (below 1024 px), an icon row appears below the toolbar of editable documents.
+Its commands follow the cursor or selection: table and cell, image, link or code block.
+Icon menus provide text and paragraph options; common styles remain in the main toolbar.
+Swipe the icon row horizontally to reach all its commands.
+Long press retains native text selection and copy/paste commands. On desktop, contextual
+commands remain available through right-click.
+
 ## Create and find Documents
 
 In the **Documents** library, every folder offers a **New document** icon among its

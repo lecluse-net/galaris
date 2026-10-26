@@ -102,6 +102,7 @@ export default {
         "documentExportBundle": "Exporter le document et ses pièces jointes (ZIP)"
       },
       content: "Contenu",
+      contextActions: 'Actions contextuelles',
       embeddedApplication: "Application intégrée",
 unavailable: "Ce contenu est indisponible.",
       exactSource: "Source exacte", preview: "Aperçu riche",
@@ -342,6 +343,7 @@ unavailable: "Ce contenu est indisponible.",
         "documentExportBundle": "Export document and attachments (ZIP)"
       },
       content: "Content",
+      contextActions: 'Contextual actions',
       embeddedApplication: "Embedded application",
 unavailable: "This content is unavailable.",
       exactSource: "Exact source", preview: "Rich preview",
@@ -582,6 +584,7 @@ unavailable: "This content is unavailable.",
         "documentExportBundle": "导出文档及附件（ZIP）"
       },
       content: "内容",
+      contextActions: '上下文操作',
       embeddedApplication: "嵌入式应用",
 unavailable: "此内容不可用。",
       "exactSource": "原始内容",

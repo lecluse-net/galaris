@@ -1,7 +1,125 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { devices } from '@playwright/test'
 
 const component = 'core/util/components/RichTextEditor.vue'
 const documentUrl = 'https://galaris.example/documents?document_id=00000000-0000-0000-0000-000000000001'
+
+test.describe('document cursor toolbar', () => {
+  test.use({ hasTouch: true, isMobile: true, userAgent: devices['Pixel 7'].userAgent, viewport: { width: 390, height: 844 } })
+  test('touch actions follow text, table, image and code selections while long press stays native', async ({ page }, testInfo) => {
+    await mount(page, component, { props: { profile: 'document', modelValue:
+      '<p>Selected words</p><table><tbody><tr><td>First cell</td><td>Other cell</td></tr></tbody></table>'
+      + '<figure class="image"><img src="document://00000000-0000-4000-8000-000000000001/attachments/00000000-0000-4000-8000-000000000002" alt="Synthetic image" width="120" height="80"></figure>'
+      + '<pre><code class="language-javascript">const answer = 42;</code></pre><p>Preserved ending</p>',
+    } })
+    const editor = page.locator('[data-editor-surface]'), toolbar = page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
+    await editor.locator('p').first().tap()
+    await editor.locator('p').first().evaluate(element => {
+      const range = document.createRange(); range.selectNodeContents(element)
+      const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range)
+      document.dispatchEvent(new Event('selectionchange'))
+    })
+    expect(await editor.locator('p').first().evaluate(element => {
+      const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+      element.dispatchEvent(event)
+      return event.defaultPrevented
+    })).toBe(false)
+    await expect(page.getByRole('menu')).toHaveCount(0)
+    expect(await page.evaluate(() => window.getSelection().toString())).toBe('Selected words')
+    await page.getByRole('button', { name: 'Bold', exact: true }).tap()
+    await expect(editor.locator('p strong').first()).toHaveText('Selected words')
+    await toolbar.getByRole('button', { name: 'Text', exact: true }).tap()
+    await page.getByRole('menuitemcheckbox', { name: 'Strike', exact: true }).tap()
+    await expect(editor.locator('p s').first()).toHaveText('Selected words')
+    await expect(page.getByRole('menu')).toHaveCount(0)
+
+    await editor.locator('td p').first().tap({ position: { x: 10, y: 10 } })
+    await expect(toolbar.getByRole('button', { name: 'Add row', exact: true })).toBeVisible()
+    await toolbar.getByRole('button', { name: 'Add row', exact: true }).tap()
+    await expect(editor.locator('tr')).toHaveCount(2)
+    await toolbar.getByRole('button', { name: 'Table styles', exact: true }).tap()
+    await page.getByRole('button', { name: 'Ocean', exact: true }).tap()
+    await expect(editor.locator('table')).toHaveClass(/galaris-table-blue/)
+    await expect(page.getByRole('button', { name: 'Ocean', exact: true })).toBeHidden()
+    await page.screenshot({ path: testInfo.outputPath('mobile-table-context.png'), fullPage: true })
+
+    await editor.locator('img').tap()
+    await expect(toolbar.getByRole('button', { name: 'Add row', exact: true })).toHaveCount(0)
+    await toolbar.getByRole('button', { name: 'Image properties', exact: true }).tap()
+    await expect(page.getByRole('dialog').getByRole('textbox', { name: 'Alternative text', exact: true })).toHaveValue('Synthetic image')
+    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).tap()
+    await editor.locator('pre code').tap({ position: { x: 10, y: 10 } })
+    await toolbar.getByRole('button', { name: 'Block language', exact: true }).tap()
+    await page.getByRole('menuitemradio', { name: 'Python', exact: true }).tap()
+    await expect(editor.locator('pre code')).toHaveClass(/language-python/)
+    await toolbar.getByRole('button', { name: 'Insert paragraph after block', exact: true }).tap()
+    await page.keyboard.insertText('Inserted on mobile')
+    await expect(editor).toContainText('Inserted on mobile')
+    await expect(editor).toContainText('Preserved ending')
+    await page.evaluate(() => window.testApp.dark(true))
+    await page.screenshot({ path: testInfo.outputPath('mobile-context-dark.png'), fullPage: true })
+    await page.setViewportSize({ width: 1024, height: 900 })
+    await expect(toolbar).toHaveCount(0)
+    await editor.locator('td p').first().click({ button: 'right' })
+    await expect(page.getByRole('menu', { name: 'Table', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.evaluate(() => window.testApp.setProps({ readonly: true }))
+    await expect(toolbar).toHaveCount(0)
+    await expect(editor).toContainText('Inserted on mobile')
+  })
+
+  test('other rich text fields retain their context menu on mobile', async ({ page }) => {
+    await mount(page, component, { props: { profile: 'rich-text', modelValue: '<table><tbody><tr><td>Unchanged field</td></tr></tbody></table>' } })
+    await expect(page.getByRole('toolbar', { name: 'Contextual actions', exact: true })).toHaveCount(0)
+    await page.locator('[data-editor-surface] td p').click({ button: 'right' })
+    await page.getByRole('menu', { name: 'Table', exact: true }).getByRole('menuitem', { name: 'Add row', exact: true }).click()
+    await expect(page.locator('[data-editor-surface] tr')).toHaveCount(2)
+  })
+})
+
+test('native repeated deletion keeps the edited text while the mobile keyboard is composing', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mount(page, component, { props: { profile: 'document', modelValue: '<p>Keep deleting characters</p>' } })
+  const editor = page.locator('[data-editor-surface]')
+  await editor.click()
+  await page.keyboard.press('End')
+  await editor.dispatchEvent('compositionstart', { data: '' })
+  for (let count = 0; count < 5; count++) {
+    await editor.evaluate(element => {
+      // A virtual keyboard edits the DOM; ProseMirror consumes its input events.
+      element.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, inputType: 'deleteContentBackward' }))
+      document.execCommand('delete')
+      document.dispatchEvent(new Event('selectionchange'))
+    })
+  }
+  await editor.dispatchEvent('compositionend', { data: '' })
+  await expect(editor).toHaveText('Keep deleting chara')
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)).toBe('<p>Keep deleting chara</p>')
+  await page.keyboard.insertText('!')
+  await expect(editor).toHaveText('Keep deleting chara!')
+})
+
+test('virtual keyboard input does not restore a deletion awaiting DOM observation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mount(page, component, { props: { profile: 'document', modelValue: '<p>Keep deleting characters</p>' } })
+  const editor = page.locator('[data-editor-surface]')
+  await editor.click()
+  await page.keyboard.press('End')
+  for (let count = 0; count < 5; count++) {
+    await editor.evaluate(element => {
+      const text = element.querySelector('p').firstChild
+      text.deleteData(text.length - 1, 1)
+      window.getSelection().collapse(text, text.length)
+      // Android keyboards can report 229 without compositionstart. The next
+      // input may arrive before the preceding DOM mutation has been consumed.
+      element.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Unidentified', keyCode: 229 }))
+      element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }))
+    })
+  }
+  await expect(editor).toHaveText('Keep deleting chara')
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)).toBe('<p>Keep deleting chara</p>')
+})
 
 async function command(page, name) {
   const button = page.getByRole('button', { name, exact: typeof name === 'string' }).first()

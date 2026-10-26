@@ -23,6 +23,40 @@ async function library(page, agentId = null) {
   return state
 }
 
+test('mobile repeated deletion survives a delayed autosave acknowledgement and reopening', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const state = await library(page, 7)
+  const writes = []
+  let release
+  await page.route(/\/api\/documents\/doc-a(?:\?|$)/, async route => {
+    if (route.request().method() !== 'PATCH') return route.fallback()
+    const change = route.request().postDataJSON()
+    writes.push(change)
+    if (writes.length === 1) await new Promise(resolve => { release = resolve })
+    state.item = { ...state.item, ...change, revision: state.item.revision + 1, lock_version: state.item.lock_version + 1 }
+    await route.fulfill({ json: state.item })
+  })
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['DOCUMENT_EDIT'] })
+  const editor = page.locator('[data-editor-surface]')
+  await editor.click()
+  await page.keyboard.press('End')
+  await page.keyboard.down('Backspace')
+  await expect.poll(() => writes.length).toBe(1)
+  for (let count = 0; count < 4; count++) await page.keyboard.down('Backspace')
+  await page.keyboard.up('Backspace')
+  await expect(editor).toHaveText('Working')
+  release()
+  await expect.poll(() => state.item.payload.text).toBe('<p>Working</p>')
+  await page.evaluate(({ revision, lock_version }) => window.testApp.emitSocket('document.update', {
+    data: { id: 'doc-a', node_kind: 'document', revision, lock_version },
+  }), state.item)
+  await editor.press('Backspace')
+  await expect(editor).toHaveText('Workin')
+  await expect.poll(() => state.item.payload.text).toBe('<p>Workin</p>')
+  await page.evaluate(() => window.testApp.mount({ component: 'app/document/components/DocumentEditor.vue', props: { documentId: 'doc-a', agentId: 7 } }))
+  await expect(editor).toHaveText('Workin')
+})
+
 for (const location of ['list', 'tree']) test(`dragging a document from the ${location} inserts its titled link, saves and reopens as a card`, async ({ page }, testInfo) => {
   const state = await library(page, 7)
   const id = '00000000-0000-0000-0000-000000000245'
