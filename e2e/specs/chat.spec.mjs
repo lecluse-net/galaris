@@ -77,7 +77,7 @@ async function final(page) {
   await expect(response).toHaveAttribute('data-message-id', /.+/)
 }
 
-test('internal image attachments retain their canonical URI and cards after sending and reload', async ({ page, request }, testInfo) => {
+for (const mixed of [false, true]) test(`internal image attachments ${mixed ? 'with a local upload ' : ''}retain their canonical URI and cards after sending and reload`, async ({ page, request }, testInfo) => {
   const errors = collectPageErrors(page)
   const fixture = await prepare(page, request)
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')
@@ -92,26 +92,41 @@ test('internal image attachments retain their canonical URI and cards after send
   await page.locator('.file-scheme-uri').filter({ hasText: /^file:\/\/$/ }).click()
   await page.getByRole('button', { name: /^(Select|Sélectionner) Synthetic attachment.png$/ }).click()
   await page.getByRole('dialog').getByRole('button', { name: /^(Select|Sélectionner)$/ }).click()
+  if (mixed) {
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'Synthetic local image.png', mimeType: 'image/png', buffer: png,
+    })
+  }
   const input = page.locator('.composer-fields textarea')
   await expect(input).toHaveValue('')
   await expect(page.getByRole('button', { name: /^(Remove|Retirer) Synthetic attachment.png$/ })).toBeVisible()
   const publication = page.waitForResponse(response => response.request().method() === 'POST'
-    && new URL(response.url()).pathname === `/api/chat/rooms/${fixture.rooms[0]}/messages`)
+    && new URL(response.url()).pathname === `/api/chat/rooms/${fixture.rooms[0]}/${mixed ? 'attachments' : 'messages'}`)
   await input.press('Enter')
   const response = await publication
   expect(response.ok(), await response.text()).toBeTruthy()
   const message = await response.json()
   expect(message.text).toBe('')
   expect(message.resource_uris).toEqual([resource.uri])
+  expect(message.files.map(file => file.name)).toEqual(mixed ? ['Synthetic local image.png'] : [])
   const row = page.locator(`[data-message-id="${message.id}"]`)
   const image = row.getByRole('img', { name: 'Synthetic attachment.png', exact: true })
   await expect(image).toBeVisible()
   await expect(image).toHaveJSProperty('naturalWidth', 1)
+  const localImage = row.getByRole('img', { name: 'Synthetic local image.png', exact: true })
+  if (mixed) {
+    await expect(localImage).toBeVisible()
+    await expect(localImage).toHaveJSProperty('naturalWidth', 1)
+  }
   await release(request, fixture.rooms[0])
   await final(page)
   await page.reload()
   await expect(image).toBeVisible()
   await expect(image).toHaveJSProperty('naturalWidth', 1)
+  if (mixed) {
+    await expect(localImage).toBeVisible()
+    await expect(localImage).toHaveJSProperty('naturalWidth', 1)
+  }
   await page.screenshot({ path: testInfo.outputPath('internal-image-attachment.png') })
   await errors.settle()
   expect(errors()).toEqual([])

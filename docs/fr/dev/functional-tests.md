@@ -864,9 +864,15 @@ présence au catalogue ne remplace pas une exécution réussie.
 `chat-internal-attachments.spec.mjs` vérifie la sélection de fichiers internes hors du
 texte, l’envoi sans texte, le maintien du brouillon après refus et les cartes avec
 miniature en mobile et desktop. Le scénario « internal image attachments » de
-`e2e/specs/chat.spec.mjs` vérifie la publication réelle d’une URI `file://` et sa carte
-après rechargement. `test_native_resources.py` couvre les droits de publication ;
+`e2e/specs/chat.spec.mjs` vérifie la publication réelle d’une URI `file://`, seule ou avec
+une image locale dans le même message, et leurs cartes après rechargement.
+`test_native_resources.py` couvre les droits de publication ;
 `test_native_facade.py` conserve la séparation texte/références dans le journal et le runtime.
+`app/chat/tests/test_attachment_http.py` traverse le véritable endpoint multipart : fichier
+uploadé seul, liste interne vide ou mélange avec une URI interne, persistance et relecture.
+Les références mal formées, non textuelles, trop nombreuses ou inaccessibles sont refusées
+avant stockage de l'upload et publication. Ce niveau HTTP couvre le décodage du formulaire,
+qui n'était pas exercé par les appels Python directs des tests précédents.
 
 `tests/test_transcription_service.py` vérifie qu'un commit ElevenLabs vide conserve la session
 et permet de transcrire le tour suivant. `app/voice/tests/test_engine.py` empêche ce résultat

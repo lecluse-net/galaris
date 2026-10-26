@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 
 from app.agent.contracts import ReasoningEffort
 from app.conversation import ConversationControlAction
@@ -86,6 +86,12 @@ class IdentityMappingUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     external_id: str = Field(min_length=1, max_length=512)
+
+
+class AttachmentResourceUris(RootModel[list[str]]):
+    """A JSON array carried as one multipart field, rather than repeated fields."""
+
+    root: list[str] = Field(max_length=20)
 
 
 class MessageCreate(BaseModel):

@@ -108,6 +108,7 @@ from .emoji_service import (
 )
 from .thumbnail_service import schedule_html_thumbnail
 from .schemas import (
+    AttachmentResourceUris,
     DocumentConversationPreference,
     ConversationControlCommand,
     InteractionAnswer,
@@ -1280,7 +1281,7 @@ async def create_attachment_message(
     displayed_repository_id: UUID | None = Form(default=None),
     language: str = Form(default="", max_length=10),
     document_focus: Annotated[Json[DocumentFocus] | None, Form()] = None,
-    resource_uris: Annotated[Json[list[str]] | None, Form()] = None,
+    resource_uris: Annotated[Json[AttachmentResourceUris] | None, Form()] = None,
 ) -> NativeMessengerMessage:
     _require_enabled()
     await _validate_topic(topic_id)
@@ -1288,7 +1289,9 @@ async def create_attachment_message(
     if room is None or not room.agent_active:
         raise _not_found()
     try:
-        prepared_resources = await prepare_resource_attachments(resource_uris or [], agent_id=room.agent_id)
+        prepared_resources = await prepare_resource_attachments(
+            resource_uris.root if resource_uris is not None else [], agent_id=room.agent_id,
+        )
     except (PermissionError, FileNotFoundError) as exc:
         raise HTTPException(403, "Resource unavailable") from exc
     except ValueError as exc:

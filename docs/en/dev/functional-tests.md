@@ -816,9 +816,15 @@ contracts and tests, then select the least expensive layer that proves the obser
 `chat-internal-attachments.spec.mjs` covers selecting internal files separately from
 text, sending without text, retaining the draft after rejection and thumbnail cards
 on mobile and desktop. The “internal image attachments” scenario in
-`e2e/specs/chat.spec.mjs` checks real publication of a `file://` URI and its card after
-reload. `test_native_resources.py` covers publication permissions;
+`e2e/specs/chat.spec.mjs` checks real publication of a `file://` URI, alone or mixed with
+a local image in the same message, and their cards after reload.
+`test_native_resources.py` covers publication permissions;
 `test_native_facade.py` preserves separate text and references in the journal and runtime.
+`app/chat/tests/test_attachment_http.py` exercises the actual multipart endpoint: an upload
+alone, an empty internal list or an upload mixed with an internal URI, persistence and reload.
+Malformed, non-string, excessive or inaccessible references are rejected before upload
+storage and publication. This HTTP coverage includes form decoding, which the previous
+direct Python calls did not exercise.
 
 `tests/test_transcription_service.py` verifies that an empty ElevenLabs commit keeps the session
 usable for the next turn. `app/voice/tests/test_engine.py` prevents that result from retrying
