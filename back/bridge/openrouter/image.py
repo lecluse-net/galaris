@@ -1,6 +1,7 @@
 """OpenRouter's dedicated Images API with explicit pixel dimensions."""
 
 import base64
+import json
 
 import httpx
 
@@ -10,6 +11,34 @@ from core.util import as_dict, as_list
 
 class OpenRouterImageGeneration:
     select_size = staticmethod(resolve_image_size)
+
+    def prepare_resolution_fallback(
+        self, request: httpx.Request, response: httpx.Response,
+    ) -> httpx.Request | None:
+        """Let the eligible endpoint choose its tier when routing rejects resolution.
+
+        Account guardrails can exclude endpoints supporting the model's theoretical
+        maximum. Only the explicit capability rejection is safe to retry: generation
+        has not started, and all provider preferences and reference images stay intact.
+        """
+        if response.status_code != 400:
+            return None
+        try:
+            error = as_dict(as_dict(response.json()).get("error"))
+            body = as_dict(json.loads(request.content))
+        except ValueError:
+            return None
+        metadata = as_dict(error.get("metadata"))
+        if (
+            metadata.get("failed_routing_step") != "Filter by Image Capabilities"
+            or "resolution: not supported." not in str(error.get("message", ""))
+            or "resolution" not in body
+        ):
+            return None
+        del body["resolution"]
+        headers = dict(request.headers)
+        headers.pop("content-length", None)
+        return httpx.Request(request.method, request.url, headers=headers, json=body)
 
     def prepare_request(
         self, connection: ProviderConnection, *, model: str, prompt: str,

@@ -1,4 +1,5 @@
 import base64
+import asyncio
 import json
 from io import BytesIO
 from types import SimpleNamespace
@@ -205,19 +206,107 @@ async def test_different_native_dimensions_are_accepted_without_transform_or_ret
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("provider_code", ["openai-api", "openrouter"])
 @pytest.mark.parametrize("status,payload", [(400, {"error": {"message": "Unsupported size"}}), (200, {"data": []})])
-async def test_provider_errors_are_recorded(monkeypatch, model_context, status, payload):
-    _, _, finalize = model_context
+async def test_provider_errors_are_recorded(monkeypatch, model_context, status, payload, provider_code):
+    model, create, finalize = model_context
+    model.provider.catalog_code = provider_code
     mock_http(monkeypatch, lambda request: httpx.Response(status, json=payload))
     with pytest.raises(ValueError) as failure:
         await service.generate_image_native("selected", "Image", [], width=1024, height=1024)
     assert finalize.call_args.kwargs["status"] == "error"
+    assert create.await_count == finalize.await_count == 1
     if status >= 400:
         assert isinstance(failure.value, ImageGenerationProviderError)
         assert failure.value.model == "gpt-image-1"
         assert failure.value.status_code == status
         assert finalize.call_args.kwargs["raw_response"] == json.dumps(payload, separators=(",", ":"))
         assert "rejected native size" not in finalize.call_args.kwargs["error"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fallback_outcome", ["success", "rejected", "cancelled"])
+async def test_router_rejected_resolution_uses_provider_default_once(monkeypatch, model_context, fallback_outcome):
+    model, create, finalize = model_context
+    model.provider.catalog_code = "openrouter"
+    model.llm_name = "google/gemini-3-pro-image"
+    create.side_effect = [SimpleNamespace(id=uuid4()), SimpleNamespace(id=uuid4())]
+    original = image_bytes(848, 1264)
+    rejection = {"error": {
+        "message": 'No provider supports the requested parameters. Provider rejections: '
+                   'Synthetic provider: resolution: not supported. Accepted: 1K, 2K',
+        "code": 400,
+        "metadata": {"failed_routing_step": "Filter by Image Capabilities"},
+    }}
+    requests = []
+
+    def handler(request):
+        payload = json.loads(request.content)
+        requests.append(payload)
+        if len(requests) == 1:
+            assert payload["resolution"] == "4K"
+            return httpx.Response(400, json=rejection)
+        assert len(requests) == 2
+        assert payload == {key: value for key, value in requests[0].items() if key != "resolution"}
+        assert int(request.headers["content-length"]) == len(request.content)
+        if fallback_outcome == "rejected":
+            return httpx.Response(400, json=rejection)
+        if fallback_outcome == "cancelled":
+            raise asyncio.CancelledError
+        return httpx.Response(200, json={"data": [{"b64_json": base64.b64encode(original).decode()}]})
+
+    mock_http(monkeypatch, handler)
+
+    async def generate():
+        return await service.generate_image_native(
+            "selected", "Synthetic portrait", [(b"synthetic-reference", "image/png")],
+            width=1600, height=2560,
+        )
+
+    if fallback_outcome == "success":
+        assert await generate() == (original, "image/png")
+    else:
+        with pytest.raises(asyncio.CancelledError if fallback_outcome == "cancelled" else ImageGenerationProviderError):
+            await generate()
+
+    assert len(requests) == 2
+    assert requests[1]["aspect_ratio"] == "2:3"
+    assert requests[1]["input_references"]
+    assert create.await_count == finalize.await_count == 2
+    first, second = finalize.await_args_list
+    assert first.kwargs["status"] == "error"
+    assert json.loads(first.kwargs["raw_response"]) == rejection
+    assert first.args[0] != second.args[0]
+    assert second.kwargs.get("status", "completed") == {
+        "success": "completed", "rejected": "error", "cancelled": "cancelled",
+    }[fallback_outcome]
+    if fallback_outcome == "success":
+        assert "848x1264" in second.kwargs["trace"]["response_text"]
+    assert "provider default" in create.await_args_list[1].kwargs["request_body"]["messages"][0]["content"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status,message,step", [
+    (401, "resolution: not supported.", "Filter by Image Capabilities"),
+    (402, "resolution: not supported.", "Filter by Image Capabilities"),
+    (429, "resolution: not supported.", "Filter by Image Capabilities"),
+    (500, "resolution: not supported.", "Filter by Image Capabilities"),
+    (400, "input_references: not supported.", "Filter by Image Capabilities"),
+    (400, "Prompt rejected by content policy", "Filter by Image Capabilities"),
+    (400, "resolution: not supported.", "Filter by Guardrails"),
+])
+async def test_router_does_not_retry_other_rejections(monkeypatch, model_context, status, message, step):
+    model, create, finalize = model_context
+    model.provider.catalog_code = "openrouter"
+    model.llm_name = "google/gemini-3-pro-image"
+    payload = {"error": {"message": message, "metadata": {"failed_routing_step": step}}}
+    mock_http(monkeypatch, lambda request: httpx.Response(status, json=payload))
+
+    with pytest.raises(ImageGenerationProviderError):
+        await service.generate_image_native("selected", "Synthetic image", [], width=1600, height=2560)
+
+    assert create.await_count == finalize.await_count == 1
+    assert finalize.call_args.kwargs["status"] == "error"
 
 
 @pytest.mark.asyncio

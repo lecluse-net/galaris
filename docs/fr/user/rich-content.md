@@ -363,6 +363,9 @@ Un agent peut aussi générer une image, copier son URI vers la collection des p
 document, puis l'intégrer au texte. Le nom du fichier suit le format natif renvoyé par le modèle :
 un PNG porte l'extension `.png`, même si la destination demandée se terminait par `.jpg`.
 L'image conserve ses octets et ses dimensions ; réutilisez l'URI rendue par l'outil.
+Les dimensions demandées sont des préférences. Si OpenRouter refuse explicitement la résolution
+choisie, Galaris réessaie une seule fois avec la résolution par défaut du fournisseur, en conservant
+le modèle, le cadrage demandé et les images de référence. Le résultat indique les dimensions réelles.
 
 Deux pièces jointes peuvent avoir le même nom source. Pour les distinguer, l'agent utilise
 leurs URI complètes et leurs clés de navigation `entry_name`, uniques dans leur parent.

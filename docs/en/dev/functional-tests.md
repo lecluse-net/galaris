@@ -871,6 +871,11 @@ JSON-encoded list, temporary cleanup, and filenames matching the native format w
 conversion or overwriting a neighboring file. The workflow in
 `back/app/memory/tests/test_document_resources.py` generates a synthetic PNG, copies it as an
 attachment, embeds it in a document, and checks reader permissions.
+`back/app/llm/tests/test_native_image_generation.py` also covers an OpenRouter endpoint whose
+available resolutions are narrower than the model's: after an explicit routing rejection,
+one attempt uses the provider's default resolution with the same references and requested
+aspect ratio. Both calls retain diagnostics; a second rejection or cancellation ends recovery.
+Access denials, content rejections and ambiguous errors do not trigger another generation.
 `back/app/chat/tests/test_native_facade.py` verifies MCP file delivery to a human, with and
 without a Task, using independent PostgreSQL transactions: room synchronization does not block
 its own receipt, and both bytes and the message remain readable. It uses `committed_database`;

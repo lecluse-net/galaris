@@ -12,7 +12,9 @@ from PIL import Image
 from core.util import complete_io
 
 from . import llm_call_service, llm_provider_service, llm_service
-from .provider_facade import ImageGenerationProviderError, image_generation_provider_for
+from .provider_facade import (
+    ImageGenerationProviderError, ImageResolutionFallback, image_generation_provider_for,
+)
 from .purposes import LLMCallPurpose
 from .resource_discovery import provider_connection
 from .subscription_policy import enforce_subscription_access
@@ -53,62 +55,74 @@ async def generate_image_native(
         connection, model=llm.llm_name, prompt=prompt, sources=sources,
         width=selected.width or width, height=selected.height or height,
     )
-    call = await llm_call_service.create_running_call(
-        purpose=LLMCallPurpose.IMAGE_GENERATION,
-        task_id=task_id,
-        agent_run_id=None,
-        agent_id=agent_id,
-        requester_user_id=requester_user_id,
-        llm_id=llm.id,
-        provider_name=provider.name,
-        provider_code=connection.catalog_code or connection.provider_type,
-        requested_model=model_code,
-        effective_model=llm.llm_name,
-        stream=False,
-        request_body={"messages": [{"role": "user", "content": (
-            f"{prompt}\n\nPreferred image dimensions: {width}x{height} pixels. "
-            f"Selected native dimensions: {selected_label}. "
-            f"Reference images: {len(sources)}."
-        )}]},
-        is_subscription=llm.is_subscription,
-    )
-    trace: dict[str, object] = {}
-    raw_response = ""
-    try:
-        async with httpx.AsyncClient(timeout=900.0) as client:
-            response = await client.send(request)
-        if response.headers.get("content-type", "").startswith("application/json"):
-            raw_response = response.text
-        if not response.is_success:
-            raise ImageGenerationProviderError(llm.llm_name, response.status_code, response.text[:500])
-        result = await complete_io(adapter.read_response, response)
-        trace = {
-            "usage": result.usage,
-            "finish_reason": "stop",
-            "upstream_request_id": response.headers.get("x-request-id"),
-        }
-        with Image.open(BytesIO(result.content)) as image:
-            actual_size = image.size
-            media_type = Image.MIME.get(image.format or "", result.media_type)
-        trace["response_text"] = (
-            f"Image generated natively at {actual_size[0]}x{actual_size[1]} pixels. "
-            f"Preferred: {width}x{height}; selected: {selected_label}."
+    # A bridge may recover once from a definitive capability rejection. Each HTTP
+    # attempt keeps its own accounting and failure evidence; ambiguous failures
+    # must never duplicate a potentially completed generation.
+    for attempt in range(2):
+        call = await llm_call_service.create_running_call(
+            purpose=LLMCallPurpose.IMAGE_GENERATION,
+            task_id=task_id,
+            agent_run_id=None,
+            agent_id=agent_id,
+            requester_user_id=requester_user_id,
+            llm_id=llm.id,
+            provider_name=provider.name,
+            provider_code=connection.catalog_code or connection.provider_type,
+            requested_model=model_code,
+            effective_model=llm.llm_name,
+            stream=False,
+            request_body={"messages": [{"role": "user", "content": (
+                f"{prompt}\n\nPreferred image dimensions: {width}x{height} pixels. "
+                f"Selected native dimensions: {selected_label}. "
+                f"Reference images: {len(sources)}."
+            )}]},
+            is_subscription=llm.is_subscription,
         )
-    except BaseException as exc:
+        trace: dict[str, object] = {}
+        raw_response = ""
+        fallback: httpx.Request | None = None
+        try:
+            async with httpx.AsyncClient(timeout=900.0) as client:
+                response = await client.send(request)
+            if response.headers.get("content-type", "").startswith("application/json"):
+                raw_response = response.text
+            if not response.is_success:
+                if attempt == 0 and isinstance(adapter, ImageResolutionFallback):
+                    fallback = await complete_io(adapter.prepare_resolution_fallback, request, response)
+                raise ImageGenerationProviderError(llm.llm_name, response.status_code, response.text[:500])
+            result = await complete_io(adapter.read_response, response)
+            trace = {
+                "usage": result.usage,
+                "finish_reason": "stop",
+                "upstream_request_id": response.headers.get("x-request-id"),
+            }
+            with Image.open(BytesIO(result.content)) as image:
+                actual_size = image.size
+                media_type = Image.MIME.get(image.format or "", result.media_type)
+            trace["response_text"] = (
+                f"Image generated natively at {actual_size[0]}x{actual_size[1]} pixels. "
+                f"Preferred: {width}x{height}; selected: {selected_label}."
+            )
+        except BaseException as exc:
+            with anyio.CancelScope(shield=True):
+                await llm_call_service.finalize_call(
+                    call.id, trace=trace, raw_response=raw_response,
+                    status="cancelled" if isinstance(exc, asyncio.CancelledError) else "error", error=str(exc),
+                    input_rate=llm.cost_per_input_token,
+                    cached_input_rate=llm.cost_per_cached_input_token,
+                    output_rate=llm.cost_per_output_token,
+                )
+            if isinstance(exc, ImageGenerationProviderError) and fallback is not None:
+                request = fallback
+                selected_label = "provider default (requested resolution rejected)"
+                continue
+            raise
         with anyio.CancelScope(shield=True):
             await llm_call_service.finalize_call(
                 call.id, trace=trace, raw_response=raw_response,
-                status="cancelled" if isinstance(exc, asyncio.CancelledError) else "error", error=str(exc),
                 input_rate=llm.cost_per_input_token,
                 cached_input_rate=llm.cost_per_cached_input_token,
                 output_rate=llm.cost_per_output_token,
             )
-        raise
-    with anyio.CancelScope(shield=True):
-        await llm_call_service.finalize_call(
-            call.id, trace=trace, raw_response=raw_response,
-            input_rate=llm.cost_per_input_token,
-            cached_input_rate=llm.cost_per_cached_input_token,
-            output_rate=llm.cost_per_output_token,
-        )
-    return result.content, media_type
+        return result.content, media_type
+    raise AssertionError("Image generation exhausted its bounded attempts")

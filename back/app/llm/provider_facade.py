@@ -287,6 +287,15 @@ class ImageGenerationProvider(Protocol):
     def read_response(self, response: httpx.Response) -> ImageGenerationResult: ...
 
 
+@runtime_checkable
+class ImageResolutionFallback(Protocol):
+    """Optional bridge recovery after a definitive, pre-generation size rejection."""
+
+    def prepare_resolution_fallback(
+        self, request: httpx.Request, response: httpx.Response,
+    ) -> httpx.Request | None: ...
+
+
 class ProviderUnavailableError(ValueError):
     """The configured provider cannot currently accept inference requests."""
 
@@ -893,6 +902,7 @@ __all__ = [
     "register_image_size_resolver",
     "resolve_image_size",
     "ImageGenerationProvider",
+    "ImageResolutionFallback",
     "ImageGenerationResult",
     "image_generation_provider_for",
     "register_image_generation_provider",

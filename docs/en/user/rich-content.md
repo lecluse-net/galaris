@@ -337,6 +337,9 @@ An agent can also generate an image, copy its URI to the document's attachment c
 then embed it in the text. The filename follows the model's native output format: a PNG uses
 `.png`, even when the requested destination ended in `.jpg`. Its bytes and dimensions are
 preserved; reuse the URI returned by the tool.
+Requested dimensions are preferences. If OpenRouter explicitly rejects the selected resolution,
+Galaris retries once with the provider's default resolution, preserving the model, requested
+aspect ratio and reference images. The result reports the actual dimensions.
 
 Two attachments can share a source filename. To distinguish them, the agent uses their
 complete URIs and `entry_name` navigation keys, which are unique within their parent.

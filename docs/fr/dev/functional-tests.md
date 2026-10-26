@@ -924,6 +924,12 @@ de liste ou de liste JSON encodée, le nettoyage des temporaires et le nom confo
 natif sans conversion ni remplacement d'un fichier voisin. Le parcours de
 `back/app/memory/tests/test_document_resources.py` génère un PNG synthétique, le copie en pièce
 jointe, l'intègre au document et vérifie les droits du lecteur.
+`back/app/llm/tests/test_native_image_generation.py` couvre aussi un fournisseur OpenRouter
+dont les résolutions disponibles sont plus restreintes que celles du modèle : après un refus
+explicite du routage, une seule tentative utilise la résolution par défaut, avec les mêmes
+références et le même cadrage demandé. Les deux appels gardent leur diagnostic ; un second refus
+ou une annulation termine le repli. Les refus d'accès, de contenu et les erreurs ambiguës
+ne déclenchent pas de nouvelle génération.
 `back/app/chat/tests/test_native_facade.py` vérifie l'envoi MCP d'un fichier à un humain,
 avec et sans tâche, sur de vraies transactions PostgreSQL indépendantes : la synchronisation de
 la room ne bloque pas son propre reçu, les octets et le message restent lisibles. Ce scénario
