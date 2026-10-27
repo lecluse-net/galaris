@@ -1,9 +1,10 @@
 # Migration progressive du backend vers Rust — piste exploratoire
 
 - Statut : `design`
-- Revue des sources : 2026-10-25.
+- Revue des sources : 2026-10-27 ; approfondissement documentaire des alternatives à Pydantic AI.
 - Portée : étude d'une migration ascendante par bibliothèque native PyO3.
-- Réalisation : non engagée ; aucun prototype ni benchmark Rust réalisé pour ce plan.
+- Réalisation : aucune migration engagée ; neuf sondes synthétiques Rig exécutées en Docker,
+  sans driver Rust intégré, campagne LLM comparative ni benchmark de performance.
 
 ## Résultat recherché et décisions encore ouvertes
 
@@ -26,7 +27,9 @@ Trois destinations doivent rester distinctes :
 
 Conserver A ou B est une issue valable. Un binaire Rust qui embarque CPython et Pydantic AI
 reste hybride. Retirer Pydantic AI est une décision indépendante, tardive et facultative.
-Aucun framework agentique Rust de remplacement n'est choisi.
+Aucun framework agentique Rust de remplacement n'est choisi. Rig est le premier candidat
+sondé, sans priorité acquise sur ADK-Rust, AutoAgents et Swiftide ; le maintien hybride
+reste la référence et une solution de repli.
 
 ## Sources et contraintes établies
 
@@ -139,6 +142,10 @@ Les mesures brutes restent sous `artifacts/` ; les conclusions versionnées sont
    il ne prouve pas le remplacement de la boucle agentique.
 5. Préparer la recette minimale R08 : texte, appel d'un outil de lecture, résultat final,
    annulation et reprise. Identifier ce qui restera réellement Python dans chaque variante.
+6. Appliquer l'[étude comparative et ses expériences discriminantes](#alternative-à-pydantic-ai--étude-du-27-octobre-2026).
+   La recherche et les sondes isolées ci-dessous amorcent R01 ; inventaire exhaustif,
+   prototype intégré et qualification restent à réaliser. Un exemple upstream n'est pas
+   une preuve Galaris.
 
 **Sortie :** étude de faisabilité, contraintes et coût de maintenance, avant une extension
 du runtime Rust. Décider si l'on poursuit vers A, explore B ou étudie C ; une difficulté
@@ -356,6 +363,415 @@ schéma démontrée ; une ancienne image ne suffit pas à annuler des transforma
 avec preuve de compatibilité, exploitation et mesure globale. Si cette preuve manque,
 conserver A/B et documenter les dépendances restantes.
 
+## Alternative à Pydantic AI : étude du 27 octobre 2026
+
+### Conclusion et niveau de preuve
+
+**Rig reste un candidat à expérimenter ; un remplacement direct de Pydantic AI ne conserve
+pas les garanties actuelles.** Neuf sondes exécutables ont confirmé des écarts de validation,
+de retry et de reprise décrits ci-dessous. Les fonctions classiques
+existent : modèles multiples, outils, historique, streaming, sorties typées et hooks.
+L'intérêt supplémentaire est une machine d'exécution sérialisable que l'hôte peut piloter
+par étapes. Cela rend le remplacement envisageable sans réécrire tout un SDK.
+Voir l'[architecture Rig](https://rig.rs/docs/architecture) et ses
+[runs persistables](https://rig.rs/docs/concepts/runs).
+
+La recommandation est de **conserver Pydantic AI comme référence et de ne qualifier Rig
+qu'avec une exigence explicite de non-régression**. Sa sélection comme candidat à une
+expérience est une appréciation d'adéquation architecturale parmi
+les solutions examinées, pas un classement exhaustif des frameworks Rust. Une amélioration
+de qualité des réponses, de coût, de vitesse ou de fiabilité doit encore être mesurée.
+Le langage ne rend pas le modèle plus compétent : changer le contexte, les schémas ou les
+retries peut même dégrader ses résultats avec le même modèle et le même prompt apparent.
+
+Références de version : le checkout verrouille `pydantic-ai` et `pydantic-ai-slim` en
+**2.61.0** dans [uv.lock](../../back/uv.lock). La page des
+[publications Rig](https://github.com/0xPlaygrounds/rig/releases) présente **0.45.0** comme
+dernière version publiée hors préversion, et **0.46.0-rc.1** comme préversion.
+L'[API publiée](https://docs.rs/rig/latest/rig/) confirme la façade 0.45.0. Les sondes utilisent
+les crates publiées `rig-agent` et `rig-core` **0.45.0**, compilées avec Rust **1.97.1** ;
+les fichiers critiques examinés correspondent à la révision
+[`98ed06d7f1c911e6e4c7fdb5d690093bc964c514`](https://github.com/0xPlaygrounds/rig/tree/98ed06d7f1c911e6e4c7fdb5d690093bc964c514).
+Les guides web évoluent indépendamment
+et contiennent encore des exemples 0.44.0 : relever les signatures, features, dépendances
+et formats sur la version figée avant tout prototype, sans copier les exemples tels quels.
+
+### Ce que Galaris devrait effectivement remplacer
+
+La dépendance actuelle comprend plusieurs couches, avec des difficultés différentes.
+Les surfaces ci-dessous sont constatées dans le code ; cet échantillonnage ne clôt pas
+l'inventaire exhaustif de R01.
+
+| Couche | Usage actuel et source | Travail de remplacement |
+|---|---|---|
+| Boucle d'agent | `PydanticAgent`, hooks, `ToolSearch`, `ProcessHistory`, token d'annulation dans [runtime.py](../../back/app/harness/runtime.py). | Piloter modèles/outils, conserver gardes, budgets, compaction, interruption et sortie unique. Difficulté élevée, mais frontière `AgentDriver` déjà présente. |
+| Validation et inférence structurée | `PromptedOutput`, `ModelRetry`, validateurs et contexte durable dans [structured_service.py](../../back/app/llm/structured_service.py) et [output_registry.py](../../back/app/llm/output_registry.py). | Reproduire modes tool/prompted, validation métier et feedback borné. Désérialiser un JSON dans une struct ne suffit pas. |
+| Protocoles et profils fournisseurs | Construction Chat/Responses, profils et paramètres dans [pydantic_ai_utils.py](../../back/app/llm/pydantic_ai_utils.py), [protocol_inference.py](../../back/app/llm/protocol_inference.py), [provider_facade.py](../../back/app/llm/provider_facade.py) et les bridges. | Qualifier les requêtes réellement envoyées, authentification, raisonnement, refus, sorties incomplètes, coûts et annulation, pour chaque capacité et route. Risque transversal très élevé. |
+| Historique et reprise | Messages SDK, `DeferredToolResults`, identités et versions 1 à 5 dans [checkpoint.py](../../back/app/harness/checkpoint.py). | Conserver l'existant, les parties opaques et les arguments approuvés ; rattacher les reçus au bon tour. Conversion à perte interdite. |
+| Compétences et découverte | Capabilities chargées à la demande ou eager dans [skills.py](../../back/app/harness/skills.py), outils MCP filtrés dans le runtime. | Préserver instructions, catalogue autorisé, chargement et révocation. Une liste dynamique d'outils ne démontre pas cette sémantique. |
+
+En revanche, Galaris possède déjà les contrats de driver, les droits, les tâches, les leases,
+les décisions de routage et les journaux durables. Ces responsabilités restent dans leurs
+domaines ; les fonctionnalités « multi-agent », « mémoire » ou « workflows » d'un framework
+ne justifient pas de remplacer `app.task`, `app.memory` ou `app.process`.
+
+Deux dépendances restent séparées : Pydantic validation des API/modèles n'est pas Pydantic AI ;
+Monty n'est pas la boucle d'agent. Le [projet Monty](https://github.com/pydantic/monty) est
+déjà écrit en Rust et sa [documentation Rust](https://pydantic.dev/docs/monty/quickstart/rust/)
+décrit interpréteur et pool de workers. Le checkout l'utilise notamment pour
+les computations Process. Étudier la conservation de ce moteur et le remplacement de son
+binding hôte avant d'envisager un autre sandbox ; son intégration et ses limites doivent
+être qualifiées séparément. Ne pas assimiler exécution de code Python dans ce sandbox et
+dépendance du backend à CPython.
+
+### Fournisseurs : partage réel entre Galaris et le SDK
+
+La compatibilité fournisseur n'appartient pas entièrement à Pydantic AI. Le trajet actuel
+compose construction SDK et adaptations Galaris :
+
+```text
+Agent / appel structuré
+  -> modèle Pydantic AI : historique, schéma, construction et décodage
+  -> transport interne Galaris
+  -> gateway : droits, capacité, politique de paramètres, admission et comptabilité
+  -> transport du bridge : authentification et protocole de l'endpoint
+  -> fournisseur
+```
+
+| Responsabilité constatée | Propriétaire actuel | Conséquence pour Rust |
+|---|---|---|
+| Choix des paramètres, alias des plafonds, effort et protections des champs fonctionnels | [request_parameters.py](../../back/app/llm/request_parameters.py), appliqué par [proxy_service.py](../../back/app/llm/proxy_service.py). | Réutiliser ces règles et leur corpus ; ne pas les remplacer par les réglages par défaut de Rig. |
+| Capacités sur lesquelles ces politiques sont fondées | Bridges, par exemple [OpenAI](../../back/bridge/openai/parameters.py) et [DeepSeek](../../back/bridge/deepseek/parameters.py), qui interrogent les profils Pydantic AI. | Le code d'adaptation est Galaris, mais sa source de capacités reste partiellement SDK. Ne pas supprimer ces imports sans une source qualifiée équivalente. |
+| Négociation après rejet explicite d'un paramètre facultatif | `_send_best_effort` dans le proxy ; conservation des budgets/outils/schémas, retrait borné, aucun retry sur flux partiellement reçu. | Conserver la négociation existante ; ne pas ajouter une autre couche de retry payant. |
+| Authentification, renouvellement et adaptation d'endpoint | Contrats de `provider_facade.py`, bridges et [transport Codex](../../back/bridge/openai/codex.py). | Garder leur propriétaire, avec le même endpoint et les mêmes droits pendant la comparaison. |
+| Complétion des arguments fragmentés Responses | [responses_stream.py](../../back/app/llm/responses_stream.py), appelé par le proxy avant lecture SDK. | Réutiliser cette garantie ; un candidat doit refuser un suffixe terminal contradictoire avant effet. |
+| Mappage des messages, schémas, parties natives et lecture des réponses | Modèles Pydantic AI reliés par [pydantic_ai_utils.py](../../back/app/llm/pydantic_ai_utils.py) et `protocol_inference.py`. | C'est cette couche SDK qu'un remplacement doit reproduire, même si le gateway reste inchangé. |
+
+L'ADR 0095 ne transfère donc pas toute la compatibilité au SDK. Elle retire la copie locale
+du constructeur/décodeur, tout en conservant le gateway et les bridges. Le test actuel
+`test_sdk_inference_composes_with_provider_contract` vérifie justement cette composition.
+Un essai Rig doit l'emprunter : remplacer uniquement le client et comparer son comportement
+après les mêmes adaptations Galaris, avant d'élargir la migration.
+
+### Options réellement différentes
+
+| Option | Ce qu'elle apporte | Coût ou limite pour Galaris | Position proposée |
+|---|---|---|---|
+| Rust + Pydantic AI conservé | Migration des règles/runtime sans abandonner les adaptateurs et formats SDK actuels. | Deux runtimes et leur pont ; Python reste nécessaire. | Référence de comparaison ; destination A/B pleinement valable. |
+| Rig + adaptateur Galaris | SDK fournisseurs et composants agentiques réutilisables, avec possibilité de piloter l'état par étapes. | Adaptation des contrats durables, profils et historique ; suivi des évolutions de dépendance. | Premier candidat sondé ; à comparer aux autres frameworks ci-dessous. |
+| `rust-genai` + boucle Galaris | Client Rust multi-fournisseur, protocoles natifs, outils et streaming. | La bibliothèque se présente comme client ; la boucle, la reprise, les approbations et leurs politiques resteraient à posséder. | Candidat de comparaison si la couche fournisseurs de Rig échoue sur une route importante. |
+| Distri | Framework Rust avec agents, skills, outils MCP et orchestration. | Recouvrement plus large avec Galaris ; extraire une simple couche SDK demande une étude spécifique. | Veille, sans l'adopter comme nouveau socle d'orchestration. |
+| SDK propres à chaque fournisseur ou HTTP direct | Maîtrise du protocole et des fonctionnalités spécifiques. | Maintenir encodeurs, streaming, profils et compatibilités par fournisseur recrée le coût que l'ADR 0095 cherchait à retirer. | Adaptateur ciblé si nécessaire ; pas de SDK multi-fournisseur maison par défaut. |
+
+Sources primaires pour les deux autres bibliothèques examinées :
+[rust-genai](https://github.com/jeremychone/rust-genai) documente son rôle de client et
+les réglages d'endpoint/authentification ; [Distri](https://github.com/distrihub/distri)
+décrit sa propre orchestration et distingue les licences des composants communs et serveur.
+Cette comparaison porte sur l'intégration au dépôt, pas sur leur valeur pour une application neuve.
+
+### Autres frameworks Rust : élargissement de la sélection
+
+La première étude était trop centrée sur Rig. Il existe d'autres frameworks agentiques
+Rust, distincts des simples clients de modèles. La revue documentaire du 27 octobre élargit
+la sélection ; seuls les neuf comportements Rig décrits plus bas ont été testés localement.
+Les fonctionnalités des autres projets sont ici déclarées par leurs sources primaires,
+sans preuve d'équivalence, de meilleure qualité ou de maturité suffisante pour Galaris.
+
+| Framework | Périmètre documenté | Intérêt et vérification prioritaire pour Galaris |
+|---|---|---|
+| [ADK-Rust](https://github.com/zavora-ai/adk-rust/blob/v2.3.0/README.md) | Agents, outils, modèles multiples, sessions, callbacks, graphes avec checkpoints/approbations et voix temps réel. | Candidat à examiner pour la couverture des contrats et la reprise. Vérifier les capacités de la version publiée, l'exécution des validateurs et le feedback des erreurs, sans remplacer les domaines Task/Process de Galaris. |
+| [AutoAgents](https://github.com/liquidos-ai/AutoAgents) | Exécuteurs Basic/ReAct, outils et sorties structurées, streaming, mémoire, hooks, orchestration par acteurs et outils WASM ; bindings Python. | Candidat pour une boucle agentique native et une transition Python/Rust. Vérifier validation locale, correction après erreur, états durables, annulation et coût ; les capacités diffèrent selon le fournisseur. |
+| [Swiftide](https://github.com/bosun-ai/swiftide/blob/master/README.md) | Harnais agentique, historique, hooks, MCP, approbation humaine, suspension/reprise, graphes typés et pipelines RAG. | Candidat pour des composants adaptables à un hôte Galaris. Vérifier le contrat exact de validation/reprise et la frontière du contexte/exécuteur d'outils. Le projet annonce explicitement des API encore pré-1.0. |
+| [Distri](https://github.com/distrihub/distri) | Framework agents/skills/outils/MCP avec son serveur et son orchestration. | Garder dans l'inventaire ; examiner l'extraction des composants sans créer un second propriétaire des tâches, des droits ou des sessions. |
+| [LangChain Rust](https://github.com/Abraxas-365/langchain-rust) | Implémentation Rust de l'approche LangChain. | Alternative existante, sans priorité proposée compte tenu du retour utilisateur sur la migration passée. Ce retour Python ne démontre pas à lui seul la qualité de cette implémentation Rust. |
+
+Les API publiées consultées affichent [ADK-Rust 2.3.0](https://docs.rs/adk-rust/2.3.0/adk_rust/),
+[AutoAgents 0.4.0](https://docs.rs/autoagents/0.4.0/autoagents/) et
+[Swiftide 0.33.0](https://docs.rs/swiftide/0.33.0/swiftide/). Le dépôt courant d'ADK-Rust
+annonce déjà une 3.0 candidate non publiée : ne pas attribuer ses nouvelles garanties à la
+2.3.0 sans vérification. Un numéro majeur, un nombre de téléchargements ou l'appellation
+« production-ready » ne suffit pas à classer la maturité ou la qualité.
+
+[Kalosm](https://github.com/floneum/kalosm) reste une piste distincte pour les modèles locaux,
+les médias et la génération contrainte ; son périmètre documenté ne constitue pas une
+preuve de remplacement de l'orchestration actuelle. `rust-genai` reste un client à combiner
+avec une boucle possédée par Galaris, et non un framework agentique équivalent.
+
+**Sélection proposée, sans vainqueur : Rig, ADK-Rust, AutoAgents et Swiftide.** Examiner
+d'abord ADK-Rust sur la validation, le feedback d'erreur et la reprise, puis les contrats
+d'AutoAgents et Swiftide, chaque fois sur une version publiée figée. Cette priorité est
+un ordre d'investigation, pas un classement de maturité ou de qualité. Ensuite,
+adapter les mêmes sondes de validation, feedback, effets et reprise. Comparer l'effort
+d'intégration avant de retenir les candidats d'une campagne LLM réelle. Ne pas intégrer
+quatre moteurs au produit et ne pas déduire qu'un framework plus large produit de meilleures
+réponses. La référence reste Pydantic AI ; l'exigence de non-régression s'applique à tous.
+
+### Rig face aux garanties utiles de Pydantic AI
+
+« Documenté » signifie que l'amorce existe chez Rig, **aucune ligne n'est encore qualifiée
+dans Galaris**. L'absence de preuve n'affirme pas qu'une fonctionnalité est impossible.
+
+| Garantie | Point d'appui Rig documenté | Écart ou preuve Galaris nécessaire |
+|---|---|---|
+| Appel multi-fournisseur | Clients, modèles et transports remplaçables. | Même route, modèle/effort et restrictions ; pas seulement une réponse texte. Ne pas supposer que tous les endpoints compatibles OpenAI ont le même profil. |
+| Résultat structuré | `Extractor` et `prompt_typed`, schémas et désérialisation. | Règles Pydantic et validateurs métier, différence absent/null, unions, champs supplémentaires, formats et modes sans outils. |
+| Streaming | Événements texte, raisonnement, arguments, résultats d'outils et appels de modèle. | Projection `AgentEvent`, clôture normale, erreur après fragments, contenu provisoire rejeté et absence d'effet sur arguments partiels. |
+| Outils et approbation | Hooks avant dispatch ; `AgentRun` peut conserver les appels en attente. | Autorisation durable Galaris, revalidation après accord, arguments inchangés et révocation. L'exemple d'accord en mémoire n'est pas suffisant. |
+| Reprise | État sérialisable pilotable par étapes. | Journal avant effet et reçu après effet, leases, crash aux frontières et issue inconnue. Un snapshot ne prouve pas la non-répétition d'un effet. |
+| Retry et erreurs | Hooks de retour au modèle, erreurs typées, retries d'extraction. | Budgets séparés outils/sortie, restitution des erreurs et attribution de tous les appels. Le guide des hooks demande un compteur propre pour les retries de réponse. |
+| Compétences et grand catalogue | Outils dynamiques et modification de requête par hooks ; intégration MCP. | Reproduire chargement différé/eager et recherche autorisée, sans injecter tous les schémas à chaque tour. Pas d'équivalence établie avec les capabilities actuelles. |
+| Historique et médias | Messages, historique et capacités média selon les fournisseurs. | Signatures de raisonnement, blocs opaques, compaction native, pièces jointes seules, références URI et voix interrompue. TTS/STT n'est pas une preuve de parité de la voix temps réel. |
+| Tests et supervision | Modèles scriptés, erreurs/fragments simulés, inspection des requêtes ; spans via `tracing`. | Réemployer corpus synthétiques et garanties existantes, corrélation entre runtimes et comptabilité persistée. Une trace ne remplace pas `LLMCall`. |
+
+Sources des capacités : [clients](https://rig.rs/docs/concepts/provider_clients),
+[sorties structurées](https://rig.rs/docs/concepts/extractors),
+[streaming](https://rig.rs/docs/concepts/streaming), [hooks](https://rig.rs/docs/concepts/hooks),
+[MCP](https://rig.rs/docs/integrations/model_context_protocol),
+[tests](https://rig.rs/docs/concepts/testing), [médias](https://rig.rs/docs/concepts/media_generation)
+et [télémétrie](https://rig.rs/docs/concepts/observability).
+Pour la référence Python, voir les [validateurs de sortie](https://github.com/pydantic/pydantic-ai/blob/main/docs/output.md)
+et les [budgets de retry](https://github.com/pydantic/pydantic-ai/blob/main/docs/retries.md) ;
+les comportements du checkout et de sa version verrouillée restent à relever par les tests.
+
+### Maturité de Rig : constats sur le code et neuf sondes exécutées
+
+La maturité ne se déduit ni du nombre de fournisseurs ni du langage. Le retour utilisateur
+sur de meilleurs résultats après LangChain → Pydantic AI fixe une exigence de conservation
+de la réussite métier ; il ne constitue pas une mesure comparative avec Rig.
+
+**Indices positifs :** les sources de la révision examinée contiennent des tests de
+streaming, de protocoles fournisseurs enregistrés, d'annulation, d'identifiants réutilisés
+et de reprise. Les checks GitHub de cette révision indiquent notamment des succès pour les
+tests, doctests, conformance et dépendances minimales ; cela atteste ces exécutions upstream,
+pas leur adéquation à Galaris. Voir la [CI de la révision](https://github.com/0xPlaygrounds/rig/actions?query=98ed06d)
+et sa [définition](https://github.com/0xPlaygrounds/rig/blob/98ed06d/.github/workflows/ci.yaml).
+
+**Stabilité à qualifier :** le [changelog figé](https://github.com/0xPlaygrounds/rig/blob/98ed06d/CHANGELOG.md)
+décrit des changements incompatibles des messages, hooks et reprises en 0.43, 0.44 et 0.45,
+ainsi qu'une correction de la reprise des étapes en vol dans la dernière version. C'est
+une activité de maintenance réelle, avec un coût d'adaptation encore élevé. Un correctif
+récent n'est pas une preuve de défaut toujours présent. Le guide web de reprise annonce
+encore `RUN_FORMAT=2`, alors que le code testé lit/écrit **5** : la source figée est impérative.
+
+Neuf sondes entièrement synthétiques ont été exécutées contre les crates publiées, sans
+réseau à l'exécution finale, sans clés et sans modèle réel. **9/9 réussissent leurs assertions ;
+plusieurs assertions démontrent un écart, ce résultat n'est pas un certificat de conformité.**
+Le code, le verrou et le résultat local sont conservés sous
+`artifacts/rust-migration/2026-10-27/`, hors fichiers versionnés.
+
+| Sonde | Résultat observé | Interprétation pour Galaris |
+|---|---|---|
+| Schéma avec `minLength=3`, outil `submit` renvoyant `"x"` | L'Extractor accepte `"x"` avec le type `String`, bien que le schéma expose la contrainte. | Schéma annoncé et désérialisation ne valent pas validation locale complète. Une désérialisation personnalisée peut refuser la valeur, mais doit être implémentée et qualifiée. |
+| Réponse de mauvais type, puis réponse valide | Le retry typé renvoie le même historique, sans feedback de validation ajouté. | Écart avec la correction guidée actuelle ; la réussite avec réponse scriptée valide ne prouve aucune capacité de réparation du modèle. |
+| Outil compteur, réponse finale invalide, retry puis réponse valide | Le compteur passe à **2** : le run recommence et exécute l'outil deux fois. Les messages et `completion_calls` retournés décrivent seulement la tentative acceptée ; le code conserve toutefois l'usage agrégé des tentatives. | Ne pas employer ces retries tels quels avec des effets ; garder aussi les appels et traces des tentatives rejetées dans le journal Galaris. |
+| Appel modèle en attente sauvegardé puis restauré | `CallModel` est réémis avec le même numéro de tour. | L'hôte doit rattacher l'inférence durable et contrôler les réponses tardives, le budget et les coûts. |
+| Snapshot outil avant effet, crash après effet sans acquittement | Le même appel est réémis ; un hôte naïf fait passer le compteur d'effets à **2**. | La sûreté dépend du journal externe et de la réconciliation. Ce n'est pas un bug propre à Rig : un snapshot seul ne résout pas cette fenêtre. |
+| Appel acquitté, puis sauvegarde et restauration | Le run demande le modèle suivant, sans réémettre cet outil. | Protection utile après acquittement sauvegardé ; ne couvre pas le crash précédent. |
+| Réponse d'un ancien tour avec identifiant fournisseur réutilisé | Réponse ancienne refusée ; réponse du tour courant acceptée. | Protection présente contre ce mélange de tours, à préserver dans l'adaptateur. |
+| Réponse provenant d'un autre run avec mêmes tour, position et identifiant fournisseur | Acceptée si l'hôte la donne au mauvais run. | La corrélation Rig est locale au run ; l'hôte doit imposer identité d'opération, autorité et isolation des files. Ce n'est pas une frontière d'autorisation. |
+| Chargement du format précédent | Refus explicite. | Bonne détection ; drainage, lecteur ancien ou migration nécessaires lors d'un changement de format. |
+
+Sources vérifiées : [sorties typées](https://github.com/0xPlaygrounds/rig/blob/98ed06d/crates/rig-agent/src/agent/typed.rs),
+[Extractor](https://github.com/0xPlaygrounds/rig/blob/98ed06d/crates/rig-agent/src/extractor.rs),
+[contrôle partiel du schéma](https://github.com/0xPlaygrounds/rig/blob/98ed06d/crates/rig-core/src/structured_output.rs),
+[état et réémission](https://github.com/0xPlaygrounds/rig/blob/98ed06d/crates/rig-agent/src/run/mod.rs)
+et [tests de reprise upstream](https://github.com/0xPlaygrounds/rig/blob/98ed06d/crates/rig-agent/src/run/tests.rs).
+Ces différences sont des politiques et responsabilités d'intégration ; elles ne permettent
+pas de déclarer Rig inutilisable. Elles interdisent de le présenter comme un remplacement
+équivalent sans travail supplémentaire. Aucun résultat comparatif de qualité LLM n'est acquis.
+
+### Architecture candidate : réutiliser Rig et garder les effets dans leurs domaines
+
+```text
+app.agent : contrat AgentDriver et sélection d'un seul moteur
+    |
+adaptateur du harnais Rust : événements, contexte, arrêt et checkpoint versionné
+    |
+état agentique Rig piloté par un hôte Galaris
+    |-- demande de modèle -> app.llm -> adaptateur fournisseur -> transport autorisé
+    |-- demande d'outil  -> app.tools -> droits, autorisation, effet et reçu
+    `-- état à sauver   -> propriétaire durable actuel -> PostgreSQL
+```
+
+Ce dessin est une proposition, pas un nouveau contrat public accepté. Les flèches traversent
+PyO3 pour les domaines encore Python ; elles deviennent natives au fil de leur migration.
+Le même principe peut être éprouvé dans un worker isolé si la durée de vie du pont devient
+le problème dominant, mais cela ajoute protocole et déploiement : aucune nouvelle séparation
+en service n'est requise à ce stade.
+
+1. **Une seule boucle.** Choisir soit `AgentRunner` de Rig entouré de hooks, soit l'état
+   `AgentRun` piloté par l'hôte. Pour Galaris, étudier d'abord le pilotage par étapes qui
+   expose les points de persistance. Ne pas faire tourner simultanément cette boucle et
+   celle de Pydantic AI ; R08 peut utiliser le SDK Python pour une inférence élémentaire.
+2. **Un seul chemin d'inférence.** Le candidat passe par `app.llm`, avec autorité, échéance,
+   admission, corrélation et coût par appel physique. Étudier le transport injectable Rig
+   dans cette frontière. Appeler aujourd'hui une route Galaris qui utilise encore
+   `protocol_inference.py` démontre l'intégration, pas la suppression de Pydantic AI.
+   Un client Rig qui appelle directement Internet contournerait ces garanties.
+3. **Des outils soumis au domaine.** Les appels natifs et MCP restent filtrés et exécutés
+   par leurs façades ; l'intégration MCP de Rig est un moyen de transport éventuel.
+   Elle ne doit pas devenir un deuxième catalogue de droits ni réexécuter les appels
+   persistés automatiquement. Les lectures sûres peuvent être concurrentes ; les mutations
+   exclusives conservent leur barrière. L'hôte contrôle la planification du lot.
+4. **Un contexte explicite.** Autorité de run, agent, demandeur, échéance et jeton d'arrêt
+   traversent la frontière comme données typées. Conserver l'injection de dépendances
+   nécessaires sans envoyer de session SQLAlchemy ou de secret dans l'état sérialisé.
+5. **Des données portables sans perdre le contenu natif.** Définir une enveloppe versionnée
+   pour ordre des messages, appels/résultats, références média et blocs fournisseur opaques.
+   Ne pas imposer le plus petit format commun texte/rôle. Les lecteurs historiques restent
+   disponibles tant qu'un run ou une conversation en dépend.
+
+Rig ne doit pas forcer le stockage Galaris à épouser ses structs internes. Son guide de reprise
+demande de reprendre un état avec la même version Rig ; prévoir version de moteur et lecteur
+compatibles, drainage ou migration explicitement qualifiée. Une mise à jour Cargo peut donc
+avoir un coût opérationnel même si le code appelant compile.
+
+Le [guide d'erreurs Rig](https://rig.rs/docs/concepts/error_handling) distingue les retries
+de requête et les corrections de contenu ; il précise qu'un retry du prompt complet
+redémarre le run, y compris ses outils. Cet exemple générique ne convient pas aux effets
+durables Galaris. Réessayer seulement l'étape admissible sous l'autorité de son propriétaire,
+avec les reçus acquis conservés et chaque appel physique compté. Désactiver ou intégrer
+les retries implicites de chaque couche pour éviter multiplication des appels et des coûts.
+
+### Les trois difficultés à résoudre avant de parler d'équivalence
+
+**Validation :** `serde` lit/écrit des valeurs ; `schemars` décrit un schéma. Cela ne remplace
+pas automatiquement les coercitions, contraintes, validateurs avec contexte et règles métier
+Python. Les schémas d'outils MCP sont aussi dynamiques, ils ne deviennent pas tous des structs
+compilées. Évaluer un validateur tel que [jsonschema](https://docs.rs/jsonschema/latest/jsonschema/)
+pour ces schémas, avec draft, formats, nombres et résolution de références explicités ;
+conserver des validateurs métier séparés et un feedback au modèle sous budget. La crate
+documente des différences de conformité selon les drafts et des formats à activer :
+l'étiquette « JSON Schema » ne garantit pas la parité avec le contrat courant.
+
+**Providers :** conserver le partage de responsabilités décrit plus haut ; ne pas transformer
+tous les appels en Chat compatible OpenAI pour faciliter
+la migration. Raisonner par route et capacité : Chat, Responses, routage, authentification
+avec renouvellement, raisonnement opaque, outils, cache, comptage et refus/incomplet.
+L'ADR 0095 confie construction et décodage au SDK, en complément des adaptations Galaris.
+Si Rig impose de recopier des
+tables locales par famille/version de modèle pour retrouver les garanties, le coût évité
+revient dans Galaris : contribuer upstream ou conserver Python est préférable à une parité
+apparente. Les capacités officiellement documentées ne qualifient pas nos bridges spécifiques.
+
+**Reprise :** conserver un checkpoint n'est pas savoir si un effet a eu lieu. Pour une écriture,
+le moteur sauvegarde l'intention avant départ, puis le reçu après effet. Un crash entre les
+deux exige la réconciliation du domaine, pas un nouvel appel aveugle. La clé d'appel tient
+compte du tour et de la réponse : les fournisseurs peuvent réutiliser un identifiant d'outil.
+Les tests actuels couvrent déjà ces cas, les résultats parallèles, les erreurs acquittées
+et les arguments différés ; ils constituent les premiers scénarios à adapter.
+
+### Reprise : protocole d'hôte à qualifier, au-delà de la sérialisation
+
+Le code Rig précise qu'un appel modèle réémis porte le même tour, que ses réémissions
+ne consomment pas de tour supplémentaire et qu'une réponse tardive de l'appel précédent
+n'est pas distinguable par cet état seul. Les appels n'ayant pas atteint l'enregistrement
+du résultat peuvent aussi manquer à l'usage Rig. `max_turns` ne remplace donc ni le budget
+d'inférence ni la corrélation de Galaris.
+
+| Point d'interruption | Reprise exigée du candidat Galaris |
+|---|---|
+| Modèle demandé, inférence déjà admise ou en vol | Rattacher l'identité durable existante et relire son journal ; ne pas créer une seconde inférence parce que Rig réémet `CallModel`. Toute nouvelle tentative suit le contrat LLM existant et conserve son coût. |
+| Approbation en attente | Garder outil, arguments exacts et identité d'autorisation ; aucun effet avant décision durable. Au départ, revalider droits, portée et lease courants. |
+| Intention d'outil sauvegardée, effet non commencé | Vérifier que le journal autorise encore le départ avant exécution ; le simple état `Execute` de Rig n'est pas une autorisation. |
+| Effet possible, reçu absent | Réconcilier dans le domaine propriétaire. Réexécution limitée aux garanties de lecture/idempotence déjà déclarées ; sinon issue inconnue bloquante. |
+| Reçu présent, réponse outil absente de l'état Rig | Réinjecter le résultat acquis sans réexécuter l'effet, puis sauvegarder l'avancement. |
+| Ancienne autorité ou réponse tardive | Refuser son application au run courant ; conserver une preuve tardive via la réconciliation propriétaire sans réautoriser l'ancien worker. |
+| Résultat terminal acquis, fermeture du stream retardée | Respecter la validation commune du driver et la fermeture bornée ; aucun deuxième succès ni événement post-terminal. |
+
+Enveloppe d'hôte à concevoir : identité du run et de l'inférence/effet durable, génération
+d'autorité, moteur/version, tour, position, identifiant fournisseur, empreinte des arguments
+et révision du checkpoint. Les identités de tour de Rig complètent cette enveloppe sans
+la remplacer. Les écritures qui appartiennent à une même transaction restent atomiques ;
+un effet distant et son reçu ne sont pas rendus atomiques par PyO3 ou une struct Rust.
+
+Les sondes sur le crash avant acquittement et sur les deux runs démontrent pourquoi ces
+gardes sont nécessaires. Le protocole n'a pas été implémenté ni éprouvé sur deux workers,
+sur des leases PostgreSQL ou sous arrêt brutal du backend Rust. Ces preuves restent des
+conditions bloquantes de R08/R10.
+
+### Non-régression : comportement, réussite métier et décision de bascule
+
+La demande est **aucune régression**. Le plan n'autorise ni baisse de qualité compensée par
+un gain de mémoire, ni retrait discret d'une fonctionnalité. Un écart volontaire devient
+une décision produit séparée. Une campagne finie ne démontre pas l'absence de tout défaut ;
+un résultat inconclusif ne permet pas la bascule.
+
+1. **Référence actuelle vérifiée.** Les suites existantes de paramètres fournisseurs,
+   d'inférence structurée, de checkpoints et d'annulation ont été exécutées : **1 032 tests
+   réussis**, avec huit avertissements de dépréciation. Elles vérifient le backend actuel,
+   pas Rig. Le scénario structuré `count=0 → 2 → 3` conserve le feedback métier, les trois
+   appels et leur coût ; ce comportement devient une exigence du candidat.
+2. **Conformité déterministe avant qualité.** Fournir les mêmes réponses externes scriptées
+   aux deux moteurs, avec vrais validateurs, journaux et droits. Comparer acceptation et
+   rejet, coercitions utiles, valeurs absentes/nulles, aliases, unions, nombres, contexte
+   métier, arguments d'outils et erreurs. Une validation plus stricte qui rejette un ancien
+   cas accepté peut aussi être une régression. Aucune sortie structurée invalide ni effet
+   non autorisé, doublé ou attribué à un autre run n'est admissible.
+3. **Réparation guidée à restaurer.** Une erreur doit revenir au modèle avec son contexte
+   et son budget, sans redémarrer les effets acquis. Les hooks de Rig offrent des points
+   d'extension ; l'équivalence de ces politiques n'est pas implémentée. Ne pas confondre
+   `TypedRun.retries(n)` et ce contrat de correction.
+4. **Campagne de qualité appariée.** Réutiliser le Lab et les cas synthétiques conversation,
+   Dispatcher/Planner, Goal, outils, recherche, documents, médias et refus. Figer modèle,
+   endpoint, effort, paramètres, capacités, données et budgets, puis alterner l'ordre des
+   essais et répéter. Garder une réserve de cas indépendante pour éviter de qualifier les
+   seuls exemples ayant servi à adapter le candidat.
+5. **Résultats à examiner par famille.** Vérifier les effets et le livrable réel, les faux
+   succès, omissions, capacité à corriger un outil, appels inutiles et coût par réussite.
+   Conserver les paires où Pydantic AI réussit et Rig échoue ; une moyenne globale ou un
+   juge LLM unique ne peut pas masquer ces pertes. Relecture à l'aveugle des sorties et
+   désaccords, en séparant variation du candidat et variation du juge.
+6. **Décision explicite sur les preuves.** Figer avant campagne un effectif et une analyse
+   appariée adaptés aux écarts à détecter ; documenter l'incertitude et les cas discordants.
+   Aucune marge de baisse de qualité n'est accordée par ce plan. Zéro nouvelle régression
+   connue dans le corpus et absence de dégradation étayée sont nécessaires ; une absence de
+   différence statistiquement détectée n'est pas une preuve d'équivalence. Tant que les
+   conditions ne sont pas remplies, conserver Pydantic AI.
+
+Les comparaisons réelles et les parcours assemblés du candidat restent à réaliser. Les
+sondes hors réseau ne mesurent ni l'intelligence des agents ni la fidélité d'un fournisseur
+réel. Le [plan Lab](lab-evaluation-mecanismes-ia.md) conserve les limites de comparabilité
+et de jugement ; aucun benchmark upstream ne remplace cette qualification Galaris.
+
+### Expériences R01 à plus forte valeur de décision
+
+Ces expériences restent à réaliser dans un environnement Docker isolé après qualification
+de l'outillage R02/R06 nécessaire ; on peut préparer leur corpus dès R01. Elles n'autorisent
+ni bascule du harnais actuel ni campagne fournisseur payante.
+
+| Étape | Expérience bornée | Preuve et conséquence attendues |
+|---|---|---|
+| R01-a — requêtes et validation | Figer Pydantic AI 2.61.0 et une version Rig ; utiliser vrais encodeurs/décodeurs avec transport externe simulé. Comparer Chat et Responses, noms de modèle opaques, effort retiré, outil, sortie structurée, 429, refus et flux tronqué. | Produire les différences sémantiques de requêtes/résultats et le nombre d'appels ; une bibliothèque qui répond « bonjour » ne passe pas cette porte. Conserver la route Python si un profil critique manque. |
+| R01-b — effet et accord | Même scénario synthétique : lecture, écriture soumise à accord, refus/révocation, redémarrage après effet avant reçu, identifiants réutilisés. Vrais journaux et transactions Galaris, seule frontière externe remplacée. | Zéro écriture non autorisée ou doublée ; arguments exacts à la reprise, issue incertaine bloquée. Choisir pilotage par étapes ou runner sur cette preuve. |
+| R01-c — contexte historique | Corpus de checkpoints versions 1 à 5, raisonnement signé synthétique, média seul, compaction et compétence eager/différée. Réouvrir conversation et run avec contexte/droits modifiés. | Chaque élément est conservé, transformé sans perte démontrée ou explicitement non reprenable ; aucun effacement silencieux. Mesurer la nécessité de conserver les lecteurs Python. |
+| R01-d — parcours et coût total | Relier le candidat au testkit de driver, puis Task, texte et consommateurs structurés ; étendre ensuite à Goal, Process, Lab et voix. Comparaison scriptée puis campagne réelle distincte. | Vérifier succès métier et droits avant CPU/RSS, p95 et coût par réussite ; publier la couverture restante et l'effort d'adaptation/upstream. Choisir A/B/C sur ces résultats. |
+
+Réutiliser notamment `test_checkpoint.py` (effets, identités et concurrence),
+`test_runtime_cancellation.py` (reprise d'accord et interruption),
+`test_structured_service.py` (modes et coût) et `test_driver_testkit.py` (contrat de stream).
+Les suites checkpoint/annulation et l'intégration structurée ont été exécutées sur le
+backend actuel ; le testkit de driver reste ici un point d'appui inspecté. Aucun de ces
+résultats ne qualifie un driver Rig intégré.
+À chaque nouvelle capacité, compléter la matrice ci-dessous et le registre des consommateurs.
+
+### Peut-on faire aussi bien, voire mieux ?
+
+| Axe | Conclusion raisonnable aujourd'hui | Condition pour revendiquer un progrès |
+|---|---|---|
+| Capacités d'un agent classique | Rig couvre les briques usuelles ; alternative crédible. | Qualification des capacités Galaris réellement utilisées, sans perte masquée. |
+| Qualité des réponses et réussite | Aucun avantage du langage établi ; contexte et protocole peuvent changer le résultat. | Campagne appariée, même modèle, paramètres, budgets et cas, avec effets vérifiés. |
+| Concurrence et ressources | Possibilité de mieux contrôler état, propriété des données et allocations côté Rust. | Mesures bout en bout, pont compris, saturation et endurance ; les races DB restent à traiter. |
+| Reprise et contrôle | Machine par étapes intéressante pour exposer les décisions et points de sauvegarde. | Pannes injectées avec journal d'effets et autorité réels ; davantage qu'un état sérialisable. |
+| Déploiement | Un backend sans CPython devient envisageable à C. | Toutes les dépendances et données qualifiées ; A/B gardent le coût du double runtime. |
+| Maintenance | Réutiliser Rig évite de posséder tout un SDK ; coût d'adaptation encore inconnu. | Suivre au moins une mise à jour upstream, son diff de protocole et la reprise des états sauvegardés. |
+
+La valeur la plus plausible est donc **un meilleur contrôle du runtime et des ressources**,
+à confirmer. Accélérer le code local ne réduit pas le temps de génération chez le fournisseur ;
+mesurer séparément attente réseau/modèle, outils, DB et orchestration avant de choisir les lots.
+Sans bénéfice démontré ou si la parité impose trop de code de compatibilité, conserver
+Pydantic AI avec un noyau Rust reste la conclusion technique recommandée.
+
 ## Pydantic AI : matrice de remplacement à compléter dès R01
 
 Les liens ci-dessous pointent vers des couvertures existantes à examiner et paramétrer ;
@@ -443,13 +859,14 @@ Ces commandes sont des exemples ciblés, pas une orchestration à exécuter int�
 pour chaque lot. Les tests Rust et de liaison doivent être intégrés aux cibles Make à R02.
 La validation complète reste réservée à l'utilisateur ; ne pas lancer `make validate`.
 
-Pour ce plan uniquement : revue des liens et cohérence, préparation documentaire et diff.
+Pour ce plan : revue des sources et de la cohérence, neuf sondes Rig isolées et suites
+Galaris ciblées ci-dessus, préparation documentaire et diff.
 Aucun comportement utilisateur/navigation ne change ; aucun nouveau parcours FR/EN à créer.
 Les parcours et guides seront mis à jour avec chaque changement effectivement réalisé.
 
 ## Références externes et limites de l'étude
 
-Sources primaires consultées le 25 octobre 2026 ; leurs pages courantes ne remplacent pas
+Sources primaires du plan initial revues les 25–27 octobre 2026 ; leurs pages courantes ne remplacent pas
 la vérification des versions retenues lors d'une implémentation :
 
 - [PyO3 — introduction](https://pyo3.rs/main/) : modules natifs Python et construction avec Maturin.
@@ -458,6 +875,10 @@ la vérification des versions retenues lors d'une implémentation :
 - [pyo3-async-runtimes](https://docs.rs/pyo3-async-runtimes/latest/pyo3_async_runtimes/) : pont entre deux modèles de boucles, contexte et durées de vie à qualifier.
 - [Pydantic AI — historique](https://pydantic.dev/docs/ai/core-concepts/message-history/) et
   [outils différés](https://pydantic.dev/docs/ai/tools-toolsets/deferred-tools/) : capacités à conserver, pas un format Rust déjà disponible.
+
+Les sources Rig, rust-genai, Distri, Monty et validation sont liées directement dans
+l'étude comparative du 27 octobre. Les capacités déclarées et exemples upstream servent
+à sélectionner une expérience ; ils ne constituent pas des résultats sur Galaris.
 
 La lecture du dépôt établit des couplages et des garanties recherchées. Elle ne démontre
 ni un gain de performance, ni une compatibilité PyO3 avec toute la stack, ni l'existence
