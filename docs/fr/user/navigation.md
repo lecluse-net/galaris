@@ -431,6 +431,11 @@ L’envoi du message reprend automatiquement avec la demande initiale et votre c
 **Reprendre la réponse** permet de continuer sans nouveau message ; **Arrêter la réponse**
 abandonne la réponse en cours. L’outil déjà engagé termine avant la pause ou l’arrêt.
 
+Sur téléphone ou tablette, **Retour** insère un saut de ligne. Utilisez le bouton d’envoi
+pour publier le message en conservant le focus dans la saisie et le clavier ouvert.
+Sur ordinateur, **Entrée** envoie et **Maj+Entrée** insère un saut de ligne, même dans
+une fenêtre étroite.
+
 Dans la saisie des conversations, **Ajouter une PJ interne** se trouve dans la zone de dépôt
 de fichiers, hors du champ texte. Les fichiers locaux et les ressources internes sélectionnées
 s’affichent ensemble dans cette zone et restent des pièces jointes

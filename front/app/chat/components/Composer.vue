@@ -1,5 +1,13 @@
 <template>
-  <div class="composer-shell q-pa-sm" :inert="preparingSend">
+  <div
+    class="composer-shell q-pa-sm"
+    :inert="preparingSend && !isMobileDevice"
+    :aria-busy="preparingSend"
+    @beforeinput.capture="blockPreparingInteraction"
+    @keydown.capture="blockPreparingInteraction"
+    @pointerdown.capture="blockPreparingInteraction"
+    @click.capture="blockPreparingInteraction"
+  >
     <div v-if="replyTo" class="reply-target row items-center no-wrap bg-grey-2 q-mb-xs">
       <q-icon name="reply" size="13px" class="q-mr-xs" />
       <div class="ellipsis text-caption">
@@ -108,6 +116,7 @@
             outlined
             autogrow
             :placeholder="t('chat.write')"
+            :enterkeyhint="isMobileDevice ? 'enter' : undefined"
             @keydown="handleCommandHelpKeydown"
             @keydown.enter="handleEnter"
             @keydown.esc="commandHelpOpen = false"
@@ -154,6 +163,9 @@
                   :aria-label="t('chat.post')"
                   :loading="sending || submitting"
                   :disable="!canSubmit"
+                  @pointerdown="preserveInputFocus"
+                  @mousedown="preserveInputFocus"
+                  @touchstart.capture="preserveInputFocus"
                   @click="submit"
                 >
                   <q-tooltip>{{ t('chat.post') }}</q-tooltip>
@@ -263,6 +275,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useQuasar } from 'quasar'
 import { DocumentResourceReferences } from '@/core/util'
 import { TopicSelect } from '@/app/topic'
 import { chatService, DictationNotConfiguredError } from '../services/chatService'
@@ -309,6 +322,7 @@ const emit = defineEmits<{
   'update:topicId': [value: string | null]
 }>()
 const text = ref('')
+const isMobileDevice = Boolean(useQuasar().platform.is.mobile)
 const resourcePickerOpen = ref(false)
 const resources = ref<{ uri: string; name: string }[]>([])
 function addResources(selected: { uri: string; name: string }[]): void {
@@ -765,9 +779,25 @@ function toggleDictation(): void {
 }
 
 function handleEnter(event: KeyboardEvent): void {
-  if (event.shiftKey || event.isComposing) return
+  if (isMobileDevice || event.shiftKey || event.isComposing) return
   event.preventDefault()
   submit()
+}
+
+function preserveInputFocus(event: Event): void {
+  if (!isMobileDevice || document.activeElement !== messageInput.value?.getNativeElement()) return
+  // Keep the browser and QBtn's touch focus helper from blurring the textarea.
+  // Touch must retain its default action so the tap still generates a click.
+  if (event.type !== 'touchstart') event.preventDefault()
+  event.stopPropagation()
+}
+
+function blockPreparingInteraction(event: Event): void {
+  if (!preparingSend.value) return
+  // Making the mobile input inert or readonly would dismiss its software keyboard.
+  // Freeze preparation-time edits and actions while keeping the input focused.
+  event.preventDefault()
+  event.stopPropagation()
 }
 
 function handleCommandHelpKeydown(event: KeyboardEvent): void {

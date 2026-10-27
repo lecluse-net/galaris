@@ -4,6 +4,83 @@ import { document as documentFixture } from './data.mjs'
 const events = (page, name) => page.evaluate(name => window.testApp.events.filter(event => event.name === name).map(event => name === 'send' ? event.args.slice(0, 4) : event.args), name)
 const acknowledgeSend = page => page.evaluate(() => window.testApp.events.filter(event => event.name === 'send').at(-1).args[4](true))
 
+for (const width of [390, 1280]) {
+  test(`desktop composer keeps Enter to send and Shift+Enter for a newline at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
+    await mount(page, 'app/chat/components/Composer.vue', { props: { roomId: 'room-a', sending: false } })
+    const input = page.locator('textarea')
+    await input.fill('First line')
+    await input.press('Shift+Enter')
+    await input.pressSequentially('Second line')
+    await expect(input).toHaveValue('First line\nSecond line')
+    expect(await events(page, 'send')).toEqual([])
+    await input.press('Enter')
+    await expect.poll(() => events(page, 'send')).toEqual([['First line\nSecond line', undefined, undefined, false]])
+    await acknowledgeSend(page)
+    await expect(input).toHaveValue('')
+  })
+}
+
+for (const device of [
+  { name: 'Android phone', width: 390, userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36' },
+  { name: 'iPhone', width: 390, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' },
+  { name: 'tablet', width: 1280, userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' },
+]) {
+  test.describe(`composer on ${device.name}`, () => {
+    test.use({ userAgent: device.userAgent, isMobile: true, hasTouch: true, viewport: { width: device.width, height: 900 } })
+
+    test('Return inserts a newline and tapping Post keeps input focus throughout preparation and sending', async ({ page }) => {
+      await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
+      await mount(page, 'app/chat/components/Composer.vue', { props: { roomId: 'room-a', sending: false } })
+      await page.evaluate(() => {
+        window.testApp.setProps({ beforeSend: () => new Promise(resolve => { window.finishPreparation = resolve }) })
+        window.composerBlurs = 0
+        document.querySelector('textarea').addEventListener('blur', () => { window.composerBlurs++ })
+      })
+      const input = page.locator('textarea')
+      const post = page.getByRole('button', { name: 'Post', exact: true })
+      await input.fill('First line')
+      await input.press('Enter')
+      await input.pressSequentially('Second line')
+      await expect(input).toHaveValue('First line\nSecond line')
+      expect(await events(page, 'send')).toEqual([])
+
+      await post.tap()
+      await expect.poll(() => page.evaluate(() => typeof window.finishPreparation)).toBe('function')
+      await expect(input).toBeFocused()
+      await input.press('Enter')
+      await expect(input).toHaveValue('First line\nSecond line')
+      await page.evaluate(() => window.finishPreparation(false))
+      await expect(post).toBeEnabled()
+      expect(await events(page, 'send')).toEqual([])
+      await expect(input).toBeFocused()
+
+      await page.evaluate(() => { delete window.finishPreparation })
+      await post.tap()
+      await expect.poll(() => page.evaluate(() => typeof window.finishPreparation)).toBe('function')
+      await page.evaluate(() => window.finishPreparation(true))
+      await expect.poll(() => events(page, 'send')).toEqual([['First line\nSecond line', undefined, undefined, false]])
+      await expect(input).toBeFocused()
+      await acknowledgeSend(page)
+      await expect(input).toHaveValue('')
+      await expect(input).toBeFocused()
+
+      await input.fill('Following message')
+      await page.evaluate(() => { delete window.finishPreparation })
+      await post.tap()
+      await expect.poll(() => page.evaluate(() => typeof window.finishPreparation)).toBe('function')
+      await page.evaluate(() => window.finishPreparation(true))
+      await expect.poll(() => events(page, 'send')).toHaveLength(2)
+      await input.fill('Next draft')
+      await acknowledgeSend(page)
+      await expect(input).toHaveValue('Next draft')
+      await expect(input).toBeFocused()
+      expect(await page.evaluate(() => window.composerBlurs)).toBe(0)
+    })
+  })
+}
+
 for (const suggestedLabel of ['Alice', 'Alice (3)']) {
 test(`room creation uses the available name ${suggestedLabel} and preserves custom names and preferences`, async ({ page }) => {
   await jsonRoute(page, '**/api/agents/selection?scope=dialogue', [{ id: 7, label: 'Alice', has_avatar: false }])

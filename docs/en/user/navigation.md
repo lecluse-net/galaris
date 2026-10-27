@@ -406,6 +406,10 @@ Sending it automatically continues with both your original request and the suppl
 **Resume response** continues without a new message; **Stop response** abandons the current
 reply. An already running tool finishes before the pause or stop takes effect.
 
+On phones and tablets, **Return** inserts a newline. Use the send button to post the message
+while keeping the input focused and the keyboard open. On computers, **Enter** sends and
+**Shift+Enter** inserts a newline, including in a narrow window.
+
 When opening a conversation, messages appear without waiting for the command catalogue
 or call status. Link previews and document thumbnails load progressively near the visible
 area; you can read and compose while they load, and open a document before its thumbnail

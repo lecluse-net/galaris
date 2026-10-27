@@ -813,6 +813,13 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Media and acquired evidence
 
+`chat.spec.mjs` distinguishes mobile devices from narrow desktop windows: Return inserts
+a newline on phones/tablets, Enter sends on computers, and Shift+Enter retains its newline.
+Android, iPhone and tablet touch profiles check uninterrupted input focus throughout
+preparation, rejected preparation and sending, clearing after acceptance, and retaining a
+new draft typed during sending. Chromium emulation does not qualify the software keyboard
+on a physical Android or iOS device.
+
 `chat-internal-attachments.spec.mjs` covers selecting internal files separately from
 text, sending without text, retaining the draft after rejection and thumbnail cards
 on mobile and desktop. The “internal image attachments” scenario in

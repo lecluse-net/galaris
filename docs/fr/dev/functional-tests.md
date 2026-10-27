@@ -861,6 +861,13 @@ présence au catalogue ne remplace pas une exécution réussie.
 
 ## Médias et preuves acquises
 
+`chat.spec.mjs` distingue les appareils mobiles des fenêtres desktop étroites : Retour
+insère un saut de ligne sur téléphone/tablette, Entrée envoie sur ordinateur et Maj+Entrée
+conserve le saut de ligne. Les profils tactiles Android, iPhone et tablette vérifient le focus
+sans aucun blur pendant la préparation, son refus et l’envoi, le vidage après acceptation
+et la conservation d’un nouveau brouillon saisi pendant l’envoi. L’émulation Chromium
+ne qualifie pas l’affichage du clavier logiciel sur un véritable appareil Android ou iOS.
+
 `chat-internal-attachments.spec.mjs` vérifie la sélection de fichiers internes hors du
 texte, l’envoi sans texte, le maintien du brouillon après refus et les cartes avec
 miniature en mobile et desktop. Le scénario « internal image attachments » de
