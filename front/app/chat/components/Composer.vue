@@ -166,7 +166,8 @@
                   @pointerdown="preserveInputFocus"
                   @mousedown="preserveInputFocus"
                   @touchstart.capture="preserveInputFocus"
-                  @click="submit"
+                  @pointerup="handlePostPointerUp"
+                  @click="handlePostClick"
                 >
                   <q-tooltip>{{ t('chat.post') }}</q-tooltip>
                 </q-btn>
@@ -784,12 +785,29 @@ function handleEnter(event: KeyboardEvent): void {
   submit()
 }
 
+let postedByPointer = false
+
 function preserveInputFocus(event: Event): void {
+  if (event.type === 'pointerdown') postedByPointer = false
   if (!isMobileDevice || document.activeElement !== messageInput.value?.getNativeElement()) return
-  // Keep the browser and QBtn's touch focus helper from blurring the textarea.
-  // Touch and pointer events must retain their default action so Safari generates a click.
-  if (event.type === 'mousedown') event.preventDefault()
-  event.stopPropagation()
+  // Cancel native pointer focus before Android moves it away from the textarea.
+  // Stop QBtn's listener on this same element from installing its blur helper.
+  if (event.type !== 'touchstart') event.preventDefault()
+  event.stopImmediatePropagation()
+}
+
+function handlePostPointerUp(event: PointerEvent): void {
+  if (!isMobileDevice || event.pointerType !== 'touch'
+    || document.activeElement !== messageInput.value?.getNativeElement()) return
+  // WebKit can omit the compatibility click after a cancelled pointerdown.
+  // Send on release and consume any following click to avoid duplicate sends.
+  postedByPointer = true
+  void submit()
+}
+
+function handlePostClick(event: Event): void {
+  if (postedByPointer && event instanceof MouseEvent && event.detail !== 0) return
+  void submit()
 }
 
 function blockPreparingInteraction(event: Event): void {

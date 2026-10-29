@@ -61,8 +61,10 @@ for (const device of [
       await expect.poll(() => page.evaluate(() => typeof window.finishPreparation)).toBe('function')
       await page.evaluate(() => window.finishPreparation(true))
       await expect.poll(() => events(page, 'send')).toEqual([['First line\nSecond line', undefined, undefined, false]])
+      await page.evaluate(() => window.testApp.setProps({ sending: true }))
       await expect(input).toBeFocused()
       await acknowledgeSend(page)
+      await page.evaluate(() => window.testApp.setProps({ sending: false }))
       await expect(input).toHaveValue('')
       await expect(input).toBeFocused()
 
