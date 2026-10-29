@@ -100,23 +100,6 @@ def ensure_root() -> Path:
     return skills_root
 
 
-def project_learned_markdown(agent_id: int, code: str, content: str) -> Path:
-    """Materialize one DB-owned learned skill as a rebuildable runtime projection."""
-
-    normalized = validate_code(code)
-    metadata_from_markdown(content, expected_code=normalized)
-    base = ensure_root() / ".learned" / str(agent_id) / normalized
-    base.mkdir(parents=True, exist_ok=True)
-    destination = base / "SKILL.md"
-    temporary = base / f".SKILL.md.{uuid4().hex}.tmp"
-    try:
-        temporary.write_text(content.strip() + "\n", encoding="utf-8")
-        temporary.replace(destination)
-    finally:
-        temporary.unlink(missing_ok=True)
-    return destination
-
-
 def project_runtime_markdown(agent_id: int, name: str, content: str) -> Path:
     """Adapt only projection frontmatter; canonical package bytes stay unchanged."""
     lines = content.splitlines()

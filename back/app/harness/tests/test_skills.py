@@ -18,7 +18,6 @@ from app.harness.skills import (
     build_eager_skill_capabilities,
 )
 from app.skill import skill_service, storage
-from app.skill import learning_service
 
 
 @pytest.mark.asyncio
@@ -123,11 +122,7 @@ async def test_runtime_loading_is_generic_opt_in_and_never_loads_unassigned_skil
     async def assigned_codes(_agent_id: int) -> list[str]:
         return ["research"]
 
-    async def learned_skills(_agent_id: int) -> list[Any]:
-        return []
-
     monkeypatch.setattr(skill_service, "get_assigned_codes", assigned_codes)
-    monkeypatch.setattr(learning_service, "list_injectable", learned_skills)
     conversation_skills = await build_eager_skill_capabilities(42)
     assert [skill.id for skill in conversation_skills] == (["research"] if eager else [])
     task_skills = await build_internal_skill_capabilities(42)
@@ -157,11 +152,7 @@ async def test_assigned_skills_become_deferred_capabilities(
         assert agent_id == 42
         return ["research"]
 
-    async def learned_skills(_agent_id: int) -> list[Any]:
-        return []
-
     monkeypatch.setattr(skill_service, "get_assigned_codes", assigned_codes)
-    monkeypatch.setattr(learning_service, "list_injectable", learned_skills)
 
     capabilities = await build_internal_skill_capabilities(42)
 
@@ -197,38 +188,6 @@ async def test_assigned_skills_become_deferred_capabilities(
     assert "load_capability" in visible_tools
     assert "skill_research_read_file" not in visible_tools
 
-
-@pytest.mark.asyncio
-async def test_injectable_learned_skills_become_additional_capabilities(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    async def assigned_codes(_agent_id: int) -> list[str]:
-        return []
-
-    async def learned_skills(_agent_id: int) -> list[Any]:
-        return [
-            SimpleNamespace(
-                code="learned-agent-verify",
-                description="Verify a deployment after changing it.",
-                markdown=(
-                    "---\nname: learned-agent-verify\n"
-                    "description: Verify a deployment after changing it.\n---\n\n"
-                    "Run the health check.\n"
-                ),
-            )
-        ]
-
-    monkeypatch.setattr(skill_service, "get_assigned_codes", assigned_codes)
-    monkeypatch.setattr(learning_service, "list_injectable", learned_skills)
-
-    capabilities = await build_internal_skill_capabilities(42)
-
-    assert len(capabilities) == 1
-    capability = cast(Any, capabilities[0])
-    assert capability.id == "learned-agent-verify"
-    assert capability.defer_loading is True
-    instructions = cast(list[str], capability.get_instructions())
-    assert "Run the health check" in instructions[0]
 
 
 def test_large_skill_capability_uses_progressive_section_loading(

@@ -203,7 +203,15 @@ DATA_SOURCE = DbAdminDataSource(key="app.skill", factory=datasets)
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .learning_upgrade import needs_personal_learning, personal_learning_complete, transfer_personal_learning
+
     registry.register_data_source(DATA_SOURCE)
+    registry.register_action(DbAdminAction(
+        key="app.skill.personal_learning", phase=DbAdminPhase.AFTER_EXPAND,
+        checksum="personal-files-evidence-and-suspension-v1",
+        predicate=needs_personal_learning, handler=transfer_personal_learning,
+        postcondition=personal_learning_complete,
+    ))
     registry.register_action(DbAdminAction(
         key="app.skill.rename_tool", phase=DbAdminPhase.AFTER_EXPAND,
         checksum="same-tool-id-explicit-legacy-active-all-v1",

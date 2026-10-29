@@ -12,12 +12,6 @@
       <q-tab name="skills" icon="psychology" :label="t('skills.tabSkills')" />
       <q-tab name="personal" icon="person" :label="t('skills.personal.tab')" />
       <q-tab
-        v-if="learningEnabled && canReadLearned"
-        name="learned"
-        icon="school"
-        :label="t('skills.tabLearned')"
-      />
-      <q-tab
         v-if="canAssign"
         name="authorizations"
         icon="shield"
@@ -348,9 +342,6 @@
       <q-tab-panel v-if="canAssign" name="authorizations" class="q-px-none">
         <SkillAuthorizationManager />
       </q-tab-panel>
-      <q-tab-panel v-if="learningEnabled && canReadLearned" name="learned" class="q-px-none">
-        <LearnedSkillManager />
-      </q-tab-panel>
     </q-tab-panels>
 
     <!-- Markdown creation and editing. -->
@@ -651,7 +642,6 @@ import CodeEditor from '@/core/util/components/CodeEditor.vue'
 import Markdown from '@/core/util/components/Markdown.vue'
 import SkillAuthorizationManager from '../components/SkillAuthorizationManager.vue'
 import SkillCategoryManager from '../components/SkillCategoryManager.vue'
-import LearnedSkillManager from '../components/LearnedSkillManager.vue'
 import PersonalSkillManager from '../components/PersonalSkillManager.vue'
 import SkillOwnershipDialog from '../components/SkillOwnershipDialog.vue'
 import SkillRowMenu from '../components/SkillRowMenu.vue'
@@ -684,31 +674,20 @@ const canEdit = computed(() => (
   && privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL)
 ))
 const canAssign = computed(() => privilegeStore.hasPrivilege(privileges.SKILL_ASSIGN))
-const canReadLearned = computed(() => privilegeStore.hasAnyPrivilege([privileges.SKILL_ACCESS, privileges.SKILL_EDIT]))
-const learningEnabled = ref(false)
-const allowedTabs = ['skills', 'personal', 'learned', 'authorizations']
+const allowedTabs = ['skills', 'personal', 'authorizations']
 const tab = ref(
   typeof route.query.tab === 'string' && allowedTabs.includes(route.query.tab)
     ? route.query.tab
-    : 'skills'
+    : route.query.tab === 'learned' ? 'personal' : 'skills'
 )
 
 watch(canAssign, allowed => {
   if (!allowed && tab.value === 'authorizations') tab.value = 'skills'
 }, { immediate: true })
-watch(canReadLearned, allowed => {
-  if (!allowed && tab.value === 'learned') tab.value = 'skills'
-}, { immediate: true })
 
 async function refreshCatalogue(): Promise<void> {
   try { await store.fetchSkills() }
   catch { $q.notify({ type: 'negative', message: t('skills.error') }) }
-}
-
-async function loadLearningStatus(): Promise<void> {
-  const response = await skillService.getLearnedSkillStatus()
-  learningEnabled.value = response.data.enabled
-  if (!learningEnabled.value && tab.value === 'learned') tab.value = 'skills'
 }
 
 const search = ref('')
@@ -1222,11 +1201,8 @@ onMounted(async () => {
       store.fetchSkills(),
       store.fetchAgents(),
       store.fetchCategories(),
-      loadLearningStatus(),
     ])
   } catch (error) {
-    learningEnabled.value = false
-    if (tab.value === 'learned') tab.value = 'skills'
     notifyError(error)
   }
 })

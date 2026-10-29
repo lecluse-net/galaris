@@ -11,13 +11,27 @@ action approvals and resource permissions remain necessary.
 | Tab | Contents |
 |---|---|
 | Skills | Generic catalogue, categories and protected system packages |
-| Personal skills | Private packages, each owned by one agent |
-| Self-learning | Procedures learned by Dream, when learning is enabled |
+| Personal skills | Private packages, each owned by one agent, manually authored or learned by Dream |
 | Authorizations | Generic assignments, requiring `SKILL_ASSIGN` |
 
 Personal skills are separate from memories and Documents. Generic packages can be assigned
 to multiple agents; personal packages are usable only by their owner. Administration of
 that owner does not make their skills usable by your other agents.
+
+## Learn with Dream
+
+Dream creates a personal package containing its canonical `SKILL.md`. The package detail shows
+its evidence, distinct confirming Tasks and reliability. Candidates can be read and edited, but
+become usable only after the configured Dream thresholds (three Tasks and a score of 0.75 by
+default), within the learned-skill cap. Negative evidence can make them ineligible again.
+Manually authored personal packages retain their ordinary activation policy.
+
+Use the same personal package actions to edit, disable, delete or transfer learned procedures.
+Reinforcement never reactivates a disabled package, and a late Dream revision cannot overwrite
+an intervening edit. Dream uses the personal management delegation of the `skills` Tool.
+Disabled and observation modes create no package. Upgrades transfer existing procedures,
+evidence and suspensions; name collisions preserve both packages under distinct codes.
+The former `?tab=learned` link now opens personal skills.
 
 ## Disable a generic package for everyone
 

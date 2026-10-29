@@ -71,7 +71,7 @@ advice. Prefer REINFORCE or REVISE when an existing candidate describes the same
 do not create a synonym or near-duplicate. A CREATE remains non-injectable until distinct Tasks
 reinforce it enough times for the server's configured threshold. Do not invent files, tools,
 permissions, outcomes, or facts. REINFORCE and WEAKEN never replace Markdown. Never update an
-unknown skill identifier.
+unknown skill identifier. Never REVISE a skill whose markdown_complete flag is false.
 """.strip()
 
 
@@ -101,13 +101,13 @@ def _evidence_weight(reason: SignificanceReason) -> float:
 def _validated_decision(
     decision: LearnedSkillDecision,
     evidence: TaskOutcomeEvidence,
-    existing: dict[UUID, tuple[str, str]],
+    existing: dict[int, tuple[str, str, int]],
     required_prefix: str,
     reason: SignificanceReason,
 ) -> LearnedSkillDecision:
     allowed_refs = {item.reference for item in evidence.observations}
     accepted: list[LearnedSkillOperation] = []
-    touched: set[UUID] = set()
+    touched: set[int] = set()
     created_codes: set[str] = set()
     for operation in decision.operations:
         refs = list(dict.fromkeys(operation.evidence_refs))
@@ -131,11 +131,13 @@ def _validated_decision(
             created_codes.add(code)
         else:
             target_id = operation.target_skill_id
-            if target_id is None or target_id not in existing or target_id in touched:
+            if not isinstance(target_id, int) or target_id not in existing or target_id in touched:
                 continue
             if operation.action == "WEAKEN" and reason not in _NEGATIVE_REASONS:
                 continue
             if operation.action == "REVISE":
+                if len(existing[target_id][1]) > 8_000:
+                    continue
                 try:
                     skill_storage.metadata_from_markdown(
                         operation.markdown,
@@ -144,7 +146,11 @@ def _validated_decision(
                 except ValueError:
                     continue
             touched.add(target_id)
-        accepted.append(operation.model_copy(update={"evidence_refs": refs}))
+        accepted.append(operation.model_copy(update={
+            "evidence_refs": refs,
+            "expected_revision": existing[operation.target_skill_id][2]
+            if isinstance(operation.target_skill_id, int) and operation.target_skill_id in existing else None,
+        }))
     return LearnedSkillDecision(operations=accepted)
 
 
@@ -289,6 +295,7 @@ class SkillLearningMechanism:
                     {
                         **item.model_dump(mode="json", exclude={"markdown"}),
                         "markdown": item.markdown[:8_000],
+                        "markdown_complete": len(item.markdown) <= 8_000,
                     }
                     for item in learned
                 ],
@@ -310,7 +317,7 @@ class SkillLearningMechanism:
                 purpose=LLMCallPurpose.DREAM_SKILL_LEARNING,
                 model_field=model_usages.DREAM,
             )
-            existing = {item.id: (item.code, item.markdown) for item in learned}
+            existing = {item.id: (item.code, item.markdown, item.revision) for item in learned}
             decision = _validated_decision(
                 inference.output,
                 evidence,

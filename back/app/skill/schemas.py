@@ -70,6 +70,26 @@ class SkillPublic(SkillBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SkillLearningPublic(BaseModel):
+    score: float
+    evidence_count: int
+    qualified: bool
+    last_evidence_at: datetime | None
+
+
+class SkillLearningEvidencePublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    source_ref: str
+    operation: Literal["CREATE", "REINFORCE", "REVISE", "WEAKEN"]
+    polarity: Literal["positive", "negative"]
+    weight: float
+    confidence: float
+    evidence_refs: list[str]
+    rationale: str
+    created_at: datetime
+
+
 class PersonalSkillPublic(SkillBase):
     id: int
     owner_agent_id: int
@@ -81,6 +101,7 @@ class PersonalSkillPublic(SkillBase):
     description: str | None
     file_count: int
     updated_at: datetime
+    learning: SkillLearningPublic | None = None
 
 
 class PersonalSkillPage(BaseModel):
@@ -91,6 +112,7 @@ class PersonalSkillPage(BaseModel):
 class PersonalSkillDetail(BaseModel):
     skill: PersonalSkillPublic
     files: list[SkillFile]
+    learning_evidences: list[SkillLearningEvidencePublic] = Field(default_factory=list[SkillLearningEvidencePublic])
 
 
 class SkillAuthorizationUpdate(BaseModel):
@@ -201,59 +223,3 @@ class SkillAgent(BaseModel):
     code: str
     label: str
     driver: str
-
-
-class LearnedSkillEvidencePublic(BaseModel):
-    id: UUID
-    source_ref: str
-    operation: Literal["CREATE", "REINFORCE", "REVISE", "WEAKEN"]
-    polarity: Literal["positive", "negative"]
-    weight: float
-    confidence: float
-    evidence_refs: list[str]
-    rationale: str
-    created_at: datetime
-
-
-class LearnedSkillPublic(BaseModel):
-    id: UUID
-    agent_id: int
-    code: str
-    label: str
-    description: str
-    revision: int
-    positive_weight: float
-    negative_weight: float
-    evidence_count: int
-    score: float
-    suspended: bool
-    injectable: bool
-    last_evidence_at: datetime | None = None
-    created_at: datetime
-    updated_at: datetime | None = None
-
-
-class LearnedSkillDetail(LearnedSkillPublic):
-    markdown: str
-    evidences: list[LearnedSkillEvidencePublic]
-
-
-class LearnedSkillPage(BaseModel):
-    items: list[LearnedSkillPublic]
-    total: int
-    page: int
-    page_size: int
-
-
-class LearnedSkillSuspensionUpdate(BaseModel):
-    suspended: bool
-
-
-class LearnedSkillMutationResult(BaseModel):
-    skill: LearnedSkillPublic
-    affected_agent_ids: list[int]
-
-
-class LearnedSkillLearningStatus(BaseModel):
-    mode: Literal["off", "observe", "learn"]
-    enabled: bool

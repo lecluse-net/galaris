@@ -4,7 +4,6 @@ async function skillFixtures(page) {
   await jsonRoute(page, '**/api/skills', [{ id: 1, revision: 1, enabled: true, code: 'sample', label: 'Sample skill', description: 'A useful procedure', system: false, valid: true, available: true, category_id: null, file_count: 1, total_size: 200 }])
   await jsonRoute(page, '**/api/skills/agents', [])
   await jsonRoute(page, '**/api/skills/categories', [])
-  await jsonRoute(page, '**/api/skills/learned/status', { enabled: false, mode: 'off' })
 }
 
 test('making a library skill personal chooses one owner and retains the operation on retry', async ({ page }) => {
@@ -51,7 +50,8 @@ test('making a library skill personal chooses one owner and retains the operatio
 for (const [device, width] of [['mobile', 390], ['desktop', 1440]]) {
   test(`personal skill mutations preserve drafts on conflict and refresh after conversion on ${device}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
-    const skill = { id: 12, code: 'private-guide', label: 'Synthetic private guide', owner_agent_id: 7, owner_label: 'Synthetic owner', revision: 1, enabled: true, available: true, valid: true, description: 'Synthetic instructions', file_count: 1, updated_at: '2026-10-24T10:00:00Z' }
+    const skill = { id: 12, code: 'private-guide', label: 'Synthetic private guide', owner_agent_id: 7, owner_label: 'Synthetic owner', revision: 1, enabled: true, available: true, valid: true, description: 'Synthetic instructions', file_count: 1, updated_at: '2026-10-24T10:00:00Z',
+      learning: { evidence_count: 3, score: 0.8, qualified: true, last_evidence_at: '2026-10-24T10:00:00Z' } }
     let source = '# Original private instructions', present = true, conflict = true, releaseAttempts = []
     const transfers = []
     await jsonRoute(page, '**/api/agents/selection?*', [
@@ -62,7 +62,9 @@ for (const [device, width] of [['mobile', 390], ['desktop', 1440]]) {
     await page.route('**/api/skills/personal?*', route => route.fulfill({ json: { items: present ? [skill] : [], total: present ? 1 : 0 } }))
     await page.route('**/api/skills/personal/12', route => {
       if (route.request().method() === 'PUT') { expect(route.request().postDataJSON().expected_revision).toBe(skill.revision); skill.label = route.request().postDataJSON().label; skill.revision++ }
-      return route.fulfill({ json: { skill, files: [{ path: 'SKILL.md', name: 'SKILL.md', size: source.length, text: true }], revision: skill.revision } })
+      return route.fulfill({ json: { skill, files: [{ path: 'SKILL.md', name: 'SKILL.md', size: source.length, text: true }], revision: skill.revision,
+        learning_evidences: [{ id: 'synthetic-proof', source_ref: 'galaris://task/00000000-0000-4000-8000-000000000001',
+          polarity: 'positive', operation: 'CREATE', rationale: 'Synthetic verified procedure.', created_at: '2026-10-24T10:00:00Z' }] } })
     })
     await page.route('**/api/skills/personal/12/content*', route => {
       if (route.request().method() === 'PUT') {
@@ -104,6 +106,8 @@ for (const [device, width] of [['mobile', 390], ['desktop', 1440]]) {
     await page.getByText(skill.label, { exact: true }).click({ button: 'right' })
     await page.getByRole('menuitem', { name: 'Edit', exact: true }).click()
     let dialog = page.getByRole('dialog')
+    await dialog.getByText('Evidence', { exact: true }).click()
+    await expect(dialog.getByText('Synthetic verified procedure.', { exact: true })).toBeVisible()
     await expect(dialog.getByLabel('Source', { exact: true })).toBeVisible()
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).last().click()
     await expect(dialog.getByLabel('Label', { exact: true })).not.toHaveAttribute('readonly')
@@ -172,7 +176,8 @@ for (const [device, width] of [['mobile', 390], ['desktop', 1440]]) {
       label: `Private guide ${index + 1}`, owner_agent_id: owner.id, owner_label: owner.label,
       revision: 1, enabled: index === 0, available: true, valid: true,
       description: 'Reusable private procedure for checking fictional budget totals, documenting assumptions, and preserving the evidence attached to each conclusion.',
-      file_count: 2, updated_at: '2026-10-23T10:00:00Z' }))
+      file_count: 2, updated_at: '2026-10-23T10:00:00Z',
+      learning: { evidence_count: index + 1, score: 0.6, qualified: false, last_evidence_at: null } }))
     await jsonRoute(page, '**/api/skills/agents', owners)
     await jsonRoute(page, '**/api/agents/selection?scope=management', owners.map(owner => ({
       id: owner.id, label: owner.label, has_avatar: false,
@@ -194,7 +199,6 @@ for (const [device, width] of [['mobile', 390], ['desktop', 1440]]) {
         ? '# Private Beta instructions' : 'Private Beta reference',
     } }))
     await mount(page, 'app/skill/pages/index.vue', { privileges: ['SKILL_ACCESS'] })
-    await expect(page.getByRole('tab', { name: 'Self-learning' })).toHaveCount(0)
     await page.getByRole('tab', { name: 'Personal skills', exact: true }).click()
     await expect(page.getByRole('alert')).toBeVisible()
     fail = false

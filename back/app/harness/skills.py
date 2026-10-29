@@ -10,7 +10,7 @@ from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.capabilities import Capability
 from pydantic_ai.tools import ToolDefinition
 
-from app.skill import learning_service, skill_service, storage
+from app.skill import skill_service, storage
 from app.skill import interface as skill_interface
 from app.skill.contracts import runtime_skill_name
 
@@ -254,21 +254,6 @@ def _build_capability(code: str, *, defer_loading: bool = True, owner_agent_id: 
     return capability
 
 
-def _build_learned_capability(
-    code: str,
-    description: str,
-    instructions: str,
-) -> Capability[None]:
-    """Build one DB-owned, single-file capability without filesystem tools."""
-
-    return Capability(
-        id=code,
-        description=description,
-        instructions=instructions.rstrip(),
-        defer_loading=True,
-    )
-
-
 async def build_eager_skill_capabilities(agent_id: int) -> list[Capability[None]]:
     """Load only authorized skills explicitly configured for every conversation."""
     capabilities: list[Capability[None]] = []
@@ -309,15 +294,6 @@ async def build_internal_skill_capabilities(agent_id: int) -> list[Any]:
             owner_agent_id=agent_id, agent_id=agent_id, package_id=package.id)
         if capability is not None:
             capabilities.append(capability)
-    for learned in await learning_service.list_injectable(agent_id):
-        name = runtime_skill_name(learned.code, "learned", str(getattr(learned, "id", learned.code)), occupied)
-        capabilities.append(
-            _build_learned_capability(
-                name,
-                learned.description,
-                learned.markdown,
-            )
-        )
     return capabilities
 
 

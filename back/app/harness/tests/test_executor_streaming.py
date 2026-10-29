@@ -217,13 +217,12 @@ async def test_voice_conversation_releases_context_locks_and_keeps_audio_trace(
     monkeypatch.setattr(conversation, "create_agent", fake_create_agent)
     monkeypatch.setattr("app.conversation.facade.active_work_snapshot",
                         AsyncMock(return_value=request.task_data["linked_work"]))
-    from app.skill import learning_service, skill_service
+    from app.skill import skill_service
 
     assigned_skills = AsyncMock(return_value=["galaris-lab"])
     monkeypatch.setattr(
         skill_service, "get_assigned_codes", assigned_skills,
     )
-    monkeypatch.setattr(learning_service, "list_injectable", AsyncMock(return_value=[]))
 
     async with get_db_session() as db:
         db.add(MemoryUsage(item_id=memory_id, agent_id=agent_id, access_kind="context"))

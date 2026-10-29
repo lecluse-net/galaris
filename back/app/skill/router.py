@@ -4,7 +4,6 @@ from __future__ import annotations
 
 
 from pathlib import Path
-from typing import Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
@@ -13,19 +12,14 @@ from starlette.background import BackgroundTask
 
 from core.authorize import Privileges, authorize
 from app.agent import current_management_scope
+from core.database import get_db
+from sqlalchemy import select
 
-from . import interface, learning_service, personal_catalogue, skill_service, storage
+from . import interface, personal_catalogue, skill_service, storage
 from pydantic import BaseModel, ConfigDict, Field
 from .contracts import SkillPackageRef, SkillRevisionConflict
-from .models import LearnedSkill, LearnedSkillEvidence, Skill
+from .models import Skill, SkillLearningEvidence
 from .schemas import (
-    LearnedSkillDetail,
-    LearnedSkillEvidencePublic,
-    LearnedSkillLearningStatus,
-    LearnedSkillMutationResult,
-    LearnedSkillPage,
-    LearnedSkillPublic,
-    LearnedSkillSuspensionUpdate,
     SkillAgent,
     SkillAuthorizationResult,
     SkillAuthorizations,
@@ -48,6 +42,7 @@ from .schemas import (
     SkillPublic,
     PersonalSkillPage,
     PersonalSkillDetail,
+    SkillLearningEvidencePublic,
     SkillRescanResult,
     SkillUpdate,
 )
@@ -192,7 +187,11 @@ async def get_personal_skill(skill_id: int) -> PersonalSkillDetail:
         files = storage.list_files(record.code, owner_agent_id=record.owner_agent_id)
     except (FileNotFoundError, ValueError) as exc:
         raise HTTPException(status_code=404, detail="Compétence introuvable") from exc
-    return PersonalSkillDetail(skill=public, files=[SkillFile(**item) for item in files])
+    evidence = await get_db().scalars(select(SkillLearningEvidence).where(
+        SkillLearningEvidence.skill_id == record.id,
+    ).order_by(SkillLearningEvidence.created_at))
+    return PersonalSkillDetail(skill=public, files=[SkillFile(**item) for item in files],
+        learning_evidences=[SkillLearningEvidencePublic.model_validate(item) for item in evidence])
 
 
 @router.get("/personal/{skill_id}/content", response_model=PersonalSkillContent)
@@ -415,108 +414,6 @@ async def update_category_authorization(
         agent_id=agent_id,
         state=state,
         affected_agent_ids=agent_ids,
-    )
-
-
-def _learned_public(record: LearnedSkill) -> LearnedSkillPublic:
-    return LearnedSkillPublic(
-        id=record.id,
-        agent_id=record.agent_id,
-        code=record.code,
-        label=record.label,
-        description=record.description,
-        revision=record.revision,
-        positive_weight=record.positive_weight,
-        negative_weight=record.negative_weight,
-        evidence_count=record.evidence_count,
-        score=record.score,
-        suspended=record.suspended,
-        injectable=learning_service.is_injectable(record),
-        last_evidence_at=record.last_evidence_at,
-        created_at=record.created_at,
-        updated_at=record.updated_at,
-    )
-
-
-def _learned_evidence_public(record: LearnedSkillEvidence) -> LearnedSkillEvidencePublic:
-    return LearnedSkillEvidencePublic(
-        id=record.id,
-        source_ref=record.source_ref,
-        operation=cast(Literal["CREATE", "REINFORCE", "REVISE", "WEAKEN"], record.operation),
-        polarity=cast(Literal["positive", "negative"], record.polarity),
-        weight=record.weight,
-        confidence=record.confidence,
-        evidence_refs=list(record.evidence_refs),
-        rationale=record.rationale,
-        created_at=record.created_at,
-    )
-
-
-@router.get("/learned", response_model=LearnedSkillPage)
-@authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT])
-async def list_learned_skills(
-    agent_id: int | None = Query(default=None, gt=0),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=500),
-) -> LearnedSkillPage:
-    scope = await current_management_scope()
-    if agent_id is not None and not scope.allows(agent_id):
-        raise HTTPException(status_code=404, detail="Agent introuvable")
-    records, total = await learning_service.list_records(
-        agent_id=agent_id,
-        page=page,
-        page_size=page_size,
-        agent_ids=scope.agent_ids,
-    )
-    return LearnedSkillPage(
-        items=[_learned_public(record) for record in records],
-        total=total,
-        page=page,
-        page_size=page_size,
-    )
-
-
-@router.get("/learned/status", response_model=LearnedSkillLearningStatus)
-@authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT, Privileges.SKILL_ASSIGN])
-async def get_learned_skill_status() -> LearnedSkillLearningStatus:
-    mode = learning_service.learning_mode()
-    return LearnedSkillLearningStatus(mode=mode, enabled=mode != "off")
-
-
-@router.get("/learned/{learned_skill_id}", response_model=LearnedSkillDetail)
-@authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT])
-async def get_learned_skill(learned_skill_id: UUID) -> LearnedSkillDetail:
-    record = await learning_service.get_record(learned_skill_id)
-    scope = await current_management_scope()
-    if record is None or not scope.allows(record.agent_id):
-        raise HTTPException(status_code=404, detail="Compétence apprise introuvable")
-    public = _learned_public(record)
-    return LearnedSkillDetail(
-        **public.model_dump(),
-        markdown=record.markdown,
-        evidences=[_learned_evidence_public(item) for item in record.evidences],
-    )
-
-
-@router.put(
-    "/learned/{learned_skill_id}/suspension",
-    response_model=LearnedSkillMutationResult,
-)
-@authorize(privileges=Privileges.SKILL_EDIT)
-async def suspend_learned_skill(
-    learned_skill_id: UUID,
-    data: LearnedSkillSuspensionUpdate,
-) -> LearnedSkillMutationResult:
-    existing = await learning_service.get_record(learned_skill_id)
-    scope = await current_management_scope()
-    if existing is None or not scope.allows(existing.agent_id):
-        raise HTTPException(status_code=404, detail="Compétence apprise introuvable")
-    record = await learning_service.set_suspended(learned_skill_id, data.suspended)
-    if record is None:
-        raise HTTPException(status_code=404, detail="Compétence apprise introuvable")
-    return LearnedSkillMutationResult(
-        skill=_learned_public(record),
-        affected_agent_ids=[],
     )
 
 

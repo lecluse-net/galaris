@@ -2299,3 +2299,14 @@ Task and exchange cards contain no execution body. The assembled journey lives i
 Task/Topic detail modals. Identity validation and normalization are covered by
 `back/core/util/tests/test_rich_text.py`. Task-menu restrictions retain terminal mutation
 denials without freezing the number of non-destructive actions.
+
+### Dream and personal packages
+
+`app/skill/tests/test_learning.py` follows Dream creation through the personal catalogue,
+canonical file, Harness capabilities and projection. It covers owner isolation, thresholds,
+weakening, distinct Task confirmations, replay, concurrent human edits, preserved deactivation
+and commit failure without orphaned files or evidence. `test_learning_upgrade.py` covers evidence
+and suspension transfer, name collisions, storage failure recovery and real DbAdmin/Atlas
+contraction. Former third-collection injection and DB-owned learned Markdown assertions are
+retired: personal package API reads and `front/browser-tests/skills.spec.mjs` now cover the same
+package's evidence and editing on mobile and desktop.

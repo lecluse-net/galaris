@@ -3937,9 +3937,11 @@
       {
         "files": [
           "back/app/skill/interface.py",
+          "back/app/skill/learning_policy.py",
           "back/app/skill/learning_service.py",
           "back/app/skill/models.py",
           "back/app/skill/personal_catalogue.py",
+          "back/app/skill/router.py",
           "back/app/skill/skill_service.py"
         ],
         "source": "app.skill",
@@ -3948,6 +3950,7 @@
       {
         "files": [
           "back/app/skill/dbadmin.py",
+          "back/app/skill/learning_upgrade.py",
           "back/app/skill/skill_service.py"
         ],
         "source": "app.skill",
@@ -3955,6 +3958,7 @@
       },
       {
         "files": [
+          "back/app/skill/learning_policy.py",
           "back/app/skill/learning_service.py"
         ],
         "source": "app.skill",
@@ -3971,6 +3975,7 @@
       {
         "files": [
           "back/app/skill/interface.py",
+          "back/app/skill/learning_service.py",
           "back/app/skill/ownership_recovery.py",
           "back/app/skill/projection.py",
           "back/app/skill/skill_service.py"
@@ -10006,7 +10011,7 @@
           "skill_categories.id"
         ],
         "history_mixin": false,
-        "line": 161,
+        "line": 176,
         "module": "app.skill",
         "table": "agent_skill_categories"
       },
@@ -10018,7 +10023,7 @@
           "skills.id"
         ],
         "history_mixin": false,
-        "line": 132,
+        "line": 147,
         "module": "app.skill",
         "table": "agent_skills"
       },
@@ -11102,28 +11107,6 @@
         "table": "lab_tasks"
       },
       {
-        "class_name": "LearnedSkillEvidence",
-        "file": "back/app/skill/models.py",
-        "foreign_keys": [
-          "learned_skills.id"
-        ],
-        "history_mixin": false,
-        "line": 250,
-        "module": "app.skill",
-        "table": "learned_skill_evidences"
-      },
-      {
-        "class_name": "LearnedSkill",
-        "file": "back/app/skill/models.py",
-        "foreign_keys": [
-          "agents.id"
-        ],
-        "history_mixin": true,
-        "line": 191,
-        "module": "app.skill",
-        "table": "learned_skills"
-      },
-      {
         "class_name": "LLMCallCost",
         "file": "back/app/llm/models.py",
         "foreign_keys": [
@@ -11890,6 +11873,17 @@
         "table": "skill_categories"
       },
       {
+        "class_name": "SkillLearningEvidence",
+        "file": "back/app/skill/models.py",
+        "foreign_keys": [
+          "skills.id"
+        ],
+        "history_mixin": false,
+        "line": 206,
+        "module": "app.skill",
+        "table": "skill_learning_evidences"
+      },
+      {
         "class_name": "SkillOwnershipRelease",
         "file": "back/app/skill/models.py",
         "foreign_keys": [
@@ -11898,7 +11892,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 111,
+        "line": 126,
         "module": "app.skill",
         "table": "skill_ownership_releases"
       },
@@ -19927,7 +19921,7 @@
         "declared_path": "/skills",
         "file": "back/app/skill/router.py",
         "handler": "list_skills",
-        "line": 164,
+        "line": 159,
         "method": "GET",
         "module": "app.skill"
       },
@@ -19936,7 +19930,7 @@
         "declared_path": "/skills",
         "file": "back/app/skill/router.py",
         "handler": "create_skill",
-        "line": 525,
+        "line": 422,
         "method": "POST",
         "module": "app.skill"
       },
@@ -19945,7 +19939,7 @@
         "declared_path": "/skills/agents",
         "file": "back/app/skill/router.py",
         "handler": "list_skill_agents",
-        "line": 296,
+        "line": 295,
         "method": "GET",
         "module": "app.skill"
       },
@@ -19954,7 +19948,7 @@
         "declared_path": "/skills/authorizations",
         "file": "back/app/skill/router.py",
         "handler": "list_skill_authorizations",
-        "line": 311,
+        "line": 310,
         "method": "GET",
         "module": "app.skill"
       },
@@ -19963,7 +19957,7 @@
         "declared_path": "/skills/categories",
         "file": "back/app/skill/router.py",
         "handler": "list_skill_categories",
-        "line": 335,
+        "line": 334,
         "method": "GET",
         "module": "app.skill"
       },
@@ -19972,7 +19966,7 @@
         "declared_path": "/skills/categories",
         "file": "back/app/skill/router.py",
         "handler": "create_skill_category",
-        "line": 348,
+        "line": 347,
         "method": "POST",
         "module": "app.skill"
       },
@@ -19981,7 +19975,7 @@
         "declared_path": "/skills/categories/{category_id}",
         "file": "back/app/skill/router.py",
         "handler": "delete_skill_category",
-        "line": 378,
+        "line": 377,
         "method": "DELETE",
         "module": "app.skill"
       },
@@ -19990,7 +19984,7 @@
         "declared_path": "/skills/categories/{category_id}",
         "file": "back/app/skill/router.py",
         "handler": "update_skill_category",
-        "line": 359,
+        "line": 358,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -19999,7 +19993,7 @@
         "declared_path": "/skills/categories/{category_id}/authorization/agents/{agent_id}",
         "file": "back/app/skill/router.py",
         "handler": "update_category_authorization",
-        "line": 395,
+        "line": 394,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -20008,44 +20002,8 @@
         "declared_path": "/skills/import",
         "file": "back/app/skill/router.py",
         "handler": "import_skill",
-        "line": 277,
+        "line": 276,
         "method": "POST",
-        "module": "app.skill"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/skills/learned",
-        "file": "back/app/skill/router.py",
-        "handler": "list_learned_skills",
-        "line": 457,
-        "method": "GET",
-        "module": "app.skill"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/skills/learned/status",
-        "file": "back/app/skill/router.py",
-        "handler": "get_learned_skill_status",
-        "line": 481,
-        "method": "GET",
-        "module": "app.skill"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/skills/learned/{learned_skill_id}",
-        "file": "back/app/skill/router.py",
-        "handler": "get_learned_skill",
-        "line": 488,
-        "method": "GET",
-        "module": "app.skill"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/skills/learned/{learned_skill_id}/suspension",
-        "file": "back/app/skill/router.py",
-        "handler": "suspend_learned_skill",
-        "line": 506,
-        "method": "PUT",
         "module": "app.skill"
       },
       {
@@ -20053,7 +20011,7 @@
         "declared_path": "/skills/personal",
         "file": "back/app/skill/router.py",
         "handler": "list_personal_skills",
-        "line": 170,
+        "line": 165,
         "method": "GET",
         "module": "app.skill"
       },
@@ -20062,7 +20020,7 @@
         "declared_path": "/skills/personal/{skill_id}",
         "file": "back/app/skill/router.py",
         "handler": "delete_personal_skill",
-        "line": 256,
+        "line": 255,
         "method": "DELETE",
         "module": "app.skill"
       },
@@ -20071,7 +20029,7 @@
         "declared_path": "/skills/personal/{skill_id}",
         "file": "back/app/skill/router.py",
         "handler": "get_personal_skill",
-        "line": 188,
+        "line": 183,
         "method": "GET",
         "module": "app.skill"
       },
@@ -20080,7 +20038,7 @@
         "declared_path": "/skills/personal/{skill_id}",
         "file": "back/app/skill/router.py",
         "handler": "rename_personal_skill",
-        "line": 225,
+        "line": 224,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -20089,7 +20047,7 @@
         "declared_path": "/skills/personal/{skill_id}/content",
         "file": "back/app/skill/router.py",
         "handler": "get_personal_skill_content",
-        "line": 200,
+        "line": 199,
         "method": "GET",
         "module": "app.skill"
       },
@@ -20098,7 +20056,7 @@
         "declared_path": "/skills/personal/{skill_id}/content",
         "file": "back/app/skill/router.py",
         "handler": "write_personal_skill",
-        "line": 214,
+        "line": 213,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -20107,7 +20065,7 @@
         "declared_path": "/skills/personal/{skill_id}/enabled",
         "file": "back/app/skill/router.py",
         "handler": "enable_personal_skill",
-        "line": 234,
+        "line": 233,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -20116,7 +20074,7 @@
         "declared_path": "/skills/personal/{skill_id}/owner",
         "file": "back/app/skill/router.py",
         "handler": "transfer_personal_skill",
-        "line": 244,
+        "line": 243,
         "method": "POST",
         "module": "app.skill"
       },
@@ -20125,7 +20083,7 @@
         "declared_path": "/skills/rescan",
         "file": "back/app/skill/router.py",
         "handler": "rescan_skills",
-        "line": 265,
+        "line": 264,
         "method": "POST",
         "module": "app.skill"
       },
@@ -20134,7 +20092,7 @@
         "declared_path": "/skills/{skill_id}",
         "file": "back/app/skill/router.py",
         "handler": "delete_skill",
-        "line": 570,
+        "line": 467,
         "method": "DELETE",
         "module": "app.skill"
       },
@@ -20143,7 +20101,7 @@
         "declared_path": "/skills/{skill_id}",
         "file": "back/app/skill/router.py",
         "handler": "get_skill",
-        "line": 536,
+        "line": 433,
         "method": "GET",
         "module": "app.skill"
       },
@@ -20152,7 +20110,7 @@
         "declared_path": "/skills/{skill_id}",
         "file": "back/app/skill/router.py",
         "handler": "update_skill",
-        "line": 542,
+        "line": 439,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -20161,7 +20119,7 @@
         "declared_path": "/skills/{skill_id}/assign-ownership",
         "file": "back/app/skill/router.py",
         "handler": "assign_skill_ownership",
-        "line": 119,
+        "line": 114,
         "method": "POST",
         "module": "app.skill"
       },
@@ -20170,7 +20128,7 @@
         "declared_path": "/skills/{skill_id}/authorization/agents/{agent_id}",
         "file": "back/app/skill/router.py",
         "handler": "update_agent_authorization",
-        "line": 631,
+        "line": 528,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -20179,7 +20137,7 @@
         "declared_path": "/skills/{skill_id}/authorization/global",
         "file": "back/app/skill/router.py",
         "handler": "update_global_authorization",
-        "line": 606,
+        "line": 503,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -20188,7 +20146,7 @@
         "declared_path": "/skills/{skill_id}/category",
         "file": "back/app/skill/router.py",
         "handler": "assign_skill_category",
-        "line": 583,
+        "line": 480,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -20197,7 +20155,7 @@
         "declared_path": "/skills/{skill_id}/content",
         "file": "back/app/skill/router.py",
         "handler": "read_skill_file",
-        "line": 685,
+        "line": 582,
         "method": "GET",
         "module": "app.skill"
       },
@@ -20206,7 +20164,7 @@
         "declared_path": "/skills/{skill_id}/download",
         "file": "back/app/skill/router.py",
         "handler": "download_skill",
-        "line": 659,
+        "line": 556,
         "method": "GET",
         "module": "app.skill"
       },
@@ -20215,7 +20173,7 @@
         "declared_path": "/skills/{skill_id}/enabled",
         "file": "back/app/skill/router.py",
         "handler": "enable_generic_skill",
-        "line": 558,
+        "line": 455,
         "method": "PUT",
         "module": "app.skill"
       },
@@ -20224,7 +20182,7 @@
         "declared_path": "/skills/{skill_id}/file",
         "file": "back/app/skill/router.py",
         "handler": "download_skill_file",
-        "line": 697,
+        "line": 594,
         "method": "GET",
         "module": "app.skill"
       },
@@ -20233,7 +20191,7 @@
         "declared_path": "/skills/{skill_id}/files",
         "file": "back/app/skill/router.py",
         "handler": "list_skill_files",
-        "line": 675,
+        "line": 572,
         "method": "GET",
         "module": "app.skill"
       },
@@ -20242,7 +20200,7 @@
         "declared_path": "/skills/{skill_id}/release-ownership",
         "file": "back/app/skill/router.py",
         "handler": "release_skill_ownership",
-        "line": 100,
+        "line": 95,
         "method": "POST",
         "module": "app.skill"
       },
@@ -22293,7 +22251,6 @@
       },
       {
         "files": [
-          "front/app/skill/components/LearnedSkillManager.vue",
           "front/app/skill/components/PersonalSkillManager.vue",
           "front/app/skill/components/SkillAuthorizationManager.vue",
           "front/app/skill/components/SkillOwnershipDialog.vue"
@@ -22312,7 +22269,6 @@
       },
       {
         "files": [
-          "front/app/skill/components/LearnedSkillManager.vue",
           "front/app/skill/components/PersonalSkillManager.vue",
           "front/app/skill/components/SkillAuthorizationManager.vue",
           "front/app/skill/navigation.ts",
@@ -22331,7 +22287,6 @@
       },
       {
         "files": [
-          "front/app/skill/components/LearnedSkillManager.vue",
           "front/app/skill/components/PersonalSkillManager.vue",
           "front/app/skill/components/SkillPolicyToggle.vue",
           "front/app/skill/components/SkillRowMenu.vue",

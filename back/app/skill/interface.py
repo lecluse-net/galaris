@@ -6,6 +6,7 @@ register an MCP tool or a route; legacy code-only consumers remain generic-only.
 """
 
 from dataclasses import replace
+from collections.abc import Callable
 from typing import Literal
 from uuid import UUID
 from sqlalchemy import select, update, func
@@ -26,6 +27,7 @@ from .contracts import (
     SkillScope,
 )
 from .models import AgentSkill, Skill, SkillOwnershipRelease
+from .learning_policy import eligible_learning_ids
 
 
 MAX_PERSONAL_PACKAGES = 100
@@ -112,6 +114,8 @@ async def _authorize(
             raise PermissionError("Skills management scope is required")
     elif not administration:
         if own:
+            if record.learning_key is not None and scope == SkillScope.USAGE and record.id not in await eligible_learning_ids(actor_agent_id):
+                raise FileNotFoundError("Skill not found")
             if scope == SkillScope.USAGE and not await get_db().scalar(select(AgentSkill.agent_id).where(
                 AgentSkill.skill_id == record.id, AgentSkill.agent_id == actor_agent_id, AgentSkill.active.is_(True))):
                 raise FileNotFoundError("Skill not found")
@@ -147,12 +151,15 @@ async def _list_package_records(
         target = target_agent_id if target_agent_id is not None else actor_agent_id
         await _actor(target)
         codes = await skill_service.get_assigned_codes(target)
+        learned_ids = await eligible_learning_ids(target)
         query = select(Skill).outerjoin(
             AgentSkill,
             (AgentSkill.skill_id == Skill.id) & (AgentSkill.agent_id == target),
         ).where(
             (Skill.owner_agent_id.is_(None) & (True if administration and include_unavailable else Skill.code.in_(codes)))
-            | ((Skill.owner_agent_id == target) & (True if include_unavailable else AgentSkill.active.is_(True)))
+            | ((Skill.owner_agent_id == target) & (True if include_unavailable else (
+                AgentSkill.active.is_(True) & (Skill.learning_key.is_(None) | Skill.id.in_(learned_ids))
+            )))
         )
     if kind is not None:
         query = query.where(Skill.owner_agent_id.is_(None) if kind == "generic" else Skill.owner_agent_id.is_not(None))
@@ -214,6 +221,7 @@ async def read_package_file(
 
 async def create_package(
     data: SkillPackageCreate, *, actor_agent_id: int, generic: bool = False,
+    _before_commit: Callable[[Skill], None] | None = None,
 ) -> SkillPackageRef:
     storage.metadata_from_markdown(data.markdown, expected_code=data.code)
     if len(data.markdown.encode("utf-8")) > storage.MAX_UPLOAD_SIZE:
@@ -258,6 +266,8 @@ async def create_package(
             data.code, data.label, data.markdown, owner_agent_id=owner,
         )
         installed = True
+        if _before_commit is not None:
+            _before_commit(record)
         await db.commit()
     except BaseException as primary:
         try:
@@ -350,9 +360,11 @@ async def personal_packages(agent_id: int) -> list[SkillPackageRef]:
     """Usable personal identities for every Harness, independent of delegation."""
     if await get_db().scalar(select(Agent.id).where(Agent.id == agent_id)) is None:
         return []
+    learned_ids = await eligible_learning_ids(agent_id)
     records = (await get_db().scalars(select(Skill).join(AgentSkill).where(
         Skill.owner_agent_id == agent_id, AgentSkill.agent_id == agent_id,
         AgentSkill.active.is_(True),
+        Skill.learning_key.is_(None) | Skill.id.in_(learned_ids),
     ).order_by(Skill.id))).all()
     return [_reference(record) for record in records]
 
@@ -404,6 +416,7 @@ async def mutate_file(
     administration: bool = False,
     expected_identity: SkillPackageRef | None = None,
     label: str | None = None,
+    _before_commit: Callable[[Skill], None] | None = None,
 ) -> storage.SkillFileData:
     if label is not None and (not label.strip() or len(label) > 255):
         raise ValueError("Invalid skill label")
@@ -439,6 +452,8 @@ async def mutate_file(
         if label is not None:
             record.label = label.strip()
         record.revision += 1
+        if _before_commit is not None:
+            _before_commit(record)
         await get_db().commit()
     except BaseException as primary:
         try:

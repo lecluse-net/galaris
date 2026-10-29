@@ -4,6 +4,10 @@
       class="activation-chip" :class="skill.enabled ? 'activation-chip--enabled' : 'activation-chip--disabled'">
       {{ t(skill.enabled ? 'skills.personal.enabled' : 'skills.personal.disabled') }}
     </q-chip>
+    <q-chip v-if="skill.learning" dense icon="school" class="activation-chip--disabled">
+      {{ t(skill.learning.qualified ? 'skills.learning.qualified' : 'skills.learning.candidate') }}
+      <q-tooltip>{{ t('skills.learning.summary', { count: skill.learning.evidence_count, score: Math.round(skill.learning.score * 100) }) }}</q-tooltip>
+    </q-chip>
     <q-chip v-if="!skill.available || !skill.valid" dense class="validity-chip"
       :icon="!skill.available ? 'folder_off' : 'warning'">
       {{ t(!skill.available ? 'skills.missing' : 'skills.invalid') }}

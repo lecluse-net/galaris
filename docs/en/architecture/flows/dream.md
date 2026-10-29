@@ -91,8 +91,7 @@ Application revalidates the checkpoint; reads and recall exclude new derived fac
 their supporting evidence remains available. See [0169](../../../../project/decisions/0169-conversation-memory-acquired-evidence.md).
 
 `skill.learn_task_outcome` transforms only bounded, observable evidence into reusable procedures
-specific to the agent. CREATE, REINFORCE, REVISE, and WEAKEN feed the dedicated tables
-`learned_skills` and `learned_skill_evidences`, never Memory. The evidence fingerprint is part of
+specific to the agent. CREATE, REINFORCE, REVISE, and WEAKEN use personal `skills` packages and their canonical `SKILL.md`, with linked evidence in `skill_learning_evidences`, never Memory. The evidence fingerprint is part of
 the subject's identity: late-arriving material evidence creates a new subject, while an identical
 rescan remains ineffective. All terminal Tasks are eligible, including those completed
 before learning was enabled; Dream processes them from oldest to newest,
@@ -103,9 +102,7 @@ The smoothed score `(positive + 1) / (positive + negative + 2)` makes reinforcem
 weakening visible. A first occurrence creates only a candidate. An unsuspended
 procedure is added to the agent's ordinary skills only if `DREAM_SKILL_MIN_EVIDENCE` distinct
 Tasks have confirmed the same repeated action and it reaches `DREAM_SKILL_ACTIVATION_SCORE`,
-within `DREAM_SKILL_MAX_ACTIVE`. The repetition threshold is 3 by default. Its file
-projection under `.learned/` is rebuilt from the database and never joins the index of
-administered skills.
+within `DREAM_SKILL_MAX_ACTIVE`. The repetition threshold is 3 by default. Its editable canonical files live under `.personal/`, in the same catalogue and projections as other personal packages.
 
 ## Deterministic effects
 

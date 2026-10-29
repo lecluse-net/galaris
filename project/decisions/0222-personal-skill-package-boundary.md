@@ -1,7 +1,7 @@
 # 0222 — Frontière des packages de skills personnels
 
 - Date : 2026-10-23.
-- Statut : accepté et implémenté ; activation en développement vérifiée après accord utilisateur.
+- Statut : accepté et implémenté ; la séparation des skills appris est remplacée par [0251](0251-dream-personal-skill-packages.md).
 
 ## Décision
 

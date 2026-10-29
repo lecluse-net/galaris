@@ -376,8 +376,7 @@ Une compétence fournit des instructions ; l’accès effectif aux fonctions dé
 des Tools et connexions autorisés.
 
 **Configurer → Compétences** (`/skill`) contient **Compétences** (`?tab=skills`),
-**Compétences personnelles** (`?tab=personal`),
-**Auto-apprentissage** (`?tab=learned`) si l’apprentissage est activé, et
+**Compétences personnelles** (`?tab=personal`), y compris les packages appris par Dream, et
 **Autorisations** (`?tab=authorizations`) avec le privilège `SKILL_ASSIGN`.
 Cette dernière page gère l’affectation des compétences ; elle ne remplace pas les autorisations
 des Tools ni les rôles du compte humain.

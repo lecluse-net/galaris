@@ -1,6 +1,6 @@
 # ADR 0047 — Skills auto-apprises renforcées par des preuves
 
-- Statut : Accepted
+- Statut : Superseded for storage and injection by [0251](0251-dream-personal-skill-packages.md); evidence-based learning remains applicable.
 - Date : 2026-08-24
 
 ## Contexte

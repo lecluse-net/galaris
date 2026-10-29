@@ -350,3 +350,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0243 — Collections de répertoires documentaires partagés](0243-shared-document-folder-collections.md)
 - [0244 — Renommage des ressources sans remplacement de contenu](0244-resource-title-renaming.md)
 - [0246 — Current descriptions for Documents and Datasets](0246-current-resource-summaries.md)
+- [0251 — Dream learns through personal skill packages](0251-dream-personal-skill-packages.md)

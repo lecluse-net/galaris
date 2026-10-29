@@ -1,7 +1,7 @@
 export default {
     fr: {
       contextHelpPages: {
-        "skills": "Les compétences de Galaris sont des ensembles d’instructions réutilisables, décrits dans un fichier SKILL.md et éventuellement accompagnés de ressources ou de scripts. Elles apprennent à un agent comment aborder une activité, par exemple rédiger un rapport selon une méthode précise ou exploiter un outil spécialisé. Une compétence apporte un savoir-faire ; les outils et leurs connexions fournissent les moyens d’agir. Cette bibliothèque permet de consulter, créer ou importer des compétences, puis de les attribuer aux agents concernés. Lorsque l’apprentissage est activé, des compétences issues de leurs expériences peuvent aussi apparaître dans l’onglet des compétences apprises."
+        "skills": "Les compétences de Galaris sont des ensembles d’instructions réutilisables, décrits dans un fichier SKILL.md et éventuellement accompagnés de ressources ou de scripts. Elles apprennent à un agent comment aborder une activité, par exemple rédiger un rapport selon une méthode précise ou exploiter un outil spécialisé. Une compétence apporte un savoir-faire ; les outils et leurs connexions fournissent les moyens d’agir. Cette bibliothèque permet de consulter, créer ou importer des compétences, puis de les attribuer aux agents concernés. Lorsque l’apprentissage est activé, des compétences issues de leurs expériences sont créées dans les compétences personnelles de chaque agent."
       },
         nav: {
             skills: 'Compétences',
@@ -29,7 +29,6 @@ export default {
             title: 'Compétences',
             subtitle: 'Bibliothèque centralisée · Les modifications s’appliquent à la prochaine exécution, sans interrompre les tâches en cours.',
             tabSkills: 'Compétences',
-            tabLearned: 'Auto-apprentissage',
             tabAuthorizations: 'Autorisations',
             create: 'Nouvelle compétence',
             import: 'Importer',
@@ -113,7 +112,9 @@ export default {
                 error: 'L’opération sur la catégorie a échoué.',
             },
             learning: {
-                hint: 'Dream analyse aussi les tâches historiques et regroupe les actions répétées en procédures candidates. Elles sont injectées en plus des compétences attribuées uniquement après le nombre d’occurrences et la note configurés.',
+                hint: 'Dream crée des packages personnels à partir des tâches, puis les rend utilisables après les seuils configurés.',
+                candidate: 'Candidate Dream', qualified: 'Apprise par Dream',
+                summary: '{count} tâche(s) confirmée(s) · fiabilité {score} %',
                 agent: 'Agent',
                 agentFilter: 'Filtrer par agent',
                 unknownAgent: 'Agent inconnu',
@@ -168,7 +169,7 @@ export default {
     },
     en: {
       contextHelpPages: {
-        "skills": "Galaris competencies are skills in the standard Agent Skills format: reusable instructions described in a SKILL.md file, optionally accompanied by resources or scripts. They teach an agent how to approach an activity, such as writing a report with a particular method or using a specialized tool. A skill provides know-how; tools and their connections provide the means to act. This library lets you inspect, create or import skills and assign them to relevant agents. When learning is enabled, skills derived from their experience can also appear in the learned skills tab."
+        "skills": "Galaris competencies are skills in the standard Agent Skills format: reusable instructions described in a SKILL.md file, optionally accompanied by resources or scripts. They teach an agent how to approach an activity, such as writing a report with a particular method or using a specialized tool. A skill provides know-how; tools and their connections provide the means to act. This library lets you inspect, create or import skills and assign them to relevant agents. When learning is enabled, skills derived from their experience are created as personal packages owned by each agent."
       },
         nav: {
             skills: 'Skills',
@@ -196,7 +197,6 @@ export default {
             title: 'Skills',
             subtitle: 'Central library · Changes apply at the next execution without interrupting running tasks.',
             tabSkills: 'Skills',
-            tabLearned: 'Self-learning',
             tabAuthorizations: 'Authorizations',
             create: 'New skill',
             import: 'Import',
@@ -280,7 +280,9 @@ export default {
                 error: 'The category operation failed.',
             },
             learning: {
-                hint: 'Dream also analyzes historical Tasks and groups repeated actions into candidate procedures. They are injected in addition to assigned skills only after reaching the configured occurrence count and score.',
+                hint: 'Dream creates personal packages from Tasks and makes them usable after the configured thresholds.',
+                candidate: 'Dream candidate', qualified: 'Learned by Dream',
+                summary: '{count} confirmed Task(s) · reliability {score}%',
                 agent: 'Agent',
                 agentFilter: 'Filter by agent',
                 unknownAgent: 'Unknown agent',
@@ -355,7 +357,7 @@ export default {
                 empty: '此范围内没有个人技能。', retry: '重试',
                 enabled: '启用', disabled: '停用',
             },
-            title: '技能', subtitle: '中央技能库 · 更改将在下次执行时生效，不会中断正在运行的任务。', tabSkills: '技能', tabLearned: '自主学习', tabAuthorizations: '授权',
+            title: '技能', subtitle: '中央技能库 · 更改将在下次执行时生效，不会中断正在运行的任务。', tabSkills: '技能', tabAuthorizations: '授权',
             create: '新建技能', import: '导入', rescan: '重新扫描目录', search: '搜索技能', code: '代码', label: '名称', description: '描述',
             files: '文件', size: '大小', agents: '智能体', status: '状态', actions: '操作', valid: '有效', invalid: '无效', missing: '目录缺失', system: '系统',
             view: '查看', edit: '编辑', download: '下载', assign: '分发', delete: '删除', cancel: '取消', save: '保存', source: '源文件', preview: '预览',
@@ -376,6 +378,7 @@ export default {
                 assigned: '技能分类已更新。', error: '分类操作失败。',
             },
             learning: {
+                candidate: 'Dream 候选技能', qualified: 'Dream 已学习', summary: '{count} 个已确认任务 · 可靠性 {score}%',
                 hint: '梦境还会分析历史任务，将重复操作归纳为候选流程。只有达到配置的出现次数和评分后，它们才会在已分配技能之外注入。',
                 agent: '智能体', agentFilter: '按智能体筛选', unknownAgent: '未知智能体', skill: '已学习技能', score: '评分', evidenceCount: '{count} 条证据',
                 detail: '已学习技能详情', positive: '正向强化', negative: '负向强化', revision: '修订', instructions: '指令', evidence: '证据',

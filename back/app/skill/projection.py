@@ -9,7 +9,6 @@ from pathlib import Path
 from core.util import complete_io
 
 from . import skill_service, storage
-from . import learning_service
 from . import interface
 from .contracts import SkillPackageRef, runtime_skill_name
 
@@ -43,13 +42,6 @@ def _assigned_files(code: str) -> list[SkillProjectionFile]:
         files.append(SkillProjectionFile(skill_code=code, relative_path=relative, source=source,
                                         size=source.stat().st_size, sha256=digest))
     return files
-
-
-def _learned_file(agent_id: int, code: str, markdown: str) -> SkillProjectionFile:
-    source = storage.project_learned_markdown(agent_id, code, markdown)
-    digest = storage.file_hash(source)
-    return SkillProjectionFile(skill_code=code, relative_path="SKILL.md", source=source,
-                               size=source.stat().st_size, sha256=digest)
 
 
 async def build_skill_projection(
@@ -105,24 +97,8 @@ async def build_skill_projection(
         for item in await complete_io(personal_files):
             files.append(item)
             digest.update(f"personal:{package.id}:{package.revision}:{item.relative_path}:{item.sha256}".encode())
-    learned = await learning_service.list_injectable(agent_id)
-    learned_codes: list[str] = []
-    for item in learned:
-        name = runtime_skill_name(item.code, "learned", str(getattr(item, "id", item.code)), occupied)
-        learned_codes.append(name)
-        if name == item.code:
-            file = await complete_io(_learned_file, agent_id, item.code, item.markdown)
-        else:
-            source = await complete_io(storage.project_runtime_markdown, agent_id, name, item.markdown)
-            runtime_names.add(name)
-            file = SkillProjectionFile(name, "SKILL.md", source, source.stat().st_size,
-                                       await complete_io(storage.file_hash, source), source_code=item.code)
-        files.append(file)
-        digest.update(item.code.encode())
-        digest.update(b"\0SKILL.md\0")
-        digest.update(file.sha256.encode())
     await complete_io(storage.prune_runtime_markdown, agent_id, runtime_names)
-    codes = tuple(sorted((*actual_codes, *learned_codes)))
+    codes = tuple(sorted(actual_codes))
     return SkillProjectionSnapshot(
         agent_id=agent_id,
         skill_codes=codes,

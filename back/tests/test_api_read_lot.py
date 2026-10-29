@@ -29,9 +29,9 @@ from app.process import native_definitions as definitions
 from app.process.bpmn import to_bpmn
 from app.process.models import ProcessDefinition, ProcessDefinitionRevision
 from app.process.tests.test_native_bpmn import graph
-from app.skill import learning_service, skill_service, storage
+from app.skill import personal_catalogue, skill_service, storage
 from app.skill import router as skills
-from app.skill.models import AgentSkill, AgentSkillCategory, LearnedSkill, Skill, SkillCategory
+from app.skill.models import AgentSkill, AgentSkillCategory, Skill, SkillCategory
 from app.task import Task, TaskStatus
 from app.tools.models import Tool
 
@@ -175,30 +175,6 @@ async def test_skill_catalogue_leaves_the_assignment_matrix_to_authorization_rea
     assert report["queries"] == 1 and report["rows"] == 0, report
 
 
-@pytest.mark.asyncio
-async def test_learned_skill_list_preserves_metadata_scope_and_full_detail(db, read_actors):
-    owner, peer = read_actors
-    owner_id, peer_id = owner.id, peer.id
-    now = datetime.now(timezone.utc)
-    rows = [LearnedSkill(agent_id=owner_id, code=f"synthetic-learned-{index:02d}", label=f"Synthetic learned {index}",
-                         description="Synthetic description", markdown="Synthetic procedure.\n" * 2500,
-                         evidence_count=3, score=.95, suspended=index % 2 == 0, updated_at=now - timedelta(seconds=index))
-            for index in range(41)]
-    db.add_all([*rows, LearnedSkill(agent_id=peer_id, code="synthetic-hidden", label="Synthetic hidden",
-                                    description="Synthetic hidden", markdown="Synthetic private procedure")])
-    await db.commit()
-    ids, markdown = [row.id for row in rows], rows[0].markdown
-    async with measured(db, "learned-list", {LearnedSkill: ("markdown",)}) as report:
-        items, total = await learning_service.list_records(agent_id=None, page=1, page_size=50, agent_ids=[owner_id])
-        public = [skills._learned_public(item) for item in items]
-    assert total == 41 and [item.id for item in public] == ids
-    assert all(item.description == "Synthetic description" and item.evidence_count == 3 and item.score == .95 for item in public)
-    assert [item.suspended for item in public] == [index % 2 == 0 for index in range(41)]
-    assert (await learning_service.list_records(agent_id=None, page=1, page_size=500, agent_ids=[])) == ([], 0)
-    assert (await learning_service.list_records(agent_id=peer_id, page=1, page_size=500, agent_ids=[owner_id])) == ([], 0)
-    assert (await learning_service.get_record(ids[0])).markdown == markdown
-    assert report["bytes"] == 0, report
-
 
 @pytest.mark.asyncio
 async def test_incident_list_reads_only_the_pattern_status_and_counter(db, read_actors):
@@ -315,3 +291,31 @@ async def test_process_campaign_inspection_leaves_worker_inputs_unloaded(db, rea
         await process_evaluation.inspect_campaign(identity, peer_id)
     assert (await db.scalar(select(LabProcessCase).where(LabProcessCase.id == ids[0]))).input == {"synthetic": "x" * 30000}
     assert report["bytes"] == 0, report
+
+
+@pytest.mark.asyncio
+async def test_personal_learning_list_keeps_scope_and_full_file_reads(db, read_actors, tmp_path, monkeypatch):
+    """Replaces the retired learned-list projection: personal metadata owns no Markdown payload."""
+    from uuid import uuid4
+    owner, peer = read_actors
+    monkeypatch.setattr(type(storage.settings), 'GALARIS_SKILLS_ROOT', str(tmp_path / 'skills'))
+    body = 'Synthetic procedure.\n' * 2500
+    for actor in (owner, peer):
+        record = Skill(owner_agent_id=actor.id, code='synthetic-personal', label='Synthetic',
+            learning_key=uuid4(), learning_evidence_count=3, learning_score=.95)
+        db.add(record)
+        await db.flush()
+        db.add(AgentSkill(skill_id=record.id, agent_id=actor.id, active=True))
+        await storage.install_markdown(record.code, record.label,
+            '---\nname: synthetic-personal\ndescription: Synthetic description\n---\n' + body,
+            owner_agent_id=actor.id)
+    await db.commit()
+    owner_id, peer_id = owner.id, peer.id
+    async with measured(db, 'personal-learning-list', {}) as report:
+        items, total = await personal_catalogue.list_page(agent_ids=[owner_id])
+    assert total == 1 and items[0].owner_agent_id == owner_id
+    assert items[0].learning.evidence_count == 3 and items[0].learning.score == .95
+    assert await personal_catalogue.list_page(agent_ids=[]) == ([], 0)
+    assert await personal_catalogue.list_page(agent_ids=[owner_id], owner_agent_id=peer_id) == ([], 0)
+    assert storage.read_text(items[0].code, 'SKILL.md', owner_agent_id=owner_id).endswith(body)
+    assert report['bytes'] == 0

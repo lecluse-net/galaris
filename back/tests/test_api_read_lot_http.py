@@ -1,6 +1,7 @@
 """The optimized API projections retain authentication, scope and reopen behavior."""
 
 import pytest
+from uuid import uuid4
 from sqlalchemy import select
 
 from app.agent.models import Agent, Title
@@ -13,7 +14,8 @@ from app.memory.tests.conftest import memory_storage as memory_storage
 from app.process.bpmn import to_bpmn
 from app.process.models import ProcessDefinition, ProcessDefinitionRevision
 from app.process.tests.test_native_bpmn import graph
-from app.skill.models import LearnedSkill, Skill
+from app.skill.models import Skill, AgentSkill
+from app.skill import storage
 from app.task import Task
 from app.tools.models import Tool
 from core.authorize.models import Assignment, Privilege, Role
@@ -23,10 +25,11 @@ from core.user.user_service import encrypt_password
 
 
 @pytest.mark.asyncio
-async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage):
+async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage, tmp_path, monkeypatch):
     from datetime import datetime, timezone
 
     password = "synthetic-read-lot-password"
+    monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(tmp_path / "skills"))
     async with get_db_session() as db:
         codes = ["SKILL_ACCESS", "LLM_API_ACCESS", "EVALUATION_ACCESS", "PROCESS_EVALUATION_ACCESS",
                  "PROCESS_READ", "INCIDENT_ACCESS", "MEMORY_ACCESS"]
@@ -46,8 +49,8 @@ async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage):
         await db.flush()
         owner_id = agents[0].id
         db.add(Skill(code="synthetic-http-catalogue", label="Synthetic HTTP catalogue"))
-        learned = [LearnedSkill(agent_id=agent.id, code=f"synthetic-http-learned-{index}", label="Synthetic procedure",
-                                description="Synthetic description", markdown="Synthetic complete procedure")
+        learned = [Skill(owner_agent_id=agent.id, code=f"synthetic-http-learned-{index}", label="Synthetic procedure",
+                         learning_key=uuid4())
                    for index, agent in enumerate(agents)]
         tasks = [Task(agent_id=agent.id, label=f"Synthetic HTTP Task {index}", data={"synthetic": "private payload"})
                  for index, agent in enumerate(agents)]
@@ -55,6 +58,11 @@ async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage):
         provider = LLMProvider(name="Synthetic HTTP models", base_url="https://models.example.com")
         db.add_all([*learned, *tasks, selected, provider])
         await db.flush()
+        for package in learned:
+            db.add(AgentSkill(skill_id=package.id, agent_id=package.owner_agent_id, active=True))
+            await storage.install_markdown(package.code, package.label,
+                f"---\nname: {package.code}\ndescription: Synthetic description\n---\nSynthetic complete procedure\n",
+                owner_agent_id=package.owner_agent_id)
         db.add(LabTask(task_id=selected.id))
         db.add_all([LLM(llm_provider_id=provider.id, code=f"synthetic-http-{capability}", llm_name=f"synthetic/{capability}",
                         label=f"Synthetic {capability}", service_capabilities=[capability]) for capability in ("chat", "speech")])
@@ -85,11 +93,11 @@ async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage):
                                 occurred_at=now))
         await db.flush()
         own_task_id, selected_id = str(tasks[0].id), str(selected.id)
-        learned_id, campaign_id = str(learned[0].id), str(campaign.id)
+        learned_id, campaign_id = learned[0].id, str(campaign.id)
 
     process_path = "/api/processes/internal/definitions/synthetic_http_read/history"
     campaign_path = f"/api/evaluation/process-campaigns/{campaign_id}"
-    paths = ["/api/skills", "/api/skills/learned", "/api/incidents", "/api/evaluation/candidates",
+    paths = ["/api/skills", "/api/skills/personal", "/api/incidents", "/api/evaluation/candidates",
              "/api/evaluation/tasks", "/api/evaluation/config", "/api/llm/openai/models",
              "/api/llm/anthropic/v1/models", process_path, campaign_path]
     for path in paths:
@@ -109,8 +117,11 @@ async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage):
         responses[path] = result.json()
         assert (await client.get(path, headers=headers[0])).json() == result.json(), path
     assert any(item["code"] == "synthetic-http-catalogue" for item in responses["/api/skills"])
-    assert [item["id"] for item in responses["/api/skills/learned"]["items"]] == [learned_id]
-    assert "markdown" not in responses["/api/skills/learned"]["items"][0]
+    assert [item["id"] for item in responses["/api/skills/personal"]["items"]] == [learned_id]
+    assert "markdown" not in responses["/api/skills/personal"]["items"][0]
+    detail = await client.get(f"/api/skills/personal/{learned_id}", headers=headers[0])
+    assert detail.status_code == 200 and detail.json()["skill"]["learning"] is not None
+    assert (await client.get(f"/api/skills/personal/{learned_id}", headers=headers[1])).status_code == 404
     assert [item["task_id"] for item in responses["/api/evaluation/candidates"]] == [own_task_id]
     assert responses["/api/evaluation/tasks"][0]["task_id"] == selected_id
     for path in ("/api/llm/openai/models", "/api/llm/anthropic/v1/models"):

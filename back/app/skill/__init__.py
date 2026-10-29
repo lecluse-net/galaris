@@ -3,8 +3,7 @@
 from .models import (
     AgentSkill,
     AgentSkillCategory,
-    LearnedSkill,
-    LearnedSkillEvidence,
+    SkillLearningEvidence,
     Skill,
     SkillOwnershipRelease,
     SkillCategory,
@@ -21,7 +20,6 @@ from .learning_contracts import (
 from .learning_service import (
     apply_learning_decision,
     learning_code_prefix,
-    list_injectable,
     list_learning_context,
 )
 from .schemas import SkillCreate, SkillPublic, SkillUpdate
@@ -50,8 +48,7 @@ from .projection import (
 __all__ = [
     "AgentSkill",
     "AgentSkillCategory",
-    "LearnedSkill",
-    "LearnedSkillEvidence",
+    "SkillLearningEvidence",
     "LearnedSkillApplyResult",
     "LearnedSkillContext",
     "LearnedSkillDecision",
@@ -74,7 +71,6 @@ __all__ = [
     "has_configured_skills",
     "initialize_galaris_agent_skills",
     "list_skill_files",
-    "list_injectable",
     "list_learning_context",
     "learning_code_prefix",
     "list_skill_resources",

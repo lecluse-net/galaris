@@ -2401,3 +2401,15 @@ rechargement et fiches tâche/Topic. La validation des identités et la normalis
 couvertes par `back/core/util/tests/test_rich_text.py`. Le test des restrictions du menu
 Tâche conserve les interdictions de mutation terminale sans figer le nombre d'actions
 non destructives.
+
+### Dream et packages personnels
+
+`app/skill/tests/test_learning.py` suit la création Dream jusqu'au catalogue personnel, au
+fichier canonique, aux capacités du harnais et à la projection. Il couvre isolation du propriétaire,
+seuils, affaiblissement, confirmations de tâches distinctes, rejeu, édition humaine concurrente,
+désactivation conservée et échec de commit sans fichier ni preuve orpheline.
+`test_learning_upgrade.py` vérifie le transfert des preuves et des suspensions, les collisions de
+noms, la reprise après échec de stockage et la contraction DbAdmin avec le véritable Atlas.
+Les anciennes assertions sur une troisième collection injectée et sur le Markdown des listes
+`learned` sont retirées : ces garanties passent par les packages personnels, leurs tests de lecture
+API et `front/browser-tests/skills.spec.mjs` (preuves et édition du même package sur mobile/bureau).

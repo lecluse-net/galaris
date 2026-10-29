@@ -4,7 +4,6 @@ test('Skill assignment alone opens its catalogue without exposing the learned-sk
   await jsonRoute(page, '**/api/skills', [])
   await jsonRoute(page, '**/api/skills/agents', [])
   await jsonRoute(page, '**/api/skills/categories', [])
-  await jsonRoute(page, '**/api/skills/learned/status', { enabled: true, mode: 'enabled' })
   await mount(page, 'app/skill/pages/index.vue', { privileges: ['SKILL_ASSIGN'] })
   await expect(page.getByRole('tab', { name: 'Self-learning', exact: true })).toHaveCount(0)
   await setPrivileges(page, ['SKILL_ACCESS'])

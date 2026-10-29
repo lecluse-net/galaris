@@ -8,7 +8,7 @@ from app.tools import ToolModel
 from core.dbadmin import SchemaTransitionSet
 from app.skill import dbadmin, interface, storage
 from app.skill.contracts import SkillScope
-from app.skill.models import Skill, AgentSkill, SkillOwnershipRelease, LearnedSkill
+from app.skill.models import Skill, AgentSkill, SkillOwnershipRelease
 from app.skill.projection import build_skill_projection
 from app.harness.skills import build_internal_skill_capabilities
 from .test_personal_packages import agents, personal, set_scope
@@ -44,20 +44,16 @@ async def test_upgrade_preserves_the_single_tool_connections_settings_and_delega
 
 
 @pytest.mark.asyncio
-async def test_generic_personal_and_learned_homonyms_all_reach_the_runtime_without_source_rewrites(db, agents):
+async def test_generic_and_personal_homonyms_reach_the_runtime_without_source_rewrites(db, agents):
     a, b, admin = agents
     generic = await interface.create_package(personal(), actor_agent_id=admin.id, generic=True)
     from app.skill import skill_service
     await skill_service.set_agent_authorization(generic.id, a.id, 'enabled')
     private = await interface.create_package(personal(body='Private source'), actor_agent_id=a.id)
-    learned = LearnedSkill(agent_id=a.id, code='shared-name', label='Learned procedure', description='Synthetic learned procedure',
-        markdown=personal(body='Learned source').markdown, evidence_count=100, score=1)
-    db.add(learned)
-    await db.commit()
     before = storage.read_file('shared-name', 'SKILL.md', owner_agent_id=a.id).content
     snapshot = await build_skill_projection(a.id)
     files = [item for item in snapshot.files if item.relative_path == 'SKILL.md']
-    assert len(files) == 3 and len({item.skill_code for item in files}) == 3
+    assert len(files) == 2 and len({item.skill_code for item in files}) == 2
     for item in files:
         assert storage.metadata_from_markdown(item.source.read_text(), expected_code=item.skill_code)
     assert storage.read_file('shared-name', 'SKILL.md', owner_agent_id=a.id).content == before

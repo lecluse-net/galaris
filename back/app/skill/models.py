@@ -76,6 +76,14 @@ class Skill(HistoryMixin, Base):
     global_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    # Dream augments the same personal package; its files remain authoritative.
+    learning_key: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), unique=True)
+    learning_origin_code: Mapped[str | None] = mapped_column(String(100))
+    learning_positive_weight: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    learning_negative_weight: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    learning_evidence_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    learning_score: Mapped[float] = mapped_column(Float, default=0.5, server_default="0.5")
+    learning_last_evidence_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     category_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("skill_categories.id", ondelete="SET NULL"),
         index=True,
@@ -94,6 +102,10 @@ class Skill(HistoryMixin, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    learning_evidences: Mapped[list["SkillLearningEvidence"]] = relationship(
+        back_populates="skill", cascade="all, delete-orphan", passive_deletes=True,
+        order_by="SkillLearningEvidence.created_at",
+    )
 
     __table_args__ = (
         Index("uq_skill_generic_code", "code", unique=True,
@@ -105,6 +117,9 @@ class Skill(HistoryMixin, Base):
             name="ck_skill_private_package",
         ),
         CheckConstraint("revision >= 1", name="ck_skill_revision"),
+        CheckConstraint("learning_positive_weight >= 0 AND learning_negative_weight >= 0 "
+                        "AND learning_evidence_count >= 0 AND learning_score BETWEEN 0 AND 1",
+                        name="ck_skill_learning_counts"),
     )
 
 
@@ -188,75 +203,16 @@ class AgentSkillCategory(Base):
     )
 
 
-class LearnedSkill(HistoryMixin, Base):
-    """Agent-scoped procedure learned from independently auditable outcomes."""
-
-    __tablename__ = "learned_skills"
-
-    id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True), primary_key=True, default=uuid4
-    )
-    agent_id: Mapped[int] = mapped_column(
-        ForeignKey("agents.id", ondelete="CASCADE"), index=True, nullable=False
-    )
-    code: Mapped[str] = mapped_column(String(100), nullable=False)
-    label: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    markdown: Mapped[str] = mapped_column(Text, nullable=False)
-    revision: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=1, server_default="1"
-    )
-    positive_weight: Mapped[float] = mapped_column(
-        Float, nullable=False, default=0.0, server_default="0"
-    )
-    negative_weight: Mapped[float] = mapped_column(
-        Float, nullable=False, default=0.0, server_default="0"
-    )
-    evidence_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
-    score: Mapped[float] = mapped_column(
-        Float, nullable=False, default=0.5, server_default="0.5"
-    )
-    suspended: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="false"
-    )
-    last_evidence_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    evidences: Mapped[list["LearnedSkillEvidence"]] = relationship(
-        "LearnedSkillEvidence",
-        back_populates="skill",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-        order_by="LearnedSkillEvidence.created_at",
-    )
-
-    __table_args__ = (
-        UniqueConstraint("agent_id", "code", name="uq_learned_skill_agent_code"),
-        CheckConstraint(
-            "revision >= 1 AND evidence_count >= 0",
-            name="ck_learned_skill_counts",
-        ),
-        CheckConstraint(
-            "positive_weight >= 0 AND negative_weight >= 0 AND score >= 0 AND score <= 1",
-            name="ck_learned_skill_score",
-        ),
-        Index("ix_learned_skill_injection", "agent_id", "suspended", "score"),
-    )
-
-
-class LearnedSkillEvidence(Base):
+class SkillLearningEvidence(Base):
     """One idempotent positive or negative reinforcement of a learned skill."""
 
-    __tablename__ = "learned_skill_evidences"
+    __tablename__ = "skill_learning_evidences"
 
     id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), primary_key=True, default=uuid4
     )
-    learned_skill_id: Mapped[UUID] = mapped_column(
-        ForeignKey("learned_skills.id", ondelete="CASCADE"),
+    skill_id: Mapped[int] = mapped_column(
+        ForeignKey("skills.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
     )
@@ -275,26 +231,25 @@ class LearnedSkillEvidence(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    skill: Mapped[LearnedSkill] = relationship(
-        "LearnedSkill", back_populates="evidences"
-    )
+    skill: Mapped[Skill] = relationship(back_populates="learning_evidences")
 
     __table_args__ = (
+        Index("ix_skill_learning_source", "skill_id", "source_ref"),
         UniqueConstraint(
-            "learned_skill_id",
+            "skill_id",
             "source_fingerprint",
-            name="uq_learned_skill_evidence_source",
+            name="uq_skill_learning_evidence_source",
         ),
         CheckConstraint(
             "operation IN ('CREATE', 'REINFORCE', 'REVISE', 'WEAKEN')",
-            name="ck_learned_skill_evidence_operation",
+            name="ck_skill_learning_evidence_operation",
         ),
         CheckConstraint(
             "polarity IN ('positive', 'negative')",
-            name="ck_learned_skill_evidence_polarity",
+            name="ck_skill_learning_evidence_polarity",
         ),
         CheckConstraint(
             "weight > 0 AND confidence >= 0 AND confidence <= 1",
-            name="ck_learned_skill_evidence_weight",
+            name="ck_skill_learning_evidence_weight",
         ),
     )

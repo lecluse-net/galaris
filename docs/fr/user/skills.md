@@ -11,13 +11,30 @@ Ouvrez **Configurer → Compétences** (`/skill`). Une compétence est un packag
 | Onglet | Contenu |
 |---|---|
 | Compétences | Catalogue générique, catégories et packages système protégés |
-| Compétences personnelles | Packages privés appartenant chacun à un agent |
-| Auto-apprentissage | Procédures apprises par Dream, si l'apprentissage est activé |
+| Compétences personnelles | Packages privés appartenant chacun à un agent, créés manuellement ou appris par Dream |
 | Autorisations | Affectations génériques, avec `SKILL_ASSIGN` |
 
 Les personnels ne sont ni des souvenirs ni des Documents. Un package générique peut être
 attribué à plusieurs agents ; un personnel est utilisable uniquement par son propriétaire.
 Pouvoir administrer ce propriétaire ne rend pas ses compétences utilisables par vos autres agents.
+
+## Apprendre avec Dream
+
+Dream crée directement un package personnel avec son `SKILL.md`. Sa fiche conserve les preuves,
+le nombre de tâches distinctes confirmées et la fiabilité. Une candidate reste consultable et
+éditable, mais ne devient utilisable qu'après les seuils configurés dans les paramètres Dream
+(trois tâches et une note de 0,75 par défaut). Une preuve négative peut la rendre à nouveau inéligible.
+Le plafond de compétences apprises reste applicable ; les packages personnels créés manuellement
+conservent leur activation habituelle.
+
+Les mêmes actions permettent d'éditer, désactiver, supprimer ou transférer ces packages.
+Un renforcement ne réactive jamais un package désactivé ; une révision Dream tardive n'écrase
+pas une édition intervenue entre-temps. Dream utilise la délégation de gestion personnelle du
+Tool `skills`. Les modes désactivé et observation ne créent aucun package.
+
+La mise à jour transfère les anciennes compétences apprises, leur historique et leurs suspensions
+vers les packages personnels. Un nom déjà utilisé est conservé et la compétence transférée reçoit
+un code distinct. L'ancien lien `?tab=learned` ouvre désormais les compétences personnelles.
 
 ## Désactiver un générique pour tous
 

@@ -82,6 +82,21 @@
             outlined :label="t('skills.personal.owner')" :disable="saving || detailLoading" class="q-mb-md"
             :hint="ownerChanged && (editing || labelChanged) ? t('skills.personal.transferHint') : undefined" />
           <q-banner v-if="mutationError" role="alert" class="q-mb-md">{{ mutationError }}</q-banner>
+          <div v-if="selected?.learning" class="q-mb-md">
+            <PersonalSkillStatus :skill="selected" />
+            <p class="q-mt-sm">{{ t('skills.learning.summary', { count: selected.learning.evidence_count, score: Math.round(selected.learning.score * 100) }) }}</p>
+            <q-expansion-item v-if="learningEvidence.length" icon="history" :label="t('skills.learning.evidence')">
+              <q-list bordered separator>
+                <q-item v-for="item in learningEvidence" :key="item.id">
+                  <q-item-section>
+                    <q-item-label>{{ t(item.polarity === 'positive' ? 'skills.learning.positive' : 'skills.learning.negative') }}</q-item-label>
+                    <q-item-label>{{ item.rationale }}</q-item-label>
+                    <q-item-label caption>{{ item.source_ref }} · {{ formatDate(item.created_at) }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-expansion-item>
+          </div>
           <template v-if="selected && canEdit">
             <q-input v-model="labelDraft" outlined class="q-mb-md" :label="t('skills.label')" :readonly="saving" maxlength="255" />
           </template>
@@ -165,7 +180,7 @@ import { apiErrorDetail } from '@/core/api'
 import { ActionContextMenu, CodeEditor, Markdown, type ContextAction } from '@/core/util'
 import { languageForSkillFile } from '../fileLanguage'
 import PersonalSkillStatus from './PersonalSkillStatus.vue'
-import { skillService, type PersonalSkill, type SkillAgent, type SkillFile } from '../services/skillService'
+import { skillService, type PersonalSkill, type SkillAgent, type SkillFile, type SkillLearningEvidence } from '../services/skillService'
 
 const { active } = defineProps<{ active: boolean }>()
 const emit = defineEmits<{ changed: [] }>()
@@ -176,6 +191,7 @@ const canRelease = computed(() => canEdit.value && privilegeStore.hasPrivilege(p
 const ownerId = ref<number | null>(null)
 const search = ref<string | null>('')
 const rows = ref<PersonalSkill[]>([])
+const learningEvidence = ref<SkillLearningEvidence[]>([])
 const agents = ref<SkillAgent[]>([])
 const ownerOptions = ref<{ value: number; label: string; hasAvatar: boolean }[]>([])
 const ownerDraft = ref<number | null>(null)
@@ -282,6 +298,7 @@ async function openDetail(row: PersonalSkill, edit = false): Promise<void> {
     const response = await skillService.getPersonalSkill(row.id)
     if (request !== detailGeneration) return
     selected.value = response.data.skill
+    learningEvidence.value = response.data.learning_evidences ?? []
     ownerDraft.value = response.data.skill.owner_agent_id
     if (labelDraft.value === row.label) labelDraft.value = response.data.skill.label
     files.value = response.data.files
@@ -326,6 +343,7 @@ function closeDetail(): void {
   ++detailGeneration
   editOnLoad = false
   selected.value = null
+  learningEvidence.value = []
   ownerDraft.value = null
   files.value = []
   filePath.value = ''

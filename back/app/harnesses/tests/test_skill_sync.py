@@ -18,8 +18,7 @@ from app.harnesses.models import AgentHarness
 from app.harnesses.registry import get_provider
 from app.skill import build_skill_projection, skill_service, storage
 from app.skill.schemas import SkillCreate, SkillUpdate
-from app.skill import learning_service
-from app.skill.models import LearnedSkill
+from app.skill.models import Skill, AgentSkill
 
 
 @pytest_asyncio.fixture
@@ -184,24 +183,30 @@ async def test_changed_library_during_copy_is_reconciled_before_execution(runtim
 
 
 @pytest.mark.asyncio
-async def test_import_and_learned_skill_suspension_apply_at_the_next_execution(runtime, db):
+async def test_import_and_personal_learning_deactivation_apply_at_the_next_execution(runtime, db):
     await skill_sync.prepare_skill_execution(runtime.run)
     await skill_service.import_upload(
         "SKILL.md", b"---\nname: synthetic\ndescription: Imported procedure\n---\n\nImported instructions.",
         "synthetic", "Synthetic", True,
     )
-    learned = LearnedSkill(
-        agent_id=runtime.agent.id, code="learned-synthetic", label="Synthetic learning",
-        description="Synthetic learned procedure", evidence_count=100, score=1,
-        markdown="---\nname: learned-synthetic\ndescription: Synthetic learning\n---\n\nLearned instructions.",
+    learned = Skill(
+        owner_agent_id=runtime.agent.id, code="learned-synthetic", label="Synthetic learning",
+        learning_key=uuid4(), learning_evidence_count=100, learning_score=1,
     )
     db.add(learned)
+    await db.flush()
+    activation = AgentSkill(skill_id=learned.id, agent_id=runtime.agent.id, active=True)
+    db.add(activation)
+    await storage.install_markdown(learned.code, learned.label,
+        "---\nname: learned-synthetic\ndescription: Synthetic learning\n---\n\nLearned instructions.",
+        owner_agent_id=runtime.agent.id)
     await db.commit()
     await skill_sync.prepare_skill_execution(runtime.run)
     assert b"Imported instructions" in runtime.projected[-1][("synthetic", "SKILL.md")]
     assert ("learned-synthetic", "SKILL.md") in runtime.projected[-1]
     before = len(runtime.projected)
-    await learning_service.set_suspended(learned.id, True)
+    activation.active = False
+    await db.commit()
     assert len(runtime.projected) == before
     await skill_sync.prepare_skill_execution(runtime.run)
     assert ("learned-synthetic", "SKILL.md") not in runtime.projected[-1]

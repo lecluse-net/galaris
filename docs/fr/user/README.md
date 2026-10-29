@@ -958,8 +958,8 @@ ces ressources sont uniquement rattachées aux sujets existants.
 Les comptes autorisés peuvent aussi corriger l’affectation d’un élément. Dream peut consolider des
 souvenirs et analyser séparément les résultats de tâches afin de renforcer des compétences propres à
 l'agent. Une compétence auto-apprise n'est ajoutée aux futures exécutions qu'après avoir atteint les
-seuils de preuves et de score configurés ; la page **Compétences → Auto-apprises** permet d'en consulter
-les preuves et de la suspendre.
+seuils de preuves et de score configurés ; la page **Compétences → Compétences personnelles** permet
+d'en consulter les preuves, d'éditer son `SKILL.md` et de la désactiver.
 
 ## Organiser et suivre le travail
 

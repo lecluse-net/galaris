@@ -40,12 +40,22 @@ export interface PersonalSkill {
     description: string | null
     file_count: number
     updated_at: string
+    learning?: { score: number; evidence_count: number; qualified: boolean; last_evidence_at: string | null } | null
 }
 
+export interface SkillLearningEvidence {
+    id: string
+    source_ref: string
+    operation: 'CREATE' | 'REINFORCE' | 'REVISE' | 'WEAKEN'
+    polarity: 'positive' | 'negative'
+    rationale: string
+    created_at: string
+}
 
 export interface PersonalSkillDetail {
     skill: PersonalSkill
     files: SkillFile[]
+    learning_evidences?: SkillLearningEvidence[]
 }
 
 export interface SkillUpdate {
@@ -148,60 +158,6 @@ export interface SkillDeleteResult {
     affected_agent_ids: number[]
 }
 
-export type LearnedSkillOperation = 'CREATE' | 'REINFORCE' | 'REVISE' | 'WEAKEN'
-
-export interface LearnedSkillEvidence {
-    id: string
-    source_ref: string
-    operation: LearnedSkillOperation
-    polarity: 'positive' | 'negative'
-    weight: number
-    confidence: number
-    evidence_refs: string[]
-    rationale: string
-    created_at: string
-}
-
-export interface LearnedSkill {
-    id: string
-    agent_id: number
-    code: string
-    label: string
-    description: string
-    revision: number
-    positive_weight: number
-    negative_weight: number
-    evidence_count: number
-    score: number
-    suspended: boolean
-    injectable: boolean
-    last_evidence_at: string | null
-    created_at: string
-    updated_at: string | null
-}
-
-export interface LearnedSkillDetail extends LearnedSkill {
-    markdown: string
-    evidences: LearnedSkillEvidence[]
-}
-
-export interface LearnedSkillPage {
-    items: LearnedSkill[]
-    total: number
-    page: number
-    page_size: number
-}
-
-export interface LearnedSkillMutationResult {
-    skill: LearnedSkill
-    affected_agent_ids: number[]
-}
-
-export interface LearnedSkillLearningStatus {
-    mode: 'off' | 'observe' | 'learn'
-    enabled: boolean
-}
-
 export const skillService = {
     setSkillEnabled(id: number, enabled: boolean, expected_revision: number): Promise<AxiosResponse<Skill>> {
         return api.put(`/skills/${id}/enabled`, { enabled, expected_revision })
@@ -271,31 +227,6 @@ export const skillService = {
     },
     rescan(): Promise<AxiosResponse<SkillRescanResult>> {
         return api.post('/skills/rescan')
-    },
-    getLearnedSkills(params: {
-        agentId?: number | null
-        page?: number
-        pageSize?: number
-    } = {}): Promise<AxiosResponse<LearnedSkillPage>> {
-        return api.get('/skills/learned', {
-            params: {
-                agent_id: params.agentId ?? undefined,
-                page: params.page ?? 1,
-                page_size: params.pageSize ?? 50,
-            },
-        })
-    },
-    getLearnedSkillStatus(): Promise<AxiosResponse<LearnedSkillLearningStatus>> {
-        return api.get('/skills/learned/status')
-    },
-    getLearnedSkill(id: string): Promise<AxiosResponse<LearnedSkillDetail>> {
-        return api.get(`/skills/learned/${id}`)
-    },
-    setLearnedSkillSuspended(
-        id: string,
-        suspended: boolean,
-    ): Promise<AxiosResponse<LearnedSkillMutationResult>> {
-        return api.put(`/skills/learned/${id}/suspension`, { suspended })
     },
     getFiles(id: number): Promise<AxiosResponse<SkillFile[]>> {
         return api.get(`/skills/${id}/files`)

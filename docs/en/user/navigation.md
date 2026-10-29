@@ -347,8 +347,7 @@ connection, then follow the [product knowledge guide](../admin/product-knowledge
 A skill provides instructions; actual function access also depends on authorized Tools and connections.
 
 **Configure → Skills** (`/skill`) contains **Skills** (`?tab=skills`), **Personal skills**
-(`?tab=personal`), **Self-learning**
-(`?tab=learned`) when learning is enabled, and **Authorizations** (`?tab=authorizations`)
+(`?tab=personal`), including packages learned by Dream, and **Authorizations** (`?tab=authorizations`)
 with `SKILL_ASSIGN`. Skill assignments do not replace Tool permissions or human account roles.
 
 The personal tab supports reading/editing managed agents' packages, activation, deletion,

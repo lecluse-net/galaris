@@ -10,7 +10,8 @@ from core.database import get_db
 
 from . import storage
 from .models import Skill
-from .schemas import PersonalSkillPublic
+from .schemas import PersonalSkillPublic, SkillLearningPublic
+from .learning_policy import is_injectable
 
 
 def _public(record: Skill, owner: Agent) -> PersonalSkillPublic:
@@ -23,6 +24,10 @@ def _public(record: Skill, owner: Agent) -> PersonalSkillPublic:
         available=inspection.available, valid=inspection.valid,
         description=inspection.description, file_count=inspection.file_count,
         updated_at=record.updated_at or record.created_at,
+        learning=SkillLearningPublic(
+            score=record.learning_score, evidence_count=record.learning_evidence_count,
+            qualified=is_injectable(record), last_evidence_at=record.learning_last_evidence_at,
+        ) if record.learning_key is not None or record.learning_last_evidence_at is not None else None,
     )
 
 

@@ -34,7 +34,7 @@ async def refresh_learned_skill_runtime(agent_id: int) -> None:
 
 
 class LearnedSkillContext(BaseModel):
-    id: UUID
+    id: int
     code: str
     label: str
     description: str
@@ -47,7 +47,9 @@ class LearnedSkillContext(BaseModel):
 
 class LearnedSkillOperation(BaseModel):
     action: LearnedSkillAction
-    target_skill_id: UUID | None = None
+    # UUID accepts already checkpointed Dream decisions from the previous storage.
+    target_skill_id: int | UUID | None = None
+    expected_revision: int | None = Field(default=None, ge=1)
     code: str = Field(default="", max_length=100)
     label: str = Field(default="", max_length=255)
     markdown: str = Field(default="", max_length=16_000)

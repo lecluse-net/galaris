@@ -12,9 +12,8 @@ from bridge.hermes import skill_sync
 
 @pytest.fixture(autouse=True)
 def no_learned_skills(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.skill import learning_service, interface
+    from app.skill import interface
 
-    monkeypatch.setattr(learning_service, "list_injectable", AsyncMock(return_value=[]))
     monkeypatch.setattr(interface, "personal_packages", AsyncMock(return_value=[]))
 
 

@@ -667,14 +667,14 @@ périodique dont un appel LLM long consommerait une partie.
 `skill.learn_task_outcome` complète l’extraction factuelle avec un apprentissage séparé fondé sur
 des preuves observables : tentatives, résultats d’outils, enfants, verdict Goal, correction humaine
 et usages Memory. Un filtre sans LLM élimine les signaux faibles, puis la sortie structurée cite ses
-preuves avant de créer, renforcer, réviser ou affaiblir une `LearnedSkill`. L’empreinte du matériel
+preuves avant de créer, renforcer, réviser ou affaiblir un package personnel `Skill`. L’empreinte du matériel
 rend le rescan idempotent et autorise une correction tardive distincte. Dream parcourt aussi les
 Tâches terminales historiques, de la plus ancienne à la plus récente et une seule par passage ; les
 reçus empêchent de compter deux fois le même matériel. Ce mécanisme ne crée aucun `MemoryItem`.
 
 `DREAM_SKILL_LEARNING_MODE` vaut `off`, `observe` ou `learn` et reste `off` par défaut. `observe`
 conserve uniquement les diagnostics Dream et `learn` applique la décision checkpointée. Une compétence
-est d’abord conservée comme candidate non injectable. Elle est promue et injectée en plus des
+est d’abord conservée comme package personnel candidat non injectable. Elle est promue et injectée en plus des
 compétences affectées lorsqu'au moins `DREAM_SKILL_MIN_EVIDENCE` tâches distinctes ont confirmé la même
 procédure et qu'elle atteint `DREAM_SKILL_ACTIVATION_SCORE`; le seuil de répétition vaut 3 par
 défaut et `DREAM_SKILL_MAX_ACTIVE` borne le nombre de procédures actives. Ces réglages sont

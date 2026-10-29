@@ -17,7 +17,7 @@ from core.params import runtime_settings
 
 
 def test_skill_learning_rejects_unknown_evidence_and_unjustified_weakening() -> None:
-    target_id = uuid4()
+    target_id = 123
     evidence = TaskOutcomeEvidence(
         task_id=uuid4(),
         owner_agent_id=7,
@@ -53,7 +53,7 @@ def test_skill_learning_rejects_unknown_evidence_and_unjustified_weakening() -> 
     validated = _validated_decision(
         decision,
         evidence,
-        {target_id: ("learned-agent-check", "")},
+        {target_id: ("learned-agent-check", "", 1)},
         "learned-agent-",
         "verified_tool_success",
     )
@@ -72,6 +72,23 @@ def test_default_registry_uses_skill_learning_instead_of_memory_experience() -> 
     finally:
         reset_registry()
         register_default_mechanisms()
+
+
+def test_learning_pins_the_observed_revision_and_never_rewrites_a_truncated_package() -> None:
+    evidence = TaskOutcomeEvidence(task_id=uuid4(), owner_agent_id=7, terminal_status="SUCCESS",
+        observations=[TaskOutcomeEvidenceItem(reference="tool:0:verify", kind="tool_result", status="success")],
+        fingerprint="a" * 64)
+    markdown = "---\nname: learned-agent-check\ndescription: Synthetic procedure\n---\nVerified procedure.\n"
+    proposal = LearnedSkillDecision(operations=[LearnedSkillOperation(
+        action="REVISE", target_skill_id=123, markdown=markdown,
+        evidence_refs=["tool:0:verify"], rationale="Synthetic correction", confidence=.9,
+        expected_revision=99,
+    )])
+    result = _validated_decision(proposal, evidence, {123: ("learned-agent-check", markdown, 7)},
+                                 "learned-agent-", "verified_tool_success")
+    assert result.operations[0].expected_revision == 7
+    assert not _validated_decision(proposal, evidence,
+        {123: ("learned-agent-check", markdown * 200, 7)}, "learned-agent-", "verified_tool_success").operations
 
 
 @pytest.mark.asyncio

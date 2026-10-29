@@ -29,7 +29,7 @@ from app.file_share import ResourceTransfer
 from core.params import Params, prompt_default
 from app.harness import conversation as conversation_module
 from app.llm import LLMCallPurpose
-from app.skill import learning_service, skill_service
+from app.skill import skill_service
 from app.harness.conversation import (
     HarnessConversationController,
     _LiveTextProgressBuffer,
@@ -100,10 +100,6 @@ def frozen_topic_scope(monkeypatch):
     monkeypatch.setattr("app.conversation.facade.current_turn_scope", current_scope)
     monkeypatch.setattr(
         skill_service, "get_assigned_codes",
-        AsyncMock(return_value=[]),
-    )
-    monkeypatch.setattr(
-        learning_service, "list_injectable",
         AsyncMock(return_value=[]),
     )
 
