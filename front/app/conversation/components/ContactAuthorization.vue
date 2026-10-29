@@ -14,7 +14,7 @@
       </q-item>
     </q-list>
     <q-btn v-if="canReadPermissions" outline color="primary" icon="approval" class="q-mt-sm"
-      :label="t('conversation.contactAuthorization.permissions')" to="/connection/permissions" />
+      :label="t('conversation.contactAuthorization.permissions')" :to="agentId === undefined ? '/permissions' : { path: '/permissions', query: { agent_id: String(agentId) } }" />
   </q-card-section>
 </template>
 
@@ -24,7 +24,7 @@ import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { ContactAuthorizationDetails } from '../types'
 
-const props = defineProps<{ authorization: ContactAuthorizationDetails }>()
+const props = defineProps<{ authorization: ContactAuthorizationDetails; agentId?: number }>()
 const { t } = useI18n()
 const privilegeStore = usePrivilegeStore()
 const canReadPermissions = computed(() => [privileges.PERMISSION_ACCESS, privileges.PERMISSION_DECIDE, privileges.PERMISSION_REVOKE]

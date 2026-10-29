@@ -162,10 +162,7 @@ export interface FunctionStateResolved {
     state_source: ConnectionFunctionInfo['state_source']
 }
 
-export interface FunctionPolicyChange {
-    scope: 'connection' | 'global'
-    state: EffectiveFunctionState
-}
+export type FunctionPolicyChange = { scope: 'connection'; state: FunctionState } | { scope: 'global'; state: EffectiveFunctionState }
 
 // Global and local choices for one capability share an ordered write stream,
 // including when its connection changes or the manager is reopened.

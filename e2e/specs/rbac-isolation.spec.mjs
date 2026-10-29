@@ -25,7 +25,7 @@ const cases = [
   ['CONVERSATION_ACCESS', '/task?tab=conversations'], ['CONVERSATION_CONTROL', '/task?tab=conversations'],
   ['VOICE_HISTORY_ACCESS', '/task?tab=voice'], ['VOICE_HISTORY_CONTROL', '/task?tab=voice'],
   ['LLM_CALL_ACCESS', '/task?tab=llm'], ['LLM_CALL_CONTROL', '/task?tab=llm'],
-  ['PERMISSION_ACCESS', '/connection/permissions'], ['PERMISSION_DECIDE', '/connection/permissions'],
+  ['PERMISSION_ACCESS', '/permissions'], ['PERMISSION_DECIDE', '/permissions'],
   ['DASHBOARD_ACCESS', '/dashboard'],
   ...[
     ['PARAMS', 'system'], ['LANGUAGE_CONFIG', 'language'], ['MESSAGING_CONFIG', 'messaging'],
@@ -38,7 +38,7 @@ const cases = [
   ['DREAM_ACCESS', '/dream', ['AGENT_MANAGE_ALL']],
   ['BROWSER_CONFIG_ACCESS', '/browser/settings'], ['BROWSER_CONFIG_EDIT', '/browser/settings'],
   ['DOCUMENT_ADMIN', '/documents'], ['DATASET_ADMIN', '/dataset'], ['MEMORY_ADMIN', '/memory'],
-  ['PROCESS_ADMIN', '/process'], ['SKILL_ASSIGN', '/skill'], ['PERMISSION_REVOKE', '/connection/permissions'],
+  ['PROCESS_ADMIN', '/process'], ['SKILL_ASSIGN', '/skill'], ['PERMISSION_REVOKE', '/permissions'],
   ['INCIDENT_ACCESS', '/incident'], ['INCIDENT_EDIT', '/incident'],
   ...['READ_USER', 'CREATE_USER', 'UPDATE_USER', 'DELETE_USER'].map(code => [code, '/user/users']),
   ...['READ_ROLE', 'MANAGE_ROLE', 'READ_PRIVILEGE', 'MANAGE_PRIVILEGE', 'READ_ASSIGNMENT', 'MANAGE_ASSIGNMENT'].map(code => [code, '/authorize']),

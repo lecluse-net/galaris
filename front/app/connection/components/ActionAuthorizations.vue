@@ -1,25 +1,25 @@
 <template>
   <div>
-    <div class="row items-center q-mb-sm">
+    <div v-if="!embedded" class="row items-center q-mb-sm">
       <h2 class="text-h6 q-my-none">{{ t('permissions.pendingApprovals') }}</h2>
-      <q-space /><q-btn flat icon="refresh" :aria-label="t('permissions.refresh')" :loading="loading" @click="load" />
+      <q-space /><q-btn flat color="primary" icon="refresh" :aria-label="t('permissions.refresh')" :loading="loading" @click="load" />
     </div>
     <q-banner v-if="error" role="alert">{{ t('permissions.error') }}
-      <template #action><q-btn outline :label="t('permissions.retry')" @click="load" /></template>
+      <template #action><q-btn outline color="primary" :label="t('permissions.retry')" @click="load" /></template>
     </q-banner>
     <q-table :rows="rows" :columns="columns" row-key="id" v-model:pagination="pagination"
       :grid="$q.screen.lt.md" :loading="loading" wrap-cells
       :rows-per-page-options="[10, 20, 50, 100, 500]" :no-data-label="t('permissions.actionEmpty')" @request="requestPage">
-      <template #body-cell-status="props"><q-td :props="props">{{ t(`permissions.actionStatus.${props.row.status}`) }}</q-td></template>
+      <template #body-cell-status="props"><q-td :props="props"><PermissionStateBadge state="pending" :label="t(`permissions.actionStatus.${props.row.status}`)" /></q-td></template>
       <template #body-cell-actions="props"><q-td :props="props">
-        <q-btn flat icon="visibility" :aria-label="t('permissions.inspect')" @click="open(props.row.id)" />
+        <q-btn flat color="primary" icon="visibility" :aria-label="t('permissions.inspect')" @click="open(props.row.id)"><q-tooltip>{{ t('permissions.inspect') }}</q-tooltip></q-btn>
       </q-td></template>
       <template #item="props"><div class="col-12 q-pa-xs"><q-card flat bordered>
         <q-card-section>{{ displayPreview(props.row) }}
           <div>{{ t('permissions.agent') }}: {{ agentLabel(props.row.agent_id) }}</div>
-          <div>{{ t(`permissions.actionStatus.${props.row.status}`) }}</div>
+          <PermissionStateBadge state="pending" :label="t(`permissions.actionStatus.${props.row.status}`)" />
         </q-card-section>
-        <q-card-actions><q-btn outline :label="t('permissions.inspect')" @click="open(props.row.id)" /></q-card-actions>
+        <q-card-actions><q-btn flat color="primary" icon="visibility" :aria-label="t('permissions.inspect')" @click="open(props.row.id)"><q-tooltip>{{ t('permissions.inspect') }}</q-tooltip></q-btn></q-card-actions>
       </q-card></div></template>
     </q-table>
     <q-dialog v-model="detailOpen">
@@ -49,19 +49,16 @@
             </div>
           </q-expansion-item>
           <p v-if="selected.can_remember">{{ t(selected.source === 'runtime' ? 'permissions.runtimeScope' : 'permissions.functionScope', { function: selected.capability_name, runtime: selected.runtime }) }}</p>
+          <PermissionToggle v-if="decisionControl" :control="decisionControl" :disabled="answering" class="q-mt-md"
+            @change="value => decisionControl?.save(value)" />
         </q-card-section>
         <q-card-section v-if="detailError" role="alert">{{ t('permissions.error') }}
-          <q-btn v-if="detailId" outline :label="t('permissions.retry')" @click="open(detailId)" />
+          <q-btn v-if="detailId" outline color="primary" :label="t('permissions.retry')" @click="open(detailId)" />
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn v-close-popup outline :label="t('permissions.cancel')" />
-          <q-btn v-if="selected?.can_cancel && canCancel" :label="t('permissions.cancelAction')"
+          <q-btn v-close-popup outline color="primary" :label="t('permissions.cancel')" />
+          <q-btn v-if="selected?.can_cancel && canCancel" color="primary" :label="t('permissions.cancelAction')"
             :loading="answering" @click="cancel" />
-          <template v-if="selected?.can_answer && canAnswer">
-            <q-btn :label="t('permissions.denyAction')" :loading="answering" @click="answer(false)" />
-            <q-btn :label="t('permissions.allowAction')" :loading="answering" @click="answer(true)" />
-            <q-btn v-if="selected.can_remember" :label="t(selected.source === 'runtime' ? 'permissions.allowRuntimeAction' : 'permissions.allowFunction')" :loading="answering" @click="answer(true, true)" />
-          </template>
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -76,9 +73,15 @@ import type { QTableColumn, QTableProps } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { AgentSelectionOption } from '@/app/agent'
 import { answerActionAuthorization, cancelActionAuthorization, getActionAuthorization, listActionAuthorizations, type ActionAuthorization } from '../services/permissionService'
-const { agentId = null, agents = [] } = defineProps<{ agentId?: number | null; agents?: AgentSelectionOption[] }>()
+import type { PermissionCounts, PermissionState } from '../services/permissionDashboard'
+import type { PermissionControl } from '../services/permissionDashboard'
+import PermissionToggle from './PermissionToggle.vue'
+import PermissionStateBadge from './PermissionStateBadge.vue'
+const { agentId = null, agents = [], search = '', state = 'all', revision = 0, embedded = false, customizedOnly = false } = defineProps<{
+  agentId?: number | null; agents?: AgentSelectionOption[]; search?: string; state?: PermissionState; revision?: number; embedded?: boolean; customizedOnly?: boolean
+}>()
 const agentLabel = (id: number) => agents.find(agent => agent.id === id)?.label ?? String(id)
-const emit = defineEmits<{ answered: [] }>()
+const emit = defineEmits<{ answered: []; counts: [counts: PermissionCounts] }>()
 const { t } = useI18n()
 const route = useRoute()
 const privilegeStore = usePrivilegeStore()
@@ -94,6 +97,29 @@ const error = ref(false)
 const detailError = ref(false)
 const answering = ref(false)
 const pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
+const decisionControl = computed<PermissionControl | null>(() => {
+  const row = selected.value
+  if (!row) return null
+  const allowed = ['approved', 'executing', 'completed'].includes(row.status)
+  const value = row.status === 'pending' ? 'pending' : row.status === 'denied' || allowed
+    ? `${allowed ? 'allow' : 'deny'}${row.remembered ? '_always' : ''}` : row.status
+  return { id: 'decision', label: t('permissions.oneAction'), value,
+    disabled: !row.can_answer || !canAnswer.value,
+    options: [{ value: 'pending', label: t('permissions.actionStatus.pending'), disable: true },
+      { value: 'allow', label: t('permissions.allowAction') }, { value: 'deny', label: t('permissions.denyAction') },
+      ...(row.can_remember || row.remembered ? [
+        { value: 'allow_always', label: t(row.source === 'runtime' ? 'permissions.allowRuntimeAction' : 'permissions.allowFunction') },
+        { value: 'deny_always', label: t(row.source === 'runtime' ? 'permissions.denyRuntimeAction' : 'permissions.denyFunction') },
+      ] : []),
+      ...(!['pending', 'allow', 'deny', 'allow_always', 'deny_always'].includes(value)
+        ? [{ value, label: t(`permissions.actionStatus.${row.status}`) }] : []),
+    ],
+    save: async next => {
+      if (next !== value && row.can_answer && canAnswer.value && ['allow', 'deny', 'allow_always', 'deny_always'].includes(next)) {
+        await answer(next.startsWith('allow'), next.endsWith('_always'))
+      }
+    } }
+})
 const displayPreview = (row: ActionAuthorization) => row.source === 'domain' && ['mail_send', 'mail_reply', 'mail_forward'].includes(row.capability_name)
   ? t('permissions.sendMail') : row.preview.split('\n')[0]
 const columns = computed<QTableColumn[]>(() => [
@@ -114,13 +140,18 @@ async function load() {
   const current = ++generation
   loading.value = true
   error.value = false
+  if (customizedOnly) {
+    rows.value = []; pagination.value.rowsNumber = 0; emit('counts', {}); loading.value = false
+    return
+  }
   try {
     const result = await listActionAuthorizations({ agent_id: agentId ?? undefined,
-      status: 'pending',
+      status: 'pending', q: search,
       offset: (pagination.value.page - 1) * pagination.value.rowsPerPage, limit: pagination.value.rowsPerPage }, listController.signal)
     if (current !== generation || disposed) return
-    rows.value = result.items
-    pagination.value.rowsNumber = result.total
+    rows.value = state === 'all' || state === 'pending' ? result.items : []
+    pagination.value.rowsNumber = state === 'all' || state === 'pending' ? result.total : 0
+    emit('counts', { pending: result.total })
   } catch { if (current === generation && !disposed) error.value = true }
   finally { if (current === generation && !disposed) loading.value = false }
 }
@@ -168,7 +199,8 @@ const requestPage: NonNullable<QTableProps['onRequest']> = ({ pagination: next }
   pagination.value.rowsPerPage = next.rowsPerPage
   void load()
 }
-watch(() => agentId, () => { pagination.value.page = 1; rows.value = []; selected.value = null; detailOpen.value = false; void load() })
+watch(() => [agentId, search, state, customizedOnly], () => { pagination.value.page = 1; rows.value = []; selected.value = null; detailOpen.value = false; void load() })
+watch(() => revision, () => { void load() })
 watch(detailOpen, value => { if (!value) { detailController?.abort(); selected.value = null } })
 watch(() => route.query.request, value => { if (typeof value === 'string') void open(value) })
 onMounted(() => { void load(); if (typeof route.query.request === 'string') void open(route.query.request) })

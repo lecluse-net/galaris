@@ -16,7 +16,7 @@ efface le résultat et empêche une réponse tardive d'apparaître dans une autr
 Un message humain externe sans droit de contact reconnu est conservé dans un round textuel
 `PAUSED` pour autorisation de réponse. Son identité et les informations disponibles sont
 visibles dans le suivi d'activité. Le manager reçoit la même demande persistante que celle
-listée dans `/connection/permissions`. Un accord reprend le round ; un refus le clôt sans
+listée dans `/permissions`. Un accord reprend le round ; un refus le clôt sans
 réponse. L'accord s'applique à la personne sur cette connexion, reste révocable et ne crée
 ni compte Galaris ni partage de ressource. Les pauses manuelles, le Chat interne et le
 consentement Mail gardent leurs règles distinctes.

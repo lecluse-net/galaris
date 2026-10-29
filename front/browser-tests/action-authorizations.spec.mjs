@@ -67,7 +67,8 @@ for (const [locale, reviewName, allowName] of [
     await expect(page.getByRole('dialog')).toContainText('console://example.txt')
     await page.getByRole('dialog').getByRole('button', { name: allowName, exact: true }).click()
     await expect.poll(() => answers).toEqual([{ approved: true }])
-    await expect(page.getByRole('dialog').getByRole('button', { name: allowName, exact: true })).toHaveCount(0)
+    await expect(page.getByRole('dialog').getByRole('button', { name: allowName, exact: true })).toBeDisabled()
+    await expect(page.getByRole('dialog').getByRole('button', { name: allowName, exact: true })).toHaveAttribute('aria-pressed', 'true')
     await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
     await page.getByRole('button', { name: reviewName, exact: true }).click()
     await expect(page.getByRole('dialog')).toContainText('console://example.txt')
@@ -84,18 +85,19 @@ test('mobile viewers can inspect a pending action without answering for another 
   await mount(page, 'app/connection/components/ActionAuthorizations.vue', { privileges: ['PERMISSION_ACCESS'] })
   await page.getByRole('button', { name: 'Review request' }).click()
   await expect(page.getByRole('dialog')).toContainText(row.preview)
-  await expect(page.getByRole('button', { name: 'Allow this action' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Deny this action' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Allow this action' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Deny this action' })).toBeDisabled()
 })
 
-for (const [locale, inspect, functionAlways, runtimeAlways] of [
-  ['en', 'Review request', 'Always allow this function', 'Always allow this action type'],
-  ['fr', 'Examiner la demande', 'Toujours autoriser cette fonction', 'Toujours autoriser ce type d’action'],
-  ['zh', '查看请求', '始终允许此功能', '始终允许此类操作'],
+for (const [locale, inspect, functionAlways, runtimeAlways, functionDeny, runtimeDeny] of [
+  ['en', 'Review request', 'Always allow this function', 'Always allow this action type', 'Always deny this function', 'Always deny this action type'],
+  ['fr', 'Examiner la demande', 'Toujours autoriser cette fonction', 'Toujours autoriser ce type d’action', 'Toujours interdire cette fonction', 'Toujours interdire ce type d’action'],
+  ['zh', '查看请求', '始终允许此功能', '始终允许此类操作', '始终禁止此功能', '始终禁止此类操作'],
 ]) {
   for (const source of ['mcp', 'runtime']) {
-  const always = source === 'runtime' ? runtimeAlways : functionAlways
-  test(`a permanent ${source} approval has explicit scope and survives an answer error (${locale})`, async ({ page }, testInfo) => {
+  for (const approved of [true, false]) {
+  const always = approved ? (source === 'runtime' ? runtimeAlways : functionAlways) : (source === 'runtime' ? runtimeDeny : functionDeny)
+  test(`a permanent ${source} decision ${approved} has explicit scope and survives an answer error (${locale})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })
     const row = { id: 'topic-approval', agent_id: 7, approver_user_id: 1, source, runtime: 'hermes',
       capability_kind: 'tool', capability_name: 'topic_create', status: 'pending',
@@ -106,7 +108,7 @@ for (const [locale, inspect, functionAlways, runtimeAlways] of [
     await page.route('**/api/tools/action-authorizations/topic-approval/answer', route => {
       answers.push(route.request().postDataJSON())
       if (answers.length === 1) return route.fulfill({ status: 409, json: { detail: 'Synthetic temporary failure' } })
-      row.status = 'approved'; row.can_answer = false; row.can_remember = false
+      row.status = approved ? 'approved' : 'denied'; row.can_answer = false; row.can_remember = false; row.remembered = true
       return route.fulfill({ json: { accepted: true } })
     })
     await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
@@ -121,18 +123,20 @@ for (const [locale, inspect, functionAlways, runtimeAlways] of [
     await page.keyboard.press('Enter')
     await expect(page.getByRole('alert')).toBeVisible()
     await button.click()
-    await expect.poll(() => answers).toEqual([{ approved: true, remember: true }, { approved: true, remember: true }])
-    await expect(button).toHaveCount(0)
+    await expect.poll(() => answers).toEqual([{ approved, remember: true }, { approved, remember: true }])
+    await expect(button).toBeDisabled()
+    await expect(button).toHaveAttribute('aria-pressed', 'true')
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('button', { name: inspect, exact: true }).click()
-    await expect(button).toHaveCount(0)
+    await expect(button).toHaveAttribute('aria-pressed', 'true')
   })
+  }
   }
 }
 
-test('remembered Harness action types can be revoked with error recovery and reopening', async ({ page }, testInfo) => {
-  const row = { id: 'synthetic-rule', agent_id: 7, runtime: 'deepseek_harness', capability_name: 'write_file', active: true, can_revoke: true }
+for (const allowed of [true, false]) test(`remembered Harness decision ${allowed} can be removed with error recovery and reopening`, async ({ page }, testInfo) => {
+  const row = { id: 'synthetic-rule', agent_id: 7, runtime: 'deepseek_harness', capability_name: 'write_file', active: true, allowed, can_revoke: true }
   let removed = false
   const writes = []
   await page.route('**/api/tools/action-authorizations/runtime-permissions?*', route => route.fulfill({ json: { items: removed ? [] : [row], total: removed ? 0 : 1 } }))
@@ -145,15 +149,16 @@ test('remembered Harness action types can be revoked with error recovery and reo
   await page.setViewportSize({ width: 390, height: 844 })
   await mount(page, 'app/connection/components/RuntimePermissions.vue', { privileges: ['PERMISSION_ACCESS', 'PERMISSION_DECIDE', 'PERMISSION_REVOKE'] })
   await expect(page.getByText('deepseek_harness · write_file')).toBeVisible()
+  await expect(page.getByText(allowed ? 'Allowed' : 'Denied', { exact: true })).toBeVisible()
   await testInfo.attach('remembered-runtime-mobile', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
-  await page.getByRole('button', { name: 'Revoke consent', exact: true }).click()
+  await page.getByRole('button', { name: 'Remove decision', exact: true }).click()
   await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
   await expect(page.getByRole('dialog')).toHaveCount(0)
   expect(writes).toEqual([])
-  await page.getByRole('button', { name: 'Revoke consent', exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Revoke consent', exact: true }).click()
+  await page.getByRole('button', { name: 'Remove decision', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove decision', exact: true }).click()
   await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible()
-  await page.getByRole('dialog').getByRole('button', { name: 'Revoke consent', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove decision', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByText('deepseek_harness · write_file')).toHaveCount(0)
   expect(writes).toEqual(['DELETE', 'DELETE'])

@@ -22,16 +22,27 @@ KIND = "remembered_permission"
 
 async def list_decisions(*, managed_agent_ids: frozenset[int] | None,
                          agent_id: int | None, allowed: bool | None,
-                         offset: int, limit: int, pending: bool = False,
-                         user_id: int | None = None) -> PermissionPage:
+                         offset: int, limit: int, pending: bool | None = None,
+                         user_id: int | None = None, search: str = "") -> PermissionPage:
     query = select(PermissionDecision)
     if managed_agent_ids is not None:
         query = query.where(PermissionDecision.agent_id.in_(managed_agent_ids))
     if agent_id is not None:
         query = query.where(PermissionDecision.agent_id == agent_id)
+    if search.strip():
+        needle = search.strip().lower()
+        query = query.where(or_(func.lower(PermissionDecision.question).contains(needle, autoescape=True),
+            func.lower(PermissionDecision.permission_key).contains(needle, autoescape=True)))
+    base = query.subquery()
+    counts = (await get_db().execute(select(
+        func.count().filter(base.c.allowed.is_(True)), func.count().filter(base.c.allowed.is_(False)),
+        func.count().filter(base.c.allowed.is_(None)),
+    ).select_from(base))).one()
     if pending:
         query = query.where(PermissionDecision.allowed.is_(None))
-    elif allowed is not None:
+    elif pending is False:
+        query = query.where(PermissionDecision.allowed.is_not(None))
+    if allowed is not None:
         query = query.where(PermissionDecision.allowed.is_(allowed))
     db = get_db()
     total = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
@@ -44,10 +55,20 @@ async def list_decisions(*, managed_agent_ids: frozenset[int] | None,
     interactions = {row.id: row for row in await db.scalars(select(Interaction).where(
         Interaction.id.in_([record.interaction_id for record, _ in records if record.allowed is None
                            and record.interaction_id is not None]),
-    ))} if pending else {}
+    ))}
+    policies: dict[int, int | None] = {}
     for record, label in records:
         item = PermissionRead.model_validate(record)
         item.approver_label = label or str(record.approver_user_id)
+        from app.agent import authorization_policy
+        if record.agent_id not in policies:
+            try:
+                policies[record.agent_id] = (await authorization_policy(record.agent_id)).manager_user_id
+            except PermissionError:
+                policies[record.agent_id] = None
+        manager = policies[record.agent_id]
+        item.active = manager == record.approver_user_id
+        item.can_decide = item.active and user_id == manager and record.allowed is not None
         interaction = interactions.get(record.interaction_id) if record.interaction_id else None
         if interaction is not None:
             item.question = interaction.body
@@ -62,7 +83,30 @@ async def list_decisions(*, managed_agent_ids: frozenset[int] | None,
                 item.options = [{"id": str(option["id"]), "label": str(option["label"])}
                                 for option in interaction.options]
         items.append(item)
-    return PermissionPage(items=items, total=total)
+    return PermissionPage(items=items, total=total, counts={"allowed": counts[0], "denied": counts[1], "pending": counts[2]})
+
+
+async def change_decision(identifier: UUID, *, user_id: int, allowed: bool) -> bool:
+    """Replace a settled decision without changing the historical Chat resolution."""
+    from app.agent import authorization_policy
+    db = get_db()
+    identity = await db.scalar(select(PermissionDecision.agent_id).where(PermissionDecision.id == identifier))
+    if identity is None:
+        return False
+    policy = await authorization_policy(identity, lock=True)
+    record = await db.scalar(select(PermissionDecision).where(PermissionDecision.id == identifier)
+        .with_for_update().execution_options(populate_existing=True))
+    if (record is None or record.allowed is None or record.approver_user_id != user_id
+            or policy.manager_user_id != user_id):
+        return False
+    if record.allowed == allowed:
+        return True
+    record.soft_delete()
+    await db.flush()
+    db.add(PermissionDecision(agent_id=record.agent_id, permission_key=record.permission_key,
+        question=record.question, approver_user_id=user_id, allowed=allowed, answered_at=datetime.now(timezone.utc)))
+    await db.commit()
+    return True
 
 
 async def answer_permission(identifier: UUID, *, user_id: int, option_id: str) -> bool:
@@ -175,7 +219,8 @@ async def _notify(record: PermissionDecision, *, always_key: str | None = None,
         Interaction.kind == KIND,
         Interaction.metadata_["permission_decision_id"].as_string() == str(record.id),
     ).order_by(Interaction.created_at.desc()).limit(1))
-    scope_changed = previous is not None and previous.metadata_.get("always_key") != always_key
+    scope_changed = previous is not None and (previous.metadata_.get("always_key") != always_key
+        or (always_key is not None and not any(option.get("id") == "deny_always" for option in previous.options)))
     if previous is not None and previous.expires_at > now and not scope_changed:
         if record.interaction_id != previous.id:
             record.interaction_id = previous.id
@@ -230,6 +275,7 @@ async def _notify(record: PermissionDecision, *, always_key: str | None = None,
         metadata: dict[str, object] = {"permission_decision_id": str(record.id)}
         if always_key is not None:
             options.append(ChoiceOption(id="allow_always", label=t("permissions.allow_all_sites", language)))
+            options.append(ChoiceOption(id="deny_always", label=t("permissions.deny_all_sites", language)))
             metadata.update(always_key=always_key, always_question=always_question)
         interaction = await create_choice(
             messenger, agent_id=record.agent_id, room_id=str(room.id), user_id=external_user,
@@ -250,7 +296,7 @@ async def _notify(record: PermissionDecision, *, always_key: str | None = None,
 async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> None:
     from app.agent import authorization_policy
     agent_id = interaction.agent_id
-    if agent_id is None or resolution.option_id not in {"allow", "deny", "allow_always"}:
+    if agent_id is None or resolution.option_id not in {"allow", "deny", "allow_always", "deny_always"}:
         return
     policy = await authorization_policy(agent_id, lock=True)
     identifier = UUID(str(interaction.metadata["permission_decision_id"]))
@@ -267,7 +313,8 @@ async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> N
     if not await check_assigned_privilege(record.approver_user_id, "PERMISSION_DECIDE", db):
         return
     now = datetime.now(timezone.utc)
-    if resolution.option_id == "allow_always":
+    allowed = resolution.option_id in {"allow", "allow_always"}
+    if resolution.option_id in {"allow_always", "deny_always"}:
         key = str(interaction.metadata.get("always_key") or "")
         question = str(interaction.metadata.get("always_question") or "")
         if not key or len(key) > 512 or not question or len(question) > 4000:
@@ -275,14 +322,14 @@ async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> N
         # The server-issued question owns this scope; answers cannot supply a key.
         await db.execute(insert(PermissionDecision).values(
             id=uuid4(), agent_id=record.agent_id, permission_key=key, question=question,
-            approver_user_id=record.approver_user_id, allowed=True, answered_at=now,
+            approver_user_id=record.approver_user_id, allowed=allowed, answered_at=now,
         ).on_conflict_do_update(index_elements=["agent_id", "permission_key"],
                                index_where=PermissionDecision.deleted_at.is_(None),
-                               set_={"allowed": True, "answered_at": now, "question": question,
+                               set_={"allowed": allowed, "answered_at": now, "question": question,
                                      "approver_user_id": record.approver_user_id}))
         # Revoking the broad grant must ask again, including this original method.
         record.soft_delete()
-    record.allowed = resolution.option_id != "deny"
+    record.allowed = allowed
     record.answered_at = now
     record.interaction_id = interaction.id
     await db.commit()

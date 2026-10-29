@@ -266,7 +266,8 @@ lorsqu’ils utilisent un bridge dédié comme Nextcloud ou AFFiNE. Le nom du br
 détermine pas l’origine du Tool. n8n n’est pas créé comme Tool standard ; une ancienne
 entrée n8n est conservée comme Tool personnalisé avec ses références de processus.
 
-Dans **Autorisations**, chaque fonction dispose des colonnes **Global (tous)** et **Cette connexion**,
+Dans **Autorisations**, seules les connexions des agents non historisés sont proposées.
+Chaque fonction dispose des colonnes **Global (tous)** et **Cette connexion**,
 avec les choix Activé, Désactivé et Sur demande. La colonne sélectionnée indique la règle applicable.
 Choisir un mode global remet la connexion de cet agent en héritage, sans retirer les exceptions
 des autres agents. La sauvegarde suit vos choix successifs et signale les erreurs.
@@ -315,8 +316,8 @@ de consulter les paramètres JSON. Les contenus HTML restent du texte source ine
 Une notification abrégée le signale : ouvrez la demande pour lire le contenu complet.
 
 Une demande d’autorisation pour une fonction MCP configurable, par exemple `topic_create`,
-propose **Autoriser cette action**, **Refuser cette action** et **Toujours autoriser cette
-fonction**. Ce dernier choix mémorise l’accord pour cette fonction sur la connexion de cet
+propose **Autoriser cette action**, **Refuser cette action**, **Toujours autoriser cette
+fonction** et **Toujours interdire cette fonction**. Les choix permanents mémorisent la décision sur la connexion de cet
 agent, quels que soient les paramètres des futurs appels. Les autres fonctions conservent
 leurs règles. Pour redemander une confirmation, remettez la fonction sur **Sur demande** dans
 les autorisations de la connexion. Les demandes suivent la langue du responsable (français,
@@ -327,11 +328,13 @@ et le libellé du choix restent ceux de la demande d’origine.
 
 Pour une action locale de tout harnais externe géré (Hermès, DeepSeek Harness, Codex,
 Claude Agent ou un harnais OpenAI Messages configuré), choisissez
-**Toujours autoriser ce type d’action**. L’accord concerne cet agent, ce harnais et le nom exact
+**Toujours autoriser ce type d’action** ou **Toujours interdire ce type d’action**.
+La décision concerne cet agent, ce harnais et le nom exact
 de l’action, quels que soient ses paramètres, y compris dans les tâches suivantes. Par exemple,
 autoriser `write_file` n’autorise pas l’exécution de commandes. Les autres demandes déjà en
-attente restent à traiter. Dans **Permissions**, la liste **Types d’action autorisés pour les
-harnais** permet de révoquer l’accord. Un changement de harnais, de configuration ou de
+attente restent à traiter ; un refus permanent bloque aussi les départs déjà approuvés.
+Dans **Permissions**, **Décisions sur les types d’action des harnais** permet de retirer la décision.
+Un changement de harnais, de configuration ou de
 responsable exige un nouvel accord. Une révocation empêche les prochains départs ; une action
 déjà commencée peut se terminer.
 Le harnais interne est exclu de ce mécanisme d’accord par type d’action du harnais.
@@ -348,23 +351,65 @@ leur URI source sans ouvrir leur page dans le navigateur.
 Le filtre de destinations reste prioritaire. Répondez à la question dans la messagerie ou avec
 les boutons du chat interne : accord et refus sont mémorisés par agent, type d’accès et origine
 (domaine, protocole, port). Les GET publics ne posent pas de question avec les réglages par défaut.
-Le troisième choix **Toujours autoriser tous les sites** mémorise un accord pour tous les
+Le choix **Toujours autoriser tous les sites** mémorise un accord pour tous les
 domaines, protocoles, ports et chemins, avec les méthodes HTTP configurées et WebSocket,
 pour cet agent. Les nouvelles destinations web ne demandent plus d’autorisation de site.
 Les filtres, les refus explicites et les permissions distinctes du réseau local restent prioritaires.
+**Toujours interdire tous les sites** mémorise le refus sur cette même portée : les méthodes
+configurées et WebSocket sont bloqués sans nouvelle question, même en mode public autorisé.
+Les méthodes qui ne demandent pas de permission, comme GET par défaut, conservent leur politique.
 Les boutons **Autoriser et mémoriser** et **Refuser et mémoriser** restent limités au type
 d’accès demandé. En mode **Autorisation par site**, supprimez l’accord « tous les sites » pour que
 ces accès nécessitent à nouveau un choix. Revenir à ce mode ne crée aucun accord implicite. Les anciens accords limités à un seul site conservent cette portée.
-**Superviser → Permissions** (`/connection/permissions`) ouvre **Approbations en attente** :
-examinez les demandes sans réponse, puis autorisez l’action, refusez-la ou choisissez un accord
-permanent lorsque cette option est disponible. Les demandes d’accès réseau se traitent aussi ici.
+**Superviser → Permissions** (`/permissions`) ouvre le tableau de bord d’un agent, sans onglets.
+Choisissez l’agent, puis utilisez la recherche et le filtre d’état sur toutes les sections :
+approbations en attente, Tools et fonctions, types d’action des harnais, contacts et accès réseau.
+La liste présente deux niveaux : chaque Tool de l’agent, puis ses fonctions et prompts.
+Les connexions désactivées restent présentes pour pouvoir les réactiver ; les Tools sans connexion
+sont exclus. Cette page propose uniquement l’activation et les autorisations, sans configuration
+technique ni bouton de connexion. Les skills et les droits sur les ressources se gèrent sur leurs pages dédiées.
+Examinez les demandes sans réponse, puis autorisez l’action, refusez-la ou choisissez
+**Toujours autoriser** ou **Toujours interdire** lorsque ces options sont disponibles.
+Le choix permanent porte sur la fonction de cette connexion, ou sur le type d’action de ce harnais
+pour cet agent, quels que soient les paramètres et les tâches futures. Un changement de harnais,
+de configuration ou de responsable rend la décision du harnais obsolète.
+Les demandes d’accès réseau se traitent aussi ici.
 Le filtre Agent s’applique à toute la page. Les demandes traitées quittent cette liste ; les demandes
 d’action expirées n’y figurent plus. Une réponse ponctuelle ne crée aucune autorisation permanente.
 
-L’onglet **Autorisations permanentes** rassemble les fonctions explicitement autorisées sur une
-connexion, les types d’action des harnais et les accès réseau mémorisés autorisés. Vous pouvez y
-révoquer un accord ; une fonction MCP revient alors sur **Sur demande**, même si son réglage global
-est actif. Les refus réseau restent appliqués mais ne figurent pas parmi les autorisations accordées.
+Les sections affichent les autorisations, interdictions, valeurs par défaut et règles héritées.
+Les connexions montrent la règle locale de `tools.management_scope` et une bascule avec
+les choix propres au Tool. Un gestionnaire global disposant du droit de modifier les connexions
+peut changer ce périmètre ou revenir à sa valeur par défaut. Ce réglage reste local à la connexion.
+La section **Fonctions et prompts des outils** rassemble les fonctions de tous les Tools connectés,
+y compris celles interdites ou sur demande. Sélectionnez un Tool dans la liste à gauche pour
+voir ses fonctions et autorisations à droite. Les réglages de périmètre et d’activation sont
+en tête de ce panneau. Sur mobile, la liste précède les détails du Tool sélectionné.
+La liste de gauche affiche tous les Tools correspondants, sans pagination ni défilement interne.
+Les compteurs **Autorisés**, **Interdits**, **Sur demande** et **En attente** filtrent toute la page ;
+cliquez de nouveau sur le compteur actif pour revenir à tous les états. Ils remplacent le sélecteur
+de décision et se combinent avec la recherche. Les fonctions à droite restent paginées à 50 éléments par défaut.
+**Paramétrages personnalisés** affiche les règles de fonctions propres à l’agent sur ses Tools actifs,
+et les périmètres locaux, lorsqu’ils diffèrent de la règle héritée, ainsi que les décisions mémorisées
+des harnais, contacts et accès réseau. Les règles globales sont exclues. Un Tool désactivé compte
+une fois au niveau de sa connexion ; ses fonctions ne sont ni listées ni comptées dans ce filtre.
+Les demandes en attente sont alors masquées. **Réinitialiser les filtres** efface la recherche,
+le filtre d’état et le filtre des paramétrages personnalisés, sans changer l’agent sélectionné.
+Le nombre de paramétrages personnalisés correspond à la recherche courante, sur toutes les
+pages, et reste disponible même lorsque ce filtre n’est pas activé.
+Toutes les décisions utilisent des bascules multi-états avec la position courante présélectionnée.
+Les boutons affichent des icônes comme les autorisations des skills : vert pour autoriser,
+rouge pour interdire, orange pour demander ou attendre, gris pour hériter. Une infobulle
+précise chaque choix ; double coche et symbole d’interdiction distinguent les décisions permanentes.
+Pour une fonction, choisissez **Autoriser**, **Interdire**, **Sur demande** ou **Hériter**.
+La sélection indique la règle locale ; l’état effectif tient aussi compte de l’activation du Tool
+et reste affiché séparément. Une erreur d’enregistrement conserve la sélection enregistrée.
+**Sur demande** impose une approbation même si le réglage global est actif ; **Hériter** rétablit
+la règle globale ou celle du logiciel. Les décisions mémorisées des harnais, contacts et accès réseau
+peuvent aussi être modifiées ou retirées. Un catalogue externe indisponible affiche un avertissement
+et conserve ses règles connues ; les types d’action des harnais jamais observés restent sur demande.
+Les prochaines demandes suivent la
+politique courante ; retirer un refus ne crée pas d’accord et ne rejoue aucune action bloquée.
 Les traces techniques d’exécution restent conservées pour empêcher les doubles exécutions et permettre
 la reprise des tâches ; cette page ne les présente pas comme des permissions.
 Pour le navigateur, une action bloquée attend une nouvelle tentative après votre réponse ; les

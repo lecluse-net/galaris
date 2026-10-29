@@ -48,6 +48,35 @@ async def pending(action):
     return caught.value.request_id
 
 
+@pytest.mark.asyncio
+async def test_permission_catalog_keeps_saved_rules_and_reports_offline_sources_without_secrets(action, monkeypatch):
+    from app.connection import Connection, facade as connections
+    from app.tools.models import Tool
+    from app.tools.permission_catalog import agent_permission_catalog
+    calls = []
+    async def unavailable(tool, params, *, include_resources=True):
+        calls.append(include_resources)
+        raise TimeoutError("Synthetic unreachable MCP service")
+    monkeypatch.setattr("app.tools.permission_catalog.list_external_mcp_capabilities", unavailable)
+    async with get_db_session() as db:
+        tool = Tool(code=f"offline-{uuid4().hex}", label="Synthetic offline catalog",
+            mcp_config={"type": "http", "url": "https://synthetic.example.test/mcp"},
+            connection_schema={"params": {"network_filter": {"type": "password"}, "api_key": {"type": "password"}}})
+        db.add(tool); await db.flush()
+        connection = Connection(agent_id=action.agent_id, tool_id=tool.id, active=True)
+        db.add(connection); await db.flush()
+        await connections.set_connection_function_state(connection.id, "saved_external_function", "disabled")
+        await connections.set_params_bulk(connection.id, {"network_filter": "synthetic-secret", "api_key": "synthetic-token"})
+        catalogue = await agent_permission_catalog(action.agent_id)
+        entry = next(row for row in catalogue.capabilities if row.name == "saved_external_function")
+        assert entry.effective_state == "disabled" and not entry.available
+        assert "Synthetic offline catalog" in catalogue.unavailable_catalogs
+        assert calls == [False]
+        assert "synthetic-secret" not in catalogue.model_dump_json()
+        assert "synthetic-token" not in catalogue.model_dump_json()
+
+
+
 async def approve_and_claim(action):
     identifier = await pending(action)
     async with get_db_session() as db:
@@ -664,7 +693,8 @@ async def test_retention_preserves_unknown_evidence_and_accepts_late_authoritati
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("language", ["en-US", "fr", "zh-CN"])
-async def test_remembered_approval_enables_only_this_connection_function_and_preserves_resume(action, monkeypatch, language):
+@pytest.mark.parametrize("approved", [True, False])
+async def test_remembered_approval_enables_only_this_connection_function_and_preserves_resume(action, monkeypatch, language, approved):
     from app.connection import Connection, facade as connections
     from app.messenger import answer_internal_interaction
     from app.messenger.models import Interaction, Message
@@ -693,9 +723,9 @@ async def test_remembered_approval_enables_only_this_connection_function_and_pre
         assert not await answer_action(identifier, user_id=row.approver_user_id + 100000, approved=True, remember=True)
         interaction = await db.get(Interaction, row.interaction_id)
         expected = {
-            "en-US": ["Allow this action", "Deny this action", "Always allow this function"],
-            "fr": ["Autoriser cette action", "Refuser cette action", "Toujours autoriser cette fonction"],
-            "zh-CN": ["允许此操作", "拒绝此操作", "始终允许此功能"],
+            "en-US": ["Allow this action", "Deny this action", "Always allow this function", "Always deny this function"],
+            "fr": ["Autoriser cette action", "Refuser cette action", "Toujours autoriser cette fonction", "Toujours interdire cette fonction"],
+            "zh-CN": ["允许此操作", "拒绝此操作", "始终允许此功能", "始终禁止此功能"],
         }[language]
         selected_language = normalize_language(language)
         assert interaction.title == t("permissions.title", selected_language)
@@ -708,20 +738,26 @@ async def test_remembered_approval_enables_only_this_connection_function_and_pre
         assert interaction.title in prompt.text
         assert t("messenger_interactions.choose", selected_language) in prompt.text
         assert t("messenger_interactions.reference", selected_language).replace("${reference}", interaction.reference) in prompt.text
-        await answer_internal_interaction(row.approver_user_id, UUID(interaction.room_id), interaction.id, option_id="allow_always")
+        await answer_internal_interaction(row.approver_user_id, UUID(interaction.room_id), interaction.id,
+            option_id="allow_always" if approved else "deny_always")
         response = await db.scalar(select(Message).where(
             Message.remote_message_id == f"interaction:{interaction.id}:answer",
             Message.connection_id == interaction.connection_id,
         ))
         assert response.text == render_prompt(t("messenger_interactions.answer", selected_language),
-            title=interaction.title, reference=interaction.reference, answer=expected[2])
-        assert (await connections.resolve_function(connection, "topic_create"))["effective_state"] == "enabled"
+            title=interaction.title, reference=interaction.reference, answer=expected[2 if approved else 3])
+        assert (await connections.resolve_function(connection, "topic_create"))["effective_state"] == ("enabled" if approved else "disabled")
         assert (await connections.resolve_function(connection, "topic_update"))["effective_state"] == "ask"
-    assert await claim_action(replace(action, continuation=caught.value.continuation)) == identifier
-    await finish_action(identifier)
-    assert await claim_action(replace(action, callback_key=str(uuid4()), arguments={"title": "Another synthetic topic"})) is None
-    with pytest.raises(AuthorizationClosed, match="completed"):
-        await claim_action(action)
+    if approved:
+        assert await claim_action(replace(action, continuation=caught.value.continuation)) == identifier
+        await finish_action(identifier)
+        assert await claim_action(replace(action, callback_key=str(uuid4()), arguments={"title": "Another synthetic topic"})) is None
+        with pytest.raises(AuthorizationClosed, match="completed"):
+            await claim_action(action)
+    else:
+        from app.tools.contracts import ToolCallRejectedError
+        with pytest.raises(ToolCallRejectedError, match="disabled"):
+            await claim_action(replace(action, callback_key=str(uuid4()), context_key="principal:new-task"))
     async with get_db_session():
         await connections.set_connection_function_state(connection.id, "topic_create", "ask")
     await pending(replace(action, callback_key=str(uuid4())))
@@ -738,7 +774,8 @@ async def test_runtime_approval_cannot_be_made_permanent(action):
 
 
 @pytest.mark.asyncio
-async def test_function_permissions_list_only_reusable_grants_and_revoke_to_ask(action, client):
+@pytest.mark.parametrize("approved", [True, False])
+async def test_function_permissions_list_only_reusable_grants_and_revoke_to_ask(action, client, approved):
     from app.connection import Connection, facade as connections
     from app.tools.models import Tool
     from core.authorize.models import Assignment, Role, Privilege
@@ -769,16 +806,33 @@ async def test_function_permissions_list_only_reusable_grants_and_revoke_to_ask(
     assert (await client.get(path, headers=headers)).json()["total"] == 0
     async with get_db_session() as db:
         assert await answer_action(once, user_id=manager.id, approved=True)
+    assert (await client.get(f"/api/tools/action-authorizations/{once}", headers=headers)).json()["remembered"] is False
     assert (await client.get(path, headers=headers)).json()["total"] == 0
     permanent = replace(action, callback_key=str(uuid4()))
     identifier = await pending(permanent)
     async with get_db_session():
-        assert await answer_action(identifier, user_id=manager.id, approved=True, remember=True)
+        assert await answer_action(identifier, user_id=manager.id, approved=approved, remember=True)
+    assert (await client.get(f"/api/tools/action-authorizations/{identifier}", headers=headers)).json()["remembered"] is True
     result = await client.get(path, headers=headers, params={"limit": 500})
     assert result.status_code == 200
     assert result.json()["total"] == 1
     assert result.json()["items"][0]["capability_name"] == "topic_create"
     assert result.json()["items"][0]["connection_id"] == connection.id
+    assert result.json()["items"][0]["allowed"] is approved
+    catalog_path = f"/api/tools/agents/{action.agent_id}/permissions"
+    assert (await client.get(catalog_path)).status_code == 401
+    assert (await client.get(catalog_path, headers=other_headers)).status_code == 404
+    catalogue = (await client.get(catalog_path, headers=headers)).json()
+    functions = {row["name"]: row for row in catalogue["capabilities"] if row["tool_id"] == tool.id}
+    assert functions["topic_create"]["effective_state"] == ("enabled" if approved else "disabled")
+    assert functions["topic_update"]["effective_state"] == "ask"
+    assert functions["topic_update"]["policy_source"] == "software"
+    assert all(row["connection_id"] is not None for row in catalogue["connections"])
+    assert "global_params" not in catalogue["connections"][0]
+    if not approved:
+        from app.tools.contracts import ToolCallRejectedError
+        with pytest.raises(ToolCallRejectedError, match="disabled"):
+            await claim_action(replace(permanent, callback_key=str(uuid4())))
     assert (await client.get(path, headers=other_headers)).json()["total"] == 0
     revoke = f"/api/connections/{connection.id}/functions/topic_create"
     assert (await client.put(revoke, headers=other_headers, json={"state": "ask"})).status_code == 404
@@ -786,6 +840,16 @@ async def test_function_permissions_list_only_reusable_grants_and_revoke_to_ask(
     assert (await client.get(path, headers=headers)).json()["total"] == 0
     async with get_db_session():
         assert (await connections.resolve_function(connection, "topic_create"))["effective_state"] == "ask"
+    async with get_db_session() as db:
+        (await db.get(Connection, connection.id)).active = False
+        # Runtime consumers keep their active-only default; only the dashboard
+        # explicitly inventories inactive connections for human reactivation.
+        assert not any(row.id == connection.id for row in await connections.get_connections_by_agent(action.agent_id))
+    inactive = (await client.get(catalog_path, headers=headers)).json()
+    assert any(row["tool_id"] == tool.id and not row["active"] for row in inactive["connections"])
+    assert all(row["effective_state"] == "disabled" for row in inactive["capabilities"] if row["tool_id"] == tool.id)
+    async with get_db_session() as db:
+        (await db.get(Connection, connection.id)).active = True
     await pending(replace(permanent, callback_key=str(uuid4())))
 
 
@@ -881,8 +945,72 @@ async def test_runtime_type_consent_survives_new_tasks_and_is_revocable(runtime_
 
 
 @pytest.mark.asyncio
+async def test_runtime_permanent_denial_blocks_new_and_pending_actions_until_removed(runtime_action, monkeypatch):
+    from app.tools.contracts import ToolCallRejectedError
+    from app.tools.runtime_permissions import list_permissions, revoke_permission
+    from app.agent import AgentManagementScope
+    from app.connection import Connection
+    from app.messenger.models import Interaction
+    from app.tools.models import Tool
+    from app.tools.authorization_notifications import deliver_authorization_notifications
+    async with get_db_session() as db:
+        chat = await db.scalar(select(Tool).where(Tool.code == "chat"))
+        db.add(Connection(agent_id=runtime_action.agent_id, tool_id=chat.id, active=True))
+    first = await pending(runtime_action)
+    older = replace(runtime_action, callback_key=str(uuid4()), arguments={"path": "older.txt"})
+    older_id = await pending(older)
+    approved_call = replace(runtime_action, callback_key=str(uuid4()), arguments={"path": "approved.txt"})
+    approved_id = await pending(approved_call)
+    await deliver_authorization_notifications()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, first)
+        manager = row.approver_user_id
+        assert await answer_action(approved_id, user_id=manager, approved=True)
+        # A pending Chat question from before this feature has no permanent-denial option.
+        interaction = await db.get(Interaction, row.interaction_id)
+        interaction.options = [option for option in interaction.options if option["id"] != "deny_always"]
+        await db.commit()
+        assert await answer_action(first, user_id=manager, approved=False, remember=True)
+        await db.refresh(interaction)
+        assert interaction.status == "RESOLVED" and interaction.resolution["option_id"] == "deny_always"
+        permission_id = row.runtime_permission_id
+        assert permission_id is not None and row.status == "denied" and row.encrypted_arguments is None
+    for call in [older, approved_call, replace(runtime_action, callback_key=str(uuid4()),
+            context_key="principal:another-synthetic-task", arguments={"path": "later.txt"})]:
+        with pytest.raises(ToolCallRejectedError, match="disabled"):
+            await claim_action(call)
+    async with get_db_session() as db:
+        # The old question cannot turn an effective permanent denial into an approval.
+        assert not await answer_action(older_id, user_id=manager, approved=True, remember=True)
+        assert not await answer_action(older_id, user_id=manager, approved=True)
+    from app.tools.authorization_notifications import reconcile_authorizations
+    woken = set()
+    async def wake(agent_id, context_key):
+        woken.add((agent_id, context_key))
+        return True
+    # Replace the scheduling boundary, preserving real policy resolution and SQL transitions.
+    monkeypatch.setattr("app.tools.authorization_notifications.wake_authorization_context", wake)
+    await reconcile_authorizations()
+    async with get_db_session() as db:
+        # Reconciliation closes and wakes other waiters rather than leaving them suspended.
+        for waiting_id in (older_id, approved_id):
+            waiting = await db.get(ActionAuthorization, waiting_id)
+            assert waiting.status == "invalidated" and waiting.encrypted_arguments is None
+            assert (waiting.agent_id, waiting.context_key) in woken
+        scope = AgentManagementScope(user_id=manager, agent_ids=frozenset({runtime_action.agent_id}))
+        page = await list_permissions(scope, agent_id=runtime_action.agent_id, offset=0, limit=50)
+        assert page["total"] == 1
+        assert page["items"][0]["allowed"] is False and page["items"][0]["active"]
+        assert not await revoke_permission(permission_id, user_id=manager + 100000)
+        assert await revoke_permission(permission_id, user_id=manager)
+        assert (await db.get(ActionAuthorization, first)).status == "denied"
+    await pending(replace(runtime_action, callback_key=str(uuid4()), context_key="principal:after-removal"))
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("change", ["configuration", "assignment", "manager", "policy"])
-async def test_runtime_consent_rejects_changes_before_review_and_before_reuse(runtime_action, monkeypatch, change):
+@pytest.mark.parametrize("approved", [True, False])
+async def test_runtime_consent_rejects_changes_before_review_and_before_reuse(runtime_action, monkeypatch, change, approved):
     from app.harnesses.models import AgentHarness
     from app.tools.authorization import can_remember_action
     from app.tools import runtime_authorization
@@ -895,7 +1023,7 @@ async def test_runtime_consent_rejects_changes_before_review_and_before_reuse(ru
     second = await pending(second_action)
     async with get_db_session() as db:
         row = await db.get(ActionAuthorization, first)
-        assert await answer_action(first, user_id=row.approver_user_id, approved=True, remember=True)
+        assert await answer_action(first, user_id=row.approver_user_id, approved=approved, remember=True)
     if change == "configuration":
         config["terminal_signature"] = "synthetic-changed"
     else:
@@ -916,9 +1044,10 @@ async def test_runtime_consent_rejects_changes_before_review_and_before_reuse(ru
         row = await db.get(ActionAuthorization, second)
         assert not await can_remember_action(row)
         assert not await answer_action(second, user_id=row.approver_user_id, approved=True, remember=True)
-    with pytest.raises(AuthorizationClosed, match="invalidated"):
+    with pytest.raises(AuthorizationClosed, match="invalidated" if approved else "denied"):
         await claim_action(runtime_action)
-    await pending(replace(runtime_action, callback_key=str(uuid4())))
+    # A new task asks again; the exact denied operation in the old task stays closed.
+    await pending(replace(runtime_action, callback_key=str(uuid4()), context_key="principal:changed-harness-task"))
 
 
 @pytest.mark.asyncio
@@ -954,6 +1083,7 @@ async def test_human_runtime_permission_api_revokes_unconsumed_consent_and_prese
     assert {item["id"] for item in requests.json()["items"]} == {str(identifier), str(second)}
     review = await client.get(review_path, headers=headers)
     assert review.status_code == 200
+    assert review.json()["remembered"] is False
     assert review.json()["presentation"]["fields"]
     other_review = await client.get(review_path, headers=other_headers)
     assert other_review.status_code == 200
@@ -961,6 +1091,7 @@ async def test_human_runtime_permission_api_revokes_unconsumed_consent_and_prese
     answer = await client.post(f"/api/tools/action-authorizations/{identifier}/answer", headers=headers,
         json={"approved": True, "remember": True})
     assert answer.status_code == 200
+    assert (await client.get(review_path, headers=headers)).json()["remembered"] is True
     requests = await client.get(pending_path, headers=headers,
         params={"status": "pending", "agent_id": runtime_action.agent_id})
     assert [item["id"] for item in requests.json()["items"]] == [str(second)]
@@ -986,6 +1117,25 @@ async def test_human_runtime_permission_api_revokes_unconsumed_consent_and_prese
     with pytest.raises(AuthorizationClosed, match="invalidated"):
         await claim_action(runtime_action)
     await pending(replace(runtime_action, callback_key=str(uuid4())))
+    policies = "/api/tools/action-authorizations/runtime-policies"
+    observed = (await client.get(policies, headers=headers, params={"agent_id": runtime_action.agent_id})).json()
+    assert len(observed) == 1 and observed[0]["allowed"] is None and not observed[0]["remembered"]
+    update = {"agent_id": runtime_action.agent_id, "runtime": runtime_action.runtime,
+              "capability_name": runtime_action.name, "allowed": False}
+    assert (await client.put(policies, headers=other_headers, json=update)).status_code == 409
+    assert (await client.put(policies, headers=headers, json={**update, "capability_name": "unobserved_action"})).status_code == 409
+    assert (await client.put(policies, headers=headers, json=update)).status_code == 200
+    denied = (await client.get(policies, headers=headers, params={"agent_id": runtime_action.agent_id})).json()
+    assert denied[0]["allowed"] is False and denied[0]["active"]
+    from app.tools.contracts import ToolCallRejectedError
+    with pytest.raises(ToolCallRejectedError, match="disabled"):
+        await claim_action(replace(runtime_action, callback_key=str(uuid4()), context_key="principal:dashboard-denied"))
+    assert (await client.put(policies, headers=headers, json={**update, "allowed": True})).status_code == 200
+    claim = await claim_action(replace(runtime_action, callback_key=str(uuid4()), context_key="principal:dashboard-allowed"))
+    assert claim is not None
+    await finish_action(claim)
+    assert (await client.put(policies, headers=headers, json={**update, "allowed": None})).status_code == 200
+    await pending(replace(runtime_action, callback_key=str(uuid4()), context_key="principal:dashboard-ask"))
 
 
 @pytest.mark.asyncio

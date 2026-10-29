@@ -17,9 +17,12 @@ class PermissionRead(BaseModel):
     created_at: datetime
     answered_at: datetime | None
     can_answer: bool = False
+    can_decide: bool = False
+    active: bool = True
     options: list[dict[str, str]] = []
 
 
 class PermissionPage(BaseModel):
     items: list[PermissionRead]
     total: int
+    counts: dict[str, int] = {}

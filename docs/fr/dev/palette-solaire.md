@@ -86,6 +86,20 @@ Les hexadécimaux du tableau sont la référence à consommer, sans interpolatio
 
 ## Adoption
 
+### Actions d’autorisation
+
+La page Permissions partage une même présentation pour ses bascules, badges et compteurs :
+vert pour autoriser/activer (coche), rouge pour interdire/désactiver (croix), orange pour
+demander (point d’interrogation) et attendre une approbation (attente), gris pour hériter
+(branches réunies). Une double coche distingue l’autorisation permanente ; le symbole
+d’interdiction distingue le refus permanent. Les actions ordinaires restent bleues.
+
+Les périmètres utilisent cyan/œil pour l’usage, bleu/personne pour personnel,
+iris/groupe pour équipe et violet/globe pour tous. L’absence de délégation est rouge,
+l’héritage gris. Les choix restent alignés, avec une icône, une infobulle traduite et un
+libellé accessible. Le choix courant est rempli avec l’accent et souligné ; les autres
+emploient le fond clair ou sombre de leur famille, comme les autorisations des skills.
+
 ### Source unique et variables CSS
 
 Les 33 valeurs sont définies une seule fois dans `front/core/util/solaire.ts`.

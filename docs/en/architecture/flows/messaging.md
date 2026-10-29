@@ -15,7 +15,7 @@ tabs clears the result and prevents a late response from appearing under another
 An external human message without an existing contact permission is retained in a text round
 `PAUSED` for reply authorization. Its identity and available profile information are visible
 in activity monitoring. The manager receives the same durable request listed in
-`/connection/permissions`. Consent resumes the round; denial closes it without a reply.
+`/permissions`. Consent resumes the round; denial closes it without a reply.
 Consent applies to this person on this connection, remains revocable and creates no Galaris
 account or resource share. Manual pauses, native Chat and Mail consent retain separate rules.
 

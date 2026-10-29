@@ -108,7 +108,7 @@
         </div>
       </div>
 
-      <ContactAuthorization v-if="round?.contact_authorization" :authorization="round.contact_authorization" />
+      <ContactAuthorization v-if="round?.contact_authorization" :authorization="round.contact_authorization" :agent-id="round.agent_id" />
 
       <TopicAssignmentEditor
         :key="roundId ?? message.id"

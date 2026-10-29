@@ -737,7 +737,8 @@ async def expire_user_choice(*, agent_id: int, kind: str, idempotency_key: str) 
     await interaction_changed.send_async(record)
 
 
-async def settle_user_choice(*, agent_id: int, kind: str, idempotency_key: str, option_id: str) -> None:
+async def settle_user_choice(*, agent_id: int, kind: str, idempotency_key: str, option_id: str,
+                             committed_option: ChoiceOption | None = None) -> None:
     """Reflect an already committed domain decision without executing its handler again."""
     db = get_db()
     record = await db.scalar(select(Interaction).where(
@@ -748,6 +749,10 @@ async def settle_user_choice(*, agent_id: int, kind: str, idempotency_key: str, 
     if record is None:
         return
     option = next((option for option in record.options if option.get("id") == option_id), None)
+    # A committed domain decision may introduce an option absent from an older question.
+    # This trusted server projection never makes that option available for human resolution.
+    if option is None and committed_option is not None and committed_option.id == option_id:
+        option = committed_option.model_dump()
     if option is None:
         raise ValueError("The committed choice must match a persisted option.")
     record.resolution = _resolution_payload(ChoiceResolution(

@@ -10,14 +10,14 @@
     <q-table v-model:pagination="pagination" :rows="rows" :columns="columns" row-key="id"
       :loading="loading" :grid="$q.screen.lt.md" wrap-cells
       :rows-per-page-options="[10, 20, 50, 100, 500]" :no-data-label="t('permissions.runtimePermissionEmpty')" @request="requestPage">
-      <template #body-cell-active="props"><q-td :props="props">{{ statusLabel(props.row.active) }}</q-td></template>
+      <template #body-cell-active="props"><q-td :props="props">{{ statusLabel(props.row) }}</q-td></template>
       <template #body-cell-actions="props"><q-td :props="props">
         <q-btn v-if="canEdit && props.row.can_revoke" flat color="negative" icon="delete" :aria-label="t('permissions.revokeRuntimePermission')" @click="selected = props.row" />
       </q-td></template>
       <template #item="props"><div class="col-12 q-pa-xs"><q-card flat bordered>
         <q-card-section>{{ scopeLabel(props.row) }} · {{ props.row.capability_name }}
           <div>{{ t('permissions.agent') }}: {{ agentLabel(props.row.agent_id) }}</div>
-          <div>{{ statusLabel(props.row.active) }}</div>
+          <div>{{ statusLabel(props.row) }}</div>
         </q-card-section>
         <q-card-actions><q-btn v-if="canEdit && props.row.can_revoke" color="negative" :label="t('permissions.revokeRuntimePermission')" @click="selected = props.row" /></q-card-actions>
       </q-card></div></template>
@@ -63,7 +63,10 @@ const revoking = ref(false)
 const revokeError = ref(false)
 const confirmOpen = computed({ get: () => selected.value !== null, set: value => { if (!value) selected.value = null } })
 const pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
-const statusLabel = (active: boolean) => t(active ? 'permissions.allowed' : 'permissions.runtimePermissionStale')
+const statusLabel = (row: PermanentPermission) => {
+  const decision = t(row.allowed ? 'permissions.allowed' : 'permissions.denied')
+  return row.active ? decision : `${decision} · ${t('permissions.runtimePermissionStale')}`
+}
 const columns = computed<QTableColumn[]>(() => [
   { name: 'agent_id', field: 'agent_id', label: t('permissions.agent'), align: 'left', format: agentLabel },
   { name: 'runtime', field: scopeLabel, label: t(kind === 'connection' ? 'connection.colTool' : 'permissions.runtime'), align: 'left' },

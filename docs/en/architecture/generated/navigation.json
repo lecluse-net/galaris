@@ -615,11 +615,11 @@
           "Permissions"
         ]
       },
-      "route": "/connection/permissions",
+      "route": "/permissions",
       "href": null,
       "description": {
-        "fr": "Répondez aux demandes en attente et gérez les autorisations permanentes des agents",
-        "en": "Answer pending requests and manage permanent agent permissions"
+        "fr": "Répondez aux demandes en attente et gérez les autorisations et interdictions permanentes des agents",
+        "en": "Answer pending requests and manage permanent agent approvals and denials"
       },
       "privilege_groups": [
         [

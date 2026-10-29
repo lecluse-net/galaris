@@ -57,7 +57,7 @@ retain their own authorization rules.
 
 External human contacts without an authorized Galaris identity are received in paused text
 rounds, visible in activity monitoring with the available identity information. The manager
-receives a request and allows or denies exchanges in `/connection/permissions`. Consent is
+receives a request and allows or denies exchanges in `/permissions`. Consent is
 specific to this person on this connection and remains revocable. It creates no Galaris
 account and shares no resource. Mail has its own Contacts and consent procedure before admission,
 described in the [Mail journal](tasks.md). Permissions do not enable new channels: native Chat remains

@@ -4161,6 +4161,7 @@
           "back/app/tools/dbadmin.py",
           "back/app/tools/management_scope.py",
           "back/app/tools/mcp_loader.py",
+          "back/app/tools/permission_catalog.py",
           "back/app/tools/resource_effects.py",
           "back/app/tools/router.py",
           "back/app/tools/runtime_authorization.py",
@@ -4186,6 +4187,7 @@
           "back/app/tools/mcp.py",
           "back/app/tools/mcp_authorization.py",
           "back/app/tools/mcp_loader.py",
+          "back/app/tools/permission_catalog.py",
           "back/app/tools/rest.py",
           "back/app/tools/tool_service.py"
         ],
@@ -11836,7 +11838,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 81,
+        "line": 82,
         "module": "app.tools",
         "table": "runtime_run_grants"
       },
@@ -14098,7 +14100,7 @@
         "declared_path": "/action-authorizations",
         "file": "back/app/tools/authorization_router.py",
         "handler": "list_requests",
-        "line": 38,
+        "line": 39,
         "method": "GET",
         "module": "app.tools"
       },
@@ -14107,7 +14109,7 @@
         "declared_path": "/action-authorizations/runtime-permissions",
         "file": "back/app/tools/authorization_router.py",
         "handler": "list_runtime_permissions",
-        "line": 61,
+        "line": 68,
         "method": "GET",
         "module": "app.tools"
       },
@@ -14116,8 +14118,26 @@
         "declared_path": "/action-authorizations/runtime-permissions/{identifier}",
         "file": "back/app/tools/authorization_router.py",
         "handler": "delete_runtime_permission",
-        "line": 70,
+        "line": 77,
         "method": "DELETE",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/action-authorizations/runtime-policies",
+        "file": "back/app/tools/authorization_router.py",
+        "handler": "read_runtime_policies",
+        "line": 87,
+        "method": "GET",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/action-authorizations/runtime-policies",
+        "file": "back/app/tools/authorization_router.py",
+        "handler": "update_runtime_policy",
+        "line": 104,
+        "method": "PUT",
         "module": "app.tools"
       },
       {
@@ -14125,7 +14145,7 @@
         "declared_path": "/action-authorizations/{identifier}",
         "file": "back/app/tools/authorization_router.py",
         "handler": "get_request",
-        "line": 80,
+        "line": 124,
         "method": "GET",
         "module": "app.tools"
       },
@@ -14134,7 +14154,7 @@
         "declared_path": "/action-authorizations/{identifier}/answer",
         "file": "back/app/tools/authorization_router.py",
         "handler": "answer_request",
-        "line": 110,
+        "line": 154,
         "method": "POST",
         "module": "app.tools"
       },
@@ -14143,7 +14163,7 @@
         "declared_path": "/action-authorizations/{identifier}/cancel",
         "file": "back/app/tools/authorization_router.py",
         "handler": "cancel_request",
-        "line": 122,
+        "line": 166,
         "method": "POST",
         "module": "app.tools"
       },
@@ -15664,7 +15684,7 @@
         "declared_path": "/connections",
         "file": "back/app/connection/router.py",
         "handler": "list_connections",
-        "line": 324,
+        "line": 325,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15673,7 +15693,7 @@
         "declared_path": "/connections",
         "file": "back/app/connection/router.py",
         "handler": "create_connection",
-        "line": 346,
+        "line": 347,
         "method": "POST",
         "module": "app.connection"
       },
@@ -15682,7 +15702,7 @@
         "declared_path": "/connections/find-by-param",
         "file": "back/app/connection/router.py",
         "handler": "find_agents_by_param",
-        "line": 213,
+        "line": 214,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15691,7 +15711,7 @@
         "declared_path": "/connections/function-permissions",
         "file": "back/app/connection/router.py",
         "handler": "list_function_permissions",
-        "line": 102,
+        "line": 103,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15700,7 +15720,7 @@
         "declared_path": "/connections/oauth/client-metadata",
         "file": "back/app/connection/router.py",
         "handler": "oauth_client_metadata",
-        "line": 147,
+        "line": 148,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15709,7 +15729,7 @@
         "declared_path": "/connections/oauth/client-metadata/loopback/{scheme}/{host}/{port}",
         "file": "back/app/connection/router.py",
         "handler": "oauth_local_client_metadata",
-        "line": 153,
+        "line": 154,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15718,7 +15738,7 @@
         "declared_path": "/connections/overview",
         "file": "back/app/connection/router.py",
         "handler": "list_connection_overviews",
-        "line": 311,
+        "line": 312,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15727,7 +15747,7 @@
         "declared_path": "/connections/permission-options",
         "file": "back/app/connection/router.py",
         "handler": "permission_connection_options",
-        "line": 117,
+        "line": 118,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15736,7 +15756,7 @@
         "declared_path": "/connections/refresh-tools",
         "file": "back/app/connection/router.py",
         "handler": "refresh_connections_and_tool_catalogs",
-        "line": 271,
+        "line": 272,
         "method": "POST",
         "module": "app.connection"
       },
@@ -15745,7 +15765,7 @@
         "declared_path": "/connections/sync-integrated",
         "file": "back/app/connection/router.py",
         "handler": "sync_integrated_connections",
-        "line": 283,
+        "line": 284,
         "method": "POST",
         "module": "app.connection"
       },
@@ -15754,7 +15774,7 @@
         "declared_path": "/connections/test-mcp-tools",
         "file": "back/app/connection/router.py",
         "handler": "test_mcp_tools",
-        "line": 620,
+        "line": 635,
         "method": "POST",
         "module": "app.connection"
       },
@@ -15763,7 +15783,7 @@
         "declared_path": "/connections/tool-options",
         "file": "back/app/connection/router.py",
         "handler": "connection_tool_options",
-        "line": 111,
+        "line": 112,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15772,7 +15792,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "delete_connection",
-        "line": 445,
+        "line": 446,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -15781,7 +15801,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "get_connection",
-        "line": 340,
+        "line": 341,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15790,7 +15810,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "update_connection",
-        "line": 385,
+        "line": 386,
         "method": "PATCH",
         "module": "app.connection"
       },
@@ -15799,7 +15819,7 @@
         "declared_path": "/connections/{connection_id}/capabilities",
         "file": "back/app/connection/router.py",
         "handler": "set_capability_policy",
-        "line": 741,
+        "line": 756,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -15808,7 +15828,7 @@
         "declared_path": "/connections/{connection_id}/functions",
         "file": "back/app/connection/router.py",
         "handler": "list_connection_functions",
-        "line": 680,
+        "line": 695,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15817,7 +15837,7 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function",
-        "line": 689,
+        "line": 704,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -15826,7 +15846,16 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}/global",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function_global",
-        "line": 703,
+        "line": 718,
+        "method": "PUT",
+        "module": "app.connection"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/connections/{connection_id}/management-scope",
+        "file": "back/app/connection/router.py",
+        "handler": "update_management_scope",
+        "line": 471,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -15835,7 +15864,7 @@
         "declared_path": "/connections/{connection_id}/oauth",
         "file": "back/app/connection/router.py",
         "handler": "oauth_disconnect",
-        "line": 206,
+        "line": 207,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -15844,7 +15873,7 @@
         "declared_path": "/connections/{connection_id}/oauth",
         "file": "back/app/connection/router.py",
         "handler": "oauth_status",
-        "line": 162,
+        "line": 163,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15853,7 +15882,7 @@
         "declared_path": "/connections/{connection_id}/oauth/callback",
         "file": "back/app/connection/router.py",
         "handler": "oauth_callback",
-        "line": 182,
+        "line": 183,
         "method": "POST",
         "module": "app.connection"
       },
@@ -15862,7 +15891,7 @@
         "declared_path": "/connections/{connection_id}/oauth/device",
         "file": "back/app/connection/router.py",
         "handler": "oauth_device",
-        "line": 193,
+        "line": 194,
         "method": "POST",
         "module": "app.connection"
       },
@@ -15871,7 +15900,7 @@
         "declared_path": "/connections/{connection_id}/oauth/start",
         "file": "back/app/connection/router.py",
         "handler": "oauth_start",
-        "line": 172,
+        "line": 173,
         "method": "POST",
         "module": "app.connection"
       },
@@ -15880,7 +15909,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "get_connection_params",
-        "line": 470,
+        "line": 485,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15889,7 +15918,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_param",
-        "line": 517,
+        "line": 532,
         "method": "POST",
         "module": "app.connection"
       },
@@ -15898,7 +15927,7 @@
         "declared_path": "/connections/{connection_id}/params/bulk",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_params_bulk",
-        "line": 543,
+        "line": 558,
         "method": "POST",
         "module": "app.connection"
       },
@@ -15907,7 +15936,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "delete_param",
-        "line": 603,
+        "line": 618,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -15916,7 +15945,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "get_single_param",
-        "line": 490,
+        "line": 505,
         "method": "GET",
         "module": "app.connection"
       },
@@ -15925,7 +15954,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "update_connection_param",
-        "line": 569,
+        "line": 584,
         "method": "PATCH",
         "module": "app.connection"
       },
@@ -19615,8 +19644,17 @@
         "declared_path": "/permissions/{permission_id}",
         "file": "back/app/messenger/permission_router.py",
         "handler": "delete_permission",
-        "line": 49,
+        "line": 67,
         "method": "DELETE",
+        "module": "app.messenger"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/permissions/{permission_id}",
+        "file": "back/app/messenger/permission_router.py",
+        "handler": "change_permission",
+        "line": 41,
+        "method": "PUT",
         "module": "app.messenger"
       },
       {
@@ -19624,7 +19662,7 @@
         "declared_path": "/permissions/{permission_id}/answer",
         "file": "back/app/messenger/permission_router.py",
         "handler": "answer_request",
-        "line": 36,
+        "line": 54,
         "method": "POST",
         "module": "app.messenger"
       },
@@ -20479,7 +20517,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "list_tools",
-        "line": 76,
+        "line": 77,
         "method": "GET",
         "module": "app.tools"
       },
@@ -20488,7 +20526,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "create_tool",
-        "line": 167,
+        "line": 181,
         "method": "POST",
         "module": "app.tools"
       },
@@ -20497,7 +20535,16 @@
         "declared_path": "/tools/agents/{agent_id}/mcp-tools",
         "file": "back/app/tools/router.py",
         "handler": "list_agent_mcp_tools",
-        "line": 86,
+        "line": 87,
+        "method": "GET",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/tools/agents/{agent_id}/permissions",
+        "file": "back/app/tools/router.py",
+        "handler": "read_agent_permission_catalog",
+        "line": 96,
         "method": "GET",
         "module": "app.tools"
       },
@@ -20506,7 +20553,7 @@
         "declared_path": "/tools/import",
         "file": "back/app/tools/router.py",
         "handler": "import_tool",
-        "line": 271,
+        "line": 285,
         "method": "POST",
         "module": "app.tools"
       },
@@ -20515,7 +20562,7 @@
         "declared_path": "/tools/mcp-candidates",
         "file": "back/app/tools/router.py",
         "handler": "prepare_mcp_candidate",
-        "line": 38,
+        "line": 39,
         "method": "POST",
         "module": "app.tools"
       },
@@ -20524,7 +20571,7 @@
         "declared_path": "/tools/test-mcp",
         "file": "back/app/tools/router.py",
         "handler": "test_mcp_connection",
-        "line": 95,
+        "line": 109,
         "method": "POST",
         "module": "app.tools"
       },
@@ -20542,7 +20589,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "delete_tool",
-        "line": 231,
+        "line": 245,
         "method": "DELETE",
         "module": "app.tools"
       },
@@ -20551,7 +20598,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "get_tool",
-        "line": 115,
+        "line": 129,
         "method": "GET",
         "module": "app.tools"
       },
@@ -20560,7 +20607,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "update_tool",
-        "line": 183,
+        "line": 197,
         "method": "PUT",
         "module": "app.tools"
       },
@@ -20569,7 +20616,7 @@
         "declared_path": "/tools/{tool_id}/conversation-access",
         "file": "back/app/tools/router.py",
         "handler": "update_conversation_access",
-        "line": 199,
+        "line": 213,
         "method": "PATCH",
         "module": "app.tools"
       },
@@ -20578,7 +20625,7 @@
         "declared_path": "/tools/{tool_id}/deletion-impact",
         "file": "back/app/tools/router.py",
         "handler": "tool_deletion_impact",
-        "line": 219,
+        "line": 233,
         "method": "GET",
         "module": "app.tools"
       },
@@ -20587,7 +20634,7 @@
         "declared_path": "/tools/{tool_id}/export",
         "file": "back/app/tools/router.py",
         "handler": "export_tool",
-        "line": 248,
+        "line": 262,
         "method": "GET",
         "module": "app.tools"
       },
@@ -20596,7 +20643,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "get_global_params",
-        "line": 127,
+        "line": 141,
         "method": "GET",
         "module": "app.tools"
       },
@@ -20605,7 +20652,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "update_global_params",
-        "line": 144,
+        "line": 158,
         "method": "PUT",
         "module": "app.tools"
       },
@@ -21190,7 +21237,8 @@
           "front/app/connection/components/McpCandidateAgent.vue",
           "front/app/connection/components/RuntimePermissions.vue",
           "front/app/connection/pages/mail.vue",
-          "front/app/connection/pages/permissions.vue"
+          "front/app/connection/pages/permissions.vue",
+          "front/app/connection/services/permissionDashboardSources.ts"
         ],
         "source": "app/connection",
         "target": "app/agent"
@@ -21218,10 +21266,12 @@
           "front/app/connection/components/CalendarConnectionEditor.vue",
           "front/app/connection/components/McpOAuthConnection.vue",
           "front/app/connection/pages/oauth-callback.vue",
+          "front/app/connection/pages/permissions.vue",
           "front/app/connection/services/calendarService.ts",
           "front/app/connection/services/connectionService.ts",
           "front/app/connection/services/mailService.ts",
           "front/app/connection/services/mcpOAuthService.ts",
+          "front/app/connection/services/permissionDashboardSources.ts",
           "front/app/connection/services/permissionService.ts",
           "front/app/connection/stores/connectionStore.ts"
         ],
@@ -21237,10 +21287,11 @@
           "front/app/connection/components/ConnectionForm.vue",
           "front/app/connection/components/ConnectionList.vue",
           "front/app/connection/components/MailInboundJournal.vue",
+          "front/app/connection/components/PermissionDashboardPanel.vue",
           "front/app/connection/components/RuntimePermissions.vue",
           "front/app/connection/navigation.ts",
           "front/app/connection/pages/mail.vue",
-          "front/app/connection/pages/permissions.vue"
+          "front/app/connection/services/permissionDashboardSources.ts"
         ],
         "source": "app/connection",
         "target": "core/authorize"
@@ -21258,9 +21309,11 @@
         "files": [
           "front/app/connection/components/ConnectionForm.vue",
           "front/app/connection/components/FunctionPolicyToggle.vue",
+          "front/app/connection/components/PermissionToolBrowser.vue",
           "front/app/connection/pages/calendars.vue",
           "front/app/connection/pages/mail.vue",
-          "front/app/connection/pages/permissions.vue"
+          "front/app/connection/pages/permissions.vue",
+          "front/app/connection/permissionPresentation.ts"
         ],
         "source": "app/connection",
         "target": "core/util"
@@ -23663,6 +23716,11 @@
             "route_hint": "/connection/calendars"
           },
           {
+            "file": "front/app/connection/pages/legacy-permissions.vue",
+            "module": "app/connection",
+            "route_hint": "/connection/permissions"
+          },
+          {
             "file": "front/app/connection/pages/mail.vue",
             "module": "app/connection",
             "route_hint": "/connection/mail"
@@ -23675,7 +23733,7 @@
           {
             "file": "front/app/connection/pages/permissions.vue",
             "module": "app/connection",
-            "route_hint": "/connection/permissions"
+            "route_hint": "/permissions"
           }
         ],
         "path": "front/app/connection"
@@ -24255,7 +24313,7 @@
         "route_hint": "/connection/oauth-callback"
       },
       {
-        "file": "front/app/connection/pages/permissions.vue",
+        "file": "front/app/connection/pages/legacy-permissions.vue",
         "module": "app/connection",
         "route_hint": "/connection/permissions"
       },
@@ -24403,6 +24461,11 @@
         "file": "front/core/params/pages/harnesses/[provider].vue",
         "module": "core/params",
         "route_hint": "/params/harnesses/:provider"
+      },
+      {
+        "file": "front/app/connection/pages/permissions.vue",
+        "module": "app/connection",
+        "route_hint": "/permissions"
       },
       {
         "file": "front/app/process/pages/index.vue",

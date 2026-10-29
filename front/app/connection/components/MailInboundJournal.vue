@@ -78,6 +78,7 @@
             <q-btn color="negative" :label="t('permissions.denyAction')" :disable="answering" @click="answer(false)" />
             <q-btn color="primary" :label="t('mailJournal.allowProcessing')" :disable="answering" @click="answer(true)" />
             <q-btn v-if="authorization.can_remember" outline color="primary" :label="t('mailJournal.alwaysProcess')" :disable="answering" @click="answer(true, true)" />
+            <q-btn v-if="authorization.can_remember" color="negative" :label="t('mailJournal.neverProcess')" :disable="answering" @click="answer(false, true)" />
           </template>
         </q-card-actions>
       </q-card>

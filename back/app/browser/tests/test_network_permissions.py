@@ -324,7 +324,7 @@ async def test_permission_http_management_is_scoped_and_sidecar_requires_credent
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("option_id", ["allow", "deny", "allow_always"])
+@pytest.mark.parametrize("option_id", ["allow", "deny", "allow_always", "deny_always"])
 async def test_pending_network_permission_can_be_answered_from_permissions_and_syncs_chat(client, option_id):
     from core.database import get_db_session
     from core.authorize.models import Assignment, Role
@@ -346,7 +346,7 @@ async def test_pending_network_permission_can_be_answered_from_permissions_and_s
     pending = await client.get(path, params={"pending": True, "agent_id": agents[0].id}, headers=headers[0])
     assert pending.status_code == 200
     row = pending.json()["items"][0]
-    assert row["can_answer"] and {option["id"] for option in row["options"]} == {"allow", "deny", "allow_always"}
+    assert row["can_answer"] and {option["id"] for option in row["options"]} == {"allow", "deny", "allow_always", "deny_always"}
     other = await client.get(path, params={"pending": True, "agent_id": agents[0].id}, headers=headers[1])
     assert not other.json()["items"][0]["can_answer"]
     assert (await client.post(f"{path}/{identifier}/answer", json={"option_id": option_id}, headers=headers[1])).status_code == 409
@@ -354,11 +354,25 @@ async def test_pending_network_permission_can_be_answered_from_permissions_and_s
     assert response.status_code == 200
     assert (await client.get(path, params={"pending": True}, headers=headers[0])).json()["total"] == 0
     grants = (await client.get(path, params={"allowed": True}, headers=headers[0])).json()["items"]
-    assert len(grants) == (0 if option_id == "deny" else 1)
+    assert len(grants) == (0 if option_id in {"deny", "deny_always"} else 1)
+    refusals = (await client.get(path, params={"allowed": False}, headers=headers[0])).json()["items"]
+    assert len(refusals) == (1 if option_id in {"deny", "deny_always"} else 0)
+    decisions = (await client.get(path, params={"pending": False}, headers=headers[0])).json()["items"]
+    assert len(decisions) == 1 and decisions[0]["allowed"] is (option_id in {"allow", "allow_always"})
     async with get_db_session() as db:
         choice = await db.get(Interaction, interaction_id)
         assert choice.status == "RESOLVED" and choice.resolution["option_id"] == option_id
     assert (await client.post(f"{path}/{identifier}/answer", json={"option_id": "deny"}, headers=headers[0])).status_code == 409
+    decision = decisions[0]
+    assert (await client.put(f"{path}/{decision['id']}", json={"allowed": not decision["allowed"]}, headers=headers[1])).status_code == 409
+    changed = await client.put(f"{path}/{decision['id']}", json={"allowed": not decision["allowed"]}, headers=headers[0])
+    assert changed.status_code == 200
+    visible = (await client.get(path, params={"pending": False, "q": "synthetic", "limit": 10}, headers=headers[0])).json()
+    assert visible["total"] == 1 and visible["items"][0]["allowed"] is not decision["allowed"]
+    assert visible["items"][0]["id"] != decision["id"]
+    async with get_db_session() as db:
+        choice = await db.get(Interaction, interaction_id)
+        assert choice.resolution["option_id"] == option_id
 
 
 def test_equivalent_origins_filters_and_mapped_local_addresses():
@@ -438,6 +452,35 @@ async def test_existing_site_grant_is_never_silently_extended_to_all_sites(db):
     request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://example.com/a", method="POST", addresses=["93.184.215.14"])
     assert (await authorize_network(request)).allowed
     request.url = "https://another.example.test/"
+    assert (await authorize_network(request)).code == "permission_required"
+
+
+@pytest.mark.asyncio
+async def test_all_sites_denial_blocks_other_origins_and_public_mode_until_revoked(db):
+    from app.messenger.permissions import delete_decision
+    agents, users, connections = await setup_scope(db)
+    request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://example.com/",
+        method="POST", addresses=["93.184.215.14"])
+    assert (await authorize_network(request)).code == "permission_required"
+    record = await db.scalar(select(PermissionDecision).where(PermissionDecision.agent_id == agents[0].id))
+    question = await db.get(Interaction, record.interaction_id)
+    await answer_internal_interaction(users[0].id, UUID(question.room_id), question.id, option_id="deny_always")
+    for method in ["POST", "PUT", "PATCH", "DELETE", "WEBSOCKET"]:
+        request.method, request.url = method, "https://another.example.test/"
+        assert (await authorize_network(request)).code == "permission_denied"
+    assert await db.scalar(select(func.count()).select_from(Interaction).where(Interaction.agent_id == agents[0].id)) == 1
+    mode = await db.scalar(select(ConnectionParam).where(ConnectionParam.connection_id == connections[0].id,
+        ConnectionParam.param_name == "public_access_mode"))
+    mode.param_value = "allow"
+    await db.commit()
+    assert (await authorize_network(request)).code == "permission_denied"
+    request.owner.agent_id = agents[1].id
+    assert (await authorize_network(request)).code == "permission_required"
+    request.owner.agent_id = agents[0].id
+    mode.param_value = "ask"
+    denial = await db.scalar(select(PermissionDecision).where(PermissionDecision.permission_key == "browser:v1:all-sites"))
+    assert denial.allowed is False
+    assert await delete_decision(denial.id, managed_agent_ids=frozenset({agents[0].id}))
     assert (await authorize_network(request)).code == "permission_required"
 
 

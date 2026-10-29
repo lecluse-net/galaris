@@ -19,6 +19,73 @@ from app.tools.models import Tool
 
 
 @pytest.mark.asyncio
+async def test_dashboard_scope_delegation_is_human_global_local_and_bounded(client):
+    from uuid import uuid4
+    from core.authorize import Assignment, Privilege, Role
+    from core.database import get_db_session
+    from core.user import UserModel, auth_service, refresh_session_service as sessions
+
+    suffix = uuid4().hex
+    async with get_db_session() as db:
+        users, headers = [], []
+        for index, codes in enumerate([
+            ["PERMISSION_ACCESS", "CONNECTION_EDIT", "AGENT_MANAGE_ALL"],
+            ["PERMISSION_ACCESS", "CONNECTION_EDIT"], ["PERMISSION_ACCESS", "AGENT_MANAGE_ALL"],
+        ]):
+            role = Role(code=f"scope-dashboard-{suffix}-{index}", privileges=list(await db.scalars(
+                select(Privilege).where(Privilege.code.in_(codes)))))
+            user = UserModel(email=f"scope-dashboard-{suffix}-{index}@example.test", hashed_password="synthetic")
+            db.add_all([role, user]); await db.flush()
+            db.add(Assignment(user_id=user.id, role_id=role.id, is_default=True))
+            users.append(user)
+        title = Title(label="Synthetic scope dashboard", gender="X")
+        tool = await db.scalar(select(Tool).where(Tool.code == "galaris"))
+        tool.can_disable = False
+        # Exercise the narrow exception with a genuinely protected Tool code.
+        tool.connection_schema = {"params": {"tools.management_scope": {"type": "string", "required": False,
+            "default": "team", "options": [{"value": value} for value in ["none", "team", "all"]]}}}
+        tool.global_params = {"tools.management_scope": {"value": "all", "forced": True}}
+        db.add(title); await db.flush()
+        agent = Agent(user_id=users[1].id, title_id=title.id, code=f"scope-dashboard-{suffix}", first_name="Synthetic", last_name="Agent")
+        db.add(agent); await db.flush()
+        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+        db.add(connection); await db.flush()
+        for user in users:
+            refresh = await sessions.create_refresh_session(user.id)
+            token = await auth_service.create_access_token_for_user(user, session_family=await sessions.family_for_token(refresh))
+            headers.append({"Authorization": f"Bearer {token}"})
+        path = f"/api/connections/{connection.id}/management-scope"
+        catalog_path = f"/api/tools/agents/{agent.id}/permissions"
+    async def scope():
+        response = await client.get(catalog_path, headers=headers[0])
+        assert response.status_code == 200, response.text
+        return next(row for row in response.json()["connections"] if row["tool_id"] == tool.id)
+    initial = await scope()
+    assert initial["can_disable"] is False
+    assert initial["management_scope"]["value"] == "team"
+    assert initial["management_scope"]["configured"] is None
+    assert {option["value"] for option in initial["management_scope"]["options"]} == {"none", "team", "all"}
+    assert initial["parameter_sources"]["tools.management_scope"] == "software"
+    assert (await client.put(path, json={"value": "all"})).status_code == 401
+    for actor in headers[1:]:
+        assert (await client.put(path, headers=actor, json={"value": "all"})).status_code == 403
+    for invalid in [{"value": "personal"}, {"value": ""}, {"value": "all", "active": False}]:
+        assert (await client.put(path, headers=headers[0], json=invalid)).status_code == 422
+    assert (await client.put(path, headers=headers[0], json={"value": "none"})).status_code == 204
+    changed = await scope()
+    assert changed["can_disable"] is False
+    assert changed["management_scope"]["value"] == changed["management_scope"]["configured"] == "none"
+    assert changed["parameter_sources"]["tools.management_scope"] == "connection"
+    # This narrow exception must not unlock any other property of a protected service.
+    protected = await client.patch(f"/api/connections/{connection.id}", headers=headers[0], json={"active": False})
+    assert protected.status_code == 403, protected.text
+    assert (await client.put(path, headers=headers[0], json={"value": None})).status_code == 204
+    assert (await scope())["management_scope"]["value"] == "team"
+    async with get_db_session():
+        assert await router.connection_service.get_management_scope(agent.id, connection_id=connection.id, default="team") == "team"
+
+
+@pytest.mark.asyncio
 async def test_overview_http_requires_privileges_and_limits_rows_to_managed_agents(client):
     from uuid import uuid4
     from core.authorize import Assignment, Privilege, Role
@@ -133,17 +200,31 @@ async def test_overview_batches_parameters_preserves_scope_and_hides_historized_
     listed = await router.list_connections(tool_id=tool.id, agent_id=None, active_only=False, skip=0, limit=500)
     assert connections[-1].id not in {row.id for row in listed}
 
+    # Authorization choices also exclude historized agents, before pagination.
+    # Leave an inactive connection between the historized and first live rows.
+    agents[0].deleted_at = datetime.now(timezone.utc)
+    await db.flush()
+    options = await router.permission_connection_options(skip=0, limit=500)
+    assert [row.id for row in options] == [connection.id for connection in connections[2:-1]]
+    assert [row.id for row in await router.permission_connection_options(skip=0, limit=1)] == [connections[2].id]
+    assert [row.id for row in await router.permission_connection_options(skip=1, limit=1)] == [connections[3].id]
+
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(7, frozenset({agents[1].id, agents[-1].id}))))
     assert [row.id for row in await router.list_connection_overviews(skip=0, limit=500)] == [connections[1].id]
     assert await router.list_connection_overviews(skip=1, limit=1) == []
+    assert await router.permission_connection_options(skip=0, limit=500) == []
+    monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(7, frozenset({agents[2].id, agents[-1].id}))))
+    assert [row.id for row in await router.permission_connection_options(skip=0, limit=500)] == [connections[2].id]
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(7, frozenset())))
     assert await router.list_connection_overviews(skip=0, limit=500) == []
+    assert await router.permission_connection_options(skip=0, limit=500) == []
 
 
 @pytest.fixture(autouse=True)
-def optional_tool_policy(monkeypatch):
+def optional_tool_policy(monkeypatch, request):
     # These routing units use optional connectors. System-service refusals have DB coverage.
-    monkeypatch.setattr(router.connection_service, "require_editable_tool", AsyncMock())
+    if "db" not in request.fixturenames and "client" not in request.fixturenames:
+        monkeypatch.setattr(router.connection_service, "require_editable_tool", AsyncMock())
 
 
 @pytest.mark.asyncio
@@ -230,6 +311,7 @@ async def test_unified_refresh_syncs_connections_and_rebuilds_catalogs(
 async def test_connection_function_update_does_not_wait_for_catalog_discovery(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(router, "_require_permission_state", AsyncMock())
     connection = Connection(id=11, tool_id=35, agent_id=7, active=True)
     monkeypatch.setattr(
         router,
@@ -277,6 +359,7 @@ async def test_connection_function_update_does_not_wait_for_catalog_discovery(
 async def test_global_function_update_does_not_wait_for_catalog_discovery(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(router, "_require_permission_state", AsyncMock())
     connection = Connection(id=11, tool_id=35, agent_id=7, active=True)
     monkeypatch.setattr(
         router,
@@ -332,6 +415,7 @@ async def test_global_choice_inherits_only_selected_connection_atomically(
     capability_kind: CapabilityKind,
     state: FunctionState,
 ) -> None:
+    monkeypatch.setattr(router, "_require_permission_state", AsyncMock())
     title = Title(label="Synthetic policy", gender="X")
     tool = Tool(code="synthetic-policy", label="Synthetic policy")
     db.add_all([title, tool])

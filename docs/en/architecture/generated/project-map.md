@@ -17,10 +17,10 @@ tests remain authoritative for behavior.
 - 28 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 757 detected HTTP/WebSocket handlers;
+- 762 detected HTTP/WebSocket handlers;
 - 180 detected SQLAlchemy tables;
 - 280 detected native MCP tools;
-- 54 detected Vue pages.
+- 55 detected Vue pages.
 
 ## Backend Modules
 
@@ -118,7 +118,7 @@ tests remain authoritative for behavior.
 | `app/harnesses` | yes | `components`, `i18n.ts`, `pages`, `services` | 1 |
 | `app/tools` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 1 |
 | `app/browser` | yes | `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
-| `app/connection` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 4 |
+| `app/connection` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 5 |
 | `app/skill` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/llm` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
 | `app/task` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
@@ -532,8 +532,8 @@ tests remain authoritative for behavior.
 | `app.task` | `core.params` | `back/app/task/budget.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/scheduler.py`, `back/app/task/settings_service.py` |
 | `app.task` | `core.user` | `back/app/task/mcp.py`, `back/app/task/run_events.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.util` | `back/app/task/activity_snapshot.py`, `back/app/task/facade.py`, `back/app/task/html_migration.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/router.py`, `back/app/task/schemas.py` |
-| `app.tools` | `app.agent` | `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/management_scope.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_permissions.py` |
-| `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/management_scope.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/rest.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `app.agent` | `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/management_scope.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/permission_catalog.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_permissions.py` |
+| `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/management_scope.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/permission_catalog.py`, `back/app/tools/rest.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.console` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `app.documentation` | `back/app/tools/documentation_service.py` |
 | `app.tools` | `app.file_share` | `back/app/tools/parameter_definitions.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/tool_service.py` |
@@ -821,13 +821,13 @@ tests remain authoritative for behavior.
 | `app/chat` | `core/user` | `front/app/chat/code/components/CodeEditorHost.vue`, `front/app/chat/components/ChatProfilePreferences.vue`, `front/app/chat/components/MessageResourcePreviews.vue` |
 | `app/chat` | `core/util` | `front/app/chat/code/components/RepositoryBrowser.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ChatDocumentPane.vue`, `front/app/chat/components/ChatDocumentSearchDialog.vue`, `front/app/chat/components/Composer.vue`, `front/app/chat/components/ConversationDocumentDialog.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessDialog.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/DocumentConversationPanel.vue`, `front/app/chat/components/MarkdownAttachmentPreview.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/components/SafeMessageContent.vue`, `front/app/chat/conversationPanel.ts`, `front/app/chat/pages/index.vue`, `front/app/chat/richContent.ts`, `front/app/chat/services/chatService.ts`, `front/app/chat/stores/chat.ts`, `front/app/chat/useChatAvatar.ts` |
 | `app/chat` | `core/websocket` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/DocumentConversationPanel.vue`, `front/app/chat/pages/index.vue`, `front/app/chat/stores/chat.ts`, `front/app/chat/stores/inbox.ts`, `front/app/chat/useMessagePreviewFreshness.ts` |
-| `app/connection` | `app/agent` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/McpCandidateAgent.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
+| `app/connection` | `app/agent` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/McpCandidateAgent.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
 | `app/connection` | `app/console` | `front/app/connection/components/ConnectionForm.vue` |
 | `app/connection` | `app/tools` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/services/connectionService.ts` |
-| `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/McpOAuthConnection.vue`, `front/app/connection/pages/oauth-callback.vue`, `front/app/connection/services/calendarService.ts`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/mcpOAuthService.ts`, `front/app/connection/services/permissionService.ts`, `front/app/connection/stores/connectionStore.ts` |
-| `app/connection` | `core/authorize` | `front/app/connection/availability.ts`, `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
+| `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/McpOAuthConnection.vue`, `front/app/connection/pages/oauth-callback.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/calendarService.ts`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/mcpOAuthService.ts`, `front/app/connection/services/permissionDashboardSources.ts`, `front/app/connection/services/permissionService.ts`, `front/app/connection/stores/connectionStore.ts` |
+| `app/connection` | `core/authorize` | `front/app/connection/availability.ts`, `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/PermissionDashboardPanel.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
 | `app/connection` | `core/navigation` | `front/app/connection/navigation.ts`, `front/app/connection/pages/calendars.vue`, `front/app/connection/pages/mail.vue` |
-| `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/FunctionPolicyToggle.vue`, `front/app/connection/pages/calendars.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
+| `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/FunctionPolicyToggle.vue`, `front/app/connection/components/PermissionToolBrowser.vue`, `front/app/connection/pages/calendars.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/permissionPresentation.ts` |
 | `app/console` | `core/api` | `front/app/console/services/consoleService.ts` |
 | `app/console` | `core/authorize` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
 | `app/console` | `core/navigation` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
@@ -1234,12 +1234,14 @@ tests remain authoritative for behavior.
 
 | Method | Declared Path | Module | Handler | Local RBAC | Source |
 |---|---|---|---|---:|---|
-| GET | `/action-authorizations` | `app.tools` | `list_requests` | yes | `back/app/tools/authorization_router.py:38` |
-| GET | `/action-authorizations/runtime-permissions` | `app.tools` | `list_runtime_permissions` | yes | `back/app/tools/authorization_router.py:61` |
-| DELETE | `/action-authorizations/runtime-permissions/{identifier}` | `app.tools` | `delete_runtime_permission` | yes | `back/app/tools/authorization_router.py:70` |
-| GET | `/action-authorizations/{identifier}` | `app.tools` | `get_request` | yes | `back/app/tools/authorization_router.py:80` |
-| POST | `/action-authorizations/{identifier}/answer` | `app.tools` | `answer_request` | yes | `back/app/tools/authorization_router.py:110` |
-| POST | `/action-authorizations/{identifier}/cancel` | `app.tools` | `cancel_request` | yes | `back/app/tools/authorization_router.py:122` |
+| GET | `/action-authorizations` | `app.tools` | `list_requests` | yes | `back/app/tools/authorization_router.py:39` |
+| GET | `/action-authorizations/runtime-permissions` | `app.tools` | `list_runtime_permissions` | yes | `back/app/tools/authorization_router.py:68` |
+| DELETE | `/action-authorizations/runtime-permissions/{identifier}` | `app.tools` | `delete_runtime_permission` | yes | `back/app/tools/authorization_router.py:77` |
+| GET | `/action-authorizations/runtime-policies` | `app.tools` | `read_runtime_policies` | yes | `back/app/tools/authorization_router.py:87` |
+| PUT | `/action-authorizations/runtime-policies` | `app.tools` | `update_runtime_policy` | yes | `back/app/tools/authorization_router.py:104` |
+| GET | `/action-authorizations/{identifier}` | `app.tools` | `get_request` | yes | `back/app/tools/authorization_router.py:124` |
+| POST | `/action-authorizations/{identifier}/answer` | `app.tools` | `answer_request` | yes | `back/app/tools/authorization_router.py:154` |
+| POST | `/action-authorizations/{identifier}/cancel` | `app.tools` | `cancel_request` | yes | `back/app/tools/authorization_router.py:166` |
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | yes | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | yes | `back/app/agent/openai_router.py:66` |
 | GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:202` |
@@ -1408,36 +1410,37 @@ tests remain authoritative for behavior.
 | GET | `/code/workspaces/{identifier}` | `app.code` | `get_workspace` | yes | `back/app/code/router.py:26` |
 | POST | `/code/workspaces/{identifier}/sessions` | `app.code` | `create_session` | yes | `back/app/code/router.py:53` |
 | GET | `/codex/runtime-credential` | `bridge.codex` | `runtime_credential` | no | `back/bridge/codex/router.py:31` |
-| GET | `/connections` | `app.connection` | `list_connections` | yes | `back/app/connection/router.py:324` |
-| POST | `/connections` | `app.connection` | `create_connection` | yes | `back/app/connection/router.py:346` |
-| GET | `/connections/find-by-param` | `app.connection` | `find_agents_by_param` | yes | `back/app/connection/router.py:213` |
-| GET | `/connections/function-permissions` | `app.connection` | `list_function_permissions` | yes | `back/app/connection/router.py:102` |
-| GET | `/connections/oauth/client-metadata` | `app.connection` | `oauth_client_metadata` | no | `back/app/connection/router.py:147` |
-| GET | `/connections/oauth/client-metadata/loopback/{scheme}/{host}/{port}` | `app.connection` | `oauth_local_client_metadata` | no | `back/app/connection/router.py:153` |
-| GET | `/connections/overview` | `app.connection` | `list_connection_overviews` | yes | `back/app/connection/router.py:311` |
-| GET | `/connections/permission-options` | `app.connection` | `permission_connection_options` | yes | `back/app/connection/router.py:117` |
-| POST | `/connections/refresh-tools` | `app.connection` | `refresh_connections_and_tool_catalogs` | yes | `back/app/connection/router.py:271` |
-| POST | `/connections/sync-integrated` | `app.connection` | `sync_integrated_connections` | yes | `back/app/connection/router.py:283` |
-| POST | `/connections/test-mcp-tools` | `app.connection` | `test_mcp_tools` | yes | `back/app/connection/router.py:620` |
-| GET | `/connections/tool-options` | `app.connection` | `connection_tool_options` | yes | `back/app/connection/router.py:111` |
-| DELETE | `/connections/{connection_id}` | `app.connection` | `delete_connection` | yes | `back/app/connection/router.py:445` |
-| GET | `/connections/{connection_id}` | `app.connection` | `get_connection` | yes | `back/app/connection/router.py:340` |
-| PATCH | `/connections/{connection_id}` | `app.connection` | `update_connection` | yes | `back/app/connection/router.py:385` |
-| PUT | `/connections/{connection_id}/capabilities` | `app.connection` | `set_capability_policy` | yes | `back/app/connection/router.py:741` |
-| GET | `/connections/{connection_id}/functions` | `app.connection` | `list_connection_functions` | yes | `back/app/connection/router.py:680` |
-| PUT | `/connections/{connection_id}/functions/{function_name}` | `app.connection` | `set_connection_function` | yes | `back/app/connection/router.py:689` |
-| PUT | `/connections/{connection_id}/functions/{function_name}/global` | `app.connection` | `set_connection_function_global` | yes | `back/app/connection/router.py:703` |
-| DELETE | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_disconnect` | yes | `back/app/connection/router.py:206` |
-| GET | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_status` | yes | `back/app/connection/router.py:162` |
-| POST | `/connections/{connection_id}/oauth/callback` | `app.connection` | `oauth_callback` | yes | `back/app/connection/router.py:182` |
-| POST | `/connections/{connection_id}/oauth/device` | `app.connection` | `oauth_device` | yes | `back/app/connection/router.py:193` |
-| POST | `/connections/{connection_id}/oauth/start` | `app.connection` | `oauth_start` | yes | `back/app/connection/router.py:172` |
-| GET | `/connections/{connection_id}/params` | `app.connection` | `get_connection_params` | yes | `back/app/connection/router.py:470` |
-| POST | `/connections/{connection_id}/params` | `app.connection` | `create_or_update_param` | yes | `back/app/connection/router.py:517` |
-| POST | `/connections/{connection_id}/params/bulk` | `app.connection` | `create_or_update_params_bulk` | yes | `back/app/connection/router.py:543` |
-| DELETE | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `delete_param` | yes | `back/app/connection/router.py:603` |
-| GET | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `get_single_param` | yes | `back/app/connection/router.py:490` |
-| PATCH | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `update_connection_param` | yes | `back/app/connection/router.py:569` |
+| GET | `/connections` | `app.connection` | `list_connections` | yes | `back/app/connection/router.py:325` |
+| POST | `/connections` | `app.connection` | `create_connection` | yes | `back/app/connection/router.py:347` |
+| GET | `/connections/find-by-param` | `app.connection` | `find_agents_by_param` | yes | `back/app/connection/router.py:214` |
+| GET | `/connections/function-permissions` | `app.connection` | `list_function_permissions` | yes | `back/app/connection/router.py:103` |
+| GET | `/connections/oauth/client-metadata` | `app.connection` | `oauth_client_metadata` | no | `back/app/connection/router.py:148` |
+| GET | `/connections/oauth/client-metadata/loopback/{scheme}/{host}/{port}` | `app.connection` | `oauth_local_client_metadata` | no | `back/app/connection/router.py:154` |
+| GET | `/connections/overview` | `app.connection` | `list_connection_overviews` | yes | `back/app/connection/router.py:312` |
+| GET | `/connections/permission-options` | `app.connection` | `permission_connection_options` | yes | `back/app/connection/router.py:118` |
+| POST | `/connections/refresh-tools` | `app.connection` | `refresh_connections_and_tool_catalogs` | yes | `back/app/connection/router.py:272` |
+| POST | `/connections/sync-integrated` | `app.connection` | `sync_integrated_connections` | yes | `back/app/connection/router.py:284` |
+| POST | `/connections/test-mcp-tools` | `app.connection` | `test_mcp_tools` | yes | `back/app/connection/router.py:635` |
+| GET | `/connections/tool-options` | `app.connection` | `connection_tool_options` | yes | `back/app/connection/router.py:112` |
+| DELETE | `/connections/{connection_id}` | `app.connection` | `delete_connection` | yes | `back/app/connection/router.py:446` |
+| GET | `/connections/{connection_id}` | `app.connection` | `get_connection` | yes | `back/app/connection/router.py:341` |
+| PATCH | `/connections/{connection_id}` | `app.connection` | `update_connection` | yes | `back/app/connection/router.py:386` |
+| PUT | `/connections/{connection_id}/capabilities` | `app.connection` | `set_capability_policy` | yes | `back/app/connection/router.py:756` |
+| GET | `/connections/{connection_id}/functions` | `app.connection` | `list_connection_functions` | yes | `back/app/connection/router.py:695` |
+| PUT | `/connections/{connection_id}/functions/{function_name}` | `app.connection` | `set_connection_function` | yes | `back/app/connection/router.py:704` |
+| PUT | `/connections/{connection_id}/functions/{function_name}/global` | `app.connection` | `set_connection_function_global` | yes | `back/app/connection/router.py:718` |
+| PUT | `/connections/{connection_id}/management-scope` | `app.connection` | `update_management_scope` | yes | `back/app/connection/router.py:471` |
+| DELETE | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_disconnect` | yes | `back/app/connection/router.py:207` |
+| GET | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_status` | yes | `back/app/connection/router.py:163` |
+| POST | `/connections/{connection_id}/oauth/callback` | `app.connection` | `oauth_callback` | yes | `back/app/connection/router.py:183` |
+| POST | `/connections/{connection_id}/oauth/device` | `app.connection` | `oauth_device` | yes | `back/app/connection/router.py:194` |
+| POST | `/connections/{connection_id}/oauth/start` | `app.connection` | `oauth_start` | yes | `back/app/connection/router.py:173` |
+| GET | `/connections/{connection_id}/params` | `app.connection` | `get_connection_params` | yes | `back/app/connection/router.py:485` |
+| POST | `/connections/{connection_id}/params` | `app.connection` | `create_or_update_param` | yes | `back/app/connection/router.py:532` |
+| POST | `/connections/{connection_id}/params/bulk` | `app.connection` | `create_or_update_params_bulk` | yes | `back/app/connection/router.py:558` |
+| DELETE | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `delete_param` | yes | `back/app/connection/router.py:618` |
+| GET | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `get_single_param` | yes | `back/app/connection/router.py:505` |
+| PATCH | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `update_connection_param` | yes | `back/app/connection/router.py:584` |
 | POST | `/console/connections/{connection_id}/generate-key` | `app.console` | `generate_connection_key` | yes | `back/app/console/router.py:86` |
 | POST | `/console/connections/{connection_id}/install-editor` | `app.console` | `install_connection_code_editor` | yes | `back/app/console/router.py:150` |
 | POST | `/console/connections/{connection_id}/install-helper` | `app.console` | `install_connection_galaris_exec` | yes | `back/app/console/router.py:115` |
@@ -1847,8 +1850,9 @@ tests remain authoritative for behavior.
 | GET | `/params` | `core.params` | `read_params` | yes | `back/core/params/router.py:49` |
 | PUT | `/params/{name}` | `core.params` | `update_param` | yes | `back/core/params/router.py:94` |
 | GET | `/permissions` | `app.messenger` | `list_permissions` | yes | `back/app/messenger/permission_router.py:18` |
-| DELETE | `/permissions/{permission_id}` | `app.messenger` | `delete_permission` | yes | `back/app/messenger/permission_router.py:49` |
-| POST | `/permissions/{permission_id}/answer` | `app.messenger` | `answer_request` | yes | `back/app/messenger/permission_router.py:36` |
+| DELETE | `/permissions/{permission_id}` | `app.messenger` | `delete_permission` | yes | `back/app/messenger/permission_router.py:67` |
+| PUT | `/permissions/{permission_id}` | `app.messenger` | `change_permission` | yes | `back/app/messenger/permission_router.py:41` |
+| POST | `/permissions/{permission_id}/answer` | `app.messenger` | `answer_request` | yes | `back/app/messenger/permission_router.py:54` |
 | POST | `/process-campaigns` | `app.lab` | `lab_process_campaign_start` | yes | `back/app/lab/process_evaluation_router.py:85` |
 | POST | `/process-campaigns/datasets` | `app.lab` | `lab_process_dataset_create` | yes | `back/app/lab/process_evaluation_router.py:65` |
 | POST | `/process-campaigns/datasets/generate` | `app.lab` | `lab_process_dataset_generate` | yes | `back/app/lab/process_evaluation_router.py:74` |
@@ -1943,21 +1947,22 @@ tests remain authoritative for behavior.
 | PUT | `/teams/{team_id}/humans/{user_id}` | `core.team` | `set_human_membership` | yes | `back/core/team/router.py:79` |
 | PUT | `/teams/{team_id}/position` | `core.team` | `move_team` | yes | `back/core/team/router.py:60` |
 | GET | `/tools` | `app.process` | `read_process_tools` | yes | `back/app/process/router.py:130` |
-| GET | `/tools` | `app.tools` | `list_tools` | yes | `back/app/tools/router.py:76` |
-| POST | `/tools` | `app.tools` | `create_tool` | yes | `back/app/tools/router.py:167` |
-| GET | `/tools/agents/{agent_id}/mcp-tools` | `app.tools` | `list_agent_mcp_tools` | yes | `back/app/tools/router.py:86` |
-| POST | `/tools/import` | `app.tools` | `import_tool` | yes | `back/app/tools/router.py:271` |
-| POST | `/tools/mcp-candidates` | `app.tools` | `prepare_mcp_candidate` | yes | `back/app/tools/router.py:38` |
-| POST | `/tools/test-mcp` | `app.tools` | `test_mcp_connection` | yes | `back/app/tools/router.py:95` |
+| GET | `/tools` | `app.tools` | `list_tools` | yes | `back/app/tools/router.py:77` |
+| POST | `/tools` | `app.tools` | `create_tool` | yes | `back/app/tools/router.py:181` |
+| GET | `/tools/agents/{agent_id}/mcp-tools` | `app.tools` | `list_agent_mcp_tools` | yes | `back/app/tools/router.py:87` |
+| GET | `/tools/agents/{agent_id}/permissions` | `app.tools` | `read_agent_permission_catalog` | yes | `back/app/tools/router.py:96` |
+| POST | `/tools/import` | `app.tools` | `import_tool` | yes | `back/app/tools/router.py:285` |
+| POST | `/tools/mcp-candidates` | `app.tools` | `prepare_mcp_candidate` | yes | `back/app/tools/router.py:39` |
+| POST | `/tools/test-mcp` | `app.tools` | `test_mcp_connection` | yes | `back/app/tools/router.py:109` |
 | GET | `/tools/{tool_code}/health` | `app.process` | `read_process_tool_health` | yes | `back/app/process/router.py:136` |
-| DELETE | `/tools/{tool_id}` | `app.tools` | `delete_tool` | yes | `back/app/tools/router.py:231` |
-| GET | `/tools/{tool_id}` | `app.tools` | `get_tool` | yes | `back/app/tools/router.py:115` |
-| PUT | `/tools/{tool_id}` | `app.tools` | `update_tool` | yes | `back/app/tools/router.py:183` |
-| PATCH | `/tools/{tool_id}/conversation-access` | `app.tools` | `update_conversation_access` | yes | `back/app/tools/router.py:199` |
-| GET | `/tools/{tool_id}/deletion-impact` | `app.tools` | `tool_deletion_impact` | yes | `back/app/tools/router.py:219` |
-| GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | yes | `back/app/tools/router.py:248` |
-| GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:127` |
-| PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:144` |
+| DELETE | `/tools/{tool_id}` | `app.tools` | `delete_tool` | yes | `back/app/tools/router.py:245` |
+| GET | `/tools/{tool_id}` | `app.tools` | `get_tool` | yes | `back/app/tools/router.py:129` |
+| PUT | `/tools/{tool_id}` | `app.tools` | `update_tool` | yes | `back/app/tools/router.py:197` |
+| PATCH | `/tools/{tool_id}/conversation-access` | `app.tools` | `update_conversation_access` | yes | `back/app/tools/router.py:213` |
+| GET | `/tools/{tool_id}/deletion-impact` | `app.tools` | `tool_deletion_impact` | yes | `back/app/tools/router.py:233` |
+| GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | yes | `back/app/tools/router.py:262` |
+| GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:141` |
+| PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:158` |
 | GET | `/topics` | `app.topic` | `read_topics` | yes | `back/app/topic/router.py:47` |
 | POST | `/topics` | `app.topic` | `create_topic` | yes | `back/app/topic/router.py:104` |
 | GET | `/topics/conversation` | `app.topic` | `read_conversation_topics` | yes | `back/app/topic/router.py:66` |
@@ -2151,7 +2156,7 @@ tests remain authoritative for behavior.
 | `role_privileges` | `RolePrivilege` | `core.authorize` | no | `privileges.id`, `roles.id` | `back/core/authorize/models.py:12` |
 | `roles` | `Role` | `core.authorize` | no | — | `back/core/authorize/models.py:65` |
 | `runtime_action_permissions` | `RuntimeActionPermission` | `app.tools` | no | `agents.id`, `users.id` | `back/app/tools/authorization_models.py:64` |
-| `runtime_run_grants` | `RuntimeRunGrant` | `app.tools` | no | `agent_mcp_tokens.id`, `agents.id` | `back/app/tools/authorization_models.py:81` |
+| `runtime_run_grants` | `RuntimeRunGrant` | `app.tools` | no | `agent_mcp_tokens.id`, `agents.id` | `back/app/tools/authorization_models.py:82` |
 | `share_configs` | `ShareConfig` | `app.share` | yes | — | `back/app/share/models.py:23` |
 | `share_grants` | `ShareGrant` | `app.share` | no | `agent_groups.id`, `agents.id`, `share_configs.id`, `users.id` | `back/app/share/models.py:46` |
 | `skill_categories` | `SkillCategory` | `app.skill` | yes | — | `back/app/skill/models.py:31` |
@@ -2619,7 +2624,7 @@ tests remain authoritative for behavior.
 | `/connection/calendars` | `app/connection` | `front/app/connection/pages/calendars.vue` |
 | `/connection/mail` | `app/connection` | `front/app/connection/pages/mail.vue` |
 | `/connection/oauth-callback` | `app/connection` | `front/app/connection/pages/oauth-callback.vue` |
-| `/connection/permissions` | `app/connection` | `front/app/connection/pages/permissions.vue` |
+| `/connection/permissions` | `app/connection` | `front/app/connection/pages/legacy-permissions.vue` |
 | `/console/executor` | `app/console` | `front/app/console/pages/executor.vue` |
 | `/dataset/:id?` | `app/dataset` | `front/app/dataset/pages/[[id]].vue` |
 | `/documents` | `app/document` | `front/app/document/pages/documents.vue` |
@@ -2649,6 +2654,7 @@ tests remain authoritative for behavior.
 | `/params/:section` | `core/params` | `front/core/params/pages/[section].vue` |
 | `/params/files` | `app/file_share` | `front/app/file_share/pages/settings.vue` |
 | `/params/harnesses/:provider` | `core/params` | `front/core/params/pages/harnesses/[provider].vue` |
+| `/permissions` | `app/connection` | `front/app/connection/pages/permissions.vue` |
 | `/process` | `app/process` | `front/app/process/pages/index.vue` |
 | `/process/external/:id` | `app/process` | `front/app/process/pages/external/[id].vue` |
 | `/process/internal/:code` | `app/process` | `front/app/process/pages/internal/[code].vue` |

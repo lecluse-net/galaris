@@ -1095,16 +1095,18 @@ async def list_external_mcp_functions(tool: Any, params: dict[str, Any]) -> list
     return [(tool.name, tool.description or "") for tool in tools]
 
 
-async def list_external_mcp_capabilities(tool: ToolConfiguration, params: dict[str, Any]) -> list[tuple[str, str, Literal["tool", "resource", "prompt"]]]:
+async def list_external_mcp_capabilities(tool: ToolConfiguration, params: dict[str, Any], *,
+                                         include_resources: bool = True) -> list[tuple[str, str, Literal["tool", "resource", "prompt"]]]:
+    result: list[tuple[str, str, Literal["tool", "resource", "prompt"]]] = []
     async with Client(_external_transport(tool, params)) as client:
         tools = await client.list_tools()
-        resources = await client.list_resources()
-        templates = await client.list_resource_templates()
+        result.extend((item.name, item.description or "", "tool") for item in tools)
+        if include_resources:
+            resources = await client.list_resources()
+            templates = await client.list_resource_templates()
+            result.extend((str(item.uri), item.description or "", "resource") for item in resources)
+            result.extend((item.uri_template, item.description or "", "resource") for item in templates)
         prompts = await client.list_prompts()
-    result: list[tuple[str, str, Literal["tool", "resource", "prompt"]]] = []
-    result.extend((item.name, item.description or "", "tool") for item in tools)
-    result.extend((str(item.uri), item.description or "", "resource") for item in resources)
-    result.extend((item.uri_template, item.description or "", "resource") for item in templates)
     result.extend((item.name, item.description or "", "prompt") for item in prompts)
     return result
 

@@ -290,7 +290,9 @@ The **mail_process** function uses the same global and local policies as other f
 **Enabled** processes every sender; **Ask** requires consent for every email, including contacts;
 **Blocked** prevents processing. Without an explicit policy, contacts are accepted and unknown
 senders require consent. **Always process emails** enables the function only on this agent’s
-connection; revoke it in Permissions. Sending permissions remain independent of reading and
+connection. **Always deny email processing** blocks it for every sender on this connection,
+without reading subsequent emails or creating Tasks. Remove either decision in
+the agent’s **Permissions** dashboard. Sending permissions remain independent of reading and
 processing permission. Only inbox (`INBOX`) messages and their attachments can be processed,
 read or admitted as Tasks. Searches in Sent, Trash, Archive or subfolders may return headers,
 but create no reception entry or processing request. Historical entries outside INBOX cannot

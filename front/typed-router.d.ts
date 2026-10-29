@@ -115,6 +115,20 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//connection/legacy-permissions': RouteRecordInfo<
+      '//connection/legacy-permissions',
+      '/connection/permissions',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '//connection/permissions': RouteRecordInfo<
+      '//connection/permissions',
+      '/permissions',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//connection/calendars': RouteRecordInfo<
       '//connection/calendars',
       '/connection/calendars',
@@ -132,13 +146,6 @@ declare module 'vue-router/auto-routes' {
     '//connection/oauth-callback': RouteRecordInfo<
       '//connection/oauth-callback',
       '/connection/oauth-callback',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
-    '//connection/permissions': RouteRecordInfo<
-      '//connection/permissions',
-      '/connection/permissions',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -518,6 +525,22 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
+    'app/connection/pages/legacy-permissions.vue': {
+      routes:
+        | '//connection/legacy-permissions'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/connection/pages/permissions.vue': {
+      routes:
+        | '//connection/permissions'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
     'app/connection/pages/calendars.vue': {
       routes:
         | '//connection/calendars'
@@ -537,14 +560,6 @@ declare module 'vue-router/auto-routes' {
     'app/connection/pages/oauth-callback.vue': {
       routes:
         | '//connection/oauth-callback'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'app/connection/pages/permissions.vue': {
-      routes:
-        | '//connection/permissions'
       views:
         | never
       pathParamNames:

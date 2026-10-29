@@ -186,7 +186,8 @@ Ce parcours ne donne aucun droit supplémentaire et n’active aucun outil bloqu
    préparer ou faire relire la demande avant son lancement.
 
 Les fonctions d'outils utilisent leurs règles Actif, Bloqué ou Sur demande. Les accords
-ponctuels et permanents se traitent dans **Superviser → Permissions** ; il n'existe plus de
+ponctuels et permanents ainsi que **Toujours interdire** se traitent dans **Superviser → Permissions**.
+Le tableau de bord par agent (`/permissions`) permet de modifier ou retirer les accords et refus ; il n'existe plus de
 mode global d'auto-approbation. Un accord reste limité à sa connexion ou son type d'action
 et ne donne pas automatiquement les mêmes droits aux agents délégataires.
 Le suivi d’une conversation affiche **En attente d’autorisation** pendant la demande

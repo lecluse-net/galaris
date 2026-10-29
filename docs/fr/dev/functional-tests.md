@@ -1216,10 +1216,17 @@ y compris sans paramètre enregistré, sont vérifiés avec deux synchronisation
 sans demande créée d'une vraie attente ou d'un refus, avec consigne de résolution explicite.
 `browser-executor/network-proxy.test.mjs` utilise Chromium et des serveurs
 synthétiques pour vérifier POST, redirections, isolation, HTTPS avec validation du certificat,
-WebSocket et révocation. `front/browser-tests/permissions.spec.mjs` vérifie la liste réelle,
-les demandes sans réponse, les réponses ponctuelles exclues des accords permanents, la révocation
-MCP vers « Sur demande », la fermeture par fond de modale et le réessai après erreur sur mobile et
-desktop. Elle couvre aussi les réponses réseau et les réponses tardives après changement d’onglet.
+WebSocket et révocation. `front/browser-tests/permissions.spec.mjs` vérifie le tableau de bord
+par agent, la recherche au-delà de la première page, le filtre par Tool combiné aux états,
+la hiérarchie Tool → fonctions, la désactivation puis réactivation sans perdre le Tool sélectionné,
+les règles MCP héritées et interdites et leur présélection dans les bascules, les réponses ponctuelles
+sans accord permanent, les décisions de contact et le réessai après erreur sur mobile et desktop.
+Les anciennes confirmations de retrait sont remplacées par la bascule « Sur demande » ; les tests
+de revue d’action conservent la fermeture par fond de modale. Les anciens scénarios d’onglets sont
+remplacés par la conservation des actions et l’isolation des réponses tardives entre agents.
+Les périmètres `tools.management_scope` sont visibles en lecture seule ou modifiables selon les droits,
+avec réessai et retour au défaut. `app/connection/tests/test_connections.py` couvre la délégation
+humaine globale, les choix valides, la persistance locale et la protection des autres paramètres.
 La même suite backend vérifie l’accord couvrant tous les sites, sa révocation, la priorité des
 filtres et la séparation du réseau local, ainsi que le français, le chinois et la langue par défaut.
 Les accords historiques par site ne sont pas élargis ; les anciennes questions sont remplacées
@@ -1231,6 +1238,16 @@ Claude Agent et OpenAI Messages configuré), elle vérifie aussi l’accord par 
 des harnais et des capacités, la reprise dans un autre contexte, la révocation et les changements
 de configuration, d’affectation, de responsable et de version de politique. Les scénarios navigateur
 `action-authorizations.spec.mjs` et `permissions.spec.mjs` couvrent le choix et sa révocation.
+Ces scénarios couvrent aussi **Toujours interdire** : refus permanent par fonction ou type
+d’action, absence de nouvelle demande dans une autre tâche, retrait du refus et blocage d’une
+action déjà approuvée mais non commencée. La projection dans Chat accepte une demande antérieure
+à l’ajout du bouton. Les refus réseau, dont celui de tous les sites, restent visibles et retirables
+avec les accords dans les décisions permanentes ; le refus global reste prioritaire au mode public.
+`mail-inbound.spec.mjs` et `bridge/mail/tests/test_inbound.py` vérifient aussi le choix permanent
+de refus du traitement : aucun contenu lu, aucune tâche et aucune nouvelle demande pour le mail suivant.
+Le parcours assemblé `tool-authorizations.spec.mjs` vérifie le blocage réel puis le retrait de
+la décision sur mobile et desktop. Sa fermeture de revue utilise le bouton accessible ; les
+scénarios de composants conservent la fermeture par Échap et par fond de modale.
 Le harnais interne est explicitement exclu de ces accords de runtime.
 Elle couvre aussi le claim concurrent, le refus non répétable, l’expiration, les quotas,
 la révocation du contexte ou de la configuration, les accords explicites et les préconditions des fichiers.

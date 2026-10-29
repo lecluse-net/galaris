@@ -12,7 +12,7 @@ const navigation: NavigationTree = {
       },
       permissions: {
         label: 'permissions.title', description: 'permissions.description', icon: 'verified_user',
-        order: 31, to: '/connection/permissions',
+        order: 31, to: '/permissions',
         privileges: [privileges.PERMISSION_ACCESS, privileges.PERMISSION_DECIDE, privileges.PERMISSION_REVOKE],
       },
       mailJournal: {

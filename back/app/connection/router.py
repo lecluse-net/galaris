@@ -22,6 +22,7 @@ from .schemas import (
     ConnectionParam as ConnectionParamSchema,
     ConnectionParamCreate,
     ConnectionParamUpdate,
+    ManagementScopeUpdate,
     ConnectionParamBulkCreate,
     ConnectionParamsResponse,
     AgentByParamResponse,
@@ -464,6 +465,20 @@ async def _authorize_scope_parameter(request: Request, names: list[str]) -> bool
     if not (await current_management_scope()).is_global:
         raise HTTPException(status_code=403, detail=await _message("errors.scope_delegation"))
     return True
+
+@router.put("/{connection_id}/management-scope", status_code=204, dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def update_management_scope(connection_id: int, data: ManagementScopeUpdate, request: Request) -> None:
+    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+
+    connection = await _managed_connection(connection_id)
+    authorized = await _authorize_scope_parameter(request, [MANAGEMENT_SCOPE_PARAM])
+    try:
+        await connection_service.set_management_scope(connection.id, data.value, authorized=authorized)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    await _refresh_agent_indexes([connection.agent_id])
+
 
 @router.get("/{connection_id}/params", response_model=ConnectionParamsResponse)
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])

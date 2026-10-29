@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
-import { selectOption } from '../select-option.mjs'
 
 for (const width of [390, 1440]) {
   test(`human approval protects the exact action and survives reopening at ${width}px`, async ({ page, request }) => {
@@ -52,7 +51,7 @@ for (const width of [390, 1440]) {
       await errors.settle()
       await page.goto(path)
       await expect(page.getByRole('dialog')).toContainText(title)
-      await page.keyboard.press('Escape')
+      await page.getByRole('dialog').getByRole('button', { name: 'Annuler', exact: true }).first().click()
       await expect(page.getByRole('dialog')).toHaveCount(0)
       await errors.settle()
       await page.goto('/agent')
@@ -64,7 +63,7 @@ for (const width of [390, 1440]) {
       await dialog.getByRole('button', { name: allowed ? 'Autoriser cette action' : 'Refuser cette action', exact: true }).focus()
       await page.keyboard.press('Enter')
       expect((await answer).ok()).toBeTruthy()
-      await expect(dialog.getByRole('button', { name: 'Autoriser cette action', exact: true })).toHaveCount(0)
+      await expect(dialog.getByRole('button', { name: 'Autoriser cette action', exact: true })).toBeDisabled()
       const continued = await invoke(operation, title, control.continuation)
       expect(continued.is_error).toBe(!allowed)
       expect((await read()).job_title).toBe(allowed ? title : original.job_title)
@@ -72,10 +71,41 @@ for (const width of [390, 1440]) {
       expect(replay.is_error).toBe(true)
       expect(replay.meta['galaris.authorization/v1'].status).toBe(allowed ? 'completed' : 'denied')
     }
-    expect((await setMode('disabled')).ok()).toBeTruthy()
+    const permanentRequest = await invoke(randomUUID(), 'Synthetic permanent denial')
+    const permanentControl = permanentRequest.meta['galaris.authorization/v1']
+    expect(permanentControl.disposition).toBe('authorization_required')
+    await errors.settle()
+    await page.goto(`/connection/permissions?request=${permanentControl.request_id}`)
+    const denyAlways = page.getByRole('dialog').getByRole('button', { name: 'Toujours interdire cette fonction', exact: true })
+    await denyAlways.focus()
+    await page.keyboard.press('Enter')
+    await expect(denyAlways).toBeDisabled()
+    await expect(denyAlways).toHaveAttribute('aria-pressed', 'true')
+    await page.getByRole('dialog').getByRole('button', { name: 'Annuler', exact: true }).first().click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    if (width < 1024 && await page.locator('.q-drawer__backdrop').isVisible()) {
+      await page.locator('.q-drawer__backdrop').click({ position: { x: width - 10, y: 200 } })
+    }
+    if (width >= 1024) {
+      await page.getByRole('complementary', { name: 'Outil', exact: true }).getByRole('button', { name: 'AgentAdmin', exact: true }).click()
+      const scope = page.getByRole('group', { name: 'Périmètre de AgentAdmin (tools.management_scope)', exact: true })
+      await expect(scope.getByRole('button', { name: "Gestion pour l'agent uniquement", exact: true })).toHaveCount(0)
+      await scope.getByRole('button', { name: 'Gestion de niveau équipe', exact: true }).click()
+      await expect(scope.getByRole('button', { name: 'Gestion de niveau équipe', exact: true })).toHaveAttribute('aria-pressed', 'true')
+      const saved = await request.get(`/api/connections/${setup.connection_id}/params`, { headers })
+      expect((await saved.json()).params['tools.management_scope']).toBe('team')
+      await scope.getByRole('button', { name: 'Gestion globale sans restriction', exact: true }).click()
+      await expect(scope.getByRole('button', { name: 'Gestion globale sans restriction', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    }
     expect((await invoke(randomUUID(), 'Blocked synthetic mutation')).is_error).toBe(true)
     expect((await read()).job_title).toBe(`Synthetic approved ${fixture.agent_id}`)
-    expect((await setMode('ask')).ok()).toBeTruthy()
+    const functionPanel = page.getByRole('region', { name: 'Fonctions et prompts des outils', exact: true })
+    await functionPanel.getByRole('complementary', { name: 'Outil', exact: true }).getByRole('button', { name: 'AgentAdmin', exact: true }).click()
+    await expect(functionPanel.getByText('browser_open', { exact: true })).toHaveCount(0)
+    const decision = width < 1024 ? functionPanel.getByRole('article', { name: 'agent_update', exact: true }) : functionPanel.locator('tr').filter({ hasText: 'agent_update' })
+    await expect(decision).toContainText('Interdits')
+    await decision.getByRole('button', { name: 'Sur demande', exact: true }).click()
+    await expect(decision).toContainText('Sur demande')
     const waiting = await invoke(randomUUID(), 'Human approval required')
     expect(waiting.meta['galaris.authorization/v1'].disposition).toBe('authorization_required')
     expect((await read()).job_title).toBe(`Synthetic approved ${fixture.agent_id}`)
@@ -106,7 +136,8 @@ for (const width of [390, 1440]) {
       }, { times: 1 })
     }
     await page.getByRole('tab', { name: 'Autorisations', exact: true }).click()
-    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${operator.first_name} ${operator.last_name}`)
+    await page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }).click()
+    await page.getByRole('option', { name: `${operator.first_name} ${operator.last_name}`, exact: true }).click()
     await page.getByRole('combobox', { name: 'Filtrer par outil', exact: true }).click()
     await page.getByRole('option', { name: 'AgentAdmin', exact: true }).click()
     await page.getByRole('textbox', { name: 'Rechercher une fonction', exact: true }).fill('agent_update')

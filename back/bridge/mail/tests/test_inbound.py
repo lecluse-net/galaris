@@ -122,7 +122,7 @@ async def test_legacy_non_inbox_receipts_cannot_resume_processing(inbox, mailbox
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("decision", ["allow", "deny", "always"])
+@pytest.mark.parametrize("decision", ["allow", "deny", "always", "never"])
 async def test_unknown_sender_is_logged_but_not_read_until_common_consent(inbox, decision):
     config, manager, outsider, read = inbox
     summary = _summary(41)
@@ -139,15 +139,17 @@ async def test_unknown_sender_is_logged_but_not_read_until_common_consent(inbox,
         assert authorization.capability_name == "mail_process"
         assert await can_remember_action(authorization)
         assert not await answer_action(authorization.id, user_id=outsider, approved=True)
-        assert await answer_action(authorization.id, user_id=manager, approved=decision != "deny", remember=decision == "always")
+        assert await answer_action(authorization.id, user_id=manager,
+            approved=decision in {"allow", "always"}, remember=decision in {"always", "never"})
         receipt_id = receipt.id
     async with get_db_session() as db:
         # The same wake used by the common reconciler; duplicates remain harmless.
         await inbound._wake(config.agent_id, f"mail-inbound:{receipt_id}")
         await inbound.receive(config, summary)
         receipt = await db.get(MailInboundReceipt, receipt_id, populate_existing=True)
-        if decision == "deny":
-            assert receipt.status == "rejected"
+        if decision in {"deny", "never"}:
+            # A permanent denial uses the existing Blocked connection policy.
+            assert receipt.status == ("blocked" if decision == "never" else "rejected")
             assert receipt.content is None
             read.assert_not_called()
             assert await db.scalar(select(func.count()).select_from(Task)) == 0
@@ -159,6 +161,14 @@ async def test_unknown_sender_is_logged_but_not_read_until_common_consent(inbox,
         if decision == "always":
             await inbound.receive(config, _summary(42))
             assert await db.scalar(select(func.count()).select_from(Task)) == 2
+            assert await db.scalar(select(func.count()).select_from(ActionAuthorization).where(
+                ActionAuthorization.capability_name == "mail_process")) == 1
+        if decision == "never":
+            await inbound.receive(config, _summary(42))
+            following = await db.scalar(select(MailInboundReceipt).where(MailInboundReceipt.id != receipt_id))
+            assert following.status == "blocked" and following.authorization_id is None
+            read.assert_not_called()
+            assert await db.scalar(select(func.count()).select_from(Task)) == 0
             assert await db.scalar(select(func.count()).select_from(ActionAuthorization).where(
                 ActionAuthorization.capability_name == "mail_process")) == 1
 

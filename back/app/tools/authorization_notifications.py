@@ -28,24 +28,29 @@ async def sync_authorization_choice(row: ActionAuthorization) -> None:
     """Project the effective decision into Chat, including decisions made through the API."""
     key = f"authorization:{row.id}"
     if row.decision_source == "human" and row.decided_at is not None:
-        option = "deny" if row.status == "denied" else (
-            "allow_always" if row.runtime_permission_id is not None or (
-                row.mode == "enabled" and row.policy_source == "connection") else "allow"
-        )
-        await settle_user_choice(agent_id=row.agent_id, kind=KIND, idempotency_key=key, option_id=option)
+        remembered = row.runtime_permission_id is not None or (
+            row.mode in ("enabled", "disabled") and row.policy_source == "connection")
+        option = ("deny_always" if remembered else "deny") if row.status == "denied" else (
+            "allow_always" if remembered else "allow")
+        language = await current_language(user_id=row.approver_user_id)
+        committed_option = ChoiceOption(id=option, label=t(
+            "permissions.deny_runtime_action" if row.source == "runtime" else "permissions.deny_function", language)
+        ) if option == "deny_always" else None
+        await settle_user_choice(agent_id=row.agent_id, kind=KIND, idempotency_key=key,
+            option_id=option, committed_option=committed_option)
     else:
         await expire_user_choice(agent_id=row.agent_id, kind=KIND, idempotency_key=key)
 
 
 async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> None:
-    if resolution.option_id not in {"allow", "deny", "allow_always"}:
+    if resolution.option_id not in {"allow", "deny", "allow_always", "deny_always"}:
         return
     identifier = UUID(str(interaction.metadata["authorization_request_id"]))
     row = await get_db().get(ActionAuthorization, identifier)
     if row is None or row.agent_id != interaction.agent_id or interaction.user_id != f"user:{row.approver_user_id}":
         return
-    await answer_action(identifier, user_id=row.approver_user_id, approved=resolution.option_id != "deny",
-                        remember=resolution.option_id == "allow_always")
+    await answer_action(identifier, user_id=row.approver_user_id, approved=resolution.option_id in {"allow", "allow_always"},
+                        remember=resolution.option_id in {"allow_always", "deny_always"})
     await get_db().refresh(row)
     await sync_authorization_choice(row)
 
@@ -137,6 +142,8 @@ async def deliver_authorization_notifications() -> None:
                 runtime = row.source == "runtime"
                 options.append(ChoiceOption(id="allow_always", label=t(
                     "permissions.allow_runtime_action" if runtime else "permissions.allow_function", language)))
+                options.append(ChoiceOption(id="deny_always", label=t(
+                    "permissions.deny_runtime_action" if runtime else "permissions.deny_function", language)))
                 body += "\n\n" + render_prompt(t(
                     "permissions.runtime_scope" if runtime else "permissions.function_scope", language),
                     function=row.capability_name, runtime=row.runtime)

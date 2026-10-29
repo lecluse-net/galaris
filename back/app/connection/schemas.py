@@ -68,6 +68,11 @@ class ConnectionParamUpdate(BaseModel):
     param_value: Optional[str] = None
 
 
+class ManagementScopeUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    value: str | None
+
+
 class ConnectionParam(ConnectionParamBase):
     id: int
 

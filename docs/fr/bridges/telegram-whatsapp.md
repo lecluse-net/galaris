@@ -66,7 +66,7 @@ Nextcloud Talk nécessitent aussi une connectivité WebRTC adaptée, éventuelle
 5. Envoyer un message au bot depuis Telegram. Sans droit de dialogue déjà reconnu, le message
    apparaît dans **Superviser → Activité → Conversations textuelles**, dans un round en pause.
    Le manager reçoit une demande de réponse à ce contact, également visible dans
-   **Superviser → Permissions** (`/connection/permissions`).
+   **Superviser → Permissions** (`/permissions`).
 6. Le manager autorise ou refuse : l'accord reprend le round, le refus le clôt sans réponse.
    Le détail présente l'identifiant, le nom et les informations de profil fournies par Telegram.
 

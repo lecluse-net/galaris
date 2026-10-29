@@ -138,6 +138,8 @@ async def authorize_network(request: NetworkRequest) -> NetworkDecision:
     policy = await authorization_policy(request.owner.agent_id)
     all_sites_key = "browser:v1:all-sites"
     all_sites = await get_permission_decision(request.owner.agent_id, all_sites_key) if required else None
+    if all_sites is not None and all_sites.allowed is False:
+        return NetworkDecision(allowed=False, code="permission_denied", permission_keys=[all_sites_key])
     # Existing per-site consent keeps its original scope.
     site_key = f"browser:v1:site:{origin}"
     site = await get_permission_decision(request.owner.agent_id, site_key) if required and not (all_sites and all_sites.allowed) else None

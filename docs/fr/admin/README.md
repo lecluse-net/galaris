@@ -928,7 +928,7 @@ Un accord ne contourne jamais une interdiction de connexion. Voir le
 [contrat réseau du navigateur](../architecture/flows/browser.md) pour les domaines,
 ports, CIDR, HTTPS et WebSocket.
 
-**Superviser → Permissions** (`/connection/permissions`) regroupe demandes en attente et accords
+**Superviser → Permissions** (`/permissions`) regroupe demandes en attente et accords
 mémorisés : questions, décisions, agents, responsables et dates. La consultation utilise
 `PERMISSION_ACCESS`, les décisions `PERMISSION_DECIDE` et la révocation `PERMISSION_REVOKE`,
 avec le périmètre des agents gérés et les contrôles d'approbateur. Révoquer un accord fait

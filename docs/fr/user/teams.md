@@ -57,7 +57,7 @@ Les préférences personnelles et les documents conservent leurs règles d’acc
 
 Un contact humain externe sans identité Galaris autorisée est reçu dans un round textuel en pause,
 visible dans le suivi d'activité avec les informations disponibles sur son identité. Le manager
-reçoit une demande et autorise ou refuse les échanges dans `/connection/permissions`.
+reçoit une demande et autorise ou refuse les échanges dans `/permissions`.
 L'accord est propre à cette personne sur cette connexion et reste révocable. Il ne crée pas de
 compte Galaris et ne partage aucune ressource. Le Mail possède sa procédure distincte de Contacts et de
 consentement avant admission, décrite dans le [Journal des mails](tasks.md).

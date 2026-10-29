@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select, or_
 
 from app.agent import current_management_scope, authorization_policy
@@ -28,6 +28,7 @@ def projection(row: ActionAuthorization) -> dict[str, Any]:
             "source": row.source, "capability_kind": row.capability_kind, "capability_name": row.capability_name,
             "runtime": row.runtime,
             "status": row.status, "preview": row.preview, "decision_source": row.decision_source,
+            "remembered": row.runtime_permission_id is not None or (row.decision_source == "human" and row.policy_source == "connection" and row.mode in {"enabled", "disabled"}),
             "created_at": row.created_at, "expires_at": row.expires_at, "decided_at": row.decided_at,
             "claimed_at": row.claimed_at, "finished_at": row.finished_at,
             "notification_failed": row.notification_failed_at is not None}
@@ -36,6 +37,7 @@ def projection(row: ActionAuthorization) -> dict[str, Any]:
 @router.get("")
 @authorize(privileges=[Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def list_requests(agent_id: int | None = None, status: str | None = None,
+                        q: str = Query("", max_length=500),
                         offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=500)) -> dict[str, Any]:
     scope = await current_management_scope()
     query = select(ActionAuthorization)
@@ -43,6 +45,11 @@ async def list_requests(agent_id: int | None = None, status: str | None = None,
         query = query.where(or_(ActionAuthorization.agent_id.in_(scope.agent_ids), ActionAuthorization.approver_user_id == scope.user_id))
     if agent_id is not None:
         query = query.where(ActionAuthorization.agent_id == agent_id)
+    if q.strip():
+        needle = q.strip().lower()
+        query = query.where(or_(func.lower(ActionAuthorization.preview).contains(needle, autoescape=True),
+            func.lower(ActionAuthorization.capability_name).contains(needle, autoescape=True),
+            func.lower(ActionAuthorization.runtime).contains(needle, autoescape=True)))
     if status is not None:
         query = query.where(ActionAuthorization.status == status)
     if status == "pending":
@@ -73,6 +80,43 @@ async def delete_runtime_permission(identifier: UUID) -> dict[str, bool]:
     if not await revoke_permission(identifier, user_id=scope.user_id):
         raise HTTPException(404, "Runtime permission not found")
     return {"revoked": True}
+
+
+@router.get("/runtime-policies")
+@authorize(privileges=[Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
+async def read_runtime_policies(agent_id: int = Query(..., gt=0)) -> list[dict[str, object]]:
+    from .runtime_permissions import list_policies
+    try:
+        return await list_policies(await current_management_scope(), agent_id)
+    except (LookupError, PermissionError) as exc:
+        raise HTTPException(404, "Agent not found") from exc
+
+
+class RuntimePolicyUpdate(BaseModel):
+    agent_id: int = Field(gt=0)
+    runtime: str = Field(min_length=1, max_length=50)
+    capability_name: str = Field(min_length=1, max_length=255)
+    allowed: bool | None
+
+
+@router.put("/runtime-policies")
+@authorize(privileges=[Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
+async def update_runtime_policy(data: RuntimePolicyUpdate) -> dict[str, bool]:
+    from core.authorize import check_privilege
+    from core.user import get_current_user
+    from .runtime_permissions import set_policy
+    scope = await current_management_scope()
+    if not scope.allows(data.agent_id):
+        raise HTTPException(404, "Agent not found")
+    if data.allowed is not None and not await check_privilege(await get_current_user(), Privileges.PERMISSION_DECIDE, get_db()):
+        raise HTTPException(403, "Missing permission decision privilege")
+    try:
+        accepted = await set_policy(data.agent_id, data.runtime, data.capability_name, allowed=data.allowed, user_id=scope.user_id)
+    except PermissionError:
+        accepted = False
+    if not accepted:
+        raise HTTPException(409, "Action type or Harness configuration changed; reload permissions")
+    return {"accepted": True}
 
 
 @router.get("/{identifier}")

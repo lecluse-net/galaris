@@ -38,7 +38,7 @@ for (const width of [390, 1280]) test(`pending contact identity and permission n
   await expect(page.getByText('synthetic_contact', { exact: true })).toBeVisible()
   await expect(page.getByText('fr', { exact: true })).toBeVisible()
   const permissions = page.getByRole('link', { name: 'Open permissions' })
-  await expect(permissions).toHaveAttribute('href', '/connection/permissions')
+  await expect(permissions).toHaveAttribute('href', '/permissions')
   await permissions.focus()
   await page.screenshot({ path: `/artifacts/contact-authorization-${width}.png` })
   await setPrivileges(page, [])

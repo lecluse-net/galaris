@@ -160,7 +160,8 @@ enable blocked tools.
 6. Click **Create & run**. **Create** alone saves a paused Task, which is useful for preparing or having the request reviewed before launch.
 
 Tool functions use Active, Blocked or On request policies. Handle one-time and permanent
-approvals under **Monitor → Permissions**; there is no global auto-approval mode. Consent
+approvals and **Always deny** decisions under **Monitor → Permissions**. Both can be removed
+in the per-agent dashboard (`/permissions`); there is no global auto-approval mode. Consent
 remains limited to its connection or action type and does not automatically authorize
 agents receiving delegated work.
 Conversation progress displays **Waiting for authorization** while approval is pending,

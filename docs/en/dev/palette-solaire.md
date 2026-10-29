@@ -85,6 +85,20 @@ Consume the table's hex values as the reference, without additional interpolatio
 
 ## Adoption
 
+### Permission actions
+
+The Permissions page shares one presentation across toggles, badges and counters:
+green for allow/enable (check), red for deny/disable (cross), orange for ask
+(question mark) and pending approval (waiting), gray for inheritance (merged branches).
+A double check distinguishes permanent approval; the block symbol distinguishes
+permanent denial. Ordinary actions remain blue.
+
+Scopes use cyan/eye for usage, blue/person for personal, iris/group for team and
+violet/globe for all. No delegation uses red, inheritance gray. Choices stay in one row,
+with an icon, translated tooltip and accessible label. The current choice has a filled
+accent background and underline; other choices use their family's light or dark
+background, following skill authorization controls.
+
 ### Single source and CSS variables
 
 All 33 values are defined once in `front/core/util/solaire.ts`.

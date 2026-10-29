@@ -146,8 +146,8 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 ## Monitor → Permissions
 
-- Route : `/connection/permissions`
-- Purpose : Answer pending requests and manage permanent agent permissions
+- Route : `/permissions`
+- Purpose : Answer pending requests and manage permanent agent approvals and denials
 - Menu visibility (privileges) : (PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
 - Additional conditions : —
 - Sources : `front/app/connection/navigation.ts`

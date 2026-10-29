@@ -1,4 +1,4 @@
-"""Read explicit permanent function grants without discovering remote MCP servers."""
+"""Read explicit permanent function decisions without discovering remote MCP servers."""
 
 from sqlalchemy import func, or_, select
 
@@ -15,8 +15,8 @@ async def list_permissions(scope: AgentManagementScope, *, agent_id: int | None,
         Connection, Connection.id == ConnectionFunctionState.connection_id,
     ).join(ToolModel, ToolModel.id == Connection.tool_id).where(
         ConnectionFunctionState.capability_kind == "tool",
-        or_(ConnectionFunctionState.state == "enabled",
-            ConnectionFunctionState.state.is_(None) & ConnectionFunctionState.enabled.is_(True)),
+        or_(ConnectionFunctionState.state.in_(("enabled", "disabled")),
+            ConnectionFunctionState.state.is_(None)),
     )
     if scope.agent_ids is not None:
         query = query.where(Connection.agent_id.in_(scope.agent_ids))
@@ -28,6 +28,7 @@ async def list_permissions(scope: AgentManagementScope, *, agent_id: int | None,
     return {"total": total or 0, "items": [
         {"id": str(row.id), "agent_id": owner, "tool_label": label,
          "connection_id": row.connection_id, "capability_name": row.function_name,
+         "allowed": row.state == "enabled" if row.state is not None else row.enabled,
          "active": active, "can_revoke": True}
         for row, owner, label, active in rows
     ]}

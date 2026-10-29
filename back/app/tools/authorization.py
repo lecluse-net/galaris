@@ -362,6 +362,12 @@ async def resolve_action_mode(action: AuthorizationAction, *, lock: bool = True)
         if target is None or target.status != "ready" or target.metadata.get("authorization_enabled") is not True or grant.target_ref != f"harness:{target.id}" or grant.target_revision != str(target.revision):
             raise ToolCallRejectedError("The runtime target changed")
     if action.source != "mcp" and action.connection_id is None:
+        if action.source == "runtime" and action.kind == "tool":
+            from .runtime_permissions import configuration_fingerprint, matching_permission
+            permission = await matching_permission(action.agent_id, action.runtime, action.name,
+                await configuration_fingerprint(action.agent_id, action.runtime))
+            if permission is not None and not permission.allowed:
+                return "disabled", "software"
         return "ask", "software"
     from app.connection import facade as connections
     if action.connection_id is None:
@@ -658,14 +664,20 @@ async def answer_action(request_id: UUID, *, user_id: int, approved: bool, remem
     now = datetime.now(timezone.utc)
     if row.status != "pending":
         return False
+    if row.source == "runtime" and row.capability_kind == "tool" and row.connection_id is None:
+        from .runtime_permissions import configuration_fingerprint, matching_permission
+        permission = await matching_permission(row.agent_id, row.runtime, row.capability_name,
+            await configuration_fingerprint(row.agent_id, row.runtime))
+        if permission is not None and not permission.allowed:
+            return False
     if remember:
-        if not approved or row.expires_at <= now:
+        if row.expires_at <= now:
             return False
         if row.source == "runtime":
             if not await can_remember_action(row):
                 return False
             from .runtime_permissions import remember_permission
-            await remember_permission(row)
+            await remember_permission(row, allowed=approved)
         else:
             if row.tool_id is None:
                 return False
@@ -675,9 +687,10 @@ async def answer_action(request_id: UUID, *, user_id: int, approved: bool, remem
             if not await can_remember_action(row):
                 return False
             assert row.connection_id is not None
-            await connections.set_connection_function_state(row.connection_id, row.capability_name, "enabled", commit=False)
+            await connections.set_connection_function_state(row.connection_id, row.capability_name,
+                "enabled" if approved else "disabled", commit=False)
             # Consume this operation once while future calls use its connection policy.
-            row.mode = "enabled"
+            row.mode = "enabled" if approved else "disabled"
             row.policy_source = "connection"
     if row.expires_at <= now:
         row.status = "expired"

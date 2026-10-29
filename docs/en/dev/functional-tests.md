@@ -1156,10 +1156,16 @@ configuration block with no request created from an actual pending or denied per
 with explicit recovery guidance.
 `browser-executor/network-proxy.test.mjs` uses Chromium and synthetic servers to verify POST,
 redirects, owner isolation, HTTPS certificate validation, WebSockets and revocation.
-`front/browser-tests/permissions.spec.mjs` exercises pending requests, one-time answers excluded
-from permanent grants, MCP revocation back to “On request”, network answers and late responses
-after changing tabs, as well as the real list, filters, deletion,
-dialog backdrop dismissal and retry after failure.
+`front/browser-tests/permissions.spec.mjs` exercises the per-agent dashboard, search beyond the first
+page, Tool filtering combined with state filters, the Tool → functions hierarchy, deactivation and
+reactivation without losing the selected Tool, inherited and denied MCP rules and selected toggle
+positions, one-time answers without permanent grants, contact decisions and retry on mobile and desktop.
+Former withdrawal confirmations are replaced by the On request toggle; action-review tests retain
+dialog backdrop dismissal. Former tab scenarios are replaced by
+preserved actions and late-response isolation between agents. `tools.management_scope` is visible
+read-only or editable according to privileges, including retry and reset to default.
+`app/connection/tests/test_connections.py` covers human global delegation, valid choices, local
+persistence and protection of unrelated settings.
 The same backend suite checks all-sites consent, revocation, filter priority, local-network
 isolation, and French, Chinese, and the instance's default language.
 Historical single-site agreements are not broadened; earlier questions are replaced before
@@ -1171,6 +1177,16 @@ Claude Agent and configured OpenAI Messages) it also checks action-type consent,
 scopes, reuse in another context, revocation, and changes of configuration, assignment, manager and
 policy version. Browser scenarios `action-authorizations.spec.mjs` and `permissions.spec.mjs`
 cover the choice and revocation.
+These scenarios also cover **Always deny**: permanent function or action-type denial, no new
+question in another task, withdrawal and blocking of approved actions that have not started.
+Chat projects the decision even when the question predates this option. Network denials,
+including all-sites denial, appear alongside approvals and can be withdrawn. All-sites denial
+takes priority over public-access mode.
+`mail-inbound.spec.mjs` and `bridge/mail/tests/test_inbound.py` also verify permanent denial
+of email processing: no body read, Task or new approval request for the next email.
+The assembled `tool-authorizations.spec.mjs` journey verifies actual blocking and withdrawal
+on mobile and desktop. Review dismissal uses its accessible button; component scenarios
+retain Escape and backdrop-dismissal coverage.
 The internal Harness is explicitly excluded from these runtime consents.
 It also covers concurrent claims, non-repeatable denial, expiry, quotas, context or configuration
 revocation, explicit approvals, and file preconditions. Permanent consent rejects changed MCP configuration,

@@ -34,8 +34,8 @@ for (const scenario of [
     await expect(action).toBeEnabled()
     if (scenario.channel === 'permissions') {
       await errors.settle()
-      await page.goto('/connection/permissions')
-      await expect(page.getByRole('tab', { name: 'Approbations en attente', exact: true })).toHaveAttribute('aria-selected', 'true')
+      await page.goto(`/permissions?agent_id=${fixture.agent_id}`)
+      await expect(page.getByRole('region', { name: 'Approbations en attente', exact: true })).toBeVisible()
       if (scenario.mobile && await page.locator('.q-drawer__backdrop').isVisible()) {
         await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
       }
@@ -45,11 +45,14 @@ for (const scenario of [
       await expect(dialog).toContainText('Compte rendu synthétique')
       await page.screenshot({ path: testInfo.outputPath('permissions-review.png'), fullPage: true, animations: 'disabled' })
       await dialog.getByRole('button', { name: scenario.label, exact: true }).click()
-      await expect(dialog.getByRole('button', { name: scenario.label, exact: true })).toHaveCount(0)
-      await page.keyboard.press('Escape')
+      await expect(dialog.getByRole('button', { name: scenario.label, exact: true })).toBeDisabled()
+      await dialog.getByRole('button', { name: 'Annuler', exact: true }).first().click()
+      await expect(dialog).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Examiner la demande', exact: true })).toHaveCount(0)
-      await page.getByRole('tab', { name: 'Autorisations permanentes', exact: true }).click()
-      await expect(page.getByText('mail_send', { exact: true })).toHaveCount(0)
+      const functions = page.getByRole('region', { name: 'Fonctions et prompts des outils', exact: true })
+      await functions.getByRole('complementary', { name: 'Outil', exact: true }).getByRole('button', { name: 'Mail', exact: true }).click()
+      const mailFunction = functions.locator(scenario.mobile ? 'article' : 'tr').filter({ has: page.getByText('mail_send', { exact: true }) })
+      await expect(mailFunction).toContainText('Règle configurée: Sur demande')
     } else if (scenario.channel === 'journal') {
       await errors.settle()
       await page.goto('/connection/mail')

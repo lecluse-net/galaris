@@ -64,7 +64,7 @@ also need suitable WebRTC connectivity, potentially through TURN.
 5. Send a message to the bot from Telegram. Without an existing contact authorization, the
    message appears in **Monitor → Activity → Text conversations**, in a paused round.
    The manager receives a request to reply to this contact, also available in
-   **Monitor → Permissions** (`/connection/permissions`).
+   **Monitor → Permissions** (`/permissions`).
 6. The manager allows or denies: consent resumes the round; denial closes it without a reply.
    Its detail shows the identifier, name and profile information provided by Telegram.
 

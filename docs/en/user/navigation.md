@@ -246,7 +246,8 @@ using a dedicated bridge such as Nextcloud or AFFiNE. A bridge name does not det
 Tool origin. n8n is not created as a standard Tool; an existing n8n entry is preserved
 as a custom Tool with its process references.
 
-In **Authorizations**, each function has **Global (all)** and **This connection** columns offering Enabled,
+In **Authorizations**, only connections belonging to non-historized agents are offered.
+Each function has **Global (all)** and **This connection** columns offering Enabled,
 Disabled and Ask. The selected column identifies the applicable rule. Choosing a global mode
 returns this agent's connection to inheritance without removing other agents' exceptions.
 Saving follows successive choices and reports errors.
@@ -291,7 +292,7 @@ HTML content remains inert source text. Shortened notifications are marked: open
 request to read its complete content.
 
 A configurable MCP function request, such as `topic_create`, offers **Allow this action**,
-**Deny this action**, and **Always allow this function**. The last choice saves consent for
+**Deny this action**, **Always allow this function** and **Always deny this function**. Permanent choices save the decision for
 that function on this agent's connection, with any arguments in future calls. Other functions
 keep their policies. Set the function back to **Ask** in the connection's permissions to
 require confirmation again. Requests use the manager's language (French, English, or Chinese),
@@ -302,10 +303,11 @@ option label retain the wording of the original request.
 
 For a local action of any managed external Harness (Hermes, DeepSeek Harness, Codex,
 Claude Agent or a configured OpenAI Messages Harness), choose
-**Always allow this action type**. Consent applies to this agent, Harness and exact action
+**Always allow this action type** or **Always deny this action type**. The decision applies to this agent, Harness and exact action
 name, with any arguments, including future tasks. For example, allowing `write_file` does not
-allow command execution. Other requests already pending still require a decision.
-In **Permissions**, **Allowed Harness action types** lets you revoke consent.
+allow command execution. Other pending requests still require a decision; a permanent denial also
+blocks already approved actions that have not started.
+In **Permissions**, **Harness action type decisions** lets you remove either decision.
 A change of Harness, configuration or manager requires new consent. Revocation prevents
 future dispatches; an action that has already started may finish.
 The internal Harness is excluded from this Harness action-type consent mechanism.
@@ -320,24 +322,62 @@ while that setting blocks access. Attached files can be read through their sourc
 opening their page in the browser. Destination filters stay
 authoritative. Answer through messaging or the internal-chat buttons: both approvals and denials
 are remembered per agent, access type and origin (domain, protocol, port). Public GET requests
-need no question with the default settings. The third choice, **Always allow all sites**,
+need no question with the default settings. **Always allow all sites**
 saves consent for all domains, protocols, ports and paths, with configured HTTP methods and
 WebSocket, for this agent. New web destinations no longer require site permission requests.
 Filters, explicit denials and separate local-network permissions still apply.
+**Always deny all sites** saves a denial with the same scope: configured methods and WebSocket
+are blocked without further questions, including in public access mode. Methods that need no
+permission, such as GET by default, keep their current policy.
 **Allow and remember** and **Deny and remember** remain limited to the requested access type.
 In **Per-site approval** mode, delete the all-sites agreement to require a choice again for those
 accesses. Returning to that mode creates no implicit grant. Existing
 single-site agreements keep their original scope.
-**Monitor → Permissions** (`/connection/permissions`) opens **Pending approvals**:
-review unanswered requests, then allow the action, deny it or choose permanent consent when
-available. Pending network requests can also be answered here. The Agent filter applies to the
+**Monitor → Permissions** (`/permissions`) opens an agent dashboard without tabs. Select the agent,
+then search and filter all sections: pending approvals, Tools and functions, Harness action types,
+contacts and network access. The list has two levels: each agent Tool, then its functions and prompts.
+Inactive connections remain available for reactivation; unconnected Tools are excluded.
+This page offers activation and authorization controls without technical configuration or a connect
+button. Skills and resource access remain on their dedicated pages.
+Review unanswered requests, then allow the action, deny it or choose **Always allow** or
+**Always deny** when available. A permanent decision applies to this connection's function or
+this agent's Harness action type, with any arguments and in future tasks. Changing the Harness,
+configuration or manager makes the Harness decision stale.
+Pending network requests can also be answered here. The Agent filter applies to the
 whole page. Answered requests leave the list; expired action requests are excluded.
 A one-time approval creates no permanent permission.
 
-The **Permanent permissions** tab lists functions explicitly allowed on a connection, allowed
-Harness action types and remembered network approvals. Revoke consent here; a revoked MCP function
-returns to **On request**, even when its global setting is active. Network denials still apply but
-are excluded from granted permissions. Technical execution records remain available internally
+The sections show approvals, denials, defaults and inherited policies. Connections display the effective
+`tools.management_scope` rule and a toggle with that Tool’s supported choices. A global manager with
+connection editing privileges can change the scope or reset its default. This setting stays local
+to the connection. **Tool functions and prompts** lists functions from every connected Tool,
+including denied and on-request functions. Select a Tool from the list on the left to
+view its functions and permissions on the right. Scope and activation controls appear
+at the top of that panel. On mobile, the list precedes the selected Tool's details.
+The left list displays every matching Tool, without pagination or internal scrolling.
+The **Allowed**, **Denied**, **On request** and **Pending** counters filter the whole page;
+click the active counter again to restore all states. They replace the decision selector and
+combine with search. Functions on the right remain paginated, defaulting to 50 items.
+**Custom settings** shows agent-level function rules on active Tools, local scopes whose values
+differ from inherited rules, and remembered Harness, contact and network decisions. Global rules
+are excluded. A disabled Tool counts once at connection level; its functions are neither listed
+nor counted in this filter. Pending requests
+are hidden in this view. **Reset filters** clears search, the state filter and the custom settings
+filter without changing the selected agent.
+The custom settings count follows the current search across all pages and remains available
+when this filter is turned off.
+Every decision uses a multi-state toggle with its current position selected.
+Buttons use icons like skill authorizations: green for allow, red for deny, orange for ask
+or pending, gray for inherit. A tooltip describes each choice; double check and block
+symbols distinguish permanent decisions. For functions, choose
+**Allow**, **Deny**, **On request** or **Inherit**. Selection reflects the local rule; the separately
+displayed effective state also accounts for Tool activation. A failed save keeps the stored selection.
+**On request** requires approval even if the global policy is active; **Inherit** restores the global
+or software rule. Remembered Harness, contact and network decisions can also be changed or withdrawn.
+An unavailable external catalog shows a warning and keeps known policies visible; unseen Harness
+action types remain on request. Future requests
+follow the current policy. Removing a denial creates no approval and replays no blocked action.
+Technical execution records remain available internally
 to prevent duplicate execution and support task recovery; this page does not present them as grants.
 For browser access, a blocked action requires a new attempt after your reply; forms are not
 resubmitted automatically.

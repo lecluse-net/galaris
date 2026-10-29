@@ -5,6 +5,29 @@ from uuid import UUID, uuid4
 
 import pytest
 
+
+@pytest.mark.asyncio
+async def test_permission_inventory_can_skip_resource_enumeration(monkeypatch):
+    from app.tools import mcp_loader
+    from app.tools.schemas import Tool
+    class CatalogueClient:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *_args):
+            return None
+        async def list_tools(self):
+            return [SimpleNamespace(name="synthetic_function", description="Synthetic function")]
+        async def list_prompts(self):
+            return [SimpleNamespace(name="synthetic_prompt", description="Synthetic prompt")]
+        async def list_resources(self):
+            raise AssertionError("The permissions dashboard must not enumerate resources")
+        async def list_resource_templates(self):
+            raise AssertionError("The permissions dashboard must not enumerate resource templates")
+    monkeypatch.setattr(mcp_loader, "Client", lambda _transport: CatalogueClient())
+    monkeypatch.setattr(mcp_loader, "_external_transport", lambda *_args: object())
+    result = await mcp_loader.list_external_mcp_capabilities(Tool(code="synthetic", label="Synthetic"), {}, include_resources=False)
+    assert result == [("synthetic_function", "Synthetic function", "tool"), ("synthetic_prompt", "Synthetic prompt", "prompt")]
+
 # pyright: reportPrivateUsage=false
 
 
@@ -410,6 +433,7 @@ def test_disabled_bridge_removes_only_explicit_messaging_family(
     from app.tools.mcp_loader import native_tool_codes_for_tool
     from core.params.runtime_settings import runtime_settings
 
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["matrix"]')
     tool = SimpleNamespace(
         code="my-matrix",
         messenger=SimpleNamespace(service="matrix"),
@@ -427,9 +451,11 @@ def test_disabled_bridge_removes_only_explicit_messaging_family(
     assert native_tool_codes_for_tool(tool) == frozenset({"my-matrix"})
 
 
-def test_concrete_tool_requires_explicit_messenger_capability() -> None:
+def test_concrete_tool_requires_explicit_messenger_capability(monkeypatch) -> None:
     import bridge.matrix  # noqa: F401
     from app.tools.mcp_loader import native_tool_codes_for_tool
+    from core.params.runtime_settings import runtime_settings
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["matrix"]')
 
     ordinary = SimpleNamespace(code="messenger", messenger=None)
     configured = SimpleNamespace(
@@ -718,6 +744,9 @@ async def test_conversation_projection_maps_checked_bridge_to_messenger_family(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.tools import mcp_loader
+    import bridge.telegram  # noqa: F401
+    from core.params.runtime_settings import runtime_settings
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["telegram"]')
 
     monkeypatch.setattr(
         mcp_loader,

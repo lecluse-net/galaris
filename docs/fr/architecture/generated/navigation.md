@@ -146,8 +146,8 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 ## Superviser → Permissions
 
-- Route : `/connection/permissions`
-- Usage : Répondez aux demandes en attente et gérez les autorisations permanentes des agents
+- Route : `/permissions`
+- Usage : Répondez aux demandes en attente et gérez les autorisations et interdictions permanentes des agents
 - Visibilité du menu (privilèges) : (PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
 - Conditions supplémentaires : —
 - Sources : `front/app/connection/navigation.ts`

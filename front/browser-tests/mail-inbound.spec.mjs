@@ -19,7 +19,8 @@ async function setup(page, options = {}) {
 
 for (const width of [390, 1440]) {
   for (const remember of [false, true]) {
-    test(`email processing consent ${remember ? 'always' : 'once'} at ${width}px`, async ({ page }, testInfo) => {
+    for (const approved of [true, false]) {
+    test(`email processing decision ${approved} ${remember ? 'always' : 'once'} at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 1000 })
       const answers = []
       const queries = []
@@ -43,14 +44,16 @@ for (const width of [390, 1440]) {
       await expect(dialog).toContainText(receipt.sender_address)
       await expect(dialog).toContainText('Content unread.')
       await page.screenshot({ path: testInfo.outputPath('mail-reception.png'), fullPage: true, animations: 'disabled' })
-      const button = dialog.getByRole('button', { name: remember ? 'Always process emails' : 'Allow this email', exact: true })
+      const name = approved ? (remember ? 'Always process emails' : 'Allow this email') : (remember ? 'Always deny email processing' : 'Deny this action')
+      const button = dialog.getByRole('button', { name, exact: true })
       await button.focus()
       await page.keyboard.press('Enter')
-      await expect.poll(() => answers).toEqual([{ approved: true, ...(remember ? { remember: true } : {}) }])
+      await expect.poll(() => answers).toEqual([{ approved, ...(remember ? { remember: true } : {}) }])
       await expect(dialog).toHaveCount(0)
       await page.getByRole('tab', { name: 'Sending', exact: true }).click()
       await expect(page.getByRole('region', { name: 'Delivery journal', exact: true })).toBeVisible()
     })
+    }
   }
 }
 

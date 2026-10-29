@@ -111,6 +111,9 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
             await operation()
     await db.refresh(connection)
     assert connection.active and connection.agent_id == agent.id
+    # This service journey supplies the human decision boundary; HTTP role
+    # denials are covered by test_action_authorizations and test_connections.
+    monkeypatch.setattr(connection_router, "_require_permission_state", AsyncMock())
     changed = await connection_router.set_connection_function(connection.id, function, FunctionStateUpdate(state="ask"))
     assert changed.effective_state == "ask"
     for dataset in datasets():

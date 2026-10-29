@@ -904,7 +904,7 @@ An approval never overrides a connection denial. See the
 [browser network contract](../architecture/flows/browser.md) for domains, ports,
 CIDRs, HTTPS and WebSockets.
 
-**Monitor → Permissions** (`/connection/permissions`) groups pending requests and remembered
+**Monitor → Permissions** (`/permissions`) groups pending requests and remembered
 grants: questions, decisions, agents, responsible users and dates. Reading uses
 `PERMISSION_ACCESS`, decisions use `PERMISSION_DECIDE`, and revocation uses `PERMISSION_REVOKE`,
 with managed-agent scope and approver checks. Revoking a grant asks again on the next attempt;

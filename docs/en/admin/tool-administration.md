@@ -362,11 +362,19 @@ approval from public mode. Browser function policies remain separately configura
 
 ## Answer an action request
 
-In **Permissions** (`/connection/permissions`), individual requests are separate from remembered
-network permissions. Open **Review request** to inspect arguments, agent, approver and expiry.
+In **Permissions** (`/permissions`), select the agent to view every dashboard section without tabs.
+Search covers requests, connected Tools’ functions and prompts, their scopes, known Harness action
+types and contact/network decisions. Skills and resource access remain on their dedicated pages.
+The Tool list is on the left; the selected Tool's functions and permissions appear on the right,
+with scope and activation controls at the top.
+The `tools.management_scope` selector uses the Tool’s choices and effective local value;
+editing requires a human session, global management and connection editing privileges.
+Open **Review request** to inspect arguments, agent, approver and expiry.
 **Allow this action** covers one operation; **Deny this action** prevents its continuation.
 Where offered, **Always allow this function** explicitly changes this connection's function
-mode to Enabled, including future arguments. It is unavailable for runtime-local commands.
+mode to Enabled, including future arguments. **Always deny** remembers a refusal with the same scope.
+For supported Harnesses, permanent choices apply to that agent’s action type and remain bound
+to its manager and current configuration.
 
 Only the authorized approver can answer; viewing or management privileges cannot answer on
 their behalf. If no private channel is available, the request stays accessible here and

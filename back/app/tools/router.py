@@ -22,6 +22,7 @@ from .schemas import (
 from .mcp_diagnostics import diagnose_mcp_connection
 from . import tool_service
 from .deletion import DeletionConflict, ToolDeletionImpact
+from .permission_catalog import AgentPermissionCatalog
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 from .authorization_router import router as authorization_router
@@ -88,6 +89,19 @@ async def list_agent_mcp_tools(agent_id: int) -> List[ToolMcpCatalogPublic]:
 
     rows = await _list_agent_mcp_tools(agent_id)
     return [ToolMcpCatalogPublic(**row) for row in rows]
+
+
+@router.get("/agents/{agent_id}/permissions", response_model=AgentPermissionCatalog)
+@authorize(privileges=[Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
+async def read_agent_permission_catalog(agent_id: int) -> AgentPermissionCatalog:
+    from app.agent import current_management_scope
+    from .permission_catalog import agent_permission_catalog
+    if not (await current_management_scope()).allows(agent_id):
+        raise HTTPException(404, "Agent not found")
+    try:
+        return await agent_permission_catalog(agent_id)
+    except LookupError as exc:
+        raise HTTPException(404, "Agent not found") from exc
 
 
 @router.post("/test-mcp", response_model=ToolMcpTestResponse)

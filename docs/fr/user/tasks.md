@@ -322,7 +322,9 @@ La fonction **mail_process** utilise les mêmes règles globales et locales que 
 **Actif** permet de traiter tous les expéditeurs ; **Sur demande** impose un accord pour chaque mail,
 y compris ceux des contacts ; **Bloqué** interdit le traitement. Sans règle explicite, les contacts
 sont admis et les inconnus demandent un accord. **Toujours traiter les mails** active cette fonction
-uniquement pour la connexion de cet agent ; révoquez cet accord dans Permissions.
+uniquement pour la connexion de cet agent. **Toujours interdire le traitement des mails** la
+bloque pour tous les expéditeurs de cette connexion, sans lire les mails suivants ni créer
+de tâche. Modifiez ou retirez l’une ou l’autre décision dans le tableau de bord **Permissions** de l’agent.
 Les autorisations d’envoi restent indépendantes du droit de lire et traiter le mail.
 Seuls les mails de la boîte de réception (`INBOX`) peuvent être traités, lus ou admis en tâche,
 y compris leurs pièces jointes. Une recherche dans Envoyés, Corbeille, Archives ou un sous-dossier

@@ -378,12 +378,21 @@ configurables séparément dans **Autorisations**.
 
 ## Répondre à une demande d’action
 
-Dans **Permissions** (`/connection/permissions`), les demandes ponctuelles sont séparées des
-permissions réseau mémorisées. Ouvrir **Examiner la demande** pour vérifier les arguments,
+Dans **Permissions** (`/permissions`), choisissez l’agent pour afficher toutes les sections
+du tableau de bord sans onglets. La recherche porte sur les demandes, les fonctions et prompts
+des Tools connectés, leurs périmètres, les types d’action connus des harnais et les décisions
+de contact ou de réseau. Les skills et les droits des ressources restent sur leurs pages dédiées.
+La liste des Tools est à gauche ; les fonctions et leurs autorisations apparaissent à droite
+pour le Tool sélectionné, avec le périmètre et l’activation en tête.
+Le sélecteur `tools.management_scope` reprend les choix du Tool et la valeur locale effective ;
+sa modification exige une session humaine, la gestion globale et le droit de modifier les connexions.
+Ouvrir **Examiner la demande** pour vérifier les arguments,
 l’agent, le responsable et l’échéance. **Autoriser cette action** couvre cette seule opération ;
 **Refuser cette action** empêche sa reprise. **Toujours autoriser cette fonction**, lorsqu’il est
 proposé, change explicitement le mode de cette fonction sur cette connexion en Actif, pour ses
-futurs paramètres également. Ce choix n’est pas disponible pour une commande locale de harnais.
+futurs paramètres également. **Toujours interdire** mémorise un refus sur la même portée.
+Pour un harnais compatible, les choix permanents portent sur son type d’action pour cet agent
+et restent liés au responsable et à la configuration courante.
 
 Seul le responsable habilité peut répondre ; les droits de consultation ou de gestion ne
 permettent pas de répondre à sa place. Sans canal privé disponible, la demande reste consultable

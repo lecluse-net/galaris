@@ -22,13 +22,16 @@ _encryption = get_encryption_service()
 async def permission_connection_options(
     *, agent_ids: Collection[int] | None, skip: int, limit: int,
 ) -> list["PermissionConnectionOption"]:
+    from app.agent import Agent
     from app.tools import ToolModel
     from app.tools.facade import tool_can_edit
     from .schemas import PermissionConnectionOption
 
     statement = select(Connection, ToolModel.code, ToolModel.label, ToolModel.can_disable).join(
         ToolModel, ToolModel.id == Connection.tool_id
-    ).where(Connection.active.is_(True)).order_by(Connection.id).offset(skip).limit(limit)
+    ).join(Agent, Agent.id == Connection.agent_id).where(
+        Connection.active.is_(True)
+    ).order_by(Connection.id).offset(skip).limit(limit)
     if agent_ids is not None:
         statement = statement.where(Connection.agent_id.in_(agent_ids))
     rows = (await get_db().execute(statement)).all()
@@ -520,6 +523,35 @@ async def get_connections_by_param(
     return list(result.scalars().all())
 
 
+async def set_management_scope(connection_id: int, value: str | None, *, authorized: bool = False) -> None:
+    """Delegate only the declared local scope, including on mandatory services."""
+    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+
+    _require_scope_write({MANAGEMENT_SCOPE_PARAM: value}, authorized)
+    connection = await get_connection(connection_id)
+    if connection is None:
+        raise ValueError("Connection not found")
+    await lock_tools([connection.tool_id], db=get_db())
+    connection = await get_connection(connection_id)
+    if connection is None or not connection.active:
+        raise ValueError("Active connection required")
+    tool = await _validated_tool_params(connection.tool_id, {MANAGEMENT_SCOPE_PARAM: value})
+    definition = tool.connection.params[MANAGEMENT_SCOPE_PARAM]
+    if not definition.options:
+        raise ValueError("Management scope requires declared choices")
+    if value == "":
+        raise ValueError("Choose a scope or reset to its default")
+    row = await get_db().scalar(select(ConnectionParam).where(
+        ConnectionParam.connection_id == connection_id,
+        ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM,
+    ))
+    if row is None:
+        get_db().add(ConnectionParam(connection_id=connection_id, param_name=MANAGEMENT_SCOPE_PARAM, param_value=value))
+    else:
+        row.param_value = value
+    await finish_write(commit=True, db=get_db())
+
+
 async def set_param(
     connection_id: int,
     param_name: str,
@@ -735,16 +767,16 @@ async def get_tools_by_agent(agent_id: int) -> List[Tool]:
     return tools
 
 
-async def get_connections_by_agent(agent_id: int) -> List[Connection]:
+async def get_connections_by_agent(agent_id: int, *, active_only: bool = True) -> List[Connection]:
     db = get_db()
-    result = await db.execute(
+    statement = (
         select(Connection)
         .options(joinedload(Connection.params, innerjoin=False))
-        .where(
-            Connection.agent_id == agent_id,
-            Connection.active == True
-        )
+        .where(Connection.agent_id == agent_id)
     )
+    if active_only:
+        statement = statement.where(Connection.active.is_(True))
+    result = await db.execute(statement)
     return list(result.unique().scalars().all())
 
 
