@@ -49,6 +49,11 @@ from .rich_text import (
     visible_text,
 )
 from .editorial_client import require_editorial_client
+from .resource_summary import (
+    normalize_source as normalize_summary_source,
+    change_percent as summary_change_percent,
+    needs_summary as needs_resource_summary,
+)
 from .source_files import source_code_media_type, source_code_response_headers
 
 __all__ = [
@@ -104,4 +109,7 @@ __all__ = [
     "as_list",
     "local_timezone_name",
     "month_bounds",
+    "normalize_summary_source",
+    "summary_change_percent",
+    "needs_resource_summary",
 ]

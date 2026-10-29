@@ -227,13 +227,14 @@ class Document(Shareable, HistoryMixin, Base):
     managed_source_ref: Mapped[str | None] = column_property(literal(None, String))
     old_at: Mapped[datetime | None] = column_property(literal(None, DateTime(timezone=True)))
     old_reason: Mapped[str | None] = column_property(literal(None, String))
-    summary_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     summary_provider_code: Mapped[str] = mapped_column(String(80), default="native", server_default="native")
     summary_resource_id: Mapped[str] = mapped_column(String(1024), default="", server_default="")
     summary_content: Mapped[str | None] = mapped_column(Text, default="", server_default="")
     summary_content_hash: Mapped[str] = mapped_column(String(64), default="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", server_default="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
     summary_size_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
-    summary_document_revision: Mapped[int | None] = mapped_column(Integer)
+    summary_generated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    summary_pending: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
+    summary_source_text: Mapped[str | None] = mapped_column(Text)
     revisions: Mapped[list[DocumentRevision]] = relationship(back_populates="document", cascade="all, delete-orphan", passive_deletes=True, order_by="DocumentRevision.revision")
     grants: Mapped[list[ShareGrant]] = relationship(ShareGrant, primaryjoin="and_(Document.share_id == foreign(ShareGrant.share_id), ShareGrant.agent_id.is_not(None))", viewonly=True)
     url_relations: Mapped[list[DocumentURL]] = relationship(back_populates="document", cascade="all, delete-orphan", passive_deletes=True)
@@ -319,9 +320,6 @@ class DocumentRevision(Base):
     content_profile_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     filename: Mapped[str | None] = mapped_column(String(500), nullable=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    keywords: Mapped[list[str]] = mapped_column(
-        JSONB, nullable=False, default=list, server_default=sql_text("'[]'::jsonb")
-    )
     metadata_: Mapped[dict[str, Any]] = mapped_column(
         "metadata", JSONB, nullable=False, default=dict, server_default=sql_text("'{}'::jsonb")
     )
@@ -337,28 +335,6 @@ class DocumentRevision(Base):
     __table_args__ = (
         UniqueConstraint("document_id", "revision", name="uq_document_revision"),
         Index("ix_document_revisions_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
-    )
-
-class DocumentSummaryRevision(Base):
-    """Independent history of a document's shared editorial summary."""
-
-    __tablename__ = "document_summary_revisions"
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
-    revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    provider_code: Mapped[str] = mapped_column(String(80), nullable=False)
-    resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
-    content: Mapped[str | None] = mapped_column(Text, nullable=True)
-    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    source_document_revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    keywords: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list, server_default="[]")
-    temporal: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
-    author_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"))
-    task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (
-        UniqueConstraint("document_id", "revision"),
-        Index("ix_document_summary_revisions_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
     )
 
 class DocumentSource(Base):

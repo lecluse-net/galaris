@@ -45,7 +45,7 @@ async def admit_search_hits(
         or_(MemoryItem.node_kind != "document", exists(select(Document.id).where(
             Document.id == MemoryItem.id,
             Document.revision == MemoryItem.metadata_["document_source_revision"].as_integer(),
-            Document.summary_revision == MemoryItem.metadata_["document_summary_revision"].as_integer(),
+            Document.summary_content_hash == MemoryItem.metadata_["document_summary_hash"].as_string(),
             Document.title == MemoryItem.search_title,
             Document.keywords == MemoryItem.keywords,
         ).correlate(MemoryItem))),

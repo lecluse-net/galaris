@@ -1,5 +1,6 @@
 export default {
   fr: { datasets: {
+    summary: "Description et mots-clés", summaryHint: "Explique ce que contient ce dataset et à quoi il sert. Dream préserve une description saisie manuellement.", summaryKeywords: "Mots-clés",
     libraryPositionError: 'Le dossier a été créé, mais son positionnement a échoué. Vous pouvez le déplacer.',
     keywordFilter: "Mot-clé",
     library: {
@@ -88,6 +89,7 @@ export default {
     titleField: 'Titre',
   } },
   en: { datasets: {
+    summary: "Description and keywords", summaryHint: "Explain what this dataset contains and when it is useful. Dream preserves manually entered descriptions.", summaryKeywords: "Keywords",
     libraryPositionError: 'The folder was created, but could not be positioned. You can move it.',
     keywordFilter: "Keyword",
     library: {
@@ -176,6 +178,7 @@ export default {
     titleField: 'Title',
   } },
   zh: { datasets: {
+    summary: "描述与关键词", summaryHint: "说明数据集内容及用途。梦境会保留手动描述。", summaryKeywords: "关键词",
     libraryPositionError: '文件夹已创建，但无法调整位置。您可以移动它。',
     keywordFilter: "关键词",
     library: {

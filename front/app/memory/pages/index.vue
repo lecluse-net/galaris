@@ -365,7 +365,7 @@
                 <q-tooltip>{{ t('memory.graph.lastActivity') }}</q-tooltip>
               </q-badge>
               <q-badge outline color="white" :label="t('memory.accessCountBadge', { count: formatNumber(currentMetadata.access_count) })" />
-              <q-badge v-if="store.currentItem" outline color="white"
+              <q-badge v-if="store.currentItem && store.currentItem.node_kind !== 'document'" outline color="white"
                 :label="t('documents.historyVersion', { revision: store.currentItem.revision })" />
               <q-badge v-if="store.currentItem?.source_managed && store.currentItem.managed_source_kind !== 'file_catalogue'"
                 outline color="white" tabindex="0" :aria-label="t('memory.generatedHint')" :label="t('memory.generated')">
@@ -384,7 +384,7 @@
           indicator-color="primary" class="memory-detail-tabs">
           <q-tab name="memory" icon="edit_note" :label="t('memory.detailMemory')" />
           <q-tab name="links" icon="account_tree" :label="t('memory.detailLinks')" />
-          <q-tab name="history" icon="history" :label="t('memory.detailHistory')" />
+          <q-tab v-if="store.currentItem.node_kind !== 'document'" name="history" icon="history" :label="t('memory.detailHistory')" />
         </q-tabs>
         <q-separator />
         <q-tab-panels v-if="store.currentItem" :key="`${store.selectedAgentId}:${store.currentItem.id}`" v-model="detailTab" keep-alive :keep-alive-include="['memory', 'links']" class="col memory-detail-panels galaris-dialog-body">

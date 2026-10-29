@@ -15,13 +15,13 @@ export const datasetService = {
   async move(move: DatasetMove): Promise<void> { await api.post(`${base}/library/move`, move) },
   async facets(): Promise<{ owners: Collaborator[]; keywords: string[]; current_user_id: number }> { return (await api.get(`${base}/library/facets`)).data },
   async create(title: string, content = '[]'): Promise<Dataset> { return (await api.post(base, { title, content })).data },
-  async read(id: string): Promise<Dataset> { return (await api.get(`${base}/${id}`)).data },
+  async read(id: string, signal?: AbortSignal): Promise<Dataset> { return (await api.get(`${base}/${id}`, { signal })).data },
   async owner(id: string, lockVersion?: number): Promise<DatasetOwnerOptions> {
     const load = async (signal?: AbortSignal): Promise<DatasetOwnerOptions> => (await api.get<DatasetOwnerOptions>(`${base}/${id}/owner`, { signal })).data
     return lockVersion === undefined ? load() : ownerOptionsCache.read(`${id}:${lockVersion}`, load)
   },
   async transferOwner(id: string, kind: 'agent' | 'user', principal: number, expected_lock_version: number): Promise<Dataset> { return (await api.patch(`${base}/${id}/owner`, { kind, principal, expected_lock_version })).data },
-  async write(id: string, content: string, expected_revision: number, title?: string, expected_lock_version?: number): Promise<Dataset> { return (await api.put(`${base}/${id}/content`, { content, expected_revision, title, expected_lock_version })).data },
+  async write(id: string, content: string, expected_revision: number, title?: string, expected_lock_version?: number, metadata: { summary_content?: string | null; keywords?: string[] } = {}): Promise<Dataset> { return (await api.put(`${base}/${id}/content`, { content, expected_revision, title, expected_lock_version, ...metadata })).data },
   async metadata(id: string, expected_lock_version: number, values: Record<string, unknown>): Promise<Dataset> { return (await api.patch(`${base}/${id}`, { expected_lock_version, ...values })).data },
   async history(id: string, page = 1, page_size = 50): Promise<Page<{ revision: number; created_at: string }>> { return (await api.get(`${base}/${id}/revisions`, { params: { page, page_size } })).data },
   async revision(id: string, revision: number): Promise<{ content: string }> { return (await api.get(`${base}/${id}/revisions/${revision}`)).data },

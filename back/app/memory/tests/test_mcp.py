@@ -441,7 +441,7 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     )
     item, content, *_ = await service.get_item(UUID(document_id), agent_id=owner.id, memory_content=True)
     assert content.decode() == "<p>Independent findings synthesis.</p>"
-    assert item.document.summary_revision == 2
+    assert item.document.revision == 1
 
     repeated_suffix = await resource_service.resource_append(
         ResourceContext(

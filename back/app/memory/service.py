@@ -51,9 +51,9 @@ from .item_projection import item_to_public as item_to_public
 from .library_queries import list_recent_memories as list_recent_memories
 from .lifecycle import notify_memory_item
 from .models import MemoryAssociation, MemoryAutomationJob, MemoryAcquisition, MemoryContextEdge, MemoryContextNode, MemoryContactItem, MemoryFinding, MemoryItem, MemoryLink, MemoryRevision, MemorySource, MemoryURL, MemoryTopicContactItem, MemoryTopicContactScope, MemoryUsage
-from app.document import Document, DocumentSummaryRevision
+from app.document import Document
 from .provenance import MemorySourceTargets, source_targets
-from .schemas import MemoryTemporalAnchor, MemoryForgetResult, MemoryFilterOption, MemoryFilterOptions, MemoryGraphCursor, MemoryGraphEdge, MemoryGraphExpandRequest, MemoryGraphNode, MemoryGraphPage, MemoryGraphRootsRequest, MemoryItemCreate, MemoryItemDetail, MemoryItemUpdate, MemoryLinkCreate, MemoryLinkPublic, MemoryPayload, MemoryRevisionPublic, MemoryRetentionPreview, MemorySearchHit, MemorySearchPage, MemorySearchRequest, MemorySortField, MemorySourceCreate
+from .schemas import MemoryForgetResult, MemoryFilterOption, MemoryFilterOptions, MemoryGraphCursor, MemoryGraphEdge, MemoryGraphExpandRequest, MemoryGraphNode, MemoryGraphPage, MemoryGraphRootsRequest, MemoryItemCreate, MemoryItemDetail, MemoryItemUpdate, MemoryLinkCreate, MemoryLinkPublic, MemoryPayload, MemoryRevisionPublic, MemoryRetentionPreview, MemorySearchHit, MemorySearchPage, MemorySearchRequest, MemorySortField, MemorySourceCreate
 from .safety import assert_safe_text, assert_safe_value
 from core.storage import get_storage
 from core.storage import prepare_content
@@ -1077,16 +1077,6 @@ async def get_item(
         provider_code = item.document.summary_provider_code
         resource_id = item.document.summary_resource_id
         content_type, media_type = "text", "text/html"
-        if revision is not None and revision != item.document.summary_revision:
-            if revision == 1:
-                resource_id = ""
-            else:
-                summary = await get_db().scalar(select(DocumentSummaryRevision).where(
-                    DocumentSummaryRevision.document_id == item.id, DocumentSummaryRevision.revision == revision,
-                ))
-                if summary is None:
-                    raise MemoryNotFoundError("Memory synthesis revision not found.")
-                provider_code, resource_id = summary.provider_code, summary.resource_id
     elif item.node_kind == "document":
         from app.document import get_item as get_document
         _source, content, _source_access, content_type, media_type = await get_document(
@@ -1246,16 +1236,6 @@ async def item_to_detail(
     if memory_content and item.document is not None:
         values["content_profile"] = "rich-text"
         values["content_profile_version"] = 1
-        if revision is not None:
-            values["revision"] = revision
-            values["content_hash"] = _content_hash(content)
-            values["size_bytes"] = len(content)
-            summary = await get_db().scalar(select(DocumentSummaryRevision).where(
-                DocumentSummaryRevision.document_id == item.id, DocumentSummaryRevision.revision == revision,
-            ))
-            if summary is not None:
-                values["keywords"] = list(summary.keywords)
-                values["temporal"] = summary.temporal
     elif revision is not None and revision != item.revision:
         selected = await _read_revision(item.id, revision)
         if selected is None:
@@ -1297,15 +1277,7 @@ async def list_revisions(
         raise MemoryNotFoundError("Memory not found.")
     await assert_item_access(item, agent_id, administrative=administrative)
     if item.document is not None:
-        summaries = await get_db().scalars(select(DocumentSummaryRevision).where(
-            DocumentSummaryRevision.document_id == item_id,
-        ).order_by(DocumentSummaryRevision.revision).offset(offset).limit(limit))
-        return [MemoryRevisionPublic(
-            revision=entry.revision, task_id=entry.task_id, content_hash=entry.content_hash,
-            title=item.title, keywords=list(entry.keywords), temporal=MemoryTemporalAnchor.model_validate(entry.temporal) if entry.temporal else None,
-            author_agent_id=entry.author_agent_id, created_at=entry.created_at,
-            media_type="text/html", content_profile_version=1,
-        ) for entry in summaries]
+        return []
     rows = await get_db().scalars(
         select(MemoryRevision)
         .where(MemoryRevision.item_id == item_id)

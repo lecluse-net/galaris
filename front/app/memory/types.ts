@@ -96,7 +96,6 @@ export interface MemoryItem {
   topic_id?: string | null
   document_id?: string | null
   document_revision?: number | null
-  summary_document_revision?: number | null
   summary_outdated?: boolean
   file_sha256?: string | null
   file_media_type?: string | null

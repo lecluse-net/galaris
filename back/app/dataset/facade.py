@@ -38,3 +38,11 @@ __all__ = ["count_pending_topic_datasets", "claim_topic_dataset", "topic_dataset
     "dataset_record", "describe_dataset", "replace_dataset", "update_dataset_metadata",
     "dataset_history", "dataset_revision", "restore_dataset_revision", "set_dataset_grant", "reserve_dataset_write_budget",
     "TypedValue", "Variable", "ValueType", "normalize_variables", "validate_values", "add_dataset_staged", "dataset_attachments"]
+
+from .resource_summaries import (
+    count_pending as count_pending_dataset_summaries, claim_one as claim_dataset_summary,
+    source as dataset_summary_source, apply as apply_dataset_summary,
+    reconcile as reconcile_dataset_summaries,
+)
+__all__ += ["count_pending_dataset_summaries", "claim_dataset_summary", "dataset_summary_source",
+            "apply_dataset_summary", "reconcile_dataset_summaries"]

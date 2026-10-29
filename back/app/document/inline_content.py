@@ -4,14 +4,14 @@ from sqlalchemy import Text, bindparam, func, select, union
 from sqlalchemy.sql.elements import BindParameter
 from core.database import get_db
 from core.storage import register_resource_content
-from .models import Document, DocumentRevision, DocumentSummaryRevision
+from .models import Document, DocumentRevision
 
 _CONTENT_POINTER: BindParameter[str] = bindparam("pointer")
 # COALESCE preserves source precedence and stops at the first non-NULL text.
 # This immutable statement holds no content or permissions between calls.
 _INLINE_LOOKUP = select(func.coalesce(
     *(select(model.content).where(model.provider_code == "native", model.resource_id == _CONTENT_POINTER)
-      .limit(1).scalar_subquery() for model in (Document, DocumentRevision, DocumentSummaryRevision)),
+      .limit(1).scalar_subquery() for model in (Document, DocumentRevision)),
     select(Document.summary_content).where(Document.summary_provider_code == "native",
         Document.summary_resource_id == _CONTENT_POINTER).limit(1).scalar_subquery(),
     type_=Text,
@@ -23,7 +23,7 @@ async def read_inline_content(pointer: str) -> bytes | None:
     except RuntimeError:
         return None
     for row in (*db.new,*db.dirty):
-        if isinstance(row,(Document,DocumentRevision,DocumentSummaryRevision)):
+        if isinstance(row,(Document,DocumentRevision)):
             state=row.__dict__
             if state.get("provider_code")=="native" and state.get("resource_id")==pointer and isinstance(state.get("content"),str):
                 return str(state["content"]).encode()
@@ -41,7 +41,7 @@ async def referenced_resources(provider: str, pointers: Collection[str]) -> set[
     db = get_db()
     referenced = set(await db.scalars(union(
         *(select(model.resource_id).where(model.provider_code==provider,model.resource_id.in_(pointers))
-            for model in (Document, DocumentRevision, DocumentSummaryRevision)),
+            for model in (Document, DocumentRevision)),
         select(Document.summary_resource_id).where(Document.summary_provider_code==provider,Document.summary_resource_id.in_(pointers)),
     ).execution_options(include_historized=True)))
     from .document_backup import archived_resources

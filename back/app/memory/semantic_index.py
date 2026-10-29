@@ -378,7 +378,7 @@ async def _load_snapshot(
                 raise ValueError("Memory synthesis checksum differs from its revision")
             synthesis_passages = tuple(document_passages(summary.decode("utf-8"), max_words=CHUNK_WORDS))
             passages += tuple(Passage(
-                text=passage.text, content_source="memory", source_revision=item.document.summary_revision,
+                text=passage.text, content_source="memory",
             ) for passage in synthesis_passages)
         return (
             _MemorySnapshot(

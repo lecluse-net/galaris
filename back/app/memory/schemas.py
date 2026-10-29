@@ -141,7 +141,6 @@ class MemoryItemPublic(BaseModel):
     document_id: UUID | None = None
     thumbnail_id: UUID | None = None
     document_revision: int | None = None
-    summary_document_revision: int | None = None
     summary_outdated: bool = False
     temporal: MemoryTemporalAnchor | None = None
     document_type: Literal["html", "dataset", "process"] = "html"

@@ -2,6 +2,21 @@
 
 # Datasets
 
+## Current description
+
+The small **View summary** icon beside the title and Topic opens the current description
+and keywords for reading. Each opening refreshes saved data without changing the editor
+draft. Close with its button, Escape or a backdrop click.
+
+The **Description and keywords** tab explains what the Dataset contains and when it is useful.
+Save with the usual button; these changes do not create a JSON version. Descriptions and keywords
+have no separate history, and restoring an older JSON version preserves their current values.
+
+Dream can fill a missing description when normalized JSON exceeds **1,000 characters**. It refreshes
+an automatic description only after **more than 25% cumulative change** since generation. Both
+values are configurable in Dream settings. JSON indentation and object-key order do not count
+as changes. Manual descriptions are preserved.
+
 ## Open the library and editor
 
 **Knowledge → Datasets** contains independent `data://` JSON resources. Each has its own

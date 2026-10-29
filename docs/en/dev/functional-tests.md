@@ -117,9 +117,22 @@ batches, and reopening reads a changed name.
 
 ## Native Document reads
 
+`resource-summaries.spec.mjs` checks read access to current summaries in the Document and
+Dataset editors, keywords, empty results, errors and retry, fresh reads on reopening and
+rejection of late responses after a resource change. The shared dialog supports close-button,
+Escape and backdrop dismissal; the journey is also inspected at a small viewport.
+
+`app/dream/tests/test_resource_summaries.py` covers strict size and cumulative-change
+thresholds, small resources, manual descriptions, coalesced requests, policy changes and
+late Dream results for Documents and Datasets. Only external inference is replaced;
+domains and PostgreSQL remain real. `app/document/tests/test_summary_retirement.py` protects
+the current summary when retiring its history and preserves metadata during content restore.
+Old summary-version and historical-keyword expectations are retired; content versions,
+permissions and upgrade scenarios retain their coverage.
+
 `app/document/tests/test_document_read_performance.py` bounds native pointer resolution
 to one SQL read, after its consumer's permission checks. Scenarios preserve precedence
-across content, revisions, summary revisions and summaries, null values, empty and Unicode
+across content, content revisions and current summaries, null values, empty and Unicode
 text, external providers and archives. A pending row must not be published by autoflush.
 Uncommitted local text remains readable without SQL; rollback restores committed bytes.
 Independent sessions check freshness after commit and isolation between concurrent pointer

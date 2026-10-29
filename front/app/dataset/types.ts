@@ -10,6 +10,7 @@ export interface Dataset {
   id: string; uri: string; title: string; revision: number; lock_version: number; content: string
   can_write: boolean; can_manage: boolean; can_delete: boolean; read_only: boolean
   global_access: number; group_access: number; keywords: string[]
+  summary_content?: string | null; summary_pending?: boolean
   owner_agent_id: number | null; owner_user_id: number | null
   created_at: string | null; updated_at: string | null
 }

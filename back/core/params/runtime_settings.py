@@ -223,6 +223,8 @@ class RuntimeSettings(BaseModel):
     # Opportunistic background maintenance. Dream work is sequential and preemptible.
     # The poll delay starts after an operation ends; it is not a fixed-rate window.
     DREAM_ENABLED: bool = True
+    DREAM_RESOURCE_SUMMARY_MIN_CHARS: int = Field(default=1000, ge=0, le=2_000_000)
+    DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT: float = Field(default=25, ge=0, le=100)
     DREAM_ATTACHMENT_TEXT_ENABLED: bool = False
     DREAM_ATTACHMENT_DOCUMENT_ENABLED: bool = False
     DREAM_ATTACHMENT_IMAGE_ENABLED: bool = False
@@ -237,7 +239,7 @@ class RuntimeSettings(BaseModel):
     DREAM_EXPERIENCE_MODE: Literal["off", "observe", "learn", "active"] = "off"
     DREAM_EXPERIENCE_MAX_ITEMS: int = Field(default=2, ge=1, le=10)
     DREAM_EXPERIENCE_MAX_CHARS: int = Field(default=4_000, ge=500, le=50_000)
-    DREAM_POLL_SECONDS: float = Field(default=60.0, ge=1.0, le=3_600.0)
+    DREAM_POLL_SECONDS: float = Field(default=1.0, ge=1.0, le=3_600.0)
     DREAM_FILE_RESCAN_SCHEDULE: Literal["off", "daily_midnight", "weekly_midnight"] = "weekly_midnight"
     DREAM_LEASE_SECONDS: int = Field(default=600, ge=60, le=7_200)
     # Hard execution budget per claim phase (prepare, apply). A claim that

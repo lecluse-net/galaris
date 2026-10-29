@@ -21,6 +21,7 @@
             <ResourceTopicBadge :key="dataset.id" :topic-id="dataset.topic_id ?? null"
               kind="dataset" :id="dataset.id" :editable="editable && dataset.can_write && !busy"
               :reassign-topic="changeDatasetTopic" />
+            <ResourceSummaryButton :resource-key="dataset.id" :title="dataset.title" :load="loadSummary" />
             <q-badge outline class="dataset-revision-badge">
               <q-icon name="history" size="13px" class="q-mr-xs" aria-hidden="true" />
               {{ t('datasets.revision') }} {{ dataset.revision }}
@@ -57,6 +58,7 @@
       </q-card-section>
       <q-tabs v-model="activeTab" dense no-caps align="left" active-color="primary" class="dataset-editor-tabs">
         <q-tab name="content" :label="t('datasets.contentTab')" />
+        <q-tab name="summary" :label="t('datasets.summary')" />
         <q-tab name="history" :label="t('datasets.history')" :disable="busy" />
         <q-tab name="usages" :label="t('datasets.usages')" />
       </q-tabs>
@@ -64,6 +66,12 @@
       <q-tab-panels v-model="activeTab" keep-alive class="dataset-editor-panels">
         <q-tab-panel name="content" class="dataset-editor-content q-pa-sm">
           <CodeEditor v-model="content" language="json" fill-height :label="t('datasets.content')" :readonly="busy || !editable || !dataset.can_write" />
+        </q-tab-panel>
+        <q-tab-panel name="summary" class="q-pa-sm">
+          <q-input v-model="summary" type="textarea" outlined :label="t('datasets.summary')" :hint="t('datasets.summaryHint')"
+            :maxlength="8000" :readonly="busy || !editable || !dataset.can_write" />
+          <q-select v-model="keywords" class="q-mt-md" outlined multiple use-input use-chips new-value-mode="add-unique"
+            :label="t('datasets.summaryKeywords')" :readonly="busy || !editable || !dataset.can_write" />
         </q-tab-panel>
         <q-tab-panel name="history" class="q-pa-sm">
           <q-table v-model:pagination="pagination" :rows="history" :columns="columns" row-key="revision" :rows-per-page-options="[10, 20, 50, 100, 500]" :loading="busy" @request="requestHistory">
@@ -100,7 +108,7 @@ import type { QInput, QTableProps } from 'quasar'
 import { CodeEditor } from '@/core/util'
 import { OwnerSelect, ownerKey, type OwnerOption, type Collaborator } from '@/app/share'
 import { usePrivilegeStore } from '@/core/authorize'
-import { ResourceTopicBadge, reassignResourceTopic } from '@/core/util'
+import { ResourceTopicBadge, reassignResourceTopic, ResourceSummaryButton, type ResourceSummaryView } from '@/core/util'
 import { datasetService as service } from '../services/datasetService'
 import type { Dataset, DatasetOwnerOptions, DatasetSharing as SharingState } from '../types'
 import { formatJson } from '../formatJson'
@@ -113,20 +121,28 @@ const emit = defineEmits<{ loaded: [dataset: Dataset]; updated: [dataset: Datase
 const { t } = useI18n(), dataset = shallowRef<Dataset>(), content = ref(''), title = ref(''), error = ref(''), busy = ref(false)
 const privileges = usePrivilegeStore(), confirmDelete = ref(false)
 const activeTab = ref('content')
+async function loadSummary(signal: AbortSignal): Promise<ResourceSummaryView> {
+  const current = dataset.value
+  if (!current) return { content: '', mediaType: 'text/plain', keywords: [] }
+  const result = await service.read(current.id, signal)
+  return { content: result.summary_content ?? '', mediaType: 'text/plain', keywords: result.keywords }
+}
 const confirmDiscard = ref(false)
 const ownerState = shallowRef<DatasetOwnerOptions>()
 const savedContent = ref('')
+const summary = ref(''), keywords = ref<string[]>([])
 const ownerChoices = computed(() => (ownerState.value?.options ?? []).filter((option): option is Collaborator & OwnerOption => option.kind !== 'team'))
 const currentOwner = computed(() => { const owner = ownerState.value?.owner; return owner && owner.kind !== 'team' ? owner as OwnerOption : null })
 function selectOwner(key: string): void { const owner = ownerChoices.value.find(option => ownerKey(option) === key); if (owner) void changeOwner(owner) }
 let mounted = true, deleted = false, mutating = false
 let pendingDiscard: ((discard: boolean) => void) | undefined
-const dirty = computed(() => !!dataset.value && (title.value !== dataset.value.title || content.value !== savedContent.value))
+const dirty = computed(() => !!dataset.value && (title.value !== dataset.value.title || content.value !== savedContent.value
+  || summary.value !== (dataset.value.summary_content ?? '') || JSON.stringify(keywords.value) !== JSON.stringify(dataset.value.keywords)))
 const editable = computed(() => privileges.hasPrivilege('DATASET_EDIT') || privileges.hasPrivilege('DATASET_ADMIN'))
 const history = ref<{ revision: number; created_at: string }[]>([]), pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 }), revision = ref(1), historical = ref(''), showRevision = ref(false)
 const columns = computed<QTableProps['columns']>(() => [{ name: 'revision', field: 'revision', label: t('datasets.revision'), align: 'left' }, { name: 'created_at', field: 'created_at', label: t('datasets.history'), align: 'left' }])
 async function action(work: () => Promise<void>, mutation = false): Promise<void> { if (busy.value) return; busy.value = true; mutating = mutation; error.value = ''; try { await work() } catch (err) { if (mounted) error.value = errorMessage(err, t('datasets.error')) } finally { if (mounted) { busy.value = false; mutating = false } } }
-function accept(value: Dataset): void { if (!mounted) return; dataset.value = value; title.value = value.title; content.value = savedContent.value = formatJson(value.content) }
+function accept(value: Dataset): void { if (!mounted) return; dataset.value = value; title.value = value.title; content.value = savedContent.value = formatJson(value.content); summary.value = value.summary_content ?? ''; keywords.value = [...value.keywords] }
 async function changeDatasetTopic(topicId: string): Promise<number> {
   const current = dataset.value
   if (!current || busy.value || !editable.value || !current.can_write) throw new Error(t('topic.assignmentAudit.changeError'))
@@ -150,7 +166,19 @@ async function refreshOwners(): Promise<void> {
   } catch (err) { if (mounted) error.value = errorMessage(err, t('datasets.error')) }
 }
 async function reload(): Promise<void> { if (await canLeave()) await load() }
-async function save(): Promise<void> { const current = dataset.value; if (!current) return; await action(async () => { JSON.parse(content.value); const source = content.value === savedContent.value ? current.content : content.value; const value = await service.write(current.id, source, current.revision, title.value, current.lock_version); if (mounted) { accept(value); emit('updated', value) } }, true) }
+async function save(): Promise<void> {
+  const current = dataset.value
+  if (!current) return
+  await action(async () => {
+    JSON.parse(content.value)
+    const source = content.value === savedContent.value ? current.content : content.value
+    const metadata: { summary_content?: string | null; keywords?: string[] } = {}
+    if (summary.value !== (current.summary_content ?? '')) metadata.summary_content = summary.value || null
+    if (JSON.stringify(keywords.value) !== JSON.stringify(current.keywords)) metadata.keywords = [...keywords.value]
+    const value = await service.write(current.id, source, current.revision, title.value, current.lock_version, metadata)
+    if (mounted) { accept(value); emit('updated', value) }
+  }, true)
+}
 async function changeOwner(owner: Collaborator): Promise<void> {
   const current = dataset.value
   const owners = ownerState.value

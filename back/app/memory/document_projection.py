@@ -63,7 +63,7 @@ async def refresh(identity: UUID, *, folder: bool = False) -> None:
     set_committed_value(node, "document", source)
     node.deletion_protected = source.deletion_protected
     node.metadata_ = {**node.metadata_, "document_source_revision": source.revision,
-        "document_summary_revision": source.summary_revision}
+        "document_summary_hash": source.summary_content_hash}
     stage_embedding_refresh(node)
     await db.flush()
     await sync_document_structure(source)

@@ -29,7 +29,7 @@ _DOCUMENT_SOURCE = f"""(m.snapshot->>'node_kind'='document' OR (
 def needs_independence(delta: SchemaTransitionSet) -> bool:
     return ("memory_items.share_id" in delta.removed_columns
         or delta.table_added("documents") or delta.column_added("documents", "owner_agent_id")
-        or delta.table_added("document_summary_revisions") or delta.table_added("document_urls"))
+        or delta.table_added("document_urls"))
 
 
 def needs_nullable_legacy_memory_policy(delta: SchemaTransitionSet) -> bool:
@@ -134,7 +134,7 @@ async def transfer_complete(session: AsyncSession, delta: SchemaTransitionSet) -
         return False
     invalid = await session.scalar(text("""SELECT EXISTS(SELECT 1 FROM documents WHERE
         num_nonnulls(owner_agent_id,owner_user_id)<>1 OR lock_version IS NULL OR keywords IS NULL
-        OR metadata IS NULL OR summary_revision IS NULL)
+        OR metadata IS NULL)
         OR EXISTS(SELECT 1 FROM document_revisions WHERE provider_code IS NULL OR resource_id IS NULL
         OR content_hash IS NULL OR media_type IS NULL OR created_at IS NULL)
         OR EXISTS(SELECT 1 FROM document_tags WHERE share_id IS NULL OR share_kind<>'document')"""))
@@ -164,7 +164,6 @@ async def transfer_complete(session: AsyncSession, delta: SchemaTransitionSet) -
     # mismatched revision must prevent contraction of its only original copy.
     for source, table, parent in (
         ("memory_revisions", "document_revisions", "item_id"),
-        ("memory_summary_revisions", "document_summary_revisions", "item_id"),
         ("memory_sources", "document_sources", "item_id"),
     ):
         mismatch = await session.scalar(text(f"""SELECT EXISTS (
@@ -216,22 +215,20 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         'valid_from',node->'valid_from','valid_until',node->'valid_until','temporal',node->'temporal',
         'last_accessed_at',node->'last_accessed_at','access_count',coalesce((node->>'access_count')::integer,0),
         'search_text',coalesce(node->>'search_text',''),'share_kind','document',
-        'summary_revision',CASE WHEN doc IS NULL THEN 1 ELSE coalesce((node->>'revision')::integer,1) END,
         'summary_provider_code',CASE WHEN doc IS NULL THEN 'native' ELSE node->>'provider_code' END,
         'summary_resource_id',CASE WHEN doc IS NULL THEN '' ELSE node->>'resource_id' END,
         'summary_content',CASE WHEN doc IS NULL THEN '' ELSE node->>'content' END,
         'summary_content_hash',CASE WHEN doc IS NULL THEN encode(sha256(''::bytea),'hex') ELSE node->>'content_hash' END,
         'summary_size_bytes',CASE WHEN doc IS NULL THEN 0 ELSE coalesce((node->>'size_bytes')::bigint,0) END,
-        'summary_document_revision',node->'summary_document_revision',
         'visibility',CASE WHEN coalesce(doc->>'visibility',node->>'visibility','private')='public' THEN 'shared' ELSE coalesce(doc->>'visibility',node->>'visibility','private') END,
         'read_only',coalesce((doc->>'read_only')::boolean,false),
         'document_type',coalesce(doc->>'document_type','html'),
         'revision',coalesce((doc->>'revision')::integer,(node->>'revision')::integer,1),
         'summary_initialized',true) AS value FROM sources)
     """
-    from .models import Document, DocumentRevision, DocumentSummaryRevision, DocumentSource, DocumentAutomationJob
+    from .models import Document, DocumentRevision, DocumentSource, DocumentAutomationJob
     # Explicit projections omit generated columns and preserve native resource pointers.
-    columns = [column.name for column in Document.__table__.columns if column.computed is None]
+    columns = [column.name for column in Document.__table__.columns if column.computed is None and column.name not in {"summary_generated", "summary_pending", "summary_source_text"}]
     names = ",".join(f'"{column}"' for column in columns)
     projection = ",".join(f'record."{column}"' for column in columns)
     # PostgreSQL checks old NOT NULL columns before resolving ON CONFLICT.
@@ -240,7 +237,7 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     if "memory_item_id" in legacy_columns:
         names += ',"memory_item_id"'
         projection += ",coalesce(value->>'memory_item_id',value->>'id')::uuid"
-    moved = ("owner_agent_id","owner_user_id","lock_version","keywords","metadata","deletion_protected","valid_from","valid_until","temporal","last_accessed_at","access_count","search_text","summary_revision","summary_provider_code","summary_resource_id","summary_content","summary_content_hash","summary_size_bytes","summary_document_revision")
+    moved = ("owner_agent_id","owner_user_id","lock_version","keywords","metadata","deletion_protected","valid_from","valid_until","temporal","last_accessed_at","access_count","search_text","summary_provider_code","summary_resource_id","summary_content","summary_content_hash","summary_size_bytes")
     updates = ",".join(f'"{column}"=EXCLUDED."{column}"' for column in moved)
     await session.execute(text(payloads+"""INSERT INTO share_configs(id,resource_kind,global_access,group_access,revision)
         SELECT (value->>'share_id')::uuid,'document',
@@ -270,7 +267,7 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     if mismatch:
         raise RuntimeError("Document body changed after preservation; sources retained")
     # Revision snapshots no longer require a Memory revision row.
-    for model, source, parent in ((DocumentRevision,"memory_revisions","item_id"),(DocumentSummaryRevision,"memory_summary_revisions","item_id"),(DocumentSource,"memory_sources","item_id")):
+    for model, source, parent in ((DocumentRevision,"memory_revisions","item_id"),(DocumentSource,"memory_sources","item_id")):
         columns=[column.name for column in model.__table__.columns if column.computed is None]
         names=",".join(f'"{column}"' for column in columns)
         values=",".join(f'record."{column}"' for column in columns)
@@ -371,7 +368,9 @@ def register_independence(registry: DbAdminRegistry) -> None:
         ("retire_policies",DbAdminPhase.AFTER_CONTRACT,retire_policies,retired_policies),
     ):
         registry.register_action(DbAdminAction(key=f"app.document.independence_{key}",phase=phase,
-            checksum="autonomous-document-resources-and-owned-shared-summaries-v1",predicate=needs_independence,
+            checksum="autonomous-documents-current-summaries-v2" if key == "transfer" else "autonomous-document-resources-and-owned-shared-summaries-v1",
+            compatible_checksums=frozenset({"autonomous-document-resources-and-owned-shared-summaries-v1"}) if key == "transfer" else frozenset(),
+            predicate=needs_independence,
             handler=handler,postcondition=postcondition))
 
 async def preserved_resource(session: AsyncSession, provider: str, pointer: str) -> bool:

@@ -166,7 +166,6 @@ async def test_legacy_merge_finding_cannot_transfer_or_delete_document_data(db, 
 @pytest.mark.parametrize("sharing_kind", ["agent", "team", "public"])
 async def test_document_memory_lifetime_follows_document_access(db, agents, memory_storage, sharing_kind):
     from app.memory.schemas import MemoryGraphRootsRequest, MemorySearchRequest
-    from app.document import DocumentSummaryRevision
     from core.storage import get_storage
     from app.memory.contracts import ResourceNotFoundError
 
@@ -210,7 +209,7 @@ async def test_document_memory_lifetime_follows_document_access(db, agents, memo
         assert await visible(actor) == []
         with pytest.raises(service.MemoryNotFoundError):
             await service.get_item(item.id, agent_id=actor, memory_content=True)
-    assert not list(await db.scalars(select(DocumentSummaryRevision).where(DocumentSummaryRevision.document_id == item.id)))
+    assert item.document.summary_content == ""
     with pytest.raises(ResourceNotFoundError):
         await get_storage().read(summary_resource)
 

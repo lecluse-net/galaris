@@ -459,7 +459,7 @@ async def test_populated_upgrade_through_dbadmin_preserves_content_and_resumes_a
 
     async def business_snapshot():
         snapshot = {}
-        for table in ("memory_items", "memory_revisions", "document_summary_revisions", "documents",
+        for table in ("memory_items", "memory_revisions", "documents",
                       "document_revisions", "document_attachments", "messenger_files",
                       "messenger_messages", "messenger_message_files"):
             rows = await db.scalars(text(f"SELECT to_jsonb(t)::text FROM {table} t ORDER BY to_jsonb(t)::text"))

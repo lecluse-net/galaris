@@ -57,6 +57,8 @@ class WriteDataset(Request):
     expected_revision: int = Field(ge=1)
     expected_lock_version: int | None = Field(default=None, ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=500)
+    summary_content: str | None = Field(default=None, max_length=8000)
+    keywords: list[str] | None = Field(default=None, max_length=100)
 
 
 class RevisionRequest(Request):
@@ -67,6 +69,7 @@ class UpdateMetadata(Request):
     expected_lock_version: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=500)
     keywords: list[str] | None = Field(default=None, max_length=100)
+    summary_content: str | None = Field(default=None, max_length=8000)
     global_access: Literal[0, 1, 2] | None = None
     group_access: Literal[0, 1, 2] | None = None
     read_only: bool | None = None
@@ -224,8 +227,11 @@ async def write_dataset(identity: UUID, data: WriteDataset) -> dict[str, Any]:
         if data.expected_lock_version is not None and current.lock_version != data.expected_lock_version:
             raise service.DatasetConflictError("Dataset metadata changed; reload before saving")
         dataset = await service.replace(identity, actor, content=data.content, expected_revision=data.expected_revision, consume_budget=True)
+        metadata = data.model_dump(include={"summary_content", "keywords"}, exclude_unset=True)
         if data.title is not None and data.title != dataset.title:
-            dataset = await service.metadata(identity, actor, expected_lock_version=dataset.lock_version, values={"title": data.title})
+            metadata["title"] = data.title
+        if metadata:
+            dataset = await service.metadata(identity, actor, expected_lock_version=dataset.lock_version, values=metadata)
         await get_db().commit()
         return await service.describe(dataset, actor)
 

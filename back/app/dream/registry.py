@@ -25,6 +25,11 @@ def mechanisms() -> tuple[DreamMechanism, ...]:
 
 
 def register_default_mechanisms() -> None:
+    from .mechanisms.resource_summaries import document_summary_mechanism, dataset_summary_mechanism, on_summary_policy_change
+    from core.params import params_service
+    params_service.register_change_listener(on_summary_policy_change)
+    register_mechanism(document_summary_mechanism)
+    register_mechanism(dataset_summary_mechanism)
     from .mechanisms.file_catalogue import file_catalogue_mechanism
     from .mechanisms.file_thumbnails import file_thumbnails_mechanism
     from .mechanisms.attachment_memory import attachment_memory_mechanisms

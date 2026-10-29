@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select,text
 from app.agent.models import Agent,Title
-from app.document import Document,DocumentRevision,DocumentSummaryRevision,DocumentTag,DocumentTagAssignment,DocumentURL
+from app.document import Document,DocumentRevision,DocumentTag,DocumentTagAssignment,DocumentURL
 from app.memory.models import MemoryItem,MemoryRevision,MemoryURL
 from app.share import ShareConfig,ShareGrant
 from app.document.independence import register_independence,transfer_complete
@@ -48,10 +48,17 @@ async def old_schema(session):
         body=f"<p>Preserved source version {version}.</p>"
         pointer=str(uuid4())
         common=dict(id=rev_id,revision=version,provider_code="native",resource_id=pointer,content=body,content_hash=digest(body),content_type="text",media_type="text/html",content_profile_version=1,title=document.title,keywords=["retained"],metadata_={"synthetic":True},author_agent_id=owner.id,document_content_version=True)
-        session.add(DocumentRevision(document_id=identity,**common))
+        session.add(DocumentRevision(document_id=identity,**{k:v for k,v in common.items() if k != "keywords"}))
         session.add(MemoryRevision(item_id=identity,**common))
     summary_revision=uuid4()
-    session.add(DocumentSummaryRevision(id=summary_revision,document_id=identity,revision=3,provider_code="native",resource_id=summary_pointer,content=summary,content_hash=digest(summary),source_document_revision=2,keywords=["retained"],author_agent_id=reader.id))
+    await session.execute(text("""CREATE TABLE memory_summary_revisions (
+        id uuid PRIMARY KEY, item_id uuid, revision integer, provider_code text,
+        resource_id text, content text, content_hash text, source_document_revision integer,
+        keywords jsonb, author_agent_id integer)"""))
+    await session.execute(text("""INSERT INTO memory_summary_revisions VALUES
+        (:id,:document,3,'native',:pointer,:content,:hash,2,'["retained"]'::jsonb,:author)"""),
+        {"id":summary_revision,"document":identity,"pointer":summary_pointer,"content":summary,
+         "hash":digest(summary),"author":reader.id})
     await session.commit()
     expected={"id":identity,"owner":owner.id,"reader":reader.id,"folder":folder.id,"folder_node":folder_node,"private":private_id,"content":content,"summary":summary,"body_pointer":body_pointer,"summary_pointer":summary_pointer,"revisions":revisions,"summary_revision":summary_revision,"document_policy":document.share_id,"folder_policy":folder.share_id,"url":location.id}
     # Recreate only the source representation. All data is synthetic, in this test's
@@ -93,27 +100,24 @@ async def old_schema(session):
     # the nullable-policy action can alter memory_items in that transaction.
     await session.execute(text("ALTER TABLE memory_items ADD CONSTRAINT fk_memory_items_share_kind FOREIGN KEY(share_id,share_kind) REFERENCES share_configs(id,resource_kind) DEFERRABLE INITIALLY DEFERRED"))
     await session.execute(text("ALTER TABLE documents ADD CONSTRAINT synthetic_legacy_document_identity FOREIGN KEY(memory_item_id,share_id) REFERENCES memory_items(id,share_id) DEFERRABLE INITIALLY DEFERRED"))
-    await session.execute(text("CREATE TABLE memory_summary_revisions (LIKE document_summary_revisions INCLUDING DEFAULTS)"))
-    await session.execute(text("INSERT INTO memory_summary_revisions SELECT * FROM document_summary_revisions"))
-    await session.execute(text("ALTER TABLE memory_summary_revisions RENAME COLUMN document_id TO item_id"))
-    await session.execute(text("DROP TABLE document_summary_revisions"))
     legacy_columns={"id","document_id","revision"}
     for column in DocumentRevision.__table__.columns:
         if column.name not in legacy_columns:
             await session.execute(text(f'ALTER TABLE document_revisions DROP COLUMN "{column.name}" CASCADE'))
     await session.execute(text("ALTER TABLE document_revisions ADD CONSTRAINT synthetic_legacy_revision_resource FOREIGN KEY(id) REFERENCES memory_revisions(id) ON DELETE CASCADE"))
-    moved=("owner_agent_id","owner_user_id","lock_version","keywords","metadata","deletion_protected","valid_from","valid_until","temporal","last_accessed_at","access_count","search_text","summary_revision","summary_provider_code","summary_resource_id","summary_content","summary_content_hash","summary_size_bytes","summary_document_revision")
+    moved=("owner_agent_id","owner_user_id","lock_version","keywords","metadata","deletion_protected","valid_from","valid_until","temporal","last_accessed_at","access_count","search_text","summary_provider_code","summary_resource_id","summary_content","summary_content_hash","summary_size_bytes")
     # The generated search column depends on the fields that used to live in Memory.
     await session.execute(text("ALTER TABLE documents DROP COLUMN search_vector"))
     for column in moved:
         await session.execute(text(f'ALTER TABLE documents DROP COLUMN "{column}" CASCADE'))
+    await session.execute(text("ALTER TABLE documents ADD COLUMN summary_document_revision integer DEFAULT 2"))
     await session.commit()
     return expected
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("interrupted",[False,True,"nullable-policy","reconciler"])
-async def test_real_upgrade_preserves_document_summary_history_policies_and_replay(committed_database,monkeypatch,interrupted):
+async def test_real_upgrade_preserves_current_summary_content_history_policies_and_replay(committed_database,monkeypatch,interrupted):
     engine=committed_database.kw["bind"]
     monkeypatch.setattr(orchestrator,"engine",engine)
     monkeypatch.setattr(atlas,"engine",engine)
@@ -166,11 +170,12 @@ async def test_real_upgrade_preserves_document_summary_history_policies_and_repl
             assert document is not None
             assert (document.content,document.resource_id,document.revision)==(expected["content"],expected["body_pointer"],2)
             assert (document.owner_agent_id,document.keywords,document.metadata_)==(expected["owner"],["retained"],{"synthetic":True})
-            assert (document.summary_content,document.summary_resource_id,document.summary_revision,document.summary_document_revision)==(expected["summary"],expected["summary_pointer"],3,2)
+            assert (document.summary_content,document.summary_resource_id)==(expected["summary"],expected["summary_pointer"])
             assert document.share_id==expected["document_policy"]
             assert await session.scalar(select(DocumentTag.share_id).where(DocumentTag.id==expected["folder"]))==expected["folder_policy"]
             assert set(await session.scalars(select(DocumentRevision.id).where(DocumentRevision.document_id==document.id)))==set(expected["revisions"])
-            assert await session.scalar(select(DocumentSummaryRevision.content).where(DocumentSummaryRevision.id==expected["summary_revision"]))==expected["summary"]
+            assert await session.scalar(text("SELECT to_regclass('public.document_summary_revisions')")) is None
+            assert not await session.scalar(text("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='documents' AND column_name='summary_document_revision')"))
             assert await session.scalar(select(MemoryItem.memory_content).where(MemoryItem.id==expected["private"]))=="<p>Private synthetic memory.</p>"
             assert not await session.scalar(text("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='memory_items' AND column_name IN ('share_id','share_kind'))"))
             assert await transfer_complete(session,SchemaTransitionSet())

@@ -1,5 +1,10 @@
 export default {
   fr: {
+    resourceSummary: {
+      open: 'Voir le résumé', title: 'Résumé', close: 'Fermer', loading: 'Chargement du résumé',
+      empty: 'Aucun résumé disponible pour cette ressource.',
+      error: 'Impossible de charger le résumé.', retry: 'Réessayer', keywords: 'Mots-clés',
+    },
     libraryIcons: {
   "iconCollection": "Bibliothèque d’icônes",
   "searchIcons": "Rechercher une icône",
@@ -242,6 +247,11 @@ unavailable: "Ce contenu est indisponible.",
     },
   },
   en: {
+    resourceSummary: {
+      open: 'View summary', title: 'Summary', close: 'Close', loading: 'Loading summary',
+      empty: 'No summary is available for this resource.',
+      error: 'Unable to load the summary.', retry: 'Retry', keywords: 'Keywords',
+    },
     libraryIcons: {
   "iconCollection": "Icon library",
   "searchIcons": "Search icons",
@@ -484,6 +494,11 @@ unavailable: "This content is unavailable.",
     },
   },
   zh: {
+    resourceSummary: {
+      open: '查看摘要', title: '摘要', close: '关闭', loading: '正在加载摘要',
+      empty: '此资源暂无摘要。',
+      error: '无法加载摘要。', retry: '重试', keywords: '关键词',
+    },
     libraryIcons: {
   "iconCollection": "图标库",
   "searchIcons": "搜索图标",

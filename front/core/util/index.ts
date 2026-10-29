@@ -18,6 +18,8 @@ import { defineAsyncView } from './asyncView'
 export { defineAsyncView } from './asyncView'
 export { ResourceDetailDialog, preloadResourceDetail } from './resourceDetail'
 export { ResourceTopicBadge, reassignResourceTopic } from './resourceTopics'
+export type { ResourceSummaryView } from './resourceSummary'
+export const ResourceSummaryButton = defineAsyncView(() => import('./components/ResourceSummaryButton.vue'))
 export type { ResourceDetailTarget } from './resourceDetail'
 export { default as ConversationTurnDialog } from './components/ConversationTurnDialog.vue'
 import './resourcePreviewCard.css'

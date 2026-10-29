@@ -162,7 +162,10 @@ explicites par tool ni le contrat distinct d’apprentissage.
 ## Documents indépendants et références du graphe
 
 `app.document` possède le titre, le contenu, les résumés partagés, les mots-clés,
-le verrou optimiste, les droits et les versions. La bibliothèque et l'éditeur sont
+le verrou optimiste, les droits et les versions du contenu. Les résumés et mots-clés
+restent des métadonnées courantes, sans historique propre. Dream les décrit à partir
+des seuils configurables de taille et de changement cumulé ; les résumés manuels sont préservés.
+La bibliothèque et l'éditeur sont
 dans `front/app/document`. Les opérations API passent par `/documents`, celles sur
 les résumés par `/documents/{id}/summary`. Les contenus historiques conservent leurs
 UUID et URI `document://`, leurs octets, auteurs, dates, pièces jointes et URL.

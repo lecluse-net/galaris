@@ -40,6 +40,11 @@ export interface DocumentFolderPage {
 const ownerOptionsCache = createOwnerOptionsCache<DocumentOwnerOptions>()
 
 export const documentService = {
+async summary(id: string, agentId: number | null, signal?: AbortSignal): Promise<DocumentDetail> {
+  return (await api.get<DocumentDetail>(`/documents/${id}/summary`, {
+    params: { agent_id: agentId ?? undefined }, signal,
+  })).data
+},
 async folderCollection(id: string | null, agentId: number | null, options: { offset?: number; limit?: number; query?: string; metadata_only?: boolean } = {}, signal?: AbortSignal): Promise<DocumentFolderPage> {
   return (await api.get<DocumentFolderPage>(`/documents/folder-collections${id ? '/' + encodeURIComponent(id) : ''}`, {
     params: { agent_id: agentId, ...options }, signal,

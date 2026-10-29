@@ -2,6 +2,23 @@
 
 # Jeux de données
 
+## Description courante
+
+La petite icône **Voir le résumé**, près du titre et du sujet, ouvre la description courante
+et ses mots-clés en lecture. Elle recharge les données enregistrées à chaque ouverture,
+sans modifier le brouillon de l'éditeur. La fenêtre se ferme avec son bouton, Échap ou un
+clic à l'extérieur.
+
+L'onglet **Description et mots-clés** décrit ce que contient le jeu et à quoi il sert.
+Enregistrez vos modifications avec le bouton habituel : elles ne créent pas de version JSON.
+La description et les mots-clés restent courants, sans historique ; restaurer une ancienne
+version JSON les conserve.
+
+Dream peut remplir la description manquante lorsque le JSON normalisé dépasse **1 000 caractères**.
+Il ne renouvelle une description automatique qu'au-delà de **25 % de changement cumulé** depuis
+sa génération. Ces deux valeurs se règlent dans les paramètres Dream. L'indentation et l'ordre
+des clés JSON ne comptent pas comme changement. Une description manuelle est préservée.
+
 ## Ouvrir la bibliothèque et l'éditeur
 
 **Connaissances → Jeux de données** contient les ressources JSON indépendantes `data://`.

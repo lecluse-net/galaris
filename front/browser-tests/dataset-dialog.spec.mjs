@@ -62,6 +62,43 @@ test('the Dataset modal keeps access errors visible and can retry the authorized
   await expect(page.getByRole('textbox', { name: 'JSON content', exact: true })).toHaveValue('{\n  "amount": 0\n}')
 })
 
+test('a Dataset description saves independently of its JSON and retains its draft after a failed save', async ({ page }, testInfo) => {
+  await fixtures(page)
+  let current = { ...dataset, summary_content: null }
+  let fail = true
+  const writes = []
+  await page.route(`**/api/datasets/${id}`, route => route.fulfill({ json: current }))
+  await page.route(`**/api/datasets/${id}/content`, route => {
+    const body = route.request().postDataJSON()
+    if (fail) return route.fulfill({ status: 503, json: { detail: 'Synthetic description save unavailable' } })
+    writes.push(body)
+    current = { ...current, summary_content: body.summary_content, lock_version: current.lock_version + 1 }
+    return route.fulfill({ json: current })
+  })
+  await mount(page, 'app/dataset/components/DatasetDialog.vue', { props: { id }, privileges: ['DATASET_EDIT'] })
+  await page.getByRole('tab', { name: 'Description and keywords', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  const description = page.getByRole('textbox', { name: 'Description and keywords', exact: true })
+  await expect(description).toHaveValue('')
+  await description.fill('Synthetic amounts used for budget preparation.')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Synthetic description save unavailable')
+  await expect(description).toHaveValue('Synthetic amounts used for budget preparation.')
+  fail = false
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0]).toMatchObject({ content: dataset.content, expected_revision: 1,
+    summary_content: 'Synthetic amounts used for budget preparation.' })
+  await page.screenshot({ path: testInfo.outputPath('dataset-description-desktop.png'), animations: 'disabled' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(description).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('dataset-description-mobile.png'), animations: 'disabled' })
+  await page.getByRole('tab', { name: 'Content', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'JSON content', exact: true })).toHaveValue('{\n  "amount": 0\n}')
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
 for (const format of ['uri', 'url']) test(`a pasted Dataset ${format} converts to a card and opens the same modal after serialization`, async ({ page }) => {
   await fixtures(page)
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p>Keep this</p>' }, privileges: ['DATASET_READ'] })

@@ -126,9 +126,24 @@ destinataire après découpage, et une réouverture relit le nom modifié.
 
 ## Lectures natives des Documents
 
+`resource-summaries.spec.mjs` vérifie l'accès en lecture au résumé courant depuis les
+éditeurs Document et Dataset, les mots-clés, l'état vide, les erreurs et la reprise,
+le rechargement à la réouverture et le rejet des réponses tardives après changement
+de ressource. La fenêtre commune conserve les fermetures par bouton, Échap et arrière-plan ;
+le parcours est aussi inspecté sur un petit viewport.
+
+`app/dream/tests/test_resource_summaries.py` couvre les seuils stricts de taille et de
+changement cumulé, les petits contenus, la protection des descriptions manuelles, le
+regroupement des demandes, la modification des paramètres et les résultats Dream tardifs
+pour Documents et Datasets. Le modèle externe est remplacé, les domaines et la base restent réels.
+`app/document/tests/test_summary_retirement.py` protège le résumé courant pendant le retrait
+de son historique et la conservation des métadonnées lors d'une restauration de contenu.
+Les anciennes attentes de versions de résumé et de mots-clés historiques sont retirées ;
+les versions du contenu, leurs droits et les scénarios de mise à niveau restent couverts.
+
 `app/document/tests/test_document_read_performance.py` borne la résolution d'un pointeur
 natif à une lecture SQL, après les contrôles de droits de son consommateur. Les scénarios
-préservent la priorité contenu/révision/révision de résumé/résumé, les valeurs nulles,
+préservent la priorité contenu/révision de contenu/résumé courant, les valeurs nulles,
 les textes vides et Unicode, les providers externes et les archives. Une ligne en attente
 ne doit pas être publiée par autoflush. Les écritures locales non validées restent lisibles
 sans SQL ; un rollback retrouve les octets validés. Deux sessions indépendantes vérifient

@@ -16,7 +16,7 @@ from core.dbadmin import SchemaTransitionSet
 from app.memory import service
 from app.memory.content_migration import inline_content_complete, migrate_inline_content, needs_inline_content
 from app.memory.models import MemoryItem, MemoryRevision
-from app.document import Document, DocumentRevision, DocumentSummaryRevision
+from app.document import Document, DocumentRevision
 from app.memory.schemas import MemoryItemCreate, MemoryItemUpdate, MemoryPayload
 from core.storage import get_storage
 
@@ -40,7 +40,7 @@ async def test_current_text_and_history_commit_restore_and_forget_without_native
     assert not [p for p in memory_storage.rglob("*") if p.is_file()]
     await edit_document_reference(identity, MemoryItemUpdate(expected_revision=1,
         payload=MemoryPayload(text="<p>Second synthetic version.</p>")), actor_agent_id=owner_id)
-    await edit_document_summary(identity, MemoryItemUpdate(expected_revision=1,
+    await edit_document_summary(identity, MemoryItemUpdate(expected_revision=2,
         payload=MemoryPayload(text="<p>Synthetic summary.</p>")), actor_agent_id=owner_id)
     db.expire_all()
     assert (await service.get_item(identity, agent_id=owner_id, revision=1))[1] == b"<p>First synthetic version.</p>"
@@ -92,8 +92,6 @@ async def test_migration_copies_all_owners_exactly_and_retains_sources_on_replay
     await db.flush()
     db.add(DocumentRevision(document_id=item.id, revision=1, provider_code="native", resource_id=ref,
         content=None, content_hash=sha256(payload).hexdigest(), title=item.title, content_type="text", media_type="text/html"))
-    db.add(DocumentSummaryRevision(document_id=item.id, revision=1, provider_code="native", resource_id=ref,
-        content=None, content_hash=sha256(payload).hexdigest(), source_document_revision=1, keywords=[]))
     identity, owner_id = item.id, owner.id
     await db.commit()
     delta = SchemaTransitionSet(added_columns=frozenset({"documents.content"}))
@@ -103,9 +101,9 @@ async def test_migration_copies_all_owners_exactly_and_retains_sources_on_replay
     assert await inline_content_complete(db, delta)
     await migrate_inline_content(db, delta)
     await db.commit()
-    assert await db.scalar(text("SELECT count(*) FROM galaris_migration.memory_text_contents")) == 5
+    assert await db.scalar(text("SELECT count(*) FROM galaris_migration.memory_text_contents")) == 4
     assert (memory_storage / ref[:2] / ref).read_bytes() == payload
-    for table in ("memory_items", "documents", "memory_revisions", "document_revisions", "document_summary_revisions"):
+    for table in ("memory_items", "documents", "memory_revisions", "document_revisions"):
         assert await db.scalar(text(f"SELECT convert_to(content, 'UTF8') FROM {table} WHERE resource_id=:ref"), {"ref": ref}) == payload
     await db.execute(text("UPDATE documents SET content='synthetic corruption' WHERE resource_id=:ref"), {"ref": ref})
     assert not await inline_content_complete(db, delta)

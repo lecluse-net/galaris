@@ -44,6 +44,12 @@ async def verify_historical_transfer(session: AsyncSession, delta: SchemaTransit
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .summary_retirement import register
+    from .resource_summaries import reconcile
+    register(registry)
+    async def summaries(_session: AsyncSession) -> None:
+        await reconcile()
+    registry.register_reconciler(DbAdminReconciler(key="app.document.current_summaries", handler=summaries))
     from .privilege_migration import register_privilege_migration
     from .tool_migration import register_tool_migration
     register_privilege_migration(registry)

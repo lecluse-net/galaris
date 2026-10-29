@@ -138,17 +138,15 @@ async def test_metadata_edits_preserve_search_and_links_without_reparsing_conten
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('source,empty,archived,external', [
-    (0, False, False, False), (1, False, False, False), (2, False, False, False),
-    (3, False, False, False), (4, False, False, False), (0, True, False, False),
+    (0, False, False, False), (1, False, False, False),     (3, False, False, False), (4, False, False, False), (0, True, False, False),
     (3, True, False, False), (3, False, True, False), (1, False, False, True),
-], ids=['body', 'revision', 'summary-revision', 'summary', 'missing', 'empty-body',
+], ids=['body', 'revision', 'summary', 'missing', 'empty-body',
         'empty-summary', 'archived-summary', 'external-body'])
 async def test_native_pointer_sources_preserve_precedence_in_one_read(db, agents, source, empty, archived, external):
     from datetime import datetime, timezone
     from hashlib import sha256
     from uuid import uuid4
     from sqlalchemy import null
-    from app.document import DocumentSummaryRevision
     from app.document.inline_content import read_inline_content
     from tests.sql_reads import measured_reads
 
@@ -167,8 +165,6 @@ async def test_native_pointer_sources_preserve_precedence_in_one_read(db, agents
     db.add(DocumentRevision(document_id=item.id, revision=1, provider_code='native', resource_id=pointer,
         content=values[1], content_hash=sha256(b'synthetic').hexdigest(), title=item.title,
         content_type='text', media_type='text/html'))
-    db.add(DocumentSummaryRevision(document_id=item.id, revision=1, provider_code='native', resource_id=pointer,
-        content=values[2], content_hash=sha256(b'synthetic').hexdigest(), source_document_revision=1, keywords=[]))
     await db.flush()
     # The lookup must not publish an unrelated pending owner through autoflush.
     pending = Document(owner_agent_id=agents[0].id, title='Synthetic pending owner', provider_code='native',

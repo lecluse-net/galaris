@@ -154,7 +154,9 @@ writes or the separate learning contract.
 ## Independent documents and graph references
 
 `app.document` owns titles, content, shared summaries, keywords, optimistic locks,
-permissions and versions. `front/app/document` owns the library and editor. API
+permissions and content versions. Summaries and keywords are current metadata without
+separate history. Dream uses configurable size and cumulative-change thresholds to describe
+resources, preserving manual summaries. `front/app/document` owns the library and editor. API
 operations use `/documents`, and summaries use `/documents/{id}/summary`. Existing
 documents retain UUIDs, `document://` URIs, bytes, authors, dates, attachments and URLs.
 

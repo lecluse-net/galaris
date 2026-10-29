@@ -55,6 +55,8 @@
                 kind="document" :id="currentDocument.id"
                 :editable="canEditDocument && !historyOpen && !topicChangeInFlight"
                 :reassign-topic="changeDocumentTopic" />
+              <ResourceSummaryButton :resource-key="`${currentDocument.id}:${requestAgentId ?? 'user'}`"
+                :title="currentDocument.title" :load="loadSummary" />
               <q-btn
                 flat
                 dense
@@ -256,7 +258,7 @@ import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHre
 import { websocket } from '@/core/websocket'
 import { useAgentChoices } from '@/app/agent'
 import { OwnerSelect, type OwnerOption } from '@/app/share'
-import { ResourceTopicBadge, reassignResourceTopic } from '@/core/util'
+import { ResourceTopicBadge, reassignResourceTopic, ResourceSummaryButton, type ResourceSummaryView } from '@/core/util'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
 import { reconcileLibrarySnapshot } from '@/app/document/librarySnapshot'
@@ -342,6 +344,12 @@ watch(deleteDialogOpen, () => { deletionError.value = '' })
 const refreshing = ref(false)
 const refreshError = ref(false)
 const currentDocument = ref<DocumentDetail | null>(null)
+async function loadSummary(signal: AbortSignal): Promise<ResourceSummaryView> {
+  const current = currentDocument.value
+  if (!current) return { content: '', mediaType: 'text/html', keywords: [] }
+  const result = await documentService.summary(current.id, requestAgentId.value, signal)
+  return { content: result.payload.text ?? '', mediaType: 'text/html', keywords: result.keywords }
+}
 const topicChangeInFlight = ref(false)
 async function changeDocumentTopic(topicId: string): Promise<number> {
   if (!canEditDocument.value || topicChangeInFlight.value) throw new Error(t('topic.assignmentAudit.changeError'))

@@ -110,7 +110,7 @@ def _description(dataset: Dataset, permissions: DatasetAccess, *, content: bool,
         "owner_agent_id": dataset.owner_agent_id, "owner_user_id": dataset.owner_user_id,
         "global_access": dataset.global_access, "group_access": dataset.group_access,
         "keywords": dataset.keywords, "metadata": dataset.metadata_, "read_only": dataset.read_only,
-        "size": size, "checksum": checksum,
+        "size": size, "checksum": checksum, "summary_content": dataset.summary_content, "summary_pending": dataset.summary_pending,
         "can_write": permissions.can_write,
         "can_manage": permissions.can_manage, "created_at": dataset.created_at.isoformat() if dataset.created_at else None,
         "can_delete": permissions.can_manage,
@@ -153,6 +153,8 @@ async def create(actor: DataActor, *, title: str, content: str = "[]", owner_age
         global_access=0, group_access=0, read_only=False, keywords=[], metadata_=controlled, creation_key=creation_key, creation_fingerprint=requested)
     get_db().add(dataset)
     await get_db().flush()
+    from .resource_summaries import refresh_pending
+    refresh_pending(dataset)
     get_db().add(DatasetRevision(dataset_id=dataset.id, revision=1, content=content, **actor_keys(actor)))
     await get_db().flush()
     return dataset
@@ -170,6 +172,8 @@ async def replace(identity: UUID, actor: DataActor, *, content: str, expected_re
         await reserve_budget(actor.user_id, dataset.id, len(content.encode()))
     dataset.content, dataset.revision = content, dataset.revision + 1
     dataset.lock_version += 1
+    from .resource_summaries import refresh_pending
+    refresh_pending(dataset)
     get_db().add(DatasetRevision(dataset_id=dataset.id, revision=dataset.revision, content=content,
         **actor_keys(actor)))
     await get_db().flush()
@@ -259,7 +263,7 @@ async def metadata(identity: UUID, actor: DataActor, *, expected_lock_version: i
         raise DatasetPermissionError("Dataset is read only")
     if dataset.lock_version != expected_lock_version:
         raise DatasetConflictError("Dataset changed; reload its metadata")
-    if set(values) - {"title", "keywords", "metadata", "global_access", "group_access", "read_only"}:
+    if set(values) - {"title", "keywords", "summary_content", "metadata", "global_access", "group_access", "read_only"}:
         raise ValueError("Unsupported Dataset metadata field")
     if any(key in values for key in ("global_access", "group_access", "read_only")):
         await record(identity, actor, manage=True)
@@ -281,6 +285,16 @@ async def metadata(identity: UUID, actor: DataActor, *, expected_lock_version: i
         if len(keywords) > 100 or any(not isinstance(word, str) or len(word) > 200 for word in keywords):
             raise ValueError("Invalid Dataset keywords")
         dataset.keywords = cast(list[str], keywords)
+    if "summary_content" in values:
+        summary = values["summary_content"]
+        if summary is not None and (not isinstance(summary, str) or len(summary) > 8000):
+            raise ValueError("A Dataset summary must contain at most 8000 characters")
+        from core.util import normalize_summary_source as normalize_source
+        dataset.summary_content = str(summary).strip() if summary else None
+        dataset.summary_generated = False
+        dataset.summary_source_text = normalize_source(dataset.content, "json")
+        from .resource_summaries import refresh_pending
+        refresh_pending(dataset)
     global_access, group_access = values.get("global_access", dataset.global_access), values.get("group_access", dataset.group_access)
     if type(global_access) is not int or type(group_access) is not int or global_access not in {0, 1, 2} or group_access not in {0, 1, 2} or global_access and group_access:
         raise ValueError("Choose global or owner-team access with level 0, 1 or 2")

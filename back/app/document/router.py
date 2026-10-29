@@ -119,12 +119,11 @@ async def launch_goal_folder_reconciliation(data: GoalFolderReconciliationReques
 
 @router.get("/{document_id}/summary", response_model=DocumentDetail)
 @authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
-async def read_document_summary(document_id: UUID, agent_id: int | None = Query(default=None, gt=0),
-    revision: int | None = Query(default=None, ge=1)) -> DocumentDetail:
+async def read_document_summary(document_id: UUID, agent_id: int | None = Query(default=None, gt=0)) -> DocumentDetail:
     from .summary_service import read_summary
     try:
         actor = await _document_request_actor(document_id, agent_id)
-        return await read_summary(document_id, actor=actor, revision=revision)
+        return await read_summary(document_id, actor=actor)
     except Exception as exc:
         raise _http_error(exc) from exc
 

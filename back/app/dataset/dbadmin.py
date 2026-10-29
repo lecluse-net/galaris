@@ -2,7 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.dbadmin import DbAdminAction, DbAdminPhase, DbAdminRegistry, SchemaTransitionSet
+from core.dbadmin import DbAdminAction, DbAdminPhase, DbAdminReconciler, DbAdminRegistry, SchemaTransitionSet
 
 
 async def transfer(_session: AsyncSession, _delta: SchemaTransitionSet) -> None:
@@ -18,6 +18,10 @@ async def complete(_session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    async def summaries(_session: AsyncSession) -> None:
+        from .resource_summaries import reconcile
+        await reconcile()
+    registry.register_reconciler(DbAdminReconciler(key="app.dataset.current_summaries", handler=summaries))
     registry.register_action(DbAdminAction(key="app.dataset.legacy_documents", phase=DbAdminPhase.AFTER_EXPAND,
         checksum="dataset-additive-authority-v1", predicate=lambda delta: delta.table_added("datasets"),
         handler=transfer, postcondition=complete))

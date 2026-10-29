@@ -102,7 +102,8 @@ async def test_document_search_returns_readable_passages_and_rejects_partial_ind
     synthesis = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="ORCHID synthesis independent"))
     assert [hit.item.id for hit in synthesis.hits] == [document.id]
     assert synthesis.hits[0].passages[0].content_source == "memory"
-    assert synthesis.hits[0].passages[0].source_revision == 2
+    # Current shared summaries no longer carry a historical revision locator.
+    assert synthesis.hits[0].passages[0].source_revision is None
     assert synthesis.hits[0].passages[0].block_start is None
     assert "ORCHID" in synthesis.hits[0].excerpt
     denied = await resource_search(ResourceContext(agent_id=peer.id, runtime="internal"), "memory://", "QUARTZ")

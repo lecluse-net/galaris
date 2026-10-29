@@ -14,6 +14,25 @@ dans le graphe mémoire ne supprime pas le document. Les souvenirs concernant un
 document restent privés à l'agent qui les a acquis.
 
 
+## Résumé courant et mots-clés
+
+La petite icône **Voir le résumé**, près du titre et du sujet dans l'éditeur, ouvre le résumé
+courant et ses mots-clés en lecture. Le contenu est rechargé à chaque ouverture. La fenêtre
+se ferme avec son bouton, la touche Échap ou un clic à l'extérieur ; elle indique aussi
+l'absence de résumé et permet de réessayer après une erreur de chargement.
+
+Chaque document possède un résumé partagé et des mots-clés courants, sans historique propre.
+Seul le contenu du document conserve ses versions ; restaurer un ancien contenu ne remplace
+ni le résumé ni les mots-clés actuels. La fiche documentaire dans Mémoire montre toujours
+le résumé courant et ne propose plus son ancien historique.
+
+Au repos, Dream peut générer une courte description de la nature et de l'utilité du document,
+avec des termes de recherche. Par défaut, il intervient au-delà de **1 000 caractères de texte
+utile**. Un résumé automatique n'est ensuite actualisé que si plus de **25 %** du contenu a changé
+depuis sa dernière génération : les petites modifications se cumulent. La mise en forme HTML
+seule ne compte pas. Un résumé saisi manuellement est préservé. Les deux seuils sont réglables
+dans les paramètres Dream et s'appliquent aussi aux jeux de données.
+
 ## Rédiger avec un agent
 
 L'icône **Conversation**, dans le groupe **Lecture** de la barre d'outils de l'éditeur,

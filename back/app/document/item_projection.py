@@ -9,8 +9,8 @@ from .schemas import DocumentPublic, DocumentAccessPublic
 def item_to_public(item: Document, access: DocumentAccess, *, memory_content: bool = False, urls: Sequence[str] | None = None) -> DocumentPublic:
     return DocumentPublic.model_validate(dict(
         id=item.id, topic_id=item.topic_id, document_id=item.id, thumbnail_id=item.thumbnail_id,
-        document_revision=item.revision, summary_document_revision=item.summary_document_revision,
-        summary_outdated=item.summary_document_revision is not None and item.summary_document_revision != item.revision,
+        document_revision=item.revision,
+        summary_outdated=bool(item.summary_pending and item.summary_size_bytes),
         revision=item.revision, lock_version=item.lock_version,
         owner_agent_id=item.owner_agent_id, owner_user_id=item.owner_user_id,
         provider_code=item.provider_code, title=item.title, node_kind="document",

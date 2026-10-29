@@ -20,7 +20,7 @@ from core.storage import get_storage, prepare_content, resource_is_referenced
 from core.user import HumanActor, get_user_record, UserModel
 from .schemas import DocumentLibraryRequest, DocumentLibraryPage, DocumentOwnerOptions, DocumentSourceCreate
 from core.util import archived_document_html, convert_to_html, visible_text, image_references, attachment_reference, complete_await
-from .models import DocumentRevision, DocumentSummaryRevision, DocumentSource
+from .models import DocumentRevision, DocumentSource
 from .schemas import DocumentItemCreate, DocumentUpdate, DocumentPayload, DocumentGrantUpdate, DocumentDeletionResult, DocumentDetail, DocumentContentRevisionPage, DocumentContentRevisionPublic, DocumentContentRevisionDetail, DocumentContentDiff, DocumentOwnerUpdate, DocumentFolderOption, DocumentGlobalAccessUpdate
 from .contracts import DocumentAccess
 from .access import effective_access, managed_item_agent_ids, readable_item_clause
@@ -992,6 +992,7 @@ async def update_item(
 async def update_summary(
     item_id: UUID, data: DocumentUpdate, *, actor_agent_id: int | HumanActor | None,
     administrative: bool = False,
+    generated: bool = False, source_text: str | None = None,
 ) -> Document:
     """Edit an independent synthesis using the current document's live rights."""
     item = await _get_item_record(item_id)
@@ -1003,7 +1004,7 @@ async def update_summary(
         raise DocumentPermissionError("Edit document metadata and sharing through its document.")
     if data.media_type not in (None, "text/html") or data.content_type not in (None, "text"):
         raise DocumentConflictError("A document synthesis must use rich text.")
-    if data.expected_revision is not None and data.expected_revision != item.summary_revision:
+    if data.expected_revision is not None and data.expected_revision != item.revision:
         raise DocumentConflictError("Document summary changed; reload and retry")
     if data.expected_lock_version is not None and data.expected_lock_version != item.lock_version:
         raise DocumentConflictError("Document or synthesis changed; reload and retry")
@@ -1021,7 +1022,6 @@ async def update_summary(
             item.summary_content = inline
             item.summary_content_hash = digest
             item.summary_size_bytes = len(content)
-            item.summary_document_revision = item.revision
             changed = True
     keywords_changed = data.keywords is not None and _set_keywords(item, data.keywords)
     if "temporal" in fields:
@@ -1032,20 +1032,17 @@ async def update_summary(
         if name in fields:
             changed = changed or getattr(item, name) != getattr(data, name)
             setattr(item, name, getattr(data, name))
+    if data.payload is not None:
+        from .resource_summaries import normalized_content
+        baseline = source_text if source_text is not None else await normalized_content(item)
+        changed = changed or item.summary_generated != generated or item.summary_source_text != baseline
+        item.summary_generated = generated
+        item.summary_pending = False
+        item.summary_source_text = baseline
     if not changed and not keywords_changed:
         return item
-    if changed:
-        item.summary_revision += 1
     item.lock_version += 1
     item.updated_at = datetime.now(timezone.utc)
-    if changed:
-        get_db().add(DocumentSummaryRevision(
-            document_id=item.id, revision=item.summary_revision, provider_code=item.summary_provider_code,
-            resource_id=item.summary_resource_id, content=item.summary_content, content_hash=item.summary_content_hash,
-            source_document_revision=item.summary_document_revision or item.revision,
-            author_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None,
-            keywords=list(item.keywords), temporal=item.temporal,
-        ))
     try:
         await refresh_document_search(item)
         _set_semantic_fingerprint(item)
@@ -1156,7 +1153,7 @@ async def item_to_detail(item: Document, content: bytes, access: DocumentAccess,
 
 
 def _revision_for(item: Document, *, author_agent_id: int | None, task_id: UUID | None = None, document_content_version: bool | None = True, document_append: bool = False) -> DocumentRevision:
-    return DocumentRevision(document_id=item.id, revision=item.revision, provider_code=item.provider_code, resource_id=item.resource_id, content=item.content, content_hash=item.content_hash, content_type=item.content_type, media_type=item.media_type, content_profile_version=item.content_profile_version, filename=item.filename, title=item.title, keywords=list(item.keywords), metadata_=dict(item.metadata_), temporal=item.temporal, task_id=task_id, author_agent_id=author_agent_id, document_content_version=document_content_version, document_append=document_append)
+    return DocumentRevision(document_id=item.id, revision=item.revision, provider_code=item.provider_code, resource_id=item.resource_id, content=item.content, content_hash=item.content_hash, content_type=item.content_type, media_type=item.media_type, content_profile_version=item.content_profile_version, filename=item.filename, title=item.title, metadata_=dict(item.metadata_), temporal=item.temporal, task_id=task_id, author_agent_id=author_agent_id, document_content_version=document_content_version, document_append=document_append)
 
 
 async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = None, deletion_protected: bool = False, deduplicate: bool = False, owner_user_id: int | None = None, initial_editor_agent_id: int | None = None, workflow_metadata: bool = False) -> tuple[Document, bool]:
@@ -1185,6 +1182,8 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
         db.add(item)
         await db.flush()
         db.add(_revision_for(item, author_agent_id=None if owner_user_id is not None else data.owner_agent_id, task_id=actor_task_id))
+        from .resource_summaries import refresh_pending
+        await refresh_pending(item, content)
         if initial_editor_agent_id is not None:
             if owner_user_id is None:
                 raise ValueError("An initial editor grant requires a human-owned document")
@@ -1231,6 +1230,8 @@ async def refresh_document_search(item: Document, *, content: bytes | None = Non
     if item.summary_resource_id:
         text += "\n" + visible_text((await get_storage(item.summary_provider_code).read(item.summary_resource_id)).decode())
     item.search_text=text
+    from .resource_summaries import refresh_pending
+    await refresh_pending(item, content)
 
 
 def _set_semantic_fingerprint(item: Document) -> None:
@@ -1328,14 +1329,12 @@ async def forget_item_record(item: Document, *, forget_kind: str) -> DocumentDel
     from core.storage import retire_file_references
     await lock_sharing()
     db = get_db()
-    summaries = list(await db.scalars(select(DocumentSummaryRevision).where(
-        DocumentSummaryRevision.document_id == item.id)))
     revisions = list(await db.scalars(select(DocumentRevision).where(DocumentRevision.document_id == item.id)))
     resources = {(item.provider_code, item.resource_id), (item.summary_provider_code, item.summary_resource_id),
-        *((row.provider_code, row.resource_id) for row in [*summaries, *revisions])}
+        *((row.provider_code, row.resource_id) for row in revisions)}
     retired = await retire_file_references(f"document://{item.id}/attachments/")
     resources.update(("native", str(identity)) for identity in retired)
-    for model in (DocumentRevision, DocumentSummaryRevision, DocumentSource):
+    for model in (DocumentRevision, DocumentSource):
         await db.execute(delete(model).where(model.document_id == item.id))
     await db.execute(update(DocumentAttachment).where(DocumentAttachment.document_id == item.id).values(active=False))
     set_committed_value(item, "revisions", [])

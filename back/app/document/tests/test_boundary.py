@@ -46,13 +46,17 @@ async def test_personal_memory_has_no_persisted_policy_and_denies_other_agent(db
 
 
 @pytest.mark.asyncio
-async def test_document_summary_uses_document_rights_and_own_history(db, agents, memory_storage):
-    from app.document import DocumentSummaryRevision
+async def test_document_summary_uses_document_rights_without_content_or_keyword_history(db, agents, memory_storage):
     from app.document.schemas import DocumentPayload,DocumentUpdate
     owner,reader=agents
     document=await document_service.create_document(owner_agent_id=owner.id,title="Synthetic summary source",content="<p>Full source text.</p>",task_id=None)
     await resource_service.update_summary(document.id,DocumentUpdate(payload=DocumentPayload(text="<p>Shared documentary abstract.</p>"),expected_revision=1),actor_agent_id=owner.id)
-    assert await db.scalar(select(DocumentSummaryRevision.content).where(DocumentSummaryRevision.document_id==document.id))=="<p>Shared documentary abstract.</p>"
+    current = await db.get(Document, document.id)
+    assert current.summary_content == "<p>Shared documentary abstract.</p>"
+    assert current.revision == 1
+    assert await db.scalar(select(func.count()).select_from(DocumentRevision).where(DocumentRevision.document_id == document.id)) == 1
+    assert "keywords" not in DocumentRevision.__table__.columns
+
     assert await db.scalar(select(MemoryItem.id).where(MemoryItem.id==document.id)) is None
     with pytest.raises(resource_service.DocumentPermissionError):
         await resource_service.update_summary(document.id,DocumentUpdate(payload=DocumentPayload(text="<p>Denied.</p>")),actor_agent_id=reader.id)

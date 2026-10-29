@@ -199,6 +199,8 @@ class Params:
 
     # Opportunistic, preemptible background maintenance.
     DREAM_ENABLED = "DREAM_ENABLED"
+    DREAM_RESOURCE_SUMMARY_MIN_CHARS = "DREAM_RESOURCE_SUMMARY_MIN_CHARS"
+    DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT = "DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT"
     DREAM_ATTACHMENT_TEXT_ENABLED = "DREAM_ATTACHMENT_TEXT_ENABLED"
     DREAM_ATTACHMENT_DOCUMENT_ENABLED = "DREAM_ATTACHMENT_DOCUMENT_ENABLED"
     DREAM_ATTACHMENT_IMAGE_ENABLED = "DREAM_ATTACHMENT_IMAGE_ENABLED"
@@ -639,6 +641,12 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
         "kind": "integer",
     },
 
+    Params.DREAM_RESOURCE_SUMMARY_MIN_CHARS: {
+        "value": "1000", "runtime_field": "DREAM_RESOURCE_SUMMARY_MIN_CHARS", "kind": "integer"
+    },
+    Params.DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT: {
+        "value": "25", "runtime_field": "DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT", "kind": "float"
+    },
     Params.DREAM_ENABLED: {
         "value": "true", "runtime_field": "DREAM_ENABLED", "kind": "boolean"
     },
@@ -688,7 +696,7 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
         "value": "4000", "runtime_field": "DREAM_EXPERIENCE_MAX_CHARS", "kind": "integer"
     },
     Params.DREAM_POLL_SECONDS: {
-        "value": "60", "runtime_field": "DREAM_POLL_SECONDS", "kind": "float"
+        "value": "1", "runtime_field": "DREAM_POLL_SECONDS", "kind": "float"
     },
     Params.DREAM_FILE_RESCAN_SCHEDULE: {
         "value": "weekly_midnight", "runtime_field": "DREAM_FILE_RESCAN_SCHEDULE", "kind": "string",

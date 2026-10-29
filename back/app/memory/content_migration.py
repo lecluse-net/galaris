@@ -19,7 +19,7 @@ from core.storage import NativeFileStorage
 from .contracts import ResourceNotFoundError
 
 
-TABLES = ("memory_items", "documents", "memory_revisions", "document_revisions", "document_summary_revisions", "memory_summary_revisions")
+TABLES = ("memory_items", "documents", "memory_revisions", "document_revisions", "memory_summary_revisions")
 ARCHIVE = "galaris_migration.memory_text_contents"
 
 

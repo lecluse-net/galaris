@@ -13,6 +13,25 @@ graph does not delete the document. Memories about a document remain private to
 the agent that acquired them.
 
 
+## Current description and keywords
+
+The small **View summary** icon beside the editor title and Topic opens the current summary
+and keywords for reading. Content is refreshed each time it opens. Close with its button,
+Escape or a backdrop click. The dialog also reports missing summaries and offers retry
+after a loading error.
+
+Each Document has one current shared description and current keywords, without separate history.
+Only its content keeps restorable versions; restoring content preserves the current description
+and keywords. Its documentary entry in Memory always shows the current description and no longer
+offers description history.
+
+During idle time, Dream can generate a short explanation of what the Document is and when it is
+useful, with search terms. The default threshold is **more than 1,000 useful text characters**.
+An automatic description is refreshed only after **more than 25%** of the content has changed
+since its last generation; small edits accumulate. HTML presentation changes alone do not count.
+Manual descriptions are preserved. Both thresholds are configurable in Dream settings and also
+apply to Datasets.
+
 ## Write with an agent
 
 The **Conversation** icon in the editor toolbar's **Reading** group opens a panel to the

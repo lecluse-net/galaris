@@ -351,6 +351,8 @@ export const dreamAttachmentFields: SettingField[] = [
 ]
 
 export const dreamFields: SettingField[] = [
+    { name: 'DREAM_RESOURCE_SUMMARY_MIN_CHARS', labelKey: 'dreamSettings.fields.resourceSummaryMinChars', descriptionKey: 'dreamSettings.fields.resourceSummaryMinCharsHint', input: 'number', min: 0, max: 2000000 },
+    { name: 'DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT', labelKey: 'dreamSettings.fields.resourceSummaryChangePercent', descriptionKey: 'dreamSettings.fields.resourceSummaryChangePercentHint', input: 'number', min: 0, max: 100 },
     {
         name: 'DREAM_ENABLED',
         labelKey: 'dreamSettings.fields.enabled',
