@@ -21,6 +21,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'webkit-composer', testMatch: 'chat.spec.mjs', grep: /composer/, use: { browserName: 'webkit' } },
     { name: 'firefox-shortcuts', testMatch: 'document-shortcuts.spec.mjs', use: { browserName: 'firefox' } },
     { name: 'webkit-shortcuts', testMatch: 'document-shortcuts.spec.mjs', use: { browserName: 'webkit' } },
   ],

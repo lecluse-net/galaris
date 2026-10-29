@@ -787,8 +787,8 @@ function handleEnter(event: KeyboardEvent): void {
 function preserveInputFocus(event: Event): void {
   if (!isMobileDevice || document.activeElement !== messageInput.value?.getNativeElement()) return
   // Keep the browser and QBtn's touch focus helper from blurring the textarea.
-  // Touch must retain its default action so the tap still generates a click.
-  if (event.type !== 'touchstart') event.preventDefault()
+  // Touch and pointer events must retain their default action so Safari generates a click.
+  if (event.type === 'mousedown') event.preventDefault()
   event.stopPropagation()
 }
 
