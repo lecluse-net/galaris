@@ -18,6 +18,14 @@ Les personnels ne sont ni des souvenirs ni des Documents. Un package générique
 attribué à plusieurs agents ; un personnel est utilisable uniquement par son propriétaire.
 Pouvoir administrer ce propriétaire ne rend pas ses compétences utilisables par vos autres agents.
 
+Dans une demande, précisez le résultat et les ressources utiles : l'agent reçoit la consigne
+d'appliquer les compétences pertinentes déjà autorisées, y compris ses méthodes personnelles.
+Dans le harness interne, il charge à la demande celles qui ne sont pas déjà présentes, puis lit
+les sections utiles. L'activation rend une compétence disponible ; elle ne garantit pas que le
+modèle la choisira. Pour comprendre un oubli, vérifiez son éligibilité puis la trace d'exécution.
+Une compétence est pertinente lorsque sa méthode sert la demande ; sa présence dans le catalogue
+ne justifie pas de la charger pour une réponse autonome ou un calcul simple sans rapport.
+
 ## Apprendre avec Dream
 
 Dream crée directement un package personnel avec son `SKILL.md`. Sa fiche conserve les preuves,

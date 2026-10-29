@@ -877,6 +877,11 @@ suffixe administrable se règle dans **Préférences** avec `ai.executor-system-
 JSON est construit par le code. Les jeux de données du Lab reprennent les mêmes catégories,
 copient le suffixe courant à leur création puis peuvent le personnaliser et le figer par run.
 
+Ces trois suffixes sont vides par défaut. Le socle commun apporte déjà les consignes de travail
+avec les documents, souvenirs, compétences et URI ; utilisez le suffixe pour les particularités
+de votre instance. Une mise à jour de ce socle ne remplace pas vos ajouts. Un suffixe ancien
+peut toutefois contredire les nouvelles consignes : comparez-le avant d'y recopier un guide complet.
+
 Sur chaque agent, le sélecteur de voix réunit deux familles :
 
 - une ressource TTS active le pipeline STT → agent → TTS et nécessite l’usage

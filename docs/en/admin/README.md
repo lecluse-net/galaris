@@ -855,6 +855,11 @@ administrable suffix is configured in **Preferences** with `ai.executor-system-p
 JSON tree is built by the code. Lab datasets reuse the same categories,
 copy the current suffix when created, then can customize and freeze it per run.
 
+These three suffixes are empty by default. The shared foundation already supplies working
+guidance for documents, memories, skills and URIs; use a suffix for instance-specific needs.
+Updating that foundation does not replace your additions. An older suffix can still conflict
+with new guidance: review it before copying an entire guide into it.
+
 For each Agent, the voice selector combines two families:
 
 - an active TTS resource enables the STT → Agent → TTS pipeline and requires the

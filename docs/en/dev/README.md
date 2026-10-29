@@ -285,6 +285,15 @@ are translated. A customization stores the fingerprint of this default; if the s
 changes, DbAdmin preserves the value and the UI offers the choice of keeping the customization
 or adopting the new default after comparison. Startup always remains non-interactive.
 
+The three executor suffixes and the topic-classification addition remain empty by default:
+the code supplies shared working habits without copying the Galaris guide into every Param.
+The Task/text/voice foundation covers relevant recalled memories, linked resources and authorized
+personal or library skills. The internal harness distinguishes already loaded skills from those
+requiring on-demand loading. Details remain in packages and effective schemas; this guidance
+enables neither disabled historical recall, functions nor permissions. Documents stay current
+through edits to relevant passages: revisions retain history, and replies describe changes only
+when requested or useful for a decision or material limitation.
+
 ### Shared Context, Session, and Durable Memory
 
 `app.agent.context` composes named providers before entering a driver. A provider may
@@ -966,6 +975,11 @@ final plan synthesis. Gateways also recognize Claude families
 configured LLM code retains priority.
 Driver policy remains higher priority than activation:
 configuring a planner model does not activate it for Hermes.
+
+The planner's generation schema requires each step's tools, effort and work-unit shape
+(`steps`, `item_count`, `item_work`, `collection`). Python defaults remain available to
+read historical plans; they do not replace these generation choices. Artifact and delivery
+policies remain server-derived.
 
 The planner produces a mission brief and then a bounded tree. All tasks are
 materialized durably, but only one leaf is activated at a time. Results from previous steps

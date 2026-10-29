@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Annotated, Any, Literal, Optional
-from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 from core.params import runtime_settings
 
 MAX_MECHANICAL_BATCH_ITEMS = 5
@@ -108,6 +108,13 @@ class PlanCollection(BaseModel):
 
 class PlanStep(BaseModel):
     """One recursive plan step, represented as either a leaf or a group."""
+
+    # Model generation must choose the work-unit shape and executable tools.
+    # Python defaults remain for persisted plans and programmatic construction.
+    model_config = ConfigDict(json_schema_extra={
+        "required": ["objective", "label", "effort", "tools", "steps",
+                     "item_count", "item_work", "collection"],
+    })
 
     requirement_ids: list[str] = Field(
         default_factory=list,

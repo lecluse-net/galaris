@@ -137,6 +137,17 @@ def test_plan_derives_intermediate_and_final_delivery_policies() -> None:
     # those values in persisted/API output without asking the model to invent them.
     input_fields = Plan.model_json_schema(mode="validation")["$defs"]["PlanStep"]["properties"]
     output_fields = Plan.model_json_schema(mode="serialization")["$defs"]["PlanStep"]["properties"]
+    generated_step = Plan.model_json_schema(mode="validation")["$defs"]["PlanStep"]
+    # Generation must choose executable work units explicitly. Defaults remain
+    # available to decode stored plans predating these model-facing requirements.
+    assert set(generated_step["required"]) >= {
+        "objective", "label", "effort", "tools", "steps", "item_count", "item_work", "collection",
+    }
+    legacy = Plan.model_validate({"brief": {"objective": "Historical work"},
+        "steps": [{"label": "Historical step", "objective": "Read the source"}]})
+    assert legacy.steps[0].effort == "standard"
+    assert legacy.steps[0].item_count == 1
+    assert legacy.steps[0].collection is None
     for name in ("artifact_policy", "delivery_policy"):
         assert name not in input_fields
         assert name in output_fields

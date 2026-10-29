@@ -224,7 +224,7 @@ class RuntimeSettings(BaseModel):
     # The poll delay starts after an operation ends; it is not a fixed-rate window.
     DREAM_ENABLED: bool = True
     DREAM_RESOURCE_SUMMARY_MIN_CHARS: int = Field(default=1000, ge=0, le=2_000_000)
-    DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT: float = Field(default=25, ge=0, le=100)
+    DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT: float = Field(default=25.0, ge=0, le=100)
     DREAM_ATTACHMENT_TEXT_ENABLED: bool = False
     DREAM_ATTACHMENT_DOCUMENT_ENABLED: bool = False
     DREAM_ATTACHMENT_IMAGE_ENABLED: bool = False

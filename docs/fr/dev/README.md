@@ -293,6 +293,15 @@ l’empreinte de ce défaut ; si le bundle livré change,
 DbAdmin préserve la valeur et l’IHM propose de garder la personnalisation ou d’adopter le nouveau
 défaut après comparaison. Le démarrage reste toujours non interactif.
 
+Les trois suffixes d'exécuteur et l'ajout au classement thématique restent vides par défaut :
+les réflexes communs sont fournis par le code, sans recopier le guide Galaris dans chaque Param.
+Le socle tâche/texte/voix rappelle l'usage des souvenirs pertinents, des ressources déjà liées et
+des compétences personnelles ou génériques autorisées. Le harness interne distingue les compétences
+déjà chargées de celles à charger à la demande. Les détails restent dans les packages et les
+schémas effectifs ; ce rappel n'active ni contexte historique désactivé, ni fonction, ni permission.
+Les documents sont maintenus à jour dans leurs passages : leurs révisions portent l'historique,
+et la réponse ne détaille les modifications que sur demande ou pour une décision ou limite utile.
+
 ### Contexte commun, session et mémoire durable
 
 `app.agent.context` compose des providers nommés avant l'entrée dans un driver. Un provider peut
@@ -990,6 +999,11 @@ Le reçu partagé évite un second classement ; Dream assure le rattrapage en ca
 Les topics manuels/de room restent prioritaires. Le contexte et les outils mémoire consultent
 le topic actualisé lorsqu'il est disponible, sans retarder une réponse pour l'obtenir ni rejouer
 une recherche déjà effectuée. Aucun nouveau réglage n'est nécessaire. Voir l'[ADR 0130](../../../project/decisions/0130-live-message-topic-decisions.md).
+
+Le schéma de génération du planner exige les outils, l'effort et la forme de chaque étape
+(`steps`, `item_count`, `item_work`, `collection`). Les valeurs Python par défaut restent
+disponibles pour relire les anciens plans ; elles ne remplacent pas ces choix lors de la
+génération. Les politiques d'artefact et de livraison restent calculées par le serveur.
 
 Le planner produit un brief de mission puis un arbre borné. Toutes les tâches sont
 matérialisées durablement, mais une seule feuille est activée à la fois. Les résultats des

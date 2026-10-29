@@ -18,6 +18,14 @@ Personal skills are separate from memories and Documents. Generic packages can b
 to multiple agents; personal packages are usable only by their owner. Administration of
 that owner does not make their skills usable by your other agents.
 
+In a request, describe the outcome and useful resources: agents are instructed to apply
+relevant authorized skills, including their personal methods. In the internal harness, they
+load deferred skills when needed and read the relevant sections. Activation makes a skill
+available; it does not guarantee the model will choose it. To investigate an omission, check
+eligibility and then the execution trace.
+A skill is relevant when its method serves the request; appearing in the catalog is not a
+reason to load it for an unrelated self-contained answer or simple calculation.
+
 ## Learn with Dream
 
 Dream creates a personal package containing its canonical `SKILL.md`. The package detail shows

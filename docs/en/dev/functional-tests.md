@@ -1581,12 +1581,22 @@ competing objects within one provider response.
 `back/app/agent/tests/test_prompt_tree.py` verifies that the document revision policy reaches
 Task, text and voice executors, including with a custom personality and without a loaded skill.
 The same guarantee covers direct URI use and actual authorization states.
+It also covers guidance to use relevant memories and personal or library skills without
+loading the full guide into the foundation. The `core/params` tests cover canonical sources
+and preservation of customizations when a packaged default changes.
 `app/conversation/tests/test_task_objective.py` verifies delivery to objective preparation
 without imposing an unrequested browser method. The authorization-wait scenario in
 `app/task/tests/test_agent_run_trace.py` also verifies, in the database, that resumed success
 or failure clears old request UUIDs from current data while preserving the historical attempt.
 This proves instruction delivery; it does not measure a model's editorial quality after
 successive updates to the same document.
+
+`test_plan_derives_intermediate_and_final_delivery_policies` also verifies that the generation
+schema requires executable-step fields while historical plans remain readable. Lab checks
+every leaf's tools, including inside groups: with a supplied catalog, a leaf without tools or
+with an unavailable function cannot qualify. These checks prove neither model choices nor
+business effects; real-model comparisons retain outputs and criteria separately from
+deterministic tests.
 
 `back/app/lab/tests/test_executor_outcomes.py` protects useful effects: the effective inventory,
 valid native arguments, matching tool receipts, refused writes, causal order, revisions and

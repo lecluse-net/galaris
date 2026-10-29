@@ -55,6 +55,28 @@ def test_planner_limits_use_depth_and_leaves(max_depth, max_leaves, permitted):
     assert all(check["passed"] for check in checks) is permitted
 
 
+@pytest.mark.parametrize("tools,group,permitted", [
+    (["file_read"], False, True),
+    ([], False, False),
+    (["unavailable_tool"], False, False),
+    (["file_read"], True, True),
+    ([], True, False),
+])
+def test_planner_checks_require_usable_tools_for_every_executable_leaf(tools, group, permitted):
+    from app.lab.objective_checks import check_output
+
+    _, native = resolve_input("planner", LabInput(variable_value="Read the known source"), {
+        "tool_catalog": [{"name": "file_read"}],
+    })
+    leaf = {"label": "Read", "objective": "Read the known source", "tools": tools}
+    step = {"label": "Group", "objective": "Read sources", "steps": [leaf]} if group else leaf
+    checks = check_output("planner", native, {
+        "brief": {"objective": "Read the known source"}, "steps": [step],
+    })
+
+    assert all(check["passed"] for check in checks) is permitted
+
+
 def test_one_variable_and_context_scope():
     value = LabInput(variable_value="Prepare the report")
     resolved, native = resolve_input("planner", value, {"language": "en", "max_leaves": 7, "max_nodes": 1})

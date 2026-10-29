@@ -1655,12 +1655,22 @@ comptes réels ni plusieurs objets concurrents dans une même réponse fournisse
 `back/app/agent/tests/test_prompt_tree.py` vérifie que la politique de révision documentaire
 atteint les exécuteurs tâche, texte et voix, même avec une personnalité personnalisée et sans
 compétence chargée, comme les consignes d'usage direct des URI et d'état réel des autorisations.
+La même vérification couvre le rappel des souvenirs pertinents et des compétences personnelles
+ou génériques, sans charger le guide complet dans le socle. Les tests de `core/params` couvrent
+les sources canoniques et la conservation des personnalisations lors d'un changement de défaut.
 `app/conversation/tests/test_task_objective.py` vérifie leur transmission à la préparation
 d'objectif sans imposer de méthode navigateur non demandée. Le scénario d'attente de
 `app/task/tests/test_agent_run_trace.py` vérifie aussi, en base, le retrait des anciens UUIDs
 de l'état courant après succès ou échec repris, en conservant la tentative historique.
 Cette preuve porte sur la transmission des consignes ; elle ne mesure pas la
 qualité éditoriale d'un modèle après plusieurs mises à jour du même document.
+
+`test_plan_derives_intermediate_and_final_delivery_policies` vérifie aussi que le schéma
+de génération exige les champs d'une étape exécutable tout en relisant les anciens plans.
+Le Lab contrôle les outils de chaque feuille, y compris dans les groupes : avec un catalogue
+fourni, une feuille sans outils ou avec une fonction absente ne peut pas être qualifiée.
+Ces contrôles ne prouvent ni le choix du modèle ni un effet métier réel ; les comparaisons
+avec un modèle réel conservent leurs sorties et leurs critères séparément des tests déterministes.
 
 `back/app/lab/tests/test_executor_outcomes.py` protège les effets utiles : inventaire effectif,
 arguments natifs valides, reçus correspondant aux appels, refus d'écriture, ordre causal,

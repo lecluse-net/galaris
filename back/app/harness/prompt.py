@@ -11,9 +11,12 @@ if TYPE_CHECKING:
 
 
 _SKILLS_GUIDE = """
-Specialized instructions are available as deferred capabilities. Review their descriptions and,
-when one matches the current request, call `load_capability` before acting. Follow the loaded
-skill instructions for the rest of the run. Do not load unrelated skills.
+Your authorized personal and library skills appear in the capability catalog. When a deferred
+skill matches the work, call `load_capability` before acting; apply already loaded skills directly.
+Match the described method to the request; availability alone is not a reason to load it.
+Use supplied facts directly for simple self-contained answers. Read only relevant guide sections.
+Skill loading does not grant tools or permissions.
+Do not load unrelated skills.
 """.strip()
 
 

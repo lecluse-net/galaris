@@ -81,6 +81,30 @@ def check_output(mechanism: str, native: Any, output: Any, *, expected: object =
             native["can_clarify"] or not output.get("clarification_questions"),
             "Clarification requires permission",
         )
+        if native.get("tool_catalog"):
+            allowed = {tool["name"] for tool in native["tool_catalog"]
+                       if isinstance(tool.get("name"), str)}
+
+            def usable_tools(steps: list[dict[str, Any]]) -> bool:
+                for step in steps:
+                    tools = step.get("tools", [])
+                    if not set(tools) <= allowed:
+                        return False
+                    children = step.get("steps", [])
+                    if children:
+                        if not usable_tools(children):
+                            return False
+                    elif not tools:
+                        return False
+                    collection = step.get("collection")
+                    if collection and not set(collection["inventory_tools"]) <= allowed:
+                        return False
+                return True
+
+            check(
+                "plan_tool_selection", usable_tools(output.get("steps", [])),
+                "Every executable leaf declares usable tools from the supplied catalog",
+            )
     elif mechanism == "memory_extraction":
         allowed = {str(memory["id"]) for memory in native["existing_memories"]}
         targets = [
