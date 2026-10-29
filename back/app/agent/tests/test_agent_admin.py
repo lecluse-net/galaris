@@ -133,8 +133,18 @@ async def test_team_management_creates_in_scope_and_rechecks_membership(db, admi
     with pytest.raises(PermissionError):
         await agent_mcp.agent_update(ctx, outsider.id, AdminAgentUpdate(job_title="Forbidden"))
     created = await agent_mcp.agent_create(ctx, AdminAgentCreate(user_id=owner.id, title_id=title.id,
-        group_id=team.id, code=f"team-created-{uuid4().hex}", first_name="Synthetic colleague"))
+        team_ids=[team.id], code=f"team-created-{uuid4().hex}", first_name="Synthetic colleague"))
     assert created["team_ids"] == [team.id]
+    other_team = TeamModel(name="Synthetic unrelated team")
+    db.add(other_team)
+    await db.flush()
+    extra_membership = AgentTeam(agent_id=admin_subject.id, team_id=other_team.id)
+    db.add(extra_membership)
+    await db.commit()
+    with pytest.raises(PermissionError):
+        await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(team_ids=[team.id]))
+    await db.delete(extra_membership)
+    await db.commit()
     with pytest.raises(PermissionError):
         await agent_mcp.agent_create(ctx, AdminAgentCreate(user_id=owner.id, title_id=title.id,
             code=f"outside-created-{uuid4().hex}", first_name="Outside team"))
@@ -582,14 +592,14 @@ async def test_shared_references_and_membership_preserve_legacy_consistency(db, 
     title = await agent_mcp.agent_title_update(ctx, title["id"], TitleUpdate(label="Synthetic Professor"))
     group = await agent_mcp.agent_group_create(ctx, AgentGroupCreate(name="Synthetic astronomy team"))
     group = await agent_mcp.agent_group_update(ctx, group["id"], AgentGroupUpdate(name="Synthetic observers", order=4))
-    await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(title_id=title["id"], group_id=group["id"]))
+    await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(title_id=title["id"], team_ids=[group["id"]]))
     for _ in range(2):
         member = await agent_mcp.agent_team_set(ctx, admin_subject.id, group["id"], True)
         assert member["team_ids"] == [group["id"]]
     with pytest.raises(ValueError, match="referenced"):
         await agent_mcp.agent_title_delete(ctx, title["id"])
     member = await agent_mcp.agent_team_set(ctx, admin_subject.id, group["id"], False)
-    assert member["group_id"] is None and member["team_ids"] == []
+    assert member["team_ids"] == []
     await agent_mcp.agent_team_set(ctx, admin_subject.id, group["id"], True)
     await agent_mcp.agent_group_delete(ctx, group["id"])
     assert (await agent_service.get(admin_subject.id)).team_ids == []

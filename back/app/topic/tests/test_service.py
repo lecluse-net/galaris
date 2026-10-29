@@ -759,7 +759,6 @@ async def test_list_page_includes_related_participants_teams_and_documents(
             last_name="Relations",
             code=f"topic-relations-{suffix}",
             agent_driver="internal",
-            group_id=shared_team.id,
         )
         db.add(agent)
         await db.flush()
@@ -847,11 +846,11 @@ async def test_list_page_includes_related_participants_teams_and_documents(
             first_name="Bob",
             last_name="Relations",
             code=f"topic-other-{suffix}",
-            group_id=other_team.id,
         )
         db.add(other_agent)
         await db.flush()
         db.add_all([
+            AgentTeam(agent_id=other_agent.id, team_id=other_team.id),
             AgentTeam(agent_id=other_agent.id, team_id=shared_team.id),
             Task(label="Other work", agent_id=other_agent.id, topic_id=topic.id),
         ])

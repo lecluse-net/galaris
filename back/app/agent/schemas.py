@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from core.util import normalize_html
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 from typing import Optional, cast
@@ -58,7 +60,6 @@ class AgentGroup(AgentGroupBase):
 # Agent schemas
 class AgentBase(BaseModel):
     title_id: int
-    group_id: Optional[int] = None
     code: str
     first_name: str
     last_name: str
@@ -88,12 +89,15 @@ class HumanApprovalFields(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def reject_approval_settings(cls, value: object) -> object:
+        if isinstance(value, dict) and "group_id" in value:
+            raise ValueError("group_id has been removed; use team_ids")
         if isinstance(value, dict) and ("yolo" in value or "authorization_version" in value):
             raise ValueError("Agent approval settings cannot be changed through the Agent API")
         return cast(object, value)
 
 
 class AgentCreate(AgentBase, HumanApprovalFields):
+    team_ids: list[int] = Field(default_factory=list[int])
     user_id: Optional[int] = None
     first_name: str = Field(min_length=1, pattern=r"\S")
     last_name: str = ""
@@ -115,9 +119,9 @@ class AgentCreate(AgentBase, HumanApprovalFields):
 
 
 class AgentUpdate(HumanApprovalFields):
+    team_ids: list[int] = Field(default_factory=list[int])
     user_id: Optional[int] = None
     title_id: Optional[int] = None
-    group_id: Optional[int] = None
     code: Optional[str] = None
     first_name: Optional[str] = Field(default=None, min_length=1, pattern=r"\S")
     last_name: Optional[str] = None
@@ -186,7 +190,6 @@ class LlmProfileInfo(BaseModel):
 
 class Agent(AgentBase):
     team_ids: list[int] = Field(default_factory=list[int])
-    profile_media_type: str = "text/html"
     content_profile: str = "rich-text"
     content_profile_version: int = 1
     id: int
@@ -196,7 +199,7 @@ class Agent(AgentBase):
     memory_item_id: Optional[UUID] = None
     title: Optional[Title] = None
     has_avatar: bool = False
-    avatar_revision: int = 0
+    updated_at: datetime | None = None
     is_owner: bool = False
     profile: Optional[LlmProfileInfo] = None
     fallback_profile: Optional[LlmProfileInfo] = None

@@ -100,9 +100,9 @@ def test_injection_without_context_does_not_configure_context_or_compression(
 
 def test_dashboard_basic_auth_is_injected() -> None:
     agent = SimpleNamespace(
-        hermes_dashboard_enabled=True,
-        hermes_dashboard_username="admin",
-        hermes_dashboard_password_hash="scrypt$16384$8$1$salt$digest",
+        dashboard_enabled=True,
+        dashboard_username="admin",
+        dashboard_password_hash="scrypt$16384$8$1$salt$digest",
     )
     config: dict = {}
 
@@ -117,15 +117,15 @@ def test_dashboard_basic_auth_is_injected() -> None:
 def test_dashboard_enabled_without_port_sets_env_but_does_not_expose_port() -> None:
     agent = SimpleNamespace(
         code="agent-test",
-        hermes_api_key=None,
-        hermes_api_port=None,
-        hermes_dashboard_enabled=True,
-        hermes_dashboard_port=None,
-        hermes_compose=None,
+        api_key=None,
+        api_port=None,
+        dashboard_enabled=True,
+        dashboard_port=None,
+        compose=None,
     )
 
     env = _default_env_dict(agent)
-    compose = _build_compose_dict(agent, uid=1000, gid=1000)
+    compose = _build_compose_dict(agent.code, agent, uid=1000, gid=1000)
 
     assert env["DASHBOARD"] == "1"
     assert "ports" not in compose["services"]["agent"]
@@ -135,14 +135,14 @@ def test_dashboard_enabled_without_port_sets_env_but_does_not_expose_port() -> N
 def test_managed_compose_preserves_operator_network_defaults() -> None:
     agent = SimpleNamespace(
         code="agent-test",
-        hermes_api_port=8643,
-        hermes_dashboard_enabled=False,
-        hermes_dashboard_port=None,
-        hermes_compose=None,
+        api_port=8643,
+        dashboard_enabled=False,
+        dashboard_port=None,
+        compose=None,
     )
 
     compose = _build_compose_dict(
-        agent,
+        agent.code, agent,
         uid=1000,
         gid=1000,
         default_compose=(

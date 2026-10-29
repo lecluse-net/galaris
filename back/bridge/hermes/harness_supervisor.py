@@ -4,7 +4,6 @@ from typing import Literal
 
 from app.agent import Agent
 
-from . import config_service
 from .manager import HermesAgent, manager
 
 type HarnessAction = Literal["start", "stop", "restart", "update"]
@@ -29,7 +28,6 @@ class HermesHarnessSupervisor:
         )
 
     async def _runtime(self, agent: Agent) -> HermesAgent:
-        await config_service.hydrate_agent(agent)
         return manager.get_agent(agent)
 
     async def status(self, agent: Agent) -> str:

@@ -114,6 +114,7 @@
           "back/app/agent/dialogue_service.py",
           "back/app/agent/janus.py",
           "back/app/agent/management_scope.py",
+          "back/app/agent/mcp.py",
           "back/app/agent/models.py",
           "back/app/agent/openai_service.py",
           "back/app/agent/planner_service.py",
@@ -164,6 +165,7 @@
       },
       {
         "files": [
+          "back/app/agent/defaults.py",
           "back/app/agent/dispatcher.py",
           "back/app/agent/executor_service.py",
           "back/app/agent/facade.py",
@@ -5114,7 +5116,6 @@
         "files": [
           "back/bridge/hermes/agent_driver.py",
           "back/bridge/hermes/checkpoint_policy.py",
-          "back/bridge/hermes/config_service.py",
           "back/bridge/hermes/driver.py",
           "back/bridge/hermes/executor.py",
           "back/bridge/hermes/harness_provider.py",
@@ -5241,6 +5242,13 @@
       },
       {
         "files": [
+          "back/bridge/hermes/dbadmin.py"
+        ],
+        "source": "bridge.hermes",
+        "target": "core.dbadmin"
+      },
+      {
+        "files": [
           "back/bridge/hermes/client.py",
           "back/bridge/hermes/config_service.py",
           "back/bridge/hermes/executor.py",
@@ -5266,6 +5274,7 @@
         "files": [
           "back/bridge/hermes/client.py",
           "back/bridge/hermes/config_service.py",
+          "back/bridge/hermes/dbadmin.py",
           "back/bridge/hermes/executor.py",
           "back/bridge/hermes/harness_provider.py",
           "back/bridge/hermes/kanban.py",
@@ -7757,7 +7766,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_avatar_delete",
-        "line": 103,
+        "line": 112,
         "module": "app.agent",
         "name": "agent_avatar_delete",
         "namespace": "agent_admin"
@@ -7765,7 +7774,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_avatar_generate",
-        "line": 218,
+        "line": 227,
         "module": "app.agent",
         "name": "agent_avatar_generate",
         "namespace": "agent_admin"
@@ -7773,7 +7782,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_avatar_set",
-        "line": 193,
+        "line": 202,
         "module": "app.agent",
         "name": "agent_avatar_set",
         "namespace": "agent_admin"
@@ -7853,7 +7862,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_create",
-        "line": 57,
+        "line": 59,
         "module": "app.agent",
         "name": "agent_create",
         "namespace": "agent_admin"
@@ -7861,7 +7870,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_delete",
-        "line": 86,
+        "line": 95,
         "module": "app.agent",
         "name": "agent_delete",
         "namespace": "agent_admin"
@@ -7869,7 +7878,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_create",
-        "line": 165,
+        "line": 174,
         "module": "app.agent",
         "name": "agent_group_create",
         "namespace": "agent_admin"
@@ -7877,7 +7886,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_delete",
-        "line": 183,
+        "line": 192,
         "module": "app.agent",
         "name": "agent_group_delete",
         "namespace": "agent_admin"
@@ -7885,7 +7894,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_list",
-        "line": 159,
+        "line": 168,
         "module": "app.agent",
         "name": "agent_group_list",
         "namespace": "agent_admin"
@@ -7893,7 +7902,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_update",
-        "line": 171,
+        "line": 180,
         "module": "app.agent",
         "name": "agent_group_update",
         "namespace": "agent_admin"
@@ -7957,7 +7966,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_options",
-        "line": 97,
+        "line": 106,
         "module": "app.agent",
         "name": "agent_options",
         "namespace": "agent_admin"
@@ -7965,7 +7974,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_team_list",
-        "line": 111,
+        "line": 120,
         "module": "app.agent",
         "name": "agent_team_list",
         "namespace": "agent_admin"
@@ -7973,7 +7982,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_team_set",
-        "line": 118,
+        "line": 127,
         "module": "app.agent",
         "name": "agent_team_set",
         "namespace": "agent_admin"
@@ -7981,7 +7990,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_create",
-        "line": 132,
+        "line": 141,
         "module": "app.agent",
         "name": "agent_title_create",
         "namespace": "agent_admin"
@@ -7989,7 +7998,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_delete",
-        "line": 150,
+        "line": 159,
         "module": "app.agent",
         "name": "agent_title_delete",
         "namespace": "agent_admin"
@@ -7997,7 +8006,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_list",
-        "line": 126,
+        "line": 135,
         "module": "app.agent",
         "name": "agent_title_list",
         "namespace": "agent_admin"
@@ -8005,7 +8014,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_update",
-        "line": 138,
+        "line": 147,
         "module": "app.agent",
         "name": "agent_title_update",
         "namespace": "agent_admin"
@@ -8021,7 +8030,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_update",
-        "line": 69,
+        "line": 74,
         "module": "app.agent",
         "name": "agent_update",
         "namespace": "agent_admin"
@@ -9996,7 +10005,6 @@
         "class_name": "Agent",
         "file": "back/app/agent/models.py",
         "foreign_keys": [
-          "agent_groups.id",
           "harnesses.id",
           "llm_profiles.id",
           "memory_items.id",
@@ -10853,7 +10861,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 73,
+        "line": 72,
         "module": "bridge.hermes",
         "table": "hermes_session_bindings"
       },
@@ -18171,7 +18179,7 @@
         "declared_path": "/hermes/configurations",
         "file": "back/bridge/hermes/router.py",
         "handler": "list_hermes_configurations",
-        "line": 66,
+        "line": 65,
         "method": "GET",
         "module": "bridge.hermes"
       },
@@ -18180,7 +18188,7 @@
         "declared_path": "/hermes/configurations/{id}",
         "file": "back/bridge/hermes/router.py",
         "handler": "update_hermes_configuration",
-        "line": 84,
+        "line": 83,
         "method": "PUT",
         "module": "bridge.hermes"
       },
@@ -19359,7 +19367,7 @@
         "declared_path": "/memory/provider/remember",
         "file": "back/bridge/hermes/router.py",
         "handler": "hermes_provider_remember",
-        "line": 151,
+        "line": 150,
         "method": "POST",
         "module": "bridge.hermes"
       },
@@ -19368,7 +19376,7 @@
         "declared_path": "/memory/provider/search",
         "file": "back/bridge/hermes/router.py",
         "handler": "hermes_provider_search",
-        "line": 127,
+        "line": 126,
         "method": "POST",
         "module": "bridge.hermes"
       },

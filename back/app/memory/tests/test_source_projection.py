@@ -95,8 +95,8 @@ async def test_agent_markdown_is_deterministic_and_excludes_runtime_secrets(
     owner.personality = "Pragmatique et précis."
     owner.job_title = "Responsable SRE"
     owner.job_description = "Pilote la fiabilité; password=hunter2"
-    owner.hermes_api_key = "must-never-appear"
-    owner.hermes_mcp_token = "also-private"
+    from bridge.hermes.models import HermesAgentConfig
+    db.add(HermesAgentConfig(agent_id=owner.id, api_key="must-never-appear", mcp_token="also-private"))
     await db.commit()
     loaded = await db.scalar(
         select(Agent)
@@ -104,7 +104,7 @@ async def test_agent_markdown_is_deterministic_and_excludes_runtime_secrets(
         .execution_options(populate_existing=True)
     )
     assert loaded is not None
-    await db.refresh(loaded, attribute_names=["title"])
+    await db.refresh(loaded, attribute_names=["title", "teams"])
 
     first = agent_to_markdown(loaded)
     second = agent_to_markdown(loaded)

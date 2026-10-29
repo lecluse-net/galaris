@@ -31,7 +31,7 @@ async def read_agent_resource(agent_id: int, *, actor_agent_id: int) -> dict[str
         "job_title": agent.job_title,
         "job_description": agent.job_description,
         "personality": agent.personality,
-        "media_type": agent.profile_media_type,
+        "media_type": "text/html",
         "content_profile": "rich-text",
         "content_profile_version": 1,
         "resource_uri": f"galaris://agent/{agent.id}",

@@ -13,8 +13,9 @@ imbrication. Les équipes ne deviennent pas des rôles RBAC.
 
 La table historique `agent_groups` conserve ses identifiants et ses références. L’action
 DbAdmin `app.agent.team_memberships` reprend les appartenances `agents.group_id` dans
-`agent_teams` de façon idempotente. Le champ historique reste compatible avec les anciens
-clients ; les nouvelles interfaces utilisent les appartenances multiples. Aucun humain
+`agent_teams` de façon idempotente avant de supprimer l'ancienne colonne.
+Les contrats de création et de modification utilisent `team_ids` et les interfaces
+utilisent les appartenances multiples. Aucun humain
 n’est ajouté automatiquement à une équipe lors de cette reprise.
 
 ## Résolution

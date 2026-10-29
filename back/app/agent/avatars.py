@@ -6,7 +6,7 @@ import json
 import warnings
 
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from core.database import get_db
 from .models import Agent, Title
@@ -60,7 +60,7 @@ async def portrait_snapshot(agent: Agent, *, lock_title: bool = False) -> dict[s
                    "gender": title.gender if title else None, "personality": agent.personality,
                    "job_title": agent.job_title, "job_description": agent.job_description,
                    "manager": agent.user_id}
-    return {"target_id": agent.id, "avatar_revision": agent.avatar_revision,
+    return {"target_id": agent.id, "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
             "fingerprint": hashlib.sha256(json.dumps(description, sort_keys=True).encode()).hexdigest(),
             "description": description}
 
@@ -75,11 +75,12 @@ async def apply_generated_avatar(target_id: int, content: bytes, snapshot: dict[
     if agent is None:
         raise LookupError("Agent not found")
     current = await portrait_snapshot(agent, lock_title=True)
-    if (current["fingerprint"] != snapshot["fingerprint"]
-            or current["avatar_revision"] != snapshot["avatar_revision"]):
+    if ("updated_at" not in snapshot
+            or current["fingerprint"] != snapshot["fingerprint"]
+            or current["updated_at"] != snapshot["updated_at"]):
         raise AvatarConflictError("Avatar conflict: the target profile or avatar changed after admission")
     agent.avatar = content
-    agent.avatar_revision += 1
+    agent.updated_at = func.clock_timestamp()
     await get_db().flush()
     return {"agent_id": target_id, "resource_uri": f"galaris://agent/{target_id}",
-            "status": "success", "registered": True, "avatar_revision": agent.avatar_revision}
+            "status": "success", "registered": True}

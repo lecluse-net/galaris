@@ -44,7 +44,9 @@ async def get_agent(ctx: McpToolContext, agent_id: int) -> str:
 
 
 from typing import Any, Literal
+from sqlalchemy import select
 
+from core.database import get_db
 from core.team import notify_team_access_changed
 from .admin_authorization import delegated_admin
 from .admin_schemas import AdminAgentCreate, AdminAgentUpdate, PageLimit, PageOffset
@@ -58,7 +60,10 @@ async def agent_create(ctx: McpToolContext, configuration: AdminAgentCreate) -> 
     async with delegated_admin(ctx.agent_id, "agent_create", "AGENT_EDIT") as grant:
         assert configuration.user_id is not None
         grant.manager_change(None, configuration.user_id)
-        await grant.team(configuration.group_id)
+        if grant.delegation_level != "all" and not configuration.team_ids:
+            raise PermissionError("A new agent must belong to a delegated team")
+        for team_id in configuration.team_ids:
+            await grant.team(team_id)
         if configuration.agent_driver != INTERNAL_HARNESS.code:
             raise ValueError("Create with the internal Harness before selecting another")
         created = await agent_service.create(configuration, actor_user_id=grant.manager.id)
@@ -71,8 +76,12 @@ async def agent_update(ctx: McpToolContext, agent_id: int, changes: AdminAgentUp
         raise ValueError("Code and Harness cannot be updated here")
     async with delegated_admin(ctx.agent_id, "agent_update", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
-        if "group_id" in changes.model_fields_set:
-            await grant.team(changes.group_id)
+        if "team_ids" in changes.model_fields_set:
+            from .models import Agent, AgentTeam
+            await get_db().scalar(select(Agent.id).where(Agent.id == agent_id).with_for_update())
+            previous = set(await get_db().scalars(select(AgentTeam.team_id).where(AgentTeam.agent_id == agent_id)))
+            for team_id in previous ^ set(changes.team_ids):
+                await grant.team(team_id)
         if "user_id" in changes.model_fields_set:
             assert changes.user_id is not None
             if not grant.scope.is_global:

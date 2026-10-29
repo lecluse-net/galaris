@@ -88,7 +88,7 @@ test('AgentAdmin creates an agent and generated portraits remain visible after r
     }).toBe(true)
   }
   const read = await (await request.get(`/api/agents/${target.id}`, { headers })).json()
-  expect(read.avatar_revision).toBe(2)
+  expect(read.has_avatar).toBe(true)
   expect(read.personality).toBe('<p>Observatrice patiente.</p>')
   await request.post(`${prefix}/revoke`)
   expect((await invoke('agent_tool_list', { agent_id: target.id })).is_error).toBe(true)
@@ -165,7 +165,7 @@ test('the avatar button uses the default image profile and refreshes the portrai
   await expect(dialog.locator('.agent-dialog-avatar img')).toHaveJSProperty('naturalWidth', 500)
   await page.keyboard.press('Escape')
   const saved = await (await request.get(`/api/agents/${target.id}`, { headers })).json()
-  expect(saved.avatar_revision).toBe(1)
+  expect(saved.has_avatar).toBe(true)
   expect(saved.first_name).toBe('Lyra')
   expect(pageErrors()).toEqual([])
 })

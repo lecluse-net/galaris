@@ -377,8 +377,8 @@ le harnais interne, le profil courant par défaut, les connexions `galaris_admin
 `skills` et `chat` actives avec `tools.management_scope=all` et les compétences
 `galaris-lab` et `galaris-knowledge` autorisées individuellement. Leur défaut global reste désactivé.
 S'il n'y a pas encore d'administrateur, la première inscription rejoue ce même dataset.
-Le marqueur interne `agents.initialization_key` est conservé après renommage et
-suppression logique : les synchronisations suivantes ne recréent pas cet agent et
+Le paramètre global interne `galaris.agent_id` conserve l'identifiant de cet agent après
+renommage et suppression : les synchronisations suivantes ne recréent pas cet agent et
 ne rétablissent ni ses réglages ni les droits révoqués. Ce comportement s'applique
 aussi aux installations existantes. Voir la [décision 0135](../../../project/decisions/0135-default-galaris-agent.md).
 

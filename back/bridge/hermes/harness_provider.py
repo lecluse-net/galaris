@@ -52,7 +52,6 @@ class HermesHarnessProvider:
         runtime = manager.get_agent(agent)
         await runtime.create()
         await runtime.sync()
-        await config_service.hydrate_agent(agent)
         snapshot = await config_service.execution_snapshot(agent)
         return HarnessProvisioningResult(
             base_url=str(snapshot.get("url") or "") or None,
@@ -67,15 +66,12 @@ class HermesHarnessProvider:
         request: HarnessProvisioningRequest,
     ) -> None:
         del request
-        await config_service.hydrate_agent(agent)
         await manager.get_agent(agent).delete()
 
     async def status(self, agent: Agent) -> str:
-        await config_service.hydrate_agent(agent)
         return await manager.get_agent(agent).get_status()
 
     async def run_action(self, agent: Agent, action: HarnessAction) -> str:
-        await config_service.hydrate_agent(agent)
         runtime = manager.get_agent(agent)
         if action == "start":
             return await runtime.start()
@@ -89,7 +85,6 @@ class HermesHarnessProvider:
         return "synchronized"
 
     async def logs(self, agent: Agent, lines: int) -> list[str]:
-        await config_service.hydrate_agent(agent)
         return await manager.get_agent(agent).get_logs(lines)
 
 

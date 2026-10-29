@@ -50,7 +50,7 @@ class AdminDelegation:
         caller = await get_db().scalar(select(Agent).where(Agent.id == self.caller_id)
                                        .execution_options(populate_existing=True))
         affects_caller = caller is not None and (
-            caller.title_id == identity if title else caller.group_id == identity or bool(
+            caller.title_id == identity if title else bool(
                 await get_db().scalar(select(AgentTeam.id).where(
                     AgentTeam.agent_id == self.caller_id, AgentTeam.team_id == identity))))
         if affects_caller:

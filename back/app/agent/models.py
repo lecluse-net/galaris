@@ -1,8 +1,8 @@
 from typing import Optional, TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import String, Text, ForeignKey, CHAR, LargeBinary, Boolean, Integer, UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
+from sqlalchemy import String, Text, ForeignKey, CHAR, LargeBinary, Integer, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from core.util import normalize_html
 from core.database import Base, HistoryMixin
@@ -58,15 +58,11 @@ class Agent(HistoryMixin, Base):
         index=True,
     )
     title_id: Mapped[int] = mapped_column(ForeignKey("titles.id"), nullable=False)
-    group_id: Mapped[Optional[int]] = mapped_column(ForeignKey("agent_groups.id"), nullable=True, index=True)
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-    profile_media_type: Mapped[str] = mapped_column(String(40), default="text/html", server_default="text/markdown")
-    profile_legacy_source: Mapped[dict[str, str | None] | None] = mapped_column(JSONB, nullable=True)
 
     @validates("personality", "job_description")
     def validate_profile_html(self, key: str, value: str | None) -> str | None:
-        self.profile_media_type = "text/html"
         return normalize_html(value) if value is not None else None
 
     personality: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -88,7 +84,6 @@ class Agent(HistoryMixin, Base):
         index=True,
     )
     avatar: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
-    avatar_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     # Transient API flag populated without loading avatar bytes.
     has_avatar: bool = False
     team_ids: list[int] = []
@@ -108,38 +103,16 @@ class Agent(HistoryMixin, Base):
     # Exact value emitted by the single Voice/TTS picker.
     voice: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     code: Mapped[str] = mapped_column(String(50), nullable=False, index=True, unique=True)
-    # Internal seed identity, deliberately absent from editable API schemas.
-    # HistoryMixin retains it after deletion so defaults are never recreated.
-    initialization_key: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, unique=True)
-    # Contraction-only compatibility columns. No Agent API or service reads or writes
-    # these values; bridge.hermes imports them only when a driver-owned row is missing.
-    hermes_url: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
-    hermes_api_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
-    hermes_model: Mapped[str] = mapped_column(String, nullable=False, default="hermes-agent", server_default="hermes-agent")
-    hermes_use_galaris_llm: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        default=True,
-        server_default="true",
-    )
-    hermes_api_port: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
-    hermes_dashboard_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
-    hermes_dashboard_port: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
-    hermes_dashboard_username: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
-    hermes_dashboard_password_hash: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
-    hermes_config: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
-    hermes_compose: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
-    hermes_mcp_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
-    hermes_data_env: Mapped[dict[str, str]] = mapped_column(
-        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
-    )
 
     title: Mapped["Title"] = relationship("Title", back_populates="agents")
     user: Mapped["User"] = relationship(
         "User",
         foreign_keys=[user_id],
     )
-    group: Mapped[Optional[AgentGroup]] = relationship(AgentGroup)
+    teams: Mapped[list[AgentGroup]] = relationship(
+        AgentGroup, secondary=AgentTeam.__table__, viewonly=True,
+        order_by=lambda: (AgentGroup.order, AgentGroup.name, AgentGroup.id),
+    )
     skill_assignments: Mapped[list["AgentSkill"]] = relationship(
         "AgentSkill",
         back_populates="agent",

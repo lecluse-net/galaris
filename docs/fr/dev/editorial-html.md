@@ -339,8 +339,10 @@ Les actions sont `app.memory.editorial_html`, `app.agent.editorial_html`,
 `app.task.editorial_html`. Elles sont déclenchées par leurs deltas de colonne, traitent au plus
 500 objets par lot et restent différées tant que leur postcondition n’est pas satisfaite.
 Répéter la synchronisation pour les ensembles plus grands. Les sources Memory restent dans
-les révisions immuables ; `profile_legacy_source` et `objective_legacy_source` conservent les
-champs antérieurs d’Agent et tâche. Les liens anciens invalides perdent leur caractère cliquable,
+les révisions immuables ; `objective_legacy_source` conserve les champs antérieurs des tâches.
+Les profils Agent sont toujours en HTML : leur format et leur ancienne copie source ne sont
+plus stockés séparément. DbAdmin convertit les profils restants avant de retirer ces colonnes.
+Les liens anciens invalides perdent leur caractère cliquable,
 avec avertissement et destination conservée dans la source historique. Les images non migrables
 restent signalées et empêchent la convergence du lot concerné.
 

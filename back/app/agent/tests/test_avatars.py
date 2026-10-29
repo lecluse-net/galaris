@@ -92,8 +92,9 @@ async def test_http_post_stores_a_compact_jpeg_and_rejects_invalid_replacement(c
     with Image.open(io.BytesIO(response.content)) as result:
         assert result.format == "JPEG" and result.size == (500, 375)
     metadata = (await client.get(f"/api/agents/{agent_id}", headers=headers)).json()
-    revision = metadata["avatar_revision"]
+    modified_at = metadata["updated_at"]
+    assert modified_at is not None
     invalid = await client.post(url, headers=headers, files={"file": ("invalid.png", b"invalid image", "image/png")})
     assert invalid.status_code == 400
     assert (await client.get(url, headers=headers)).content == response.content
-    assert (await client.get(f"/api/agents/{agent_id}", headers=headers)).json()["avatar_revision"] == revision
+    assert (await client.get(f"/api/agents/{agent_id}", headers=headers)).json()["updated_at"] == modified_at

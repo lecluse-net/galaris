@@ -21,7 +21,7 @@ PARAMETER_DOMAINS: dict[str, tuple[str, str]] = {
 
 
 def parameter_domain(name: str) -> str:
-    if name in {"AUTH_SECRET_KEY", "WEB_PUSH_VAPID_KEYS"}:
+    if name in {"AUTH_SECRET_KEY", "WEB_PUSH_VAPID_KEYS", "galaris.agent_id"}:
         return "internal"
     if name in {"ALLOW_USER_REGISTRATION", "HTTP_RATE_LIMIT_PER_MINUTE"}:
         return "system"

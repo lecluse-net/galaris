@@ -53,7 +53,6 @@ async def _hermes_agent_or_400(agent_id: int) -> Agent:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=await tr("hermes.errors.wrong_driver"),
         )
-    await config_service.hydrate_agent(agent)
     return agent
 
 

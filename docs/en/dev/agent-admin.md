@@ -80,8 +80,8 @@ as descriptive text and remains unchanged in storage. Optional instructions, lim
 
 `agent_avatar_generate` directly calls the service used by `image_generate`, waits for the
 image and registers it. The result contains `status="success"`, `registered=true`, the
-target URI and avatar revision. No Process or process job is created.
-Before registration, delegation, manager, target profile and avatar revision are rechecked.
+target URI. No Process or process job is created.
+Before registration, delegation, manager, target profile and Agent modification timestamp are rechecked.
 Provider errors, revoked rights and concurrent changes preserve the current state; the
 function does not automatically resubmit generation.
 DbAdmin purges obsolete `agent_admin:<agent>:avatar` definitions and their runs, jobs
@@ -94,8 +94,11 @@ JPEG/PNG/GIF/WebP decoding, a 15 MiB byte limit and dimension limits (16 million
 the image to optimized JPEG (quality 85), within 500 × 500 pixels, preserving proportions
 without cropping or enlarging it. Transparency becomes a white background, animations use
 their first frame and EXIF metadata is removed. HTTP POST, URI and generated portraits all
-use this conversion. Monotonic revisions also detect replacement followed by restoration.
-UI readers use the revision to load current portraits when reopened.
+use this conversion. Every avatar write explicitly advances `agents.updated_at` using the
+PostgreSQL clock, including identical uploads. This also detects replacement followed by
+restoration within one transaction. Any intervening Agent update prevents pending portrait
+publication; older snapshots without this timestamp are rejected too. UI readers use the
+timestamp to load current portraits when reopened, without a dedicated revision column.
 An older list load cannot remove a current portrait; its temporary URL is released.
 
 ## Verification
@@ -111,8 +114,8 @@ These tests do not measure a real provider’s photographic quality.
 
 Commands: `make tests ARGS='app/agent/tests app/connection/tests app/harnesses/tests app/tools/tests app/image/tests app/process/tests core/team/tests'`,
 `make tests-e2e ARGS='agent-admin.spec.mjs --project=chromium'`, `make typecheck`,
-`make docs-prepare`, `make architecture-check`. The schema change is `agents.avatar_revision`,
-synchronized by DbAdmin through `make sync-db` in development.
+`make docs-prepare`, `make architecture-check`. DbAdmin removes the former avatar revision
+column through `make sync-db` in development.
 
 ### Acceptance with a real provider
 

@@ -18,8 +18,6 @@ async def test_supervisor_reports_runtime_lifecycle(
         side_effect=AssertionError("model probes must not drive lifecycle state")
     )
 
-    hydrate = AsyncMock()
-    monkeypatch.setattr(harness_supervisor.config_service, "hydrate_agent", hydrate)
     monkeypatch.setattr(
         harness_supervisor.manager,
         "get_agent",
@@ -34,7 +32,6 @@ async def test_supervisor_reports_runtime_lifecycle(
     result = await harness_supervisor.supervisor.status(agent)  # type: ignore[arg-type]
 
     assert result == "stopped"
-    hydrate.assert_awaited_once_with(agent)
     controller.get_status.assert_awaited_once_with()
     model_probe.assert_not_awaited()
 

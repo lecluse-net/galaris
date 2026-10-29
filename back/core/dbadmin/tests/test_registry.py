@@ -108,7 +108,6 @@ def test_composition_compiles_every_permanent_dataset_and_reconciler() -> None:
         "app.memory.source_projections",
         "app.messenger.agent_identities",
         "app.messenger.contact_memory",
-        "bridge.hermes.config_reconciliation",
         "bridge.hermes.data_env_encryption",
         "bridge.hermes.session_bindings",
     } <= {reconciler.key for reconciler in registry.reconcilers}

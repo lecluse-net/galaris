@@ -38,6 +38,11 @@ The Agent domain gains two public dependencies: `app.file_share` for bounded aut
 URI materialization and `app.image` for specialist image generation. Harness MCP entries
 use the public `app.tools` decorators. These explicit dependencies extend the declared
 fan-out limits; they do not authorize new private imports or increased coupling baselines.
-`agents.avatar_revision` is a non-null integer with a zero server default, converged by
-DbAdmin. It adds no handwritten migration or dependency. HTTP avatar reads revalidate
-their browser cache and UI readers key their bounded cache by the revision.
+Portrait publication and UI cache invalidation reuse `agents.updated_at`; there is no
+dedicated avatar revision column. Every avatar write explicitly advances this timestamp
+with PostgreSQL `clock_timestamp()`, including identical uploads and removal, so a
+replacement followed by restoration is detected even within one transaction. Publication
+also compares the saved profile fingerprint. Any intervening Agent update conservatively
+rejects a pending portrait. Pending snapshots without the timestamp are rejected too.
+HTTP avatar reads revalidate their browser cache and UI readers key their bounded cache
+by the modification timestamp. DbAdmin removes the former revision column.

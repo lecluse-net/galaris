@@ -14,6 +14,7 @@ from loguru import logger
 
 from app.agent import agent_service
 from bridge.hermes.manager import manager as hermes_manager
+from bridge.hermes.config_service import ensure_config
 
 
 async def main() -> None:
@@ -22,14 +23,15 @@ async def main() -> None:
     for agent in agents:
         if agent.agent_driver != "hermes":
             continue
+        configuration = await ensure_config(agent)
         logger.info(
             "Hermes agent id={} code={} name='{} {}' url={} model={}",
             agent.id,
             agent.code,
             agent.first_name,
             agent.last_name,
-            agent.hermes_url,
-            agent.hermes_model,
+            configuration.url,
+            configuration.model,
         )
         if sync_id and str(agent.id) == sync_id:
             logger.info("Syncing Hermes voice configuration for agent id={} code={}", agent.id, agent.code)

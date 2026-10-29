@@ -331,7 +331,7 @@ the current default LLM profile, active `galaris_admin` (including documentation
 connections with `tools.management_scope=all`, and an
 individual authorization for the `galaris-lab` and `galaris-knowledge` skills. Their global defaults remain disabled.
 If no administrator exists yet, the first signup replays the same dataset.
-The internal `agents.initialization_key` marker survives renaming and soft deletion:
+The internal global `galaris.agent_id` parameter retains the agent's ID after renaming and deletion:
 later synchronizations neither recreate the agent nor reset its settings or revoked
 grants. Existing installations also receive this proposal. See
 [decision 0135](../../../project/decisions/0135-default-galaris-agent.md).

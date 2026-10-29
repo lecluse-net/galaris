@@ -72,8 +72,6 @@ async def _normalize_code(code: Optional[str]) -> str:
 async def _set_transient_flags(agent: Agent) -> None:
     teams = set((await get_db().scalars(select(AgentTeam.team_id).join(AgentGroup, AgentGroup.id == AgentTeam.team_id)
                                       .where(AgentTeam.agent_id == agent.id))).all())
-    if agent.group_id is not None and await get_db().scalar(select(AgentGroup.id).where(AgentGroup.id == agent.group_id)) is not None:
-        teams.add(agent.group_id)
     agent.team_ids = sorted(teams)
     agent.has_avatar = agent.avatar is not None
     agent.is_owner = agent.user_id == user_service.get_current_user_id()
@@ -95,6 +93,23 @@ async def _ensure_skill_assignment_matrix(agent_id: int) -> None:
     from app.skill import skill_service
 
     await skill_service.ensure_assignment_matrix(agent_id=agent_id)
+
+
+async def _validate_teams(team_ids: Collection[int], actor_user_id: int | None) -> None:
+    await _require_team_members_edit(actor_user_id)
+    existing = set(await get_db().scalars(select(AgentGroup.id).where(AgentGroup.id.in_(team_ids))))
+    if existing != set(team_ids):
+        raise ValueError(await tr("agent_api.errors.invalid_group"))
+
+
+async def _replace_teams(agent_id: int, team_ids: Collection[int]) -> None:
+    from .dialogue_service import set_agent_membership
+
+    previous = set(await get_db().scalars(select(AgentTeam.team_id).where(AgentTeam.agent_id == agent_id)))
+    requested = set(team_ids)
+    for team_id in sorted(previous | requested):
+        if (team_id in previous) != (team_id in requested):
+            await set_agent_membership(team_id, agent_id, team_id in requested)
 
 
 async def _validate_model_selection(
@@ -161,8 +176,7 @@ async def get_all(
     logger.info("Listing agents")
     db = get_db()
     query = (
-        select(Agent, Agent.avatar.is_not(None), AgentGroup.id)
-        .outerjoin(AgentGroup, AgentGroup.id == Agent.group_id)
+        select(Agent, Agent.avatar.is_not(None))
         .options(*_agent_load_options(), defer(Agent.avatar, raiseload=True))
     )
     if agent_driver is not None:
@@ -177,7 +191,7 @@ async def get_all(
     query = Agent.histo_filter(query)
     result = await db.execute(query)
     rows = result.all()
-    agents = [agent for agent, _has_avatar, _legacy_team in rows]
+    agents = [agent for agent, _has_avatar in rows]
     if not agents:
         return agents
     memberships = await db.execute(
@@ -189,10 +203,8 @@ async def get_all(
     for agent_id, team_id in memberships:
         teams_by_agent.setdefault(agent_id, set()).add(team_id)
     current_user_id = user_service.get_current_user_id()
-    for agent, has_avatar, legacy_team in rows:
+    for agent, has_avatar in rows:
         teams = teams_by_agent.get(agent.id, set())
-        if legacy_team is not None:
-            teams.add(legacy_team)
         agent.team_ids = sorted(teams)
         agent.has_avatar = has_avatar
         agent.is_owner = agent.user_id == current_user_id
@@ -233,14 +245,9 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
     if title_result.scalar_one_or_none() is None:
         raise ValueError(await tr("agent_api.errors.invalid_title"))
 
-    # Verify group exists if provided
-    if agent_data.group_id is not None:
-        await _require_team_members_edit(actor_user_id)
-        group_result = await db.execute(select(AgentGroup).where(AgentGroup.id == agent_data.group_id))
-        if group_result.scalar_one_or_none() is None:
-            raise ValueError(await tr("agent_api.errors.invalid_group"))
-
     # ``None`` is meaningful: this agent follows the current profile.
+    if agent_data.team_ids:
+        await _validate_teams(agent_data.team_ids, actor_user_id)
     for profile_id in (agent_data.profile_id, agent_data.fallback_profile_id):
         if profile_id is not None and await profile_service.get_profile(profile_id) is None:
             raise ValueError(
@@ -254,15 +261,15 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
 
     # Create the agent
     data = agent_data.model_dump()
+    data.pop("team_ids")
     data["code"] = code
     data["user_id"] = manager_user_id
     new_agent = Agent(**data)
     db.add(new_agent)
     try:
         await db.flush()
-        if new_agent.group_id is not None:
-            from .dialogue_service import set_agent_membership
-            await set_agent_membership(new_agent.group_id, new_agent.id, True)
+        if agent_data.team_ids:
+            await _replace_teams(new_agent.id, agent_data.team_ids)
         await _ensure_skill_assignment_matrix(new_agent.id)
         await db.commit()
     except IntegrityError as e:
@@ -288,7 +295,7 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
 
     logger.info(f"Agent created: {new_agent.first_name} {new_agent.last_name}")
     await notify_agent_profile(new_agent.id, "create")
-    if new_agent.group_id is not None:
+    if agent_data.team_ids:
         from core.team import notify_team_access_changed
         await notify_team_access_changed()
     return new_agent
@@ -303,14 +310,8 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
         return None
 
     fields_set = agent_update.model_fields_set
-    if "group_id" in fields_set and agent_update.group_id != agent.group_id:
-        from .dialogue_service import set_agent_membership
-        await _require_team_members_edit(actor_user_id)
-        previous_team = agent.group_id
-        if previous_team is not None:
-            await set_agent_membership(previous_team, agent.id, False)
-        if agent_update.group_id is not None:
-            await set_agent_membership(agent_update.group_id, agent.id, True)
+    if "team_ids" in fields_set:
+        await _validate_teams(agent_update.team_ids, actor_user_id)
     if "code" in fields_set:
         requested_code = await _normalize_code(agent_update.code)
         if requested_code != agent.code:
@@ -334,12 +335,6 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
         if title_result.scalar_one_or_none() is None:
             raise ValueError(await tr("agent_api.errors.invalid_title"))
 
-    # Verify group exists if provided
-    if agent_update.group_id is not None:
-        group_result = await db.execute(select(AgentGroup).where(AgentGroup.id == agent_update.group_id))
-        if group_result.scalar_one_or_none() is None:
-            raise ValueError(await tr("agent_api.errors.invalid_group"))
-
     # ``None`` switches the agent back to the current profile.
     for field in ("profile_id", "fallback_profile_id"):
         profile_id = getattr(agent_update, field)
@@ -354,6 +349,7 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
         await _validate_voice_selection(agent_update.voice)
 
     update_data = agent_update.model_dump(exclude_unset=True)
+    update_data.pop("team_ids", None)
     # ``code`` is the agent's permanent system identity. Older clients may still
     # echo its current value, but it must never be written during an update.
     update_data.pop("code", None)
@@ -361,6 +357,8 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
         setattr(agent, key, value)
 
     try:
+        if "team_ids" in fields_set:
+            await _replace_teams(agent.id, agent_update.team_ids)
         await _ensure_skill_assignment_matrix(agent.id)
         await db.commit()
     except IntegrityError as e:
@@ -378,7 +376,7 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
 
     logger.info(f"Agent updated: {agent.first_name} {agent.last_name}")
     await notify_agent_profile(agent.id, "update")
-    if "group_id" in fields_set:
+    if "team_ids" in fields_set:
         from core.team import notify_team_access_changed
         await notify_team_access_changed()
     return agent
@@ -414,7 +412,8 @@ async def update_avatar(id: int, avatar_data: bytes) -> bool:
         return False
 
     agent.avatar = avatar_data
-    agent.avatar_revision += 1
+    # Advance even for an identical image or a replacement restored to its old bytes.
+    agent.updated_at = func.clock_timestamp()
     await db.commit()
     logger.info(f"Avatar updated for agent: {id}")
     return True
@@ -440,7 +439,7 @@ async def delete_avatar(id: int) -> bool:
         return False
 
     agent.avatar = None
-    agent.avatar_revision += 1
+    agent.updated_at = func.clock_timestamp()
     await db.commit()
     logger.info(f"Avatar deleted for agent: {id}")
     return True

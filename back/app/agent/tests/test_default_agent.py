@@ -17,6 +17,7 @@ from core.authorize import Assignment, Role
 from core.database import get_db_session
 from core.dbadmin import DbAdminDatasetResult, reconcile_dataset
 from core.user import UserModel, notify_user_access_changed
+from core.params import Param, Params
 
 
 async def _admin(db):
@@ -30,7 +31,8 @@ async def _admin(db):
 
 
 async def _proposal(db):
-    return (await db.scalars(select(Agent).where(Agent.initialization_key == "galaris"))).one()
+    agent_id = await db.scalar(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID))
+    return (await db.scalars(select(Agent).where(Agent.id == int(agent_id)))).one()
 
 
 @pytest.mark.asyncio
@@ -51,7 +53,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     assert agent.user_id == user.id
     assert agent.agent_driver == "internal"
     assert agent.task_harness_id is None and agent.profile_id is None
-    assert agent.profile_media_type == "text/html"
+    assert await db.scalar(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID)) == str(agent.id)
     from app.agent.avatars import validate_avatar
 
     assert agent.avatar is not None
@@ -141,7 +143,7 @@ async def test_seed_preserves_existing_galaris_agent(db):
     proposal = await _proposal(db)
     assert proposal.id != existing.id and proposal.code != existing.code
     await db.refresh(existing)
-    assert existing.first_name == "Existing" and existing.initialization_key is None
+    assert existing.first_name == "Existing"
     assert not await has_galaris_admin_access(existing.id)
     for definition in tool_datasets():
         await reconcile_dataset(db, definition)
@@ -241,7 +243,8 @@ async def test_first_signup_immediately_proposes_manageable_galaris(client, monk
     from app.agent.avatars import validate_avatar
 
     validate_avatar(avatar.content)
-    assert "initialization_key" not in agent
+    async with get_db_session() as db:
+        assert await db.scalar(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID)) == str(agent["id"])
     connections = await client.get(
         "/api/connections", headers=headers, params={"agent_id": agent["id"]},
     )

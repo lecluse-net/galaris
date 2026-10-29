@@ -1093,7 +1093,7 @@ const avatarProfileUnsaved = computed(() => {
     || (saved.job_title ?? '') !== agentForm.job_title
 })
 const avatarUrls = reactive<Record<number, string>>({})
-const avatarRevisions: Record<number, number> = {}
+const avatarVersions: Record<number, string> = {}
 let avatarLoadGeneration = 0
 
 const agentInitials = (agent: Pick<Agent, 'first_name' | 'last_name' | 'code'>) => {
@@ -1113,19 +1113,19 @@ const loadAvatars = async () => {
   const generation = ++avatarLoadGeneration
   for (const agent of agentStore.agents.filter(agent => !previewAgentId || agent.id === previewAgentId)) {
     if (pageDisposed || generation !== avatarLoadGeneration) return
-    const revision = agent.avatar_revision ?? 0
-    if (!agent.has_avatar || avatarRevisions[agent.id] !== revision) {
+    const updatedAt = agent.updated_at ?? ''
+    if (!agent.has_avatar || avatarVersions[agent.id] !== updatedAt) {
       if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
       delete avatarUrls[agent.id]
     }
     if (agent.has_avatar && !avatarUrls[agent.id]) {
       try {
-        const url = await agentService.getAvatarBlobUrl(agent.id, undefined, revision)
+        const url = await agentService.getAvatarBlobUrl(agent.id, undefined, updatedAt)
         const current = agentStore.agents.find(item => item.id === agent.id)
-        if (!pageDisposed && generation === avatarLoadGeneration && current?.has_avatar && (current.avatar_revision ?? 0) === revision) {
+        if (!pageDisposed && generation === avatarLoadGeneration && current?.has_avatar && (current.updated_at ?? '') === updatedAt) {
           if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
           avatarUrls[agent.id] = url
-          avatarRevisions[agent.id] = revision
+          avatarVersions[agent.id] = updatedAt
         } else URL.revokeObjectURL(url)
       } catch (error) {
         console.error(`Failed to load avatar for agent ${agent.id}:`, error)
@@ -1568,14 +1568,13 @@ const titleColumns = computed<QTableColumn[]>(() => [
 ])
 
 const agentForm = reactive<{
-  id: number | null; user_id: number | null; title_id: number | null; group_id: number | null;
+  id: number | null; user_id: number | null; title_id: number | null;
   code: string; first_name: string; last_name: string; job_title: string; agent_driver: string;
   has_avatar: boolean; profile_id: number | null; fallback_profile_id: number | null; voice_selection: string;
 }>({
   id: null,
   user_id: null,
   title_id: null,
-  group_id: null,
   code: '',
   first_name: '',
   last_name: '',
@@ -1698,7 +1697,6 @@ const resetAgentForm = () => {
   agentForm.id = null
   agentForm.user_id = managers.value.find(manager => manager.is_current_user)?.id ?? null
   agentForm.title_id = null
-  agentForm.group_id = null
   agentForm.code = ''
   agentForm.first_name = ''
   agentForm.last_name = ''
@@ -1734,7 +1732,6 @@ const openAgentDialog = (agent: Agent | null = null) => {
       id: agent.id,
       user_id: agent.user_id,
       title_id: agent.title_id,
-      group_id: agent.group_id ?? null,
       code: agent.code || '',
       first_name: agent.first_name,
       last_name: agent.last_name,

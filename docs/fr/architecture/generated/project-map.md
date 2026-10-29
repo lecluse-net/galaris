@@ -11,7 +11,7 @@ tests restent l’autorité sur le comportement.
 
 - 78 modules backend déclarés ;
 - 40 modules frontend déclarés ;
-- 633 arêtes de dépendance backend ;
+- 634 arêtes de dépendance backend ;
 - 217 arêtes de dépendance frontend ;
 - 301 arêtes entre domaines `app`/`bridge` ;
 - 28 paires de domaines directement bidirectionnelles ;
@@ -163,11 +163,11 @@ tests restent l’autorité sur le comportement.
 | `app.agent` | `app.skill` | `back/app/agent/__init__.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/facade.py`, `back/app/agent/models.py` |
 | `app.agent` | `app.tools` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
 | `app.agent` | `core.authorize` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/assertions.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py` |
-| `app.agent` | `core.database` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/authorization.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/avatars.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/planner_service.py`, `back/app/agent/resource_facade.py`, `back/app/agent/router.py`, `back/app/agent/selection.py`, `back/app/agent/share_directory.py`, `back/app/agent/team_router.py`, `back/app/agent/title_service.py` |
+| `app.agent` | `core.database` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/authorization.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/avatars.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/mcp.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/planner_service.py`, `back/app/agent/resource_facade.py`, `back/app/agent/router.py`, `back/app/agent/selection.py`, `back/app/agent/share_directory.py`, `back/app/agent/team_router.py`, `back/app/agent/title_service.py` |
 | `app.agent` | `core.dbadmin` | `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/html_migration.py` |
 | `app.agent` | `core.failure_journal` | `back/app/agent/facade.py` |
 | `app.agent` | `core.i18n` | `back/app/agent/agent_service.py`, `back/app/agent/contracts.py`, `back/app/agent/dispatcher.py`, `back/app/agent/dispatcher_service.py`, `back/app/agent/executor_service.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_schemas.py`, `back/app/agent/openai_service.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
-| `app.agent` | `core.params` | `back/app/agent/dispatcher.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/planner_collection.py`, `back/app/agent/planner_contracts.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/registry.py` |
+| `app.agent` | `core.params` | `back/app/agent/defaults.py`, `back/app/agent/dispatcher.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/planner_collection.py`, `back/app/agent/planner_contracts.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/registry.py` |
 | `app.agent` | `core.team` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/mcp.py`, `back/app/agent/models.py`, `back/app/agent/share_directory.py`, `back/app/agent/team_router.py` |
 | `app.agent` | `core.user` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/share_directory.py` |
 | `app.agent` | `core.util` | `back/app/agent/avatar_generation.py`, `back/app/agent/html_migration.py`, `back/app/agent/models.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/schemas.py` |
@@ -643,7 +643,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.harness` | `core.params` | `back/bridge/harness/compose.py`, `back/bridge/harness/configuration.py`, `back/bridge/harness/diagnostics.py`, `back/bridge/harness/manager.py`, `back/bridge/harness/router.py` |
 | `bridge.harness` | `core.settings` | `back/bridge/harness/diagnostics.py`, `back/bridge/harness/distribution.py` |
 | `bridge.harness` | `core.util` | `back/bridge/harness/compose.py`, `back/bridge/harness/diagnostics.py`, `back/bridge/harness/manager.py` |
-| `bridge.hermes` | `app.agent` | `back/bridge/hermes/agent_driver.py`, `back/bridge/hermes/checkpoint_policy.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/driver.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/harness_supervisor.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/media.py`, `back/bridge/hermes/prompt.py`, `back/bridge/hermes/router.py`, `back/bridge/hermes/session_binding.py`, `back/bridge/hermes/skill_sync.py` |
+| `bridge.hermes` | `app.agent` | `back/bridge/hermes/agent_driver.py`, `back/bridge/hermes/checkpoint_policy.py`, `back/bridge/hermes/driver.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/harness_supervisor.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/media.py`, `back/bridge/hermes/prompt.py`, `back/bridge/hermes/router.py`, `back/bridge/hermes/session_binding.py`, `back/bridge/hermes/skill_sync.py` |
 | `bridge.hermes` | `app.connection` | `back/bridge/hermes/manager.py` |
 | `bridge.hermes` | `app.file_share` | `back/bridge/hermes/paths.py` |
 | `bridge.hermes` | `app.harnesses` | `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/manager.py` |
@@ -657,9 +657,10 @@ tests restent l’autorité sur le comportement.
 | `bridge.hermes` | `bridge.harness` | `back/bridge/hermes/manager.py` |
 | `bridge.hermes` | `core.authorize` | `back/bridge/hermes/router.py` |
 | `bridge.hermes` | `core.database` | `back/bridge/hermes/agent_driver.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/media.py`, `back/bridge/hermes/models.py`, `back/bridge/hermes/session_binding.py`, `back/bridge/hermes/skill_sync.py` |
+| `bridge.hermes` | `core.dbadmin` | `back/bridge/hermes/dbadmin.py` |
 | `bridge.hermes` | `core.i18n` | `back/bridge/hermes/client.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/router.py` |
 | `bridge.hermes` | `core.params` | `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/prompt.py`, `back/bridge/hermes/session_binding.py` |
-| `bridge.hermes` | `core.util` | `back/bridge/hermes/client.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/session_binding.py` |
+| `bridge.hermes` | `core.util` | `back/bridge/hermes/client.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/dbadmin.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/session_binding.py` |
 | `bridge.huggingface` | `app.llm` | `back/bridge/huggingface/__init__.py` |
 | `bridge.mail` | `app.agent` | `back/bridge/mail/approvals.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `app.connection` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/router.py` |
@@ -1690,8 +1691,8 @@ tests restent l’autorité sur le comportement.
 | GET | `/harnesses/pipeline-options` | `app.harnesses` | `read_pipeline_options` | oui | `back/app/harnesses/router.py:51` |
 | GET | `/harnesses/providers` | `app.harnesses` | `list_harness_providers` | oui | `back/app/harnesses/router.py:105` |
 | GET | `/healthz` | `bridge.codex` | `health` | non | `back/bridge/codex/default-agent/server.py:189` |
-| GET | `/hermes/configurations` | `bridge.hermes` | `list_hermes_configurations` | oui | `back/bridge/hermes/router.py:66` |
-| PUT | `/hermes/configurations/{id}` | `bridge.hermes` | `update_hermes_configuration` | oui | `back/bridge/hermes/router.py:84` |
+| GET | `/hermes/configurations` | `bridge.hermes` | `list_hermes_configurations` | oui | `back/bridge/hermes/router.py:65` |
+| PUT | `/hermes/configurations/{id}` | `bridge.hermes` | `update_hermes_configuration` | oui | `back/bridge/hermes/router.py:83` |
 | GET | `/incidents` | `app.incident` | `read_incidents` | oui | `back/app/incident/router.py:77` |
 | DELETE | `/incidents/cleanup` | `app.incident` | `cleanup_incidents` | oui | `back/app/incident/router.py:143` |
 | GET | `/incidents/patterns` | `app.incident` | `read_patterns` | oui | `back/app/incident/router.py:103` |
@@ -1822,8 +1823,8 @@ tests restent l’autorité sur le comportement.
 | POST | `/memory/link-reconciliation` | `app.memory` | `launch_link_reconciliation` | oui | `back/app/memory/router.py:184` |
 | POST | `/memory/links` | `app.memory` | `create_memory_link` | oui | `back/app/memory/router.py:639` |
 | GET | `/memory/metrics` | `app.memory` | `read_memory_metrics` | oui | `back/app/memory/router.py:154` |
-| POST | `/memory/provider/remember` | `bridge.hermes` | `hermes_provider_remember` | non | `back/bridge/hermes/router.py:151` |
-| POST | `/memory/provider/search` | `bridge.hermes` | `hermes_provider_search` | non | `back/bridge/hermes/router.py:127` |
+| POST | `/memory/provider/remember` | `bridge.hermes` | `hermes_provider_remember` | non | `back/bridge/hermes/router.py:150` |
+| POST | `/memory/provider/search` | `bridge.hermes` | `hermes_provider_search` | non | `back/bridge/hermes/router.py:126` |
 | POST | `/memory/recall` | `app.memory` | `recall_memory` | oui | `back/app/memory/router.py:350` |
 | GET | `/memory/recent` | `app.memory` | `read_recent_memories` | oui | `back/app/memory/router.py:92` |
 | GET | `/memory/retention/preview` | `app.memory` | `estimate_memory_retention` | oui | `back/app/memory/router.py:202` |
@@ -2003,7 +2004,7 @@ tests restent l’autorité sur le comportement.
 | `agent_skill_categories` | `AgentSkillCategory` | `app.skill` | non | `agents.id`, `skill_categories.id` | `back/app/skill/models.py:161` |
 | `agent_skills` | `AgentSkill` | `app.skill` | non | `agents.id`, `skills.id` | `back/app/skill/models.py:132` |
 | `agent_teams` | `AgentTeam` | `app.agent` | non | `agent_groups.id`, `agents.id` | `back/app/agent/models.py:17` |
-| `agents` | `Agent` | `app.agent` | oui | `agent_groups.id`, `harnesses.id`, `llm_profiles.id`, `memory_items.id`, `titles.id`, `users.id` | `back/app/agent/models.py:37` |
+| `agents` | `Agent` | `app.agent` | oui | `harnesses.id`, `llm_profiles.id`, `memory_items.id`, `titles.id`, `users.id` | `back/app/agent/models.py:37` |
 | `assignments` | `Assignment` | `core.authorize` | oui | `roles.id`, `users.id` | `back/core/authorize/models.py:91` |
 | `calendar_feeds` | `CalendarFeed` | `bridge.calendar` | oui | `connections.id` | `back/bridge/calendar/models.py:15` |
 | `calendar_triggers` | `CalendarTrigger` | `bridge.calendar` | non | `calendar_feeds.id`, `process_runs.id`, `tasks.id` | `back/bridge/calendar/models.py:60` |
@@ -2074,7 +2075,7 @@ tests restent l’autorité sur le comportement.
 | `harness_execution_configurations` | `HarnessExecutionConfiguration` | `app.harnesses` | oui | — | `back/app/harnesses/models.py:18` |
 | `harnesses` | `Harness` | `app.harnesses` | oui | — | `back/app/harnesses/models.py:29` |
 | `hermes_agent_configs` | `HermesAgentConfig` | `bridge.hermes` | non | `agents.id` | `back/bridge/hermes/models.py:14` |
-| `hermes_session_bindings` | `HermesSessionBinding` | `bridge.hermes` | non | `agents.id` | `back/bridge/hermes/models.py:73` |
+| `hermes_session_bindings` | `HermesSessionBinding` | `bridge.hermes` | non | `agents.id` | `back/bridge/hermes/models.py:72` |
 | `lab_agent_reviews` | `LabAgentReview` | `app.lab` | oui | `agents.id`, `lab_evaluation_run_cases.id`, `lab_judgment_campaigns.id`, `tasks.id` | `back/app/lab/models.py:428` |
 | `lab_commands` | `LabCommand` | `app.lab` | oui | `agents.id`, `tasks.id` | `back/app/lab/models.py:414` |
 | `lab_evaluation_cases` | `LabEvaluationCase` | `app.lab` | oui | `lab_evaluation_cases.id`, `lab_evaluation_datasets.id` | `back/app/lab/models.py:133` |
@@ -2189,9 +2190,9 @@ tests restent l’autorité sur le comportement.
 | `topic_merge` | `` | `app.topic` | `mcp_topic_merge` | `back/app/topic/mcp.py:227` |
 | `topic_split` | `` | `app.topic` | `mcp_topic_split` | `back/app/topic/mcp.py:248` |
 | `topic_update` | `` | `app.topic` | `mcp_topic_update` | `back/app/topic/mcp.py:168` |
-| `agent_avatar_delete` | `agent_admin` | `app.agent` | `agent_avatar_delete` | `back/app/agent/mcp.py:103` |
-| `agent_avatar_generate` | `agent_admin` | `app.agent` | `agent_avatar_generate` | `back/app/agent/mcp.py:218` |
-| `agent_avatar_set` | `agent_admin` | `app.agent` | `agent_avatar_set` | `back/app/agent/mcp.py:193` |
+| `agent_avatar_delete` | `agent_admin` | `app.agent` | `agent_avatar_delete` | `back/app/agent/mcp.py:112` |
+| `agent_avatar_generate` | `agent_admin` | `app.agent` | `agent_avatar_generate` | `back/app/agent/mcp.py:227` |
+| `agent_avatar_set` | `agent_admin` | `app.agent` | `agent_avatar_set` | `back/app/agent/mcp.py:202` |
 | `agent_connection_create` | `agent_admin` | `app.connection` | `agent_connection_create` | `back/app/connection/agent_admin_mcp.py:33` |
 | `agent_connection_delete` | `agent_admin` | `app.connection` | `agent_connection_delete` | `back/app/connection/agent_admin_mcp.py:48` |
 | `agent_connection_function_list` | `agent_admin` | `app.connection` | `agent_connection_function_list` | `back/app/connection/agent_admin_mcp.py:72` |
@@ -2201,12 +2202,12 @@ tests restent l’autorité sur le comportement.
 | `agent_connection_param_delete` | `agent_admin` | `app.connection` | `agent_connection_param_delete` | `back/app/connection/agent_admin_mcp.py:64` |
 | `agent_connection_params_set` | `agent_admin` | `app.connection` | `agent_connection_params_set` | `back/app/connection/agent_admin_mcp.py:56` |
 | `agent_connection_update` | `agent_admin` | `app.connection` | `agent_connection_update` | `back/app/connection/agent_admin_mcp.py:40` |
-| `agent_create` | `agent_admin` | `app.agent` | `agent_create` | `back/app/agent/mcp.py:57` |
-| `agent_delete` | `agent_admin` | `app.agent` | `agent_delete` | `back/app/agent/mcp.py:86` |
-| `agent_group_create` | `agent_admin` | `app.agent` | `agent_group_create` | `back/app/agent/mcp.py:165` |
-| `agent_group_delete` | `agent_admin` | `app.agent` | `agent_group_delete` | `back/app/agent/mcp.py:183` |
-| `agent_group_list` | `agent_admin` | `app.agent` | `agent_group_list` | `back/app/agent/mcp.py:159` |
-| `agent_group_update` | `agent_admin` | `app.agent` | `agent_group_update` | `back/app/agent/mcp.py:171` |
+| `agent_create` | `agent_admin` | `app.agent` | `agent_create` | `back/app/agent/mcp.py:59` |
+| `agent_delete` | `agent_admin` | `app.agent` | `agent_delete` | `back/app/agent/mcp.py:95` |
+| `agent_group_create` | `agent_admin` | `app.agent` | `agent_group_create` | `back/app/agent/mcp.py:174` |
+| `agent_group_delete` | `agent_admin` | `app.agent` | `agent_group_delete` | `back/app/agent/mcp.py:192` |
+| `agent_group_list` | `agent_admin` | `app.agent` | `agent_group_list` | `back/app/agent/mcp.py:168` |
+| `agent_group_update` | `agent_admin` | `app.agent` | `agent_group_update` | `back/app/agent/mcp.py:180` |
 | `agent_harness_action` | `agent_admin` | `app.harnesses` | `agent_harness_action` | `back/app/harnesses/mcp.py:62` |
 | `agent_harness_blockers` | `agent_admin` | `app.harnesses` | `agent_harness_blockers` | `back/app/harnesses/mcp.py:81` |
 | `agent_harness_get` | `agent_admin` | `app.harnesses` | `agent_harness_get` | `back/app/harnesses/mcp.py:17` |
@@ -2214,15 +2215,15 @@ tests restent l’autorité sur le comportement.
 | `agent_harness_reset` | `agent_admin` | `app.harnesses` | `agent_harness_reset` | `back/app/harnesses/mcp.py:38` |
 | `agent_harness_set` | `agent_admin` | `app.harnesses` | `agent_harness_set` | `back/app/harnesses/mcp.py:24` |
 | `agent_harness_status` | `agent_admin` | `app.harnesses` | `agent_harness_status` | `back/app/harnesses/mcp.py:51` |
-| `agent_options` | `agent_admin` | `app.agent` | `agent_options` | `back/app/agent/mcp.py:97` |
-| `agent_team_list` | `agent_admin` | `app.agent` | `agent_team_list` | `back/app/agent/mcp.py:111` |
-| `agent_team_set` | `agent_admin` | `app.agent` | `agent_team_set` | `back/app/agent/mcp.py:118` |
-| `agent_title_create` | `agent_admin` | `app.agent` | `agent_title_create` | `back/app/agent/mcp.py:132` |
-| `agent_title_delete` | `agent_admin` | `app.agent` | `agent_title_delete` | `back/app/agent/mcp.py:150` |
-| `agent_title_list` | `agent_admin` | `app.agent` | `agent_title_list` | `back/app/agent/mcp.py:126` |
-| `agent_title_update` | `agent_admin` | `app.agent` | `agent_title_update` | `back/app/agent/mcp.py:138` |
+| `agent_options` | `agent_admin` | `app.agent` | `agent_options` | `back/app/agent/mcp.py:106` |
+| `agent_team_list` | `agent_admin` | `app.agent` | `agent_team_list` | `back/app/agent/mcp.py:120` |
+| `agent_team_set` | `agent_admin` | `app.agent` | `agent_team_set` | `back/app/agent/mcp.py:127` |
+| `agent_title_create` | `agent_admin` | `app.agent` | `agent_title_create` | `back/app/agent/mcp.py:141` |
+| `agent_title_delete` | `agent_admin` | `app.agent` | `agent_title_delete` | `back/app/agent/mcp.py:159` |
+| `agent_title_list` | `agent_admin` | `app.agent` | `agent_title_list` | `back/app/agent/mcp.py:135` |
+| `agent_title_update` | `agent_admin` | `app.agent` | `agent_title_update` | `back/app/agent/mcp.py:147` |
 | `agent_tool_list` | `agent_admin` | `app.connection` | `agent_tool_list` | `back/app/connection/agent_admin_mcp.py:11` |
-| `agent_update` | `agent_admin` | `app.agent` | `agent_update` | `back/app/agent/mcp.py:69` |
+| `agent_update` | `agent_admin` | `app.agent` | `agent_update` | `back/app/agent/mcp.py:74` |
 | `audio_transcribe` | `audio` | `app.audio` | `transcribe_audio_file` | `back/app/audio/mcp.py:289` |
 | `browser_back` | `browser` | `app.browser` | `browser_back` | `back/app/browser/mcp.py:478` |
 | `browser_click` | `browser` | `app.browser` | `browser_click` | `back/app/browser/mcp.py:408` |

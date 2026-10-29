@@ -37,12 +37,11 @@ Le code Kanban reste compilé et testé. Les nouveaux runs directs restent impos
 interne désactivée, tandis qu'un checkpoint Kanban historique peut toujours reprendre et être
 annulé.
 
-Les colonnes `agents.hermes_*` restent temporairement déclarées comme source de backfill. Atlas
-applique le schéma avant les backfills applicatifs : les retirer dans la même version que
-l'expansion pourrait donc supprimer des données sur une installation n'ayant jamais exécuté
-cette expansion. Elles ne font plus partie des schémas, services ou routes Agent et pourront être
-retirées dans une contraction séparée après validation opérationnelle de
-`hermes_agent_configs`.
+La contraction décrite dans la [décision 0248](0248-agent-canonical-state.md) supprime les
+colonnes `agents.hermes_*`. L'action DbAdmin `bridge.hermes.retire_agent_columns` copie les
+configurations manquantes, y compris celles d'agents historisés, avant la contraction Atlas.
+Une ligne `hermes_agent_configs` existante reste prioritaire. Le manager lit directement
+cette table, sans importer ni projeter de champs Hermes sur le modèle Agent.
 
 ## Conséquences
 

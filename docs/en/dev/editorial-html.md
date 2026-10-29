@@ -319,8 +319,10 @@ make update
 The actions are `app.memory.editorial_html`, `app.agent.editorial_html` and
 `app.task.editorial_html`. They are triggered by their owned column deltas, process at most
 500 objects per batch and remain deferred until their postconditions hold. Repeat synchronization
-for larger inventories. Memory preserves immutable source revisions; `profile_legacy_source`
-and `objective_legacy_source` retain previous Agent/Task fields. Invalid legacy links become
+for larger inventories. Memory preserves immutable source revisions; `objective_legacy_source`
+retains previous Task fields. Agent profiles are always HTML, without separate stored format
+or legacy source columns. DbAdmin converts remaining profiles before removing these columns.
+Invalid legacy links become
 non-clickable with a warning and their original destination preserved in the source revision.
 Unmigratable images remain explicit exceptions and prevent convergence of the affected action.
 

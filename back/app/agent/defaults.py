@@ -4,11 +4,13 @@ from pathlib import Path
 from typing import cast
 
 from sqlalchemy import Table, select, text
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.authorize import Assignment, Role
 from core.database import get_db
 from core.dbadmin import DbAdminDataset, DbAdminDatasetResult, reconcile_dataset
+from core.params import Param, Params
 from core.user import UserModel, register_user_access_observer
 
 from .avatars import normalize_avatar
@@ -20,10 +22,7 @@ async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
     # Signup and DbAdmin may overlap in different workers. The lock and all seed
     # effects belong to the same transaction; failed initialization can retry.
     await session.execute(text("SELECT pg_advisory_xact_lock(719362840125)"))
-    if await session.scalar(
-        select(Agent.id).where(Agent.initialization_key == "galaris")
-        .execution_options(include_historized=True)
-    ) is not None:
+    if await session.scalar(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID)):
         return ()
     manager_id = await session.scalar(
         select(UserModel.id)
@@ -43,13 +42,17 @@ async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
     while code in occupied:
         code = f"galaris-{suffix}"
         suffix += 1
+    # Reserve the regular PostgreSQL identity in the same transaction as the
+    # parameter and the dataset merge. A failed grant rolls the pointer back too.
+    agent_id = int(await session.scalar(text("SELECT nextval(pg_get_serial_sequence('agents', 'id'))")))
+    await session.execute(insert(Param).values(name=Params.GALARIS_AGENT_ID, value=str(agent_id))
+                          .on_conflict_do_update(index_elements=[Param.name], set_={"value": str(agent_id)}))
     return ({
-        "initialization_key": "galaris", "code": code,
+        "id": agent_id, "code": code,
         "first_name": "Galaris", "last_name": "",
         "avatar": normalize_avatar((Path(__file__).with_name("assets") / "galaris.jpg").read_bytes()),
         "user_id": manager_id, "title_id": title_id,
         "agent_driver": "internal", "task_harness_id": None, "profile_id": None,
-        "profile_media_type": "text/html",
         "job_title": "Galaris assistant",
         "job_description": (
             "<p>Help the user understand, configure and administer Galaris. "
@@ -65,9 +68,9 @@ async def _after_merge(session: AsyncSession, result: DbAdminDatasetResult) -> N
     from app.skill import initialize_galaris_agent_skills
     from app.tools import initialize_admin_agent_connections
 
-    agent_id = (await session.scalars(
-        select(Agent.id).where(Agent.initialization_key == "galaris")
-    )).one()
+    stored_id = (await session.scalars(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID))).one()
+    assert stored_id is not None
+    agent_id = int(stored_id)
     await initialize_admin_agent_connections(agent_id)
     await initialize_galaris_agent_skills(agent_id)
 
@@ -76,11 +79,11 @@ def default_agent_dataset() -> DbAdminDataset:
     return DbAdminDataset(
         key="app.agent.initial_galaris",
         table=cast(Table, Agent.__table__),
-        natural_key=("initialization_key",),
+        natural_key=("id",),
         rows=_rows,
         update_columns=(),
         after_merge=_after_merge,
-        depends_on=("app.llm.current_profile", "app.skill.assignments", "core.authorize.admin_role"),
+        depends_on=("app.llm.current_profile", "app.skill.assignments", "core.authorize.admin_role", "core.params.declarations"),
     )
 
 
@@ -94,9 +97,9 @@ async def _on_user_access_changed(_user_id: int | None) -> None:
         result = await reconcile_dataset(session, default_agent_dataset())
     await session.commit()
     if result.inserted:
-        agent_id = (await session.scalars(
-            select(Agent.id).where(Agent.initialization_key == "galaris")
-        )).one()
+        stored_id = (await session.scalars(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID))).one()
+        assert stored_id is not None
+        agent_id = int(stored_id)
         await notify_agent_profile(agent_id, "create")
 
 

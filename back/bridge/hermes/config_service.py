@@ -1,4 +1,4 @@
-"""Persistence and one-way legacy import for Hermes agent configuration."""
+"""Bridge-owned Hermes configuration."""
 
 from __future__ import annotations
 
@@ -8,14 +8,12 @@ import hashlib
 import secrets
 from typing import Any
 
-from loguru import logger
 from sqlalchemy import select
 
 from core.database import get_db
 from core.i18n import render_prompt, tr
 from core.util import (
     SECRET_MASK,
-    decrypt_mapping_values,
     encrypt_mapping_values,
     get_encryption_service,
     mask_mapping_values,
@@ -25,76 +23,21 @@ from .models import HermesAgentConfig
 from .schemas import HermesAgentConfiguration, HermesConfigUpdate
 
 
-# Database attribute -> legacy ``Agent`` attribute. Keeping this map in the
-# driver module prevents the generic agent facade from knowing Hermes fields.
-_FIELD_MAP: dict[str, str] = {
-    "url": "hermes_url",
-    "api_key": "hermes_api_key",
-    "model": "hermes_model",
-    "api_port": "hermes_api_port",
-    "dashboard_enabled": "hermes_dashboard_enabled",
-    "dashboard_port": "hermes_dashboard_port",
-    "dashboard_username": "hermes_dashboard_username",
-    "dashboard_password_hash": "hermes_dashboard_password_hash",
-    "config": "hermes_config",
-    "compose": "hermes_compose",
-    "mcp_token": "hermes_mcp_token",
-    "data_env": "hermes_data_env",
-}
-
-
-@dataclass(frozen=True)
-class HermesConfigBackfillResult:
-    """Observable outcome of one idempotent legacy backfill."""
-
-    eligible: int
-    created: int
-    matched: int
-    mismatched: int
+_FIELDS = ("url", "api_key", "model", "api_port", "dashboard_enabled", "dashboard_port",
+           "dashboard_username", "dashboard_password_hash", "config", "compose", "mcp_token", "data_env")
 
 
 @dataclass(frozen=True)
 class HermesDataEnvEncryptionResult:
-    """Number of legacy and driver-owned environment maps encrypted in place."""
-
-    agents_updated: int
+    """Number of bridge-owned environment maps encrypted in place."""
     configs_updated: int
-
-
-def _legacy_payload(agent: Any) -> dict[str, Any]:
-    payload = {
-        field: getattr(agent, legacy_field, None)
-        for field, legacy_field in _FIELD_MAP.items()
-    }
-    payload["model"] = str(payload.get("model") or "hermes-agent")
-    payload["dashboard_enabled"] = bool(payload.get("dashboard_enabled"))
-    payload["data_env"] = encrypt_mapping_values(
-        dict(payload.get("data_env") or {})
-    )
-    return payload
 
 
 def _stored_payload(config: HermesAgentConfig) -> dict[str, Any]:
     return {
         field: getattr(config, field)
-        for field in _FIELD_MAP
+        for field in _FIELDS
     }
-
-
-def _payloads_match(
-    stored: dict[str, Any],
-    candidate: dict[str, Any],
-) -> bool:
-    """Compare encrypted maps semantically without logging their plaintext."""
-    stored_copy = dict(stored)
-    candidate_copy = dict(candidate)
-    stored_env = dict(stored_copy.pop("data_env", {}) or {})
-    candidate_env = dict(candidate_copy.pop("data_env", {}) or {})
-    return (
-        stored_copy == candidate_copy
-        and decrypt_mapping_values(stored_env)
-        == decrypt_mapping_values(candidate_env)
-    )
 
 
 async def get_config(agent_id: int) -> HermesAgentConfig | None:
@@ -131,12 +74,17 @@ def _hash_dashboard_password(password: str) -> str:
 
 
 async def ensure_config(agent: Any) -> HermesAgentConfig:
-    """Return the bridge row, importing legacy values only when it is absent."""
+    """Return or initialize the bridge-owned configuration."""
 
     config = await get_config(int(agent.id))
     if config is not None:
         return config
-    return await sync_from_agent(agent)
+    from sqlalchemy.dialects.postgresql import insert
+    await get_db().execute(insert(HermesAgentConfig).values(agent_id=int(agent.id))
+                          .on_conflict_do_nothing(index_elements=[HermesAgentConfig.agent_id]))
+    config = await get_config(int(agent.id))
+    assert config is not None
+    return config
 
 
 def _public_configuration(
@@ -242,39 +190,6 @@ async def set_mcp_token(agent: Any, token: str) -> None:
     await get_db().commit()
 
 
-async def sync_from_agent(agent: Any) -> HermesAgentConfig:
-    """Import the generic model's legacy flat fields to this table.
-
-    Runtime callers use this only when no driver-owned row exists. The caller owns
-    the transaction and the bridge table becomes authoritative immediately.
-    """
-
-    db = get_db()
-    config = await get_config(int(agent.id))
-    payload = _legacy_payload(agent)
-    if config is None:
-        config = HermesAgentConfig(agent_id=int(agent.id), **payload)
-        db.add(config)
-    else:
-        for field, value in payload.items():
-            setattr(config, field, value)
-    await db.flush()
-    return config
-
-
-async def hydrate_agent(agent: Any) -> None:
-    """Overlay bridge values on an in-memory record for the legacy manager adapter."""
-
-    config = await get_config(int(agent.id))
-    if config is None:
-        return
-    for field, legacy_field in _FIELD_MAP.items():
-        value = getattr(config, field)
-        if field == "data_env":
-            value = dict(value or {})
-        setattr(agent, legacy_field, value)
-
-
 async def execution_snapshot(agent: Any) -> dict[str, Any]:
     """Return the immutable, minimal configuration needed by a Hermes run."""
 
@@ -294,96 +209,14 @@ async def execution_snapshot(agent: Any) -> dict[str, Any]:
     }
 
 
-async def backfill_legacy_configs() -> HermesConfigBackfillResult:
-    """Create missing Hermes rows without overwriting newer table data.
-
-    Re-running this function is safe. Existing rows are compared with the
-    legacy source so operators can detect divergence during the dual-write
-    transition without logging secrets or configuration values.
-    """
-
-    from app.agent import list_agent_records
-
-    db = get_db()
-    agents = await list_agent_records(
-        driver_code="hermes",
-        limit=1_000_000,
-    )
-    created = 0
-    matched = 0
-    mismatched = 0
-    for agent in agents:
-        payload = _legacy_payload(agent)
-        config = await get_config(agent.id)
-        if config is None:
-            db.add(HermesAgentConfig(agent_id=agent.id, **payload))
-            created += 1
-            continue
-        if _payloads_match(_stored_payload(config), payload):
-            matched += 1
-        else:
-            mismatched += 1
-    await db.flush()
-    outcome = HermesConfigBackfillResult(
-        eligible=len(agents),
-        created=created,
-        matched=matched,
-        mismatched=mismatched,
-    )
-    logger.info(
-        "Hermes configuration backfill: eligible={}, created={}, matched={}, mismatched={}",
-        outcome.eligible,
-        outcome.created,
-        outcome.matched,
-        outcome.mismatched,
-    )
-    if outcome.mismatched:
-        logger.debug(
-            "Hermes legacy source differs from {} authoritative bridge row(s); "
-            "no value was overwritten.",
-            outcome.mismatched,
-        )
-    return outcome
-
-
 async def encrypt_persisted_data_env() -> HermesDataEnvEncryptionResult:
-    """Encrypt plaintext values in both transitional Hermes configuration stores.
-
-    The migration is idempotent because already encrypted Fernet values are
-    retained byte-for-byte. Keys remain visible so operators can manage the
-    mapping without reading its values.
-    """
-    from app.agent import list_agent_records
-
-    db = get_db()
-    agents = await list_agent_records(
-        driver_code="hermes",
-        limit=1_000_000,
-    )
-    configs = list((await db.execute(select(HermesAgentConfig))).scalars().all())
-    agents_updated = 0
-    configs_updated = 0
-
-    for agent in agents:
-        protected = encrypt_mapping_values(agent.hermes_data_env or {})
-        if protected != (agent.hermes_data_env or {}):
-            agent.hermes_data_env = protected
-            agents_updated += 1
-
+    """Encrypt old plaintext maps in the authoritative bridge table only."""
+    configs = (await get_db().scalars(select(HermesAgentConfig))).all()
+    updated = 0
     for config in configs:
         protected = encrypt_mapping_values(config.data_env or {})
         if protected != (config.data_env or {}):
             config.data_env = protected
-            configs_updated += 1
-
-    await db.flush()
-    outcome = HermesDataEnvEncryptionResult(
-        agents_updated=agents_updated,
-        configs_updated=configs_updated,
-    )
-    logger.info(
-        "Hermes data environment encryption: agents_updated={}, configs_updated={}",
-        outcome.agents_updated,
-        outcome.configs_updated,
-    )
-    return outcome
+            updated += 1
+    await get_db().flush()
+    return HermesDataEnvEncryptionResult(configs_updated=updated)

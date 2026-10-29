@@ -179,6 +179,7 @@ over a starry network background.
 Its [product knowledge guide](../admin/product-knowledge.md) loads automatically for text
 and turn-based voice replies and internal Tasks, subject to existing access rights.
 You can customize or remove its avatar; updates preserve your choice.
+Renaming or deleting this assistant never causes an update to recreate it.
 
 **Configure → Agents** (`/agent`) contains **Agents**, **Teams** and **Titles**, according
 to permissions. To create an agent, open **Agents**, then **New Agent**. Open an existing
@@ -222,7 +223,8 @@ without a circular mask or crop. The button appears only
 when the **default LLM profile** has an active, configured image model. Save profile changes
 before generation. The existing image service requests 1024 × 1024 and adapts the dimensions
 to the model, then saves the result like any other avatar. An error preserves the previous
-avatar; profile or avatar changes during generation prevent its replacement.
+avatar; any Agent update during generation prevents its replacement, including an avatar
+replaced and then restored.
 
 ## Tools, connections and skills
 

@@ -39,6 +39,12 @@ def test_agent_creation_requires_first_name() -> None:
         AgentCreate.model_validate({"title_id": 1, "code": "lyra", "last_name": "Example"})
 
 
+@pytest.mark.parametrize("schema", [AgentCreate, AgentUpdate])
+def test_retired_group_input_cannot_silently_drop_membership(schema):
+    with pytest.raises(ValidationError, match="use team_ids"):
+        schema.model_validate({"title_id": 1, "code": "synthetic", "first_name": "Synthetic", "group_id": 1})
+
+
 @pytest.mark.parametrize("last_name", [None, ""])
 def test_agent_update_can_clear_last_name_without_changing_first_name(last_name) -> None:
     update = AgentUpdate(last_name=last_name)
@@ -489,7 +495,7 @@ async def test_agent_list_orders_names_batches_teams_and_reopens_avatar_flags(db
     names = [("alice", "Arbre"), ("Alice", "Zèbre"), ("Émile", "Arbre"), ("Émile", "Zèbre"),
              ("Zoé", "Exemple"), ("Zoé", "Exemple"), ("Zoé", "Horizon"), ("Zoé", "Zèbre")]
     agents = [Agent(title_id=title.id, code=f"batch-agent-{7 - index}", first_name=first,
-                    last_name=last, group_id=teams[0].id, avatar=b"synthetic-avatar" if index == 0 else None)
+                    last_name=last, avatar=b"synthetic-avatar" if index == 0 else None)
               for index, (first, last) in enumerate(names)]
     db.add_all(agents)
     await db.flush()

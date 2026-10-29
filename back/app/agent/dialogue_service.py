@@ -17,7 +17,7 @@ async def policy_snapshot(db: AsyncSession | None = None) -> DialoguePolicy:
     session = db if db is not None else get_db()
     team_ids = set((await session.scalars(select(TeamModel.id))).all())
     agents = (await session.execute(
-        select(Agent.id, Agent.first_name, Agent.last_name, Agent.code, Agent.user_id, Agent.group_id, Agent.avatar.is_not(None))
+        select(Agent.id, Agent.first_name, Agent.last_name, Agent.code, Agent.user_id, Agent.avatar.is_not(None))
         .order_by(
             func.lower(Agent.first_name).collate("und-x-icu"),
             func.lower(Agent.last_name).collate("und-x-icu"),
@@ -29,10 +29,8 @@ async def policy_snapshot(db: AsyncSession | None = None) -> DialoguePolicy:
         if team_id in team_ids:
             memberships.setdefault(agent_id, set()).add(team_id)
     policy = DialoguePolicy(humans=await human_memberships())
-    for aid, first, last, code, manager, legacy_team, has_avatar in agents:
+    for aid, first, last, code, manager, has_avatar in agents:
         teams = memberships.setdefault(aid, set())
-        if legacy_team in team_ids:
-            teams.add(legacy_team)
         policy.agents[aid] = DialogueAgent(id=aid, label=f"{first} {last}".strip(), code=code,
                                          manager_user_id=manager, team_ids=sorted(teams), has_avatar=has_avatar)
     return policy
@@ -86,11 +84,9 @@ async def set_agent_membership(team_id: int, agent_id: int, present: bool) -> No
     if agent is None:
         raise LookupError("Agent not found")
     previous = await get_db().scalar(select(AgentTeam.id).where(AgentTeam.agent_id == agent_id, AgentTeam.team_id == team_id))
-    before = previous is not None or agent.group_id == team_id
+    before = previous is not None
     if present:
         await get_db().execute(insert(AgentTeam).values(agent_id=agent_id, team_id=team_id).on_conflict_do_nothing())
     else:
         await get_db().execute(delete(AgentTeam).where(AgentTeam.agent_id == agent_id, AgentTeam.team_id == team_id))
-        if agent.group_id == team_id:
-            agent.group_id = None
     audit("team.agent", {"team": team_id, "agent": agent_id, "before": before, "after": present})

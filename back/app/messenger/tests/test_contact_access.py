@@ -37,10 +37,12 @@ async def test_peer_scope_protects_transport_boundaries_and_rechecks_revocation(
     caller = Agent(code=f"caller-{uuid4().hex}", first_name="Caller", last_name="Synthetic",
                    title_id=title.id, user_id=manager.id)
     peer = Agent(code=f"peer-{uuid4().hex}", first_name="Peer", last_name="Synthetic",
-                 title_id=title.id, group_id=team.id if shared else None)
+                 title_id=title.id)
     db.add_all([caller, peer])
     await db.flush()
     db.add(AgentTeam(agent_id=caller.id, team_id=team.id))
+    if shared:
+        db.add(AgentTeam(agent_id=peer.id, team_id=team.id))
     connection = Connection(tool_id=tool.id, agent_id=caller.id, active=True)
     identity = MessengerUser(tool_id=tool.id, external_id="synthetic-peer", agent_id=peer.id, is_ai=True)
     human = MessengerUser(tool_id=tool.id, external_id="synthetic-manager", galaris_user_id=manager.id)

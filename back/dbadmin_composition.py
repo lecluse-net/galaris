@@ -11,7 +11,6 @@ from app.connection.models import Connection
 from app.messenger.models import Message
 from app.task.models import Task
 from bridge.hermes.config_service import (
-    backfill_legacy_configs,
     encrypt_persisted_data_env,
 )
 from bridge.hermes.session_binding import SessionBindingRoute, migrate_legacy_bindings
@@ -531,10 +530,6 @@ async def _encrypt_hermes_data_env(_session: AsyncSession) -> None:
     await encrypt_persisted_data_env()
 
 
-async def _reconcile_hermes_configs(_session: AsyncSession) -> None:
-    await backfill_legacy_configs()
-
-
 async def _legacy_session_binding_routes(
     session: AsyncSession,
 ) -> tuple[SessionBindingRoute, ...]:
@@ -640,18 +635,11 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
     )
     registry.register_reconciler(
         DbAdminReconciler(
-            key="bridge.hermes.config_reconciliation",
-            handler=_reconcile_hermes_configs,
-            depends_on=("bridge.hermes.data_env_encryption",),
-        )
-    )
-    registry.register_reconciler(
-        DbAdminReconciler(
             key="bridge.hermes.session_bindings",
             handler=_reconcile_hermes_session_bindings,
             depends_on=(
                 "app.messenger.contact_memory",
-                "bridge.hermes.config_reconciliation",
+                "bridge.hermes.data_env_encryption",
             ),
         )
     )

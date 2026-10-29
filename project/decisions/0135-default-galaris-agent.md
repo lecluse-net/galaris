@@ -17,11 +17,11 @@ administrateur actif. Les installations existantes reçoivent également cette
 proposition à la prochaine synchronisation. Une collision de code reçoit un
 suffixe sans modifier ni augmenter les droits de l'agent préexistant.
 
-`agents.initialization_key` est un marqueur interne unique, nullable pour les
-agents ordinaires, absent des contrats API éditables. La recherche inclut les
-lignes historisées : le renommage et la suppression logique ne rendent jamais
-la proposition à nouveau éligible. Aucun comportement d'exécution ne dépend de ce marqueur.
-La suppression physique hors contrat applicatif n'est pas couverte.
+Le paramètre global interne `galaris.agent_id` conserve l'identifiant de l'agent proposé.
+Le renommage et la suppression ne vident jamais ce paramètre et ne rendent pas la proposition
+à nouveau éligible. Ce paramètre n'est pas éditable par l'API d'administration et aucun
+comportement d'exécution n'en dépend. DbAdmin reprend l'ancien marqueur, y compris sur un
+agent historisé, avant de supprimer sa colonne. Voir la [décision 0248](0248-agent-canonical-state.md).
 
 Le profil reste `NULL` pour suivre le profil courant, le driver vaut `internal`,
 et aucun harnais externe n'est affecté. L'avatar initial est le logo PNG de l'application,

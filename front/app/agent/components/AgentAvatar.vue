@@ -54,7 +54,7 @@ const initials = computed(() => {
 
 const available = computed(() => hasAvatar ?? agent.value?.has_avatar)
 watch(
-  () => [agentId, hasAvatar ?? agent.value?.has_avatar, agent.value?.avatar_revision] as const,
+  () => [agentId, hasAvatar ?? agent.value?.has_avatar, agent.value?.updated_at] as const,
   () => { void loadAvatar() },
   { immediate: true },
 )
@@ -71,7 +71,7 @@ async function loadAvatar(): Promise<void> {
   const current = new AbortController()
   request = current
   try {
-    const url = await agentService.getAvatarBlobUrl(agentId, current.signal, agent.value?.avatar_revision)
+    const url = await agentService.getAvatarBlobUrl(agentId, current.signal, agent.value?.updated_at)
     if (current.signal.aborted) URL.revokeObjectURL(url)
     else avatarUrl.value = url
   } catch {

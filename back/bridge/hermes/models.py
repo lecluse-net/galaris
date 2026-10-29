@@ -14,8 +14,7 @@ from core.database import Base
 class HermesAgentConfig(Base):
     """Driver-owned configuration for one generic Galaris agent.
 
-    The legacy ``agents.hermes_*`` columns deliberately remain in place only as
-    a one-way backfill source until a separately reviewed contraction migration.
+    This table is the sole persisted configuration source for the Hermes bridge.
     """
 
     __tablename__ = "hermes_agent_configs"

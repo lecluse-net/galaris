@@ -4,7 +4,7 @@ from core.dbadmin.contracts import RequiredColumnTransition
 from app.agent.dbadmin import register_dbadmin
 
 import pytest
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select, text, update
 from app.agent.models import Agent, AgentGroup, Title
 from app.agent.models import AgentTeam
 from core.dbadmin.actions import run_actions
@@ -63,13 +63,16 @@ async def test_legacy_group_membership_is_preserved_and_backfill_is_idempotent(d
     title = Title(label="Mx", gender="M")
     db.add_all([team, title])
     await db.flush()
-    agent = Agent(code="legacy-team", first_name="Legacy", last_name="Agent", title_id=title.id, group_id=team.id)
+    agent = Agent(code="legacy-team", first_name="Legacy", last_name="Agent", title_id=title.id)
     db.add(agent)
     await db.flush()
+    await db.execute(text("ALTER TABLE agents ADD COLUMN group_id integer REFERENCES agent_groups(id)"))
+    await db.execute(text("UPDATE agents SET group_id = :team WHERE id = :agent"), {"team": team.id, "agent": agent.id})
     registry = DbAdminRegistry()
     register_dbadmin(registry)
     action = next(action for action in registry.actions if action.key == "app.agent.team_memberships")
-    delta = SchemaTransitionSet()
+    delta = SchemaTransitionSet(removed_columns=frozenset({"agents.group_id"}))
+    assert action.predicate(delta)
     assert not await action.postcondition(db, delta)
     await action.handler(db, delta)
     await action.handler(db, delta)

@@ -2,7 +2,7 @@
 
 from typing import cast
 
-from sqlalchemy import Table, func, select, update
+from sqlalchemy import Table, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
@@ -15,7 +15,7 @@ from core.dbadmin import (
 )
 from core.user import UserModel
 
-from .models import Agent, AgentTeam, Title
+from .models import Agent, Title
 
 
 _INITIAL_TITLES = (("agent_titles.mr", "M"), ("agent_titles.ms", "F"))
@@ -44,16 +44,53 @@ async def _initial_titles_complete(
 
 
 async def _backfill_agent_teams(session: AsyncSession, _transitions: SchemaTransitionSet) -> None:
-    await session.execute(insert(AgentTeam).from_select(
-        ["agent_id", "team_id"], select(Agent.id, Agent.group_id).where(Agent.group_id.is_not(None))
-    ).on_conflict_do_nothing())
+    if not await _has_legacy_column(session, "group_id"):
+        return
+    await session.execute(text("""
+        INSERT INTO agent_teams (agent_id, team_id)
+        SELECT id, group_id FROM agents WHERE group_id IS NOT NULL
+        ON CONFLICT (agent_id, team_id) DO NOTHING
+    """))
 
 
 async def _teams_complete(session: AsyncSession, _transitions: SchemaTransitionSet) -> bool:
-    missing = await session.scalar(select(Agent.id).where(Agent.group_id.is_not(None), ~select(AgentTeam.id).where(
-        AgentTeam.agent_id == Agent.id, AgentTeam.team_id == Agent.group_id
-    ).exists()).limit(1))
+    if not await _has_legacy_column(session, "group_id"):
+        return True
+    missing = await session.scalar(text("""
+        SELECT id FROM agents AS agent WHERE group_id IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM agent_teams AS membership
+            WHERE membership.agent_id = agent.id AND membership.team_id = agent.group_id
+        ) LIMIT 1
+    """))
     return missing is None
+
+
+async def _has_legacy_column(session: AsyncSession, name: str) -> bool:
+    return bool(await session.scalar(text("""
+        SELECT EXISTS (SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'agents' AND column_name = :name)
+    """), {"name": name}))
+
+
+async def _galaris_identity_complete(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
+    if not await _has_legacy_column(session, "initialization_key"):
+        return True
+    return not bool(await session.scalar(text("""
+        SELECT EXISTS (SELECT 1 FROM agents AS agent WHERE initialization_key = 'galaris'
+            AND NOT EXISTS (SELECT 1 FROM params WHERE name = 'galaris.agent_id'
+                AND value = agent.id::text))
+    """)))
+
+
+async def _preserve_galaris_identity(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
+    if not await _has_legacy_column(session, "initialization_key"):
+        return
+    await session.execute(text("""
+        INSERT INTO params (name, value)
+        SELECT 'galaris.agent_id', id::text FROM agents WHERE initialization_key = 'galaris'
+        ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value
+        WHERE params.value IS NULL OR params.value = ''
+    """))
 
 
 def _requires_manager_backfill(transitions: SchemaTransitionSet) -> bool:
@@ -109,11 +146,17 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_action(DbAdminAction(
         key="app.agent.team_memberships", phase=DbAdminPhase.AFTER_EXPAND,
         checksum="preserve-group-identities-and-agent-memberships",
-        predicate=lambda delta: delta.table_added("agent_teams"),
+        predicate=lambda delta: delta.table_added("agent_teams") or "agents.group_id" in delta.removed_columns,
         handler=_backfill_agent_teams, postcondition=_teams_complete,
     ))
     from .html_migration import register_html_conversion
     register_html_conversion(registry)
+    registry.register_action(DbAdminAction(
+        key="app.agent.galaris_identity", phase=DbAdminPhase.AFTER_EXPAND,
+        checksum="global-parameter-preserves-initial-agent-id",
+        predicate=lambda delta: "agents.initialization_key" in delta.removed_columns,
+        handler=_preserve_galaris_identity, postcondition=_galaris_identity_complete,
+    ))
     registry.register_action(
         DbAdminAction(
             key="app.agent.backfill_human_managers",

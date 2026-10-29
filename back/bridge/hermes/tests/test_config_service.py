@@ -20,15 +20,15 @@ async def _agent(db: AsyncSession, *, code: str, suffix: int) -> Agent:
         first_name="Alice",
         last_name="Martin",
         agent_driver="hermes",
-        hermes_url=f"http://{code}:8642/v1",
-        hermes_api_key=f"encrypted-key-{suffix}",
-        hermes_model="hermes-agent",
-        hermes_use_galaris_llm=True,
-        hermes_api_port=8600 + suffix,
-        hermes_dashboard_enabled=True,
-        hermes_data_env={"CUSTOM_FLAG": str(suffix)},
     )
     db.add(agent)
+    await db.flush()
+    from core.util import encrypt_mapping_values
+    db.add(HermesAgentConfig(
+        agent_id=agent.id, url=f"http://{code}:8642/v1", api_key=f"encrypted-key-{suffix}",
+        model="hermes-agent", api_port=8600 + suffix, dashboard_enabled=True,
+        data_env=encrypt_mapping_values({"CUSTOM_FLAG": str(suffix)}),
+    ))
     await db.flush()
     return agent
 
@@ -39,11 +39,12 @@ async def test_sync_hydrate_and_execution_snapshot_use_driver_owned_row(
 ) -> None:
     agent = await _agent(db, code="hermes-config-sync", suffix=1)
 
-    config = await config_service.sync_from_agent(agent)
+    config = await config_service.ensure_config(agent)
 
     assert config.agent_id == agent.id
-    assert config.url == agent.hermes_url
-    assert config.api_key == agent.hermes_api_key
+    assert config.url == "http://hermes-config-sync:8642/v1"
+    assert config.api_key == "encrypted-key-1"
+    assert await config_service.ensure_config(agent) is config
     assert config.use_galaris_llm is True
     assert config.data_env != {"CUSTOM_FLAG": "1"}
     assert decrypt_mapping_values(config.data_env) == {"CUSTOM_FLAG": "1"}
@@ -52,11 +53,10 @@ async def test_sync_hydrate_and_execution_snapshot_use_driver_owned_row(
     config.data_env = {"SOURCE": "new-table"}
     await db.flush()
 
-    await config_service.hydrate_agent(agent)
     snapshot = await config_service.execution_snapshot(agent)
 
-    assert agent.hermes_url == "http://authoritative:8642/v1"
-    assert agent.hermes_data_env == {"SOURCE": "new-table"}
+    assert config.url == "http://authoritative:8642/v1"
+    assert config.data_env == {"SOURCE": "new-table"}
     assert snapshot == {
         "url": "http://authoritative:8642/v1",
         "api_key": "authoritative-encrypted-key",
@@ -76,17 +76,13 @@ async def test_operator_llm_flag_cannot_disable_galaris_routing(
     db: AsyncSession,
 ) -> None:
     agent = await _agent(db, code="hermes-direct-llm", suffix=4)
-    agent.hermes_use_galaris_llm = False
-
-    config = await config_service.sync_from_agent(agent)
+    config = await config_service.ensure_config(agent)
 
     assert config.use_galaris_llm is True
     config.use_galaris_llm = False
     await db.flush()
-    await config_service.hydrate_agent(agent)
     snapshot = await config_service.execution_snapshot(agent)
 
-    assert agent.hermes_use_galaris_llm is False
     assert snapshot["model_gateway"] == "galaris"
 
 
@@ -95,7 +91,7 @@ async def test_bridge_update_owns_secrets_and_returns_only_masks(
     db: AsyncSession,
 ) -> None:
     agent = await _agent(db, code="hermes-bridge-update", suffix=5)
-    config = await config_service.sync_from_agent(agent)
+    config = await config_service.ensure_config(agent)
     config.data_env = {
         "EXISTING": get_encryption_service().encrypt("old-secret"),
     }
@@ -120,9 +116,9 @@ async def test_bridge_update_owns_secrets_and_returns_only_masks(
         "EXISTING": "old-secret",
         "NEW": "new-secret",
     }
-    assert stored.url == agent.hermes_url
-    assert stored.model == agent.hermes_model
-    assert stored.api_port == agent.hermes_api_port
+    assert stored.url == "http://hermes-bridge-update:8642/v1"
+    assert stored.model == "hermes-agent"
+    assert stored.api_port == 8605
     public_payload = public.model_dump()
     assert "hermes_url" not in public_payload
     assert "hermes_model" not in public_payload

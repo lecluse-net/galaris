@@ -205,7 +205,7 @@ export const useAgentStore = defineStore('agent', {
                 this.groups = this.groups.filter(g => g.id !== id)
                 // Detach agents locally (backend already did it server-side)
                 this.agents = this.agents.map(agent =>
-                    agent.group_id === id ? { ...agent, group_id: null } : agent
+                    ({ ...agent, team_ids: agent.team_ids.filter(teamId => teamId !== id) })
                 )
             } catch (error) {
                 this.error = error

@@ -28,6 +28,18 @@ test('management avatars reuse cached bytes across mounts while each consumer ow
     return valid && first !== second
   })).toBe(true)
   expect(reads).toBe(1)
+  // Catalogue refreshes must invalidate a portrait even while has_avatar stays true.
+  const cached = await images.first().getAttribute('src')
+  await page.evaluate(async () => {
+    const { useAgentStore } = await import('/app/agent/stores/agentStore.ts')
+    useAgentStore(window.testApp.pinia).agents = [{
+      id: 7, first_name: 'Test', last_name: 'Agent', has_avatar: true,
+      updated_at: '2026-01-01T12:00:00Z',
+    }]
+  })
+  await expect.poll(() => reads).toBe(2)
+  await expect(images.first()).toHaveJSProperty('naturalWidth', 1)
+  await expect(images.first()).not.toHaveAttribute('src', cached)
 })
 
 test('successful avatar replacement invalidates both authorized endpoints and logout clears mounted images', async ({ page }) => {

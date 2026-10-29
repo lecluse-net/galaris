@@ -105,7 +105,7 @@ def agent_to_markdown(agent: Agent) -> str:
     """Render the stable, non-secret professional profile of one agent."""
 
     title = agent.title.label
-    group = agent.group.name if agent.group is not None else None
+    teams = ", ".join(team.name for team in agent.teams)
     display_name = _agent_name(agent, agent.id)
     lines = [
         f"# Profil agent — {display_name}",
@@ -120,7 +120,7 @@ def agent_to_markdown(agent: Agent) -> str:
         _bullet("Civilité", title),
         _bullet("Prénom", agent.first_name),
         _bullet("Nom", agent.last_name),
-        _bullet("Groupe", group),
+        _bullet("Équipes", teams),
         "",
         "## Fonction",
         "",
@@ -418,7 +418,7 @@ def goal_cycle_projection(cycle: GoalCycle) -> SourceMemoryDocument:
 def _agent_query(agent_id: int, *, include_historized: bool = False):
     query = (
         select(Agent)
-        .options(selectinload(Agent.title), selectinload(Agent.group))
+        .options(selectinload(Agent.title), selectinload(Agent.teams))
         .where(Agent.id == agent_id)
     )
     if include_historized:

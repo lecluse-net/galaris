@@ -89,7 +89,7 @@ async def test_http_generation_uses_default_profile_and_registers_compact_portra
     assert availability.status_code == 200 and availability.json() == {"available": True}
     response = await client.post(f"/api/agents/{config['agent_id']}/avatar/generate", headers=config["headers"])
     assert response.status_code == 200, response.text
-    assert response.json()["avatar_revision"] == 1
+    assert response.json()["registered"] is True
     args, options = provider.call_args
     assert args[0] == config["model_code"]
     assert options["width"] == options["height"] == 1024
@@ -150,7 +150,7 @@ async def test_http_generation_requires_authorized_manager(client, portrait_conf
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("change,status", [("profile", 409), ("avatar", 409), ("owner", 403), ("permission", 403), ("invalid", 502), ("provider", 502), ("provider_http", 502)])
+@pytest.mark.parametrize("change,status", [("profile", 409), ("avatar", 409), ("same_avatar", 409), ("restored_avatar", 409), ("deleted_avatar", 409), ("owner", 403), ("permission", 403), ("invalid", 502), ("provider", 502), ("provider_http", 502)])
 async def test_http_generation_preserves_existing_avatar_on_failure_or_concurrent_change(client, portrait_configuration, monkeypatch, change, status):
     config = portrait_configuration
     from app.agent import agent_service
@@ -164,6 +164,13 @@ async def test_http_generation_preserves_existing_avatar_on_failure_or_concurren
                 agent.job_description = "<p>A changed mission.</p>"
             elif change == "avatar":
                 await agent_service.update_avatar(agent.id, image_bytes("green"))
+            elif change == "same_avatar":
+                await agent_service.update_avatar(agent.id, image_bytes("red"))
+            elif change == "restored_avatar":
+                await agent_service.update_avatar(agent.id, image_bytes("green"))
+                await agent_service.update_avatar(agent.id, image_bytes("red"))
+            elif change == "deleted_avatar":
+                await agent_service.delete_avatar(agent.id)
             elif change == "owner":
                 agent.user_id = config["other_id"]
             elif change == "permission":
@@ -184,7 +191,9 @@ async def test_http_generation_preserves_existing_avatar_on_failure_or_concurren
         assert "400" in response.json()["detail"]
     async with get_db_session() as db:
         agent = await db.get(Agent, config["agent_id"])
-        assert agent.avatar_revision == (2 if change == "avatar" else 1)
+        if change == "deleted_avatar":
+            assert agent.avatar is None
+            return
         with Image.open(io.BytesIO(agent.avatar)) as avatar:
             rgb = avatar.getpixel((250, 250))
             assert rgb[1] > 100 if change == "avatar" else rgb[0] > 250

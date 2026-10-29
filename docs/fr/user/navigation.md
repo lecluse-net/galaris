@@ -197,6 +197,7 @@ sur un fond de réseau étoilé.
 Son [guide de connaissance produit](../admin/product-knowledge.md) est chargé automatiquement
 dans ses réponses texte et voix par tours, et ses tâches internes, sous ses droits existants.
 Vous pouvez personnaliser ou supprimer son avatar ; les mises à jour conservent votre choix.
+Le renommage ou la suppression de cet assistant ne déclenche pas sa recréation lors d'une mise à jour.
 
 **Configurer → Agents** (`/agent`) contient les onglets **Agents**, **Équipes** et
 **Civilités**, selon les droits. Pour créer un agent, ouvrez l’onglet **Agents**, puis
@@ -242,7 +243,8 @@ Le bouton apparaît uniquement si le **profil LLM par défaut** dispose d’un m
 actif et configuré. Enregistrez les modifications de la fiche avant la génération.
 L’avatar est demandé en 1024 × 1024, avec les dimensions adaptées au modèle par le service
 image existant, puis enregistré comme les autres avatars. Une erreur conserve l’avatar
-précédent ; une fiche ou un avatar modifiés pendant la génération empêchent son remplacement.
+précédent ; toute modification de l'agent pendant la génération empêche son remplacement,
+y compris un avatar remplacé puis restauré.
 
 ## Outils, connexions et compétences
 

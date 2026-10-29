@@ -42,14 +42,14 @@ from app.tools.mcp_loader import McpToolContext
 async def test_internal_peer_message_creates_an_awaited_request_without_a_human_room(
     db, monkeypatch, scenario,
 ):
-    from app.agent.models import Agent, Title
+    from app.agent.models import Agent, AgentTeam, Title
     from app.connection import Connection, ConnectionParam
     from app.task import Task, TaskStatus, runner
     from app.tools import ToolModel
     from app.messenger.facade import require_internal_peer_contact
     from core.params import runtime_settings
     from core.team import TeamModel
-    from sqlalchemy import select
+    from sqlalchemy import delete, select
 
     matrix = isinstance(scenario, tuple)
     left, right, shared, reverse = scenario if matrix else (None, None, True, False)
@@ -60,12 +60,17 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
     db.add_all([title, team])
     await db.flush()
     sender = Agent(code=f"sender-{uuid4().hex}", first_name="Sender", last_name="Test",
-                   title_id=title.id, group_id=None if scenario == "sender_team_added" else team.id, agent_driver="internal")
+                   title_id=title.id, agent_driver="internal")
     peer = Agent(code=f"peer-{uuid4().hex}", first_name="Peer", last_name="Test",
-                 title_id=title.id, group_id=None if not shared or scenario in {"denied", "scope_all", "receiver_team_added"} else team.id, agent_driver="internal")
+                 title_id=title.id, agent_driver="internal")
     tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
     assert tool is not None
     db.add_all([sender, peer])
+    await db.flush()
+    if scenario != "sender_team_added":
+        db.add(AgentTeam(agent_id=sender.id, team_id=team.id))
+    if shared and scenario not in {"denied", "scope_all", "receiver_team_added"}:
+        db.add(AgentTeam(agent_id=peer.id, team_id=team.id))
     await db.flush()
     if reverse:
         sender, peer = peer, sender
@@ -115,11 +120,11 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
         changing = sender if scenario.startswith("sender") else peer
         if scenario.endswith("_team_revoked"):
             await require_internal_peer_contact(sender.id, peer.id, connection_id=connection.id)
-            changing.group_id = None
+            await db.execute(delete(AgentTeam).where(AgentTeam.agent_id == changing.id, AgentTeam.team_id == team.id))
         else:
             with pytest.raises(PermissionError):
                 await require_internal_peer_contact(sender.id, peer.id, connection_id=connection.id)
-            changing.group_id = team.id
+            db.add(AgentTeam(agent_id=changing.id, team_id=team.id))
     elif scenario in {"sender_inactive", "sender_missing", "receiver_missing"}:
         await require_internal_peer_contact(sender.id, peer.id, connection_id=connection.id)
         if scenario == "sender_inactive":

@@ -151,7 +151,7 @@ def reveal(name: str, value: Optional[str]) -> Optional[str]:
 
     Plaintext legacy values remain supported.
     """
-    if name in INTERNAL_PARAMS:
+    if name in INTERNAL_PARAMS and name in SECRET_PARAMS:
         if not value:
             raise ValueError("An internal secret is missing")
         # Internal credentials never accept plaintext or a different encryption key.

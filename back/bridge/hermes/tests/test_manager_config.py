@@ -13,6 +13,7 @@ import pytest
 from app.agent.models import Agent
 from core.settings import settings as bootstrap_settings
 from bridge.hermes.manager import HermesAgent, HermesManager
+from bridge.hermes.models import HermesAgentConfig
 
 manager_module = importlib.import_module("bridge.hermes.manager")
 
@@ -69,14 +70,14 @@ def test_compose_owns_one_container_and_data_volume_for_the_agent() -> None:
         Agent,
         SimpleNamespace(
             code="alice",
-            hermes_api_port=18642,
-            hermes_dashboard_enabled=False,
-            hermes_dashboard_port=None,
-            hermes_compose=None,
+            api_port=18642,
+            dashboard_enabled=False,
+            dashboard_port=None,
+            compose=None,
         ),
     )
 
-    compose = manager_module._build_compose_dict(agent, 10_000, 10_000)
+    compose = manager_module._build_compose_dict(agent.code, cast(HermesAgentConfig, agent), 10_000, 10_000)
 
     service = compose["services"]["agent"]
     assert service["container_name"] == "alice-agent"
@@ -98,11 +99,11 @@ def test_compose_preserves_operator_networks_without_injecting_aliases(
     }
     override = yaml.safe_dump(configured)
     agent = cast(Agent, SimpleNamespace(
-        code="alice", hermes_api_port=None, hermes_dashboard_enabled=False,
-        hermes_dashboard_port=None, hermes_compose=override if source == "agent" else None,
+        code="alice", api_port=None, dashboard_enabled=False,
+        dashboard_port=None, compose=override if source == "agent" else None,
     ))
     compose = manager_module._build_compose_dict(
-        agent, 10_000, 10_000, override if source == "global" else None,
+        agent.code, cast(HermesAgentConfig, agent), 10_000, 10_000, override if source == "global" else None,
     )
 
     assert compose["services"]["agent"]["networks"] == network_form
@@ -115,22 +116,22 @@ def test_compose_does_not_infer_network_from_runtime_settings(
 ) -> None:
     monkeypatch.setenv("HARNESS_MANAGER_DOCKER_NETWORK", network)
     agent = cast(Agent, SimpleNamespace(
-        code="remote", hermes_api_port=None, hermes_dashboard_enabled=False,
-        hermes_dashboard_port=None, hermes_compose=None,
+        code="remote", api_port=None, dashboard_enabled=False,
+        dashboard_port=None, compose=None,
     ))
-    compose = manager_module._build_compose_dict(agent, 10_000, 10_000)
+    compose = manager_module._build_compose_dict(agent.code, cast(HermesAgentConfig, agent), 10_000, 10_000)
     assert "networks" not in compose
     assert "networks" not in compose["services"]["agent"]
 
 
 def test_agent_can_disable_global_network_attachment() -> None:
     agent = cast(Agent, SimpleNamespace(
-        code="remote", hermes_api_port=None, hermes_dashboard_enabled=False,
-        hermes_dashboard_port=None,
-        hermes_compose="services:\n  agent:\n    networks: []\n",
+        code="remote", api_port=None, dashboard_enabled=False,
+        dashboard_port=None,
+        compose="services:\n  agent:\n    networks: []\n",
     ))
     compose = manager_module._build_compose_dict(
-        agent, 10_000, 10_000,
+        agent.code, cast(HermesAgentConfig, agent), 10_000, 10_000,
         "services:\n  agent:\n    networks: [agents-net]\nnetworks:\n  agents-net:\n    external: true\n",
     )
     assert compose["services"]["agent"]["networks"] == []
@@ -1008,8 +1009,6 @@ async def test_operator_flag_cannot_disable_the_galaris_model(
         SimpleNamespace(
             id=7,
             code="hermes-agent",
-            hermes_use_galaris_llm=False,
-            hermes_dashboard_enabled=False,
         ),
     )
     runtime = HermesAgent(agent, cast(HermesManager, SimpleNamespace()))
@@ -1022,7 +1021,7 @@ async def test_operator_flag_cannot_disable_the_galaris_model(
         }
     }
 
-    await runtime._inject(data_env, config, "mcp-token")
+    await runtime._inject(data_env, config, HermesAgentConfig(use_galaris_llm=False, dashboard_enabled=False), "mcp-token")
 
     assert "OPENAI_API_KEY" not in data_env
     assert data_env["GALARIS_LLM_API_KEY"] == "mcp-token"

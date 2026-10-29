@@ -76,7 +76,6 @@ export interface Agent {
     is_owner: boolean
     memory_item_id: string | null
     title_id: number
-    group_id: number | null
     team_ids: number[]
     code: string
     first_name: string
@@ -92,14 +91,14 @@ export interface Agent {
     profile?: LlmProfileInfo | null
     fallback_profile?: LlmProfileInfo | null
     has_avatar: boolean
-    avatar_revision?: number
+    updated_at?: string | null
     title?: Title
 }
 
 export interface AgentCreate {
+    team_ids?: number[]
     user_id?: number | null
     title_id: number
-    group_id?: number | null
     code: string
     first_name: string
     last_name?: string
@@ -184,8 +183,8 @@ export const agentService = {
     getAvatarGenerationAvailability(): Promise<AxiosResponse<{ available: boolean }>> {
         return api.get('/agents/avatar-generation')
     },
-    async generateAvatar(id: number): Promise<AxiosResponse<{ avatar_revision: number }>> {
-        const response = await api.post<{ avatar_revision: number }>(`/agents/${id}/avatar/generate`)
+    async generateAvatar(id: number): Promise<AxiosResponse<{ status: string; registered: boolean }>> {
+        const response = await api.post<{ status: string; registered: boolean }>(`/agents/${id}/avatar/generate`)
         invalidateSessionReads('agent-avatar')
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
@@ -247,9 +246,9 @@ export const agentService = {
     getAvatarUrl(id: number): string {
         return `/api/agents/${id}/avatar`
     },
-    async getAvatarBlobUrl(id: number, signal?: AbortSignal, revision = 0): Promise<string> {
-        const blob = await avatars.read(`${id}:${revision}`, sharedSignal => queuePreview(async () => (
-            await api.get<Blob>(`/agents/${id}/avatar`, { responseType: 'blob', signal: sharedSignal, params: { revision } })
+    async getAvatarBlobUrl(id: number, signal?: AbortSignal, updatedAt?: string | null): Promise<string> {
+        const blob = await avatars.read(`${id}:${updatedAt ?? ''}`, sharedSignal => queuePreview(async () => (
+            await api.get<Blob>(`/agents/${id}/avatar`, { responseType: 'blob', signal: sharedSignal, params: { updated_at: updatedAt ?? '' } })
         ).data, sharedSignal), signal)
         signal?.throwIfAborted()
         return URL.createObjectURL(blob)

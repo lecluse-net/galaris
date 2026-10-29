@@ -1,11 +1,11 @@
 from typing import Sequence, Optional
-from sqlalchemy import select, update as sql_update
+from sqlalchemy import delete as sql_delete, select
 from loguru import logger
 
 from core.database import get_db
 from core.team import audit
 
-from .models import AgentGroup, Agent
+from .models import AgentGroup, AgentTeam
 from .observers import notify_agent_profile
 from .schemas import AgentGroupCreate, AgentGroupUpdate
 
@@ -50,7 +50,7 @@ async def update(id: int, group_update: AgentGroupUpdate) -> Optional[AgentGroup
         return None
 
     agent_ids = list(
-        (await db.scalars(select(Agent.id).where(Agent.group_id == id))).all()
+        (await db.scalars(select(AgentTeam.agent_id).where(AgentTeam.team_id == id))).all()
     )
     update_data = group_update.model_dump(exclude_unset=True)
     before = {"id": group.id, "name": group.name, "order": group.order}
@@ -75,11 +75,11 @@ async def delete(id: int) -> bool:
         return False
 
     agent_ids = list(
-        (await db.scalars(select(Agent.id).where(Agent.group_id == id))).all()
+        (await db.scalars(select(AgentTeam.agent_id).where(AgentTeam.team_id == id))).all()
     )
     # Detach agents from the group being deleted
     await db.execute(
-        sql_update(Agent).where(Agent.group_id == id).values(group_id=None)
+        sql_delete(AgentTeam).where(AgentTeam.team_id == id)
     )
 
     audit("team.delete", {"before": {"id": group.id, "name": group.name, "order": group.order}})

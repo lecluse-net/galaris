@@ -41,6 +41,7 @@ from app.llm import LLM, llm_provider_service, llm_service
 from bridge.harness import manager as harness_manager
 
 from . import config_service
+from .models import HermesAgentConfig
 
 
 def _decrypt(value: str) -> str:
@@ -354,10 +355,10 @@ async def _load_global_data_env() -> dict[str, str]:
 
 # Default configuration builders
 
-def _default_env_dict(agent: Agent) -> dict[str, str]:
+def _default_env_dict(runtime: HermesAgentConfig) -> dict[str, str]:
     """Build the Docker Compose .env mapping."""
-    dashboard_enabled = agent.hermes_dashboard_enabled
-    api_key = _decrypt(agent.hermes_api_key) if agent.hermes_api_key else "change-me"
+    dashboard_enabled = runtime.dashboard_enabled
+    api_key = _decrypt(runtime.api_key) if runtime.api_key else "change-me"
     return {
         "API_SERVER_KEY": api_key,
         "DASHBOARD":      "1" if dashboard_enabled else "0",
@@ -1105,12 +1106,12 @@ def _template_destinations(filepath: str) -> tuple[str, ...]:
     return (filepath, f"{_GALARIS_MEMORY_LEGACY_PREFIX}{suffix}")
 
 
-def _inject_dashboard_auth(config: dict[str, Any], agent: "Agent") -> None:
+def _inject_dashboard_auth(config: dict[str, Any], runtime: HermesAgentConfig) -> None:
     """Inject Hermes dashboard basic authentication when configured."""
-    if not agent.hermes_dashboard_enabled:
+    if not runtime.dashboard_enabled:
         return
-    username = (agent.hermes_dashboard_username or "admin").strip()
-    password_hash = _decrypt(agent.hermes_dashboard_password_hash) if agent.hermes_dashboard_password_hash else ""
+    username = (runtime.dashboard_username or "admin").strip()
+    password_hash = _decrypt(runtime.dashboard_password_hash) if runtime.dashboard_password_hash else ""
     if not username or not password_hash:
         return
 
@@ -1121,30 +1122,31 @@ def _inject_dashboard_auth(config: dict[str, Any], agent: "Agent") -> None:
 
 
 def _build_compose_dict(
-    agent: "Agent",
+    agent_code: str,
+    runtime: HermesAgentConfig,
     uid: int,
     gid: int,
     default_compose: str | None = None,
 ) -> dict[str, Any]:
     """Apply global then agent overrides; network topology belongs to the operator."""
     compose = copy.deepcopy(_DEFAULT_COMPOSE)
-    compose["services"]["agent"]["container_name"] = f"{agent.code}-agent"
+    compose["services"]["agent"]["container_name"] = f"{agent_code}-agent"
     compose["services"]["agent"]["environment"].extend([
         f"HERMES_UID={uid}",
         f"HERMES_GID={gid}",
     ])
 
     ports: list[str] = []
-    if agent.hermes_api_port is not None:
-        ports.append(f"{agent.hermes_api_port}:8642")
-    if agent.hermes_dashboard_enabled and agent.hermes_dashboard_port is not None:
-        ports.append(f"{agent.hermes_dashboard_port}:9119")
+    if runtime.api_port is not None:
+        ports.append(f"{runtime.api_port}:8642")
+    if runtime.dashboard_enabled and runtime.dashboard_port is not None:
+        ports.append(f"{runtime.dashboard_port}:9119")
     if ports:
         compose["services"]["agent"]["ports"] = ports
 
     compose = merge_compose_defaults(compose, default_compose, service_name="agent")
-    if agent.hermes_compose:
-        agent_dict = cast(dict[str, Any], yaml.safe_load(agent.hermes_compose) or {})  # type: ignore[reportUnknownMemberType]
+    if runtime.compose:
+        agent_dict = cast(dict[str, Any], yaml.safe_load(runtime.compose) or {})  # type: ignore[reportUnknownMemberType]
         compose = deep_merge(compose, agent_dict)
 
     return compose
@@ -1341,10 +1343,11 @@ class HermesAgent:
         self,
         data_env: dict[str, str],
         config: dict[str, Any],
+        runtime: HermesAgentConfig,
         mcp_token: str | None = None,
     ) -> None:
         """Inject dynamic data into Hermes configuration files."""
-        _inject_dashboard_auth(config, self.agent)
+        _inject_dashboard_auth(config, runtime)
         if not mcp_token:
             raise RuntimeError(_message("system_token_missing", agent_code=self.code))
         llm = await _get_effective_llm(self.agent)
@@ -1429,7 +1432,6 @@ class HermesAgent:
                 url=_runtime_url(self.code),
                 model="hermes-agent",
             )
-            await config_service.hydrate_agent(self.agent)
         except Exception as e:
             logger.warning("Hermes sync: API key rotation failed for agent={}: {}", self.code, e)
 
@@ -1443,10 +1445,12 @@ class HermesAgent:
 
         default_compose = await params_service.get(Params.HARNESS_DEFAULT_COMPOSE)
         default_config  = await params_service.get(Params.HERMES_DEFAULT_CONFIG)
+        runtime = await config_service.ensure_config(self.agent)
         sys_info = await self._manager.get_system_info()
-        env = _default_env_dict(self.agent)
+        env = _default_env_dict(runtime)
         compose = _build_compose_dict(
-            self.agent,
+            self.code,
+            runtime,
             sys_info["uid"],
             sys_info["gid"],
             default_compose,
@@ -1484,8 +1488,8 @@ class HermesAgent:
         if default_config:
             default_config_dict = cast(dict[str, Any], yaml.safe_load(default_config) or {})  # type: ignore[reportUnknownMemberType]
         agent_config_dict: dict[str, Any] = {}
-        if self.agent.hermes_config:
-            agent_config_dict = cast(dict[str, Any], yaml.safe_load(self.agent.hermes_config) or {})  # type: ignore[reportUnknownMemberType]
+        if runtime.config:
+            agent_config_dict = cast(dict[str, Any], yaml.safe_load(runtime.config) or {})  # type: ignore[reportUnknownMemberType]
         from app.connection import connection_service
         from app.tools import list_enabled_native_mcp_definitions
         from core.database import get_db_session
@@ -1515,11 +1519,11 @@ class HermesAgent:
 
         # Priority increases from generated values to global and then agent overrides.
         data_env.update(await _load_global_data_env())
-        if self.agent.hermes_data_env:
-            data_env.update(decrypt_mapping_values(self.agent.hermes_data_env))
+        if runtime.data_env:
+            data_env.update(decrypt_mapping_values(runtime.data_env))
 
         # Enforce Galaris proxy routing after every operator-provided layer.
-        await self._inject(data_env, config, mcp_token)
+        await self._inject(data_env, config, runtime, mcp_token)
         await self._sync_console_ssh(data_env, config, console_ssh)
 
         # Send final data files.
@@ -1761,13 +1765,14 @@ class HermesManager:
         return await harness_manager.get_logs(agent_id, lines)
 
     async def check_model_available(self, agent: Agent) -> str:
-        """Check whether ``hermes_model`` is exposed by the agent's /models endpoint."""
-        if not agent.hermes_url or not agent.hermes_model:
+        """Check whether the selected model is exposed by the runtime endpoint."""
+        runtime = await config_service.ensure_config(agent)
+        if not runtime.url or not runtime.model:
             return "unknown"
-        url = agent.hermes_url.rstrip("/") + "/models"
+        url = runtime.url.rstrip("/") + "/models"
         headers: dict[str, str] = {}
-        if agent.hermes_api_key:
-            headers["Authorization"] = f"Bearer {_decrypt(agent.hermes_api_key)}"
+        if runtime.api_key:
+            headers["Authorization"] = f"Bearer {_decrypt(runtime.api_key)}"
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(url, headers=headers)
@@ -1778,7 +1783,7 @@ class HermesManager:
                     data.get("data") or data.get("models") or []  # type: ignore[assignment]
                 )
                 found = any(
-                    (m.get("id") or m.get("name")) == agent.hermes_model
+                    (m.get("id") or m.get("name")) == runtime.model
                     for m in models
                 )
                 return "running" if found else "stopped"

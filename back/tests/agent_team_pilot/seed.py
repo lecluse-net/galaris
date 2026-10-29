@@ -140,7 +140,7 @@ async def seed(directory: Path, case_code: str, mode: str, config: dict, *, exec
                 await sync_integrated_tool_connections(agent.id)
                 agents.append(agent)
             for agent in agents:
-                updated = await agent_service.update(agent.id, AgentUpdate(group_id=team.id), actor_user_id=owner.id)
+                updated = await agent_service.update(agent.id, AgentUpdate(team_ids=[team.id]), actor_user_id=owner.id)
                 assert updated is not None
             allowed = {"agent_list", "agent_get", "task_get", "task_work_update", "tools_list", "document_show",
                        "file_list", "file_search", "file_read", "file_write", "file_edit", "file_append",

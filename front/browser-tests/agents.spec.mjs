@@ -120,7 +120,7 @@ for (const width of [390, 1440]) {
     await agentFixtures(page)
     let available = false
     await page.route('**/api/agents/avatar-generation', route => route.fulfill({ json: { available } }))
-    const first = { ...agent, agent_driver: 'internal', avatar_revision: 0 }
+    const first = { ...agent, agent_driver: 'internal', updated_at: null }
     const second = { ...first, id: 8, code: 'lyra', first_name: 'Lyra' }
     await page.route('**/api/agents?*', route => route.fulfill({ json: [first, second] }))
     await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
@@ -137,8 +137,8 @@ for (const width of [390, 1440]) {
       if (calls === 1) return route.fulfill({ status: 502, json: { detail: 'Synthetic generation failure' } })
       await pending
       first.has_avatar = true
-      first.avatar_revision = 1
-      return route.fulfill({ json: { avatar_revision: 1 } })
+      first.updated_at = '2026-01-01T12:00:00Z'
+      return route.fulfill({ json: { status: 'success', registered: true } })
     })
     await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
     const dialog = page.getByRole('dialog')
@@ -417,7 +417,7 @@ test('a refreshed portrait survives an older catalogue avatar response', async (
   await agentFixtures(page)
   await jsonRoute(page, '**/api/harnesses/agents/*/status', { status: 'stopped', managed: false, containerized: false, capabilities: [], available_actions: [] })
   const target = { ...agent, id: 8, code: 'synthetic-portrait', first_name: 'Lyra', last_name: 'Synthetic', agent_driver: 'internal', is_owner: true }
-  let catalogue = [{ ...agent, agent_driver: 'internal', has_avatar: true, avatar_revision: 1 }, { ...target, has_avatar: false, avatar_revision: 0 }]
+  let catalogue = [{ ...agent, agent_driver: 'internal', has_avatar: true, updated_at: '2026-01-01T12:00:00Z' }, { ...target, has_avatar: false, updated_at: null }]
   await page.route('**/api/agents?*', route => route.fulfill({ json: catalogue }))
   const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
   let release, started = false
@@ -437,7 +437,7 @@ test('a refreshed portrait survives an older catalogue avatar response', async (
     URL.revokeObjectURL = url => { window.disposedPortraits++; revoke(url) }
   })
   try {
-    catalogue = [{ ...catalogue[0], has_avatar: false, avatar_revision: 2 }, { ...target, has_avatar: true, avatar_revision: 1 }]
+    catalogue = [{ ...catalogue[0], has_avatar: false, updated_at: '2026-01-01T12:01:00Z' }, { ...target, has_avatar: true, updated_at: '2026-01-01T12:00:00Z' }]
     await page.evaluate(async () => {
       const { invalidateSessionReads } = await import('/core/util/sessionReadCache.ts')
       const { useAgentStore } = await import('/app/agent/stores/agentStore.ts')

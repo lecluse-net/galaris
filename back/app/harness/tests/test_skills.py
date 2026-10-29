@@ -36,7 +36,7 @@ async def test_authorized_product_guide_loads_without_agent_identity_and_respect
     await db.flush()
     # Neither name nor installation marker controls runtime loading.
     assistant = Agent(code="renamed-guide", first_name="Custom name", last_name="",
-                      initialization_key="galaris", title_id=title.id, user_id=user.id)
+                      title_id=title.id, user_id=user.id)
     other = Agent(code="galaris", first_name="Galaris", last_name="",
                   title_id=title.id, user_id=user.id)
     db.add_all([assistant, other])

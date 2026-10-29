@@ -1764,20 +1764,15 @@ async def _related_agents(
 async def _related_teams(
     agents_by_topic: dict[UUID, list[TopicRelatedAgent]],
 ) -> dict[UUID, list[TopicRelatedTeam]]:
-    """Current teams of the visible participants, including legacy memberships."""
-    from app.agent import Agent, AgentGroup, AgentTeamModel
+    """Current teams of the visible participants."""
+    from app.agent import AgentGroup, AgentTeamModel
 
     agent_ids = {agent.id for agents in agents_by_topic.values() for agent in agents}
     if not agent_ids:
         return {}
-    memberships = union_all(
-        select(Agent.id.label("agent_id"), Agent.group_id.label("team_id")).where(
-            Agent.id.in_(agent_ids), Agent.group_id.is_not(None)
-        ),
-        select(AgentTeamModel.agent_id, AgentTeamModel.team_id).where(
+    memberships = select(AgentTeamModel.agent_id, AgentTeamModel.team_id).where(
             AgentTeamModel.agent_id.in_(agent_ids)
-        ),
-    ).subquery()
+        ).subquery()
     rows = await get_db().execute(
         select(memberships.c.agent_id, AgentGroup.id, AgentGroup.name)
         .join(AgentGroup, AgentGroup.id == memberships.c.team_id)

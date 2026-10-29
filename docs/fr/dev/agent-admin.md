@@ -83,8 +83,8 @@ facultatives, au plus 4 000 caractères, précisent apparence, cadrage ou ambian
 
 `agent_avatar_generate` appelle directement le service utilisé par `image_generate`,
 attend l'image et l'enregistre. La réponse contient `status="success"`, `registered=true`,
-l'URI de la cible et sa révision d'avatar. Aucun Process ni job de processus n'est créé.
-Avant enregistrement, les droits, le responsable, le profil et la révision de l'avatar
+l'URI de la cible. Aucun Process ni job de processus n'est créé.
+Avant enregistrement, les droits, le responsable, le profil et la date de modification de l'agent
 sont revérifiés. Une erreur fournisseur, une révocation ou une modification concurrente
 conserve l'état courant ; la fonction ne resoumet pas automatiquement la génération.
 DbAdmin purge les anciennes définitions `agent_admin:<agent>:avatar` et leurs exécutions,
@@ -98,8 +98,12 @@ l’image en JPEG optimisé (qualité 85), avec un maximum de 500 × 500 pixels,
 conservées, sans recadrage ni agrandissement. La transparence devient un fond blanc,
 les animations utilisent leur première image et les métadonnées EXIF sont retirées.
 Cette conversion s’applique au POST HTTP, aux URI et aux portraits générés.
-Une révision monotone protège aussi contre un avatar remplacé puis restauré. Les lecteurs UI
-utilisent cette révision pour charger le nouvel avatar à la réouverture.
+La date `agents.updated_at` est explicitement actualisée à chaque écriture d'avatar,
+même identique, avec l'horloge PostgreSQL. Elle protège aussi contre un avatar remplacé
+puis restauré dans une même transaction. Toute modification intermédiaire de l'agent
+empêche la publication d'un portrait en attente ; les anciens snapshots sans cette date
+sont également refusés. Les lecteurs UI utilisent cette date pour charger le nouvel avatar
+à la réouverture, sans colonne de révision dédiée.
 Une réponse d'un ancien chargement de la liste ne peut pas retirer un portrait courant ;
 son URL temporaire est libérée.
 
@@ -117,8 +121,8 @@ Ces tests ne mesurent pas la qualité photographique d’un fournisseur réel.
 
 Commandes : `make tests ARGS='app/agent/tests app/connection/tests app/harnesses/tests app/tools/tests app/image/tests app/process/tests core/team/tests'`,
 `make tests-e2e ARGS='agent-admin.spec.mjs --project=chromium'`, `make typecheck`,
-`make docs-prepare`, `make architecture-check`. Le changement de schéma est la colonne
-`agents.avatar_revision`, synchronisée par DbAdmin avec `make sync-db` en développement.
+`make docs-prepare`, `make architecture-check`. DbAdmin supprime l'ancienne colonne de
+révision d'avatar avec `make sync-db` en développement.
 
 ### Recette avec un fournisseur réel
 
