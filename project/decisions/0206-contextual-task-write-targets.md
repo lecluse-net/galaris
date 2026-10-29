@@ -32,9 +32,21 @@ preparation inference; deterministic checks prove reference and quote provenance
 Deletion and transport still require their existing authorization paths. This change does
 not rewrite or restart terminal Tasks created with an earlier scope.
 
+An admitted Document folder also bounds updates to its current readable descendants.
+Before dispatch, the Task adapter asks a domain resolver registered by Document at
+bootstrap to verify membership in the live folder branch, including nested documents.
+Agent owns the resolver contract and never imports Document internals. Resolution adds
+no durable grant and is repeated at each preflight: removal from the branch or loss of
+folder access withdraws this admission. Exact folder URIs are required; URI prefixes,
+discovery results and attachment collections do not imply membership. Only `file.write`
+mutations qualify; deletion and transport retain their exact-target requirements.
+Native write permissions and revision checks remain mandatory.
+
 ## Verification
 
 Synthetic conversation tests cover continuation, unselected context resources, fabricated
 quotes and targets, submission-hint-only references, durable admission, idempotent submission,
 child inheritance, and rejection of deletion and transport. Existing scope tests continue
 to cover unknown versions, stale revisions and persistence before an effect.
+Folder coverage exercises a native title rename with preserved content, nested membership,
+removal and access revocation, unrelated targets, attachments, deletion and transport.

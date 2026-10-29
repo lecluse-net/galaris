@@ -58,6 +58,48 @@ async def _native_creation_server(task_id, agent_id, functions, management_scope
 
 
 @pytest.mark.asyncio
+async def test_folder_scope_admits_native_rename_and_rechecks_membership(scoped_task, monkeypatch):
+    import json
+    from fastmcp import Client
+    from app.agent import AgentManagementScope
+    from app.agent.task_port import task_port
+    from app.document import document_tags
+    from app.document.schemas import DocumentTagWrite
+    from app.document.tests.test_sharing_inheritance import document, rule
+
+    task_id, agent_id = scoped_task
+    monkeypatch.setattr(task_port, "record_scope_preflight", SqlAlchemyAgentTaskAdapter().record_scope_preflight)
+    async with get_db_session() as db:
+        agent = await db.get(Agent, agent_id)
+        owner = await db.get(UserModel, agent.user_id)
+        scope = AgentManagementScope(user_id=owner.id, agent_ids=frozenset({agent_id}))
+        folder = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic archive", parent_id=None))
+        await rule(folder, scope, [("agent", agent_id, True)])
+        item = await document(agent, owner, "Synthetic obsolete report")
+        await document_tags.move_document(scope, item.id, folder.id)
+        uri, identity, folder_id = f"document://{item.id}", item.id, folder.id
+        lock_version = item.lock_version
+        task = await db.get(Task, task_id)
+        task.objective = f'<p>Prefix obsolete titles in <a href="document://folders/{folder_id}/">this folder</a>; delete nothing.</p>'
+        task.data = {**task.data, "_original_demand": task.objective}
+        await initialize_scope(task)
+    server = await _native_creation_server(task_id, agent_id, {"file_sharing": ["file_rename", "file_read"]})
+    async with Client(server) as client:
+        result = await client.call_tool("file_rename", {"uri": uri, "name": "DEPRECATED Synthetic obsolete report",
+            "expected_lock_version": lock_version}, raise_on_error=False)
+        assert not result.is_error, result
+        read = await client.call_tool("file_read", {"uri": uri})
+        assert "Synthetic content" in json.loads(read.content[0].text)["content"]
+    async with get_db_session():
+        await document_tags.move_document(scope, identity, None)
+    async with get_db_session():
+        decision = await SqlAlchemyAgentTaskAdapter().record_scope_preflight(task_id, agent_id=agent_id,
+            descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",)),
+            tool_name="file_rename", arguments={"uri": uri})
+        assert decision.decision == "clarify"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("scheme,content", [
     ("document", "<h2>Synthetic report</h2><p>Preserved content.</p>"),
     ("data", '{"synthetic": [1, false, "value"]}'),

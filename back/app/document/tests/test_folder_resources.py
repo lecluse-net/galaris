@@ -24,6 +24,39 @@ def test_folder_reference_is_a_stable_collection():
 
 
 @pytest.mark.asyncio
+async def test_folder_scope_membership_is_live_and_does_not_authorize_other_effects(db, agents, memory_storage):
+    from app.agent import EffectDescriptorV1, admitted_scope, collection_scope_targets, preflight
+    owner = await human(db)
+    scope = AgentManagementScope(user_id=owner.id, agent_ids=frozenset())
+    root = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic scope root", parent_id=None))
+    child = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic scope child", parent_id=root.id))
+    first = await document(agents[0], owner, "Synthetic scoped document")
+    nested = await document(agents[0], owner, "Synthetic scoped nested document")
+    await document_tags.move_document(scope, first.id, child.id)
+    await document_nesting.move(scope, nested.id, first.id)
+    await rule(root, scope, [("agent", agents[1].id, False)])
+    uri = f"document://folders/{root.id}/"
+    admitted = admitted_scope(uuid4(), f'<p>Prefix obsolete titles within <a href="{uri}">this folder</a>; delete nothing.</p>')
+
+    async def decision(target, kind="mutate", capability="file.write"):
+        effect = EffectDescriptorV1(capability=capability, kind=kind, target_arguments=("uri",))
+        arguments = {"uri": target}
+        members = await collection_scope_targets(admitted, effect, arguments, agents[1].id)
+        return preflight(admitted, effect, "synthetic", arguments, produced_targets=members).decision
+
+    assert await decision(f"document://{first.id}") == "allow"
+    assert await decision(f"document://{nested.id}") == "allow"
+    assert await decision(f"document://{uuid4()}") == "clarify"
+    assert await decision(f"document://{first.id}/attachments/") == "clarify"
+    assert await decision(f"document://{first.id}", "delete", "file.delete") == "clarify"
+    assert await decision(f"document://{first.id}", "transport", "file.copy") == "clarify"
+    await document_nesting.move(scope, nested.id, None)
+    assert await decision(f"document://{nested.id}") == "clarify"
+    await rule(root, scope)
+    assert await decision(f"document://{first.id}") == "clarify"
+
+
+@pytest.mark.asyncio
 async def test_folder_discovery_contents_and_revocation(db, agents, memory_storage):
     from app.document.folder_resources import describe_folder, list_folder
 

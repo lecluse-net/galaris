@@ -1,6 +1,7 @@
 """Read-only collections over shared personal folders, with live source ACLs."""
 
 from uuid import UUID
+import re
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true, union_all
 from sqlalchemy.sql.elements import ColumnElement
@@ -16,6 +17,35 @@ from .models import Document, DocumentNesting, DocumentTag, DocumentTagAssignmen
 
 def folder_uri(identity: UUID | None = None) -> str:
     return "document://folders/" + (f"{identity}/" if identity else "")
+
+
+async def scope_collection_contains(collection: str, target: str, actor: int) -> bool:
+    """Check current placement and read access; mutations still enforce native write ACLs."""
+    folder_match = re.fullmatch(r"document://folders/([0-9a-fA-F-]{36})/?", collection)
+    target_match = re.fullmatch(r"(document|data)://([0-9a-fA-F-]{36})", target)
+    if folder_match is None or target_match is None:
+        return False
+    try:
+        folder_identity, document_identity = UUID(folder_match[1]), UUID(target_match[2])
+    except ValueError:
+        return False
+    try:
+        folder = await require_folder(folder_identity, actor)
+    except FileNotFoundError:
+        return False
+    branch = select(DocumentTag.id).where(DocumentTag.id == folder_identity,
+        DocumentTag.deleted_at.is_(None)).cte("scope_folder_branch", recursive=True)
+    branch = branch.union(select(DocumentTag.id).join(branch, DocumentTag.parent_id == branch.c.id).where(
+        DocumentTag.user_id == folder.user_id, DocumentTag.deleted_at.is_(None)))
+    members = select(DocumentTagAssignment.document_id.label("id")).where(
+        DocumentTagAssignment.tag_id.in_(select(branch.c.id))).cte("scope_folder_members", recursive=True)
+    members = members.union(select(DocumentNesting.document_id).join(members,
+        DocumentNesting.parent_document_id == members.c.id).where(DocumentNesting.user_id == folder.user_id))
+    return bool(await get_db().scalar(select(exists(select(Document.id).where(
+        Document.id == document_identity, Document.id.in_(select(members.c.id)),
+        Document.deleted_at.is_(None), readable_item_clause(actor),
+        Document.document_type.in_(("data",) if target_match[1] == "data" else ("text", "data")),
+    )))))
 
 
 def readable_folder_clause(actor: int | HumanActor) -> ColumnElement[bool]:

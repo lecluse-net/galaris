@@ -1,5 +1,5 @@
 """Document integration is composed independently of the personal memory backend."""
-from app.agent import register_agent_profile_observer
+from app.agent import register_agent_profile_observer, register_scope_collection_resolver
 from app.conversation import (register_document_read_authorizer, register_conversation_document_metadata_resolver,
     register_conversation_room_document_creator, register_conversation_room_document_resolver)
 from app.goal import register_goal_observer, goal_service
@@ -12,9 +12,12 @@ from .goal_folders import on_access_change, on_document_change, on_goal_change, 
 from .lifecycle import register_document_observer
 from .events import register_events
 from .resource_service import invalidate_document_views
+from .folder_resources import scope_collection_contains
 
 
 def register_document() -> None:
+    register_scope_collection_resolver("document", scope_collection_contains)
+    register_scope_collection_resolver("data", scope_collection_contains)
     register_events()
     register_document_read_authorizer(authorize_conversation_document_read)
     register_conversation_document_metadata_resolver(resolve_conversation_document_metadata)

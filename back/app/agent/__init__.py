@@ -404,5 +404,9 @@ from .resource_facade import read_agent_resource, list_agent_resources, require_
 
 from .models import AgentTeam as AgentTeamModel
 from .facade import record_scope_preflight as record_scope_preflight
+from .execution_scope import (
+    collection_scope_targets as collection_scope_targets,
+    register_scope_collection_resolver as register_scope_collection_resolver,
+)
 
 from .share_directory import directory as sharing_directory, sharing_principals, sharing_owner_teams

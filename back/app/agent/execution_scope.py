@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import html
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from uuid import UUID
 
 from .scope_contracts import ExecutionScopeV1, EffectDescriptorV1, ScopeGrant, ScopePreflightV1, ScopeRequirement
@@ -11,6 +11,35 @@ from .scope_contracts import ExecutionScopeV1, EffectDescriptorV1, ScopeGrant, S
 SCOPE_KEY = "execution_scope"
 PREFLIGHT_KEY = "scope_preflights"
 _URI = re.compile(r"[a-z][a-z0-9+.-]*://[^\s<>\"']{1,1900}")
+
+CollectionScopeResolver = Callable[[str, str, int], Awaitable[bool]]
+_collection_resolvers: dict[str, CollectionScopeResolver] = {}
+
+
+def register_scope_collection_resolver(scheme: str, resolver: CollectionScopeResolver) -> None:
+    """Register domain-owned live membership checks; never infer URI prefixes."""
+    _collection_resolvers[scheme] = resolver
+
+
+async def collection_scope_targets(scope: ExecutionScopeV1 | None,
+    descriptor: EffectDescriptorV1 | None, arguments: Mapping[str, object], actor: int) -> frozenset[str]:
+    """Resolve write grants on collections without granting deletion or transport."""
+    if scope is None or descriptor is None or descriptor.kind != "mutate" or descriptor.capability != "file.write":
+        return frozenset()
+    resolved: set[str] = set()
+    for argument in descriptor.target_arguments:
+        value = arguments.get(argument)
+        if not isinstance(value, str) or not value or len(value) > 2_000:
+            continue
+        target = descriptor.target_prefix + value
+        resolver = _collection_resolvers.get(target.partition("://")[0])
+        if resolver is None:
+            continue
+        for grant in scope.grants:
+            if grant.capability in {"*", "file.write"} and await resolver(grant.target, target, actor):
+                resolved.add(target)
+                break
+    return frozenset(resolved)
 
 
 class ScopePlanError(ValueError):
