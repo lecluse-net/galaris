@@ -23,9 +23,10 @@ async def human(db):
     return user
 
 
-async def document(agent, owner, title):
+async def document(agent, owner, title, kind="text"):
     item, _ = await service.create_item(DocumentItemCreate(owner_agent_id=agent.id,
-        title=title, node_kind="document", payload=DocumentPayload(text="<p>Synthetic content</p>")), owner_user_id=owner.id)
+        title=title, document_type=kind, node_kind="document",
+        payload=DocumentPayload(text='{"synthetic":true}' if kind == "data" else "<p>Synthetic content</p>")), owner_user_id=owner.id)
     return item
 
 
@@ -39,13 +40,14 @@ async def rule(tag, scope, grants=(), *, public=False):
 
 
 @pytest.mark.asyncio
-async def test_recursive_sharing_preserves_own_rights_and_repairs_drift(db, agents, memory_storage):
+@pytest.mark.parametrize("child_kind", ["text", "data"])
+async def test_recursive_sharing_preserves_own_rights_and_repairs_drift(db, agents, memory_storage, child_kind):
     owner, julie, max_user = [await human(db) for _ in range(3)]
     scope = AgentManagementScope(user_id=owner.id, agent_ids=frozenset())
     root = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic root", parent_id=None))
     sub = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic child", parent_id=root.id))
     parent = await document(agents[0], owner, "Synthetic parent")
-    child = await document(agents[0], owner, "Synthetic nested child")
+    child = await document(agents[0], owner, "Synthetic nested child", child_kind)
     await document_sharing.update_sharing(parent.id, DocumentSharingUpdate(kind="user", id=julie.id,
         can_write=True, expected_lock_version=parent.lock_version), scope)
     await document_tags.move_document(scope, parent.id, sub.id)

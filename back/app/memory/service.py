@@ -256,7 +256,7 @@ def graph_item_filters(
 ) -> list[ColumnElement[bool]]:
     filters: list[ColumnElement[bool]] = [
         readable_item_clause(request.agent_id),
-        MemoryItem.document_type.not_in(("dataset", "process")),
+        MemoryItem.document_type.not_in(("data", "dataset", "process")),
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         or_(
@@ -1077,8 +1077,8 @@ async def get_item(
     content = b""
     if memory_content and item.document is not None:
         provider_code = item.document.summary_provider_code
-        resource_id = item.document.summary_resource_id
-        content_type, media_type = "text", "text/html"
+        resource_id = item.document.summary_resource_id if item.document.summary_size_bytes else ""
+        content_type, media_type = "text", item.document.summary_media_type
     elif item.node_kind == "document":
         from app.document import get_item as get_document
         _source, content, _source_access, content_type, media_type = await get_document(
@@ -2031,7 +2031,7 @@ async def search_items(
         .options(*_item_options(revisions=False, contents=False))
         .where(
             readable_item_clause(request.agent_id),
-            MemoryItem.document_type.not_in(("dataset", "process")),
+            MemoryItem.document_type.not_in(("data", "dataset", "process")),
             or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
             or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         )

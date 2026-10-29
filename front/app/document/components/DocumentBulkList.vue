@@ -41,14 +41,14 @@
             :disable="busy || loading || !canSelect(entry)" @update:model-value="toggle(entry.item.id)" />
         </q-item-section>
         <q-item-section side class="bulk-thumbnail">
-          <DocumentThumbnail :document-id="entry.item.id" :revision="entry.item.revision" :updated-at="entry.item.updated_at" :agent-id="documentEntryActor(entry)" />
+          <DocumentThumbnail :document-id="entry.item.id" :document-type="entry.item.document_type" :revision="entry.item.revision" :updated-at="entry.item.updated_at" :agent-id="documentEntryActor(entry)" />
         </q-item-section>
         <q-item-section>
           <q-item-label><a :href="documentResourceHref(entry.item.id)" class="bulk-document-link" @click.prevent="!busy && emit('select', entry)">{{ entry.item.title }}</a></q-item-label>
           <q-item-label caption>{{ entry.owner_label }}</q-item-label>
           <div class="row q-gutter-xs"><q-chip v-for="keyword in entry.item.keywords" :key="keyword" dense class="bulk-keyword"><span class="ellipsis">{{ keyword }}</span></q-chip></div>
         </q-item-section>
-        <q-item-section side><DocumentRowMenu :entry="entry" :busy="busy || loading" target=".q-item" @select="emit('select', entry)" @create="emit('create', entry)" @action="emit('action', entry, $event)" /></q-item-section>
+        <q-item-section side><DocumentRowMenu :entry="entry" :busy="busy || loading" target=".q-item" @select="emit('select', entry)" @create="type => emit('create', entry, type)" @action="emit('action', entry, $event)" /></q-item-section>
       </q-item>
     </q-list>
     <div v-if="!loading && !loadError && !entries.length" class="q-pa-md">{{ t('documents.empty') }}</div>
@@ -72,6 +72,7 @@ import { websocket } from '@/core/websocket'
 import { documentService } from '../services/documentService'
 import { applyDocumentBulkOperation, documentEntryActor, type DocumentBulkOperation } from '@/app/document/services/documentBulkService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
+import type { DocumentKind } from '../documentTypes'
 import type { DocumentLibraryEntry, DocumentTag } from '../types'
 import DocumentBulkDialog from '@/app/document/components/DocumentBulkDialog.vue'
 import DocumentThumbnail from '@/app/document/components/DocumentThumbnail.vue'
@@ -80,7 +81,7 @@ import { documentRowShortcuts, vLibraryShortcuts, type DocumentRowAction } from 
 
 const props = defineProps<{ folder: DocumentTag | null }>()
 const DocumentSharingPanel = defineAsyncView(() => import('./DocumentSharingPanel.vue'))
-const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; create: [entry: DocumentLibraryEntry]; select: [entry: DocumentLibraryEntry]; close: []; changed: [ids: string[]]; deleted: [id: string] }>()
+const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; create: [entry: DocumentLibraryEntry, type?: DocumentKind]; select: [entry: DocumentLibraryEntry]; close: []; changed: [ids: string[]]; deleted: [id: string] }>()
 const { t } = useI18n()
 const privilegeStore = usePrivilegeStore()
 const mutations = useDocumentMutations()

@@ -41,7 +41,7 @@ async def approve(document, scope, *, revision=1, app_key="form", alias="entries
 
 
 @pytest.mark.asyncio
-async def test_html_reads_current_native_dataset_value_without_a_dataset_document(db, agents, memory_storage):
+async def test_html_reads_current_data_document_values_with_independent_permissions(db, agents, memory_storage):
     from app.dataset import service as datasets
     from app.document import Document
 
@@ -60,7 +60,7 @@ async def test_html_reads_current_native_dataset_value_without_a_dataset_documen
     await datasets.replace(dataset.id, owner.id, content='{"amount":200}', expected_revision=1)
     assert (await app_dataset(document.id, "document-html", "budget", AppDatasetRequest(document_revision=1), scope)).data == {"amount": 200}
     assert document.revision == 1
-    assert await db.get(Document, dataset.id) is None
+    assert (await db.get(Document, dataset.id)).document_type == "data"
 
 
 @pytest.mark.asyncio

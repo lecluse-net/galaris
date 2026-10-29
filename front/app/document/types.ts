@@ -28,7 +28,7 @@ export interface DocumentAttachment {
   created_at: string
 }
 
-export type DocumentType = 'html' | 'dataset' | 'process'
+export type DocumentType = 'text' | 'data' | 'html' | 'dataset' | 'process'
 
 export interface DocumentRecord {
   topic_id?: string | null
@@ -201,10 +201,10 @@ export interface DocumentOwnerOptions {
 }
 
 export interface DocumentCreate {
-  document_type?: 'html'
+  document_type?: 'text' | 'data' | 'html'
   owner_kind: DocumentOwnerKind
   owner_id: number
-  actor_agent_id: number
+  actor_agent_id: number | null
   title: string
   folder?: string
 }
@@ -240,6 +240,7 @@ export interface DocumentContentRevision {
   task_id: string | null
   content_hash: string
   author_agent_id: number | null
+  author_user_id?: number | null
   created_at: string
 }
 

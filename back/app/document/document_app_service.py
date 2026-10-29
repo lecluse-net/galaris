@@ -26,7 +26,7 @@ async def _applications(document_id: UUID, scope: AgentManagementScope) -> tuple
     await db.scalar(select(Document.id).where(Document.id == document_id).with_for_update())
     actor = await document_sharing.document_actor(document_id, scope)
     document, source, *_ = await service.get_item(document_id, agent_id=actor)
-    if document.document_type != "html" or document.content_profile != "document":
+    if document.document_type not in {"text", "html"} or document.content_profile != "document":
         raise service.DocumentPermissionError("This document cannot run applications.")
     return document, document_apps(source.decode())
 

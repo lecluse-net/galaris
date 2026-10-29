@@ -16,17 +16,17 @@ from .models import Document
 
 async def normalized_content(item: Document, content: bytes | None = None) -> str:
     if content is None:
-        content = await get_storage(item.provider_code).read(item.resource_id)
-    return normalize_source(content.decode("utf-8"), "html")
+        content = item.content.encode("utf-8") if item.content is not None else await get_storage(item.provider_code).read(item.resource_id)
+    return normalize_source(content.decode("utf-8"), "json" if item.document_type == "data" else "html")
 
 
 async def refresh_pending(item: Document, content: bytes | None = None) -> None:
-    if item.document_type != "html":
+    if item.document_type not in {"text", "html", "data"}:
         item.summary_pending = False
         return
     item.summary_pending = needs_summary(
         await normalized_content(item, content),
-        summary_present=bool(normalize_source(item.summary_content, "html")) if item.summary_content is not None else bool(item.summary_size_bytes),
+        summary_present=bool(item.summary_content.strip() if item.summary_media_type == "text/plain" else normalize_source(item.summary_content, "html")) if item.summary_content is not None else bool(item.summary_size_bytes),
         generated=bool(item.summary_generated), baseline=item.summary_source_text,
         min_chars=runtime_settings.DREAM_RESOURCE_SUMMARY_MIN_CHARS,
         threshold=runtime_settings.DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT,
@@ -35,7 +35,7 @@ async def refresh_pending(item: Document, content: bytes | None = None) -> None:
 
 def pending(handled: Select[tuple[str]]) -> Select[tuple[Document]]:
     return select(Document).where(Document.summary_pending.is_(True),
-        Document.document_type == "html", ~func.concat(Document.id, ":", Document.lock_version).in_(handled))
+        Document.document_type == "text", ~func.concat(Document.id, ":", Document.lock_version).in_(handled))
 
 
 async def count_pending(handled: Select[tuple[str]]) -> int:
@@ -85,7 +85,7 @@ async def reconcile() -> None:
     """Re-evaluate existing resources after schema or summary-policy changes."""
     cursor: UUID | None = None
     while True:
-        query = select(Document).where(Document.document_type == "html")
+        query = select(Document).where(Document.document_type == "text")
         if cursor is not None:
             query = query.where(Document.id > cursor)
         items = list(await get_db().scalars(query.order_by(Document.id).limit(100)

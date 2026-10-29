@@ -17,7 +17,7 @@ async def list_selectable_documents(actor: int | HumanActor | AgentManagementSco
         allowed = or_(human_document_clause(actor.user_id), readable_item_for_agents_clause(actor.agent_ids))
     else:
         allowed = human_document_clause(actor.user_id)
-    statement = select(Document).where(Document.node_kind == "document", Document.document_type == "html", allowed)
+    statement = select(Document).where(Document.node_kind == "document", Document.document_type.in_(("text", "data")), allowed)
     if query:
         statement = statement.where(Document.title.icontains(query, autoescape=True))
     rows = await get_db().scalars(statement.order_by(Document.created_at.desc(), Document.id).limit(limit))

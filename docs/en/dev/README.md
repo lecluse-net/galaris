@@ -12,7 +12,7 @@ and tests remain authoritative; plans describe extensions still open.
 | Understand structural choices | [Accepted decisions](../../../project/decisions/README.md) |
 | Store text and preserve migrations | [Content in PostgreSQL](memory-text-storage.md) |
 | Handle files and attachments | [`file://` registry](file-storage.md) |
-| Handle JSON and the typed codec | [Dataset domain](datasets.md) |
+| Handle JSON and the typed codec | [Data documents](datasets.md) |
 | Execute an internal workflow | [Native BPMN profile](native-processes.md) |
 | Share resources | [ACL contracts and migration](sharing.md) |
 | Delegate domains and settings | [Functional privileges](../admin/privileges.md) |

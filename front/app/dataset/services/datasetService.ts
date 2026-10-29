@@ -1,6 +1,6 @@
 import { api } from '@/core/api'
 import type { SharingDraft } from '@/app/share'
-import { createOwnerOptionsCache } from '@/app/share'
+import { createOwnerOptionsCache } from '@/app/share/facade'
 import type { Dataset, DatasetFolder, DatasetMove, DatasetOwnerOptions, Page, DatasetSharing, DatasetUsage, UsageKind } from '../types'
 import type { Collaborator } from '@/app/share'
 const base = '/datasets'

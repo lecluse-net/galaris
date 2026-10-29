@@ -39,7 +39,7 @@ async def list_document_keywords(agent_id: int) -> list[str]:
         select(Document.keywords).where(
             readable_item_clause(agent_id),
             Document.node_kind == "document",
-            Document.document_type == "html",
+            Document.document_type.in_(("text", "data")),
             or_(Document.valid_from.is_(None), Document.valid_from <= now),
             or_(Document.valid_until.is_(None), Document.valid_until > now),
         )
@@ -140,7 +140,7 @@ async def browse_document_library(
     base_filters: list[ColumnElement[bool]] = [
         scope_clause,
         Document.node_kind == "document",
-        Document.document_type == "html",
+        Document.document_type.in_(("text", "data")),
         or_(Document.valid_from.is_(None), Document.valid_from <= now),
         or_(Document.valid_until.is_(None), Document.valid_until > now),
     ]

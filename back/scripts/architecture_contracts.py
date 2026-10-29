@@ -197,7 +197,14 @@ def _target_module(imported: str) -> str | None:
 
 
 def _is_public_import(imported: str, target: str, suffixes: list[str]) -> bool:
-    return imported == target or imported in {f"{target}.{suffix}" for suffix in suffixes}
+    public = {target, *(f"{target}.{suffix}" for suffix in suffixes)}
+    if target == "app.document":
+        # Document owns two explicit type submodules with the same public
+        # contract rule as their parent; their services/models remain private.
+        for kind in ("text", "data"):
+            public.add(f"{target}.{kind}")
+            public.update(f"{target}.{kind}.{suffix}" for suffix in suffixes)
+    return imported in public
 
 
 def private_cross_module_imports(
@@ -206,7 +213,18 @@ def private_cross_module_imports(
     violations: set[tuple[str, str]] = set()
     for path in production_python_files(root):
         source_module = module_key(path, root)
-        for imported in _absolute_imports(parse_python(path)):
+        tree = parse_python(path)
+        # ADR 0252 retains import identities for existing Dataset consumers.
+        # Only an exact, logic-free module forwarder is exempt; adding any
+        # executable business statement restores the ordinary boundary checks.
+        if source_module == "app.dataset" and path.stem != "__init__":
+            expected = ast.parse(f"from app.document.data.{path.stem} import *\nimport sys as _sys\nfrom app.document.data import {path.stem} as _canonical\n_sys.modules[__name__] = _canonical\n")
+            statements = [node for node in tree.body if not (
+                isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str))]
+            forwarding = ast.Module(body=statements, type_ignores=[])
+            if ast.dump(forwarding) == ast.dump(expected):
+                continue
+        for imported in _absolute_imports(tree):
             target_module = _target_module(imported)
             if (
                 target_module is None

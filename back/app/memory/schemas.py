@@ -9,6 +9,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from app.document.interface import DocumentType
 
 
 MemoryNodeKind = Literal["memory", "document", "attachment", "folder", "file", "directory"]
@@ -143,7 +144,7 @@ class MemoryItemPublic(BaseModel):
     document_revision: int | None = None
     summary_outdated: bool = False
     temporal: MemoryTemporalAnchor | None = None
-    document_type: Literal["html", "dataset", "process"] = "html"
+    document_type: DocumentType = "html"
     semantic_fingerprint: str | None = Field(default=None, exclude=True)
     content_profile: Literal["rich-text", "document"] = "rich-text"
     content_profile_version: int | None = None

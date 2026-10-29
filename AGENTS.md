@@ -186,15 +186,18 @@ for business logic.
 
 ### Resource domain boundaries
 
-Documents are editorial HTML owned by `app.document`, with independent content, shared
-summaries, versions and rights. Personal memories belong to one agent in `app.memory`
-and cannot be shared. A native graph reference may point to an authorized Document,
-but is optional and never owns its content or permissions. Datasets are JSON owned by `app.dataset`.
+Documents are typed resources owned by `app.document`: `app.document.text` supplies
+editorial HTML and `app.document.data` supplies JSON. Identity, metadata, sharing,
+classification and revisions are common. Text is stored in `documents.content`;
+binary content references an immutable `core.storage` file retained by its revisions.
+The former `app.dataset` package and `data://` URI remain compatibility surfaces.
+Personal memories belong to one agent in `app.memory` and cannot be shared. A native
+graph reference may point to an authorized Document, but never owns its content or permissions.
 Native Process definitions are BPMN stored directly in `process_definitions.bpmn_xml`,
-with Process-owned history and grants. Never create a Document to persist a Dataset or
-Process definition, and never add their editors or resource types to the Documents library.
-A Document may reference Dataset values or attach a Dataset URI with independent rights;
-that reference does not change either resource's domain. Legacy transfer adapters are
+with Process-owned history and grants. Never persist a Process definition as a Document
+or add its executable editor to the Documents library. Data documents belong in that
+library alongside Text documents. A Text document may reference Data values or attach a
+Data URI with independent rights; a reference never grants access. Legacy transfer adapters are
 migration mechanisms, never a template for new consumers. Cover these boundaries with
 persistence and API tests whenever resource creation, storage or listing changes.
 

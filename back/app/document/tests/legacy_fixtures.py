@@ -26,6 +26,6 @@ async def legacy_dataset(*, owner_agent_id: int, title: str, content: str,
     from app.dataset import register_dataset
     from app.dataset.migration import adopt_legacy
     register_dataset()
-    await adopt_legacy(row.id)
+    row = await adopt_legacy(row.id)
     await get_db().commit()
     return row

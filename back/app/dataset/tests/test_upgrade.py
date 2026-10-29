@@ -40,6 +40,7 @@ async def test_upgrade_preserves_dataset_app_references_and_resumes_after_expans
         for name in ("process_node_runs", "process_node_attempts"):
             await connection.execute(text(f'DROP TABLE "{name}" CASCADE'))
         for name in ("document_app_grants", "document_app_write_budgets"):
+            await connection.execute(text(f'ALTER TABLE "{name}" DROP CONSTRAINT IF EXISTS "{name}_dataset_id_fkey"'))
             await connection.execute(text(
                 f'ALTER TABLE "{name}" ADD CONSTRAINT "{name}_dataset_id_fkey" '
                 'FOREIGN KEY (dataset_id) REFERENCES documents(id)'
@@ -60,7 +61,7 @@ async def test_upgrade_preserves_dataset_app_references_and_resumes_after_expans
         await session.flush()
         session.add(DocumentRevision(document_id=document.id, revision=1, provider_code="native",
             resource_id=pointer, content=inline, content_type="text", media_type="application/json",
-            content_hash=document.content_hash, title=document.title, keywords=[], metadata_={},
+            content_hash=document.content_hash, title=document.title, metadata_={},
             document_content_version=True))
         session.add(ShareGrant(share_id=document.share_id, user_id=reader.id, can_write=False))
         consent = DocumentAppGrant(user_id=owner.id, document_id=document.id, dataset_id=document.id,
@@ -116,4 +117,4 @@ async def test_upgrade_preserves_dataset_app_references_and_resumes_after_expans
             for name in ("document_app_grants", "document_app_write_budgets"):
                 assert await connection.scalar(text(
                     "SELECT confrelid::regclass::text FROM pg_constraint WHERE conname=:name"
-                ), {"name": f"{name}_dataset_id_fkey"}) == "datasets"
+                ), {"name": f"{name}_dataset_id_fkey"}) == "documents"

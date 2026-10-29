@@ -1,6 +1,7 @@
 """Source-owned summaries stay small, current and independent of Memory."""
 
 import json
+from hashlib import sha256
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -24,16 +25,16 @@ def body(kind, text):
 
 
 async def create(kind, owner, text):
-    if kind == "document":
+    if kind in {"document", "data"}:
         return await document_service.create_document(owner_agent_id=owner.id, title="Synthetic source",
-            content=body(kind, text), task_id=None)
+            content=body(kind, text), task_id=None, document_type="data" if kind == "data" else "text")
     item = await datasets.create(owner.id, title="Synthetic source", content=body(kind, text))
     await get_db().commit()
     return item
 
 
 async def write(kind, item, owner, text):
-    if kind == "document":
+    if kind in {"document", "data"}:
         return await documents.update_item(item.id, DocumentUpdate(payload=DocumentPayload(text=body(kind, text)),
             expected_revision=item.revision), actor_agent_id=owner.id)
     result = await datasets.replace(item.id, owner.id, content=body(kind, text), expected_revision=item.revision)
@@ -58,7 +59,7 @@ def test_summary_policy_uses_strict_thresholds_and_ignores_presentation():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("kind", ["document", "dataset"])
+@pytest.mark.parametrize("kind", ["document", "data", "dataset"])
 async def test_summary_generation_and_cumulative_changes_preserve_content_history(db, agents, memory_storage, kind):
     owner, _ = agents
     port = document_summaries if kind == "document" else dataset_summaries
@@ -70,6 +71,11 @@ async def test_summary_generation_and_cumulative_changes_preserve_content_histor
     await db.commit()
     assert item.revision == 1 and not item.summary_pending
     assert item.summary_generated
+    from app.document.summary_service import read_summary
+    current = await read_summary(identity, actor=owner.id)
+    summary = (current.payload.text or "").encode()
+    assert summary and item.summary_size_bytes == len(summary)
+    assert item.summary_content_hash == sha256(summary).hexdigest()
     baseline = item.summary_source_text
     item = await write(kind, item, owner, "a" * 960 + "b" * 240)
     assert not item.summary_pending
@@ -92,19 +98,22 @@ async def test_summary_generation_and_cumulative_changes_preserve_content_histor
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("kind", ["document", "dataset"])
+@pytest.mark.parametrize("kind", ["document", "data", "dataset"])
 async def test_small_resources_and_manual_summaries_do_not_trigger_dream(db, agents, memory_storage, kind):
     owner, other = agents
     item = await create(kind, owner, "small")
     assert not item.summary_pending
+    from app.document.summary_service import read_summary
+    assert (await read_summary(item.id, actor=owner.id)).payload.text == ""
     item = await write(kind, item, owner, "a" * 1500)
     assert item.summary_pending
-    if kind == "document":
+    if kind in {"document", "data"}:
         edit = DocumentUpdate(payload=DocumentPayload(text="<p>Manual source description.</p>"),
             keywords=["manual"], expected_lock_version=item.lock_version)
         with pytest.raises(documents.DocumentPermissionError):
             await documents.update_summary(item.id, edit, actor_agent_id=other.id)
         await documents.update_summary(item.id, edit, actor_agent_id=owner.id)
+        assert (await read_summary(item.id, actor=owner.id)).payload.text == "<p>Manual source description.</p>"
     else:
         with pytest.raises(datasets.DatasetNotFoundError):
             await datasets.metadata(item.id, other.id, expected_lock_version=item.lock_version,
@@ -140,7 +149,7 @@ async def test_dream_reads_every_source_part_and_rejects_a_late_manual_edit(db, 
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("kind", ["document", "dataset"])
+@pytest.mark.parametrize("kind", ["document", "data", "dataset"])
 async def test_dream_coalesces_pending_edits_and_rechecks_changed_policy(db, agents, memory_storage, monkeypatch, kind):
     from app.dream.mechanisms.resource_summaries import document_summary_mechanism, dataset_summary_mechanism, on_summary_policy_change
     owner = agents[0]

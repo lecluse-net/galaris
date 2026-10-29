@@ -18,7 +18,7 @@ from .models import ChatDocumentConversation
 
 async def _require_document(document_id: UUID, scope: AgentManagementScope) -> None:
     document = await item_record(document_id, revisions=False, contents=False)
-    if document is None or document.node_kind != "document" or document.document_type != "html":
+    if document is None or document.node_kind != "document" or document.document_type not in {"text", "html", "data"}:
         raise FileNotFoundError("Document not found.")
     human = await document_access(document_id, HumanActor(scope.user_id))
     if human.can_read:

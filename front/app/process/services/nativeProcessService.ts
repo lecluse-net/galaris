@@ -1,7 +1,7 @@
 import { api } from '@/core/api'
 import type { SharingState as DocumentSharing, SharingUpdate as DocumentSharingLevelUpdate } from '@/app/share'
 import type { OwnerOption } from '@/app/share'
-import { createOwnerOptionsCache } from '@/app/share'
+import { createOwnerOptionsCache } from '@/app/share/facade'
 
 export type NodeKind = 'start' | 'end' | 'task' | 'human_task' | 'tool_call' | 'rest' | 'code' | 'program' | 'call' | 'if' | 'parallel' | 'for' | 'while'
 export const valueTypes = ['int', 'float', 'string', 'bool', 'Agent', 'File', 'User', 'Document', 'array', 'object'] as const

@@ -20,7 +20,7 @@ def item_to_public(item: Document, access: DocumentAccess, *, memory_content: bo
         visibility=item.visibility, global_access=item.global_access, read_only=item.read_only,
         deletion_protected=item.deletion_protected, source_managed=False,
         managed_source_kind=None, managed_source_ref=None, content_hash=item.content_hash,
-        primary_url=f"document://{item.id}", urls=sorted(set(urls) if urls is not None else {row.url for row in item.url_relations}), size_bytes=item.size_bytes,
+        primary_url=f"{'data' if item.document_type == 'data' else 'document'}://{item.id}", urls=sorted(set(urls) if urls is not None else {row.url for row in item.url_relations}), size_bytes=item.size_bytes,
         last_accessed_at=item.last_accessed_at, access_count=item.access_count,
         valid_from=item.valid_from, valid_until=item.valid_until, temporal=item.temporal,
         old_at=None, old_reason=None, created_at=item.created_at, updated_at=item.updated_at,

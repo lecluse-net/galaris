@@ -22,7 +22,7 @@ function setup() {
   const shared = loadTypescript(new URL('./ownerCache.ts', import.meta.url), {
     '@/core/util/facade': { ...helpers, ...resources },
   })
-  const dependencies = { '@/core/api': apiModule, '@/app/share': shared,
+  const dependencies = { '@/core/api': apiModule, '@/app/share/facade': shared,
     '@/core/util/facade': { thumbnailReady: () => assert.fail('An owner catalogue must not load thumbnails') } }
   const documents = loadTypescript(new URL('../document/services/documentService.ts', import.meta.url), dependencies).documentService
   const process = loadTypescript(new URL('../process/services/nativeProcessService.ts', import.meta.url), dependencies).nativeProcessService

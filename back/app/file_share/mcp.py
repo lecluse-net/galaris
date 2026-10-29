@@ -282,7 +282,8 @@ async def read_file(
         "its canonical URI is data://UUID and its content remains free JSON. "
         "Dataset creation requires the content argument containing complete valid JSON, "
         "for example '[]' or '{}'; omitting content is rejected before creation. "
-        "document_type remains immutable; the deprecated dataset option at document:// returns data:// too. "
+        "Document types are text (HTML) and data (JSON); document_type remains immutable. "
+        "The data option at document:// returns data://; html/dataset remain compatibility spellings. "
         "For an HTML document, content must be an editorial HTML fragment "
         "with encoding='utf-8', for example '<h1>Report</h1><p>Findings.</p>', not Markdown "
         "or a full HTML page with html/head/body tags. Documents accept ordinary form, style and script elements, "
@@ -311,7 +312,7 @@ async def create_file(
     content: str = "",
     encoding: Literal["utf-8", "base64"] = "utf-8",
     name: str = "",
-    document_type: Literal["html", "dataset"] | None = None,
+    document_type: Literal["text", "data", "html", "dataset"] | None = None,
 ) -> str:
     """Create a complete resource without overwriting an existing one."""
 
@@ -319,7 +320,7 @@ async def create_file(
     if not payload.strip():
         reference = parse_resource_uri(path, allow_empty=True)
         if ((reference.scheme == "data" and not reference.locator)
-                or (reference.scheme == "document" and not reference.locator and document_type == "dataset")):
+                or (reference.scheme == "document" and not reference.locator and document_type in {"data", "dataset"})):
             raise ToolCallRejectedError(
                 "Dataset creation requires the content argument containing valid JSON, "
                 "for example content='[]' or content='{}'. Create at path='data://' "

@@ -68,7 +68,7 @@ async def test_document_sharing_contract_is_atomic_and_does_not_give_editors_own
     with pytest.raises(service.DatasetNotFoundError):
         await sharing.update(dataset.id, scope, DocumentSharingLevelUpdate(level="public", grants=[], expected_lock_version=private.lock_version))
     dataset.read_only = False; await db.flush()
-    await service.remove(dataset.id, scope, expected_lock_version=private.lock_version)
+    await service.remove(dataset.id, scope, expected_lock_version=dataset.lock_version)
     with pytest.raises(service.DatasetNotFoundError):
         await service.record(dataset.id, scope)
     assert await db.scalar(select(DatasetRevision.content).where(DatasetRevision.dataset_id == dataset.id)) == '{"kept":false}'

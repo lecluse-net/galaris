@@ -1451,7 +1451,7 @@ async def resource_create(
     content: bytes = b"",
     *,
     name: str = "",
-    document_type: Literal["html", "dataset"] | None = None,
+    document_type: Literal["text", "data", "html", "dataset"] | None = None,
     max_bytes: int = _FILE_WRITE_LIMIT,
 ) -> ResourceMutation:
     """Create a new resource and return the provider's complete canonical URI."""
@@ -1462,7 +1462,7 @@ async def resource_create(
 
 async def _create_complete_resource(
     ctx: ResourceContext, path: object, content: bytes = b"", *, name: str = "",
-    document_type: Literal["html", "dataset"] | None = None,
+    document_type: Literal["text", "data", "html", "dataset"] | None = None,
     max_bytes: int = _FILE_WRITE_LIMIT,
 ) -> ResourceMutation:
     """Create from complete bytes; callers validate model-authored content separately."""
@@ -1472,7 +1472,7 @@ async def _create_complete_resource(
     reference = await resolve_native_alias(ctx, parse_resource_uri(path, allow_empty=True))
     if document_type is not None and (reference.scheme != "document" or reference.locator):
         raise ValueError("document_type is only accepted when creating at document://.")
-    if document_type == "dataset" and (provider := native_provider("data")):
+    if document_type in {"data", "dataset"} and (provider := native_provider("data")):
         return await provider.create(ctx, parse_resource_uri("data://", allow_empty=True), content, name=name)
     if provider := _resource_provider(reference):
         return await provider.create(ctx, reference, content, name=name)
@@ -2456,7 +2456,7 @@ async def resource_rename(
         if reference.scheme == "data":
             raise PermissionError("The Dataset provider is unavailable")
         descriptor = await resource_info(ctx, reference)
-        if descriptor.metadata.get("document_type") != "html":
+        if descriptor.metadata.get("document_type") not in {"text", "html"}:
             raise PermissionError("Use the owning domain to rename this resource; only editorial Document titles can be renamed here")
         from app.document import DocumentUpdate, update_item
 

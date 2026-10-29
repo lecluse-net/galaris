@@ -13,7 +13,7 @@ async def test_attached_dataset_remains_independent_live_and_does_not_inherit_do
     owner, reader = agents
     document = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic report", content="<p>Report</p>", task_id=None)
     dataset = await datasets.create(owner.id, title="Synthetic live budget", content='{"amount":100}')
-    assert await db.get(Document, dataset.id) is None
+    assert (await db.get(Document, dataset.id)).document_type == "data"
     before = document.revision
     refs, version = await dataset_attachments.change_reference(document.id, dataset.id, owner.id,
         dataset_actor=owner.id, expected_lock_version=document.lock_version)
@@ -46,7 +46,7 @@ async def test_attached_dataset_remains_independent_live_and_does_not_inherit_do
     assert visible[0].title == "Synthetic current budget" and visible[0].available
     await datasets.replace(dataset.id, owner.id, content='{"amount":200}', expected_revision=1)
     assert (await datasets.record(dataset.id, reader.id)).content == '{"amount":200}'
-    assert await db.scalar(select(Document.id).where(Document.id == dataset.id)) is None
+    assert await db.scalar(select(Document.id).where(Document.id == dataset.id)) == dataset.id
     with pytest.raises(service.DocumentConflictError):
         await dataset_attachments.change_reference(document.id, dataset.id, reader.id,
             dataset_actor=reader.id, expected_lock_version=1, remove=True)

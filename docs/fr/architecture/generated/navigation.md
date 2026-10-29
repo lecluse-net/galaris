@@ -72,14 +72,6 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : —
 - Sources : `front/app/document/navigation.ts`
 
-## Connaissances → Jeux de données
-
-- Route : `/dataset`
-- Usage : Données JSON
-- Visibilité du menu (privilèges) : (DATASET_READ OR DATASET_EDIT OR DATASET_ADMIN)
-- Conditions supplémentaires : —
-- Sources : `front/app/dataset/navigation.ts`
-
 ## Connaissances → Fichiers
 
 - Route : `/files`

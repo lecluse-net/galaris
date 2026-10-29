@@ -14,7 +14,7 @@
     <span v-else class="ellipsis col tag-name" tabindex="0" :title="tag.name"
       @keydown.enter.prevent.stop="startRename">{{ tag.name }}</span>
     <div v-if="!renaming" class="tag-actions row items-center no-wrap" @click.stop @dblclick.stop @dragstart.prevent.stop>
-      <q-btn flat dense round size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newDocument', { name: tag.name })" @click="emit('createDocument')">
+      <q-btn flat dense round size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newDocument', { name: tag.name })" @click="emit('createDocument', undefined, $event)">
         <q-tooltip>{{ t('documents.library.newDocument', { name: tag.name }) }}</q-tooltip>
       </q-btn>
       <q-btn flat dense round size="sm" icon="create_new_folder" :disable="busy" :aria-label="t('documents.library.newSubtag', { name: tag.name })" @click="createChild">
@@ -42,8 +42,10 @@
   </div>
 </template>
 <script setup lang="ts">
+import { documentTypes, type DocumentKind } from '../documentTypes'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { QMenu } from 'quasar'
 import { useContextMenuDismissal } from '@/core/util'
 import type { DocumentTag } from '../types'
@@ -58,8 +60,10 @@ const props = defineProps<{
   save: (tag: DocumentTag) => Promise<boolean>
   create: (name: string, parentId: string | null, afterTagId?: string) => Promise<boolean>
 }>()
-const emit = defineEmits<{ browse: []; createDocument: []; delete: []; confirmDelete: []; renamed: []; sort: [descending: boolean]; expand: []; collapse: [] }>()
+const emit = defineEmits<{ browse: []; createDocument: [type?: DocumentKind, event?: Event]; delete: []; confirmDelete: []; renamed: []; sort: [descending: boolean]; expand: []; collapse: [] }>()
 const { t } = useI18n()
+const privilegeStore = usePrivilegeStore()
+const canCreateDocument = computed(() => privilegeStore.hasAnyPrivilege([privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN]))
 const renaming = ref(false)
 const name = ref('')
 const iconOpen = ref(false)
@@ -76,7 +80,7 @@ const shortcuts = computed<LibraryShortcuts>(() => props.busy || renaming.value 
 })
 const contextActions = computed(() => [
   { key: 'browse', icon: 'view_list', label: t('documents.library.openFolderAction'), shortcut: 'F4', run: () => emit('browse') },
-  { key: 'document', icon: 'note_add', label: t('documents.library.newDocumentAction'), shortcut: 'F3', disabled: props.busy, run: () => emit('createDocument') },
+  ...documentTypes.filter(() => canCreateDocument.value).map(type => ({ key: 'document-' + type.code, icon: type.icon, label: t('documents.createTypedDocument', { type: t(type.label) }), disabled: props.busy, run: () => emit('createDocument', type.code) })),
   { key: 'child', icon: 'create_new_folder', label: t('documents.library.newSubtagAction'), shortcut: 'F7', disabled: props.busy, run: createChild },
   { key: 'sibling', icon: 'playlist_add', label: t('documents.library.newSiblingAction'), disabled: props.busy, run: createSibling },
   { key: 'edit', icon: 'edit', label: t('documents.library.editTag'), shortcut: 'F2', disabled: props.busy, run: startRename },

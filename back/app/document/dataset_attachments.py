@@ -64,7 +64,7 @@ async def document_for_references(identity: UUID, actor: int | HumanActor, *, wr
     if write:
         await get_db().scalar(select(Document.id).where(Document.id == identity).with_for_update())
     document = await service.document_record(identity, revisions=False)
-    if document is None or document.document_type != "html" or document.content_profile != "document":
+    if document is None or document.document_type not in {"text", "html"} or document.content_profile != "document":
         raise service.DocumentNotFoundError("Authored Document not found")
     await service.assert_item_access(document, actor, write=write)
     return document

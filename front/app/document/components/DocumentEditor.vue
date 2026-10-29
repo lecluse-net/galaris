@@ -14,7 +14,7 @@
         <q-btn flat :label="t('documents.retry')" @click="onWebsocketConnect" />
       </q-banner>
       <q-toolbar class="document-editor-toolbar">
-        <DocumentIcon class="document-editor-heading-icon" :document-id="currentDocument.id" :title="editorTitle || currentDocument.title" size="64px" plain />
+        <DocumentIcon class="document-editor-heading-icon" :document-id="currentDocument.id" :document-type="currentDocument.document_type" :title="editorTitle || currentDocument.title" size="64px" plain />
         <q-toolbar-title>
           <div class="row items-center no-wrap">
             <q-input
@@ -157,10 +157,10 @@
         </div>
         <div class="col-12">
           <q-banner v-if="currentDocument.content_type !== 'text'" dense>{{ t('document.binaryContent') }}</q-banner>
-          <q-input v-else-if="!currentDocument.media_type.startsWith('text/')"
+          <q-input v-else-if="!['text', 'html', 'data'].includes(currentDocument.document_type)"
             :model-value="editorContent" type="textarea" outlined readonly autogrow :label="t('documents.content')" />
-          <RichTextEditor
-            v-else-if="currentDocument.content_type === 'text' && currentDocument.media_type.startsWith('text/')"
+          <component :is="documentType(currentDocument.document_type).editor"
+            v-else-if="currentDocument.content_type === 'text'"
             ref="richEditor"
             :key="documentId + ':' + agentId"
             v-model="editorContent"
@@ -189,12 +189,12 @@
             <template #embedded-code="{ source, language, registerSnapshot }">
               <DocumentApplicationBlock :source="source" :language="language" :register-snapshot="registerSnapshot" :resolve-media="resolveInlineImage" :document-id="currentDocument.id" :revision="currentDocument.revision" :ready="!hasUnsavedChanges && !conflictDocument && (autosaveState === 'saved' || !canEditDocument)" />
             </template>
-          </RichTextEditor>
+          </component>
         </div>
         <div class="col-12 document-editor-attachments">
           <DocumentAttachments
             @insert="insertAttachment"
-            allow-insertion
+            :allow-insertion="currentDocument.document_type !== 'data'"
             ref="attachmentPanel"
             :content="editorContent"
             :document-id="currentDocument.id"
@@ -259,6 +259,7 @@ import { websocket } from '@/core/websocket'
 import { useAgentChoices } from '@/app/agent'
 import { OwnerSelect, type OwnerOption } from '@/app/share'
 import { ResourceTopicBadge, reassignResourceTopic, ResourceSummaryButton, type ResourceSummaryView } from '@/core/util'
+import { documentType } from '../documentTypes'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
 import { reconcileLibrarySnapshot } from '@/app/document/librarySnapshot'
@@ -348,7 +349,7 @@ async function loadSummary(signal: AbortSignal): Promise<ResourceSummaryView> {
   const current = currentDocument.value
   if (!current) return { content: '', mediaType: 'text/html', keywords: [] }
   const result = await documentService.summary(current.id, requestAgentId.value, signal)
-  return { content: result.payload.text ?? '', mediaType: 'text/html', keywords: result.keywords }
+  return { content: result.payload.text ?? '', mediaType: result.media_type === 'text/plain' ? 'text/plain' : 'text/html', keywords: result.keywords }
 }
 const topicChangeInFlight = ref(false)
 async function changeDocumentTopic(topicId: string): Promise<number> {
@@ -768,7 +769,7 @@ async function loadDocument(): Promise<void> {
     const document = seed?.id === props.documentId ? seed : await documentService.getDocument(props.documentId, requestAgentId.value)
     if (generation !== loadGeneration) return
     if (document.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${document.id}`)
-    if (document.document_type !== 'html') throw new Error('This resource is not an HTML Document.')
+    if (!['text', 'html', 'data'].includes(document.document_type)) throw new Error('This resource is not an HTML Document.')
     if (document.node_kind !== 'document') throw new Error('The resource is not a document.')
     applyDocument(document, 'loaded')
     // Ancillary catalogues must not keep the current document behind a loading screen.
@@ -954,13 +955,16 @@ async function persistAutosave(): Promise<void> {
     return
   }
 
+  if (document.document_type === 'data') {
+    try { JSON.parse(draft.content) } catch { autosaveState.value = 'invalid'; return }
+  }
   saveInFlight = true
   autosaveState.value = 'saving'
   let persisted = cloneDraft(base)
   try {
     const update = canEditDocument.value ? propertyUpdate(document, base, draft) : null
     if (update) {
-      if (update.payload) update.media_type = 'text/html'
+      if (update.payload) update.media_type = document.media_type
       const updated = await documentService.updateDocument(document.id, requestAgentId.value, update)
       applyPublicDocument(updated)
       persisted = {

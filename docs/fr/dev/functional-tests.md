@@ -135,11 +135,19 @@ le parcours est aussi inspecté sur un petit viewport.
 `app/dream/tests/test_resource_summaries.py` couvre les seuils stricts de taille et de
 changement cumulé, les petits contenus, la protection des descriptions manuelles, le
 regroupement des demandes, la modification des paramètres et les résultats Dream tardifs
-pour Documents et Datasets. Le modèle externe est remplacé, les domaines et la base restent réels.
+pour les documents Texte et Données, via les contrats commun et Dataset compatible.
+La lecture du résumé, son format, sa taille et son empreinte restent cohérents après génération
+ou édition manuelle. Le modèle externe est remplacé, les domaines et la base restent réels.
+`app/memory/tests/test_document_retrieval.py` protège aussi les types documentaires canoniques,
+la lecture d'un résumé Données courant et la conservation de sa recherche JSON native sans
+ajout au rappel général ni création d'un index Memory concurrent.
 `app/document/tests/test_summary_retirement.py` protège le résumé courant pendant le retrait
 de son historique et la conservation des métadonnées lors d'une restauration de contenu.
 Les anciennes attentes de versions de résumé et de mots-clés historiques sont retirées ;
 les versions du contenu, leurs droits et les scénarios de mise à niveau restent couverts.
+Avant le retrait de l'ancienne table d'historique des résumés, toutes ses lignes sont
+archivées avec une empreinte vérifiée ; leurs fichiers restent référencés. Une source
+modifiée ou une archive altérée bloque le retrait sans remplacer les données conservées.
 
 `app/document/tests/test_document_read_performance.py` borne la résolution d'un pointeur
 natif à une lecture SQL, après les contrôles de droits de son consommateur. Les scénarios
@@ -559,8 +567,8 @@ automatiques non consommés sont invalidés avant exécution, directement ou par
 
 `app/process/tests/test_definition_storage.py` vérifie que le BPMN est stocké dans Process,
 sans création de Document, ainsi que le transfert des anciens contenus, historiques et
-droits, le rejeu et le rollback d'un lot invalide. `test_document_library.py` refuse les
-types Process et Dataset à la création documentaire. Le parcours E2E Process vérifie aussi
+droits, le rejeu et le rollback d'un lot invalide. Les définitions Process restent exclues
+de la création documentaire. Le parcours E2E Process vérifie aussi
 l'absence de la définition dans la bibliothèque Documents avant de la modifier et l'exécuter.
 
 `tests/test_module_loading.py` vérifie les imports obligatoires tâche, plusieurs ordres de
@@ -580,7 +588,34 @@ liste et filtre HTML, lecture, droits et conservation du contenu sans réécritu
 
 <a id="datasets"></a>
 
-## Datasets et contrats typés
+## Documents typés et contrats Données
+
+`app/document/tests/test_typed_documents.py` vérifie la bibliothèque commune filtrée par
+type, l'identité unique du JSON, ses droits, les brouillons invalides côté serveur et la
+restauration des octets sans restaurer les métadonnées courantes. Les essais de migration
+préservent contenus, révisions, auteurs, partage et résumés ; le rejeu ne rétablit pas un
+droit révoqué et un ancien classement de projection ne doit pas élargir les accès.
+Les collisions avec un document Texte indépendant sont refusées sans perte de contenu.
+
+`test_typed_document_upgrade.py` reconstruit un ancien schéma PostgreSQL puis exécute le
+vrai pipeline Atlas/DbAdmin, avec interruption entre expansion et finalisation, reprise
+et rejeu. Les lignes d'un document Texte sont comparées intégralement avant et après,
+hors changement explicite de type et nouvelles colonnes : HTML Unicode et applicatif,
+révisions, résumé manuel, mots-clés, métadonnées, droits, classement, provenance,
+URL et pièces jointes. Les octets du fichier joint et des archives restent identiques.
+`test_independence_upgrade.py` combine aussi la séparation historique Memory avec
+l'unification des types. Le test vérifie la restauration d'une ancienne version sans
+perdre son original ni les métadonnées courantes. Il vérifie aussi la rétention des fichiers binaires encore référencés par une
+révision. `front/browser-tests/typed-documents.spec.mjs` exerce le menu des types et
+l'éditeur JSON commun sur mobile et bureau : aucun enregistrement avant confirmation,
+brouillon invalide préservé, sauvegarde JSON et réouverture.
+
+La navigation est exercée pour Texte et Données dans `document-navigation.spec.mjs`.
+Les anciennes assertions sur une bibliothèque Dataset séparée et son bouton Enregistrer
+sont retirées : les visites, branches et erreurs relèvent désormais de la navigation commune,
+et les scénarios Données protègent l'autosauvegarde JSON et les brouillons. La fermeture d'une
+modale conserve le brouillon local ; sa réouverture le retrouve. `dataset-navigation.spec.mjs`
+vérifie les redirections historiques et `dataset-dialog.spec.mjs` les cartes depuis Chat.
 
 Le scénario `test_obsolete_process_markers_do_not_override_dataset_deletion_rights` vérifie
 les anciens marqueurs de processus sur `data://`, les alias et les appels Memory : droits,
@@ -596,16 +631,13 @@ Le parcours E2E Dataset vérifie le transfert, la réouverture et le retour au p
 
 `app/dataset/tests/test_datasets.py` vérifie aussi qu'une création native ne crée pas de
 projection Memory et que les alias historiques suivent métadonnées, révisions, révocations
-de droits et suppression. Les lectures et écritures restent celles de Dataset.
-`test_document_library.py` vérifie l'exclusion des Datasets historiques des résultats,
-totaux et mots-clés, leur lecture conservée et le refus du type Dataset à la création
-documentaire. `e2e/specs/dataset-documents.spec.mjs` exerce les deux bibliothèques séparées.
-Le GET documentaire d'un Dataset historique retourne sa référence canonique sans contenu.
+de droits et suppression. Les anciennes API Dataset délèguent aux documents Données.
+Le contrat de bibliothèques séparées est retiré par la décision 0252 ; les assertions
+de contenu, de droits, d'historique et de liens restent applicables à l'identité commune.
 Les tests de PJ Dataset vérifient les liens vivants, les droits indépendants, les conflits,
 les doublons, le détachement sans suppression et la liste File Sharing. Les anciens tests
-d'édition JSON dans DocumentEditor sont remplacés par la résolution vers DatasetEditor et
-son test de brouillon JSON invalide ; le parcours Datasets conserve l'historique/restauration.
-Les tests HTML vérifient aussi la lecture d'une valeur native actuelle sans Document Dataset.
+d'édition JSON passent désormais par DocumentEditor avec sa contribution Données.
+Les tests HTML vérifient aussi la lecture d'une valeur native actuelle sous ses droits propres.
 
 `app/dataset/tests` couvre le codec commun, le JSON libre à chaque écriture, les alias
 vérifiés, les droits, les révisions et la restauration. `test_schema_removal.py` vérifie la
@@ -1545,7 +1577,7 @@ du fournisseur (succès, abonnement disparu, refus et indisponibilité), avec un
 | Process → tâche en attente | Un callback autorisé libère l’attente ; doublons et événements tardifs préservent résultat et erreur | `back/app/process/tests/test_recovery.py`, `test_worker_concurrency.py` |
 | Process → humain → messagerie | Demande privée interne ou externe, réponse JSON simple convertie en valeurs typées, fichier seul avec URI source, échec de livraison repris, refus d'un autre auteur ou d'une réponse tardive ; aucun message sans rapport ne termine l'étape. Une activité IA attend sans tâche auxiliaire, reprend même après une réponse rapide et conserve une pause utilisateur ; anciennes attentes retirées, doublons idempotents, Dataset et message final conservés | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → fichier → agent | Le contenu, sa révision, ses URI et ses ACL restent cohérents entre lecture et écriture | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
-| Datasets et compatibilité documentaire | Bibliothèques et créations séparées, identité native `data://`, JSON source préservé et erreurs sans nouvelle ressource/révision ; droits et historique propres, copie/restauration et conflits ; anciens alias et brouillons invalides préservés. Le parcours Datasets remplace la création Dataset dans Documents | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
+| Datasets et compatibilité documentaire | Création Texte/Données et bibliothèque commune filtrée par type, identité native `data://`, JSON source préservé et erreurs sans nouvelle ressource/révision ; droits et historique propres, copie/restauration et conflits ; anciens alias et brouillons invalides préservés. Les parcours Données utilisent l’éditeur Document commun | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
 | HTML interactif dans un document | Formulaires HTML directs vers Dataset partagé, ACL et accords personnels liés à la révision ; révocation, copie non autorisée entre Datasets, validation JSON et quotas entre workers ; texte éditable et barre habituelle, sans vue Source documentaire ; impression et PDF statiques avec filtrage des ressources ; isolation, WebRTC, saturation du pont et réponses tardives | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Arrêt / reprise / concurrence | Un ancien worker ne remplace pas le propriétaire courant ; les effets ambigus ne sont pas rejoués aveuglément | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Accusé d’outil perdu | Une commande SSH reste unique après perte de réponse et relecture PostgreSQL ; un timeout MCP après effet bloque le rejeu ; le retry conserve le journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |

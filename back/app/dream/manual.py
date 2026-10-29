@@ -72,7 +72,7 @@ async def available_actions(
     elif item.node_kind == "memory" and not item.source_managed:
         actions.append("findings")
     elif item.node_kind in {"document", "folder"}:
-        if item.node_kind == "document" and item.document_type == "html":
+        if item.node_kind == "document" and item.document_type in {"text", "html"}:
             actions.append("thumbnail")
         actions.append("structure")
     return MemoryDreamActions(actions=actions)

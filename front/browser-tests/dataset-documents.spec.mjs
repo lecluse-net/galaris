@@ -20,7 +20,7 @@ async function fixture(page, { writable = true } = {}) {
   return { writes, current: () => current, remote: value => { current = { ...current, ...value } } }
 }
 
-test('Documents creates editorial content and keeps Dataset creation out of its library', async ({ page }) => {
+test('Documents creates Text through its type menu and exposes the common type filter', async ({ page }) => {
   const state = await fixture(page)
   state.remote({ document_type: 'html', media_type: 'text/html', content_profile_version: 1,
     payload: { text: '<p>Synthetic document</p>' } })
@@ -44,24 +44,25 @@ test('Documents creates editorial content and keeps Dataset creation out of its 
     return route.fulfill({ status: 201, json: state.current() })
   })
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
-  await page.getByRole('button', { name: 'Create document', exact: true }).click()
+  await page.locator('header').getByRole('button', { name: 'Create document', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Scenarios')
   await expect(dialog.getByRole('combobox', { name: 'Document type', exact: true })).toHaveCount(0)
   try {
     await dialog.getByRole('button', { name: 'Create', exact: true }).click()
     await expect.poll(() => creations).toHaveLength(1)
-    expect(creations[0]).toMatchObject({ document_type: 'html', title: 'Scenarios', owner_kind: 'user', owner_id: 1, actor_agent_id: 7 })
+    expect(creations[0]).toMatchObject({ document_type: 'text', title: 'Scenarios', owner_kind: 'user', owner_id: 1, actor_agent_id: 7 })
   } finally { releaseAgents() }
   await expect(page.locator('[data-editor-surface]')).toContainText('Synthetic document')
   await page.getByRole('button', { name: 'Filters', exact: true }).click()
-  await expect(page.getByRole('combobox', { name: 'Document type', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: 'Document type', exact: true })).toBeVisible()
   await page.getByRole('combobox', { name: 'Sort by', exact: true }).click()
   await expect(page.getByRole('option', { name: 'Document type', exact: true })).toHaveCount(0)
   await page.getByRole('option', { name: 'Title', exact: true }).click()
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
   await expect.poll(() => requests.at(-1)).toMatchObject({ sort_by: 'title', offset: 0 })
-  expect(requests.at(-1)).not.toHaveProperty('document_type')
+  expect(requests.at(-1).document_type).toBeNull()
 })
 
 for (const component of ['DocumentEditor', 'DocumentLibraryPage', 'DocumentDialog']) {

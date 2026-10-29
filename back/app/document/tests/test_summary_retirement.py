@@ -24,6 +24,8 @@ async def test_summary_retirement_preserves_current_inline_content_and_replays(d
     await db.flush()
     await db.execute(text("CREATE TABLE document_summary_revisions (id uuid, provider_code text, resource_id text, content text)"))
     await db.execute(text("INSERT INTO document_summary_revisions VALUES (:id,'native',:pointer,'<p>Current description.</p>')"), {"id":uuid4(), "pointer":pointer})
+    historical_pointer = str(uuid4())
+    await db.execute(text("INSERT INTO document_summary_revisions VALUES (:id,'native',:pointer,'<p>Historical description — é.</p>')"), {"id":uuid4(), "pointer":historical_pointer})
     delta = SchemaTransitionSet(removed_tables=frozenset({"document_summary_revisions"}))
     assert needed(delta) and not needed(SchemaTransitionSet())
     assert not await complete(db, delta)
@@ -32,8 +34,31 @@ async def test_summary_retirement_preserves_current_inline_content_and_replays(d
     assert await complete(db, delta)
     await db.refresh(item)
     assert item.summary_content == "<p>Current description.</p>"
+    assert await db.scalar(text("SELECT count(*) FROM galaris_migration.document_summary_history_sources")) == 2
     await db.execute(text("DROP TABLE document_summary_revisions"))
     assert await complete(db, delta)
+    assert await db.scalar(text("SELECT snapshot->>'content' FROM galaris_migration.document_summary_history_sources WHERE snapshot->>'resource_id'=:pointer"), {"pointer": historical_pointer}) == "<p>Historical description — é.</p>"
+    from app.document.inline_content import referenced_resources
+    assert historical_pointer in await referenced_resources("native", [historical_pointer])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("damaged", ["archive", "source"])
+async def test_summary_retirement_refuses_source_or_archive_corruption(db, damaged):
+    await db.execute(text("CREATE TABLE document_summary_revisions (id uuid, provider_code text, resource_id text, content text)"))
+    await db.execute(text("INSERT INTO document_summary_revisions VALUES (:id,'native',:pointer,'<p>Synthetic historical description.</p>')"), {"id":uuid4(), "pointer":str(uuid4())})
+    delta = SchemaTransitionSet(removed_tables=frozenset({"document_summary_revisions"}))
+    await preserve_current(db, delta)
+    before = await db.scalar(text("SELECT snapshot FROM galaris_migration.document_summary_history_sources LIMIT 1"))
+    if damaged == "archive":
+        await db.execute(text("UPDATE galaris_migration.document_summary_history_sources SET digest='synthetic-damage'"))
+    else:
+        await db.execute(text("UPDATE document_summary_revisions SET content='<p>Later source change.</p>'"))
+    assert not await complete(db, delta)
+    with pytest.raises(RuntimeError, match="retirement refused"):
+        await preserve_current(db, delta)
+    assert await db.scalar(text("SELECT snapshot FROM galaris_migration.document_summary_history_sources LIMIT 1")) == before
+    assert await db.scalar(text("SELECT to_regclass('public.document_summary_revisions')")) is not None
 
 
 @pytest.mark.asyncio

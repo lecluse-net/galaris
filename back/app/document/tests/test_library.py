@@ -237,7 +237,7 @@ async def test_library_unites_owned_and_granted_documents(
         actor_agent_id=peer.id,
     )
 
-    # Migrated datasets remain addressable, but belong to the Dataset library.
+    # Migrated Data documents share the same library and keyword catalogue.
     from app.document import document_service
 
     dataset = await legacy_dataset(
@@ -263,21 +263,21 @@ async def test_library_unites_owned_and_granted_documents(
     )
     by_id = {entry.item.id: entry for entry in page.entries}
 
-    assert set(by_id) == {owned.id, shared.id}
-    assert page.total == 2
-    assert "dataset-only" not in page.keywords
-    assert "dataset-only" not in await service.list_document_keywords(managed.id)
+    assert set(by_id) == {owned.id, shared.id, dataset.id}
+    assert page.total == 3
+    assert "dataset-only" in page.keywords
+    assert "dataset-only" in await service.list_document_keywords(managed.id)
     dataset_page = await service.browse_document_library(
-        DocumentLibraryRequest(document_type="dataset"),
+        DocumentLibraryRequest(document_type="data"),
         managed_agent_ids=frozenset({managed.id}),
     )
-    assert dataset_page.total == 0 and dataset_page.entries == []
+    assert dataset_page.total == 1 and dataset_page.entries[0].item.id == dataset.id
     assert (await service.get_item(dataset.id, agent_id=managed.id))[1] == b"{}"
     assert by_id[owned.id].agent_ids == [managed.id]
     assert by_id[owned.id].writable_agent_ids == [managed.id]
     assert by_id[shared.id].agent_ids == [managed.id]
     assert by_id[shared.id].writable_agent_ids == []
-    assert by_id[owned.id].item.document_type == "html"
+    assert by_id[owned.id].item.document_type == "text"
     html_page = await service.browse_document_library(
         DocumentLibraryRequest(document_type="html"),
         managed_agent_ids=frozenset({managed.id}),
@@ -287,7 +287,7 @@ async def test_library_unites_owned_and_granted_documents(
     assert "revisions" in inspect(owned).unloaded
     assert "revisions" in inspect(shared).unloaded
     item, content, access, *_ = await service.get_item(owned.id, agent_id=managed.id)
-    assert item.document_type == "html"
+    assert item.document_type == "text"
     assert content == b"<p>Owned</p>"
     assert access.can_write
     if legacy_form:
@@ -410,9 +410,9 @@ async def test_user_owned_document_is_created_with_a_writable_agent(
     assert document.grants == []
     assert not (await service.effective_access(document, editor.id)).can_read
     assert access.can_write is True
-    assert document.document_type == "html"
+    assert document.document_type == "text"
     assert _content == b""
-    assert created.document_type == "html"
+    assert created.document_type == "text"
 
 
 @pytest.mark.parametrize("kind", ["dataset", "process"])
@@ -425,7 +425,7 @@ def test_document_creation_rejects_non_html_types(kind: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_legacy_dataset_document_read_resolves_to_dataset_without_document_payload(
+async def test_legacy_dataset_document_read_returns_common_data_payload(
     agents, memory_storage, monkeypatch,
 ):
     from app.document import document_service, router
@@ -439,9 +439,8 @@ async def test_legacy_dataset_document_read_resolves_to_dataset_without_document
         user_id=1, agent_ids=frozenset({owner.id, other.id}),
     )))
     result = await read_managed_document(dataset.id, agent_id=owner.id)
-    assert result.model_dump(mode="json") == {
-        "resource_type": "dataset", "resource_uri": f"data://{dataset.id}",
-    }
+    assert result.item.document_type == "data"
+    assert result.item.payload.text == '{"amount":1200}'
     with pytest.raises(HTTPException) as denied:
         await read_managed_document(dataset.id, agent_id=other.id)
     assert denied.value.status_code in {403, 404}

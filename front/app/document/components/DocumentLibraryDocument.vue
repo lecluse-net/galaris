@@ -19,11 +19,11 @@
       </DocumentLibraryEntryRow>
       <div v-if="treeRow" class="document-actions row no-wrap items-center">
         <q-btn flat round dense size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newSubdocument', { name: entry.item.title })"
-          @click.stop="emit('create', entry)">
+          @click.stop="emit('create', entry, undefined, $event)">
           <q-tooltip>{{ t('documents.library.newSubdocument', { name: entry.item.title }) }}</q-tooltip>
         </q-btn>
       </div>
-      <DocumentRowMenu :entry="entry" :busy="busy" target=".document-branch-row" @select="emit('select', entry)" @create="emit('create', entry)" @action="emit('action', entry, $event)" />
+      <DocumentRowMenu :entry="entry" :busy="busy" target=".document-branch-row" @select="emit('select', entry)" @create="type => emit('create', entry, type)" @action="emit('action', entry, $event)" />
     </div>
     <div v-if="open && !treeRow" class="document-children" :aria-label="t('documents.library.subdocuments', { name: entry.item.title })" @click.stop>
       <q-banner v-if="errors[branchKey]" dense role="alert">{{ t('documents.loadError') }}
@@ -32,7 +32,7 @@
       <DocumentLibraryDocument v-for="child in visibleChildren" :key="child.item.id" :entry="child" :parent-document-id="entry.item.id" :ancestors="[...(ancestors ?? []), entry.item.id]"
         :compact="true" :selected-document-id="selectedDocumentId" :busy="busy" :children="children" :loading="loading" :errors="errors"
         :expanded="expanded" :drop-target="dropTarget" :drop-placement="dropPlacement"
-        @select="emit('select', $event)" @create="emit('create', $event)" @action="(entry, action) => emit('action', entry, action)"
+        @select="emit('select', $event)" @create="(entry, type, event) => emit('create', entry, type, event)" @action="(entry, action) => emit('action', entry, action)"
         @toggle="emit('toggle', $event)" @retry="emit('retry', $event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')"
         @dragover="(event, value, parent, tag, list) => emit('dragover', event, value, parent, tag, list)" @dragleave="emit('dragleave')" @drop="emit('drop')" />
       <span v-if="!loading[branchKey] && !errors[branchKey] && !(children[branchKey]?.length)" class="text-caption q-pa-sm">{{ t('documents.library.noSubdocuments') }}</span>
@@ -40,6 +40,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import type { DocumentKind } from '../documentTypes'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DocumentLibraryEntry } from '../types'
@@ -66,7 +67,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   action: [entry: DocumentLibraryEntry, action: DocumentRowAction]
-  select: [entry: DocumentLibraryEntry]; create: [entry: DocumentLibraryEntry]
+  select: [entry: DocumentLibraryEntry]; create: [entry: DocumentLibraryEntry, type?: DocumentKind, event?: Event]
   toggle: [id: string]; retry: [id: string]; dragstart: [event: DragEvent, id: string]; dragend: []
   dragover: [event: DragEvent, entry: DocumentLibraryEntry, parent?: string | null, tag?: string | null, listOnly?: boolean]
   dragleave: []; drop: []

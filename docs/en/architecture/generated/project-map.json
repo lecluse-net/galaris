@@ -1045,181 +1045,55 @@
       },
       {
         "files": [
+          "back/app/dataset/__init__.py",
           "back/app/dataset/access.py",
-          "back/app/dataset/apps.py",
-          "back/app/dataset/attachments.py",
-          "back/app/dataset/compatibility.py",
-          "back/app/dataset/contracts.py",
-          "back/app/dataset/ownership.py",
-          "back/app/dataset/router.py",
-          "back/app/dataset/service.py",
-          "back/app/dataset/topic_assignment.py",
-          "back/app/dataset/usage.py"
-        ],
-        "source": "app.dataset",
-        "target": "app.agent"
-      },
-      {
-        "files": [
           "back/app/dataset/apps.py",
           "back/app/dataset/attachments.py",
           "back/app/dataset/bootstrap.py",
           "back/app/dataset/compatibility.py",
+          "back/app/dataset/contracts.py",
+          "back/app/dataset/dbadmin.py",
+          "back/app/dataset/facade.py",
+          "back/app/dataset/library.py",
+          "back/app/dataset/mcp.py",
           "back/app/dataset/migration.py",
+          "back/app/dataset/models.py",
+          "back/app/dataset/organization.py",
+          "back/app/dataset/ownership.py",
+          "back/app/dataset/passages.py",
+          "back/app/dataset/privileges.py",
           "back/app/dataset/projection.py",
           "back/app/dataset/provider.py",
-          "back/app/dataset/router.py"
+          "back/app/dataset/query.py",
+          "back/app/dataset/resource_summaries.py",
+          "back/app/dataset/router.py",
+          "back/app/dataset/search.py",
+          "back/app/dataset/search_index.py",
+          "back/app/dataset/search_predicates.py",
+          "back/app/dataset/service.py",
+          "back/app/dataset/sharing.py",
+          "back/app/dataset/topic_assignment.py",
+          "back/app/dataset/usage.py",
+          "back/app/dataset/values.py"
         ],
         "source": "app.dataset",
         "target": "app.document"
       },
       {
         "files": [
-          "back/app/dataset/apps.py",
-          "back/app/dataset/attachments.py",
-          "back/app/dataset/bootstrap.py",
-          "back/app/dataset/provider.py",
-          "back/app/dataset/search.py",
-          "back/app/dataset/values.py"
-        ],
-        "source": "app.dataset",
-        "target": "app.file_share"
-      },
-      {
-        "files": [
-          "back/app/dataset/search.py",
-          "back/app/dataset/search_index.py"
-        ],
-        "source": "app.dataset",
-        "target": "app.llm"
-      },
-      {
-        "files": [
-          "back/app/dataset/provider.py",
-          "back/app/dataset/router.py",
-          "back/app/dataset/service.py"
-        ],
-        "source": "app.dataset",
-        "target": "app.memory"
-      },
-      {
-        "files": [
-          "back/app/dataset/access.py",
-          "back/app/dataset/compatibility.py",
-          "back/app/dataset/dbadmin.py",
-          "back/app/dataset/library.py",
-          "back/app/dataset/migration.py",
-          "back/app/dataset/models.py",
-          "back/app/dataset/ownership.py",
-          "back/app/dataset/projection.py",
-          "back/app/dataset/router.py",
-          "back/app/dataset/service.py",
-          "back/app/dataset/sharing.py"
-        ],
-        "source": "app.dataset",
-        "target": "app.share"
-      },
-      {
-        "files": [
-          "back/app/dataset/mcp.py"
-        ],
-        "source": "app.dataset",
-        "target": "app.tools"
-      },
-      {
-        "files": [
-          "back/app/dataset/access.py",
-          "back/app/dataset/bootstrap.py",
-          "back/app/dataset/router.py"
-        ],
-        "source": "app.dataset",
-        "target": "core.authorize"
-      },
-      {
-        "files": [
-          "back/app/dataset/access.py",
-          "back/app/dataset/apps.py",
-          "back/app/dataset/attachments.py",
-          "back/app/dataset/bootstrap.py",
-          "back/app/dataset/compatibility.py",
-          "back/app/dataset/library.py",
-          "back/app/dataset/migration.py",
-          "back/app/dataset/models.py",
-          "back/app/dataset/organization.py",
-          "back/app/dataset/ownership.py",
-          "back/app/dataset/projection.py",
-          "back/app/dataset/provider.py",
-          "back/app/dataset/resource_summaries.py",
-          "back/app/dataset/router.py",
-          "back/app/dataset/search.py",
-          "back/app/dataset/search_index.py",
-          "back/app/dataset/service.py",
-          "back/app/dataset/sharing.py",
-          "back/app/dataset/topic_assignment.py",
-          "back/app/dataset/usage.py"
-        ],
-        "source": "app.dataset",
-        "target": "core.database"
-      },
-      {
-        "files": [
-          "back/app/dataset/dbadmin.py"
-        ],
-        "source": "app.dataset",
-        "target": "core.dbadmin"
-      },
-      {
-        "files": [
-          "back/app/dataset/attachments.py",
-          "back/app/dataset/resource_summaries.py"
-        ],
-        "source": "app.dataset",
-        "target": "core.params"
-      },
-      {
-        "files": [
-          "back/app/dataset/attachments.py",
-          "back/app/dataset/compatibility.py",
-          "back/app/dataset/migration.py",
-          "back/app/dataset/provider.py",
-          "back/app/dataset/router.py"
-        ],
-        "source": "app.dataset",
-        "target": "core.storage"
-      },
-      {
-        "files": [
-          "back/app/dataset/service.py"
-        ],
-        "source": "app.dataset",
-        "target": "core.team"
-      },
-      {
-        "files": [
-          "back/app/dataset/access.py",
-          "back/app/dataset/bootstrap.py",
-          "back/app/dataset/compatibility.py",
-          "back/app/dataset/contracts.py",
-          "back/app/dataset/service.py"
-        ],
-        "source": "app.dataset",
-        "target": "core.user"
-      },
-      {
-        "files": [
-          "back/app/dataset/attachments.py",
-          "back/app/dataset/provider.py",
-          "back/app/dataset/resource_summaries.py",
-          "back/app/dataset/service.py"
-        ],
-        "source": "app.dataset",
-        "target": "core.util"
-      },
-      {
-        "files": [
           "back/app/document/access.py",
           "back/app/document/assertions.py",
           "back/app/document/bootstrap.py",
+          "back/app/document/data/access.py",
+          "back/app/document/data/apps.py",
+          "back/app/document/data/attachments.py",
+          "back/app/document/data/compatibility.py",
+          "back/app/document/data/contracts.py",
+          "back/app/document/data/ownership.py",
+          "back/app/document/data/router.py",
+          "back/app/document/data/service.py",
+          "back/app/document/data/topic_assignment.py",
+          "back/app/document/data/usage.py",
           "back/app/document/dataset_attachments.py",
           "back/app/document/dataset_port.py",
           "back/app/document/dataset_references.py",
@@ -1261,6 +1135,18 @@
       },
       {
         "files": [
+          "back/app/document/data/apps.py",
+          "back/app/document/data/attachments.py",
+          "back/app/document/data/bootstrap.py",
+          "back/app/document/data/provider.py",
+          "back/app/document/data/search.py",
+          "back/app/document/data/values.py"
+        ],
+        "source": "app.document",
+        "target": "app.file_share"
+      },
+      {
+        "files": [
           "back/app/document/bootstrap.py",
           "back/app/document/dbadmin.py",
           "back/app/document/goal_document_adapter.py",
@@ -1268,6 +1154,23 @@
         ],
         "source": "app.document",
         "target": "app.goal"
+      },
+      {
+        "files": [
+          "back/app/document/data/search.py",
+          "back/app/document/data/search_index.py"
+        ],
+        "source": "app.document",
+        "target": "app.llm"
+      },
+      {
+        "files": [
+          "back/app/document/data/provider.py",
+          "back/app/document/data/router.py",
+          "back/app/document/data/service.py"
+        ],
+        "source": "app.document",
+        "target": "app.memory"
       },
       {
         "files": [
@@ -1280,6 +1183,15 @@
       {
         "files": [
           "back/app/document/access.py",
+          "back/app/document/data/access.py",
+          "back/app/document/data/compatibility.py",
+          "back/app/document/data/dbadmin.py",
+          "back/app/document/data/library.py",
+          "back/app/document/data/models.py",
+          "back/app/document/data/ownership.py",
+          "back/app/document/data/router.py",
+          "back/app/document/data/service.py",
+          "back/app/document/data/sharing.py",
           "back/app/document/dataset_migration.py",
           "back/app/document/dataset_port.py",
           "back/app/document/folder_resources.py",
@@ -1305,6 +1217,7 @@
       },
       {
         "files": [
+          "back/app/document/data/mcp.py",
           "back/app/document/item_sharing.py",
           "back/app/document/mcp.py"
         ],
@@ -1315,6 +1228,9 @@
         "files": [
           "back/app/document/access.py",
           "back/app/document/assertions.py",
+          "back/app/document/data/access.py",
+          "back/app/document/data/bootstrap.py",
+          "back/app/document/data/router.py",
           "back/app/document/dataset_usage.py",
           "back/app/document/document_policy.py",
           "back/app/document/goal_folders.py",
@@ -1328,7 +1244,28 @@
         "files": [
           "back/app/document/access.py",
           "back/app/document/automation.py",
+          "back/app/document/content.py",
           "back/app/document/conversation_document_adapter.py",
+          "back/app/document/data/access.py",
+          "back/app/document/data/apps.py",
+          "back/app/document/data/attachments.py",
+          "back/app/document/data/bootstrap.py",
+          "back/app/document/data/compatibility.py",
+          "back/app/document/data/library.py",
+          "back/app/document/data/migration.py",
+          "back/app/document/data/models.py",
+          "back/app/document/data/organization.py",
+          "back/app/document/data/ownership.py",
+          "back/app/document/data/projection.py",
+          "back/app/document/data/provider.py",
+          "back/app/document/data/resource_summaries.py",
+          "back/app/document/data/router.py",
+          "back/app/document/data/search.py",
+          "back/app/document/data/search_index.py",
+          "back/app/document/data/service.py",
+          "back/app/document/data/sharing.py",
+          "back/app/document/data/topic_assignment.py",
+          "back/app/document/data/usage.py",
           "back/app/document/dataset_attachments.py",
           "back/app/document/dataset_migration.py",
           "back/app/document/dataset_port.py",
@@ -1373,12 +1310,14 @@
       },
       {
         "files": [
+          "back/app/document/data/dbadmin.py",
           "back/app/document/dbadmin.py",
           "back/app/document/document_backup.py",
           "back/app/document/independence.py",
           "back/app/document/privilege_migration.py",
           "back/app/document/summary_retirement.py",
-          "back/app/document/tool_migration.py"
+          "back/app/document/tool_migration.py",
+          "back/app/document/unification.py"
         ],
         "source": "app.document",
         "target": "core.dbadmin"
@@ -1401,6 +1340,8 @@
       },
       {
         "files": [
+          "back/app/document/data/attachments.py",
+          "back/app/document/data/resource_summaries.py",
           "back/app/document/document_attachment_service.py",
           "back/app/document/document_thumbnail_service.py",
           "back/app/document/resource_summaries.py"
@@ -1429,6 +1370,12 @@
       {
         "files": [
           "back/app/document/automation.py",
+          "back/app/document/content.py",
+          "back/app/document/data/attachments.py",
+          "back/app/document/data/compatibility.py",
+          "back/app/document/data/migration.py",
+          "back/app/document/data/provider.py",
+          "back/app/document/data/router.py",
           "back/app/document/dataset_migration.py",
           "back/app/document/document_attachment_service.py",
           "back/app/document/goal_document_adapter.py",
@@ -1447,6 +1394,7 @@
         "files": [
           "back/app/document/access.py",
           "back/app/document/bootstrap.py",
+          "back/app/document/data/service.py",
           "back/app/document/sharing_inheritance.py"
         ],
         "source": "app.document",
@@ -1456,6 +1404,11 @@
         "files": [
           "back/app/document/access.py",
           "back/app/document/bootstrap.py",
+          "back/app/document/data/access.py",
+          "back/app/document/data/bootstrap.py",
+          "back/app/document/data/compatibility.py",
+          "back/app/document/data/contracts.py",
+          "back/app/document/data/service.py",
           "back/app/document/dataset_attachments.py",
           "back/app/document/dataset_port.py",
           "back/app/document/dataset_references.py",
@@ -1465,6 +1418,7 @@
           "back/app/document/document_image_import.py",
           "back/app/document/document_links.py",
           "back/app/document/document_policy.py",
+          "back/app/document/document_service.py",
           "back/app/document/document_sharing.py",
           "back/app/document/document_thumbnail_service.py",
           "back/app/document/events.py",
@@ -1489,16 +1443,22 @@
       },
       {
         "files": [
+          "back/app/document/data/attachments.py",
+          "back/app/document/data/provider.py",
+          "back/app/document/data/resource_summaries.py",
+          "back/app/document/data/service.py",
           "back/app/document/document_attachment_service.py",
           "back/app/document/document_links.py",
           "back/app/document/document_service.py",
           "back/app/document/document_thumbnail_service.py",
           "back/app/document/file_facade.py",
+          "back/app/document/inline_content.py",
           "back/app/document/models.py",
           "back/app/document/resource_service.py",
           "back/app/document/resource_summaries.py",
           "back/app/document/router.py",
           "back/app/document/schemas.py",
+          "back/app/document/text/__init__.py",
           "back/app/document/topic_assignment.py"
         ],
         "source": "app.document",
@@ -3076,6 +3036,7 @@
           "back/app/memory/maintenance.py",
           "back/app/memory/models.py",
           "back/app/memory/router.py",
+          "back/app/memory/schemas.py",
           "back/app/memory/semantic_index.py",
           "back/app/memory/service.py",
           "back/app/memory/source_access.py"
@@ -6450,6 +6411,14 @@
         ],
         [
           "app.document",
+          "app.file_share"
+        ],
+        [
+          "app.document",
+          "app.memory"
+        ],
+        [
+          "app.document",
           "app.process"
         ],
         [
@@ -6513,7 +6482,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 303,
+      "domain_edges": 300,
       "fan_in": [
         {
           "count": 44,
@@ -6523,7 +6492,7 @@
             "app.audio",
             "app.conversation",
             "app.dashboard",
-            "app.dataset",
+            "app.document",
             "app.dream",
             "app.goal",
             "app.harness",
@@ -6566,7 +6535,7 @@
           ]
         },
         {
-          "count": 36,
+          "count": 35,
           "module": "app.agent",
           "modules": [
             "app.chat",
@@ -6575,7 +6544,6 @@
             "app.contact",
             "app.conversation",
             "app.dashboard",
-            "app.dataset",
             "app.document",
             "app.dream",
             "app.file_share",
@@ -6608,7 +6576,7 @@
           ]
         },
         {
-          "count": 32,
+          "count": 31,
           "module": "app.tools",
           "modules": [
             "app.agent",
@@ -6617,7 +6585,6 @@
             "app.connection",
             "app.console",
             "app.conversation",
-            "app.dataset",
             "app.document",
             "app.file_share",
             "app.goal",
@@ -6712,7 +6679,7 @@
             "app.browser",
             "app.console",
             "app.conversation",
-            "app.dataset",
+            "app.document",
             "app.harness",
             "app.image",
             "app.llm",
@@ -6795,7 +6762,7 @@
           "module": "app.memory",
           "modules": [
             "app.contact",
-            "app.dataset",
+            "app.document",
             "app.dream",
             "app.file_share",
             "app.lab",
@@ -6903,16 +6870,6 @@
         },
         {
           "count": 4,
-          "module": "app.share",
-          "modules": [
-            "app.agent",
-            "app.dataset",
-            "app.document",
-            "app.process"
-          ]
-        },
-        {
-          "count": 4,
           "module": "app.topic",
           "modules": [
             "app.chat",
@@ -6938,6 +6895,15 @@
             "app.chat",
             "app.conversation",
             "bridge.code_server"
+          ]
+        },
+        {
+          "count": 3,
+          "module": "app.share",
+          "modules": [
+            "app.agent",
+            "app.document",
+            "app.process"
           ]
         },
         {
@@ -7099,6 +7065,22 @@
         },
         {
           "count": 10,
+          "module": "app.document",
+          "modules": [
+            "app.agent",
+            "app.conversation",
+            "app.file_share",
+            "app.goal",
+            "app.llm",
+            "app.memory",
+            "app.process",
+            "app.share",
+            "app.task",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 10,
           "module": "app.memory",
           "modules": [
             "app.agent",
@@ -7242,32 +7224,6 @@
             "app.file_share",
             "app.llm",
             "app.memory",
-            "app.task",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 7,
-          "module": "app.dataset",
-          "modules": [
-            "app.agent",
-            "app.document",
-            "app.file_share",
-            "app.llm",
-            "app.memory",
-            "app.share",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 7,
-          "module": "app.document",
-          "modules": [
-            "app.agent",
-            "app.conversation",
-            "app.goal",
-            "app.process",
-            "app.share",
             "app.task",
             "app.tools"
           ]
@@ -7528,6 +7484,13 @@
           "modules": [
             "app.connection",
             "app.messenger"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app.dataset",
+          "modules": [
+            "app.document"
           ]
         },
         {
@@ -8380,17 +8343,17 @@
         "namespace": "document"
       },
       {
-        "file": "back/app/dataset/mcp.py",
+        "file": "back/app/document/data/mcp.py",
         "handler": "dataset_query",
         "line": 23,
-        "module": "app.dataset",
+        "module": "app.document",
         "name": "dataset_query",
         "namespace": "file_sharing"
       },
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 390,
+        "line": 391,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -8398,7 +8361,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 457,
+        "line": 458,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -8406,7 +8369,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 308,
+        "line": 309,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -8414,7 +8377,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 539,
+        "line": 540,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -8422,7 +8385,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 418,
+        "line": 419,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -8446,7 +8409,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 509,
+        "line": 510,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -8462,7 +8425,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "rename_file",
-        "line": 488,
+        "line": 489,
         "module": "app.file_share",
         "name": "file_rename",
         "namespace": "file_sharing"
@@ -8486,7 +8449,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 355,
+        "line": 356,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -10343,71 +10306,69 @@
       },
       {
         "class_name": "DatasetAlias",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
-          "datasets.id",
           "documents.id"
         ],
         "history_mixin": false,
         "line": 103,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_aliases"
       },
       {
         "class_name": "DatasetAppConsent",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
-          "datasets.id",
           "documents.id",
           "users.id"
         ],
         "history_mixin": true,
         "line": 169,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_app_consents"
       },
       {
         "class_name": "DatasetAppearance",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
-          "datasets.id",
+          "documents.id",
           "users.id"
         ],
         "history_mixin": false,
         "line": 139,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_appearances"
       },
       {
         "class_name": "DatasetAttachment",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
-          "datasets.id",
           "document_attachments.id",
+          "documents.id",
           "files.id"
         ],
         "history_mixin": true,
         "line": 114,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_attachments"
       },
       {
         "class_name": "DatasetGrant",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
           "agent_groups.id",
           "agents.id",
-          "datasets.id",
+          "documents.id",
           "users.id"
         ],
         "history_mixin": false,
         "line": 89,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_grants"
       },
       {
-        "class_name": "DatasetRevision",
-        "file": "back/app/dataset/models.py",
+        "class_name": "LegacyDatasetRevision",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
           "agents.id",
           "datasets.id",
@@ -10416,70 +10377,70 @@
         ],
         "history_mixin": false,
         "line": 47,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_revisions"
       },
       {
         "class_name": "DatasetSearchChunk",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
           "dataset_search_indexes.id"
         ],
         "history_mixin": false,
         "line": 78,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_search_chunks"
       },
       {
         "class_name": "DatasetSearchIndex",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
-          "datasets.id"
+          "documents.id"
         ],
         "history_mixin": false,
         "line": 60,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_search_indexes"
       },
       {
         "class_name": "DatasetTagAssignment",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
           "dataset_tags.id",
-          "datasets.id"
+          "documents.id"
         ],
         "history_mixin": false,
         "line": 160,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_tag_assignments"
       },
       {
         "class_name": "DatasetTag",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
           "dataset_tags.id",
           "users.id"
         ],
         "history_mixin": true,
         "line": 150,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_tags"
       },
       {
         "class_name": "DatasetWriteBudget",
-        "file": "back/app/dataset/models.py",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
-          "datasets.id",
+          "documents.id",
           "users.id"
         ],
         "history_mixin": false,
         "line": 128,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "dataset_write_budgets"
       },
       {
-        "class_name": "Dataset",
-        "file": "back/app/dataset/models.py",
+        "class_name": "LegacyDataset",
+        "file": "back/app/document/data/models.py",
         "foreign_keys": [
           "agents.id",
           "topics.id",
@@ -10487,7 +10448,7 @@
         ],
         "history_mixin": true,
         "line": 15,
-        "module": "app.dataset",
+        "module": "app.document",
         "table": "datasets"
       },
       {
@@ -10534,7 +10495,6 @@
         "class_name": "DocumentAppGrant",
         "file": "back/app/document/models.py",
         "foreign_keys": [
-          "datasets.id",
           "documents.id",
           "users.id"
         ],
@@ -10547,7 +10507,7 @@
         "class_name": "DocumentAppWriteBudget",
         "file": "back/app/document/models.py",
         "foreign_keys": [
-          "datasets.id",
+          "documents.id",
           "users.id"
         ],
         "history_mixin": false,
@@ -10572,7 +10532,7 @@
         "file": "back/app/document/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 390,
+        "line": 419,
         "module": "app.document",
         "table": "document_automation_jobs"
       },
@@ -10617,11 +10577,14 @@
         "file": "back/app/document/models.py",
         "foreign_keys": [
           "agents.id",
+          "document_revisions.id",
           "documents.id",
-          "tasks.id"
+          "files.id",
+          "tasks.id",
+          "users.id"
         ],
         "history_mixin": false,
-        "line": 284,
+        "line": 296,
         "module": "app.document",
         "table": "document_revisions"
       },
@@ -10645,7 +10608,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 340,
+        "line": 369,
         "module": "app.document",
         "table": "document_sources"
       },
@@ -10693,7 +10656,7 @@
           "documents.id"
         ],
         "history_mixin": false,
-        "line": 273,
+        "line": 285,
         "module": "app.document",
         "table": "document_urls"
       },
@@ -10711,6 +10674,7 @@
         "file": "back/app/document/models.py",
         "foreign_keys": [
           "agents.id",
+          "files.id",
           "topics.id",
           "users.id"
         ],
@@ -13290,23 +13254,23 @@
       },
       {
         "constant": "DATASET_ADMIN",
-        "file": "back/app/dataset/privileges.py",
+        "file": "back/app/document/data/privileges.py",
         "line": 3,
-        "module": "app.dataset",
+        "module": "app.document",
         "value": "privilege.DATASET_ADMIN"
       },
       {
         "constant": "DATASET_EDIT",
-        "file": "back/app/dataset/privileges.py",
+        "file": "back/app/document/data/privileges.py",
         "line": 2,
-        "module": "app.dataset",
+        "module": "app.document",
         "value": "privilege.DATASET_EDIT"
       },
       {
         "constant": "DATASET_READ",
-        "file": "back/app/dataset/privileges.py",
+        "file": "back/app/document/data/privileges.py",
         "line": 1,
-        "module": "app.dataset",
+        "module": "app.document",
         "value": "privilege.DATASET_READ"
       },
       {
@@ -16159,236 +16123,236 @@
       {
         "authorized": true,
         "declared_path": "/datasets",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "list_datasets",
         "line": 134,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "create_dataset",
         "line": 149,
         "method": "POST",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/library/facets",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "library_facets",
         "line": 175,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/library/move",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "move_placement",
         "line": 207,
         "method": "POST",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/tags",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "list_tags",
         "line": 159,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/tags",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "create_tag",
         "line": 166,
         "method": "POST",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/tags/{identity}",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "delete_tag",
         "line": 190,
         "method": "DELETE",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/tags/{identity}",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "update_tag",
         "line": 182,
         "method": "PUT",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/tags/{identity}/sort",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "sort_tag",
         "line": 199,
         "method": "POST",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "delete_dataset",
         "line": 252,
         "method": "DELETE",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "read_dataset",
         "line": 215,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "update_dataset",
         "line": 241,
         "method": "PATCH",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/attachments",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "attachments",
         "line": 337,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/attachments",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "attach",
         "line": 345,
         "method": "POST",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/attachments/{attachment_id}",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "rename_dataset_attachment",
         "line": 355,
         "method": "PATCH",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/classification",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "classify",
         "line": 363,
         "method": "PUT",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/content",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "write_dataset",
         "line": 223,
         "method": "PUT",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/owner",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "owner_options",
         "line": 292,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/owner",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "transfer_owner",
         "line": 299,
         "method": "PATCH",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/revisions",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "read_history",
         "line": 260,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/revisions/{number}",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "read_revision",
         "line": 267,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/revisions/{number}/restore",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "restore_revision",
         "line": 275,
         "method": "POST",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/sharing",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "sharing",
         "line": 285,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/sharing",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "set_grant",
         "line": 327,
         "method": "PUT",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/sharing-level",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "sharing_level",
         "line": 309,
         "method": "PUT",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
         "declared_path": "/datasets/{identity}/usages",
-        "file": "back/app/dataset/router.py",
+        "file": "back/app/document/data/router.py",
         "handler": "usages",
         "line": 318,
         "method": "GET",
-        "module": "app.dataset"
+        "module": "app.document"
       },
       {
         "authorized": true,
@@ -16449,7 +16413,7 @@
         "declared_path": "/documents",
         "file": "back/app/document/router.py",
         "handler": "create_managed_document",
-        "line": 226,
+        "line": 235,
         "method": "POST",
         "module": "app.document"
       },
@@ -16458,7 +16422,7 @@
         "declared_path": "/documents/folder-collections",
         "file": "back/app/document/router.py",
         "handler": "read_folder_collection",
-        "line": 91,
+        "line": 99,
         "method": "GET",
         "module": "app.document"
       },
@@ -16467,7 +16431,7 @@
         "declared_path": "/documents/folder-collections/{folder_id}",
         "file": "back/app/document/router.py",
         "handler": "read_folder_collection",
-        "line": 91,
+        "line": 99,
         "method": "GET",
         "module": "app.document"
       },
@@ -16476,7 +16440,7 @@
         "declared_path": "/documents/folders",
         "file": "back/app/document/router.py",
         "handler": "read_document_folders",
-        "line": 445,
+        "line": 454,
         "method": "GET",
         "module": "app.document"
       },
@@ -16485,7 +16449,7 @@
         "declared_path": "/documents/goal-folders/reconcile",
         "file": "back/app/document/router.py",
         "handler": "launch_goal_folder_reconciliation",
-        "line": 113,
+        "line": 121,
         "method": "POST",
         "module": "app.document"
       },
@@ -16494,7 +16458,7 @@
         "declared_path": "/documents/icons/resolve",
         "file": "back/app/document/router.py",
         "handler": "resolve_document_icons",
-        "line": 313,
+        "line": 322,
         "method": "POST",
         "module": "app.document"
       },
@@ -16503,7 +16467,7 @@
         "declared_path": "/documents/keywords",
         "file": "back/app/document/router.py",
         "handler": "read_document_keywords",
-        "line": 279,
+        "line": 288,
         "method": "GET",
         "module": "app.document"
       },
@@ -16512,7 +16476,7 @@
         "declared_path": "/documents/library",
         "file": "back/app/document/router.py",
         "handler": "browse_managed_documents",
-        "line": 297,
+        "line": 306,
         "method": "POST",
         "module": "app.document"
       },
@@ -16521,7 +16485,7 @@
         "declared_path": "/documents/link-card/thumbnail",
         "file": "back/app/document/router.py",
         "handler": "read_link_card_thumbnail",
-        "line": 617,
+        "line": 626,
         "method": "POST",
         "module": "app.document"
       },
@@ -16530,7 +16494,7 @@
         "declared_path": "/documents/order",
         "file": "back/app/document/router.py",
         "handler": "reorder_personal_documents",
-        "line": 330,
+        "line": 339,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16539,7 +16503,7 @@
         "declared_path": "/documents/order/sort",
         "file": "back/app/document/router.py",
         "handler": "sort_personal_documents",
-        "line": 340,
+        "line": 349,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16548,7 +16512,7 @@
         "declared_path": "/documents/owner-options",
         "file": "back/app/document/router.py",
         "handler": "read_document_owner_options",
-        "line": 460,
+        "line": 469,
         "method": "GET",
         "module": "app.document"
       },
@@ -16557,7 +16521,7 @@
         "declared_path": "/documents/tag-icons",
         "file": "back/app/document/router.py",
         "handler": "read_personal_tag_icons",
-        "line": 350,
+        "line": 359,
         "method": "GET",
         "module": "app.document"
       },
@@ -16566,7 +16530,7 @@
         "declared_path": "/documents/tag-icons",
         "file": "back/app/document/router.py",
         "handler": "upload_personal_tag_icon",
-        "line": 355,
+        "line": 364,
         "method": "POST",
         "module": "app.document"
       },
@@ -16575,7 +16539,7 @@
         "declared_path": "/documents/tags",
         "file": "back/app/document/router.py",
         "handler": "read_personal_document_tags",
-        "line": 381,
+        "line": 390,
         "method": "GET",
         "module": "app.document"
       },
@@ -16584,7 +16548,7 @@
         "declared_path": "/documents/tags",
         "file": "back/app/document/router.py",
         "handler": "create_personal_document_tag",
-        "line": 387,
+        "line": 396,
         "method": "POST",
         "module": "app.document"
       },
@@ -16593,7 +16557,7 @@
         "declared_path": "/documents/tags/{tag_id}",
         "file": "back/app/document/router.py",
         "handler": "delete_personal_document_tag",
-        "line": 421,
+        "line": 430,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -16602,7 +16566,7 @@
         "declared_path": "/documents/tags/{tag_id}",
         "file": "back/app/document/router.py",
         "handler": "update_personal_document_tag",
-        "line": 413,
+        "line": 422,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16611,7 +16575,7 @@
         "declared_path": "/documents/tags/{tag_id}/sharing",
         "file": "back/app/document/router.py",
         "handler": "read_folder_sharing",
-        "line": 395,
+        "line": 404,
         "method": "GET",
         "module": "app.document"
       },
@@ -16620,8 +16584,17 @@
         "declared_path": "/documents/tags/{tag_id}/sharing",
         "file": "back/app/document/router.py",
         "handler": "update_folder_sharing",
-        "line": 404,
+        "line": 413,
         "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/types",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_types",
+        "line": 90,
+        "method": "GET",
         "module": "app.document"
       },
       {
@@ -16629,7 +16602,7 @@
         "declared_path": "/documents/{document_id}",
         "file": "back/app/document/router.py",
         "handler": "delete_managed_document",
-        "line": 803,
+        "line": 812,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -16638,7 +16611,7 @@
         "declared_path": "/documents/{document_id}",
         "file": "back/app/document/router.py",
         "handler": "read_managed_document",
-        "line": 779,
+        "line": 788,
         "method": "GET",
         "module": "app.document"
       },
@@ -16647,7 +16620,7 @@
         "declared_path": "/documents/{document_id}",
         "file": "back/app/document/router.py",
         "handler": "update_human_document",
-        "line": 817,
+        "line": 826,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -16656,7 +16629,7 @@
         "declared_path": "/documents/{document_id}/app-permissions",
         "file": "back/app/document/router.py",
         "handler": "read_app_permissions",
-        "line": 152,
+        "line": 160,
         "method": "GET",
         "module": "app.document"
       },
@@ -16665,7 +16638,7 @@
         "declared_path": "/documents/{document_id}/app-permissions/{app_key}/{alias}",
         "file": "back/app/document/router.py",
         "handler": "update_app_permission",
-        "line": 160,
+        "line": 168,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16674,7 +16647,7 @@
         "declared_path": "/documents/{document_id}/apps/{app_id}/datasets/{alias}",
         "file": "back/app/document/router.py",
         "handler": "access_app_dataset",
-        "line": 171,
+        "line": 179,
         "method": "POST",
         "module": "app.document"
       },
@@ -16683,7 +16656,7 @@
         "declared_path": "/documents/{document_id}/attachments",
         "file": "back/app/document/router.py",
         "handler": "list_document_attachments",
-        "line": 1052,
+        "line": 1061,
         "method": "GET",
         "module": "app.document"
       },
@@ -16692,7 +16665,7 @@
         "declared_path": "/documents/{document_id}/attachments",
         "file": "back/app/document/router.py",
         "handler": "add_document_attachment",
-        "line": 1071,
+        "line": 1080,
         "method": "POST",
         "module": "app.document"
       },
@@ -16701,7 +16674,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/document/router.py",
         "handler": "delete_document_attachment",
-        "line": 1184,
+        "line": 1193,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -16710,7 +16683,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/document/router.py",
         "handler": "read_document_attachment",
-        "line": 1153,
+        "line": 1162,
         "method": "GET",
         "module": "app.document"
       },
@@ -16719,7 +16692,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/document/router.py",
         "handler": "rename_document_attachment",
-        "line": 1122,
+        "line": 1131,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -16728,7 +16701,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}/info",
         "file": "back/app/document/router.py",
         "handler": "read_document_attachment_info",
-        "line": 1136,
+        "line": 1145,
         "method": "GET",
         "module": "app.document"
       },
@@ -16737,7 +16710,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}/thumbnail",
         "file": "back/app/document/router.py",
         "handler": "read_document_attachment_thumbnail",
-        "line": 1091,
+        "line": 1100,
         "method": "GET",
         "module": "app.document"
       },
@@ -16746,7 +16719,7 @@
         "declared_path": "/documents/{document_id}/collaborators/{agent_id}",
         "file": "back/app/document/router.py",
         "handler": "remove_managed_document_grant",
-        "line": 1021,
+        "line": 1030,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -16755,7 +16728,7 @@
         "declared_path": "/documents/{document_id}/collaborators/{agent_id}",
         "file": "back/app/document/router.py",
         "handler": "set_managed_document_grant",
-        "line": 987,
+        "line": 996,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16764,7 +16737,7 @@
         "declared_path": "/documents/{document_id}/content-revisions",
         "file": "back/app/document/router.py",
         "handler": "list_managed_document_content_revisions",
-        "line": 506,
+        "line": 515,
         "method": "GET",
         "module": "app.document"
       },
@@ -16773,7 +16746,7 @@
         "declared_path": "/documents/{document_id}/content-revisions/{revision}",
         "file": "back/app/document/router.py",
         "handler": "read_managed_document_content_revision",
-        "line": 532,
+        "line": 541,
         "method": "GET",
         "module": "app.document"
       },
@@ -16782,7 +16755,7 @@
         "declared_path": "/documents/{document_id}/content-revisions/{revision}/diff",
         "file": "back/app/document/router.py",
         "handler": "diff_managed_document_content_revision",
-        "line": 556,
+        "line": 565,
         "method": "GET",
         "module": "app.document"
       },
@@ -16791,7 +16764,7 @@
         "declared_path": "/documents/{document_id}/content-revisions/{revision}/restore",
         "file": "back/app/document/router.py",
         "handler": "restore_managed_document_content_revision",
-        "line": 580,
+        "line": 589,
         "method": "POST",
         "module": "app.document"
       },
@@ -16800,7 +16773,7 @@
         "declared_path": "/documents/{document_id}/dataset-attachments",
         "file": "back/app/document/router.py",
         "handler": "read_document_datasets",
-        "line": 693,
+        "line": 702,
         "method": "GET",
         "module": "app.document"
       },
@@ -16809,7 +16782,7 @@
         "declared_path": "/documents/{document_id}/dataset-attachments",
         "file": "back/app/document/router.py",
         "handler": "attach_document_dataset",
-        "line": 748,
+        "line": 757,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16818,7 +16791,7 @@
         "declared_path": "/documents/{document_id}/dataset-attachments/{dataset_id}",
         "file": "back/app/document/router.py",
         "handler": "detach_document_dataset",
-        "line": 760,
+        "line": 769,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -16827,7 +16800,7 @@
         "declared_path": "/documents/{document_id}/export-bundle",
         "file": "back/app/document/router.py",
         "handler": "export_document_bundle",
-        "line": 642,
+        "line": 651,
         "method": "POST",
         "module": "app.document"
       },
@@ -16836,7 +16809,7 @@
         "declared_path": "/documents/{document_id}/export-pdf",
         "file": "back/app/document/router.py",
         "handler": "export_managed_document_pdf",
-        "line": 655,
+        "line": 664,
         "method": "POST",
         "module": "app.document"
       },
@@ -16845,7 +16818,7 @@
         "declared_path": "/documents/{document_id}/folder",
         "file": "back/app/document/router.py",
         "handler": "move_managed_document",
-        "line": 859,
+        "line": 868,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -16854,7 +16827,7 @@
         "declared_path": "/documents/{document_id}/global-access",
         "file": "back/app/document/router.py",
         "handler": "set_managed_document_global_access",
-        "line": 958,
+        "line": 967,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -16863,7 +16836,7 @@
         "declared_path": "/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/document/router.py",
         "handler": "remove_document_grant",
-        "line": 1241,
+        "line": 1250,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -16872,7 +16845,7 @@
         "declared_path": "/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/document/router.py",
         "handler": "set_document_grant",
-        "line": 1209,
+        "line": 1218,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16881,7 +16854,7 @@
         "declared_path": "/documents/{document_id}/icon",
         "file": "back/app/document/router.py",
         "handler": "save_document_icon",
-        "line": 320,
+        "line": 329,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16890,7 +16863,7 @@
         "declared_path": "/documents/{document_id}/import-image",
         "file": "back/app/document/router.py",
         "handler": "import_document_image",
-        "line": 607,
+        "line": 616,
         "method": "POST",
         "module": "app.document"
       },
@@ -16899,7 +16872,7 @@
         "declared_path": "/documents/{document_id}/internal-attachments",
         "file": "back/app/document/router.py",
         "handler": "read_internal_attachments",
-        "line": 703,
+        "line": 712,
         "method": "GET",
         "module": "app.document"
       },
@@ -16908,7 +16881,7 @@
         "declared_path": "/documents/{document_id}/internal-attachments",
         "file": "back/app/document/router.py",
         "handler": "change_internal_attachments",
-        "line": 714,
+        "line": 723,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16917,7 +16890,7 @@
         "declared_path": "/documents/{document_id}/link-card",
         "file": "back/app/document/router.py",
         "handler": "create_document_link_card",
-        "line": 632,
+        "line": 641,
         "method": "POST",
         "module": "app.document"
       },
@@ -16926,7 +16899,7 @@
         "declared_path": "/documents/{document_id}/owner",
         "file": "back/app/document/router.py",
         "handler": "change_document_owner",
-        "line": 896,
+        "line": 905,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -16935,7 +16908,7 @@
         "declared_path": "/documents/{document_id}/parent",
         "file": "back/app/document/router.py",
         "handler": "move_personal_subdocument",
-        "line": 371,
+        "line": 380,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16944,7 +16917,7 @@
         "declared_path": "/documents/{document_id}/process-attachments",
         "file": "back/app/document/router.py",
         "handler": "read_document_processes",
-        "line": 726,
+        "line": 735,
         "method": "GET",
         "module": "app.document"
       },
@@ -16953,7 +16926,7 @@
         "declared_path": "/documents/{document_id}/process-attachments",
         "file": "back/app/document/router.py",
         "handler": "attach_document_process",
-        "line": 736,
+        "line": 745,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16962,7 +16935,7 @@
         "declared_path": "/documents/{document_id}/sharing",
         "file": "back/app/document/router.py",
         "handler": "read_document_sharing",
-        "line": 832,
+        "line": 841,
         "method": "GET",
         "module": "app.document"
       },
@@ -16971,7 +16944,7 @@
         "declared_path": "/documents/{document_id}/sharing",
         "file": "back/app/document/router.py",
         "handler": "update_document_sharing",
-        "line": 840,
+        "line": 849,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16980,7 +16953,7 @@
         "declared_path": "/documents/{document_id}/sharing-level",
         "file": "back/app/document/router.py",
         "handler": "update_document_sharing_level",
-        "line": 848,
+        "line": 857,
         "method": "PUT",
         "module": "app.document"
       },
@@ -16989,7 +16962,7 @@
         "declared_path": "/documents/{document_id}/summary",
         "file": "back/app/document/router.py",
         "handler": "read_document_summary",
-        "line": 122,
+        "line": 130,
         "method": "GET",
         "module": "app.document"
       },
@@ -16998,7 +16971,7 @@
         "declared_path": "/documents/{document_id}/summary",
         "file": "back/app/document/router.py",
         "handler": "edit_document_summary",
-        "line": 133,
+        "line": 141,
         "method": "PUT",
         "module": "app.document"
       },
@@ -17007,7 +16980,7 @@
         "declared_path": "/documents/{document_id}/tags",
         "file": "back/app/document/router.py",
         "handler": "move_personal_document",
-        "line": 363,
+        "line": 372,
         "method": "PUT",
         "module": "app.document"
       },
@@ -17016,7 +16989,7 @@
         "declared_path": "/documents/{document_id}/tags/{tag_id}",
         "file": "back/app/document/router.py",
         "handler": "remove_personal_document_tag",
-        "line": 437,
+        "line": 446,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -17025,7 +16998,7 @@
         "declared_path": "/documents/{document_id}/tags/{tag_id}",
         "file": "back/app/document/router.py",
         "handler": "add_personal_document_tag",
-        "line": 429,
+        "line": 438,
         "method": "PUT",
         "module": "app.document"
       },
@@ -17034,7 +17007,7 @@
         "declared_path": "/documents/{document_id}/thumbnail",
         "file": "back/app/document/router.py",
         "handler": "read_document_thumbnail",
-        "line": 672,
+        "line": 681,
         "method": "POST",
         "module": "app.document"
       },
@@ -21464,7 +21437,6 @@
           "front/app/dataset/components/DatasetFolderRow.vue",
           "front/app/dataset/components/DatasetLibraryNavigation.vue",
           "front/app/dataset/components/DatasetLibraryRow.vue",
-          "front/app/dataset/pages/[[id]].vue",
           "front/app/dataset/richContent.ts"
         ],
         "source": "app/dataset",
@@ -21512,7 +21484,10 @@
         "files": [
           "front/app/document/components/DocumentBulkList.vue",
           "front/app/document/components/DocumentEditor.vue",
+          "front/app/document/components/DocumentLibraryNavigation.vue",
           "front/app/document/components/DocumentLibraryPage.vue",
+          "front/app/document/components/DocumentRowMenu.vue",
+          "front/app/document/components/DocumentTagRow.vue",
           "front/app/document/navigation.ts"
         ],
         "source": "app/document",
@@ -21546,15 +21521,19 @@
           "front/app/document/components/DocumentTagIconPicker.vue",
           "front/app/document/components/DocumentTagRow.vue",
           "front/app/document/components/DocumentThumbnail.vue",
+          "front/app/document/data/ContentEditor.vue",
+          "front/app/document/data/index.ts",
           "front/app/document/documentAppResources.ts",
           "front/app/document/documentAppSandbox.ts",
           "front/app/document/documentEditor.ts",
           "front/app/document/documentFolders.ts",
+          "front/app/document/documentTypes.ts",
           "front/app/document/libraryShortcuts.ts",
           "front/app/document/richContent.ts",
           "front/app/document/services/documentService.ts",
           "front/app/document/tagEmojiCatalog.ts",
-          "front/app/document/tagIcon.ts"
+          "front/app/document/tagIcon.ts",
+          "front/app/document/text/index.ts"
         ],
         "source": "app/document",
         "target": "core/util"

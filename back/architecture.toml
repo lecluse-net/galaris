@@ -74,8 +74,8 @@ max_domain_fan_out = 11
 
 # Documentary responsibilities extracted from Memory; reviewed in ADR 0223.
 [module."app.document"]
-allowed_dependencies = ["app.agent", "app.conversation", "app.goal", "app.process", "app.share", "app.task", "app.tools"]
-max_domain_fan_out = 7
+allowed_dependencies = ["app.agent", "app.conversation", "app.file_share", "app.goal", "app.llm", "app.memory", "app.process", "app.share", "app.task", "app.tools"]
+max_domain_fan_out = 10
 
 [module."app.memory"]
 allowed_dependencies = ["app.agent", "app.conversation", "app.document", "app.goal", "app.llm", "app.process", "app.task", "app.tools", "app.topic", "app.voice"]
@@ -158,8 +158,8 @@ allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.document
 max_domain_fan_out = 10
 
 [module."app.dataset"]
-allowed_dependencies = ["app.agent", "app.document", "app.file_share", "app.llm", "app.memory", "app.share", "app.tools"]
-max_domain_fan_out = 7
+allowed_dependencies = ["app.document"]
+max_domain_fan_out = 1
 
 [module."app.multimedia"]
 allowed_dependencies = ["app.agent", "app.file_share", "app.llm", "app.tools"]

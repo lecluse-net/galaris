@@ -15,7 +15,10 @@ _INLINE_LOOKUP = select(func.coalesce(
     select(Document.summary_content).where(Document.summary_provider_code == "native",
         Document.summary_resource_id == _CONTENT_POINTER).limit(1).scalar_subquery(),
     type_=Text,
-)).execution_options(include_historized=True)
+), union(*(select(model.file_id).where(
+    model.provider_code == "native", model.resource_id == _CONTENT_POINTER,
+    model.storage_kind == "file") for model in (Document, DocumentRevision)))
+    .limit(1).scalar_subquery()).execution_options(include_historized=True)
 
 async def read_inline_content(pointer: str) -> bytes | None:
     try:
@@ -30,8 +33,16 @@ async def read_inline_content(pointer: str) -> bytes | None:
             if isinstance(row,Document) and state.get("summary_provider_code")=="native" and state.get("summary_resource_id")==pointer and isinstance(state.get("summary_content"),str):
                 return str(state["summary_content"]).encode()
     with db.no_autoflush:
-        value: str | None = await db.scalar(_INLINE_LOOKUP, {"pointer": pointer})
-        return value.encode() if value is not None else None
+        result = (await db.execute(_INLINE_LOOKUP, {"pointer": pointer})).one()
+        value: str | None = result[0]
+        if value is not None:
+            return value.encode()
+        file = result[1]
+        if file is not None:
+            from core.storage import file_path
+            from core.util import complete_io
+            return await complete_io(file_path(file).read_bytes)
+        return None
 
 async def resource_referenced(provider: str, pointer: str) -> bool:
     return pointer in await referenced_resources(provider, (pointer,))
@@ -48,6 +59,8 @@ async def referenced_resources(provider: str, pointers: Collection[str]) -> set[
     referenced.update(await archived_resources(db,provider,list(pointers)))
     from .independence import preserved_resources
     referenced.update(await preserved_resources(db,provider,pointers))
+    from .summary_retirement import preserved_resources as preserved_summaries
+    referenced.update(await preserved_summaries(db,provider,pointers))
     return referenced
 
 def register_content() -> None:

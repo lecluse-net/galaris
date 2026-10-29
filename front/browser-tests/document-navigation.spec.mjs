@@ -1,11 +1,12 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
-async function library(page) {
+async function library(page, kind = 'text') {
   const items = ['Alpha', 'Beta', 'Gamma'].map((title, index) => ({
     ...documentFixture, id: `00000000-0000-4000-8000-00000000000${index + 1}`,
     title, owner_agent_id: null, owner_user_id: 1,
-    media_type: 'text/html', content_profile: 'document', payload: { text: `<p>${title} content</p>` },
+    document_type: kind, media_type: kind === 'data' ? 'application/json' : 'text/html',
+    content_profile: 'document', payload: { text: kind === 'data' ? JSON.stringify({ value: title }) : `<p>${title} content</p>` },
   }))
   const state = { items, refuseSave: false, writes: [] }
   await jsonRoute(page, '**/api/agents?*', [agent])
@@ -34,8 +35,8 @@ async function library(page) {
 }
 
 for (const mobile of [false, true]) {
-  test(`document history follows visits, branches and skips deleted documents (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
-    const { items } = await library(page)
+  for (const kind of ['text', 'data']) test(`document history follows visits, branches and skips deleted documents (${kind}, ${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
+    const { items } = await library(page, kind)
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
     await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
       route: `/documents?document_id=${items[0].id}`, browserHistory: true, privileges: ['DOCUMENT_EDIT'],

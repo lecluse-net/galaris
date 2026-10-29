@@ -18,7 +18,7 @@ from .document_attachment_service import attachments_from_item, read_document_at
 async def export_document_bundle(document_id: UUID, html: str, *, actor_agent_id: int | HumanActor) -> bytes:
     """Export a static snapshot and immutable attachments with portable local links."""
     item, _ = await service.get_item_metadata(document_id, agent_id=actor_agent_id)
-    if item.document_type != "html" or item.content_profile != "document":
+    if item.document_type not in {"text", "html", "data"} or item.content_profile != "document":
         raise ValueError("A document is required")
     if len(html.encode()) > 12_000_000:
         raise ValueError("The document snapshot exceeds the 12 MB limit")
@@ -51,6 +51,6 @@ async def export_document_pdf(
         )
         if not readable:
             raise service.DocumentPermissionError("Document read access denied")
-    if item.document_type != "html" or item.content_profile != "document":
+    if item.document_type not in {"text", "html", "data"} or item.content_profile != "document":
         raise ValueError("PDF export requires a document content profile")
     return await render_html_pdf(html)

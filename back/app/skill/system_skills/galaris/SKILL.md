@@ -273,9 +273,9 @@ Read before editing; pass `expected_revision` to `file_edit`, `file_write` and `
 On conflict, read again and reconcile with the current content; never guess a revision or
 slice an HTML tag to fit a page. Ordinary text files still use line offsets.
 
-**Datasets** are independent structured resources with a `data://<uuid>` URI, their own
-sharing and revisions, and valid UTF-8 JSON (`application/json`). Legacy Dataset documents
-retain verified `document://` aliases; ordinary Documents remain `document://` resources.
+**Data documents (Datasets)** hold valid UTF-8 JSON (`application/json`) at `data://<uuid>`.
+Text and Data share the Documents library, metadata, sharing and revisions; each document
+retains its own permissions. Existing `data://` and verified `document://` links remain valid.
 Consider a Dataset when structured data will be reused across documents, calculations or
 Tasks: company details including share capital and currency, product records, or comparable
 figures. Prefer it when a shared reference reduces inconsistent copies. Keep self-contained
@@ -302,7 +302,7 @@ the configured storage quota. Preserve JSON source; do not wrap it in HTML or co
 Copying an `application/json` source to `data://` creates a new private Dataset;
 copying into an existing document keeps its type. Restore changes content, not sharing.
 
-The Dataset module also owns typed JSON contracts. Each value uses `{type, value}`;
+The Data submodule also supplies typed JSON contracts. Each value uses `{type, value}`;
 arrays and objects recursively contain typed values. Types are `int`, `float`, `string`,
 `bool`, `Agent`, `User`, `File`, `Document`, `Dataset`, `array` and `object`. `File` remains
 an authorized provider URI; never inline file bytes in a typed value. `Document` uses
@@ -438,7 +438,7 @@ for authored HTML and Datasets for editable JSON when those are the requested re
   max_results: int = 50, cursor: str = "") -> str`
 - `file_read(uri: str, offset: int = 0, max_chars: int = 20000) -> str`
 - `file_create(path: str, content: str = "", encoding: "utf-8" | "base64" = "utf-8",
-  name: str = "", document_type: "html" | "dataset" | None = None) -> str`
+  name: str = "", document_type: "text" | "data" | "html" | "dataset" | None = None) -> str`
 - `file_write(uri: str, content: str, encoding: "utf-8" | "base64" = "utf-8",
   expected_revision: int | None = None, expected_etag: str | None = None) -> str`
 - `file_append(uri: str, content: str, expected_revision: int | None = None,

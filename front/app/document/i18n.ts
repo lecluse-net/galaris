@@ -369,7 +369,7 @@ documents: {
       autosavePending: 'Modifications en attente…',
       autosaveSaving: 'Enregistrement automatique…',
       autosaveInvalid: 'Corrigez les champs invalides',
-      documentType: 'Type de document',
+      documentType: 'Type de document', createTypedDocument: 'Créer un document {type}',
       apps: {
         invalid: 'Application invalide. Vérifiez son contenu dans le mode Source.',
         permission_required: 'L’accès de cette application au jeu de données n’est pas autorisé pour cette version du document.',
@@ -377,7 +377,7 @@ documents: {
         conflict: 'Le document ou le jeu de données a changé. Relisez les données avant de soumettre à nouveau.',
         denied: 'Accès refusé ou révoqué. L’application a été arrêtée.', failed: 'Opération impossible. Vérifiez les droits, le format des données et la connexion avant de réessayer.',
       },
-      types: { html: 'HTML', dataset: 'Jeu de données', process: 'Process' },
+      types: { text: 'Texte', data: 'Données', html: 'HTML', dataset: 'Jeu de données', process: 'Process' },
       datasetAttachments: {
         title: 'Jeux de données joints', add: 'Joindre un jeu de données', select: 'Jeu de données', attach: 'Joindre',
         hint: 'Le lien utilise les données courantes. Le partage du document ne donne pas accès au jeu de données.',
@@ -841,7 +841,7 @@ documents: {
       autosavePending: 'Changes pending…',
       autosaveSaving: 'Saving automatically…',
       autosaveInvalid: 'Fix invalid fields',
-      documentType: 'Document type',
+      documentType: 'Document type', createTypedDocument: 'Create {type} document',
       apps: {
         invalid: 'Invalid application. Check its content in Source mode.',
         permission_required: 'This application is not authorized to access the Dataset for this document version.',
@@ -849,7 +849,7 @@ documents: {
         conflict: 'The document or Dataset changed. Read the current data before submitting again.',
         denied: 'Access denied or revoked. The application has been stopped.', failed: 'Operation failed. Check permissions, data format and connection before retrying.',
       },
-      types: { html: 'HTML', dataset: 'Dataset', process: 'Processus' },
+      types: { text: 'Text', data: 'Data', html: 'HTML', dataset: 'Dataset', process: 'Processus' },
       datasetAttachments: {
         title: 'Attached Datasets', add: 'Attach a Dataset', select: 'Dataset', attach: 'Attach',
         hint: 'The link uses current data. Sharing this Document does not grant Dataset access.',
@@ -1122,7 +1122,7 @@ documents: {
       ownerMe: '我', ownerUser: '用户', ownerEmpty: '没有所有者符合此搜索。', ownerLoadError: '无法加载可用所有者。', recentlyModified: '最近 15 分钟内修改',
       readOnlyDrag: '此文档为只读，无法移动。', moveDone: '文档已移动', moveError: '无法移动文档。', realtimeActive: '实时更新已启用', realtimeConnecting: '正在重新连接实时更新',
       autosaveReadOnly: '只读', autosaveSaved: '已自动保存', autosavePending: '有待保存的更改…', autosaveSaving: '正在自动保存…', autosaveInvalid: '请修正无效字段', autosaveError: '自动保存失败',
-      documentType: '文档类型',
+      documentType: '文档类型', createTypedDocument: '创建{type}文档',
       apps: {
         invalid: '应用无效。请在源代码模式中检查其内容。',
         permission_required: '此应用未获准在当前文档版本中访问数据集。',
@@ -1132,7 +1132,7 @@ documents: {
       },
       collections: { title: '文件夹', search: '按名称或标题搜索', open: '打开文件夹', hint: '此文件夹及其子文件夹中可访问的文档。链接不会更改访问权限。' },
       internalAttachments: { add: '添加内部附件', unavailable: '资源不可用', error: '无法加载或添加这些资源。请检查权限后重试。' },
-      types: { html: 'HTML', dataset: '数据集', process: '流程' },
+      types: { text: '文本', data: '数据', html: 'HTML', dataset: '数据集', process: '流程' },
       datasetAttachments: {
         title: '已附加的数据集', add: '附加数据集', select: '数据集', attach: '附加',
         hint: '链接使用当前数据。共享文档不会授予数据集访问权限。',

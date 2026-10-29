@@ -238,7 +238,7 @@ async def sync_document_structure(document: Document, content: bytes | None = No
     await db.flush()
     if document.deleted_at is None:
         payload = content if content is not None else await get_storage(document.provider_code).read(document.resource_id)
-        references: set[tuple[UUID, UUID | None]] = document_references(payload.decode("utf-8")) if document.document_type == "html" else set()
+        references: set[tuple[UUID, UUID | None]] = document_references(payload.decode("utf-8")) if document.document_type in {"text", "html"} else set()
         for document_id, attachment_id in references:
             target = await db.scalar(select(MemoryItem).where(MemoryItem.id == document_id, MemoryItem.node_kind == "document"))
             if target is None:

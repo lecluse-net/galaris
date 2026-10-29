@@ -39,6 +39,36 @@ def vectors(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_typed_data_reference_reads_current_summary_but_keeps_native_retrieval(db, agents, memory_storage, vectors):
+    from app.dataset import service as datasets, resource_summaries
+    from app.memory.document_projection import refresh
+    from app.memory.item_projection import item_to_public
+    from app.memory.schemas import MemoryGraphRootsRequest
+
+    owner = agents[0]
+    source = await datasets.create(owner.id, title="Synthetic QUARTZ data", content='{"value":"' + "a" * 1200 + '"}')
+    source.summary_content = None  # Historical sources may have no description.
+    await db.commit()
+    await refresh(source.id)
+    await db.commit()
+    assert (await service.get_item(source.id, agent_id=owner.id, memory_content=True))[1] == b""
+    assert await resource_summaries.apply(f"{source.id}:{source.lock_version}", "QUARTZ data description", ["quartz"])
+    await db.commit()
+    await refresh(source.id)
+    await db.commit()
+    node, content, access, _kind, media_type = await service.get_item(source.id, agent_id=owner.id, memory_content=True)
+    assert content.decode() == source.summary_content
+    assert media_type == "text/plain"
+    assert item_to_public(node, access).document_type == "data"
+    assert item_to_public(node, access, memory_content=True).media_type == "text/plain"
+    assert not (await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="QUARTZ"))).hits
+    assert source.id not in {node.id for node in (await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id))).nodes}
+    assert not await db.scalar(select(MemoryAutomationJob.id).where(MemoryAutomationJob.kind == "semantic_index"))
+    found = await resource_search(ResourceContext(agent_id=owner.id, runtime="internal"), "data://", "QUARTZ", mode="text")
+    assert [hit.resource.uri for hit in found.hits] == [f"data://{source.id}"]
+
+
+@pytest.mark.asyncio
 async def test_document_name_search_excludes_body_matches_and_paginates(agents, memory_storage, monkeypatch):
     owner, peer = agents
     from app.memory import facade

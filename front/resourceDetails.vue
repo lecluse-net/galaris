@@ -3,11 +3,9 @@
   <NativeRunDialog v-else-if="target.kind === 'process_run'" :key="target.id + ':' + target.agentId"
     :run-id="target.id" :agent-id="target.agentId" :title="target.title" @close="emit('close')" />
   <ExternalRunDialog v-else-if="target.kind === 'external_process_run'" :key="target.id" :run-id="target.id" @close="emit('close')" />
-  <WorkingDocumentDialog v-else-if="target.kind === 'document'" ref="resourceEditor" :model-value="true"
-    :document-id="target.id" :agent-id="target.agentId ?? null" :title="target.title"
+  <WorkingDocumentDialog v-else-if="target.kind === 'document' || target.kind === 'dataset'" ref="resourceEditor" :model-value="true"
+    :document-id="target.id" :agent-id="target.agentId ?? null" :title="target.title" :editable="target.kind === 'dataset'"
     @update:model-value="!$event && emit('close')" @deleted="changedAndClose" />
-  <DatasetDialog v-else-if="target.kind === 'dataset'" ref="resourceEditor" :key="target.id" :id="target.id" :title="target.title"
-    @close="emit('close')" @updated="emit('changed')" @deleted="changedAndClose" />
   <ConversationTurnDialog v-else :model-value="true" :title="resolvedTitle || target.title || t(titleKeys[target.kind] || 'common.open')" :icon="icons[target.kind] || 'info'"
     :width="target.kind === 'agent' ? '700px' : undefined" :close-label="t('common.close')" @update:model-value="!$event && emit('close')">
     <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner color="primary" size="42px" /></div>
@@ -91,7 +89,6 @@ const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).Goa
 const NativeRunDialog = defineAsyncView(async () => (await import('@/app/process')).NativeRunDialog)
 const ExternalRunDialog = defineAsyncView(async () => (await import('@/app/process')).ExternalRunDialog)
 const ProcessPreview = defineAsyncView(async () => (await import('@/app/process')).ProcessPreview)
-const DatasetDialog = defineAsyncView(async () => (await import('@/app/dataset')).DatasetDialog)
 const ConversationRoundDetailView = defineAsyncView(async () => (await import('@/app/conversation')).ConversationRoundDetailView)
 const VoiceConversationDetailView = defineAsyncView(async () => (await import('@/app/voice')).VoiceConversationDetailView)
 const RoomDiscussion = defineAsyncView(async () => (await import('@/app/chat/interface')).RoomDiscussion)

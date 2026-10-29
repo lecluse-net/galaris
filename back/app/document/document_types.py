@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable
 from typing import Literal, NoReturn
 
-DocumentType = Literal["html", "dataset", "process"]
+DocumentType = Literal["text", "data", "html", "dataset", "process"]
 _validators: dict[str, Callable[[str], object]] = {}
 
 
@@ -13,7 +13,10 @@ def register_document_validator(kind: str, validator: Callable[[str], object]) -
 
 
 def validate_document_content(kind: str, content: bytes) -> None:
-    if kind == "dataset":
+    if kind in {"text", "html", "data"}:
+        from .type_registry import document_type_definition
+        document_type_definition(kind).validate(content.decode("utf-8"))
+    elif kind == "dataset":
         validate_dataset(content)
     elif kind == "process":
         validator = _validators.get(kind)
@@ -23,7 +26,7 @@ def validate_document_content(kind: str, content: bytes) -> None:
 
 
 def document_media_type(kind: DocumentType) -> str:
-    return {"html": "text/html", "dataset": "application/json", "process": "application/bpmn+xml"}[kind]
+    return {"text": "text/html", "data": "application/json", "html": "text/html", "dataset": "application/json", "process": "application/bpmn+xml"}[kind]
 
 
 def validate_dataset(content: bytes) -> None:

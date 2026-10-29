@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 from scripts.architecture_check import _contains_versioned_path, check_plans
 from scripts.architecture_contracts import check_architecture_contracts
+from scripts.architecture_contracts import private_cross_module_imports
 from scripts.docs_i18n_check import check_documentation_locales
 from scripts.project_context import (
     DependencyEdge,
@@ -21,6 +22,19 @@ from scripts.project_context import (
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def test_dataset_forwarders_allow_only_exact_compatibility_imports(tmp_path: Path) -> None:
+    _write(tmp_path / "back/modules.py", 'MODULES = ["app.dataset", "app.document"]\n')
+    _write(tmp_path / "back/app/document/__init__.py", "")
+    path = tmp_path / "back/app/dataset/service.py"
+    forwarding = ('from app.document.data.service import *\nimport sys as _sys\n'
+        'from app.document.data import service as _canonical\n_sys.modules[__name__] = _canonical\n')
+    _write(path, forwarding)
+    assert private_cross_module_imports(tmp_path, ["contracts", "facade", "interface"]) == []
+    _write(path, forwarding + '\ndef unrelated_business_logic():\n    return _canonical.record\n')
+    assert any(row["source"] == "back/app/dataset/service.py" for row in
+        private_cross_module_imports(tmp_path, ["contracts", "facade", "interface"]))
 
 
 def test_versioned_path_ignores_local_untracked_directory(tmp_path: Path) -> None:

@@ -21,7 +21,7 @@ async def assignment(identity: UUID, scope: AgentManagementScope) -> tuple[UUID 
 
     await document_actor(identity, scope)
     item = await item_record(identity, revisions=False, contents=False)
-    if item is None or item.document_type != "html":
+    if item is None or item.document_type not in {"text", "html", "data"}:
         raise DocumentNotFoundError("Document not found")
     topic_id = item.topic_id
     return topic_id, item.metadata_.get("topic_assignment") == {
@@ -50,7 +50,7 @@ async def change_assignment(
     # Lock in the same order as topic retirement: Topic, then resource.
     await get_db().scalar(select(Document.id).where(Document.id == identity).with_for_update())
     item = await item_record(identity, revisions=False, contents=False)
-    if item is None or item.document_type != "html":
+    if item is None or item.document_type not in {"text", "html", "data"}:
         raise DocumentNotFoundError("Document not found")
     await assert_item_access(item, actor, write=True)
     document = await get_db().scalar(
@@ -88,7 +88,7 @@ def _pending(handled: Select[tuple[str]]) -> Select[tuple[str]]:
         select(_identity())
         .where(
             Document.topic_id.is_(None),
-            Document.document_type == "html",
+            Document.document_type == "text",
             Document.deleted_at.is_(None),
             Document.deleted_at.is_(None),
             ~_identity().in_(handled),
@@ -127,7 +127,7 @@ async def source(identity: str) -> tuple[str, int | None, str | None] | None:
                 Document.topic_id.is_(None),
                 Document.deleted_at.is_(None),
                 Document.deleted_at.is_(None),
-                Document.document_type == "html",
+                Document.document_type == "text",
             )
         )
     ).one_or_none()
@@ -154,7 +154,7 @@ async def is_current(identity: str) -> bool:
                 Document.topic_id.is_(None),
                 Document.deleted_at.is_(None),
                 Document.deleted_at.is_(None),
-                Document.document_type == "html",
+                Document.document_type == "text",
             )
         )
         is not None
@@ -168,7 +168,7 @@ async def assign(identity: str, topic_id: UUID) -> bool:
             _identity() == identity,
             Document.topic_id.is_(None),
             Document.deleted_at.is_(None),
-            Document.document_type == "html",
+            Document.document_type == "text",
             Document.id.in_(
                 select(Document.id).where(Document.deleted_at.is_(None))
             ),
@@ -192,7 +192,7 @@ async def list_related(
         .where(
             Document.topic_id.in_(topic_ids),
             Document.deleted_at.is_(None),
-            Document.document_type == "html",
+            Document.document_type == "text",
         )
     )
     if scope is not None:

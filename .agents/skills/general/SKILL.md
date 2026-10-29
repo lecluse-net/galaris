@@ -70,12 +70,14 @@ ce contrat. Ne pas généraliser la conversion aux titres, messages de transport
 fichiers Markdown ou `SKILL.md`. Pour les agents connectés, maintenir aussi
 `back/app/skill/system_skills/galaris/SKILL.md`.
 
-`app.dataset` possède les jeux de données JSON, leur historique, leurs droits et le codec
-de valeurs typées commun avec Process. Créer un Dataset avec `file_create(path="data://", ...)`.
-Son JSON UTF-8 reste libre, sans schéma associé, et ne devient jamais du HTML. Les Documents
-éditoriaux conservent `document://`. Les anciens Datasets documentaires passent par des alias
-vérifiés vers `data://` et des adaptateurs Memory ; ne pas créer de nouveaux consommateurs
-de ces surfaces historiques. Voir `docs/fr/dev/datasets.md` pour les critères de leur retrait.
+`app.document` possède les documents Texte (HTML) et Données (JSON), leurs métadonnées,
+droits, classements et révisions communs. Les sous-modules `app.document.text` et
+`app.document.data` fournissent le comportement de contenu ; `app.dataset` est un relais
+de compatibilité. `data://` reste l'URI des Données, avec le même UUID documentaire.
+Le JSON UTF-8 reste libre et ne devient jamais du HTML. Le codec typé partagé avec Process
+reste public ; les définitions et données de run Process ne deviennent pas des documents.
+La migration DbAdmin conserve les sources historiques et ne rejoue pas les droits révoqués.
+Voir `docs/fr/dev/datasets.md` et la décision 0252.
 
 Les documents HTML acceptent directement formulaires, CSS et JavaScript. La barre d'outils
 et l'édition normales restent présentes. Les documents n'ont pas de vue Source ; celle-ci

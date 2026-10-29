@@ -22,23 +22,25 @@ async def test_transfer_keeps_former_owner_as_editor_and_rejects_stale_or_unmana
     dataset = await service.create(first.id, title="Synthetic ownership", content='{"precise":9007199254740993}')
     dataset.metadata_ = {"engine_dataset": True, "engine_managed": True, "engine_agent": first.id}
     await db.flush()
+    version = dataset.lock_version
     choices = await ownership.options(dataset.id, limited)
     assert choices.current_user_id == limited.user_id
     assert choices.owner.id == first.id
     assert {(p.kind, p.id) for p in choices.options} == {("agent", first.id), ("user", user.id)}
     with pytest.raises(service.DatasetPermissionError):
-        await ownership.transfer(dataset.id, limited, kind="agent", principal=second.id, expected_lock_version=1)
+        await ownership.transfer(dataset.id, limited, kind="agent", principal=second.id, expected_lock_version=version)
     with pytest.raises(service.DatasetConflictError):
-        await ownership.transfer(dataset.id, actor, kind="user", principal=user.id, expected_lock_version=2)
-    await service.set_grant(dataset.id, first.id, kind="agent", principal=second.id, can_write=True, expected_lock_version=1)
-    transferred = await ownership.transfer(dataset.id, actor, kind="agent", principal=second.id, expected_lock_version=2)
+        await ownership.transfer(dataset.id, actor, kind="user", principal=user.id, expected_lock_version=version + 1)
+    await service.set_grant(dataset.id, first.id, kind="agent", principal=second.id, can_write=True, expected_lock_version=version)
+    version = dataset.lock_version
+    transferred = await ownership.transfer(dataset.id, actor, kind="agent", principal=second.id, expected_lock_version=version)
     assert transferred.owner_agent_id == second.id and transferred.owner_user_id is None
-    assert transferred.lock_version == 3
+    assert transferred.lock_version == version + 1
     assert (await service.record(dataset.id, first.id, write=True)).id == dataset.id
     assert not (await ownership.options(dataset.id, limited)).options
     with pytest.raises(service.DatasetNotFoundError):
-        await ownership.transfer(dataset.id, limited, kind="user", principal=user.id, expected_lock_version=3)
-    await ownership.transfer(dataset.id, actor, kind="user", principal=user.id, expected_lock_version=3)
+        await ownership.transfer(dataset.id, limited, kind="user", principal=user.id, expected_lock_version=dataset.lock_version)
+    await ownership.transfer(dataset.id, actor, kind="user", principal=user.id, expected_lock_version=dataset.lock_version)
     assert dataset.owner_user_id == user.id and dataset.owner_agent_id is None
     assert (await service.record(dataset.id, second.id, write=True)).id == dataset.id
     assert (await service.describe(dataset, HumanActor(user.id)))["can_manage"]

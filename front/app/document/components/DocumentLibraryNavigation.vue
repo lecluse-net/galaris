@@ -12,14 +12,14 @@
               <DocumentTagRow :key="`${userId}:${node.id}`" :tag="node.tag" :selected="expanded.includes(node.id)" :busy="busy" :save="saveTag" :create="createTag"
                 :rename-on-create="renameTagId === node.id" @renamed="renameTagId === node.id && (renameTagId = null)"
                 @sort="sortFolder(node.id, $event)" @expand="expandFolder(node.id, true)" @collapse="expandFolder(node.id, false)"
-                @browse="emit('browse', node.tag)" @create-document="emit('create', node.tag)" @delete="requestDelete(node.tag)" @confirm-delete="confirmDelete(node.tag)" />
+                @browse="emit('browse', node.tag)" @create-document="(type, event) => emit('create', node.tag, undefined, false, type, event)" @delete="requestDelete(node.tag)" @confirm-delete="confirmDelete(node.tag)" />
             </div>
           </template>
           <template #header-document="{ node }">
             <div class="full-width" :aria-label="node.parentDocumentId ? t('documents.library.subdocuments', { name: node.parentDocumentTitle }) : node.tag ? t('documents.library.tagDocuments', { name: node.tag.name }) : t('documents.folderRoot')">
               <DocumentLibraryDocument :entry="node.entry" compact tree-row :tag-id="node.parentDocumentId ? null : node.tag?.id" :parent-document-id="node.parentDocumentId" :selected-document-id="selectedDocumentId" :busy="busy"
                 :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
-                @select="emit('select', $event)" @create="emit('create', undefined, $event)" @action="(entry, action) => emit('action', entry, action)"
+                @select="emit('select', $event)" @create="(entry, type, event) => emit('create', undefined, entry, false, type, event)" @action="(entry, action) => emit('action', entry, action)"
                 @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
                 @dragover="dragOverDocument" @dragleave="dropTarget = null" @drop="dropNode" />
             </div>
@@ -45,7 +45,7 @@
         <div v-if="!tree.length && !tagError && !branchErrors.root && !branches.loading.value.root" class="text-caption q-pa-sm">{{ t('documents.empty') }}</div>
         <div role="group" :aria-label="t('documents.library.root')" class="row items-center justify-end" :class="{ 'tag-row--drop': dropTarget === 'root' }"
           @dragover="dragOver($event, 'root')" @dragleave="dropTarget = null" @drop.prevent="drop(null, true)">
-          <q-btn flat round dense icon="note_add" :disable="busy" :aria-label="t('documents.library.newRootDocument')" @click="emit('create', undefined, undefined, true)"><q-tooltip>{{ t('documents.library.newRootDocument') }}</q-tooltip></q-btn>
+          <q-btn v-if="canCreateDocument" flat round dense icon="note_add" :disable="busy" :aria-label="t('documents.library.newRootDocument')" @click="emit('create', undefined, undefined, true, undefined, $event)"><q-tooltip>{{ t('documents.library.newRootDocument') }}</q-tooltip></q-btn>
           <DocumentTagCreateButton :key="userId ?? 'session'" :parent-id="null" :busy="busy" :save="createTag" />
         </div>
       </div>
@@ -63,14 +63,14 @@
           </q-input>
           <DocumentLibraryFilters v-model="filters" v-model:only-unclassified="onlyUnclassified" :owners="owners" :keywords="keywords" :current-user-id="userId ?? undefined" />
           <q-btn v-if="hasFilters" flat round dense icon="filter_alt_off" :aria-label="t('documents.library.reset')" @click="reset"><q-tooltip>{{ t('documents.library.reset') }}</q-tooltip></q-btn>
-          <q-btn flat round dense icon="add" :aria-label="t('documents.createDocument')" @click="emit('create')"><q-tooltip>{{ t('documents.createDocument') }}</q-tooltip></q-btn>
+          <q-btn v-if="canCreateDocument" flat round dense icon="add" :aria-label="t('documents.createDocument')" @click="emit('create', undefined, undefined, false, undefined, $event)"><q-tooltip>{{ t('documents.createDocument') }}</q-tooltip></q-btn>
           <q-btn flat round dense icon="view_list" :aria-label="t('documents.bulk.openUnclassified')" @click="emit('browse', null)"><q-tooltip>{{ t('documents.bulk.openUnclassified') }}</q-tooltip></q-btn>
         </div>
         <q-banner v-if="loadError" dense class="library-error" role="alert">{{ t('documents.loadError') }}<q-btn flat :label="t('documents.retry')" @click="reload" /></q-banner>
         <q-list class="document-list-scroll" separator :aria-busy="loading" :aria-label="t(onlyUnclassified ? 'documents.library.orphans' : 'documents.library.all')">
           <DocumentLibraryDocument v-for="entry in visibleEntries" :key="entry.item.id" :entry="entry" list-only :selected-document-id="selectedDocumentId" :busy="busy"
             :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
-            @select="emit('select', $event)" @create="emit('create', undefined, $event)" @action="(entry, action) => emit('action', entry, action)"
+            @select="emit('select', $event)" @create="(entry, type, event) => emit('create', undefined, entry, false, type, event)" @action="(entry, action) => emit('action', entry, action)"
             @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
             @dragover="dragOverDocument" @dragleave="dropTarget = null" @drop="dropNode" />
           <div v-if="!loading && !loadError && !visibleEntries.length" class="q-pa-md text-caption">{{ t('documents.empty') }}</div>
@@ -98,9 +98,11 @@ import { websocket } from '@/core/websocket'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration as authSessionGeneration } from '@/core/api'
 import type { DocumentLibraryEntry, DocumentLibraryFilters as LibraryRequest, DocumentOwnerOption, DocumentTag, DocumentOrderNode, DocumentOrderMove, DocumentRecord } from '../types'
 import { documentService } from '../services/documentService'
+import type { DocumentKind } from '../documentTypes'
 import { defaultLibraryFilters, libraryRequestFilters } from '@/app/document/libraryFilterState'
 import DocumentLibraryFilters from '@/app/document/components/DocumentLibraryFilters.vue'
 import DocumentTagCreateButton from '@/app/document/components/DocumentTagCreateButton.vue'
@@ -112,9 +114,11 @@ import DocumentLibraryDocument from '@/app/document/components/DocumentLibraryDo
 import DocumentSplitterHandle from '@/app/document/components/DocumentSplitterHandle.vue'
 import type { DocumentRowAction } from '@/app/document/libraryShortcuts'
 defineProps<{ selectedDocumentId: string | null }>()
-const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; browse: [folder: DocumentTag | null]; select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot?: boolean] }>()
+const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; browse: [folder: DocumentTag | null]; select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot?: boolean, type?: DocumentKind, event?: Event] }>()
 const { t } = useI18n()
 const $q = useQuasar()
+const privilegeStore = usePrivilegeStore()
+const canCreateDocument = computed(() => privilegeStore.hasAnyPrivilege([privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN]))
 const userId = ref<number | null>(null)
 const split = ref(35)
 const tags = ref<DocumentTag[]>([])
@@ -130,6 +134,8 @@ const query = ref<string | null>('')
 const page = ref(1)
 const pageSize = ref(50)
 const filters = ref(defaultLibraryFilters())
+const initialType = new URLSearchParams(window.location.search).get('type')
+if (initialType === 'text' || initialType === 'data') filters.value.document_type = initialType
 const loading = ref(false)
 const loadError = ref(false)
 const tagError = ref(false)

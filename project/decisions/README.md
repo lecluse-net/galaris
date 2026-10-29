@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0252 — Typed Documents with Text and Data submodules](0252-typed-documents.md)
+
 - [0250 — Current document receipts in Task admission](0250-current-document-receipts-for-task-admission.md)
 
 - [0249 — Memory evidence budgets and native Dataset retrieval](0249-memory-evidence-and-dataset-retrieval.md)
@@ -353,3 +355,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0246 — Current descriptions for Documents and Datasets](0246-current-resource-summaries.md)
 - [0247 — Agent permission dashboard](0247-agent-permission-dashboard.md)
 - [0251 — Dream learns through personal skill packages](0251-dream-personal-skill-packages.md)
+- [0253 — Goal-owned current HTML content](0253-goal-current-html-columns.md)

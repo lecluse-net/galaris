@@ -12,7 +12,7 @@ par le [tour des fonctionnalités](../features.md).
 | Confier et suivre un travail | [tâches, jalons et reprise](tasks.md) |
 | Organiser les contenus rédigés | [Bibliothèque documentaire](documents.md) |
 | Écrire, relier, partager et exporter | [Contenus riches](rich-content.md) |
-| Gérer des données JSON | [Jeux de données](datasets.md) |
+| Gérer des données JSON | [Documents Données](datasets.md) |
 | Explorer les emplacements d'un agent | [Fichiers](files.md) |
 | Modifier un dépôt avec un agent | [Éditeur Git conversationnel](code-editor.md) |
 | Construire et observer un workflow | [Processus métier internes](internal-processes.md) |
@@ -734,7 +734,7 @@ par la migration. Voir le [stockage et les sauvegardes](../dev/file-storage.md).
 Pour personnaliser l’icône d’un document, cliquez sur celle de son en-tête dans l’éditeur.
 Dans la liste et l’arbre, cliquer sur l’icône ouvre simplement le document.
 Pour un dossier, ouvrez sa palette d’icônes. Utilisez le
-bouton **+** pour téléverser une image, dans Documents comme dans Datasets : SVG,
+bouton **+** pour téléverser une image, dans les documents Texte comme Données : SVG,
 PNG, JPEG, GIF, WebP, AVIF, BMP ou ICO. Les autres formats reconnus, comme TIFF,
 sont convertis en PNG. Les icônes n’ont pas de limite de taille de fichier propre.
 Les SVG contenant des scripts, du contenu externe ou des feuilles de style restent refusés.

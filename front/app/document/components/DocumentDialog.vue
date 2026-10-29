@@ -3,7 +3,7 @@
     <q-card class="document-navigation-dialog galaris-detail-dialog galaris-dialog-card" :class="cardClass">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <DocumentNavigationButtons class="q-mr-sm" :can-go-back="!busy && history.canGoBack.value" :can-go-forward="!busy && history.canGoForward.value" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
-        <DocumentIcon v-if="current" :document-id="current.id" :title="currentTitle" size="24px" class="q-mr-sm" />
+        <DocumentIcon v-if="current" :document-id="current.id" :document-type="current.document_type" :title="currentTitle" size="24px" class="q-mr-sm" />
         <div class="text-h6 ellipsis">{{ currentTitle }}</div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />

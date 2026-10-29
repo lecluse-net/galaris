@@ -29,7 +29,7 @@ async def old_schema(session):
     identity,folder_node,private_id=uuid4(),uuid4(),uuid4()
     content,summary="<p>Preserved source body.</p>","<p>Preserved shared abstract.</p>"
     body_pointer,summary_pointer=str(uuid4()),str(uuid4())
-    document=Document(id=identity,owner_agent_id=owner.id,title="Synthetic durable document",provider_code="native",resource_id=body_pointer,content=content,revision=2,content_hash=digest(content),size_bytes=len(content),keywords=["retained"],metadata_={"synthetic":True},content_type="text",media_type="text/html",content_profile_version=1)
+    document=Document(id=identity,owner_agent_id=owner.id,title="Synthetic durable document",stored_document_type="html",provider_code="native",resource_id=body_pointer,content=content,revision=2,content_hash=digest(content),size_bytes=len(content),keywords=["retained"],metadata_={"synthetic":True},content_type="text",media_type="text/html",content_profile_version=1)
     folder=DocumentTag(user_id=manager.id,name="Synthetic retained folder",position=1)
     session.add_all([document,folder]);await session.flush()
     node=MemoryItem(id=identity,node_kind="document",owner_agent_id=owner.id,memory_provider_code="native",memory_resource_id=summary_pointer,memory_content=summary,memory_content_hash=digest(summary),memory_size_bytes=len(summary),memory_revision=3,memory_content_type="text",memory_media_type="text/html",memory_content_profile_version=1,search_title=document.title,search_text="Preserved source body. Preserved shared abstract.",keywords=["retained"],metadata_={"synthetic":True},summary_document_revision=2)
@@ -111,6 +111,8 @@ async def old_schema(session):
     for column in moved:
         await session.execute(text(f'ALTER TABLE documents DROP COLUMN "{column}" CASCADE'))
     await session.execute(text("ALTER TABLE documents ADD COLUMN summary_document_revision integer DEFAULT 2"))
+    for column in ("storage_kind", "file_id", "creation_key", "creation_fingerprint", "summary_media_type"):
+        await session.execute(text(f'ALTER TABLE documents DROP COLUMN "{column}" CASCADE'))
     await session.commit()
     return expected
 
@@ -126,6 +128,8 @@ async def test_real_upgrade_preserves_current_summary_content_history_policies_a
     async with committed_database() as session:
         expected=await old_schema(session)
     registry=DbAdminRegistry();register_independence(registry)
+    from app.document.unification import register as register_typed_documents
+    register_typed_documents(registry)
     from app.messenger.dbadmin import _reconcile_contacts
     registry.register_reconciler(DbAdminReconciler(key="synthetic.upgrade_contacts", handler=_reconcile_contacts))
     if interrupted is True or interrupted == "nullable-policy":

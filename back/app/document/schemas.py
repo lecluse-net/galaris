@@ -48,11 +48,11 @@ class DocumentSourceCreate(BaseModel):
 class DocumentItemCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    owner_agent_id: int = Field(gt=0)
+    owner_agent_id: int | None = Field(default=None, gt=0)
     title: str = Field(default="", max_length=500)
     payload: DocumentPayload
     node_kind: Literal["document"] = "document"
-    document_type: DocumentType = "html"
+    document_type: DocumentType = "text"
     content_type: str = Field(default="text", max_length=50)
     media_type: str = Field(default="text/html", max_length=255)
     filename: str | None = Field(default=None, max_length=500)
@@ -68,15 +68,16 @@ class DocumentItemCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_document(self) -> "DocumentItemCreate":
-        if self.document_type != "html":
-            raise ValueError("Documents contain editorial HTML; use Dataset or Process for their native resources")
-        if self.node_kind != "document":
-            if self.document_type != "html":
-                raise ValueError("Only a document can have a Dataset type.")
-            return self
+        if self.document_type not in {"text", "html", "data"}:
+            raise ValueError("Unsupported document type; Process definitions use their own domain")
+        if self.document_type == "data":
+            if "media_type" not in self.model_fields_set:
+                self.media_type = "application/json"
+            if self.media_type != "application/json":
+                raise ValueError("A Data document must contain JSON")
         if not self.title.strip():
             raise ValueError("A document title is required.")
-        if self.content_type != "text" or (self.document_type == "html" and not self.media_type.startswith("text/")):
+        if self.content_type != "text" or (self.document_type in {"text", "html"} and not self.media_type.startswith("text/")):
             raise ValueError("A document must contain text.")
         if self.visibility != "private":
             raise ValueError("A document must be private when created.")
@@ -143,7 +144,7 @@ class DocumentPublic(BaseModel):
     document_revision: int | None = None
     summary_outdated: bool = False
     temporal: DocumentTemporalAnchor | None = None
-    document_type: DocumentType = "html"
+    document_type: DocumentType = "text"
     semantic_fingerprint: str | None = Field(default=None, exclude=True)
     content_profile: Literal["rich-text", "document"] = "rich-text"
     content_profile_version: int | None = None
@@ -196,6 +197,7 @@ class DocumentContentRevisionPublic(BaseModel):
     task_id: UUID | None
     content_hash: str
     author_agent_id: int | None
+    author_user_id: int | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -471,9 +473,9 @@ class DocumentCreate(BaseModel):
 
     owner_kind: DocumentOwnerKind
     owner_id: int = Field(gt=0)
-    actor_agent_id: int = Field(gt=0)
+    actor_agent_id: int | None = Field(default=None, gt=0)
     title: str = Field(min_length=1, max_length=500)
-    document_type: Literal["html"] = "html"
+    document_type: Literal["text", "data", "html"] = "text"
     folder: str = Field(default="", max_length=500)
 
     @model_validator(mode="after")

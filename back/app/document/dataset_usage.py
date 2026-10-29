@@ -16,7 +16,7 @@ async def find_dataset_document_usages(uris: tuple[str, ...], actor: AgentManage
     if not await check_privilege(await get_user_record(actor.user_id), required, get_db()):
         return {"total": 0, "items": []}
     query = select(Document).where(
-        Document.document_type == "html",
+        Document.document_type.in_(("text", "data")),
         or_(human_document_clause(actor.user_id), readable_item_for_agents_clause(actor.agent_ids)),
         or_(*(Document.content.contains(uri, autoescape=True) for uri in uris),
             *(Document.metadata_["dataset_attachments"].contains([uri]) for uri in uris)))

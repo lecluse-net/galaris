@@ -16,7 +16,7 @@ async def import_document_image(
     document_id: UUID, url: str, *, actor: int | HumanActor,
 ) -> DocumentAttachmentPublic:
     item, access = await service.get_item_metadata(document_id, agent_id=actor)
-    if not access.can_write or item.content_profile != "document" or item.document_type != "html":
+    if not access.can_write or item.content_profile != "document" or item.document_type not in {"text", "html", "data"}:
         raise service.DocumentPermissionError("Document edit access required")
     content = await read_web_image(url)
     try:

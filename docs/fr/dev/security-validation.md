@@ -47,6 +47,8 @@ de l'application. Il :
 3. sauvegarde toute la base avec `pg_dump -Fc`, archive fichiers et clés, vérifie les sommes SHA-256 ;
 4. restaure avec `pg_restore --exit-on-error` dans une seconde base vide ;
 5. vérifie les fichiers, le déchiffrement et la signature avec les clés restaurées ;
+   relit aussi par l'API Documents le contenu courant, une ancienne version, le résumé
+   manuel, les mots-clés et la pièce jointe, avec refus pour un utilisateur extérieur ;
 6. supprime uniquement son projet Docker et ses temporaires.
 
 Cet exercice vérifie la procédure et le format de sauvegarde ; il ne constitue pas

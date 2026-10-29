@@ -200,8 +200,8 @@ async def reconcile_sharing() -> int:
     visibility: dict[UUID, str] = {}
     principals = await _principal_keys()
     for identity, share_id, user, agent, kind, read_only, managed, doc_type, current_visibility in rows:
-        # Dataset and Process ACLs remain owned by their canonical domains.
-        if kind == "document" and doc_type != "html":
+        # Text and Data share documentary inheritance; Process keeps its ACLs.
+        if kind == "document" and doc_type not in {"text", "html", "data"}:
             continue
         intent = intents.get(share_id)
         if intent is None:

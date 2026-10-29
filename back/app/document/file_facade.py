@@ -44,12 +44,12 @@ async def search_file_resources(
         if candidates:
             identities = [UUID(str(hit["id"])) for hit in candidates]
             rows = (await get_db().execute(select(Document.id, Document.revision).where(
-                Document.id.in_(identities), readable_item_clause(agent_id), Document.document_type == "html",
+                Document.id.in_(identities), readable_item_clause(agent_id), Document.document_type.in_(("text", "data")),
             ))).all()
             versions = {identity: revision for identity, revision in rows}
             if all(versions.get(identity) == hit["revision"] for identity, hit in zip(identities, candidates, strict=True)):
                 return indexed
-    filters = [readable_item_clause(agent_id), Document.document_type == "html"]
+    filters = [readable_item_clause(agent_id), Document.document_type.in_(("text", "data"))]
     if query.strip():
         pattern = "%" + query.strip().replace("%", "\\%").replace("_", "\\_") + "%"
         filters.append(Document.title.ilike(pattern, escape="\\") if mode == "name" else or_(
@@ -64,7 +64,7 @@ async def search_file_resources(
     hits: list[dict[str, object]] = []
     for item in rows:
         access = await service.assert_item_access(item, agent_id)
-        hits.append(dict(id=str(item.id), uri=f"document://{item.id}", node_kind="document",
+        hits.append(dict(id=str(item.id), uri=f"{'data' if item.document_type == 'data' else 'document'}://{item.id}", node_kind="document",
             title=item.title, filename=item.filename, media_type=item.media_type,
             size=item.size_bytes, revision=item.revision, checksum=item.content_hash,
             updated_at=item.updated_at.isoformat() if item.updated_at is not None else None, score=1.0,
@@ -82,7 +82,7 @@ async def create_document_file_resource(
     task_id: UUID | None,
     title: str,
     content: str,
-    document_type: DocumentType = "html",
+    document_type: DocumentType = "text",
 ) -> dict[str, object]:
     """Create a private working document from an explicit text-file copy."""
 

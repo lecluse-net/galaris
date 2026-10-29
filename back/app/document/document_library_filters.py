@@ -12,7 +12,8 @@ from .schemas import DocumentLibraryRequest
 async def library_filters(request: DocumentLibraryRequest, user_id: int | None, visible_ids: Select[tuple[UUID]]) -> list[ColumnElement[bool]]:
     filters: list[ColumnElement[bool]] = []
     if request.document_type is not None:
-        filters.append(Document.document_type == request.document_type)
+        kind = "text" if request.document_type in {"html", "form"} else request.document_type
+        filters.append(Document.document_type == kind)
     assignments = select(DocumentTagAssignment.document_id).join(DocumentTag).where(DocumentTag.user_id == user_id)
     nesting = select(DocumentNesting.document_id).where(
         DocumentNesting.user_id == user_id, DocumentNesting.parent_document_id.in_(visible_ids),

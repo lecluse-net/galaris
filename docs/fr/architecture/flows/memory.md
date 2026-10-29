@@ -8,8 +8,11 @@ directement son stockage et ne décide pas seul de la portée d'une session.
 Les souvenirs personnels appartiennent à un agent et n'ont aucun partage. Les documents
 et leurs résumés partagés sont détenus par `app.document`, sans souvenir obligatoire.
 Le graphe natif peut les référencer ; chaque lecture contrôle les droits de la source.
-L'index natif couvre le document et son résumé dans un résultat unique, mais ne possède
+L'index natif couvre le document Texte et son résumé dans un résultat unique, mais ne possède
 ni leurs contenus ni leurs droits. Document conserve sa recherche directe sans cet index.
+Les documents Données gardent leur recherche JSON native et leurs pointeurs `data://` ;
+une référence de graphe ne les ajoute pas au rappel général des souvenirs. Leurs résumés
+courants restent lisibles via le contrat Document commun, avec leur format réel.
 
 Les modifications et acquisitions ne portent aucun commentaire libre `reason`.
 L'historique conserve les contenus, versions, auteurs, tâches et dates. Les relances

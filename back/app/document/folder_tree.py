@@ -44,12 +44,12 @@ async def read_folder_tree(identity: UUID, actor: int | HumanActor, *, offset: i
         Document, Document.id == DocumentTagAssignment.document_id).join(
         DocumentTag, DocumentTag.id == DocumentTagAssignment.tag_id).where(
         DocumentTag.user_id == folder.user_id, DocumentTag.deleted_at.is_(None),
-        Document.deleted_at.is_(None), Document.document_type == "html")
+        Document.deleted_at.is_(None), Document.document_type.in_(("text", "data")))
     nested_edges = select(document_reference.label("uri"), parent_document_reference.label("parent_uri"),
         cast(Document.title, Text).label("name"), cast(literal("document"), Text).label("kind"),
         DocumentNesting.position.label("position"), acl.label("visible")).select_from(DocumentNesting).join(
         Document, Document.id == DocumentNesting.document_id).where(DocumentNesting.user_id == folder.user_id,
-        Document.deleted_at.is_(None), Document.document_type == "html")
+        Document.deleted_at.is_(None), Document.document_type.in_(("text", "data")))
     edges = union_all(folder_edges, assigned_edges, nested_edges).cte("folder_tree_edges")
     tree = select(cast(literal(uri), Text).label("uri"), cast(literal(folder.name), Text).label("name"),
         cast(literal("folder"), Text).label("kind"), literal(True).label("visible"),

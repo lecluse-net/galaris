@@ -76,7 +76,7 @@ def _is_goal_document(item: Document) -> bool:
 
 def can_rename_document(item: Document, access: DocumentAccess) -> bool:
     """Expose title editability without confusing content rights with Goal ownership."""
-    return access.can_write and item.node_kind == "document" and item.document_type == "html" and not _is_goal_document(item)
+    return access.can_write and item.node_kind == "document" and item.document_type in {"text", "html", "data"} and not _is_goal_document(item)
 
 def decode_payload(payload: DocumentPayload) -> bytes:
     if payload.text is not None:
@@ -143,7 +143,7 @@ async def list_document_content_revisions(
     await assert_item_access(item, actor_agent_id)
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(item_id):
+    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
         if before_revision is not None:
             raise ValueError("Bounded history is only available for native documents.")
         return DocumentContentRevisionPage.model_validate(await adapter.history(item_id, actor_agent_id, limit, offset))
@@ -183,9 +183,12 @@ async def get_document_content_revision(
     actor_agent_id: int | HumanActor,
 ) -> DocumentContentRevisionDetail:
     """Read one immutable UTF-8 document-content version."""
+    item = await _get_item_record(item_id, revisions=False)
+    if item is None:
+        raise DocumentNotFoundError("Document not found")
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(item_id):
+    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
         state = await adapter.read(item_id, actor_agent_id, revision)
         return DocumentContentRevisionDetail(**state["revision_detail"], content=state["content"])
 
@@ -206,9 +209,12 @@ async def diff_document_content_revision(
     actor_agent_id: int | HumanActor,
 ) -> DocumentContentDiff:
     """Compare one stored content version with the current document text."""
+    item = await _get_item_record(item_id, revisions=False)
+    if item is None:
+        raise DocumentNotFoundError("Document not found")
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(item_id):
+    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
         previous = await adapter.read(item_id, actor_agent_id, revision)
         current = await adapter.read(item_id, actor_agent_id)
         hunks, additions, deletions = _content_diff_hunks(previous["content"], current["content"])
@@ -248,13 +254,19 @@ async def restore_document_content_revision(
     expected_revision: int,
     actor_agent_id: int | HumanActor,
 ) -> Document:
-    """Restore only editorial content while keeping current metadata and ACLs."""
+    """Restore only content while keeping current metadata and ACLs."""
+    current = await _get_item_record(item_id, revisions=False)
+    if current is None:
+        raise DocumentNotFoundError("Document not found")
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(item_id):
+    if current.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
         await adapter.restore(item_id, actor_agent_id, revision, expected_revision)
+        await _commit_with_conflict("The document changed while restoring its content")
         loaded = await _get_item_record(item_id)
         assert loaded is not None
+        await _emit_document_event("update", loaded)
+        await notify_document(item_id, "content")
         return loaded
 
     item, entry, content = await _document_content_revision(
@@ -270,19 +282,26 @@ async def restore_document_content_revision(
         )
     if entry.content_hash == item.content_hash:
         return item
+    if entry.storage_kind == "file" and entry.file_id is not None:
+        from .content import bind_binary_content
+        item.revision += 1
+        await bind_binary_content(item, entry.file_id)
+        get_db().add(_revision_for(item, author_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None))
+        await _commit_with_conflict("The document changed while restoring its content")
+        return item
     return await update_item(
         item_id,
         DocumentUpdate(
             expected_revision=expected_revision,
             payload=DocumentPayload(
-                text=content.decode("utf-8") if item.document_type != "html" else convert_to_html(
+                text=content.decode("utf-8") if item.document_type not in {"text", "html"} else convert_to_html(
                     archived_document_html(content.decode("utf-8"))
                     if entry.media_type == "text/html" and item.content_profile == "document"
                     else content.decode("utf-8"),
                     entry.media_type, profile=item.content_profile
                 )
             ),
-            media_type=item.media_type if item.document_type != "html" else "text/html",
+            media_type=item.media_type if item.document_type not in {"text", "html"} else "text/html",
         ),
         actor_agent_id=actor_agent_id,
         document_revision_author_agent_id=None,
@@ -664,9 +683,14 @@ async def update_item(
     include_revisions: bool = True,
 ) -> Document:
     item = await _get_item_record(item_id, revisions=include_revisions)
+    if item is not None and item.document_type == "data" and data.payload is not None:
+        await get_db().execute(select(Document.id).where(Document.id == item_id).with_for_update())
+        item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise DocumentNotFoundError("Document not found.")
     await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
+    if item.document_type == "data" and data.payload is not None and data.expected_revision is None:
+        raise DocumentConflictError("Read the current Data document revision before writing")
     if item.document_type == "dataset" and actor_agent_id is not None:
         from .dataset_port import dataset_compatibility
         if adapter := dataset_compatibility():
@@ -739,7 +763,7 @@ async def update_item(
             raise DocumentConflictError("A Dataset document must retain its application/json format.")
         if item.document_type == "process" and data.media_type not in (None, "application/bpmn+xml"):
             raise DocumentConflictError("A Process document must retain its BPMN format.")
-        if item.document_type == "html" and data.media_type is not None and not data.media_type.startswith("text/"):
+        if item.document_type in {"text", "html"} and data.media_type is not None and not data.media_type.startswith("text/"):
             raise DocumentConflictError("A document must contain text.")
         if data.visibility == "public":
             raise DocumentConflictError("A document must be shared through explicit agent grants.")
@@ -784,8 +808,10 @@ async def update_item(
     provider = get_storage(item.provider_code)
     if "payload" in fields and data.payload is not None:
         content = decode_payload(data.payload)
-        if item.node_kind == "document" and item.document_type != "html":
+        if item.node_kind == "document":
             validate_document_content(item.document_type, content)
+        if item.document_type == "data" and (data.content_type not in (None, "text") or data.media_type not in (None, "application/json")):
+            raise DocumentConflictError("A Data document remains JSON")
         future_content_type = data.content_type or item.content_type
         future_media_type = data.media_type or item.media_type
         if future_content_type == "text" and future_media_type in {
@@ -845,9 +871,13 @@ async def update_item(
         document_content = content
         content_changed = item.content_hash != digest
         if content_changed:
+            if item.document_type == "data" and isinstance(actor_agent_id, HumanActor):
+                from .data.service import reserve_budget
+                await reserve_budget(actor_agent_id.user_id, item.id, len(content))
             new_resource_id, inline = await prepare_content(content, provider.code, content_type=future_content_type)
             item.resource_id = new_resource_id
             item.content = inline
+            item.storage_kind, item.file_id = "text", None
             item.content_hash = digest
             item.size_bytes = len(content)
             item.search_text = _search_text(
@@ -946,6 +976,7 @@ async def update_item(
                     else (actor_agent_id if isinstance(actor_agent_id, int) else None)
                 ),
                 task_id=actor_task_id,
+                author_user_id=actor_agent_id.user_id if isinstance(actor_agent_id, HumanActor) else None,
                 document_content_version=(True if item.node_kind == "document" else None),
                 document_append=document_append if item.node_kind == "document" else False,
             )
@@ -1013,6 +1044,9 @@ async def update_summary(
     new_resource: str | None = None
     changed = False
     if data.payload is not None:
+        if item.summary_media_type != "text/html":
+            item.summary_media_type = "text/html"
+            changed = True
         content = convert_to_html(decode_payload(data.payload).decode("utf-8"), "text/html", profile="rich-text").encode("utf-8")
         assert_safe_text(content.decode("utf-8"))
         digest = _content_hash(content)
@@ -1152,11 +1186,16 @@ async def item_to_detail(item: Document, content: bytes, access: DocumentAccess,
     return DocumentDetail(**item_to_public(item, access).model_dump(), payload=encode_payload(content, content_type=content_type, media_type=media_type), source_refs=await source_refs(item.id))
 
 
-def _revision_for(item: Document, *, author_agent_id: int | None, task_id: UUID | None = None, document_content_version: bool | None = True, document_append: bool = False) -> DocumentRevision:
-    return DocumentRevision(document_id=item.id, revision=item.revision, provider_code=item.provider_code, resource_id=item.resource_id, content=item.content, content_hash=item.content_hash, content_type=item.content_type, media_type=item.media_type, content_profile_version=item.content_profile_version, filename=item.filename, title=item.title, metadata_=dict(item.metadata_), temporal=item.temporal, task_id=task_id, author_agent_id=author_agent_id, document_content_version=document_content_version, document_append=document_append)
+def _revision_for(item: Document, *, author_agent_id: int | None, task_id: UUID | None = None, author_user_id: int | None = None, document_content_version: bool | None = True, document_append: bool = False) -> DocumentRevision:
+    if author_agent_id is None and author_user_id is None:
+        from core.user import get_current_user_id
+        author_user_id = get_current_user_id() or item.owner_user_id
+    return DocumentRevision(document_id=item.id, revision=item.revision, provider_code=item.provider_code, resource_id=item.resource_id, content=item.content, file_id=item.file_id, storage_kind=item.storage_kind, content_hash=item.content_hash, content_type=item.content_type, media_type=item.media_type, content_profile_version=item.content_profile_version, filename=item.filename, title=item.title, metadata_=dict(item.metadata_), temporal=item.temporal, task_id=task_id, author_agent_id=author_agent_id, author_user_id=author_user_id, document_content_version=document_content_version, document_append=document_append)
 
 
 async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = None, deletion_protected: bool = False, deduplicate: bool = False, owner_user_id: int | None = None, initial_editor_agent_id: int | None = None, workflow_metadata: bool = False) -> tuple[Document, bool]:
+    if data.owner_agent_id is None and owner_user_id is None:
+        raise DocumentPermissionError("A Document requires a human or Agent owner")
     if not workflow_metadata and any(key in data.metadata for key in ("creation_command", "process_code")):
         raise DocumentPermissionError("Workflow metadata is server-owned")
     if any(key in data.metadata for key in ("document_attachments", "retained_document_attachments", "content_images")):
@@ -1166,17 +1205,19 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
     content = decode_payload(data.payload)
     validate_document_content(data.document_type, content)
     media_type = data.media_type
-    if data.document_type == "html" and media_type in {"text/html", "text/markdown", "text/plain"}:
+    if data.document_type in {"text", "html"} and media_type in {"text/html", "text/markdown", "text/plain"}:
         content = convert_to_html(content.decode(), media_type, profile="rich-text" if deletion_protected else "document").encode()
         media_type = "text/html"
-    if image_references(content.decode("utf-8", errors="replace")):
+    if data.document_type in {"text", "html"} and image_references(content.decode("utf-8", errors="replace")):
         raise DocumentPermissionError("The image must belong to this document's attachments")
     assert_safe_text(content.decode("utf-8", errors="replace"))
     assert_safe_value(data.model_dump(exclude={"payload", "source"}))
-    if deletion_protected and data.document_type == "html" and document_apps(content.decode()):
+    if deletion_protected and data.document_type in {"text", "html"} and document_apps(content.decode()):
         raise ValueError("Managed editorial documents cannot contain applications")
     pointer, inline = await prepare_content(content, data.provider_code, content_type=data.content_type)
-    item = Document(id=uuid4(), owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, title=data.title.strip(), provider_code=data.provider_code, resource_id=pointer, content=inline, revision=1, content_hash=_content_hash(content), size_bytes=len(content), content_type=data.content_type, media_type=media_type, content_profile_version=1 if media_type == "text/html" else None, filename=data.filename, document_type=data.document_type, keywords=_keywords(data.keywords), metadata_=dict(data.metadata), deletion_protected=deletion_protected, valid_from=data.valid_from, valid_until=data.valid_until, temporal=data.temporal.model_dump(mode="json") if data.temporal else None, search_text=_search_text(content, content_type=data.content_type, media_type=media_type))
+    from .data.models import Dataset
+    model = Dataset if data.document_type == "data" else Document
+    item = model(id=uuid4(), owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, title=data.title.strip(), provider_code=data.provider_code, resource_id=pointer, content=inline, revision=1, content_hash=_content_hash(content), size_bytes=len(content), content_type=data.content_type, media_type=media_type, content_profile_version=1 if media_type == "text/html" else None, filename=data.filename, document_type=data.document_type, keywords=_keywords(data.keywords), metadata_=dict(data.metadata), deletion_protected=deletion_protected, valid_from=data.valid_from, valid_until=data.valid_until, temporal=data.temporal.model_dump(mode="json") if data.temporal else None, search_text=_search_text(content, content_type=data.content_type, media_type=media_type))
     db=get_db()
     try:
         db.add(item)
@@ -1294,6 +1335,12 @@ async def delete_document(item_id: UUID, *, actor_agent_id: int | HumanActor | N
     item=await _get_item_record(item_id)
     if item is None:
         raise DocumentNotFoundError("Document not found")
+    if item.document_type == "data" and actor_agent_id is not None:
+        from .data.service import remove
+        await remove(item_id, actor_agent_id, expected_lock_version=item.lock_version)
+        await get_db().commit()
+        await _emit_document_event("delete", item)
+        return DocumentDeletionResult(document_id=item_id)
     await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
     _assert_not_deletion_protected(item)
     owns = (isinstance(actor_agent_id, int) and item.owner_agent_id == actor_agent_id) or (
@@ -1333,12 +1380,14 @@ async def forget_item_record(item: Document, *, forget_kind: str) -> DocumentDel
     resources = {(item.provider_code, item.resource_id), (item.summary_provider_code, item.summary_resource_id),
         *((row.provider_code, row.resource_id) for row in revisions)}
     retired = await retire_file_references(f"document://{item.id}/attachments/")
+    retired.extend(await retire_file_references(f"document://{item.id}/content-revisions/"))
     resources.update(("native", str(identity)) for identity in retired)
     for model in (DocumentRevision, DocumentSource):
         await db.execute(delete(model).where(model.document_id == item.id))
     await db.execute(update(DocumentAttachment).where(DocumentAttachment.document_id == item.id).values(active=False))
     set_committed_value(item, "revisions", [])
     item.content, item.summary_content = "", ""
+    item.file_id, item.storage_kind = None, "text"
     item.thumbnail_id = None
     item.resource_id, item.summary_resource_id = "", ""
     item.content_hash = item.summary_content_hash = _content_hash(b"")

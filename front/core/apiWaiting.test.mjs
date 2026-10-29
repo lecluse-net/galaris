@@ -45,7 +45,7 @@ function setup() {
     '@/core/api': loaded, './sessionReadCache': cacheHelpers, './previewQueue': cacheHelpers,
   })
   const dependencies = {
-    '@/app/share': loadTypescript(new URL('../app/share/ownerCache.ts', import.meta.url), {
+    '@/app/share/facade': loadTypescript(new URL('../app/share/ownerCache.ts', import.meta.url), {
       '@/core/util/facade': { ...cacheHelpers, ...resources },
     }),
     '@/core/api': { __esModule: true, default: loaded.api, api: loaded.api },

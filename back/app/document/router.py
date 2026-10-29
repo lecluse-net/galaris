@@ -85,6 +85,14 @@ from .document_app_security import AppConsentRequired, AppWriteLimitError
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
+@router.get("/types")
+@authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def read_document_types() -> list[dict[str, str]]:
+    from .type_registry import DOCUMENT_TYPES
+    return [{"code": definition.code, "media_type": definition.media_type,
+             "storage_kind": definition.storage_kind, "icon": definition.icon} for definition in DOCUMENT_TYPES]
+
+
 @router.get("/folder-collections")
 @router.get("/folder-collections/{folder_id}")
 @authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
@@ -193,17 +201,18 @@ async def _require_agent_scope(
 
 
 def _http_error(exc: Exception) -> HTTPException:
+    from .data.contracts import DatasetConflictError, DatasetNotFoundError, DatasetPermissionError, DatasetWriteLimitError
     if isinstance(exc, HTTPException):
         return exc
     if isinstance(exc, AppConsentRequired):
         return HTTPException(status_code=403, detail={"code": "permission_required", "message": str(exc)})
-    if isinstance(exc, AppWriteLimitError):
+    if isinstance(exc, (AppWriteLimitError, DatasetWriteLimitError)):
         return HTTPException(status_code=429, detail=str(exc), headers={"Retry-After": "60"})
-    if isinstance(exc, service.DocumentNotFoundError):
+    if isinstance(exc, (service.DocumentNotFoundError, DatasetNotFoundError)):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
-    if isinstance(exc, service.DocumentPermissionError):
+    if isinstance(exc, (service.DocumentPermissionError, DatasetPermissionError)):
         return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
-    if isinstance(exc, service.DocumentConflictError):
+    if isinstance(exc, (service.DocumentConflictError, DatasetConflictError)):
         return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     if isinstance(exc, (ValueError, service.DocumentError)):
         return HTTPException(
@@ -227,7 +236,7 @@ async def create_managed_document(data: DocumentCreate) -> DocumentPublic:
     """Create a document owned by the caller or by one managed Agent."""
 
     try:
-        scope = await _require_agent_scope(data.actor_agent_id)
+        scope = await _require_agent_scope(data.actor_agent_id) if data.actor_agent_id is not None else await current_management_scope()
         if data.owner_kind == "agent":
             await _require_agent_scope(data.owner_id)
             item = await document_service.create_document(
@@ -261,7 +270,7 @@ async def create_managed_document(data: DocumentCreate) -> DocumentPublic:
             )
         return service.item_to_public(
             item,
-            await service.effective_access(item, HumanActor(scope.user_id) if data.owner_kind == "user" else data.actor_agent_id),
+            await service.effective_access(item, HumanActor(scope.user_id) if data.owner_kind == "user" else data.owner_id),
         )
     except Exception as exc:
         raise _http_error(exc) from exc
@@ -789,7 +798,7 @@ async def read_managed_document(document_id: UUID, agent_id: Annotated[int | Non
         )
         if item.document_type == "dataset":
             return DocumentResourceRedirect(resource_uri=f"data://{item.id}")
-        if item.document_type != "html":
+        if item.document_type not in {"text", "html", "data"}:
             raise service.DocumentNotFoundError("HTML Document not found")
         return ManagedDocumentDetail(
             item=await service.item_to_detail(item, content, access, content_type=content_type, media_type=media_type),

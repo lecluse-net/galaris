@@ -50,7 +50,7 @@ async def test_dataset_partial_read_locates_edit_lines_without_changing_characte
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("surface", ["native", "legacy-file", "legacy-memory"])
+@pytest.mark.parametrize("surface", ["native", "legacy-file", "document-api"])
 @pytest.mark.parametrize("markers", [
     {"engine_dataset": True},
     {"engine_managed": True, "engine_agent": 1},
@@ -107,21 +107,21 @@ async def test_obsolete_process_markers_do_not_override_dataset_deletion_rights(
         await resource_info(context, attachment_uri)
     # Read-only prevents content edits, while owners retain deletion rights.
     await service.metadata(dataset.id, owner.id, expected_lock_version=dataset.lock_version, values={"read_only": True})
-    if surface == "legacy-memory":
-        from app.memory import service as memory
-        await memory.delete_document(dataset.id, actor_agent_id=owner.id)
+    if surface == "document-api":
+        from app.document import resource_service as documents
+        await documents.delete_document(dataset.id, actor_agent_id=owner.id)
     else:
         await resource_delete(context, uri)
     with pytest.raises(service.DatasetNotFoundError):
         await service.record(dataset.id, owner.id)
     assert await db.scalar(select(DatasetRevision.content).where(DatasetRevision.dataset_id == dataset.id, DatasetRevision.revision == 1)) == content
     if legacy:
-        from app.memory import service as memory
-        assert await memory.document_record(dataset.id) is None
+        from app.memory.models import MemoryItem
+        assert await db.get(MemoryItem, dataset.id) is None
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("path,options", [("data://", {}), ("document://", {"document_type": "dataset"})])
+@pytest.mark.parametrize("path,options", [("data://", {}), ("document://", {"document_type": "dataset"}), ("document://", {"document_type": "data"})])
 @pytest.mark.parametrize("empty", [None, "   "])
 async def test_missing_dataset_content_is_rejected_then_corrected_without_extra_resources(db, agents, path, options, empty):
     from sqlalchemy import func
@@ -184,7 +184,7 @@ async def test_explicit_legacy_alias_preserves_identity_content_and_uses_one_aut
     assert alias is not None and alias.dataset_id == legacy.id
     await resource_write(ctx, f"document://{legacy.id}", b'{"kept":true}', expected_revision=1)
     assert (await resource_read(ctx, f"data://{legacy.id}")).content == '{"kept":true}'
-    from app.memory import service as memory
+    from app.document import resource_service as memory
     assert (await memory.get_item(legacy.id, agent_id=owner.id))[1] == b'{"kept":true}'
     with pytest.raises(service.DatasetNotFoundError):
         await resource_read(ctx, f"data://{ordinary.id}")
@@ -208,7 +208,7 @@ async def test_dataset_json_roots_remain_free_and_exact_on_write_and_restore(db,
 @pytest.mark.asyncio
 @pytest.mark.parametrize("delete_via_file", [False, True])
 async def test_legacy_public_sharing_and_revocation_apply_to_the_canonical_uri(db, agents, memory_storage, delete_via_file):
-    from app.memory import service as memory
+    from app.document import resource_service as memory
     from app.document.schemas import DocumentGlobalAccessUpdate
     owner, other = agents
     legacy = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic public data",
@@ -230,29 +230,24 @@ async def test_legacy_public_sharing_and_revocation_apply_to_the_canonical_uri(d
     await service.metadata(dataset.id, owner.id, expected_lock_version=dataset.lock_version,
         values={"title": "Synthetic renamed data", "keywords": ["synthetic"]})
     await service.replace(dataset.id, owner.id, content='{"updated":false}', expected_revision=dataset.revision)
-    projected = await db.get(MemoryItem, legacy.id)
-    assert projected.title == dataset.title and projected.keywords == dataset.keywords
-    assert projected.revision == dataset.revision and projected.lock_version == dataset.lock_version
-    assert projected.size_bytes == len(dataset.content.encode())
-    assert await db.scalar(select(ShareGrant.id).where(ShareGrant.share_id == MemoryItem.share_for(legacy.id))) is None
-    with pytest.raises(memory.MemoryPermissionError):
-        await memory.get_item(legacy.id, agent_id=other.id)
+    from app.document.models import Document, DocumentRevision
+    current = await db.get(Document, legacy.id)
+    assert current.title == dataset.title and current.keywords == dataset.keywords
+    assert current.revision == dataset.revision
+    assert await db.get(MemoryItem, legacy.id) is None
     if delete_via_file:
         await resource_delete(ResourceContext(agent_id=owner.id, runtime="internal"), f"data://{dataset.id}")
     else:
         await service.remove(dataset.id, owner.id, expected_lock_version=dataset.lock_version)
-    assert await memory.document_record(legacy.id) is None
-    from app.memory.models import MemoryRevision, MemorySummaryRevision
-    forgotten = await db.get(MemoryItem, legacy.id, execution_options={"include_historized": True})
-    assert forgotten.content == "" and forgotten.memory_content == "" and forgotten.search_text == ""
-    assert not list(await db.scalars(select(MemoryRevision.id).where(MemoryRevision.item_id == legacy.id)))
-    assert not list(await db.scalars(select(MemorySummaryRevision.id).where(MemorySummaryRevision.item_id == legacy.id)))
+    assert await memory.item_record(legacy.id) is None
+    assert await db.scalar(select(DocumentRevision.id).where(DocumentRevision.document_id == legacy.id).limit(1)) is not None
+
 
 
 @pytest.mark.asyncio
-async def test_cancelled_dataset_deletion_preserves_memory_and_canonical_history(db, agents, memory_storage):
-    from app.memory import service as memory
-    from app.memory.models import MemoryRevision
+async def test_cancelled_dataset_deletion_preserves_document_and_canonical_history(db, agents, memory_storage):
+    from app.document import resource_service as memory
+    from app.document.models import DocumentRevision
     from app.dataset.models import DatasetRevision
 
     owner, _other = agents
@@ -263,9 +258,9 @@ async def test_cancelled_dataset_deletion_preserves_memory_and_canonical_history
     await db.commit()
     async with db.begin_nested() as savepoint:
         await service.remove(identity, owner.id, expected_lock_version=version)
-        assert await memory.document_record(identity) is None
+        assert await memory.item_record(identity) is None
         await savepoint.rollback()
     assert await service.record(identity, owner.id)
-    assert await memory.document_record(identity) is not None
-    assert await db.scalar(select(MemoryRevision.id).where(MemoryRevision.item_id == identity)) is not None
-    assert await db.scalar(select(DatasetRevision.document_source_revision_id).where(DatasetRevision.dataset_id == identity)) is not None
+    assert await memory.item_record(identity) is not None
+    assert await db.scalar(select(DocumentRevision.id).where(DocumentRevision.document_id == identity)) is not None
+    assert await db.scalar(select(DatasetRevision.id).where(DatasetRevision.dataset_id == identity)) is not None

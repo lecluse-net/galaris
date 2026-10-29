@@ -1,159 +1,85 @@
 <p align="right"><strong>Français</strong> · <a href="../../en/dev/datasets.md">English</a></p>
 
-# Jeux de données et contrats de données
+# Documents Données et contrats JSON
 
-`app.dataset` possède le codec commun, les jeux de données et leurs opérations JSON.
-La façade publique est `app.dataset.facade` ; les imports
-historiques `app.process.values` conservent les restrictions du profil BPMN v2.
+`app.document` possède l'identité, le contenu courant, les métadonnées, le partage,
+le classement et les révisions de tous les documents. `app.document.text` fournit
+le comportement HTML ; `app.document.data` fournit le comportement JSON. Le registre
+`app.document.type_registry` décrit les types disponibles et leur validation.
+La façade JSON publique est `app.document.data.facade`. Les anciens imports
+`app.dataset` et `app.dataset.facade` délèguent à cette implémentation ; ils ne
+possèdent plus une seconde copie du contenu.
 
-Le codec de variables représente chaque valeur avec son type :
+## Persistance et historique
 
-```json
-{
-  "approved": {"type": "bool", "value": false},
-  "report": {"type": "File", "value": "file://00000000-0000-4000-8000-000000000001"},
-  "note": {"type": "string", "value": null}
-}
-```
+Les types publics sont `text` et `data`. Les anciens contenus HTML deviennent des
+Textes. Données accepte toutes les racines JSON, sans schéma associé, et conserve
+le texte UTF-8 exact, y compris indentation et fins de lignes. Chaque écriture
+vérifie les droits courants et `expected_revision`. Un JSON invalide ne remplace
+jamais la dernière version enregistrée.
 
-Les types sont `int`, `float`, `string`, `bool`, `Agent`, `User`, `File`, `Document`,
-`Dataset`, `array` et `object`. Les conteneurs imbriquent des valeurs typées.
-Les entiers sont exacts et transportables en JavaScript ; les nombres non finis,
-les clés JSON dupliquées et les charges dépassant les limites sont refusés.
-Le typage vérifie la forme d'une référence ; sa résolution vérifie séparément les droits.
+`documents` et `document_revisions` sont communs. Le stockage `text` conserve le
+contenu en base ; le stockage `file` référence un fichier immuable de `core.storage`
+sous `/data/files`. Une révision protège son fichier même si le contenu courant
+change. Les miniatures sont des dérivés régénérables. Titre, propriétaire, sujet,
+partage, résumé et mots-clés sont courants ; les modifier ne crée pas de version
+de contenu. Une restauration crée une nouvelle version sans restaurer ces métadonnées.
+Le format du résumé est explicite : les anciennes descriptions JSON en texte brut
+restent du texte brut, sans être interprétées comme du HTML.
 
-Les jeux de données acceptent toutes les racines JSON, sans schéma associé. Leur contenu
-et celui des révisions sont conservés exactement. Le codec typé reste disponible pour les
-variables des processus ; leur définition et leur validation appartiennent à Process.
-Les applications documentaires utilisent le pont Dataset avec les droits du lecteur et
-son consentement personnel. Les écritures libres et les restaurations vérifient le JSON,
-les droits et la révision, sans imposer de structure métier.
-La bibliothèque Documents exclut les Datasets, y compris les projections historiques,
-avant comptage, pagination et calcul des filtres. `POST /documents` refuse le type
-`dataset` ; la création passe par `POST /datasets` ou `file_create(path="data://", ...)`.
-La lecture d'un ancien Dataset par `GET /documents/{id}` renvoie uniquement
-`{resource_type: "dataset", resource_uri: "data://…"}` après contrôle des droits,
-sans contenu documentaire. Les anciens liens ouvrent l'éditeur Dataset. La recherche
-Memory et son graphe excluent ces anciennes projections des Documents courants.
-Les liens HTML `data://` restent des références Dataset et se recherchent dans son domaine.
+## Bibliothèque et interfaces
 
-Un Document peut joindre des références Dataset vivantes via ses `dataset-attachments`.
-Le manifeste documentaire conserve uniquement des URI ; ni copie JSON, ni droits Dataset
-ne sont créés. Les mutations vérifient l'écriture du Document et sa version de verrouillage,
-ainsi que la lecture indépendante du Dataset à l'ajout. Les références devenues inaccessibles
-n'exposent plus leur titre. La suppression du lien conserve le Dataset. `file_list` sur les
-PJ renvoie les URI `data://` lisibles, sans proposer de suppression de la ressource jointe.
-Les utilisations Dataset incluent ces références après filtrage des droits du Document.
-Les écritures utilisent `expected_revision` ; le partage utilise `expected_lock_version`.
-Le provider `data://` enregistré dans File Sharing utilise les mêmes services.
+La bibliothèque Documents liste Texte et Données, filtre le type avant pagination
+et conserve les droits dans les compteurs. Le bouton de création ouvre le menu des
+types ; les menus contextuels offrent les mêmes créations. L'enveloppe de l'éditeur
+est commune. La contribution Texte utilise l'éditeur HTML ; Données utilise
+`CodeEditor` JSON, y compris pour l'aperçu historique. L'autosauvegarde conserve un
+brouillon invalide et bloque le départ tant qu'il n'est pas enregistré ou abandonné.
 
-## Recherche et requêtes agentiques
+`POST /documents` accepte `document_type="text"` ou `"data"`. Les routes `/datasets`
+et les URI `data://` restent compatibles et accèdent aux mêmes enregistrements.
+Les anciens liens `/dataset/:id` ouvrent le document dans `/documents`.
+Un lien entre documents ne transmet aucun droit. Les applications HTML gardent
+leur consentement personnel lié à la révision de la page et leur quota d'écriture.
 
-`file_search("data://", query, mode="text")` combine plein texte sur titre, description,
-mots-clés et JSON avec recherche littérale. Les extraits classés portent un pointeur JSON
-RFC 6901 et la révision source. `name` reste limité au titre. `semantic` fusionne les rangs
-lexicaux et vectoriels dans une fenêtre de 100 candidats par branche. Il indique la couverture
-de l'index, les dégradations et la saturation de cette fenêtre. Les curseurs classés sont propres
-à la requête, au mode et à la ressource ; une page vide ne prouve pas l'absence d'information.
+## Codec et requêtes
 
-Dream prépare des générations vectorielles complètes dans Dataset, sans Document ni souvenir
-personnel. Toute la source est couverte ou l'indexation échoue explicitement. La publication
-atomique revérifie modèle, révision et métadonnées. Les index partiels/périmés sont exclus et les
-droits sont revérifiés après l'appel fournisseur. Le repli lexical est explicite.
+Le codec de variables conserve `{type, value}` avec `int`, `float`, `string`, `bool`,
+`Agent`, `User`, `File`, `Document`, `Dataset`, `array` et `object`. Les imports
+historiques `app.process.values` gardent le profil BPMN v2 figé. Process possède les
+déclarations de ses variables et ses définitions exécutables ; celles-ci ne deviennent
+pas des Documents. Le typage d'une référence ne donne jamais accès à sa cible.
 
-`dataset_query(uri, query)` lit une révision autorisée sans expression ni SQL. `path` est un
-pointeur JSON (vide pour la racine) ; un tableau devient des lignes. Les filtres relatifs aux
-lignes se combinent par ET ; `fields` projette et `sort` conserve un tri stable avec valeurs
-nulles/absentes en dernier. `count`, `sum`, `min`, `max`, `avg` portent sur toutes les lignes
-filtrées avant pagination. Les calculs préservent les littéraux décimaux source ; les agrégats
-numériques sont des chaînes décimales avec comptes d'absences/nulls. La moyenne indique sa
-précision. Les types incompatibles sont refusés ; unités et formats de date ne sont pas déduits.
+Les entiers du codec sont transportables sans perte en JavaScript. Les nombres
+non finis, clés JSON dupliquées et charges excessives sont refusés. La source JSON
+d'un document conserve néanmoins ses nombres exacts ; aucune normalisation du codec
+Process ne lui est imposée.
 
-Les pages proposent 50 lignes par défaut, au plus 500, avec un budget de contenu borné.
-Suivre `next_offset` avec la même `expected_revision` pour refuser les changements entre pages.
-Une ligne trop grande exige une projection plus petite. `include_rows=false` calcule uniquement
-les agrégats. La lecture conserve les ACL et ne crée aucune révision.
-Voir [0249](../../../project/decisions/0249-memory-evidence-and-dataset-retrieval.md).
+`dataset_query` interroge un `data://` autorisé par pointeurs JSON RFC 6901 : filtres
+combinés par AND, projection, tri, pagination et agrégats. `expected_revision`
+protège la lecture entre pages. Les résultats distinguent valeurs absentes et nulles ;
+les agrégats numériques utilisent des chaînes décimales. Les unités, expressions et
+conversions de date implicites ne sont pas déduites. Les pages ont 50 éléments par
+défaut et acceptent 500, avec un budget de contenu borné. La recherche sémantique dépend
+du modèle vectoriel configuré et de l'indexation Dream ; sa couverture incomplète reste visible.
 
-Le classement personnel utilise exclusivement `dataset_tags`, `dataset_tag_assignments` et
-`dataset_appearances`, sans partager les dossiers Memory. Les routes `/datasets/tags` et
-`/datasets/library/move` exigent la lecture Dataset ; organiser une ressource lisible ne donne
-aucun droit d'écriture. Les mutations d'une même arborescence sont sérialisées et refusent
-les cycles. Supprimer une branche retire les classements de son utilisateur, jamais le JSON.
-`GET /datasets` combine recherche titre/JSON, classement, propriétaire utilisateur/agent,
-mot-clé, bornes temporelles inclusives/exclusives et tri. La bibliothèque demande les non
-classés et l'ordre manuel par défaut ; les autres consommateurs conservent la liste complète.
-`/datasets/library/facets` ne propose que les propriétaires et mots-clés de ressources lisibles.
+## Migration et compatibilité
 
-Les lectures MCP gardent le JSON exact et leurs offsets en caractères. Elles donnent aussi
-`start_line`, `end_line` et `total_lines` (lignes à partir de 1), ainsi que
-`start_line_complete` et `end_line_complete`. Ces indicateurs signalent les lignes coupées
-par la pagination : relire leur partie manquante avant de les remplacer avec `file_edit`.
-Une page vide ne porte pas de coordonnées de ligne. Les éditions restent soumises à
-`expected_revision` ; ces repères évitent de relire tout l'inventaire pour compter ses lignes.
+La décision [0252](../../../project/decisions/0252-typed-documents.md) décrit la transition.
+DbAdmin archive les sources, transfère les contenus exacts, les versions, les auteurs,
+les droits et les métadonnées, puis vérifie les copies avant de finaliser les types.
+Les anciennes projections documentaires de même identité sont rapprochées ; une
+collision avec un document indépendant bloque le transfert.
 
-Les inventaires de collections du planner se créent directement avec
-`file_create(path="data://", name=..., content=...)`. Le reçu conserve l'URI exacte retournée
-et doit correspondre à une opération réussie de l'étape de découverte. Le planner relit le
-JSON complet sous les droits de l'agent avant de figer la liste ; les anciens reçus en
-`document://` restent utilisables uniquement via un alias Dataset vérifié. Un Document HTML
-ne peut pas servir d'inventaire JSON. L'inventaire interne n'est pas un livrable à transmettre.
-Omettre le JSON dans `content` est un refus avant effet, avec une indication du paramètre à
-corriger, et ne crée aucune ressource.
+Le classement Dataset courant fait autorité pour ses documents. Les anciens placements
+des projections documentaires sont archivés et remplacés pour éviter de réintroduire
+un héritage de partage obsolète. Les dossiers et apparences personnels sont conservés.
+Les rôles Dataset reçoivent les capacités Document correspondantes pour la bibliothèque
+commune. Les marqueurs durables empêchent un rejeu de restaurer des droits révoqués ou
+d'écraser des modifications ultérieures.
 
-La migration DbAdmin `app.dataset.legacy_documents` conserve les sources et crée
-des alias vérifiés. Les anciens accès Memory délèguent au nouveau domaine.
-Le pont HTML conserve le consentement personnel par révision documentaire et le
-budget SQL partagé de 30 écritures / 4 Mo par minute et par utilisateur/jeu de données.
-
-Le partage reprend `DocumentSharingLevelUpdate` et le même catalogue de destinataires que
-Memory. `PUT /datasets/{id}/sharing-level` remplace atomiquement le niveau et les grants,
-sous verrou et `expected_lock_version`, sans réécrire le JSON ni ses révisions. Le composant
-frontend commun `SharingPanel` gère lecture/écriture et héritage des groupes. Un éditeur
-ne devient pas propriétaire ; les ressources en lecture seule ne peuvent pas être repartagées.
-
-`GET /datasets/{id}/owner` affiche le propriétaire et les cibles autorisées.
-`PATCH /datasets/{id}/owner` exige l'écriture, la gestion de la ressource et
-`expected_lock_version`. Les cibles sont les agents gérés et l'utilisateur courant ;
-`DATASET_ADMIN` autorise aussi les autres utilisateurs actifs. Le transfert garde l'ancien
-propriétaire en écriture, retire le grant redondant du nouveau propriétaire et actualise
-la projection historique, sans modifier le contenu ni sa révision. Les jeux en lecture seule
-sont exclus. Le frontend indente le JSON chargé sans réencoder
-les nombres ni les chaînes ; cette présentation ne rend pas le brouillon modifié.
-
-`GET /datasets/{id}/usages` pagine les catégories `documents`, `processes` et `agents`.
-Le point de composition enregistre les fournisseurs publics de Memory, Process et LLM ;
-Dataset n'importe pas leurs modèles. Les requêtes portent sur les contenus documentaires
-natifs courants, les références de runs et snapshots, et les traces d'outils conservées.
-Les permissions du module source et ses ACL s'appliquent avant comptage et pagination.
-Ce relevé décrit des références observées et ne constitue pas un graphe exhaustif de dépendances.
-La suppression reste logique, sous verrou et version attendue.
-
-Les runs Process stockent leurs variables dans `process_runs.data` et leurs fichiers
-via `process_run_files`, sans Dataset. Les données, liens et reçus d'exécution sont
-atomiques ; les droits sont ceux du processus parent. Dataset ne fournit que le codec
-typé partagé, sans posséder le stockage des runs.
-Les anciens marqueurs de métadonnées `engine_dataset`, `engine_managed` et `engine_agent`
-n'accordent aucun statut particulier. Les permissions ordinaires gouvernent lecture, écriture,
-pièces jointes, propriétaire et suppression, y compris via les alias Memory. La suppression
-logique exige toujours la gestion et la version attendue, sans supprimer l'historique ni les runs.
-
-## Projection historique et conditions de retrait
-
-Dataset est l'unique autorité de contenu, historique et droits. Une création native
-`data://` ne crée pas de Document. Seul un alias de migration vérifié reçoit
-une projection `DatasetDocumentProjection`, définie dans `app.document.contracts` :
-métadonnées, version, empreinte et grants, sans contenu ni historique. La suppression
-retire la projection des lecteurs courants, en conservant les sources et l'alias comme
-preuves de migration. La lecture de cet état passe par une requête async explicite.
-
-Les anciens appels métier Document restent des adaptateurs vers Dataset pour les consommateurs historiques,
-applications HTML, pièces jointes et Process encore raccordés. Les nouveaux consommateurs
-utilisent `app.dataset.facade` ou File Sharing avec `data://`.
-
-Le retrait de la projection exige que ces consommateurs aient migré, que les clés étrangères
-Process ne ciblent plus le Document historique, et que les parcours de contenu, révisions,
-partage/révocation, PJ, consentements et budgets passent sur les URI canoniques. Les alias
-vérifiés restent un contrat de lecture des anciennes références, indépendant de la projection.
-Leur conservation et celle des preuves ne doivent pas être confondues avec le maintien d'un
-second chemin d'écriture. Aucun retrait de ligne source n'est prévu par cette consolidation.
+Les tables `datasets` et `dataset_revisions` restent des sources de récupération.
+Leur retrait appartient à une livraison ultérieure ; aucune suppression de ces sources
+n'accompagne cette migration. Les alias vérifiés, pièces jointes, consentements et
+budgets conservent leurs identités et leurs contrôles. La migration se vérifie via les
+tests PostgreSQL réels de `app/document/tests/test_typed_document_upgrade.py`.

@@ -156,6 +156,8 @@ def stage_embedding_refresh(item: MemoryItem) -> None:
     The worker resolves the configured model at execution time. Repeated source
     changes may coalesce there; rolling back the source also rolls back its job.
     """
+    if item.document_type in {"data", "dataset", "process"}:
+        return
     fingerprint = semantic_fingerprint(item)
     if item.semantic_fingerprint == fingerprint:
         return
@@ -282,7 +284,8 @@ async def reconcile_embedding_index(
             MemoryItem.keywords, MemoryItem.content_type, MemoryItem.media_type,
             MemoryItem.semantic_fingerprint, MemoryItem.search_text, MemoryItem.node_kind,
             select(Document.summary_content_hash).where(Document.id==MemoryItem.id).scalar_subquery().label("document_summary_hash"),
-        ).where(or_(MemoryItem.node_kind.not_in(("attachment", "folder")), MemoryItem.search_text != "")).order_by(MemoryItem.id).limit(250)
+        ).where(MemoryItem.document_type.not_in(("data", "dataset", "process")),
+            or_(MemoryItem.node_kind.not_in(("attachment", "folder")), MemoryItem.search_text != "")).order_by(MemoryItem.id).limit(250)
         if after is not None:
             statement = statement.where(MemoryItem.id > after)
         rows = list((await db.execute(statement)).all())
@@ -347,6 +350,8 @@ async def _load_snapshot(
                     MemoryEmbeddingChunk.item_id == item_id
                 )
             )
+            return None
+        if item.document_type in {"data", "dataset", "process"}:
             return None
         try:
             model = await resolve_embedding_model()

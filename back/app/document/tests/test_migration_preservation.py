@@ -67,3 +67,24 @@ async def test_shared_legacy_memory_keeps_its_access_and_later_document_edits_su
         assert await transfer_complete(session, SchemaTransitionSet())
         await transfer(session, SchemaTransitionSet())
         assert await session.scalar(select(Document.content).where(Document.id==expected["id"])) == updated
+
+
+@pytest.mark.asyncio
+async def test_memory_text_rebuild_preserves_orphan_document_references(db, agents, memory_storage):
+    from app.memory.models import MemoryItem
+    from app.memory.html_migration import rebuild_html_text
+
+    common = dict(owner_agent_id=agents[0].id, memory_provider_code="native",
+        memory_content_type="text", memory_media_type="text/html", memory_content_profile_version=1,
+        memory_content_hash=sha256(b"synthetic").hexdigest(), memory_size_bytes=0, search_text="")
+    reference = MemoryItem(id=uuid4(), node_kind="document", memory_resource_id="", memory_content=None,
+        search_title="Synthetic retained reference", **common)
+    private = MemoryItem(id=uuid4(), node_kind="memory", memory_resource_id=str(uuid4()),
+        memory_content="<p>Synthetic private text</p>", search_title="Synthetic private memory", **common)
+    db.add_all([reference, private])
+    await db.flush()
+    await rebuild_html_text(db)
+    assert private.search_text == "Synthetic private text"
+    assert private.metadata_["html_text_version"] == 1
+    assert reference.memory_content is None and reference.memory_resource_id == ""
+    assert "html_text_version" not in reference.metadata_

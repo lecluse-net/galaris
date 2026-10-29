@@ -9,8 +9,7 @@ from uuid import UUID
 import main  # noqa: F401 - load the same model registry as the application
 from core.database import get_db_session
 from core.settings import settings
-from app.document import document_service
-from app.memory.models import MemoryItem
+from app.document import document_service, Document
 from core.storage import get_storage
 
 ROOT = Path('/restore')
@@ -53,7 +52,7 @@ async def run(mode: str) -> None:
         for path in sorted((ROOT / 'concurrent').glob('*.json')):
             receipt = json.loads(path.read_text())
             async with get_db_session() as db:
-                item = await db.get(MemoryItem, UUID(receipt['id']))
+                item = await db.get(Document, UUID(receipt['id']))
                 assert item is not None, 'A committed file has no restored database object'
                 content = await get_storage(item.provider_code).read(item.resource_id)
                 assert hashlib.sha256(content).hexdigest() == receipt['sha256']

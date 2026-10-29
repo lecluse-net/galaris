@@ -12,7 +12,7 @@ propres. Les réglages de Préférences se délèguent aussi par fonction. Le
 [guide des privilèges](../admin/privileges.md) détaille les droits et les périmètres ;
 changer de rôle peut donc changer les onglets et les actions disponibles.
 
-**Connaissances → Jeux de données** ouvre la bibliothèque JSON. Voir le [parcours des jeux de données](datasets.md).
+**Connaissances → Documents** regroupe les types Texte et Données. Le filtre de type retrouve les documents JSON. Voir le [parcours Données](datasets.md).
 
 Ce guide aide à trouver une fonction dans l’application. La
 [carte des menus générée depuis le frontend](../architecture/generated/navigation.md)
@@ -95,7 +95,7 @@ La route est exclue des constructions des autres environnements.
 |---|---|
 | **Configurer** | Fournisseurs & modèles, Agents, Outils & connexions, Compétences |
 | **Agir** | Discussion, Objectifs, Processus |
-| **Connaissances** | Documents, Jeux de données, Fichiers, Mémoire, Contacts, Sujets |
+| **Connaissances** | Documents, Fichiers, Mémoire, Contacts, Sujets |
 | **Superviser** | Tableau de bord, Activité, Dream, Permissions, Journal des mails, Calendriers, Journal des échecs |
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations |
 | **Développeurs** (mode dev uniquement) | Référence graphique |
@@ -573,12 +573,12 @@ Les changements s’appliquent aux nouveaux appels.
 La [bibliothèque documentaire](documents.md) explique création, dossiers, sous-documents,
 listes, traitements groupés et raccourcis clavier.
 
-**Connaissances → Documents** (`/documents`) sert à retrouver et créer les contenus rédigés HTML.
+**Connaissances → Documents** (`/documents`) sert à retrouver et créer les documents Texte (HTML) et Données (JSON).
 L'icône **Conversation** de la barre d'outils de l'éditeur permet d'échanger avec un agent dans cette page, en ouvrant un
 fil existant ou en créant une conversation. Le document reste le centre du travail ;
 **Discussion** conserve sa fonction de suivi des conversations et des activités.
-Les jeux de données JSON indépendants se créent et se gèrent séparément dans
-**Connaissances → Jeux de données** (`/dataset`), y compris ceux issus d'anciens documents.
+Le bouton **Créer un document** et les menus contextuels proposent les deux types.
+Les anciens liens `/dataset` redirigent vers cette bibliothèque filtrée sur Données.
 **Connaissances → Mémoire** (`/memory`) propose **Liste**
 et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un paramètre d’URL.
 Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans

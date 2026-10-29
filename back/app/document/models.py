@@ -24,7 +24,7 @@ from sqlalchemy import (
     text as sql_text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship, column_property
+from sqlalchemy.orm import Mapped, mapped_column, relationship, column_property, synonym
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -131,7 +131,7 @@ class DocumentAppGrant(HistoryMixin, Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id"), index=True)
-    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("datasets.id"), index=True)
+    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id"), index=True)
     app_key: Mapped[str] = mapped_column(String(40))
     alias: Mapped[str] = mapped_column(String(40))
     document_revision: Mapped[int] = mapped_column(Integer)
@@ -147,7 +147,7 @@ class DocumentAppWriteBudget(Base):
     __tablename__ = "document_app_write_budgets"
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("datasets.id"), index=True)
+    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id"), index=True)
     window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     writes: Mapped[int] = mapped_column(Integer, default=0)
     bytes_written: Mapped[int] = mapped_column(Integer, default=0)
@@ -191,8 +191,12 @@ class Document(Shareable, HistoryMixin, Base):
     provider_code: Mapped[str] = mapped_column(String(80), nullable=False)
     resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_id: Mapped[UUID | None] = mapped_column(ForeignKey("files.id", ondelete="RESTRICT"), index=True)
+    storage_kind: Mapped[str] = mapped_column(String(10), default="text", server_default="text")
+    creation_key: Mapped[str | None] = mapped_column(String(255), unique=True)
+    creation_fingerprint: Mapped[str | None] = mapped_column(String(64))
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
-    stored_document_type: Mapped[str] = mapped_column("document_type", String(30), nullable=False, default="html", server_default="html")
+    stored_document_type: Mapped[str] = mapped_column("document_type", String(30), nullable=False, default="text", server_default="text")
     content_type: Mapped[str] = mapped_column(String(50), nullable=False, default="text", server_default="text")
     media_type: Mapped[str] = mapped_column(String(255), nullable=False, default="text/html", server_default="text/html")
     content_profile_version: Mapped[int | None] = mapped_column(Integer)
@@ -230,12 +234,13 @@ class Document(Shareable, HistoryMixin, Base):
     summary_provider_code: Mapped[str] = mapped_column(String(80), default="native", server_default="native")
     summary_resource_id: Mapped[str] = mapped_column(String(1024), default="", server_default="")
     summary_content: Mapped[str | None] = mapped_column(Text, default="", server_default="")
+    summary_media_type: Mapped[str] = mapped_column(String(50), default="text/html", server_default="text/html")
     summary_content_hash: Mapped[str] = mapped_column(String(64), default="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", server_default="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
     summary_size_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
     summary_generated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     summary_pending: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
     summary_source_text: Mapped[str | None] = mapped_column(Text)
-    revisions: Mapped[list[DocumentRevision]] = relationship(back_populates="document", cascade="all, delete-orphan", passive_deletes=True, order_by="DocumentRevision.revision")
+    revisions: Mapped[list[DocumentRevision]] = relationship(back_populates="document", foreign_keys="DocumentRevision.document_id", cascade="all, delete-orphan", passive_deletes=True, order_by="DocumentRevision.revision")
     grants: Mapped[list[ShareGrant]] = relationship(ShareGrant, primaryjoin="and_(Document.share_id == foreign(ShareGrant.share_id), ShareGrant.agent_id.is_not(None))", viewonly=True)
     url_relations: Mapped[list[DocumentURL]] = relationship(back_populates="document", cascade="all, delete-orphan", passive_deletes=True)
 
@@ -245,28 +250,35 @@ class Document(Shareable, HistoryMixin, Base):
 
     @hybrid_property
     def document_type(self) -> DocumentType:
-        return cast(DocumentType, "html" if self.stored_document_type == "form" else self.stored_document_type)
+        return cast(DocumentType, "text" if self.stored_document_type in {"html", "form"} else self.stored_document_type)
 
     @document_type.inplace.setter
     def _document_type_set(self, value: str) -> None:
-        self.stored_document_type = value
+        self.stored_document_type = "text" if value in {"html", "form"} else value
 
     @document_type.inplace.expression
     @classmethod
     def _document_type_expression(cls) -> ColumnElement[DocumentType]:
-        return cast(ColumnElement[DocumentType], case((cls.stored_document_type == "form", "html"), else_=cls.stored_document_type))
+        return cast(ColumnElement[DocumentType], case((cls.stored_document_type.in_(("html", "form")), "text"), else_=cls.stored_document_type))
 
-    __mapper_args__ = {"version_id_col": lock_version}
+    type_discriminator: Mapped[str] = column_property(case((stored_document_type == "data", "data"), else_="text"))
+
+    __mapper_args__ = {
+        "version_id_col": lock_version,
+        "polymorphic_on": type_discriminator,
+        "polymorphic_identity": "text",
+    }
 
     __table_args__ = (
         *ShareReference.share_constraints("documents", "document"),
         Index("ix_documents_search_vector_gin", "search_vector", postgresql_using="gin"),
         Index("ix_documents_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
-        CheckConstraint("document_type IN ('html', 'dataset', 'process', 'form')", name="ck_documents_type"),
+        CheckConstraint("document_type IN ('text', 'data', 'html', 'dataset', 'process', 'form')", name="ck_documents_type"),
         # Legacy shared memories may contain non-editorial text or binary bytes.
         # Preserve their format and retired form archives; APIs enforce current types.
         CheckConstraint("content_type IN ('text', 'binary')", name="ck_documents_text"),
-        CheckConstraint("(document_type = 'dataset' AND content_type = 'text' AND media_type = 'application/json' AND content_profile_version IS NULL) OR (document_type = 'process' AND content_type = 'text' AND media_type = 'application/bpmn+xml' AND content_profile_version IS NULL) OR document_type IN ('html', 'form')", name="ck_documents_content_type"),
+        CheckConstraint("(document_type = 'dataset' AND content_type = 'text' AND media_type = 'application/json' AND content_profile_version IS NULL) OR (document_type = 'process' AND content_type = 'text' AND media_type = 'application/bpmn+xml' AND content_profile_version IS NULL) OR document_type IN ('text', 'html', 'form') OR (document_type='data' AND content_type='text' AND media_type='application/json' AND content_profile_version IS NULL)", name="ck_documents_content_type"),
+        CheckConstraint("storage_kind IN ('text','file') AND ((storage_kind='text' AND file_id IS NULL) OR (storage_kind='file' AND file_id IS NOT NULL AND content IS NULL))", name="ck_documents_storage"),
         CheckConstraint("visibility IN ('private', 'shared')", name="ck_documents_visibility"),
     )
 
@@ -326,14 +338,31 @@ class DocumentRevision(Base):
     author_agent_id: Mapped[int | None] = mapped_column(
         ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    author_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    document: Mapped[Document] = relationship(back_populates="revisions")
+    file_id: Mapped[UUID | None] = mapped_column(ForeignKey("files.id", ondelete="RESTRICT"), index=True)
+    storage_kind: Mapped[str] = mapped_column(String(10), default="text", server_default="text")
+    dataset_id = synonym("document_id")
+    document_source_revision_id: Mapped[UUID | None] = mapped_column(ForeignKey("document_revisions.id", ondelete="RESTRICT"))
+
+    def __init__(self, **kwargs: Any) -> None:
+        from hashlib import sha256
+        content = kwargs.get("content")
+        defaults: dict[str, Any] = dict(provider_code="native", resource_id=str(uuid4()),
+            content_type="text", media_type="application/json" if "dataset_id" in kwargs else "text/html", title="",
+            metadata_={}, document_content_version=True)
+        if isinstance(content, str):
+            defaults["content_hash"] = sha256(content.encode()).hexdigest()
+        super().__init__(**(defaults | kwargs))
+
+    document: Mapped[Document] = relationship(back_populates="revisions", foreign_keys=[document_id])
 
     __table_args__ = (
         UniqueConstraint("document_id", "revision", name="uq_document_revision"),
+        CheckConstraint("storage_kind IN ('text','file') AND ((storage_kind='text' AND file_id IS NULL) OR (storage_kind='file' AND file_id IS NOT NULL AND content IS NULL))", name="ck_document_revisions_storage"),
         Index("ix_document_revisions_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
     )
 

@@ -1,5 +1,5 @@
 import { api } from '@/core/api'
-import { createOwnerOptionsCache } from '@/app/share'
+import { createOwnerOptionsCache } from '@/app/share/facade'
 import { thumbnailReady } from '@/core/util/facade'
 import type { AppDatasetRequest, AppDatasetResult } from '../documentApps'
 import type { DocumentSharing, DocumentSharingUpdate, DocumentAttachment, DocumentCreate, DocumentContentDiff, DocumentContentRevisionDetail, DocumentContentRevisionPage, DocumentGlobalAccess, DocumentFolderOption, DocumentLibraryPage, DocumentLibraryFilters, DocumentTag, DocumentTagIcon, DocumentTagDeletionResult, DocumentOrderMove, DocumentOwnerKind, DocumentOwnerOptions, ManagedDocumentDetail, DocumentResourceRedirect, DocumentDatasetAttachments, DocumentProcessAttachments, DocumentRecord, DocumentDetail, DocumentUpdate } from '../types'
@@ -13,7 +13,7 @@ function editorialDocument(detail: ManagedDocumentDetail | DocumentResourceRedir
   if ('resource_type' in detail) throw new DatasetDocumentRedirect(detail.resource_uri)
   // Also handle responses/seeds retained by a client during the transition.
   if (detail.item.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${detail.item.id}`)
-  if (detail.item.document_type !== 'html') throw new Error('This resource is not an HTML Document.')
+  if (!['text', 'html', 'data'].includes(detail.item.document_type)) throw new Error('This resource is not an HTML Document.')
   return detail
 }
 
@@ -106,8 +106,8 @@ async documentThumbnailSnapshot(id: string, agentId: number | null, signal: Abor
     })).data
     if ('resource_type' in detail || detail.item.document_type === 'dataset') return null
     const item = detail.item
-    const { preparePortableDocumentSnapshot } = await import('@/core/util/facade')
-    const html = await preparePortableDocumentSnapshot(item.payload.text ?? '', item.title, signal,
+    const { documentType } = await import('../documentTypes')
+    const html = await documentType(item.document_type).snapshot(item.payload.text ?? '', item.title, signal,
       (documentId, attachmentId) => documentService.documentAttachmentBlob(documentId, attachmentId, detail.agent_id, signal))
     return { html, revision: item.revision, lock_version: item.lock_version }
   },

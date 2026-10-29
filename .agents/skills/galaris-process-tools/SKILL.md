@@ -89,14 +89,14 @@ Les autres providers conservent leur format et leur unité d'offset. Adapter les
 skill runtime Galaris et tester la conservation du contenu, les conflits de révision et les
 refus de HTML hors profil ; ne pas figer un ancien bouton d'éditeur.
 
-Les Datasets appartiennent à `app.dataset` et se créent avec
+Les documents Données appartiennent à `app.document.data` et se créent avec
 `file_create(path="data://", name=..., content=...)`. Le contenu reste du JSON UTF-8 libre,
-sans schéma associé ; les droits et l'historique sont ceux de Dataset. Les lectures JSON
+sans schéma associé ; les métadonnées, droits et historique sont communs aux Documents. Les lectures JSON
 paginent en caractères et `file_edit` travaille en lignes ; chaque écriture produit un JSON
 complet valide et contrôle `expected_revision`. L'ancien `document_type="dataset"` dans
 `document://` reste un adaptateur vers `data://`, réservé aux consommateurs historiques.
-Les alias ne concernent que les identités vérifiées, jamais tout Document JSON.
-Voir `docs/fr/dev/datasets.md` pour les critères de retrait des projections Memory.
+`app.dataset` est un relais de compatibilité ; les identités vérifiées et les anciens liens
+restent utilisables. Voir `docs/fr/dev/datasets.md` pour la migration et la décision 0252.
 
 Pour les entrées d'un processus, l'agent recueille les informations manquantes et prépare
 les variables attendues ; Process les valide à sa frontière d'exécution avec le codec commun.

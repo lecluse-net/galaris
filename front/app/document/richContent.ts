@@ -1,11 +1,11 @@
 import type { RichContentContribution } from '@/core/util'
 import { documentIdFromResourceUri, documentFolderId, documentFolderHref, canonicalFolderLink } from '@/core/util/facade'
-import { documentService } from './services/documentService'
+const service = async () => (await import('./services/documentService')).documentService
 export default {
   canonical: canonicalFolderLink,
-  previewImage: (uri, agentId, signal) => documentService.linkThumbnail(uri, agentId, signal),
+  previewImage: async (uri, agentId, signal) => (await service()).linkThumbnail(uri, agentId, signal),
   async search(query) {
-    const library = await documentService.browseDocumentLibrary({ query, limit: 50, include_keywords: false })
+    const library = await (await service()).browseDocumentLibrary({ query, limit: 50, include_keywords: false })
     return library.entries.map(({ item }) => ({ uri: `document://${item.id}`, title: item.title, context: String(item.owner_agent_id ?? item.owner_user_id ?? '') }))
   },
   href(uri) {
@@ -26,15 +26,15 @@ export default {
   },
   async title(uri, agentId) {
     const folder = documentFolderId(uri)
-    if (folder) return (await documentService.folderCollection(folder, agentId, { metadata_only: true })).folder.name
+    if (folder) return (await (await service()).folderCollection(folder, agentId, { metadata_only: true })).folder.name
     const id = documentIdFromResourceUri(uri)
-    return id ? (await documentService.getManagedDocument(id)).item.title : uri
+    return id ? (await (await service()).getManagedDocument(id)).item.title : uri
   },
   canCard: uri => documentIdFromResourceUri(uri) !== null || documentFolderId(uri) !== null,
   async card(uri, agentId) {
     const folder = documentFolderId(uri)
     if (folder) {
-      const entry = (await documentService.folderCollection(folder, agentId, { metadata_only: true })).folder
+      const entry = (await (await service()).folderCollection(folder, agentId, { metadata_only: true })).folder
       const card = document.createElement('blockquote'), paragraph = document.createElement('p'), link = document.createElement('a')
       card.className = 'galaris-link-card'; link.href = entry.uri; link.textContent = entry.name
       paragraph.append(link); card.append(paragraph)
@@ -42,7 +42,7 @@ export default {
     }
     const id = documentIdFromResourceUri(uri)
     if (!id) throw new Error('Invalid Document reference')
-    const { item } = await documentService.getManagedDocument(id)
+    const { item } = await (await service()).getManagedDocument(id)
     const card = document.createElement('blockquote'), paragraph = document.createElement('p')
     const anchor = document.createElement('a'), title = document.createElement('strong')
     card.className = 'galaris-link-card'

@@ -12,7 +12,7 @@ Visible screens depend on your account's permissions. For an overview, start wit
 | Assign and track work | [Tasks, milestones and recovery](tasks.md) |
 | Organize authored content | [Document library](documents.md) |
 | Write, link, share and export | [Rich content](rich-content.md) |
-| Manage JSON data | [Datasets](datasets.md) |
+| Manage JSON data | [Data documents](datasets.md) |
 | Explore an agent's locations | [Files](files.md) |
 | Edit a repository with an agent | [Conversational Git editor](code-editor.md) |
 | Build and observe a workflow | [Internal business processes](internal-processes.md) |
@@ -609,7 +609,7 @@ retain their provider and are never imported by migration. See
 To personalise a document icon, click its icon in the editor header.
 In the list and tree, clicking the icon simply opens the document.
 For a folder, open its icon picker. Use the **+** button to
-upload an image in Documents or Datasets: SVG, PNG, JPEG, GIF, WebP, AVIF, BMP or ICO.
+upload an image in Text or Data documents: SVG, PNG, JPEG, GIF, WebP, AVIF, BMP or ICO.
 Other recognised formats, such as TIFF, are converted to PNG. Icons have no specific
 file size limit. SVGs containing scripts, external content or stylesheets remain prohibited.
 Import and save failures stay visible in the picker so you can retry.

@@ -8,8 +8,11 @@ directly and never decides the scope of a session on its own.
 Personal memories belong to one agent and cannot be shared. `app.document` owns
 documents and their shared summaries, without requiring a Memory item. The native
 graph may reference them and rechecks their source permissions on every read.
-Its optional index covers a document and its summary as one result, without owning
+Its optional index covers a Text document and its summary as one result, without owning
 their contents or permissions. Document retains direct discovery without this index.
+Data documents retain native JSON retrieval and `data://` pointers; a graph reference
+does not add them to general memory recall. Their current summaries remain readable
+through the common Document contract, with their actual media type.
 
 Updates and acquisitions carry no free-text `reason` comment.
 History retains content, versions, authors, tasks and dates. Document append retries

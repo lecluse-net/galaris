@@ -102,7 +102,8 @@ async def test_file_navigation_follows_folders_with_stable_document_uris(db, age
 
 
 @pytest.mark.asyncio
-async def test_agent_discovers_user_folders_through_readable_documents(db, agents, memory_storage):
+@pytest.mark.parametrize("kind", ["text", "data"])
+async def test_agent_discovers_user_folders_through_readable_documents(db, agents, memory_storage, kind):
     from app.document import document_sharing
     from app.document.schemas import DocumentSharingUpdate
 
@@ -113,7 +114,7 @@ async def test_agent_discovers_user_folders_through_readable_documents(db, agent
     child = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic personal child", parent_id=root.id))
     second = await document_tags.write_tag(other.id, DocumentTagWrite(name="Synthetic other classification", parent_id=None))
     empty = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic empty", parent_id=None))
-    visible = await document(agents[0], owner, "Synthetic accessible values")
+    visible = await document(agents[0], owner, "Synthetic accessible values", kind)
     denied = await document(agents[0], owner, "Synthetic private sibling")
     await document_tags.move_document(scope, visible.id, child.id)
     await document_tags.move_document(scope, denied.id, child.id)
@@ -128,7 +129,7 @@ async def test_agent_discovers_user_folders_through_readable_documents(db, agent
     assert {entry.uri for entry in root_page.entries} == {root_uri, second_uri}
     assert f"document://folders/{empty.id}/" not in {entry.uri for entry in root_page.entries}
     assert [entry.uri for entry in (await resource_list(ctx, root_uri)).entries] == [child_uri]
-    canonical = f"document://{visible.id}"
+    canonical = f"{'data' if kind == 'data' else 'document'}://{visible.id}"
     for uri in (child_uri, second_uri):
         page = await resource_list(ctx, uri)
         assert [entry.uri for entry in page.entries] == [canonical]

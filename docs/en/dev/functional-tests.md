@@ -124,11 +124,18 @@ Escape and backdrop dismissal; the journey is also inspected at a small viewport
 
 `app/dream/tests/test_resource_summaries.py` covers strict size and cumulative-change
 thresholds, small resources, manual descriptions, coalesced requests, policy changes and
-late Dream results for Documents and Datasets. Only external inference is replaced;
+late Dream results for Text and Data documents through common and compatible Dataset contracts.
+Summary reads, media type, byte size and hash remain consistent after generation or manual edits.
+`app/memory/tests/test_document_retrieval.py` also protects canonical document types,
+current Data summary reads and native JSON discovery without adding Data to general
+recall or creating a competing Memory index. Only external inference is replaced;
 domains and PostgreSQL remain real. `app/document/tests/test_summary_retirement.py` protects
 the current summary when retiring its history and preserves metadata during content restore.
 Old summary-version and historical-keyword expectations are retired; content versions,
 permissions and upgrade scenarios retain their coverage.
+Before retiring the old summary-history table, every row is archived with a verified
+digest and its files remain referenced. Source changes or archive corruption stop
+retirement without replacing the preserved evidence.
 
 `app/document/tests/test_document_read_performance.py` bounds native pointer resolution
 to one SQL read, after its consumer's permission checks. Scenarios preserve precedence
@@ -530,7 +537,7 @@ approvals are invalidated before execution, directly or through reconciliation.
 
 `app/process/tests/test_definition_storage.py` checks Process-owned BPMN storage without
 creating Documents, legacy content/history/grant transfer, retries and invalid-batch rollback.
-`test_document_library.py` rejects Process and Dataset types during Document creation.
+Process definitions remain excluded from Document creation.
 The Process E2E journey also checks that the definition is absent from the Documents
 library before editing and executing it.
 
@@ -551,7 +558,34 @@ listing and HTML filtering, reads, permissions and content preservation without 
 
 <a id="datasets"></a>
 
-## Datasets and typed contracts
+## Typed Documents and Data contracts
+
+`app/document/tests/test_typed_documents.py` checks the common library filtered by type,
+one JSON identity, permissions, server rejection of invalid content and restoration of
+exact bytes without restoring current metadata. Migration scenarios preserve contents,
+revisions, authors, sharing and descriptions; replay does not restore revoked access and
+obsolete projection placements cannot widen permissions. Collisions with an unrelated
+Text document are rejected without content loss.
+
+`test_typed_document_upgrade.py` reconstructs an old PostgreSQL schema and runs the real
+Atlas/DbAdmin pipeline, including interruption between expansion and finalization, resume
+and replay. All Text document source fields are compared before and after, except
+the explicit type change and new columns: Unicode and application HTML, revisions,
+manual summary, keywords, metadata, permissions, classification, provenance, URLs
+and attachments. Attached file and archive bytes remain identical.
+`test_independence_upgrade.py` also combines the historical Memory separation with
+type unification. Restoration retains the original archive and current metadata.
+The test also verifies retention of binary files referenced by historical revisions.
+`front/browser-tests/typed-documents.spec.mjs` exercises the type menu and common JSON
+editor on mobile and desktop: no creation before confirmation, retained invalid drafts,
+JSON saving and reopening.
+
+`document-navigation.spec.mjs` exercises navigation for both Text and Data. Former
+assertions about a separate Dataset library and its Save button are retired: visits,
+branches and failures now use common navigation coverage, while Data scenarios retain
+JSON autosave and draft guarantees. Closing a dialog retains its local draft for reopening.
+`dataset-navigation.spec.mjs` verifies historical redirects and `dataset-dialog.spec.mjs`
+covers cards opened from Chat.
 
 `test_obsolete_process_markers_do_not_override_dataset_deletion_rights` checks former
 process markers through `data://`, aliases and Memory calls: permissions, versions,
@@ -567,16 +601,13 @@ checks transfers, reopening and returning ownership to the original owner.
 
 `app/dataset/tests/test_datasets.py` also checks that native creation makes no Memory
 projection and that historical aliases follow metadata, revisions, access revocation and
-deletion. Content reads and writes remain owned by Dataset.
-`test_document_library.py` checks that historical Datasets stay out of results, totals
-and keywords while remaining readable, and that document creation rejects Dataset types.
-`e2e/specs/dataset-documents.spec.mjs` exercises the two separate libraries.
-Historical Dataset Document reads return a canonical reference without content. Dataset
+deletion. Historical Dataset APIs delegate to Data documents. Decision 0252 retires the
+separate-library contract; content, permission, history and link guarantees remain
+applicable to the common identity. Dataset
 attachment tests cover live links, independent ACLs, conflicts, duplicates, detachment
 without deletion and File Sharing listing. Former JSON editing tests in DocumentEditor
-are replaced by DatasetEditor resolution and its invalid JSON draft scenario; the Dataset
-journey preserves history/restoration coverage. HTML tests also read current native values
-without creating a Dataset Document.
+now use DocumentEditor with its Data contribution. HTML tests also read current native
+values under their own live permissions.
 
 `app/dataset/tests` covers the common codec, free JSON on every write, verified aliases,
 permissions, revisions and restoration. `test_schema_removal.py` checks DbAdmin contraction
@@ -1474,7 +1505,7 @@ unavailability), using a real DB.
 | Process → waiting task | An authenticated callback releases the wait; duplicates and late events preserve the outcome | `back/app/process/tests/test_recovery.py`, `test_worker_concurrency.py` |
 | Process → human → messaging | Private internal or external request, plain JSON reply converted to typed values, file-only message with source URI, retried delivery failure, rejection of another sender or a late reply; unrelated messages never complete the activity. An AI activity waits without an auxiliary Task, resumes even after an early answer, and preserves user holds; historical waits are retired, duplicates stay idempotent, and the Dataset and final message are preserved | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → file → agent | Content, revision, canonical URIs and ACLs agree across readers and writers | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
-| Datasets and document compatibility | Separate libraries and creation, native `data://` identity, exact JSON source and errors without extra resources/revisions; independent rights/history, copy/restore and conflicts; legacy aliases and invalid drafts preserved. The native Dataset journey replaces Dataset creation in Documents | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
+| Datasets and document compatibility | Shared library, Text/Data creation and type filtering, native `data://` identity, exact JSON source and errors without extra resources/revisions; independent rights/history, copy/restore and conflicts; legacy aliases and invalid drafts preserved. Data journeys use the common Document editor | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
 | Interactive document HTML | Ordinary HTML forms using shared Datasets, viewer ACLs and personal revision-bound consent; revocation, unapproved cross-Dataset copies, JSON validation and quotas across workers; editable prose and usual toolbar, without a document Source view; static print/PDF with resource filtering; isolation, WebRTC, bridge saturation and late responses | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Restart / concurrency | Stale workers cannot replace current owners; ambiguous effects are not blindly replayed | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Lost tool acknowledgement | An SSH command remains unique after a lost response and PostgreSQL reload; MCP timeouts after effects block replay; retry preserves the journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |

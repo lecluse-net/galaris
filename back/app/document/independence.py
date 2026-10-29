@@ -222,7 +222,9 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         'summary_size_bytes',CASE WHEN doc IS NULL THEN 0 ELSE coalesce((node->>'size_bytes')::bigint,0) END,
         'visibility',CASE WHEN coalesce(doc->>'visibility',node->>'visibility','private')='public' THEN 'shared' ELSE coalesce(doc->>'visibility',node->>'visibility','private') END,
         'read_only',coalesce((doc->>'read_only')::boolean,false),
-        'document_type',coalesce(doc->>'document_type','html'),
+        'document_type',coalesce(doc->>'document_type','text'),
+        'storage_kind',coalesce(doc->>'storage_kind','text'),
+        'summary_media_type',coalesce(doc->>'summary_media_type','text/html'),
         'revision',coalesce((doc->>'revision')::integer,(node->>'revision')::integer,1),
         'summary_initialized',true) AS value FROM sources)
     """
@@ -272,7 +274,7 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         names=",".join(f'"{column}"' for column in columns)
         values=",".join(f'record."{column}"' for column in columns)
         table=model.__tablename__
-        extra=",'document_append',coalesce((a.snapshot->>'document_append')::boolean,false) OR coalesce(a.snapshot->>'reason'='Document content appended',false)" if model is DocumentRevision else ""
+        extra=",'storage_kind',coalesce(a.snapshot->>'storage_kind','text'),'document_append',coalesce((a.snapshot->>'document_append')::boolean,false) OR coalesce(a.snapshot->>'reason'='Document content appended',false)" if model is DocumentRevision else ""
         conflict=",".join(f'"{column}"=EXCLUDED."{column}"' for column in columns if column!='id')
         await session.execute(text(f"""INSERT INTO {table}({names}) SELECT {values} FROM {_ARCHIVE} a
             JOIN documents d ON d.id=(a.snapshot->>'{parent}')::uuid

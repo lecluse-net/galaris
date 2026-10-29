@@ -2,15 +2,27 @@
 
 # Organize the document library
 
-Open **Knowledge → Documents** (`/documents`) to create and organize accessible HTML
-content. [JSON Datasets](datasets.md) and [Processes](internal-processes.md) have their own
-libraries. Classification is personal and does not change other readers' organization.
+Open **Knowledge → Documents** (`/documents`) to create and organize **Text** documents
+(rich HTML) and **Data** documents ([JSON](datasets.md)). [Processes](internal-processes.md)
+retain their business library. Classification is personal and does not change other readers' organization.
 A folder can automatically grant additional access to your documents and expose its collection to authorized recipients.
 
 Documents and their shared summaries are independent of agents' personal memories.
 Sharing a document does not share any memory; deleting a reference in the memory
 graph does not delete the document. Memories about a document remain private to
 the agent that acquired them.
+
+## Choose a document type
+
+Each **New document** icon opens the type menu below the clicked icon before creating any record. Choose **Text** or
+**Data**, then the title and owner. Document and folder context menus also offer both
+creation actions in the current classification. Closing the menu or creation dialog
+creates no document.
+
+The **Document type** filter selects all types, Text or Data. It combines with search
+and the other filters before pagination. Each type has a distinct icon, editor and
+preview. Title, owner, sharing, Topic, keywords, summary and history follow common rules.
+The Data editor preserves invalid JSON drafts without saving them or leaving the document.
 
 
 ## Current description and keywords

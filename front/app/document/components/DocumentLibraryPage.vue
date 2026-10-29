@@ -21,7 +21,7 @@
           <q-splitter v-model="conversationSplitterModel" :limits="conversationSplitterLimits" :disable="!chatOpen || $q.screen.lt.md"
             class="documents-conversation-splitter" :class="{ 'documents-conversation-splitter--closed': !chatOpen || $q.screen.lt.md }">
             <template #before>
-              <DocumentBulkList v-if="listingOpen" :folder="listingFolder" @action="documentRowAction" @create="entry => openCreateDocument(undefined, entry)" @close="listingOpen = false" @select="selectEntry" @deleted="onDocumentDeleted" @changed="ids => navigation?.refreshDocuments(ids)" />
+              <DocumentBulkList v-if="listingOpen" :folder="listingFolder" @action="documentRowAction" @create="(entry, type) => openCreateDocument(undefined, entry, false, type)" @close="listingOpen = false" @select="selectEntry" @deleted="onDocumentDeleted" @changed="ids => navigation?.refreshDocuments(ids)" />
               <div v-else-if="!selectedDocumentId" class="documents-placeholder text-grey-7">
                 <q-icon name="article" size="48px" />
                 <div>{{ t('documents.selectDocument') }}</div>
@@ -69,7 +69,7 @@
       <q-card class="documents-mobile-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <DocumentNavigationButtons class="q-mr-sm" :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
-          <DocumentIcon v-if="mobileDocumentId" :document-id="mobileDocumentId" :title="mobileDocumentTitle" size="36px" class="q-mr-sm" />
+          <DocumentIcon v-if="mobileDocumentId" :document-id="mobileDocumentId" :document-type="mobileInitialDocument?.document_type" :title="mobileDocumentTitle" size="36px" class="q-mr-sm" />
           <div class="text-h6 ellipsis">{{ mobileDocumentTitle }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
@@ -102,10 +102,19 @@
       </q-card>
     </q-dialog>
 
+    <q-menu ref="typeMenu" :target="createMenuTarget" no-parent-event no-route-dismiss anchor="bottom left" self="top left">
+      <q-list dense role="menu" :aria-label="t('documents.documentType')">
+        <q-item v-for="type in documentTypes" :key="type.code" v-close-popup clickable role="menuitem" @click="chooseDocumentType(type.code)">
+          <q-item-section avatar><q-icon :name="type.icon" /></q-item-section>
+          <q-item-section>{{ t(type.label) }}</q-item-section>
+        </q-item>
+      </q-list>
+    </q-menu>
     <q-dialog v-model="createDocumentOpen">
       <q-card class="documents-create-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="note_add" size="24px" class="q-mr-sm" />
+          <q-icon :name="documentTypes.find(type => type.code === createDocumentType)?.icon" size="24px" class="q-mr-sm" />
           <div class="text-h6">{{ createDocumentParent ? t('documents.library.newSubdocument', { name: createDocumentParent.item.title }) : createDocumentTag ? t('documents.library.newDocument', { name: createDocumentTag.name }) : t('documents.createDocument') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
@@ -127,7 +136,7 @@
           <q-btn
             color="primary" unelevated no-caps icon="add"
             :loading="creatingDocument"
-            :disable="!createDocumentTitle.trim() || !selectedCreateDocumentOwner || createDocumentActorAgentId === null"
+            :disable="!createDocumentTitle.trim() || !selectedCreateDocumentOwner"
             :label="t('documents.create')"
             @click="createDocument"
           />
@@ -139,10 +148,11 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
+import { useQuasar, type QMenu } from 'quasar'
+import { documentTypes, type DocumentKind } from '../documentTypes'
 import { useAgentChoices } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AgentConversationPanel as DocumentConversationPanel, conversationPanel, type DocumentFocus } from '@/core/util'
@@ -175,6 +185,7 @@ const route = useRoute()
 const router = useRouter()
 const agentStore = useAgentChoices()
 const privilegeStore = usePrivilegeStore()
+const canCreateDocument = computed(() => privilegeStore.hasAnyPrivilege([privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN]))
 const canAccessChat = computed(() => Boolean(conversationPanel) && privilegeStore.hasPrivilege(privileges.CHAT_ACCESS))
 const chatOpen = ref(false), chatStarted = ref(false), libraryOpen = ref(true)
 const loadedDocumentId = ref<string | null>(null), loadedMobileDocumentId = ref<string | null>(null)
@@ -217,6 +228,9 @@ const history = useDocumentHistory({
 const navigatingHistory = ref(false)
 const canGoBack = computed(() => !navigatingHistory.value && history.canGoBack.value)
 const canGoForward = computed(() => !navigatingHistory.value && history.canGoForward.value)
+const typeMenu = useTemplateRef<QMenu>('typeMenu')
+const createMenuTarget = shallowRef<HTMLElement | false>(false)
+const createDocumentType = ref<DocumentKind>('text')
 const createDocumentOpen = ref(false)
 const creatingDocument = ref(false)
 const createDocumentOwner = ref('')
@@ -348,7 +362,22 @@ async function documentRowAction(entry: DocumentLibraryEntry, action: DocumentRo
   const editor = $q.screen.lt.md ? mobileDocumentEditor.value : documentEditor.value
   editor?.requestRowAction(action, entry.item.id)
 }
-async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false): Promise<void> {
+function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false, type?: DocumentKind, event?: Event): void {
+  if (!canCreateDocument.value) return
+  createDocumentTag.value = tag ?? null
+  createDocumentParent.value = parent ?? null
+  createDocumentAtRoot.value = atRoot
+  if (type) { void chooseDocumentType(type); return }
+  const target = event?.currentTarget ?? window.document.activeElement
+  if (!(target instanceof HTMLElement)) return
+  createMenuTarget.value = target
+  void nextTick(() => typeMenu.value?.show())
+}
+async function chooseDocumentType(type: DocumentKind): Promise<void> {
+  createDocumentType.value = type
+  await prepareCreateDocument(createDocumentTag.value ?? undefined, createDocumentParent.value ?? undefined, createDocumentAtRoot.value)
+}
+async function prepareCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false): Promise<void> {
   createDocumentTag.value = tag ?? null
   createDocumentParent.value = parent ?? null
   createDocumentAtRoot.value = atRoot
@@ -382,11 +411,11 @@ async function createDocument(): Promise<void> {
   const tag = createDocumentTag.value
   const parent = createDocumentParent.value
   const atRoot = createDocumentAtRoot.value
-  if (!owner || actorAgentId === null || !title || creatingDocument.value) return
+  if (!owner || !title || creatingDocument.value) return
   creatingDocument.value = true
   try {
     const document = await documentService.createDocument({
-      document_type: 'html',
+      document_type: createDocumentType.value,
       owner_kind: owner.kind,
       owner_id: owner.id,
       actor_agent_id: actorAgentId,

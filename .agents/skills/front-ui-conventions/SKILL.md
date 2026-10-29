@@ -35,10 +35,11 @@ routeur central.
 
 ## Services et état
 
-Les Documents éditoriaux `document://` appartiennent à `app.document` et `front/app/document` ; les souvenirs privés restent dans Memory. Les Datasets JSON `data://`
-appartiennent à `app.dataset`. Utiliser ses services publics pour tout nouveau consommateur.
-Les anciens Datasets de la bibliothèque documentaire restent lisibles par alias vérifié.
-Utiliser RichTextEditor (Tiptap) pour HTML et CodeEditor JSON pour Dataset, y compris dans l'historique.
+Les documents Texte (HTML) et Données (JSON, `data://`) appartiennent à `app.document` et
+`front/app/document`, avec une bibliothèque et une enveloppe d'édition communes.
+Les contributions `text` et `data` sélectionnent l'éditeur ; `app.dataset` ne conserve
+que la compatibilité historique. Les souvenirs privés restent dans Memory.
+Utiliser RichTextEditor (Tiptap) pour Texte et CodeEditor JSON pour Données, y compris dans l'historique.
 Ne jamais convertir le JSON en HTML. Une autosauvegarde attend un JSON valide et préserve
 le brouillon invalide. Les jeux de données n'ont pas de schéma associé. Les variables des
 processus utilisent le codec typé partagé, avec leurs propres règles de définition et validation.

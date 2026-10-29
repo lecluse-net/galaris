@@ -4,12 +4,13 @@ import asyncio
 import hashlib
 import json
 from pathlib import Path
+from uuid import uuid4
 import sys
 from io import BytesIO
 
 from cryptography.fernet import Fernet, InvalidToken
 from jose import jwt
-from sqlalchemy import select
+from sqlalchemy import select, text
 from fastapi import UploadFile
 import httpx
 
@@ -23,11 +24,16 @@ from core.util.encryption import EncryptionService, decrypt_value, encrypt_value
 ROOT = Path("/restore")
 CANARY = "restore-canary-only-not-a-production-credential"
 PASSWORD = "Restore-drill-password-42!"
+FIRST_DOCUMENT_CONTENT = f"<p>{CANARY} — première version synthétique.</p>"
+CURRENT_DOCUMENT_CONTENT = f"<p>{CANARY} — deuxième version synthétique.</p>"
+DOCUMENT_SUMMARY = "<p>Description manuelle synthétique — à conserver.</p>"
+ARCHIVED_SUMMARY = "<p>Ancienne description synthétique — conservée pour récupération.</p>"
 
 
 async def seed_application_document() -> None:
     from app.agent.models import Agent, Title
-    from app.document import document_service, document_attachment_service
+    from app.document import document_service, document_attachment_service, resource_service
+    from app.document.schemas import DocumentUpdate, DocumentPayload
     from core.authorize.models import Assignment, Role
     from core.user.models import User
     from core.user.user_service import encrypt_password
@@ -44,19 +50,33 @@ async def seed_application_document() -> None:
         agent = Agent(user_id=owner.id, title_id=title.id, first_name="Restore", last_name="Probe", code="restore-probe", agent_driver="internal")
         db.add(agent)
         await db.flush()
-        document = await document_service.create_document(owner_agent_id=agent.id, title="Restored document", content=CANARY, task_id=None)
+        document = await document_service.create_document(owner_agent_id=agent.id, title="Restored document", content=FIRST_DOCUMENT_CONTENT, task_id=None)
+        await resource_service.update_item(document.id, DocumentUpdate(expected_revision=1,
+            payload=DocumentPayload(text=CURRENT_DOCUMENT_CONTENT)), actor_agent_id=agent.id)
+        await resource_service.update_summary(document.id, DocumentUpdate(
+            payload=DocumentPayload(text=DOCUMENT_SUMMARY), keywords=["synthetic", "restore"]), actor_agent_id=agent.id)
         attachment = await document_attachment_service.add_document_attachment(
             document.id, actor_agent_id=agent.id,
             upload=UploadFile(file=BytesIO(b"restored application attachment"), filename="canary.txt"),
         )
+        from app.document.summary_retirement import preserve_current
+        from core.dbadmin import SchemaTransitionSet
+        archive_identity = uuid4()
+        await db.execute(text("CREATE TABLE document_summary_revisions (id uuid PRIMARY KEY, provider_code text, resource_id text, content text)"))
+        await db.execute(text("INSERT INTO document_summary_revisions VALUES (:id,'native',:pointer,:content)"),
+            {"id": archive_identity, "pointer": str(uuid4()), "content": ARCHIVED_SUMMARY})
+        await preserve_current(db, SchemaTransitionSet())
+        await db.execute(text("DROP TABLE document_summary_revisions"))
+        await db.commit()
         (ROOT / "application.json").write_text(json.dumps({
             "agent_id": agent.id, "document_id": str(document.id), "attachment_id": str(attachment.id),
+            "summary_archive_identity": str(archive_identity),
         }))
 
 
 async def verify_application_document() -> None:
     identifiers = json.loads((ROOT / "application.json").read_text())
-    document_url = f"/api/memory/documents/{identifiers['document_id']}"
+    document_url = f"/api/documents/{identifiers['document_id']}"
     attachment_url = f"{document_url}/attachments/{identifiers['attachment_id']}?agent_id={identifiers['agent_id']}"
     # A fresh process imports the real routers, middleware and authorization after restore.
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app), base_url="http://localhost") as client:
@@ -66,14 +86,28 @@ async def verify_application_document() -> None:
             headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
             document = await client.get(document_url, headers=headers)
             attachment = await client.get(attachment_url, headers=headers)
+            summary = await client.get(f"{document_url}/summary?agent_id={identifiers['agent_id']}", headers=headers)
+            historical = await client.get(f"{document_url}/content-revisions/1", headers=headers)
             if allowed:
                 assert document.status_code == 200, document.text
-                assert CANARY in document.text
+                assert document.json()["item"]["payload"]["text"] == CURRENT_DOCUMENT_CONTENT
+                assert document.json()["item"]["revision"] == 2
+                assert summary.status_code == 200, summary.text
+                assert summary.json()["payload"]["text"] == DOCUMENT_SUMMARY
+                assert summary.json()["keywords"] == ["synthetic", "restore"]
+                assert historical.status_code == 200, historical.text
+                assert historical.json()["content"] == FIRST_DOCUMENT_CONTENT
                 assert attachment.status_code == 200, attachment.text
                 assert attachment.content == b"restored application attachment"
             else:
                 assert document.status_code in {403, 404}
                 assert attachment.status_code in {403, 404}
+                assert summary.status_code in {403, 404}
+                assert historical.status_code in {403, 404}
+    async with get_db_session() as db:
+        assert await db.scalar(text("SELECT snapshot->>'content' FROM galaris_migration.document_summary_history_sources WHERE identity=CAST(:id AS uuid)"),
+            {"id": identifiers["summary_archive_identity"]}) == ARCHIVED_SUMMARY
+        assert not await db.scalar(text("SELECT EXISTS(SELECT 1 FROM galaris_migration.document_summary_history_sources WHERE digest<>encode(sha256(convert_to(snapshot::text,'UTF8')),'hex'))"))
 
 
 async def run(mode: str) -> None:

@@ -5,6 +5,7 @@
     <q-menu @before-show="draft = { ...model }">
       <q-form class="library-filters q-pa-md q-gutter-sm" @submit="apply">
         <div class="text-subtitle2">{{ t('documents.library.filters') }}</div>
+        <q-select v-model="draft.document_type" dense outlined clearable emit-value map-options :label="t('documents.documentType')" :options="documentTypes.map(type => ({ value: type.code, label: t(type.label) }))" />
         <q-toggle v-model="onlyUnclassified" dense :label="t('documents.library.unclassified')" />
         <q-select v-model="draft.keyword" dense outlined clearable :label="t('documents.keywordFilter')" :options="keywords" />
         <OwnerSelect v-model="ownerSelection" :options="ownerOptions" :current-user-id="currentUserId" clearable />
@@ -27,6 +28,7 @@
   </q-btn>
 </template>
 <script setup lang="ts">
+import { documentTypes } from '../documentTypes'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DocumentOwnerOption } from '../types'
@@ -59,7 +61,7 @@ const sortOptions = computed(() => [
   { value: 'position', label: t('documents.library.manualOrder') },
   { value: 'title', label: t('documents.library.title') }, { value: 'created_at', label: t('documents.library.created') }, { value: 'updated_at', label: t('documents.library.updated') },
 ])
-const activeCount = computed(() => Number(onlyUnclassified.value) + Number(Boolean(model.value.owner_kind)) + Number(Boolean(model.value.keyword))
+const activeCount = computed(() => Number(onlyUnclassified.value) + Number(Boolean(model.value.document_type)) + Number(Boolean(model.value.owner_kind)) + Number(Boolean(model.value.keyword))
   + dateFields.filter(field => model.value[field.key]).length + Number(model.value.sort_by !== 'position' || model.value.sort_desc))
 function apply(): void { if (!invalidDates.value) model.value = { ...draft.value } }
 </script>

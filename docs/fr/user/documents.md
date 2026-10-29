@@ -2,9 +2,9 @@
 
 # Organiser la bibliothèque documentaire
 
-Ouvrez **Connaissances → Documents** (`/documents`) pour créer et classer les contenus
-HTML accessibles. Les [jeux de données JSON](datasets.md) et les [processus](internal-processes.md)
-ont leurs bibliothèques propres. Le classement est personnel et ne change pas
+Ouvrez **Connaissances → Documents** (`/documents`) pour créer et classer les documents
+**Texte** (HTML enrichi) et **Données** ([JSON](datasets.md)). Les [processus](internal-processes.md)
+conservent leur bibliothèque métier. Le classement est personnel et ne change pas
 l'organisation des autres lecteurs. Un répertoire peut accorder automatiquement des droits
 supplémentaires sur vos documents et exposer sa collection aux destinataires autorisés.
 
@@ -12,6 +12,19 @@ Les documents et leurs résumés partagés sont indépendants des souvenirs pers
 des agents. Partager un document ne partage aucun souvenir ; supprimer une référence
 dans le graphe mémoire ne supprime pas le document. Les souvenirs concernant un
 document restent privés à l'agent qui les a acquis.
+
+## Choisir le type de document
+
+Chaque icône **Nouveau document** ouvre le menu des types sous l’icône cliquée, avant toute création. Choisissez **Texte**
+ou **Données**, puis le titre et le propriétaire. Les menus contextuels des documents et
+des dossiers proposent aussi ces deux créations, dans le classement courant. Fermer le
+menu ou la fenêtre de création ne crée aucun document.
+
+Le filtre **Type de document** permet de retrouver tous les types, seulement les Textes
+ou seulement les Données. Il se combine avec la recherche et les autres filtres avant
+pagination. Les deux types ont des icônes distinctes, un éditeur et un aperçu adaptés.
+Titre, propriétaire, partage, sujet, mots-clés, résumé et historique suivent les mêmes règles.
+L'éditeur Données conserve un brouillon JSON invalide sans l'enregistrer ni quitter le document.
 
 
 ## Résumé courant et mots-clés

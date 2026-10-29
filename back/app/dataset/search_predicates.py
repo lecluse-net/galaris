@@ -1,16 +1,6 @@
-"""Shared text discovery for the human library and agent resource provider."""
+"""Compatibility import; canonical implementation lives in app.document.data."""
+from app.document.data.search_predicates import *  # noqa: F403
 
-from sqlalchemy import Text, cast, func, or_
-from sqlalchemy.sql.elements import ColumnElement
-
-from .models import Dataset
-
-
-def search_vector() -> ColumnElement[str]:
-    return func.to_tsvector("simple", func.concat_ws(" ", Dataset.title,
-        func.coalesce(Dataset.summary_content, ""), cast(Dataset.keywords, Text), Dataset.content))
-
-
-def text_search_clause(query: str) -> ColumnElement[bool]:
-    return or_(search_vector().op("@@")(func.websearch_to_tsquery("simple", query)),
-        Dataset.title.icontains(query, autoescape=True), Dataset.content.icontains(query, autoescape=True))
+import sys as _sys
+from app.document.data import search_predicates as _canonical
+_sys.modules[__name__] = _canonical

@@ -152,12 +152,29 @@ async def create_document(
     keywords: list[str] | None = None,
     metadata: dict[str, object] | None = None,
     deletion_protected: bool = False,
-    document_type: DocumentType = "html",
+    document_type: DocumentType = "text",
     workflow_metadata: bool = False,
 ) -> Document:
     """Create a private, mutable, non-deduplicated working document."""
-    if document_type != "html":
-        raise ValueError("Documents contain editorial HTML; create Datasets and Processes through their own domains")
+    if document_type in {"data", "dataset"}:
+        from .data.service import create
+        values = dict(metadata or {})
+        normalized_folder = _normalize_document_path(folder)
+        if normalized_folder:
+            values["document_path"] = normalized_folder
+        creation_key = values.pop("creation_command", None) if workflow_metadata else None
+        created = await create(owner_agent_id, title=title, content=content or "[]", metadata=values,
+            creation_key=str(creation_key) if creation_key else None, keywords=keywords)
+        if document_type == "dataset":
+            from .data.models import DatasetAlias
+            get_db().add(DatasetAlias(legacy_document_id=created.id, dataset_id=created.id,
+                source_revision=created.revision, source_hash=created.content_hash, manifest={}))
+        await get_db().commit()
+        loaded = await service.item_record(created.id)
+        assert loaded is not None
+        return loaded
+    if document_type not in {"text", "html"}:
+        raise ValueError("Unsupported document type")
 
     normalized_title = title.strip()
     if not normalized_title:
@@ -205,13 +222,23 @@ async def create_document(
 async def create_user_document(
     *,
     owner_user_id: int,
-    editor_agent_id: int,
+    editor_agent_id: int | None,
     title: str,
     content: str,
     folder: str = "",
-    document_type: DocumentType = "html",
+    document_type: DocumentType = "text",
 ) -> Document:
     """Create a private User-owned document without an implicit Agent grant."""
+    if document_type == "data":
+        from core.user import HumanActor
+        from .data.service import create
+        normalized_folder = _normalize_document_path(folder)
+        created = await create(HumanActor(owner_user_id), title=title, content=content or "[]",
+            metadata={"document_path": normalized_folder} if normalized_folder else None)
+        await get_db().commit()
+        loaded = await service.item_record(created.id)
+        assert loaded is not None
+        return loaded
 
     normalized_title = title.strip()
     if not normalized_title:

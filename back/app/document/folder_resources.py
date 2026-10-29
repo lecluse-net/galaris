@@ -59,11 +59,11 @@ def navigable_folder_clause(actor: int | HumanActor) -> ColumnElement[bool]:
     assigned = select(Document.id.label("id"), DocumentTag.user_id).join(
         DocumentTagAssignment, DocumentTagAssignment.document_id == Document.id).join(
         DocumentTag, DocumentTag.id == DocumentTagAssignment.tag_id).where(
-        Document.deleted_at.is_(None), Document.document_type == "html",
+        Document.deleted_at.is_(None), Document.document_type.in_(("text", "data")),
         DocumentTag.deleted_at.is_(None), acl)
     nested = select(Document.id.label("id"), DocumentNesting.user_id).join(
         DocumentNesting, DocumentNesting.document_id == Document.id).where(Document.deleted_at.is_(None),
-            Document.document_type == "html", acl)
+            Document.document_type.in_(("text", "data")), acl)
     seeds = assigned.union(nested).subquery()
     documents = select(seeds.c.id, seeds.c.user_id).cte(recursive=True)
     documents = documents.union(select(DocumentNesting.parent_document_id, DocumentNesting.user_id).join(
@@ -154,7 +154,7 @@ async def list_folder(identity: UUID | None, actor: int | HumanActor, *,
             Document.document_type, write_acl.label("can_write"), Document.size_bytes.label("size"),
             Document.revision, Document.content_hash.label("checksum"), Document.updated_at, Document.temporal).where(
             membership if folder else ~membership, Document.deleted_at.is_(None),
-            Document.document_type == "html", acl, Document.title.ilike(pattern, escape="\\"))
+            Document.document_type.in_(("text", "data")), acl, Document.title.ilike(pattern, escape="\\"))
         entries = union_all(folder_query, document_query).subquery()
     else:
         entries = folder_query.subquery()

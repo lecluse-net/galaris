@@ -10,9 +10,9 @@ from app.agent import Agent, AgentManagementScope
 from app.agent.models import Title
 from app.dataset import service as datasets, sharing as dataset_sharing
 from app.dataset.models import Dataset
-from app.memory import service as memories
 from app.document import document_service, item_sharing
-from app.memory.models import MemoryItem
+from app.document import resource_service as documents
+from app.document.models import Document
 from app.process import native_sharing
 from app.process.models import ProcessDefinition
 from app.process.native_definitions import DefinitionConflictError
@@ -109,7 +109,7 @@ async def test_concurrent_replacements_have_one_winner_and_stale_writes_cannot_r
 ):
     scope, resources = await seed_resources(domain)
     identity, share_id, version, key = resources[0]
-    model = {"dataset": Dataset, "document": MemoryItem, "process": ProcessDefinition}[
+    model = {"dataset": Dataset, "document": Document, "process": ProcessDefinition}[
         domain
     ]
     ready = [asyncio.Event(), asyncio.Event()]
@@ -145,7 +145,7 @@ async def test_concurrent_replacements_have_one_winner_and_stale_writes_cannot_r
                 return index
         except (
             datasets.DatasetConflictError,
-            memories.MemoryConflictError,
+            documents.DocumentConflictError,
             DefinitionConflictError,
         ):
             return "conflict"
@@ -192,7 +192,7 @@ async def test_concurrent_replacements_have_one_winner_and_stale_writes_cannot_r
     with pytest.raises(
         (
             datasets.DatasetConflictError,
-            memories.MemoryConflictError,
+            documents.DocumentConflictError,
             DefinitionConflictError,
         )
     ):
@@ -223,7 +223,7 @@ async def test_locking_one_resource_does_not_block_independent_sharing(
     committed_database, memory_storage, domain
 ):
     scope, resources = await seed_resources(domain)
-    model = {"dataset": Dataset, "document": MemoryItem, "process": ProcessDefinition}[
+    model = {"dataset": Dataset, "document": Document, "process": ProcessDefinition}[
         domain
     ]
     identity, *_ = resources[0]

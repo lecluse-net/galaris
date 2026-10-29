@@ -68,7 +68,7 @@ def item_to_public(
             provider_code=item.document.summary_provider_code,
             document_type="html",
             content_type="text",
-            media_type="text/html",
+            media_type=item.document.summary_media_type,
             content_profile="rich-text",
             content_profile_version=1,
             filename=None,

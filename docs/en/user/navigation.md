@@ -11,7 +11,7 @@ Providers, Available models and Models in use have their own rights. Preferences
 can also be delegated by function. The [privilege guide](../admin/privileges.md) lists rights
 and scopes; changing roles can therefore change the available tabs and actions.
 
-**Knowledge → Datasets** opens the JSON library. See the [Dataset journey](datasets.md).
+**Knowledge → Documents** contains Text and Data documents. The type filter finds JSON documents. See the [Data journey](datasets.md).
 
 Use this guide to locate a feature in the application. The
 [menu map generated from the frontend](../architecture/generated/navigation.md)
@@ -84,7 +84,7 @@ The route is excluded from builds for other environments.
 |---|---|
 | **Configure** | Providers & models, Agents, Tools & connections, Skills |
 | **Act** | Chat, Goals, Processes |
-| **Knowledge** | Documents, Datasets, Files, Memory, Contacts, Thematic dossiers |
+| **Knowledge** | Documents, Files, Memory, Contacts, Thematic dossiers |
 | **Monitor** | Dashboard, Activity, Dream, Permissions, Mail journal, Calendars, Failure journal |
 | **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions |
 | **Developers** (dev mode only) | Visual reference |
@@ -526,12 +526,12 @@ a task with multiple calls may run for hours. Changes apply to new calls.
 The [document library guide](documents.md) covers creation, folders, sub-documents,
 lists, bulk actions and keyboard shortcuts.
 
-**Knowledge → Documents** (`/documents`) holds and creates authored HTML content.
+**Knowledge → Documents** (`/documents`) holds and creates Text (HTML) and Data (JSON) documents.
 The editor toolbar's **Conversation** icon opens an existing conversation or starts one with an agent
 on the same page. The document remains the focus of the work; **Chat** continues to
 focus on conversations and activity monitoring.
-Independent JSON Datasets are created and managed separately under **Knowledge → Datasets**
-(`/dataset`), including those migrated from old documents.
+The **Create document** button and context menus offer both types.
+Legacy `/dataset` links redirect to this library filtered to Data.
 **Knowledge → Memory** (`/memory`) offers **List** and **Graph**: open the
 page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).

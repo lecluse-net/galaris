@@ -41,6 +41,8 @@ files and encrypted/signed canaries with test keys, dumps PostgreSQL in custom f
 archives files and keys, and checks SHA-256 sums. It restores into a second empty
 database with `pg_restore --exit-on-error`, verifies restored files, decryption and
 signatures, and removes only its own project and temporary files.
+The current Document API must also return the exact current content, historical
+version, manual summary, keywords and attachment, while denying an unrelated user.
 
 This verifies the procedure, not your actual production backups. Rehearse those on a
 separate instance following the [administration procedure](../admin/README.md), using
