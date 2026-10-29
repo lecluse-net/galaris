@@ -1305,6 +1305,13 @@ les bornes du catalogue sans exécuter ses fonctions. Chaque serveur repart avec
 d'arrêt SSE réinitialisé, car la bibliothèque le conserve au niveau du processus de test.
 `e2e/specs/tool-authorizations.spec.mjs` vérifie dans l’application assemblée l’accord et le
 refus, la réouverture, le clavier, les accords explicites et les fonctions bloquées à 390 et 1440 pixels.
+`e2e/specs/document-authorization.spec.mjs` traverse le vrai contrôleur Chat, le harnais interne,
+MCP, les accords persistés, le scheduler Task et Documents : création sur demande, reprise
+après accord et modification du même document par une tâche de fond avec un nouvel accord.
+Il vérifie aussi le refus de création et de modification, la réouverture pendant l’attente,
+la libération du bail, l’absence d’effet avant accord et la conservation du contenu initial.
+Seules les réponses du modèle sont déterministes ; les décisions passent par les boutons
+du Chat et leurs effets sont relus en base dans une stack isolée.
 `front/browser-tests/action-authorizations.spec.mjs` couvre le choix permanent avec sa portée
 explicite, les trois langues, le clavier, le mobile et le réessai après un refus HTTP.
 

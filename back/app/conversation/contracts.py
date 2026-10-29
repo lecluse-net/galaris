@@ -149,6 +149,9 @@ class ConversationTurn:
     resume_checkpoint: AgentRunCheckpoint | None = None
     save_checkpoint: Callable[[AgentRunCheckpoint], Awaitable[None]] | None = None
     force_response: bool = False
+    # Trusted successful receipts from this execution, refreshed before Task admission.
+    # They identify context; the current human request still authorizes the work.
+    produced_document_references: Callable[[], tuple[str, ...]] | None = None
 
     @property
     def sender_is_ai(self) -> bool:

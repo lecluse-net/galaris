@@ -248,6 +248,12 @@ globally or for one agent: new public sites then stop triggering per-site networ
 Existing instances keep their behaviour; **Per-site approval** remains available. Localhost and private networks remain blocked by
 default; filters and explicit denials stay active. See [Browser administration](../admin/tool-administration.md).
 
+To create and then extend a document, the agent can request creation approval and hand the
+continuation to a background Task using the same document. If writing is set to **Ask**, a
+second approval covers the prepared update. You can close and reopen Chat while waiting.
+Denying creation creates no document; denying the update preserves the existing content.
+One-time approval does not change the policy for subsequent calls.
+
 If a Mail connection requires human approval, its designated approver receives a private Chat
 request for each prepared email. Review the recipients, subject, content preview, and attachment
 list, then allow or deny the action. The **Mail journal** shows the complete content and delivery

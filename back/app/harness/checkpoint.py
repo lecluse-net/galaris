@@ -200,6 +200,32 @@ class HarnessRunCheckpoint:
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     _repaired: bool = False
 
+    def produced_document_references(self) -> tuple[str, ...]:
+        """Project only committed creation receipts, including restored checkpoint effects."""
+        references: dict[str, None] = {}
+        for effect in reversed(self.effects):
+            if effect.get("status") != "completed" or effect.get("tool_name") not in {"file_create", "file_copy"}:
+                continue
+            result = decode_tool_result(effect.get("result"))
+            if isinstance(result, dict) and set(cast(dict[str, object], result)) == {"result", "argument_warning"}:
+                result = decode_tool_result(cast(dict[str, object], result)["result"])
+            if not isinstance(result, dict):
+                continue
+            receipt = cast(dict[str, object], result)
+            if reported_tool_failure(receipt) is not None:
+                continue
+            reference = receipt.get("uri")
+            if not isinstance(reference, str) or not reference.startswith("document://"):
+                continue
+            try:
+                identifier = UUID(reference.removeprefix("document://"))
+            except ValueError:
+                continue
+            references[f"document://{identifier}"] = None
+            if len(references) == 50:
+                break
+        return tuple(references)
+
     def __post_init__(self) -> None:
         checkpoint = self.request.resume_checkpoint
         if checkpoint is None or checkpoint.driver_code != "internal":

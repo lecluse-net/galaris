@@ -200,6 +200,13 @@ destinataire ; `document_access="write"` demande aussi la vérification du droit
 Ce contrôle ne partage aucun document. Une décision d’autorisation prise par API est reflétée
 dans l’interaction Chat, avec sa résolution effective.
 
+Lors de l’admission d’une tâche depuis une conversation, les reçus réussis de création de
+Documents du tour courant complètent le contexte de préparation, y compris après un accord.
+Le harnais les relit dans son checkpoint ; une simple suggestion de l’agent ne suffit pas.
+Ils identifient les documents à reprendre sans autoriser de travail supplémentaire : la demande
+humaine courante, le périmètre, les ACL et l’accord d’écriture restent contrôlés séparément.
+Voir [0250](../../../../project/decisions/0250-current-document-receipts-for-task-admission.md).
+
 La frontière MCP commune retire les clés inconnues de premier niveau d’un schéma fermé
 avant validation et autorisation. Le résultat ajoute un avis `galaris.tool-arguments/v1`
 sans les valeurs ignorées ; la projection Pydantic AI le transmet au modèle et le checkpoint

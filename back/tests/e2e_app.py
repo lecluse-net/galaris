@@ -40,11 +40,13 @@ from core.rate_limit import limiter
 # Browser scenarios share one loopback address; quota behavior has HTTP tests.
 limiter.enabled = False
 from app.agent import AIMessage, AIResult, AgentEvent, ExecutionResult, ResolvedModel
+from app.agent import resolve_execution_model as original_execution_model
 from app.agent.models import Agent, Title
 from app.connection import Connection
 from app.conversation import ConversationOutcome, ConversationTurn, register_controller
 from app.conversation.contracts import ConversationExecutionError
 from app.conversation.task_objective import PreparedTaskFields
+from app.conversation.task_objective import generate_task_fields as original_task_fields
 from app.conversation.models import ConversationRound
 from app.messenger import create_internal_room
 from app.tools.models import Tool
@@ -57,6 +59,7 @@ from tests.e2e_tool_admin import router as tool_admin_fixture, remote_app as too
 from tests import e2e_call_recovery
 from tests import e2e_conversation_control
 from tests import e2e_process_conversations
+from tests import e2e_document_authorization
 from app.harness.executor import stream as internal_task_stream
 from app.harness.runtime import build_model_for_llm as original_model_builder
 from app.llm import LLMCallPurpose
@@ -71,7 +74,7 @@ quota_fixture = {"used": 2500, "status": 200, "codex_credits": 125.5}
 
 class ScriptedController:
     async def run(self, turn: ConversationTurn) -> ConversationOutcome:
-        if turn.agent_id in first_mission_agents or modes.get(turn.room_id) in {"conversation-control", "process-human"}:
+        if turn.agent_id in first_mission_agents or modes.get(turn.room_id) in {"conversation-control", "process-human", "document-authorization"}:
             from app.harness.conversation import HarnessConversationController
             return await HarnessConversationController().run(turn)
         assert turn.publish_progress is not None
@@ -122,15 +125,19 @@ class ScriptedController:
 
 
 async def task_fields(_turn, *, label_hint, objective_hint):
+    if _turn.agent_id in e2e_document_authorization.states:
+        return await original_task_fields(_turn, label_hint=label_hint, objective_hint=objective_hint)
     return PreparedTaskFields(label_hint, objective_hint, 0.0)
 
 
 async def task_model(_agent, effort, _language, _reasoning):
+    if _agent.id in e2e_document_authorization.states:
+        return await original_execution_model(_agent, effort, _language, _reasoning)
     return ResolvedModel(id=1, code="fixture", model_name="fixture", label="Fixture", requested_effort=effort)
 
 
 async def task_stream(request):
-    if request.agent.id in e2e_call_recovery.states:
+    if request.agent.id in e2e_call_recovery.states or request.agent.id in e2e_document_authorization.states:
         async for event in internal_task_stream(request):
             yield event
         return
@@ -163,6 +170,8 @@ async def task_stream(request):
 
 
 async def harness_model(llm, **kwargs):
+    if kwargs.get("agent_id") in e2e_document_authorization.states:
+        return await e2e_document_authorization.build_model(llm, **kwargs)
     if kwargs.get("agent_id") in e2e_process_conversations.agents:
         return await e2e_process_conversations.build_model(llm, **kwargs)
     if kwargs.get("agent_id") in e2e_conversation_control.states:
@@ -241,6 +250,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(tool_admin_fixture)
+app.include_router(e2e_document_authorization.router)
 app.mount("/api/__test/mcp", tool_admin_remote)
 
 
@@ -343,7 +353,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue", "personal-skills", "lab-repeatability", "contact-authorization"}:
+    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "document-authorization", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue", "personal-skills", "lab-repeatability", "contact-authorization"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -436,7 +446,7 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             tool_trace_gates[agent.id] = asyncio.Event()
         if mode == "call-recovery":
             e2e_call_recovery.register(agent.id)
-        if mode in {"conversation-control", "process-human"}:
+        if mode in {"conversation-control", "process-human", "document-authorization"}:
             # Other journeys can select an image-only installation profile.
             # This real-harness scenario owns its text configuration.
             from app.llm import LLM, LlmProfile
@@ -453,6 +463,8 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             e2e_conversation_control.register(agent.id)
             if mode == "process-human":
                 e2e_process_conversations.agents.add(agent.id)
+            if mode == "document-authorization":
+                await e2e_document_authorization.seed(agent.id)
         if mode == 'file-catalogue':
             from tests.e2e_file_catalogue import seed_catalogue
             fixture.update(await seed_catalogue(agent.id, app.state.file_catalogue_root))

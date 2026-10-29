@@ -1239,6 +1239,13 @@ against the SSE response, with one effect after continuation and none after deni
 ToolAdmin diagnostics use successive synthetic HTTP/SSE servers and check catalogue bounds
 without executing its functions. Each server starts with a reset SSE shutdown flag, which
 the library retains at the test process level.
+`e2e/specs/document-authorization.spec.mjs` crosses the real Chat controller, internal harness,
+MCP, persisted approvals, Task scheduler and Documents: creation on request, continuation
+after approval and an update to the same document by a background Task with another approval.
+It also checks creation and update denials, reopening while waiting, lease release,
+no effect before approval and preservation of the initial content. Only model responses
+are deterministic; decisions use the Chat buttons and effects are read back from the
+database in an isolated stack.
 `e2e/specs/tool-authorizations.spec.mjs` checks agreement and denial, reopening, keyboard use,
 explicit approvals and blocked functions in the assembled application at 390 and 1440 pixels.
 `front/browser-tests/action-authorizations.spec.mjs` covers the permanent choice with its explicit

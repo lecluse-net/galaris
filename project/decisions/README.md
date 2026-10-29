@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0250 — Current document receipts in Task admission](0250-current-document-receipts-for-task-admission.md)
+
 - [0248 — État canonique des agents sans colonnes historiques](0248-agent-canonical-state.md)
 
 - [0242 — Autorisation de réponse aux contacts externes](0242-external-contact-reply-consent.md)

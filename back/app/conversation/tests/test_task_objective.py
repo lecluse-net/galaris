@@ -398,8 +398,9 @@ async def test_empty_task_objective_prompt_uses_repository_default(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("evidence", ["history", "current_execution"])
 @pytest.mark.parametrize("defect", [None, "target", "request_quote", "context_quote", "objective", "hint_only"])
-async def test_continued_work_binds_only_selected_contextual_write_targets(monkeypatch, defect):
+async def test_continued_work_binds_only_selected_contextual_write_targets(monkeypatch, defect, evidence):
     """Continuing a batch can update its existing ledger without granting all context."""
     from app.agent import admitted_scope, preflight, EffectDescriptorV1
 
@@ -408,6 +409,10 @@ async def test_continued_work_binds_only_selected_contextual_write_targets(monke
     request = "Continue the next batch with the same tracking document."
     turn = replace(_turn(), objective=request, source_request=request)
     context_quote = f"Batch tracking document: {ledger}"
+    if evidence == "current_execution":
+        context_quote = ledger
+        if defect != "hint_only":
+            turn = replace(turn, produced_document_references=lambda: (ledger,))
     agent = SimpleNamespace(id=7, code="synthetic", first_name="Synthetic", last_name="Agent",
                             agent_driver="internal", title=None, personality=None,
                             job_description=None, job_title=None)
@@ -416,7 +421,9 @@ async def test_continued_work_binds_only_selected_contextual_write_targets(monke
                         AsyncMock(return_value=SimpleNamespace(id=42)))
     monkeypatch.setattr(task_objective.params_service, "get_or_default", AsyncMock(return_value="Prepare the task."))
     monkeypatch.setattr(task_objective, "build_agent_run_context", AsyncMock(return_value=AgentRunContext(
-        continuity_context="" if defect == "hint_only" else f"{context_quote}\nUnrelated resource: {unrelated}",
+        continuity_context="" if defect == "hint_only" else (
+            f"Unrelated resource: {unrelated}" if evidence == "current_execution"
+            else f"{context_quote}\nUnrelated resource: {unrelated}"),
     )))
 
     async def prepare(**kwargs):

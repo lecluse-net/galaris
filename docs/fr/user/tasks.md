@@ -278,6 +278,12 @@ comportement ; **Autorisation par site** reste disponible.
 Localhost et les réseaux privés restent bloqués par défaut ; les filtres et refus explicites
 restent actifs. Voir [l’administration du Navigateur](../admin/tool-administration.md).
 
+Pour créer puis compléter un document, l’agent peut demander un accord de création et
+confier la suite à une tâche de fond sur le même document. Si l’écriture est **Sur demande**,
+un second accord porte sur la modification préparée. Vous pouvez fermer puis rouvrir le Chat
+pendant l’attente. Refuser la création ne crée aucun document ; refuser la modification
+conserve le contenu déjà créé. Un accord ponctuel ne change pas la règle des appels suivants.
+
 Si une connexion Mail exige une validation humaine, son responsable désigné reçoit une demande
 privée dans le Chat pour chaque mail préparé. Vérifiez les destinataires, l’objet, l’aperçu du
 contenu et la liste des pièces jointes, puis autorisez ou refusez l'action.

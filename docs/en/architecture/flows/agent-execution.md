@@ -170,6 +170,13 @@ Before delegation, explicit document references are checked for the recipient;
 Authorization decisions made through the API are reflected in the Chat interaction with
 their effective resolution.
 
+When admitting a Task from a conversation, successful Document creation receipts from the
+current turn supplement preparation context, including after approval. The harness reads
+them from its checkpoint; an agent's submission hint alone is insufficient. They identify
+documents to continue without authorizing extra work: the current human request, scope,
+resource ACLs and writing approval remain separate checks.
+See [0250](../../../../project/decisions/0250-current-document-receipts-for-task-admission.md).
+
 The common MCP boundary removes unknown top-level keys from a closed schema before validation
 and authorization. Results add a `galaris.tool-arguments/v1` warning without ignored values;
 the Pydantic AI projection delivers it to the model and retains it in the checkpoint.

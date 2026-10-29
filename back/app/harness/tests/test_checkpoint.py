@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock
@@ -34,6 +35,31 @@ from app.harness.checkpoint import (
     checkpoint_is_safe,
     wrap_toolsets,
 )
+
+
+@pytest.mark.asyncio
+async def test_task_context_keeps_only_successful_document_creation_receipts_across_resume():
+    save = AsyncMock()
+    journal = HarnessRunCheckpoint(_request(save_checkpoint=save))
+    created = f"document://{uuid4()}"
+    unconfirmed = f"document://{uuid4()}"
+    for index, (name, status, result) in enumerate([
+        ("file_create", "completed", json.dumps({"uri": created})),
+        ("file_copy", "completed", {"result": {"uri": created}, "argument_warning": {}}),
+        ("file_create", "waiting_for_authorization", {"uri": unconfirmed}),
+        ("file_create", "error_reported", {"uri": unconfirmed}),
+        ("file_create", "completed", {"uri": unconfirmed, "ok": False, "error": "Denied"}),
+        ("file_read", "completed", {"uri": unconfirmed}),
+        ("file_create", "completed", {"uri": "document://invalid"}),
+        ("file_create", "completed", {"uri": "console://report.html"}),
+    ]):
+        identifier = await journal.started(name=name, arguments={}, messages=[], tool_call_id=f"call-{index}")
+        await journal.completed(effect_id=identifier, name=name, result=result, messages=[], tool_call_id=f"call-{index}")
+        journal.effects[-1]["status"] = status
+    # Persist through the real checkpoint serializer; no output text or argument can create provenance.
+    await journal.interrupted([])
+    resumed = HarnessRunCheckpoint(_request(resume_checkpoint=save.await_args.args[0]))
+    assert resumed.produced_document_references() == (created,)
 
 
 @pytest.mark.asyncio

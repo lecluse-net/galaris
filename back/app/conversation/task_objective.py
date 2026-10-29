@@ -338,6 +338,9 @@ async def generate_task_fields(
     if not memory and not continuity:
         continuity = context.shared_context
     linked = linked_work_context(_objective_linked_work(turn))
+    produced_documents = "\n".join(
+        turn.produced_document_references()[:50] if turn.produced_document_references is not None else ()
+    )
     hint = json.dumps(
         {
             "label_hint": label_hint,
@@ -378,6 +381,7 @@ async def generate_task_fields(
             _section("Long-term memory", memory),
             _section("Continuity context", continuity),
             _section("Linked work", linked),
+            _section("Documents created by successful tools in this execution", produced_documents),
         )
         if section
     )
@@ -386,7 +390,7 @@ async def generate_task_fields(
     allowed_references = _references(prompt) | _references(unescape(prompt))
     # Submission hints may guide wording but cannot manufacture target provenance.
     source_request = turn.source_request if turn.source_request is not None else turn.objective
-    target_context = "\n\n".join((source_request, history, memory, continuity, linked))
+    target_context = "\n\n".join((source_request, history, memory, continuity, linked, produced_documents))
     target_references = _references(target_context) | _references(unescape(target_context))
 
     def validate_references(output: _GeneratedTaskFields) -> _GeneratedTaskFields:

@@ -800,6 +800,15 @@ class HarnessConversationController:
                     task_data=_context_task_data(turn),
                 )
             )
+            checkpoint = HarnessRunCheckpoint(AgentRunRequest(
+                run_id=turn.round_id, task_id=None, driver_code="internal", effort="standard", objective=turn.objective,
+                agent=AgentSnapshot(id=turn.agent_id, code=str(getattr(agent, "code", "")),
+                    first_name=str(getattr(agent, "first_name", "")), last_name=str(getattr(agent, "last_name", "")), driver_code="internal"),
+                model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label=llm.label, requested_effort="standard"),
+                resume_checkpoint=turn.resume_checkpoint, control=AgentRunControl(save_checkpoint=turn.save_checkpoint),
+            )) if turn.save_checkpoint is not None else None
+            if checkpoint is not None:
+                turn = replace(turn, produced_document_references=checkpoint.produced_document_references)
             toolset = await build_conversation_toolset(
                 turn.agent_id,
                 resources={"conversation_turn": turn},
@@ -848,13 +857,6 @@ class HarnessConversationController:
                 ConversationInterruption(pending_interruption)
                 if turn.should_interrupt is not None or turn.should_suspend is not None else None
             )
-            checkpoint = HarnessRunCheckpoint(AgentRunRequest(
-                run_id=turn.round_id, task_id=None, driver_code="internal", effort="standard", objective=turn.objective,
-                agent=AgentSnapshot(id=turn.agent_id, code=str(getattr(agent, "code", "")),
-                    first_name=str(getattr(agent, "first_name", "")), last_name=str(getattr(agent, "last_name", "")), driver_code="internal"),
-                model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label=llm.label, requested_effort="standard"),
-                resume_checkpoint=turn.resume_checkpoint, control=AgentRunControl(save_checkpoint=turn.save_checkpoint),
-            )) if turn.save_checkpoint is not None else None
             capabilities = [] if turn.force_response else [
                 *await build_internal_skill_capabilities(turn.agent_id),
                 *([Hooks(before_model_request=_process_launch_evidence, id="conversation-process-evidence")]
@@ -1165,6 +1167,8 @@ async def stream_voice_conversation(
         messaging_context=request.messaging_context,
         metadata=request.metadata,
     )
+    checkpoint = HarnessRunCheckpoint(request)
+    turn = replace(turn, produced_document_references=checkpoint.produced_document_references)
     toolset = await build_conversation_toolset(
         request.agent_id,
         resources={"conversation_turn": turn},
@@ -1213,7 +1217,7 @@ async def stream_voice_conversation(
         real_time=True,
         purpose=LLMCallPurpose.CONVERSATION_AUDIO,
         reasoning_effort=request.model.reasoning_effort,
-        checkpoint=HarnessRunCheckpoint(request),
+        checkpoint=checkpoint,
     )
     # Context retrieval writes MemoryUsage rows whose foreign keys lock the agent.
     # Native tools authorize on another connection and need to lock that same
