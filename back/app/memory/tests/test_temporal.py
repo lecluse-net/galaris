@@ -394,3 +394,29 @@ async def test_context_separates_dated_recall_from_ordinary_relevance(agents, me
     brief = await context.build_memory_brief(agent_id=owner.id, query='needle', include_experience=include_experience)
     assert [item.memory_id for item in brief.items] == [ids[1]]
     assert brief.truncated
+
+
+@pytest.mark.asyncio
+async def test_busy_calendar_preserves_multiple_complementary_project_facts(agents, memory_storage, monkeypatch):
+    from app.memory import retrieval
+    from app.memory.embedding import MemoryEmbeddingNotConfiguredError
+    owner, _ = agents
+    async def no_vectors():
+        raise MemoryEmbeddingNotConfiguredError('controlled lexical fallback')
+    monkeypatch.setattr(retrieval, 'resolve_embedding_model', no_vectors)
+    monkeypatch.setattr(context.runtime_settings, 'MEMORY_CONTEXT_MAX_ITEMS', 8)
+    now = datetime.now(timezone.utc)
+    for index in range(10):
+        await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+            title=f'Synthetic appointment {index}', payload=MemoryPayload(text=f'Unrelated event {index}'),
+            temporal=MemoryTemporalAnchor(year=now.year)))
+    wanted = set()
+    for fact in ('budget is 750 units', 'coordinator is Oria', 'deadline is Friday', 'review requires two people'):
+        item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+            title=f'Quartz project: {fact}', payload=MemoryPayload(text=f'Quartz project: {fact}')))
+        wanted.add(str(item.id))
+    brief = await context.build_memory_brief(agent_id=owner.id, query='Quartz project budget coordinator deadline review')
+    assert wanted <= {item.memory_id for item in brief.items}
+    assert any('temporal_match=' in item.excerpt for item in brief.items)
+    assert brief.truncated and len(brief.items) <= 8
+    assert len(brief.rendered) <= context.runtime_settings.MEMORY_CONTEXT_MAX_CHARS

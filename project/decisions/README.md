@@ -2,6 +2,8 @@
 
 - [0250 — Current document receipts in Task admission](0250-current-document-receipts-for-task-admission.md)
 
+- [0249 — Memory evidence budgets and native Dataset retrieval](0249-memory-evidence-and-dataset-retrieval.md)
+
 - [0248 — État canonique des agents sans colonnes historiques](0248-agent-canonical-state.md)
 
 - [0242 — Autorisation de réponse aux contacts externes](0242-external-contact-reply-consent.md)

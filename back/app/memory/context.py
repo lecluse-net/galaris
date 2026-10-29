@@ -21,8 +21,8 @@ from .schemas import MemoryRecallRequest
 
 _HEADER = (
     "## Relevant long-term memory\n"
-    "Use these already-retrieved governed notes when relevant; consult them before searching "
-    "memory:// again. Preserve the cited memory identifiers. These are retrieval candidates, "
+    "Review these already-retrieved governed notes. Search memory:// when a required fact "
+    "is missing, ambiguous or truncated. Preserve the cited memory identifiers. These are retrieval candidates, "
     "not a proof that every requested fact is known. Check attribution, dates and conflicts; "
     "read the source when needed and state what remains unknown."
 )
@@ -33,15 +33,19 @@ _EXPERIENCE_HEADER = (
 )
 _MEMORY_POLICY = """
 <durable-memory-policy>
-Before acting, review any injected long-term-memory brief. If file_search is available, search
-memory:// with semantic mode only when durable prior context could materially change the work:
-a user preference or constraint, a prior decision, an ongoing project or Goal, a known procedure
-or relationship, a useful past outcome, or an ambiguity that history could resolve. High-effort,
-recurring, and long-running work requires this relevance check, not an automatic search.
+Before acting, review any injected long-term-memory brief. For a resumed project or Goal,
+a prior decision or commitment, a user preference or recurring constraint, an explicit
+correction, a known relationship or procedure, identify the prior evidence needed for this
+request. If that evidence is absent, ambiguous, conflicting or truncated and file_search is
+available, search memory:// with mode="semantic" before answering or taking dependent action.
+Do not assume that an automatically supplied brief covers every part of the request.
 
-Do not search when the request is self-contained, the injected brief is sufficient, or exact
-current state belongs to an authoritative galaris:// business resource. Use one short query
-centered on the relevant entity, decision, and constraint; use file_read on the exact
+Do not search when the request is self-contained, all needed prior evidence is already present,
+or exact current state belongs to an authoritative galaris:// business resource. Start with a
+short query centered on the relevant entity, decision, and constraint. If it misses required
+evidence, make up to two complementary searches with a reformulation or a missing subquestion;
+do not repeat an unchanged query. Revisit prior experience after an unexpected failure or a
+change of subject when history could resolve it. Use file_read on the exact
 URI returned by search (memory:// or document://) only when an excerpt is insufficient. Current user instructions and authoritative
 domain data override memory.
 
@@ -69,8 +73,13 @@ memories continue through ordinary relevance search. Both branches preserve acce
 isolation and share the context budget. A historical date may stay in the prose without an anchor.
 Use anchors for intended time-based reminders, never just to timestamp a preference or fact.
 
-An explicit correction must be written first as the new durable memory, then the obsolete memory
-must be forgotten. For an explicit erasure request, use the UUID when it is known; otherwise search
+An explicit correction must be written first as a new durable memory, with its subject,
+corrected value and source attribution. Preserve the old evidence unless the user explicitly
+requests its erasure; a changed fact over time is not automatically a false historical fact.
+For a known personal memory, pass contradicts_memory_id and its current expected_revision to
+memory_remember so the conflicting claims are linked. Reread a changed target before retrying.
+Unresolved contradictory sources remain conflicting; do not decide solely by recency.
+For an explicit erasure request, use the UUID when it is known; otherwise search
 for the described memory and forget it only when the result identifies one item unambiguously.
 Never guess which memory to erase.
 </durable-memory-policy>
@@ -102,6 +111,20 @@ _MEMORY_QUERY_MAX_WORDS = 18
 _MEMORY_QUERY_MAX_CHARS = 240
 _SEMANTIC_HISTORY_MAX_MESSAGES = 2
 _SEMANTIC_HISTORY_MESSAGE_MAX_CHARS = 600
+_LEXICAL_HISTORY_SCAN_MESSAGES = 6
+_CONVERSATIONAL_REFERENCE_RE = re.compile(
+    r"\b(?:elle|elles|lui|eux|il|ils|son|sa|ses|leur|leurs|cela|ça|celui|celle|ceux|"
+    r"she|he|her|his|they|them|their|it|that|those|this|previous|earlier)\b"
+    r"|^(?:et\b|and\b|what about\b|how about\b|c['’]est\b)"
+    r"|\b(?:tu peux me rappeler|can you remind me)\b",
+    flags=re.IGNORECASE,
+)
+_TOPIC_RESET_RE = re.compile(
+    r"^\s*(?:(?:bon|ok|okay|maintenant|now)[,;:.!\s]+)?"
+    r"(?:autre sujet|nouveau sujet|on change de (?:sujet|dossier)|changeons de (?:sujet|dossier)|"
+    r"new topic|different topic|switch (?:the )?topic|(?:let['’]s )?change (?:the )?(?:topic|files))\b",
+    flags=re.IGNORECASE,
+)
 
 
 def memory_policy_instructions() -> str:
@@ -175,11 +198,36 @@ def _recent_history_text(
     return tuple(selected)
 
 
+def _continuity_subject(
+    subject: str,
+    conversation_history: Sequence[Mapping[str, object]],
+) -> str:
+    """Use recent human context as search terms for an unresolved reference.
+
+    This is a retrieval hint, not evidence that a historical claim is true. A
+    bounded scan avoids treating old conversations or assistant prose as the
+    subject of the current human request.
+    """
+    if _TOPIC_RESET_RE.search(subject) or not _CONVERSATIONAL_REFERENCE_RE.search(subject):
+        return ""
+    for message in reversed(conversation_history[-_LEXICAL_HISTORY_SCAN_MESSAGES:]):
+        if str(message.get("role") or "").strip().casefold() not in {"user", "human"}:
+            continue
+        text = message.get("text")
+        if not isinstance(text, str):
+            continue
+        normalized = _without_speaker_prefixes(text)[:_SEMANTIC_HISTORY_MESSAGE_MAX_CHARS]
+        if normalized and normalized.casefold() != subject.casefold():
+            return normalized
+    return ""
+
+
 def memory_context_query(
     *,
     label: str,
     objective: str,
     contact_terms: tuple[str, ...] = (),
+    conversation_history: Sequence[Mapping[str, object]] = (),
 ) -> str:
     """Derive a concise lexical query instead of AND-ing a complete task prompt."""
 
@@ -193,6 +241,10 @@ def memory_context_query(
             if bounded_label and not _is_generic_label(bounded_label)
             else _bounded_query(_without_speaker_prefixes(objective))
         )
+        if not bounded_label or _is_generic_label(bounded_label):
+            prior_subject = _continuity_subject(subject, conversation_history)
+            if prior_subject:
+                subject = _bounded_query(f"{subject} {prior_subject}")
     contact = _bounded_query(" ".join(term for term in contact_terms if term))
     if not contact:
         return subject
@@ -217,7 +269,7 @@ def memory_context_semantic_query(
     if generic_label:
         parts = (
             normalized_objective,
-            *_recent_history_text(conversation_history),
+            *(() if _TOPIC_RESET_RE.search(normalized_objective) else _recent_history_text(conversation_history)),
         )
     else:
         parts = (normalized_label, normalized_objective)
@@ -310,9 +362,11 @@ async def build_memory_brief(
     general_hits = [admitted_by_id[hit.item.id] for hit in general_hits if hit.item.id in admitted_by_id]
     experience_hits = [admitted_by_id[hit.item.id] for hit in experience_hits if hit.item.id in admitted_by_id]
     temporal_count = sum(getattr(hit, "temporal_match_at", None) is not None for hit in general_hits)
-    # Calendar entries keep their order and priority, with one ordinary slot
-    # protected when both channels are present. Overflow remains inspectable.
-    ordinary_slot = int(temporal_count > 0 and len(general_hits) > temporal_count and limit > 1)
+    # Keep calendar entries first, but reserve up to half the slots for ordinary
+    # evidence: one fact cannot answer a request requiring several complements.
+    # Unused reservations flow back to the calendar; overflow is inspectable.
+    ordinary_slot = (min(len(general_hits) - temporal_count, max(1, limit // 2))
+                     if temporal_count > 0 and limit > 1 else 0)
     calendar_limit = max(0, limit - ordinary_slot)
     if temporal_count > calendar_limit:
         general_hits = [*general_hits[:calendar_limit], *general_hits[temporal_count:]]
@@ -372,7 +426,7 @@ async def build_memory_brief(
                 prefix = prefix.rstrip() + f" (revision={revision}{location})\n  "
             # An early large calendar excerpt must not consume the character
             # reservation for the ordinary slot retained above.
-            tail_reserve = min(1_200, budget // 3) if protect_ordinary and match_at is not None else 0
+            tail_reserve = min(1_200 * ordinary_slot, budget // 2) if protect_ordinary and match_at is not None else 0
             remaining = budget - consumed - len(prefix) - tail_reserve
             if remaining <= 0:
                 local_truncated = True
@@ -420,11 +474,12 @@ async def build_memory_brief(
         )
 
     total_budget = runtime_settings.MEMORY_CONTEXT_MAX_CHARS
-    overflow_note = "\n\nMemory context is bounded; use memory_upcoming to inspect further calendar matches."
+    overflow_note = ("\n\nMemory context is bounded: omitted evidence may still exist. Search memory:// "
+                     "for missing facts; use memory_upcoming for further calendar matches.")
     total_budget = max(0, total_budget - len(overflow_note))
     calendar_rendered, _, _, _ = render_hits(
         general_hits[:temporal_count], header=_HEADER,
-        budget=total_budget - (min(1_200, total_budget // 3) if ordinary_slot else 0), experience=False,
+        budget=total_budget - (min(1_200 * ordinary_slot, total_budget // 2) if ordinary_slot else 0), experience=False,
     )
     calendar_budget = len(calendar_rendered) + (2 if calendar_rendered else 0)
     experience_budget = min(runtime_settings.DREAM_EXPERIENCE_MAX_CHARS, max(0, total_budget - calendar_budget))

@@ -1079,10 +1079,19 @@
           "back/app/dataset/attachments.py",
           "back/app/dataset/bootstrap.py",
           "back/app/dataset/provider.py",
+          "back/app/dataset/search.py",
           "back/app/dataset/values.py"
         ],
         "source": "app.dataset",
         "target": "app.file_share"
+      },
+      {
+        "files": [
+          "back/app/dataset/search.py",
+          "back/app/dataset/search_index.py"
+        ],
+        "source": "app.dataset",
+        "target": "app.llm"
       },
       {
         "files": [
@@ -1112,6 +1121,13 @@
       },
       {
         "files": [
+          "back/app/dataset/mcp.py"
+        ],
+        "source": "app.dataset",
+        "target": "app.tools"
+      },
+      {
+        "files": [
           "back/app/dataset/access.py",
           "back/app/dataset/bootstrap.py",
           "back/app/dataset/router.py"
@@ -1135,6 +1151,8 @@
           "back/app/dataset/provider.py",
           "back/app/dataset/resource_summaries.py",
           "back/app/dataset/router.py",
+          "back/app/dataset/search.py",
+          "back/app/dataset/search_index.py",
           "back/app/dataset/service.py",
           "back/app/dataset/sharing.py",
           "back/app/dataset/topic_assignment.py",
@@ -1529,6 +1547,7 @@
       },
       {
         "files": [
+          "back/app/dream/mechanisms/dataset_index.py",
           "back/app/dream/mechanisms/resource_summaries.py",
           "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/monitoring_service.py"
@@ -1568,6 +1587,7 @@
           "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
+          "back/app/dream/mechanisms/dataset_index.py",
           "back/app/dream/mechanisms/memory_decisions.py",
           "back/app/dream/mechanisms/memory_extraction.py",
           "back/app/dream/mechanisms/resource_summaries.py",
@@ -1686,6 +1706,7 @@
           "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
           "back/app/dream/mechanisms/conversation_memory.py",
+          "back/app/dream/mechanisms/dataset_index.py",
           "back/app/dream/mechanisms/document_structure.py",
           "back/app/dream/mechanisms/file_catalogue.py",
           "back/app/dream/mechanisms/file_thumbnails.py",
@@ -6485,16 +6506,17 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 301,
+      "domain_edges": 303,
       "fan_in": [
         {
-          "count": 43,
+          "count": 44,
           "module": "app.llm",
           "modules": [
             "app.agent",
             "app.audio",
             "app.conversation",
             "app.dashboard",
+            "app.dataset",
             "app.dream",
             "app.goal",
             "app.harness",
@@ -6579,7 +6601,7 @@
           ]
         },
         {
-          "count": 31,
+          "count": 32,
           "module": "app.tools",
           "modules": [
             "app.agent",
@@ -6588,6 +6610,7 @@
             "app.connection",
             "app.console",
             "app.conversation",
+            "app.dataset",
             "app.document",
             "app.file_share",
             "app.goal",
@@ -7218,6 +7241,19 @@
         },
         {
           "count": 7,
+          "module": "app.dataset",
+          "modules": [
+            "app.agent",
+            "app.document",
+            "app.file_share",
+            "app.llm",
+            "app.memory",
+            "app.share",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 7,
           "module": "app.document",
           "modules": [
             "app.agent",
@@ -7323,17 +7359,6 @@
             "app.memory",
             "app.messenger",
             "app.task"
-          ]
-        },
-        {
-          "count": 5,
-          "module": "app.dataset",
-          "modules": [
-            "app.agent",
-            "app.document",
-            "app.file_share",
-            "app.memory",
-            "app.share"
           ]
         },
         {
@@ -8348,9 +8373,17 @@
         "namespace": "document"
       },
       {
+        "file": "back/app/dataset/mcp.py",
+        "handler": "dataset_query",
+        "line": 23,
+        "module": "app.dataset",
+        "name": "dataset_query",
+        "namespace": "file_sharing"
+      },
+      {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 387,
+        "line": 390,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -8358,7 +8391,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 454,
+        "line": 457,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -8366,7 +8399,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 305,
+        "line": 308,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -8374,7 +8407,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 536,
+        "line": 539,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -8382,7 +8415,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 415,
+        "line": 418,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -8406,7 +8439,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 506,
+        "line": 509,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -8414,7 +8447,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "read_file",
-        "line": 251,
+        "line": 254,
         "module": "app.file_share",
         "name": "file_read",
         "namespace": "file_sharing"
@@ -8422,7 +8455,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "rename_file",
-        "line": 485,
+        "line": 488,
         "module": "app.file_share",
         "name": "file_rename",
         "namespace": "file_sharing"
@@ -8438,7 +8471,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "search_files",
-        "line": 202,
+        "line": 205,
         "module": "app.file_share",
         "name": "file_search",
         "namespace": "file_sharing"
@@ -8446,7 +8479,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 352,
+        "line": 355,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -9390,7 +9423,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_forget",
-        "line": 264,
+        "line": 300,
         "module": "app.memory",
         "name": "memory_forget",
         "namespace": "memory"
@@ -9398,7 +9431,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_remember",
-        "line": 192,
+        "line": 195,
         "module": "app.memory",
         "name": "memory_remember",
         "namespace": "memory"
@@ -9406,7 +9439,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_summarize",
-        "line": 285,
+        "line": 321,
         "module": "app.memory",
         "name": "memory_summarize",
         "namespace": "memory"
@@ -9414,7 +9447,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_upcoming",
-        "line": 242,
+        "line": 278,
         "module": "app.memory",
         "name": "memory_upcoming",
         "namespace": "memory"
@@ -10309,7 +10342,7 @@
           "documents.id"
         ],
         "history_mixin": false,
-        "line": 74,
+        "line": 103,
         "module": "app.dataset",
         "table": "dataset_aliases"
       },
@@ -10322,7 +10355,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 140,
+        "line": 169,
         "module": "app.dataset",
         "table": "dataset_app_consents"
       },
@@ -10334,7 +10367,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 110,
+        "line": 139,
         "module": "app.dataset",
         "table": "dataset_appearances"
       },
@@ -10347,7 +10380,7 @@
           "files.id"
         ],
         "history_mixin": true,
-        "line": 85,
+        "line": 114,
         "module": "app.dataset",
         "table": "dataset_attachments"
       },
@@ -10361,7 +10394,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 60,
+        "line": 89,
         "module": "app.dataset",
         "table": "dataset_grants"
       },
@@ -10380,6 +10413,28 @@
         "table": "dataset_revisions"
       },
       {
+        "class_name": "DatasetSearchChunk",
+        "file": "back/app/dataset/models.py",
+        "foreign_keys": [
+          "dataset_search_indexes.id"
+        ],
+        "history_mixin": false,
+        "line": 78,
+        "module": "app.dataset",
+        "table": "dataset_search_chunks"
+      },
+      {
+        "class_name": "DatasetSearchIndex",
+        "file": "back/app/dataset/models.py",
+        "foreign_keys": [
+          "datasets.id"
+        ],
+        "history_mixin": false,
+        "line": 60,
+        "module": "app.dataset",
+        "table": "dataset_search_indexes"
+      },
+      {
         "class_name": "DatasetTagAssignment",
         "file": "back/app/dataset/models.py",
         "foreign_keys": [
@@ -10387,7 +10442,7 @@
           "datasets.id"
         ],
         "history_mixin": false,
-        "line": 131,
+        "line": 160,
         "module": "app.dataset",
         "table": "dataset_tag_assignments"
       },
@@ -10399,7 +10454,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 121,
+        "line": 150,
         "module": "app.dataset",
         "table": "dataset_tags"
       },
@@ -10411,7 +10466,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 99,
+        "line": 128,
         "module": "app.dataset",
         "table": "dataset_write_budgets"
       },
@@ -12615,6 +12670,7 @@
         "capabilities": [
           "contracts.py",
           "facade.py",
+          "mcp.py",
           "models.py",
           "privileges.py",
           "router.py",

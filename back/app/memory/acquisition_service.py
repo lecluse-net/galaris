@@ -68,6 +68,8 @@ def _idempotency_key(data: MemoryAcquisitionCreate) -> str:
         raw += "\x1f" + data.temporal.model_dump_json()
     elif data.action == "update" and "temporal" in data.model_fields_set:
         raw += "\x1fnull"
+    if data.action == "contradict" and (revision := _target_revision(data.metadata)) is not None:
+        raw += f"\x1ftarget_revision:{revision}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -624,6 +626,13 @@ async def _apply_acquisition_record(
             raise MemoryConflictError(
                 "A contradiction acquisition requires a target memory."
             )
+        revision = _target_revision(record.metadata_)
+        if revision is not None:
+            target = await get_db().scalar(select(MemoryItem).where(MemoryItem.id == record.target_item_id)
+                .with_for_update().execution_options(populate_existing=True))
+            if (target is None or target.owner_agent_id != record.agent_id or target.node_kind != "memory"
+                    or target.source_managed or target.revision != revision):
+                raise MemoryConflictError("The contradiction target changed; reread its current revision.")
         raw_other = record.metadata_.get("other_item_id")
         if raw_other:
             other_id = _other_item_id(record.metadata_)

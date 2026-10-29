@@ -12,7 +12,9 @@ from app.memory.embedding import EmbeddingModel, MemoryEmbeddingNotConfiguredErr
 from app.memory.models import MemoryItem
 from app.memory.schemas import (
     MemoryGraphRootsRequest,
+    MemoryGraphExpandRequest,
     MemoryItemCreate,
+    MemoryLinkCreate,
     MemoryPayload,
     MemorySearchRequest,
 )
@@ -184,6 +186,27 @@ async def test_list_and_graph_filter_by_topic_and_interlocutor(
         assert first_topic.memory_item_id in graph_ids
         assert second_topic.memory_item_id in graph_ids
         assert peer_topic.memory_item_id not in graph_ids
+
+    child = await scoped_memory('Organisation enfant avec Alice',
+        topic_item_id=first_topic.memory_item_id, contact_item_id=alice_contact)
+    for target in (child, organisation_bob, voyages_alice):
+        await service.create_link(MemoryLinkCreate(source_item_id=organisation_alice.id,
+            target_item_id=target.id, relation_type='parent_of'), actor_agent_id=owner.id)
+    # The same exact-scope predicate is reused under link joins for expansion
+    # and child counts. Neither another contact nor another topic is a child here.
+    for children_only in (False, True):
+        expanded = await service.expand_graph_node(MemoryGraphExpandRequest(
+            agent_id=owner.id, item_id=organisation_alice.id, children_only=children_only,
+            topic_item_id=first_topic.memory_item_id, contact_item_id=alice_contact))
+        expected = {child.id, organisation_alice.id} if children_only else {child.id}
+        assert {node.id for node in expanded.nodes} == expected
+        assert len(expanded.edges) == 1
+        if children_only:
+            assert next(node for node in expanded.nodes if node.id == organisation_alice.id).children_count == 1
+    roots = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id,
+        topic_item_id=first_topic.memory_item_id, contact_item_id=alice_contact,
+        defer_resource_files=True))
+    assert next(node for node in roots.nodes if node.id == organisation_alice.id).children_count == 1
 
 
 @pytest.mark.asyncio

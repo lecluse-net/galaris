@@ -25,6 +25,15 @@ des schémas, captures de sources et journaux d'appels sont préservés.
 
 ## Lecture avant une exécution
 
+Une demande dépendant d'une préférence, décision ou reprise de projet exige des preuves antérieures :
+si elles manquent au contexte, l'agent est invité à rechercher avant de répondre ou d'agir.
+Une recherche ciblée peut être suivie de deux recherches complémentaires au plus.
+Un calendrier saturé conserve ses premières positions, mais réserve jusqu'à la moitié des places
+aux preuves ordinaires, avec restitution des places inutilisées. Les limites de caractères et
+les droits restent stricts. Les grands tableaux documentaires conservent les en-têtes de colonnes
+dans leurs passages. Une correction garde l'ancienne preuve sauf demande explicite d'effacement.
+Voir [0249](../../../../project/decisions/0249-memory-evidence-and-dataset-retrieval.md).
+
 Les items peuvent porter un objet `temporal` facultatif (année, mois, jour, jour ISO de semaine,
 heure et minute). Toutes les composantes utilisent le fuseau global de Galaris (`TZ`), sans
 fuseau stocké par souvenir. Les valeurs absentes sont libres et les contraintes présentes se
@@ -32,8 +41,8 @@ combinent. La préparation du contexte réserve le rappel ordinaire aux souvenir
 et sélectionne séparément les correspondances actuelles et celles
 de la fenêtre `MEMORY_TEMPORAL_LOOKAHEAD_HOURS`, sans condition de similarité avec la requête.
 Cette voie conserve les ACL, la portée contact et l'admission finale, déduplique les UUID et
-respecte le budget commun, avec priorité aux correspondances temporelles sur les souvenirs
-ordinaires et les expériences. Un souvenir daté hors fenêtre ne peut pas revenir par similarité.
+respecte le budget commun, avec les correspondances temporelles d'abord dans leur part du budget
+et une réservation de preuves ordinaires. Un souvenir daté hors fenêtre ne peut pas revenir par similarité.
 Le Topic et les types ne limitent pas la branche temporelle ; la portée du contact conversationnel
 reste obligatoire. L'occurrence figure dans l'extrait des capsules conversationnelles.
 `memory_upcoming` expose les pages supplémentaires. La temporalité est indépendante de la validité
@@ -95,7 +104,13 @@ déterministe et bornée : titre structuré du Goal lorsqu'il existe, sinon lib
 court extrait de l'objectif en dernier recours. Pour un round conversationnel, les préfixes
 techniques d'expéditeur et le code Agent sont retirés ; la graine sémantique ajoute au plus les deux
 messages canoniques immédiatement précédents afin de résoudre « réessaye », « ça » et les autres
-références au tour précédent. Pour une tâche Messenger humaine, l'UUID canonique
+références au tour précédent. Pour une relance avec un pronom ou une continuation FR/EN,
+la requête lexicale peut aussi reprendre le dernier message humain distinct parmi les six
+messages récents (600 caractères au plus), en conservant sa limite de 18 mots/240 caractères.
+Les réponses de l'agent ne fournissent pas ce sujet lexical. Un changement de sujet explicite
+écarte l'ancien historique des deux graines ; une tâche nommée et le titre structuré d'un Goal
+restent indépendants de cette continuité. L'historique aide à rechercher, il ne prouve aucun fait.
+Pour une tâche Messenger humaine, l'UUID canonique
 du contact borne la recherche ; son nom affiché, son identifiant natif et le code du bridge ne sont
 donc pas répétés dans la graine sémantique. Les suffixes de cycle sont retirés afin qu'un
 nouveau cycle puisse retrouver les précédents. Cette réduction évite qu'un long prompt devienne

@@ -1,5 +1,44 @@
 # Corpus de rappel mémoire conversationnel / Conversational memory recall corpus
 
+## Qualification des relances conversationnelles (29 octobre 2026)
+
+Le [compte rendu agrégé](../../../project/audits/2026-10-29-memory-conversation-continuity.md)
+sépare les campagnes de rappel, les réponses réelles et les garanties d'isolation.
+
+La référence doit figer les constructeurs `memory_context_query` et
+`memory_context_semantic_query` en plus du rappel et du brief. L'adaptateur route chaque
+bras par son `ContextVar`, y compris lors de mesures concurrentes. Il adapte uniquement
+l'argument d'historique absent des anciennes signatures ; les attendus ne changent jamais
+la requête. `tests/test_memory_benchmark_query_routing.py` protège ce contrat de mesure.
+
+Pour élargir la vérification au-delà d'un premier corpus, générer cinq répétitions et
+sélectionner un monde par profil avec `--memory-benchmark-profile-sample`. Douze profils
+répartis entre les quatre domaines et les partitions développement/validation/heldout
+fournissent 1 584 requêtes, 12 mondes et cinq régimes calendaires. Avec 200 distracteurs
+par monde, les 3 360 souvenirs de ces mondes sont chargés dans le même index avant
+mesure. Ce contrôle conserve les droits, les interlocuteurs, la saturation du calendrier,
+les budgets et l'ordre apparié ; il ne prouve pas la qualité des embeddings ni celle de
+réponses finales. Ne pas ajuster le moteur sur les résultats heldout de cette campagne.
+
+La qualification opt-in des fournisseurs ajoute des relances FR/EN avec leur sujet
+précédent ainsi que des questions sans preuve. Le modèle reçoit le contexte réellement
+préparé et le sujet humain uniquement pour résoudre les références. La valeur attendue
+reste extérieure au prompt. Rappel, preuve injectée, réponse et citation sont évalués
+séparément ; le repli lexical reste identifiable.
+
+## Qualification mémoire et Dataset du 29 octobre 2026
+
+La [qualification agrégée](../../../project/audits/2026-10-29-memory-and-dataset-retrieval.md)
+distingue rappel, injection et réponse finale. La campagne de réponses configurées couvre
+aussi quatre formulations exigeant deux faits et conserve `expected_uris` pour vérifier les
+citations. Les sources de passages et d'index figurent dans les empreintes de campagne.
+
+`tests/test_dataset_retrieval_benchmark.py` réutilise le plugin opt-in, avec une sortie neuve
+`--memory-benchmark-output` et une référence `--memory-benchmark-reference` contenant le
+`dataset_provider.py` réellement figé avant changement. Il compare 80 recherches natives
+et mesure un résultat agrégé sans envoyer le JSON complet au modèle. Il ne qualifie pas
+les embeddings. Sans options explicites, il est ignoré dans les tests ordinaires.
+
 ## Qualification de la fidélité et du contexte (24 octobre 2026)
 
 Le corpus courant est versionné `galaris-conversation-memory/2` : régénérer les anciennes

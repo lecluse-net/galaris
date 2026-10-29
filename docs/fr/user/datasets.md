@@ -2,6 +2,18 @@
 
 # Jeux de données
 
+## Rechercher et calculer avec un agent
+
+Demandez à l'agent de retrouver un jeu par son contenu ou son sens, puis de filtrer ses lignes,
+de trier les résultats ou de calculer un total. Il peut interroger le JSON côté serveur sans
+le recopier intégralement dans la conversation. Les résultats indiquent la révision consultée.
+Les calculs distinguent valeurs absentes, nulles et types incompatibles ; les unités restent
+à préciser. Une modification entre deux pages doit entraîner une nouvelle lecture.
+
+La recherche sémantique dépend du modèle vectoriel configuré et de l'indexation Dream.
+L'agent voit si cette couverture est incomplète et peut poursuivre par recherche textuelle.
+Le partage du jeu reste nécessaire ; un lien depuis un Document n'accorde aucun droit.
+
 ## Description courante
 
 La petite icône **Voir le résumé**, près du titre et du sujet, ouvre la description courante

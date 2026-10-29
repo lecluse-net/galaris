@@ -43,8 +43,8 @@ les Datasets et les définitions de Process conservent leurs propres droits et c
 Les procédures apprises relèvent des Skills. Une ressemblance entre deux souvenirs
 ne suffit pas à supprimer un complément ; un désaccord explicite conserve les deux faits.
 
-Le contexte automatique réserve une place à un souvenir ordinaire lorsqu'un calendrier
-chargé remplit les autres places disponibles. Des résultats proches ne prouvent pas que
+Le contexte automatique réserve jusqu'à la moitié des places aux souvenirs ordinaires
+lorsqu'un calendrier chargé remplit les autres places. Des résultats proches ne prouvent pas que
 l'agent connaît la réponse : il doit vérifier les sources et signaler les informations
 manquantes. Un conflit rappelé porte ses sources et dates ; le fait le plus récent
 n'est pas automatiquement considéré comme vrai.
@@ -166,6 +166,11 @@ Une mission longue ou complexe peut conserver un suivi par jalons dans la même 
 préparation, critères d’acceptation, résultats observés, ressources et prochaine action.
 Ce suivi aide à reprendre le travail sans perdre son contexte ni répéter des effets déjà acquis.
 Il ne crée pas de sous-tâches pour chaque phase d’un même livrable.
+
+Dans une conversation, une relance comme « et sa limite ? » peut reprendre le sujet humain
+récent pour rechercher les souvenirs, même si la recherche vectorielle est indisponible.
+« Autre sujet » écarte cet ancien sujet de la recherche automatique. Les droits et la portée
+du contact continuent de s'appliquer ; un sujet d'historique ne constitue pas une preuve.
 
 Le détail de tâche permet d’inspecter l’activité, les outils et les résultats ; `task_get`
 expose le suivi par jalons enregistré. L’exécuteur peut le mettre à jour

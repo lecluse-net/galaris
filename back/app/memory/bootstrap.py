@@ -91,6 +91,7 @@ async def memory_context_provider(
     query = memory_context_query(
         label=request.label,
         objective=request.objective,
+        conversation_history=request.available_history,
         # The exact contact UUID is the identity boundary. Repeating display names,
         # platform handles and bridge codes in the semantic query dilutes its topic.
         contact_terms=(

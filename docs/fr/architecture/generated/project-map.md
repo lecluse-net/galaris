@@ -11,15 +11,15 @@ tests restent l’autorité sur le comportement.
 
 - 78 modules backend déclarés ;
 - 40 modules frontend déclarés ;
-- 634 arêtes de dépendance backend ;
+- 636 arêtes de dépendance backend ;
 - 217 arêtes de dépendance frontend ;
-- 301 arêtes entre domaines `app`/`bridge` ;
+- 303 arêtes entre domaines `app`/`bridge` ;
 - 28 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
 - 761 handlers HTTP/WebSocket détectés ;
-- 179 tables SQLAlchemy détectées ;
-- 279 outils MCP natifs détectés ;
+- 181 tables SQLAlchemy détectées ;
+- 280 outils MCP natifs détectés ;
 - 54 pages Vue détectées.
 
 ## Modules backend
@@ -61,7 +61,7 @@ tests restent l’autorité sur le comportement.
 | `app.onboarding` | app | non | oui | `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.voice` | app | non | oui | `facade.py`, `i18n/`, `interface.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.file_share` | app | non | oui | `i18n/`, `interface.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `tests/` |
-| `app.dataset` | app | non | oui | `contracts.py`, `facade.py`, `models.py`, `privileges.py`, `router.py`, `tests/` |
+| `app.dataset` | app | non | oui | `contracts.py`, `facade.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `tests/` |
 | `app.console` | app | non | oui | `contracts.py`, `i18n/`, `mcp.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.code` | app | non | oui | `contracts.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.process` | app | non | oui | `facade.py`, `i18n/`, `interface.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
@@ -261,11 +261,13 @@ tests restent l’autorité sur le comportement.
 | `app.dashboard` | `core.util` | `back/app/dashboard/dashboard_service.py` |
 | `app.dataset` | `app.agent` | `back/app/dataset/access.py`, `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/contracts.py`, `back/app/dataset/ownership.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/topic_assignment.py`, `back/app/dataset/usage.py` |
 | `app.dataset` | `app.document` | `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/migration.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/router.py` |
-| `app.dataset` | `app.file_share` | `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/provider.py`, `back/app/dataset/values.py` |
+| `app.dataset` | `app.file_share` | `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/provider.py`, `back/app/dataset/search.py`, `back/app/dataset/values.py` |
+| `app.dataset` | `app.llm` | `back/app/dataset/search.py`, `back/app/dataset/search_index.py` |
 | `app.dataset` | `app.memory` | `back/app/dataset/provider.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py` |
 | `app.dataset` | `app.share` | `back/app/dataset/access.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/dbadmin.py`, `back/app/dataset/library.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/ownership.py`, `back/app/dataset/projection.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py` |
+| `app.dataset` | `app.tools` | `back/app/dataset/mcp.py` |
 | `app.dataset` | `core.authorize` | `back/app/dataset/access.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/router.py` |
-| `app.dataset` | `core.database` | `back/app/dataset/access.py`, `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/library.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/organization.py`, `back/app/dataset/ownership.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/resource_summaries.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py`, `back/app/dataset/topic_assignment.py`, `back/app/dataset/usage.py` |
+| `app.dataset` | `core.database` | `back/app/dataset/access.py`, `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/library.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/organization.py`, `back/app/dataset/ownership.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/resource_summaries.py`, `back/app/dataset/router.py`, `back/app/dataset/search.py`, `back/app/dataset/search_index.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py`, `back/app/dataset/topic_assignment.py`, `back/app/dataset/usage.py` |
 | `app.dataset` | `core.dbadmin` | `back/app/dataset/dbadmin.py` |
 | `app.dataset` | `core.params` | `back/app/dataset/attachments.py`, `back/app/dataset/resource_summaries.py` |
 | `app.dataset` | `core.storage` | `back/app/dataset/attachments.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/migration.py`, `back/app/dataset/provider.py`, `back/app/dataset/router.py` |
@@ -295,10 +297,10 @@ tests restent l’autorité sur le comportement.
 | `app.dream` | `app.agent` | `back/app/dream/events.py`, `back/app/dream/manual.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/router.py` |
 | `app.dream` | `app.connection` | `back/app/dream/dbadmin.py`, `back/app/dream/evidence_access.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.conversation` | `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
-| `app.dream` | `app.dataset` | `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/monitoring_service.py` |
+| `app.dream` | `app.dataset` | `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.document` | `back/app/dream/manual.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/router.py` |
 | `app.dream` | `app.goal` | `back/app/dream/outcome_evidence.py` |
-| `app.dream` | `app.llm` | `back/app/dream/attachment_processing.py`, `back/app/dream/evaluation.py`, `back/app/dream/evidence_access.py`, `back/app/dream/live_topics.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/memory_decisions.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py`, `back/app/dream/schemas.py` |
+| `app.dream` | `app.llm` | `back/app/dream/attachment_processing.py`, `back/app/dream/evaluation.py`, `back/app/dream/evidence_access.py`, `back/app/dream/live_topics.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/memory_decisions.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py`, `back/app/dream/schemas.py` |
 | `app.dream` | `app.memory` | `back/app/dream/__init__.py`, `back/app/dream/contracts.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/router.py`, `back/app/dream/scheduler.py` |
 | `app.dream` | `app.messenger` | `back/app/dream/dbadmin.py`, `back/app/dream/evidence_access.py`, `back/app/dream/live_topics.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.process` | `back/app/dream/mechanisms/process_memory.py` |
@@ -307,7 +309,7 @@ tests restent l’autorité sur le comportement.
 | `app.dream` | `app.topic` | `back/app/dream/dbadmin.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py` |
 | `app.dream` | `app.voice` | `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py` |
 | `app.dream` | `core.authorize` | `back/app/dream/events.py`, `back/app/dream/router.py` |
-| `app.dream` | `core.database` | `back/app/dream/attachment_processing.py`, `back/app/dream/events.py`, `back/app/dream/evidence_access.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_catalogue.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/models.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/service.py` |
+| `app.dream` | `core.database` | `back/app/dream/attachment_processing.py`, `back/app/dream/events.py`, `back/app/dream/evidence_access.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_catalogue.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/models.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/service.py` |
 | `app.dream` | `core.dbadmin` | `back/app/dream/dbadmin.py` |
 | `app.dream` | `core.document` | `back/app/dream/attachment_processing.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/file_thumbnails.py` |
 | `app.dream` | `core.i18n` | `back/app/dream/attachment_processing.py`, `back/app/dream/language.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py` |
@@ -1035,6 +1037,7 @@ tests restent l’autorité sur le comportement.
 | `app.agent` | 8 | `app.file_share`, `app.image`, `app.llm`, `app.messenger`, `app.process`, `app.share`, `app.skill`, `app.tools` |
 | `app.chat` | 8 | `app.agent`, `app.browser`, `app.code`, `app.conversation`, `app.document`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.messenger` | 8 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.llm`, `app.memory`, `app.task`, `app.tools` |
+| `app.dataset` | 7 | `app.agent`, `app.document`, `app.file_share`, `app.llm`, `app.memory`, `app.share`, `app.tools` |
 | `app.document` | 7 | `app.agent`, `app.conversation`, `app.goal`, `app.process`, `app.share`, `app.task`, `app.tools` |
 | `app.onboarding` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.skill`, `app.tools` |
 | `app.audio` | 6 | `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.tools`, `bridge.youtube` |
@@ -1044,7 +1047,6 @@ tests restent l’autorité sur le comportement.
 | `bridge.mail` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.messenger`, `app.tools` |
 | `bridge.nextcloud` | 6 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.tools`, `app.voice` |
 | `app.contact` | 5 | `app.agent`, `app.conversation`, `app.memory`, `app.messenger`, `app.task` |
-| `app.dataset` | 5 | `app.agent`, `app.document`, `app.file_share`, `app.memory`, `app.share` |
 | `app.task` | 5 | `app.agent`, `app.goal`, `app.llm`, `app.messenger`, `app.tools` |
 | `bridge.calendar` | 5 | `app.agent`, `app.connection`, `app.file_share`, `app.process`, `app.tools` |
 | `bridge.claude_agent` | 5 | `app.agent`, `app.harnesses`, `app.mcp`, `app.skill`, `bridge.harness` |
@@ -1092,9 +1094,9 @@ tests restent l’autorité sur le comportement.
 
 | Module | Nombre | Dépendants |
 |---|---:|---|
-| `app.llm` | 43 | `app.agent`, `app.audio`, `app.conversation`, `app.dashboard`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
+| `app.llm` | 44 | `app.agent`, `app.audio`, `app.conversation`, `app.dashboard`, `app.dataset`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
 | `app.agent` | 36 | `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.dataset`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
-| `app.tools` | 31 | `app.agent`, `app.audio`, `app.browser`, `app.connection`, `app.console`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
+| `app.tools` | 32 | `app.agent`, `app.audio`, `app.browser`, `app.connection`, `app.console`, `app.conversation`, `app.dataset`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
 | `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
 | `app.connection` | 22 | `app.browser`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
 | `app.file_share` | 19 | `app.agent`, `app.audio`, `app.browser`, `app.console`, `app.conversation`, `app.dataset`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
@@ -2028,15 +2030,17 @@ tests restent l’autorité sur le comportement.
 | `conversation_round_messages` | `ConversationRoundMessage` | `app.conversation` | non | `conversation_rounds.id`, `messenger_messages.id` | `back/app/conversation/models.py:183` |
 | `conversation_rounds` | `ConversationRound` | `app.conversation` | non | `conversation_rounds.id`, `memory_items.id`, `messenger_rooms.id`, `topics.id`, `users.id`, `voice_sessions.id` | `back/app/conversation/models.py:58` |
 | `conversation_task_links` | `ConversationTaskLink` | `app.conversation` | non | `conversation_rounds.id`, `messenger_messages.id`, `tasks.id` | `back/app/conversation/models.py:273` |
-| `dataset_aliases` | `DatasetAlias` | `app.dataset` | non | `datasets.id`, `documents.id` | `back/app/dataset/models.py:74` |
-| `dataset_app_consents` | `DatasetAppConsent` | `app.dataset` | oui | `datasets.id`, `documents.id`, `users.id` | `back/app/dataset/models.py:140` |
-| `dataset_appearances` | `DatasetAppearance` | `app.dataset` | non | `datasets.id`, `users.id` | `back/app/dataset/models.py:110` |
-| `dataset_attachments` | `DatasetAttachment` | `app.dataset` | oui | `datasets.id`, `document_attachments.id`, `files.id` | `back/app/dataset/models.py:85` |
-| `dataset_grants` | `DatasetGrant` | `app.dataset` | non | `agent_groups.id`, `agents.id`, `datasets.id`, `users.id` | `back/app/dataset/models.py:60` |
+| `dataset_aliases` | `DatasetAlias` | `app.dataset` | non | `datasets.id`, `documents.id` | `back/app/dataset/models.py:103` |
+| `dataset_app_consents` | `DatasetAppConsent` | `app.dataset` | oui | `datasets.id`, `documents.id`, `users.id` | `back/app/dataset/models.py:169` |
+| `dataset_appearances` | `DatasetAppearance` | `app.dataset` | non | `datasets.id`, `users.id` | `back/app/dataset/models.py:139` |
+| `dataset_attachments` | `DatasetAttachment` | `app.dataset` | oui | `datasets.id`, `document_attachments.id`, `files.id` | `back/app/dataset/models.py:114` |
+| `dataset_grants` | `DatasetGrant` | `app.dataset` | non | `agent_groups.id`, `agents.id`, `datasets.id`, `users.id` | `back/app/dataset/models.py:89` |
 | `dataset_revisions` | `DatasetRevision` | `app.dataset` | non | `agents.id`, `datasets.id`, `document_revisions.id`, `users.id` | `back/app/dataset/models.py:47` |
-| `dataset_tag_assignments` | `DatasetTagAssignment` | `app.dataset` | non | `dataset_tags.id`, `datasets.id` | `back/app/dataset/models.py:131` |
-| `dataset_tags` | `DatasetTag` | `app.dataset` | oui | `dataset_tags.id`, `users.id` | `back/app/dataset/models.py:121` |
-| `dataset_write_budgets` | `DatasetWriteBudget` | `app.dataset` | non | `datasets.id`, `users.id` | `back/app/dataset/models.py:99` |
+| `dataset_search_chunks` | `DatasetSearchChunk` | `app.dataset` | non | `dataset_search_indexes.id` | `back/app/dataset/models.py:78` |
+| `dataset_search_indexes` | `DatasetSearchIndex` | `app.dataset` | non | `datasets.id` | `back/app/dataset/models.py:60` |
+| `dataset_tag_assignments` | `DatasetTagAssignment` | `app.dataset` | non | `dataset_tags.id`, `datasets.id` | `back/app/dataset/models.py:160` |
+| `dataset_tags` | `DatasetTag` | `app.dataset` | oui | `dataset_tags.id`, `users.id` | `back/app/dataset/models.py:150` |
+| `dataset_write_budgets` | `DatasetWriteBudget` | `app.dataset` | non | `datasets.id`, `users.id` | `back/app/dataset/models.py:128` |
 | `datasets` | `Dataset` | `app.dataset` | oui | `agents.id`, `topics.id`, `users.id` | `back/app/dataset/models.py:15` |
 | `dbadmin_action_revisions` | `DbAdminActionRevision` | `core.dbadmin` | non | `dbadmin_actions.key` | `back/core/dbadmin/models.py:86` |
 | `dbadmin_actions` | `DbAdminActionRecord` | `core.dbadmin` | non | — | `back/core/dbadmin/models.py:59` |
@@ -2263,19 +2267,20 @@ tests restent l’autorité sur le comportement.
 | `repository_show` | `conversation` | `app.conversation` | `repository_show` | `back/app/conversation/mcp.py:121` |
 | `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:35` |
 | `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:20` |
-| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:387` |
-| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:454` |
-| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:305` |
-| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:536` |
-| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:415` |
+| `dataset_query` | `file_sharing` | `app.dataset` | `dataset_query` | `back/app/dataset/mcp.py:23` |
+| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:390` |
+| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:457` |
+| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:308` |
+| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:539` |
+| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:418` |
 | `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:170` |
 | `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:142` |
-| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:506` |
-| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:251` |
-| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:485` |
+| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:509` |
+| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:254` |
+| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:488` |
 | `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:121` |
-| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:202` |
-| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:352` |
+| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:205` |
+| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:355` |
 | `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:38` |
 | `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:19` |
 | `document_analysis_cancel` | `galaris` | `app.llm` | `document_analysis_cancel` | `back/app/llm/mcp.py:54` |
@@ -2393,10 +2398,10 @@ tests restent l’autorité sur le comportement.
 | `mail_send` | `mail` | `bridge.mail` | `mail_send` | `back/bridge/mail/mcp.py:134` |
 | `mail_set_flags` | `mail` | `bridge.mail` | `mail_set_flags` | `back/bridge/mail/mcp.py:250` |
 | `mail_trash` | `mail` | `bridge.mail` | `mail_trash` | `back/bridge/mail/mcp.py:282` |
-| `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:264` |
-| `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:192` |
-| `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:285` |
-| `memory_upcoming` | `memory` | `app.memory` | `memory_upcoming` | `back/app/memory/mcp.py:242` |
+| `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:300` |
+| `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:195` |
+| `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:321` |
+| `memory_upcoming` | `memory` | `app.memory` | `memory_upcoming` | `back/app/memory/mcp.py:278` |
 | `messenger_list_rooms` | `messenger` | `app.messenger` | `mcp_list_rooms` | `back/app/messenger/mcp.py:748` |
 | `messenger_room_history` | `messenger` | `app.messenger` | `mcp_room_history` | `back/app/messenger/mcp.py:786` |
 | `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:1000` |

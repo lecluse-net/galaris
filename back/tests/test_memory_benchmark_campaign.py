@@ -89,6 +89,7 @@ def source_fingerprints(reference_sources=None):
     current = {str(path): hashlib.sha256((Path(__file__).parents[1] / path).read_bytes()).hexdigest()
             for path in (Path("app/memory/retrieval.py"), Path("app/memory/context.py"),
                          Path("app/memory/service.py"), Path("app/memory/admission.py"),
+                         Path("app/memory/passages.py"), Path("app/memory/semantic_index.py"),
                          Path("app/memory/access.py"), Path("app/memory/source_access.py"),
                          Path("app/document/goal_folders.py"), Path("app/memory/library_queries.py"),
                          Path("app/memory/bootstrap.py"), Path("app/agent/context.py"),

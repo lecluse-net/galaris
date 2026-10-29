@@ -324,7 +324,9 @@ def _exact_scope_filters(
                     MemoryLink.target_item_id == MemoryItem.id,
                     MemoryLink.relation_type == "topic_contains",
                     MemoryLink.suggested.is_(False),
-                )
+                # Link-based consumers (conflicts, graph neighbors and child
+                # counts) must keep this membership link local to the EXISTS.
+                ).correlate(MemoryItem)
             )
         )
     if contact_item_id is not None:

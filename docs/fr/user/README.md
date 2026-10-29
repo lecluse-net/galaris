@@ -753,6 +753,11 @@ La mémoire récente d’une conversation est reconstruite automatiquement. Pour
 Galaris peut injecter avant l’exécution un rappel borné des souvenirs pertinents. Si la recherche
 sémantique est indisponible, l’interface indique le repli vers la recherche lexicale.
 
+Pour une reprise de projet, une décision antérieure ou une préférence, l'agent est invité à
+rechercher les preuves manquantes avant de répondre. Un calendrier chargé laisse jusqu'à la
+moitié du rappel aux faits ordinaires ; les rendez-vous supplémentaires restent consultables.
+Une correction conserve les anciennes preuves sauf demande explicite d'effacement.
+
 La fiche d'un souvenir propose une **Temporalité (facultative)**. Renseignez uniquement les
 composantes utiles : jour, mois, année, jour de semaine, heure et minute. Les champs vides
 restent libres : jour 27 et mois 9 signifient chaque 27 septembre ; ajouter une année limite

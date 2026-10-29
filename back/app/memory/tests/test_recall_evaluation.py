@@ -109,6 +109,16 @@ def test_duplicate_passages_do_not_inflate_document_recall_and_irrelevant_hits_a
     assert summary.false_positive_rate == 1.0
 
 
+def test_unanswerable_cases_cannot_inflate_recall_and_leaks_beyond_top_k_are_detected():
+    summary = summarize_recall((
+        RecallEvaluationObservation(RecallEvaluationCase("miss", frozenset({"needed"})), ("noise",)),
+        RecallEvaluationObservation(RecallEvaluationCase("absent", frozenset(), frozenset({"private"})),
+                                    ("noise", "private")),
+    ), k=1)
+    assert summary.recall_at_k == 0.0
+    assert summary.leakage_rate == 0.5
+
+
 @pytest.mark.asyncio
 async def test_evaluation_can_compare_concise_and_broad_query_latency(
     monkeypatch: pytest.MonkeyPatch,

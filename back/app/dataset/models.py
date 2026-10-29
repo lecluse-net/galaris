@@ -8,7 +8,7 @@ from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, 
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.database import Base, HistoryMixin
+from core.database import Base, HistoryMixin, Vector
 from app.share import Shareable
 
 
@@ -55,6 +55,35 @@ class DatasetRevision(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     document_source_revision_id: Mapped[UUID | None] = mapped_column(ForeignKey("document_revisions.id", ondelete="RESTRICT"), unique=True)
     __table_args__ = (UniqueConstraint("dataset_id", "revision"),)
+
+
+class DatasetSearchIndex(Base):
+    """Rebuildable, complete embedding generation; never owns Dataset content or ACLs."""
+
+    __tablename__ = "dataset_search_indexes"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("datasets.id", ondelete="CASCADE"), unique=True)
+    source_revision: Mapped[int] = mapped_column(Integer)
+    source_title: Mapped[str] = mapped_column(Text)
+    source_keywords: Mapped[list[str]] = mapped_column(JSONB)
+    source_summary: Mapped[str] = mapped_column(Text)
+    model_key: Mapped[str] = mapped_column(String(64))
+    index_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    dimensions: Mapped[int] = mapped_column(Integer)
+    chunk_count: Mapped[int] = mapped_column(Integer)
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (CheckConstraint("source_revision > 0 AND dimensions > 0 AND chunk_count > 0"),)
+
+
+class DatasetSearchChunk(Base):
+    __tablename__ = "dataset_search_chunks"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    index_id: Mapped[UUID] = mapped_column(ForeignKey("dataset_search_indexes.id", ondelete="CASCADE"), index=True)
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    json_pointer: Mapped[str] = mapped_column(Text)
+    text: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float]] = mapped_column(Vector())
+    __table_args__ = (UniqueConstraint("index_id", "chunk_index"), CheckConstraint("chunk_index >= 0"))
 
 
 class DatasetGrant(Base):

@@ -114,7 +114,10 @@ async def test_calendar_saturation_keeps_a_relevant_fact_in_the_final_budget(mon
 
 
 @pytest.mark.asyncio
-async def test_conflicting_recall_is_attributed_without_leaking_another_agents_claim(db, agents, memory_storage, monkeypatch):
+@pytest.mark.parametrize('filtered_topic', [False, True])
+async def test_conflicting_recall_is_attributed_without_leaking_another_agents_claim(
+    db, agents, memory_storage, monkeypatch, filtered_topic,
+):
     from app.memory import retrieval
     from app.memory.embedding import MemoryEmbeddingNotConfiguredError
     from app.memory.models import MemoryLink
@@ -139,18 +142,34 @@ async def test_conflicting_recall_is_attributed_without_leaking_another_agents_c
         raise MemoryEmbeddingNotConfiguredError("Controlled lexical recall")
 
     monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
-    page = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="reporting budget", limit=1))
+    scope = {}
+    excluded = [memories[2]]
+    if filtered_topic:
+        from app.topic import TopicClassification, service as topics
+        topic = await topics.create_from_classification(TopicClassification(action='create', title='Reporting'))
+        for item in memories[:2]:
+            await service.ensure_topic_memory_link(topic_item_id=topic.memory_item_id, memory_item_id=item.id)
+        outside, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+            title='Reporting budget outside the selected topic',
+            payload=MemoryPayload(text='The reporting budget is outside-scope euros.')))
+        db.add(MemoryLink(source_item_id=memories[0].id, target_item_id=outside.id,
+            relation_type='contradicts', confidence=1.0, suggested=False))
+        await db.flush()
+        excluded.append(outside)
+        scope = {'filter_topic_item_id': topic.memory_item_id}
+    page = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="reporting budget", limit=1, **scope))
     assert page.evidence_status == "unassessed"
     assert len(page.hits) == 1 and page.hits[0].conflicts
     other = page.hits[0].conflicts[0]
     assert len(other.source_refs) == 3
     assert other.uri in {f"memory://{item.id}" for item in memories[:2]}
     assert "secret-private" not in page.model_dump_json()
-    assert str(memories[2].id) not in page.model_dump_json()
+    assert 'outside-scope' not in page.model_dump_json()
+    assert all(str(item.id) not in page.model_dump_json() for item in excluded)
     # With no source left, a dangling conflict must not survive a fresh recall.
     conflict_id = next(item.id for item in memories if f"memory://{item.id}" == other.uri)
     await service.forget_item(conflict_id, actor_agent_id=owner.id)
-    refreshed = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="reporting budget"))
+    refreshed = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="reporting budget", **scope))
     assert all(not hit.conflicts for hit in refreshed.hits)
 
 

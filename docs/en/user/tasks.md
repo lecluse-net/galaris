@@ -55,8 +55,8 @@ Process definitions retain their own content and permissions. Learned procedures
 to Skills. Similarity alone cannot discard complementary information; an explicit
 disagreement preserves both facts.
 
-Automatic context protects one ordinary-memory slot when calendar matches fill the other
-available slots. Nearby results do not prove that the agent knows the answer: it must
+Automatic context protects up to half its slots for ordinary memories when calendar matches
+fill the other slots. Nearby results do not prove that the agent knows the answer: it must
 check sources and identify missing information. A recalled conflict carries sources and
 dates; the newest claim is not automatically treated as true.
 
@@ -144,6 +144,11 @@ A long or complex mission can keep milestones within the same Task: preparation,
 acceptance criteria, observed results, resources and the next action. This tracking helps
 resume work without losing context or repeating effects already completed. It does not
 create child Tasks for each phase of one deliverable.
+
+In a conversation, a follow-up such as “and its limit?” can reuse the recent human subject
+to search memories, including when vector search is unavailable. “New topic” excludes that
+former subject from automatic search. Permissions and contact scope still apply; a subject
+from history does not constitute evidence.
 
 Task details show activity, tools and results; `task_get` exposes saved milestone tracking.
 The executor can update it with

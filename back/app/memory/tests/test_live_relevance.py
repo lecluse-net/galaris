@@ -19,7 +19,7 @@ from app.memory.schemas import MemoryItemCreate, MemoryPayload, MemoryRecallRequ
 from app.memory.temporal import MemoryTemporalAnchor
 from core.database import engine
 from tests.memory_benchmark_adapter import assert_isolated
-from tests.memory_benchmark_reference import load_reference
+from tests.memory_benchmark_reference import load_reference, reference_fingerprints
 
 
 class FactAnswer(BaseModel):
@@ -46,6 +46,8 @@ async def test_configured_provider_relevance_campaign(request, db, agents, memor
     output.mkdir(parents=True, exist_ok=False)
     manifest = {"synthetic": True, "complete": False, "source_fingerprints": fingerprint(),
                 "scope": "paired hybrid retrieval, common driver context, configured-model answer; saturated calendar"}
+    reference_path = Path(request.config.getoption('--memory-benchmark-reference'))
+    manifest['reference_fingerprints'] = reference_fingerprints(reference_path)
     results = []
     try:
         owner, _ = agents
@@ -100,7 +102,7 @@ async def test_configured_provider_relevance_campaign(request, db, agents, memor
         if not lexical:
             for identity in identities:
                 await semantic_index.process_embedding_job({"item_id": str(identity)})
-        reference = load_reference(Path(request.config.getoption("--memory-benchmark-reference")), datetime)
+        reference = load_reference(reference_path, datetime)
         reference["retrieval"].resolve_embedding_model = configured_embedding
         reference["context"].search_memory_detailed = reference["facade"].search_memory_detailed
         reference["context"].temporal_hits = reference["retrieval"].temporal_hits
@@ -111,12 +113,35 @@ async def test_configured_provider_relevance_campaign(request, db, agents, memor
         monkeypatch.setattr(context.runtime_settings, "MEMORY_CONTEXT_MAX_ITEMS", 8)
         monkeypatch.setattr(context.runtime_settings, "MEMORY_CONTEXT_MAX_CHARS", 6_000)
         snapshot = AgentSnapshot(owner.id, owner.code, "Synthetic", "Agent", "internal")
-        queries = [(f"fact-{index}-{language}", question, identities[index], expected)
+        queries = [(f"fact-{index}-{language}", question, (identities[index],), expected)
                    for index, (_title, _text, expected, en, fr) in enumerate(facts)
                    for language, question in (("en", en), ("fr", fr))]
-        queries += [("unknown-en", "What is the exact password for the unknown Epsilon project?", None, None),
-                    ("unknown-fr", "Quel est le mot de passe exact du projet inconnu Epsilon ?", None, None)]
-        for index, (key, question, expected_id, expected) in enumerate(queries):
+        queries += [
+            ("two-facts-en", "What are Aster's reporting format and Dahlia's reporting currency? Return format;currency, or null if either is missing.", (identities[0], identities[3]), "CSV;EUR"),
+            ("two-facts-fr", "Quels sont le format de reporting d'Aster et la devise de reporting de Dahlia ? Retourne format;devise, ou null si une preuve manque.", (identities[0], identities[3]), "CSV;EUR"),
+            ("other-pair-en", "Give Boreal's annual limit and Cobalt's delivery day as amount;weekday, or null if either is missing.", (identities[1], identities[2]), "730;Tuesday"),
+            ("other-pair-fr", "Donne le plafond annuel de Boreal et le jour de livraison de Cobalt sous la forme montant;jour (jour en anglais), ou null si une preuve manque.", (identities[1], identities[2]), "730;Tuesday"),
+            ("unknown-en", "What is the exact password for the unknown Epsilon project?", (), None),
+            ("unknown-fr", "Quel est le mot de passe exact du projet inconnu Epsilon ?", (), None),
+        ]
+        histories = {
+            'follow-up-limit-en': 'We were discussing the annual limit for Boreal.',
+            'follow-up-limit-fr': 'Nous parlions du plafond annuel de Boreal.',
+            'follow-up-format-en': 'We were discussing the reporting file format for Aster.',
+            'follow-up-format-fr': "Nous parlions du format des fichiers de reporting d'Aster.",
+            'follow-up-unknown-en': 'We were discussing the exact access code for Epsilon.',
+            'follow-up-unknown-fr': "Nous parlions du code d'accès exact pour Epsilon.",
+        }
+        queries += [
+            ('follow-up-limit-en', 'And its value?', (identities[1],), '730'),
+            ('follow-up-limit-fr', 'Et sa valeur ?', (identities[1],), '730'),
+            ('follow-up-format-en', 'And its value?', (identities[0],), 'CSV'),
+            ('follow-up-format-fr', 'Et sa valeur ?', (identities[0],), 'CSV'),
+            ('follow-up-unknown-en', 'And its value?', (), None),
+            ('follow-up-unknown-fr', 'Et sa valeur ?', (), None),
+        ]
+        for index, (key, question, expected_ids, expected) in enumerate(queries):
+            history = ({'role': 'user', 'text': histories[key]},) if key in histories else ()
             # Alternate order; freeze facts, query, model and budgets between arms.
             for variant in (("previous", "current") if index % 2 == 0 else ("current", "previous")):
                 sql = 0
@@ -129,27 +154,48 @@ async def test_configured_provider_relevance_campaign(request, db, agents, memor
                 started = time.perf_counter()
                 try:
                     search = reference["retrieval"].recall_items if variant == "previous" else retrieval.recall_items
-                    page = await search(MemoryRecallRequest(agent_id=owner.id, query=question, exclude_temporal=True))
+                    query_module = reference['context'] if variant == 'previous' else context
+                    import inspect
+                    query_args = dict(label='Conversation', objective=question)
+                    if 'conversation_history' in inspect.signature(query_module.memory_context_query).parameters:
+                        query_args['conversation_history'] = history
+                    lexical_query = query_module.memory_context_query(**query_args)
+                    semantic_query = query_module.memory_context_semantic_query(label='Conversation',
+                        objective=question, conversation_history=history)
+                    page = await search(MemoryRecallRequest(agent_id=owner.id, query=lexical_query,
+                        semantic_query=semantic_query, exclude_temporal=True))
                     builder = reference["context"].build_memory_brief if variant == "previous" else context.build_memory_brief
                     monkeypatch.setattr(bootstrap, "build_memory_brief", builder)
+                    # Freeze the query constructor too, adapting legacy signatures.
+                    def build_query(**kwargs):
+                        if 'conversation_history' not in inspect.signature(query_module.memory_context_query).parameters:
+                            kwargs.pop('conversation_history', None)
+                        return query_module.memory_context_query(**kwargs)
+                    monkeypatch.setattr(bootstrap, 'memory_context_query', build_query)
+                    monkeypatch.setattr(bootstrap, 'memory_context_semantic_query', query_module.memory_context_semantic_query)
                     prepared = await agent_context.build_agent_run_context(AgentContextRequest(
-                        task_id=None, agent=snapshot, label="Conversation", objective=question))
+                        task_id=None, agent=snapshot, label="Conversation", objective=question, fallback_history=history))
                     latency_ms = (time.perf_counter() - started) * 1000
                 finally:
                     event.remove(engine.sync_engine, "before_cursor_execute", count)
                 injected = [str(value) for value in prepared.metadata.get("memory_context_ids", [])]
                 results.append(dict(case=key, variant=variant,
-                    retrieved=expected_id is not None and any(hit.item.id == expected_id for hit in page.hits),
-                    injected=expected_id is not None and str(expected_id) in injected,
+                    retrieved=bool(expected_ids) and all(any(hit.item.id == identity for hit in page.hits) for identity in expected_ids),
+                    injected=bool(expected_ids) and all(str(identity) in injected for identity in expected_ids),
                     retrieval_mode=page.mode, degraded=page.degraded,
-                    expected=expected, sql_statements=sql, latency_ms=latency_ms,
+                    expected=expected, expected_uris=[f"memory://{identity}" for identity in expected_ids],
+                    sql_statements=sql, latency_ms=latency_ms,
                     context_chars=len(prepared.shared_context),
-                    prompt=f"Question: {question}\n\nAvailable evidence:\n{prepared.shared_context}"))
+                    prompt=f"Prior subject (for resolving references only): {histories.get(key, '')}\n"
+                           f"Question: {question}\n\nAvailable evidence:\n{prepared.shared_context}"))
                 (output / "observations.json").write_text(json.dumps(results, indent=2) + "\n")
         if manifest["source_fingerprints"] != fingerprint():
             raise RuntimeError("Sources changed during the campaign")
+        if manifest['reference_fingerprints'] != reference_fingerprints(reference_path):
+            raise RuntimeError('Reference sources changed during the campaign')
         manifest["hybrid_complete"] = recording is not None
         manifest["lexical_complete"] = lexical
+        manifest['complete'] = lexical or recording is not None
         (output / "embedding-inputs.json").write_text(json.dumps({"texts": sorted(recorded_inputs)}, indent=2) + "\n")
     except Exception as error:
         manifest["failure_class"] = type(error).__name__

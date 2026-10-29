@@ -273,6 +273,19 @@ child or delegated Task without another provider call. The conversation benchmar
 separates retrieval from injection; real-model qualification is a separate opt-in
 campaign that records provider failures explicitly.
 
+`app/memory/tests/test_conversation_recall.py` exercises French/English follow-ups without
+embeddings, explicit topic changes, non-human messages and query limits. 360 generated
+histories verify bounds and independence of named Tasks. Four simultaneous searches use
+real independent sessions/transactions for two agents with two contacts each, then reopen
+their capsules without mixing evidence. `test_recall_admission.py` retains interleaved
+permission revocations, corrections and deletions. `tests/test_memory_benchmark_query_routing.py`
+checks that paired arms use their own query builders, including concurrent arms and legacy
+signatures.
+The contradiction scenario in `test_evidence_quality.py` also runs with an exact topic
+filter: recall must retain the readable contradiction and exclude both an out-of-topic
+claim owned by the same agent and another agent's claim. This combination covers scope
+filter reuse in the SQL annotation join, beyond ordinary search.
+
 | Guarantee to verify |
 |---|
 | [Dataset JSON and permissions](#datasets) |

@@ -18,7 +18,7 @@ from app.memory.context import memory_policy_instructions
 
 
 @pytest.mark.asyncio
-async def test_agent_writes_correction_before_forgetting_obsolete_memory() -> None:
+async def test_agent_can_write_correction_then_apply_an_explicit_erasure_request() -> None:
     calls: list[tuple[str, dict[str, Any]]] = []
     model_step = 0
 
@@ -70,7 +70,7 @@ async def test_agent_writes_correction_before_forgetting_obsolete_memory() -> No
 
     result = await agent.run(
         "La préférence précédente est fausse. "
-        "Je préfère maintenant des réponses concises."
+        "Je préfère maintenant des réponses concises. Enregistre cette correction puis efface l'ancienne préférence."
     )
 
     assert result.output == "Correction enregistrée."

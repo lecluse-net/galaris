@@ -215,8 +215,13 @@ class DatasetProvider:
     async def search(self, ctx: ResourceContext, uri: ResourceUri, query: str, **options: Any) -> ResourceSearchResult:
         if not query.strip():
             raise ValueError("A search query is required")
+        if len(uri.segments) <= 1 and options.get("mode", "name") in {"text", "semantic"}:
+            from .search import search_datasets
+            return await search_datasets(ctx, uri, query, mode=options["mode"],
+                limit=min(500, max(1, int(options.get("max_results") or 50))),
+                cursor=options.get("cursor"), describe=self.info)
         if options.get("mode", "name") == "semantic":
-            raise NotImplementedError("Datasets currently support name and text search")
+            raise NotImplementedError("Semantic search applies to Dataset collections, not attachment collections")
         if len(uri.segments) <= 1:
             limit = min(500, max(1, int(options.get("max_results") or 50)))
             statement = select(Dataset).where(accessible_clause(ctx.management_scope or ctx.agent_id))

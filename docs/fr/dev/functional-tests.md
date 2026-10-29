@@ -273,6 +273,19 @@ enfant ou déléguée, sans nouvel appel fournisseur. Le benchmark conversationn
 recherche et injection ; la qualification des modèles réels reste une campagne opt-in
 distincte, avec échecs fournisseurs explicites.
 
+`app/memory/tests/test_conversation_recall.py` exerce les relances FR/EN sans embeddings,
+les changements explicites de sujet, les messages non humains et les limites de requête.
+360 historiques générés vérifient les bornes et l'indépendance des tâches nommées.
+Quatre recherches simultanées utilisent de vraies sessions/transactions distinctes pour
+deux agents et deux contacts par agent, puis rouvrent leurs capsules sans mélange de preuves.
+`test_recall_admission.py` garde les retraits de droits, corrections et suppressions intercalés.
+`tests/test_memory_benchmark_query_routing.py` vérifie que les bras appariés utilisent leurs
+propres constructeurs de requête, même concurrents et avec une ancienne signature.
+Le scénario de contradictions de `test_evidence_quality.py` s'exécute aussi avec un filtre
+de sujet : le rappel doit conserver la contradiction accessible et exclure une preuve du
+même agent hors sujet, ainsi que celle d'un autre agent. Cette combinaison couvre la
+réutilisation des filtres dans la jointure SQL d'annotation, au-delà de la recherche simple.
+
 | Garantie à vérifier |
 |---|
 | [JSON et droits Dataset](#datasets) |

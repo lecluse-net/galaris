@@ -43,6 +43,31 @@ deletion of the attached resource. Dataset usages include these references under
 Writes require `expected_revision`; sharing requires `expected_lock_version`. File Sharing's
 registered `data://` provider uses these same services.
 
+## Agent search and queries
+
+`file_search("data://", query, mode="text")` combines full-text matching over title, description,
+keywords and JSON with literal matching. Ranked excerpts carry an RFC 6901 JSON pointer and
+revision. `name` remains title-only. `semantic` fuses lexical and vector ranks within 100 candidates
+per branch. It reports index coverage, degradation and window saturation. Ranked cursors belong
+to the query, mode and resource; an empty page does not prove information is absent.
+
+Dream prepares complete Dataset-owned vector generations without Documents or personal memories.
+The whole source is covered or indexing explicitly fails. Atomic publication rechecks model,
+revision and metadata. Partial/stale indexes are excluded; access is rechecked after provider calls.
+Discovery retains an explicit lexical fallback without a current index or model.
+
+`dataset_query(uri, query)` reads an authorized revision without executable expressions or SQL.
+`path` is a JSON pointer (empty for root); arrays become rows. Relative filters combine with AND;
+`fields` projects and `sort` is stable with missing/null values last. `count`, `sum`, `min`, `max`,
+`avg` cover every filtered row before pagination. Arithmetic preserves source decimal literals;
+numeric aggregates return decimal strings with missing/null counts. Average reports precision.
+Incompatible types fail; units and date formats are never inferred.
+
+Pages default to 50 rows, accept up to 500 and enforce a content budget. Follow `next_offset`
+with the same `expected_revision` to reject intervening changes. Oversized rows require smaller
+projections. `include_rows=false` returns aggregates only. Reads retain ACLs and create no revision.
+See [0249](../../../project/decisions/0249-memory-evidence-and-dataset-retrieval.md).
+
 Personal classification uses only `dataset_tags`, `dataset_tag_assignments` and
 `dataset_appearances`, independently of Memory folders. `/datasets/tags` and
 `/datasets/library/move` require Dataset read access; organizing a readable resource never

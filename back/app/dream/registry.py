@@ -30,6 +30,8 @@ def register_default_mechanisms() -> None:
     params_service.register_change_listener(on_summary_policy_change)
     register_mechanism(document_summary_mechanism)
     register_mechanism(dataset_summary_mechanism)
+    from .mechanisms.dataset_index import dataset_index_mechanism
+    register_mechanism(dataset_index_mechanism)
     from .mechanisms.file_catalogue import file_catalogue_mechanism
     from .mechanisms.file_thumbnails import file_thumbnails_mechanism
     from .mechanisms.attachment_memory import attachment_memory_mechanisms

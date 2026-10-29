@@ -20,7 +20,7 @@ async def legacy_dataset(*, owner_agent_id: int, title: str, content: str,
     await get_db().flush()
     get_db().add(DocumentRevision(document_id=row.id, revision=1, provider_code="native",
         resource_id=pointer, content=inline, content_type="text", media_type="application/json",
-        content_hash=row.content_hash, title=title, keywords=keywords or [], metadata_={},
+        content_hash=row.content_hash, title=title, metadata_={},
         author_agent_id=owner_agent_id, document_content_version=True))
     await get_db().commit()
     from app.dataset import register_dataset

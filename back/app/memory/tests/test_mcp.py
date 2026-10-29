@@ -70,6 +70,74 @@ def test_memory_remember_description_preserves_storage_contract() -> None:
 
 
 @pytest.mark.asyncio
+async def test_explicit_contradiction_preserves_both_claims_and_rejects_stale_or_foreign_targets(agents, memory_storage):
+    from app.memory.schemas import MemoryItemCreate
+    from app.memory.models import MemoryLink
+    from core.database import get_db
+    owner, peer = agents
+    old, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+        title='Synthetic report format', payload=MemoryPayload(text='<p>The report uses XML.</p>')))
+    foreign, _ = await service.create_item(MemoryItemCreate(owner_agent_id=peer.id,
+        title='Other private format', payload=MemoryPayload(text='<p>Another agent uses JSON.</p>')))
+    ctx = McpToolContext(agent_id=owner.id, runtime='internal')
+    content = '<p>Explicit correction: the report uses CSV, not XML.</p>'
+    stale = json.loads(await mcp.memory_remember(ctx, content=content,
+        contradicts_memory_id=str(old.id), expected_revision=old.revision + 1))
+    assert 'error' in stale
+    denied = json.loads(await mcp.memory_remember(ctx, content=content,
+        contradicts_memory_id=str(foreign.id), expected_revision=foreign.revision))
+    assert 'error' in denied
+    result = json.loads(await mcp.memory_remember(ctx, content=content,
+        contradicts_memory_id=str(old.id), expected_revision=old.revision))
+    assert result['status'] == 'stored'
+    corrected = UUID(result['memory_id'])
+    assert corrected != old.id
+    assert (await service.item_record(old.id)).deleted_at is None
+    link = await get_db().scalar(select(MemoryLink).where(MemoryLink.source_item_id == old.id,
+        MemoryLink.target_item_id == corrected, MemoryLink.relation_type == 'contradicts'))
+    assert link is not None
+    repeated = json.loads(await mcp.memory_remember(ctx, content=content,
+        contradicts_memory_id=str(old.id), expected_revision=old.revision))
+    assert repeated['memory_id'] == result['memory_id']
+    from app.memory.schemas import MemoryTemporalAnchor
+    anchor = MemoryTemporalAnchor(month=9, day=27)
+    anchored = json.loads(await mcp.memory_remember(ctx, content=content, temporal=anchor,
+        contradicts_memory_id=str(old.id), expected_revision=old.revision))
+    assert anchored['memory_id'] != result['memory_id']
+    assert (await service.item_record(UUID(anchored['memory_id']))).temporal == anchor.model_dump(mode='json')
+
+
+@pytest.mark.asyncio
+async def test_contradiction_rechecks_revision_after_admission_and_can_retry_after_rereading(agents, memory_storage, monkeypatch):
+    from app.memory import acquisition_service
+    from app.memory.schemas import MemoryItemCreate
+    owner, _ = agents
+    old, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+        title='Synthetic correction race', payload=MemoryPayload(text='<p>Report format is XML.</p>')))
+    target_id, first_revision = old.id, old.revision
+    original = acquisition_service.acquire_memory
+    async def interleaved(data, **kwargs):
+        if data.action == 'contradict':
+            await service.update_item(target_id, MemoryItemUpdate(
+                payload=MemoryPayload(text='<p>Archive report format is XML.</p>'), expected_revision=first_revision),
+                actor_agent_id=owner.id)
+        return await original(data, **kwargs)
+    monkeypatch.setattr(acquisition_service, 'acquire_memory', interleaved)
+    ctx = McpToolContext(agent_id=owner.id, runtime='internal')
+    content = '<p>Confirmed correction: archive report format is CSV.</p>'
+    failed = json.loads(await mcp.memory_remember(ctx, content=content,
+        contradicts_memory_id=str(target_id), expected_revision=first_revision))
+    assert 'error' in failed and 'changed' in failed['error']
+    assert failed['memory_preserved'] and not failed['contradiction_linked']
+    monkeypatch.setattr(acquisition_service, 'acquire_memory', original)
+    current = await service.item_record(target_id)
+    retried = json.loads(await mcp.memory_remember(ctx, content=content,
+        contradicts_memory_id=str(target_id), expected_revision=current.revision))
+    assert retried['status'] == 'stored' and UUID(retried['memory_id']) != target_id
+    assert retried['memory_id'] == failed['memory_id'] and retried['contradiction_linked']
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("runtime", ["internal", "hermes"])
 async def test_sharing_tools_expose_team_and_human_targets_without_breaking_agent_calls(runtime):
     from app.tools.mcp_loader import build_galaris_fastmcp

@@ -51,6 +51,7 @@ export type DreamMechanismKey =
   | 'topic.classify_dataset'
   | 'resource.summarize_document'
   | 'resource.summarize_dataset'
+  | 'resource.index_dataset'
   | 'topic.classify_voice_session'
   | 'memory.extract_task'
   | 'memory.attachment_text'

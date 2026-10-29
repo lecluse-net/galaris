@@ -158,8 +158,8 @@ allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.document
 max_domain_fan_out = 10
 
 [module."app.dataset"]
-allowed_dependencies = ["app.agent", "app.document", "app.file_share", "app.memory", "app.share"]
-max_domain_fan_out = 5
+allowed_dependencies = ["app.agent", "app.document", "app.file_share", "app.llm", "app.memory", "app.share", "app.tools"]
+max_domain_fan_out = 7
 
 [module."app.multimedia"]
 allowed_dependencies = ["app.agent", "app.file_share", "app.llm", "app.tools"]

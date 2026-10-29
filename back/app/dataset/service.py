@@ -12,7 +12,7 @@ import math
 from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import defer
 
 from app.agent import AgentManagementScope
@@ -321,8 +321,8 @@ async def list_datasets(actor: DataActor, *, page: int = 1, page_size: int = 50,
     if owner_agent_id is not None:
         statement = statement.where(Dataset.owner_agent_id == owner_agent_id)
     if query.strip():
-        statement = statement.where(or_(Dataset.title.icontains(query.strip(), autoescape=True),
-            Dataset.content.icontains(query.strip(), autoescape=True)))
+        from .search_predicates import text_search_clause
+        statement = statement.where(text_search_clause(query.strip()))
     if tag_id is not None:
         from .models import DatasetTag
         if isinstance(actor, int) or await get_db().scalar(select(DatasetTag.id).where(DatasetTag.id == tag_id, DatasetTag.user_id == actor.user_id)) is None:

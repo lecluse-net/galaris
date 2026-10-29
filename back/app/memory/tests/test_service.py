@@ -255,6 +255,9 @@ async def test_retention_preview_counts_without_mutating_memories(
     assert await db.get(MemoryItem, expired.id) is not None
     assert await db.get(MemoryItem, document.id) is not None
 
+    # The bulk update expires this computed value; async ORM fixtures must load
+    # it explicitly instead of triggering implicit I/O from attribute access.
+    await db.refresh(document, attribute_names=['activity_at'])
     assert (
         await service.forget_stale_item(
             document.id,

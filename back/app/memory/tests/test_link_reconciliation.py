@@ -555,7 +555,7 @@ def test_link_reconciliation_routes_have_explicit_privileges() -> None:
         Privileges.MEMORY_ADMIN
     ]
     assert read_link_reconciliation_status._authorize_meta["privileges"] == [  # pyright: ignore[reportFunctionMemberAccess]
-        Privileges.PARAMS_ACCESS,
-        Privileges.PARAMS_EDIT,
+        Privileges.DREAM_CONFIG_ACCESS,
+        Privileges.DREAM_EDIT,
         Privileges.MEMORY_ADMIN,
     ]

@@ -330,6 +330,23 @@ def install_adapter(monkeypatch, root: Path, reference_sources: Path | None = No
             return await builder(*args, **kwargs)
 
         monkeypatch.setattr(bootstrap, 'build_memory_brief', brief)
+        # Query construction is part of the comparison too. Otherwise both arms
+        # silently receive the new subject/history logic before their builders
+        # run, making a query change impossible to measure against its reference.
+        import inspect
+        for name in ('memory_context_query', 'memory_context_semantic_query'):
+            current_query = getattr(bootstrap, name)
+            previous_query = getattr(previous['context'], name)
+            previous_parameters = inspect.signature(previous_query).parameters
+            def routed_query(*, _current=current_query, _previous=previous_query,
+                             _parameters=previous_parameters, **kwargs):
+                trace = CURRENT.get()
+                if trace is not None and trace.variant == 'previous':
+                    if 'conversation_history' not in _parameters:
+                        kwargs.pop('conversation_history', None)
+                    return _previous(**kwargs)
+                return _current(**kwargs)
+            monkeypatch.setattr(bootstrap, name, routed_query)
 
 
 async def observe(query: Query, variant: str, agent: AgentSnapshot, db):

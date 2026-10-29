@@ -624,6 +624,10 @@ associated Tasks. Memory commands and agent searches use the same context.
 
 Recent conversation memory is reconstructed automatically. For durable context, Galaris can inject a bounded reminder of relevant memories before execution. If semantic search is unavailable, the interface indicates the fallback to lexical search.
 
+For resumed projects, prior decisions or preferences, agents are instructed to search for missing
+evidence before answering. A busy calendar leaves up to half the brief for ordinary facts; further
+appointments remain accessible. Corrections preserve old evidence unless erasure is explicit.
+
 A memory's details include **Temporality (optional)**. Enter only meaningful components:
 day, month, year, weekday, hour and minute. Empty fields are unrestricted: day 27 and month 9
 mean every September 27; adding a year restricts the match to that year. A date without a time

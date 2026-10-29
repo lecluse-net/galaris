@@ -578,6 +578,17 @@ def test_document_passages_preserve_sections_tables_and_code():
     assert "run --verify\nexit 0" in selected.text
 
 
+def test_long_table_passages_keep_column_meanings_and_complete_rows():
+    rows = ''.join(f'<tr><td>Item {i}</td><td>{1000 + i}</td><td>EUR</td></tr>' for i in range(80))
+    html = '<h1>Budget</h1><table><tr><th>Article</th><th>Montant</th><th>Devise</th></tr>' + rows + '</table>'
+    chunks = document_passages(html, max_words=60)
+    target = next(p for p in chunks if 'Item 79' in p.text)
+    assert 'Article\tMontant\tDevise' in target.text
+    assert 'Item 79\t1079\tEUR' in target.text
+    assert target.block_start == 1 and target.block_end == 2
+    assert target.section_path == ('Budget',)
+
+
 @pytest.mark.asyncio
 async def test_long_document_tail_is_indexed_and_configuration_change_rebuilds(db, agents, memory_storage, vectors, monkeypatch):
     owner, _ = agents

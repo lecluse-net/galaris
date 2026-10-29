@@ -194,7 +194,10 @@ async def file_info(
         "galaris:// supports name and text search, not semantic search; use memory:// for "
         "semantic recall. On document://, mode='name' matches titles and filenames only and "
         "returns compact metadata without body excerpts; use mode='text' or 'semantic' to "
-        "search document content. memory:// retains hybrid recall in every mode."
+        "search document content. memory:// retains hybrid recall in every mode. "
+        "On data://, text searches JSON keys and values; semantic uses the configured vector "
+        "index with explicit lexical fallback. Dataset passages include JSON pointers and "
+        "revisions. Use dataset_query for exact filters, projections and numeric aggregates."
     ),
     effect_policy="read",
     concurrency_policy="safe",

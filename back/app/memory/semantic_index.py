@@ -31,7 +31,7 @@ from .models import MemoryAutomationJob, MemoryEmbeddingChunk, MemoryEmbeddingMa
 from app.document import Document
 
 
-SEMANTIC_INDEX_VERSION = 5
+SEMANTIC_INDEX_VERSION = 6
 CHUNK_WORDS = 360
 CHUNK_OVERLAP_WORDS = 60
 MAX_CHUNKS_PER_MEMORY = 4096

@@ -31,6 +31,33 @@ class Passage:
     source_revision: int | None = None
 
 
+def _table_windows(block: str, text: str, max_words: int) -> list[str]:
+    """Repeat a table's column labels and keep ordinary rows together."""
+    rows = [row for row in text.splitlines() if row.strip()]
+    header = rows.pop(0) if rows and re.search(r"<th(?:\s|>)", block) else ""
+    if not rows or len(header.split()) >= max_words // 2:
+        return []
+    prefix = [header] if header else []
+    pending = list(prefix)
+    words = len(header.split())
+    windows: list[str] = []
+    for row in rows:
+        tokens = row.split()
+        if words + len(tokens) > max_words and len(pending) > len(prefix):
+            windows.append("\n".join(pending))
+            pending, words = list(prefix), len(header.split())
+        if words + len(tokens) > max_words:
+            capacity = max(1, max_words - len(header.split()))
+            for offset in range(0, len(tokens), capacity):
+                windows.append("\n".join([*prefix, " ".join(tokens[offset:offset + capacity])]))
+            continue
+        pending.append(row)
+        words += len(tokens)
+    if len(pending) > len(prefix):
+        windows.append("\n".join(pending))
+    return windows
+
+
 def document_passages(html: str, *, max_words: int = 360) -> list[Passage]:
     """Keep whole blocks when possible; split oversized blocks with overlap.
 
@@ -62,6 +89,12 @@ def document_passages(html: str, *, max_words: int = 360) -> list[Passage]:
         if words + len(tokens) > max_words:
             flush()
         if len(tokens) > max_words:
+            if re.match(r"<table(?:\s|>)", block):
+                windows = _table_windows(block, text, max_words)
+                if windows:
+                    passages.extend(Passage(window, index, index + 1,
+                        tuple(value for _, value in headings)) for window in windows)
+                    continue
             overlap = min(60, max_words // 6)
             for offset in range(0, len(tokens), max_words - overlap):
                 passages.append(Passage(" ".join(tokens[offset:offset + max_words]), index, index + 1,

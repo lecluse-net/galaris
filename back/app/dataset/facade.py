@@ -6,6 +6,7 @@ from .contracts import (
     DatasetPermissionError as DatasetPermissionError, DatasetWriteLimitError as DatasetWriteLimitError,
 )
 from .access import accessible_clause as dataset_accessible_clause, access as dataset_access
+from .query import DatasetQuery as DatasetQuery, query_dataset as query_dataset
 from .service import (
     create as create_dataset, record as dataset_record, describe as describe_dataset,
     replace as replace_dataset,
@@ -46,3 +47,11 @@ from .resource_summaries import (
 )
 __all__ += ["count_pending_dataset_summaries", "claim_dataset_summary", "dataset_summary_source",
             "apply_dataset_summary", "reconcile_dataset_summaries"]
+__all__ += ["DatasetQuery", "query_dataset"]
+
+from .search_index import (
+    count_pending as count_pending_dataset_indexes, claim_one as claim_dataset_index,
+    source as dataset_index_source, prepare as prepare_dataset_index, apply as apply_dataset_index,
+)
+__all__ += ["count_pending_dataset_indexes", "claim_dataset_index", "dataset_index_source",
+            "prepare_dataset_index", "apply_dataset_index"]

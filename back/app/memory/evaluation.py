@@ -96,7 +96,8 @@ def summarize_recall(
         ranked = observation.returned_ids[:k]
         relevant = observation.case.expected_ids
         matches = len(set(ranked) & relevant)
-        recalls.append(matches / len(relevant) if relevant else 1.0)
+        if relevant:
+            recalls.append(matches / len(relevant))
         precisions.append(matches / len(ranked) if ranked else 0.0)
         first_rank = next(
             (
@@ -126,14 +127,14 @@ def summarize_recall(
         leaks += int(
             any(
                 item_id in observation.case.forbidden_ids
-                for item_id in ranked
+                for item_id in observation.returned_ids
             )
         )
 
     count = len(observations)
     return RecallEvaluationSummary(
         case_count=count,
-        recall_at_k=fmean(recalls),
+        recall_at_k=fmean(recalls) if recalls else 0.0,
         precision_at_k=fmean(precisions),
         mean_reciprocal_rank=(
             fmean(reciprocal_ranks) if reciprocal_ranks else 0.0

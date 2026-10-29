@@ -2,6 +2,17 @@
 
 # Datasets
 
+## Search and calculate with an agent
+
+Ask an agent to find a Dataset by content or meaning, then filter rows, sort results or calculate
+a total. It can query JSON on the server without copying the complete resource into the conversation.
+Results identify the revision read. Calculations distinguish missing/null values and incompatible
+types; units must be explicit. Changes between pages require a fresh read.
+
+Semantic discovery depends on the configured vector model and Dream indexing. The agent sees
+incomplete coverage and can continue with text discovery. Dataset sharing remains required;
+a link from a Document grants no rights.
+
 ## Current description
 
 The small **View summary** icon beside the title and Topic opens the current description

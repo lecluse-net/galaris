@@ -413,7 +413,6 @@ async def test_memory_brief_has_a_strict_character_budget(
     assert len(brief.rendered) <= 1_000
     assert brief.truncated
     assert brief.items[0].memory_id == str(item_id)
-    assert "consult them before searching memory:// again" in brief.rendered
     assert f"source=galaris://task/{source_task_id}" in brief.rendered
     assert brief.items[0].source_refs == (f"galaris://task/{source_task_id}",)
     assert recorded == [(item_id, 0.9)]
@@ -722,16 +721,18 @@ def test_memory_context_query_binds_the_exact_human_contact() -> None:
     assert "Préparer son compte rendu" in query
 
 
-def test_memory_policy_requires_a_relevance_check_not_an_automatic_search() -> None:
+def test_memory_policy_requires_evidence_for_continuity_without_redundant_queries() -> None:
     policy = context.memory_policy_instructions()
     normalized = " ".join(policy.split())
 
-    assert "requires this relevance check, not an automatic search" in normalized
-    assert "one short query" in normalized
+    assert 'search memory:// with mode="semantic" before answering' in normalized
+    assert "up to two complementary searches" in normalized
+    assert "all needed prior evidence is already present" in normalized
     assert "memory_remember" in normalized
     assert "working document" not in normalized
     assert "provisional drafts or notes" in normalized
     assert "written first" in normalized
+    assert "Preserve the old evidence unless the user explicitly requests its erasure" in normalized
     assert "identifies one item unambiguously" in normalized
     assert "Never guess which memory to erase" in normalized
     assert "authoritative galaris:// business resource" in normalized

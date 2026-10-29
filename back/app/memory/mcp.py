@@ -181,8 +181,11 @@ def _task_association_payload(
         "Store one durable governed memory as semantic HTML (paragraphs, lists, tables, links; no images). "
         "Use sparingly for an explicit memory request, a correction, or an especially important "
         "confirmed fact worth retaining immediately. Leave routine extraction and duplicate checking "
-        "to Dream; skip equivalent known memories. Storage is immediate and auditable. Keywords may be "
-        "an array of strings or a JSON-encoded array string. Optional temporal contains partial "
+        "to Dream; skip equivalent known memories. Storage is immediate and auditable. "
+        "For a correction or conflicting claim about a known personal memory, supply "
+        "contradicts_memory_id and its expected_revision: both claims are preserved with an explicit "
+        "contradiction link. A changed target requires rereading; never guess its UUID. "
+        "Keywords may be an array of strings or a JSON-encoded array string. Optional temporal contains partial "
         "year/month/day/weekday (Monday=1..Sunday=7)/hour/minute in Galaris's configured timezone. "
         "Unset components are wildcards. An anchor excludes automatic recall outside its period "
         "and forces priority inclusion when it matches, subject to access and context budgets. "
@@ -195,11 +198,24 @@ async def memory_remember(
     title: str = "",
     keywords: list[str] | str | None = None,
     temporal: MemoryTemporalAnchor | None = None,
+    contradicts_memory_id: str | None = None,
+    expected_revision: int | None = None,
 ) -> str:
     source = _current_source(ctx)
     language = await context_language(ctx)
+    preserved_memory_id: UUID | None = None
+    contradiction_linked = False
     try:
         topic_item_id, contact_item_id = await _recall_scope(ctx)
+        target_id = UUID(contradicts_memory_id) if contradicts_memory_id else None
+        if target_id is not None:
+            target = await service.item_record(target_id, revisions=False, contents=False)
+            if target is None or target.owner_agent_id != ctx.agent_id or target.node_kind != "memory" or target.source_managed:
+                raise ValueError("A contradiction requires this agent's personal memory")
+            if expected_revision is None or expected_revision != target.revision:
+                raise ValueError("Read the target memory and supply its current expected_revision")
+        elif expected_revision is not None:
+            raise ValueError("expected_revision requires contradicts_memory_id")
         acquisition = await acquisition_service.acquire_memory(
             MemoryAcquisitionCreate(
                 agent_id=ctx.agent_id,
@@ -217,6 +233,23 @@ async def memory_remember(
                 },
             )
         )
+        if target_id is not None and acquisition.memory_id is not None:
+            preserved_memory_id = acquisition.memory_id
+            if preserved_memory_id == target_id:
+                raise ValueError("The proposed claim matches the target; no contradiction was linked")
+            # Store the fact through normal idempotent acquisition first. Linking
+            # an existing fact then holds the target lock through the link commit,
+            # without a nested creation commit releasing it prematurely.
+            acquisition = await acquisition_service.acquire_memory(MemoryAcquisitionCreate(
+                agent_id=ctx.agent_id, action="contradict", target_item_id=target_id,
+                temporal=temporal,
+                title=title, content=content, keywords=_normalize_memory_keywords(keywords),
+                source_kind=source.source_kind, source_ref=source.source_ref,
+                metadata={"media_type": "text/html", "requested_by": "agent", "language": language,
+                    "target_revision": expected_revision, "other_item_id": str(preserved_memory_id),
+                    **_scope_metadata(topic_item_id, contact_item_id)},
+            ))
+            contradiction_linked = True
         association = await _associate_with_current_source(
             ctx,
             acquisition.memory_id,
@@ -227,12 +260,15 @@ async def memory_remember(
                 "created": acquisition.created,
                 "status": acquisition.status,
                 "memory_id": acquisition.memory_id,
+                **({"contradiction_linked": contradiction_linked} if target_id is not None else {}),
                 **_task_association_payload(association),
             }
         )
     except Exception as exc:
         logger.exception("memory_remember failed")
-        return _json({"error": str(exc)})
+        return _json({"error": str(exc), **({"memory_id": str(preserved_memory_id),
+            "memory_preserved": True, "contradiction_linked": contradiction_linked}
+            if preserved_memory_id is not None else {})})
 
 
 @mcp_tool("memory", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="memory_upcoming", description=(

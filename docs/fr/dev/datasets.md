@@ -47,6 +47,34 @@ Les utilisations Dataset incluent ces références après filtrage des droits du
 Les écritures utilisent `expected_revision` ; le partage utilise `expected_lock_version`.
 Le provider `data://` enregistré dans File Sharing utilise les mêmes services.
 
+## Recherche et requêtes agentiques
+
+`file_search("data://", query, mode="text")` combine plein texte sur titre, description,
+mots-clés et JSON avec recherche littérale. Les extraits classés portent un pointeur JSON
+RFC 6901 et la révision source. `name` reste limité au titre. `semantic` fusionne les rangs
+lexicaux et vectoriels dans une fenêtre de 100 candidats par branche. Il indique la couverture
+de l'index, les dégradations et la saturation de cette fenêtre. Les curseurs classés sont propres
+à la requête, au mode et à la ressource ; une page vide ne prouve pas l'absence d'information.
+
+Dream prépare des générations vectorielles complètes dans Dataset, sans Document ni souvenir
+personnel. Toute la source est couverte ou l'indexation échoue explicitement. La publication
+atomique revérifie modèle, révision et métadonnées. Les index partiels/périmés sont exclus et les
+droits sont revérifiés après l'appel fournisseur. Le repli lexical est explicite.
+
+`dataset_query(uri, query)` lit une révision autorisée sans expression ni SQL. `path` est un
+pointeur JSON (vide pour la racine) ; un tableau devient des lignes. Les filtres relatifs aux
+lignes se combinent par ET ; `fields` projette et `sort` conserve un tri stable avec valeurs
+nulles/absentes en dernier. `count`, `sum`, `min`, `max`, `avg` portent sur toutes les lignes
+filtrées avant pagination. Les calculs préservent les littéraux décimaux source ; les agrégats
+numériques sont des chaînes décimales avec comptes d'absences/nulls. La moyenne indique sa
+précision. Les types incompatibles sont refusés ; unités et formats de date ne sont pas déduits.
+
+Les pages proposent 50 lignes par défaut, au plus 500, avec un budget de contenu borné.
+Suivre `next_offset` avec la même `expected_revision` pour refuser les changements entre pages.
+Une ligne trop grande exige une projection plus petite. `include_rows=false` calcule uniquement
+les agrégats. La lecture conserve les ACL et ne crée aucune révision.
+Voir [0249](../../../project/decisions/0249-memory-evidence-and-dataset-retrieval.md).
+
 Le classement personnel utilise exclusivement `dataset_tags`, `dataset_tag_assignments` et
 `dataset_appearances`, sans partager les dossiers Memory. Les routes `/datasets/tags` et
 `/datasets/library/move` exigent la lecture Dataset ; organiser une ressource lisible ne donne
