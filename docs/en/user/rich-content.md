@@ -138,7 +138,12 @@ folder picker, including when a search hides some documents.
 The **Insert a link or file** menu groups **Link**, **Add an internal attachment** and
 uploads. In Documents and simpler editorial fields, including the reduced toolbar,
 the internal action opens the same file_share tree with compact files,
-search within the location and multiple selection. It inserts citations in the text without
+search within the location and multiple selection. The dialog opens directly in this
+browser, without tabs. Check files or directories to insert them; click a directory to
+browse it. Galaris objects are available in `galaris://` and document folders in
+`document://folders/`. The **Preview** icon, to the left of the checkbox, opens supported formats fullscreen without changing
+the selection. Checked items remain visible in the dialog footer, where they can be removed.
+It inserts citations in the text without
 adding attachments or copying existing files. An existing file opens at its source in Files,
 with the reader's access rights. The attachment list below the document contains uploaded
 files only; use **Upload** or drag and drop to add them.

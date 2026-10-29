@@ -447,8 +447,11 @@ droits indépendants et révocation, manifeste borné, concurrence et diagrammes
 figés. Les scénarios `process-references.spec.mjs` couvrent miniatures, modales,
 choix lien/diagramme, zoom et sauvegarde HTML sans UI injectée.
 `e2e/specs/process-document-references.spec.mjs` exerce le parcours avec les vraies API.
-`internal-file-picker.spec.mjs` couvre la sélection multiple à travers les dossiers et
-les recherches, sur mobile et bureau.
+`internal-file-picker.spec.mjs` couvre les cases de sélection des fichiers et répertoires,
+au clavier et à la souris, et leur conservation pendant la navigation et les recherches,
+sur mobile et bureau.
+Il vérifie aussi les aperçus texte et audio en plein écran : fermer l’aperçu, y compris
+avec Échap, conserve la modale et les éléments sélectionnés.
 `document-folder-collections.spec.mjs` protège le lecteur de collections contre les réponses
 tardives et vérifie le refus d'accès suivi d'une reprise. Le parcours E2E
 `document-folder-sharing.spec.mjs` couvre les liens stables, l'insertion et la réouverture

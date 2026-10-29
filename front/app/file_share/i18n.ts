@@ -3,6 +3,7 @@ export default {
     nav: { files: 'Fichiers', files_desc: 'Explorer les fichiers et ressources accessibles à chaque agent' },
     files: {
       settingsDescription: 'Consulter et piloter l’indexation des fichiers de chaque agent',
+      preview: 'Aperçu', previewItem: 'Aperçu de {name}', navigation: 'Navigation des fichiers',
       actions: 'Actions pour {name}', deleteTitle: 'Supprimer un élément',
       renameDirectory: 'Renommer le répertoire', directoryName: 'Nom du répertoire',
       deleteFile: 'Supprimer définitivement « {name} » ?',
@@ -26,6 +27,7 @@ export default {
     nav: { files: 'Files', files_desc: 'Browse files and resources available to each agent' },
     files: {
       settingsDescription: 'View and manage file indexing for each agent',
+      preview: 'Preview', previewItem: 'Preview {name}', navigation: 'File navigation',
       actions: 'Actions for {name}', deleteTitle: 'Delete an item',
       renameDirectory: 'Rename directory', directoryName: 'Directory name',
       deleteFile: 'Permanently delete “{name}”?',
@@ -49,6 +51,7 @@ export default {
     nav: { files: '文件', files_desc: '浏览每个智能体可访问的文件和资源' },
     files: {
       settingsDescription: '查看和管理每个智能体的文件索引',
+      preview: '预览', previewItem: '预览 {name}', navigation: '文件导航',
       actions: '{name} 的操作', deleteTitle: '删除项目',
       renameDirectory: '重命名目录', directoryName: '目录名称',
       deleteFile: '永久删除“{name}”？',

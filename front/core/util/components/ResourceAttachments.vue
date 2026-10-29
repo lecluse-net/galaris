@@ -236,6 +236,7 @@ const { resourceId, agentId = null, attachments, editable = false, loading = fal
   loading?: boolean
 }>()
 const emit = defineEmits<{
+  previewing: [value: boolean]
   insert: [attachment: T]
   added: [attachment: T]
   removed: [attachmentId: string]
@@ -272,6 +273,7 @@ const uploadDone = ref(0)
 const uploadTotal = ref(0)
 const previewOpen = ref(false)
 const audioOpen = ref(false)
+watch([previewOpen, audioOpen], ([preview, audio]) => emit('previewing', preview || audio))
 const previewAttachment: ShallowRef<T | null> = shallowRef(null)
 const removeOpen = ref(false)
 const removalAttachment: ShallowRef<T | null> = shallowRef(null)
@@ -629,6 +631,7 @@ async function openById(id: string): Promise<void> {
 }
 defineExpose({ openById })
 onBeforeUnmount(() => {
+  emit('previewing', false)
   disposed = true
   uploadController?.abort(); previewGeneration++
   previewObserver?.disconnect()

@@ -438,8 +438,11 @@ independent access and revocation, bounded membership, concurrency and frozen ru
 diagrams. `process-references.spec.mjs` covers thumbnails, modals, link/diagram
 choices, zoom and HTML round trips without injected UI.
 `e2e/specs/process-document-references.spec.mjs` exercises the real API journey.
-`internal-file-picker.spec.mjs` covers multiple selection across folders and searches
-on mobile and desktop. `document-folder-collections.spec.mjs` protects collection readers
+`internal-file-picker.spec.mjs` covers file and directory checkboxes with keyboard and
+mouse input, preserving selections across navigation and searches on mobile and desktop.
+It also checks fullscreen text and audio previews: closing a preview, including with
+Escape, preserves the picker and its selection.
+`document-folder-collections.spec.mjs` protects collection readers
 against late responses and checks access denial followed by recovery. The E2E journey
 `document-folder-sharing.spec.mjs` covers stable links, insertion and reopening in Documents
 and Chat on desktop and mobile, plus revocation for the agent.

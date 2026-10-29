@@ -1,9 +1,10 @@
 <template>
-  <q-btn ref="tile" flat no-caps :ripple="false" class="file-tile" :class="{ 'file-tile--compact': compact, 'file-tile--selected': selected }" :aria-pressed="selectable ? selected : undefined" :aria-label="t(selectable ? 'files.selectItem' : 'files.openItem', { name: displayName })" @click="emit('open', entry, $event)" @dblclick="emit('activate', entry)">
+  <div class="file-tile-container" :class="{ 'file-tile-container--selectable': selectable }">
+  <q-btn ref="tile" flat no-caps :ripple="false" :padding="selectable ? '0 16px' : undefined" class="file-tile" :class="{ 'file-tile--compact': compact, 'file-tile--selected': selected }" :aria-pressed="selectable && !entry.is_collection ? selected : undefined" :aria-label="t(selectable && !entry.is_collection ? 'files.selectItem' : 'files.openItem', { name: displayName })" @click="emit('open', entry, $event)" @dblclick="emit('activate', entry)">
     <div class="file-tile-content">
-      <q-icon v-if="selectable && (!entry.is_collection || documentFolderId(entry.uri))" class="file-tile-check" :name="selected ? 'check_box' : 'check_box_outline_blank'" color="primary" size="18px" />
       <div class="file-tile-preview">
-        <LibraryIcon v-if="documentFolderId(entry.uri)" :icon="typeof entry.metadata?.icon === 'string' ? entry.metadata.icon : null" size="var(--file-icon-size)" />
+        <q-icon v-if="/^[a-z][a-z0-9+.-]*:\/\/$/.test(entry.uri)" name="storage" size="var(--file-icon-size)" color="primary" />
+        <LibraryIcon v-else-if="documentFolderId(entry.uri)" :icon="typeof entry.metadata?.icon === 'string' ? entry.metadata.icon : null" size="var(--file-icon-size)" />
         <FolderIcon v-else-if="entry.is_collection" size="var(--file-icon-size)" />
         <ResourceThumbnail v-else-if="process || resourceAgent !== null" :uri="entry.uri" :agent-id="selectable ? null : agentId" :title="displayName" />
         <img v-else-if="thumbnail" class="file-tile-image" :src="thumbnail" :alt="entry.name" loading="lazy" />
@@ -14,6 +15,17 @@
       <q-tooltip>{{ entry.uri }}</q-tooltip>
     </div>
   </q-btn>
+  <div v-if="selectable" class="file-tile-actions">
+  <q-btn v-if="!entry.is_collection && entry.capabilities.includes('read') && browserResourceKind(entry.media_type, entry.name)"
+    flat round dense color="primary" icon="visibility"
+    :aria-label="t('files.previewItem', { name: displayName })" @click="emit('preview', entry)">
+    <q-tooltip>{{ t('files.previewItem', { name: displayName }) }}</q-tooltip>
+  </q-btn>
+  <q-checkbox dense size="md" color="primary" :model-value="selected"
+    :disable="!entry.is_collection && !entry.capabilities.includes('read')" :aria-label="t('files.selectItem', { name: displayName })"
+    @update:model-value="(_value, event) => emit('select', entry, event)" />
+  </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -26,7 +38,7 @@ import { fileBrowserService, type FileEntry } from '../services/fileBrowserServi
 import { resourceTarget, collectionLabel } from '../presentation'
 
 const { entry, agentId, compact = false, selectable = false, selected = false } = defineProps<{ entry: FileEntry; agentId: number; compact?: boolean; selectable?: boolean; selected?: boolean }>()
-const emit = defineEmits<{ open: [entry: FileEntry, event: Event]; activate: [entry: FileEntry] }>()
+const emit = defineEmits<{ open: [entry: FileEntry, event: Event]; activate: [entry: FileEntry]; select: [entry: FileEntry, event: Event]; preview: [entry: FileEntry] }>()
 const { t, locale } = useI18n()
 const tile = useTemplateRef<QBtn>('tile')
 const thumbnail = ref('')
@@ -64,9 +76,11 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect(); if (thumbnail.
 </script>
 
 <style scoped>
-.file-tile { --file-icon-size: 88px; --file-preview-height: 120px; width: 100%; min-width: 0; color: inherit; }
+.file-tile-container { position: relative; min-width: 0; }
+.file-tile-container--selectable { display: flex; flex-direction: column; gap: 1px; }
+.file-tile { --file-icon-size: 88px; --file-preview-height: 96px; width: 100%; min-width: 0; color: inherit; }
 .file-tile-content { width: 100%; min-width: 0; padding: 6px 0; text-align: center; }
-.file-tile-preview { height: var(--file-preview-height); display: grid; place-items: center; margin-bottom: 4px; }
+.file-tile-preview { height: var(--file-preview-height); display: grid; place-items: center; margin-bottom: 2px; }
 .file-tile-preview img { width: 100%; height: var(--file-preview-height); object-fit: contain; }
 .file-tile-image { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .14)); }
 :global(body.body--dark .file-tile-image) { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .32)); }
@@ -74,15 +88,16 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect(); if (thumbnail.
 .file-tile-meta { color: var(--solaire-gray-accent); font-weight: 400; }
 .file-tile--compact { --file-icon-size: 48px; }
 .file-tile--compact .file-tile-content { padding: 4px 0; }
-.file-tile--compact .file-tile-preview { height: 64px; margin-bottom: 6px; }
-.file-tile--compact .file-tile-preview :deep(svg), .file-tile--compact .file-tile-preview :deep(img) { max-height: 64px; }
+.file-tile--compact .file-tile-preview { height: 48px; }
+.file-tile--compact .file-tile-preview :deep(svg), .file-tile--compact .file-tile-preview :deep(img) { max-height: 48px; }
 .file-tile--compact .file-tile-preview :deep(.q-icon) { font-size: 48px !important; }
 .file-tile--compact .file-tile-name { font-size: 12px; }
 .file-tile--compact .file-tile-meta { display: none; }
-.file-tile-check { position: absolute; top: 4px; right: 4px; }
+.file-tile-actions { order: -1; display: flex; justify-content: flex-end; align-items: center; gap: 4px; min-height: 32px; padding: 0 4px; }
+.file-tile-container--selectable .file-tile--compact .file-tile-content { padding: 0; }
 .file-tile--selected { background: var(--solaire-blue-light); color: var(--solaire-blue-accent); }
 :global(body.body--dark .file-tile--selected) { background: var(--solaire-blue-dark); }
 @media (max-width: 1023px) {
-  .file-tile:not(.file-tile--compact) { --file-icon-size: 64px; --file-preview-height: 88px; }
+  .file-tile:not(.file-tile--compact) { --file-icon-size: 64px; --file-preview-height: 68px; }
 }
 </style>

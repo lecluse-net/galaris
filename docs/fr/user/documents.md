@@ -219,7 +219,8 @@ sans changer le lien. Cette page liste les sous-répertoires et les documents ac
 la branche, y compris les sous-documents, avec recherche et pagination.
 
 Pour joindre un répertoire, utilisez **Ajouter une PJ interne** dans Discussion, ou
-**Lien Galaris** dans un document, puis l'onglet **Répertoires**. La carte conserve une
+**Lien Galaris** dans un document. Parcourez `document://folders/`, cochez le répertoire,
+puis cliquez sur **Sélectionner**. La carte conserve une
 référence vivante et affiche l'icône du répertoire comme miniature. Elle ne copie aucun
 document et n'accorde aucun droit : partagez d'abord le répertoire avec l'agent concerné.
 Les agents découvrent leurs collections avec `file_list("document://folders/")`, puis

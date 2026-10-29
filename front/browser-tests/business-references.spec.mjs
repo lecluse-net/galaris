@@ -185,19 +185,24 @@ async function searchFixtures(page, failure = false) {
   ]) await page.route(`**/api/${path}?*`, route => route.fulfill(failure ? { status: 503, json: { detail: 'Unavailable' } } : { json: value }))
 }
 
-test('the editor object picker inserts titled references, retries failures and preserves selected formatting', async ({ page }) => {
+test('the editor file picker inserts Galaris references, retries failures and preserves selected formatting', async ({ page }) => {
   await fixtures(page)
-  await searchFixtures(page, true)
-  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [])
+  let failure = true
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'galaris', label: 'Galaris', capabilities: ['list'], native: true }])
+  await page.route('**/api/file-share/browser/entries?*', route => route.fulfill(failure ? { status: 503, json: { detail: 'Unavailable' } } : {
+    json: { entries: [{ uri: `galaris://topic/${id}`, name: topic.title, is_collection: false, media_type: 'application/json', size: null, capabilities: ['read'] }], truncated: false, next_cursor: null },
+  }))
+  await page.route('**/api/file-share/browser/thumbnail?*', route => route.fulfill({ status: 404 }))
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<p><strong>Selected phrase</strong></p>', profile: 'document', resourceAgentId: 7 } })
   await page.locator('[data-editor-surface]').click(); await page.keyboard.press('Control+a')
   await page.getByRole('button', { name: 'Galaris link', exact: true }).click()
-  await page.getByRole('tab', { name: 'Galaris objects', exact: true }).click()
   const dialog = page.getByRole('dialog')
+  await dialog.getByRole('main').getByRole('button', { name: 'Open Galaris', exact: true }).click()
   await expect(dialog.getByRole('alert')).toBeVisible()
-  await searchFixtures(page)
+  failure = false
   await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
-  await dialog.getByText(topic.title, { exact: true }).click()
+  await dialog.getByRole('checkbox', { name: `Select ${topic.title}`, exact: true }).check()
+  await dialog.getByRole('button', { name: 'Select', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   const html = await editorHtml(page)
   expect(html).toContain(`href="galaris://topic/${id}"`)

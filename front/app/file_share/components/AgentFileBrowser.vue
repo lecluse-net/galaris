@@ -1,5 +1,5 @@
 <template>
-  <div class="file-browser-container" :class="{ 'file-browser-container--compact': selection }">
+  <div class="file-browser-container" :class="{ 'file-browser-container--compact': selection, 'file-browser-container--dialog': externalControls }">
     <q-card flat bordered class="file-workspace">
     <q-linear-progress v-if="uriLoading" indeterminate color="primary" />
     <q-banner v-if="uriError" role="alert" class="file-error">
@@ -9,16 +9,15 @@
     <q-splitter v-model="split" :limits="[18, 45]" :disable="$q.screen.lt.md" class="file-browser" :class="{ 'file-browser--tree-hidden': $q.screen.lt.md && !showTree }">
       <template #before>
       <aside class="file-tree" :aria-label="t('files.tree')">
-        <div class="text-subtitle2 q-px-sm q-mb-sm">{{ t('files.roots') }}</div>
         <q-spinner v-if="schemesLoading" color="primary" />
         <q-list v-else>
           <q-expansion-item v-for="root in treeNodes" :key="root.id" :model-value="openScheme === root.id"
-            :header-class="{ 'file-scheme-selected': currentUri.startsWith(root.id) }"
+            :header-class="['file-scheme-header', { 'file-scheme-selected': currentUri.startsWith(root.id) }]"
             hide-expand-icon :toggle-aria-label="root.label" :duration="0" @update:model-value="toggleScheme(root.id, $event)">
             <template #header>
               <div class="file-scheme full-width" :title="root.id">
                 <div class="file-scheme-label">{{ root.label }}</div>
-                <div class="file-scheme-uri text-caption text-grey-7">{{ root.scheme }}://</div>
+                <div class="file-scheme-uri text-caption">{{ root.scheme }}://</div>
               </div>
             </template>
             <div v-if="!root.disabledRoot" class="q-px-sm q-pb-sm">
@@ -49,31 +48,32 @@
       </template>
       <template #after>
       <main class="file-main">
-        <q-toolbar class="file-toolbar q-px-sm q-gutter-sm">
+        <q-toolbar class="file-toolbar q-px-xs">
           <q-btn class="lt-md" round outline color="primary" size="sm" icon="account_tree" :aria-label="t('files.toggleTree')" @click="showTree = !showTree">
             <q-tooltip>{{ t('files.toggleTree') }}</q-tooltip>
           </q-btn>
-          <q-btn round outline color="primary" size="sm" icon="arrow_back" :aria-label="t('files.up')" :disable="!parent" @click="parent && navigate(parent)">
-            <q-tooltip>{{ t('files.up') }}</q-tooltip>
-          </q-btn>
-          <q-breadcrumbs class="col file-breadcrumbs" gutter="xs">
-            <template #separator><q-icon name="chevron_right" size="18px" color="grey-6" /></template>
-            <q-breadcrumbs-el v-for="(crumb, index) in breadcrumbs" :key="crumb.uri">
-              <q-btn rounded dense no-caps color="primary" :outline="crumb.uri !== currentUri" :unelevated="crumb.uri === currentUri"
-                padding="4px 12px" :icon="index === 0 ? 'storage' : 'folder_open'" :label="crumb.label"
-                :aria-current="crumb.uri === currentUri ? 'location' : undefined" @click="navigate(crumb.uri)">
+          <nav ref="breadcrumbNav" class="col file-breadcrumbs" :aria-label="t('files.navigation')">
+            <q-btn-group v-if="breadcrumbs.length" rounded unelevated>
+              <q-btn v-for="(crumb, index) in breadcrumbs" :key="crumb.uri" dense no-caps color="primary" :outline="crumb.uri !== currentUri" :unelevated="crumb.uri === currentUri"
+                padding="3px 8px" :icon="index === 0 ? 'storage' : 'folder_open'" :label="crumb.label"
+                :aria-pressed="crumb.uri === currentUri" :aria-current="crumb.uri === currentUri ? 'location' : undefined" @click="navigate(crumb.uri)">
                 <q-tooltip>{{ crumb.uri }}</q-tooltip>
               </q-btn>
-            </q-breadcrumbs-el>
-          </q-breadcrumbs>
-          <q-btn round unelevated color="primary" size="sm" icon="refresh" :aria-label="t('files.refresh')" :disable="!currentUri" :loading="current?.loading" @click="refresh">
+            </q-btn-group>
+          </nav>
+          <q-btn v-if="!selection" round unelevated color="primary" size="sm" icon="refresh" :aria-label="t('files.refresh')" :disable="!currentUri" :loading="current?.loading" @click="refresh">
             <q-tooltip>{{ t('files.refresh') }}</q-tooltip>
           </q-btn>
         </q-toolbar>
-        <q-separator />
-        <q-input v-if="selection" v-model="query" dense outlined clearable debounce="250" class="q-ma-sm" :disable="!currentUri" :label="t('files.searchLocation')">
+        <q-separator v-if="!selection" />
+        <div v-if="selection && !externalControls" class="row items-center no-wrap q-gutter-xs q-ma-xs">
+        <q-input v-model="query" dense outlined clearable debounce="250" class="col" :disable="!currentUri" :label="t('files.searchLocation')">
           <template #prepend><q-icon name="search" /></template>
         </q-input>
+        <q-btn flat round dense color="primary" icon="refresh" :aria-label="t('files.refresh')" :disable="!currentUri" :loading="current?.loading" @click="refresh">
+          <q-tooltip>{{ t('files.refresh') }}</q-tooltip>
+        </q-btn>
+        </div>
         <div ref="scroll" class="file-scroll" tabindex="0" :aria-label="t('files.title')">
           <q-banner v-if="schemesError" role="alert" class="file-error">
             <template #avatar><q-icon name="error" color="negative" /></template>
@@ -100,7 +100,7 @@
             <q-infinite-scroll :key="currentUri + ':' + (query || '')" :scroll-target="scroll || undefined" :disable="current.error || current.incomplete || (current.loaded && !current.cursor)" :offset="180" @load="loadMore">
               <div class="file-grid">
                 <div v-for="entry in sortedEntries" :key="`${entry.uri}:${current.version}`" class="file-entry">
-                  <FileTile :entry="entry" :agent-id="agentId" :compact="selection" :selectable="selection" :selected="selected.some(value => value.uri === entry.uri)" @open="openEntry" @activate="activateEntry" />
+                  <FileTile :entry="entry" :agent-id="agentId" :compact="selection" :selectable="selection" :selected="selected.some(value => value.uri === entry.uri)" @open="openEntry" @activate="activateEntry" @select="toggleEntry" @preview="previewEntry" />
                   <FileEntryActions v-if="!selection" :entry="entry" :agent-id="agentId" target=".file-entry" :context-only="$q.screen.lt.md"
                     :open="() => openEntry(entry)" @changed="entryChanged"
                     :download="!entry.is_collection && entry.capabilities.includes('read') ? () => downloadEntry(entry) : undefined"
@@ -120,7 +120,10 @@
     </q-card>
     <ResourceDetailDialog v-if="target" ref="detail" :target="target" @close="target = null; refresh()" @changed="refresh" />
     <ResourceAttachments ref="preview" :key="previewKey" :resource-id="String(agentId)" :agent-id="agentId" :attachments="previewEntries"
-      :resource-source="previewSource" preview-only />
+      :resource-source="previewSource" preview-only @previewing="filePreviewOpen = $event" />
+    <FullscreenPreview :model-value="audioPreview !== null" :viewer-label="audioPreview?.name ?? ''" interactive @update:model-value="!$event && (audioPreview = null)">
+      <AudioResourcePlayer v-if="audioPreview" :source="audioPreview" />
+    </FullscreenPreview>
   </div>
 </template>
 
@@ -128,17 +131,17 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar, type QTreeNode } from 'quasar'
-import { FolderIcon, ResourceAttachments, ResourceDetailDialog, richLinkTarget, saveBlobAsResource, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
+import { FolderIcon, ResourceAttachments, ResourceDetailDialog, FullscreenPreview, AudioResourcePlayer, browserResourceKind, richLinkTarget, saveBlobAsResource, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
 import { fileBrowserService, type FileEntry, type FileScheme } from '../services/fileBrowserService'
 import { useFileDirectories } from '../browserState'
 import { parentDirectory, resourceTarget, collectionLabel } from '../presentation'
-import { documentFolderId } from '@/core/util'
 import FileTile from './FileTile.vue'
 import FileEntryActions from './FileEntryActions.vue'
 
-const { agentId, selection = false, initialUri = null } = defineProps<{ agentId: number; selection?: boolean; initialUri?: string | null }>()
+const { agentId, selection = false, initialUri = null, externalControls = false } = defineProps<{ agentId: number; selection?: boolean; initialUri?: string | null; externalControls?: boolean }>()
 const selected = defineModel<FileEntry[]>('selected', { default: () => [] })
-const emit = defineEmits<{ confirm: []; navigate: [uri: string, replace: boolean] }>()
+const query = defineModel<string | null>('query', { default: '' })
+const emit = defineEmits<{ confirm: []; navigate: [uri: string, replace: boolean]; previewing: [value: boolean] }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
 function entryChanged(entry: FileEntry, replacement: string | null): void {
@@ -168,11 +171,13 @@ const target = ref<ResourceDetailTarget | null>(null)
 const detail = useTemplateRef<{ canLeave?: () => Promise<boolean> }>('detail')
 const preview = useTemplateRef<{ openById: (id: string) => Promise<void> }>('preview')
 const previewEntries = ref<ResourceAttachment[]>([]), previewKey = ref(0)
+const filePreviewOpen = ref(false)
+const audioPreview = ref<{ key: string; name: string; load: (signal: AbortSignal) => Promise<Blob> } | null>(null)
 const scroll = useTemplateRef<HTMLElement>('scroll')
+const breadcrumbNav = useTemplateRef<HTMLElement>('breadcrumbNav')
 let schemesRequest: AbortController | undefined
 let active = true
 let ready = false
-const query = ref<string | null>('')
 const searchState = ref({ entries: [] as FileEntry[], loading: false, loaded: false, error: false, incomplete: false, cursor: null as string | null, version: 0 })
 let searchRequest: AbortController | undefined
 let uriRequest: AbortController | undefined
@@ -180,15 +185,16 @@ const uriLoading = ref(false), uriError = ref(false)
 const retryUri = ref(initialUri)
 let anchor = ''
 const current = computed(() => query.value?.trim() ? searchState.value : currentUri.value ? directory(currentUri.value) : null)
-const parent = computed(() => parentDirectory(currentUri.value))
 const unlistable = computed(() => schemes.value.some(scheme => `${scheme.scheme}://` === currentUri.value && (!scheme.capabilities.includes('list') || scheme.root_listable === false)))
 const sortedEntries = computed(() => (current.value?.entries ?? []).filter(isVisible).sort((a, b) => Number(b.is_collection) - Number(a.is_collection) || a.name.localeCompare(b.name, locale.value)))
 const loadedCount = computed(() => schemesError.value || unlistable.value ? 0 : sortedEntries.value.length)
+const canSearch = computed(() => !!currentUri.value)
+const refreshing = computed(() => current.value?.loading ?? false)
 async function canLeave(): Promise<boolean> { return await detail.value?.canLeave?.() ?? true }
-defineExpose({ loadedCount, canLeave })
+defineExpose({ loadedCount, canLeave, canSearch, refreshing, refresh })
 const previewSource: AttachmentSource = {
-  content: (entry, convert, signal) => fileBrowserService.content(agentId, entry.id, convert, signal),
-  videoUrl: entry => fileBrowserService.videoUrl(agentId, entry.id),
+  content: (entry, convert, signal) => fileBrowserService.content(agentId, entry.id, convert, signal, selection),
+  videoUrl: entry => fileBrowserService.videoUrl(agentId, entry.id, selection),
   releaseVideoUrl: fileBrowserService.releaseVideoUrl,
 }
 const breadcrumbs = computed(() => {
@@ -234,7 +240,7 @@ function navigate(uri: string, closeTree = true, history: false | 'push' | 'repl
   const changed = currentUri.value !== uri
   uriRequest?.abort(); uriLoading.value = false
   uriError.value = false
-  target.value = null; previewEntries.value = []; previewKey.value++
+  target.value = null; audioPreview.value = null; previewEntries.value = []; previewKey.value++
   query.value = ''
   currentUri.value = uri
   if (changed && history && !selection) emit('navigate', uri, history === 'replace')
@@ -254,23 +260,7 @@ function navigate(uri: string, closeTree = true, history: false | 'push' | 'repl
 }
 async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false): Promise<void> {
   if (!metadataFresh) { uriRequest?.abort(); uriLoading.value = false; uriError.value = false }
-  if (selection && (!entry.is_collection || documentFolderId(entry.uri))) {
-    if (!entry.capabilities.includes('read') && !documentFolderId(entry.uri)) return
-    const mouse = event as MouseEvent | undefined
-    if (mouse?.shiftKey && anchor) {
-      const entries = sortedEntries.value
-      const start = entries.findIndex(value => value.uri === anchor), end = entries.findIndex(value => value.uri === entry.uri)
-      if (start >= 0 && end >= 0) {
-        const range = entries.slice(Math.min(start, end), Math.max(start, end) + 1).filter(value => !value.is_collection && value.capabilities.includes('read'))
-        selected.value = [...new Map([...selected.value, ...range].map(value => [value.uri, value])).values()]
-        return
-      }
-    }
-    selected.value = selected.value.some(value => value.uri === entry.uri) ? selected.value.filter(value => value.uri !== entry.uri) : [...selected.value, entry]
-    anchor = entry.uri
-    return
-  }
-  if (selection && entry.is_collection && event?.type === 'click' && (event as MouseEvent).detail) return
+  if (selection && !entry.is_collection) { toggleEntry(entry, event); return }
   if (entry.is_collection) { navigate(entry.uri, true, metadataFresh ? false : 'push'); return }
   target.value = resourceTarget(entry, agentId) ?? richLinkTarget(entry.uri, String(entry.metadata?.label ?? entry.name), agentId)
   if (target.value) return
@@ -281,6 +271,33 @@ async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false)
   previewEntries.value = [{ id: entry.uri, uri: entry.uri, name: entry.name, media_type: entry.media_type, size_bytes: entry.size ?? 0 }]
   await nextTick()
   if (active) await preview.value?.openById(entry.uri)
+}
+function toggleEntry(entry: FileEntry, event?: Event): void {
+  if (!selection || !entry.is_collection && !entry.capabilities.includes('read')) return
+  const mouse = event as MouseEvent | undefined
+  if (mouse?.shiftKey && anchor) {
+    const entries = sortedEntries.value
+    const start = entries.findIndex(value => value.uri === anchor), end = entries.findIndex(value => value.uri === entry.uri)
+    if (start >= 0 && end >= 0) {
+      const range = entries.slice(Math.min(start, end), Math.max(start, end) + 1).filter(value => value.is_collection || value.capabilities.includes('read'))
+      selected.value = [...new Map([...selected.value, ...range].map(value => [value.uri, value])).values()]
+      return
+    }
+  }
+  selected.value = selected.value.some(value => value.uri === entry.uri) ? selected.value.filter(value => value.uri !== entry.uri) : [...selected.value, entry]
+  anchor = entry.uri
+}
+async function previewEntry(entry: FileEntry): Promise<void> {
+  if (entry.is_collection || !entry.capabilities.includes('read')) return
+  audioPreview.value = null; previewEntries.value = []; previewKey.value++
+  if (browserResourceKind(entry.media_type, entry.name) === 'audio') {
+    audioPreview.value = { key: entry.uri, name: entry.name, load: signal => fileBrowserService.content(agentId, entry.uri, true, signal, selection) }
+    return
+  }
+  const version = previewKey.value
+  previewEntries.value = [{ id: entry.uri, uri: entry.uri, name: entry.name, media_type: entry.media_type, size_bytes: entry.size ?? 0 }]
+  await nextTick()
+  if (active && version === previewKey.value) await preview.value?.openById(entry.uri)
 }
 async function openUri(uri: string, revealParent = true): Promise<void> {
   uriRequest?.abort(); const request = new AbortController(); uriRequest = request
@@ -346,7 +363,10 @@ async function search(append = false): Promise<void> {
   } catch { if (!request.signal.aborted) searchState.value = { ...searchState.value, loading: false, error: true } }
 }
 watch(query, () => { searchRequest?.abort(); if (query.value?.trim()) void search() })
+watch(() => filePreviewOpen.value || audioPreview.value !== null, value => emit('previewing', value))
+watch(currentUri, async () => { await nextTick(); if (breadcrumbNav.value) breadcrumbNav.value.scrollLeft = breadcrumbNav.value.scrollWidth })
 function restoreLocation(uri: string | null): void {
+  audioPreview.value = null
   if ((uri ?? '') === currentUri.value) {
     target.value = null; previewEntries.value = []; previewKey.value++
     return
@@ -362,21 +382,27 @@ onBeforeUnmount(() => { active = false; schemesRequest?.abort(); searchRequest?.
 <style scoped>
 .file-browser-container, .file-workspace { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 .file-workspace { overflow: hidden; border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.file-browser-container--dialog .file-workspace { border-left: 0; border-right: 0; border-radius: 0; }
 .file-workspace > :not(.file-browser) { flex-shrink: 0; }
-.file-browser { flex: 1; min-height: 0; }
-.file-browser :deep(> .q-splitter__separator) { background: color-mix(in srgb, var(--q-dark) 10%, transparent); }
+.file-browser { --file-divider-color: color-mix(in srgb, var(--q-dark) 10%, transparent); flex: 1; min-height: 0; }
+:global(body.body--dark .file-browser) { --file-divider-color: var(--solaire-gray-accent); }
+.file-browser :deep(> .q-splitter__separator) { background: var(--file-divider-color); }
 .file-browser :deep(> .q-splitter__separator:hover) { background: color-mix(in srgb, var(--q-primary) 28%, transparent); }
 .file-splitter-handle { display: flex; width: 20px; height: 42px; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 10px; color: var(--solaire-gray-accent); background: var(--q-card-background, #fff); box-shadow: 0 2px 8px rgba(35, 46, 66, .12); }
 .file-splitter-handle:focus-visible { color: var(--solaire-blue-accent); outline: 2px solid var(--solaire-blue-accent); }
-.file-tree { --file-tree-selection: var(--solaire-gray-light); min-width: 0; padding: 12px 0; }
-.file-tree :deep(.q-tree__node--selected), .file-tree :deep(.file-scheme-selected) { background: var(--file-tree-selection); }
-:global(body.body--dark .file-tree) { --file-tree-selection: var(--solaire-gray-dark); }
+.file-tree { --file-tree-selection: var(--solaire-blue-light); min-width: 0; min-height: 100%; padding: 0; background: color-mix(in srgb, var(--solaire-gray-light) 50%, transparent); }
+.file-tree :deep(.file-scheme-header) { min-height: 44px; padding: 6px 12px; }
+.file-tree :deep(.q-tree__node--selected) { background: var(--file-tree-selection); }
+.file-tree :deep(.file-scheme-selected) { background: var(--solaire-blue-light); box-shadow: inset 4px 0 var(--solaire-blue-accent); }
+:global(body.body--dark .file-tree .file-scheme-selected) { background: var(--solaire-blue-dark); }
+:global(body.body--dark .file-tree) { --file-tree-selection: var(--solaire-blue-dark); background: color-mix(in srgb, var(--solaire-gray-dark) 50%, transparent); }
 .file-tree :deep(.q-tree__arrow), .file-tree :deep(.q-tree__spinner) { color: var(--solaire-gray-accent); }
 .file-tree-entry { min-width: 0; min-height: 28px; }
-.file-scheme { min-width: 0; padding: 4px 0; }
+.file-scheme { min-width: 0; }
 .file-scheme-label { font-weight: 600; overflow-wrap: anywhere; }
-.file-scheme-uri { line-height: 1.4; }
+.file-scheme-uri { line-height: 1.4; opacity: .8; }
 .file-main { display: flex; flex-direction: column; min-width: 0; height: 100%; }
+.file-toolbar { min-height: 42px; gap: 4px; }
 .file-scroll { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
 .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); align-items: start; gap: 0; }
 .file-entry { position: relative; min-width: 0; }
@@ -392,10 +418,12 @@ onBeforeUnmount(() => { active = false; schemesRequest?.abort(); searchRequest?.
 :global(body.body--dark .file-warning) { background: var(--solaire-yellow-dark); }
 .file-error { --q-negative: var(--solaire-red-accent); background: var(--solaire-red-light); border: 1px solid var(--solaire-red-accent); }
 :global(body.body--dark .file-error) { background: var(--solaire-red-dark); }
-.file-breadcrumbs { min-width: 0; overflow-wrap: anywhere; }
+.file-breadcrumbs { min-width: 0; overflow-x: auto; }
+.file-breadcrumbs :deep(.q-btn-group) { white-space: nowrap; }
 .file-browser-container--compact .file-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 112px), 1fr)); gap: 8px; }
 .file-browser-container--compact .file-scroll { padding: 8px; }
-.file-browser-container--compact .file-tree { padding-top: 6px; font-size: 12px; }
+.file-browser-container--compact .file-toolbar { min-height: 0; padding-top: 4px; padding-bottom: 0; }
+.file-browser-container--compact .file-tree { font-size: 12px; }
 :global(body.body--dark .file-splitter-handle) { background: var(--q-dark-page); box-shadow: 0 2px 8px rgba(0, 0, 0, .38); }
 @media (max-width: 1023px) {
   .file-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); }

@@ -1,52 +1,57 @@
 <template>
-  <q-dialog v-model="open" :maximized="$q.screen.lt.md" @hide="emit('hide')">
+  <q-dialog v-model="open" :maximized="$q.screen.lt.md" :allow-focus-outside="previewing" :no-esc-dismiss="previewing" @hide="emit('hide')">
     <q-card class="internal-file-picker galaris-dialog-card column no-wrap">
       <q-toolbar class="galaris-dialog-title">
         <q-toolbar-title>{{ t('documents.internalAttachments.add') }}</q-toolbar-title>
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-toolbar>
-      <q-tabs v-model="tab" dense align="left">
-        <q-tab name="files" :label="t('richEditor.referenceFiles')" />
-        <q-tab name="folders" :label="t('documents.collections.title')" />
-        <q-tab v-if="references" name="objects" :label="t('richEditor.referenceObjects')" />
-      </q-tabs>
-      <BusinessReferencePicker v-if="tab === 'objects'" :busy="busy" @select="emit('reference', $event)" />
-      <DocumentFolderCollection v-else-if="tab === 'folders'" class="col scroll" selection :inert="busy || undefined" @select="entry => emit('select', [entry], selectedAgent ?? 0)" />
-      <template v-else>
-      <div class="q-pa-sm">
-        <AgentSelect v-model="selectedAgent" :options="agentOptions" :load-agents="false" outlined dense :label="t('agent.selectPlaceholder')" :loading="loadingAgents" :disable="busy" />
+      <div class="picker-toolbar">
+        <AgentSelect v-model="selectedAgent" class="picker-agent" :options="agentOptions" :load-agents="false" outlined dense :label="t('agent.selectPlaceholder')" :loading="loadingAgents" :disable="busy" />
+        <div class="picker-search">
+          <q-input v-model="query" class="col" dense outlined clearable debounce="250" :disable="!browser?.canSearch || busy" :label="t('files.searchLocation')">
+            <template #prepend><q-icon name="search" /></template>
+          </q-input>
+          <q-btn flat round dense color="primary" icon="refresh" :aria-label="t('files.refresh')" :disable="!browser?.canSearch || busy" :loading="browser?.refreshing" @click="browser?.refresh()">
+            <q-tooltip>{{ t('files.refresh') }}</q-tooltip>
+          </q-btn>
+        </div>
       </div>
       <q-banner v-if="agentError" role="alert">{{ t('files.agentError') }} <q-btn outline :label="t('common.retry')" @click="loadAgents" /></q-banner>
       <q-banner v-if="error" role="alert">{{ error }}</q-banner>
-      <AgentFileBrowser v-if="selectedAgent !== null" :key="selectedAgent" v-model:selected="selected" :agent-id="selectedAgent" :inert="busy || undefined" selection @confirm="confirm" />
+      <AgentFileBrowser v-if="selectedAgent !== null" ref="browser" :key="selectedAgent" v-model:selected="selected" v-model:query="query" :agent-id="selectedAgent" :inert="busy || undefined" selection external-controls @confirm="confirm" @previewing="previewing = $event" />
       <q-card-section v-else class="col">{{ t('files.chooseAgent') }}</q-card-section>
-      <q-card-section class="q-py-sm picker-selection" :aria-label="t('files.selection')">
-        <span>{{ t('files.selectedCount', { count: selected.length }) }}</span>
-        <q-chip v-for="entry in selected" :key="entry.uri" removable :disable="busy" @remove="selected = selected.filter(value => value.uri !== entry.uri)">{{ entry.name }}</q-chip>
-      </q-card-section>
-      <q-card-actions align="right" class="galaris-dialog-actions">
-        <q-btn v-close-popup outline :label="t('common.cancel')" />
+      <footer class="picker-footer">
+      <q-separator />
+      <div class="picker-footer-content">
+      <div class="picker-selection" :aria-label="t('files.selection')">
+        <div class="text-caption text-weight-medium">{{ t('files.selectedCount', { count: selected.length }) }}</div>
+        <div class="picker-selected-items">
+          <q-chip v-for="entry in selected" :key="entry.uri" removable :disable="busy" @remove="selected = selected.filter(value => value.uri !== entry.uri)"><span class="ellipsis">{{ entry.name }}</span><q-tooltip>{{ entry.uri }}</q-tooltip></q-chip>
+        </div>
+      </div>
+      <q-card-actions align="right" class="galaris-dialog-actions q-pa-none">
+        <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
         <q-btn color="primary" :label="t('files.selectFiles')" :disable="!selected.length || selectedAgent === null" :loading="busy" @click="confirm" />
       </q-card-actions>
-      </template>
+      </div>
+      </footer>
     </q-card>
   </q-dialog>
 </template>
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
-import { DocumentFolderCollection } from '@/app/document'
 import { AgentFileBrowser, type FileEntry } from '@/app/file_share/interface'
-import BusinessReferencePicker from './BusinessReferencePicker.vue'
-import type { RichLinkTarget } from '@/core/util/richText'
 const open = defineModel<boolean>({ default: false })
-const { agentId = null, busy = false, error = '', references = false } = defineProps<{ agentId?: number | null; busy?: boolean; error?: string; references?: boolean }>()
-const emit = defineEmits<{ select: [entries: FileEntry[], agentId: number]; reference: [value: RichLinkTarget]; hide: [] }>()
-const tab = ref('files')
+const { agentId = null, busy = false, error = '' } = defineProps<{ agentId?: number | null; busy?: boolean; error?: string }>()
+const emit = defineEmits<{ select: [entries: FileEntry[], agentId: number]; hide: [] }>()
 const { t } = useI18n()
 const selectedAgent = ref<number | null>(agentId), selected = ref<FileEntry[]>([]), agents = ref<AgentSelectionOption[]>([])
 const loadingAgents = ref(false), agentError = ref(false)
+const previewing = ref(false)
+const query = ref<string | null>('')
+const browser = useTemplateRef<InstanceType<typeof AgentFileBrowser>>('browser')
 let request: AbortController | undefined
 const agentOptions = computed(() => agents.value.map(agent => ({ value: agent.id, label: agent.label, hasAvatar: agent.has_avatar })))
 async function loadAgents(): Promise<void> {
@@ -61,12 +66,23 @@ async function loadAgents(): Promise<void> {
   finally { if (!controller.signal.aborted) loadingAgents.value = false }
 }
 function confirm(): void { if (!busy && selectedAgent.value !== null && selected.value.length) emit('select', selected.value, selectedAgent.value) }
-watch(selectedAgent, () => { selected.value = [] })
-watch(open, value => { selected.value = []; if (value) void loadAgents(); else request?.abort() }, { immediate: true })
+watch(selectedAgent, () => { selected.value = []; previewing.value = false; query.value = '' })
+watch(open, value => { selected.value = []; if (value) void loadAgents(); else { request?.abort(); previewing.value = false } }, { immediate: true })
 onBeforeUnmount(() => request?.abort())
 </script>
 <style scoped>
 .internal-file-picker { width: 1000px; max-width: 96vw; height: 740px; max-height: 92dvh; }
-.picker-selection { max-height: 100px; overflow: auto; border-top: 1px solid var(--solaire-gray-accent); }
+.picker-toolbar { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: center; gap: 8px; padding: 8px; flex-shrink: 0; }
+.picker-agent, .picker-search { min-width: 0; }
+.picker-search { display: flex; align-items: center; gap: 4px; }
+.picker-toolbar :deep(.q-field__control), .picker-toolbar :deep(.q-field__marginal) { height: 44px; min-height: 44px; }
+.picker-footer { flex-shrink: 0; }
+.picker-footer-content { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+.picker-selection { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; min-height: 28px; }
+.picker-selection > .text-caption { flex-shrink: 0; }
+.picker-selected-items { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; max-height: 100px; overflow: auto; gap: 4px; }
+.picker-selected-items :deep(.q-chip) { margin: 0; max-width: 100%; }
+.picker-footer-content > .q-card__actions { flex-shrink: 0; }
+@media (max-width: 1023px) { .picker-footer-content { flex-wrap: wrap; } .picker-selection { flex-basis: 100%; } .picker-footer-content > .q-card__actions { width: 100%; } }
 @media (max-width: 1023px) { .internal-file-picker { width: 100%; max-width: 100%; height: 100%; max-height: 100%; } }
 </style>

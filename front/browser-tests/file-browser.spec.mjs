@@ -414,7 +414,7 @@ for (const width of [1440, 390]) test(`browse folders, scroll, retry and preview
   await expect(page.getByText('Synthetic report preview content', { exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await main.getByRole('button', { name: 'Parent directory', exact: true }).click()
+  await main.getByRole('navigation', { name: 'File navigation', exact: true }).getByRole('button', { name: 'console://', exact: true }).click()
   await expect(main.getByRole('button', { name: 'Open Reports', exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('file-browser.png'), fullPage: true })
 })

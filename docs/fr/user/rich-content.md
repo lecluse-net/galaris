@@ -150,6 +150,11 @@ Le menu **Insérer un lien ou un fichier** regroupe **Lien**, **Ajouter une PJ i
 et l'upload. Dans les Documents comme dans les champs éditoriaux simples, y compris avec
 le menu réduit, l'action interne ouvre le même sélecteur file_share :
 arborescence, fichiers compacts, recherche dans l'emplacement et sélection multiple.
+La modale s'ouvre directement sur ce navigateur, sans onglets. Cochez les fichiers ou
+répertoires à insérer ; cliquez sur un répertoire pour le parcourir. Les objets Galaris
+se trouvent dans `galaris://` et les répertoires documentaires dans `document://folders/`.
+L’icône **Aperçu**, à gauche de la case à cocher, affiche les formats lisibles en plein écran sans changer la sélection.
+Les éléments cochés restent visibles dans le pied de la modale et peuvent y être retirés.
 Elle insère des citations dans le texte, sans ajouter de PJ ni copier les fichiers existants.
 Un fichier déjà présent s'ouvre depuis sa source dans Fichiers, avec les droits du lecteur.
 La liste de PJ sous le document contient uniquement les fichiers téléversés ; son bouton

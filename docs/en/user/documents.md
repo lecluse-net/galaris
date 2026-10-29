@@ -199,7 +199,7 @@ preserves the link. The page lists subfolders and readable documents throughout 
 including nested documents, with search and pagination.
 
 To attach a folder, use **Add an internal attachment** in Chat or **Galaris link** in a Document,
-then select **Folders**. Its card retains a live reference and uses the folder icon as its
+browse `document://folders/`, check the folder, then click **Select**. Its card retains a live reference and uses the folder icon as its
 thumbnail. It copies no documents and grants no access: share the folder with the relevant
 agent first. Agents discover their collections with `file_list("document://folders/")`,
 then read a folder with `file_read("document://folders/<uuid>/")`. The response contains its

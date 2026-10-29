@@ -1,12 +1,11 @@
 <template>
-  <ResourcePicker v-model="adding" references :agent-id="agentId" :busy="busy" :error="error" @select="select" @reference="selectReference" @hide="finishPicker" />
+  <ResourcePicker v-model="adding" :agent-id="agentId" :busy="busy" :error="error" @select="select" @hide="finishPicker" />
 </template>
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { validRichLink, richLinkCard } from '@/core/util/richText'
 import { documentFolderId } from '@/core/util'
-import type { RichLinkTarget } from '@/core/util/richText'
 import { processReferenceHtml } from '@/app/process/interface'
 import { resourceTarget, type FileEntry } from '@/app/file_share/interface'
 import ResourcePicker from './resourcePicker.vue'
@@ -17,16 +16,6 @@ const emit = defineEmits<{ picked: [html: string]; 'resources-picked': [resource
 const { t } = useI18n()
 const error = ref(''), busy = ref(false)
 let generation = 0
-function selectReference(value: RichLinkTarget): void {
-  if (!editable || busy.value || !validRichLink(value.uri)) return
-  if (resourcesOnly) {
-    emit('resources-picked', [{ uri: value.uri, name: value.title }]); adding.value = false
-    return
-  }
-  const link = document.createElement('a'); link.href = value.uri; link.textContent = value.title
-  emit('picked', `<p>${link.outerHTML}</p>`); adding.value = false
-}
-
 function reference(entry: FileEntry, selectedAgent: number): string {
   const title = String(entry.metadata?.label ?? entry.name)
   if (['process', 'process_run'].includes(resourceTarget(entry, selectedAgent)?.kind ?? '')) return processReferenceHtml(entry.uri, title, false)
