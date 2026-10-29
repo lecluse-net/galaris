@@ -198,6 +198,16 @@ const previewSource: AttachmentSource = {
   releaseVideoUrl: fileBrowserService.releaseVideoUrl,
 }
 const breadcrumbs = computed(() => {
+  const ancestors = currentUri.value ? directory(currentUri.value).ancestors : []
+  if (ancestors.length) {
+    return ancestors.map(entry => ({ uri: entry.uri,
+      label: schemes.value.find(scheme => `${scheme.scheme}://` === entry.uri)?.label ?? entry.name }))
+  }
+  // Folder UUIDs identify resources; they are never useful navigation labels,
+  // including while a direct link is loading or waiting for a retry.
+  if (/^document:\/\/folders\/[^/]+\/$/.test(currentUri.value)) {
+    return [{ uri: 'document://', label: schemes.value.find(scheme => scheme.scheme === 'document')?.label ?? t('nav.documents') }]
+  }
   const crumbs: { uri: string; label: string }[] = []
   let uri: string | null = currentUri.value
   while (uri) {
@@ -248,14 +258,20 @@ function navigate(uri: string, closeTree = true, history: false | 'push' | 'repl
   openScheme.value = root?.id ?? null
   if (root && root.id !== uri && !root.disabledRoot && !directory(root.id).loaded && !directory(root.id).error) void load(root.id)
   if (scroll.value) scroll.value.scrollTop = 0
-  const reveal = (): void => {
+  const reveal = async (): Promise<void> => {
     if (!active || currentUri.value !== uri || !directory(uri).loaded) return
-    const ancestors: string[] = []
-    for (let current: string | null = uri; current; current = parentDirectory(current)) ancestors.push(current)
+    const ancestors: string[] = directory(uri).ancestors.map(entry => entry.uri)
+    if (ancestors.length) {
+      await Promise.all(ancestors.filter(parent => parent !== uri && !directory(parent).loaded && !directory(parent).error)
+        .map(parent => load(parent)))
+      if (!active || currentUri.value !== uri) return
+    } else {
+      for (let current: string | null = uri; current; current = parentDirectory(current)) ancestors.push(current)
+    }
     expanded.value = [...new Set([...expanded.value, ...ancestors])]
   }
   if (uri && !unlistable.value && !directory(uri).loaded && !directory(uri).error) void load(uri).then(reveal)
-  else reveal()
+  else void reveal()
   if (closeTree && $q.screen.lt.md) showTree.value = false
 }
 async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false): Promise<void> {

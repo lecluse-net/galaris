@@ -207,9 +207,10 @@ Grant read or edit access to users, agents and teams, or public access for authe
 users. These rights apply recursively to subfolders, documents and sub-documents,
 including later additions. A document combines permissions from every folder containing
 it and every parent document; the most permissive permission wins. Filing somebody else's
-document, even with edit access, never authorizes resharing it. Classification stays personal;
-only authorized folders are available as collections, without exposing private ancestors or
-documents the reader cannot access.
+document, even with edit access, never authorizes resharing it. Editing classifications stays
+personal. Readers can discover folders containing a document they can read, together with their
+ancestors, even without explicitly sharing the folder. This grants no access to other documents
+classified in the same location.
 
 Every folder has a stable URL `/documents/folders/<uuid>` and reference
 `document://folders/<uuid>/`. In its list (**F4**), the link icon copies the reference and
@@ -219,8 +220,9 @@ including nested documents, with search and pagination.
 
 To attach a folder, use **Add an internal attachment** in Chat or **Galaris link** in a Document,
 browse `document://folders/`, check the folder, then click **Select**. Its card retains a live reference and uses the folder icon as its
-thumbnail. It copies no documents and grants no access: share the folder with the relevant
-agent first. Agents discover their collections with `file_list("document://folders/")`,
+thumbnail. It copies no documents and grants no access: the agent must already be able to read
+the relevant documents. Sharing the folder can grant access to documents you own.
+Agents discover their collections with `file_list("document://folders/")`,
 then read a folder with `file_read("document://folders/<uuid>/")`. The response contains its
 JSON hierarchy of readable subfolders and nested Documents, in pages of at most 200 items.
 Pass the returned `next_offset` as `offset` on the next read, then read the desired document

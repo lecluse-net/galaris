@@ -2258,6 +2258,14 @@ outside the home directory.
 real APIs: Agent selection, internal files and attachments from `file://`, reopening previews and the Document
 dialog under the selected Agent's scope.
 
+`app/document/tests/test_folder_resources.py` checks Document navigation one level at a time:
+root folders, unfiled files, multiple placements with stable URIs, single-entry pagination,
+moves and visibility derived from readable documents across several users' classifications,
+without exposing other files. `front/browser-tests/file-browser.spec.mjs` checks named
+breadcrumbs from a direct link, browser Back and keyboard opening on desktop and mobile.
+Exhaustive discovery through `document://folders/`, branch search and hierarchical JSON reads
+retain their existing guarantees.
+
 <a id="scope"></a>
 
 ## Scope and durable controls

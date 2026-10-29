@@ -20,6 +20,7 @@ export interface FileEntry {
 export interface FileListing {
   uri: string
   entries: FileEntry[]
+  ancestors?: FileEntry[]
   truncated: boolean
   next_cursor: string | null
 }

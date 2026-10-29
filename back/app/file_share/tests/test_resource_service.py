@@ -868,41 +868,40 @@ async def test_canonical_percent_encoding_maps_to_decoded_console_name(
 async def test_document_collection_lists_canonical_resource_uris(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.document.facade as memory
+    from app.file_share import document_folders
 
     identifiers = [uuid4(), uuid4()]
 
-    async def search(**_kwargs: object) -> dict[str, object]:
+    async def listing(identity, actor, **kwargs: object) -> dict[str, object]:
+        assert identity is None and actor == 1
+        assert kwargs["navigation"] is True
         return {
-            "hits": [
+            "uri": "document://",
+            "entries": [
                 {
-                    "id": str(identifier),
-                    "title": "Release notes",
-                    "filename": "release.md",
+                    "uri": f"document://{identifier}",
+                    "name": "Release notes",
                     "media_type": "text/markdown",
                     "size": 42,
                     "revision": 3,
                     "checksum": "abc",
-                    "updated_at": None,
-                    "can_write": True,
+                    "capabilities": ["read", "write", "append", "edit"],
                     "metadata": {},
                 }
                 for identifier in identifiers
             ],
-            "has_more": False,
-            "next_offset": None,
+            "truncated": False,
+            "next_cursor": None,
         }
 
-    monkeypatch.setattr(memory, "search_file_resources", search)
+    monkeypatch.setattr(document_folders, "list_folder_resources", listing)
 
     result = await resource_service.resource_list(
         ResourceContext(agent_id=1, runtime="internal"),
         "document://",
     )
 
-    assert result.entries[0].uri == "document://folders/"
-    assert result.entries[0].is_collection
-    documents = result.entries[1:]
+    documents = result.entries
     assert [entry.uri for entry in documents] == [f"document://{identifier}" for identifier in identifiers]
     assert len({entry.entry_name for entry in documents}) == len(identifiers)
     assert [entry.name for entry in documents] == ["Release notes", "Release notes"]

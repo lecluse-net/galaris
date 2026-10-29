@@ -13,7 +13,22 @@ lus par les destinataires, mais le répertoire ne dispose pas de référence con
 `app.document` projette chaque répertoire autorisé comme collection en lecture seule sous
 `document://folders/<uuid>/`, avec une page `/documents/folders/<uuid>`. Sa référence survit
 aux renommages et déplacements. `document://folders/` découvre tous les répertoires lisibles,
-y compris ceux dont les ancêtres sont privés, sans exposer ces ancêtres.
+y compris ceux dont les ancêtres ne sont pas explicitement partagés.
+
+### Navigation par répertoires (2026-10-29)
+
+La présence d’un document lisible rend ses répertoires et leurs ancêtres découvrables, dans les
+classements de tous les utilisateurs. Le partage explicite d’un répertoire n’est pas requis
+pour naviguer vers un document déjà autorisé. Les ACL de chaque document restent l’autorité
+pour son contenu ; voir un répertoire n’accorde aucun accès aux autres documents.
+
+`file_list("document://")` expose directement les répertoires contenant des documents lisibles
+et les documents sans classement accessible. Dans un répertoire exact, la navigation liste
+ses sous-répertoires immédiats et ses documents, sans aplatir les sous-répertoires. Un même
+document peut apparaître dans plusieurs classements, avec son URI canonique inchangée.
+Les listes fournissent les ancêtres nommés pour le fil d’Ariane, y compris à l’ouverture d’un
+lien direct. La recherche de branche, la découverte exhaustive `document://folders/` et la
+lecture JSON hiérarchique restent disponibles séparément.
 
 La collection réutilise le partage effectif existant ; aucun nouveau grant ou stockage de contenu
 n'est créé. Elle liste les sous-répertoires immédiats et les documents lisibles de toute la branche,
@@ -30,8 +45,8 @@ le JSON. Le contenu des documents et les images d'icônes ne sont pas inclus.
 Les clés de placement distinguent un document classé dans plusieurs branches. Lorsqu'une page
 commence au milieu d'une branche, `continuations` contient les enfants à rattacher aux
 `parent_key` / `parent_uri` déjà lus ; ces ancêtres ne sont pas répétés dans le quota.
-Un descendant lisible sous un parent interdit est rattaché au plus proche ancêtre lisible,
-sans divulguer le parent interdit. Les cycles sont exclus du parcours. Chaque requête relit
+Un sous-document lisible sous un document parent interdit est rattaché au plus proche ancêtre
+lisible, sans divulguer le document parent interdit. Les cycles sont exclus du parcours. Chaque requête relit
 les droits et les placements courants ; reprendre à l'offset zéro après une réorganisation
 concurrente. Le comptage et la pagination s'effectuent en SQL, sans charger toute la branche
 dans le processus applicatif.

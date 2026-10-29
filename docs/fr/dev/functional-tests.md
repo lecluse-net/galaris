@@ -2356,6 +2356,14 @@ avec les vraies API : sélection d’agent, fichiers internes et pièces jointes
 `file://`, réouverture des aperçus
 et modale documentaire sous le bon périmètre.
 
+`app/document/tests/test_folder_resources.py` vérifie la navigation Document niveau par niveau :
+répertoires à la racine, fichiers non classés, classements multiples à URI stable, pagination
+d’une entrée, déplacement, visibilité déduite des documents et classements de plusieurs utilisateurs
+sans divulgation des autres fichiers. `front/browser-tests/file-browser.spec.mjs`
+vérifie le fil d’Ariane nommé depuis un lien direct, le retour et l’ouverture au clavier sur
+mobile et bureau. La découverte exhaustive `document://folders/`, la recherche de branche et
+la lecture JSON hiérarchique conservent leurs garanties existantes.
+
 <a id="scope"></a>
 
 ## Portée et commandes durables

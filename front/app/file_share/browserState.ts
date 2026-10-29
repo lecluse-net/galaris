@@ -3,6 +3,7 @@ import { fileBrowserService, type FileEntry } from './services/fileBrowserServic
 
 export interface DirectoryState {
   entries: FileEntry[]
+  ancestors: FileEntry[]
   cursor: string | null
   loaded: boolean
   loading: boolean
@@ -15,7 +16,7 @@ export function useFileDirectories(agentId: number, management = false) {
   const requests = new Map<string, AbortController>()
   function directory(uri: string): DirectoryState {
     if (!directories.has(uri)) directories.set(uri, {
-      entries: [], cursor: null, loaded: false, loading: false, error: false, incomplete: false, version: 0,
+      entries: [], ancestors: [], cursor: null, loaded: false, loading: false, error: false, incomplete: false, version: 0,
     })
     return directories.get(uri)!
   }
@@ -46,6 +47,7 @@ export function useFileDirectories(agentId: number, management = false) {
       const entries = new Map((more ? state.entries : []).map(entry => [entry.uri, entry]))
       for (const entry of result.entries) entries.set(entry.uri, entry)
       state.entries = [...entries.values()]
+      state.ancestors = result.ancestors ?? []
       if (!more) state.version++
       // A repeating cursor cannot make progress and must never create an infinite request loop.
       state.incomplete = result.truncated && (!result.next_cursor || (more && result.next_cursor === state.cursor))

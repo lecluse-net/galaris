@@ -57,6 +57,92 @@ async def test_folder_scope_membership_is_live_and_does_not_authorize_other_effe
 
 
 @pytest.mark.asyncio
+async def test_file_navigation_follows_folders_with_stable_document_uris(db, agents, memory_storage):
+    owner = await human(db)
+    scope = AgentManagementScope(user_id=owner.id, agent_ids=frozenset())
+    root = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic root", parent_id=None))
+    child = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic child", parent_id=root.id))
+    sibling = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic sibling", parent_id=None))
+    unfiled = await document(agents[0], owner, "Synthetic unfiled")
+    classified = await document(agents[0], owner, "Synthetic classified")
+    nested = await document(agents[0], owner, "Synthetic nested")
+    await document_tags.move_document(scope, classified.id, child.id)
+    await document_tags.assign_tag(scope, classified.id, sibling.id)
+    await document_nesting.move(scope, nested.id, classified.id)
+    ctx = ResourceContext(agent_id=agents[0].id, runtime="internal", management_scope=scope)
+
+    async def contents(uri):
+        entries, cursor = [], None
+        while True:
+            page = await resource_list(ctx, uri, max_entries=1, cursor=cursor)
+            entries.extend(entry.uri for entry in page.entries)
+            cursor = page.next_cursor
+            if cursor is None:
+                return entries
+
+    root_uri, child_uri, sibling_uri = [f"document://folders/{folder.id}/" for folder in (root, child, sibling)]
+    assert set(await contents("document://")) == {root_uri, sibling_uri, f"document://{unfiled.id}"}
+    assert await contents(root_uri) == [child_uri]
+    for uri in (child_uri, sibling_uri):
+        assert set(await contents(uri)) == {f"document://{classified.id}", f"document://{nested.id}"}
+    # A freshly opened deep link supplies readable parent names, without changing any URI.
+    page = await resource_list(ctx, child_uri)
+    assert [(entry.uri, entry.name) for entry in page.ancestors] == [
+        ("document://", "Documents"), (root_uri, root.name), (child_uri, child.name),
+    ]
+    classified_entry = next(entry for entry in page.entries if entry.uri == f"document://{classified.id}")
+    assert {"read", "write", "append", "edit"} <= set(classified_entry.capabilities)
+    assert classified_entry.size == classified.size_bytes
+    assert classified_entry.revision == classified.revision
+    assert classified_entry.checksum == classified.content_hash
+    assert classified_entry.metadata["document_type"] == classified.document_type
+    await document_tags.move_document(scope, classified.id, None)
+    assert f"document://{classified.id}" in await contents("document://")
+    assert await contents(child_uri) == []
+
+
+@pytest.mark.asyncio
+async def test_agent_discovers_user_folders_through_readable_documents(db, agents, memory_storage):
+    from app.document import document_sharing
+    from app.document.schemas import DocumentSharingUpdate
+
+    owner, other = await human(db), await human(db)
+    scope = AgentManagementScope(user_id=owner.id, agent_ids=frozenset())
+    other_scope = AgentManagementScope(user_id=other.id, agent_ids=frozenset())
+    root = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic personal root", parent_id=None))
+    child = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic personal child", parent_id=root.id))
+    second = await document_tags.write_tag(other.id, DocumentTagWrite(name="Synthetic other classification", parent_id=None))
+    empty = await document_tags.write_tag(owner.id, DocumentTagWrite(name="Synthetic empty", parent_id=None))
+    visible = await document(agents[0], owner, "Synthetic accessible values")
+    denied = await document(agents[0], owner, "Synthetic private sibling")
+    await document_tags.move_document(scope, visible.id, child.id)
+    await document_tags.move_document(scope, denied.id, child.id)
+    await document_sharing.update_sharing(visible.id, DocumentSharingUpdate(kind="user", id=other.id,
+        can_write=False, expected_lock_version=visible.lock_version), scope)
+    await document_tags.assign_tag(other_scope, visible.id, second.id)
+    await document_sharing.update_sharing(visible.id, DocumentSharingUpdate(kind="agent", id=agents[1].id,
+        can_write=False, expected_lock_version=visible.lock_version), scope)
+    ctx = ResourceContext(agent_id=agents[1].id, runtime="internal")
+    root_uri, child_uri, second_uri = [f"document://folders/{folder.id}/" for folder in (root, child, second)]
+    root_page = await resource_list(ctx, "document://")
+    assert {entry.uri for entry in root_page.entries} == {root_uri, second_uri}
+    assert f"document://folders/{empty.id}/" not in {entry.uri for entry in root_page.entries}
+    assert [entry.uri for entry in (await resource_list(ctx, root_uri)).entries] == [child_uri]
+    canonical = f"document://{visible.id}"
+    for uri in (child_uri, second_uri):
+        page = await resource_list(ctx, uri)
+        assert [entry.uri for entry in page.entries] == [canonical]
+        assert "write" not in page.entries[0].capabilities
+        assert (await resource_info(ctx, uri)).is_collection
+    # Revoking the sole readable Document removes all of its personal folder paths.
+    await document_sharing.update_sharing(visible.id, DocumentSharingUpdate(kind="agent", id=agents[1].id,
+        can_write=None, expected_lock_version=visible.lock_version), scope)
+    assert (await resource_list(ctx, "document://")).entries == []
+    with pytest.raises(FileNotFoundError):
+        await resource_list(ctx, child_uri)
+
+
+@pytest.mark.asyncio
 async def test_folder_discovery_contents_and_revocation(db, agents, memory_storage):
     from app.document.folder_resources import describe_folder, list_folder
 
@@ -81,17 +167,17 @@ async def test_folder_discovery_contents_and_revocation(db, agents, memory_stora
     assert {entry.uri for entry in discovered.entries} == {uri, f"document://folders/{child.id}/"}
     assert f"document://folders/{private.id}/" not in {entry.uri for entry in discovered.entries}
     root_entries = await resource_list(ctx, "document://", max_entries=1)
-    assert root_entries.entries[0].uri == "document://folders/"
-    assert root_entries.next_cursor is not None
+    assert root_entries.entries[0].uri == uri
+    assert [entry.uri for entry in (await resource_list(ctx, uri)).entries] == [f"document://folders/{child.id}/"]
     entries = []
     cursor = None
     while True:
-        page = await resource_list(ctx, uri, max_entries=1, cursor=cursor)
+        page = await resource_list(ctx, f"document://folders/{child.id}/", max_entries=1, cursor=cursor)
         entries.extend(page.entries)
         cursor = page.next_cursor
         if cursor is None:
             break
-    assert len(entries) == len({entry.uri for entry in entries}) == 3
+    assert len(entries) == len({entry.uri for entry in entries}) == 2
     assert {f"document://{first.id}", f"document://{nested.id}"} <= {entry.uri for entry in entries}
     found = await resource_search(ctx, uri, "nested")
     assert [hit.resource.uri for hit in found.hits] == [f"document://{nested.id}"]
@@ -142,12 +228,15 @@ async def test_folder_discovery_contents_and_revocation(db, agents, memory_stora
     with pytest.raises(FileNotFoundError):
         await resource_read(ctx, uri)
     assert not (await resource_list(ctx, "document://folders/")).entries
-    # Sharing a child never exposes its private ancestors or siblings.
+    # Readable documents reveal their directory paths and all personal classifications.
     await rule(child, scope, [("agent", agents[1].id, False), ("user", outsider.id, False)])
-    assert [entry.uri for entry in (await resource_list(ctx, "document://folders/")).entries] == [f"document://folders/{child.id}/"]
+    assert {entry.uri for entry in (await resource_list(ctx, "document://folders/")).entries} == {
+        uri, f"document://folders/{child.id}/", f"document://folders/{second.id}/"}
+    assert [entry.uri for entry in (await resource_list(ctx, "document://")).entries] == [uri]
+    child_page = await resource_list(ctx, f"document://folders/{child.id}/")
+    assert [entry.uri for entry in child_page.ancestors] == ["document://", uri, f"document://folders/{child.id}/"]
     assert (await describe_folder(child.id, HumanActor(outsider.id)))["name"] == child.name
-    with pytest.raises(FileNotFoundError):
-        await describe_folder(root.id, HumanActor(outsider.id))
+    assert (await describe_folder(root.id, HumanActor(outsider.id)))["name"] == "Synthetic renamed collection"
     await document_tags.remove_tag(owner.id, child.id, confirmed=True)
     with pytest.raises(FileNotFoundError):
         await resource_info(ctx, f"document://folders/{child.id}/")

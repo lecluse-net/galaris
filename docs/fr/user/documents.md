@@ -228,8 +228,9 @@ ou un accès public aux utilisateurs authentifiés. Ces droits se propagent aux 
 documents et sous-documents, y compris ceux ajoutés ensuite. Un document cumule les partages
 de tous les répertoires dans lesquels il est classé ; le droit le plus permissif gagne.
 Classer un document appartenant à autrui, même modifiable, ne permet pas de le repartager.
-Votre classement reste personnel ; seuls les répertoires autorisés sont consultables comme
-collections, sans dévoiler leurs ancêtres privés ni les documents interdits au lecteur.
+Votre classement reste personnel à modifier. Un lecteur retrouve les répertoires qui contiennent
+un document auquel il a accès, ainsi que leurs ancêtres, même sans partage explicite du répertoire.
+Cela n’accorde aucun droit sur les autres documents classés au même endroit.
 
 Chaque répertoire a une URL stable `/documents/folders/<uuid>` et une référence
 `document://folders/<uuid>/`. Dans sa liste (**F4**), l'icône de lien copie la référence
@@ -241,7 +242,8 @@ Pour joindre un répertoire, utilisez **Ajouter une PJ interne** dans Discussion
 **Lien Galaris** dans un document. Parcourez `document://folders/`, cochez le répertoire,
 puis cliquez sur **Sélectionner**. La carte conserve une
 référence vivante et affiche l'icône du répertoire comme miniature. Elle ne copie aucun
-document et n'accorde aucun droit : partagez d'abord le répertoire avec l'agent concerné.
+document et n'accorde aucun droit : l’agent doit déjà pouvoir lire les documents concernés.
+Partager le répertoire reste un moyen d’accorder des droits aux documents que vous possédez.
 Les agents découvrent leurs collections avec `file_list("document://folders/")`, puis
 lisent le répertoire avec `file_read("document://folders/<uuid>/")`. La réponse contient
 l'arborescence JSON avec les sous-répertoires et sous-documents accessibles, par pages de

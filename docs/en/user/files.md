@@ -22,6 +22,14 @@ their virtual filesystem: SSH console, documents, datasets, Galaris resources an
 connected providers. It respects the agents you can manage and each resource’s own
 access rules.
 
+In **Documents** (`document://`), folders appear directly at the root alongside files that
+are not classified in any accessible folder. Opening a folder shows its subfolders and
+files, without mixing in files from deeper folders. A file classified in several folders
+appears in each of them with the same URL. Breadcrumbs follow folder names, including
+when opening a direct link. Folders become visible as soon as their branch contains a readable
+document, even without explicitly sharing the folder. All users' classifications are included;
+other files retain their own access rules.
+
 When no location is selected, the central grid displays available schemes as folders.
 Click one to open its root, then a directory in the tree or the central grid. Use the breadcrumbs
 or parent directory button to go back up. Files have a thumbnail when their format

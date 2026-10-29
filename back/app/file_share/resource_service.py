@@ -794,8 +794,9 @@ async def resource_list(
 ) -> ResourceListing:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri, allow_empty=True))
     from .document_folders import is_document_folder, folder_list
-    if is_document_folder(reference):
-        return await folder_list(ctx, reference, limit=max(1, min(max_entries, _LIST_LIMIT)), cursor=cursor)
+    if is_document_folder(reference) or reference.scheme == "document" and not reference.locator:
+        return await folder_list(ctx, reference, limit=max(1, min(max_entries, _LIST_LIMIT)), cursor=cursor,
+            navigation=not is_document_folder(reference) or len(reference.segments) == 2)
     if provider := _resource_provider(reference):
         return await provider.list(ctx, reference, recursive=recursive, max_entries=max_entries, cursor=cursor)
     limit = max(1, min(max_entries, _LIST_LIMIT))
@@ -879,8 +880,6 @@ async def resource_list(
         else:
             from app.memory import search_file_resources
 
-        # The folder collection occupies one stable slot before existing Documents.
-        root_folders = reference.scheme == "document" and not reference.locator
         page_offset = max(0, int(cursor or "0"))
         data = await search_file_resources(
             agent_id=ctx.agent_id,
@@ -891,8 +890,8 @@ async def resource_list(
             ),
             query="",
             mode="name",
-            limit=max(1, limit - 1) if root_folders and page_offset == 0 else limit,
-            offset=max(0, page_offset - 1) if root_folders else page_offset,
+            limit=limit,
+            offset=page_offset,
         )
         entries = [
             ResourceDescriptor(
@@ -912,14 +911,6 @@ async def resource_list(
             )
             for item in cast(list[dict[str, object]], data["hits"])
         ]
-        document_count = len(entries)
-        if root_folders and page_offset == 0:
-            from .document_folders import folder_info
-            entries = [await folder_info(ctx, ResourceUri("document", "folders/")), *entries][:limit]
-        if root_folders:
-            more = bool(data["has_more"]) or (page_offset == 0 and document_count > limit - 1)
-            return ResourceListing(uri=str(reference), entries=entries, truncated=more,
-                next_cursor=str(page_offset + len(entries)) if more else None)
         return ResourceListing(
             uri=str(reference),
             entries=entries,

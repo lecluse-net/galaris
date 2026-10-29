@@ -97,6 +97,7 @@ class ResourceListing(BaseModel):
     indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     uri: str
     entries: list[ResourceDescriptor] = Field(default_factory=_empty_descriptors)
+    ancestors: list[ResourceDescriptor] = Field(default_factory=_empty_descriptors)
     truncated: bool = False
     next_cursor: str | None = None
 

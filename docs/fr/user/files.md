@@ -34,6 +34,15 @@ disponible sinon. Cliquez sur un fichier pour afficher son aperçu, sur un Docum
 une tâche, un Dataset ou un échange pour ouvrir sa vue métier existante. Les formats
 sans lecteur intégré se téléchargent.
 
+Dans **Documents** (`document://`), les répertoires apparaissent directement à la racine,
+avec les fichiers qui ne sont classés dans aucun répertoire accessible. Ouvrir un répertoire
+affiche ses sous-répertoires et ses fichiers, sans mélanger les fichiers des niveaux inférieurs.
+Un fichier classé dans plusieurs répertoires apparaît dans chacun d’eux ; son URL reste la même.
+Le fil d’Ariane suit les noms des répertoires, y compris après l’ouverture d’un lien direct.
+Les répertoires deviennent visibles dès qu’un document accessible se trouve dans leur branche,
+même sans partage explicite du répertoire. Les classements de tous les utilisateurs sont pris
+en compte ; les autres fichiers restent soumis à leurs propres droits.
+
 Les boutons **Précédent** et **Suivant** du navigateur retrouvent les agents,
 emplacements et répertoires visités. Le fil d’Ariane et le bouton de répertoire parent
 participent au même historique. L’URL conserve l’agent et l’emplacement courants :

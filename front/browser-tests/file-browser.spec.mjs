@@ -444,6 +444,48 @@ test('a Galaris document opens its existing modal with the selected agent scope'
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
+for (const width of [1440, 390]) test(`document folders restore their named lineage from stable URIs at ${width}px`, async ({ page }, testInfo) => {
+  await setup(page)
+  await page.setViewportSize({ width, height: 1000 })
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [
+    { scheme: 'document', label: 'Documents', capabilities: ['list', 'info', 'read'], native: true },
+  ])
+  const root = entry('document://', 'Documents', true)
+  const parent = entry('document://folders/11111111-1111-4111-8111-111111111111/', 'Synthetic parent', true)
+  const child = entry('document://folders/22222222-2222-4222-8222-222222222222/', 'Synthetic child', true)
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/file-share/browser/entries?*', async route => {
+    const uri = new URL(route.request().url()).searchParams.get('uri')
+    if (uri === child.uri) await pending
+    const ancestors = uri === child.uri ? [root, parent, child] : uri === parent.uri ? [root, parent] : [root]
+    const entries = uri === child.uri ? [] : uri === parent.uri ? [child] : [parent, entry('document://doc-unfiled', 'Synthetic unfiled')]
+    return route.fulfill({ json: { ...pageOf(uri, entries), ancestors } })
+  })
+  const location = '/files?agent_id=7&uri=' + encodeURIComponent(child.uri)
+  await mount(page, routeComponent, { route: location, browserHistory: true, privileges: ['FILE_ACCESS'] })
+  const navigation = page.getByRole('navigation', { name: 'File navigation', exact: true })
+  await expect(navigation.getByRole('button', { name: 'Documents', exact: true })).toBeVisible()
+  await expect(navigation).not.toContainText('22222222-2222-4222-8222-222222222222')
+  release()
+  await expect(navigation.getByRole('button', { name: child.name, exact: true })).toBeVisible()
+  await expect(navigation.getByRole('button', { name: parent.name, exact: true })).toBeVisible()
+  await navigation.getByRole('button', { name: parent.name, exact: true }).click()
+  const openChild = page.getByRole('button', { name: `Open ${child.name}`, exact: true })
+  await expect(openChild).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('document-folders-light.png'), animations: 'disabled' })
+  await openChild.focus()
+  await page.keyboard.press('Enter')
+  await expect(navigation.getByRole('button', { name: child.name, exact: true })).toHaveAttribute('aria-current', 'location')
+  await page.evaluate(() => window.history.back())
+  await expect(openChild).toBeVisible()
+  await navigation.getByRole('button', { name: 'Documents', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Open Synthetic unfiled', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Open ${child.name}`, exact: true })).toHaveCount(0)
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: testInfo.outputPath('document-folders-dark.png'), animations: 'disabled' })
+})
+
 test('agent changes discard late responses and browsable scheme accordions reopen with empty states', async ({ page }, testInfo) => {
   await setup(page)
   let failMail = true

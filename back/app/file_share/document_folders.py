@@ -28,9 +28,11 @@ async def folder_info(ctx: ResourceContext, uri: ResourceUri) -> ResourceDescrip
 
 
 async def folder_list(ctx: ResourceContext, uri: ResourceUri, *, limit: int, cursor: str | None,
-    query: str = "") -> ResourceListing:
-    return ResourceListing.model_validate(await list_folder_resources(_identity(uri), _actor(ctx),
-        limit=limit, offset=int(cursor or "0"), query=query))
+    query: str = "", navigation: bool = False) -> ResourceListing:
+    listing = await list_folder_resources(_identity(uri), _actor(ctx),
+        limit=limit, offset=int(cursor or "0"), query=query, navigation=navigation)
+    listing["uri"] = str(uri)
+    return ResourceListing.model_validate(listing)
 
 
 class FolderTreeRead(ResourceRead):
