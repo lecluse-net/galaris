@@ -113,8 +113,10 @@ every historical runtime style has already been replaced. Code harmonization mus
 values and verify rendering in both themes.
 
 With `APP_ENV=dev`, **Developers → Visual reference** (`/graphic-reference`) brings
-together real components, folders at their display sizes, glyphs and editors. Consult this
-page before a visual change to compare elements, then check the affected consumer in the
+together real components, folders at their display sizes, glyphs and editors.
+The “Toggle button groups” section includes exclusive choices, independent selections
+and the actual skill authorization buttons in active, blocked, unselected and disabled states.
+Consult this page before a visual change to compare elements, then check the affected consumer in the
 application. Its interactions stay local; it does not load personal user icons. Domain
-artwork is composed in `front/graphicReferenceContributions.ts`, following the existing
+components are composed in `front/graphicReferenceContributions.ts`, following the existing
 frontend composition root pattern.

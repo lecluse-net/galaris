@@ -117,6 +117,9 @@ L’harmonisation du code doit reprendre ces valeurs et vérifier le rendu dans 
 
 En `APP_ENV=dev`, **Développeurs → Référence graphique** (`/graphic-reference`) rassemble
 les composants réels, les dossiers à leurs différentes tailles, les glyphes et les éditeurs.
+La section « Groupes de boutons toggle » présente les choix exclusifs, les sélections
+indépendantes et les boutons réels des autorisations de compétences, avec leurs états
+actif, bloqué, sans sélection et désactivé.
 Consulter cette page avant une modification visuelle pour comparer les éléments entre eux,
 puis vérifier le consommateur concerné dans l’application. Ses interactions restent locales ;
 elle ne charge pas les icônes personnelles des utilisateurs. Les contributions visuelles des

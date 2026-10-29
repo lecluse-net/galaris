@@ -36,6 +36,8 @@ function resize(event: KeyboardEvent, isHorizontal: boolean): void {
   const previous = isHorizontal ? 'ArrowUp' : 'ArrowLeft', next = isHorizontal ? 'ArrowDown' : 'ArrowRight'
   if (![previous, next, 'Home', 'End'].includes(event.key)) return
   event.preventDefault()
+  // The custom handle owns these keys; QSplitter also handles bubbled arrows.
+  event.stopPropagation()
   const model = isHorizontal ? horizontal : vertical
   model.value = event.key === 'Home' ? 20 : event.key === 'End' ? 80 : Math.min(80, Math.max(20, model.value + (event.key === previous ? -5 : 5)))
 }

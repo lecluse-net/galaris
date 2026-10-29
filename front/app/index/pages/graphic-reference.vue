@@ -33,6 +33,7 @@
         <q-separator spaced />
         <div class="row items-center q-gutter-md"><PersonAvatar :name="t('graphicReference.incoming')" /><DocumentFileIcon size="32px" /><q-chip removable icon="label">{{ t('graphicReference.sample') }}</q-chip><q-badge color="primary">50</q-badge></div>
       </GallerySection>
+      <GallerySection id="toggles" :title="t('graphicReference.toggles')" icon="view_week" class="wide"><GalleryToggles /></GallerySection>
       <GallerySection id="dialogs" :title="t('graphicReference.dialogs')" icon="web_asset">
         <div class="mini-modal-stage q-pa-md q-mb-md">
           <GalleryDialogCard v-if="miniModal" @close="miniModal = false" @save="miniModal = false; notify()" />
@@ -86,13 +87,14 @@ import GalleryForms from '../graphic-reference/GalleryForms.vue'
 import GalleryNavigation from '../graphic-reference/GalleryNavigation.vue'
 import GalleryInventory from '../graphic-reference/GalleryInventory.vue'
 import GalleryPatterns from '../graphic-reference/GalleryPatterns.vue'
+import GalleryToggles from '../graphic-reference/GalleryToggles.vue'
 const { t } = useI18n(), $q = useQuasar()
 const initialDark = $q.dark.mode
 onBeforeUnmount(() => $q.dark.set(initialDark))
 const generation = ref(0), miniModal = ref(true), dialog = ref(false)
 function sampleHtml(): string { return `<h2>${t('graphicReference.typography')}</h2><p><strong>${t('graphicReference.sample')}</strong> · <em>${t('graphicReference.paragraph')}</em></p><blockquote><p>${t('graphicReference.message')}</p></blockquote><ul><li>${t('graphicReference.first')}</li><li>${t('graphicReference.second')}</li></ul><table><tbody><tr><th>${t('graphicReference.name')}</th><th>${t('graphicReference.preview')}</th></tr><tr><td>${t('graphicReference.first')}</td><td>50</td></tr></tbody></table>` }
 const html = ref(sampleHtml()), code = ref('{\n  "example": true,\n  "items": [10, 20, 50]\n}')
-const sections = ['palette', 'actions', 'dialogs', 'forms', 'folders', 'navigation', 'patterns', 'feedback', 'content', 'glyphs']
+const sections = ['palette', 'actions', 'toggles', 'dialogs', 'forms', 'folders', 'navigation', 'patterns', 'feedback', 'content', 'glyphs']
 const sizes = [16, 20, 22, 24, 26, 32, 48, 64, 88]
 const tones = ['default', ...solaireColors] as const
 const statusTones: StatusBadgeTone[] = ['active', 'success', 'warning', 'error', 'neutral']

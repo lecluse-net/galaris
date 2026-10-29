@@ -258,6 +258,10 @@ immutable. Consult the `galaris-process-tools` skill.
 
 ### Frontend
 
+- For every UI change or new screen, use **Developers → Graphic reference**
+  (`/graphic-reference`, available in development) as the visual reference. Reuse its real
+  components and patterns rather than copying an inconsistent neighboring page. Follow the
+  `front-ui-conventions` skill for reference inspection and rendered verification.
 - The **Solaire** palette is the mandatory color reference throughout the application:
   [values and usage rules](docs/fr/dev/palette-solaire.md). Use its 11 accents and their exact
   light/dark backgrounds for icons, components, states, and charts. Do not use historical
