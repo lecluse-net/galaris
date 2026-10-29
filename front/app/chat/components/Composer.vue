@@ -166,7 +166,8 @@
                   @pointerdown="preserveInputFocus"
                   @mousedown="preserveInputFocus"
                   @touchstart.capture="preserveInputFocus"
-                  @pointerup="handlePostPointerUp"
+                  @touchend.capture="handlePostTouchEnd"
+                  @touchcancel.capture="postTouch = null"
                   @click="handlePostClick"
                 >
                   <q-tooltip>{{ t('chat.post') }}</q-tooltip>
@@ -785,28 +786,44 @@ function handleEnter(event: KeyboardEvent): void {
   submit()
 }
 
-let postedByPointer = false
+let postedByTouch = false
+let postTouch: { identifier: number; x: number; y: number } | null = null
 
 function preserveInputFocus(event: Event): void {
-  if (event.type === 'pointerdown') postedByPointer = false
-  if (!isMobileDevice || document.activeElement !== messageInput.value?.getNativeElement()) return
-  // Cancel native pointer focus before Android moves it away from the textarea.
+  if (event.type === 'pointerdown') postedByTouch = false
+  if (document.activeElement !== messageInput.value?.getNativeElement()) return
+  // Android can dismiss the IME on a native touch even while DOM focus survives.
+  // Cancel the touch itself and send explicitly on release instead of relying on
+  // its compatibility click. Do not gate focus preservation on the user agent.
+  if (event.type === 'touchstart') {
+    postedByTouch = false
+    const touches = (event as TouchEvent).touches
+    const touch = touches.length === 1 ? touches[0] : undefined
+    postTouch = touch ? { identifier: touch.identifier, x: touch.clientX, y: touch.clientY } : null
+  }
   // Stop QBtn's listener on this same element from installing its blur helper.
-  if (event.type !== 'touchstart') event.preventDefault()
+  event.preventDefault()
   event.stopImmediatePropagation()
 }
 
-function handlePostPointerUp(event: PointerEvent): void {
-  if (!isMobileDevice || event.pointerType !== 'touch'
-    || document.activeElement !== messageInput.value?.getNativeElement()) return
-  // WebKit can omit the compatibility click after a cancelled pointerdown.
-  // Send on release and consume any following click to avoid duplicate sends.
-  postedByPointer = true
+function handlePostTouchEnd(event: TouchEvent): void {
+  const started = postTouch
+  postTouch = null
+  if (!started) return
+  event.preventDefault()
+  event.stopImmediatePropagation()
+  const touch = Array.from(event.changedTouches).find(touch => touch.identifier === started.identifier)
+  if (!touch || Math.hypot(touch.clientX - started.x, touch.clientY - started.y) > 10) return
+  const input = messageInput.value?.getNativeElement()
+  if (document.activeElement !== input) return
+  postedByTouch = true
+  // Keep this in the user gesture, before preparation or network awaits.
+  input?.focus({ preventScroll: true })
   void submit()
 }
 
 function handlePostClick(event: Event): void {
-  if (postedByPointer && event instanceof MouseEvent && event.detail !== 0) return
+  if (postedByTouch && event instanceof MouseEvent && event.detail !== 0) return
   void submit()
 }
 

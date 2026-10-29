@@ -37,6 +37,7 @@ for (const device of [
         window.testApp.setProps({ beforeSend: () => new Promise(resolve => { window.finishPreparation = resolve }) })
         window.composerBlurs = 0
         document.querySelector('textarea').addEventListener('blur', () => { window.composerBlurs++ })
+        document.addEventListener('touchstart', event => { window.lastComposerTouchStart = event }, true)
       })
       const input = page.locator('textarea')
       const post = page.getByRole('button', { name: 'Post', exact: true })
@@ -46,7 +47,29 @@ for (const device of [
       await expect(input).toHaveValue('First line\nSecond line')
       expect(await events(page, 'send')).toEqual([])
 
+      await post.evaluate(button => {
+        const dispatchTouch = (type, x) => {
+          const event = new Event(type, { bubbles: true, cancelable: true })
+          const touches = [{ identifier: 1, clientX: x, clientY: 10 }]
+          Object.defineProperties(event, {
+            touches: { value: type === 'touchstart' ? touches : [] },
+            changedTouches: { value: touches },
+          })
+          button.dispatchEvent(event)
+        }
+        dispatchTouch('touchstart', 10)
+        dispatchTouch('touchcancel', 10)
+        dispatchTouch('touchend', 10)
+        dispatchTouch('touchstart', 10)
+        dispatchTouch('touchend', 50)
+      })
+      expect(await page.evaluate(() => typeof window.finishPreparation)).toBe('undefined')
+      expect(await events(page, 'send')).toEqual([])
+
       await post.tap()
+      // DOM focus alone cannot detect Android dismissing its software keyboard.
+      // The send gesture must also cancel the native touch action.
+      expect(await page.evaluate(() => window.lastComposerTouchStart.defaultPrevented)).toBe(true)
       await expect.poll(() => page.evaluate(() => typeof window.finishPreparation)).toBe('function')
       await expect(input).toBeFocused()
       await input.press('Enter')
