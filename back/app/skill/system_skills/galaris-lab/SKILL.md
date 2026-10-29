@@ -1,6 +1,6 @@
 ---
 name: galaris-lab
-description: Operate Galaris AI Labs through the dedicated lab MCP tools. Use for constructing synthetic or captured benchmarks, testing experimental prompts and models, diagnosing Tasks, comparing runs, reviewing outputs and iterating on measured regressions.
+description: Evaluate Galaris mechanisms, models and prompts, diagnose Tasks and benchmark native business Processes through authorized Lab tools. Use for corpora, experimental prompts, comparisons, attributed reviews and measured regressions. Mechanism executors simulate tools; native Process campaigns execute real workflows and require their own procedure.
 ---
 
 # Galaris Lab
@@ -9,6 +9,15 @@ Use the exact tool names exposed by your runtime. `lab_*` requires the optional 
 this skill grants no access. Real source discovery, capture and Task diagnosis additionally
 require the execution-inspection functions of `galaris_admin`. Explain a missing capability
 without trying to bypass it with SQL, a console, another identity or a direct provider call.
+Check the current inventory when needed: an authorized function absent from this run requires
+a new compatible context, not a guessed call or an administrative grant inferred from this skill.
+
+## Choose the evaluation family
+
+For model, prompt or mechanism experiments, use the procedure below. For a native business
+Process, read [Native Process campaigns](references/process-campaigns.md) before creating or
+launching a campaign. Its `lab_process_*` tools have different inputs, pagination and effects.
+Do not apply the simulated-tool guarantee or `lab_run_start` budget controls to that family.
 
 ## Discover the experiment
 
@@ -32,8 +41,8 @@ and `lab_case_delete`. Discover Topic sources with `lab_topic_agent_list` and
 `lab_topic_person_list`; preview with `lab_topic_messages_preview`, then capture with
 `lab_topic_messages_import`.
 
-Use `lab_dataset_list/get/create/update/clone/delete` and `lab_case_list/get/create/update/duplicate/delete`.
-Datasets here are Lab experiments, not JSON documents in the document library. Each holds
+Mechanism datasets here are Lab experiment records, distinct from the independent `data://`
+JSON Datasets used by native Process campaigns. Each mechanism dataset holds
 shared parameters, algorithm configuration and a work/validation/holdout purpose. Each case
 holds `input_data.variable_value`, its item-specific `input_data.context`, and `expected_output`.
 An item's context cannot override shared parameters. Keep text, JSON and editorial HTML in
@@ -118,8 +127,10 @@ campaign/result; `lab_review_list` labels agent and human assessments separately
 an agent assessment as human validation. Seeing an answer elsewhere means the review is no
 longer meaningfully blind even if this endpoint hides it. Failed critical checks remain failures.
 
-A missing judge score is missing evidence, never a pass. The executors simulate tools and do
-not execute real side effects. Voice Lab tests transcribed turns, not recognition or synthesis.
+A missing judge score is missing evidence, never a pass. Mechanism executor evaluations simulate
+tools instead of applying their business effects; model and judge calls still have their real costs.
+Native Process campaigns execute actual workflows and may produce external effects; use their
+dedicated procedure. Voice Lab tests transcribed turns, not recognition or synthesis.
 Decision models are only
 eligible for Dispatcher, Topics and memory extraction; hybrid runs pin their text model.
 
