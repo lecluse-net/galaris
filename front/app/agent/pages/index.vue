@@ -168,7 +168,18 @@
               <!-- Actions Section (Bottom) -->
               <q-card-actions class="agent-card-actions q-pa-sm">
                 <q-chip
-                  v-if="isManagedRuntime(agent)"
+                  v-if="agent.agent_driver === 'internal'"
+                  dense
+                  square
+                  color="positive"
+                  text-color="white"
+                  icon="check_circle"
+                  size="sm"
+                >
+                  {{ $t('agent.harness.status.running') }}
+                </q-chip>
+                <q-chip
+                  v-else-if="isManagedRuntime(agent)"
                   dense
                   square
                   :clickable="hasHarnessCapability(agent, 'logs')"
