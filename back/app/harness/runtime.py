@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, AsyncIterator, List, Literal, Optional, Sequence, Tuple, Union, cast
 from uuid import UUID, uuid4
 
@@ -131,6 +132,10 @@ class RepeatedTextNoProgressError(RuntimeError):
 
 class IncompleteModelResponseError(RuntimeError):
     """Raised when a provider marks a terminal response as incomplete or filtered."""
+
+
+class ChildWaitRequested(RuntimeError):
+    """The completed tool batch created a durable coordination wait."""
 
 
 def _empty_model_output_failure(
@@ -866,6 +871,7 @@ class Agent(AgentRuntime):
         self.budget_exhausted: bool = False
         self.terminal_failure_kind: str | None = None
         self.terminal_output: str | None = None
+        self.waiting_for_children = False
         self.authorization_requests: list[UUID] = []
         self._pending_tool_guidance: list[str] = []
         self.reasoning_recoveries = 0
@@ -1037,6 +1043,16 @@ class Agent(AgentRuntime):
         self._cancellation_token.cancel()
 
     async def _observe_model_request(self, _ctx: Any, request: ModelRequestContext) -> ModelRequestContext:
+        if self._active_checkpoint is not None and self._active_checkpoint.waiting_for_children:
+            if any(effect.get("status") in {"started", "outcome_unknown", "error_reported"}
+                   and effect.get("outcome") != "rejected"
+                   and effect.get("effect_policy") not in {"read", "idempotent"}
+                   for effect in self._active_checkpoint.effects):
+                # Keep uncertain sibling effects in the current inference for
+                # reconciliation rather than discarding its journal at fan-in.
+                self._active_checkpoint.waiting_for_children = False
+            else:
+                raise ChildWaitRequested
         self._model_generation_active = True
         self._request_start_usage = _ctx.usage.requests
         return request
@@ -1162,6 +1178,7 @@ class Agent(AgentRuntime):
 
         self.prompt = prompt
         self.terminal_output = None
+        self.waiting_for_children = False
         self._pending_tool_guidance.clear()
         # Canonical attachment resources become bounded native content for this run.
         agent_input: Union[str, Sequence[Any]] = (
@@ -1254,6 +1271,15 @@ class Agent(AgentRuntime):
                     deferred_results = None
                     state = _StreamState(observe_text_no_progress=self._real_time)
                     self.terminal_output = None
+        except ChildWaitRequested:
+            self.waiting_for_children = True
+            if active_checkpoint is not None:
+                await active_checkpoint.interrupted(list(captured_messages))
+            accounting = SimpleNamespace(usage=run_usage)
+            cost = estimate_cost_from_usage(accounting, self.llm)
+            self.cost += cost
+            yield AIMessage(type="text", content="", cost=cost,
+                            usage=_normalized_usage(accounting, self.llm, cost))
         except asyncio.CancelledError as cancellation_error:
             cancelled_run = RunCancelled.from_cancellation(cancellation_error)
             interrupted_history = (

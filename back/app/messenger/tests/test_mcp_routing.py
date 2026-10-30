@@ -23,6 +23,7 @@ from app.tools.mcp_loader import McpToolContext
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("wait_for_reply", [None, True])
 @pytest.mark.parametrize("scenario", [
     "accepted", "canonical_uuid", "denied", "paused", "round_limit", "terminal", "outside_task", "self",
     "scope_none", "scope_all", "scope_invalid", "receiver_none", "receiver_inactive",
@@ -40,13 +41,14 @@ from app.tools.mcp_loader import McpToolContext
     ],
 ])
 async def test_internal_peer_message_creates_an_awaited_request_without_a_human_room(
-    db, monkeypatch, scenario,
+    db, monkeypatch, scenario, wait_for_reply,
 ):
     from app.agent.models import Agent, AgentTeam, Title
     from app.connection import Connection, ConnectionParam
     from app.task import Task, TaskStatus, runner
     from app.tools import ToolModel
     from app.messenger.facade import require_internal_peer_contact
+    from app.tools.contracts import ToolExecutionContext, tool_execution
     from core.params import runtime_settings
     from core.team import TeamModel
     from sqlalchemy import delete, select
@@ -154,13 +156,20 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
               "receiver_scope_revoked": "not authorized",
               "matrix_denied": "not authorized"}
     if scenario in errors:
-        with pytest.raises(RuntimeError, match=errors[scenario]):
-            await mcp.mcp_send_message_to_user(ctx, recipient, "**Synthetic** update", "internal")
+        execution = ToolExecutionContext(uuid4(), "messenger_send_message_to_user")
+        with tool_execution(execution), pytest.raises(RuntimeError, match=errors[scenario]):
+            await mcp.mcp_send_message_to_user(ctx, recipient, "**Synthetic** update", "internal",
+                **({"wait_for_reply": wait_for_reply} if wait_for_reply is not None else {}))
+        assert execution.wait_for_children is False
         assert scheduled == []
         assert await db.scalar(select(Task.id).where(Task.parent_id == parent.id)) is None
         return
 
-    result = await mcp.mcp_send_message_to_user(ctx, recipient, "**Synthetic** update", "internal")
+    execution = ToolExecutionContext(uuid4(), "messenger_send_message_to_user")
+    with tool_execution(execution):
+        result = await mcp.mcp_send_message_to_user(ctx, recipient, "**Synthetic** update", "internal",
+            **({"wait_for_reply": wait_for_reply} if wait_for_reply is not None else {}))
+    assert execution.wait_for_children is (wait_for_reply is True)
     await db.flush()
     assert len(scheduled) == 1
     child = await db.get(Task, scheduled[0])
@@ -213,10 +222,13 @@ async def test_messaging_binding_respects_explicit_channel_and_rejects_unavailab
 
 
 @pytest.mark.asyncio
-async def test_delivery_reuses_the_authorized_connection_without_selecting_again(monkeypatch):
+@pytest.mark.parametrize("wait_for_reply", [False, True])
+async def test_delivery_reuses_the_authorized_connection_without_selecting_again(db, monkeypatch, wait_for_reply):
     from app.messenger import service
+    from app.tools.contracts import ToolExecutionContext, tool_execution
 
-    messenger = SimpleNamespace(kind="telegram", connection_id=23, supports=lambda capability: True)
+    messenger = SimpleNamespace(kind="telegram", connection_id=23, supports=lambda capability: True,
+        send_to_user=AsyncMock())
     monkeypatch.setattr(service, "messenger_for_agent_connection", AsyncMock(return_value=messenger))
     reselection = AsyncMock()
     monkeypatch.setattr(service, "messenger_for_agent_kind", reselection)
@@ -226,6 +238,13 @@ async def test_delivery_reuses_the_authorized_connection_without_selecting_again
         "Synthetic human", "en", channel="telegram",
     )
     assert resolved is messenger and user == "human-42"
+    execution = ToolExecutionContext(uuid4(), "messenger_send_message_to_user")
+    with tool_execution(execution):
+        await mcp.mcp_send_message_to_user(
+            McpToolContext(agent_id=7, runtime="internal", resources={"connection_id": 23}),
+            "Synthetic human", "Synthetic update", channel="telegram", wait_for_reply=wait_for_reply)
+    messenger.send_to_user.assert_awaited_once_with("human-42", "Synthetic update")
+    assert execution.wait_for_children is False
     reselection.assert_not_awaited()
 
 

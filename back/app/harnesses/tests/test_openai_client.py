@@ -110,6 +110,23 @@ def test_network_harness_receives_server_owned_messaging_context() -> None:
 
 
 @pytest.mark.asyncio
+async def test_child_wait_requires_a_drained_actor_and_is_not_a_terminal_failure():
+    polls = []
+    def handler(request):
+        polls.append(request.method)
+        return httpx.Response(200, json={"status": "waiting_for_children", "stopped": len(polls) > 1,
+            "success": False, "result": "", "messages": [{"type": "tool", "tool_name": "task_run",
+                "content": "galaris://task/00000000-0000-0000-0000-000000000001", "success": True}]})
+    client = OpenAIHarnessClient(base_url="http://harness.example.test/v1", token="synthetic",
+        run_context="synthetic-authority", transport=httpx.MockTransport(handler))
+    result = await client.control_run(_envelope(), runtime_run_id="a" * 64, start=False)
+    assert polls == ["GET", "GET"]
+    assert result.disposition == "waiting_for_children"
+    assert result.success is False and result.failure is None
+    assert result.messages[0].tool_name == "task_run"
+
+
+@pytest.mark.asyncio
 async def test_client_discovers_models_and_never_follows_a_redirect() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["Authorization"] == "Bearer secret"

@@ -353,6 +353,12 @@ l'URI exacte du document dans un amendement de la tâche racine. L'agent reçoit
 distinct d'une erreur d'arguments ; ce refus ne crée pas automatiquement une demande
 d'autorisation ni une mise en attente.
 
+Quand la suite dépend de la réponse d'un collègue, l'agent peut demander une attente immédiate :
+il termine les appels d'outils déjà engagés puis reprend avec la réponse, sans renvoyer la demande.
+Par défaut, il peut continuer son travail indépendant et solliciter d'autres collègues avant
+la fin du tour. Les délégations conservent ce fonctionnement.
+Un effet dont le résultat reste incertain doit d'abord être réconcilié.
+
 ## Lire l’état d’une tâche
 
 Le texte du Chat continue d'apparaître pendant la génération. La supervision des appels

@@ -7,7 +7,8 @@ the runtime actor, outside its HTTP response and outside the Galaris Task lease.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Generator
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -28,7 +29,8 @@ def _object(value: Any) -> dict[str, Any]:
 
 class ActionApprovals:
     def __init__(self, *, mcp_url: str, token: str, run_context: str,
-                 session: str, on_pending: Callable[[str], None], on_running: Callable[[], None] | None = None) -> None:
+                 session: str, on_pending: Callable[[str], None], on_running: Callable[[], None] | None = None,
+                 on_children: Callable[[list[dict[str, Any]]], None] | None = None) -> None:
         self.url = mcp_url.split("/mcp/", 1)[0] + "/tools/runtime-authorizations"
         if "/mcp/" not in mcp_url:
             raise PermissionError("The managed MCP endpoint is required")
@@ -41,6 +43,44 @@ class ActionApprovals:
         self.permits: dict[str, str] = {}
         self.waiting: set[str] = set()
         self._waiting_lock = threading.RLock()
+        self.on_children = on_children
+        self._active_calls = 0
+        self._child_wait_requested = False
+        self._batch_messages: list[dict[str, Any]] = []
+        self._children_notified = False
+        self.receipt_unknown = False
+        self._local_calls: dict[str, tuple[str, dict[str, Any]]] = {}
+
+    def _notify_children(self) -> None:
+        # All calls admitted before the wait retain their receipts. Later calls
+        # never cross the boundary, including SDK-local actions.
+        with self._waiting_lock:
+            if (self._child_wait_requested and not self._active_calls and not self.permits
+                    and not self._children_notified and self.on_children is not None):
+                self._children_notified = True
+                self.on_children(self._batch_messages)
+            elif not self._active_calls and not self._child_wait_requested and not self.permits:
+                self._batch_messages.clear()
+                self.receipt_unknown = False
+
+    @contextmanager
+    def _operation(self) -> Generator[None]:
+        with self._waiting_lock:
+            admitted = not self._child_wait_requested
+            if admitted:
+                self._active_calls += 1
+        if not admitted:
+            self.cancelled.wait()
+            raise PermissionError("The runtime yielded to its child tasks")
+        try:
+            yield
+        except BaseException:
+            self.receipt_unknown = True
+            raise
+        finally:
+            with self._waiting_lock:
+                self._active_calls -= 1
+            self._notify_children()
 
     def _pending(self, identifier: str) -> None:
         with self._waiting_lock:
@@ -81,6 +121,11 @@ class ActionApprovals:
 
     def authorize(self, callback: str, name: str, arguments: dict[str, Any], *,
                   precondition: Callable[[], dict[str, Any]] | None = None) -> bool:
+        with self._operation():
+            return self._authorize(callback, name, arguments, precondition=precondition)
+
+    def _authorize(self, callback: str, name: str, arguments: dict[str, Any], *,
+                   precondition: Callable[[], dict[str, Any]] | None = None) -> bool:
         """Consume exactly one agreement immediately before returning to the SDK."""
         deadline = time.monotonic() + 24 * 60 * 60
         while not self.cancelled.is_set() and time.monotonic() < deadline:
@@ -101,7 +146,9 @@ class ActionApprovals:
                 continue
             status = result.get("status")
             if status == "executing" and result.get("claimed") is True:
-                self.permits[callback] = str(result["request_id"])
+                with self._waiting_lock:
+                    self.permits[callback] = str(result["request_id"])
+                    self._local_calls[callback] = (name, arguments)
                 self._running(str(result.get("request_id") or ""))
                 return True
             if status != "pending":
@@ -113,6 +160,16 @@ class ActionApprovals:
         return False
 
     def mcp(self, body: dict[str, Any]) -> tuple[int, bytes]:
+        with self._operation():
+            response = self._mcp(body)
+        if self._child_wait_requested:
+            # Keep the SDK at the completed tool boundary. The actor closes only
+            # after every other admitted call has drained, before another model turn.
+            self.cancelled.wait()
+            raise PermissionError("The runtime yielded to its child tasks")
+        return response
+
+    def _mcp(self, body: dict[str, Any]) -> tuple[int, bytes]:
         """Hold the SDK call while Galaris releases its orchestrator lease."""
         parameters = _object(body.get("params"))
         while not self.cancelled.is_set():
@@ -138,6 +195,23 @@ class ActionApprovals:
             meta = _object(payload.get("_meta") or payload.get("meta") or payload)
             authorization = _object(meta.get("galaris.authorization/v1"))
             if authorization.get("disposition") != "authorization_required":
+                evidence = _object(meta.get("galaris.execution/v1"))
+                if payload.get("isError") is True and evidence.get("outcome") != "rejected":
+                    self.receipt_unknown = True
+                if body.get("method") == "tools/call":
+                    blocks = cast(list[Any], payload.get("content") or [])
+                    content = "\n".join(str(_object(block).get("text") or "") for block in blocks)
+                    trace = {"type": "tool", "tool_name": parameters.get("name"),
+                        "tool_arguments": parameters.get("arguments") or {}, "content": content[:4000],
+                        "tool_result": {"content": content[:4000]}, "success": payload.get("isError") is not True}
+                    with self._waiting_lock:
+                        self._batch_messages.append(trace)
+                if (body.get("method") == "tools/call" and self.on_children is not None and payload.get("isError") is not True
+                        and evidence.get("tool_name") == parameters.get("name")
+                        and evidence.get("outcome") == "returned"
+                        and evidence.get("wait_for_children") is True):
+                    with self._waiting_lock:
+                        self._child_wait_requested = True
                 if body.get("method") == "tools/list":
                     self.mcp_catalog_ready = bool(payload.get("tools")) and "error" not in result
                 self._running()
@@ -163,14 +237,26 @@ class ActionApprovals:
         raise PermissionError("The managed MCP call was cancelled")
 
     def finish(self, callback: str, *, outcome: str, receipt: dict[str, Any]) -> None:
-        identifier = self.permits.pop(callback, None)
+        with self._waiting_lock:
+            identifier = self.permits.get(callback)
         if identifier is None:
             return
+        if outcome == "outcome_unknown":
+            self.receipt_unknown = True
         try:
             self._post("/receipt", {"request_id": identifier, "outcome": outcome, "receipt": receipt})
         except (OSError, ValueError):
             # Missing delivery evidence remains executing, then outcome_unknown server-side.
-            pass
+            self.receipt_unknown = True
+        finally:
+            with self._waiting_lock:
+                self.permits.pop(callback, None)
+                name, arguments = self._local_calls.pop(callback, ("local_action", {}))
+                content = json.dumps(receipt, ensure_ascii=False, default=str)[:4000]
+                self._batch_messages.append({"type": "tool", "tool_name": name,
+                    "tool_arguments": arguments, "tool_result": {"receipt": content},
+                    "content": content, "success": outcome == "completed" and not self.receipt_unknown})
+            self._notify_children()
 
 
 def file_precondition(arguments: dict[str, Any], workspace: Path) -> dict[str, Any]:
@@ -247,12 +333,27 @@ class RuntimeActor:
             self.state["authorization_requests"] = []
             self.persist()
 
+    def children(self, messages: list[dict[str, Any]]) -> None:
+        """End this inference at a drained tool boundary; Task owns the continuation."""
+        with self.lock:
+            if self.state.get("stopped") or self.state["status"] not in ("running", "waiting_for_authorization"):
+                return
+            self.state["messages"].extend(messages)
+            self.state.update(status="waiting_for_children", success=False, result="", authorization_requests=[])
+            if self.approvals is not None and self.approvals.receipt_unknown:
+                self.state.update(status="outcome_unknown", result="A local action receipt could not be confirmed.")
+            self.persist()
+            if self.loop is not None and self.task is not None:
+                self.loop.call_soon_threadsafe(self.task.cancel)
+
     async def consume(self, events: AsyncIterator[tuple[str, dict[str, Any]]]) -> None:
         self.loop = asyncio.get_running_loop()
         self.task = asyncio.current_task()
         try:
             async for kind, payload in events:
                 with self.lock:
+                    if self.state["status"] in {"waiting_for_children", "outcome_unknown"}:
+                        continue
                     self.state["status"] = "running"
                     self.state["authorization_requests"] = []
                     if kind == "result":
@@ -270,11 +371,13 @@ class RuntimeActor:
                 self.persist()
         except BaseException:
             with self.lock:
-                self.state.update(status="outcome_unknown", success=False,
-                    result="The runtime stopped without a confirmed outcome; no action was replayed.")
+                if self.state["status"] != "waiting_for_children":
+                    self.state.update(status="outcome_unknown", success=False,
+                        result="The runtime stopped without a confirmed outcome; no action was replayed.")
                 self.persist()
         finally:
             if self.approvals:
+                self.approvals.cancelled.set()
                 for callback in list(self.approvals.permits):
                     self.approvals.finish(callback, outcome="outcome_unknown", receipt={})
             with self.lock:
@@ -309,7 +412,7 @@ class RuntimeRuns:
                 return identifier
             if len(self.actors) >= 200:
                 for key, actor in list(self.actors.items()):
-                    if actor.snapshot()["status"] in ("completed", "failed", "outcome_unknown"):
+                    if actor.snapshot().get("stopped") is True:
                         self.actors.pop(key)
                 if len(self.actors) >= 200:
                     raise RuntimeError("Runtime control capacity exceeded")

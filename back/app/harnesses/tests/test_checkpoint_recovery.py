@@ -18,7 +18,7 @@ from core.util import get_encryption_service
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("provider", ["deepseek_harness", "claude_agent", "codex", "openai_messages"])
-@pytest.mark.parametrize("outcome", ["completed", "waiting_for_authorization", "outcome_unknown", "authority_missing"])
+@pytest.mark.parametrize("outcome", ["completed", "waiting_for_authorization", "waiting_for_children", "outcome_unknown", "authority_missing"])
 async def test_interrupted_checkpoint_observes_the_same_actor_without_restarting(monkeypatch, provider, outcome):
     from app.tools import facade as authority
 
@@ -34,6 +34,7 @@ async def test_interrupted_checkpoint_observes_the_same_actor_without_restarting
         assert request.method == "GET" and request.url.path.endswith(f"/galaris/runs/{identifier}")
         assert request.headers["X-Galaris-Run-Context"] == credential
         return httpx.Response(200, json={"runtime_run_id": identifier, "status": outcome,
+            "stopped": outcome == "waiting_for_children",
             "result": "recorded outcome", "authorization_requests": [str(authorization_id)] if outcome == "waiting_for_authorization" else []})
 
     client = OpenAIHarnessClient(base_url="http://harness.example.test/v1", token="synthetic",
@@ -48,7 +49,8 @@ async def test_interrupted_checkpoint_observes_the_same_actor_without_restarting
     # Accounting is a separate database boundary; no model request is made here.
     import app.agent
     monkeypatch.setattr(app.agent, "aggregate_llm_run_usage", AsyncMock(return_value=None))
-    checkpoint = AgentRunCheckpoint(driver_code="openai_messages", runtime_run_id=identifier, status="interrupted",
+    checkpoint = AgentRunCheckpoint(driver_code="openai_messages", runtime_run_id=identifier,
+        status="waiting_for_children" if outcome == "waiting_for_children" else "interrupted",
         data={"version": 1, "run_context": get_encryption_service().encrypt(credential), "cursor": {"messages": 0, "text": 0}})
     request = _request()
     save = AsyncMock()
@@ -73,7 +75,10 @@ async def test_interrupted_checkpoint_observes_the_same_actor_without_restarting
     assert all(method == "GET" for method, _ in requests)
     assert len(requests) == 2
     issue.assert_not_awaited()
-    renew.assert_awaited_once_with(credential, request)
+    if outcome == "waiting_for_children":
+        renew.assert_not_awaited()
+    else:
+        renew.assert_awaited_once_with(credential, request)
     assert all(call.args[0].runtime_run_id == identifier for call in save.await_args_list)
     if outcome == "waiting_for_authorization":
         assert result.authorization_requests == [authorization_id]
@@ -82,6 +87,9 @@ async def test_interrupted_checkpoint_observes_the_same_actor_without_restarting
         close.assert_awaited_once_with(credential)
     if outcome == "outcome_unknown":
         assert result.failure.code == "effect_unknown"
+    if outcome == "waiting_for_children":
+        assert result.disposition == "waiting_for_children" and result.failure is None
+        assert all(call.args[0].status == "waiting_for_children" for call in save.await_args_list)
 
 
 @pytest.mark.parametrize("status", ["completed", "failed", "outcome_unknown", "cancelled"])

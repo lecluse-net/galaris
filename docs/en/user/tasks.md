@@ -339,6 +339,12 @@ Acknowledged stop requests, network errors and logical completion do not always 
 remote stop. Goals and unsupported waits remain refused by this path; independent work
 is preserved.
 
+When further work depends on a colleague's answer, an Agent can request an immediate wait:
+it finishes engaged tool calls and resumes with the answer without sending the request again.
+By default it can continue independent work and contact more colleagues before the end of
+the turn. Delegation retains this behavior. An effect with an uncertain
+outcome must be reconciled first.
+
 ## Writing a Reliable Request
 
 A good request contains four elements:

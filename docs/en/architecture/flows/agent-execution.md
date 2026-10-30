@@ -73,6 +73,16 @@ findings use that same setting. LLM work remains outside the detection budget. S
 
 ## Work organization
 
+Only `messenger_send_message_to_user(..., wait_for_reply=True)` requests an immediate
+`waiting_for_children` yield after colleague admission. The default `False` and `task_run`
+allow independent work and more contributions before the end-of-turn wait.
+The internal harness finishes its tool batch before another model
+request; managed network runtimes block new actions, retain engaged calls' receipts and
+close the inference. Uncertain effects retain their reconciliation path. Task then suspends
+and resumes once with durable results, including replies received before suspension.
+Managed images must be refreshed to consume this signal. See
+[0260](../../../../project/decisions/0260-peer-wait-at-tool-boundary.md).
+
 For a Task, the Dispatcher selects `direct`, `tracked` or `clarify` in its existing routing
 inference. Simple actions stay direct. Long or complex work prepares its method and retains
 milestones through `task_work_update`, including when one executor owns a coherent deliverable.

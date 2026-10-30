@@ -19,6 +19,106 @@ from app.harness.runtime import Agent
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("parallelism", [1, 2])
+@pytest.mark.parametrize("request_wait", [False, True])
+async def test_peer_request_drains_the_tool_batch_without_another_model_request(monkeypatch, parallelism, request_wait):
+    import asyncio
+    from dataclasses import replace
+    from unittest.mock import AsyncMock
+    from fastmcp import FastMCP
+    from pydantic_ai.mcp import MCPToolset
+    from pydantic_ai.models.function import DeltaToolCall
+    from app.agent.contracts import AgentRunLimitsV1
+    from app.harness.checkpoint import HarnessRunCheckpoint
+    from app.harness.mcp_toolset import ExecutionEvidenceClient
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel, _request
+    from app.tools.execution_evidence import ExecutionEvidenceMiddleware
+    from app.task.collab import request_runtime_wait
+
+    server = FastMCP("synthetic-peer-wait")
+    server.add_middleware(ExecutionEvidenceMiddleware({"ask_peer", "save_receipt"}))
+    effects = []
+    calls = []
+    @server.tool
+    async def ask_peer() -> str:
+        effects.append("peer requested")
+        if request_wait:
+            request_runtime_wait()
+        return "galaris://task/00000000-0000-0000-0000-000000000001"
+    @server.tool
+    async def save_receipt() -> str:
+        await asyncio.sleep(0.02)
+        effects.append("receipt saved")
+        return "Synthetic receipt saved"
+    async def model(messages, info):
+        calls.append(1)
+        if len(calls) == 1:
+            yield {0: DeltaToolCall("ask_peer", "{}", tool_call_id="peer"),
+                   1: DeltaToolCall("save_receipt", "{}", tool_call_id="receipt")}
+        else:
+            yield "This extra model request must not happen while waiting."
+    saved = AsyncMock()
+    checkpoint = HarnessRunCheckpoint(replace(_request(saved), limits=AgentRunLimitsV1(tool_parallelism=parallelism)))
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=_CountingFunctionModel(stream_function=model)))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_: 0.0)
+    agent = Agent(cast(Any, SimpleNamespace()),
+        mcp_servers=[MCPToolset(ExecutionEvidenceClient(server))], checkpoint=checkpoint)
+    await agent.init()
+    messages = [m async for m in agent.run("Ask a colleague and retain the receipt")]
+    assert len(calls) == (1 if request_wait else 2)
+    assert effects == ["peer requested", "receipt saved"]
+    assert checkpoint.waiting_for_children is request_wait
+    assert agent.waiting_for_children is request_wait
+    assert len(checkpoint.effects) == 2
+    assert all(effect["status"] == "completed" for effect in checkpoint.effects)
+    assert saved.call_args.args[0].data["waiting_for_children"] is request_wait
+    assert not agent.error
+    assert (agent.terminal_output is None) is request_wait
+    assert not any(m.success is False for m in messages)
+    assert messages[-1].usage.requests == (1 if request_wait else 2)
+
+
+@pytest.mark.asyncio
+async def test_default_delegation_can_request_more_contributions_and_continue_own_work(monkeypatch):
+    from unittest.mock import AsyncMock
+    from pydantic_ai.models.function import DeltaToolCall
+    from pydantic_ai.toolsets import FunctionToolset
+    from app.harness.checkpoint import HarnessRunCheckpoint
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel, _request
+
+    effects = []
+    async def delegate(peer: str) -> str:
+        effects.append(peer)
+        return "Contribution admitted for " + peer
+    async def prepare_summary() -> str:
+        effects.append("own work")
+        return "Independent analysis saved"
+    calls = []
+    async def model(messages, info):
+        calls.append(1)
+        if len(calls) <= 2:
+            peer = "colleague-a" if len(calls) == 1 else "colleague-b"
+            yield {0: DeltaToolCall("delegate", '{"peer":"' + peer + '"}', tool_call_id=peer)}
+        elif len(calls) == 3:
+            yield {0: DeltaToolCall("prepare_summary", "{}", tool_call_id="own-work")}
+        else:
+            yield "Independent work completed; await both contributions."
+    checkpoint = HarnessRunCheckpoint(_request(AsyncMock()))
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=_CountingFunctionModel(stream_function=model)))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_: 0.0)
+    agent = Agent(cast(Any, SimpleNamespace()),
+        mcp_servers=[FunctionToolset([delegate, prepare_summary])], checkpoint=checkpoint)
+    await agent.init()
+    messages = [m async for m in agent.run("Ask two colleagues and prepare your independent analysis")]
+    assert effects == ["colleague-a", "colleague-b", "own work"]
+    assert len(calls) == 4
+    assert agent.waiting_for_children is False
+    assert checkpoint.waiting_for_children is False
+    assert all(effect["status"] == "completed" for effect in checkpoint.effects)
+    assert not any(m.success is False for m in messages)
+
+
+@pytest.mark.asyncio
 async def test_reply_now_answers_without_waiting_for_or_executing_a_pending_authorization(monkeypatch):
     from unittest.mock import AsyncMock
     from uuid import uuid4

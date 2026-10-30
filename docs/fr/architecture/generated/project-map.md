@@ -520,7 +520,7 @@ tests restent l’autorité sur le comportement.
 | `app.task` | `app.goal` | `back/app/task/models.py`, `back/app/task/router.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.llm` | `back/app/task/budget.py`, `back/app/task/cost_report.py`, `back/app/task/mcp.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.messenger` | `back/app/task/collab.py`, `back/app/task/facade.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
-| `app.task` | `app.tools` | `back/app/task/access.py`, `back/app/task/agent_adapter.py`, `back/app/task/mcp.py`, `back/app/task/work_tracking.py` |
+| `app.task` | `app.tools` | `back/app/task/access.py`, `back/app/task/agent_adapter.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/work_tracking.py` |
 | `app.task` | `core.authorize` | `back/app/task/router.py`, `back/app/task/run_events.py` |
 | `app.task` | `core.database` | `back/app/task/active_lease.py`, `back/app/task/activity.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/call_recovery.py`, `back/app/task/collab.py`, `back/app/task/conversation.py`, `back/app/task/cost_report.py`, `back/app/task/execution_scope.py`, `back/app/task/facade.py`, `back/app/task/input_requests.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/outcome.py`, `back/app/task/progress.py`, `back/app/task/replacement.py`, `back/app/task/replacement_tree.py`, `back/app/task/resource_facade.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/scheduler.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py`, `back/app/task/work_projection.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
 | `app.task` | `core.dbadmin` | `back/app/task/dbadmin.py`, `back/app/task/html_migration.py` |
@@ -2411,14 +2411,14 @@ tests restent l’autorité sur le comportement.
 | `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:205` |
 | `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:343` |
 | `memory_upcoming` | `memory` | `app.memory` | `memory_upcoming` | `back/app/memory/mcp.py:299` |
-| `messenger_list_rooms` | `messenger` | `app.messenger` | `mcp_list_rooms` | `back/app/messenger/mcp.py:748` |
-| `messenger_room_history` | `messenger` | `app.messenger` | `mcp_room_history` | `back/app/messenger/mcp.py:786` |
-| `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:1005` |
+| `messenger_list_rooms` | `messenger` | `app.messenger` | `mcp_list_rooms` | `back/app/messenger/mcp.py:757` |
+| `messenger_room_history` | `messenger` | `app.messenger` | `mcp_room_history` | `back/app/messenger/mcp.py:795` |
+| `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:1014` |
 | `messenger_room_send_message` | `messenger` | `app.messenger` | `mcp_room_send_message` | `back/app/messenger/mcp.py:321` |
-| `messenger_search_users` | `messenger` | `app.messenger` | `mcp_search_users` | `back/app/messenger/mcp.py:861` |
-| `messenger_send_audio_message` | `messenger` | `app.messenger` | `mcp_send_audio_message` | `back/app/messenger/mcp.py:637` |
-| `messenger_send_file_to_user` | `messenger` | `app.messenger` | `mcp_send_file_to_user` | `back/app/messenger/mcp.py:951` |
-| `messenger_send_message_to_user` | `messenger` | `app.messenger` | `mcp_send_message_to_user` | `back/app/messenger/mcp.py:370` |
+| `messenger_search_users` | `messenger` | `app.messenger` | `mcp_search_users` | `back/app/messenger/mcp.py:870` |
+| `messenger_send_audio_message` | `messenger` | `app.messenger` | `mcp_send_audio_message` | `back/app/messenger/mcp.py:646` |
+| `messenger_send_file_to_user` | `messenger` | `app.messenger` | `mcp_send_file_to_user` | `back/app/messenger/mcp.py:960` |
+| `messenger_send_message_to_user` | `messenger` | `app.messenger` | `mcp_send_message_to_user` | `back/app/messenger/mcp.py:374` |
 | `audio_read` | `multimedia` | `app.multimedia` | `audio_read` | `back/app/multimedia/mcp.py:13` |
 | `multimedia_get_run` | `multimedia` | `app.multimedia` | `multimedia_get_run` | `back/app/multimedia/mcp.py:51` |
 | `music_generate` | `multimedia` | `app.multimedia` | `music_generate` | `back/app/multimedia/mcp.py:35` |

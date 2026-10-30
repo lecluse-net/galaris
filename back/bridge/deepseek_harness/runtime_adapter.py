@@ -725,7 +725,7 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
                 async def events(actor: RuntimeActor):
                     approvals = ActionApprovals(mcp_url=os.environ.get("GALARIS_MCP_URL", ""),
                         token=os.environ.get("GALARIS_MCP_TOKEN", ""), run_context=credential,
-                        session=actor.identifier, on_pending=actor.pending, on_running=actor.running)
+                        session=actor.identifier, on_pending=actor.pending, on_running=actor.running, on_children=actor.children)
                     actor.approvals = approvals
                     try:
                         await asyncio.to_thread(approvals.validate)

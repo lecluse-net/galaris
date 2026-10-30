@@ -369,6 +369,9 @@ class OpenAIHarnessClient:
                         await on_progress(AIMessage(type="text", content=text[text_offset:], stream_id=f"runtime:{runtime_run_id}:text"))
                 message_count, text_offset = len(messages), len(text)
                 status = str(state.get("status") or "")
+                if status == "waiting_for_children" and state.get("stopped") is not True:
+                    await asyncio.sleep(0.25)
+                    continue
                 # Older runtimes allowed late approval callbacks to overwrite a terminal
                 # status. A stopped actor cannot make progress or accept an approval.
                 if state.get("stopped") is True and status in {"running", "waiting_for_authorization"}:
@@ -400,7 +403,7 @@ class OpenAIHarnessClient:
             result=str(state.get("result") or ""), messages=_trace_messages(state.get("messages")),
             execution_time=_float(state.get("execution_time")), cost=usage.cost, usage=usage,
             success=status == "completed" and state.get("success") is not False,
-            disposition="waiting_for_authorization" if waiting else "completed", authorization_requests=identifiers,
+            disposition="waiting_for_authorization" if waiting else "waiting_for_children" if status == "waiting_for_children" else "completed", authorization_requests=identifiers,
             failure=failure,
             metadata={"runtime_run_id": runtime_run_id, "runtime_status": status,
                 "runtime_cursor": {"messages": message_count, "text": text_offset}, **accounting_metadata},

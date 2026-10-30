@@ -4086,6 +4086,7 @@
         "files": [
           "back/app/task/access.py",
           "back/app/task/agent_adapter.py",
+          "back/app/task/collab.py",
           "back/app/task/mcp.py",
           "back/app/task/work_tracking.py"
         ],
@@ -9552,7 +9553,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_list_rooms",
-        "line": 748,
+        "line": 757,
         "module": "app.messenger",
         "name": "messenger_list_rooms",
         "namespace": "messenger"
@@ -9560,7 +9561,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_history",
-        "line": 786,
+        "line": 795,
         "module": "app.messenger",
         "name": "messenger_room_history",
         "namespace": "messenger"
@@ -9568,7 +9569,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_send_file",
-        "line": 1005,
+        "line": 1014,
         "module": "app.messenger",
         "name": "messenger_room_send_file",
         "namespace": "messenger"
@@ -9584,7 +9585,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_search_users",
-        "line": 861,
+        "line": 870,
         "module": "app.messenger",
         "name": "messenger_search_users",
         "namespace": "messenger"
@@ -9592,7 +9593,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_audio_message",
-        "line": 637,
+        "line": 646,
         "module": "app.messenger",
         "name": "messenger_send_audio_message",
         "namespace": "messenger"
@@ -9600,7 +9601,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_file_to_user",
-        "line": 951,
+        "line": 960,
         "module": "app.messenger",
         "name": "messenger_send_file_to_user",
         "namespace": "messenger"
@@ -9608,7 +9609,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_message_to_user",
-        "line": 370,
+        "line": 374,
         "module": "app.messenger",
         "name": "messenger_send_message_to_user",
         "namespace": "messenger"

@@ -199,6 +199,7 @@ class HarnessRunCheckpoint:
     _replay: dict[str, deque[dict[str, Any]]] = field(default_factory=lambda: defaultdict(deque))
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     _repaired: bool = False
+    waiting_for_children: bool = False
 
     def produced_document_references(self) -> tuple[str, ...]:
         """Project only committed creation receipts, including restored checkpoint effects."""
@@ -231,6 +232,7 @@ class HarnessRunCheckpoint:
         if checkpoint is None or checkpoint.driver_code != "internal":
             return
         data = dict(checkpoint.data)
+        self.waiting_for_children = data.get("waiting_for_children") is True
         if int(data.get("version") or 0) not in _COMPATIBLE_CHECKPOINT_VERSIONS:
             self._compatible = False
             return
@@ -815,6 +817,7 @@ class HarnessRunCheckpoint:
                     ),
                     "message_history": deepcopy(self.history),
                     "effects": deepcopy(self.effects),
+                    "waiting_for_children": self.waiting_for_children,
                 },
             )
         )
@@ -959,6 +962,8 @@ def wrap_toolsets(
                                     or effect_policy == "read" else "unknown"
                                 )
                                 result = _returned_tool_error(result, tool_error_outcome, scope_rejection=execution.scope_rejection)
+                            if execution.wait_for_children and tool_error_outcome is None:
+                                checkpoint.waiting_for_children = True
                             await checkpoint.completed(
                                 effect_id=effect_id,
                                 name=name,

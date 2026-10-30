@@ -657,6 +657,11 @@ async def _stream(
         result.metadata["profile_fallback_used"] = True
 
     authorization_requests = getattr(runtime_agent, "authorization_requests", [])
+    if getattr(runtime_agent, "waiting_for_children", False) and not authorization_requests:
+        result.success = False
+        result.disposition = "waiting_for_children"
+        result.schema_version = "galaris.execution-result/v2"
+        result.result = ""
     if authorization_requests:
         result.success = False
         result.disposition = "waiting_for_authorization"

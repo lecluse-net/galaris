@@ -46,6 +46,15 @@ _TERMINAL = (TaskStatus.SUCCESS, TaskStatus.ERROR)
 LATE_ANSWER_GRACE_SECONDS = 7200  # 2 h
 
 
+def request_runtime_wait() -> None:
+    """Yield at the runtime's next safe boundary after admitting a child request."""
+    from app.tools.contracts import current_tool_execution
+
+    execution = current_tool_execution()
+    if execution is not None:
+        execution.wait_for_children = True
+
+
 def _task_language(task: Task) -> str:
     """Return the durable task language, falling back to the configured default."""
 

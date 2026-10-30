@@ -207,14 +207,14 @@ async def test_consumer_can_close_stream_while_driver_is_suspended(boundary):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("entrypoint", ["run", "stream"])
-@pytest.mark.parametrize("outcome", ["success", "failure", "authorization_wait"])
+@pytest.mark.parametrize("outcome", ["success", "failure", "authorization_wait", "child_wait"])
 async def test_valid_result_is_published_once_after_driver_cleanup(boundary, entrypoint, outcome):
     """Validate waits through normalization and live publication, before persistence."""
     authorization_ids = [uuid4(), uuid4()] if outcome == "authorization_wait" else []
     result = ExecutionResult(
         prompt="", result="done", success=outcome == "success",
-        schema_version="galaris.execution-result/v2" if authorization_ids else "galaris.execution-result/v1",
-        disposition="waiting_for_authorization" if authorization_ids else "completed",
+        schema_version="galaris.execution-result/v2" if outcome.endswith("wait") else "galaris.execution-result/v1",
+        disposition="waiting_for_authorization" if authorization_ids else "waiting_for_children" if outcome == "child_wait" else "completed",
         authorization_requests=authorization_ids,
     )
     boundary.driver.steps = (
@@ -240,6 +240,7 @@ async def test_valid_result_is_published_once_after_driver_cleanup(boundary, ent
     assert boundary.live.await_args.args[0].result == terminal_result
     assert boundary.semantic.await_args.kwargs["kind"] == (
         "run.waiting_for_authorization" if authorization_ids else
+        "run.waiting_for_children" if outcome == "child_wait" else
         "run.completed" if outcome == "success" else "run.failed"
     )
     assert boundary.outcome.await_count == 1
@@ -274,6 +275,8 @@ async def test_taskless_capability_is_available_to_any_driver(boundary, monkeypa
     {"disposition": "waiting_for_authorization", "success": False, "authorization_requests": [uuid4()]},
     {"disposition": "waiting_for_authorization", "schema_version": "galaris.execution-result/v2", "success": False},
     {"disposition": "waiting_for_authorization", "schema_version": "galaris.execution-result/v2", "authorization_requests": [uuid4()]},
+    {"disposition": "waiting_for_children", "success": False},
+    {"disposition": "waiting_for_children", "schema_version": "galaris.execution-result/v2", "success": True},
 ])
 async def test_mutated_terminal_result_is_revalidated(boundary, invalid):
     event = terminal()

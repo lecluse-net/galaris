@@ -85,6 +85,7 @@ class ExecutionEvidenceMiddleware(Middleware):
                     "tool_name": execution.tool_name,
                     "outcome": execution.outcome,
                     **({"scope_rejection": execution.scope_rejection} if execution.scope_rejection else {}),
+                    **({"wait_for_children": True} if execution.wait_for_children and not result.is_error else {}),
                 },
             }
             return result

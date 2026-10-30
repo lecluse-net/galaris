@@ -75,16 +75,21 @@ class ExecutionEvidenceClient(Client[Any]):
                     raise AuthorizationRequired(identifier)
                 raise AuthorizationClosed(identifier, str(authorization_control.get("status") or "invalidated"))
         if execution is not None and isinstance(raw_meta, dict):
-            evidence: Any = cast(dict[str, Any], raw_meta).get(EXECUTION_META_KEY)
+            raw_evidence: Any = cast(dict[str, Any], raw_meta).get(EXECUTION_META_KEY)
+            evidence = cast(dict[str, Any], raw_evidence) if isinstance(raw_evidence, dict) else {}
+            if (evidence and not result.is_error
+                and evidence.get("operation_id") == str(execution.operation_id)
+                and evidence.get("tool_name") == name
+                and evidence.get("wait_for_children") is True):
+                execution.wait_for_children = True
             if (
-                isinstance(evidence, dict)
-                and cast(dict[str, Any], evidence).get("operation_id")
+                evidence.get("operation_id")
                 == str(execution.operation_id)
-                and cast(dict[str, Any], evidence).get("tool_name") == name
-                and cast(dict[str, Any], evidence).get("outcome") == "rejected"
+                and evidence.get("tool_name") == name
+                and evidence.get("outcome") == "rejected"
             ):
                 execution.outcome = "rejected"
-                rejection = cast(dict[str, Any], evidence).get("scope_rejection")
+                rejection = evidence.get("scope_rejection")
                 if rejection in {"clarify", "deny"}:
                     execution.scope_rejection = rejection
         if result.is_error and result.structured_content is not None:

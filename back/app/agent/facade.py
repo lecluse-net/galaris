@@ -908,7 +908,7 @@ def _apply_run_result(
     # retry policy. Keep the effect-safe checkpoint so that retry can resume the
     # provider history and replay durable tool results instead of repeating effects.
     # Explicit human retries also preserve this checkpoint and its effect journal.
-    if result.success:
+    if result.success or result.disposition == "waiting_for_children":
         data.pop(RUN_CHECKPOINT_DATA_KEY, None)
     data.pop(RUN_IDENTITY_DATA_KEY, None)
     task.data = data
@@ -1038,7 +1038,7 @@ async def _record_run_outcome(
 ) -> None:
     """Record terminal model/runtime failures and close recovered tool incidents."""
 
-    if result.disposition == "waiting_for_authorization":
+    if result.disposition in {"waiting_for_authorization", "waiting_for_children"}:
         return
 
     from core.failure_journal import (
@@ -1234,6 +1234,7 @@ async def _stream_driver(
                     request,
                     sequence=sequence,
                     kind="run.waiting_for_authorization" if event.result.disposition == "waiting_for_authorization"
+                         else "run.waiting_for_children" if event.result.disposition == "waiting_for_children"
                          else "run.completed" if event.result.success else "run.failed",
                     result=event.result,
                     payload={"execution_stopped": event.result.metadata.get("execution_stopped", True) is True},

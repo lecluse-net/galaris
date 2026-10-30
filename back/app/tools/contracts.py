@@ -30,6 +30,7 @@ class ToolExecutionContext:
     authorization_continuation: str | None = None
     authorization_context: str | None = None
     scope_rejection: Literal["clarify", "deny"] | None = None
+    wait_for_children: bool = False
 
 
 _execution: ContextVar[ToolExecutionContext | None] = ContextVar("tool_execution", default=None)

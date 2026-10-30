@@ -79,7 +79,8 @@ async def test_wait_resume_and_finish_consumes_children_before_publishing_parent
     db.add(child)
     await db.commit()
     monkeypatch.setattr("app.task.runner.go_next", lambda *_args, **_kwargs: None)
-    waiting = ExecutionResult(prompt="Coordinate", result="Waiting for the delegated budget.", success=True)
+    waiting = ExecutionResult(prompt="Coordinate", result="", success=False,
+        schema_version="galaris.execution-result/v2", disposition="waiting_for_children")
     await executor_service._update_task_after_execution(parent, waiting, base_cost=0)
     assert parent.status == TaskStatus.DISPATCH and parent.paused
     child.status = TaskStatus.SUCCESS

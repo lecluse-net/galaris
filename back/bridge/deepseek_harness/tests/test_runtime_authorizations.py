@@ -26,7 +26,7 @@ def serving(server):
         thread.join(timeout=5)
 
 
-@pytest.mark.parametrize("decision", ["allow", "deny", "revoke", "cancel"])
+@pytest.mark.parametrize("decision", ["allow", "deny", "revoke", "cancel", "peer"])
 def test_managed_actor_keeps_native_authorization_and_cannot_replay(tmp_path, monkeypatch, decision):
     state = {"active": True, "decision": None, "receipts": [], "calls": 0}
     ready, proceed = threading.Event(), threading.Event()
@@ -54,6 +54,11 @@ def test_managed_actor_keeps_native_authorization_and_cannot_replay(tmp_path, mo
                 self.respond({"recorded": True})
             elif "/mcp/" in self.path:
                 result = {"tools": [{"name": "file_read", "inputSchema": {"type": "object"}}]} if body["method"] == "tools/list" else {"content": []}
+                if decision == "peer" and body["method"] == "tools/call":
+                    state["peer_calls"] = state.get("peer_calls", 0) + 1
+                    result = {"content": [{"type": "text", "text": "Synthetic peer admitted"}],
+                        "_meta": {"galaris.execution/v1": {"tool_name": "ask_peer", "outcome": "returned",
+                            "wait_for_children": True}}}
                 self.respond({"jsonrpc": "2.0", "id": body["id"], "result": result})
             elif state["decision"] is None:
                 self.respond({"status": "pending", "request_id": "human-question"})
@@ -101,6 +106,12 @@ def test_managed_actor_keeps_native_authorization_and_cannot_replay(tmp_path, mo
                         assert context.json() == {"active": True}
                         assert sdk.post(f"/local/{actor_id}/context", headers={**headers,
                             "X-Galaris-Run-Context": "foreign-context"}, json={}).status_code == 409
+                        if decision == "peer":
+                            response = sdk.post(f"/mcp/{actor_id}", headers=headers,
+                                json={"jsonrpc": "2.0", "id": "peer", "method": "tools/call",
+                                    "params": {"name": "ask_peer", "arguments": {}}})
+                            assert "continuation failed without replay" in response.text
+                            return SimpleNamespace(final_response="Stopped for colleague", finish_reason="completed")
                         allowed = sdk.post(f"/local/{actor_id}", headers=headers,
                             json={"callback": "original-call", "name": "file_write",
                                   "arguments": {"file_path": "approved.txt", "content": "approved"}}).json()["allowed"]
@@ -146,6 +157,10 @@ def test_managed_actor_keeps_native_authorization_and_cannot_replay(tmp_path, mo
                         break
                     time.sleep(0.02)
                 assert observed.get("stopped"), observed
+                if decision == "peer":
+                    assert observed["status"] == "waiting_for_children"
+                    assert state["peer_calls"] == 1
+                    assert observed["messages"][0]["tool_name"] == "ask_peer"
                 assert destination.exists() is (decision == "allow")
                 assert len(state["receipts"]) == (1 if decision == "allow" else 0)
                 assert client.post("/v1/galaris/runs", headers=headers, json=payload).json()["runtime_run_id"] == identifier

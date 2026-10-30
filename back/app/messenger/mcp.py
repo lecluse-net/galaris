@@ -364,7 +364,11 @@ async def mcp_room_send_message(ctx: McpToolContext, room_id: str, message: str)
         "an unavailable or ambiguous channel never falls back. Use messenger_search_users first "
         "when the recipient ID is unknown. Sending to another AI agent becomes a blocking peer "
         "request. From a Task on internal Chat, address a colleague as agent:<ID> using the ID from agent_list; "
-        "the message creates a durable peer Task and returns its URI without requiring a human Chat room."
+        "the message creates a durable peer Task and returns its URI without requiring a human Chat room. "
+        "Set wait_for_reply=true when the remaining work depends on this reply, such as asking a question "
+        "and relaying its answer. This yields after engaged tools finish. Leave it false (the default) "
+        "to continue independent work or contact more colleagues; the Task still awaits peer results before finishing. "
+        "Human recipients never suspend the run."
     ),
 )
 async def mcp_send_message_to_user(
@@ -372,6 +376,7 @@ async def mcp_send_message_to_user(
     user: str,
     message: str,
     channel: str = "",
+    wait_for_reply: bool = False,
 ) -> str:
     """Send a private message, blocking when the recipient is another AI agent.
 
@@ -409,6 +414,8 @@ async def mcp_send_message_to_user(
                 source_task_id=ctx.task_id,
                 connection_id=messenger.connection_id,
             )
+            if wait_for_reply:
+                collab.request_runtime_wait()
             return _message(
                 language,
                 "peer_request_waiting",
@@ -439,6 +446,8 @@ async def mcp_send_message_to_user(
                     )
                     or None,
                 )
+                if wait_for_reply:
+                    collab.request_runtime_wait()
                 return _message(_task_language(parent), "peer_waiting")
 
         # Recipient search refreshes messenger_users in this tool's transaction.

@@ -14,7 +14,7 @@ class RuntimeCheckpointPolicy:
             # Older Task retries overwrote this local status. Observe the existing
             # actor with the original authority; never submit another run.
             return CheckpointAssessment(state="reconcile", reason="Observe the interrupted managed runtime; do not restart it.")
-        if checkpoint.status not in ("running", "waiting_for_authorization"):
+        if checkpoint.status not in ("running", "waiting_for_authorization", "waiting_for_children"):
             return CheckpointAssessment(state="unsafe", reason="The managed runtime has no resumable state.")
         return CheckpointAssessment(state="safe")
 

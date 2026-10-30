@@ -108,7 +108,11 @@ class OpenAIMessagesDriver:
         resumed = checkpoint is not None and checkpoint.driver_code == self.spec.code
         if resumed and checkpoint is not None:
             credential = get_encryption_service().decrypt(str(checkpoint.data["run_context"]))
-            await renew_runtime_run_grant(credential, request)
+            # A child wait already drained and stopped its actor. Recovery may
+            # observe that receipt after the authority was closed, without
+            # granting the finished inference permission to execute again.
+            if checkpoint.status != "waiting_for_children":
+                await renew_runtime_run_grant(credential, request)
         else:
             previous_raw = request.task_data.get(RUN_RETRY_CHECKPOINT_DATA_KEY)
             if isinstance(previous_raw, Mapping):
@@ -139,7 +143,7 @@ class OpenAIMessagesDriver:
             "cursor": checkpoint.data.get("cursor", {}) if checkpoint else {}}
         if request.save_checkpoint:
             await request.save_checkpoint(AgentRunCheckpoint(driver_code=self.spec.code, runtime_run_id=identifier,
-                status="running", data=data))
+                status="waiting_for_children" if checkpoint is not None and checkpoint.status == "waiting_for_children" else "running", data=data))
         client.run_context = credential
         cursor = checkpoint.data.get("cursor") if checkpoint is not None else None
         inference_request = request

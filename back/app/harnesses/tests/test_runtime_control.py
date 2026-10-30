@@ -55,6 +55,83 @@ def eventually(predicate):
     raise AssertionError("The bounded runtime transition did not occur")
 
 
+@pytest.mark.parametrize("sibling", ["mcp", "local", "lost_receipt"])
+def test_peer_wait_drains_engaged_effects_and_stops_before_the_next_model_turn(tmp_path, monkeypatch, sibling):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    from app.harnesses import runtime_support
+
+    started, release, requested = threading.Event(), threading.Event(), threading.Event()
+    effects, next_turns = [], []
+    @contextmanager
+    def response(request, **_kwargs):
+        body = json.loads(request.data)
+        name = body["params"]["name"]
+        if name == "save_receipt":
+            started.set()
+            assert release.wait(5)
+            effects.append("mcp receipt saved")
+        else:
+            assert started.wait(5)
+            effects.append("peer admitted")
+            requested.set()
+        payload = {"result": {"content": [{"type": "text", "text": name + " completed"}],
+            "_meta": {"galaris.execution/v1": {"tool_name": name, "outcome": "returned",
+                "wait_for_children": name == "ask_peer"}}}}
+        yield SimpleNamespace(status=200, headers={}, read=lambda _limit: json.dumps(payload).encode())
+    monkeypatch.setattr(runtime_support, "urlopen", response)
+    def post(self, suffix, body):
+        if suffix == "/receipt":
+            if sibling == "lost_receipt":
+                raise OSError("Synthetic lost receipt")
+            effects.append("local receipt saved")
+            return {"recorded": True}
+        return {"status": "executing", "claimed": True, "request_id": "synthetic-permit"}
+    monkeypatch.setattr(ActionApprovals, "_post", post)
+    runs = RuntimeRuns(tmp_path / "peer-wait")
+    async def events(actor):
+        actor.approvals = ActionApprovals(mcp_url="http://example.test/mcp/synthetic", token="synthetic",
+            run_context="synthetic", session=actor.identifier, on_pending=actor.pending,
+            on_running=actor.running, on_children=actor.children)
+        approvals = actor.approvals
+        def local_write():
+            assert approvals.authorize("write", "write", {})
+            started.set()
+            assert release.wait(5)
+            effects.append("local write completed")
+            approvals.finish("write", outcome="completed", receipt={"saved": True})
+        def mcp(name):
+            return approvals.mcp({"method": "tools/call", "params": {"name": name, "arguments": {}}})
+        await asyncio.gather(asyncio.to_thread(mcp, "ask_peer"),
+            asyncio.to_thread(mcp, "save_receipt") if sibling == "mcp" else asyncio.to_thread(local_write))
+        next_turns.append("model requested")
+        yield "result", {"success": True, "result": "must not finish"}
+    identifier = runs.start("synthetic-peer-context", {}, events)
+    try:
+        assert requested.wait(3)
+        assert runs.get(identifier)["status"] == "running"
+        assert not runs.get(identifier).get("stopped")
+        release.set()
+        eventually(lambda: runs.get(identifier).get("stopped"))
+        state = runs.get(identifier)
+        assert state["status"] == ("outcome_unknown" if sibling == "lost_receipt" else "waiting_for_children")
+        assert next_turns == []
+        assert effects.count("peer admitted") == 1
+        assert effects.count("mcp receipt saved" if sibling == "mcp" else "local write completed") == 1
+        names = {message["tool_name"] for message in state["messages"]}
+        assert "ask_peer" in names
+        if sibling == "mcp":
+            assert "save_receipt" in names
+        else:
+            assert "write" in names
+        # A restart observes the same wait and never replays the request.
+        restarted = RuntimeRuns(tmp_path / "peer-wait")
+        assert restarted.get(identifier)["status"] == state["status"]
+    finally:
+        release.set()
+        runs.cancel(identifier)
+
+
 @pytest.mark.parametrize("allowed", [True, False])
 def test_runtime_keeps_the_exact_pending_call_and_never_restarts_it(tmp_path, approval_server, allowed):
     url, server = approval_server

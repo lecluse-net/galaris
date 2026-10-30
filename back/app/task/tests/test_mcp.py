@@ -184,6 +184,7 @@ async def test_task_run_returns_canonical_task_uri(
     from core.team import TeamModel
     from app.agent.models import Agent, Title
     from app.agent.dialogue_service import set_agent_membership
+    from app.tools.contracts import ToolExecutionContext, tool_execution
 
     team = TeamModel(name="Delegation team")
     title = Title(label="Mx", gender="M")
@@ -208,14 +209,17 @@ async def test_task_run_returns_canonical_task_uri(
     monkeypatch.setattr(task_mcp, "run_task", AsyncMock(return_value=str(task_id)))
     monkeypatch.setattr("app.task.runner.go_next", lambda *_args, **_kwargs: None)
 
-    result = await task_mcp.mcp_run_task(
-        McpToolContext(agent_id=7, runtime="hermes", task_id=uuid4()),
-        agent_id=8,
-        label="Subtask",
-        objective="Execute",
-    )
+    execution = ToolExecutionContext(uuid4(), "task_run")
+    with tool_execution(execution):
+        result = await task_mcp.mcp_run_task(
+            McpToolContext(agent_id=7, runtime="hermes", task_id=uuid4()),
+            agent_id=8,
+            label="Subtask",
+            objective="Execute",
+        )
 
     assert result == f"galaris://task/{task_id}"
+    assert execution.wait_for_children is False
 
     await set_agent_membership(team.id, 8, False)
     with pytest.raises(PermissionError):

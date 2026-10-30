@@ -1232,7 +1232,7 @@ exchange exists. Supported channel values are `internal`, `nextcloud_talk`, `mat
 - `messenger_room_send_message(room_id: str, message: str) -> str` sends Markdown to a room.
   Sending identical text twice may return a duplicate-suppression confirmation. That is not an
   error; do not rephrase a message merely to force another send.
-- `messenger_send_message_to_user(user: str, message: str, channel: str = "") -> str` sends a
+- `messenger_send_message_to_user(user: str, message: str, channel: str = "", wait_for_reply: bool = False) -> str` sends a
   message to an exact provider ID or a display name resolved by that provider. With no `channel`,
   Galaris keeps the Task or conversation's exact connection. Without a fixed route, it selects the
   recipient's latest inbound channel, then internal Chat by default. Pass `channel` to deliberately
@@ -1242,6 +1242,12 @@ exchange exists. Supported channel values are `internal`, `nextcloud_talk`, `mat
   the calling Task waits for its result. No human Chat room is required. Acceptance does not prove
   that the colleague has replied or completed the requested action. Contact and document access
   checks still apply. This path requires a current Task.
+  Set `wait_for_reply=True` when the next work requires the colleague's answer, for example
+  when the request is only to ask a question and relay the response. Engaged tool calls finish
+  before the run yields. Leave the default `False` when you still have independent work or
+  more colleagues to contact; the Task still awaits its peer results before finishing.
+  This option does not suspend a message to a human. Use `task_run` for delegated work;
+  it keeps the current turn available for other contributions and independent work.
   Each messaging connection's server-owned `tools.management_scope` controls peer contacts:
   `none` blocks them, `team` (the default) requires a shared team, and `all` permits any active
   agent. There is no personal scope. Native requests check both agents' connections. Only a

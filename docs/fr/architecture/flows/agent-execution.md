@@ -77,6 +77,16 @@ et [0256](../../../../project/decisions/0256-contact-acquisition-and-dream-recon
 
 ## Organisation du travail
 
+Seul `messenger_send_message_to_user(..., wait_for_reply=True)` demande une attente immédiate
+`waiting_for_children` après l'admission du collègue. Le défaut `False` et `task_run` permettent
+de poursuivre le travail indépendant et de solliciter d'autres contributions avant l'attente
+en fin de tour. Le harnais interne termine le lot d'outils avant toute nouvelle
+inférence ; les runtimes réseau managés bloquent les nouveaux départs, conservent les reçus
+des appels engagés puis ferment l'inférence. Un effet incertain conserve sa réconciliation.
+Task applique ensuite sa suspension et reprend une fois avec les résultats durables,
+y compris lorsque le collègue a répondu avant la suspension. Les images managées doivent
+être actualisées pour appliquer ce signal. Voir [0260](../../../../project/decisions/0260-peer-wait-at-tool-boundary.md).
+
 Pour une tâche, le Dispatcher choisit `direct`, `tracked` ou `clarify` dans son inférence
 de routage existante. Une action simple reste directe. Une mission longue ou complexe
 prépare sa méthode et conserve ses jalons via `task_work_update`, même lorsqu'un seul

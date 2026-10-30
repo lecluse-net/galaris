@@ -762,11 +762,16 @@ class ExecutionResult(AIResult):
 
     schema_version: Literal["galaris.execution-result/v1", "galaris.execution-result/v2"] = "galaris.execution-result/v1"
     failure: HarnessFailure | None = None
-    disposition: Literal["completed", "waiting_for_authorization"] = "completed"
+    disposition: Literal["completed", "waiting_for_authorization", "waiting_for_children"] = "completed"
     authorization_requests: list[UUID] = Field(default_factory=list[UUID])
 
     @model_validator(mode="after")
     def validate_authorization_wait(self) -> Self:
+        if self.disposition == "waiting_for_children" and (
+            self.schema_version != "galaris.execution-result/v2" or self.success
+            or self.authorization_requests or self.failure is not None
+        ):
+            raise ValueError("A child wait requires v2 and no terminal outcome or authorization wait")
         if self.disposition == "waiting_for_authorization" and (
             self.schema_version != "galaris.execution-result/v2" or self.success
             or not self.authorization_requests or self.failure is not None
@@ -1391,6 +1396,7 @@ AgentRunEventKind = Literal[
     "run.started",
     "run.completed",
     "run.waiting_for_authorization",
+    "run.waiting_for_children",
     "run.failed",
     "run.cancelled",
     "message.completed",
@@ -1422,7 +1428,7 @@ class AgentRunEventV1(BaseModel):
 
     @model_validator(mode="after")
     def terminal_payload_is_consistent(self) -> Self:
-        if self.kind in {"run.completed", "run.failed", "run.cancelled", "run.waiting_for_authorization"}:
+        if self.kind in {"run.completed", "run.failed", "run.cancelled", "run.waiting_for_authorization", "run.waiting_for_children"}:
             if self.result is None:
                 raise ValueError("A terminal run event must contain a result")
         elif self.result is not None:
@@ -1431,7 +1437,7 @@ class AgentRunEventV1(BaseModel):
 
     @property
     def terminal(self) -> bool:
-        return self.kind in {"run.completed", "run.failed", "run.cancelled", "run.waiting_for_authorization"}
+        return self.kind in {"run.completed", "run.failed", "run.cancelled", "run.waiting_for_authorization", "run.waiting_for_children"}
 
 
 @dataclass(frozen=True)

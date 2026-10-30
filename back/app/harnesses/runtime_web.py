@@ -30,7 +30,7 @@ def install_control(app: FastAPI, *, root: Path, authenticate: Callable[[Request
         def factory(actor: RuntimeActor) -> AsyncIterator[tuple[str, dict[str, Any]]]:
             actor.approvals = ActionApprovals(mcp_url=os.environ.get("GALARIS_MCP_URL", ""),
                 token=os.environ.get("GALARIS_MCP_TOKEN", ""), run_context=credential,
-                session=actor.identifier, on_pending=actor.pending, on_running=actor.running)
+                session=actor.identifier, on_pending=actor.pending, on_running=actor.running, on_children=actor.children)
             actor.approvals.validate()
             return events(body, request, actor)
         try:
