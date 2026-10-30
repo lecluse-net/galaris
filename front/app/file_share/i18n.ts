@@ -3,8 +3,8 @@ export default {
     nav: { files: 'Fichiers', files_desc: 'Explorer les fichiers et ressources accessibles à chaque agent' },
     files: {
       resourceLabels: {
-        scheme_galaris: 'Ressources Galaris', scheme_file: 'Fichiers Galaris',
-        scheme_document: 'Documents Galaris', scheme_memory: 'Mémoires Galaris',
+        scheme_galaris: 'Ressources Galaris', scheme_file: 'Fichiers',
+        scheme_document: 'Documents', scheme_memory: 'Mémoires Galaris',
         scheme_data: 'Données Galaris', scheme_https: 'Ressources HTTPS publiques',
         scheme_console: 'Fichiers locaux (console SSH)',
         collection_task: 'Tâches', collection_voice: 'Conversations vocales',
@@ -41,8 +41,8 @@ export default {
     nav: { files: 'Files', files_desc: 'Browse files and resources available to each agent' },
     files: {
       resourceLabels: {
-        scheme_galaris: 'Galaris resources', scheme_file: 'Galaris files',
-        scheme_document: 'Galaris documents', scheme_memory: 'Galaris memories',
+        scheme_galaris: 'Galaris resources', scheme_file: 'Files',
+        scheme_document: 'Documents', scheme_memory: 'Galaris memories',
         scheme_data: 'Galaris data', scheme_https: 'Public HTTPS resources',
         scheme_console: 'Local files (SSH console)',
         collection_task: 'Tasks', collection_voice: 'Voice conversations',
@@ -79,8 +79,8 @@ export default {
     nav: { files: '文件', files_desc: '浏览每个智能体可访问的文件和资源' },
     files: {
       resourceLabels: {
-        scheme_galaris: 'Galaris 资源', scheme_file: 'Galaris 文件',
-        scheme_document: 'Galaris 文档', scheme_memory: 'Galaris 记忆',
+        scheme_galaris: 'Galaris 资源', scheme_file: '文件',
+        scheme_document: '文档', scheme_memory: 'Galaris 记忆',
         scheme_data: 'Galaris 数据', scheme_https: '公共 HTTPS 资源',
         scheme_console: '本地文件（SSH 控制台）',
         collection_task: '任务', collection_voice: '语音对话',
