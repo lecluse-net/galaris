@@ -28,7 +28,7 @@ notamment pour préparer le site web : capacités détaillées, conditions, limi
 |---|---|
 | Classer les documents et agir sur une sélection | [Bibliothèque documentaire](user/documents.md) |
 | Écrire, citer un objet, partager ou exporter | [Contenus riches](user/rich-content.md) |
-| Créer et réutiliser du JSON | [Jeux de données](user/datasets.md) |
+| Créer et réutiliser du JSON | [Documents Données](user/datasets.md) |
 | Parcourir les ressources d'un agent | [Fichiers](user/files.md) |
 | Gérer les méthodes génériques et personnelles des agents | [Compétences](user/skills.md) |
 | Travailler sur un checkout Git avec l'agent | [Éditeur de code](user/code-editor.md) |

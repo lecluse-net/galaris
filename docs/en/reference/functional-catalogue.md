@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **25 October 2026**,
+This catalogue describes features present in the repository as of **30 October 2026**,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -22,7 +22,7 @@ verification facilities. The Lab's ten AI mechanisms, its Process campaigns and 
 mechanisms are distinct capabilities. Sources and tests describe software guarantees; this catalogue
 does not qualify every installation or provider.
 
-The inventory covers **278 native MCP functions, 78 backend modules and 40 frontend modules**.
+The inventory covers **284 native MCP functions, 78 backend modules and 40 frontend modules**.
 Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
 Quality controls appear under [operations](#exploitation).
 
@@ -90,10 +90,10 @@ Quality controls appear under [operations](#exploitation).
 | **Internal file** | Immutable bytes under `file://<uuid>` | Has a mutable name, metadata and business references; access follows its owners or retaining resources. |
 | **Run / attempt** | A concrete execution | Distinguishes a try, recovery and new execution, with costs and errors. |
 | **Personal memory** | Durable knowledge private to an agent | Searchable, revisable and sourced; managing the agent does not share its memories with other agents. |
-| **Document** | Editorial HTML resource under `document://` | Title, owner, versions and shares; a page may combine text, media and interactive applications. |
-| **Dataset** | Independent JSON resource under `data://` | Its own library, rights and history; multiple pages can read/update it with required permissions and consent. |
+| **Document** | Text (HTML) or Data (JSON) resource | Common identity, title, owner, versions, current summary and shares; a Text page may combine media and interactive applications. |
+| **Dataset / Data document** | JSON document under `data://` | Shares the Text document library and contracts; each resource retains its rights and history independently of referencing pages. |
 | **Application in a document** | HTML, CSS and JavaScript running in the page | Forms, simulators and visualizations; Dataset access requires reader rights and personal consent for the document revision. |
-| **Personal document folder** | User-specific classification | Organizes accessible documents without changing content, rights or anyone else's organization. |
+| **Personal document folder** | User-specific classification with a stable reference | Organizes accessible documents; automatic sharing can grant additional rights on its owner's documents without changing anyone else's organization. |
 | **Attachment memory** | A file's textual/documentary companion | Retains attachment identity, metadata, descriptions and links to documents using it. |
 | **Topic** | Subject shared across activities | Links conversations, tasks, documents, memories and participants beyond one channel. |
 | **Contact** | Person observed by an agent | Links messaging identities and knowledge within the agent's scope. |
@@ -177,6 +177,7 @@ transport result. Resource origins, executed tools, results and available delive
   cannot replace the current selection.
 - **Information pages:** About provides features, credits and license; menu footer shows build
   tag, otherwise branch/short commit. Welcome and unknown-route handling complete the shell.
+  Credits also list the technologies used and their licences.
 - **Documented navigation:** screen/tab guide and generated frontend routes, FR/EN labels and
   visibility conditions; product-aware agents can use them to guide users.
 - **Shared context menus:** applicable conversation, message, Document, file, Task, Goal and Topic
@@ -311,6 +312,9 @@ no Process. All paths store an optimised JPEG within **500 × 500 pixels**, pres
 and orientation without enlargement or EXIF metadata. Failure, revocation or a concurrent edit
 preserves the current avatar; late reads cannot replace it. Generation requires a configured
 image resource and never silently falls back to a text model.
+
+Any change to the agent while generation runs prevents replacement, including an avatar replaced
+and then restored; the current state is preserved.
 
 Sources: [AgentAdmin contract](../dev/agent-admin.md),
 [delegation and MCP journeys](../../../back/app/agent/tests/test_agent_admin.py),
@@ -550,6 +554,12 @@ require new confirmation.
 
 ### ChatGPT subscription limits
 
+The account catalogue offers a separate **Fast** resource when the provider advertises that
+mode for a model. It retains the standard model's capabilities and context window and can be
+selected separately in profiles. It uses priority service with higher subscription consumption;
+no variant is invented for models that do not advertise it. See the
+[Fast variant guarantees](../../../back/bridge/openai/tests/test_fast_models.py).
+
 Device-authenticated provider settings show account-reported **percentage used**, window duration
 and reset date when available, with check time and refresh. These are **whole-account** limits,
 including outside use; reading them makes no inference call. Provider-admin rights, valid owner
@@ -732,6 +742,10 @@ high support. Short conversation's controller remains independent of the Task ha
 
 ### Shared document reading and resumable analysis
 
+Analysis batches and consolidation use the model's published output capacity rather than a fixed
+1,600-token ceiling. Empty evidence produces a retained diagnostic and coverage without false
+artefact evidence or automatic billable resubmission.
+
 Chat/Responses gateways, agent attachments and Dream share a bounded document preparer for
 PDF, Office formats, text, HTML, Markdown, EPUB and images as supported by converters. It supplies
 text, rendered pages and optional OCR with explicit limits. Spreadsheets retain cells, formulas
@@ -816,6 +830,17 @@ require reconciliation before a new model decision.
 
 ### Conversations and interactions
 
+Task, Contact, Goal, Topic and conversation cards open their usual business dialogs, including
+internal attachment cards, under current read/edit permissions.
+
+Local uploads and **internal attachments** share the draft's attachment area and can be removed
+before sending, including without text. Internal resources retain their source URI and rights,
+without implicit copies or replacement by a page URL. Compatible models receive media directly;
+otherwise configured specialists provide descriptions or transcripts, with unavailable analysis
+and incomplete coverage made explicit. On phones/tablets, Return inserts a line and the send
+button preserves focus and the keyboard; on computers, Enter sends and Shift+Enter inserts a line,
+including in a narrow panel.
+
 The home page prioritises recent conversations. Saved choice replies render their introduction
 in the current interface language, including after reopening; the request title and chosen
 label retain the original request's language.
@@ -886,6 +911,15 @@ notifications respect mute settings and access rights and are cleared when read.
 are persisted, and contact notification delays are configurable.
 
 ### Working on a document alongside chat
+
+Conversation and agent selectors offer only agents that can already read the document through
+personal, team or global rights. Selecting one shares nothing; remembered conversations reopen
+only while those rights remain valid.
+
+After approved document creation, a Task can continue on that resource using its retained creation
+receipt, including after recovery. On-request writing requires its own approval: refusing creation
+creates nothing; refusing an edit preserves existing content. Closing and reopening Chat retains
+the pending request.
 
 The Documents library also has its own **Conversation** panel, resizable by mouse and
 keyboard on desktop and presented as a dialog on mobile. Choose an existing thread or create
@@ -1030,6 +1064,11 @@ Additional references: [Chat schemas](../../../back/app/chat/schemas.py),
 
 ### Preparing network access
 
+New installations enable only **internal Chat**. External channels must be explicitly enabled
+in **Preferences → Messaging**; upgrades preserve configured channels. **OneBot 11** and **WhatsApp**
+are labelled experimental. Telegram and Matrix guides can prepare their Tool when no existing
+Tool uses the bridge, then direct users to each agent's account configuration.
+
 **Preferences → Messaging** and a Tool's **Messaging** tab show each bridge's network requirements.
 Telegram polling, Matrix and Nextcloud Talk do not require a public Galaris URL for messages.
 WhatsApp requires a public HTTPS webhook; local, private or non-HTTPS addresses trigger a warning.
@@ -1037,6 +1076,12 @@ OneBot needs an address reachable by its adapter, including through a LAN or VPN
 use the browser address and do not block saving; calls and media retain their own requirements.
 
 Source: [testing bridges from a local instance](../bridges/telegram-whatsapp.md).
+
+**Test reception** checks only active connections for the displayed bridge; no connection means
+no test. Telegram accepts a bot token alone, subject to preserved legacy restrictions. Matrix
+reuses its device session and explicitly diagnoses encrypted rooms it cannot read. OneBot keeps
+journalled history but cannot guarantee recovery of events lost before admission or during a
+disconnection; sends with unknown outcomes are not automatically repeated.
 
 ### Routing, search and sending
 
@@ -1053,6 +1098,13 @@ Agent-to-agent exchanges retain loop prevention. Incoming events are authenticat
 deduplicated in a durable journal before dispatch, allowing recovery after interruption. Identity
 association uses verified identifiers, not display names.
 
+An external human message without recognised contact permission remains in a **paused round**,
+visible in activity with available identity information. The manager receives a persistent request,
+also available in **Permissions**: allowing resumes the round; refusing closes it without a reply.
+The revocable decision concerns that person on that connection and creates neither a Galaris account
+nor resource access. Mail retains its own consent flow. Model attribution reads the current canonical
+contact rather than an old remote name, without changing authenticated identity or permissions.
+
 ### Cross-channel contacts
 
 Contacts are scoped to an agent. Users and agents can search identities and associated memory,
@@ -1060,9 +1112,32 @@ merge contacts, or forget them. Merging updates references and preserves the rel
 forgetting cleans associated memory. Matching names alone do not establish that two identities
 belong to the same person.
 
-The address book also creates contacts from an email address before any message exists, edits
-names and searches addresses. Detaching an identity from a merged contact restores an independent
-entry. Forgetting requires both Contacts and Memory rights because it erases associated memories.
+The address book also creates contacts with an email, phone number or postal address before
+any message exists. Users can edit names, phones and postal addresses, including labels and
+countries, and search coordinates. A default country requires an explicit country in Location
+preferences. Incoming observations preserve manually entered coordinates; merging combines
+distinct entries and splitting retains them on the original contact. Detaching an identity
+from a merged contact restores an independent entry. Forgetting requires both Contacts and
+Memory rights because it erases associated memories.
+
+The Memory coordinate-recording option discovers coordinates in human or AI messages in the
+background. Known coordinates need no inference; new ones use context, the Decision model and
+ultra-light text to identify the owner. Uncertain attribution creates no contact. Dream can
+reconcile duplicates after confirming identity, using the shared similarity threshold (92% by default).
+
+Agents use `contact_list`, `contact_get`, `contact_create` and `contact_update` exclusively for
+their own address book, regardless of broader administration rights. Read/search are active by
+default; creation and updates ask for approval. Saving an email makes its sender known to the
+default inbound Mail policy. `galaris://contact/` also exposes entries through Files and File
+Sharing. Every read, including old Memory revisions, rebuilds current JSON without a stored
+memory copy. Generic name/phone/address edits require the previously read `expected_etag`;
+identities and metadata remain protected. Omitted lists are preserved, supplied lists replace
+the previous values and empty lists clear them.
+
+`messenger_search_users` also discovers other agents and active Galaris users before any exchange,
+by name, email, agent code/job or `agent:<ID>` / `user:<ID>`, with terms in any order. Search creates
+neither a private contact nor sending rights. Contact cards in documents load coordinates under
+each reader's rights; sharing the document does not share the address book.
 
 **Inter-agent communication** is configured per messaging connection: `none` blocks exchanges,
 `team` restricts them to shared active teams and `all` allows other authorised agents. Sending
@@ -1185,6 +1260,10 @@ Sources: [adaptive organization](../../../project/decisions/0171-adaptive-task-o
 
 ### Preserving the requested scope
 
+Authorised work on a folder follows its currently accessible members, including documents created
+there. It covers neither foreign documents nor unrelated effects; ACLs and tool permissions remain
+checked on every mutation.
+
 New Tasks retain a sourced scope: original request, requirements, exact authorized references,
 amendments and clarification answers. Children inherit their parent's scope; step prose, profiles
 and memories cannot create additional grants. Plans declare requirement coverage and targets;
@@ -1251,6 +1330,10 @@ Delegation does not transfer another agent's consent. External adapters, includi
 check Galaris authorization and reject operations without a valid grant rather than manufacture approval.
 
 ### Activity and operator controls
+
+A milestone explicitly blocked at closure makes the Task fail with its partial outcome and no
+automatic retry; durable waits retain priority. Terminal Tasks cannot be amended: expanding scope
+requires a new explicit request. Snapshot exports retain complete evidence, including long tool outputs.
 
 Activity provides search, filters and totals; states and operations; Goal links; Dispatcher,
 Planner decisions; results, child trees and progress; tool arguments/results;
@@ -1368,6 +1451,10 @@ the agent cannot change after cycles exist, and unfinished Goals cannot be delet
 
 ### Work, judgement and follow-up
 
+Authorised users can customise the follow-up prompt in **Preferences → Instructions**, then restore
+the default. Subsequent judgements use it to summarise current state, retain useful information
+and decide whether to continue. The default merges repetitions without imposing a target length.
+
 Completion criteria concern the intended outcome: a report, sent message or successful Task
 alone does not prove that the Goal is achieved. A cycle can usefully wait for a precise
 referrer decision rather than create content merely to keep working. A decision already
@@ -1419,16 +1506,20 @@ Additional references: [Goal schemas](../../../back/app/goal/schemas.py),
 
 ### Records and acquisition
 
-Standalone memories carry an HTML body, keywords, nature, metadata, owner and dates. They remain
-private to their agent and their display label is derived from content. Documents own their title,
-full content, sharing rights and optional HTML synthesis with independent history, all owned by
+New agent-acquired memories are atomic structured facts: a referenced subject, a `snake_case`
+property and a scalar or reference value, with optional unit and negation. The server builds
+their HTML representation and retains keywords, nature, metadata, owner and dates. Human notes
+and historical memories remain readable. Each memory stays private to its agent.
+Documents own their title, full content, sharing rights and optional current HTML summary, all owned by
 `app.document`. They exist without a personal memory or Memory node; the graph may retain a
-reconstructible reference that checks source permissions on every read. Document edits leave
-the synthesis unchanged; its reference revision indicates staleness.
+reconstructible reference that checks source permissions on every read. Summaries and keywords
+have no separate history; restoring content preserves them. Document edits do not immediately
+rewrite the summary; Dream can update automatic descriptions under the size and cumulative-change
+thresholds while preserving manual summaries.
 Document and synthesis share one keyword list editable from either form under document rights.
 Changing keywords alone creates no content revision. Remote updates preserve drafts and conflicting
 edits keep user input. The synthesis cannot be independently forgotten or merged; deleting its
-document also deletes its synthesis and history.
+document also deletes its summary and content versions.
 Migration preserves existing document URIs, versions and recipients. Previously shared memories
 become documents; private memories retain former titles within their content. A verified SQL
 backup precedes transfer and retains referenced resources; it does not replace file-storage backups.
@@ -1456,10 +1547,22 @@ memory is private; domain projections remain read-only and their original busine
 authoritative.
 
 `memory_summarize` produces attributed facts, decisions, commitments and open questions from at most
-200 messages and the latest 32,000 characters, using the agent's model. It follows the HTML and
-normal acquisition contract, without replacing all room memories. Empty history or model failure
+200 messages and the latest 32,000 characters, using the agent's model. It extracts multiple atomic
+facts through normal acquisition, without replacing all room memories. Empty history or model failure
 does not store a fake summary or a raw fallback copy. The obsolete global-overwrite argument is no
 longer exposed.
+
+`memory_remember`, Dream extraction and post-Task capture use the same atomic facts. An identical
+atom in the same scope reuses its memory without a model call; another property creates another
+atom. Agent memorisation tools reject free prose. Author, date and quotation remain provenance.
+Personal coordinates belong in Contacts: mixed coordinate/preference proposals must be split.
+Direct resource representations take precedence over copies when full equivalence is proven;
+a mere citation does not protect a memory from forgetting. An explicit correction supplies its
+target and expected revision, retaining both claims and their contradiction link without declaring
+the earlier claim false or erasing it.
+
+Sources: [atomic facts](../../../back/app/memory/tests/test_atomic_facts.py),
+[source priority contract](../../../project/decisions/0257-atomic-memory-facts-and-source-priority.md).
 
 Content deduplication respects validity periods: a fact confirmed for a new period does not silently
 reuse an expired record. Expired records retain dates and provenance and are excluded from recall.
@@ -1500,7 +1603,7 @@ Sources: [temporal contract](../../../back/app/memory/temporal.py),
 
 Similarity proposes candidate memories; it proves neither equivalence nor sufficient evidence
 for an answer. Without an affirmative duplicate decision, acquisition retains the new fact.
-Dream can enrich an editable personal memory while retaining its complete text, keywords,
+Another property creates a separate fact while retaining earlier evidence, keywords,
 sources and temporal scope. Contradictions preserve both claims and their sources; revision
 conflicts never silently overwrite current content.
 
@@ -1510,6 +1613,14 @@ repeated extraction of one origin does not become independent corroboration. Acc
 counterclaims are exposed without automatically declaring one true. Recall protects space for
 ordinary memories when calendar matches would fill the budget; additional matches remain
 available through `memory_upcoming`.
+
+Requests depending on preferences, earlier decisions or project continuity instruct the agent
+to search for missing evidence before answering. A saturated calendar reserves up to half the
+slots for ordinary facts. Inline `document://` and `memory://` references remain exact anchors even
+after a long preamble. “My email” targets the identified correspondent; simple coordinate queries
+use an exact read without embeddings. A lone “yes” or “thanks” preserves the last human subject
+for follow-up; an explicit subject change is respected. The agent's Contact entries are searchable
+with current coordinates, without exposing another agent's address book.
 
 Recall combines lexical title/keyword/content matches, embedding similarity, current or preselected
 Topics, confirmed relationships, provenance, freshness and configured weights, then diversifies a
@@ -1679,14 +1790,16 @@ Additional references: [Memory acquisition](../../../back/app/memory/acquisition
 ## 13. Documents, Datasets and applications
 
 Documents are shared working material: text, multimedia or an application page combining editable
-explanations, forms, calculations and charts. Independent Datasets can hold durable data used
-by several pages. `app.document` owns HTML Documents; the Dataset domain owns JSON resources with
-their own rights, history and library.
+explanations, forms, calculations and charts. Data documents, also called Datasets, can hold
+durable data shared by several pages. `app.document` owns both **Text** and **Data**, with
+common metadata, rights, classification and revision contracts. `app.document.text` supplies
+HTML and `app.document.data` supplies JSON; `app.dataset` remains a compatibility relay.
+Each document retains independent permissions.
 
 | Resource | Content | Editor |
 |---|---|---|
-| HTML | Rich text, media, forms, CSS and JavaScript; reports, simulators and small applications. | Tiptap with a Quasar interface, without a document Source view. |
-| Dataset | JSON values, response arrays, simulation parameters, reference data and structured results. | JSON CodeEditor. |
+| Text | Rich HTML, media, forms, CSS and JavaScript; reports, simulators and small applications. | Tiptap with a Quasar interface, without a document Source view. |
+| Data | JSON values, response arrays, simulation parameters, reference data and structured results. | JSON CodeEditor. |
 
 Other document types, such as a standalone image type, are not available; images/media can already
 be embedded in or attached to HTML documents.
@@ -1716,19 +1829,20 @@ This policy neither converts old files nor changes their permissions.
 
 ### Library, ownership and deletion
 
-Users can create HTML Documents, select an authorised human/agent owner (retaining an editor agent
+Users can choose Text or Data, select an authorised human/agent owner (retaining an editor agent
 where required), search titles/content, filter by access, browse folders, move documents,
 change ownership subject to its own rules, and find conversation/Goal-related documents. The library
 shows owner, sharing, revision and collaborators; supports existing/new keywords; and provides
 canonical `document://<uuid>` links. Protected business documents retain their restrictions.
-Datasets are created and browsed separately under **Knowledge → Datasets**.
+**Knowledge → Documents** lists both Text and Data; the type filter applies before pagination
+and combines with other search criteria.
 
 The library unites human access and managed-agent access without duplicating shared documents.
 Displayed ownership is the actual owner, not the agent through which access is obtained. Personal
 filing requires only read access. Confirmed deletion from the library/editor requires the relevant
 owner-management rights; shared, protected or business-managed documents keep their restrictions.
 
-Deletion removes content, versions, indexes and the Document's file references. Bytes remain
+For Text documents, deletion removes content, versions, indexes and file references. Bytes remain
 protected while another resource or owner retains them. Historical chat references show
 the last title and “Document deleted”, without content preview, opening or download; older deletions
 without a preserved title use a generic label. The card restores no access.
@@ -1740,11 +1854,15 @@ no thread is loaded before the panel opens.
 
 ### Personal folders, navigation and ordering
 
+The tree root contains only explicitly placed documents. General creation leaves documents unfiled;
+**Create a document at the root** or dropping there creates a personal placement retained after reload.
+Dropping into the unfiled list removes that placement without changing other users' organisation.
+
 Each user has a folder/subfolder tree separate from global Topics. The contract permits multiple
 personal associations; drag-and-drop atomically replaces that user's associations with the target
 folder, leaving everyone else's filing intact. `document_path` remains a compatibility field for its
-producers; human filing uses personal folders only. Unassociated documents are unfiled, subject to
-automatic Goal filing.
+producers; human filing uses personal folders only. Unassociated documents are unfiled.
+A Goal's follow-up uses the same free classification, without automatic filing.
 
 - Create root, child or sibling folders and immediately rename the selected name. Cancelling rename
   preserves the new folder's initial name; failed creation never inserts a fictitious folder.
@@ -1780,7 +1898,8 @@ prevents filing mutations even if an old association remains.
 ### Subdocuments and bulk management
 
 Personal organisation can nest Documents across several levels through **New subdocument** or
-drag-and-drop, without changing content or sharing. Children can move to a folder or unfiled list;
+drag-and-drop, preserving content and direct shares; inherited folder/parent-document rights follow
+current placement. Children can move to a folder or unfiled list;
 deleting or losing access to a parent preserves readable children as unfiled. Cycles are rejected.
 
 **Show folder as list** provides titles, thumbnails, owners and keywords, optionally including
@@ -1797,15 +1916,62 @@ typing and respect permissions. Context menus support right-click, action button
 Sources: [library and bulk actions](../user/navigation.md),
 [bulk-management interactions](../../../front/browser-tests/document-bulk.spec.mjs).
 
+### Sharing and citing a folder
+
+**Automatic folder sharing** grants read or edit access to users, agents, groups or authenticated
+users. It propagates to subfolders, documents and subdocuments, including future additions, only
+for documents the classification owner can reshare. Contributions from multiple placements combine
+with direct rights; the most permissive wins. Moving a document, deleting a folder or revoking
+its sharing removes only that contribution. Updates reapply these rules idempotently.
+
+Each folder has a stable `/documents/folders/<uuid>` page and `document://folders/<uuid>/` URI,
+usable in Chat or documents as a live reference. The page searches and paginates accessible branch
+contents. Agents discover folders with `file_list`, then read their JSON tree with `file_read` in
+pages of up to 200 items using `next_offset`. Access to a descendant makes ancestors discoverable,
+without exposing neighbours. Every read checks rights; attaching a folder grants no access.
+
+Sources: [folder sharing](../user/documents.md),
+[scope, pagination and revocation](../../../back/app/document/tests/test_folder_resources.py).
+
+### Importing or copying a document
+
+**New document from…** selects an accessible file: JSON becomes Data; UTF-8 HTML, Markdown and
+plain text become Text. Imports use the configured resource quota without a separate 2 MB ceiling.
+Unsupported formats, invalid content and denied access prevent creation. The result is an independent
+copy without a source link or source attachment.
+
+The same picker can copy existing Text or Data documents, including personal documents. Type and
+content are retained; Text images and attachments receive new identities. Original history and
+sharing are not copied. The new document's title, owner and placement are chosen during creation.
+
+Source: [import and copy guarantees](../../../back/app/document/tests/test_file_import.py).
+
+### Current summary
+
+**View summary** reloads a Text or Data document's shared summary without showing keywords.
+Editors can change and save it; **Return to document** also saves the draft. Errors and conflicts
+preserve input. **Regenerate summary** requires confirmation and replaces manual or automatic text
+from saved content using the Dream model, even for short documents. Content, versions and keywords
+are preserved.
+
+During idle periods, Dream can describe a document's nature and usefulness above **1,000 useful
+characters**, then refresh automatic summaries after more than **25% cumulative change**. HTML
+formatting alone does not count; manual summaries are preserved. Thresholds are configurable for
+Text and Data. Summaries and keywords are current metadata without their own history; restoring
+content does not replace them.
+
+Source: [current summary and keywords](../user/documents.md).
+
 ### Customising icons
 
 Editing a folder's icon opens searchable collections and saves the entered name and icon together:
 Unicode emoji in the active language, open/closed Solaire folders in 11 colours, Material Design
-Icons, Font Awesome Free and private SVG uploads. Catalogues load on demand. SVGs follow the
-file size limit, `MEMORY_RESOURCE_MAX_BYTES` (100 MB by default), reject active/external content
+Icons, Font Awesome Free and private image uploads. Catalogues load on demand. SVG, PNG, JPEG,
+GIF, WebP, AVIF, BMP and ICO are supported; other recognised formats such as TIFF convert to PNG.
+Icons have no separate file-size limit. SVGs reject scripts, external content and stylesheets
 and render as images.
 
-Documents have per-user emoji/font/SVG icons, excluding folder-only pictograms. The choice appears
+Text and Data documents have per-user emoji/font/image icons, excluding folder-only pictograms. The choice appears
 in library, editor, chat/previews, Tasks, Topics and memory details. Readers can customise their
 view without changing content, revision, dates or rights. Icons survive filing changes/folder
 deletion and can reset to default. Failed saves preserve the confirmed choice for retry; session
@@ -1813,8 +1979,16 @@ changes clear caches and old responses cannot replace newly saved icons.
 
 ### Rich editing
 
+The full editor supports **inline and block equations** through MathLive, with visual entry,
+a symbol keyboard and synchronised LaTeX source. Double-click or Enter reopens a formula; its
+context menu provides editing, copying, deletion and insertion before/after. Cancelling preserves
+the previous content. Formulas remain editable and render in read-only views, printing and exports.
+Editor and fonts are hosted locally. Short `rich-text` fields use a simpler toolbar; full screen,
+attachments and equation insertion remain in the complete document editor.
+
 Tiptap stores semantic HTML under a defined profile, without an editor badge. Shorter fields—memory, personality, job
-description, Task objective and Goal description/follow-up—use a narrower rich-content profile.
+description, Task objective, Goal description and summary—use a narrower rich-content profile.
+A Goal's follow-up retains the full Text document editor.
 HTML document editing provides headings, paragraphs, text styles/sizes, bold/italic/underline/
 highlight, strikethrough, superscript/subscript, indentation, nonbreaking characters and direct-format
 removal; lists, alignment, quotes, code blocks and links; tables with theme-aware styles, rows/columns, headers,
@@ -1830,15 +2004,21 @@ including find/replace and fullscreen. The main toolbar and context menus share 
 where a suitable icon exists. Width changes preserve typing/dictation; fixed toolbars follow
 panel resizing and dialogs/backdrops appear above them.
 
-### Datasets: independent JSON resources
+### Data: JSON documents
 
-A Dataset has its own title, owner, sharing, history and `data://` URI under **Knowledge → Datasets**,
+A Dataset has its own title, owner, sharing, history and `data://` URI under **Knowledge → Documents**,
 independent from HTML Documents that use it. Multiple pages can share responses or
 parameters without duplication. Content is validated UTF-8 JSON: array, object or another JSON
 value; appendable collections use a root array, usually `[]`.
 
 The JSON editor retains invalid drafts without replacing saved data. Revision conflicts,
-history and restoration retain Dataset access and version checks.
+history and restoration retain the common Document access and version checks.
+
+`dataset_query` queries an authorised `data://` URI using JSON pointers: AND filters,
+projection, sorting, pagination and aggregates, without copying the whole source into chat.
+`expected_revision` protects reads between pages. Missing and null values stay distinct;
+numeric aggregates use decimal strings. Units and dates are not inferred. Semantic discovery
+depends on the configured vector model and Dream indexing, with incomplete coverage visible.
 Agents create one with `file_create(path="data://", name="Responses",
 content="[]")`, then read/edit through file operations using the expected revision.
 Reads count characters and edits address actual JSON lines, not HTML. Copying JSON to `data://`
@@ -1854,15 +2034,16 @@ business records remain authoritative and conversation/Task permissions still ap
 
 ### Dataset browsing, ownership and lifecycle
 
-Each user has personal Dataset folders and subfolders with names, icons, manual ordering and
+Each user has the common personal Document folders and subfolders with names, icons, manual ordering and
 alphabetical sorting. Filing readable resources changes neither JSON, revisions, ownership,
 sharing nor another account's classification. Filters combine search, keywords, human/agent
 ownership, dates and unfiled items. Confirmed branch deletion removes classification and returns
 its Datasets to unfiled items without deleting their data; folder cycles are rejected.
 
-The Dataset library filters by owning agent, searches and paginates accessible resources.
-Library, Chat and document cards open the same modal with complete JSON, history, sharing and
-owner controls. Closing restores search/page; unsaved drafts require confirmation. Display
+The Documents library filters by Data type and owner, searches and paginates accessible resources.
+Library, Chat and document cards open the same document editor with complete JSON, history,
+sharing and owner controls. Legacy `/dataset/:id` links redirect to `/documents`.
+Closing restores search/page; unsaved drafts require confirmation. Display
 indentation does not change values. Agent reads include revision, line coordinates and partial-line
 flags while retaining character-based pagination, supporting safe partial edits.
 
@@ -1875,15 +2056,16 @@ current access but retains history and leaves Process-owned run data intact.
 
 Documents can cite or attach **live Dataset references** without copying JSON. Manifests and
 File Sharing retain `data://`; attachment changes check Document rights, and adding requires
-Dataset read access. Removing a reference preserves data. Document listings, search and Memory
-graphs exclude Datasets; verified legacy Document links open the Dataset editor with current rights.
+Dataset read access. Removing a reference preserves data. Data appears in Document listings
+and search. Native JSON queries remain separate from general Memory recall, without a competing
+Memory index. Verified legacy Document links open the Data document with current rights.
 
 Sources: [Dataset journey](../user/datasets.md), [contracts and aliases](../dev/datasets.md),
 [ownership](../../../back/app/dataset/tests/test_ownership.py),
 [personal filing](../../../back/app/dataset/tests/test_library.py),
 [usages and sharing](../../../back/app/dataset/tests/test_management.py).
 
-Dataset also provides the shared **typed-value codec**: primitives, Agent/User/File/Document/Dataset
+`app.document.data` also provides the shared **typed-value codec**: primitives, Agent/User/File/Document/Dataset
 references and recursive containers, with exact-integer, null, duplicate-key and bounds validation.
 Free Dataset JSON does not require these envelopes; Process v2 retains its historical type list,
 which does not accept typed Dataset references.
@@ -2164,12 +2346,13 @@ Dream uses available time with one mechanism at a time, bounded duration and per
 rather than independent parallel workers. Priority activity, especially voice, can interrupt it.
 Settings control activation, delays, leases and attempts.
 
-The fourteen registered mechanisms cover Topic classification for messages/Tasks/turns; knowledge
+The twenty registered mechanisms cover Topic classification for messages/Tasks/Text and Data documents/turns; knowledge
 extraction from Tasks, conversation rounds and voice turns; memory projection of Process definitions
 and results; duplicate/conflict/ageing findings; deterministic repair of documents, attachments,
 folders and references; file catalogue discovery, fingerprinting and enrichment; persistent
 thumbnail preparation without AI; four optional attachment analyses (text, non-text-extractable documents,
-images and video audio); and optional procedural learning from Task outcomes.
+images and video audio); optional procedural learning from Task outcomes; confirmed contact
+deduplication; current Text/Data summaries; and native JSON indexing for Data documents.
 
 Extractors wait for required Topics and proven contact identity for conversational knowledge.
 They choose CREATE for a new fact, LINK for added provenance or IGNORE. Linking does not rewrite
@@ -2224,7 +2407,7 @@ Dream displays mechanism, subject, phase, coverage, cost, attempts and errors. R
 search/filter, prepared-output inspection and Topic-decision inspection. They record prepared and
 applied work for recovery without unnecessary model calls; visible monitoring pages receive updates.
 **Tracking** opens by default with indicators and activity; **History** groups operations and
-filters; **Indexing** selects an agent and lets users start a file traversal, inspect coverage,
+filters. **Preferences → Files** selects an agent and lets users start a file traversal, inspect coverage,
 cancel it or retry observation repairs.
 Opening the page does not wake background work. Deterministic document repair is hidden from
 inference monitoring, while attachment analyses have separate entries.
@@ -2242,7 +2425,11 @@ verdicts, human corrections and memory usage. Learning can create, strengthen, r
 candidate procedure; evidence, polarity, weight, confidence and justification are separate from
 ordinary memory. One success cannot inject a new skill: a score threshold and several distinct
 Tasks—three by default—are required, within the active-skill cap. Historical Tasks are scanned
-progressively. Users can inspect procedures, evidence and scores and suspend/reactivate them.
+progressively. Dream creates **personal packages** with `SKILL.md`, evidence and scores under
+**Personal skills**. Candidates become usable after three distinct Tasks and a 0.75 score by default.
+The same actions edit, transfer, disable or delete them. Reinforcement never reactivates a disabled
+package and late revisions never overwrite manual edits. Migration retains history and suspensions;
+legacy learned-skill links open Personal skills.
 
 Sources: [Dream flow](../architecture/flows/dream.md), [registry](../../../back/app/dream/registry.py),
 [attachment processing](../../../back/app/dream/attachment_processing.py),
@@ -2266,8 +2453,8 @@ state/affected agents; and project permitted skills into supporting harnesses.
 
 Agents with Skill Management use `skills_list`, `skill_read`, `galaris://skill/` and permitted
 `file_*` operations. A new package starts with valid `SKILL.md`; revisions, system files and main-file
-operations retain their protections. Dream-learned procedures form a separate evidence/scored
-collection and complement ordinary skills when eligible.
+operations retain their protections. Dream-learned procedures are personal packages with evidence
+and scores, becoming usable when their state and thresholds permit.
 
 The matrix presents **Global (all)**, **Category** and **This agent** with Active/Blocked controls.
 Only the applicable rule is selected: agent skill override, then that agent's category rule,
@@ -2277,8 +2464,8 @@ not mean disabled.
 
 ### Personal skills and ownership
 
-**Personal skills** separates private agent packages from the generic catalogue and Dream's
-learned procedures. It offers search, an owner filter, text-file/label editing, activation and
+**Personal skills** gathers private agent packages, manually created or Dream-learned, separately
+from the generic catalogue. It offers search, an owner filter, text-file/label editing, activation and
 deletion with revision checks. Authorized humans can transfer a package between managed agents.
 Global management can also make a generic package personal or release personal ownership;
 conversions retain identity/files, reject collisions and preserve a recovery receipt.
@@ -2291,6 +2478,15 @@ the union of the agent's active teams; `all` permits generic catalogue managemen
 Files use `galaris://skill/`, with personal packages at
 `galaris://skill/personnal/<agent>/<code>/`. Personal quotas are 100 packages and 200 MiB per
 owner. System packages stay protected.
+
+New Skills connections are active by default and use `personal` when no local scope is set:
+agents manage their own packages without changing generic skills. Existing disabled connections
+and explicit scopes are preserved.
+
+**Disable for everyone**, requiring skill editing and global agent management, hides a generic
+package, including system packages, despite category/agent exceptions. Files and assignments are
+retained for reactivation. Administrative MCP reads and management remain available under their
+rights, with `administration=true` and `all` scope required to change generic activation.
 
 ### Applying changes at the next execution
 
@@ -2456,13 +2652,22 @@ or revocation invalidate affected grants before execution. There is no global au
 mode. Rights and resource preconditions remain checked: a changed
 source invalidates the original operation even after permanent consent.
 
+**Always forbid** also stores a refusal for that connection's function or the harness action type.
+Permanent refusal blocks future starts, including previously approved ones; already running actions
+may finish. Network decisions can cover an origin or all sites within the scope requiring consent;
+filters and local-network policy retain priority. Configuration blocks create no false approval wait.
+
 **Permissions** also handles requests without an available private channel. Expired, duplicate or
 configuration-invalidated answers do not dispatch another operation. Unknown external outcomes require reconciliation.
 
-The page separates pending requests from reusable MCP function, harness action-type and network
-permissions. Authorised humans can filter by agent, Tool or state and revoke a grant while
-retaining history. Revoking a function restores **On request**; revocation rights do not permit
-reactivating it.
+The **Supervise → Permissions** dashboard (`/permissions`) selects an agent and gathers pending
+requests, connection activation, functions/prompts, harness decisions, contacts and network rules.
+Search and Allowed/Forbidden/On request/Pending counters filter the whole page. **Custom settings**
+isolates local exceptions; a disabled connection counts once without its functions. Local and
+effective rules stay distinct: **On request** requires consent and **Inherit** restores defaults.
+Stored approvals and refusals can be changed or removed without replaying blocked actions.
+Disabled connections remain available. Technical configuration, skills and resource rights retain
+their own screens. An unavailable external catalogue preserves its known rules.
 
 Sources: [requests and preconditions](../../../back/app/tools/tests/test_action_authorizations.py),
 [permissions](../admin/tool-administration.md).
@@ -2563,21 +2768,34 @@ controlling access; a display name is not its identity.
 |---|---|
 | `file://<uuid>` | Independent internal files and accessible attachments, with immutable bytes and one official name. |
 | `console://` | Active agent console home; advertised only when that console exists. |
-| `document://` | HTML Documents and `document://<uuid>/attachments/`; verified old Dataset aliases only. |
-| `data://` | Independent JSON Datasets with their own rights and revisions. |
+| `document://` | Common Text/Data library, `document://folders/` collections and `document://<uuid>/attachments/`, with each document's rights. |
+| `data://` | JSON Data documents, with the common Document rights and revision contracts. |
 | `memory://` | Authorised knowledge search/read. |
 | `galaris://` | Exposed projections of Tasks, text rounds, voice turns, Goals, cycles and Processes. |
 | `galaris://skill/` | Managed skill files with the specialised connection active. |
 | `galaris://agent/<id>` | Permitted current agent profile, including editorial identity/mission; directory supplies the integer ID. |
 | `galaris://code/<uuid>` | SSH Git repository reference; opens its current checkout under independent access rights. |
+| `galaris://contact/<uuid>` | Private agent contact; current JSON reads and conditional name/coordinate edits using `expected_etag`. |
 | `galaris://processes/runs/<uuid>` | Authorised native run snapshot; `data` and `attachments/` subresources follow Process/profile rules. |
 | `galaris://documentation/` | Installed read-only corpus under Admin and `documentation_catalog`. |
 | Connected file Tool URI | Provider files/collections, such as Nextcloud or Samba / SMB 2–3; the exact Tool code is the scheme. |
 | Messenger attachment URI | Original Tool/room retained; conversation access governs reads. |
-| `mail://` | Message/MIME-part attachments; read/copy without generic mutation. |
+| `mail://` | IMAP folders, messages and attachments; read/copy without generic mutation, with separate human consultation and agent processing rules. |
 | Public HTTPS | Bounded web reads/transfers under provider controls. |
 
 ### Agent file explorer
+
+**Documents** combines Text and Data in a folder hierarchy, with unfiled documents at the root
+and only direct children within each folder. There is no separate Data location; `data://` URIs
+remain usable. Folder names supply breadcrumbs, including direct links. Documents may appear in
+several classifications with a stable URI. Access to a descendant makes its ancestors visible.
+
+Under **Galaris**, Goals opens an objective's dialog; cycles remain available from that Goal,
+without separate Files listings/search. Skills opens a dialog with `SKILL.md` first, grouping
+generic packages by category and personal ones by agent. Contacts opens the authorised read/edit
+form. Tasks, rounds, voice turns and runs show creation dates where available. The common resource
+picker supports multiple selection, removal of selected items and full-screen previews without
+changing selection.
 
 **Knowledge → Files** selects a managed agent and browses its virtual filesystem through roots,
 directories, breadcrumbs, parent navigation, grids and thumbnails. Infinite loading retains existing
@@ -2619,6 +2837,10 @@ content=..., name=...)` creates a Dataset and requires complete JSON in `content
 are created separately at `document://`. Other formats
 and units depend on providers. Business snapshots are read-only and use business commands for
 mutation. Memory/document removal uses business forgetting, not a bypass through `file_delete`.
+
+`file_rename` changes Text/Data titles at a stable URI using `expected_lock_version` from `file_info`,
+preserving body, content versions, attachments and rights. Contacts are a governed exception to
+read-only business projections: allowed fields can be edited with `expected_etag`, only by the owning agent.
 
 On `document://`, `file_search(mode="name")` searches titles and filenames with pagination and ACLs,
 returning compact metadata without body passages or loading the embedding model. Text and semantic
@@ -2669,13 +2891,13 @@ and every access checks its source. Technical metadata is separate from descript
 
 Disabling or reconfiguring a connection removes its stale search projections. Only complete lists
 and proven deletions establish removal; inaccessible sources and incomplete pages do not justify
-erasure. Observation repairs never replay the external operation. **Files → Indexing** starts an
+erasure. Observation repairs never replay the external operation. **Preferences → Files** starts an
 eligible traversal, reports partial coverage, supports cancellation and retries repairs; terminal
 diagnostics remain for 30 days. Dream media options enrich descriptions while retaining personal
 notes; directories do not receive automatic summaries.
 
 Indexing has independent viewing and control rights without requiring Dream or file-explorer
-access. Dream retains access to the same panel for authorised users.
+access.
 
 Sources: [configuration and journey](../admin/tool-administration.md),
 [catalogue, coverage and rights](../../../back/app/memory/tests/test_file_catalogue.py),
@@ -2841,6 +3063,11 @@ Sources: [Console](../../../back/app/console/), [embedded executor](../component
 
 ### Git repositories and VS Code in Chat
 
+Repositories also open from **Files → Galaris → Code repositories** in the full-screen editor,
+with `CODE_ACCESS` and repository rights. In Console, a Git checkout/worktree's context menu,
+or the background of its open directory, offers **Open in code editor** without creating a chat.
+Closing and reopening retains unsaved files in the browser.
+
 **Source code**, below Documents in Chat, retrieves repositories presented with `repository_show`
 and discovers SSH-home checkouts for owners of an active Console. Discovery recognises repositories/
 worktrees, ignores symlinks and hidden/technical directories and flags partial results under depth,
@@ -2880,6 +3107,10 @@ Sources: [code journey](../user/code-editor.md), [administration](../admin/code-
 ## 21. Images, audio, music and video
 
 ### Image generation, editing and understanding
+
+If OpenRouter explicitly rejects a requested resolution, generation retries once with the provider's
+default, retaining the model, framing and reference images. Results report actual dimensions;
+requested dimensions remain a preference.
 
 Agents generate with a configured image model, edit/compose using reference URIs, request preferred
 dimensions (mapped to supported native sizes with actual dimensions retained), save into writable
@@ -2953,6 +3184,17 @@ Opaque references identify a message's mailbox and IMAP generation; changed mail
 old references rather than acting on another message.
 
 ### Automatic reception
+
+Human consultation is available under **Files → Mail** with Files rights and `MAIL_ACCESS` or
+`MAIL_EDIT`. It browses the IMAP hierarchy, including Sent, Archives and Trash, showing subject,
+sender, date and read/unread state in batches of 50. The reader pages long messages, opens attachments
+and downloads the original `.eml`. HTML is shown as text without remote images or execution.
+Reading neither marks mail as read, creates a Task nor authorises agent processing; this browser
+does not offer IMAP search or mutations.
+
+**Always forbid mail processing** blocks `mail_process` on that connection for every sender,
+without reading later bodies or creating Tasks. The decision can be changed or removed in Permissions,
+independently of send authorisation.
 
 The inbound journal initially retains headers only. `mail_process` controls processing before
 body/attachment reading and Task admission: exact addresses in this agent's Contacts are
@@ -3498,7 +3740,7 @@ Sources: [dashboard](../../../back/app/dashboard/schemas.py), [calls](../../../b
 | Persistence | PostgreSQL/pgvector, async SQLAlchemy, transactions, history and optimistic locking; leases/claims distribute durable executions. DbAdmin derives schema and applies idempotent contributions. |
 | Orchestration | Agent owns facade, registry, resolution, dispatcher, planner and result application; Harness runs Pydantic AI; Task owns states, attempts and scheduling. Drivers emit exactly one terminal result after events. |
 | Messaging | Messenger owns conversations, capabilities, inbound journal and deduplication; bridges translate protocols. Attachments retain canonical URIs/provenance in chronology. |
-| Resources | Document owns HTML Documents, Memory personal memories, Dataset JSON, Process BPMN/runs and Storage bytes; File Sharing unifies URIs without moving authority or permissions. |
+| Resources | Document owns Text/Data, Memory personal memories, Process BPMN/runs and Storage bytes; File Sharing unifies URIs without moving authority or permissions. |
 | Interface | Vue/Quasar, Pinia, file-derived routes, declared navigation, domain i18n and lazy shared components; common FR/EN parity, theme and mobile boundary. |
 | Live updates | Authorised domain subscriptions, post-commit events, bounded progress deltas and snapshot/cursor resynchronisation; reconnection never restores revoked rights. |
 | Extensions | AI/file/preview providers, drivers, harnesses, Process engines, bridges, Dream/Lab mechanisms and DbAdmin contributions have explicit contracts; disk presence differs from activation. |
@@ -3514,6 +3756,10 @@ Sources: [architecture](../architecture/README.md), [invariants](../architecture
 [contract map](../architecture/generated/project-map.md), [developer foundation](../dev/README.md).
 
 ### Configuring the application
+
+Executor, conversation and voice instruction suffixes are empty by default: the common base already
+provides Document, Memory, Skills and URI guidance. Instance customisations remain preserved;
+new base instructions never overwrite them.
 
 Persisted preferences use typed fields, descriptions and allowed values, grouped by purpose with
 advanced options initially collapsed. Closing/reopening groups preserves prompt drafts; failed
@@ -3586,9 +3832,18 @@ these secrets. The deployment encryption master key must accompany backups to de
 
 ### Storage, migrations and durable diagnostics
 
+Text/Data consolidation preserves exact JSON, authors, versions, classification and access, archiving
+and checking legacy tables before finalising types. Collisions with independent documents block
+migration. Recovery markers prevent restoring revoked rights or overwriting later edits. Existing
+foreign-key replacements wait until contraction after data copying; new tables are created during
+expansion. See the [typed document decision](../../../project/decisions/0252-typed-documents.md).
+
 Current/historical Memory/Document text lives in PostgreSQL columns, transactionally saved with
-metadata/revisions; list/summary projections avoid loading full bodies unnecessarily. Dataset owns
-its JSON; Process separately owns BPMN, revisions, variables, file links and execution receipts.
+metadata/revisions; list/summary projections avoid loading full bodies unnecessarily. Data shares
+`documents` and `document_revisions` with Text; legacy sources remain archived and verified.
+Summaries and keywords are current metadata without separate versions. Contacts rebuild JSON
+from the canonical directory on every read, without a content copy in Memory.
+Process separately owns BPMN, revisions, variables, file links and execution receipts.
 
 **`core.storage`** owns files, SHA-256 hashes, sizes, names and aliases. The delivered disk driver
 stores immutable bytes by UUID; `file://` never exposes host paths. Document/Chat/Process references
@@ -3738,7 +3993,7 @@ explicitly acquired or extracted by Dream under policy.
 
 For a credit simulator retaining scenarios, an agent creates an assumptions Dataset and an empty-array
 scenario Dataset, plus an explanatory HTML form/calculator and a comparison page. HTML pages live
-in Documents; JSON resources are edited separately in Datasets. The agent shares pages and data;
+in Documents alongside Data, with a type filter. The agent shares pages and data;
 each reader separately authorises application access. Simulation reads assumptions and appends
 scenarios; comparison reads the same results. Revisions handle concurrency and history retains writes.
 
@@ -3815,7 +4070,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | File indexing | Private per-agent catalogue with current source access and SHA-256 copy identity; discovery depends on providers and partial traversals are not exhaustive. |
 | Memory graph | 3D only, client spatial loading, hidden-item representatives and updates preserving navigation; WebGL required. Server map remains planned. |
 | Document analysis | Resumable app.llm batches without a Process; supplied-unit coverage is separate from answer accuracy and interrupted inference is never automatically replayed. |
-| Documents and Memory | Optional synthesis with independent history and document rights; standalone memories stay private and document/synthesis keywords are shared. |
+| Documents and Memory | Documents own current summaries and keywords without separate history; private agent memories and optional graph references grant no source rights. |
 | Thumbnails | One current document WebP; versioned file derivatives. Office thumbnails do not provide full-screen viewing. |
 | OpenRouter defaults | New databases only, without a key or network call; nine editable references with no promise of remote availability. |
 | Profile API | Stable codes, all profiles' available usages and authorised user tokens; missing usage never borrows another profile. |
@@ -3828,17 +4083,17 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Native chat | Human–agent; external group rooms do not imply universal native human messaging. |
 | Learned skills | Off by default; explicit observation/learning with thresholds and evidence. |
 | Document collaboration | Saves, revisions, conflicts and sharing, not keystroke-level concurrent editing. |
-| Documents and Datasets | Document owns HTML Documents `document://`; Dataset owns JSON resources `data://`, with independent rights and history. |
+| Documents and Datasets | `app.document` owns Text (HTML, `document://`) and Data (JSON, `data://`) in one library; each document retains its rights and versions. |
 | Document applications | Automatically rendered isolated HTML/CSS/JS and editable prose, without a Source view; ordinary external loading blocked, browser CPU/memory not capped. |
 | Dataset application access | Reader ACLs plus personal content-version consent, denied by default; write includes replacement, not a separate append-only permission. |
 | Data quotas | Bounded JSON without business schema; 30 writes/4,000,000 resulting bytes per minute per user–Dataset across apps. |
 | Application exports | Static current rendering without new execution/writes, with print-width layout independent of editor width. |
 | Public documents | Application access, not anonymous web publishing. |
-| Folders | Personal classification, not Topics; Memory visibility derives from readable documents, not folder sharing. |
+| Folders | Personal classification with stable references and automatic sharing of resharable documents; Memory ancestor visibility follows readable documents without exposing neighbours. |
 | Attachments | Memory identity/structure; four optional off-by-default Dream descriptions. Dream video uses audio only; `image_read` also persists descriptions. |
 | Native multimodal input | Internal models can receive images/audio/video/PDF subject to model/transport, rights, formats and byte limits; tools/fallbacks remain. |
 | Agent document display | `document_show` is for permitted internal text rooms, not Tasks/voice/external channels, and grants no ACLs. |
-| Goal filing | Durable background work respecting rights/manual filing; catch-up admission is not completion. |
+| Goal filing | Description HTML belongs to the Goal; only follow-up is a document, created unfiled and freely classified by each user. No automatic folders or deliverable filing. |
 | Native PDF sharing | Browser-dependent with download fallback; no automatic publishing. |
 | YouTube | Available public subtitles, not universal download/private-video access. |
 | Providers/bridges | Capabilities vary; integration is not the provider's entire API. |
@@ -3879,7 +4134,7 @@ and DbAdmin contributions.
 <a id="mcp"></a>
 ## 30. Inventory of agent-accessible functions
 
-These are the **278 native functions declared with `@mcp_tool` in the reviewed code**, including
+These are the **284 native functions declared with `@mcp_tool` in the reviewed code**, including
 conversation-only and administrative functions. They are not all visible to every agent; MCP exposes
 full argument schemas. External MCP servers discover their own evolving functions at connection time,
 with descriptions/status in the effective catalogue. External-runtime capabilities and discovery
@@ -4017,11 +4272,20 @@ These 23 functions require ToolAdmin. Built-in definitions and human delegations
 Goals/cycles also use `file_list`, `file_search` and `file_read` on `galaris://` collections. Cross-agent
 management needs the specialised connection; ordinary actions stay within the agent's scope.
 
+### Private Contacts
+
+| Function | Family | Action and result |
+|---|---|---|
+| `contact_list` | `galaris` | Search and paginate the calling agent's private address book. |
+| `contact_get` | `galaris` | Read an owned Contact's identities and coordinates by UUID. |
+| `contact_create` | `galaris` | Create a private contact with name and email, phone or postal address; asks by default and sends no message. |
+| `contact_update` | `galaris` | Edit an owned contact's name and coordinates while preserving identities; asks by default. |
+
 ### Memory, sharing and skills
 
 | Function | Family | Action/result |
 |---|---|---|
-| `memory_remember` | `memory` | Immediately acquire an uncommon important durable fact as HTML with metadata, sources and optional temporal anchor; ordinary extraction belongs to Dream. |
+| `memory_remember` | `memory` | Acquire an uncommon important atomic fact (subject, property, value), with sources and optional temporal anchor; the server builds HTML and Dream handles ordinary extraction. |
 | `memory_upcoming` | `memory` | Paginate authorised memories matching now or the lookahead window independently of textual similarity; schedules no notification. |
 | `memory_forget` | `memory` | Permanently forget a standalone memory and eligible versions; document memories cannot be forgotten independently of the document. |
 | `memory_summarize` | `memory` | Use the agent model for attributed facts, decisions, commitments and open questions from ≤200 messages/32,000 characters, without replacing memory or saving after model failure. |
@@ -4030,7 +4294,7 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `skills_list` | `skills` | Discover skills within permitted/administrable scope. |
 | `skill_read` | `skills` | Read skill/details; support files use the resource facade. |
 | `skill_update` | `skills` | Update the package label using its expected revision. |
-| `skill_set_enabled` | `skills` | Enable or disable a personal package for its owner only. |
+| `skill_set_enabled` | `skills` | Enable/disable a personal package for its owner, or a generic for everyone with explicit administration, global scope and expected revision. |
 | `skill_delete` | `skills` | Delete a user package and its files with scope and revision checks. |
 | `skill_set_authorization` | `skills` | Assign a generic skill to an agent within delegated scope. |
 | `skill_set_category_authorization` | `skills` | Set a generic category's authorization for an agent. |
@@ -4056,6 +4320,7 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `file_schemes` | `file_sharing` | Discover this agent's schemes, examples and capabilities. |
 | `file_list` | `file_sharing` | List files, attachments or projected business objects. |
 | `file_info` | `file_sharing` | Read metadata/capabilities. |
+| `dataset_query` | `file_sharing` | Query authorised Data with JSON filters, projection, sorting, pages and aggregates at an expected revision. |
 | `file_search` | `file_sharing` | Search collection names/content; Memory uses hybrid recall and authorised structural paths. |
 | `file_read` | `file_sharing` | Read paginated text/HTML blocks, Dataset JSON by character or bounded binary, with continuation/revision. |
 | `file_create` | `file_sharing` | Create text/binary, attachments, HTML Documents `document://` or JSON Datasets `data://`, with complete content. |
@@ -4064,6 +4329,7 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `file_edit` | `file_sharing` | Replace HTML-block or JSON/text-line ranges with required revision checks. |
 | `file_copy` | `file_sharing` | Copy URIs, preserving names into collection destinations; JSON into `data://` creates a Dataset. |
 | `file_move` | `file_sharing` | Move/rename with supported provider mutations. |
+| `file_rename` | `file_sharing` | Rename under provider capabilities; Text/Data titles retain their URI and require `expected_lock_version` from `file_info`. |
 | `file_delete` | `file_sharing` | Delete resources supporting generic deletion; protected objects use their domain. |
 
 Document applications use browser-side `galaris.datasets`, separate from agent MCP. Personal
@@ -4224,7 +4490,7 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 
 ### Lab: mechanisms, datasets and cases
 
-Lab datasets are mechanism-specific experiments, distinct from independent JSON Datasets. All fifty
+Lab datasets are mechanism-specific experiments, distinct from JSON Data documents owned by `app.document.data`. All fifty
 functions below belong to optional `lab`.
 
 | Function | Family | Action/result |
@@ -4345,9 +4611,9 @@ All **78 declared modules** map to one or more sections; runtime activation/conf
 | `app.webhook` | [No active generic endpoint; dedicated integration input](#processus) |
 | `app.llm` | [Models, profiles, gateways, credits and durable inference](#modeles), [document reading/analysis](#harnais), [traces/costs](#supervision) |
 | `app.topic` | [Topics and classification](#sujets) |
-| `app.document` | [HTML Documents, shared summaries, versions, applications, rights and filing](#documents), [authoring and contextual conversation](#chat) |
+| `app.document` | [Text/Data documents, current summaries, versions, applications, rights and filing](#documents), [authoring and contextual conversation](#chat) |
 | `app.memory` | [Private agent memories, recall, graph and optional document references](#memoire) |
-| `app.dataset` | [Independent JSON Datasets, revisions and sharing](#documents) |
+| `app.dataset` | [Compatibility relay to `app.document.data`: legacy JSON URIs and API](#documents) |
 | `app.contact` | [Contacts and cross-channel identities](#messageries) |
 | `app.dream` | [Extraction, reuse of acquired evidence, classification and maintenance](#dream) |
 | `app.task` | [Durable work, milestones, scope, coordinated replacement, scheduler, attempts, controls and budgets](#taches) |
@@ -4416,7 +4682,7 @@ rather than independent applications.
 | `core/user` | Login, registration, users, tokens, account preferences and help acknowledgements |
 | `core/team` | Teams/membership |
 | `core/authorize` | Roles, privileges, assignments and profile |
-| `core/params` | Categorised preferences/harnesses |
+| `core/params` | Categorised preferences, harnesses and file indexing |
 | `app/index` | Home, welcome, dashboard, About, credits, licence and unknown-page handling |
 | `app/agent` | Profiles, avatars, teams, forms of address and configuration |
 | `app/harnesses` | Catalogue, details, Compose and manager diagnostics |
@@ -4429,13 +4695,13 @@ rather than independent applications.
 | `app/conversation` | Round history, shared execution details and delivery resolution |
 | `app/share` | Common sharing and owner/recipient selectors |
 | `app/file_share` | Agent file explorer, URIs, previews, downloads, renaming, deletion and indexing |
-| `app/dataset` | JSON library, personal folders, modal editor, history, ownership, sharing, usages and deletion |
+| `app/dataset` | JSON components and legacy links redirected to the common Documents library |
 | `app/chat` | Chat/rooms, message editor, previews, adaptive document workspace, linked Tasks/documents/Processes |
 | `app/voice` | Call history/voice-turn detail |
-| `app/dream` | Tracking, history, file indexing and immediate Memory-node actions |
+| `app/dream` | Tracking, history and immediate Memory-node actions; indexing administered in Preferences → Files |
 | `app/topic` | Topic list/detail/reorganisation |
 | `app/goal` | Objectives, tree, cycles, referrers, schedules and follow-up |
-| `app/document` | HTML library, shared summaries, authoring with conversation, apps, rights, personal folders, thumbnails and sharing |
+| `app/document` | Text/Data library, current summaries, authoring with conversation, apps, rights, personal folders, thumbnails and sharing |
 | `app/memory` | Private memories, list/search, temporal simulation, graph with folded branches, files, locations and contacts |
 | `app/lab` | Task diagnosis, contextual synthetic datasets, mechanism evaluation, consistency and attributed reviews |
 | `app/incident` | Incidents, families and review |

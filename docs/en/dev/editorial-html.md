@@ -70,21 +70,23 @@ in the library. `agent_list`, `agent_get` and the Agent API's `resource_uri` fie
 this URI. `file_read` reads the current personality and job description directly, preserving
 their `rich-text` HTML inside the JSON snapshot and applying existing access rights.
 
-Memory owns editorial HTML Documents under `document://`. Dataset owns independent JSON
-resources under `data://`, with their own rights and history in **Knowledge → Datasets**.
-Native Dataset creation does not create a Memory Document. Old Document links are aliases
-only for verified migrated Datasets. UTF-8 JSON is validated before saving without rewriting
+`app.document` owns **Text** (HTML, `document://`) and **Data** (JSON, `data://`) documents,
+with common metadata, rights, classification and revision contracts in **Knowledge → Documents**.
+`app.document.text` and `app.document.data` supply content behaviour; `app.dataset` remains
+a compatibility relay. Document creation requires no Memory item. Verified legacy Dataset
+Document aliases remain valid; `data://` retains the same document UUID.
+UTF-8 JSON is validated before saving without rewriting
 its formatting; invalid input remains a recoverable draft and is never converted to HTML.
 Any valid JSON root is supported; NaN and Infinity are rejected. The configurable
 `MEMORY_RESOURCE_MAX_BYTES` resource quota applies, without a separate 2 MB document cap.
-See [decision 0187](../../../project/decisions/0187-dataset-domain-and-typed-contracts.md)
-and the [Dataset contract](datasets.md).
+See [decision 0252](../../../project/decisions/0252-typed-documents.md)
+and the [Data contract](datasets.md).
 
 Create directly with
 `file_create(path="data://", name="Scenarios", content='{"scenarios": []}')`.
 The `content` argument must contain complete JSON; omitted or empty content is rejected before
 creation. The old `document_type="dataset"` option at `document://` remains an adapter and
-also returns `data://`, never a new Dataset Document.
+creates a Data document and also returns `data://`.
 Dataset `file_read` offsets count characters; `file_edit` ranges count lines. The complete
 result must remain valid JSON. `file_write`, `file_edit` and `file_append` require the observed
 revision. Prefer replacement or line editing to JSON concatenation. Copying an

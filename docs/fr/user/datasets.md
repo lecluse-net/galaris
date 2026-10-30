@@ -34,8 +34,11 @@ le JSON d'une version et de le restaurer comme nouvelle version. Le titre, les d
 le propriétaire, le résumé et les mots-clés courants sont conservés lors de cette restauration.
 Le JSON enregistré conserve son contenu exact, y compris les nombres et les fins de lignes.
 
-L'icône **Voir le résumé** recharge la description courante et les mots-clés sans toucher
-au brouillon. Les descriptions existantes sont conservées. Dream peut compléter une
+L'icône **Voir le résumé** recharge le résumé courant sans afficher les mots-clés.
+Avec les droits d'édition, vous pouvez le modifier, l'enregistrer ou le régénérer après
+confirmation, comme pour un [document Texte](documents.md).
+Une erreur ou un conflit conserve la saisie. Les descriptions existantes sont conservées.
+Dream peut compléter une
 description absente au-delà de 1 000 caractères de JSON normalisé et actualiser une
 description automatique après plus de 25 % de changement cumulé. Ces seuils sont réglables ;
 les descriptions manuelles sont préservées.

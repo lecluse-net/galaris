@@ -32,8 +32,10 @@ Each content edit creates a version. History lets you inspect an old JSON versio
 restore it as a new version. Current title, rights, owner, summary and keywords survive
 restoration. Saved JSON retains its exact content, including numbers and line endings.
 
-The **View summary** icon refreshes the current description and keywords without touching
-the draft. Existing descriptions are retained. Dream can fill a missing description
+The **View summary** icon refreshes the current summary without showing keywords.
+With edit rights, you can edit, save or regenerate it after confirmation, as for a
+[Text document](documents.md). Errors and conflicts preserve
+your draft. Existing descriptions are retained. Dream can fill a missing description
 above 1,000 normalized JSON characters and refresh an automatic description after more
 than 25% cumulative change. Both thresholds are configurable; manual descriptions are preserved.
 

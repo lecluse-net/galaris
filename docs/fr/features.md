@@ -86,8 +86,9 @@ L’agent écrit le HTML ; l’humain conserve un texte explicatif éditable et 
 les formulaires. L’éditeur de documents ne propose pas de vue Source.
 On peut ainsi conserver une méthode et son outil de calcul dans le même espace documentaire.
 
-Des Datasets indépendants `data://` stockent les données JSON dans **Connaissances → Jeux de données**.
-Ils conservent leurs propres droits et leur historique. Plusieurs pages peuvent partager
+Les documents **Données** (`data://`, aussi appelés Datasets) stockent le JSON dans
+**Connaissances → Documents**, aux côtés des documents **Texte**. Chaque document conserve
+ses droits et son historique. Plusieurs pages peuvent partager
 un référentiel, recueillir des réponses ou consulter les mêmes résultats. Par exemple, une équipe
 peut utiliser une page de saisie et une page de suivi autour d’un jeu de données commun.
 
@@ -115,7 +116,7 @@ si on l’active, décrire des pièces jointes encore sans texte. L’apprentiss
 
 L’utilisateur conserve un regard sur cette mémoire : consultation, correction, historique,
 graphe et oubli explicite. Les souvenirs autonomes restent privés à leur agent ; les documents
-portent les droits de partage et une synthèse mémoire facultative.
+portent leurs droits de partage et leur résumé courant, indépendamment de la mémoire.
 L’apprentissage et les analyses facultatives ne sont pas tous activés
 par défaut, et le rappel ne garantit pas de retrouver chaque information à chaque échange.
 
@@ -155,6 +156,12 @@ booléenne à un modèle explicitement choisi, sans outils ni tâche auxiliaire.
 Le [navigateur de fichiers](user/files.md) explore les emplacements accessibles de chaque
 agent. Pour un dépôt Git, l'[éditeur de code conversationnel](user/code-editor.md) permet
 à l'humain et à l'agent de travailler sur le même checkout, avec des accès explicites.
+
+Depuis Fichiers, on peut aussi lire les dossiers et messages IMAP sans les marquer comme lus,
+ouvrir un dépôt dans l'éditeur de code et consulter ou modifier les Contacts privés de l'agent.
+Le carnet accepte mails, téléphones et adresses postales ; insérer une carte Contact dans un
+document conserve les droits du lecteur. L'import documentaire copie des fichiers HTML,
+Markdown, texte ou JSON, ainsi que des documents existants, dans la bibliothèque commune.
 
 Le courrier complète ces moyens d’action : lire et rechercher des mails, traiter les pièces jointes,
 préparer une réponse et, si la connexion l’exige, attendre que l’humain approuve exactement ce qui

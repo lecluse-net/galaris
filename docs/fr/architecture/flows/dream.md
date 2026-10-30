@@ -71,9 +71,9 @@ messages couvrent les conversations textuelles comme vocales. Leur
 politique de création est checkpointée avant application et respecte le mode
 `DREAM_TOPIC_CREATION_MODE`.
 
-`topic.classify_document` et `topic.classify_dataset` classent également les Documents HTML
-et Datasets JSON sans sujet. Chaque domaine conserve sa FK nullable `topic_id` et fournit
-ses sources par sa façade publique. Le reçu identifie la version de la ressource ; une
+`topic.classify_document` et `topic.classify_dataset` classent également les documents
+Texte et Données sans sujet. `app.document` conserve leur FK nullable `topic_id` commune ;
+les façades Texte et Données fournissent les sources de chaque type. Le reçu identifie la version de la ressource ; une
 édition, une suppression ou une association intervenue pendant l'inférence empêche
 l'application de la décision tardive. Le contenu et ses révisions ne sont pas modifiés.
 Ces ressources réutilisent les sujets existants ; une création n'est appliquée qu'en mode

@@ -908,7 +908,7 @@ rappel reste borné : fournissez son URI exacte si un ancien document n'est pas 
 
 Chaque souvenir autonome reste privé à son agent et affiche ses mots-clés, ses sources et
 un libellé dérivé de son contenu. Le document conserve son titre, son contenu complet et ses droits ;
-sa fiche mémoire porte une synthèse facultative avec son propre historique. **Ouvrir le document**
+sa fiche mémoire affiche le résumé courant du document, sans historique propre. **Ouvrir le document**
 permet d’éditer le contenu complet et le partage. La synthèse hérite des droits actuels du document.
 La liste se filtre par texte, sujet, interlocuteur et date ; le graphe présente les
 souvenirs avec les documents, fichiers, dossiers, contacts et sujets.

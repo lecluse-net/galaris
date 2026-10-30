@@ -121,7 +121,7 @@ Choices are constrained, validated and traceable.
 - native BPMN business workflows with agent and human activities, typed variables and live
   monitoring, alongside external engines such as n8n; internal creation in the UI is currently
   available in development mode;
-- independent JSON Datasets, an agent file browser and a shared Git editor alongside Chat;
+- a shared library of Text and JSON Data documents, an agent file browser and a shared Git editor alongside Chat;
 - long-running Goals with owners, referrers, schedules, cycles, evidence and manual controls.
 
 Capabilities are governed per agent, and specialized ones remain inactive by default. The runtime

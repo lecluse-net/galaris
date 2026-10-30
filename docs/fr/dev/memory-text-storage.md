@@ -9,11 +9,17 @@ transaction PostgreSQL ; les nouvelles écritures textuelles ne créent pas de f
 | Table et colonne | Contenu |
 |---|---|
 | `memory_items.content` | Souvenir privé courant |
-| `documents.content` | Contenu courant d’un document |
+| `documents.content` | Contenu courant d’un document Texte ou Données |
 | `memory_revisions.content` | Historique des souvenirs privés |
 | `document_revisions.content` | Historique documentaire |
 | `documents.summary_content` | Résumé partagé courant |
-| `document_summary_revisions.content` | Historique des résumés partagés |
+| `goals.description` | Description HTML courante d’un objectif, sans historique de texte |
+
+Les résumés et mots-clés documentaires sont courants, sans historique propre.
+Restaurer le contenu d'un document conserve ces métadonnées. Les anciennes versions
+de résumés sont archivées avant le retrait de leur table, avec vérification d'empreinte
+et conservation des références de fichiers. Voir les [contrats Données](datasets.md)
+pour la migration des anciens Datasets et leur stockage commun avec les Textes.
 
 Les colonnes sont de type `TEXT`, sans normalisation des retours à la ligne. `NULL`
 reste possible pour les ressources binaires ou fournies par un provider externe.

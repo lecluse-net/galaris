@@ -78,8 +78,9 @@ the human retains editable explanations and uses forms directly. The document ed
 offers no Source view. A method and the calculator
 that applies it can occupy the same documentary space.
 
-Independent `data://` Datasets store JSON under **Knowledge → Datasets**, with their own rights
-and history. Several pages can share reference data, collect responses
+**Data** documents (`data://`, also called Datasets) store JSON under **Knowledge → Documents**,
+alongside **Text** documents. Each document retains its own rights and history.
+Several pages can share reference data, collect responses
 or inspect common results—for example, an input page and a monitoring page used by one team.
 
 Page rights, data rights and personal consent for the application are separate. Exports retain a
@@ -104,8 +105,8 @@ from completed work, identify duplicates/conflicts and, when enabled, describe a
 text. Procedural learning can also derive methods from several evidence-supported experiences.
 
 Users can inspect, correct, review history, explore the graph and explicitly forget memory.
-Standalone memories remain private to their agent; documents own sharing rights and an optional
-Memory synthesis.
+Standalone memories remain private to their agent; documents own sharing rights and their current
+summary, independently of Memory.
 Learning and optional analyses are not all enabled by default, and recall does not guarantee every
 piece of information will surface in every exchange.
 
@@ -143,6 +144,12 @@ own state in Process.
 The [file browser](user/files.md) explores each agent's accessible locations. For Git,
 the [conversational code editor](user/code-editor.md) lets humans and agents work on the
 same checkout under explicit permissions.
+
+Files also lets users read IMAP folders and messages without marking them as read, open
+repositories in the code editor and inspect or edit an agent's private Contacts. The address
+book accepts emails, phone numbers and postal addresses; Contact cards in documents retain
+each reader's access checks. Document import copies HTML, Markdown, text and JSON files,
+as well as existing documents, into the common library.
 
 Email adds message search/reading, attachment processing and reply preparation. Where configured,
 sending waits for a human to approve the exact content. Calendars add availability checks, free-slot

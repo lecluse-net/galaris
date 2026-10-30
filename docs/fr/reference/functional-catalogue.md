@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **25 octobre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **30 octobre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -27,7 +27,7 @@ Les dix mécanismes IA du Lab, ses campagnes de processus et les mécanismes de 
 constituent des fonctions distinctes. Les sources et tests décrivent les garanties du logiciel ;
 ce catalogue ne constitue pas une qualification de chaque installation ou fournisseur.
 
-Les inventaires couvrent **278 fonctions MCP natives, 78 modules backend et 40 modules frontend**.
+Les inventaires couvrent **284 fonctions MCP natives, 78 modules backend et 40 modules frontend**.
 Les fonctionnalités réalisées restent distinctes des intentions du
 [registre des plans](../../../project/plans/README.md) ; les contrôles de
 qualité figurent dans [l’exploitation](#exploitation).
@@ -96,10 +96,10 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Fichier interne** | Des octets immuables sous `file://<uuid>` | Possède un nom modifiable, des métadonnées et des références métier ; son accès suit ses propriétaires ou les ressources qui le retiennent. |
 | **Run / tentative** | Une exécution concrète | Permet de distinguer un essai, une reprise et une nouvelle exécution, avec leurs coûts et erreurs. |
 | **Mémoire personnelle** | Une connaissance durable privée d’un agent | Est recherchable, révisable et attribuée à ses sources ; l’administration de l’agent ne la partage pas avec les autres agents. |
-| **Document** | Une ressource éditoriale HTML `document://` | Conserve un titre, un propriétaire, des versions et des partages ; sa page peut associer texte, médias et application interactive. |
-| **Dataset** | Une ressource JSON indépendante `data://` | Possède sa bibliothèque, ses droits et son historique ; plusieurs pages peuvent lire ou alimenter les mêmes données selon les autorisations accordées. |
+| **Document** | Une ressource de type Texte (HTML) ou Données (JSON) | Conserve identité, titre, propriétaire, versions, résumé courant et partages ; une page Texte peut associer médias et application interactive. |
+| **Dataset / document Données** | Un document JSON `data://` | Partage la bibliothèque et les contrats des documents Texte ; chaque ressource garde ses droits et son historique, indépendamment des pages qui la référencent. |
 | **Application dans un document** | Du HTML, du CSS et du JavaScript exécutés dans la page | Permet formulaires, simulateurs et visualisations ; son accès aux Datasets exige les droits du lecteur et son accord personnel pour la version du document. |
-| **Dossier documentaire personnel** | Un classement propre à un utilisateur | Organise les documents déjà accessibles sans changer leur contenu, leurs droits ni le classement des autres utilisateurs. |
+| **Dossier documentaire personnel** | Un classement propre à un utilisateur, avec une référence stable | Organise les documents accessibles ; son partage automatique peut accorder des droits supplémentaires sur les documents de son propriétaire, sans modifier le classement des autres utilisateurs. |
 | **Mémoire de pièce jointe** | Le compagnon textuel et documentaire d’un fichier joint | Conserve l’identité de la pièce jointe, ses métadonnées, les descriptions acquises et les liens avec les documents qui l’utilisent. |
 | **Topic / dossier thématique** | Un sujet commun à plusieurs activités | Relie conversations, tâches, documents, souvenirs et participants au-delà d’un seul canal. |
 | **Contact** | Une personne observée par un agent | Relie ses identités de messagerie et les connaissances associées dans le périmètre de cet agent. |
@@ -202,6 +202,7 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
   licence. Le bas du menu donne accès à cette page et affiche la référence Git de construction
   (tag exact, sinon branche ou commit court). Bienvenue et traitement des routes inconnues
   complètent le shell applicatif.
+  Les crédits recensent aussi les technologies utilisées et leurs licences.
 - **Guidage documenté.** Le guide de navigation décrit les parcours par section, écran et onglet ;
   une carte générée depuis le frontend conserve routes, libellés FR/EN et conditions de visibilité.
   Les agents disposant de la connaissance du produit peuvent s’y référer pour guider l’utilisateur.
@@ -382,6 +383,9 @@ optimisé d’au plus **500 × 500 pixels**, proportions et orientation préserv
 ni métadonnées EXIF. Une erreur, une révocation ou une modification concurrente conserve l’avatar
 courant ; les lectures tardives ne le remplacent pas. La disponibilité de la génération exige
 une ressource image configurée, sans repli implicite vers le modèle texte.
+
+Toute modification de la fiche agent pendant une génération empêche son remplacement, y compris
+un avatar remplacé puis restauré ; l’état courant reste conservé.
 
 Sources : [contrat AgentAdmin](../dev/agent-admin.md),
 [délégation et parcours MCP](../../../back/app/agent/tests/test_agent_admin.py),
@@ -675,6 +679,13 @@ est encore connectée ; un changement de propriétaire exige une nouvelle confir
 
 ### Limites de l’abonnement ChatGPT
 
+Le catalogue du compte propose aussi une ressource **Fast** distincte lorsque le fournisseur
+annonce ce mode pour le modèle. La variante conserve les capacités et la fenêtre de contexte
+du modèle standard et peut être choisie séparément dans les profils. Elle utilise le même
+modèle avec le niveau de service prioritaire et une consommation d’abonnement plus élevée ;
+aucune variante n’est inventée pour un modèle qui ne l’annonce pas.
+Voir les [garanties des variantes Fast](../../../back/bridge/openai/tests/test_fast_models.py).
+
 La configuration du fournisseur connecté par authentification d’appareil affiche les fenêtres
 d’utilisation renvoyées par le compte ChatGPT : **pourcentage consommé**, durée de la fenêtre et
 date de réinitialisation lorsqu’elles sont disponibles. L’heure de vérification et une action
@@ -949,6 +960,10 @@ avec repli vers son modèle texte standard s’il manque ; `model_slot="text"` c
 Le modèle vision du même profil peut compléter un modèle texte dépourvu d’entrée image.
 Ces analyses ne créent pas de définition ni d’exécution de processus métier.
 
+Les lots et leur consolidation utilisent la capacité de sortie publiée du modèle plutôt qu’un
+plafond fixe de 1 600 tokens. Une réponse vide produit un diagnostic conservé avec sa couverture,
+sans fausse preuve d’artefact ni nouvelle soumission facturable automatique.
+
 Sources : [formats, budgets et qualification](../dev/document-qualification.md),
 [contrats XLS](../../../back/tests/test_legacy_spreadsheets.py),
 [contrats MCP](../../../back/app/llm/mcp.py),
@@ -1011,6 +1026,14 @@ Sources : [contrats](../../../back/app/harnesses/contracts.py), [API](../../../b
 
 ### Échanger au quotidien
 
+Les fichiers locaux et **PJ internes** partagent la même zone de pièces jointes du brouillon,
+avec retrait avant l’envoi, même sans texte. Les ressources internes conservent leur URI source
+et les droits correspondants, sans copie implicite ni remplacement par une URL de page.
+Le modèle reçoit directement les médias compatibles ; sinon les spécialistes configurés apportent
+description ou transcription, avec indication des analyses indisponibles et couvertures incomplètes.
+Sur téléphone/tablette, Retour ajoute une ligne et le bouton d’envoi conserve le focus et le clavier ;
+sur ordinateur, Entrée envoie et Maj+Entrée ajoute une ligne, même dans un panneau étroit.
+
 L’accueil privilégie les conversations récentes. Les réponses enregistrées aux demandes de choix
 affichent leur phrase d’introduction dans la langue courante de l’interface, y compris après
 réouverture ; le titre et le choix conservent la langue de la demande d’origine.
@@ -1033,6 +1056,9 @@ thème sombre.
 
 La lecture de l’annuaire par `agent_list` et `agent_get` est disponible en conversation selon
 les autorisations : identifier un collègue ne le contacte pas et ne crée pas de tâche.
+
+Les cartes de tâches, contacts, objectifs, sujets et conversations ouvrent leur modale métier
+habituelle, y compris lorsqu’elles proviennent d’une PJ interne, avec les droits de lecture et d’édition courants.
 
 Le chargement initial du Chat diffère les inspecteurs d’exécution jusqu’à leur ouverture et lit
 les métadonnées de politique conversationnelle séparément de la configuration complète des
@@ -1096,6 +1122,15 @@ L’installation génère et conserve ses clés de notification ; le contact et 
 sont réglables dans les préférences du Chat.
 
 ### Travailler sur un document pendant la conversation
+
+Les sélecteurs de conversations et d’agents ne proposent que les agents qui peuvent déjà lire
+le document, par droits personnels, d’équipe ou globaux. Le choix ne partage rien ; une ancienne
+conversation n’est rouverte que si ces droits restent valides.
+
+Après création autorisée d’un document, une tâche peut poursuivre le travail sur cette même
+ressource grâce au reçu de création conservé, y compris après reprise. Une écriture Sur demande
+exige son propre accord : refuser la création ne crée rien, refuser une modification conserve
+le contenu déjà créé. Fermer et rouvrir Chat ne perd pas l’attente.
 
 La bibliothèque Documents propose aussi son propre panneau **Conversation**, redimensionnable
 au clavier et à la souris sur ordinateur, en dialogue sur mobile. L'utilisateur peut choisir
@@ -1300,6 +1335,12 @@ Les bridges adaptent les protocoles externes ; plusieurs canaux peuvent cohabite
 Les capacités d’un bridge ne sont pas toutes des boutons ou fonctions MCP universels. Le contrat
 commun et le catalogue effectif déterminent les opérations utilisables sur chaque connexion.
 
+Une installation neuve active seulement le **Chat interne**. Les messageries externes
+s’activent explicitement dans **Préférences → Messagerie** ; les canaux déjà configurés sont
+conservés à la mise à jour. **OneBot 11** et **WhatsApp** sont signalés comme expérimentaux.
+Les guides Telegram et Matrix peuvent préparer leur Tool lorsqu’aucun Tool n’utilise déjà
+le bridge, puis orientent vers la configuration des comptes de chaque agent.
+
 ### Préparer l’accès réseau
 
 **Préférences → Messagerie** et l’onglet **Messagerie** d’un Tool affichent les prérequis de chaque
@@ -1310,6 +1351,13 @@ par LAN ou VPN. Ces indications utilisent l’adresse du navigateur et ne bloque
 les appels et médias conservent leurs prérequis propres.
 
 Source : [tests des passerelles depuis une instance locale](../bridges/telegram-whatsapp.md).
+
+**Tester la réception** ne vérifie que les connexions actives du bridge affiché ; sans connexion,
+aucun test n’est lancé. Telegram accepte une connexion avec le seul token du bot, sous réserve
+des restrictions historiques conservées. Matrix réutilise sa session d’appareil et signale
+explicitement les salons chiffrés qu’il ne peut pas lire. OneBot conserve un historique journalisé,
+mais ne garantit pas de récupérer les événements perdus avant leur admission ou pendant une
+déconnexion ; un envoi au résultat incertain n’est pas automatiquement répété.
 
 ### Routage, recherche et envoi
 
@@ -1333,6 +1381,14 @@ connexion. Le journal durable permet de reprendre après une interruption. Une i
 doit être reliée à une identité Galaris vérifiée pour les accès qui l’exigent ; le nom affiché seul
 ne donne pas une autorisation.
 
+Un message humain externe sans droit de contact reconnu reste dans un **round en pause**,
+visible dans l’activité avec son identité et les informations disponibles. Le manager reçoit
+une demande persistante, également accessible dans **Permissions** : l’accord reprend le round,
+le refus le clôt sans réponse. La décision concerne cette personne sur cette connexion et reste
+révocable ; aucun compte Galaris ni partage de ressource n’est créé. Mail conserve son consentement
+distinct. L’attribution transmise au modèle relit le contact canonique courant plutôt qu’un ancien
+nom distant ; elle ne change pas l’identité authentifiée ni ses permissions.
+
 ### Répertoire et contacts multicanaux
 
 La plateforme conserve un répertoire des utilisateurs et salons observés. Les réglages de profil
@@ -1344,10 +1400,36 @@ La fusion réaffecte les références et la portée conversationnelle ; l’oubl
 associés selon le contrat et nettoie les références de contact. Les contacts restent isolés entre
 les périmètres des agents ; deux noms identiques ne constituent pas une preuve d’identité.
 
-Le carnet d’adresses permet aussi de créer un contact avec une adresse mail sans message
-préalable, de modifier son nom et de rechercher ses adresses. Une identité peut être détachée
+Le carnet d’adresses permet aussi de créer un contact avec un e-mail, un téléphone ou une adresse
+postale sans message préalable, de modifier son nom et ses coordonnées et de les rechercher.
+Plusieurs téléphones et adresses peuvent porter libellé et pays ; le pays proposé provient
+d’un pays explicite dans **Préférences → Localisation**, sans déduction depuis la langue ou le fuseau.
+Les nouvelles observations préservent les coordonnées saisies ; une fusion réunit les coordonnées
+distinctes et une scission les conserve sur la fiche d’origine. Une identité peut être détachée
 d’un contact fusionné pour retrouver une fiche indépendante. L’oubli d’un contact exige les
 droits Contacts et Mémoire puisqu’il efface aussi les souvenirs associés.
+
+L’option Memory **Enregistrer les coordonnées détectées** enrichit le carnet en arrière-plan à
+partir des messages humains ou IA. Une coordonnée déjà connue ne déclenche pas d’inférence ; une
+nouvelle coordonnée utilise le contexte, le modèle Décision et le texte ultra-léger pour identifier
+son propriétaire. Une attribution incertaine ne crée pas de fiche. Dream peut rapprocher les
+doublons après confirmation d’identité, avec le seuil de similarité commun (92 % par défaut).
+
+Les agents disposent de `contact_list`, `contact_get`, `contact_create` et `contact_update`,
+uniquement pour **leur propre carnet**, même avec une délégation d’administration plus large.
+Lecture et recherche sont actives par défaut ; création et modification sont Sur demande.
+Un e-mail enregistré devient connu de la politique Mail entrante par défaut. Les fiches sont
+aussi accessibles sous `galaris://contact/` dans Fichiers et par File Sharing : chaque lecture,
+y compris depuis Memory ou une ancienne révision, reconstruit le JSON courant sans copie dans
+les souvenirs. Les modifications génériques de nom/téléphones/adresses exigent le `expected_etag`
+lu au préalable ; identités et métadonnées restent protégées. Une liste omise est conservée,
+une liste fournie remplace l’ancienne et une liste vide l’efface.
+
+`messenger_search_users` découvre aussi tous les autres agents et les utilisateurs actifs de
+Galaris sans échange préalable, par nom, e-mail, code/poste d’agent ou adresse `agent:<ID>` /
+`user:<ID>`, avec plusieurs termes dans un ordre quelconque. Cette recherche ne crée ni fiche
+privée ni droit d’envoi. Les cartes Contact dans les documents relisent les coordonnées selon
+les droits du lecteur ; partager le document ne partage pas le carnet.
 
 La **Communication inter-agents** se règle par connexion de messagerie : `none` interdit
 les échanges, `team` les limite aux équipes communes actives et `all` ouvre le dialogue aux
@@ -1505,6 +1587,10 @@ Sources : [organisation adaptative](../../../project/decisions/0171-adaptive-tas
 
 ### Conserver le périmètre demandé
 
+Une autorisation de travail sur un dossier suit ses membres actuellement accessibles, y compris
+les documents créés dans ce dossier. Elle ne couvre ni les documents étrangers ni d’autres effets ;
+les ACL et les autorisations d’outils restent contrôlées à chaque mutation.
+
 Les nouvelles tâches conservent un périmètre sourcé : demande originale, exigences, références
 exactes autorisées, amendements et réponses de clarification. Les enfants héritent du périmètre
 parent ; le texte d’une étape, un profil ou un souvenir ne crée pas une autorisation supplémentaire.
@@ -1583,6 +1669,11 @@ dont Claude Agent, consultent l'autorisation Galaris et refusent l'opération lo
 accord valide manque ; ils ne fabriquent pas d'approbation humaine.
 
 ### Suivre et commander l’exécution
+
+Un jalon explicitement bloqué à la clôture conduit à une tâche en erreur avec bilan partiel,
+sans réessai automatique ; les attentes durables restent prioritaires. Une tâche terminée ne
+peut plus être amendée : une extension du périmètre exige une nouvelle demande explicite.
+Les exports de snapshots conservent l’ensemble des preuves, y compris les longues sorties d’outils.
 
 L’écran **Activité** permet de :
 
@@ -1776,6 +1867,11 @@ Le suivi reste son unique document associé, avec l'éditeur et les révisions d
 Les agents lisent les deux contenus via `galaris://goal/<uuid>` ; le suivi conserve aussi
 son URI `document://`. `goal_update_suivi` conserve le contrôle de révision.
 
+Dans **Préférences → Instructions**, les personnes habilitées peuvent personnaliser le prompt
+du suivi, puis revenir au défaut. Les prochains jugements utilisent ces consignes pour synthétiser
+l’état actuel, conserver les informations utiles et décider de poursuivre. Le défaut fusionne
+les répétitions sans imposer une longueur cible.
+
 La fiche affiche les cycles récents et paginés, leur tâche, leur état, leur verdict, les appels et
 les coûts. Reprendre un Goal terminé peut ouvrir de nouveaux cycles tout en conservant son histoire.
 Le runner attend lorsque l’agent est déjà occupé et respecte les pauses et horaires applicables.
@@ -1817,18 +1913,22 @@ Sources : [schémas Goal](../../../back/app/goal/schemas.py), [API](../../../bac
 
 La mémoire durable se distingue de l’historique immédiat d’une conversation. Une entrée peut porter
 un savoir, un événement, un contexte social, une information centrale ou un élément de travail.
-Un souvenir autonome possède un contenu HTML, des mots-clés, une nature, des métadonnées,
-un propriétaire et des dates. Il reste privé à son agent et son libellé est dérivé du contenu.
+Un souvenir acquis par un agent représente **un fait atomique structuré** : sujet référencé,
+propriété en `snake_case` et valeur scalaire ou référence, avec unité et négation facultatives.
+Le serveur construit sa vue HTML et conserve mots-clés, nature, métadonnées, propriétaire et dates.
+Les notes humaines et souvenirs historiques restent lisibles. Chaque souvenir reste privé à son agent.
 Un document possède son titre, son contenu complet, ses droits de partage et sa synthèse HTML
-facultative avec son historique indépendant, tous détenus par `app.document`. Il existe sans
+facultative courante, tous détenus par `app.document`. Le résumé et les mots-clés n’ont pas
+d’historique propre ; restaurer une version du contenu les préserve. Il existe sans
 souvenir personnel ni nœud Memory ; le graphe peut en conserver une référence reconstructible
 dont chaque lecture revérifie les droits de la source. Modifier le document ne
-réécrit pas cette synthèse ; la fiche signale si sa révision de référence est ancienne.
+réécrit pas immédiatement cette synthèse ; Dream peut actualiser une description automatique
+selon les seuils de taille et de changement cumulé, en préservant un résumé manuel.
 Le document et sa synthèse partagent une seule liste de mots-clés, modifiable depuis les deux
 fiches sous les droits du document. Cette seule modification ne crée pas de révision de contenu.
 Les mises à jour distantes préservent les brouillons ; un conflit conserve les saisies.
 La synthèse suit la durée de vie du document : elle ne peut pas être oubliée ou fusionnée
-indépendamment. Supprimer le document supprime aussi sa synthèse et ses versions.
+indépendamment. Supprimer le document supprime aussi sa synthèse et les versions du contenu.
 La migration conserve les URI, versions et destinataires des documents existants. Les anciens
 souvenirs partagés deviennent des documents ; les anciens titres privés rejoignent leur contenu.
 Une sauvegarde SQL vérifiée précède le transfert et reste conservée avec les ressources référencées ;
@@ -1886,10 +1986,23 @@ une nouvelle période ne réutilise pas silencieusement un souvenir expiré. Cel
 dates et sa provenance et reste exclu du rappel tant qu’il est invalide.
 
 `memory_summarize` utilise le modèle de l’agent, au maximum 200 messages et les 32 000 derniers
-caractères. Le résultat suit le contrat HTML et l’acquisition Memory habituelle ; les souvenirs
+caractères. Il extrait plusieurs faits atomiques attribués selon l’acquisition Memory habituelle ; les souvenirs
 existants de la salle ne sont pas remplacés en bloc. Un historique vide ou une erreur de modèle
 ne stocke pas un faux résumé ni une copie brute de secours. L’ancien argument inopérant
 de remplacement global n’est plus proposé : le contrat d’acquisition conserve les souvenirs existants.
+
+`memory_remember`, l’extraction Dream et la capture après tâche utilisent ces mêmes faits.
+Un atome identique dans la même portée réutilise le souvenir sans appel modèle ; une propriété
+complémentaire produit un autre atome. Les paragraphes libres ne sont plus acceptés par les outils
+de mémorisation agentique. Auteur, date et citation restent dans la provenance. Les coordonnées
+personnelles sont gérées dans Contacts : une proposition mêlant coordonnées et préférence est
+refusée et doit être séparée. Les représentations directes de ressources priment sur leurs copies
+lorsqu’une équivalence complète est prouvée ; un simple lien ne protège pas un souvenir de l’oubli.
+Une correction explicite avec cible et révision conserve les deux affirmations et leur lien de
+contradiction, sans effacer ni déclarer automatiquement fausse la précédente.
+
+Sources : [faits atomiques](../../../back/app/memory/tests/test_atomic_facts.py),
+[contrat et priorité des sources](../../../project/decisions/0257-atomic-memory-facts-and-source-priority.md).
 
 Si le profil effectif dispose d’un modèle Décision, la similarité vectorielle ne suffit plus
 à convertir une acquisition en simple rattachement : le choix spécialisé doit confirmer
@@ -1934,8 +2047,8 @@ Sources : [contrat temporel](../../../back/app/memory/temporal.py),
 
 La similarité propose des souvenirs candidats ; elle ne prouve ni leur équivalence ni leur
 suffisance pour répondre. Sans décision affirmative de doublon, l'acquisition conserve le
-nouveau fait. Dream peut enrichir un souvenir personnel modifiable avec des informations
-complémentaires en conservant le texte complet, les mots-clés, les sources et sa temporalité.
+nouveau fait. Une propriété complémentaire devient un fait distinct ; les anciennes preuves,
+les mots-clés, les sources et la temporalité restent conservés.
 Une contradiction conserve les deux affirmations et leurs sources ; un conflit de révision
 ne provoque pas d'écrasement silencieux.
 
@@ -1945,6 +2058,15 @@ distinctes du récit final, et plusieurs extractions d'une même origine ne devi
 corroborations indépendantes. Les contre-affirmations accessibles sont signalées sans désigner
 automatiquement une vérité. Le rappel conserve une place pour les souvenirs ordinaires lorsque
 les échéances rempliraient le budget ; les autres correspondances restent dans `memory_upcoming`.
+
+Une demande dépendant d’une préférence, d’une décision ou d’une reprise de projet invite l’agent
+à rechercher les preuves absentes avant de répondre. Un calendrier saturé réserve jusqu’à la moitié
+des places aux faits ordinaires. Les URI `document://` et `memory://` présentes dans une phrase
+restent des ancres exactes, même après un long préambule. « Mon email » cible le correspondant
+identifié ; les recherches simples de coordonnées utilisent une lecture exacte sans embeddings.
+Un « oui » ou « merci » isolé ne remplace pas le sujet humain d’une relance ; un changement
+explicite de sujet est respecté. Les fiches Contacts du même agent sont recherchables, avec leurs
+coordonnées courantes, sans ouvrir le carnet d’un autre agent.
 
 La recherche combine :
 
@@ -2161,16 +2283,18 @@ Sources : [API Memory](../../../back/app/memory/router.py), [schémas](../../../
 
 Un document peut servir de texte de travail, de support multimédia ou de **page applicative**.
 Une même page HTML peut réunir une explication éditable, un formulaire, un calculateur et un
-graphique. Ses données durables peuvent vivre dans des **Datasets** indépendants, partagés
-avec d’autres pages. Les Documents HTML appartiennent à `app.document` ; les Datasets JSON appartiennent
-au domaine Dataset, avec leurs propres droits, historique et bibliothèque.
+graphique. Ses données durables peuvent vivre dans des documents **Données**, aussi appelés
+**Datasets**, partagés avec d’autres pages. `app.document` possède les deux types **Texte**
+et **Données**, leurs métadonnées, droits, classements et révisions communs.
+`app.document.text` fournit le HTML et `app.document.data` le JSON ; `app.dataset`
+reste un relais de compatibilité. Les droits de chaque document restent indépendants.
 
 Deux ressources complémentaires sont disponibles :
 
 | Ressource | Contenu et usages | Éditeur |
 |---|---|---|
-| **HTML** | Texte enrichi, médias, formulaires, CSS et JavaScript ; rapports, simulateurs et petites applications. | Tiptap et interface Quasar, sans vue Source dans les documents. |
-| **Dataset** | Données JSON : tableau de réponses, paramètres de simulation, référentiel ou résultats structurés. | CodeEditor avec coloration syntaxique JSON. |
+| **Texte** | HTML enrichi, médias, formulaires, CSS et JavaScript ; rapports, simulateurs et petites applications. | Tiptap et interface Quasar, sans vue Source dans les documents. |
+| **Données** | JSON : tableau de réponses, paramètres de simulation, référentiel ou résultats structurés. | CodeEditor avec coloration syntaxique JSON. |
 
 Les autres types de documents, tels qu’un type image autonome, ne sont pas encore disponibles.
 Les images et les autres médias peuvent déjà être intégrés ou joints aux documents HTML.
@@ -2205,12 +2329,12 @@ concurrent. Cette politique ne convertit pas les anciens fichiers et ne modifie 
 
 ### Bibliothèque documentaire
 
-- Créer un document HTML, le nommer et choisir son propriétaire humain ou agent dans le
+- Choisir Texte ou Données, nommer le document et choisir son propriétaire humain ou agent dans le
   périmètre autorisé ; les contrats maintiennent un agent éditeur lorsque nécessaire.
 - Rechercher dans les titres et contenus, filtrer les documents accessibles et parcourir les
   dossiers/sous-dossiers.
-- Retrouver les Documents HTML dans cette bibliothèque ; créer et consulter les Datasets
-  séparément dans **Connaissances → Jeux de données**.
+- Retrouver les Textes et Données dans **Connaissances → Documents** ; filtrer par type
+  avant pagination, en conservant les autres critères de recherche.
 - Déplacer un document dans un dossier et changer son propriétaire selon les règles d’accès.
 - Retrouver les documents liés à une conversation ou à un Goal ; les documents métier protégés
   conservent leurs restrictions.
@@ -2227,7 +2351,7 @@ plusieurs copies d’un document partagé entre agents. Le propriétaire affich�
 document, et non un lecteur qui le rend accessible. La modification du propriétaire suit ses
 droits propres ; le classement personnel ne nécessite qu’un accès en lecture.
 
-La suppression efface contenu, versions et index et retire les références de fichiers du document.
+Pour un document Texte, la suppression efface contenu, versions et index et retire ses références de fichiers.
 Les octets restent protégés s’ils sont encore retenus par une autre ressource ou un propriétaire.
 Dans le chat,
 les références historiques conservent une carte portant le dernier titre et « Document supprimé »,
@@ -2241,12 +2365,17 @@ conversation reste propre au document et au compte ; aucun fil n’est chargé a
 
 ### Dossiers personnels, navigation et ordre
 
+La racine de l’arbre contient seulement les documents qui y sont placés explicitement.
+La création générale laisse le document non classé ; **Créer un document à la racine** ou un
+glisser-déposer vers celle-ci crée un placement personnel conservé après rechargement.
+Déposer dans la liste des non-classés retire ce placement, sans toucher aux autres utilisateurs.
+
 Chaque utilisateur possède son arbre de dossiers et sous-dossiers, séparé des Topics globaux.
 Un document peut avoir plusieurs rattachements personnels dans le contrat ; le glisser-déposer
 remplace atomiquement ceux de l’utilisateur par le dossier cible, sans toucher aux autres personnes.
 Le champ de compatibilité `document_path` reste disponible pour ses producteurs ; le rangement
 humain utilise exclusivement les dossiers personnels. Un document sans rattachement est non
-classé, sous réserve du classement automatique des Goals.
+classé. Le suivi d'un Goal suit ce même classement libre, sans rangement automatique.
 
 - Créer un dossier racine, un sous-dossier ou un dossier frère depuis les actions de classement,
   puis renommer directement son nom sélectionné. L’annulation du renommage conserve le dossier
@@ -2295,7 +2424,8 @@ toute nouvelle mutation de classement, même si son ancienne association existe 
 ### Sous-documents et gestion en masse
 
 La hiérarchie personnelle peut imbriquer des documents sur plusieurs niveaux, par création
-d’un **sous-document** ou glisser-déposer. Elle ne change ni contenu ni partage. Un enfant
+d’un **sous-document** ou glisser-déposer. Elle préserve le contenu et les partages directs ;
+les droits hérités des dossiers et documents parents suivent le classement courant. Un enfant
 peut être sorti vers un dossier ou les non-classés ; supprimer le parent ou perdre son accès
 conserve les enfants encore lisibles parmi les non-classés. Les cycles sont refusés.
 
@@ -2315,16 +2445,66 @@ Les menus contextuels sont accessibles au clic droit, au bouton d’actions et a
 Sources : [bibliothèque et actions groupées](../user/navigation.md),
 [interactions de gestion en masse](../../../front/browser-tests/document-bulk.spec.mjs).
 
+### Partager et citer un répertoire
+
+Le **Partage automatique du répertoire** accorde lecture ou édition à des utilisateurs, agents,
+groupes ou utilisateurs authentifiés. Il se propage aux sous-répertoires, documents et sous-documents,
+y compris futurs, uniquement pour les documents que le propriétaire du classement peut repartager.
+Les contributions des différents classements se cumulent avec les droits propres ; le plus permissif
+gagne. Déplacer un document, supprimer un répertoire ou révoquer son partage retire seulement
+cette contribution. Les mises à jour réappliquent ces règles de manière idempotente.
+
+Chaque dossier possède une page `/documents/folders/<uuid>` et une URI stable
+`document://folders/<uuid>/`, copiables et utilisables dans Chat ou un document comme référence
+vivante. La page recherche et pagine les documents accessibles de la branche. Les agents découvrent
+les dossiers par `file_list`, puis lisent leur arbre JSON avec `file_read`, par pages de 200 éléments
+maximum et `next_offset`. L’accès à un document rend ses dossiers et ancêtres découvrables, sans
+ouvrir ses voisins. Chaque lecture revérifie les droits ; joindre le dossier ne partage rien.
+
+Sources : [partage des répertoires](../user/documents.md),
+[garanties de portée, pagination et révocation](../../../back/app/document/tests/test_folder_resources.py).
+
+### Importer ou copier un document
+
+**Nouveau document depuis…** sélectionne un fichier accessible : JSON devient Données ; HTML,
+Markdown et texte brut UTF-8 deviennent Texte. L’import applique le quota de ressources configuré,
+sans plafond propre de 2 Mo. Un format non pris en charge, un contenu invalide ou un refus d’accès
+empêche la création. Le résultat est une copie indépendante, sans lien ni pièce jointe vers la source.
+
+Le même sélecteur peut copier un document Texte ou Données, y compris personnel. Le type et le
+contenu sont conservés ; les images et pièces jointes d’un Texte reçoivent de nouvelles identités.
+L’historique et les partages d’origine ne sont pas repris. Le titre, le propriétaire et le classement
+du nouveau document sont choisis lors de la création.
+
+Source : [garanties d’import et de copie](../../../back/app/document/tests/test_file_import.py).
+
+### Résumé courant
+
+**Voir le résumé** recharge le résumé partagé du document Texte ou Données, sans afficher les
+mots-clés. Un éditeur peut le modifier et l’enregistrer ; **Revenir au document** sauvegarde aussi
+le brouillon. Une erreur ou un conflit conserve la saisie. **Régénérer le résumé** demande confirmation
+et remplace le résumé manuel ou automatique depuis le contenu enregistré, avec le modèle Dream,
+même pour un document court. Contenu, versions et mots-clés restent conservés.
+
+Au repos, Dream peut produire une description de la nature et de l’utilité du document au-delà
+de **1 000 caractères utiles**, puis actualiser un résumé automatique après plus de **25 % de
+changement cumulé**. La seule mise en forme HTML ne compte pas ; les résumés manuels sont préservés.
+Les seuils sont configurables pour Texte et Données. Résumés et mots-clés sont des métadonnées
+courantes sans historique propre ; restaurer le contenu ne les remplace pas.
+
+Source : [résumé courant et mots-clés](../user/documents.md).
+
 ### Personnaliser les icônes
 
 Pendant l’édition du dossier, un clic sur son icône ouvre une palette avec recherche et collections :
 le choix enregistre ensemble le nom saisi et l’icône. La palette propose des émojis Unicode dans la
 langue active, dossiers Solaire ouverts ou fermés dans les 11 couleurs, polices Material Design
-Icons et Font Awesome Free, ou SVG privés téléversés. Les catalogues sont chargés à la demande.
-Les SVG suivent la limite des fichiers `MEMORY_RESOURCE_MAX_BYTES` (100 Mo par défaut),
-sont validés sans contenu actif ou externe et affichés comme images.
+Icons et Font Awesome Free, ou images privées téléversées. Les catalogues sont chargés à la demande.
+SVG, PNG, JPEG, GIF, WebP, AVIF, BMP et ICO sont pris en charge ; les autres formats reconnus,
+comme TIFF, sont convertis en PNG. Les icônes n’ont pas de limite de taille de fichier propre.
+Les SVG sont validés sans scripts, contenu externe ou feuilles de style et affichés comme images.
 
-Les documents possèdent leur propre icône par utilisateur, avec émojis, icônes de police et SVG,
+Les documents Texte et Données possèdent leur propre icône par utilisateur, avec émojis, icônes de police et images,
 mais sans les pictogrammes réservés aux dossiers. Le choix se répercute dans bibliothèque,
 éditeur, chat et aperçus, tâches, sujets et détails mémoire. Un lecteur peut personnaliser son
 affichage sans modifier contenu, révision, dates ou droits. Le choix survit aux déplacements
@@ -2336,9 +2516,17 @@ Voir le [contrat de classement personnel](../../../project/decisions/0099-person
 
 ### Édition riche
 
+L’éditeur complet permet des équations **en ligne ou en bloc** avec MathLive : saisie visuelle,
+clavier de symboles et source LaTeX synchronisée. Double-clic ou Entrée rouvre une formule ; le
+menu contextuel propose modification, copie, suppression et insertion avant/après. L’annulation
+préserve le contenu précédent et les formules restent rendues en lecture, impression et exports.
+L’éditeur et les polices sont hébergés localement. Les champs `rich-text` utilisent une barre
+simplifiée ; plein écran, pièces jointes et insertion d’équations restent dans l’éditeur complet.
+
 Les documents HTML utilisent **Tiptap**, sans badge d’éditeur, et stockent un HTML sémantique encadré par un profil. Les
-champs plus courts — mémoire, personnalité, fiche de poste, objectif de tâche, description/suivi de
-Goal — emploient un profil riche plus restreint.
+champs plus courts — mémoire, personnalité, fiche de poste, objectif de tâche, description de
+Goal et résumé — emploient un profil riche plus restreint. Le suivi documentaire d'un Goal
+conserve l'éditeur complet des documents Texte.
 
 L’éditeur permet :
 
@@ -2362,10 +2550,10 @@ La barre principale et les menus contextuels partagent les icônes GNOME lorsqu�
 Une variation de largeur conserve la saisie et la dictée. Les barres fixes suivent le
 redimensionnement de leur panneau ; les dialogues et leur fond passent au-dessus des barres d’outils.
 
-### Datasets : des ressources JSON indépendantes
+### Données : des documents JSON
 
 Un Dataset possède son propre titre, son propriétaire, ses partages et son historique.
-Il utilise une URI `data://` dans **Connaissances → Jeux de données** et reste indépendant
+Il utilise une URI `data://` dans **Connaissances → Documents** et reste indépendant
 des Documents HTML qui le consultent. Plusieurs documents peuvent donc partager
 le même jeu de données sans dupliquer leurs réponses ou leurs paramètres.
 
@@ -2373,7 +2561,7 @@ Son contenu est du **JSON UTF-8 validé**. Il peut être un tableau, un objet ou
 une collection à alimenter par ajouts successifs utilise un tableau racine, généralement `[]`.
 L’éditeur JSON conserve un brouillon incorrect sans remplacer les données enregistrées.
 Les conflits de révision, la consultation des anciennes versions et la restauration conservent
-les contrôles de droits et de version du domaine Dataset.
+les contrôles de droits et de version communs aux Documents.
 
 Les agents créent par exemple un Dataset avec
 `file_create(path="data://", name="Réponses", content="[]")`.
@@ -2391,18 +2579,26 @@ adapté au besoin : une réponse autonome ou un fait isolé n’impose pas un Da
 ne rafraîchit pas automatiquement les textes existants ; les registres métier restent leur source
 d’autorité et les droits de la conversation ou de la tâche continuent de s’appliquer.
 
+`dataset_query` interroge une URI `data://` autorisée avec des pointeurs JSON : filtres combinés,
+projection, tri, pagination et agrégats sur les lignes correspondantes, sans recopier le JSON complet.
+La révision attendue protège les lectures successives. Les résultats distinguent valeurs absentes,
+nulles et types incompatibles ; les agrégats numériques utilisent des chaînes décimales. Les unités,
+dates et conversions ne sont pas déduites. La recherche JSON native propose aussi des passages
+sémantiques lorsque le modèle vectoriel et l’index Dream sont disponibles, en signalant la couverture.
+
 ### Parcourir, transférer et supprimer un Dataset
 
-Chaque utilisateur dispose de ses propres dossiers et sous-dossiers Dataset, avec nom,
+Chaque utilisateur dispose des dossiers et sous-dossiers communs aux Documents, avec nom,
 icône, ordre manuel et tri alphabétique. Le classement accepte les ressources déjà lisibles
 sans modifier JSON, révisions, propriétaire, partage ou classement des autres comptes.
 Les filtres combinent recherche, mots-clés, propriétaire humain ou agent, dates et éléments
 non classés. La suppression confirmée d’une branche retire son classement et remet ses
 Datasets dans les non classés, sans supprimer leurs données ; les cycles de dossiers sont refusés.
 
-La bibliothèque Dataset filtre par agent propriétaire, recherche et pagine les ressources
-accessibles. Un clic ouvre une modale commune à la bibliothèque, au Chat et aux cartes de documents,
-avec JSON complet, historique, partage et propriétaire. Fermer retrouve recherche et page ; un
+La bibliothèque Documents filtre par type Données et propriétaire, recherche et pagine les ressources
+accessibles. La bibliothèque, le Chat et les cartes ouvrent le même éditeur documentaire,
+avec JSON complet, historique, partage et propriétaire. Les anciens liens `/dataset/:id`
+redirigent vers `/documents`. Fermer retrouve recherche et page ; un
 brouillon non enregistré exige confirmation. L’indentation d’affichage ne modifie pas les valeurs.
 Les lectures agentiques donnent révision, coordonnées de lignes et indicateurs de lignes coupées,
 en conservant les offsets de pagination en caractères pour permettre une édition partielle sûre.
@@ -2418,15 +2614,16 @@ l’historique ; elle ne supprime pas les données des runs Process, stockées d
 Un Document peut citer ou joindre une **référence vivante** vers un Dataset sans copier son JSON.
 Le manifeste et File Sharing conservent `data://` ; ajout et retrait contrôlent les droits du
 Document, et l’ajout exige la lecture du Dataset. Retirer le lien laisse les données intactes.
-Les Documents, leur recherche et le graphe Memory excluent les Datasets ; les anciens liens
-documentaires vérifiés ouvrent l’éditeur Dataset avec ses droits actuels.
+Les Données figurent dans la bibliothèque Documents et sa recherche. Leur interrogation JSON
+native reste distincte du rappel Memory général ; aucun index Memory concurrent n'est créé.
+Les anciens liens documentaires vérifiés ouvrent le document Données avec ses droits actuels.
 
 Sources : [parcours Dataset](../user/datasets.md), [contrats et alias](../dev/datasets.md),
 [propriété](../../../back/app/dataset/tests/test_ownership.py),
 [classement personnel](../../../back/app/dataset/tests/test_library.py),
 [utilisations et partage](../../../back/app/dataset/tests/test_management.py).
 
-Dataset fournit aussi le **codec de valeurs typées** commun : types primitifs, références Agent,
+`app.document.data` fournit aussi le **codec de valeurs typées** commun : types primitifs, références Agent,
 User, File, Document, Dataset et conteneurs récursifs, avec validation des entiers exacts, nulls,
 doublons et limites. Le JSON libre d’un Dataset n’impose pas cette enveloppe ; le profil Process
 v2 conserve sa liste historique de types, qui n’admet pas les références typées Dataset.
@@ -2791,12 +2988,14 @@ reçus persistés. Il ne lance pas une multitude de workers indépendants. Une a
 notamment vocale, peut interrompre son travail. Les réglages permettent de l’activer et de régler
 ses délais, leases et tentatives.
 
-Les quatorze mécanismes enregistrés couvrent :
+Les vingt mécanismes enregistrés couvrent :
 
-- le classement thématique des messages, des tâches et des tours concernés ;
+- le classement thématique des messages, tâches, documents Texte/Données et tours concernés ;
 - l’extraction de connaissances depuis les tâches, rounds conversationnels et tours vocaux ;
 - la projection de définitions et résultats de processus dans la mémoire ;
 - l’entretien des constats de doublon, contradiction et vieillissement ;
+- le rapprochement des contacts en doublon après confirmation d’identité ;
+- les résumés courants des documents Texte et Données, ainsi que l’indexation JSON des Données ;
 - la réparation déterministe des documents, pièces jointes, dossiers et références ;
 - l’indexation, les empreintes et l’enrichissement du catalogue de fichiers ;
 - la préparation de miniatures persistantes sans appel IA ;
@@ -2871,7 +3070,7 @@ La page Dream affiche le mécanisme courant, le sujet traité, la phase, la couv
 les tentatives et les erreurs. On peut rechercher et filtrer les reçus, ouvrir leur sortie préparée
 et inspecter les décisions d’affectation de sujets.
 L’onglet **Suivi**, ouvert par défaut, rassemble les indicateurs et l’activité ; **Historique**
-regroupe les opérations et leurs filtres ; **Indexation** permet de choisir un agent, lancer
+regroupe les opérations et leurs filtres. **Préférences → Fichiers** permet de choisir un agent, lancer
 un parcours de fichiers, suivre sa couverture, l’annuler ou relancer ses réparations.
 
 Un reçu conserve ce qui a été préparé et appliqué, pour reprendre sans refaire inutilement un appel
@@ -2900,8 +3099,12 @@ séparément de la mémoire ordinaire.
 Une première réussite ne suffit pas à injecter une nouvelle compétence. La procédure doit atteindre
 un seuil de score et être confirmée par plusieurs tâches distinctes — trois par défaut — dans la
 limite du nombre de compétences actives. Les tâches historiques sont parcourues progressivement.
-L’interface permet de lire les procédures apprises, leurs preuves et leur score, puis de les
-suspendre ou réactiver.
+Dream crée directement des **packages personnels** avec `SKILL.md`, preuves et score, dans
+**Compétences personnelles**. Une candidate devient utilisable après trois tâches distinctes et
+un score de 0,75 par défaut. Les mêmes actions permettent édition, transfert, désactivation et
+suppression ; un renforcement ne réactive pas une compétence désactivée et une révision tardive
+n’écrase pas une édition manuelle. La migration conserve historique et suspensions ; l’ancien
+lien Auto-apprentissage ouvre les compétences personnelles.
 
 Sources : [flux Dream](../architecture/flows/dream.md), [registre actif](../../../back/app/dream/registry.py),
 [mécanismes](../../../back/app/dream/),
@@ -2929,8 +3132,8 @@ Les agents équipés de **Compétences** peuvent découvrir/lire la bibliothèqu
 `file_*`. La création d’un paquet commence par un `SKILL.md` valide. Les révisions, fichiers système
 et opérations sur le fichier principal restent protégés selon le contrat.
 
-Les compétences apprises par Dream constituent une collection séparée, avec score et preuves.
-Elles s’ajoutent aux compétences ordinaires lorsque leur état le permet.
+Les compétences apprises par Dream sont des packages personnels, avec score et preuves.
+Elles deviennent utilisables lorsque leur état et leurs seuils le permettent.
 
 La matrice présente **Global (tous)**, **Catégorie** et **Cet agent** avec des commandes Actif/Bloqué.
 Seule la règle applicable apparaît sélectionnée : la dérogation de compétence pour l’agent prévaut,
@@ -2939,8 +3142,8 @@ ou une règle masquée par une dérogation ; elle ne signifie pas une désactiva
 
 ### Compétences personnelles et propriété
 
-L'onglet **Compétences personnelles** sépare les packages privés par agent du catalogue générique
-et des procédures apprises par Dream. Il propose recherche, filtre propriétaire, édition des
+L'onglet **Compétences personnelles** rassemble les packages privés par agent, manuels ou appris
+par Dream, séparément du catalogue générique. Il propose recherche, filtre propriétaire, édition des
 fichiers texte et du libellé, activation et suppression avec contrôle de révision. Un humain
 autorisé peut transférer un package à un autre agent géré. La gestion globale permet aussi
 de rendre un générique personnel ou de retirer la propriété d'un personnel : ces opérations
@@ -2954,6 +3157,15 @@ et réglages. Sa portée locale `usage`, `personal`, `team` ou `all` est attribu
 et les conversions. Les fichiers utilisent `galaris://skill/`, avec l'espace personnel
 `galaris://skill/personnal/<agent>/<code>/`. Les quotas personnels sont de 100 packages et
 200 Mio par propriétaire. Les packages système restent protégés.
+
+Les nouvelles connexions Compétences sont actives par défaut et utilisent `personal` sans portée
+locale explicite : l’agent gère ses propres packages sans modifier les génériques. Les désactivations
+et portées explicites déjà enregistrées sont préservées.
+
+**Désactiver pour tous**, avec édition des compétences et gestion globale des agents, masque un
+générique, y compris système, malgré les exceptions de catégorie ou d’agent. Fichiers et affectations
+sont conservés pour la réactivation. La consultation et la gestion MCP administratives restent
+possibles sous leurs droits, avec `administration=true` et la portée `all` pour changer l’activation.
 
 ### Application des changements à la prochaine exécution
 
@@ -3157,14 +3369,25 @@ Un changement de responsable ou la révocation invalide les accords concernés a
 Il n’existe pas de mode global d’approbation automatique. Les droits et préconditions restent vérifiés :
 une source modifiée après l’accord empêche l’opération initiale, même si l’accord est permanent.
 
+**Toujours interdire** mémorise aussi un refus pour la fonction de cette connexion ou le type
+d’action du harnais. Un refus permanent bloque les prochains départs, y compris déjà approuvés ;
+une action commencée peut se terminer. Les décisions réseau peuvent porter sur une origine ou
+tous les sites dans la portée soumise à autorisation ; filtres et politique du réseau local restent
+prioritaires. Un blocage de configuration ne crée pas une fausse attente d’accord.
+
 La page **Permissions** permet aussi de traiter une demande sans canal privé disponible.
 Une réponse expirée, dupliquée ou relative à une configuration modifiée ne lance pas une seconde
 opération. Un résultat externe incertain exige une réconciliation.
 
-Elle sépare les demandes en attente des permissions réutilisables : fonctions MCP, types
-d’actions de harnais et accords réseau mémorisés. Un humain habilité peut les filtrer par
-agent, outil ou état et révoquer un accord sans effacer l’historique. La révocation d’une
-fonction la remet **Sur demande** ; elle ne constitue pas un droit de réactivation.
+Le tableau de bord **Superviser → Permissions** (`/permissions`) sélectionne un agent et rassemble
+attentes, activation des connexions, fonctions/prompts, décisions des harnais, contacts et réseau.
+Recherche et compteurs Autorisés/Interdits/Sur demande/En attente filtrent l’ensemble. Le filtre
+**Paramétrages personnalisés** isole les exceptions locales ; une connexion désactivée compte une
+fois, sans compter ses fonctions. Les règles locales et effectives restent distinctes :
+**Sur demande** impose l’accord, **Hériter** restaure le défaut. Les accords et refus mémorisés
+peuvent être modifiés ou retirés, sans rejouer les actions bloquées. Les connexions désactivées
+restent proposées ; la configuration technique, les compétences et les droits des ressources
+conservent leurs écrans dédiés. Un catalogue externe indisponible conserve ses règles connues.
 
 Sources : [demandes et préconditions](../../../back/app/tools/tests/test_action_authorizations.py),
 [permissions](../admin/tool-administration.md).
@@ -3285,21 +3508,35 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 |---|---|
 | `file://<uuid>` | Fichiers internes indépendants et pièces jointes accessibles, octets immuables et nom officiel commun. |
 | `console://` | Fichiers du home de la console active de l’agent ; ce schéma n’est annoncé que si cette console existe. |
-| `document://` | Documents HTML et collection de pièces jointes `document://<uuid>/attachments/` ; anciens alias Dataset vérifiés seulement. |
-| `data://` | Datasets JSON indépendants, avec leurs droits et révisions propres. |
+| `document://` | Bibliothèque commune Texte/Données, dossiers `document://folders/` et pièces jointes `document://<uuid>/attachments/` ; droits propres à chaque document. |
+| `data://` | URI canonique des documents Données JSON ; même identité documentaire, avec compatibilité des anciens liens vérifiés. |
 | `memory://` | Recherche et lecture des connaissances autorisées. |
 | `galaris://` | Projections d’objets métier : tâches, rounds texte, tours vocaux, Goals, cycles et processus selon les collections exposées. |
 | `galaris://skill/` | Fichiers des compétences administrées, uniquement avec la connexion spécialisée active. |
 | `galaris://agent/<id>` | Profil courant d’un agent accessible, dont les champs éditoriaux d’identité et de mission ; l’identifiant entier est fourni par l’annuaire. |
+| `galaris://contact/<uuid>` | Fiche courante du carnet privé de l’agent ; lecture/export et édition contrôlée du nom et des coordonnées. |
 | `galaris://code/<uuid>` | Référence d’un dépôt Git dans la Console ; ouverture de son checkout courant avec droits propres. |
 | `galaris://processes/runs/<uuid>` | Snapshot autorisé d’un run natif ; sous-ressources `data` et `attachments/` sous les règles du profil et du processus. |
 | `galaris://documentation/` | Corpus officiel installé, en lecture seule, soumis à la connexion Galaris Admin et à `documentation_catalog`. |
 | URI d’un Tool de fichiers connecté | Fichiers et collections du provider, par exemple Nextcloud ou Samba / SMB 2–3. Le code exact du Tool constitue le schéma. |
 | URI d’une pièce jointe Messenger | Fichier conservant le Tool et le salon d’origine ; lecture selon l’accès à la conversation. |
-| `mail://` | Pièces jointes identifiées par message/partie MIME ; lecture et copie, sans mutation générique. |
+| `mail://` | Dossiers IMAP, messages et pièces jointes ; lecture et copie, sans mutation générique et avec des règles distinctes pour la consultation humaine et le traitement agentique. |
 | HTTPS public | Lecture/transfert web borné selon les contrôles du provider web. |
 
 ### Explorateur des fichiers d’un agent
+
+L’emplacement **Documents** regroupe Texte et Données dans leur hiérarchie de répertoires,
+avec les documents non classés à la racine et les seuls enfants directs dans chaque dossier.
+Il n’y a plus d’emplacement Données séparé ; les URI `data://` restent utilisables. Les noms des
+répertoires alimentent le fil d’Ariane, y compris sur un lien direct. Un même document peut apparaître
+dans plusieurs classements avec une URI stable. L’accès à un descendant rend ses ancêtres visibles.
+
+Dans **Galaris**, Goals ouvre la fiche de l’objectif ; les cycles se consultent depuis celle-ci,
+sans liste ni recherche séparée dans Fichiers. Skills ouvre une modale avec `SKILL.md` en premier ;
+les génériques sont groupés par catégorie et les personnels par agent. Contacts ouvre la fiche
+consultable ou éditable selon les droits. Les tâches, rounds, tours vocaux et runs affichent leur
+date de création quand elle existe. Le sélecteur commun de ressources permet sélection multiple,
+retrait des choix et aperçu en plein écran sans modifier la sélection.
 
 **Connaissances → Fichiers** permet de choisir un agent géré puis parcourir son système de
 fichiers virtuel : racines, répertoires, fil d’Ariane, remontée au parent, grille et miniatures.
@@ -3352,6 +3589,11 @@ Pour les autres fichiers, le format et les unités sont ceux du
 provider. Les snapshots métier sont en lecture seule ; leur modification passe par les commandes
 métier. La suppression d’une mémoire ou d’un document utilise l’oubli métier, pas un `file_delete`
 qui contournerait les protections.
+
+`file_rename` modifie le titre des documents Texte/Données à URI stable, avec
+`expected_lock_version` obtenu par `file_info`. Corps, révisions de contenu, pièces jointes et droits
+sont conservés. Les fiches Contacts sont une exception administrée aux projections métier en
+lecture seule : leurs champs autorisés se modifient avec un `expected_etag`, uniquement pour l’agent propriétaire.
 
 Sur `document://`, `file_search(mode="name")` recherche titres et noms de fichiers avec
 pagination et ACL, en retournant des métadonnées compactes sans extraits du corps ni chargement
@@ -3411,13 +3653,13 @@ Les métadonnées techniques restent séparées du texte descriptif.
 Une connexion désactivée ou reconfigurée retire ses anciennes projections des recherches.
 Seules les listes complètes et les suppressions prouvées établissent une disparition ; une
 source inaccessible ou une page tronquée ne justifie pas un effacement. Les observations
-échouées sont réparées sans rejouer l’opération externe. Dans **Fichiers → Indexation**, un humain
+échouées sont réparées sans rejouer l’opération externe. Dans **Préférences → Fichiers**, un humain
 peut lancer un parcours admissible, voir sa couverture partielle, l’annuler et relancer les
 réparations. Les diagnostics terminaux sont conservés 30 jours. Les options médias Dream
 enrichissent les descriptions sans écraser les notes personnelles ; les répertoires ne sont pas résumés.
 
 L’indexation possède ses droits de lecture et de commande propres, sans exiger l’accès à Dream
-ni à l’explorateur. Dream conserve un accès à ce même panneau pour les utilisateurs habilités.
+ni à l’explorateur.
 
 Sources : [réglages et parcours](../admin/tool-administration.md),
 [catalogue, couverture et droits](../../../back/app/memory/tests/test_file_catalogue.py),
@@ -3633,6 +3875,11 @@ Sources : [Console](../../../back/app/console/), [exécuteur embarqué](../compo
 
 ### Dépôts Git et VS Code dans le Chat
 
+Les dépôts s’ouvrent aussi depuis **Fichiers → Galaris → Dépôts de code**, dans l’éditeur plein écran,
+avec `CODE_ACCESS` et les droits du dépôt. Dans Console, le menu d’un checkout ou worktree Git,
+ou du fond de son répertoire ouvert, propose **Ouvrir dans l’éditeur de code** sans créer de discussion.
+Fermer puis rouvrir conserve les fichiers non enregistrés dans le navigateur.
+
 **Code source**, sous Documents dans le Chat, retrouve les dépôts présentés par `repository_show`
 et recherche les checkouts du home SSH si l’utilisateur possède la Console active. La découverte
 reconnaît dépôts et worktrees, ignore liens symboliques et répertoires techniques/cachés et signale
@@ -3675,6 +3922,10 @@ Sources : [parcours code](../user/code-editor.md), [administration et maintenanc
 ## 21. Images, audio, musique et vidéo
 
 ### Images : création, modification et analyse
+
+Si OpenRouter refuse explicitement la résolution demandée, la génération réessaie une seule fois
+avec la résolution par défaut, en conservant modèle, cadrage et images de référence. Le résultat
+indique les dimensions réelles ; les dimensions demandées restent une préférence.
 
 - Générer une image à partir d’une consigne avec le modèle image configuré.
 - Modifier ou composer une image à partir de références jointes, fournies sous forme d’URI.
@@ -3791,6 +4042,13 @@ la boîte a changé d’identité, pour éviter qu’un ancien identifiant agiss
 
 ### Réception automatique
 
+La consultation humaine est accessible dans **Fichiers → Mail** avec les droits Fichiers et
+`MAIL_ACCESS` ou `MAIL_EDIT`. Elle parcourt la hiérarchie IMAP, y compris Envoyés, Archives et
+Corbeille, avec objet, expéditeur, date et état lu/non lu, par lots de 50. Le lecteur pagine les
+messages longs, ouvre les pièces jointes et télécharge l’original `.eml`. Le HTML devient du texte,
+sans images distantes ni exécution. Cette lecture ne marque pas le mail comme lu, ne crée pas
+de tâche et n’autorise aucun traitement par l’agent ; recherche et mutations IMAP ne sont pas proposées.
+
 Une connexion active relève l’INBOX selon son intervalle, 60 secondes par défaut. La première
 activation établit une référence de départ sans transformer tout l’historique en tâches. Les
 nouveaux messages sont journalisés puis, après autorisation de traitement, admis comme
@@ -3805,6 +4063,10 @@ Une règle explicite **Sur demande** s'applique à tous ; **Actif** accepte tous
 exacte est admissible, sans ses sous-dossiers ; chercher ailleurs ne crée pas de réception.
 Le [Journal des mails](../user/tasks.md) sépare **Réception** et **Envoi**, avec décisions,
 erreurs et reprises. L'accord de traitement n'autorise jamais l'envoi d'une réponse.
+
+**Toujours interdire le traitement des mails** bloque `mail_process` sur cette connexion, pour
+tous les expéditeurs, sans lire les prochains corps ni créer de tâche. La décision se modifie
+ou se retire dans Permissions, indépendamment des autorisations d’envoi.
 
 L’agent lit le mail par son outil. La fin de la tâche **n’envoie pas automatiquement sa réponse** à
 l’expéditeur : un envoi SMTP est une action explicite. Les expéditeurs et destinataires observés
@@ -4490,7 +4752,7 @@ Sources : [dashboard](../../../back/app/dashboard/schemas.py), [appels LLM](../.
 | Persistance | PostgreSQL/pgvector, SQLAlchemy async, transactions, historique et verrouillage optimiste ; leases et claims pour répartir les exécutions durables. DbAdmin dérive le schéma et applique les contributions idempotentes. |
 | Orchestration | Agent fournit façade, registre, résolution, dispatcher, planner et résultat ; Harness exécute Pydantic AI ; tâche possède états, tentatives et scheduler. Les drivers rendent un unique résultat terminal après leurs événements. |
 | Messages | Messenger possède conversations, capacités, journal entrant et déduplication ; les bridges traduisent les protocoles. Les fichiers conservent leur URI et provenance dans la chronologie. |
-| Ressources | Document possède les Documents HTML, Memory les souvenirs personnels, Dataset le JSON, Process le BPMN et ses runs, Storage les octets ; File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
+| Ressources | Document possède Texte/Données, Memory les souvenirs personnels, Process le BPMN et ses runs, Storage les octets ; File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
 | Interface | Vue/Quasar, Pinia, routes dérivées des fichiers, navigation déclarée, catalogue i18n par domaine et composants partagés chargés à la demande ; contrôles de parité FR/EN, thème et frontière mobile communs. |
 | Temps réel | Abonnements autorisés par domaine, événements après commit, deltas de progression bornés et resynchronisation par snapshot/cursor ; reconnexion sans restauration d’un droit révoqué. |
 | Extensions | Providers IA/fichiers/aperçus, drivers, harnais, moteurs Process, bridges, mécanismes Dream/Lab et contributions DbAdmin possèdent leurs contrats ; présence sur disque et activation sont distinctes. |
@@ -4507,6 +4769,10 @@ Sources : [architecture](../architecture/README.md), [invariants](../architectur
 [carte des contrats](../architecture/generated/project-map.md), [socle développeur](../dev/README.md).
 
 ### Réglages applicatifs
+
+Les suffixes d’instructions de l’exécuteur, de la conversation et de la voix sont vides par défaut :
+le socle commun fournit déjà les consignes Documents, Memory, Skills et URI. Les personnalisations
+de l’instance restent conservées ; les nouvelles consignes du socle ne les écrasent pas.
 
 Les paramètres de fonctionnement sont persistés et consultables dans les préférences. Les
 formulaires exposent des champs typés, leurs descriptions et les valeurs autorisées. Les réglages
@@ -4608,7 +4874,10 @@ pouvoir relire les secrets.
 
 Les textes courants et historiques de Memory/Documents résident en colonnes PostgreSQL,
 enregistrés transactionnellement avec leurs métadonnées et révisions. Les listes et résumés
-n’emportent pas systématiquement ces corps. Les Datasets conservent leur JSON dans leur domaine ;
+n’emportent pas systématiquement ces corps. Les documents Données partagent `documents` et
+`document_revisions` avec les Textes ; leurs sources historiques restent archivées et vérifiées.
+Les résumés et mots-clés sont courants, sans versions propres. Les Contacts sont reconstruits
+en JSON depuis le carnet canonique à chaque lecture, sans copie de contenu dans Memory ;
 Process conserve BPMN, révisions, variables, liens de fichiers et reçus séparément.
 
 **`core.storage`** possède le registre des fichiers, empreintes SHA-256, tailles, noms et alias.
@@ -4625,6 +4894,13 @@ les preuves et sources requises, refusent les collisions ou absences inattendues
 pas les ressources externes pour les migrer. La première bascule exige l’arrêt des anciens writers.
 Sauvegarde/restauration doit couvrir ensemble base, archives de migration, fichiers et métadonnées
 cachées de leur magasin, données historiques encore retenues et secrets de déchiffrement.
+
+La consolidation Texte/Données conserve JSON exact, auteurs, versions, classements et accès ;
+elle archive et vérifie les anciennes tables avant de finaliser les types. Une collision avec
+un document indépendant bloque la migration. Les marqueurs de reprise empêchent de restaurer
+des droits révoqués ou d’écraser des modifications ultérieures. Les remplacements de clés étrangères
+existantes attendent la contraction, après copie des données ; les nouvelles tables sont créées
+pendant l’expansion. Voir la [décision sur les documents typés](../../../project/decisions/0252-typed-documents.md).
 
 Les mises à jour de sources ou d’images qualifiées conservent un **journal local indépendant de
 l’application et de Logfire** : date UTC, étape, statut et code de sortie, sans recopier les
@@ -4787,7 +5063,7 @@ Un humain demande un simulateur de crédit avec conservation des scénarios. L�
 Dataset `data://` pour les hypothèses et un autre, contenant `[]`, pour les simulations enregistrées.
 Il produit une page HTML avec les explications, les champs montant/taux/durée et le calcul
 JavaScript, puis une page de consultation des scénarios. Chaque page reste un document ordinaire
-dans la bibliothèque Documents ; les Datasets s’éditent séparément dans Jeux de données.
+dans la bibliothèque Documents, qui réunit les Textes et les Données avec un filtre de type.
 
 L’agent partage les pages et les Datasets avec les destinataires prévus. Chaque lecteur autorise
 ensuite les accès applicatifs nécessaires depuis les permissions du document. La page de simulation
@@ -4882,7 +5158,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Indexation des fichiers | Catalogue privé par agent, accès source actuel, regroupement des copies par SHA-256 ; découverte dépendante du provider, sans garantie de couverture exhaustive d’un parcours partiel. |
 | Graphe mémoire | 3D uniquement, chargement spatial client, représentants des éléments masqués et actualisation préservant la navigation ; WebGL requis. Carte serveur encore prévue. |
 | Analyse documentaire | Lots reprenables dans app.llm, sans Process ; couverture des unités fournie distincte de la justesse des réponses et aucun rejeu automatique d’une inférence interrompue. |
-| Document et mémoire | Synthèse facultative avec historique indépendant et droits du document ; souvenirs autonomes privés et mots-clés communs au document et à sa synthèse. |
+| Document et mémoire | Résumé et mots-clés courants possédés par Document, sans historique propre ; souvenirs privés et références facultatives du graphe sans effet sur les droits source. |
 | Miniatures | WebP courant unique pour un document ; dérivés par version pour les fichiers. Une miniature Office ne constitue pas une visionneuse plein écran. |
 | Préconfiguration OpenRouter | Réservée aux bases neuves, sans clé ni appel réseau ; les neuf références livrées restent modifiables et leur disponibilité distante n’est pas garantie. |
 | API de profils | Code stable, usages disponibles de tous les profils, jeton utilisateur autorisé ; un usage manquant n’emprunte pas un autre profil. |
@@ -4895,17 +5171,17 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
 | Apprentissage de compétences | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
 | Collaboration documentaire | Sauvegarde, révisions, conflits et partage ; pas une promesse de coédition simultanée caractère par caractère. |
-| Documents et Datasets | Documents HTML `document://` dans Document et ressources JSON `data://` dans Dataset ; droits et historiques indépendants. |
+| Documents et Datasets | `app.document` possède Texte (HTML, `document://`) et Données (JSON, `data://`) dans une bibliothèque commune ; chaque document conserve ses droits et ses versions. |
 | Applications documentaires | Affichage automatique de HTML/CSS/JavaScript isolés et texte éditable, sans vue Source ; les ressources externes ordinaires sont bloquées. Le CPU et la mémoire du navigateur ne sont pas plafonnés par ce mécanisme. |
 | Accès applicatif aux Datasets | Droits actuels du lecteur et accord personnel pour la version du document ; refus par défaut. L’accès en écriture permet aussi un remplacement complet, sans permission « ajout uniquement » distincte. |
 | Données et quotas applicatifs | JSON borné, sans schéma métier imposé ; 30 écritures et 4 000 000 octets résultants par minute et couple utilisateur–Dataset, partagés entre applications. |
 | Export des applications | Capture statique du rendu courant, sans réexécution ni écriture supplémentaire ; largeur recalculée pour l’impression/PDF, indépendamment du panneau ouvert. |
 | « Public » documentaire | Accès dans l’application ; pas un lien anonyme de publication web. |
-| Dossier documentaire | Classement personnel, distinct d’un Topic ; sa visibilité dans Memory dérive des documents lisibles et ne crée pas un partage de dossier. |
+| Dossier documentaire | Classement personnel avec référence stable et partage automatique sur les documents repartageables ; la visibilité des ancêtres dans Memory suit les documents lisibles sans ouvrir leurs voisins. |
 | Pièces jointes | Identité et structure en Memory ; quatre analyses Dream optionnelles, désactivées par défaut, complètent les descriptions vides. Dans Dream, la vidéo est traitée par son audio uniquement. Les descriptions produites par `image_read` sont aussi persistées. |
 | Entrées multimodales natives | Images, audios, vidéos et PDF joints peuvent atteindre directement le modèle du harnais interne, selon ses capacités et celles du transport. Droits, formats et budget d’octets restent contrôlés ; les outils spécialisés et replis sont conservés. |
 | Affichage documentaire agentique | `document_show` ouvre un document autorisé dans le salon texte interne de l’agent ; absent des tâches, de la voix et des canaux externes, sans effet sur les ACL. |
-| Classement des Goals | Traitement durable en arrière-plan, respectant droits et classement manuel ; l’admission d’un rattrapage n’en prouve pas l’achèvement. |
+| Classement des Goals | Description HTML dans le Goal ; seul le suivi est un document, créé non classé et librement classable par chaque utilisateur. Aucun dossier ni rangement automatique de livrables. |
 | Partage PDF natif | Dépend du navigateur ; téléchargement proposé à défaut, sans publier automatiquement le document. |
 | YouTube | Sous-titres publics disponibles ; ni téléchargement universel ni accès aux vidéos privées. |
 | Providers IA et messagerie | Capacités variables ; un bridge ne donne pas automatiquement toute l’API de son fournisseur. |
@@ -4946,7 +5222,7 @@ d’aperçu, les bridges, les harnais, les mécanismes Dream et les contribution
 <a id="mcp"></a>
 ## 30. Inventaire des fonctions accessibles aux agents
 
-Cet inventaire reprend les **278 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
+Cet inventaire reprend les **284 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
 Il couvre aussi les fonctions réservées aux contrôleurs conversationnels ou à l’administration.
 Toutes ne sont donc pas visibles simultanément par chaque agent. Les schémas d’arguments complets
 sont exposés par MCP ; leurs sources sont reliées aux sections métier ci-dessus.
@@ -5093,11 +5369,20 @@ La lecture des Goals et cycles utilise aussi `file_list`, `file_search` et `file
 collections `galaris://`. La gestion de tous les Goals exige la connexion spécialisée ; les actions
 ordinaires restent dans le périmètre de l’agent.
 
+### Contacts privés
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `contact_list` | `galaris` | Rechercher et paginer le carnet privé de l'agent appelant. |
+| `contact_get` | `galaris` | Lire sa propre fiche Contact, ses identités et coordonnées par UUID. |
+| `contact_create` | `galaris` | Créer un contact privé avec nom et mail, téléphone ou adresse ; accord demandé par défaut, sans message sortant. |
+| `contact_update` | `galaris` | Modifier nom et coordonnées du contact propriétaire, sans changer ses identités ; accord demandé par défaut. |
+
 ### Mémoire, partage et compétences
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `memory_remember` | `memory` | Enregistrer immédiatement un fait durable rare et important en HTML, avec métadonnées, sources et temporalité facultative ; l’extraction ordinaire reste confiée à Dream. |
+| `memory_remember` | `memory` | Acquérir un fait atomique structuré rare et important (sujet, propriété, valeur), avec sources et temporalité facultative ; le serveur construit le HTML et Dream extrait les faits ordinaires. |
 | `memory_upcoming` | `memory` | Paginer les souvenirs autorisés correspondant à maintenant ou à la fenêtre d’anticipation, indépendamment de la similarité textuelle ; ne programme aucune notification. |
 | `memory_forget` | `memory` | Oublier définitivement un souvenir autonome et ses versions admissibles ; les mémoires documentaires ne peuvent pas être oubliées indépendamment du document. |
 | `memory_summarize` | `memory` | Synthétiser avec le modèle de l’agent faits attribués, décisions, engagements et questions ouvertes, au maximum 200 messages et 32 000 caractères, sans remplacement des souvenirs existants ni stockage après erreur modèle. |
@@ -5106,7 +5391,7 @@ ordinaires restent dans le périmètre de l’agent.
 | `skills_list` | `skills` | Découvrir les compétences dans le périmètre administrable/autorisé. |
 | `skill_read` | `skills` | Lire une compétence et ses informations ; fichiers auxiliaires accessibles via la façade de ressources. |
 | `skill_update` | `skills` | Modifier le libellé du package avec sa révision attendue. |
-| `skill_set_enabled` | `skills` | Activer ou désactiver un personnel pour son seul propriétaire. |
+| `skill_set_enabled` | `skills` | Activer/désactiver un personnel pour son propriétaire ou un générique pour tous avec administration explicite, portée globale et révision attendue. |
 | `skill_delete` | `skills` | Supprimer un package utilisateur et ses fichiers avec contrôle de portée et révision. |
 | `skill_set_authorization` | `skills` | Affecter une compétence générique à un agent du périmètre délégué. |
 | `skill_set_category_authorization` | `skills` | Régler l'autorisation d'une catégorie générique pour un agent. |
@@ -5132,6 +5417,7 @@ ordinaires restent dans le périmètre de l’agent.
 | `file_schemes` | `file_sharing` | Découvrir les schémas, exemples et capacités accessibles à cet agent. |
 | `file_list` | `file_sharing` | Lister une collection de fichiers, pièces jointes ou objets projetés. |
 | `file_info` | `file_sharing` | Lire les métadonnées et les capacités d’une ressource. |
+| `dataset_query` | `file_sharing` | Interroger un document Données autorisé : filtres JSON, projection, tri, pages et agrégats, avec révision attendue. |
 | `file_search` | `file_sharing` | Rechercher noms/contenus sous une collection ; appliquer le rappel hybride et les chemins structurels autorisés pour Memory. |
 | `file_read` | `file_sharing` | Lire une page de texte/blocs HTML, le JSON d’un Dataset paginé en caractères ou un binaire borné, avec suite de lecture et révision. |
 | `file_create` | `file_sharing` | Créer une ressource texte/binaire, une pièce jointe, un Document HTML `document://` ou un Dataset JSON `data://`, avec son contenu complet. |
@@ -5140,6 +5426,7 @@ ordinaires restent dans le périmètre de l’agent.
 | `file_edit` | `file_sharing` | Remplacer une plage de blocs HTML ou de lignes JSON/texte avec contrôle de révision si requis. |
 | `file_copy` | `file_sharing` | Copier entre URI, y compris vers une collection conservant le nom source ; une source JSON copiée vers `data://` crée un Dataset. |
 | `file_move` | `file_sharing` | Déplacer/renommer si les providers supportent les mutations requises. |
+| `file_rename` | `file_sharing` | Renommer selon les capacités du provider ; titres Texte/Données à URI stable avec `expected_lock_version` issu de `file_info`. |
 | `file_delete` | `file_sharing` | Supprimer les ressources autorisant la suppression générique ; les objets protégés utilisent leur domaine. |
 
 Les applications dans les documents utilisent le SDK `galaris.datasets` dans leur navigateur,
@@ -5302,7 +5589,7 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 ### Lab : mécanismes, jeux et cas
 
 Les jeux de tests du Lab sont des expériences propres à un mécanisme ; ils sont distincts des
-ressources JSON indépendantes du domaine Dataset. Les fonctions ci-dessous
+documents Données JSON possédés par `app.document.data`. Les fonctions ci-dessous
 appartiennent toutes au Tool optionnel `lab`.
 
 | Fonction | Famille | Action et résultat |
@@ -5428,9 +5715,9 @@ d’activation et de configuration restent celles du runtime.
 | `app.webhook` | [Module sans endpoint générique actif ; entrées externes via les intégrations dédiées](#processus) |
 | `app.llm` | [Modèles, profils, passerelles, crédits et inférences durables](#modeles), [lecture et analyses documentaires](#harnais), [traces et coûts](#supervision) |
 | `app.topic` | [Dossiers thématiques et classement](#sujets) |
-| `app.document` | [Documents HTML, résumés partagés, versions, applications, droits et classement](#documents), [rédaction et conversation contextuelle](#chat) |
+| `app.document` | [Documents Texte/Données, résumés courants, versions, applications, droits et classement](#documents), [rédaction et conversation contextuelle](#chat) |
 | `app.memory` | [Souvenirs privés par agent, rappel, graphe et références documentaires facultatives](#memoire) |
-| `app.dataset` | [Datasets JSON indépendants, révisions et partage](#documents) |
+| `app.dataset` | [Compatibilité vers `app.document.data` : URI et API JSON historiques](#documents) |
 | `app.contact` | [Contacts et identités multicanaux](#messageries) |
 | `app.dream` | [Extraction, réutilisation des preuves acquises, classement et entretien de fond](#dream) |
 | `app.task` | [Travail durable, jalons, portée, remplacement coordonné, scheduler, tentatives, commandes et budgets](#taches) |
@@ -5499,7 +5786,7 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `core/user` | Connexion, inscription, utilisateurs, tokens, préférences du compte et acquittements des aides |
 | `core/team` | Équipes et composition des membres |
 | `core/authorize` | Rôles, privilèges, affectations et profil |
-| `core/params` | Préférences par rubrique et harnais |
+| `core/params` | Préférences par rubrique, harnais et indexation des fichiers |
 | `app/index` | Accueil, bienvenue, dashboard, À propos, crédits, licence et page inconnue |
 | `app/agent` | Fiches, avatars, équipes, civilités et configuration des agents |
 | `app/harnesses` | Catalogue de harnais, détails, Compose et diagnostic du manager |
@@ -5512,13 +5799,13 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `app/conversation` | Historique des rounds, détails d’exécution communs et résolution de livraison |
 | `app/share` | Formulaire de partage commun et sélection des propriétaires/destinataires |
 | `app/file_share` | Explorateur par agent, URI, aperçus, téléchargements, renommage, suppression et indexation |
-| `app/dataset` | Bibliothèque JSON, dossiers personnels, éditeur en modale, versions, propriété, partage, utilisations et suppression |
+| `app/dataset` | Composants JSON et redirection des anciens liens vers la bibliothèque Documents commune |
 | `app/chat` | Discussion, salons, éditeur de messages, aperçus, espace documentaire adaptatif, tâches/documents/processus liés |
 | `app/voice` | Historique des appels et détail des tours vocaux |
-| `app/dream` | Suivi, historique, indexation des fichiers et actions immédiates sur les nœuds Memory |
+| `app/dream` | Suivi, historique et actions immédiates sur les nœuds Memory ; indexation administrée dans Préférences → Fichiers |
 | `app/topic` | Liste, détail et réorganisation des sujets |
 | `app/goal` | Objectifs, arbre, cycles, référents, horaires et suivi |
-| `app/document` | Bibliothèque HTML, résumés partagés, rédaction avec conversation, applications, droits, dossiers personnels, miniatures et partage |
+| `app/document` | Bibliothèque Texte/Données, résumés courants, rédaction avec conversation, applications, droits, dossiers personnels, miniatures et partage |
 | `app/memory` | Souvenirs privés, liste/recherche, temporalité et simulation, graphe à branches repliables, fichiers, emplacements et contacts |
 | `app/lab` | Analyse de tâches, jeux synthétiques contextualisés, évaluation par mécanisme, cohérence et revues attribuées |
 | `app/incident` | Incidents, familles et revue |

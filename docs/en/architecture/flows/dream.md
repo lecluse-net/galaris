@@ -69,9 +69,9 @@ messages cover both text and voice conversations. Their
 creation policy is checkpointed before application and respects
 `DREAM_TOPIC_CREATION_MODE`.
 
-`topic.classify_document` and `topic.classify_dataset` also classify HTML Documents and
-JSON Datasets without a topic. Each domain owns its nullable `topic_id` foreign key and
-exposes sources through its public facade. Receipts identify the resource version; an
+`topic.classify_document` and `topic.classify_dataset` also classify Text and Data documents
+without a topic. `app.document` owns their common nullable `topic_id` foreign key;
+the Text and Data facades expose each type's sources. Receipts identify the resource version; an
 edit, deletion or assignment during inference prevents applying a late decision. Content
 and its revisions remain unchanged. Resources reuse existing topics; creation is applied
 only in `auto` mode because resources have no conversation in which to request approval

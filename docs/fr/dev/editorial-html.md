@@ -72,22 +72,24 @@ ni dossier dans la bibliothèque. `agent_list`, `agent_get` et le champ API `res
 fournissent cette URI. `file_read` renvoie directement la personnalité et la fiche de poste
 actuelles, en HTML `rich-text` dans leur enveloppe JSON, avec les droits d'accès existants.
 
-Memory possède les documents éditoriaux HTML `document://`. Dataset possède les ressources
-JSON indépendantes `data://`, leurs droits et leur historique, dans **Connaissances → Jeux de données**.
-Une création native de Dataset ne crée pas de Document dans Memory. Les anciens liens
-documentaires ne fonctionnent comme alias que pour les Datasets migrés et vérifiés.
+`app.document` possède les documents **Texte** (HTML, `document://`) et **Données**
+(JSON, `data://`), leurs métadonnées, droits, classements et révisions communs dans
+**Connaissances → Documents**. `app.document.text` et `app.document.data` fournissent
+le comportement de contenu ; `app.dataset` reste un relais de compatibilité.
+Une création de document n'exige aucun souvenir Memory. Les anciens alias documentaires
+des Datasets migrés restent vérifiés ; les liens `data://` conservent le même UUID documentaire.
 Le JSON UTF-8 est validé avant enregistrement, sans modifier sa mise en forme ; une saisie
 invalide reste un brouillon et n'est jamais convertie en HTML. Toute racine JSON valide est
 admise ; NaN et Infinity sont refusés. Le quota de ressources configurable
 `MEMORY_RESOURCE_MAX_BYTES` s’applique, sans plafond documentaire distinct de 2 Mo.
-Voir la [décision 0187](../../../project/decisions/0187-dataset-domain-and-typed-contracts.md)
-et le [contrat Dataset](datasets.md).
+Voir la [décision 0252](../../../project/decisions/0252-typed-documents.md)
+et le [contrat Données](datasets.md).
 
 Créer directement avec
 `file_create(path="data://", name="Scénarios", content='{"scenarios": []}')`.
 Le champ `content` doit contenir le JSON complet ; une omission ou un contenu vide est refusé
 avant création. L'ancienne option `document_type="dataset"` sur `document://` reste un
-adaptateur et renvoie aussi `data://`, jamais un nouveau Dataset documentaire.
+adaptateur vers un document Données et renvoie aussi `data://`.
 Pour un Dataset, `file_read` pagine en caractères et `file_edit` édite des lignes ; le JSON
 complet après modification doit être valide. `file_write`, `file_edit` et `file_append`
 exigent la révision lue. Préférer remplacement ou édition à la concaténation de JSON.

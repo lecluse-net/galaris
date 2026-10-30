@@ -124,7 +124,7 @@ Des choix encadrés, validés et traçables.
 - workflows métier BPMN natifs avec activités IA et humaines, variables typées et suivi en
   direct, aux côtés des moteurs externes comme n8n ; la création interne dans l'interface est
   actuellement disponible en mode développement ;
-- jeux de données JSON indépendants, navigateur de fichiers par agent et éditeur Git dans la discussion ;
+- bibliothèque commune de documents Texte et Données JSON, navigateur de fichiers par agent et éditeur Git dans la discussion ;
 - objectifs de long terme avec propriétaire, référent, planning, cycles, preuves et contrôles manuels.
 
 Les capacités sont gouvernées par agent et les plus spécialisées restent inactives par défaut. Le

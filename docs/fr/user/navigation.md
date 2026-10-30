@@ -683,8 +683,8 @@ connexion retirent le fait du rappel s'il n'a aucune autre provenance indépenda
 Pour un document, ce contenu est une synthèse facultative : **Ouvrir le document**
 ouvre une seconde modale pour modifier son titre, son contenu complet et son partage,
 en conservant la fiche mémoire et son brouillon. Cette mémoire ne peut pas être oubliée
-séparément : supprimer le document depuis son éditeur supprime aussi sa synthèse et son
-historique. Retirer le partage la retire des mémoires de l'agent concerné, tout en la
+séparément : supprimer le document depuis son éditeur supprime aussi son résumé et les
+versions du contenu. Retirer le partage la retire des mémoires de l'agent concerné, tout en la
 conservant pour le propriétaire et les autres lecteurs autorisés. Les pièces jointes et fichiers indexés
 s'ouvrent en plein écran lorsqu'un lecteur prend en charge leur format ; les fichiers audio
 ont un lecteur directement dans leur aperçu. Les documents Office, tableurs et autres
@@ -697,7 +697,8 @@ Le document et sa fiche mémoire partagent les mêmes mots-clés. Vous pouvez le
 depuis les deux fiches avec les droits du document. Une modification actualise l'autre
 fiche ouverte sans perdre son brouillon de contenu et ne crée pas de version de synthèse.
 Si les mêmes mots-clés ont changé ailleurs pendant votre saisie, l'enregistrement signale
-un conflit et conserve votre brouillon. Les anciennes versions gardent leurs mots-clés historiques.
+un conflit et conserve votre brouillon. Résumé et mots-clés restent courants, sans historique
+propre ; restaurer une ancienne version du contenu les conserve.
 Les actions Dream et les autres boutons partagent une rangée alignée à droite dans le pied
 de la fiche. Chaque bouton conserve son contenu sur une ligne ; la rangée peut se répartir
 sur plusieurs lignes selon la largeur disponible.

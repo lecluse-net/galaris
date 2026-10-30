@@ -8,11 +8,17 @@ metadata and history share one PostgreSQL transaction; new text writes create no
 | Table and column | Content |
 |---|---|
 | `memory_items.content` | Current private memory |
-| `documents.content` | Current document content |
+| `documents.content` | Current Text or Data document content |
 | `memory_revisions.content` | Private memory history |
 | `document_revisions.content` | Document history |
 | `documents.summary_content` | Current shared summary |
-| `document_summary_revisions.content` | Shared summary history |
+| `goals.description` | Current Goal description HTML, without text history |
+
+Document summaries and keywords are current metadata, without separate history.
+Restoring document content preserves them. Previous summary versions are archived
+before their table is retired, with verified hashes and retained file references.
+See the [Data contracts](datasets.md) for legacy Dataset migration and shared storage
+with Text documents.
 
 Columns use `TEXT` without normalizing line endings. `NULL` remains possible for
 binary resources or external providers. Metadata lists and history pages exclude full payloads.

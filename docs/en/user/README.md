@@ -763,7 +763,7 @@ if an older document cannot be found.
 
 Each standalone memory remains private to its Agent and displays keywords, provenance and a
 label derived from its content. A document retains its title, full content and access rights; its Memory
-details hold an optional synthesis with independent history. **Open document** lets you edit
+details show its current summary without separate history. **Open document** lets you edit
 full content and sharing. The synthesis inherits current document permissions.
 The list can be filtered by text, Topic, interlocutor and date; the graph shows memories
 alongside documents, files, folders, contacts and Topics.

@@ -4,9 +4,10 @@
 
 Les fichiers internes ont une identité `file://<uuid>` et un registre `files` dans
 `core.storage`. File Sharing expose leurs lectures, copies, uploads indépendants et
-miniatures. Chat, Documents, Dataset et Process conservent leurs rattachements et
-leurs droits. Les jeux de données JSON sont des ressources indépendantes `data://`
-possédées par `app.dataset` ; voir les [contrats Dataset](datasets.md).
+miniatures. Chat, Documents et Process conservent leurs rattachements et
+leurs droits. Les documents Données JSON utilisent `data://` et appartiennent à
+`app.document.data`, avec identité, droits et révisions communs aux Textes.
+`app.dataset` reste un relais de compatibilité ; voir les [contrats Données](datasets.md).
 
 ## Stockage
 

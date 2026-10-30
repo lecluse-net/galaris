@@ -631,7 +631,7 @@ source supports it.
 For a document, this content is an optional synthesis:
 **Open document** opens a second modal to edit its title, full content and sharing while
 preserving the memory details and draft. This memory cannot be forgotten separately:
-deleting the document from its editor also deletes its synthesis and history. Revoking
+deleting the document from its editor also deletes its summary and content versions. Revoking
 sharing removes it from the affected agent's memories while preserving it for the owner
 and other authorized readers. Attachments and indexed files open in fullscreen
 when a viewer supports their format; audio files have a player directly in their preview.
@@ -644,7 +644,8 @@ The document and its Memory details share the same keywords. You can edit them f
 either view with document write access. Changes refresh the other open view without
 losing its content draft or creating a synthesis version. If the same keywords changed
 elsewhere during editing, saving reports a conflict and preserves your draft.
-Older versions retain their historical keywords.
+Summary and keywords remain current metadata without separate history; restoring old content
+preserves them.
 Dream actions and the other footer buttons share a row aligned to the right. Each button
 keeps its content on one line; the row can wrap according to the available width.
 Close the details with the cross

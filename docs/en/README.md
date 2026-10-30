@@ -27,7 +27,7 @@ particularly for preparing the product website: detailed capabilities, condition
 |---|---|
 | Organize Documents and act on a selection | [Document library](user/documents.md) |
 | Write, cite an object, share or export | [Rich content](user/rich-content.md) |
-| Create and reuse JSON | [Datasets](user/datasets.md) |
+| Create and reuse JSON | [Data documents](user/datasets.md) |
 | Browse an agent's resources | [Files](user/files.md) |
 | Manage generic and personal agent methods | [Skills](user/skills.md) |
 | Work on a Git checkout with an agent | [Code editor](user/code-editor.md) |
