@@ -28,7 +28,7 @@
             clearable
           />
 
-          <RichTextEditor v-model="form.objective" :aria-label="$t('task.form.objective')" />
+          <RichTextEditor v-model="form.objective" toolbar-mode="simple" :aria-label="$t('task.form.objective')" />
 
           <div class="row q-col-gutter-md q-mt-none">
             <div class="col-6">

@@ -166,6 +166,7 @@
             ref="richEditor"
             :key="documentId + ':' + agentId"
             v-model="editorContent"
+            toolbar-mode="full"
             :attachments="documentResources"
             :resource-agent-id="requestAgentId"
             :pick-resources="isGoalDocument(currentDocument) ? undefined : pickInternalResources"
@@ -187,7 +188,6 @@
             :min-height="contentMinHeight"
             :max-height="contentMaxHeight"
           >
-            <template v-if="$slots['toolbar-actions']" #toolbar-actions="actions"><slot name="toolbar-actions" v-bind="actions" /></template>
             <template #embedded-code="{ source, language, registerSnapshot }">
               <DocumentApplicationBlock :source="source" :language="language" :register-snapshot="registerSnapshot" :resolve-media="resolveInlineImage" :document-id="currentDocument.id" :revision="currentDocument.revision" :ready="!hasUnsavedChanges && !conflictDocument && (autosaveState === 'saved' || !canEditDocument)" />
             </template>

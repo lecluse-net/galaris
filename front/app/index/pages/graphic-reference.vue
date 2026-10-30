@@ -66,7 +66,8 @@
         <DashboardModelPieChart :slices="slices" :ariaLabel="t('graphicReference.palette')" />
       </GallerySection>
       <GallerySection id="content" :title="t('graphicReference.content')" icon="article" class="wide">
-        <q-expansion-item :label="t('graphicReference.richText')" icon="edit_note" default-opened><RichTextEditor v-model="html" :ariaLabel="t('graphicReference.richText')" /></q-expansion-item>
+        <q-expansion-item :label="t('graphicReference.fullEditor')" icon="article" default-opened><RichTextEditor v-model="html" profile="document" toolbar-mode="full" :aria-label="t('graphicReference.fullEditor')" /></q-expansion-item>
+        <q-expansion-item :label="t('graphicReference.simpleEditor')" icon="edit_note" default-opened><RichTextEditor v-model="simpleHtml" toolbar-mode="simple" :aria-label="t('graphicReference.simpleEditor')" /></q-expansion-item>
         <q-separator spaced /><CodeEditor v-model="code" language="json" :visible-lines="6" :label="t('graphicReference.code')" />
       </GallerySection>
       <GallerySection id="glyphs" :title="t('graphicReference.glyphs')" icon="apps" class="wide"><GalleryInventory /></GallerySection>
@@ -93,7 +94,7 @@ const initialDark = $q.dark.mode
 onBeforeUnmount(() => $q.dark.set(initialDark))
 const generation = ref(0), miniModal = ref(true), dialog = ref(false)
 function sampleHtml(): string { return `<h2>${t('graphicReference.typography')}</h2><p><strong>${t('graphicReference.sample')}</strong> · <em>${t('graphicReference.paragraph')}</em></p><blockquote><p>${t('graphicReference.message')}</p></blockquote><ul><li>${t('graphicReference.first')}</li><li>${t('graphicReference.second')}</li></ul><table><tbody><tr><th>${t('graphicReference.name')}</th><th>${t('graphicReference.preview')}</th></tr><tr><td>${t('graphicReference.first')}</td><td>50</td></tr></tbody></table>` }
-const html = ref(sampleHtml()), code = ref('{\n  "example": true,\n  "items": [10, 20, 50]\n}')
+const html = ref(sampleHtml()), simpleHtml = ref(sampleHtml()), code = ref('{\n  "example": true,\n  "items": [10, 20, 50]\n}')
 const sections = ['palette', 'actions', 'toggles', 'dialogs', 'forms', 'folders', 'navigation', 'patterns', 'feedback', 'content', 'glyphs']
 const sizes = [16, 20, 22, 24, 26, 32, 48, 64, 88]
 const tones = ['default', ...solaireColors] as const
@@ -101,7 +102,7 @@ const statusTones: StatusBadgeTone[] = ['active', 'success', 'warning', 'error',
 const statusIcons = { active: 'play_arrow', success: 'check', warning: 'warning', error: 'error', neutral: 'schedule' }
 const slices = computed(() => ['blue', 'orange', 'green'].map((key, index) => ({ key, label: t(`graphicReference.${key}`), color: solaireCss[key as 'blue' | 'orange' | 'green'].accent, share: [0.5, 0.3, 0.2][index]! })))
 function notify(): void { $q.notify({ message: t('graphicReference.notice'), type: 'positive' }) }
-function reset(): void { generation.value++; miniModal.value = true; dialog.value = false; html.value = sampleHtml(); code.value = '{\n  "example": true,\n  "items": [10, 20, 50]\n}' }
+function reset(): void { generation.value++; miniModal.value = true; dialog.value = false; html.value = sampleHtml(); simpleHtml.value = sampleHtml(); code.value = '{\n  "example": true,\n  "items": [10, 20, 50]\n}' }
 </script>
 <style scoped>
 .graphic-reference { padding-top: 60px; max-width: 1800px; margin: 0 auto; }

@@ -131,7 +131,7 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
 }
 
 async function openConversation(page) {
-  const trigger = page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true })
+  const trigger = page.getByRole('button', { name: 'Conversation', exact: true })
   await trigger.click()
   const panel = page.getByRole('region', { name: 'Conversation', exact: true })
   await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
@@ -145,7 +145,10 @@ for (const mobile of [false]) test(`Documents saves before conversing and can cr
   const state = await workspace(page)
   const title = page.getByLabel('Title', { exact: true })
   await title.fill('Edited report')
-  if (!mobile) await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
+  if (!mobile) {
+    await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
+    await page.keyboard.press('Escape')
+  }
   const panel = await openConversation(page)
   await expect.poll(() => state.preferences.get(state.item.id)).toBe('room-a')
   await expect(page.locator('.editorial-fullscreen')).toHaveCount(0)
@@ -195,7 +198,7 @@ for (const mobile of [false]) test(`Documents saves before conversing and can cr
   await panel.locator('textarea').fill('Draft retained when hidden')
   await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
   await expect(panel).toBeHidden()
-  const trigger = page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true })
+  const trigger = page.getByRole('button', { name: 'Conversation', exact: true })
   await trigger.click()
   await expect(panel.locator('textarea')).toHaveValue('Draft retained when hidden')
   await expect(panel.getByText('New conversation', { exact: true })).toBeVisible()
@@ -239,7 +242,7 @@ test('Documents offers only document readers and drops a conversation after acce
   await expect(panel).not.toContainText('Earlier exchange')
   expect(state.writes).toEqual([])
   await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel).toContainText('Choose a conversation or start one with an agent.')
   await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
   await expect(page.getByRole('option')).toHaveCount(0)
@@ -275,7 +278,7 @@ test('Documents loads the last conversation per document only after a manual ope
   state.documents.set(secondId, { ...state.item, id: secondId, title: 'Second synthetic document' })
   // Restoration is independent of the first picker page.
   state.preferences.set(firstId, 'room-102')
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   const panel = page.getByRole('region', { name: 'Conversation', exact: true })
   await expect(panel).toContainText('Conversation 102')
   expect(state.preferenceWrites).toEqual([])
@@ -283,7 +286,7 @@ test('Documents loads the last conversation per document only after a manual ope
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
   await expect(panel).not.toBeVisible()
   expect(state.preferenceReads).toEqual([firstId])
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel).toContainText('Choose a conversation or start one with an agent.')
   expect(state.created).toEqual([])
   await expect(panel).not.toContainText('Conversation 102')
@@ -294,7 +297,7 @@ test('Documents loads the last conversation per document only after a manual ope
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue(state.item.title)
   await expect(panel).not.toBeVisible()
   expect(state.preferenceReads).toEqual([firstId, secondId])
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel).toContainText('Conversation 102')
   // A new page instance reads server persistence, rather than its old in-memory selection.
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
@@ -303,7 +306,7 @@ test('Documents loads the last conversation per document only after a manual ope
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
   await expect(panel).not.toBeVisible()
   expect(state.preferenceReads).toEqual([firstId, secondId, firstId])
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel).toContainText('Existing conversation')
 })
 
@@ -317,7 +320,7 @@ test('a late saved conversation does not reopen a panel the user just closed', a
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
     route: `/documents?document_id=${state.item.id}`, privileges: ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CHAT_SEND', 'CHAT_MANAGE'],
   })
-  const trigger = page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true })
+  const trigger = page.getByRole('button', { name: 'Conversation', exact: true })
   await trigger.click()
   await started
   await expect(trigger).toHaveAttribute('aria-expanded', 'true')
@@ -340,13 +343,13 @@ test('late preference responses cannot replace the conversation for the current 
   const started = new Promise(resolve => { entered = resolve })
   const delayed = new Promise(resolve => { release = resolve })
   state.waitPreferenceRead = async id => { if (id === firstId) { entered(); await delayed } }
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await started
   await page.evaluate(id => window.testApp.navigate(`/documents?document_id=${id}`), secondId)
   const panel = page.getByRole('region', { name: 'Conversation', exact: true })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
   await expect(panel).not.toBeVisible()
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel).toContainText('Conversation 002')
   const response = page.waitForResponse(url => url.url().includes(`/chat/documents/${firstId}/conversation`))
   release()
@@ -358,7 +361,7 @@ test('late preference responses cannot replace the conversation for the current 
 test('preference failures are retryable and keep the selected conversation usable', async ({ page }) => {
   const state = await workspace(page)
   state.refusePreferenceRead = true
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   const panel = page.getByRole('region', { name: 'Conversation', exact: true })
   await expect(panel.getByRole('alert')).toBeVisible()
   state.refusePreferenceRead = false
@@ -381,7 +384,7 @@ test('opening a conversation saves the preference even while its history is load
   let release
   const delayed = new Promise(resolve => { release = resolve })
   state.waitMessages = () => delayed
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   const panel = page.getByRole('region', { name: 'Conversation', exact: true })
   await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
   await page.getByRole('option').filter({ hasText: 'Existing conversation' }).click()
@@ -397,7 +400,7 @@ test('a manual selection supersedes a pending saved conversation', async ({ page
   const started = new Promise(resolve => { entered = resolve })
   const delayed = new Promise(resolve => { release = resolve })
   state.waitPreferenceRead = async () => { entered(); await delayed }
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await started
   const panel = page.getByRole('region', { name: 'Conversation', exact: true })
   await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
@@ -494,7 +497,7 @@ for (const surface of ['documents', 'chat']) for (const mobile of surface === 'c
     const hiddenToast = page.locator('.q-notification').filter({ hasText: 'Message in a hidden conversation' })
     await expect(hiddenToast).toBeVisible()
     expect(state.reads.some(read => read.message_id === 'hidden-message')).toBe(false)
-    await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+    await page.getByRole('button', { name: 'Conversation', exact: true }).click()
     await expect.poll(displayed).toBe('room-2')
     await expect(hiddenToast).toHaveCount(0)
     await expect.poll(() => state.reads.some(read => read.message_id === 'hidden-message')).toBe(true)
@@ -522,7 +525,7 @@ test('save and send failures retain the message, and hiding the panel preserves 
   await expect(panel.getByRole('alert')).toBeVisible()
   await expect(panel.locator('textarea')).toHaveValue('Keep unsent message')
   await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel.locator('textarea')).toHaveValue('Keep unsent message')
   state.refuseSend = false
   await panel.getByRole('button', { name: 'Post', exact: true }).click()
@@ -531,7 +534,7 @@ test('save and send failures retain the message, and hiding the panel preserves 
 
 test('Documents exposes chat only with chat access, and read-only chat cannot send or create', async ({ page }) => {
   await workspace(page, ['DOCUMENT_EDIT'])
-  await expect(page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Conversation', exact: true })).toHaveCount(0)
   await page.evaluate(() => window.testApp.unmount())
   await workspace(page, ['DOCUMENT_EDIT', 'CHAT_ACCESS'])
   const panel = await openConversation(page)
@@ -610,7 +613,7 @@ for (const mobile of [false]) for (const input of ['mouse', 'keyboard']) test(`d
     await page.mouse.up()
     await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toBe('Working content')
   }
-  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   const draft = panel.locator('textarea')
   await draft.fill('Improve the selected passage')
   await expect(draft).toBeFocused()
@@ -630,7 +633,7 @@ for (const mobile of [false]) for (const input of ['mouse', 'keyboard']) test(`d
   if (mobile) await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
   await paragraph.click()
   await page.keyboard.press('Home')
-  if (mobile) await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  if (mobile) await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await draft.fill('Insert at the cursor')
   await panel.getByRole('button', { name: 'Post', exact: true }).click()
   await expect.poll(() => state.writes.length).toBe(2)

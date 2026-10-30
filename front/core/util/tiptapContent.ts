@@ -272,7 +272,7 @@ export function contentExtensions(adapters: ContentAdapters): Extensions {
   }).configure({ resizable: true, View: EditorialTableView }),
   Node.create({ name: 'tableFigure', group: 'block', content: 'table caption?', parseHTML: () => [{ tag: 'figure.table' }], renderHTML: ({ HTMLAttributes }) => ['figure', mergeAttributes({ class: 'table' }, HTMLAttributes), 0] }),
   Node.create({ name: 'caption', content: 'inline*', parseHTML: () => [{ tag: 'figcaption' }, { tag: 'caption' }], renderHTML: () => ['figcaption', 0] }),
-  HtmlAttributes(adapters), CodeBlock, RawObject(adapters), ResourceCard(adapters), mathNode('inline', adapters.editMath), mathNode('block', adapters.editMath), ...(adapters.profile === 'document' ? [Checklist, ChecklistItem, DocumentImage(adapters, false), DocumentImage(adapters, true)] : [])]
+  HtmlAttributes(adapters), CodeBlock, RawObject(adapters), ResourceCard(adapters), mathNode('inline', adapters.editMath), mathNode('block', adapters.editMath), Checklist, ChecklistItem, ...(adapters.profile === 'document' ? [DocumentImage(adapters, false), DocumentImage(adapters, true)] : [])]
 }
 
 /** Resolve links in the editing view only; the model continues to carry canonical URIs. */

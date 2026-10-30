@@ -376,6 +376,12 @@ covers shared downloads, English fallback and obsolete responses; `authStore.tes
 prevents an old session from changing the profile. `locale-catalogs.test.mjs` preserves
 all generated catalog messages; `report-build.test.mjs` checks startup measurements by language.
 
+`editor-toolbar.spec.mjs` also checks text editing, links and undo in simple fields on
+mobile and desktop, preservation of existing references, tables and equations, and the
+creation of code, checklists, tables and separators, and checked state after reopening
+and reading. The simple toolbar does not offer attachments or equation insertion.
+Select all restores document focus after searching, replaces the complete body including
+tables, and supports undo on mobile and desktop.
 `editor-toolbar.spec.mjs` checks right-click menus for tables, links, images, cards,
 agents, processes, code blocks and HTML objects on mobile and desktop: pointer and keyboard commands, direct targeting, cell merge/split, styles, language,
 read-only restrictions and dismissal when switching documents.

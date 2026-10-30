@@ -1054,6 +1054,7 @@
                       {{ t('goal.description') }} <span class="text-negative">*</span>
                     </div>
                     <RichTextEditor
+                      toolbar-mode="simple"
                       v-model="form.description"
                       min-height="301px"
                       max-height="45vh"

@@ -34,22 +34,24 @@ def test_equations_reject_invalid_formats(profile, source):
         normalize_html(source, profile=profile)
 
 
-def test_checklist_state_round_trips_in_editable_html():
+@pytest.mark.parametrize("profile", ["document", "rich-text"])
+def test_checklist_state_round_trips_in_editable_html(profile):
     source = '<ul class="galaris-checklist"><li data-checked="true"><p>First</p><ul class="galaris-checklist"><li data-checked="false"><p>Nested</p></li></ul></li></ul>'
-    normalized = normalize_html(source, profile="document")
+    normalized = normalize_html(source, profile=profile)
     assert normalized == source
-    assert normalize_html(normalized, profile="document") == source
+    assert normalize_html(normalized, profile=profile) == source
     assert "First" in visible_text(normalized)
     assert "Nested" in visible_text(normalized)
 
 
+@pytest.mark.parametrize("profile", ["document", "rich-text"])
 @pytest.mark.parametrize("source", [
     '<ul class="galaris-checklist"><li data-checked="yes"><p>Invalid</p></li></ul>',
     '<p data-checked="true">Invalid</p>',
 ])
-def test_checklist_state_rejects_invalid_values_or_elements(source):
+def test_checklist_state_rejects_invalid_values_or_elements(profile, source):
     with pytest.raises(RichTextError):
-        normalize_html(source, profile="document")
+        normalize_html(source, profile=profile)
 
 
 def test_code_display_options_round_trip_without_changing_semantic_content():

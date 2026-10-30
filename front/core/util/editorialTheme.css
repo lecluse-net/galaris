@@ -62,7 +62,7 @@
 .galaris-source-highlight code { font: inherit; }
 .galaris-source-editing-area textarea { position: relative; display: block; background: transparent; color: transparent; caret-color: var(--rich-foreground); resize: vertical; outline: none; }
 .galaris-source-editing-area textarea::selection { background: var(--rich-selection-background); color: var(--rich-selection-foreground); }
-@media (max-width: 1023.98px) { .editorial-toolbar:not(.editorial-toolbar-single-row) { justify-content: flex-start; padding-block: 0; background-image: none; } }
+@media (max-width: 1023.98px) { .editorial-toolbar:not(.editorial-toolbar-simple) { justify-content: flex-start; padding-block: 0; background-image: none; } }
 .editorial-mobile-toolbar .q-btn { min-height: 28px; min-width: 28px; padding: 0; }
 .editorial-body[data-document-layout] .galaris-source-editing-area { padding: 0; }
 .galaris-source-editing-area { border: 1px solid var(--rich-editor-border); }
@@ -71,7 +71,5 @@
 .galaris-source-highlight :is(.hljs-string, .hljs-regexp, .hljs-addition) { color: var(--solaire-green-accent); }
 .galaris-source-highlight :is(.hljs-number, .hljs-symbol, .hljs-deletion) { color: var(--solaire-salmon-accent); }
 .galaris-source-highlight :is(.hljs-attr, .hljs-attribute, .hljs-selector-class, .hljs-variable) { color: var(--solaire-orange-accent); }
-.editorial-toolbar-single-row { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; }
-.editorial-toolbar-single-row .editorial-toolbar-commands { flex-direction: row; }
-.editorial-toolbar-single-row .editorial-toolbar-row { flex-wrap: nowrap; }
+.editorial-toolbar-simple { justify-content: flex-start; }
 .document-link-icon .document-icon--readonly:has(> *) { margin-inline-end: .25em; }

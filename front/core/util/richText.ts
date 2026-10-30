@@ -84,7 +84,7 @@ export function sanitizeRichHtml(html: string, profile: ContentProfile = 'rich-t
   const clean = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: 'p h1 h2 h3 h4 h5 h6 strong em u s blockquote ul ol li hr a table thead tbody tfoot tr th td pre code br mark span figure figcaption caption colgroup col sub sup b i del'.split(' ').concat(profile === 'document' ? ['img'] : []),
     ALLOWED_ATTR: ['href', 'title', 'rel', 'target', 'start', 'colspan', 'rowspan', 'colwidth', 'class', 'src', 'alt', 'width', 'style', 'data-color', 'data-rich-reference', 'height', 'value', 'reversed'],
-    ADD_ATTR: ['data-math', 'data-code-lines', 'data-code-nowrap', ...(profile === 'document' ? ['data-checked'] : [])],
+    ADD_ATTR: ['data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked'],
     FORCE_BODY: true,
     ALLOW_DATA_ATTR: false,
     ADD_URI_SAFE_ATTR: ['start', 'colspan', 'rowspan', 'colwidth', 'width', 'height', 'value', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', 'type', 'async', 'defer'],

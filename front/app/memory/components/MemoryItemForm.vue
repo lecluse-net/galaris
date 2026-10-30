@@ -14,8 +14,7 @@
       <RichTextEditor
         v-else-if="draft.contentType === 'text' && ['text/html', 'text/markdown'].includes(draft.mediaType)"
         :readonly="readonly"
-        :hidden-toolbar-groups="['reading', 'editing']"
-        single-row-toolbar
+        toolbar-mode="simple"
         :media-type="draft.mediaType"
         :model-value="draft.content" @update:model-value="updateDraft({ content: $event, mediaType: 'text/html' })"
         :aria-label="t('memory.content')"

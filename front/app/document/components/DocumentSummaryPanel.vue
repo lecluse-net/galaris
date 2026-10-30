@@ -45,7 +45,7 @@
       </q-banner>
       <template v-if="summary && !loading">
         <div v-if="!writable && !hasContent" class="text-grey-7 q-pa-sm">{{ t('resourceSummary.empty') }}</div>
-        <RichTextEditor v-else v-model="draft" profile="rich-text" :readonly="!writable || busy"
+        <RichTextEditor v-else v-model="draft" profile="rich-text" toolbar-mode="simple" :readonly="!writable || busy"
           :aria-label="t('resourceSummary.title')" :min-height="minHeight" :max-height="maxHeight" auto-grow />
         <div v-if="dirty" class="text-caption q-pa-sm" role="status">
           {{ t('documents.summaryUnsaved') }}

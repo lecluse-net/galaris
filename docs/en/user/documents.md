@@ -12,6 +12,14 @@ Sharing a document does not share any memory; deleting a reference in the memory
 graph does not delete the document. Memories about a document remain private to
 the agent that acquired them.
 
+A document body uses the same full editor in the library, Chat, preview dialogs and
+Goal tracking, including its mobile layout. Rich text fields — memories, Agent profiles,
+Goal descriptions and summaries — use a simple toolbar with common formatting,
+headings, lists, alignment, inline and block code, checklists, tables, separators and Galaris links.
+Each group has one row and wraps when space is limited, without horizontal scrolling.
+Fullscreen, attachments and equation insertion remain in full mode;
+previously saved content is preserved.
+
 ## Choose a document type
 
 Each **New document** icon opens the type menu below the clicked icon before creating any record. Choose **Text** or
@@ -50,7 +58,7 @@ apply to Datasets.
 
 ## Write with an agent
 
-The **Conversation** icon in the editor toolbar's **Reading** group opens a panel to the
+The **Conversation** icon in the library header, beside the library visibility button, opens a panel to the
 right of the document on desktop. Drag the handle between the document and chat to adjust
 their widths, just as between the library and document. Focus the handle and use the
 left/right arrow keys to resize with the keyboard. Search

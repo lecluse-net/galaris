@@ -13,6 +13,16 @@ des agents. Partager un document ne partage aucun souvenir ; supprimer une réf�
 dans le graphe mémoire ne supprime pas le document. Les souvenirs concernant un
 document restent privés à l'agent qui les a acquis.
 
+Le contenu d'un document utilise le même éditeur complet dans la bibliothèque,
+Discussion, les fenêtres d'aperçu et le suivi des objectifs, avec son adaptation mobile.
+Les champs de texte riche — souvenirs, profils d'agents, description d'objectif et résumé —
+utilisent une barre simple : mise en forme courante, titres, listes, alignements, code en ligne
+et en bloc, cases à cocher, tableaux, séparateurs et liens Galaris.
+Ses groupes tiennent sur une rangée chacun et passent à la ligne selon la place disponible,
+sans défilement horizontal. Le plein écran, les pièces jointes et l'insertion d'équations
+restent réservés au mode complet ;
+les contenus déjà enregistrés restent conservés.
+
 ## Choisir le type de document
 
 Chaque icône **Nouveau document** ouvre le menu des types sous l’icône cliquée, avant toute création. Choisissez **Texte**
@@ -54,7 +64,7 @@ dans les paramètres Dream et s'appliquent aussi aux jeux de données.
 
 ## Rédiger avec un agent
 
-L'icône **Conversation**, dans le groupe **Lecture** de la barre d'outils de l'éditeur,
+L'icône **Conversation**, dans l'en-tête de la bibliothèque à côté du bouton d'affichage de celle-ci,
 affiche un panneau à droite du document sur ordinateur. Faites glisser la poignée entre
 le document et le chat pour ajuster leurs largeurs, comme entre la bibliothèque et le
 document. Au clavier, placez le focus sur cette poignée et utilisez les flèches gauche/droite.

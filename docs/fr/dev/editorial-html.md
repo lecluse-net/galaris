@@ -28,6 +28,19 @@ de texte. Son unique document de suivi utilise aussi `rich-text`, y compris dans
 Les ressources binaires/JSON/code et les compétences
 ne passent pas dans cette conversion.
 
+Le profil de contenu est distinct de `toolbarMode` (`full` ou `simple`). `DocumentEditor`
+impose `full` pour le contenu d'un document dans la bibliothèque, Discussion, les aperçus
+et le suivi des objectifs ; les droits et le profil restent ceux de la ressource.
+Les souvenirs, descriptions d'objectifs, profils d'agents, objectifs de tâches et résumés
+utilisent `simple` : commandes textuelles essentielles, code en ligne et en bloc, listes
+à cocher, tableaux, séparateurs et liens Galaris, une rangée par groupe et retour à la ligne.
+Le plein écran, les pièces jointes et l'insertion d'équations restent réservés au mode complet.
+Les menus contextuels de texte suivent ce mode. Le contenu existant est conservé ;
+ce choix d'interface ne change ni le format stocké ni les règles d'assainissement du HTML.
+Le mode complet conserve son adaptation sous 1024 px ; le mode simple conserve ses groupes
+avec retour à la ligne. Les deux exemples vivent dans la Référence graphique.
+Les deux profils conservent l'état coché des listes à cocher dans le HTML.
+
 Les deux profils acceptent les équations sous forme de texte LaTeX échappé :
 `<span data-math="inline">x^2</span>` dans un paragraphe et
 `<p data-math="block">\frac{a}{b}</p>` pour un bloc. Ces nœuds contiennent uniquement

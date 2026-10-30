@@ -4,6 +4,7 @@
       <template #title-after>
         <div class="row items-center q-gutter-xs">
           <q-btn v-if="!$q.screen.lt.md" flat round :icon="libraryOpen ? fullDocumentIcon : libraryDocumentIcon" :aria-label="t('documents.toggleLibrary')" :aria-expanded="libraryOpen" @click="libraryOpen = !libraryOpen"><q-tooltip>{{ t('documents.toggleLibrary') }}</q-tooltip></q-btn>
+          <q-btn v-if="canAccessChat && selectedDocumentId && !$q.screen.lt.md" flat round icon="forum" :aria-label="t('documents.conversation')" :aria-expanded="chatOpen" :color="chatOpen ? 'primary' : undefined" @click="chatOpen = !chatOpen"><q-tooltip>{{ t('documents.conversation') }}</q-tooltip></q-btn>
           <DocumentNavigationButtons :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
         </div>
       </template>
@@ -34,11 +35,7 @@
                 :initial-document="selectedInitialDocument"
                 @loaded="loadedDocumentId = $event.id"
                 @updated="onDocumentUpdated" @unavailable="onDocumentUnavailable" @deleted="onDocumentDeleted"
-              >
-                <template v-if="canAccessChat" #toolbar-actions="{ exitFullscreen }">
-                  <q-btn flat dense icon="forum" :aria-label="t('documents.conversation')" :aria-expanded="chatOpen" :color="chatOpen ? 'primary' : undefined" @click="exitFullscreen(); chatOpen = !chatOpen"><q-tooltip>{{ t('documents.conversation') }}</q-tooltip></q-btn>
-                </template>
-              </DocumentEditor>
+              />
             </template>
             <template #separator>
               <DocumentSplitterHandle role="separator" tabindex="0" aria-orientation="vertical"

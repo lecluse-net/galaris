@@ -161,7 +161,7 @@ async function openPicker(page, width = 1440) {
   const picker = page.getByRole('dialog').filter({ has: page.getByText('Add an internal attachment', { exact: true }) })
   await expect(picker).toBeVisible()
   if (width < 1024) await picker.getByRole('button', { name: 'Show locations', exact: true }).click()
-  await picker.getByText('Galaris', { exact: true }).click()
+  await picker.getByRole('button', { name: 'Galaris', exact: true }).click()
   return picker
 }
 
@@ -195,8 +195,7 @@ for (const mode of ['document', 'simple', 'mobile', 'fullscreen']) test(`the int
     editingId: null, sharingEditable: false,
   } })
   else await mount(page, 'core/util/components/RichTextEditor.vue', { dark: mode === 'mobile' || mode === 'fullscreen', props: {
-    profile: mode === 'document' ? 'document' : 'rich-text', singleRowToolbar: mode === 'simple',
-    hiddenToolbarGroups: mode === 'simple' ? ['reading', 'editing'] : [], modelValue: '<p><strong>Selected text</strong></p>',
+    profile: mode === 'document' ? 'document' : 'rich-text', toolbarMode: 'full', modelValue: '<p><strong>Selected text</strong></p>',
   } })
   if (mode === 'fullscreen') await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
   await page.locator('[data-editor-surface]').click()
@@ -215,7 +214,7 @@ for (const mode of ['document', 'simple', 'mobile', 'fullscreen']) test(`the int
 
 test('the internal picker supports dismissal, retry and discards a selection after the content changes', async ({ page }) => {
   await pickerFixtures(page)
-  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<p>Unchanged</p>', singleRowToolbar: true } })
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<p>Unchanged</p>', toolbarMode: 'full' } })
   await openPicker(page)
   await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -226,7 +225,7 @@ test('the internal picker supports dismissal, retry and discards a selection aft
   await page.unroute('**/api/file-share/browser/schemes?*')
   await pickerFixtures(page)
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
-  await page.getByRole('dialog').getByText('Galaris', { exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Galaris', exact: true }).click()
   await page.getByRole('button', { name: 'Select Synthetic goal', exact: true }).click()
   await page.evaluate(() => window.testApp.setProps({ modelValue: '<p>Replacement content</p>' }))
   await expect(page.getByRole('dialog')).toHaveCount(0)

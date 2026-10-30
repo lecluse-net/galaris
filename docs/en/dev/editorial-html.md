@@ -36,6 +36,18 @@ use `rich-text` in Goal-owned columns, without Documents or text history. Their 
 Document also uses `rich-text`, including in the library. Native binary/JSON/code resources and all skills
 retain their formats.
 
+The content profile is independent of `toolbarMode` (`full` or `simple`). `DocumentEditor`
+enforces `full` for a document body in the library, Chat, previews and Goal tracking;
+the resource retains its own rights and content profile. Memories, Goal descriptions,
+Agent profiles, Task objectives and summaries use `simple`: essential text commands,
+inline and block code, checklists, tables, separators and Galaris links, with one wrapping
+row per group. Fullscreen, attachments and equation insertion remain in full mode.
+Text context menus follow the same mode. Existing content
+is preserved; this UI choice changes neither storage format nor HTML sanitization.
+Full mode retains its layout below 1024 px; simple mode keeps its wrapping groups.
+Both examples are available in the Visual reference.
+Both content profiles preserve checklist checked state in their HTML.
+
 ## Documents as the information hub
 
 Agent profiles are virtual `galaris://agent/<id>` resources, without documents or folders

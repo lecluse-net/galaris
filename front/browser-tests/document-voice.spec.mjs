@@ -15,7 +15,7 @@ function silentAudio() {
 async function controls(page, props = {}, html = '<p>Document</p>', simple = false) {
   if (simple) {
     await mount(page, 'core/util/components/RichTextEditor.vue', {
-      props: { modelValue: html, readonly: props.editable === false }, privileges: [],
+      props: { modelValue: html, toolbarMode: 'simple', readonly: props.editable === false }, privileges: [],
     })
   } else {
     await jsonRoute(page, '**/api/agents?*', [agent])

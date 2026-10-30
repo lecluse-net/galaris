@@ -1,5 +1,101 @@
 import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 
+for (const width of [390, 1440]) test(`select all restores document focus and replaces the complete content (${width}px)`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: {
+    profile: 'document', modelValue: '<h2>First heading</h2><p>Second paragraph</p><table><tbody><tr><td>Final cell</td></tr></tbody></table>',
+  } })
+  const editor = page.locator('[data-editor-surface]')
+  await page.getByRole('button', { name: 'Find', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Find', exact: true })).toBeFocused()
+  const selectAll = page.getByRole('button', { name: 'Select all', exact: true })
+  if (!await selectAll.isVisible()) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+  await selectAll.click()
+  await expect(editor).toBeFocused()
+  await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toContain('Final cell')
+  await page.keyboard.insertText('Replacement document')
+  await expect(editor).toHaveText('Replacement document')
+  await expect(editor.locator('table')).toHaveCount(0)
+  await page.keyboard.press('Control+z')
+  await expect(editor.locator('h2')).toHaveText('First heading')
+  await expect(editor.locator('td')).toHaveText('Final cell')
+})
+
+for (const width of [390, 1440]) test(`simple fields preserve rich content and support code, checklists, tables and links (${width}px)`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  const content = '<p>Editable paragraph</p><p><a href="galaris://goal/00000000-0000-4000-8000-000000000123">Existing reference</a></p>'
+    + '<table><tbody><tr><td>Preserved cell</td></tr></tbody></table><p data-math="block">x^2</p>'
+    + '<p>Inline sample</p><p>Block sample</p><p>Checklist sample</p><p>Insertion point</p><p>Plain context target</p>'
+  await mount(page, 'app/memory/components/MemoryItemForm.vue', { props: {
+    draft: { content, nodeKind: 'memory', mediaType: 'text/html', contentType: 'text', keywords: [], revision: 1 },
+    editingId: null, sharingEditable: false,
+  } })
+  const editor = page.locator('[data-editor-surface]'), toolbar = page.locator('.editorial-toolbar')
+  await page.evaluate(() => document.fonts.ready)
+  await editor.locator('p').first().click()
+  await page.keyboard.press('Home')
+  await page.keyboard.press('Shift+End')
+  await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toBe('Editable paragraph')
+  await toolbar.getByRole('button', { name: 'Bold', exact: true }).click()
+  await expect(editor.locator('p strong').first()).toHaveText('Editable paragraph')
+  await toolbar.getByRole('button', { name: 'Undo', exact: true }).click()
+  await expect(editor.locator('strong')).toHaveCount(0)
+  await toolbar.getByRole('button', { name: 'Insert or edit link', exact: true }).click()
+  await page.getByRole('dialog').getByLabel('URL or Galaris reference', { exact: true }).fill('https://example.org')
+  await page.getByRole('dialog').getByRole('button', { name: 'Apply', exact: true }).click()
+  await expect(editor.locator('a[href="https://example.org"]')).toHaveText('Editable paragraph')
+  await expect(editor.getByRole('link', { name: 'Existing reference', exact: true })).toBeVisible()
+  await expect(editor.locator('td')).toHaveText('Preserved cell')
+  const saved = await editorHtml(page)
+  expect(saved).toContain('href="galaris://goal/00000000-0000-4000-8000-000000000123"')
+  expect(saved).toContain('x^2')
+  for (const name of ['Fullscreen', 'Insert attachment', 'Inline equation', 'Block equation']) {
+    await expect(toolbar.getByRole('button', { name, exact: true })).toHaveCount(0)
+  }
+  await editor.getByText('Plain context target', { exact: true }).click({ button: 'right' })
+  const menu = page.getByRole('menu', { name: 'Content', exact: true })
+  await menu.getByRole('menuitem', { name: 'Insert', exact: true }).hover()
+  await expect(page.getByRole('menuitem', { name: 'Insert or edit link', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Galaris link', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Insert table', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  async function selectParagraph(text) {
+    await editor.getByText(text, { exact: true }).click()
+    await page.keyboard.press('Home')
+    await page.keyboard.press('Shift+End')
+    await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toBe(text)
+  }
+  await selectParagraph('Inline sample')
+  await toolbar.getByRole('button', { name: 'Inline code', exact: true }).click()
+  await expect(editor.locator('p code')).toHaveText('Inline sample')
+  await selectParagraph('Block sample')
+  await toolbar.getByRole('button', { name: 'Code block', exact: true }).click()
+  await expect(editor.locator('pre code')).toHaveText('Block sample')
+  await selectParagraph('Checklist sample')
+  await toolbar.getByRole('button', { name: 'Checklist', exact: true }).click()
+  await editor.getByRole('checkbox', { name: 'Checklist sample', exact: true }).check()
+  await editor.getByText('Insertion point', { exact: true }).click()
+  await page.keyboard.press('End')
+  await toolbar.getByRole('button', { name: 'Separator', exact: true }).click()
+  await toolbar.getByRole('button', { name: 'Insert table', exact: true }).click()
+  await expect(editor.locator('hr')).toHaveCount(1)
+  await expect(editor.locator('table')).toHaveCount(2)
+  const persisted = await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:draft').at(-1).value.content)
+  expect(persisted).toContain('data-checked="true"')
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { toolbarMode: 'simple', modelValue: persisted } })
+  await expect(editor.getByRole('checkbox', { name: 'Checklist sample', exact: true })).toBeChecked()
+  await expect(editor.locator('p code')).toHaveText('Inline sample')
+  await expect(editor.locator('pre code')).toHaveText('Block sample')
+  await expect(editor.locator('table')).toHaveCount(2)
+  await toolbar.locator('img').evaluateAll(images => Promise.all(images.map(image => image.decode())))
+  await page.screenshot({ path: testInfo.outputPath('simple-field.png') })
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: testInfo.outputPath('simple-field-dark.png') })
+  await mount(page, 'core/util/components/RichText.vue', { props: { content: persisted } })
+  await expect(page.locator('li[data-checked="true"]')).toHaveText('Checklist sample')
+})
+
 test('clicking elsewhere in the same editor closes a right-click menu and its submenu', async ({ page }) => {
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<h2>Synthetic heading</h2><p>Outside target</p>' } })
   const editor = page.locator('[data-editor-surface]')

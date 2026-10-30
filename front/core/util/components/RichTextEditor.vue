@@ -1,6 +1,6 @@
 <template>
   <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu">
-    <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :single-row="singleRowToolbar" :hidden-groups="hiddenToolbarGroups" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
+    <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
       <template v-if="personalVoice" #voice>
         <EditorialToolButton flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="readonly || sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
         <EditorialToolButton flat dense color="primary" :icon="voice?.reading && !voice.paused ? 'pause' : 'play_arrow'" :label="voice?.reading ? voice.paused ? voice.labels.paused : voice.labels.reading : voice?.labels.read ?? ''" :disable="voice?.dictating || voice?.dictationPending" @click="action('read')" />
@@ -15,11 +15,10 @@
           </q-list></q-menu>
         </EditorialToolButton>
       </template>
-      <template v-if="$slots['toolbar-actions']" #actions><slot name="toolbar-actions" :exit-fullscreen="exitFullscreen" /></template>
       <template v-if="mobileDocument && !readonly && !sourceMode" #context>
         <div class="editorial-mobile-context" role="toolbar" :aria-label="t('richEditor.contextActions')" @mousedown.prevent>
           <EditorialContextActions v-if="activeContext" toolbar :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
-          <EditorialToolbar v-if="mobileTextContext" contextual :editor="editor" :revision="revision" document :hidden-groups="hiddenToolbarGroups" :disabled-actions="disabledActions" @action="action" />
+          <EditorialToolbar v-if="mobileTextContext" contextual :editor="editor" :revision="revision" :mode="toolbarMode" document :disabled-actions="disabledActions" @action="action" />
         </div>
       </template>
     </EditorialToolbar>
@@ -62,7 +61,7 @@
               <q-item-section>{{ t('richEditor.clipboard.' + key) }}</q-item-section>
             </q-item>
             <q-separator />
-            <EditorialToolbar menu :editor="editor" :revision="revision" :document="profile === 'document'" :find-open="findOpen" :outline-open="outlineOpen" :hidden-groups="hiddenToolbarGroups" :disabled-actions="disabledActions" @action="runPointerTextAction" />
+            <EditorialToolbar menu :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :find-open="findOpen" :outline-open="outlineOpen" :disabled-actions="disabledActions" @action="runPointerTextAction" />
           </template>
         </q-list>
       </q-menu>
@@ -129,7 +128,7 @@ import RenderedObjectPreview from './RenderedObjectPreview.vue'
 import FullscreenPreview from './FullscreenPreview.vue'
 import { DocumentResourceReferences as InternalResourcePicker } from '../resourceContributions'
 import PdfPreview from './PdfPreview.vue'
-import { contentExtensions, resolveEditorLinks, type EditorObject, type EditorToolbarGroupName, type ObjectHost } from '../tiptapContent'
+import { contentExtensions, resolveEditorLinks, type EditorObject, type ObjectHost } from '../tiptapContent'
 import { attachmentReference, canonicalRichLink, richLinkCard, richLinkHref, richLinkTarget, richLinkHasCard, richLinkTitle, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
 import { documentUriFromLink } from '../documentResource'
 import { mountWebLinkPreview } from '../webLinkPreview'
@@ -152,8 +151,8 @@ import { saveBlobAsResource } from '../resourceViewer'
 import type { RenderedDocumentCapture, RenderedDocumentResolver } from '../renderedDocument'
 import '../editorialTheme.css'
 const EquationDialog = defineAsyncComponent(() => import('./EquationDialog.vue'))
-const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, hiddenToolbarGroups = [], singleRowToolbar = false, resourceAgentId = null, pickResources } = defineProps<{
-  resourceAgentId?: number | null; modelValue: string; mediaType?: string; profile?: ContentProfile; readonly?: boolean; minHeight?: string; maxHeight?: string; autoGrow?: boolean; ariaLabel?: string; attachments?: DocumentResource[]; hiddenToolbarGroups?: readonly EditorToolbarGroupName[]; singleRowToolbar?: boolean
+const { modelValue, mediaType = 'text/html', profile = 'rich-text', toolbarMode = 'full', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, resourceAgentId = null, pickResources } = defineProps<{
+  resourceAgentId?: number | null; modelValue: string; mediaType?: string; profile?: ContentProfile; toolbarMode?: 'full' | 'simple'; readonly?: boolean; minHeight?: string; maxHeight?: string; autoGrow?: boolean; ariaLabel?: string; attachments?: DocumentResource[]
   createLinkCard?: (url: string) => Promise<string>; pickResources?: () => Promise<string>; exportBundle?: (html: string, signal: AbortSignal) => Promise<Blob>; documentTitle?: string; documentUrl?: string
   uploadFile?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<string>; exportPdf?: (html: string, signal: AbortSignal) => Promise<Blob>
   uploadImage?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<string>; importImage?: (url: string, signal: AbortSignal) => Promise<string>; resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>
@@ -182,7 +181,6 @@ const imagePreviewOpen = computed({ get: () => Boolean(imagePreview.value), set:
 const editor = shallowRef<Editor>(), revision = ref(0), sourceMode = ref(false), sourceDraft = ref(''), fullscreen = ref(false), layout = ref<'fixed' | 'full'>('fixed'), fits = ref(true)
 const findOpen = ref(false), searchInput = useTemplateRef<QInput>('searchInput')
 const outlineOpen = ref(false)
-function exitFullscreen(): void { fullscreen.value = false }
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
 const pointerMenu = useTemplateRef<QMenu>('pointerMenu')
 const pointerMenuOpen = ref(false)
@@ -418,7 +416,7 @@ const activeContext = computed(() => {
   else return null
   return { kind }
 })
-const mobileDocument = computed(() => profile === 'document' && $q.screen.lt.md)
+const mobileDocument = computed(() => profile === 'document' && toolbarMode === 'full' && $q.screen.lt.md)
 const mobileTextContext = computed(() => { void revision.value; return editor.value && !(editor.value.state.selection instanceof NodeSelection) && !editor.value.isActive('codeBlock') })
 watch(mobileDocument, () => pointerMenu.value?.hide())
 const canInsertBeside = computed(() => {
@@ -450,7 +448,7 @@ let uploadRequest: AbortController | undefined
 const importRequest = shallowRef<AbortController | null>(null)
 async function upload(files: File[], position: number): Promise<void> {
   const handler = uploadFile ?? uploadImage
-  if (readonly || !handler || !files.length) return
+  if (readonly || toolbarMode === 'simple' || !handler || !files.length) return
   uploadRequest?.abort(); const pending = request(); uploadRequest = pending; const at = anchor(position)
   try { for (const [index, file] of files.entries()) {
     if (pending.signal.aborted || !valid(at)) break
@@ -978,10 +976,11 @@ function tableAction(key: TableAction): void {
 function indent(amount: number): void { const current = editor.value; if (!current) return; const item = current.isActive('checklistItem') ? 'checklistItem' : current.isActive('listItem') ? 'listItem' : null; if (item) { amount > 0 ? current.commands.sinkListItem(item) : current.commands.liftListItem(item); return }; for (const type of ['paragraph', 'heading']) if (current.isActive(type)) { const style = document.createElement('div'); style.setAttribute('style', current.getAttributes(type).editorialStyle ?? ''); const width = Math.max(0, (parseFloat(style.style.marginLeft) || 0) + amount * 40); if (width) style.style.marginLeft = width + 'px'; else style.style.removeProperty('margin-left'); current.commands.updateAttributes(type, { editorialStyle: style.getAttribute('style') }); break } }
 function action(key: string, value?: string): void {
   const current = editor.value; if (!current) return
+  if (toolbarMode === 'simple' && ['resources.uploadFile', 'equation.inline', 'equation.block'].includes(key)) return
   if (key === 'source') { if (profile === 'document') return; if (sourceMode.value) { applyingExternal = true; current.commands.setContent(editableHtml(sourceDraft.value), { emitUpdate: false }); applyingExternal = false }; sourceDraft.value = html(); stop(); sourceMode.value = !sourceMode.value; return }
   if (key === 'fullscreen') { fullscreen.value = !fullscreen.value; return }
   if (key === 'outline') { outlineOpen.value = !outlineOpen.value; return }
-  if (key === 'selectAll') { current.commands.selectAll(); return }
+  if (key === 'selectAll') { current.chain().focus().selectAll().run(); return }
   if (key === 'layout.full') { layout.value = layout.value === 'fixed' ? 'full' : 'fixed'; return }
   if (key === 'help') { showDialog('help'); return }
   if (key === 'shortcuts.toolbarFocus' || key === 'shortcuts.contextFocus') {

@@ -397,6 +397,12 @@ réponses obsolètes ; `authStore.test.mjs` empêche une ancienne session de mod
 Les tests `locale-catalogs.test.mjs` préservent tous les messages des catalogues générés ;
 `report-build.test.mjs` vérifie les mesures de démarrage par langue.
 
+`editor-toolbar.spec.mjs` vérifie aussi la saisie, les liens et l'annulation dans les champs
+simples sur mobile et bureau, la conservation des références, tableaux et équations existants,
+la création de code, listes à cocher, tableaux et séparateurs, ainsi que l'état coché après
+réouverture et lecture. Les pièces jointes et équations ne sont pas proposées dans la barre simple.
+La commande Tout sélectionner rend le focus au document après la recherche et permet
+de remplacer tout le contenu, tableau compris, puis d'annuler sur mobile et bureau.
 `editor-toolbar.spec.mjs` vérifie les menus au clic droit des tableaux, liens, images,
 cartes, agents, processus, blocs de code et objets HTML sur mobile et bureau : commandes au pointeur et au clavier, ciblage direct, fusion/scission des cellules,
 styles, langage, lecture seule et fermeture lors d’un changement de document.

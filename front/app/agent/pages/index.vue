@@ -824,6 +824,7 @@
 
         <q-card-section class="q-pa-md galaris-dialog-body" style="max-height: 75vh; overflow: auto">
           <RichTextEditor
+            toolbar-mode="simple"
             v-model="richTextContent"
             min-height="500px"
             max-height="70vh"
