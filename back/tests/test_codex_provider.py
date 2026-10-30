@@ -80,8 +80,9 @@ async def test_provider_history_uses_only_supported_compaction_and_preserves_rec
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("fast", [False, True])
 @pytest.mark.parametrize("outcome", ["completed", "failed", "truncated", "refresh", "objective", "objective_empty_terminal", "text_empty_terminal"])
-async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcome, responses_sse):
+async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcome, responses_sse, fast):
     import httpx
     from contextlib import asynccontextmanager
 
@@ -97,6 +98,8 @@ async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcom
     async def upstream(request):
         body = json.loads(request.content)
         requests.append(body)
+        assert body["model"] == "gpt-6-astra"
+        assert body.get("service_tier") == ("priority" if fast else None)
         if body.get("stream") is not True:
             return httpx.Response(400, json={"detail": "Stream must be set to true"})
         for parameter in ("max_output_tokens", "temperature", "top_p"):
@@ -132,7 +135,8 @@ async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcom
     provider = SimpleNamespace(id=2, name="ChatGPT", is_active=True,
         catalog_code="openai-codex", provider_type="openai_codex", configuration={},
         base_url="https://chatgpt.com/backend-api/codex")
-    llm = SimpleNamespace(id=1, code="codex", llm_name="gpt-6-astra", llm_provider_id=2,
+    model_name = "gpt-6-astra:fast" if fast else "gpt-6-astra"
+    llm = SimpleNamespace(id=1, code="codex", llm_name=model_name, llm_provider_id=2,
         cost_per_input_token=None, cost_per_cached_input_token=None, cost_per_output_token=None)
     create = AsyncMock(return_value=SimpleNamespace(id=uuid4()))
     finalize = AsyncMock()
@@ -159,7 +163,7 @@ async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcom
         from app.conversation import ConversationTurn, task_objective
         from app.llm.provider_models import LLM, LLMProvider
 
-        llm = LLM(id=1, code="codex", label="Test", llm_name="gpt-6-astra", llm_provider_id=2)
+        llm = LLM(id=1, code="codex", label="Test", llm_name=model_name, llm_provider_id=2)
         llm.provider = LLMProvider(id=2, name="ChatGPT", catalog_code="openai-codex",
             provider_type="openai_codex", base_url=provider.base_url)
         agent = SimpleNamespace(id=7, code="test", first_name="Test", last_name="Agent", agent_driver="internal")

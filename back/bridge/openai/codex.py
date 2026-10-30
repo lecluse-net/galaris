@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from app.llm.capabilities import AICapability
@@ -13,10 +14,12 @@ from app.llm.provider_facade import (
     ProviderConnection,
     ProviderQuota,
     ResponsesOperation,
+    model_catalog_metadata,
 )
 
 from . import codex_oauth
 from .codex_quota import get_quota
+from .codex_models import base_model_name, apply_model_variant
 from .codex_responses import (
     CodexSSEAdapter,
     chat_completions_to_responses,
@@ -42,7 +45,28 @@ class CodexBridge:
         provider = await codex_oauth.get_provider(connection.id)
         if provider is None:
             return []
-        return await codex_oauth.list_models(provider)
+        models = await codex_oauth.list_models(provider)
+        catalog = model_catalog_metadata()
+        if catalog is None:
+            return models
+        # Enrich using real IDs so the variants retain the same capabilities and
+        # context metadata. Keep each variant's identity and display name intact.
+        enriched = await catalog.enrich_models(connection, [
+            replace(model, id=base_model_name(model.id)) for model in models
+        ])
+        return [replace(model, id=original.id) for original, model in zip(models, enriched, strict=True)]
+
+    async def get_model_metadata(
+        self, connection: ProviderConnection, model_name: str,
+    ) -> LLMModelInfo | None:
+        catalog = model_catalog_metadata()
+        if catalog is None:
+            return None
+        base = base_model_name(model_name)
+        metadata = await catalog.get_model_metadata(connection, base)
+        if metadata is None or base == model_name:
+            return metadata
+        return replace(metadata, id=model_name, name=f"{metadata.name or base} Fast")
 
     async def start_device_login(self, provider_id: int) -> dict[str, Any]:
         return await codex_oauth.start_device_login(provider_id)
@@ -93,7 +117,7 @@ class CodexBridge:
             provider_id,
             force_refresh=force_refresh,
         )
-        forwarded = chat_completions_to_responses(body)
+        forwarded = chat_completions_to_responses(apply_model_variant(body))
         if force_stream:
             forwarded["stream"] = True
         return PreparedChatRequest(
@@ -118,7 +142,7 @@ class CodexBridge:
             force_refresh=force_refresh,
         )
         suffix = "/responses/compact" if operation == "compact" else "/responses"
-        forwarded = dict(body)
+        forwarded = apply_model_variant(body, compact=operation == "compact")
         if operation == "create":
             # Codex requires SSE even when the internal caller wants a final JSON result.
             forwarded["stream"] = True

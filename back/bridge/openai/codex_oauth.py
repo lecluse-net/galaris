@@ -11,6 +11,7 @@ import base64
 import binascii
 import json
 import time
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -23,6 +24,8 @@ from core.util import as_dict, as_list, get_encryption_service
 from app.llm.handlers import LLMModelInfo
 from app.llm.provider_facade import ProviderAuthenticationError
 from app.llm.provider_models import LLMProvider
+
+from .codex_models import FAST_SUFFIX, supports_fast
 
 
 CODEX_API_BASE_URL = "https://chatgpt.com/backend-api/codex"
@@ -552,6 +555,13 @@ async def list_models(provider: LLMProvider) -> list[LLMModelInfo]:
         priority = item.get("priority")
         rank = int(priority) if isinstance(priority, (int, float)) else 10_000
         sortable.append((rank, model))
+        if supports_fast(item):
+            sortable.append((rank, replace(
+                model, id=f"{model.id}{FAST_SUFFIX}", name=f"{model.name} Fast",
+                description=" ".join(filter(None, (
+                    model.description, _message("fast_description", language),
+                ))),
+            )))
 
     sortable.sort(key=lambda entry: (entry[0], entry[1].id))
     return [model for _, model in sortable]

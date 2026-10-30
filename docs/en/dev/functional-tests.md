@@ -25,6 +25,19 @@ attachments and shared read access, metadata conflicts, Goal-controlled titles a
 Datasets. Path-based files cover parent preservation and collision/traversal rejection.
 MCP catalogue tests verify `file_rename` exposure in both runtimes.
 
+## ChatGPT provider Fast variants
+
+`bridge/openai/tests/test_fast_models.py` checks the account catalog, inherited capabilities,
+Chat/Responses requests, and saving and reopening Fast and standard variants with PostgreSQL.
+`tests/test_codex_provider.py` also exercises Fast with the real SDK, structured output,
+stream errors and authentication refresh. `tests/test_protocol_inference.py` preserves an
+explicitly selected service tier when the provider rejects it.
+`front/browser-tests/provider-resources.spec.mjs` selects a Fast variant distinct from the
+standard model and retains that selection while the form loads lazily on desktop and mobile.
+Its synthetic users explicitly hold model-creation privileges; provider-configuration rights
+alone do not grant that action. These synthetic scenarios do not measure eligibility or
+acceleration with a real OpenAI account.
+
 ## Nightly model pricing
 
 `app/llm/tests/test_pricing_sync.py` exercises real HTTP bridges against synthetic

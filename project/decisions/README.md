@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0259 — ChatGPT Fast model variants](0259-chatgpt-fast-model-variants.md)
+
 - [0258 — Contextual resource identity in Memory recall](0258-contextual-resource-identity-recall.md)
 
 - [0257 — Atomic Memory facts and canonical source priority](0257-atomic-memory-facts-and-source-priority.md)

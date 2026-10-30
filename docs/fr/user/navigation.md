@@ -169,6 +169,12 @@ crédits et la consommation du compte. Une clé déjà enregistrée reste masqu�
 saisie la remplace, et **Supprimer la clé de gestion** rétablit le montant restant pour la clé API.
 La clé ElevenLabs doit autoriser
 **User → Read** pour consulter l’abonnement. Une donnée absente reste inconnue.
+Le catalogue **OpenAI — ChatGPT** propose une variante **Fast** pour chaque modèle dont
+le compte connecté annonce ce mode. Ajoutez-la comme un LLM distinct, puis affectez-la
+aux usages souhaités ; le modèle standard reste disponible séparément. La variante Fast
+conserve les capacités et le réglage de raisonnement du modèle d’origine, avec une consommation
+d’abonnement plus élevée. Un refus explicite de ce mode par OpenAI reste visible comme une erreur.
+
 Pour ChatGPT, le solde des crédits supplémentaires apparaît en crédits, sans jauge, à côté
 des fenêtres de l’abonnement. Un solde nul reste affiché ; un montant absent ou un accès
 illimité n’est pas présenté comme zéro. Ces crédits sont distincts des crédits de l’API OpenAI.

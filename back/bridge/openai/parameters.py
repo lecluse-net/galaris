@@ -8,6 +8,8 @@ from app.llm import (
     CHAT_PARAMETERS, RESPONSES_PARAMETERS, SAMPLING_PARAMETERS, RequestParameterPolicy,
 )
 
+from .codex_models import base_model_name
+
 
 def model_parameter_policy(model: str) -> RequestParameterPolicy:
     profile = openai_model_profile(model)
@@ -37,7 +39,7 @@ def model_parameter_policy(model: str) -> RequestParameterPolicy:
 
 
 def chatgpt_parameter_policy(model: str) -> RequestParameterPolicy:
-    policy = model_parameter_policy(model)
+    policy = model_parameter_policy(base_model_name(model))
     # Use the endpoint controls already exercised by the Chat-to-Responses transport.
     accepted = frozenset({"parallel_tool_calls", "store", "service_tier", "prompt_cache_key"})
     # ChatGPT's Chat transport converts tool calls to Responses before sending them.

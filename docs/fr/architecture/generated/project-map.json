@@ -5838,6 +5838,7 @@
       },
       {
         "files": [
+          "back/bridge/openai/codex_models.py",
           "back/bridge/openai/codex_oauth.py",
           "back/bridge/openai/codex_quota.py",
           "back/bridge/openai/codex_responses.py",

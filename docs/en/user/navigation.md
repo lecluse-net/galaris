@@ -152,6 +152,12 @@ it only to read account credits and usage. Saved keys stay hidden; entering a ne
 the key, and **Remove management key** restores the remaining amount for the API key.
 The ElevenLabs key needs **User → Read** permission to
 read subscription usage. Missing values remain unknown.
+The **OpenAI — ChatGPT** catalog offers a **Fast** variant for each model advertising
+this mode for the connected account. Add it as a separate LLM, then assign it to the
+desired usages; the standard model remains available separately. The Fast variant retains
+the original model's capabilities and reasoning setting, with higher subscription usage.
+An explicit rejection of this mode by OpenAI remains visible as an error.
+
 For ChatGPT, the additional credit balance appears in credits, without a gauge, alongside
 subscription windows. A zero balance remains visible; a missing amount or unlimited
 entitlement is not shown as zero. These credits are separate from OpenAI API credits.

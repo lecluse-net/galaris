@@ -713,7 +713,7 @@ tests remain authoritative for behavior.
 | `bridge.openai` | `app.llm` | `back/bridge/openai/__init__.py`, `back/bridge/openai/codex.py`, `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/image.py`, `back/bridge/openai/parameters.py`, `back/bridge/openai/realtime.py`, `back/bridge/openai/resources.py` |
 | `bridge.openai` | `core.database` | `back/bridge/openai/codex_oauth.py` |
 | `bridge.openai` | `core.i18n` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py` |
-| `bridge.openai` | `core.util` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/codex_responses.py`, `back/bridge/openai/image.py`, `back/bridge/openai/realtime.py` |
+| `bridge.openai` | `core.util` | `back/bridge/openai/codex_models.py`, `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/codex_responses.py`, `back/bridge/openai/image.py`, `back/bridge/openai/realtime.py` |
 | `bridge.openrouter` | `app.llm` | `back/bridge/openrouter/__init__.py`, `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/quota.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py` |
 | `bridge.openrouter` | `core.i18n` | `back/bridge/openrouter/resources.py` |
 | `bridge.openrouter` | `core.util` | `back/bridge/openrouter/decisions.py`, `back/bridge/openrouter/image.py`, `back/bridge/openrouter/multimedia.py`, `back/bridge/openrouter/quota.py`, `back/bridge/openrouter/resources.py`, `back/bridge/openrouter/transcription.py`, `back/bridge/openrouter/usage.py` |

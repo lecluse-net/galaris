@@ -3,7 +3,6 @@
 from dataclasses import replace
 
 from pydantic_ai.profiles.openai import openai_model_profile
-from pydantic_ai.profiles.openai_codex import openai_codex_model_profile
 
 from app.llm.provider_catalog import ProviderProfile
 from app.llm.provider_facade import (
@@ -20,10 +19,12 @@ from app.llm.provider_facade import (
     register_provider_quota_reader,
     register_realtime_conversation_provider,
     register_resource_discovery,
+    register_model_metadata,
     register_runtime_policy,
 )
 
 from .codex import CodexBridge
+from .codex_models import chatgpt_model_profile
 from .parameters import model_parameter_policy, chatgpt_parameter_policy
 from app.llm.provider_facade import register_request_parameter_policy
 from .resources import OpenAIResourceDiscovery
@@ -79,6 +80,7 @@ register_resource_discovery(API_PROFILE.code, OpenAIResourceDiscovery())
 register_realtime_conversation_provider(API_PROFILE.code, OpenAIRealtime())
 CODEX_BRIDGE = CodexBridge()
 register_resource_discovery(CODEX_PROFILE.code, CODEX_BRIDGE)
+register_model_metadata(CODEX_PROFILE.code, CODEX_BRIDGE)
 register_provider_authentication(CODEX_PROFILE.code, CODEX_BRIDGE)
 register_provider_quota_reader(CODEX_PROFILE.code, CODEX_BRIDGE)
 register_managed_runtime_authentication(CODEX_PROFILE.code, CODEX_BRIDGE)
@@ -97,7 +99,7 @@ register_responses_policy(
     CODEX_PROFILE.code,
     # The subscription endpoint returns 404 for /responses/compact. Let the
     # harness bound history locally; OpenAI API compaction remains available.
-    replace(RESPONSES_POLICY, model_profile=openai_codex_model_profile,
+    replace(RESPONSES_POLICY, model_profile=chatgpt_model_profile,
             supports_compaction=False),
 )
 register_runtime_policy(

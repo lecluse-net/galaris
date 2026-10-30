@@ -446,6 +446,7 @@ async def test_agent_uses_published_output_capacity_instead_of_provider_default(
 @pytest.mark.parametrize("status,parameter,retries", [
     (400, "custom_option", 1), (422, "temperature", 1),
     (400, "messages", 0), (400, "max_tokens", 0), (429, "temperature", 0),
+    (400, "service_tier", 0),
 ])
 async def test_optional_parameter_rejection_is_best_effort_without_losing_requirements(
     runtime, monkeypatch, status, parameter, retries,
@@ -454,6 +455,9 @@ async def test_optional_parameter_rejection_is_best_effort_without_losing_requir
     llm.provider = (await runtime[0].scalars(select(LLMProvider).where(
         LLMProvider.catalog_code == "openrouter",
     ))).one()
+    if parameter == "service_tier":
+        llm.provider = LLMProvider(name="Synthetic service tier", catalog_code="openai-api",
+            provider_type="openai_compatible", base_url="https://api.openai.com/v1", is_active=True)
     await runtime[0].commit()
     sent = []
     def upstream(request):
@@ -468,12 +472,14 @@ async def test_optional_parameter_rejection_is_best_effort_without_losing_requir
             "message": {"role": "assistant", "content": "Bonjour !"}, "finish_reason": "stop"}]})
     provider_http(monkeypatch, upstream)
     body = {"model": llm.code, "messages": [{"role": "user", "content": "Bonjour"}],
-            "temperature": 0.4, "custom_option": True, "max_tokens": 50}
+            "temperature": 0.4, "custom_option": True, "max_tokens": 50, "service_tier": "priority"}
     response = await protocol_inference.proxy_chat_completion(body, task_id=None)
     assert response.status_code == (200 if retries else status)
     assert len(sent) == retries + 1
     assert sent[-1]["messages"] == body["messages"]
-    assert sent[-1]["max_tokens"] == 50
+    assert sent[-1].get("max_tokens", sent[-1].get("max_completion_tokens")) == 50
+    if parameter == "service_tier":
+        assert sent[-1]["service_tier"] == "priority"
     saved = await read_inference(UUID(response.headers["x-galaris-inference-id"]))
     assert saved.status == ("completed" if retries else "failed")
     if retries:

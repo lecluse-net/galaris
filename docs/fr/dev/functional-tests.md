@@ -31,6 +31,19 @@ conflits de métadonnées, titres pilotés par un Goal et jeux en lecture seule.
 à chemins vérifient la conservation du parent et le refus des collisions et traversées.
 Les tests de catalogue MCP vérifient l'exposition de `file_rename` dans les deux runtimes.
 
+## Variantes Fast du fournisseur ChatGPT
+
+`bridge/openai/tests/test_fast_models.py` vérifie le catalogue du compte, les capacités
+héritées, les requêtes Chat/Responses et l'enregistrement puis la réouverture des variantes
+Fast et standard avec PostgreSQL. `tests/test_codex_provider.py` exerce aussi Fast dans le
+SDK réel, les sorties structurées, les erreurs de stream et le renouvellement d'authentification.
+`tests/test_protocol_inference.py` conserve le niveau de service lors d'un refus explicite.
+`front/browser-tests/provider-resources.spec.mjs` sélectionne une variante Fast distincte
+du modèle standard et conserve ce choix pendant le chargement différé du formulaire sur
+mobile et bureau. Ses utilisateurs synthétiques possèdent explicitement le droit de créer
+un modèle ; le seul droit de configurer un fournisseur ne le permet pas.
+Ces scénarios synthétiques ne mesurent ni l'éligibilité ni l'accélération du compte OpenAI réel.
+
 ## Tarification nocturne des modèles
 
 `app/llm/tests/test_pricing_sync.py` exerce les vrais bridges HTTP sur des réponses

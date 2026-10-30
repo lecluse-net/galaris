@@ -3,6 +3,7 @@
 default: dict[str, object] = {
     "llm_api": {
         "codex": {
+            "fast_description": "Fast mode for the same model, with higher subscription usage.",
             "quota_unavailable": "ChatGPT usage limits are temporarily unavailable.",
             "provider_not_found": "LLM provider not found.",
             "not_codex_provider": "This provider does not use OpenAI Codex authentication.",

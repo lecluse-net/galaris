@@ -63,7 +63,8 @@ async def _send_best_effort(
     forwarded = deepcopy(body)
     # Preserve functional requirements, including budgets and structured output.
     budgets = {"max_tokens", "max_output_tokens", "max_completion_tokens", "budget_tokens"}
-    required = PAYLOAD_PARAMETERS | budgets
+    # A selected serving tier must not silently turn into a different product.
+    required = PAYLOAD_PARAMETERS | budgets | {"service_tier"}
 
     def contains_budget(value: object) -> bool:
         return isinstance(value, dict) and any(
