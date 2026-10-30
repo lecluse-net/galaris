@@ -6,6 +6,7 @@
         <q-icon v-if="/^[a-z][a-z0-9+.-]*:\/\/$/.test(entry.uri)" name="storage" size="var(--file-icon-size)" color="primary" />
         <LibraryIcon v-else-if="documentFolderId(entry.uri)" :icon="typeof entry.metadata?.icon === 'string' ? entry.metadata.icon : null" size="var(--file-icon-size)" />
         <FolderIcon v-else-if="entry.is_collection" size="var(--file-icon-size)" />
+        <WorkingDocumentThumbnail v-else-if="documentId && entry.capabilities.includes('read')" class="file-tile-document" :document-id="documentId" :agent-id="agentId" :updated-at="entry.modified_at" />
         <ResourceThumbnail v-else-if="process || resourceAgent !== null" :uri="entry.uri" :agent-id="selectable ? null : agentId" :title="displayName" />
         <img v-else-if="thumbnail" class="file-tile-image" :src="thumbnail" :alt="entry.name" loading="lazy" />
         <q-icon v-else class="file-tile-image" :name="icon" size="var(--file-icon-size)" color="primary" />
@@ -32,7 +33,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { QBtn } from 'quasar'
-import { FolderIcon, LibraryIcon, documentFolderId, ResourceThumbnail, browserResourceKind, formatFileSize, queuePreview } from '@/core/util'
+import { FolderIcon, LibraryIcon, documentFolderId, WorkingDocumentThumbnail, ResourceThumbnail, browserResourceKind, formatFileSize, queuePreview } from '@/core/util'
 import { agentResourceId } from '@/app/agent'
 import { fileBrowserService, type FileEntry } from '../services/fileBrowserService'
 import { resourceTarget, collectionLabel } from '../presentation'
@@ -42,6 +43,7 @@ const emit = defineEmits<{ open: [entry: FileEntry, event: Event]; activate: [en
 const { t, locale } = useI18n()
 const tile = useTemplateRef<QBtn>('tile')
 const thumbnail = ref('')
+const documentId = computed(() => /^document:\/\/([^/]+)$/.exec(entry.uri)?.[1] ?? null)
 const process = computed(() => ['process', 'process_run'].includes(resourceTarget(entry, agentId)?.kind ?? ''))
 const resourceAgent = computed(() => agentResourceId(entry.uri))
 const displayName = computed(() => collectionLabel(entry.uri, t) ?? ((process.value || resourceAgent.value !== null) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name))
@@ -49,12 +51,12 @@ let request: AbortController | undefined
 let observer: IntersectionObserver | undefined
 const icon = computed(() => {
   const target = resourceTarget(entry, agentId)
-  if (target) return ({ task: 'task_alt', round: 'forum', voice: 'record_voice_over', document: 'description', memory: 'memory' })[target.kind] || 'description'
+  if (target) return ({ task: 'task_alt', round: 'forum', voice: 'record_voice_over', document: 'description', dataset: 'data_object', memory: 'memory' })[target.kind] || 'description'
   const kind = browserResourceKind(entry.media_type, entry.name)
   return ({ image: 'image', pdf: 'picture_as_pdf', audio: 'audio_file', video: 'movie', html: 'html', model3d: 'view_in_ar', markdown: 'article', text: 'description' })[kind ?? 'text']
 })
 onMounted(() => {
-  if (entry.is_collection || resourceAgent.value !== null || !entry.capabilities.includes('read')) return
+  if (entry.is_collection || documentId.value || resourceAgent.value !== null || !entry.capabilities.includes('read')) return
   const target = resourceTarget(entry, agentId)
   if (target && target.kind !== 'document') return
   if (entry.media_type.startsWith('audio/')) return
@@ -82,6 +84,7 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect(); if (thumbnail.
 .file-tile-content { width: 100%; min-width: 0; padding: 6px 0; text-align: center; }
 .file-tile-preview { height: var(--file-preview-height); display: grid; place-items: center; margin-bottom: 2px; }
 .file-tile-preview img { width: 100%; height: var(--file-preview-height); object-fit: contain; }
+.file-tile-preview .file-tile-document { width: 100%; height: 100%; }
 .file-tile-image { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .14)); }
 :global(body.body--dark .file-tile-image) { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .32)); }
 .file-tile-name { font-weight: 400; overflow-wrap: anywhere; line-height: 1.4; }

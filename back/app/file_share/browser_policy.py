@@ -18,6 +18,8 @@ def resource_privileges(uri: str, *, write: bool = False) -> tuple[str, ...]:
             (Privileges.DOCUMENT_ACCESS,),
             (Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN),
         )
+        if not reference.locator or reference.segments[:1] == ("folders",):
+            read = (*read, Privileges.DATASET_READ, Privileges.DATASET_EDIT, Privileges.DATASET_ADMIN)
     elif reference.scheme == "data":
         read, edit = (Privileges.DATASET_READ,), (Privileges.DATASET_EDIT, Privileges.DATASET_ADMIN)
     elif reference.scheme == "memory":

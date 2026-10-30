@@ -88,15 +88,14 @@ def _route(reference: ResourceUri) -> _Route:
     if len(segments) == 1 and reference.is_collection:
         return _Route(kind=kind)
     if (
-        kind == "goal"
-        and len(segments) == 3
-        and segments[2] == "cycles"
+        (kind == "goal" and len(segments) == 3 and segments[2] == "cycles"
+         or kind in {"goal", "goal_cycle"} and len(segments) == 2)
         and reference.is_collection
     ):
         try:
             return _Route(kind="goal_cycle", goal_cycles_for=UUID(segments[1]))
         except ValueError as exc:
-            raise ResourceUriError("galaris://goal/<uuid>/cycles/ requires a UUID.") from exc
+            raise ResourceUriError("A Goal cycles folder requires a Goal UUID.") from exc
     if len(segments) != 2 or reference.is_collection:
         raise ResourceUriError(
             f"galaris://{kind}/ requires a collection or one exact identifier."
@@ -170,10 +169,7 @@ def _item_name(kind: GalarisResourceKind, payload: dict[str, Any]) -> str:
     if kind == "process":
         return str(payload.get("label") or f"Process {identifier}")
     sequence = payload.get("sequence")
-    task_label = str(payload.get("task_label") or "").strip()
-    return task_label or (
-        f"Goal cycle {sequence}" if sequence is not None else f"Goal cycle {identifier}"
-    )
+    return f"{sequence:04d}" if isinstance(sequence, int) else f"Goal cycle {identifier}"
 
 
 def _item_id(kind: GalarisResourceKind, payload: dict[str, Any]) -> str:
@@ -229,7 +225,7 @@ def _descriptor(
     metadata["label"] = label
     return ResourceDescriptor(
         uri=f"galaris://{'processes' if kind == 'process' and payload.get('native_code') else kind}/{encoded_identifier}",
-        name=f"{kind}-{identifier}.json",
+        name=label if kind == "goal_cycle" else f"{kind}-{identifier}.json",
         media_type=f"application/vnd.galaris.{kind}+json",
         size=len(content.encode("utf-8")) if include_size else None,
         modified_at=_item_modified_at(kind, payload),
@@ -262,6 +258,49 @@ def _collection_descriptor(kind: GalarisResourceKind) -> ResourceDescriptor:
         media_type="application/vnd.galaris.collection+json",
         capabilities=list(_COLLECTION_CAPABILITIES),
     )
+
+
+def _goal_folder(payload: dict[str, Any]) -> ResourceDescriptor:
+    return ResourceDescriptor(
+        uri=f"galaris://goal/{payload['id']}/",
+        name=_item_name("goal", payload), is_collection=True,
+        media_type="application/vnd.galaris.collection+json",
+        capabilities=list(_COLLECTION_CAPABILITIES),
+    )
+
+
+async def _goal_listing(
+    ctx: ResourceContext, reference: ResourceUri, goal_id: UUID | None, *, offset: int, limit: int,
+) -> ResourceListing:
+    if goal_id is None:
+        goals = await _list_payloads(ctx, "goal", offset=offset, limit=limit + 1)
+        entries = [_goal_folder(goal) for goal in goals[:limit]]
+        more = len(goals) > limit
+        return ResourceListing(uri=str(reference), entries=entries, truncated=more,
+            next_cursor=str(offset + len(entries)) if more else None)
+    payload = await _read_payload(ctx, "goal", goal_id)
+    if payload is None:
+        raise FileNotFoundError(str(reference))
+    from app.goal import list_goal_cycle_resources
+
+    available = limit - (1 if offset == 0 else 0)
+    cycles = await list_goal_cycle_resources(actor_agent_id=ctx.agent_id, goal_id=goal_id,
+        offset=max(0, offset - 1), limit=available + 1, order="sequence")
+    entries: list[ResourceDescriptor] = []
+    if offset == 0:
+        goal = _descriptor("goal", payload)
+        goal.name = _item_name("goal", payload)
+        goal.metadata["sort_order"] = 0
+        entries.append(goal)
+    for cycle in cycles[:available]:
+        entry = _descriptor("goal_cycle", cycle)
+        entry.metadata["sort_order"] = cycle["sequence"]
+        entries.append(entry)
+    more = len(cycles) > available
+    return ResourceListing(uri=str(reference), entries=entries, truncated=more,
+        next_cursor=str(offset + len(entries)) if more else None,
+        ancestors=[ResourceDescriptor(uri="galaris://", name="Galaris", is_collection=True,
+            capabilities=list(_COLLECTION_CAPABILITIES)), _collection_descriptor("goal"), _goal_folder(payload)])
 
 
 async def _can_access_skills(ctx: ResourceContext) -> bool:
@@ -405,6 +444,11 @@ async def galaris_resource_info(
             capabilities=capabilities,
         )
     if route.is_collection:
+        if route.goal_cycles_for is not None and len(reference.segments) == 2:
+            payload = await _read_payload(ctx, "goal", route.goal_cycles_for)
+            if payload is None:
+                raise FileNotFoundError(str(reference))
+            return _goal_folder(payload)
         descriptor = _collection_descriptor(route.kind)
         if route.goal_cycles_for is not None:
             descriptor.uri = f"galaris://goal/{route.goal_cycles_for}/cycles/"
@@ -434,10 +478,8 @@ async def galaris_resource_list(
     offset = _listing_offset(cursor)
     if route.kind is None:
         skill_access = await _can_access_skills(ctx)
-        visible_kinds: tuple[GalarisResourceKind, ...] = (
-            _KINDS
-            if skill_access
-            else tuple(kind for kind in _KINDS if kind != "skill")
+        visible_kinds: tuple[GalarisResourceKind, ...] = tuple(
+            kind for kind in _KINDS if kind != "goal_cycle" and (skill_access or kind != "skill")
         )
         from app.tools import has_documentation_access
         from .documentation_provider import collection_descriptor
@@ -456,6 +498,8 @@ async def galaris_resource_list(
     if not route.is_collection:
         raise ResourceUriError("file_list requires a galaris:// collection URI.")
     limit = max(1, min(max_entries, 500))
+    if route.kind == "goal" or route.kind == "goal_cycle" and len(reference.segments) <= 2:
+        return await _goal_listing(ctx, reference, route.goal_cycles_for, offset=offset, limit=limit)
     if route.kind == "process" and reference.segments[:1] == ("processes",):
         # The first row is a real subcollection; subsequent cursors address definitions.
         available = limit - (1 if offset == 0 else 0)
@@ -587,7 +631,7 @@ async def galaris_resource_search(
         mode=mode,
         hits=[
             ResourceSearchHit(
-                resource=_descriptor(kind, payload),
+                resource=_goal_folder(payload) if kind == "goal" and route.kind == "goal" else _descriptor(kind, payload),
                 excerpt=_excerpt(payload, query),
             )
             for kind, payload in selected

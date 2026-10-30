@@ -24,7 +24,6 @@ async def test_galaris_root_lists_the_supported_business_collections(db) -> None
         "galaris://voice/",
         "galaris://text/",
         "galaris://goal/",
-        "galaris://goal_cycle/",
         "galaris://agent/",
         "galaris://processes/",
         "galaris://code/",

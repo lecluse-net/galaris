@@ -134,7 +134,7 @@ import { useQuasar, type QTreeNode } from 'quasar'
 import { FolderIcon, ResourceAttachments, ResourceDetailDialog, FullscreenPreview, AudioResourcePlayer, browserResourceKind, richLinkTarget, saveBlobAsResource, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
 import { fileBrowserService, type FileEntry, type FileScheme } from '../services/fileBrowserService'
 import { useFileDirectories } from '../browserState'
-import { parentDirectory, resourceTarget, collectionLabel } from '../presentation'
+import { parentDirectory, resourceTarget, collectionLabel, compareFileEntries } from '../presentation'
 import FileTile from './FileTile.vue'
 import FileEntryActions from './FileEntryActions.vue'
 
@@ -186,7 +186,7 @@ const retryUri = ref(initialUri)
 let anchor = ''
 const current = computed(() => query.value?.trim() ? searchState.value : currentUri.value ? directory(currentUri.value) : null)
 const unlistable = computed(() => schemes.value.some(scheme => `${scheme.scheme}://` === currentUri.value && (!scheme.capabilities.includes('list') || scheme.root_listable === false)))
-const sortedEntries = computed(() => (current.value?.entries ?? []).filter(isVisible).sort((a, b) => Number(b.is_collection) - Number(a.is_collection) || a.name.localeCompare(b.name, locale.value)))
+const sortedEntries = computed(() => (current.value?.entries ?? []).filter(isVisible).sort((a, b) => compareFileEntries(a, b, locale.value)))
 const loadedCount = computed(() => schemesError.value || unlistable.value ? 0 : sortedEntries.value.length)
 const canSearch = computed(() => !!currentUri.value)
 const refreshing = computed(() => current.value?.loading ?? false)

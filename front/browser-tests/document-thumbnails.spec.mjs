@@ -176,6 +176,7 @@ test('document cards inside messages display and refresh their saved revision th
 
 for (const { surface, agentId, resolvedAgentId } of [
   { surface: 'agent', agentId: 7, resolvedAgentId: 7 },
+  { surface: 'files', agentId: 7, resolvedAgentId: 7 },
   { surface: 'managed library', agentId: null, resolvedAgentId: 7 },
   { surface: 'human library', agentId: null, resolvedAgentId: null },
 ]) test(`thumbnails use the print snapshot with embedded images for the saved revision in the ${surface}`, async ({ page, context }, testInfo) => {
@@ -199,7 +200,12 @@ for (const { surface, agentId, resolvedAgentId } of [
     snapshot = route.request().postDataJSON()
     return route.fulfill({ contentType: 'image/webp', body: png })
   })
-  if (surface === 'agent') {
+  if (surface === 'files') {
+    await mount(page, 'app/file_share/components/FileTile.vue', {
+      props: { agentId, entry: { uri: `document://${id}`, name: item.title, is_collection: false,
+        media_type: 'text/html', size: null, modified_at: item.updated_at, capabilities: ['info', 'read'] } },
+    })
+  } else if (surface === 'agent') {
     await mount(page, 'app/document/components/DocumentThumbnail.vue', { props: { documentId: id, agentId, revision: 12 } })
   } else {
     await mount(page, 'app/document/components/DocumentLibraryEntryRow.vue', {

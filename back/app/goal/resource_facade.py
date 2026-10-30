@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from sqlalchemy import String, cast, or_, select
+from sqlalchemy import ColumnElement, String, cast, or_, select
 
 from app.task import Task, TaskStatus
 from core.database import get_db
@@ -110,6 +110,7 @@ async def list_goal_cycle_resources(
     query: str = "",
     offset: int = 0,
     limit: int = 100,
+    order: Literal["recent", "sequence"] = "recent",
 ) -> list[dict[str, Any]]:
     statement = (
         select(GoalCycle, Task.label, Task.status, Task.cost)
@@ -124,19 +125,15 @@ async def list_goal_cycle_resources(
     normalized_query = query.strip()
     if normalized_query:
         pattern = f"%{normalized_query}%"
-        statement = statement.where(
-            or_(
-                Goal.title.ilike(pattern),
-                GoalCycle.reason.ilike(pattern),
-                GoalCycle.progress_summary.ilike(pattern),
-                Task.label.ilike(pattern),
-                cast(GoalCycle.id, String).ilike(pattern),
-            )
-        )
+        matches: list[ColumnElement[bool]] = [Goal.title.ilike(pattern), GoalCycle.reason.ilike(pattern),
+            GoalCycle.progress_summary.ilike(pattern), Task.label.ilike(pattern), cast(GoalCycle.id, String).ilike(pattern)]
+        if normalized_query.isdecimal() and int(normalized_query) <= 2_147_483_647:
+            matches.append(GoalCycle.sequence == int(normalized_query))
+        statement = statement.where(or_(*matches))
     rows = (
         await get_db().execute(
             statement
-            .order_by(GoalCycle.created_at.desc(), GoalCycle.id.desc())
+            .order_by(GoalCycle.sequence if order == "sequence" else GoalCycle.created_at.desc(), GoalCycle.id.desc())
             .offset(max(0, offset))
             .limit(max(1, min(limit, 501)))
         )

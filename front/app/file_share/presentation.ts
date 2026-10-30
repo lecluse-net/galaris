@@ -1,6 +1,14 @@
 import type { ResourceDetailTarget } from '@/core/util'
 import type { FileEntry } from './services/fileBrowserService'
 
+/** Provider positions preserve meaningful order within virtual collections. */
+export function compareFileEntries(left: FileEntry, right: FileEntry, locale: string): number {
+  const position = (entry: FileEntry): number => typeof entry.metadata?.sort_order === 'number'
+    && Number.isFinite(entry.metadata.sort_order) ? entry.metadata.sort_order : Number.MAX_VALUE
+  return Number(right.is_collection) - Number(left.is_collection)
+    || position(left) - position(right) || left.name.localeCompare(right.name, locale)
+}
+
 export function collectionLabel(uri: string, translate: (key: string) => string): string | null {
   return uri === 'document://folders/' ? translate('documents.collections.title') : skillCollectionLabel(uri, translate)
 }

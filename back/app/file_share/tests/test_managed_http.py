@@ -70,6 +70,8 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     params = {"agent_id": owner_id, "uri": uri}
     schemes = await client.get(f"{browser}/schemes", params={"agent_id": owner_id}, headers=human)
     assert schemes.status_code == 200, schemes.text
+    assert "document" in {item["scheme"] for item in schemes.json()}
+    assert "data" not in {item["scheme"] for item in schemes.json()}
     assert "list" in next(item for item in schemes.json() if item["scheme"] == "file")["capabilities"]
     assert (await client.get(f"{browser}/schemes", params={"agent_id": other_id}, headers=human)).status_code == 404
     assert (await client.get(f"{browser}/info", params=params, headers=human)).json()["name"] == "Official.txt"
@@ -107,6 +109,10 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     personal = await client.post("/api/datasets", headers=human, json={"title": "Synthetic personal Dataset", "content": '{"value":42}'})
     assert personal.status_code == 200, personal.text
     personal_uri = f"data://{personal.json()['id']}"
+    documents = await client.get(f"{browser}/entries", headers=human,
+        params={"agent_id": owner_id, "uri": "document://", "management": True})
+    assert documents.status_code == 200, documents.text
+    assert personal_uri in {item["uri"] for item in documents.json()["entries"]}
     agent_view = await client.get(f"{browser}/entries", headers=human, params={"agent_id": owner_id, "uri": "data://"})
     assert personal_uri not in {item["uri"] for item in agent_view.json()["entries"]}
     management_view = await client.get(f"{browser}/search", headers=human,
@@ -150,5 +156,20 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
         params={"agent_id": owner_id, "uri": personal_uri, "management": True})
     assert dataset_info.status_code == 200, dataset_info.text
     assert (await client.get(f"{browser}/content", params=params, headers=human)).status_code == 403
+    # Dataset-only readers discover the unified location without gaining Text access.
+    async with get_db_session() as db:
+        document_privileges = select(Privilege.id).where(Privilege.code.in_(["DOCUMENT_ACCESS", "DOCUMENT_EDIT"]))
+        await db.execute(delete(RolePrivilege).where(
+            RolePrivilege.role_id == role_id, RolePrivilege.privilege_id.in_(document_privileges)))
+    schemes = await client.get(f"{browser}/schemes", params={"agent_id": owner_id}, headers=human)
+    assert schemes.status_code == 200, schemes.text
+    assert "document" in {item["scheme"] for item in schemes.json()}
+    assert "data" not in {item["scheme"] for item in schemes.json()}
+    documents = await client.get(f"{browser}/entries", headers=human,
+        params={"agent_id": owner_id, "uri": "document://", "management": True})
+    assert documents.status_code == 200, documents.text
+    assert [item["uri"] for item in documents.json()["entries"]] == [personal_uri]
+    assert (await client.get(f"{browser}/info", headers=human,
+        params={"agent_id": owner_id, "uri": f"document://{document.json()['id']}"})).status_code == 403
     client.cookies.clear()
     assert (await client.get(f"{browser}/schemes", params={"agent_id": owner_id})).status_code in {401, 403}

@@ -1206,11 +1206,19 @@ checkpoint sont normalisés à la lecture. Un serveur MCP externe conserve en re
 connexion comme namespace afin d'éviter les collisions entre fournisseurs.
 
 Les lectures Goal en libre-service passent par le Tool `file_sharing`, via `file_list`,
-`file_search` et `file_read` sur `galaris://goal/` et `galaris://goal_cycle/`. Les commandes
+`file_search` et `file_read` sous `galaris://goal/`. Les commandes
 `goal_update_suivi`, `goal_run_now` et
 `goal_ask_referrer` appartiennent au package cœur `galaris`. `app.goal` impose côté serveur que le
 Goal appartienne à l'agent appelant. `goal_ask_referrer` exige en plus la tâche courante du Goal et
 ne bénéficie jamais d'une élévation administrative.
+
+`file_list("galaris://goal/")` expose un répertoire par Goal, nommé avec son titre,
+à l’URI stable `galaris://goal/<goal-uuid>/`. Il contient la référence du Goal en premier,
+puis les cycles par séquence croissante, avec des noms d’au moins quatre chiffres (`0001`, etc.).
+Les descripteurs portent `metadata.sort_order` pour conserver cet ordre dans Fichiers.
+Les URI exactes `galaris://goal/<uuid>` et `galaris://goal_cycle/<cycle-uuid>`, ainsi que
+l’ancienne collection `galaris://goal/<uuid>/cycles/`, restent utilisables. La collection
+`galaris://goal_cycle/` n’est plus annoncée à la racine Galaris ; ses anciens liens restent compatibles.
 
 Les définitions de Process affectées passent également par `galaris://process/`; chaque ressource
 est adressée par le même `workflow_id` que `process_get` et `process_start`. Cette projection reste

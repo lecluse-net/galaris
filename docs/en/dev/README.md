@@ -1175,11 +1175,19 @@ are normalized on read. An external MCP server, however, retains its connection 
 namespace to avoid collisions between providers.
 
 Self-service Goal reads pass through the `file_sharing` Tool, via
-`file_list`, `file_search`, and `file_read` on `galaris://goal/` and `galaris://goal_cycle/`.
+`file_list`, `file_search`, and `file_read` under `galaris://goal/`.
 The commands `goal_update_suivi`, `goal_run_now`, and
 `goal_ask_referrer` belong to the core `galaris` package. `app.goal` enforces server-side that
 the Goal belongs to the calling agent. `goal_ask_referrer` additionally requires the Goal's
 current task and never receives administrative elevation.
+
+`file_list("galaris://goal/")` exposes one directory per Goal, named after its title,
+at the stable URI `galaris://goal/<goal-uuid>/`. It contains the Goal reference first,
+then cycles in ascending sequence order, with names using at least four digits (`0001`, etc.).
+Descriptors carry `metadata.sort_order` so Files preserves this order.
+Exact `galaris://goal/<uuid>` and `galaris://goal_cycle/<cycle-uuid>` URIs, along with the
+legacy `galaris://goal/<uuid>/cycles/` collection, remain usable. The `galaris://goal_cycle/`
+collection is no longer advertised at the Galaris root; its old links remain compatible.
 
 Assigned Process definitions also pass through `galaris://process/`; each resource
 is addressed by the same `workflow_id` as `process_get` and `process_start`. This projection

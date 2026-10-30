@@ -2436,6 +2436,12 @@ Le navigateur **Connaissances → Fichiers** est couvert par
 reprise après erreur sans perte des entrées, aperçu au clavier et changement d’agent
 pendant une réponse tardive, menus de mutation, confirmations, refus d’accès et
 renommage du répertoire ouvert.
+Le parcours sous Goals vérifie l’absence de collection Goal cycles séparée, les répertoires titrés, l’objectif avant les cycles numérotés,
+la continuation, l’ouverture et le retour historique sur mobile et bureau.
+`app/goal/tests/test_resource_facade.py` couvre aussi les objectifs sans cycle, les titres
+identiques, le renommage, les numéros supérieurs à `9999`, la recherche par numéro et les refus
+de portée. `front/app/file_share/presentation.test.mjs` protège l’ordre fourni par la projection
+sans changer le tri alphabétique habituel des autres fichiers.
 Le même scénario utilise l’historique réel du navigateur sur mobile et bureau pour
 restaurer agent et répertoire, sans doubler une sélection courante, après erreur ou
 réponse tardive, et depuis une URL copiée. `internal-file-picker.spec.mjs` conserve

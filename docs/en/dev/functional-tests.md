@@ -2335,6 +2335,11 @@ The **Knowledge → Files** browser is covered by
 `front/browser-tests/file-browser.spec.mjs`: navigation, loading on scroll, retry
 without losing entries, keyboard preview and agent changes during a late response.
 It also covers mutation menus, confirmations, access denials and renaming the open directory.
+The Goals journey checks the absence of a separate Goal cycles collection, titled directories, the Goal before numbered cycles, continuation,
+opening and browser history on desktop and mobile. `app/goal/tests/test_resource_facade.py`
+also covers Goals without cycles, duplicate titles, renaming, numbers beyond `9999`, searching
+by number and scope denials. `front/app/file_share/presentation.test.mjs` protects the order
+provided by the projection while preserving ordinary alphabetical file sorting.
 The same scenario uses real browser history on desktop and mobile to restore Agents
 and directories without duplicating the current selection, after errors and late
 responses, and from a copied URL. `internal-file-picker.spec.mjs` preserves selections

@@ -18,7 +18,7 @@ between multiple locations is retained until its last location disappears.
 In **Knowledge → Files**, click an agent card to open their browser. Use the selector
 to change agents without clearing the current selection. The counter to its right shows
 the items loaded in the current directory. The tree presents the known schemes of
-their virtual filesystem: SSH console, documents, datasets, Galaris resources and
+their virtual filesystem: SSH console, documents, Galaris resources and
 connected providers. It respects the agents you can manage and each resource’s own
 access rules.
 
@@ -29,6 +29,16 @@ appears in each of them with the same URL. Breadcrumbs follow folder names, incl
 when opening a direct link. Folders become visible as soon as their branch contains a readable
 document, even without explicitly sharing the folder. All users' classifications are included;
 other files retain their own access rules.
+
+Text and Data documents share this location. Text documents display a thumbnail and Data
+documents their dedicated icon. Files no longer shows a separate `data://` location;
+existing `data://…` URIs remain usable.
+
+Under **Galaris → Goals**, each Goal has a directory named after its title,
+including Goals without cycles. Its contents show the Goal itself first, followed by
+its cycles in ascending order, named `0001`, `0002`, etc. Numbers use at least four digits
+without truncating cycles beyond `9999`. Breadcrumbs display the Goal title;
+renaming it preserves the directory link. The separate **Goal cycles** collection is no longer shown.
 
 When no location is selected, the central grid displays available schemes as folders.
 Click one to open its root, then a directory in the tree or the central grid. Use the breadcrumbs

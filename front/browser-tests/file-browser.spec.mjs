@@ -1,5 +1,5 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
-import { document } from './data.mjs'
+import { document, goal as goalFixture } from './data.mjs'
 
 const component = 'app/file_share/pages/index.vue'
 const routeComponent = 'test-support/browser/FileRouteHarness.vue'
@@ -31,6 +31,58 @@ async function selectAgent(page, name) {
   await page.getByRole('option', { name, exact: true }).click()
   await expect(page.getByRole('listbox')).toHaveCount(0)
 }
+
+for (const width of [1440, 390]) test(`Goals folders retain the Goal first across pages, reopening and history at ${width}px`, async ({ page }, testInfo) => {
+  await setup(page)
+  await page.setViewportSize({ width, height: 1000 })
+  const id = '00000000-0000-4000-8000-000000000731'
+  const folder = entry(`galaris://goal/${id}/`, 'Z Synthetic objective', true)
+  const root = entry('galaris://goal/', 'Goals', true)
+  const galaris = entry('galaris://', 'Galaris', true)
+  const goal = { ...entry(`galaris://goal/${id}`, folder.name), media_type: 'application/vnd.galaris.goal+json', metadata: { sort_order: 0 } }
+  const cycles = [1, 2, 10000].map(sequence => ({
+    ...entry(`galaris://goal_cycle/00000000-0000-4000-8000-${String(sequence).padStart(12, '0')}`, String(sequence).padStart(4, '0')),
+    media_type: 'application/vnd.galaris.goal_cycle+json', metadata: { sort_order: sequence },
+  }))
+  const detail = { ...goalFixture, id, title: folder.name, description: '<p>Synthetic objective description</p>' }
+  await jsonRoute(page, '**/api/goals/settings', { globally_paused: false, schedule_enabled: false, schedule: [], timezone: 'UTC', is_active: true })
+  await jsonRoute(page, '**/api/goals/runtime-status', { globally_paused: false, schedule_enabled: false, timezone: 'UTC', is_active: true })
+  await jsonRoute(page, '**/api/goals/tree', { items: [detail], total: 1 })
+  await jsonRoute(page, `**/api/goals/${id}`, detail)
+  await jsonRoute(page, `**/api/goals/${id}/cycles?*`, { items: [], total: 0, page: 1, page_size: 50 })
+  await jsonRoute(page, '**/api/agents?*', [])
+  await jsonRoute(page, '**/api/agents/titles?*', [])
+  await page.route('**/api/file-share/browser/entries?*', route => {
+    const params = new URL(route.request().url()).searchParams
+    const uri = params.get('uri')
+    const listing = uri === folder.uri ? { ...pageOf(uri, params.has('cursor') ? cycles.slice(1) : [goal, cycles[0]], params.has('cursor') ? null : '2'), ancestors: [galaris, root, folder] }
+      : pageOf(uri, uri === root.uri ? [folder] : [root])
+    return route.fulfill({ json: listing })
+  })
+  await jsonRoute(page, '**/api/file-share/browser/info?*', cycles[0])
+  await page.route('**/api/file-share/browser/content?*', route => route.fulfill({ contentType: cycles[0].media_type, body: JSON.stringify({ goal_id: id, sequence: 1 }) }))
+  await mount(page, routeComponent, { route: '/files?agent_id=7&uri=' + encodeURIComponent(galaris.uri), browserHistory: true, privileges: ['FILE_ACCESS', 'GOAL_ACCESS'] })
+  await expect(page.getByRole('button', { name: 'Open Goal cycles', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Open Goals', exact: true }).click()
+  await page.getByRole('button', { name: `Open ${folder.name}`, exact: true }).click()
+  const names = page.locator('.file-main .file-tile-name')
+  await expect(names).toHaveText([goal.name, '0001', '0002', '10000'])
+  const navigation = page.getByRole('navigation', { name: 'File navigation', exact: true })
+  await expect(navigation.getByRole('button', { name: folder.name, exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('goal-cycles-light.png'), animations: 'disabled' })
+  await page.getByRole('button', { name: `Open ${goal.name}`, exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('Synthetic objective description')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Open 0001', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('sequence')
+  await page.keyboard.press('Escape')
+  await page.evaluate(() => window.history.back())
+  await expect(names).toHaveText([folder.name])
+  await page.evaluate(() => window.history.forward())
+  await expect(names).toHaveText([goal.name, '0001', '0002', '10000'])
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: testInfo.outputPath('goal-cycles-dark.png'), animations: 'disabled' })
+})
 
 for (const width of [1440, 390]) test(`browser history restores agents and directories, including failed and late loads at ${width}px`, async ({ page }) => {
   await setup(page)

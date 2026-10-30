@@ -77,6 +77,9 @@ async def schemes(agent_id: int) -> list[ResourceSchemeDescription]:
         assert user is not None
         result: list[ResourceSchemeDescription] = []
         for scheme in await list_schemes(ctx):
+            if scheme.scheme == "data":
+                # Text and Data documents share the document:// browser location.
+                continue
             # Web URI parsing requires a host even when listing scheme metadata.
             sample = "https://example.invalid/" if scheme.scheme in {"http", "https"} else f"{scheme.scheme}://"
             required = resource_privileges(sample)

@@ -15021,7 +15021,7 @@
         "declared_path": "/browser/content",
         "file": "back/app/file_share/browser_router.py",
         "handler": "content",
-        "line": 129,
+        "line": 132,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15030,7 +15030,7 @@
         "declared_path": "/browser/entries",
         "file": "back/app/file_share/browser_router.py",
         "handler": "entries",
-        "line": 90,
+        "line": 93,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15057,7 +15057,7 @@
         "declared_path": "/browser/info",
         "file": "back/app/file_share/browser_router.py",
         "handler": "info",
-        "line": 112,
+        "line": 115,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15084,7 +15084,7 @@
         "declared_path": "/browser/search",
         "file": "back/app/file_share/browser_router.py",
         "handler": "search",
-        "line": 101,
+        "line": 104,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15102,7 +15102,7 @@
         "declared_path": "/browser/thumbnail",
         "file": "back/app/file_share/browser_router.py",
         "handler": "thumbnail",
-        "line": 119,
+        "line": 122,
         "method": "GET",
         "module": "app.file_share"
       },

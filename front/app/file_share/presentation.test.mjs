@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { resourceTarget } from './presentation.ts'
+import { compareFileEntries, resourceTarget } from './presentation.ts'
+
+test('virtual collections retain the Goal before cycles and sort cycles by their numeric sequence', () => {
+  const entry = (name, order) => ({ name, is_collection: false, metadata: { sort_order: order } })
+  const goal = entry('Synthetic goal', 0)
+  const cycles = [entry('10000', 10000), entry('0002', 2), entry('0001', 1)]
+  assert.deepEqual([...cycles, goal].sort((a, b) => compareFileEntries(a, b, 'en')), [goal, cycles[2], cycles[1], cycles[0]])
+  const ordinary = ['B.txt', 'A.txt'].map(name => ({ name, is_collection: false }))
+  const folder = { name: 'Z', is_collection: true }
+  assert.deepEqual([...ordinary, folder].sort((a, b) => compareFileEntries(a, b, 'en')), [folder, ordinary[1], ordinary[0]])
+})
 
 test('native Process and run references open their own detail with the selected agent scope', () => {
   const id = '11111111-1111-4111-8111-111111111111'

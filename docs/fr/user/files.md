@@ -21,7 +21,7 @@ Dans **Connaissances → Fichiers**, cliquez sur la carte d’un agent pour ouvr
 navigateur. Le sélecteur permet ensuite de changer d’agent sans désélectionner
 l’agent courant. Le compteur à sa droite indique les éléments chargés
 dans le répertoire courant. L’arborescence présente les
-schémas connus de son système de fichiers virtuel : console SSH, documents, données,
+schémas connus de son système de fichiers virtuel : console SSH, documents,
 ressources Galaris et fournisseurs connectés. Elle respecte le périmètre des agents
 que vous pouvez gérer et les droits propres à chaque ressource.
 
@@ -42,6 +42,17 @@ Le fil d’Ariane suit les noms des répertoires, y compris après l’ouverture
 Les répertoires deviennent visibles dès qu’un document accessible se trouve dans leur branche,
 même sans partage explicite du répertoire. Les classements de tous les utilisateurs sont pris
 en compte ; les autres fichiers restent soumis à leurs propres droits.
+
+Les documents Texte et Données sont regroupés dans cet emplacement. Les documents Texte
+affichent une miniature et les documents Données leur icône dédiée. Il n’y a plus
+d’emplacement `data://` séparé dans Fichiers ; les URI `data://…` existantes restent utilisables.
+
+Dans **Galaris → Goals**, chaque objectif possède un répertoire nommé d’après son titre,
+y compris s’il n’a pas encore de cycle. Son contenu affiche d’abord l’objectif lui-même,
+puis ses cycles dans l’ordre croissant, nommés `0001`, `0002`, etc. Le numéro conserve au moins
+quatre chiffres sans tronquer les cycles au-delà de `9999`. Le fil d’Ariane affiche le titre
+de l’objectif ; renommer celui-ci conserve le lien du répertoire. La collection séparée
+**Goal cycles** n’est plus affichée.
 
 Les boutons **Précédent** et **Suivant** du navigateur retrouvent les agents,
 emplacements et répertoires visités. Le fil d’Ariane et le bouton de répertoire parent
