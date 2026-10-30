@@ -4,7 +4,7 @@ from datetime import timedelta
 from uuid import UUID
 from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select
 
 from core.authorize import authorize
@@ -15,10 +15,25 @@ from .contracts import CodeRuntimeNotConfiguredError, CodeSessionUnavailableErro
 from .gateway import COOKIE, router as gateway_router
 from .models import CodeConversationLink, CodeSession
 from .schemas import HeartbeatInfo, RecoveryInfo, SessionInfo, SessionRequest, WorkspaceInfo
-from .service import browser_session, editor_origin, get_workspace_record, current_user_id, human_mode, info, now, open_session, resume_session, validate_target
+from .service import browser_session, editor_origin, get_workspace_record, current_user_id, human_directory_repository, human_mode, info, now, open_session, resume_session, validate_target
 
 router = APIRouter(prefix="/code", tags=["code"])
 router.include_router(gateway_router)
+
+
+@router.post("/agents/{agent_id}/repository", response_model=WorkspaceInfo, dependencies=[Depends(require_web_session)])
+@authorize("CODE_ACCESS")
+async def open_agent_repository(agent_id: int, uri: str = Query(max_length=4096)) -> WorkspaceInfo:
+    try:
+        return await human_directory_repository(uri, agent_id, await current_user_id())
+    except (PermissionError, FileNotFoundError):
+        raise HTTPException(403, "Repository unavailable") from None
+    except CodeRuntimeNotConfiguredError:
+        raise HTTPException(503, "code_runtime_not_configured") from None
+    except ValueError:
+        raise HTTPException(422, "code_directory_not_repository") from None
+    except (RuntimeError, OSError):
+        raise HTTPException(503, "Code editor unavailable") from None
 
 
 @router.get("/workspaces/{identifier}", response_model=WorkspaceInfo)

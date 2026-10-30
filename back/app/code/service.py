@@ -128,12 +128,13 @@ async def _register_repository(reference: str, agent_id: int, user_id: int | Non
     return workspace
 
 
-async def human_directory_repository(reference: str, agent_id: int, user_id: int, room_id: UUID) -> WorkspaceInfo:
+async def human_directory_repository(reference: str, agent_id: int, user_id: int, room_id: UUID | None = None) -> WorkspaceInfo:
     if not reference.startswith("console://"):
         raise ValueError("A Console directory is required")
     workspace = await _register_repository(reference, agent_id, user_id)
     mode = await human_mode(workspace, user_id)
-    await link_repository(workspace, room_id, None, view="files")
+    if room_id is not None:
+        await link_repository(workspace, room_id, None, view="files")
     await get_db().commit()
     return info(workspace, mode)
 

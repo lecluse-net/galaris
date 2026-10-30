@@ -79,6 +79,11 @@ icônes sont plus petites et le bouton **⋮** est masqué. Sur ordinateur, ce b
 accès aux mêmes actions dans la grille. Le menu propose **Renommer** et **Supprimer** selon vos
 droits d’édition et les capacités du fournisseur. Les répertoires de la console SSH,
 de Nextcloud et de Samba peuvent ainsi être renommés et supprimés ; les racines restent protégées.
+Sur un dépôt Git dans `console://`, le menu propose aussi **Ouvrir dans l’éditeur de code**
+avec le privilège `CODE_ACCESS`. Les checkouts et les worktrees sont reconnus à l’ouverture
+du menu. Utilisez le menu du dossier ou faites un clic droit dans la zone des fichiers
+du dépôt ouvert. Le clic revérifie les droits du dépôt et ouvre l’éditeur sans créer de discussion.
+Fermer puis rouvrir l’éditeur conserve les brouillons non enregistrés dans le navigateur.
 
 Pour renommer, saisissez le nom complet, extension comprise pour un fichier, puis validez.
 Le contenu est conservé et aucun élément existant n’est écrasé. Les fichiers internes et

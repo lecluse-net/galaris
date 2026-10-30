@@ -31,7 +31,7 @@
                       <FolderIcon v-else :expanded="scope.expanded" size="26px" class="q-mr-xs" />
                       <span class="ellipsis">{{ scope.node.label }}</span>
                       <FileEntryActions v-if="!selection" :entry="scope.node.entry" :agent-id="agentId" target=".q-tree__node-header" context-only
-                        :open="() => openEntry(scope.node.entry)" @changed="entryChanged" />
+                        :open="() => openEntry(scope.node.entry)" :open-code="() => openRepository(scope.node.entry)" @changed="entryChanged" />
                     </div>
                   </template>
                 </q-tree>
@@ -76,6 +76,8 @@
         </q-btn>
         </div>
         <div ref="scroll" class="file-scroll" tabindex="0" :aria-label="t('files.title')">
+          <FileEntryActions v-if="!selection && consoleDirectory" :entry="consoleDirectory" :agent-id="agentId" target=".file-scroll" context-only
+            :open="() => navigate(currentUri)" :open-code="() => openRepository(consoleDirectory!)" />
           <q-banner v-if="schemesError" role="alert" class="file-error">
             <template #avatar><q-icon name="error" color="negative" /></template>
             {{ t('files.loadError') }}
@@ -103,7 +105,7 @@
                 <div v-for="entry in sortedEntries" :key="`${entry.uri}:${current.version}`" class="file-entry">
                   <FileTile :entry="entry" :agent-id="agentId" :compact="selection" :selectable="selection" :selected="selected.some(value => value.uri === entry.uri)" @open="openEntry" @activate="activateEntry" @select="toggleEntry" @preview="previewEntry" />
                   <FileEntryActions v-if="!selection" :entry="entry" :agent-id="agentId" target=".file-entry" :context-only="$q.screen.lt.md"
-                    :open="() => openEntry(entry)" @changed="entryChanged"
+                    :open="() => openEntry(entry)" :open-code="() => openRepository(entry)" @changed="entryChanged"
                     :download="!entry.is_collection && entry.capabilities.includes('read') ? () => downloadEntry(entry) : undefined"
                   />
                 </div>
@@ -162,10 +164,19 @@ async function downloadEntry(entry: FileEntry): Promise<void> {
   const blob = await fileBrowserService.content(agentId, entry.uri, false, undefined, true)
   if (active) saveBlobAsResource(blob, entry.name)
 }
+async function openRepository(entry: FileEntry): Promise<void> {
+  const location = currentUri.value, version = previewKey.value, request = ++repositoryOpening
+  const workspace = await fileBrowserService.repository(agentId, entry.uri)
+  if (active && currentUri.value === location && previewKey.value === version && repositoryOpening === request) target.value = { kind: 'code', id: workspace.id, title: workspace.label, agentId }
+}
 const { directory, load, invalidate } = useFileDirectories(agentId, selection)
 const schemes = ref<FileScheme[]>([])
 const schemesLoading = ref(false), schemesError = ref(false)
 const currentUri = ref(''), showTree = ref(false), expanded = ref<string[]>([])
+const consoleDirectory = computed<FileEntry | null>(() => currentUri.value.startsWith('console://') ? {
+  uri: currentUri.value, name: breadcrumbs.value.at(-1)?.label ?? currentUri.value, is_collection: true,
+  media_type: 'inode/directory', size: null, capabilities: [],
+} : null)
 const openScheme = ref<string | null>(null)
 const split = ref(24)
 const target = ref<ResourceDetailTarget | null>(null)
@@ -178,6 +189,7 @@ const scroll = useTemplateRef<HTMLElement>('scroll')
 const breadcrumbNav = useTemplateRef<HTMLElement>('breadcrumbNav')
 let schemesRequest: AbortController | undefined
 let active = true
+let repositoryOpening = 0
 let ready = false
 const searchState = ref({ entries: [] as FileEntry[], loading: false, loaded: false, error: false, incomplete: false, cursor: null as string | null, version: 0 })
 let searchRequest: AbortController | undefined
@@ -287,6 +299,7 @@ function navigate(uri: string, closeTree = true, history: false | 'push' | 'repl
   if (closeTree && $q.screen.lt.md) showTree.value = false
 }
 async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false): Promise<void> {
+  repositoryOpening++
   if (!metadataFresh) { uriRequest?.abort(); uriLoading.value = false; uriError.value = false }
   if (selection && !entry.is_collection) { toggleEntry(entry, event); return }
   if (!selection && isSkillPackage(entry)) { target.value = resourceTarget(entry, agentId); return }

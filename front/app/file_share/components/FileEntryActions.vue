@@ -14,7 +14,7 @@
         </q-list>
       </q-menu>
     </q-btn>
-    <ActionContextMenu :target="target" :actions="actions" />
+    <ActionContextMenu :target="target" :actions="actions" @update:open="checkRepository" />
     <q-dialog v-model="confirmDelete">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
@@ -44,8 +44,8 @@ import { ActionContextMenu, RenameFileButton, type ContextAction } from '@/core/
 import { fileBrowserService, type FileEntry } from '../services/fileBrowserService'
 import { resourceLabel, skillCollectionLabel, executionResourceLabel } from '../presentation'
 
-const { entry, agentId, target, open, download, contextOnly = false } = defineProps<{
-  entry: FileEntry; agentId: number; target: string; open: () => unknown; download?: () => Promise<void>; contextOnly?: boolean
+const { entry, agentId, target, open, openCode, download, contextOnly = false } = defineProps<{
+  entry: FileEntry; agentId: number; target: string; open: () => unknown; openCode?: () => Promise<void>; download?: () => Promise<void>; contextOnly?: boolean
 }>()
 const emit = defineEmits<{ changed: [entry: FileEntry, replacement: string | null] }>()
 const { t, locale } = useI18n(), $q = useQuasar(), privileges = usePrivilegeStore()
@@ -62,8 +62,30 @@ const canRename = computed(() => canEdit.value && fileBrowserService.canRename(e
 const canDelete = computed(() => canEdit.value && fileBrowserService.canDelete(entry))
 const busy = ref(false), confirmDelete = ref(false), error = ref('')
 const menuOpen = ref(false)
+const repository = ref(false)
+const canOpenCode = computed(() => !!openCode && entry.is_collection && entry.uri.startsWith('console://') && privileges.hasPrivilege('CODE_ACCESS'))
+let repositoryRequest: AbortController | undefined
 let active = true
-onBeforeUnmount(() => { active = false })
+onBeforeUnmount(() => { active = false; repositoryRequest?.abort() })
+watch(menuOpen, checkRepository)
+watch(() => [agentId, entry.uri, canOpenCode.value], () => { repositoryRequest?.abort(); repository.value = false })
+async function checkRepository(opened: boolean): Promise<void> {
+  repositoryRequest?.abort()
+  if (!opened || !canOpenCode.value) return
+  repository.value = false
+  const request = new AbortController(); repositoryRequest = request
+  try {
+    // Git checkouts use a directory marker; worktrees use a file marker.
+    await fileBrowserService.info(agentId, `${entry.uri.replace(/\/?$/, '/')}.git`, request.signal)
+    if (!request.signal.aborted && active) repository.value = true
+  } catch { /* Ordinary directories and unavailable markers keep the regular file actions. */ }
+}
+async function editCode(): Promise<void> {
+  if (!canOpenCode.value || busy.value || !openCode) return
+  busy.value = true
+  try { await openCode() }
+  finally { busy.value = false }
+}
 async function rename(name: string): Promise<void> {
   if (!canRename.value || busy.value) return
   busy.value = true
@@ -97,6 +119,7 @@ async function run(action: ContextAction): Promise<void> {
 }
 const actions = computed<ContextAction[]>(() => [
   { key: 'open', icon: 'open_in_full', label: t('common.open'), run: open },
+  ...(canOpenCode.value && repository.value ? [{ key: 'code', icon: 'code', label: t('files.openCodeEditor'), disabled: busy.value, run: editCode }] : []),
   ...(download ? [{ key: 'download', icon: 'download', label: t('common.download'), disabled: busy.value, run: transfer }] : []),
   ...(canRename.value ? [{ key: 'rename', icon: 'drive_file_rename_outline', label: t('fileRename.label'), disabled: busy.value, run: () => renameButton.value?.open() }] : []),
   { key: 'copy', icon: 'content_copy', label: t('common.copyReference'), run: () => copyToClipboard(entry.uri) },

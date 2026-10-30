@@ -28,6 +28,9 @@ export interface FileListing {
 }
 
 export const fileBrowserService = {
+  async repository(agent: number, uri: string): Promise<{ id: string; label: string }> {
+    return (await api.post<{ id: string; label: string }>(`/code/agents/${agent}/repository`, undefined, { params: { uri } })).data
+  },
   canMove(entry: FileEntry): boolean {
     return entry.capabilities.includes('move') && !/^(galaris|document|data|memory):\/\//.test(entry.uri)
   },

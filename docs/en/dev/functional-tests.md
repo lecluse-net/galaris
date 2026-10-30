@@ -846,6 +846,12 @@ Unexpected executor exceptions are covered too.
 
 ## Git repositories in conversations
 
+`front/browser-tests/file-browser-code.spec.mjs` also covers `console://` repository
+context menus in Files: checkouts and worktrees, pointer and keyboard actions, mobile,
+retained unsaved buffers, denials and late responses. The open directory's menu is
+available from the file area. `back/app/code/tests/test_workspaces.py` verifies
+registration outside a conversation, deduplication and repository-specific access rights.
+
 `back/app/console/tests/test_repository_listing.py` covers bounded SFTP discovery,
 home-relative paths, worktrees, symbolic links and partial results.
 `back/app/code/tests/test_workspaces.py` also covers owner-only discovery, HTTP denials

@@ -903,6 +903,12 @@ pas à elles seules les effets d'un harnais ou d'un serveur n8n réel.
 
 ## Dépôts Git dans la discussion
 
+`front/browser-tests/file-browser-code.spec.mjs` couvre aussi le menu contextuel des
+dépôts `console://` dans Fichiers : checkouts et worktrees, clic droit, clavier, mobile,
+réouverture avec brouillons conservés, refus et réponses tardives. Le menu du répertoire
+ouvert est accessible depuis la zone des fichiers. `back/app/code/tests/test_workspaces.py`
+vérifie l’enregistrement hors discussion, la déduplication et les droits propres au dépôt.
+
 `back/app/console/tests/test_repository_listing.py` couvre la découverte SFTP bornée,
 les chemins depuis le home, les worktrees, les liens symboliques et les résultats partiels.
 `back/app/code/tests/test_workspaces.py` couvre aussi la découverte réservée au propriétaire,

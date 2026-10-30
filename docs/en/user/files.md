@@ -72,6 +72,12 @@ the **⋮** button is hidden. On desktop, this button provides the same actions 
 provider's capabilities. SSH console, Nextcloud and Samba directories support both
 actions; their roots remain protected.
 
+For a Git repository under `console://`, the context menu also offers **Open in the code editor**
+with the `CODE_ACCESS` privilege. Checkouts and worktrees are detected when the menu opens.
+Use the folder's menu or right-click the file area inside an open repository.
+Clicking rechecks repository access and opens the editor without creating a conversation.
+Closing and reopening the editor preserves unsaved buffers in the browser.
+
 To rename an item, enter its complete name, including the extension for a file, then
 confirm. Content is preserved and existing items are never overwritten. Internal files
 and attachments retain their URI; external files and directories change their path.

@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 765 detected HTTP/WebSocket handlers;
+- 766 detected HTTP/WebSocket handlers;
 - 181 detected SQLAlchemy tables;
 - 280 detected native MCP tools;
 - 55 detected Vue pages.
@@ -1400,12 +1400,13 @@ tests remain authoritative for behavior.
 | PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | yes | `back/app/chat/router.py:594` |
 | GET | `/chat/status` | `app.chat` | `read_status` | yes | `back/app/chat/router.py:329` |
 | GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | yes | `back/app/chat/router.py:452` |
-| GET | `/code/rooms/{room_id}` | `app.code` | `room_workspaces` | yes | `back/app/code/router.py:37` |
-| POST | `/code/sessions/{identifier}/heartbeat` | `app.code` | `heartbeat` | yes | `back/app/code/router.py:84` |
-| POST | `/code/sessions/{identifier}/navigate` | `app.code` | `navigate_session` | yes | `back/app/code/router.py:70` |
-| POST | `/code/sessions/{identifier}/resume` | `app.code` | `resume` | yes | `back/app/code/router.py:106` |
-| GET | `/code/workspaces/{identifier}` | `app.code` | `get_workspace` | yes | `back/app/code/router.py:26` |
-| POST | `/code/workspaces/{identifier}/sessions` | `app.code` | `create_session` | yes | `back/app/code/router.py:53` |
+| POST | `/code/agents/{agent_id}/repository` | `app.code` | `open_agent_repository` | yes | `back/app/code/router.py:26` |
+| GET | `/code/rooms/{room_id}` | `app.code` | `room_workspaces` | yes | `back/app/code/router.py:52` |
+| POST | `/code/sessions/{identifier}/heartbeat` | `app.code` | `heartbeat` | yes | `back/app/code/router.py:99` |
+| POST | `/code/sessions/{identifier}/navigate` | `app.code` | `navigate_session` | yes | `back/app/code/router.py:85` |
+| POST | `/code/sessions/{identifier}/resume` | `app.code` | `resume` | yes | `back/app/code/router.py:121` |
+| GET | `/code/workspaces/{identifier}` | `app.code` | `get_workspace` | yes | `back/app/code/router.py:41` |
+| POST | `/code/workspaces/{identifier}/sessions` | `app.code` | `create_session` | yes | `back/app/code/router.py:68` |
 | GET | `/codex/runtime-credential` | `bridge.codex` | `runtime_credential` | no | `back/bridge/codex/router.py:31` |
 | GET | `/connections` | `app.connection` | `list_connections` | yes | `back/app/connection/router.py:325` |
 | POST | `/connections` | `app.connection` | `create_connection` | yes | `back/app/connection/router.py:347` |

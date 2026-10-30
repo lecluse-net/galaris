@@ -2,6 +2,10 @@
 
 # Follow and edit a Git repository in a conversation
 
+From **Files**, the context menu of a `console://` repository also opens the code editor
+without linking it to a conversation. The folder must contain a `.git` marker (a checkout
+directory or worktree file). Repository access rights and `CODE_ACCESS` are still required.
+
 When an agent presents its repository with `repository_show`, the work pane displays
 code-server, based on VS Code OSS. The pane alternates between a Document and a repository,
 while the conversation stays usable. **Source code** lists previously presented

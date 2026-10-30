@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
@@ -151,6 +151,52 @@ async def test_chat_repository_discovery_and_opening_check_room_and_console_righ
         # Existing room lists now contain the same path and durable identity.
         linked = await http.get(f"/api/code/rooms/{room.id}", headers=headers[0])
         assert linked.json() == [opened.json()]
+        runtime.open.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_files_repository_registration_checks_rights_without_creating_a_conversation(repository_scope, db, monkeypatch):
+    from httpx import ASGITransport, AsyncClient
+    from main import app
+    from app.code.models import CodeConversationLink
+    from core.database import database, middleware
+    from core.user import get_current_user
+    from core.user.auth_service import create_access_token_for_user
+    from core.user.refresh_session_service import create_refresh_session, family_for_token
+    from sqlalchemy import delete
+
+    users, agent, _, _, runtime = repository_scope
+    monkeypatch.setattr(service, "get_current_user", get_current_user)
+    monkeypatch.setattr(middleware, "AsyncSessionLocal", database.AsyncSessionLocal)
+    await db.execute(delete(Assignment).where(Assignment.user_id == users[2].id))
+    headers = []
+    for user in users:
+        refresh = await create_refresh_session(user.id)
+        token = await create_access_token_for_user(user, db, session_family=await family_for_token(refresh))
+        headers.append({"Authorization": "Bearer " + token})
+    url = f"/api/code/agents/{agent.id}/repository"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="https://localhost:8484") as http:
+        for denied_user in (1, 2):
+            response = await http.post(url, headers=headers[denied_user], params={"uri": "console://project/"})
+            assert response.status_code == 403, response.text
+        assert (await db.scalars(select(CodeWorkspace))).all() == []
+        invalid = await http.post(url, headers=headers[0], params={"uri": "file://project/"})
+        assert invalid.status_code == 422
+        opened = await http.post(url, headers=headers[0], params={"uri": "console://project/"})
+        assert opened.status_code == 200, opened.text
+        again = await http.post(url, headers=headers[0], params={"uri": "console://project/"})
+        assert again.json() == opened.json()
+        assert len((await db.scalars(select(CodeWorkspace))).all()) == 1
+        assert (await db.scalars(select(CodeConversationLink))).all() == []
+        db.add(CodeGrant(workspace_id=UUID(opened.json()["id"]), user_id=users[1].id, mode="read"))
+        await db.commit()
+        shared = await http.post(url, headers=headers[1], params={"uri": "console://project/"})
+        assert shared.status_code == 200, shared.text
+        assert shared.json()["mode"] == "read"
+        runtime.discover.side_effect = ValueError("Not a Git repository")
+        invalid = await http.post(url, headers=headers[0], params={"uri": "console://ordinary/"})
+        assert invalid.status_code == 422
+        assert invalid.json()["detail"] == "code_directory_not_repository"
         runtime.open.assert_not_awaited()
 
 

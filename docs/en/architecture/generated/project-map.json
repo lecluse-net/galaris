@@ -15669,10 +15669,19 @@
       },
       {
         "authorized": true,
+        "declared_path": "/code/agents/{agent_id}/repository",
+        "file": "back/app/code/router.py",
+        "handler": "open_agent_repository",
+        "line": 26,
+        "method": "POST",
+        "module": "app.code"
+      },
+      {
+        "authorized": true,
         "declared_path": "/code/rooms/{room_id}",
         "file": "back/app/code/router.py",
         "handler": "room_workspaces",
-        "line": 37,
+        "line": 52,
         "method": "GET",
         "module": "app.code"
       },
@@ -15681,7 +15690,7 @@
         "declared_path": "/code/sessions/{identifier}/heartbeat",
         "file": "back/app/code/router.py",
         "handler": "heartbeat",
-        "line": 84,
+        "line": 99,
         "method": "POST",
         "module": "app.code"
       },
@@ -15690,7 +15699,7 @@
         "declared_path": "/code/sessions/{identifier}/navigate",
         "file": "back/app/code/router.py",
         "handler": "navigate_session",
-        "line": 70,
+        "line": 85,
         "method": "POST",
         "module": "app.code"
       },
@@ -15699,7 +15708,7 @@
         "declared_path": "/code/sessions/{identifier}/resume",
         "file": "back/app/code/router.py",
         "handler": "resume",
-        "line": 106,
+        "line": 121,
         "method": "POST",
         "module": "app.code"
       },
@@ -15708,7 +15717,7 @@
         "declared_path": "/code/workspaces/{identifier}",
         "file": "back/app/code/router.py",
         "handler": "get_workspace",
-        "line": 26,
+        "line": 41,
         "method": "GET",
         "module": "app.code"
       },
@@ -15717,7 +15726,7 @@
         "declared_path": "/code/workspaces/{identifier}/sessions",
         "file": "back/app/code/router.py",
         "handler": "create_session",
-        "line": 53,
+        "line": 68,
         "method": "POST",
         "module": "app.code"
       },

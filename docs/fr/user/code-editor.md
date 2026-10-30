@@ -30,6 +30,11 @@ Les dossiers des autres providers restent des références sans aperçu plein é
 L’éditeur reste sur la même adresse que Galaris ; aucun autre site ni connexion séparée
 n’est nécessaire.
 
+Depuis **Fichiers**, le menu contextuel d’un dépôt `console://` permet aussi de l’ouvrir
+dans l’éditeur, sans l’associer à une discussion. Le dossier doit contenir un marqueur
+`.git` (répertoire de checkout ou fichier de worktree) ; les droits habituels du dépôt
+et le privilège `CODE_ACCESS` restent nécessaires.
+
 Le thème et les préférences se règlent directement dans VS Code et suivent son profil
 natif. Leur synchronisation avec Galaris est reportée à une évolution ultérieure.
 Changer le thème de Galaris conserve la fenêtre et les brouillons de l’éditeur.
