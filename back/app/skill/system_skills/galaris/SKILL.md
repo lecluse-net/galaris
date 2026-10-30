@@ -1,6 +1,6 @@
 ---
 name: galaris
-description: Operate Galaris through the tools exposed to this agent. Use for choosing and using file providers, Documents and Datasets, memory, delegated Tasks and Goals, business Processes, messaging, mail, calendars, media, web browsing, Console and authorized administration. Explains capability discovery, resource formats, prerequisites, effect receipts and recovery. For product explanations and navigation use galaris-knowledge; for experiments use galaris-lab when available.
+description: Operate Galaris through the tools exposed to this agent. Use for choosing and using file providers, Documents and Datasets, private Contacts, memory, delegated Tasks and Goals, business Processes, messaging, mail, calendars, media, web browsing, Console and authorized administration. Explains capability discovery, resource formats, prerequisites, effect receipts and recovery. For product explanations and navigation use galaris-knowledge; for experiments use galaris-lab when available.
 ---
 
 # Galaris tools
@@ -377,12 +377,26 @@ is no local filesystem or implicit fallback. Relative paths are rejected. Common
 `nextcloud://room-token/attachment-uuid`, `telegram://chat-id/attachment-uuid`,
 `file://uuid`, `memory://uuid`, `document://uuid`, `data://uuid`, `document://uuid/attachments/`,
 `document://uuid/attachments/attachment-uuid`,
+`galaris://contact/`, `galaris://contact/uuid`,
 `galaris://task/`, `galaris://task/uuid`, `galaris://text/uuid`, `galaris://voice/uuid`,
 `galaris://goal/uuid`, `galaris://goal_cycle/uuid`, `galaris://process/workflow-id`,
 `galaris://skill/skill-code/SKILL.md`,
 `https://host/path`, and
 `<connected-tool-code>://path`. Messenger and file-share are capabilities: the URI scheme is always
 the exact connected Tool code, never `messenger`. A trailing `/` denotes a collection.
+`file_list` and `file_search` on `galaris://contact/` discover only your own canonical
+contacts. `file_info` and `file_read` on an exact contact URI return its current name,
+identities and coordinates as JSON, plus the current `etag`; `file_copy` can export it.
+To update a contact, pass that token as `expected_etag` to `file_write` or `file_edit`.
+Only `display_name` and `coordinates` (phone numbers and postal addresses) are editable.
+`file_write` accepts a JSON object with just those changed fields or the complete snapshot
+with every identity and metadata field unchanged. Omitted fields are preserved; supplied
+coordinate lists replace those lists, omitted coordinate lists are preserved and empty lists
+clear them. For example, using the exact URI and token returned by discovery and reading:
+`file_write(uri=CONTACT_URI, content='{"display_name":"Updated name"}', expected_etag=ETAG)`.
+To clear only phone numbers, write `{"coordinates":{"phone_numbers":[]}}`; postal addresses
+remain unchanged. A stale token is rejected: read again and reconcile before retrying.
+Delete, append and move remain unavailable.
 Never invent a scheme or attachment UUID; call `file_schemes` or list the collection first.
 Discover shared document folders with `file_list("document://folders/")`. Each folder has a
 stable `document://folders/<uuid>/` URI. When the user names a folder, find it with
@@ -460,7 +474,8 @@ is a different token. For mutable path-based files it changes the basename withi
 parent and returns the new URI. Use `file_move` when the parent must change.
 Generic delete does not erase Memory items, working-document records or content, Messenger
 attachments, or Galaris objects: use their domain tools.
-Business snapshots under `galaris://` are read-only; copy an object to another scheme when a
+Business snapshots under `galaris://` are read-only except the conditional Contact edits
+described above; copy an object to another scheme when a
 durable JSON snapshot is needed. The separately authorized `galaris://skill/` collection exposes
 managed skill package files and allows safe file mutations on non-system skills.
 When `file_list` returns `next_cursor`, pass it unchanged as `cursor` to read the next page.
@@ -1576,7 +1591,12 @@ targeted memory search. Skip an equivalent existing fact rather than saving a pa
 Contact emails, phone numbers, postal addresses and messaging identifiers belong to Contacts.
 Its structured cards remain searchable memory resources. Never copy their coordinates with
 `memory_remember`, including an explicit request to remember a number. Contact discovery handles
-them separately. A distinct preference or decision may be remembered using the person's name,
+them separately. For an explicit address-book change, follow the `galaris://contact/`
+discovery, reading and conditional editing workflow above instead of creating a memory.
+`contact_create` requires a name and at least one email, phone or postal address. Search first
+to avoid duplicates. Existing email and messaging identities cannot be edited with these tools.
+Saving an email makes it a known contact under the default inbound Mail admission policy.
+A distinct preference or decision may be remembered using the person's name,
 without repeating their coordinates; a mixed write is rejected atomically, not silently trimmed.
 Good memories are concise, self-contained, and explicit about their subject. A historical date
 can belong in the prose without becoming a temporal anchor.

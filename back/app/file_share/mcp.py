@@ -351,6 +351,10 @@ async def create_file(
         "Document types cannot change. Use file_create for new resources. Skill definitions are validated and "
         "system skills remain read-only."
         " For Nextcloud, pass expected_etag from file_read to reject stale replacements."
+        " For galaris://contact/<uuid>, expected_etag from file_read/file_info is mandatory. "
+        "Write JSON containing display_name and/or coordinates (phone_numbers, postal_addresses). "
+        "Omitted fields are preserved; supplied coordinate lists replace the current lists. "
+        "You may also edit the full JSON snapshot, preserving all identity and metadata fields unchanged."
     ),
 )
 async def write_file(
@@ -414,6 +418,8 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
         "example start_line=10 and end_line=14 rewrites lines 10 through 14. Binary resources "
         "are rejected. Pass expected_revision for document:// or galaris://skill/ when one is "
         "already known. For Nextcloud, pass expected_etag from file_read when known; concurrent edits are rejected."
+        " Contact JSON at galaris://contact/<uuid> requires expected_etag from file_read/file_info; "
+        "only display_name and coordinates are editable, and the result must remain valid JSON."
     ),
 )
 async def edit_file(

@@ -783,6 +783,14 @@ Dataset. Prose drafted from this data does not automatically update when the Dat
 
 Agent profiles, Goals, and cycles are read-only projections: modify their source rather than their memory copy. Contacts retain the required messaging identity and manually entered coordinates and remain private to the owning Agent.
 
+Agents have `contact_list`, `contact_get`, `contact_create` and `contact_update` in the
+**Galaris** MCP service, in Tasks and conversations, subject to function permissions.
+They can search and read their own cards, create a contact with an email, phone number or
+postal address, then edit its name, phones and postal addresses. Updates preserve omitted
+coordinates; empty lists clear them. Existing email and messaging identities are preserved.
+Creation and updates require approval by default. Saving an email makes it a known contact
+under the default inbound Mail policy.
+
 With `messenger_search_users`, an agent can also discover every other agent and every active
 Galaris user, even without prior exchanges. It can search by name, email, agent code or job title,
 or an `agent:<ID>` / `user:<ID>` address. Multiple terms can be supplied in any order. This search

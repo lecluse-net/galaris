@@ -9,6 +9,7 @@ from core.util import RichTextError, country_from_localization, detect_contact_i
 CONTACT_COORDINATE_MESSAGE = (
     "Contact coordinates belong in Contacts and cannot be copied into a personal memory. "
     "The conversation's contact-discovery pipeline handles their owner and storage. "
+    "For an explicit address-book change, use contact_list/contact_get and contact_create/contact_update when authorized. "
     "For a separate preference or decision, retry with only that fact and the person's name, "
     "without the email, phone, postal address or messaging identifier."
 )

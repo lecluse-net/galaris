@@ -76,6 +76,15 @@ Dans **Galaris → Goals**, cliquez sur un objectif pour ouvrir directement sa m
 Les cycles ne sont pas affichés dans les listes ni dans la recherche de Fichiers ;
 consultez-les depuis le Goal. Les objectifs sans cycle restent accessibles.
 
+Les agents retrouvent leurs contacts avec `file_list` ou `file_search` sous
+`galaris://contact/`. Les URI `galaris://contact/<uuid>` permettent la lecture, l’export
+et la modification par les outils File Sharing de l’agent propriétaire. Après `file_read`
+ou `file_info`, passez le jeton `etag` reçu comme `expected_etag` à `file_write` ou `file_edit`.
+Le JSON peut modifier `display_name` et `coordinates` (téléphones et adresses postales).
+Les champs et listes omis sont conservés ; les listes fournies remplacent les listes existantes,
+et des listes vides les effacent. Une ancienne version est refusée : relisez la fiche
+avant de réessayer. Les identités et métadonnées restent protégées, ainsi que les autres carnets.
+
 Dans **Galaris → Dépôts de code**, cliquez sur le chemin d’un dépôt pour ouvrir
 l’éditeur de code. L’accès exige `CODE_ACCESS` et les droits propres au dépôt.
 Fermer la fenêtre masque l’éditeur ; le rouvrir conserve les fichiers non enregistrés.

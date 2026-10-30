@@ -9,6 +9,9 @@ from sqlalchemy import update
 from app.conversation import ConversationRound
 from app.memory import (
     MessengerContactRecord,
+    MemoryNotFoundError,
+    get_messenger_contact,
+    lock_messenger_contact,
     create_address_book_contact,
     split_messenger_contact,
     forget_messenger_contact,
@@ -171,6 +174,14 @@ async def list_contacts(
     )
 
 
+async def get_contact(*, agent_id: int, contact_item_id: UUID, for_update: bool = False) -> ContactRead:
+    """Read a canonical contact without exposing another agent's private directory."""
+    contact = await (lock_messenger_contact(contact_item_id) if for_update else get_messenger_contact(contact_item_id))
+    if contact is None or contact.owner_agent_id != agent_id:
+        raise MemoryNotFoundError("Contact not found.")
+    return _read(contact)
+
+
 async def update_contact(*, contact_item_id: UUID, data: ContactUpdate) -> ContactRead:
     coordinates = apply_country_defaults(data.coordinates)
     if data.split_identity_ids:
@@ -293,6 +304,7 @@ async def forget_contact(*, contact_item_id: UUID) -> ContactForgetResult:
 
 __all__ = [
     "forget_contact",
+    "get_contact",
     "list_contacts",
     "list_reachable_humans",
     "merge_contacts",

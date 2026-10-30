@@ -20,6 +20,7 @@ async def test_galaris_root_lists_the_supported_business_collections(db) -> None
     )
 
     assert {entry.uri for entry in result.entries} == {
+        "galaris://contact/",
         "galaris://task/",
         "galaris://voice/",
         "galaris://text/",

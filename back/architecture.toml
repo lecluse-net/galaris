@@ -83,8 +83,9 @@ max_domain_fan_out = 10
 
 [module."app.contact"]
 # Contact attribution invokes bounded LLM decisions; reviewed in ADR 0256.
-allowed_dependencies = ["app.agent", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.task"]
-max_domain_fan_out = 6
+# The self-service MCP adapter uses app.tools' public decorator/context; reviewed in ADR 0254.
+allowed_dependencies = ["app.agent", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.task", "app.tools"]
+max_domain_fan_out = 7
 
 [module."app.dream"]
 # Dream consumes the contact facade; Contacts never imports Dream (ADR 0256).

@@ -2,6 +2,14 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/contact/tests/test_file_resources.py` traverse Contacts, File Sharing et MCP avec la
+base réelle : noms et coordonnées actuels, export JSON, isolation entre agents, refus des
+déplacements et suppressions, oubli et pagination/recherche sur 501 fiches. Le parcours HTTP vérifie
+`CONTACT_ACCESS`/`CONTACT_EDIT`, le refus avec Fichiers seul et le périmètre des agents gérés.
+Les écritures et éditions contrôlent le JSON, les champs protégés, les coordonnées omises et
+le jeton de concurrence. `app/contact/tests/test_file_resource_concurrency.py` vérifie, dans
+deux transactions indépendantes, qu'une seule écriture d'un même snapshot est acceptée.
+
 Ce catalogue indique où chercher une preuve existante avant de modifier un contrat.
 Il décrit les garanties couvertes par les suites ; leur présence ne signifie pas qu'elles
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,

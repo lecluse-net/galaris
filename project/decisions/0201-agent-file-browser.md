@@ -21,6 +21,20 @@ Thumbnails share the bounded preview queue and release offscreen object URLs. Kn
 resources open the existing domain dialogs; other files reuse the shared attachment
 viewer, including its isolated HTML rendering.
 
+### Contact directory projection (2026-10-30)
+
+The native `galaris://contact/` collection exposes the selected Agent's canonical Contacts
+as JSON snapshots addressed by their contact UUID. Contact owns directory queries,
+serialization and owner filtering; the composition root binds its public facade to a File
+Sharing port for list, search, info, read and export, avoiding a dependency cycle through Contacts.
+Browser access requires `CONTACT_ACCESS` or `CONTACT_EDIT` and a managed Agent.
+Agent File Sharing tools may edit only `display_name` and `coordinates` through
+`file_write`/`file_edit`, with a mandatory `expected_etag` obtained from `file_read`/`file_info`.
+The Contact writer validates the owner and compares the token under a row lock before
+reusing Contact updates. Full snapshots preserve all identities and metadata; partial JSON
+preserves omitted fields and coordinate lists. Merge, split and forgetting remain dedicated
+Contact-domain actions. Other native business snapshots remain read-only.
+
 ### Progressive video playback (2026-10-18)
 
 Video playback uses an optional byte-range transport port in the canonical file

@@ -931,6 +931,14 @@ Les fiches Agent, Goals et cycles sont des projections en lecture seule : modifi
 plutôt que leur copie mémoire. Les contacts issus des messageries conservent l'identité nécessaire
 et les coordonnées saisies ; ils restent privés à l’agent propriétaire.
 
+Les agents disposent de `contact_list`, `contact_get`, `contact_create` et `contact_update`
+dans le service MCP **Galaris**, en tâche comme en conversation, selon les permissions des fonctions.
+Ils peuvent rechercher et lire leurs fiches, créer un contact avec un e-mail, un téléphone ou une
+adresse postale, puis modifier son nom, ses téléphones et ses adresses postales. Une modification
+conserve les coordonnées omises ; des listes vides les effacent. Les identités mail et messagerie
+existantes sont préservées. La création et la modification sont sur demande par défaut.
+Enregistrer un e-mail le rend connu de la politique Mail entrante par défaut.
+
 Avec `messenger_search_users`, un agent peut aussi découvrir tous les autres agents et tous les
 utilisateurs actifs de Galaris, même sans échange préalable. Il peut rechercher un nom, un e-mail,
 un code ou un poste d'agent, ou une adresse `agent:<ID>` / `user:<ID>`. Plusieurs termes peuvent

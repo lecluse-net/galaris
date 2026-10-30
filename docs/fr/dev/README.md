@@ -1189,6 +1189,18 @@ Voir la [décision sur les caches API](../../../project/decisions/0138-request-a
 
 ### Packages MCP de management agentique
 
+`app.contact.mcp` expose `contact_list`, `contact_get`, `contact_create` et `contact_update`
+sous le Tool système `galaris`, en tâche et en conversation. Le propriétaire est toujours
+`ctx.agent_id`, sans paramètre d'élévation. Les mutations réutilisent les contrats Contacts ;
+elles préservent les identités et les coordonnées omises. Les écritures sont sur demande par défaut.
+
+La projection `galaris://contact/<uuid>` accepte aussi `file_write` et `file_edit` :
+seuls `display_name` et `coordinates` sont modifiables. Le port Contact lié au bootstrap
+valide le JSON et le propriétaire, puis contrôle sous verrou le `expected_etag` obligatoire
+lu par `file_read`/`file_info`. Un snapshot complet est accepté si ses identités et métadonnées
+restent inchangées ; un objet partiel conserve les champs omis. Les autres projections métier
+et les opérations de suppression, déplacement et ajout restent protégées.
+
 Les fonctions MCP natives sont découvertes dans le `mcp.py` de chaque module déclaré. Le décorateur
 `mcp_tool(tool_code, name=...)` rattache une fonction à un outil intégré ; la connexion active de
 l’agent sélectionne ensuite les groupes réellement montés dans son toolset. Les états de fonction

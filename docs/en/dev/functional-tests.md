@@ -2,6 +2,14 @@
 
 # Functional guarantees catalogue
 
+`app/contact/tests/test_file_resources.py` exercises Contacts, File Sharing and MCP with the
+real database: current names and coordinates, JSON export, isolation between agents, denied
+moves/deletes, forgetting, and listing/search pagination across 501 entries. HTTP checks
+cover `CONTACT_ACCESS`/`CONTACT_EDIT`, denial with Files privileges alone and managed Agent scope.
+Writes and edits check JSON, protected fields, omitted coordinates and the concurrency token.
+`app/contact/tests/test_file_resource_concurrency.py` uses independent transactions to prove
+that only one writer of the same snapshot succeeds.
+
 ## Agent renaming of Documents and Datasets
 
 Agent title renaming is covered by `app/file_share/tests/test_resource_rename.py`:

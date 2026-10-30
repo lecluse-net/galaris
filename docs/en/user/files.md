@@ -51,6 +51,15 @@ Under **Galaris → Goals**, click a Goal to open its dialog directly. Cycles ar
 displayed in Files listings or search; view them from the Goal. Goals without cycles
 remain accessible.
 
+Agents discover their contacts with `file_list` or `file_search` under `galaris://contact/`.
+The `galaris://contact/<uuid>` URIs support reading, exporting and editing through the owning
+agent's File Sharing tools. After `file_read` or `file_info`, pass the returned `etag` as
+`expected_etag` to `file_write` or `file_edit`. The JSON can change `display_name` and
+`coordinates` (phone numbers and postal addresses). Omitted fields and lists are preserved;
+supplied lists replace the existing lists, and empty lists clear them. A stale version is rejected:
+read the contact again before retrying. Identities, metadata and other agents' directories
+remain protected.
+
 Under **Galaris → Code repositories**, click a repository path to open the code editor.
 This requires `CODE_ACCESS` and the repository's own access rights. Closing the dialog
 hides the editor; reopening it preserves unsaved files.

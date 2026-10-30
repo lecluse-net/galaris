@@ -1,4 +1,4 @@
-"""Read-only virtual provider for canonical Galaris business resources."""
+"""Virtual business projections with domain-owned conditional Contact and Skill writes."""
 
 from __future__ import annotations
 
@@ -21,10 +21,11 @@ from .resource_contracts import (
     ResourceSearchResult,
     ResourceRead,
 )
-from .resource_uri import ResourceUri, ResourceUriError
+from .resource_uri import ResourceUri, ResourceUriError, ResourceRevisionConflict
 
 
 GalarisResourceKind = Literal[
+    "contact",
     "code",
     "task",
     "voice",
@@ -36,6 +37,7 @@ GalarisResourceKind = Literal[
     "skill",
 ]
 _KINDS: tuple[GalarisResourceKind, ...] = (
+    "contact",
     "code",
     "task",
     "voice",
@@ -50,6 +52,20 @@ _COLLECTION_CAPABILITIES: list[ResourceCapability] = ["info", "list", "search"]
 _ITEM_CAPABILITIES: list[ResourceCapability] = ["copy", "info", "read"]
 _code_reader: Callable[[UUID, int], Awaitable[dict[str, object] | None]] | None = None
 _code_lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]] | None = None
+_contact_reader: Callable[[UUID, int], Awaitable[dict[str, object] | None]] | None = None
+_contact_lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]] | None = None
+_contact_writer: Callable[[UUID, int, bytes, str | None], Awaitable[dict[str, object]]] | None = None
+
+
+def register_contact_resource_provider(
+    reader: Callable[[UUID, int], Awaitable[dict[str, object] | None]],
+    lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]],
+    writer: Callable[[UUID, int, bytes, str | None], Awaitable[dict[str, object]]] | None = None,
+) -> None:
+    """Bind Contact-owned queries without a reverse dependency on Contacts."""
+    global _contact_reader, _contact_lister, _contact_writer
+    _contact_reader, _contact_lister = reader, lister
+    _contact_writer = writer
 
 
 def register_code_resource_provider(
@@ -82,7 +98,7 @@ def _route(reference: ResourceUri) -> _Route:
         raise PermissionError("Official Galaris documentation is read-only; use documentation_search or file_read.")
     if raw_kind not in _KINDS:
         raise ResourceUriError(
-            "galaris:// supports task, voice, text, goal, goal_cycle, process, and skill."
+            "galaris:// supports contact, task, voice, text, goal, goal_cycle, process, and skill."
         )
     kind = raw_kind
     if len(segments) == 1 and reference.is_collection:
@@ -139,6 +155,8 @@ def _listing_offset(cursor: str | None) -> int:
 
 
 def _item_name(kind: GalarisResourceKind, payload: dict[str, Any]) -> str:
+    if kind == "contact":
+        return str(payload["display_name"])
     identifier = str(
         (
             payload.get("workflow_id")
@@ -173,6 +191,8 @@ def _item_name(kind: GalarisResourceKind, payload: dict[str, Any]) -> str:
 
 
 def _item_id(kind: GalarisResourceKind, payload: dict[str, Any]) -> str:
+    if kind == "contact":
+        return str(payload["memory_item_id"])
     if kind == "process":
         return str(payload.get("workflow_id") or "")
     if kind in {"text", "voice"} and isinstance(payload.get("round"), dict):
@@ -230,7 +250,7 @@ def _descriptor(
             metadata["created_at"] = source["created_at"]
     return ResourceDescriptor(
         uri=f"galaris://{'processes' if kind == 'process' and payload.get('native_code') else kind}/{encoded_identifier}",
-        name=label if kind == "goal_cycle" else f"{kind}-{identifier}.json",
+        name=label if kind in {"contact", "goal_cycle"} else f"{kind}-{identifier}.json",
         media_type=f"application/vnd.galaris.{kind}+json",
         size=len(content.encode("utf-8")) if include_size else None,
         modified_at=_item_modified_at(kind, payload),
@@ -239,13 +259,15 @@ def _descriptor(
             if isinstance(payload.get("revision"), int)
             else None
         ),
-        capabilities=list(_ITEM_CAPABILITIES),
+        etag=str(payload["etag"]) if kind == "contact" and payload.get("etag") else None,
+        capabilities=[*_ITEM_CAPABILITIES, "write", "edit"] if kind == "contact" and _contact_writer else list(_ITEM_CAPABILITIES),
         metadata=metadata,
     )
 
 
 def _collection_descriptor(kind: GalarisResourceKind) -> ResourceDescriptor:
     labels = {
+        "contact": "Contacts",
         "task": "Tasks",
         "voice": "Voice conversations",
         "text": "Text conversations",
@@ -330,6 +352,9 @@ async def _read_payload(
     identifier: UUID | str,
     *, native_process: bool = False,
 ) -> dict[str, Any] | None:
+    if kind == "contact":
+        assert isinstance(identifier, UUID)
+        return await _contact_reader(identifier, ctx.agent_id) if _contact_reader is not None else None
     if kind == "code":
         assert isinstance(identifier, UUID)
         return await _code_reader(identifier, ctx.agent_id) if _code_reader is not None else None
@@ -381,6 +406,8 @@ async def _list_payloads(
     limit: int = 100,
     goal_id: UUID | None = None,
 ) -> list[dict[str, Any]]:
+    if kind == "contact":
+        return await _contact_lister(ctx.agent_id, query, offset, limit) if _contact_lister is not None else []
     if kind == "code":
         return await _code_lister(ctx.agent_id, query, offset, limit) if _code_lister is not None else []
     if kind == "agent":
@@ -582,6 +609,7 @@ async def galaris_resource_read(
             else None
         ),
         media_type=f"application/vnd.galaris.{route.kind}+json",
+        etag=str(payload["etag"]) if route.kind == "contact" and payload.get("etag") else None,
     )
 
 
@@ -679,7 +707,24 @@ async def galaris_resource_write(
     content: bytes,
     *,
     expected_revision: int | None = None,
+    expected_etag: str | None = None,
 ) -> ResourceMutation:
+    if reference.segments[:1] == ("contact",):
+        from app.memory import MemoryConflictError, MemoryNotFoundError
+
+        route = _route(reference)
+        if route.is_collection or not isinstance(route.identifier, UUID):
+            raise ResourceUriError("Contact writes require one exact galaris://contact/<uuid> URI.")
+        if _contact_writer is None:
+            raise PermissionError("Contact editing is unavailable.")
+        try:
+            payload = await _contact_writer(route.identifier, ctx.agent_id, content, expected_etag)
+        except MemoryNotFoundError as exc:
+            raise FileNotFoundError(str(reference)) from exc
+        except MemoryConflictError as exc:
+            raise ResourceRevisionConflict(str(exc)) from exc
+        return ResourceMutation(uri=str(reference), operation="write", state="written",
+                                size=len(_json(payload).encode("utf-8")), name=str(payload["display_name"]))
     from . import skill_provider
     return await skill_provider.mutate(ctx, reference, content, operation="write", expected_revision=expected_revision)
 async def galaris_resource_append(

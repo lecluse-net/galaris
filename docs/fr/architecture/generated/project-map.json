@@ -767,7 +767,9 @@
           "back/app/contact/discovery.py",
           "back/app/contact/discovery_inference.py",
           "back/app/contact/facade.py",
+          "back/app/contact/mcp.py",
           "back/app/contact/reconciliation.py",
+          "back/app/contact/resources.py",
           "back/app/contact/router.py",
           "back/app/contact/schemas.py",
           "back/app/contact/service.py"
@@ -788,6 +790,13 @@
         ],
         "source": "app.contact",
         "target": "app.task"
+      },
+      {
+        "files": [
+          "back/app/contact/mcp.py"
+        ],
+        "source": "app.contact",
+        "target": "app.tools"
       },
       {
         "files": [
@@ -1894,6 +1903,7 @@
           "back/app/file_share/catalogue_resources.py",
           "back/app/file_share/enrichment.py",
           "back/app/file_share/fingerprinting.py",
+          "back/app/file_share/galaris_provider.py",
           "back/app/file_share/indexing.py",
           "back/app/file_share/managed_files.py",
           "back/app/file_share/models.py",
@@ -6560,7 +6570,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 302,
+      "domain_edges": 303,
       "fan_in": [
         {
           "count": 45,
@@ -6655,7 +6665,7 @@
           ]
         },
         {
-          "count": 31,
+          "count": 32,
           "module": "app.tools",
           "modules": [
             "app.agent",
@@ -6663,6 +6673,7 @@
             "app.browser",
             "app.connection",
             "app.console",
+            "app.contact",
             "app.conversation",
             "app.document",
             "app.file_share",
@@ -7311,6 +7322,19 @@
         },
         {
           "count": 7,
+          "module": "app.contact",
+          "modules": [
+            "app.agent",
+            "app.conversation",
+            "app.llm",
+            "app.memory",
+            "app.messenger",
+            "app.task",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 7,
           "module": "app.onboarding",
           "modules": [
             "app.agent",
@@ -7332,18 +7356,6 @@
             "app.task",
             "app.tools",
             "bridge.youtube"
-          ]
-        },
-        {
-          "count": 6,
-          "module": "app.contact",
-          "modules": [
-            "app.agent",
-            "app.conversation",
-            "app.llm",
-            "app.memory",
-            "app.messenger",
-            "app.task"
           ]
         },
         {
@@ -8435,7 +8447,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 391,
+        "line": 395,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -8443,7 +8455,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 458,
+        "line": 464,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -8459,7 +8471,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 540,
+        "line": 546,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -8467,7 +8479,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 419,
+        "line": 425,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -8491,7 +8503,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 510,
+        "line": 516,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -8507,7 +8519,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "rename_file",
-        "line": 489,
+        "line": 495,
         "module": "app.file_share",
         "name": "file_rename",
         "namespace": "file_sharing"
@@ -8531,7 +8543,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 356,
+        "line": 360,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -8550,6 +8562,38 @@
         "line": 19,
         "module": "app.agent",
         "name": "agent_list",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/contact/mcp.py",
+        "handler": "mcp_contact_create",
+        "line": 48,
+        "module": "app.contact",
+        "name": "contact_create",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/contact/mcp.py",
+        "handler": "mcp_contact_get",
+        "line": 38,
+        "module": "app.contact",
+        "name": "contact_get",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/contact/mcp.py",
+        "handler": "mcp_contact_list",
+        "line": 23,
+        "module": "app.contact",
+        "name": "contact_list",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/contact/mcp.py",
+        "handler": "mcp_contact_update",
+        "line": 66,
+        "module": "app.contact",
+        "name": "contact_update",
         "namespace": "galaris"
       },
       {
@@ -12487,6 +12531,7 @@
         "capabilities": [
           "contracts.py",
           "facade.py",
+          "mcp.py",
           "models.py",
           "privileges.py",
           "router.py",

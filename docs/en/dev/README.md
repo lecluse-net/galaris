@@ -1159,6 +1159,18 @@ a restart. See the [API cache decision](../../../project/decisions/0138-request-
 
 ### Agentic Management MCP Packages
 
+`app.contact.mcp` exposes `contact_list`, `contact_get`, `contact_create` and `contact_update`
+under the `galaris` system Tool, in Tasks and conversations. Ownership always comes from
+`ctx.agent_id`, without an elevation parameter. Mutations reuse the Contacts contracts and
+preserve identities and omitted coordinates. Writes require approval by default.
+
+The `galaris://contact/<uuid>` projection also accepts `file_write` and `file_edit`:
+only `display_name` and `coordinates` are editable. The Contact port bound at bootstrap
+validates JSON and ownership, then checks the mandatory `expected_etag` from
+`file_read`/`file_info` under a row lock. A full snapshot is accepted when identities and
+metadata remain unchanged; a partial object preserves omitted fields. Other business
+projections and deletion, relocation and append operations remain protected.
+
 Native MCP functions are discovered in the `mcp.py` of each declared module. The decorator
 `mcp_tool(tool_code, name=...)` attaches a function to an integrated tool; the agent's active
 connection then selects the groups actually mounted in its toolset. Function states at the

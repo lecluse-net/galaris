@@ -1719,6 +1719,7 @@ async def _write_complete_resource(
             reference,
             content,
             expected_revision=expected_revision,
+            expected_etag=expected_etag,
         )
     if reference.scheme in {"http", "https"}:
         raise PermissionError(f"{reference.scheme}:// resources are read-only.")

@@ -2,8 +2,32 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from .contracts import ReachableHumanContact
 from .discovery_contracts import ContactMergeCandidate as ContactMergeCandidate
+
+
+async def read_contact_resource(contact_item_id: UUID, actor_agent_id: int) -> dict[str, object] | None:
+    from .resources import read_contact_resource as read
+
+    return await read(contact_item_id, actor_agent_id=actor_agent_id)
+
+
+async def list_contact_resources(
+    actor_agent_id: int, query: str = "", offset: int = 0, limit: int = 100,
+) -> list[dict[str, object]]:
+    from .resources import list_contact_resources as list_resources
+
+    return await list_resources(actor_agent_id=actor_agent_id, query=query, offset=offset, limit=limit)
+
+
+async def write_contact_resource(
+    contact_item_id: UUID, actor_agent_id: int, content: bytes, expected_etag: str | None,
+) -> dict[str, object]:
+    from .resources import write_contact_resource as write
+
+    return await write(contact_item_id, actor_agent_id=actor_agent_id, content=content, expected_etag=expected_etag)
 
 
 def register_contact_runtime() -> None:
@@ -54,5 +78,6 @@ async def list_reachable_humans(
 
 
 __all__ = ["list_reachable_humans", "is_known_mail_contact", "ContactMergeCandidate",
+           "list_contact_resources", "read_contact_resource", "write_contact_resource",
            "register_contact_runtime", "process_contact_discovery", "contact_merge_candidates",
            "apply_contact_merge", "contact_merge_evidence", "count_contact_merge_candidates"]
