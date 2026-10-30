@@ -284,7 +284,7 @@ async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false)
   if (selection && !entry.is_collection) { toggleEntry(entry, event); return }
   if (!selection && isSkillPackage(entry)) { target.value = resourceTarget(entry, agentId); return }
   if (entry.is_collection) { navigate(entry.uri, true, metadataFresh ? false : 'push'); return }
-  target.value = resourceTarget(entry, agentId) ?? richLinkTarget(entry.uri, String(entry.metadata?.label ?? entry.name), agentId)
+  target.value = resourceTarget(entry, agentId, locale.value) ?? richLinkTarget(entry.uri, String(entry.metadata?.label ?? entry.name), agentId)
   if (target.value) return
   if (!metadataFresh && /^(file|document|data|messenger|galaris):\/\//.test(entry.uri)) {
     await openUri(entry.uri, false)

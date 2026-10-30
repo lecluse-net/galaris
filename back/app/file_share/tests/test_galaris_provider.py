@@ -142,6 +142,8 @@ async def test_galaris_task_is_a_scoped_read_only_json_file(
             "revision": 3,
             "label": "Prepare release",
             "status": "SUCCESS",
+            "created_at": "2026-01-02T03:04:05+00:00",
+            "updated_at": "2026-01-03T04:05:06+00:00",
         }
 
     monkeypatch.setattr(task, "read_task_resource", read_task_resource)
@@ -156,6 +158,8 @@ async def test_galaris_task_is_a_scoped_read_only_json_file(
     assert descriptor.name == f"task-{identifier}.json"
     assert descriptor.media_type == "application/vnd.galaris.task+json"
     assert descriptor.metadata["label"] == "Prepare release"
+    assert descriptor.metadata["created_at"] == "2026-01-02T03:04:05+00:00"
+    assert descriptor.modified_at == "2026-01-03T04:05:06+00:00"
     assert descriptor.capabilities == ["copy", "info", "read"]
     assert '"status": "SUCCESS"' in content.content
     assert content.revision == 3
@@ -306,6 +310,8 @@ async def test_conversation_collections_route_to_the_canonical_medium(
                 "room_label": "Support",
                 "medium": medium,
                 "status": "COMPLETED",
+                "created_at": "2026-01-02T03:04:05+00:00",
+                "finished_at": "2026-01-03T04:05:06+00:00",
             }
         ]
 
@@ -322,9 +328,26 @@ async def test_conversation_collections_route_to_the_canonical_medium(
 
     assert observed["actor_agent_id"] == 13
     assert observed["medium"] == medium
+    assert result.entries[0].metadata["created_at"] == "2026-01-02T03:04:05+00:00"
+    assert result.entries[0].modified_at == "2026-01-03T04:05:06+00:00"
     assert [entry.uri for entry in result.entries] == [
         f"galaris://{medium}/{identifier}"
     ]
+
+    async def read_round(*args: object, **kwargs: object) -> dict[str, Any]:
+        return {
+            "round": {
+                "id": str(identifier),
+                "created_at": "2026-01-02T03:04:05+00:00",
+                "finished_at": "2026-01-03T04:05:06+00:00",
+            }
+        }
+
+    monkeypatch.setattr(conversation, "read_conversation_round_resource", read_round)
+    detail = await resource_service.resource_info(
+        ResourceContext(agent_id=13, runtime="internal"), result.entries[0].uri
+    )
+    assert detail.metadata["created_at"] == result.entries[0].metadata["created_at"]
 
 
 @pytest.mark.asyncio

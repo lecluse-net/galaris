@@ -37,7 +37,7 @@ import { QBtn } from 'quasar'
 import { FolderIcon, LibraryIcon, documentFolderId, WorkingDocumentThumbnail, ResourceThumbnail, browserResourceKind, formatFileSize, queuePreview } from '@/core/util'
 import { agentResourceId } from '@/app/agent'
 import { fileBrowserService, type FileEntry } from '../services/fileBrowserService'
-import { resourceTarget, collectionLabel, isSkillPackage } from '../presentation'
+import { resourceTarget, collectionLabel, isSkillPackage, executionResourceLabel } from '../presentation'
 
 const { entry, agentId, compact = false, selectable = false, selected = false } = defineProps<{ entry: FileEntry; agentId: number; compact?: boolean; selectable?: boolean; selected?: boolean }>()
 const emit = defineEmits<{ open: [entry: FileEntry, event: Event]; activate: [entry: FileEntry]; select: [entry: FileEntry, event: Event]; preview: [entry: FileEntry] }>()
@@ -47,7 +47,7 @@ const thumbnail = ref('')
 const documentId = computed(() => /^document:\/\/([^/]+)$/.exec(entry.uri)?.[1] ?? null)
 const process = computed(() => ['process', 'process_run'].includes(resourceTarget(entry, agentId)?.kind ?? ''))
 const resourceAgent = computed(() => agentResourceId(entry.uri))
-const displayName = computed(() => collectionLabel(entry.uri, t) ?? ((process.value || resourceAgent.value !== null || entry.uri.startsWith('galaris://code/')) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name))
+const displayName = computed(() => executionResourceLabel(entry, locale.value) ?? collectionLabel(entry.uri, t) ?? ((process.value || resourceAgent.value !== null || entry.uri.startsWith('galaris://code/')) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name))
 let request: AbortController | undefined
 let observer: IntersectionObserver | undefined
 const icon = computed(() => {

@@ -26,7 +26,7 @@
       <div class="picker-selection" :aria-label="t('files.selection')">
         <div class="text-caption text-weight-medium">{{ t('files.selectedCount', { count: selected.length }) }}</div>
         <div class="picker-selected-items">
-          <q-chip v-for="entry in selected" :key="entry.uri" removable :disable="busy" @remove="selected = selected.filter(value => value.uri !== entry.uri)"><span class="ellipsis">{{ entry.name }}</span><q-tooltip>{{ entry.uri }}</q-tooltip></q-chip>
+          <q-chip v-for="entry in selected" :key="entry.uri" removable :disable="busy" @remove="selected = selected.filter(value => value.uri !== entry.uri)"><span class="ellipsis">{{ executionResourceLabel(entry, locale) ?? entry.name }}</span><q-tooltip>{{ entry.uri }}</q-tooltip></q-chip>
         </div>
       </div>
       <q-card-actions align="right" class="galaris-dialog-actions q-pa-none">
@@ -42,11 +42,11 @@
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
-import { AgentFileBrowser, type FileEntry } from '@/app/file_share/interface'
+import { AgentFileBrowser, executionResourceLabel, type FileEntry } from '@/app/file_share/interface'
 const open = defineModel<boolean>({ default: false })
 const { agentId = null, busy = false, error = '', title = '', single = false } = defineProps<{ agentId?: number | null; busy?: boolean; error?: string; title?: string; single?: boolean }>()
 const emit = defineEmits<{ select: [entries: FileEntry[], agentId: number]; hide: [] }>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const selectedAgent = ref<number | null>(agentId), selected = ref<FileEntry[]>([]), agents = ref<AgentSelectionOption[]>([])
 const loadingAgents = ref(false), agentError = ref(false)
 const previewing = ref(false)

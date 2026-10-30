@@ -1,4 +1,4 @@
 export { default as AgentFileBrowser } from './components/AgentFileBrowser.vue'
 export { default as FileIndexPanel } from './components/FileIndexPanel.vue'
 export { fileBrowserService, type FileEntry } from './services/fileBrowserService'
-export { resourceTarget } from './presentation'
+export { resourceTarget, executionResourceLabel } from './presentation'

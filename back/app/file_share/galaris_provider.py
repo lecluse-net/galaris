@@ -223,6 +223,11 @@ def _descriptor(
         if payload.get(key) is not None
     }
     metadata["label"] = label
+    if kind in {"task", "text", "voice"}:
+        round_payload = payload.get("round")
+        source = cast(dict[str, Any], round_payload) if isinstance(round_payload, dict) else payload
+        if isinstance(source.get("created_at"), str):
+            metadata["created_at"] = source["created_at"]
     return ResourceDescriptor(
         uri=f"galaris://{'processes' if kind == 'process' and payload.get('native_code') else kind}/{encoded_identifier}",
         name=label if kind == "goal_cycle" else f"{kind}-{identifier}.json",
