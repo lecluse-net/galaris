@@ -31,8 +31,9 @@ no image or copy of its documents is saved in the HTML.
 For editorial fields and `html` documents, the authoritative body is a UTF-8 `text/html` fragment with `content_profile_version: 1`.
 The `rich-text` profile covers all six Memory categories, Goal descriptions/tracking,
 Task objectives and Agent job descriptions/personalities. The `document` profile adds
-attachment images, forms, CSS and JavaScript to ordinary working documents. Goal documents always use `rich-text`,
-including through the library or Chat. Native binary/JSON/code resources and all skills
+attachment images, forms, CSS and JavaScript to ordinary working documents. Goal descriptions
+use `rich-text` in Goal-owned columns, without Documents or text history. Their sole tracking
+Document also uses `rich-text`, including in the library. Native binary/JSON/code resources and all skills
 retain their formats.
 
 ## Documents as the information hub

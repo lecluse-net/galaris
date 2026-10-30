@@ -59,7 +59,6 @@ export interface Goal {
   memory_item_id: string | null
   revision: number
   title: string
-  description_document_id: string
   tracking_document_id: string
   description: string
   tracking_content: string

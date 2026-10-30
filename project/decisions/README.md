@@ -355,4 +355,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0246 — Current descriptions for Documents and Datasets](0246-current-resource-summaries.md)
 - [0247 — Agent permission dashboard](0247-agent-permission-dashboard.md)
 - [0251 — Dream learns through personal skill packages](0251-dream-personal-skill-packages.md)
-- [0253 — Goal-owned current HTML content](0253-goal-current-html-columns.md)
+- [0253 — Inline Goal descriptions and freely classified tracking Documents](0253-goal-current-html-columns.md)

@@ -377,8 +377,8 @@ leurs URI complètes et leurs clés de navigation `entry_name`, uniques dans leu
 Une copie conserve le nom source ; elle n'écrase pas un fichier existant sans demande explicite.
 
 Les images ne sont pas autorisées dans les autres mémoires, profils, tâches, descriptions ou
-suivis de Goals. Cette règle reste valable lorsqu’un document Goal est ouvert dans la
-bibliothèque. Les images distantes par URL et les SVG ne sont pas acceptés.
+suivis de Goals. Le document de suivi conserve cette restriction dans la bibliothèque.
+Les images distantes par URL et les SVG ne sont pas acceptés.
 
 Retirer une image du texte conserve sa pièce jointe. Supprimer cette pièce jointe la retire de
 la liste, mais les versions historiques restent restaurables avec les droits actuels. Oublier

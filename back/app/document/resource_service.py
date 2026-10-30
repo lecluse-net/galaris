@@ -545,7 +545,7 @@ async def transfer_document_owner(
         return item
     if _is_goal_document(item):
         raise DocumentPermissionError(
-            "The title, owner, and path of a Goal document are controlled by its Goal "
+            "The title, owner, and Goal association of a tracking document are controlled by its Goal "
             "and cannot be changed directly."
         )
 
@@ -663,8 +663,6 @@ async def list_document_folder_options(agent_id: int) -> list[DocumentFolderOpti
         for depth in range(1, len(parts) + 1):
             path = "/".join(parts[:depth])
             folder = folders.setdefault(path, DocumentFolderOption(path=path, kind="custom", shared=False))
-            if _is_goal_document(item):
-                folder.kind = "goal"
             folder.shared = folder.shared or shared
     return sorted(folders.values(), key=lambda folder: folder.path.casefold())
 
@@ -743,17 +741,17 @@ async def update_item(
         and not allow_goal_document_metadata_sync
     ):
         raise DocumentPermissionError(
-            "The title, owner, and path of a Goal document are controlled by its Goal "
+            "The title, owner, and Goal association of a tracking document are controlled by its Goal "
             "and cannot be changed directly."
         )
     if "metadata" in fields and data.metadata is not None:
         goal_metadata_changed = any(
             data.metadata.get(key) != item.metadata_.get(key)
-            for key in ("goal_id", "goal_document_kind", "document_path")
+            for key in ("goal_id", "goal_document_kind")
         )
         if is_goal_document and goal_metadata_changed and not allow_goal_document_metadata_sync:
             raise DocumentPermissionError(
-                "The title, owner, and path of a Goal document are controlled by its Goal "
+                "The title, owner, and Goal association of a tracking document are controlled by its Goal "
                 "and cannot be changed directly."
             )
     if item.node_kind == "document":
@@ -1170,7 +1168,7 @@ async def get_item(item_id: UUID, *, agent_id: int | HumanActor, revision: int |
         return item, content, access, entry.content_type, entry.media_type
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(item_id):
+    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
         state = await adapter.read(item_id, agent_id)
         return item, str(state["content"]).encode(), access, "text", "application/json"
     content = await get_storage(item.provider_code).read(item.resource_id)

@@ -130,10 +130,10 @@ async def test_folder_roles_follow_metadata_and_real_access_not_names(
     assert options["Personal/Notes"].shared is False
     assert options["Shared"].shared is True
     assert options["Shared/Reports"].shared is True
-    assert options["Objectifs"].kind == "goal"
+    assert options["Objectifs"].kind == "custom"
     assert options["Objectifs"].shared is True
     assert options["Objectifs/First"].shared is False
-    assert options["Objectifs/Team"].kind == "goal"
+    assert options["Objectifs/Team"].kind == "custom"
     assert options["Objectifs/Team"].shared is True
     assert options["Goals/Custom folder"].kind == "custom"
     assert "Hidden" not in options

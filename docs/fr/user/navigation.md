@@ -459,6 +459,11 @@ restent accessibles depuis la demande faite à l'agent et ne créent aucune entr
 ce catalogue de workflows. Le [guide utilisateur](README.md) explique
 quand choisir une conversation, une tâche ou un Goal.
 
+La description d'un Goal est un simple texte HTML. Son suivi est un document non classé,
+présent dans la liste Documents mais absent de l'arborescence tant que vous ne le classez pas.
+Aucun dossier Objectifs n'est imposé. Les dossiers déjà créés gardent leur nom et se modifient
+comme les autres dossiers, sans traduction ou renommage automatique.
+
 La page **Processus** affiche ses listes sans attendre le contrôle du moteur externe ni
 le catalogue des agents. Les détails d'une exécution et son diagramme se chargent seulement
 à l'ouverture de sa fiche ; vous pouvez fermer celle-ci pendant le chargement et la rouvrir.

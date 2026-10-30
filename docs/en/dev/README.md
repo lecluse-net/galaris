@@ -706,26 +706,16 @@ projection retention: older items are forgotten in bounded batches and their sou
 reset to `null`, without deleting the canonical cycle. Messenger observes contacts before
 interactions with a fail-open fallback; its journal enables idempotent replay.
 
-The canonical HTML description and tracking of a Goal no longer live in these projections:
-each Goal references two private working documents owned by Document. Their content can be modified from
-the Goal and Documents UIs, but their owner, title, and path remain exclusively controlled by
-the Goal. The folder bears the scrubbed Goal title and the documents are titled
-`<Goal title> — Description` and `<Goal title> — Suivi`, updated when the Goal is renamed.
-DbAdmin reconciliation also updates existing titles to this format.
-They also have deletion protection independent of
-`source_managed`.
-A direct document edit revises the Goal and requeues its deterministic projection. The
-`app.goal.document_store` port maintains the business boundary; its concrete adapter is supplied
-by `app.memory` during bootstrap.
+HTML descriptions are stored directly in `goals.description`, without a Document identity
+or text history. Tracking remains the Goal's sole associated Document, referenced by
+`tracking_document_id`, retaining its editor, revisions and access rights. Agents read both
+contents through `galaris://goal/<uuid>` or use the tracking Document's `document://` URI;
+`goal_update_suivi` retains revision checks.
 
-The durable `goal_folder_reconcile` job files Goal documents and deliverables identified through
-their Task provenance under each user's personal `Goals / <Goal title>` folders. Optional
-`user_id` and `goal_id` filters combine; omitting both requests a global sweep. Current read access
-and existing personal classification are preserved, and empty folders are not created. Goal,
-document, user and access changes enqueue work; DbAdmin queues the global catch-up. Opening the
-page does not trigger a scan. Deleted folders may be recreated on a later pass. Administrators
-can enqueue work through `POST /api/memory/goal-folders/reconcile` (`MEMORY_ADMIN`, `{}` for all,
-response `202`). See [decision 0107](../../../project/decisions/0107-personal-goal-folders.md).
+Tracking is created unclassified: visible in the list, absent from the tree and its root.
+Each user chooses its placement. No Goal folders are automatically created or renamed,
+including for task deliverables. Historical jobs are neutralized; existing folders and
+placements become ordinary, editable personal organization.
 
 Dream also examines completed Voice turns that have a textual objective, then associates new
 memories with the structural node of their conversation. Realtime turns without a transcript
@@ -1260,12 +1250,11 @@ time; prior function discovery alone is not durable authorization.
   `expected_revision`;
 - logical deletion rejected when a cycle is unfinished.
 
-Goal responses retain the text fields `description` and `tracking_content`, resolved from
-their canonical documents, and also expose `description_document_id` and
-`tracking_document_id`. The initial transition backed up the old columns in
-`galaris_migration.goal_markdown_backup`, created protected documents, then allowed
-Atlas to remove the text columns and enforce UUID foreign keys. The temporary hook was removed
-after validating this contraction in production; the backup remains available for audit.
+Goal responses expose `description`, `tracking_content` and `tracking_document_id`;
+`description_document_id` is removed. The `app.goal.current_content` DbAdmin action copies
+the former description's latest HTML before soft-deleting it and retiring its foreign key.
+The tracking Document is retained. No description history is imported; missing sources or
+divergent content block the transfer. See [decision 0253](../../../project/decisions/0253-goal-current-html-columns.md).
 
 `app.skill.mcp` exposes discovery, `SKILL.md` reads, metadata, activation, deletion, generic
 authorizations and ownership release under the `skills` Tool. `app.skill.interface` checks

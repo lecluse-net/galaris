@@ -30,12 +30,31 @@ async def reconcile_goal_paths(session: AsyncSession) -> None:
     await reconcile_goal_document_paths(session)
 
 
-async def enqueue_goal_folders(session: AsyncSession) -> None:
-    from sqlalchemy import select
-    from app.goal import Goal
-    from .goal_folders import enqueue_goal_folder_reconciliation
-    if await session.scalar(select(Goal.id).limit(1)) is not None:
-        await enqueue_goal_folder_reconciliation()
+async def retire_goal_filing(session: AsyncSession) -> None:
+    """Retire automatic filing without removing anyone's personal folders."""
+    from sqlalchemy import text
+    await session.execute(text("""UPDATE document_automation_jobs SET status='success',
+        locked_at=NULL, last_error=NULL WHERE kind='goal_folder_reconcile'
+        AND status IN ('pending','running')"""))
+    await session.execute(text("""UPDATE documents SET metadata=metadata-'document_path'
+        WHERE metadata->>'goal_document_kind' IN ('description','tracking')
+        AND metadata ? 'document_path'"""))
+
+
+def needs_filing_retirement(delta: SchemaTransitionSet) -> bool:
+    return "document_tags.goal_id" in delta.removed_columns
+
+
+async def retire_filing(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
+    await retire_goal_filing(session)
+
+
+async def filing_retired(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
+    from sqlalchemy import text
+    return not await session.scalar(text("""SELECT EXISTS(SELECT 1 FROM document_automation_jobs
+        WHERE kind='goal_folder_reconcile' AND status IN ('pending','running'))
+        OR EXISTS(SELECT 1 FROM documents WHERE metadata->>'goal_document_kind'
+        IN ('description','tracking') AND metadata ? 'document_path')"""))
 
 
 async def verify_historical_transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
@@ -69,5 +88,6 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
         handler=clean_thumbnails,postcondition=thumbnails_clean))
     registry.register_reconciler(DbAdminReconciler(key="app.document.sharing_inheritance",handler=reconcile_sharing))
     registry.register_reconciler(DbAdminReconciler(key="app.memory.goal_document_paths",handler=reconcile_goal_paths))
-    registry.register_reconciler(DbAdminReconciler(key="app.document.goal_folders",handler=enqueue_goal_folders,
-        depends_on=("app.memory.goal_document_paths",)))
+    registry.register_action(DbAdminAction(key="app.document.retire_goal_filing",
+        phase=DbAdminPhase.AFTER_EXPAND, checksum="manual-classification-without-goal-folder-metadata-v1",
+        predicate=needs_filing_retirement, handler=retire_filing, postcondition=filing_retired))

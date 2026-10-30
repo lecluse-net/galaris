@@ -420,6 +420,11 @@ large-report analyses remain available through the request made to the agent and
 not create entries in this workflow catalogue. The
 [user guide](README.md) explains when to choose a conversation, Task or Goal.
 
+A Goal description is a simple HTML field. Its tracking is an unclassified Document,
+visible in the Documents list but outside the tree until you classify it. No Goal folder
+is imposed. Existing folders retain their names and behave as ordinary editable folders,
+without translation or automatic renaming.
+
 The **Processes** page displays its lists without waiting for the external engine check or
 agent catalogue. Execution details and their diagram load only when you open an execution;
 you can close its dialog during loading and reopen it.

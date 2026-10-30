@@ -133,7 +133,9 @@ Pour changer le titre avec un agent, demandez-lui de renommer le document. Il ut
 `file_info`, puis `file_rename` avec la version des métadonnées. Le titre de bibliothèque
 change sans modifier l'URI `document://`, le corps, son historique, les pièces jointes
 ni le partage. Modifier un titre dans le texte ou le libellé d'un lien est une autre action.
-Les titres des documents pilotés par un Goal restent contrôlés par ce Goal.
+La description d'un objectif est un champ HTML du Goal. Son suivi reste un document, créé
+non classé : il figure dans la liste et pas dans l'arborescence, même à la racine.
+Chaque utilisateur peut ensuite le classer librement. Aucun dossier Objectifs n'est imposé.
 
 Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
 parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement

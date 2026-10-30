@@ -13,7 +13,7 @@ class GoalMarkdown:
     tracking: str
 
 
-GoalDocumentKind = Literal["description", "tracking"]
+GoalDocumentKind = Literal["tracking"]
 
 
 class GoalDocumentStore(Protocol):

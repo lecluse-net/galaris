@@ -23,8 +23,9 @@ La décision [0080](../../../project/decisions/0080-editorial-html.md) définit 
 Pour les contenus éditoriaux et les documents de type `html`, le corps autoritaire est un fragment UTF-8 `text/html`, `content_profile_version: 1`.
 `rich-text` couvre les six catégories Memory, les objectifs et profils ; `document` ajoute
 les images jointes, les formulaires, le CSS et le JavaScript des documents de travail ordinaires.
-Un document Goal utilise `rich-text`, même
-ouvert depuis la bibliothèque ou le Chat. Les ressources binaires/JSON/code et les compétences
+La description Goal utilise `rich-text` dans une colonne du Goal, sans document ni historique
+de texte. Son unique document de suivi utilise aussi `rich-text`, y compris dans la bibliothèque.
+Les ressources binaires/JSON/code et les compétences
 ne passent pas dans cette conversion.
 
 Les deux profils acceptent les équations sous forme de texte LaTeX échappé :

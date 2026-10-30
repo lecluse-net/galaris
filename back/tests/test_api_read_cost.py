@@ -15,8 +15,9 @@ from core.user.models import User
 from core.user.user_service import encrypt_password
 from core.authorize.models import Assignment, Role, Privilege
 from app.agent.models import Agent, Title
-from app.memory.models import MemoryItem, MemoryRevision, MemoryURL
 from app.document import Document, DocumentRevision
+from app.document.models import DocumentURL, DocumentSource
+from app.share import ShareGrant
 from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.goal.models import Goal, GoalStatus
 
@@ -35,7 +36,7 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
             user = User(email='sql-audit@example.com', hashed_password=encrypt_password('synthetic-audit-password'), is_active=True)
             outsider = User(email='sql-audit-other@example.com', hashed_password='unused', is_active=True)
             rights = list(await db.scalars(select(Privilege).where(Privilege.code.in_([
-                'AGENT_ACCESS', 'MEMORY_ACCESS', 'MEMORY_EDIT', 'GOAL_ACCESS', 'GOAL_EDIT', 'TASK_ACCESS',
+                'AGENT_ACCESS', 'DOCUMENT_ACCESS', 'DOCUMENT_EDIT', 'GOAL_ACCESS', 'GOAL_EDIT', 'TASK_ACCESS',
             ]))))
             assert len(rights) == 6
             role = Role(code='sql-audit-reader', privileges=rights)
@@ -49,10 +50,10 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
             content = b'<p>Synthetic audit content.</p>'
             resource = await storage.create(content)
             docs = []
-            for name in ('Document', 'Description', 'Tracking', 'Hidden'):
-                item = MemoryItem(owner_agent_id=agent.id if name != 'Hidden' else None,
+            for name in ('Document', 'Reference', 'Tracking', 'Hidden'):
+                item = Document(owner_agent_id=agent.id if name != 'Hidden' else None,
                     owner_user_id=outsider.id if name == 'Hidden' else None,
-                    resource_id=resource, title=f'Audit {name}', node_kind='document',
+                    provider_code='native', resource_id=resource, title=f'Audit {name}', node_kind='document',
                      content_type='text', media_type='text/html',
                     content_hash=hashlib.sha256(content).hexdigest(), size_bytes=len(content),
                     search_text='Synthetic audit content')
@@ -61,18 +62,18 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
             await db.flush()
             item = docs[0]
             urls = ['https://example.com/audit/first', 'https://example.com/audit/second']
-            db.add_all(MemoryURL(memory_node_id=item.id, url=url) for url in urls)
+            db.add_all(DocumentURL(document_id=item.id, url=url) for url in urls)
+            from datetime import datetime, timedelta, timezone
+            for index, url in enumerate(urls):
+                db.add(DocumentSource(document_id=item.id, source_kind='web', source_ref=url,
+                    created_at=datetime.now(timezone.utc) + timedelta(seconds=index)))
             item.primary_url = urls[0]
-            revision_template = dict(item_id=item.id, provider_code='native', resource_id=resource,
+            revision_template = dict(document_id=item.id, provider_code='native', resource_id=resource,
                 content_hash=item.content_hash, content_type='text', media_type='text/html',
                 title=item.title, document_content_version=True)
-            await db.execute(insert(MemoryRevision), [dict(revision_template, revision=1)])
-            await db.execute(insert(DocumentRevision).from_select(
-                ["id", "document_id", "revision"], select(
-                    MemoryRevision.id, MemoryRevision.item_id, MemoryRevision.revision,
-                ).where(MemoryRevision.item_id == item.id)))
+            await db.execute(insert(DocumentRevision), [dict(revision_template, revision=1)])
             goal = Goal(title='Synthetic audit goal', agent_id=agent.id,
-                description_document_id=docs[1].id, tracking_document_id=docs[2].id,
+                description="<p>Synthetic objective</p>", tracking_document_id=docs[2].id,
                 status=GoalStatus.PAUSED, cycle_delay_seconds=0)
             db.add(goal)
             await db.flush()
@@ -104,8 +105,8 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
             reports.append({'scenario': name, 'status': response.status_code,
                 'selects': len(statements), 'elapsed_ms': round(elapsed * 1000, 2),
                 'response_bytes': len(response.content),
-                'revision_selects': sum('memory_revisions' in row['tables'] for row in statements),
-                'revision_rows_returned': sum(max(0, row['rows']) for row in statements if row['tables'] == ['memory_revisions']),
+                'revision_selects': sum('document_revisions' in row['tables'] for row in statements),
+                'revision_rows_returned': sum(max(0, row['rows']) for row in statements if row['tables'] == ['document_revisions']),
                 'repeated_statement_executions': sum(count - 1 for count in counts.values()),
                 'statements': statements})
             DESTINATION.joinpath('measurements.json').write_text(json.dumps(reports, indent=2))
@@ -116,18 +117,18 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
             await measure(f'identity_{repeat}', 'GET', '/api/auth/me')
             await measure(f'agents_{repeat}', 'GET', '/api/agents')
             await measure(f'agent_detail_{repeat}', 'GET', f'/api/agents/{agent_id}')
-            library = await measure(f'library_{repeat}', 'POST', '/api/memory/documents/library', body={'limit': 50})
+            library = await measure(f'library_{repeat}', 'POST', '/api/documents/library', body={'limit': 50})
             entries = library.json()['entries']
             assert len(entries) == 3
             assert len({entry['item']['id'] for entry in entries}) == 3
             assert next(entry['item']['urls'] for entry in entries if entry['item']['id'] == str(doc_id)) == urls
-            opened = await measure(f'document_1_revision_{repeat}', 'GET', f'/api/memory/documents/{doc_id}')
+            opened = await measure(f'document_1_revision_{repeat}', 'GET', f'/api/documents/{doc_id}')
             assert opened.json()['item']['payload']['text'] == content.decode()
             assert opened.json()['item']['urls'] == urls
             assert opened.json()['item']['source_refs'] == urls
-        first_page = await measure('library_first_page', 'POST', '/api/memory/documents/library',
+        first_page = await measure('library_first_page', 'POST', '/api/documents/library',
             body={'limit': 2, 'offset': 0})
-        second_page = await measure('library_second_page', 'POST', '/api/memory/documents/library',
+        second_page = await measure('library_second_page', 'POST', '/api/documents/library',
             body={'limit': 2, 'offset': 2})
         first_ids = [entry['item']['id'] for entry in first_page.json()['entries']]
         second_ids = [entry['item']['id'] for entry in second_page.json()['entries']]
@@ -135,44 +136,53 @@ async def test_http_reads_stay_bounded_and_revocations_remain_visible(client, tm
         assert len(second_ids) == 1
         assert set(first_ids).isdisjoint(second_ids)
         assert set(first_ids + second_ids) == {entry['item']['id'] for entry in entries}
-        await measure('document_denied', 'GET', f'/api/memory/documents/{hidden_id}', expected=403)
-        await measure('owner_options', 'GET', '/api/memory/documents/owner-options')
+        await measure('document_denied', 'GET', f'/api/documents/{hidden_id}', expected=403)
+        # A human grant must pass the same bounded route guard without granting
+        # access to that human's Agents; its revocation is visible immediately.
+        async with get_db_session() as db:
+            grant = ShareGrant(share_id=Document.share_for(hidden_id), user_id=user_id, can_write=False)
+            db.add(grant)
+            await db.flush()
+            grant_id = grant.id
+        shared = await measure('human_grant_document', 'GET', f'/api/documents/{hidden_id}')
+        assert shared.json()['item']['access'] == {'can_read': True, 'can_write': False}
+        await measure('human_grant_agent_denied', 'GET', f'/api/documents/{hidden_id}?agent_id={agent_id}', expected=403)
+        async with get_db_session() as db:
+            await db.execute(delete(ShareGrant).where(ShareGrant.id == grant_id))
+        await measure('human_grant_revoked', 'GET', f'/api/documents/{hidden_id}', expected=403)
+        await measure('owner_options', 'GET', '/api/documents/owner-options')
         await measure('goal_detail', 'GET', f'/api/goals/{goal_id}')
         await measure('goal_cycles', 'GET', f'/api/goals/{goal_id}/cycles')
         async with get_db_session() as db:
-            await db.execute(insert(MemoryRevision), [dict(revision_template, revision=n) for n in range(2, 1001)])
-            await db.execute(insert(DocumentRevision).from_select(
-                ["id", "document_id", "revision"], select(
-                    MemoryRevision.id, MemoryRevision.item_id, MemoryRevision.revision,
-                ).where(MemoryRevision.item_id == doc_id, MemoryRevision.revision >= 2)))
+            await db.execute(insert(DocumentRevision), [dict(revision_template, revision=n) for n in range(2, 1001)])
             current_content = b'<p>Updated synthetic content.</p>'
             current_resource = await storage.create(current_content)
             current_hash = hashlib.sha256(current_content).hexdigest()
             await db.execute(update(Document).where(Document.id == doc_id).values(
                 revision=1000, resource_id=current_resource, content_hash=current_hash, size_bytes=len(current_content)))
-            await db.execute(update(MemoryRevision).where(MemoryRevision.item_id == doc_id, MemoryRevision.revision == 1000)
+            await db.execute(update(DocumentRevision).where(DocumentRevision.document_id == doc_id, DocumentRevision.revision == 1000)
                              .values(resource_id=current_resource, content_hash=current_hash))
         for repeat in range(2):
-            reopened = await measure(f'document_1000_revisions_{repeat}', 'GET', f'/api/memory/documents/{doc_id}')
+            reopened = await measure(f'document_1000_revisions_{repeat}', 'GET', f'/api/documents/{doc_id}')
             assert reopened.json()['item']['payload']['text'] == current_content.decode()
             assert reopened.json()['item']['revision'] == 1000
-        history = await measure('revision_page_1000', 'GET', f'/api/memory/documents/{doc_id}/content-revisions')
+        history = await measure('revision_page_1000', 'GET', f'/api/documents/{doc_id}/content-revisions')
         assert history.json()['total'] == 1000
         assert [row['revision'] for row in history.json()['items']] == list(range(1000, 950, -1))
-        old_version = await measure('old_content_revision', 'GET', f'/api/memory/documents/{doc_id}/content-revisions/1')
+        old_version = await measure('old_content_revision', 'GET', f'/api/documents/{doc_id}/content-revisions/1')
         assert old_version.json()['content'] == content.decode()
         assert old_version.json()['revision'] == 1
-        await measure('missing_content_revision', 'GET', f'/api/memory/documents/{doc_id}/content-revisions/1001', expected=404)
+        await measure('missing_content_revision', 'GET', f'/api/documents/{doc_id}/content-revisions/1001', expected=404)
         async with get_db_session() as db:
             await db.execute(update(Agent).where(Agent.id == agent_id).values(user_id=outsider_id))
-        await measure('changed_manager_document', 'GET', f'/api/memory/documents/{doc_id}', expected=403)
+        await measure('changed_manager_document', 'GET', f'/api/documents/{doc_id}', expected=403)
         await measure('changed_manager_cycles', 'GET', f'/api/goals/{goal_id}/cycles', expected=404)
         async with get_db_session() as db:
             await db.execute(update(Agent).where(Agent.id == agent_id).values(user_id=user_id))
-        await measure('restored_manager_document', 'GET', f'/api/memory/documents/{doc_id}')
+        await measure('restored_manager_document', 'GET', f'/api/documents/{doc_id}')
         async with get_db_session() as db:
             await db.execute(delete(Assignment).where(Assignment.user_id == user_id))
-        await measure('revoked_role_document', 'GET', f'/api/memory/documents/{doc_id}', expected=403)
+        await measure('revoked_role_document', 'GET', f'/api/documents/{doc_id}', expected=403)
         by_name = {report['scenario']: report for report in reports}
         for name in ('document_1_revision_0', 'document_1_revision_1',
                      'document_1000_revisions_0', 'document_1000_revisions_1'):

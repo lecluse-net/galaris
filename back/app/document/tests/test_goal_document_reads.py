@@ -19,7 +19,7 @@ async def test_goal_documents_bulk_read_reopens_current_content(db, agents, memo
     store = DocumentGoalDocumentStore()
     ids = tuple([
         await store.create(goal_id=uuid4(), owner_agent_id=agents[0].id,
-                           kind="description", goal_title=f"Synthetic {index}",
+                           kind="tracking", goal_title=f"Synthetic {index}",
                            content=f"<p>Content {index}</p>")
         for index in range(6)
     ])

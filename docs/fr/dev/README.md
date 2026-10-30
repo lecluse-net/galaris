@@ -726,27 +726,16 @@ anciens sont oubliés par lots bornés et leur pointeur source est remis à `nul
 cycle canonique. Messenger observe les contacts avant les interactions avec un repli fail-open ;
 son journal permet un rejeu idempotent.
 
-La description et le suivi HTML canoniques d'un Goal ne vivent plus dans ces projections :
-chaque Goal référence deux documents privés de travail appartenant à Document. Leur contenu est modifiable depuis
-les IHM Goal et Documents, mais leur propriétaire, leur titre et leur chemin restent exclusivement
-pilotés par le Goal. Le dossier porte le titre expurgé du Goal et les documents portent les
-titres `<titre du Goal> — Description` et `<titre du Goal> — Suivi`, actualisés lors du renommage
-du Goal. La réconciliation DbAdmin remet aussi les titres existants à ce format.
-Ils portent aussi une protection de suppression
-indépendante de `source_managed`.
-Une édition directe du document révise le Goal et réenfile sa projection déterministe. Le port
-`app.goal.document_store` maintient la frontière métier ; son adapter concret est fourni par
-`app.memory` au bootstrap.
+La description HTML est stockée directement dans `goals.description`, sans identité
+documentaire ni historique de texte. Le suivi reste l'unique document associé au Goal,
+référencé par `tracking_document_id`, avec son éditeur, ses révisions et ses droits existants.
+Les agents lisent les deux contenus via `galaris://goal/<uuid>` et peuvent également utiliser
+l'URI `document://` du suivi ; `goal_update_suivi` conserve le contrôle de révision.
 
-Le job durable `goal_folder_reconcile` range automatiquement les documents du Goal et les
-livrables identifiés par la provenance de ses tâches dans les dossiers personnels
-`Objectifs / <libellé du Goal>`. Il accepte `user_id`, `goal_id`, les deux ou aucun filtre.
-Il respecte les accès actuels et tout classement préexistant chez l'utilisateur ; il ne crée
-pas de dossier vide. Les événements Goal, document, utilisateur et accès mettent le job en
-attente ; DbAdmin enfile le rattrapage global. Aucun parcours ne se fait à l'ouverture de la page.
-Un dossier supprimé peut être recréé au prochain passage. Le lancement administratif passe par
-`POST /api/memory/goal-folders/reconcile` (`MEMORY_ADMIN`, corps `{}` pour tous, réponse `202`).
-Voir la [décision 0107](../../../project/decisions/0107-personal-goal-folders.md).
+Le suivi est créé non classé : visible dans la liste, absent de l'arborescence et de sa racine.
+Chaque utilisateur choisit son classement. Aucun dossier Objectifs n'est créé ou renommé
+automatiquement, même pour les livrables des tâches. Les anciens jobs sont neutralisés ; les
+dossiers et classements existants deviennent ordinaires et restent modifiables.
 
 Dream examine aussi les tours Voice terminés qui possèdent un objectif textuel, puis associe les
 nouveaux souvenirs au nœud structurel de leur conversation. Les tours realtime sans transcript
@@ -1296,12 +1285,12 @@ constitue pas une autorisation durable.
   `expected_revision` ;
 - suppression logique refusée lorsqu’un cycle est inachevé.
 
-Les réponses Goal conservent les champs texte `description` et `tracking_content`, résolus depuis
-leurs documents canoniques, et exposent aussi `description_document_id` et
-`tracking_document_id`. La transition initiale a sauvegardé les anciennes colonnes dans
-`galaris_migration.goal_markdown_backup`, créé les documents protégés, puis laissé Atlas supprimer
-les colonnes texte et imposer les clés étrangères UUID. Le hook temporaire a été retiré après la
-validation de cette contraction en production ; la sauvegarde reste disponible pour audit.
+Les réponses Goal exposent `description`, `tracking_content` et `tracking_document_id` ;
+`description_document_id` est retiré. L'action DbAdmin `app.goal.current_content` copie
+le contenu récent de l'ancienne description avant sa suppression logique et le retrait de
+sa clé étrangère. Le document de suivi est conservé. Aucun historique de description n'est
+importé ; une source manquante ou une divergence empêche le transfert.
+Voir la [décision 0253](../../../project/decisions/0253-goal-current-html-columns.md).
 
 `app.skill.mcp` expose découverte, lecture de `SKILL.md`, métadonnées, activation, suppression,
 autorisations génériques et retrait de propriété sous le Tool `skills`. Les portées locales

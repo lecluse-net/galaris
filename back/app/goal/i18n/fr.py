@@ -1,10 +1,6 @@
 """French Goal runtime messages."""
 
 default: dict[str, object] = {
-    "goal_documents": {
-        "folder": "Objectifs",
-        "untitled": "Objectif",
-    },
     "goal_referrer": {
         "question_required": "La question au référent ne peut pas être vide.",
         "question_too_long": "La question ne peut pas dépasser ${maximum} caractères.",

@@ -19,13 +19,6 @@ async def make_goal(
 ) -> Goal:
     goal_id = uuid4()
     store = get_goal_document_store()
-    description_document_id = await store.create(
-        goal_id=goal_id,
-        owner_agent_id=agent_id,
-        kind="description",
-        goal_title=title,
-        content=description,
-    )
     tracking_document_id = await store.create(
         goal_id=goal_id,
         owner_agent_id=agent_id,
@@ -36,7 +29,7 @@ async def make_goal(
     return Goal(
         id=goal_id,
         title=title,
-        description_document_id=description_document_id,
+        description=description,
         tracking_document_id=tracking_document_id,
         agent_id=agent_id,
         **values,

@@ -1,5 +1,5 @@
 from app.share import ShareGrant
-from app.memory.models import MemoryItem
+from app.document import Document
 """Real authorization boundaries with equally privileged, distinct managers."""
 
 from datetime import timedelta
@@ -25,7 +25,7 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     role = Role(code=suffix, display_name="Scoped task reader")
     from sqlalchemy import select
     role.privileges = list((await db.scalars(select(Privilege).where(Privilege.code.in_(
-        ["TASK_ACCESS", "GOAL_ACCESS", "MEMORY_ACCESS", "PROCESS_READ"],
+        ["TASK_ACCESS", "GOAL_ACCESS", "DOCUMENT_ACCESS", "LLM_CALL_ACCESS", "VOICE_HISTORY_ACCESS", "PROCESS_READ"],
     )))).all())
     db.add_all([*users, title, role])
     await db.flush()
@@ -44,7 +44,7 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     monkeypatch.setattr(websocket, "_connected_identities", identities)
     monkeypatch.setattr(websocket, "_event_subscriptions", {
         sid: frozenset(f"{subject}.{action}" for subject in (
-            "task", "llm_call", "goal", "memory", "process_run", "voice_conversation",
+            "task", "llm_call", "goal", "document", "process_run", "voice_conversation",
         ) for action in ("update", "delete"))
         for sid in identities
     } if subscribed else {})
@@ -60,7 +60,6 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     from app.goal.models import Goal
     from app.llm.models import LLMCall
     from app.llm import llm_call_service
-    from app.memory.models import MemoryItem
     from app.messenger.models import Room
     from app.process.models import ProcessDefinition, ProcessRun
     from app.tools.models import Tool
@@ -68,12 +67,16 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     from core.authorize import role_id_ctx
     from core.user import user_service
 
-    documents = [MemoryItem(owner_agent_id=agents[0].id, resource_id=f"test/{suffix}/{i}", content_hash="0" * 64, title=f"Private {i}",  node_kind="document") for i in range(2)]
+    documents = [Document(owner_agent_id=agents[0].id, provider_code="native", resource_id=f"test/{suffix}/{i}", content_hash="0" * 64, title=f"Private {i}", node_kind="document") for i in range(2)]
     tool = Tool(code=suffix, label="Private tool")
     call = LLMCall(task_id=task.id, prompt="Private prompt")  # Visibility inherited from the Task.
     db.add_all([*documents, tool, call])
     await db.flush()
-    goal = Goal(agent_id=agents[0].id, title="Private goal", description_document_id=documents[0].id, tracking_document_id=documents[1].id)
+    tracking = Document(owner_agent_id=agents[0].id, provider_code="native", resource_id=f"test/{suffix}/tracking",
+        content="<p>Synthetic tracking</p>", content_hash="0" * 64, title="Private tracking")
+    db.add(tracking)
+    await db.flush()
+    goal = Goal(agent_id=agents[0].id, title="Private goal", description="<p>Synthetic objective</p>", tracking_document_id=tracking.id)
     connection = Connection(agent_id=agents[0].id, tool_id=tool.id, active=True)
     definition = ProcessDefinition(agent_id=agents[0].id, tool_id=tool.id, engine_process_id=suffix, label="Private process")
     db.add_all([goal, connection, definition])
@@ -89,7 +92,7 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     # A publisher's unrelated active role must neither authorize nor suppress recipients.
     role_token = role_id_ctx.set(-1)
     try:
-        for subject, resource in [("llm_call", call), ("goal", goal), ("memory", documents[0]), ("process_run", run), ("voice_conversation", voice)]:
+        for subject, resource in [("llm_call", call), ("goal", goal), ("document", documents[0]), ("process_run", run), ("voice_conversation", voice)]:
             server.emit.reset_mock()
             await websocket.emit(subject, "update", {"id": str(resource.id)})
             assert [c.kwargs["room"] for c in server.emit.await_args_list] == ["0"], subject
@@ -108,12 +111,12 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     db.add(grant)
     await db.commit()
     server.emit.reset_mock()
-    await websocket.emit("memory", "update", {"id": str(documents[0].id)})
+    await websocket.emit("document", "update", {"id": str(documents[0].id)})
     assert {c.kwargs["room"] for c in server.emit.await_args_list} == {"0", "1"}
     await db.delete(grant)
     await db.commit()
     server.emit.reset_mock()
-    await websocket.emit("memory", "update", {"id": str(documents[0].id)})
+    await websocket.emit("document", "update", {"id": str(documents[0].id)})
     assert [c.kwargs["room"] for c in server.emit.await_args_list] == ["0"]
 
 

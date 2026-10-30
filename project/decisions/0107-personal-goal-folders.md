@@ -1,6 +1,9 @@
 # 0107 — Classement automatique des documents des objectifs
 
-Statut : accepté — 17 septembre 2026.
+Statut : remplacé par la [décision 0253](0253-goal-current-html-columns.md) — 29 octobre 2026.
+
+Les dossiers déjà créés restent des dossiers ordinaires, avec leur nom enregistré.
+Leur création, traduction, renommage et classement automatiques sont retirés.
 
 Les documents liés à un Goal sont classés automatiquement dans une arborescence personnelle
 `Objectifs / <libellé du Goal>`. Les dossiers appartiennent exclusivement à un utilisateur.

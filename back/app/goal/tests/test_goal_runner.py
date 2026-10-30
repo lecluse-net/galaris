@@ -40,9 +40,8 @@ from app.llm.structured_service import StructuredInferenceResult
 from app.llm.trace import infer_call_type
 from app.document import Document, resource_service as document_service
 from app.document.goal_document_adapter import reconcile_goal_document_paths
-from app.memory.models import MemoryItem
 from app.messenger.models import MessengerUser
-from app.document.schemas import DocumentOwnerUpdate, DocumentPayload, DocumentUpdate
+from app.document.schemas import DocumentPayload, DocumentUpdate
 from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 from app.task import task_service
 from app.tools.models import Tool
@@ -440,119 +439,52 @@ def test_goal_judgement_accepts_progress_without_changing_its_content(
 
 
 @pytest.mark.asyncio
-async def test_goal_markdown_is_stored_in_editable_protected_documents(
-    db, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_goal_keeps_html_description_and_only_one_tracking_document(db, monkeypatch):
     agent = await _new_agent(db)
     referrer = await _new_agent(db)
-    manager = await db.get(User, agent.user_id)
-    assert manager is not None
-    manager.language = "fr"
-    await db.commit()
     monkeypatch.setattr("app.task.scheduler.wake", lambda *_args, **_kwargs: None)
-
-    created = await goal_service.create(
-        GoalCreate(
-            title="Document / backed Goal",
-            description="# Objective\n\nKeep the source durable.",
-            agent_id=agent.id,
-            referrer=GoalAgentReferrerInput(type="AGENT", agent_id=referrer.id),
-            active=False,
-        )
-    )
-
-    description = await db.get(Document, created.description_document_id)
+    before = set(await db.scalars(select(Document.id)))
+    created = await goal_service.create(GoalCreate(
+        title="Independent objective", description="<h1>Objective HTML</h1>", agent_id=agent.id,
+        referrer=GoalAgentReferrerInput(type="AGENT", agent_id=referrer.id), active=False,
+    ))
     tracking = await db.get(Document, created.tracking_document_id)
-    assert description is not None
-    assert tracking is not None
-    assert await db.get(MemoryItem, created.description_document_id) is None
-    assert await db.get(MemoryItem, created.tracking_document_id) is None
-    assert description.node_kind == tracking.node_kind == "document"
-    assert description.deletion_protected is True
-    assert tracking.deletion_protected is True
-    assert description.read_only is False
-    assert tracking.read_only is False
-    assert description.title == "Document / backed Goal — Description"
-    assert tracking.title == "Document / backed Goal — Suivi"
-    assert description.metadata_["document_path"] == "Objectifs/Document backed Goal"
-    assert tracking.metadata_["document_path"] == "Objectifs/Document backed Goal"
+    assert tracking is not None and tracking.deletion_protected and not tracking.read_only
+    assert set(await db.scalars(select(Document.id))) - before == {tracking.id}
+    assert (await db.get(Goal, created.id)).description == "<h1>Objective HTML</h1>"
+    assert "description_document_id" not in created.model_dump()
     with pytest.raises(document_service.DocumentPermissionError, match="cannot be forgotten"):
-        await document_service.delete_document(
-            description.id, actor_agent_id=agent.id
-        )
+        await document_service.delete_document(tracking.id, actor_agent_id=agent.id)
     with pytest.raises(document_service.DocumentPermissionError, match="controlled by its Goal"):
-        await document_service.update_item(
-            description.id,
-            DocumentUpdate(
-                expected_revision=description.revision,
-                metadata={**description.metadata_, "document_path": "Elsewhere"},
-            ),
-            actor_agent_id=agent.id,
-        )
-    with pytest.raises(document_service.DocumentPermissionError, match="controlled by its Goal"):
-        await document_service.update_item(
-            description.id,
-            DocumentUpdate(
-                expected_revision=description.revision,
-                metadata={"document_path": description.metadata_["document_path"]},
-            ),
-            actor_agent_id=agent.id,
-        )
-    with pytest.raises(document_service.DocumentPermissionError, match="controlled by its Goal"):
-        await document_service.update_item(
-            description.id,
-            DocumentUpdate(
-                expected_revision=description.revision,
-                title="Renamed outside the Goal",
-            ),
-            actor_agent_id=agent.id,
-        )
-    with pytest.raises(document_service.DocumentPermissionError, match="controlled by its Goal"):
-        await document_service.transfer_document_owner(
-            description.id,
-            DocumentOwnerUpdate(
-                expected_revision=description.revision,
-                expected_lock_version=description.lock_version,
-                kind="agent",
-                id=referrer.id,
-            ),
-            actor_agent_id=agent.id,
-        )
-
-    await document_service.update_item(
-        description.id,
-        DocumentUpdate(
-            expected_revision=description.revision,
-            payload=DocumentPayload(text="<h1>Revised objective</h1>"),
-        ),
-        actor_agent_id=agent.id,
-    )
+        await document_service.update_item(tracking.id, DocumentUpdate(
+            expected_revision=tracking.revision, title="External rename"), actor_agent_id=agent.id)
+    updated = await goal_service.update(created.id, GoalUpdate(
+        expected_revision=created.revision, description="<p>Revised objective</p>"))
+    assert updated is not None and updated.revision == created.revision + 1
+    assert updated.description == "<p>Revised objective</p>"
+    assert updated.tracking_document_id == tracking.id
+    combined = await goal_service.update(created.id, GoalUpdate(
+        expected_revision=updated.revision, description=updated.description,
+        tracking_content="<p>API tracking with unchanged objective</p>"))
+    assert combined is not None and combined.revision == updated.revision + 1
+    updated = combined
+    await document_service.update_item(tracking.id, DocumentUpdate(
+        expected_revision=tracking.revision, payload=DocumentPayload(text="<p>Document tracking</p>")),
+        actor_agent_id=agent.id)
     refreshed = await goal_service.get_read(created.id)
-    assert refreshed is not None
-    assert refreshed.description == "<h1>Revised objective</h1>"
-    assert refreshed.revision == created.revision + 1
-
-    renamed = await goal_service.update(
-        created.id,
-        GoalUpdate(
-            expected_revision=refreshed.revision,
-            title="Cap / Nord",
-        ),
-    )
-    assert renamed is not None
-    renamed_description = await db.get(Document, created.description_document_id)
-    renamed_tracking = await db.get(Document, created.tracking_document_id)
-    assert renamed_description is not None
-    assert renamed_tracking is not None
-    assert renamed_description.title == "Cap / Nord — Description"
-    assert renamed_tracking.title == "Cap / Nord — Suivi"
-    assert renamed_description.metadata_["document_path"] == "Objectifs/Cap Nord"
-    assert renamed_tracking.metadata_["document_path"] == "Objectifs/Cap Nord"
+    assert refreshed.tracking_content == "<p>Document tracking</p>"
+    assert refreshed.revision == updated.revision + 1
+    renamed = await goal_service.update(created.id, GoalUpdate(
+        expected_revision=refreshed.revision, title="Renamed objective"))
+    await db.refresh(tracking)
+    assert tracking.title == "Renamed objective — Suivi"
+    assert renamed.description == "<p>Revised objective</p>"
+    assert set(await db.scalars(select(Document.id))) - before == {tracking.id}
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("legacy_folder", [True, False])
-async def test_goal_document_reconciliation_repairs_legacy_folders_and_titles(
+async def test_goal_document_reconciliation_repairs_titles_without_forcing_folders(
     db, legacy_folder: bool
 ) -> None:
     agent = await _new_agent(db)
@@ -571,13 +503,12 @@ async def test_goal_document_reconciliation_repairs_legacy_folders_and_titles(
         )
     )
     documents = [
-        await db.get(Document, created.description_document_id),
         await db.get(Document, created.tracking_document_id),
     ]
     assert all(document is not None for document in documents)
     for index, document in enumerate(documents):
         assert document is not None
-        document.title = "Description" if index == 0 else "Suivi"
+        document.title = "Suivi"
         document.metadata_ = {
             **document.metadata_,
             "document_path": (
@@ -586,16 +517,15 @@ async def test_goal_document_reconciliation_repairs_legacy_folders_and_titles(
         }
     await db.commit()
 
-    assert await reconcile_goal_document_paths(db) == 2
+    assert await reconcile_goal_document_paths(db) == 1
     await db.commit()
     assert await reconcile_goal_document_paths(db) == 0
     assert all(
         document is not None
-        and document.metadata_["document_path"] == "Objectifs/Plan lancement"
+        and document.metadata_["document_path"] == (f"Goals/{created.id}" if legacy_folder else "Objectifs/Plan lancement")
         for document in documents
     )
     assert [document.title for document in documents if document is not None] == [
-        "Plan / lancement — Description",
         "Plan / lancement — Suivi",
     ]
 
@@ -979,7 +909,7 @@ async def test_goal_cycles_are_paginated_newest_first(db) -> None:
 
     # Cycle evidence is independent of document storage. Full detail still
     # reports a missing document instead of silently returning incomplete text.
-    description = await db.get(Document, goal.description_document_id)
+    description = await db.get(Document, goal.tracking_document_id)
     assert description is not None
     description.soft_delete()
     await db.commit()
@@ -2032,13 +1962,12 @@ async def test_goal_edit_discards_stale_judgement_and_keeps_task_retained(
     expected_revision = goal.revision
     cycle_id, goal_id, task_id = cycle.id, goal.id, task.id
     expected_tracking_revision = await goal_service.get_goal_document_store().revision(goal.tracking_document_id)
-    target_document = goal.description_document_id if field == "description" else goal.tracking_document_id
-    await goal_service.get_goal_document_store().update(
-        target_document,
-        content="Instructions changed while the evaluator was running.",
-    )
     if field == "description":
-        await goal_service.handle_goal_document_change(goal.description_document_id, "update")
+        await goal_service.update(goal.id, GoalUpdate(expected_revision=expected_revision,
+            description="<p>Instructions changed during evaluation.</p>"))
+    else:
+        await goal_service.get_goal_document_store().update(goal.tracking_document_id,
+            content="<p>Tracking changed during evaluation.</p>")
     monkeypatch.setattr(goal_service, "emit_updated", AsyncMock())
 
     await runner._finish_judgement(  # pyright: ignore[reportPrivateUsage]

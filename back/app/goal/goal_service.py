@@ -160,9 +160,7 @@ def _apply_filters(
             query = query.where(
                 or_(
                     Goal.title.ilike(pattern),
-                    Goal.description_document_id.in_(
-                        (document_matches or {}).get(term, frozenset())
-                    ),
+                    Goal.description.ilike(pattern),
                     Goal.tracking_document_id.in_(
                         (document_matches or {}).get(term, frozenset())
                     ),
@@ -301,10 +299,10 @@ def _serialize_goal(
 
 async def read_markdown(goal: Goal) -> GoalMarkdown:
     contents = await get_goal_document_store().read_many(
-        (goal.description_document_id, goal.tracking_document_id)
+        (goal.tracking_document_id,)
     )
     return GoalMarkdown(
-        description=contents[goal.description_document_id],
+        description=goal.description,
         tracking=contents[goal.tracking_document_id],
     )
 
@@ -313,15 +311,12 @@ async def _read_markdown_batch(goals: Sequence[Goal]) -> dict[UUID, GoalMarkdown
     document_ids = tuple(
         document_id
         for goal in goals
-        for document_id in (
-            goal.description_document_id,
-            goal.tracking_document_id,
-        )
+        for document_id in (goal.tracking_document_id,)
     )
     contents = await get_goal_document_store().read_many(document_ids)
     return {
         goal.id: GoalMarkdown(
-            description=contents[goal.description_document_id],
+            description=goal.description,
             tracking=contents[goal.tracking_document_id],
         )
         for goal in goals
@@ -820,28 +815,17 @@ async def create(data: GoalCreate) -> GoalRead:
     goal_id = uuid4()
     await _assert_parent(goal_id, data.parent_goal_id)
     document_store = get_goal_document_store()
-    description_document_id = await document_store.create(
+    tracking_document_id = await document_store.create(
         goal_id=goal_id,
         owner_agent_id=data.agent_id,
-        kind="description",
+        kind="tracking",
         goal_title=data.title,
-        content=data.description,
+        content="",
     )
-    try:
-        tracking_document_id = await document_store.create(
-            goal_id=goal_id,
-            owner_agent_id=data.agent_id,
-            kind="tracking",
-            goal_title=data.title,
-            content="",
-        )
-    except Exception:
-        await document_store.discard(description_document_id)
-        raise
     goal = Goal(
         id=goal_id,
         title=data.title,
-        description_document_id=description_document_id,
+        description=data.description,
         tracking_document_id=tracking_document_id,
         agent_id=data.agent_id,
         parent_goal_id=data.parent_goal_id,
@@ -862,7 +846,6 @@ async def create(data: GoalCreate) -> GoalRead:
         await db.commit()
     except Exception:
         await db.rollback()
-        await document_store.discard(description_document_id)
         await document_store.discard(tracking_document_id)
         raise
     await db.refresh(goal)
@@ -1044,10 +1027,7 @@ async def update(
     document_changed = False
     if "description" in data.model_fields_set:
         assert data.description is not None
-        await document_store.update(
-            goal.description_document_id,
-            content=data.description,
-        )
+        goal.description = data.description
         document_changed = True
     if "tracking_content" in data.model_fields_set:
         assert data.tracking_content is not None
@@ -1060,7 +1040,6 @@ async def update(
     owner_changed = "agent_id" in changes
     if title_changed or owner_changed:
         for document_id in (
-            goal.description_document_id,
             goal.tracking_document_id,
         ):
             await document_store.update(
@@ -1068,8 +1047,10 @@ async def update(
                 goal_title=goal.title,
                 owner_agent_id=goal.agent_id if owner_changed else None,
             )
-    goal_scalar_changed = bool(changes) or referrer_values is not None
-    if document_changed and not goal_scalar_changed:
+    # Document writes may already have committed pending Goal scalar changes.
+    # Otherwise a pending scalar write will advance the version at _save. An
+    # unchanged description alongside edited tracking must still revise the Goal.
+    if document_changed and goal.revision == data.expected_revision and not get_db().is_modified(goal):
         goal.revision += 1
     result = await _save(goal)
     if goal.status == GoalStatus.ACTIVE:
@@ -1300,7 +1281,6 @@ async def handle_goal_document_change(item_id: UUID, action: str) -> None:
     goal = await get_db().scalar(
         select(Goal).where(
             or_(
-                Goal.description_document_id == item_id,
                 Goal.tracking_document_id == item_id,
             )
         )

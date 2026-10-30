@@ -66,17 +66,9 @@ class DocumentTag(Shareable, HistoryMixin, Base):
     memory_item_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("memory_items.id", ondelete="SET NULL"), nullable=True, unique=True,
     )
-    # Automatic personal classification identity; names and placement stay editable.
-    goal_id: Mapped[UUID | None] = mapped_column(ForeignKey("goals.id"), index=True)
-    system_role: Mapped[str | None] = mapped_column(String(30))
-    generated_name: Mapped[str | None] = mapped_column(String(100))
 
     __table_args__ = (
         *ShareReference.share_constraints("document_tags", "document"),
-        Index("uq_document_tags_user_goal", "user_id", "goal_id", unique=True,
-              postgresql_where=sql_text("deleted_at IS NULL AND goal_id IS NOT NULL")),
-        Index("uq_document_tags_user_goals_root", "user_id", unique=True,
-              postgresql_where=sql_text("deleted_at IS NULL AND system_role = 'goals_root'")),
     )
 
 class DocumentTagIcon(HistoryMixin, Base):

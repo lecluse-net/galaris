@@ -5,8 +5,6 @@ from sqlalchemy import and_,or_,select,update
 from loguru import logger
 from core.database import get_db,get_db_session
 from .models import DocumentAutomationJob
-from .goal_folders import GoalFolderRequest,process_goal_folder_job
-from .events import emit_classification
 from .safety import redact_secrets
 
 _task: asyncio.Task[None] | None=None
@@ -32,14 +30,12 @@ async def process_next() -> bool:
                 provider, pointer = str(payload["provider"]), str(payload["pointer"])
                 if not await resource_is_referenced(provider, pointer):
                     await get_storage(provider).delete(pointer)
-                change = None
             elif kind == "goal_folder_reconcile":
-                change=await process_goal_folder_job(identity,GoalFolderRequest.model_validate(payload))
+                # Drain historical queued jobs without creating or moving folders.
+                pass
             else:
                 raise ValueError(f"Unsupported Document job: {kind}")
             await get_db().commit()
-            if change is not None:
-                await emit_classification(change.user_id,tag_ids=[change.tag_id] if change.document_ids else [],document_ids=change.document_ids,tags_changed=change.tags_changed,list_changed=bool(change.document_ids))
     except BaseException as error:
         async with get_db_session():
             await get_db().execute(update(DocumentAutomationJob).where(DocumentAutomationJob.id==identity,

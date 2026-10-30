@@ -17,7 +17,7 @@ export const document = {
   created_at: '2026-09-01T12:00:00Z', updated_at: null, access: { can_read: true, can_write: true }, grants: [], payload: { text: '# Report\n\nInitial body' }, source_refs: [],
 }
 export const goal = {
-  id: 'goal-a', revision: 4, title: 'Publish report', description: 'Prepare the report', tracking_markdown: '', description_document_id: 'description-a', tracking_document_id: 'tracking-a',
+  id: 'goal-a', revision: 4, title: 'Publish report', description: 'Prepare the report', tracking_content: '', tracking_document_id: 'tracking-a',
   agent_id: 7, agent_name: 'Alice Example', agent_code: 'alice', referrer: null, cycle_delay_seconds: null, parent_goal_id: null, parent_title: null, children_count: 0,
   schedule_enabled: false, schedule: [], referrer_max_reminders: 3, status: 'ACTIVE', pause_reason: null, next_cycle_at: null, completed_at: null, last_error: null,
   cycle_count: 0, task_cost: 0, evaluation_cost: 0, total_cost: 0, current_task_id: null, last_task_finished_at: null, last_verdict: null, created_at: '2026-09-01T12:00:00Z', updated_at: null,

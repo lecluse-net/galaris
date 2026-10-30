@@ -54,6 +54,13 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     provider = LLMProvider(name=f"synthetic-{uuid4().hex}", base_url="https://example.test/v1")
     db.add_all([owner, outsider, title, provider])
     await db.flush()
+    # This journey exercises real approval decisions with their explicit privilege.
+    from core.authorize import Assignment, Privilege, Role
+    privilege = await db.scalar(select(Privilege).where(Privilege.code == "PERMISSION_DECIDE"))
+    role = Role(code=f"goal-approver-{uuid4().hex}", privileges=[privilege])
+    db.add(role)
+    await db.flush()
+    db.add(Assignment(user_id=owner.id, role_id=role.id))
     llm = LLM(llm_provider_id=provider.id, code=f"synthetic-{uuid4().hex}",
               llm_name="synthetic", label="Synthetic boundary", context_length=128000)
     db.add(llm)
@@ -208,7 +215,7 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
         assert "unknown" in (await goal_service.read_markdown(persisted_goal)).tracking
         cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == goal_id))
         assert cycle.verdict == GoalVerdict.CONTINUE
-        assert await db.scalar(select(func.count()).select_from(Document)) == initial_documents + 2
+        assert await db.scalar(select(func.count()).select_from(Document)) == initial_documents + 1
         assert not await runner.process_terminal_cycle()
         assert not await runner.start_due_cycle()
         assert stages.count("ask") == stages.count("judge") == 1
@@ -288,7 +295,7 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     assert cycle.verdict == GoalVerdict.STOP
     assert not await runner.process_terminal_cycle()
     assert not await runner.start_due_cycle()
-    assert await db.scalar(select(func.count()).select_from(Document)) == initial_documents + 2
+    assert await db.scalar(select(func.count()).select_from(Document)) == initial_documents + 1
     assert await db.scalar(select(func.count()).select_from(Task).where(Task.goal_id == goal_id)) == 2
     assert await db.scalar(select(func.count()).select_from(Message).where(
         Message.connection_id == connection_id, Message.direction == "outbound")) == (2 if late_answer else 1) + int(approval_tool == "messenger_send_message_to_user")

@@ -279,7 +279,6 @@ class GoalRead(GoalScheduleConfig):
     memory_item_id: UUID | None = None
     revision: int
     title: str
-    description_document_id: UUID
     tracking_document_id: UUID
     description: str
     tracking_content: str

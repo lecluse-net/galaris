@@ -1376,7 +1376,10 @@ rights. Follow-up updates automatically from the cycle result; separately reques
 deliveries remain actions to perform.
 
 Each cycle creates an ordinary Task, then judges its result against evidence and previous follow-up
-to continue or stop. Description and follow-up are protected documents managed by the Goal domain.
+to continue or stop. Descriptions are Goal-owned HTML columns without Documents or text history.
+Tracking remains the sole associated Document with its editor and content revisions. Agents read
+both texts through `galaris://goal/<uuid>`; tracking retains its `document://` URI. Updates through
+`goal_update_suivi` remain revision-protected.
 History includes paginated cycles, Tasks, verdicts, costs and calls. An ended Goal can resume without
 losing history. Scheduling waits for a busy agent and respects configured windows.
 
@@ -1392,21 +1395,12 @@ The Goal page can read scheduling availability without settings-edit rights, dis
 pause from being outside active windows and showing the next active time when known. Live changes
 refresh this state. The schedule editor preserves drafts and selects whole days or hours.
 
-### Personal filing of Goal documents
+### Personal tracking classification
 
-For each user, automatic folders organise Goals by label, with localised description/follow-up
-names and deliverables proven to originate from their Tasks, including delegated Tasks. Mentioning
-a Goal in a title is not provenance. Eligibility combines direct, team, public and managed-agent
-access. Only documents not yet filed by that user are automatically placed; generated names follow
-Goal renaming unless customised, and personal moves are preserved. Goals with identical names
-remain distinct, and empty branches are not created.
-
-Deleting a folder does not delete documents; automatic filing may recreate an eligible branch.
-A durable paginated, deduplicated queue reruns when requests arrive during processing. Administrators
-can reconcile globally or by user, Goal or their intersection. The `/api/memory/goal-folders/reconcile` endpoint reports
-job admission, not completion. DbAdmin backfills existing data; opening a document does not trigger
-this work. Filing changes neither content, versions nor access rights and uses the shared locking
-contract in [ADR 0107](../../../project/decisions/0107-personal-goal-folders.md).
+Tracking is the Goal's only associated Document. It is created unclassified: visible in the list,
+absent from the tree including its root. Each user can freely classify or unclassify it. No Goal
+folder or automatic deliverable filing is imposed. Existing folders become ordinary personal
+folders without automatic renaming or recreation.
 
 ### Questions to the referrer
 
@@ -1960,7 +1954,7 @@ attachments. Interactive HTML/3D can still be attached and opened separately, or
 native document application.
 
 Embedded editorial images are restricted to ordinary documents, not memory, profiles or Task/Goal
-content, even when Goal documents appear in the library. Remote images are not retained as editorial
+content, including the tracking Document in the library. Remote images are not retained as editorial
 dependencies: paste can import eligible public HTTPS images into attachments. SVG remains excluded
 from embedded editorial images. Automatic link previews require supported public URLs.
 
@@ -3769,8 +3763,9 @@ sending outcome and avoids duplicate submissions.
 
 A Goal schedules allowed-window cycles, or a calendar event triggers a Task/Process. Results/documents
 accumulate with provenance, judgement updates follow-up and missing decisions go to the referrer.
-Pause/resume/run-now remain available. Goal/Task documents enter eligible readers' personal Goal
-folders only if unfiled; later personal moves/renames are respected.
+Pause/resume/run-now remain available. Tracking and deliverables stay unclassified until each
+user chooses their placement. No Goal folder is created or translated automatically; existing
+folders retain their stored names and behave as ordinary editable folders.
 
 ### Technical production with an agent team
 

@@ -262,8 +262,15 @@ Conversation and LLM inspection, Tasks and `galaris://` projections use the same
 and saving/running/reopening a campaign backed by a native Dataset. Process campaign
 tests also cover idempotency, conflicts and the absence of a Document created to
 store synthetic inputs.
-`app/goal/tests/test_goal_runner.py` checks Goal documents independent of Memory,
-their protections and reconciliation, and cycle reads without document content.
+`app/goal/tests/test_goal_runner.py` checks inline Goal descriptions, the sole tracking Document
+and stale judgements. `test_content_upgrade.py` checks current description transfer, replay and
+rollback without changing tracking. It also runs the real Atlas expansion/contraction, partial-batch
+rollback and recovery, including soft-deleted Goals, comparing tracking resources, revisions,
+permissions and personal filing before and after the upgrade. `e2e/specs/goal-content.spec.mjs`
+checks saving the description through the UI, reopening tracking and preserving personal filing
+after a Goal rename. `app/document/tests/test_goal_folders.py` replaces automatic
+filing contracts with unclassified-list visibility, absence from the tree, preserved manual
+placement and neutralized historical jobs.
 
 This catalogue locates existing evidence before a contract changes. It describes
 guarantees covered by suites; their presence does not mean they have run on your checkout.
@@ -1155,7 +1162,7 @@ help, default roles and LLM/voice preferences, including administrative routes.
 Web password changes remain available and revoke the old session.
 `core/user/tests/test_user.py`, `test_help_dismissals.py`, `test_mfa.py` and
 `app/llm/tests/test_personal_speech.py` preserve the web journeys for these settings.
-Cycles remain readable when a Goal document is missing, while detail still reports the error;
+Cycles remain readable when the tracking Document is missing, while detail still reports the error;
 `app/goal/tests/test_goal_runner.py` also checks owner and referrer restrictions.
 These synthetic SQL budgets are not production latency measurements.
 
@@ -2034,10 +2041,9 @@ Measurements are written to `artifacts/memory-tree-benchmark*.json`. Classificat
 verify that the "all" and "classified" filters produce the same branches, permissions and
 pagination; the "unclassified" filter continues to exclude those documents.
 
-- `back/app/memory/tests/test_goal_folders.py`: automatic filing per user and Goal, preserving
-  manual folders and current access; paginated global catch-up, duplicate Goal names, renames,
-  deletion/recreation, Goal/User/sharing/provenance triggers, concurrent manual moves, rollback
-  and protected administrative launch.
+- `back/app/document/tests/test_goal_folders.py`: tracking appears in the unclassified list,
+  outside the tree and its root; manual placement survives Goal renames and old jobs have no
+  effects. Automatic filing guarantees are retired.
 - `back/app/memory/tests/test_document_classification.py`: private tags, read-only classification
   without document mutation, acyclic trees, recursive deletion with conditional confirmation
   returning documents to the orphan list while preserving other users' tags, filtering before
@@ -2077,8 +2083,7 @@ pagination; the "unclassified" filter continues to exclude those documents.
   moves and session changes on desktop and mobile.
 - `front/browser-tests/memory.spec.mjs` and `document-sharing.spec.mjs`: on-demand pagination,
   mobile opening, creation and saving with a human identity.
-- `back/app/memory/tests/test_goal_folders.py`: background classification notifies only its owner
-  and affected folder, retries without changes stay silent, and folder renames do not reload documents.
+- `back/app/document/tests/test_goal_folders.py`: historical jobs no longer recreate folders.
   `test_document_structure.py` verifies that an attachment description notifies only its memory.
 - `e2e/specs/document-refresh.spec.mjs`: remote API edits and real websocket events refresh only
   the affected folder and visible page while preserving rows in the tree and list.

@@ -336,7 +336,7 @@ drop controls. The context menu provides alternative text, captions and width se
 Uploads show progress. Images remain document attachments and appear in the content when embedded.
 
 Images are unavailable in other memories, agent profiles, tasks and Goal descriptions/tracking,
-even when opening a Goal document through the library. Remote image URLs and SVG are unsupported.
+including the tracking Document in the library. Remote image URLs and SVG are unsupported.
 
 An agent can also generate an image, copy its URI to the document's attachment collection,
 then embed it in the text. The filename follows the model's native output format: a PNG uses

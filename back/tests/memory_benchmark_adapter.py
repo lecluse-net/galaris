@@ -25,7 +25,6 @@ from app.agent.contracts import AgentContextRequest, AgentSnapshot
 from app.agent.models import Agent, Title
 from app.memory import access, admission, bootstrap, context as memory_context, library_queries, retrieval, service, source_access
 from core.storage import resources as storage
-from app.document import goal_folders
 from app.memory.embedding import MemoryEmbeddingNotConfiguredError
 from app.memory.models import MemoryContactItem, MemoryItem, MemoryRevision, MemorySource
 from core.storage import NativeFileStorage, register_storage
@@ -161,7 +160,7 @@ def install_adapter(monkeypatch, root: Path, reference_sources: Path | None = No
     agent_context.register_context_provider("long_term_memory", bootstrap.memory_context_provider, priority=20)
     # Final admission independently rechecks validity. Every read-side clock
     # reached by the fixture must agree with the scenario, not the host date.
-    for module in (retrieval, service, admission, goal_folders, library_queries, agent_context):
+    for module in (retrieval, service, admission, library_queries, agent_context):
         monkeypatch.setattr(module, "datetime", FixedClock)
     real_rank = retrieval._weighted_rank
     real_search = memory_context.search_memory_detailed

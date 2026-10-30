@@ -122,7 +122,9 @@ To change a title through an agent, ask it to rename the document. It uses `file
 then `file_rename` with the metadata version. The library title changes while the
 `document://` URI, body, content history, attachments and sharing remain unchanged.
 Editing a heading in the body or a link label is a separate action. Titles of
-Goal-controlled documents remain controlled by that Goal.
+Goal descriptions are Goal-owned HTML fields. Tracking remains a Document created unclassified:
+it appears in the list, outside the tree including its root. Each user can freely classify it.
+No Goal folder is imposed.
 
 In the **Documents** library, every folder offers a **New document** icon among its
 actions. Enter the title and owner: the document is automatically placed in that folder,

@@ -86,10 +86,6 @@ class Goal(HistoryMixin, Base):
             name="ck_goals_referrer_max_reminders_non_negative",
         ),
         CheckConstraint(
-            "description_document_id <> tracking_document_id",
-            name="ck_goals_distinct_markdown_documents",
-        ),
-        CheckConstraint(
             "(referrer_type IS NULL AND referrer_agent_id IS NULL "
             "AND referrer_connection_id IS NULL AND referrer_user_id IS NULL) OR "
             "(referrer_type = 'AGENT' AND referrer_agent_id IS NOT NULL "
@@ -143,18 +139,7 @@ class Goal(HistoryMixin, Base):
     referrer_display_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     referrer_platform: Mapped[str | None] = mapped_column(String(100), nullable=True)
     title: Mapped[str] = mapped_column(String(400), nullable=False)
-    description_document_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
-        ForeignKey(
-            "documents.id",
-            ondelete="RESTRICT",
-            use_alter=True,
-            name="fk_goals_description_document_id",
-        ),
-        nullable=False,
-        unique=True,
-        index=True,
-    )
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     tracking_document_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(

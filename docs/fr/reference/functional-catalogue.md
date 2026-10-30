@@ -1771,9 +1771,10 @@ conclure. Les décisions, leur justification et les coûts restent consultables.
 Un fournisseur peut renvoyer la progression comme objet ou comme chaîne JSON : le suivi décode
 cette dernière puis valide le même contrat, sans appel modèle supplémentaire pour ce seul écart.
 
-La description et le suivi sont portés par des **documents protégés** appartenant au domaine Goal.
-Ils sont consultables dans la bibliothèque et modifiables selon leur contrat, sans perdre leur
-lien métier. Le suivi d’un Goal n’est donc pas enfoui dans un prompt de session.
+La description est une **colonne HTML du Goal**, sans document ni historique de texte.
+Le suivi reste son unique document associé, avec l'éditeur et les révisions documentaires.
+Les agents lisent les deux contenus via `galaris://goal/<uuid>` ; le suivi conserve aussi
+son URI `document://`. `goal_update_suivi` conserve le contrôle de révision.
 
 La fiche affiche les cycles récents et paginés, leur tâche, leur état, leur verdict, les appels et
 les coûts. Reprendre un Goal terminé peut ouvrir de nouveaux cycles tout en conservant son histoire.
@@ -1790,32 +1791,13 @@ en distinguant pause globale et période hors horaires, avec la prochaine activa
 est connue. Les changements en direct actualisent cet état. L’éditeur d’horaires conserve le
 brouillon et permet de sélectionner des jours ou heures entiers.
 
-### Classement personnel des documents d’un objectif
+### Classement personnel du suivi
 
-Les documents de description/suivi et les livrables dont la provenance les rattache aux tâches
-du Goal sont rangés dans une arborescence personnelle **Objectifs / libellé du Goal**, traduite
-selon la langue de l’utilisateur. Les tâches déléguées conservent le rattachement au Goal.
-Une simple mention ou un titre ressemblant ne suffit pas à rattacher un document.
-
-- Chaque utilisateur dispose de ses propres dossiers ; les droits sont recalculés avant le
-  classement, y compris accès directs, équipes, accès public et agents administrés.
-- Seuls les documents encore sans dossier chez cet utilisateur sont classés automatiquement.
-  Les classements des autres utilisateurs ne déterminent pas ce choix.
-- Les noms générés suivent le renommage du Goal tant que l’utilisateur ne les a pas personnalisés.
-  Les déplacements et noms personnels sont conservés ; deux Goals homonymes restent distincts.
-- Aucune branche vide n’est créée pour un Goal sans document accessible. Supprimer une branche
-  ne supprime pas ses documents ; un événement ou rattrapage ultérieur peut recréer le classement.
-- Les changements de Goal, provenance, partage, utilisateur, équipes ou autorisations enfilent
-  des traitements durables et paginés. Les demandes identiques en attente sont regroupées ; une
-  demande reçue pendant un traitement permet un passage ultérieur.
-- L’administration Memory peut déclencher un rattrapage global ou limité à un utilisateur,
-  un Goal ou leur intersection via `/api/memory/goal-folders/reconcile`. La réponse accuse
-  l’admission du job, pas la fin de tous ses traitements enfants. DbAdmin enfile aussi le
-  rattrapage du corpus existant ; ouvrir Documents ne déclenche pas ce travail.
-
-Ce rangement ne change ni contenu, ni versions, ni accès. Les mutations manuelles et automatiques
-utilisent le même verrou d’arborescence et mettent à jour les relations documentaires ensemble.
-Voir la [décision et les garanties de classement des Goals](../../../project/decisions/0107-personal-goal-folders.md).
+Le suivi est le seul document associé au Goal. Il est créé non classé : présent dans la liste,
+absent de l’arborescence, y compris à la racine. Chaque utilisateur peut le classer ou le retirer
+de son classement librement. Aucun dossier Objectifs ni rangement automatique de livrables
+n’est imposé. Les anciens dossiers deviennent des dossiers ordinaires, sans renommage ou
+recréation automatique.
 
 ### Solliciter le référent
 
@@ -2542,7 +2524,7 @@ code malveillant.
   directement dans le corps du document HTML lorsque ce format convient au résultat.
 
 Les images intégrées sont réservées aux documents ordinaires. Les mémoires, profils et contenus
-Tâche/Goal ne les acceptent pas ; les documents Goal gardent cette restriction même dans la
+Tâche/Goal ne les acceptent pas ; le document de suivi garde cette restriction même dans la
 bibliothèque. Une image distante n’est pas conservée comme dépendance éditoriale : le collage peut importer une
 image HTTPS publique admissible dans les pièces jointes. Les SVG restent exclus des images
 éditoriales intégrées. Les aperçus automatiques de liens exigent les URL publiques prises en charge.
@@ -4838,9 +4820,9 @@ Tâche/un Process. Les résultats et documents s’accumulent sans perdre leurs 
 met à jour le suivi ; une décision manquante peut être demandée au référent. Pause, reprise et
 lancement immédiat restent disponibles.
 
-Les documents reliés au Goal ou à ses tâches rejoignent les dossiers personnels Objectifs des
-lecteurs concernés s’ils ne sont pas déjà classés. Chacun peut ensuite les déplacer ou renommer
-ses dossiers ; le classement automatique respecte cette organisation.
+Le document de suivi et les livrables restent non classés jusqu'au choix de chaque utilisateur.
+Aucun dossier Objectifs n'est créé ou traduit automatiquement ; les dossiers déjà présents
+gardent leur nom enregistré et se modifient comme les autres dossiers.
 
 ### Production technique avec une équipe d’agents
 

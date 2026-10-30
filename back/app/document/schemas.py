@@ -394,7 +394,7 @@ class DocumentLibraryEntry(BaseModel):
 
 class DocumentFolderOption(BaseModel):
     path: str
-    kind: Literal["custom", "goal"]
+    kind: Literal["custom"]
     shared: bool
 
 class DocumentLibraryPage(BaseModel):
@@ -519,15 +519,6 @@ class DocumentGlobalAccessUpdate(BaseModel):
 class DocumentDeletionResult(BaseModel):
     document_id: UUID
     resources_deleted: int = 0
-
-class GoalFolderReconciliationRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    user_id: int | None = Field(default=None, gt=0)
-    goal_id: UUID | None = None
-
-class GoalFolderReconciliationResult(BaseModel):
-    job_id: UUID
 
 class DocumentGrantUpdate(BaseModel):
     can_write: bool

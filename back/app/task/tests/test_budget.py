@@ -55,15 +55,15 @@ async def _agents(db):
 
 async def _goal(db, agent):
     from app.goal.models import Goal
-    from app.memory.models import MemoryItem
+    from app.document import Document
 
-    documents = [MemoryItem(owner_agent_id=agent.id, provider_code="native",
-                            resource_id=f"budget-{uuid4().hex}.md", title="Budget test",
-                            content_hash=uuid4().hex) for _ in range(2)]
-    db.add_all(documents)
+    tracking = Document(owner_agent_id=agent.id, provider_code="native",
+        resource_id=f"budget-{uuid4().hex}.html", title="Budget tracking",
+        content="<p>Synthetic tracking</p>", content_hash="0" * 64)
+    db.add(tracking)
     await db.flush()
     goal = Goal(agent_id=agent.id, title="Budget across cycles",
-                description_document_id=documents[0].id, tracking_document_id=documents[1].id)
+                description="<p>Synthetic objective</p>", tracking_document_id=tracking.id)
     db.add(goal)
     await db.flush()
     return goal

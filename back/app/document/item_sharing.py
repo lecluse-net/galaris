@@ -6,6 +6,7 @@ from uuid import UUID
 from typing import Literal
 
 from sqlalchemy import select
+from sqlalchemy.orm import load_only, raiseload
 
 from app.agent import AgentManagementScope
 from app.tools.contracts import current_tool_execution
@@ -24,7 +25,11 @@ async def item_actor(
     document_id: UUID, scope: AgentManagementScope, *, write: bool = False,
     document_only: bool = False,
 ) -> int | HumanActor:
-    item = await service.item_record(document_id, revisions=False, contents=False)
+    # Actor selection evaluates the live SQL policies below; it needs neither
+    # content nor collections that the actual read will load afterward.
+    item = await get_db().scalar(select(Document).options(
+        load_only(Document.id, Document.node_kind), raiseload("*"),
+    ).where(Document.id == document_id))
     if document_only and (item is None or item.node_kind != "document"):
         raise service.DocumentNotFoundError("Document not found")
     if item is None:

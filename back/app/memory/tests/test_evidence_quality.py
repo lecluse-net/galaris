@@ -211,7 +211,7 @@ async def test_successful_goal_cycles_are_capture_eligible_and_lineage_opt_out_s
         title=f"Synthetic goal resource {index}", content="<p>Synthetic objective.</p>", task_id=None)
         for index in range(2)]
     goal = Goal(agent_id=owner.id, title="Synthetic durable objective",
-        description_document_id=documents[0].id, tracking_document_id=documents[1].id)
+        description="<p>Synthetic objective</p>", tracking_document_id=documents[1].id)
     topic = Topic(title="Synthetic goal facts")
     db.add_all([goal, topic])
     await db.flush()

@@ -73,8 +73,6 @@ from .schemas import (
     DocumentGrantUpdate,
     DocumentPublic,
     DocumentDetail,
-    GoalFolderReconciliationRequest,
-    GoalFolderReconciliationResult,
     DocumentUpdate,
 )
 from .document_apps import AppDatasetRequest, AppDatasetResult, AppGrantUpdate, AppPermissions
@@ -114,15 +112,6 @@ async def read_folder_collection(folder_id: UUID | None = None,
         return {**page, "folder": folder}
     except FileNotFoundError as exc:
         raise HTTPException(404, "Folder unavailable") from exc
-
-
-@router.post("/goal-folders/reconcile", status_code=202, response_model=GoalFolderReconciliationResult)
-@authorize(privileges=Privileges.DOCUMENT_ADMIN)
-async def launch_goal_folder_reconciliation(data: GoalFolderReconciliationRequest) -> GoalFolderReconciliationResult:
-    from .goal_folders import enqueue_goal_folder_reconciliation
-    identity = await enqueue_goal_folder_reconciliation(user_id=data.user_id, goal_id=data.goal_id)
-    await get_db().commit()
-    return GoalFolderReconciliationResult(job_id=identity)
 
 
 @router.get("/{document_id}/summary", response_model=DocumentDetail)

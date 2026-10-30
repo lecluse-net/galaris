@@ -352,8 +352,16 @@ commun, sa sauvegarde atomique, les erreurs et la réouverture.
 la révocation et la création/exécution/réouverture d'une campagne sur Dataset natif.
 Les tests de campagnes Process couvrent aussi l'idempotence, les conflits et
 l'absence de Document créé pour conserver les entrées synthétiques.
-`app/goal/tests/test_goal_runner.py` vérifie les documents Goal indépendants de
-Memory, leurs protections, leur réconciliation et la lecture des cycles sans contenu.
+`app/goal/tests/test_goal_runner.py` vérifie la description HTML dans le Goal, l'unique document
+de suivi et les conflits avec un jugement périmé. `test_content_upgrade.py` vérifie le transfert
+de la description récente, son rejeu et le rollback sur source manquante, sans toucher au suivi.
+Il exerce aussi l'expansion/contraction Atlas réelle, le rollback d'un lot partiellement traité,
+la reprise et les objectifs supprimés logiquement, en comparant le suivi, ses révisions, ses droits
+et son classement avant/après. `e2e/specs/goal-content.spec.mjs` vérifie l'enregistrement de la
+description depuis l'interface, la réouverture du suivi et son classement personnel après renommage.
+`app/document/tests/test_goal_folders.py` remplace les anciennes garanties de classement
+automatique par la présence en liste non classée, l'absence de placement dans l'arbre,
+le respect du classement manuel et la neutralisation des anciens jobs.
 
 `metric-card.spec.mjs` protège la valeur affichée, le chargement, l’activation facultative
 à la souris et au clavier et l’état sélectionné de `MetricCard`. Les historiques texte et
@@ -1217,8 +1225,8 @@ MFA, aides masquées, rôle par défaut et préférences LLM/voix, y compris les
 Le changement de mot de passe en session web reste possible et révoque l’ancienne session.
 `core/user/tests/test_user.py`, `test_help_dismissals.py`, `test_mfa.py` et
 `app/llm/tests/test_personal_speech.py` conservent les parcours web de ces réglages.
-Les cycles restent lisibles si un document Goal manque, tandis que le détail conserve
-son erreur ; `app/goal/tests/test_goal_runner.py` vérifie aussi propriétaire et référent.
+La description du Goal se lit dans sa colonne et le suivi conserve son contrat documentaire ;
+`app/goal/tests/test_goal_runner.py` vérifie aussi propriétaire et référent.
 Ces budgets SQL synthétiques ne constituent pas une mesure de latence en production.
 
 `app/dataset/tests/test_list_performance.py` vérifie les droits, tailles UTF-8 et checksums
@@ -2116,10 +2124,9 @@ imbriquées des droits, même lorsque les données sont en cache. Les mesures so
 « tous » et « classés » donnent les mêmes branches, avec les mêmes droits et la même pagination ;
 le filtre « non classés » continue d'exclure ces documents.
 
-- `back/app/memory/tests/test_goal_folders.py` : classement automatique par utilisateur et Goal,
-  respect des dossiers manuels et des droits courants, reprise globale par lots, homonymes,
-  renommage, suppression/recréation, déclencheurs Goal/User/partage/provenance, concurrence avec
-  les déplacements manuels, rollback et relance administrative protégée.
+- `back/app/document/tests/test_goal_folders.py` : suivi présent dans la liste non classée,
+  absent de l'arbre et de sa racine, classement manuel préservé après renommage du Goal,
+  anciens jobs sans effet. Les garanties de classement automatique sont retirées.
 - `back/app/memory/tests/test_document_classification.py` : tags privés, classement en lecture
   seule sans mutation du document, arbre sans cycles, suppression récursive avec confirmation
   conditionnelle et retour des documents parmi les orphelins sans toucher au classement d'autrui,
@@ -2132,8 +2139,7 @@ le filtre « non classés » continue d'exclure ces documents.
   la révocation d'accès interdit leur lecture et leur modification.
   Les notifications de classement ne concernent que leur propriétaire et identifient les dossiers
   touchés ; elles ne déclenchent pas l'invalidation globale réservée aux changements d'accès.
-  `test_goal_folders.py` vérifie aussi les notifications ciblées du worker de classement,
-  l'absence de notification lors d'une reprise sans changement et le renommage sans relire les documents.
+  `test_goal_folders.py` vérifie que les anciens jobs ne recréent plus de dossiers.
   `test_document_structure.py` vérifie qu'une description de pièce jointe notifie seulement sa mémoire.
 - `front/browser-tests/document-classification.spec.mjs` : déplacement par glisser-déposer,
   retour aux documents non classés par déplacement, création immédiate de dossiers et sous-dossiers suivie du renommage

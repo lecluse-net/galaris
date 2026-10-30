@@ -306,7 +306,7 @@ async function fixture(page, locale = 'en') {
     return route.fulfill({ json: { entries: match ? [entry] : [], total: match ? 1 : 0, keywords: [], has_more: false,
       owners: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '' }] } })
   })
-  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { locale, props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px', maxWidth: '100vw' } })
+  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { locale, privileges: ['DOCUMENT_EDIT'], props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px', maxWidth: '100vw' } })
   await expect(page.getByRole('list', { name: locale === 'fr' ? 'Documents non classés' : 'Unclassified documents', exact: true }).getByText('Test document', { exact: true })).toBeVisible()
   return { requests, assignments, mutations, deletions, orders }
 }
@@ -856,7 +856,7 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   const work = page.getByRole('button', { name: 'Icon for folder Work', exact: true })
   const menu = page.getByRole('menu', { name: 'Actions for folder Work', exact: true })
   await work.click({ button: 'right' })
-  for (const name of ['Show as a list', 'New document', 'Create a subfolder',
+  for (const name of ['Show as a list', 'Create Text document', 'Create Data document', 'Create a subfolder',
     'Create a folder below', 'Edit folder', 'Delete folder',
     'Sort by name (A → Z)', 'Sort by name (Z → A)', 'Expand all in this folder', 'Collapse all in this folder']) {
     await expect(menu.getByRole('menuitem', { name, exact: true })).toBeVisible()
@@ -877,7 +877,7 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await page.keyboard.press('Escape')
   await expect(menu).toHaveCount(0)
   await work.click({ button: 'right' })
-  await menu.getByRole('menuitem', { name: 'New document', exact: true }).click()
+  await menu.getByRole('menuitem', { name: 'Create Text document', exact: true }).click()
   await expect(menu).toHaveCount(0)
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1).args[0].id)).toBe('work')
   await page.getByText('Work', { exact: true }).focus()

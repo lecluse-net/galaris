@@ -97,7 +97,7 @@ export interface DocumentLibraryEntry {
 
 export interface DocumentFolderOption {
   path: string
-  kind: 'custom' | 'goal'
+  kind: 'custom'
   shared: boolean
 }
 

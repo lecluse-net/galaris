@@ -393,8 +393,6 @@ documents: {
       folderAppearance: {
         customPrivate: 'Dossier personnalisé · documents propres à un agent',
         customShared: 'Dossier personnalisé · contient des documents partagés entre agents',
-        goalPrivate: 'Dossier d’objectif · documents propres à un agent',
-        goalShared: 'Dossier d’objectif · contient des documents partagés entre agents',
       },
       folderEmpty: 'Aucun dossier pour le moment.',
       createSubfolder: 'Créer un sous-dossier',
@@ -865,8 +863,6 @@ documents: {
       folderAppearance: {
         customPrivate: 'Custom folder · documents specific to one agent',
         customShared: 'Custom folder · contains documents shared between agents',
-        goalPrivate: 'Goal folder · documents specific to one agent',
-        goalShared: 'Goal folder · contains documents shared between agents',
       },
       folderEmpty: 'No folder yet.',
       createSubfolder: 'Create subfolder',
@@ -1144,8 +1140,6 @@ documents: {
       folderAppearance: {
         customPrivate: '自定义文件夹 · 文档仅属于一个智能体',
         customShared: '自定义文件夹 · 包含智能体之间共享的文档',
-        goalPrivate: '目标文件夹 · 文档仅属于一个智能体',
-        goalShared: '目标文件夹 · 包含智能体之间共享的文档',
       },
       createSubfolderIn: '在 {folder} 中创建子文件夹', folderParent: '父文件夹：{folder}', folderName: '子文件夹名称', folderNameInvalid: '请输入不含斜杠且不等于“.”或“..”的名称。',
       createFolder: '创建', url: '文档 URL', copyUrl: '复制文档 URL', urlCopied: '文档 URL 已复制', urlCopyError: '无法复制文档 URL。', content: '内容', keywords: '关键词',

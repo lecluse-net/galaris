@@ -91,7 +91,7 @@ def source_fingerprints(reference_sources=None):
                          Path("app/memory/service.py"), Path("app/memory/admission.py"),
                          Path("app/memory/passages.py"), Path("app/memory/semantic_index.py"),
                          Path("app/memory/access.py"), Path("app/memory/source_access.py"),
-                         Path("app/document/goal_folders.py"), Path("app/memory/library_queries.py"),
+                         Path("app/memory/library_queries.py"),
                          Path("app/memory/bootstrap.py"), Path("app/agent/context.py"),
                          Path("app/memory/relevance.py"), Path("app/memory/models.py"),
                          Path("app/memory/lexical_normalization.py"),

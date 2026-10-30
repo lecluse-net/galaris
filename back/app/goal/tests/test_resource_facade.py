@@ -9,6 +9,7 @@ from app.goal.tests.factories import make_goal
 from app.goal.resource_facade import (
     list_goal_cycle_resources,
     read_goal_cycle_resource,
+    read_goal_resource,
 )
 
 
@@ -75,3 +76,10 @@ async def test_goal_cycle_resources_are_scoped_to_goal_owner(
         foreign_cycle.id,
         actor_agent_id=owner.id,
     ) is None
+    snapshot = await read_goal_resource(own_goal.id, actor_agent_id=owner.id)
+    assert snapshot is not None
+    assert snapshot["description"] == own_goal.description
+    assert snapshot["tracking_document_id"] == str(own_goal.tracking_document_id)
+    assert snapshot["resource_uri"] == f"galaris://goal/{own_goal.id}"
+    assert "description_document_id" not in snapshot
+    assert await read_goal_resource(foreign_goal.id, actor_agent_id=owner.id) is None
