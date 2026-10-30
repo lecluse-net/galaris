@@ -68,7 +68,7 @@
         </q-toolbar>
         <q-separator v-if="!selection" />
         <div v-if="selection && !externalControls" class="row items-center no-wrap q-gutter-xs q-ma-xs">
-        <q-input v-model="query" dense outlined clearable debounce="250" class="col" :disable="!currentUri" :label="t('files.searchLocation')">
+        <q-input v-model="query" dense outlined clearable debounce="250" class="col" :disable="!canSearch" :label="t('files.searchLocation')">
           <template #prepend><q-icon name="search" /></template>
         </q-input>
         <q-btn flat round dense color="primary" icon="refresh" :aria-label="t('files.refresh')" :disable="!currentUri" :loading="current?.loading" @click="refresh">
@@ -102,7 +102,7 @@
             </q-banner>
             <q-infinite-scroll :key="currentUri + ':' + (query || '')" :scroll-target="scroll || undefined" :disable="current.error || current.incomplete || (current.loaded && !current.cursor)" :offset="180" @load="loadMore">
               <div class="file-grid">
-                <div v-for="entry in sortedEntries" :key="`${entry.uri}:${current.version}`" class="file-entry">
+                <div v-for="entry in sortedEntries.filter(entry => !isMailMessage(entry))" :key="`${entry.uri}:${current.version}`" class="file-entry">
                   <FileTile :entry="entry" :agent-id="agentId" :compact="selection" :selectable="selection" :selected="selected.some(value => value.uri === entry.uri)" @open="openEntry" @activate="activateEntry" @select="toggleEntry" @preview="previewEntry" />
                   <FileEntryActions v-if="!selection" :entry="entry" :agent-id="agentId" target=".file-entry" :context-only="$q.screen.lt.md"
                     :open="() => openEntry(entry)" :open-code="() => openRepository(entry)" @changed="entryChanged"
@@ -110,6 +110,22 @@
                   />
                 </div>
               </div>
+              <q-list v-if="mailEntries.length" bordered separator :aria-label="t('files.mail.messages')">
+                <q-item v-for="entry in mailEntries" :key="entry.uri" clickable :aria-label="t('files.openItem', { name: entry.name || t('files.mail.noSubject') })" @click="openEntry(entry, $event)">
+                  <q-item-section v-if="selection" side><q-checkbox :model-value="selected.some(item => item.uri === entry.uri)" :aria-label="t('files.selectItem', { name: entry.name })" @click.stop @update:model-value="(_value, event) => toggleEntry(entry, event)" /></q-item-section>
+                  <q-item-section avatar><q-icon :name="entry.metadata?.seen ? 'drafts' : 'markunread'" color="primary" :aria-label="t(entry.metadata?.seen ? 'files.mail.read' : 'files.mail.unread')" /></q-item-section>
+                  <q-item-section>
+                    <q-item-label :class="{ 'text-weight-bold': !entry.metadata?.seen }">{{ entry.metadata?.subject || t('files.mail.noSubject') }}</q-item-label>
+                    <q-item-label caption>{{ entry.metadata?.from_name || entry.metadata?.from_address }}</q-item-label>
+                    <q-item-label v-if="entry.modified_at" caption>{{ mailDate(entry.modified_at) }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="entry.metadata?.has_attachments" side><q-icon name="attach_file" :aria-label="t('documents.attachments')" /></q-item-section>
+                  <q-item-section side>
+                    <q-btn v-if="selection" flat round color="primary" icon="visibility" :aria-label="t('files.previewItem', { name: entry.name })" @click.stop="previewEntry(entry)" />
+                    <FileEntryActions v-else :entry="entry" :agent-id="agentId" target=".q-item" :context-only="$q.screen.lt.md" :open="() => openEntry(entry)" :download="() => downloadEntry(entry)" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
               <template #loading><div class="q-pa-md text-center"><q-spinner color="primary" size="30px" :aria-label="t('files.loading')" /></div></template>
             </q-infinite-scroll>
             <div v-if="current.loading && !sortedEntries.length" class="file-state"><q-spinner color="primary" size="32px" /></div>
@@ -122,6 +138,7 @@
     </q-splitter>
     </q-card>
     <ResourceDetailDialog v-if="target" ref="detail" :target="target" @close="target = null; refresh()" @changed="refresh" />
+    <MailMessageDialog v-if="mailMessage && typeof mailMessage.metadata?.mail_message_ref === 'string'" :key="mailMessage.uri" :agent-id="agentId" :reference="mailMessage.metadata.mail_message_ref" :title="mailMessage.name" @close="mailMessage = null" />
     <ResourceAttachments ref="preview" :key="previewKey" :resource-id="String(agentId)" :agent-id="agentId" :attachments="previewEntries"
       :resource-source="previewSource" preview-only @previewing="filePreviewOpen = $event" />
     <FullscreenPreview :model-value="audioPreview !== null" :viewer-label="audioPreview?.name ?? ''" interactive @update:model-value="!$event && (audioPreview = null)">
@@ -140,6 +157,7 @@ import { useFileDirectories } from '../browserState'
 import { parentDirectory, resourceTarget, resourceLabel, collectionLabel, compareFileEntries, isSkillPackage } from '../presentation'
 import FileTile from './FileTile.vue'
 import FileEntryActions from './FileEntryActions.vue'
+import MailMessageDialog from './MailMessageDialog.vue'
 
 const { agentId, selection = false, initialUri = null, externalControls = false } = defineProps<{ agentId: number; selection?: boolean; initialUri?: string | null; externalControls?: boolean }>()
 const selected = defineModel<FileEntry[]>('selected', { default: () => [] })
@@ -180,6 +198,7 @@ const consoleDirectory = computed<FileEntry | null>(() => currentUri.value.start
 const openScheme = ref<string | null>(null)
 const split = ref(24)
 const target = ref<ResourceDetailTarget | null>(null)
+const mailMessage = ref<FileEntry | null>(null)
 const detail = useTemplateRef<{ canLeave?: () => Promise<boolean> }>('detail')
 const preview = useTemplateRef<{ openById: (id: string) => Promise<void> }>('preview')
 const previewEntries = ref<ResourceAttachment[]>([]), previewKey = ref(0)
@@ -200,11 +219,18 @@ let anchor = ''
 const current = computed(() => query.value?.trim() ? searchState.value : currentUri.value ? directory(currentUri.value) : null)
 const unlistable = computed(() => schemes.value.some(scheme => `${scheme.scheme}://` === currentUri.value && (!scheme.capabilities.includes('list') || scheme.root_listable === false)))
 const sortedEntries = computed(() => (current.value?.entries ?? []).filter(isVisible).sort((a, b) => compareFileEntries(a, b, locale.value)))
+const mailEntries = computed(() => sortedEntries.value.filter(isMailMessage))
+function isMailMessage(entry: FileEntry): boolean { return entry.uri.startsWith('mail://') && typeof entry.metadata?.mail_message_ref === 'string' }
+function mailDate(value: string): string {
+  const date = new Date(value)
+  return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(date) : value
+}
 const loadedCount = computed(() => schemesError.value || unlistable.value ? 0 : sortedEntries.value.length)
-const canSearch = computed(() => !!currentUri.value)
+const canSearch = computed(() => !!currentUri.value && !currentUri.value.startsWith('mail://'))
+const canRefresh = computed(() => !!currentUri.value)
 const refreshing = computed(() => current.value?.loading ?? false)
 async function canLeave(): Promise<boolean> { return await detail.value?.canLeave?.() ?? true }
-defineExpose({ loadedCount, canLeave, canSearch, refreshing, refresh })
+defineExpose({ loadedCount, canLeave, canSearch, canRefresh, refreshing, refresh })
 const previewSource: AttachmentSource = {
   content: (entry, convert, signal) => fileBrowserService.content(agentId, entry.id, convert, signal, selection),
   videoUrl: entry => fileBrowserService.videoUrl(agentId, entry.id, selection),
@@ -241,6 +267,7 @@ const breadcrumbs = computed(() => {
 })
 interface BrowserNode extends QTreeNode { id: string; entry: FileEntry; disabledRoot?: boolean; scheme?: string }
 function isVisible(entry: FileEntry): boolean {
+  if (entry.uri.startsWith('mail://')) return true
   return !entry.name.startsWith('.') && !/^galaris:\/\/goal_cycle(?:\/|$)/.test(entry.uri)
     && !/^galaris:\/\/goal\/[^/]+\/cycles(?:\/|$)/.test(entry.uri)
 }
@@ -274,7 +301,7 @@ function navigate(uri: string, closeTree = true, history: false | 'push' | 'repl
   const changed = currentUri.value !== uri
   uriRequest?.abort(); uriLoading.value = false
   uriError.value = false
-  target.value = null; audioPreview.value = null; previewEntries.value = []; previewKey.value++
+  target.value = null; mailMessage.value = null; audioPreview.value = null; previewEntries.value = []; previewKey.value++
   query.value = ''
   currentUri.value = uri
   if (changed && history && !selection) emit('navigate', uri, history === 'replace')
@@ -302,6 +329,7 @@ async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false)
   repositoryOpening++
   if (!metadataFresh) { uriRequest?.abort(); uriLoading.value = false; uriError.value = false }
   if (selection && !entry.is_collection) { toggleEntry(entry, event); return }
+  if (isMailMessage(entry)) { mailMessage.value = entry; return }
   if (!selection && isSkillPackage(entry)) { target.value = resourceTarget(entry, agentId); return }
   if (entry.is_collection) { navigate(entry.uri, true, metadataFresh ? false : 'push'); return }
   target.value = resourceTarget(entry, agentId, locale.value) ?? richLinkTarget(entry.uri, String(entry.metadata?.label ?? entry.name), agentId)
@@ -331,6 +359,7 @@ function toggleEntry(entry: FileEntry, event?: Event): void {
 }
 async function previewEntry(entry: FileEntry): Promise<void> {
   if (entry.is_collection || !entry.capabilities.includes('read')) return
+  if (isMailMessage(entry)) { mailMessage.value = entry; return }
   audioPreview.value = null; previewEntries.value = []; previewKey.value++
   if (browserResourceKind(entry.media_type, entry.name) === 'audio') {
     audioPreview.value = { key: entry.uri, name: entry.name, load: signal => fileBrowserService.content(agentId, entry.uri, true, signal, selection) }
@@ -405,12 +434,12 @@ async function search(append = false): Promise<void> {
   } catch { if (!request.signal.aborted) searchState.value = { ...searchState.value, loading: false, error: true } }
 }
 watch(query, () => { searchRequest?.abort(); if (query.value?.trim()) void search() })
-watch(() => filePreviewOpen.value || audioPreview.value !== null, value => emit('previewing', value))
+watch(() => filePreviewOpen.value || audioPreview.value !== null || mailMessage.value !== null, value => emit('previewing', value))
 watch(currentUri, async () => { await nextTick(); if (breadcrumbNav.value) breadcrumbNav.value.scrollLeft = breadcrumbNav.value.scrollWidth })
 function restoreLocation(uri: string | null): void {
   audioPreview.value = null
   if ((uri ?? '') === currentUri.value) {
-    target.value = null; previewEntries.value = []; previewKey.value++
+    target.value = null; mailMessage.value = null; previewEntries.value = []; previewKey.value++
     return
   }
   if (!uri || uri.endsWith('/')) navigate(uri ?? '', true, false)

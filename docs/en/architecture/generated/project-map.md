@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 766 detected HTTP/WebSocket handlers;
+- 767 detected HTTP/WebSocket handlers;
 - 181 detected SQLAlchemy tables;
 - 280 detected native MCP tools;
 - 55 detected Vue pages.
@@ -659,18 +659,18 @@ tests remain authoritative for behavior.
 | `bridge.hermes` | `core.params` | `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/prompt.py`, `back/bridge/hermes/session_binding.py` |
 | `bridge.hermes` | `core.util` | `back/bridge/hermes/client.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/dbadmin.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/session_binding.py` |
 | `bridge.huggingface` | `app.llm` | `back/bridge/huggingface/__init__.py` |
-| `bridge.mail` | `app.agent` | `back/bridge/mail/approvals.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `app.agent` | `back/bridge/mail/approvals.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `app.connection` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/router.py` |
 | `bridge.mail` | `app.contact` | `back/bridge/mail/inbound.py` |
 | `bridge.mail` | `app.file_share` | `back/bridge/mail/__init__.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `app.messenger` | `back/bridge/mail/__init__.py`, `back/bridge/mail/approvals.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `app.tools` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `core.authorize` | `back/bridge/mail/approvals.py`, `back/bridge/mail/assertions.py`, `back/bridge/mail/router.py` |
-| `bridge.mail` | `core.database` | `back/bridge/mail/approvals.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/models.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `app.tools` | `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `core.authorize` | `back/bridge/mail/approvals.py`, `back/bridge/mail/assertions.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/router.py` |
+| `bridge.mail` | `core.database` | `back/bridge/mail/approvals.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/models.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.dbadmin` | `back/bridge/mail/dbadmin.py` |
 | `bridge.mail` | `core.i18n` | `back/bridge/mail/approvals.py`, `back/bridge/mail/messenger.py` |
-| `bridge.mail` | `core.user` | `back/bridge/mail/approvals.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `core.util` | `back/bridge/mail/service.py` |
+| `bridge.mail` | `core.user` | `back/bridge/mail/approvals.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `core.util` | `back/bridge/mail/browser_service.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/service.py` |
 | `bridge.mammouth` | `app.llm` | `back/bridge/mammouth/__init__.py`, `back/bridge/mammouth/image.py`, `back/bridge/mammouth/multimedia.py`, `back/bridge/mammouth/protocol.py`, `back/bridge/mammouth/quota.py`, `back/bridge/mammouth/resources.py` |
 | `bridge.mammouth` | `core.util` | `back/bridge/mammouth/image.py`, `back/bridge/mammouth/multimedia.py`, `back/bridge/mammouth/quota.py`, `back/bridge/mammouth/resources.py` |
 | `bridge.matrix` | `app.agent` | `back/bridge/matrix/voice_listener.py` |
@@ -854,10 +854,10 @@ tests remain authoritative for behavior.
 | `app/dream` | `core/util` | `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/websocket` | `front/app/dream/pages/index.vue` |
 | `app/file_share` | `app/agent` | `front/app/file_share/components/FileIndexSettings.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue` |
-| `app/file_share` | `core/api` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/services/fileBrowserService.ts`, `front/app/file_share/services/fileIndexService.ts` |
+| `app/file_share` | `core/api` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/services/fileBrowserService.ts`, `front/app/file_share/services/fileIndexService.ts`, `front/app/file_share/services/mailBrowserService.ts` |
 | `app/file_share` | `core/authorize` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileIndexSettings.vue`, `front/app/file_share/navigation.ts`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue` |
 | `app/file_share` | `core/navigation` | `front/app/file_share/navigation.ts` |
-| `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/presentation.ts` |
+| `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/components/MailMessageDialog.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/presentation.ts` |
 | `app/goal` | `app/agent` | `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/api` | `front/app/goal/pages/index.vue`, `front/app/goal/services/goalService.ts`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/authorize` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
@@ -1796,16 +1796,17 @@ tests remain authoritative for behavior.
 | GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | no | `back/app/llm/call_router.py:419` |
 | GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | yes | `back/app/llm/personal_router.py:68` |
 | PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | yes | `back/app/llm/personal_router.py:75` |
-| GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | yes | `back/bridge/mail/router.py:132` |
-| POST | `/mail/connections/{connection_id}/test` | `bridge.mail` | `test_connection` | yes | `back/bridge/mail/router.py:205` |
-| GET | `/mail/inbound` | `bridge.mail` | `list_inbound_mail` | yes | `back/bridge/mail/router.py:36` |
-| GET | `/mail/inbound/{receipt_id}` | `bridge.mail` | `read_inbound_mail` | yes | `back/bridge/mail/router.py:53` |
-| GET | `/mail/outbound` | `bridge.mail` | `list_outbound_mail` | yes | `back/bridge/mail/router.py:96` |
-| GET | `/mail/outbound/agents` | `bridge.mail` | `list_outbound_mail_agents` | yes | `back/bridge/mail/router.py:119` |
-| GET | `/mail/outbound/{delivery_id}` | `bridge.mail` | `read_outbound_mail` | yes | `back/bridge/mail/router.py:138` |
-| POST | `/mail/outbound/{delivery_id}/approve` | `bridge.mail` | `approve_outbound_mail` | yes | `back/bridge/mail/router.py:155` |
-| POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | yes | `back/bridge/mail/router.py:180` |
-| GET | `/mail/status` | `bridge.mail` | `read_mail_status` | yes | `back/bridge/mail/router.py:85` |
+| GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | yes | `back/bridge/mail/router.py:159` |
+| GET | `/mail/browser/message` | `bridge.mail` | `read_browser_message` | yes | `back/bridge/mail/router.py:38` |
+| POST | `/mail/connections/{connection_id}/test` | `bridge.mail` | `test_connection` | yes | `back/bridge/mail/router.py:232` |
+| GET | `/mail/inbound` | `bridge.mail` | `list_inbound_mail` | yes | `back/bridge/mail/router.py:63` |
+| GET | `/mail/inbound/{receipt_id}` | `bridge.mail` | `read_inbound_mail` | yes | `back/bridge/mail/router.py:80` |
+| GET | `/mail/outbound` | `bridge.mail` | `list_outbound_mail` | yes | `back/bridge/mail/router.py:123` |
+| GET | `/mail/outbound/agents` | `bridge.mail` | `list_outbound_mail_agents` | yes | `back/bridge/mail/router.py:146` |
+| GET | `/mail/outbound/{delivery_id}` | `bridge.mail` | `read_outbound_mail` | yes | `back/bridge/mail/router.py:165` |
+| POST | `/mail/outbound/{delivery_id}/approve` | `bridge.mail` | `approve_outbound_mail` | yes | `back/bridge/mail/router.py:182` |
+| POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | yes | `back/bridge/mail/router.py:207` |
+| GET | `/mail/status` | `bridge.mail` | `read_mail_status` | yes | `back/bridge/mail/router.py:112` |
 | POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | no | `back/app/harnesses/runtime_web.py:60` |
 | POST | `/media` | `app.file_share` | `prepare_media` | yes | `back/app/file_share/media_router.py:39` |
 | DELETE | `/media/{identifier}` | `app.file_share` | `release_media` | yes | `back/app/file_share/media_router.py:117` |

@@ -5354,6 +5354,7 @@
       {
         "files": [
           "back/bridge/mail/approvals.py",
+          "back/bridge/mail/browser_service.py",
           "back/bridge/mail/connection_service.py",
           "back/bridge/mail/dbadmin.py",
           "back/bridge/mail/router.py",
@@ -5401,6 +5402,7 @@
       },
       {
         "files": [
+          "back/bridge/mail/browser_service.py",
           "back/bridge/mail/connection_service.py",
           "back/bridge/mail/dbadmin.py",
           "back/bridge/mail/inbound.py",
@@ -5414,6 +5416,7 @@
         "files": [
           "back/bridge/mail/approvals.py",
           "back/bridge/mail/assertions.py",
+          "back/bridge/mail/browser_service.py",
           "back/bridge/mail/router.py"
         ],
         "source": "bridge.mail",
@@ -5422,6 +5425,7 @@
       {
         "files": [
           "back/bridge/mail/approvals.py",
+          "back/bridge/mail/browser_service.py",
           "back/bridge/mail/inbound.py",
           "back/bridge/mail/messenger.py",
           "back/bridge/mail/models.py",
@@ -5449,6 +5453,7 @@
       {
         "files": [
           "back/bridge/mail/approvals.py",
+          "back/bridge/mail/browser_service.py",
           "back/bridge/mail/connection_service.py",
           "back/bridge/mail/router.py",
           "back/bridge/mail/service.py"
@@ -5458,6 +5463,8 @@
       },
       {
         "files": [
+          "back/bridge/mail/browser_service.py",
+          "back/bridge/mail/file_transport.py",
           "back/bridge/mail/service.py"
         ],
         "source": "bridge.mail",
@@ -19236,7 +19243,16 @@
         "declared_path": "/mail/approvers",
         "file": "back/bridge/mail/router.py",
         "handler": "list_mail_approvers",
-        "line": 132,
+        "line": 159,
+        "method": "GET",
+        "module": "bridge.mail"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/mail/browser/message",
+        "file": "back/bridge/mail/router.py",
+        "handler": "read_browser_message",
+        "line": 38,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19245,7 +19261,7 @@
         "declared_path": "/mail/connections/{connection_id}/test",
         "file": "back/bridge/mail/router.py",
         "handler": "test_connection",
-        "line": 205,
+        "line": 232,
         "method": "POST",
         "module": "bridge.mail"
       },
@@ -19254,7 +19270,7 @@
         "declared_path": "/mail/inbound",
         "file": "back/bridge/mail/router.py",
         "handler": "list_inbound_mail",
-        "line": 36,
+        "line": 63,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19263,7 +19279,7 @@
         "declared_path": "/mail/inbound/{receipt_id}",
         "file": "back/bridge/mail/router.py",
         "handler": "read_inbound_mail",
-        "line": 53,
+        "line": 80,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19272,7 +19288,7 @@
         "declared_path": "/mail/outbound",
         "file": "back/bridge/mail/router.py",
         "handler": "list_outbound_mail",
-        "line": 96,
+        "line": 123,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19281,7 +19297,7 @@
         "declared_path": "/mail/outbound/agents",
         "file": "back/bridge/mail/router.py",
         "handler": "list_outbound_mail_agents",
-        "line": 119,
+        "line": 146,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19290,7 +19306,7 @@
         "declared_path": "/mail/outbound/{delivery_id}",
         "file": "back/bridge/mail/router.py",
         "handler": "read_outbound_mail",
-        "line": 138,
+        "line": 165,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19299,7 +19315,7 @@
         "declared_path": "/mail/outbound/{delivery_id}/approve",
         "file": "back/bridge/mail/router.py",
         "handler": "approve_outbound_mail",
-        "line": 155,
+        "line": 182,
         "method": "POST",
         "module": "bridge.mail"
       },
@@ -19308,7 +19324,7 @@
         "declared_path": "/mail/outbound/{delivery_id}/reject",
         "file": "back/bridge/mail/router.py",
         "handler": "reject_outbound_mail",
-        "line": 180,
+        "line": 207,
         "method": "POST",
         "module": "bridge.mail"
       },
@@ -19317,7 +19333,7 @@
         "declared_path": "/mail/status",
         "file": "back/bridge/mail/router.py",
         "handler": "read_mail_status",
-        "line": 85,
+        "line": 112,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -21727,7 +21743,8 @@
           "front/app/file_share/pages/index.vue",
           "front/app/file_share/pages/settings.vue",
           "front/app/file_share/services/fileBrowserService.ts",
-          "front/app/file_share/services/fileIndexService.ts"
+          "front/app/file_share/services/fileIndexService.ts",
+          "front/app/file_share/services/mailBrowserService.ts"
         ],
         "source": "app/file_share",
         "target": "core/api"
@@ -21755,6 +21772,7 @@
           "front/app/file_share/components/AgentFileBrowser.vue",
           "front/app/file_share/components/FileEntryActions.vue",
           "front/app/file_share/components/FileTile.vue",
+          "front/app/file_share/components/MailMessageDialog.vue",
           "front/app/file_share/pages/index.vue",
           "front/app/file_share/pages/settings.vue",
           "front/app/file_share/presentation.ts"

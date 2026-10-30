@@ -11,7 +11,7 @@
           <q-input v-model="query" class="col" dense outlined clearable debounce="250" :disable="!browser?.canSearch || busy" :label="t('files.searchLocation')">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
-          <q-btn flat round dense color="primary" icon="refresh" :aria-label="t('files.refresh')" :disable="!browser?.canSearch || busy" :loading="browser?.refreshing" @click="browser?.refresh()">
+          <q-btn flat round dense color="primary" icon="refresh" :aria-label="t('files.refresh')" :disable="!browser?.canRefresh || busy" :loading="browser?.refreshing" @click="browser?.refresh()">
             <q-tooltip>{{ t('files.refresh') }}</q-tooltip>
           </q-btn>
         </div>

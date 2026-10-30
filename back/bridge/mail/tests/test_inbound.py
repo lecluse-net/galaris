@@ -65,9 +65,11 @@ async def test_only_inbox_search_results_enter_the_reception_journal(inbox, monk
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mailbox", ["Sent", "Corbeille", "INBOX/Archive"])
-@pytest.mark.parametrize("operation", ["receive", "get", "attachment"])
+@pytest.mark.parametrize("operation", ["receive", "get", "attachment", "mime-export"])
 async def test_non_inbox_mail_cannot_be_processed_or_downloaded(inbox, monkeypatch, mailbox, operation):
     config, _manager, _outsider, read = inbox
+    from bridge.mail import browser_service
+    monkeypatch.setattr(browser_service, "resolve_mail_connection", AsyncMock(return_value=config))
     summary = _summary(122).model_copy(update={
         "ref": MailMessageRef(mailbox=mailbox, uid_validity=9, uid=122).encode(),
     })
@@ -80,6 +82,8 @@ async def test_non_inbox_mail_cannot_be_processed_or_downloaded(inbox, monkeypat
                 await inbound.receive(config, summary)
             elif operation == "get":
                 await service.get_message(config.agent_id, summary.ref)
+            elif operation == "mime-export":
+                await browser_service.read_raw_message(config.agent_id, summary.ref, browser=False, max_bytes=1_000_000)
             else:
                 await service.get_attachment(config.agent_id, summary.ref, "1")
         assert await db.scalar(select(func.count()).select_from(MailInboundReceipt)) == 0
@@ -206,10 +210,12 @@ async def test_contact_default_and_explicit_processing_modes(inbox, mode):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["get", "attachment", "reply", "forward"])
+@pytest.mark.parametrize("operation", ["get", "attachment", "reply", "forward", "mime-export"])
 async def test_alternate_read_paths_cannot_download_unknown_mail_before_consent(inbox, monkeypatch, operation):
     from app.tools.authorization import AuthorizationRequired
     config, _manager, _outsider, read = inbox
+    from bridge.mail import browser_service
+    monkeypatch.setattr(browser_service, "resolve_mail_connection", AsyncMock(return_value=config))
     attachment = Mock()
     monkeypatch.setattr(inbound.ImapClient, "get_attachment", attachment)
     async with get_db_session():
@@ -221,6 +227,8 @@ async def test_alternate_read_paths_cannot_download_unknown_mail_before_consent(
             elif operation == "reply":
                 await service.reply(config.agent_id, runtime="internal", task_id=None, message_ref=_summary(61).ref,
                     body="Synthetic reply", html_body=None, reply_all=False, additional_to=[], attachment_uris=[], idempotency_key="synthetic-reply")
+            elif operation == "mime-export":
+                await browser_service.read_raw_message(config.agent_id, _summary(61).ref, browser=False, max_bytes=1_000_000)
             else:
                 await service.forward(config.agent_id, runtime="internal", task_id=None, message_ref=_summary(61).ref,
                     to=["other@example.org"], cc=[], bcc=[], body="Synthetic forward", html_body=None,

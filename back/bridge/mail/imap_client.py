@@ -124,6 +124,8 @@ class ImapClient:
             client.sock.settimeout(self.config.operation_timeout_s)
             client.login(endpoint.username, endpoint.password.get_secret_value())
             yield client
+        except imaplib.IMAP4.error as exc:
+            raise OSError("Mail provider unavailable") from exc
         finally:
             try:
                 client.logout()
@@ -133,9 +135,9 @@ class ImapClient:
     @staticmethod
     def _require_ok(status: str, data: object, operation: str) -> None:
         if status != "OK":
-            raise RuntimeError(f"IMAP {operation} failed")
+            raise OSError(f"IMAP {operation} failed")
         if data is None:
-            raise RuntimeError(f"IMAP {operation} returned no data")
+            raise OSError(f"IMAP {operation} returned no data")
 
     @staticmethod
     def _mailboxes(client: imaplib.IMAP4) -> list[MailboxInfo]:
@@ -171,7 +173,7 @@ class ImapClient:
 
     @staticmethod
     def _select(client: imaplib.IMAP4, mailbox: str, *, readonly: bool) -> int:
-        status, _data = client.select(mailbox, readonly=readonly)
+        status, _data = client.select(_quote(mailbox), readonly=readonly)
         ImapClient._require_ok(status, _data, "SELECT")
         response = client.response("UIDVALIDITY")
         values = response[1] if response else None
@@ -286,7 +288,7 @@ class ImapClient:
         return criteria or ["ALL"]
 
     def search(self, query: MailSearchQuery) -> MailSearchPage:
-        limit = max(1, min(query.limit, 50))
+        limit = max(1, min(query.limit, 500))
         with self._session() as client:
             self._validate_mailbox(client, query.mailbox)
             uid_validity = self._select(client, query.mailbox, readonly=True)
@@ -436,6 +438,22 @@ class ImapClient:
                 "(UID FLAGS BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE MESSAGE-ID CONTENT-TYPE)])",
             )
             return parse_summary(headers, ref, self._flags(metadata))
+
+    def get_raw_message(self, ref: MailMessageRef, *, max_bytes: int) -> bytes:
+        """Export the original MIME, without changing flags or fetching oversized mail."""
+        maximum = min(max_bytes, self.config.max_total_attachment_bytes + 1_000_000)
+        with self._session() as client:
+            self._assert_ref(client, ref, readonly=True)
+            metadata, _payload = self._fetch(client, ref.uid, "(UID RFC822.SIZE)")
+            match = _SIZE_PATTERN.search(metadata)
+            if match is None:
+                raise RuntimeError("IMAP server did not provide RFC822.SIZE")
+            if int(match.group(1)) > maximum:
+                raise ValueError("Mail message exceeds the requested byte limit")
+            _metadata, raw = self._fetch(client, ref.uid, "(UID BODY.PEEK[])")
+            if len(raw) > maximum:
+                raise ValueError("Mail message exceeds the requested byte limit")
+            return raw
 
     def get_message(
         self,

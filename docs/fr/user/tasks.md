@@ -326,12 +326,14 @@ uniquement pour la connexion de cet agent. **Toujours interdire le traitement de
 bloque pour tous les expéditeurs de cette connexion, sans lire les mails suivants ni créer
 de tâche. Modifiez ou retirez l’une ou l’autre décision dans le tableau de bord **Permissions** de l’agent.
 Les autorisations d’envoi restent indépendantes du droit de lire et traiter le mail.
-Seuls les mails de la boîte de réception (`INBOX`) peuvent être traités, lus ou admis en tâche,
+Pour un agent, seuls les mails de la boîte de réception (`INBOX`) peuvent être traités, lus ou admis en tâche,
 y compris leurs pièces jointes. Une recherche dans Envoyés, Corbeille, Archives ou un sous-dossier
 peut retourner des en-têtes, mais ne crée aucune réception ni demande de traitement.
 Les anciennes entrées hors INBOX ne peuvent plus reprendre leur traitement. Le journal couvre
 les nouveaux mails observés par l’écoute et les mails INBOX retrouvés par les outils ; le démarrage
 conserve le curseur existant et ne relance pas les anciens mails de la boîte.
+La consultation humaine des dossiers IMAP depuis [Fichiers](files.md) reste indépendante :
+elle permet de lire les autres dossiers sans donner d’autorisation à l’agent.
 
 Une information essentielle peut manquer : destinataire, fichier, période, autorisation ou
 choix irréversible. L’agent doit alors poser une question courte et attendre au lieu de

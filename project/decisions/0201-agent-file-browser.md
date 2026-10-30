@@ -39,6 +39,22 @@ cookie; context changes and late replies release unused grants. Streaming cleanu
 closes provider handles on completion, failure and interruption. SMB sessions renew
 before their operation deadline and reject a changed version across renewals.
 
+### Live IMAP browsing (2026-10-30)
+
+The Mail transport exposes IMAP folders and header-only message listings through the existing
+file facade. Opaque folder segments preserve arbitrary IMAP hierarchy delimiters and names;
+display names and ancestors travel as provider metadata. Folder and message continuation
+share the requested page budget, capped at 500. Messages have stable mailbox/UIDVALIDITY/UID
+references and export their original MIME through the same bounded transport as attachments.
+
+An optional transport context port binds server-owned `ResourceContext.browser_navigation`.
+Human reads additionally require an authenticated user with Mail privileges and the selected
+agent in their management scope. They never create inbound receipts, agent approvals or Tasks.
+Autonomous body and attachment reads retain the INBOX consent checks from decision 0221.
+The Mail reader uses paged text from the existing MIME parser; external HTML is inert and
+remote images are not fetched. Read-only IMAP selection and BODY.PEEK preserve message flags.
+No storage copy, mailbox model, agent capability or new provider registry is introduced.
+
 ## Explicit dependency review
 
 The new frontend module requires exactly these public dependencies:

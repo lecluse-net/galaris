@@ -44,6 +44,21 @@ de catégorie. **Compétences personnelles** conserve les dossiers nommés d’a
 et le nom de chaque agent. Le sélecteur de pièces jointes permet toujours de parcourir les
 fichiers du skill.
 
+Dans **Mail**, les dossiers IMAP reprennent la hiérarchie de la boîte connectée à l’agent,
+y compris les dossiers parents sans messages. Ouvrez un dossier pour afficher ses sous-dossiers
+et ses messages, du plus récent au plus ancien. La liste charge 50 éléments à la fois au défilement
+et présente l’objet, l’expéditeur, la date et l’état lu/non lu. Cliquez sur un message pour lire
+ses en-têtes et son texte ; **Lire la suite** charge la page suivante des longs messages.
+Les pièces jointes se consultent ou se téléchargent depuis le lecteur ; le menu du message
+permet de télécharger l’original `.eml`.
+
+Cette consultation exige `MAIL_ACCESS` ou `MAIL_EDIT`, en plus de l’accès à Fichiers, et respecte
+le périmètre des agents gérés. Elle ne marque pas les messages comme lus, ne crée pas de tâche
+et ne donne aucune autorisation de traitement à l’agent. Les dossiers Envoyés, Archives et
+Corbeille sont consultables par l’utilisateur. Les mails HTML sont présentés sous forme de texte,
+sans exécuter leur contenu ni charger leurs images distantes. La recherche dans Mail et les
+mutations IMAP ne sont pas proposées dans ce navigateur.
+
 Dans **Documents** (`document://`), les répertoires apparaissent directement à la racine,
 avec les fichiers qui ne sont classés dans aucun répertoire accessible. Ouvrir un répertoire
 affiche ses sous-répertoires et ses fichiers, sans mélanger les fichiers des niveaux inférieurs.

@@ -293,11 +293,13 @@ senders require consent. **Always process emails** enables the function only on 
 connection. **Always deny email processing** blocks it for every sender on this connection,
 without reading subsequent emails or creating Tasks. Remove either decision in
 the agent’s **Permissions** dashboard. Sending permissions remain independent of reading and
-processing permission. Only inbox (`INBOX`) messages and their attachments can be processed,
+processing permission. For an agent, only inbox (`INBOX`) messages and their attachments can be processed,
 read or admitted as Tasks. Searches in Sent, Trash, Archive or subfolders may return headers,
 but create no reception entry or processing request. Historical entries outside INBOX cannot
 resume processing. The journal covers newly observed incoming mail and INBOX mail discovered by
 tools; startup preserves the existing cursor and does not replay old mailbox contents.
+Human IMAP browsing in [Files](files.md) is separate: users can read other folders without
+authorizing the agent to process their messages.
 
 Essential information may be missing: recipient, file, period, authorization, or an irreversible choice. The Agent must then ask a short question and wait rather than guess. A question is a valid result of the current turn; reply in the same conversation to continue.
 

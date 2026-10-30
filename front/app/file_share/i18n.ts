@@ -2,6 +2,7 @@ export default {
   fr: {
     nav: { files: 'Fichiers', files_desc: 'Explorer les fichiers et ressources accessibles à chaque agent' },
     files: {
+      mail: { messages: 'Messages', noSubject: '(Sans objet)', from: 'De', to: 'À', cc: 'Cc', date: 'Date', read: 'Lu', unread: 'Non lu', emptyBody: 'Ce message ne contient pas de texte.', more: 'Lire la suite', loadError: 'Impossible de lire ce mail. Vérifiez la connexion et vos droits, puis réessayez.' },
       resourceLabels: {
         scheme_galaris: 'Ressources Galaris', scheme_file: 'Fichiers',
         scheme_document: 'Documents', scheme_memory: 'Mémoires Galaris',
@@ -41,6 +42,7 @@ export default {
   en: {
     nav: { files: 'Files', files_desc: 'Browse files and resources available to each agent' },
     files: {
+      mail: { messages: 'Messages', noSubject: '(No subject)', from: 'From', to: 'To', cc: 'Cc', date: 'Date', read: 'Read', unread: 'Unread', emptyBody: 'This message has no text content.', more: 'Read more', loadError: 'Unable to read this email. Check the connection and your permissions, then retry.' },
       resourceLabels: {
         scheme_galaris: 'Galaris resources', scheme_file: 'Files',
         scheme_document: 'Documents', scheme_memory: 'Galaris memories',
@@ -80,6 +82,7 @@ export default {
   zh: {
     nav: { files: '文件', files_desc: '浏览每个智能体可访问的文件和资源' },
     files: {
+      mail: { messages: '邮件', noSubject: '（无主题）', from: '发件人', to: '收件人', cc: '抄送', date: '日期', read: '已读', unread: '未读', emptyBody: '此邮件没有文本内容。', more: '继续阅读', loadError: '无法读取此邮件。请检查连接和权限后重试。' },
       resourceLabels: {
         scheme_galaris: 'Galaris 资源', scheme_file: '文件',
         scheme_document: '文档', scheme_memory: 'Galaris 记忆',

@@ -16,6 +16,7 @@ from .resource_uri import parse_resource_uri
 
 if TYPE_CHECKING:
     from app.agent import AgentManagementScope
+    from .transport import FileTransport
 
 
 ResourceCapability = Literal[
@@ -209,6 +210,13 @@ class DeliveredResource:
 
 
 @runtime_checkable
+class ResourceContextTransport(Protocol):
+    """Bind server-owned browsing context without changing agent tool authorization."""
+
+    def for_resource_context(self, ctx: ResourceContext) -> "FileTransport": ...
+
+
+@runtime_checkable
 class ResourceMetadataTransport(Protocol):
     async def resource_info(
         self, path: str, *, include_sha256: bool = False
@@ -268,6 +276,7 @@ class ResourceRelocationTransport(Protocol):
 
 __all__ = [
     "ResourceCapability",
+    "ResourceContextTransport",
     "ResourceContext",
     "DeliveredResource",
     "ResourceDescriptor",

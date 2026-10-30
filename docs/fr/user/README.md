@@ -579,6 +579,8 @@ dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
 Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.
 Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
+Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers → Mail**,
+puis un dossier IMAP et un message. Cette lecture ne donne aucun accord de traitement à l’agent.
 
 La consultation d'une compétence déjà disponible dans le harnais DeepSeek ne demande pas
 d'accord de modification. Les opérations qui modifient des fichiers conservent leur autorisation.

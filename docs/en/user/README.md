@@ -496,6 +496,8 @@ previously saved choices.
 If a Task waits for your consent to read an email, answer its authorization request.
 The Harness continues reading the same message once the Task resumes; denial keeps
 its content private. Reading consent does not authorize sending an email.
+To browse an agent’s mailbox yourself, open **Knowledge → Files → Mail**, then an IMAP folder
+and a message. Your reading does not authorize the agent to process the email.
 
 Reading a Skill already available in the DeepSeek Harness does not request mutation consent.
 Operations that modify files retain their authorization requirement.

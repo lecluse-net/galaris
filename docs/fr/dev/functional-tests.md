@@ -2438,6 +2438,15 @@ et nouveaux contrôles après révocation. Le scénario fournisseur vérifie aus
 groupée des fichiers d'un Tool combinant File Share et Messenger.
 `e2e/specs/file-indexing.spec.mjs` exerce l'application assemblée et son API réelle.
 Le navigateur **Connaissances → Fichiers** est couvert par
+`bridge/mail/tests/test_browser.py` pour le parcours HTTP IMAP : hiérarchie, continuation,
+500 messages par page acceptés, texte paginé, MIME original et pièces jointes, droits Mail,
+périmètre agent, connexion désactivée, panne et UIDVALIDITY périmé. Seule la session IMAP
+est remplacée ; le parseur MIME, l’API et la base sont réels. La consultation ne crée ni
+réception ni autorisation agentique. `front/browser-tests/file-browser-mail.spec.mjs` exerce
+le lecteur au clavier, la reprise sans perte après erreur, les pièces jointes, la fermeture,
+la réouverture et les réponses tardives sur ordinateur/mobile, avec contenu inerte.
+Le test de racine dans `bridge/mail/tests/test_file_transport.py` reproduit l’échec avant correction.
+Le parcours général reste couvert par
 `front/browser-tests/file-browser.spec.mjs` : navigation, chargement au défilement,
 reprise après erreur sans perte des entrées, aperçu au clavier et changement d’agent
 pendant une réponse tardive, menus de mutation, confirmations, refus d’accès et

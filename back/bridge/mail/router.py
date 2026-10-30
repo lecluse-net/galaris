@@ -1,6 +1,8 @@
 """Administrative Mail connection, journal, and approval routes."""
 
 from typing import Literal
+import asyncio
+import imaplib
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -24,11 +26,36 @@ from .schemas import (
     MailInboundPage,
     MailInboundDetail,
 )
-from .contracts import MailSendReceipt
+from .contracts import MailMessageDetail, MailSendReceipt
 from . import service
 
 
 router = APIRouter(prefix="/mail", tags=["mail"])
+
+
+@router.get("/browser/message", response_model=MailMessageDetail)
+@authorize(privileges=[Privileges.MAIL_ACCESS, Privileges.MAIL_EDIT])
+async def read_browser_message(
+    agent_id: int = Query(gt=0),
+    message_ref: str = Query(max_length=2048),
+    body_offset: int = Query(default=0, ge=0),
+    body_limit: int = Query(default=20_000, ge=1, le=50_000),
+) -> MailMessageDetail:
+    from .browser_service import read_message
+
+    if not (await current_management_scope()).allows(agent_id):
+        raise HTTPException(404, "Agent not found")
+    try:
+        async with asyncio.timeout(120):
+            return await read_message(agent_id, message_ref, body_offset=body_offset, body_limit=body_limit)
+    except (PermissionError, FileNotFoundError) as exc:
+        raise HTTPException(404, "Mail resource unavailable") from exc
+    except ValueError as exc:
+        raise HTTPException(422, "Invalid Mail resource or inactive connection") from exc
+    except TimeoutError as exc:
+        raise HTTPException(504, "Mail provider timed out") from exc
+    except (OSError, imaplib.IMAP4.error) as exc:
+        raise HTTPException(502, "Mail provider unavailable") from exc
 
 
 @router.get("/inbound", response_model=MailInboundPage)

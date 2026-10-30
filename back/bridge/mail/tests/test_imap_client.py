@@ -208,3 +208,25 @@ def test_poll_reports_current_mailbox_high_watermark_after_uid_validity_reset(mo
     assert batch.uid_validity == 12
     assert batch.latest_uid == expected
     assert batch.messages == []
+
+
+@pytest.mark.parametrize("declared_size", [101, 50])
+def test_raw_message_export_enforces_its_budget_before_writing(monkeypatch, declared_size):
+    from bridge.mail.contracts import MailMessageRef
+    client = _client()
+    calls = []
+
+    @contextmanager
+    def session():
+        yield object()
+
+    def fetch(_imap, _uid, query):
+        calls.append(query)
+        return f"UID 1 RFC822.SIZE {declared_size}".encode(), b"x" * 101
+
+    monkeypatch.setattr(client, "_session", session)
+    monkeypatch.setattr(client, "_assert_ref", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(client, "_fetch", fetch)
+    with pytest.raises(ValueError, match="byte limit"):
+        client.get_raw_message(MailMessageRef(mailbox="INBOX", uid_validity=7, uid=1), max_bytes=100)
+    assert len(calls) == (1 if declared_size > 100 else 2)

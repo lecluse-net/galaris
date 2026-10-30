@@ -13,7 +13,11 @@ def resource_privileges(uri: str, *, write: bool = False) -> tuple[str, ...]:
     reference = parse_resource_uri(uri, allow_empty=True)
     read: tuple[str, ...]
     edit: tuple[str, ...]
-    if reference.scheme == "document":
+    if reference.scheme == "mail":
+        read, edit = (Privileges.MAIL_ACCESS,), (Privileges.MAIL_EDIT,)
+        if write:
+            return ()
+    elif reference.scheme == "document":
         read, edit = (
             (Privileges.DOCUMENT_ACCESS,),
             (Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN),
@@ -50,7 +54,7 @@ def resource_privileges(uri: str, *, write: bool = False) -> tuple[str, ...]:
 BROWSER_PRIVILEGES = tuple(
     dict.fromkeys(
         code
-        for uri in ("file://", "document://", "data://", "memory://", "galaris://")
+        for uri in ("file://", "document://", "data://", "memory://", "galaris://", "mail://")
         for code in resource_privileges(uri)
     )
 )

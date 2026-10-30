@@ -18,7 +18,7 @@ provide exact email identity matching; display names and other agents' contacts 
 
 Only the exact INBOX folder, case insensitive and excluding subfolders, is eligible for
 reception and processing. Searches in other folders return headers without creating inbound
-receipts. Body reads, attachment downloads and authorization reject non-INBOX references,
+receipts. Agent body reads, attachment downloads and authorization reject non-INBOX references,
 including historical receipts recovered after consent. Search discovery does not imply reception.
 
 `mail_process` is a native prepared capability governed by existing Tool/connection function

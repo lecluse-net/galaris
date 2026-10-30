@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal, Protocol, runtime_checkable
+from dataclasses import dataclass, field
+from typing import Any, Literal, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,8 @@ class FileEntry:
     mime_type: str = "application/octet-stream"
     sha256: str = ""
     etag: str | None = None
+    name: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict[str, Any])
 
 
 @dataclass(frozen=True)
@@ -23,6 +25,7 @@ class FileListing:
     entries: tuple[FileEntry, ...]
     truncated: bool = False
     next_cursor: str | None = None
+    ancestors: tuple[FileEntry, ...] = ()
 
 
 @dataclass(frozen=True)

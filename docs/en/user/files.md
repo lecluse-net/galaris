@@ -22,6 +22,19 @@ their virtual filesystem: SSH console, documents, Galaris resources and
 connected providers. It respects the agents you can manage and each resource’s own
 access rules.
 
+In **Mail**, IMAP folders follow the connected agent’s mailbox hierarchy, including parent folders
+without messages. Open a folder to see its subfolders and messages, newest first. The list loads
+50 entries at a time as you scroll and shows the subject, sender, date and read/unread state.
+Click a message to read its headers and text; **Read more** loads the next page of long messages.
+Attachments can be previewed or downloaded from the reader, and the message menu downloads
+the original `.eml`.
+
+Browsing requires `MAIL_ACCESS` or `MAIL_EDIT` in addition to Files access and respects the
+managed-agent scope. It does not mark messages as read, create a Task or authorize agent
+processing. Users can browse Sent, Archive and Trash folders. HTML emails appear as text,
+without executing their content or loading remote images. Mail search and IMAP mutations
+are not offered in this browser.
+
 In **Documents** (`document://`), folders appear directly at the root alongside files that
 are not classified in any accessible folder. Opening a folder shows its subfolders and
 files, without mixing in files from deeper folders. A file classified in several folders

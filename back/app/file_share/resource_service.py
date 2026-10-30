@@ -166,7 +166,7 @@ _MAIL_CAPABILITIES: list[ResourceCapability] = ["copy", "info", "list", "read"]
 
 def _transport_capabilities(service: str, entry: FileEntry) -> list[ResourceCapability]:
     if service == "mail":
-        return _MAIL_CAPABILITIES
+        return ["info", "list"] if entry.is_dir else ["copy", "info", "read"]
     if service in {"nextcloud", "samba"}:
         if entry.is_dir:
             return ["create", "info", "list", "search", "move", "rename", "delete"] if entry.path.strip("/.") else ["create", "info", "list", "search"]
@@ -297,13 +297,14 @@ def _entry_descriptor(
 ) -> ResourceDescriptor:
     return ResourceDescriptor(
         uri=_uri(scheme, entry.path, collection=entry.is_dir),
-        name=PurePosixPath(entry.path).name or entry.path,
+        name=entry.name if entry.name is not None else PurePosixPath(entry.path).name or entry.path,
         is_collection=entry.is_dir,
         media_type=entry.mime_type,
         size=None if entry.is_dir else entry.size,
         modified_at=entry.modified_at or None,
         checksum=entry.sha256 or None,
         etag=entry.etag,
+        metadata=entry.metadata,
         capabilities=list(capabilities or _MUTABLE_FILE_CAPABILITIES),
     )
 
@@ -402,6 +403,9 @@ async def _connected_transport(
         reference.decoded_locator,
         language=ctx.language,
     )
+    from .resource_contracts import ResourceContextTransport
+    if isinstance(transport, ResourceContextTransport):
+        transport = transport.for_resource_context(ctx)
     if reference.is_collection and not reference.locator and isinstance(transport, ResourceListingTransport):
         return transport, service, "", ""
     source = normalize_source_reference(service, reference.decoded_locator)
@@ -979,6 +983,7 @@ async def resource_list(
         listing = await transport.resource_list(reference.decoded_locator, recursive=recursive, limit=limit)
     return ResourceListing(
         uri=str(reference),
+        ancestors=[_entry_descriptor(reference.scheme, entry, capabilities=_transport_capabilities(service, entry)) for entry in listing.ancestors],
         entries=[
             _entry_descriptor(
                 reference.scheme,

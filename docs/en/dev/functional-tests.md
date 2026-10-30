@@ -2337,7 +2337,16 @@ The provider scenario also verifies grouped file resolution for a Tool combining
 and Messenger.
 `e2e/specs/file-indexing.spec.mjs` exercises the assembled application and its real API.
 
-The **Knowledge → Files** browser is covered by
+Live IMAP browsing in **Knowledge → Files** is covered by
+`bridge/mail/tests/test_browser.py`: folder hierarchy,
+continuation, acceptance of 500-message pages, paged text, original MIME and attachments,
+Mail privileges, agent scope, inactive connections, outages and stale UIDVALIDITY. Only the
+IMAP session is replaced; MIME parsing, HTTP and persistence are real. Browsing creates
+neither inbound receipts nor agent authorizations. `front/browser-tests/file-browser-mail.spec.mjs`
+covers keyboard reading, retry without lost content, attachments, closing, reopening and late
+responses on desktop/mobile with inert content. The root scenario in
+`bridge/mail/tests/test_file_transport.py` reproduces the failure before the fix.
+The general journey remains covered by
 `front/browser-tests/file-browser.spec.mjs`: navigation, loading on scroll, retry
 without losing entries, keyboard preview and agent changes during a late response.
 It also covers mutation menus, confirmations, access denials and renaming the open directory.
