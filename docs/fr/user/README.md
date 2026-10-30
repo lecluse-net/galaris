@@ -13,7 +13,7 @@ par le [tour des fonctionnalités](../features.md).
 | Organiser les contenus rédigés | [Bibliothèque documentaire](documents.md) |
 | Écrire, relier, partager et exporter | [Contenus riches](rich-content.md) |
 | Gérer des données JSON | [Documents Données](datasets.md) |
-| Explorer les emplacements d'un agent | [Fichiers](files.md) |
+| Explorer les emplacements et contacts d'un agent | [Fichiers](files.md) |
 | Modifier un dépôt avec un agent | [Éditeur Git conversationnel](code-editor.md) |
 | Construire et observer un workflow | [Processus métier internes](internal-processes.md) |
 | Organiser les accès aux agents | [Équipes et autorisations de dialogue](teams.md) |

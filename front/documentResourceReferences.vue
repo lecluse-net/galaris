@@ -6,6 +6,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { validRichLink, richLinkCard } from '@/core/util/richText'
 import { documentFolderId } from '@/core/util'
+import { contactResourceId } from '@/app/memory'
 import { processReferenceHtml } from '@/app/process/interface'
 import { resourceTarget, type FileEntry } from '@/app/file_share/interface'
 import ResourcePicker from './resourcePicker.vue'
@@ -41,7 +42,7 @@ async function select(entries: FileEntry[], selectedAgent: number): Promise<void
   busy.value = true; error.value = ''
   const current = ++generation
   try {
-    const html = await Promise.all(entries.map(entry => documentFolderId(entry.uri) ? richLinkCard(entry.uri, null) : reference(entry, selectedAgent)))
+    const html = await Promise.all(entries.map(entry => documentFolderId(entry.uri) || contactResourceId(entry.uri) ? richLinkCard(entry.uri, null) : reference(entry, selectedAgent)))
     if (!editable || !adding.value || current !== generation) return
     emit('picked', html.join(''))
     adding.value = false

@@ -13,7 +13,7 @@ Visible screens depend on your account's permissions. For an overview, start wit
 | Organize authored content | [Document library](documents.md) |
 | Write, link, share and export | [Rich content](rich-content.md) |
 | Manage JSON data | [Data documents](datasets.md) |
-| Explore an agent's locations | [Files](files.md) |
+| Explore an agent's locations and contacts | [Files](files.md) |
 | Edit a repository with an agent | [Conversational Git editor](code-editor.md) |
 | Build and observe a workflow | [Internal business processes](internal-processes.md) |
 | Organize agent access | [Teams and dialogue permissions](teams.md) |

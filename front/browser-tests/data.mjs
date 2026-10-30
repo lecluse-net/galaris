@@ -22,3 +22,12 @@ export const goal = {
   schedule_enabled: false, schedule: [], referrer_max_reminders: 3, status: 'ACTIVE', pause_reason: null, next_cycle_at: null, completed_at: null, last_error: null,
   cycle_count: 0, task_cost: 0, evaluation_cost: 0, total_cost: 0, current_task_id: null, last_task_finished_at: null, last_verdict: null, created_at: '2026-09-01T12:00:00Z', updated_at: null,
 }
+export const contactResource = {
+  memory_item_id: '00000000-0000-4000-8000-000000000741', owner_agent_id: 7,
+  display_name: 'Synthetic Person', memory_title: 'Contact — Synthetic Person', linked_memory_count: 0,
+  identities: [{ id: '00000000-0000-4000-8000-000000000742', kind: 'messenger', namespace: 'mail',
+    external_id: 'synthetic@example.org', display_name: 'Synthetic Person', galaris_user_id: null }],
+  coordinates: { phone_numbers: [{ label: 'Office', number: '+33 1 23 45 67 89', country: 'FR' }],
+    postal_addresses: [{ label: 'Office', street: '12 Synthetic Street', postal_code: '12345', city: 'Synthetic City', region: '', country: 'FR' }] },
+  created_at: '2026-01-01T00:00:00Z', updated_at: null,
+}

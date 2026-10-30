@@ -75,6 +75,14 @@ since its last generation; small edits accumulate. HTML presentation changes alo
 Manual descriptions are preserved. Both thresholds are configurable in Dream settings and also
 apply to Datasets.
 
+## Insert a Contact card
+
+To insert a Contact card into the content, use **Galaris link**, then **Galaris resources →
+Contacts** in the browser. Select the contact and confirm. The card displays coordinates
+according to each reader's rights and opens its dialog when clicked. An existing Contact link
+can become a card using **Show card** in its context menu; **Show URL** restores the link.
+Sharing the document grants no additional access to the agent's address book. See [Files](files.md).
+
 ## Write with an agent
 
 The **Conversation** icon in the library header, beside the library visibility button, opens a panel to the

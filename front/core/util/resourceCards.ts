@@ -6,9 +6,14 @@ export function resourceCardUri(card: HTMLElement): string {
   return link?.getAttribute('data-rich-reference') ?? link?.getAttribute('href') ?? ''
 }
 
+export function isEmbeddedResourceCard(card: HTMLElement): boolean {
+  return card.matches('blockquote.galaris-link-card') && Boolean(
+    card.matches('.galaris-process-diagram, .galaris-agent-card, .galaris-contact-card')
+    || documentIdFromResourceUri(resourceCardUri(card)) || documentFolderId(resourceCardUri(card)))
+}
+
 export function embeddedResourceCards(root: ParentNode): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>('blockquote.galaris-link-card')].filter(card =>
-    card.matches('.galaris-process-diagram, .galaris-agent-card') || documentIdFromResourceUri(resourceCardUri(card)) || documentFolderId(resourceCardUri(card)))
+  return [...root.querySelectorAll<HTMLElement>('blockquote.galaris-link-card')].filter(isEmbeddedResourceCard)
 }
 
 /** Rendering-only decoration also upgrades existing document cards without rewriting them. */

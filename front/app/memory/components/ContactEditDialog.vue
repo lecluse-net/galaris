@@ -1,7 +1,7 @@
 <template>
   <q-dialog :model-value="true" @update:model-value="emit('close')">
     <q-card class="contact-edit-dialog galaris-dialog-card">
-      <DialogHeader :title="t('contacts.editTitle')" icon="edit" />
+      <DialogHeader :title="t(readonly ? 'contacts.detailsTitle' : 'contacts.editTitle')" :icon="readonly ? 'contacts' : 'edit'" />
       <q-form class="galaris-dialog-form" @submit="save">
         <q-card-section class="galaris-dialog-body contact-edit-body">
           <q-input
@@ -11,13 +11,13 @@
             maxlength="500"
             hide-bottom-space
             :label="t('contacts.displayName')"
-            :disable="saving"
+            :disable="saving || readonly"
             :rules="[(value: string) => !!value.trim() || t('contacts.nameRequired')]"
           >
             <template #prepend><q-icon name="person_outline" /></template>
           </q-input>
-          <p class="contact-edit-hint q-mt-sm q-mb-lg">{{ t('contacts.editHelp') }}</p>
-          <ContactCoordinatesFields v-model="coordinates" :disabled="saving" />
+          <p v-if="!readonly" class="contact-edit-hint q-mt-sm q-mb-lg">{{ t('contacts.editHelp') }}</p>
+          <ContactCoordinatesFields v-model="coordinates" :disabled="saving || readonly" />
           <div class="row items-center justify-between q-mb-sm">
             <div class="text-subtitle2">{{ t('contacts.linkedAccounts') }}</div>
             <span class="contact-edit-hint">{{ contact.identities.length }}</span>
@@ -36,7 +36,7 @@
                 <q-item-label caption class="contact-identity-address">{{ identity.external_id }}</q-item-label>
                 <q-item-label v-if="splitIds.includes(identity.id)" caption class="contact-account-status">{{ t('contacts.splitPending') }}</q-item-label>
               </q-item-section>
-              <q-item-section side>
+              <q-item-section v-if="!readonly" side>
                 <q-btn flat round color="primary" :icon="splitIds.includes(identity.id) ? 'undo' : 'call_split'"
                   :disable="saving || (!splitIds.includes(identity.id) && contact.identities.length - splitIds.length <= 1)"
                   :aria-label="t(splitIds.includes(identity.id) ? 'contacts.undoSplitIdentity' : 'contacts.splitIdentity', { number: index + 1 })"
@@ -47,7 +47,7 @@
             </q-item>
           </q-list>
           <p v-else class="contact-edit-hint">{{ t('contacts.noIdentity') }}</p>
-          <div class="contact-split-hint q-mt-md">
+          <div v-if="!readonly" class="contact-split-hint q-mt-md">
             <q-icon name="info_outline" size="16px" class="q-mt-xs" aria-hidden="true" />
             <span>{{ t('contacts.splitHelp') }}</span>
           </div>
@@ -59,6 +59,7 @@
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn outline color="primary" :label="t('contacts.cancel')" v-close-popup />
           <q-btn
+            v-if="!readonly"
             color="primary"
             type="submit"
             :label="t('contacts.save')"
@@ -80,7 +81,7 @@ import { contactService } from '../services/contactService'
 import type { Contact, ContactCoordinates, ContactUpdate } from '../types'
 import ContactCoordinatesFields from './ContactCoordinatesFields.vue'
 
-const { contact } = defineProps<{ contact: Contact }>()
+const { contact, readonly = false } = defineProps<{ contact: Contact; readonly?: boolean }>()
 const emit = defineEmits<{ close: []; saved: [] }>()
 const { t } = useI18n()
 const displayName = ref(contact.display_name)
@@ -100,7 +101,7 @@ let active = true
 onBeforeUnmount(() => { active = false })
 
 async function save(): Promise<void> {
-  if (saving.value || !displayName.value.trim()) return
+  if (readonly || saving.value || !displayName.value.trim()) return
   saving.value = true
   error.value = ''
   try {

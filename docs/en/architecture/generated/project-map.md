@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 767 detected HTTP/WebSocket handlers;
+- 768 detected HTTP/WebSocket handlers;
 - 181 detected SQLAlchemy tables;
 - 284 detected native MCP tools;
 - 55 detected Vue pages.
@@ -901,10 +901,10 @@ tests remain authoritative for behavior.
 | `app/memory` | `app/agent` | `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `app/document` | `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraphNodeDetail.vue`, `front/app/memory/components/MemoryGraphRelations.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemoryLinkDialog.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/memoryStore.ts`, `front/app/memory/types.ts` |
 | `app/memory` | `app/share` | `front/app/memory/types.ts` |
-| `app/memory` | `core/api` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts` |
-| `app/memory` | `core/authorize` | `front/app/memory/components/MemoryDreamActions.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
+| `app/memory` | `core/api` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/useContactResource.ts` |
+| `app/memory` | `core/authorize` | `front/app/memory/components/MemoryDreamActions.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/useContactResource.ts` |
 | `app/memory` | `core/navigation` | `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
-| `app/memory` | `core/util` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
+| `app/memory` | `core/util` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/ContactResourceCard.vue`, `front/app/memory/components/ContactResourceDialog.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
 | `app/memory` | `core/websocket` | `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/stores/memoryStore.ts` |
 | `app/onboarding` | `core/api` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/services/firstMissionService.ts`, `front/app/onboarding/services/onboardingService.ts` |
 | `app/onboarding` | `core/authorize` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/components/WelcomePage.vue` |
@@ -1453,9 +1453,10 @@ tests remain authoritative for behavior.
 | POST | `/contacts` | `app.contact` | `create_contact` | yes | `back/app/contact/router.py:84` |
 | GET | `/contacts/defaults` | `app.contact` | `read_contact_defaults` | yes | `back/app/contact/router.py:36` |
 | GET | `/contacts/discovery` | `app.contact` | `read_contact_discovery` | yes | `back/app/contact/router.py:55` |
-| DELETE | `/contacts/{contact_item_id}` | `app.contact` | `forget_contact` | yes | `back/app/contact/router.py:129` |
-| PATCH | `/contacts/{contact_item_id}` | `app.contact` | `update_contact` | yes | `back/app/contact/router.py:94` |
-| POST | `/contacts/{source_contact_item_id}/merge` | `app.contact` | `merge_contacts` | yes | `back/app/contact/router.py:109` |
+| DELETE | `/contacts/{contact_item_id}` | `app.contact` | `forget_contact` | yes | `back/app/contact/router.py:142` |
+| GET | `/contacts/{contact_item_id}` | `app.contact` | `read_contact` | yes | `back/app/contact/router.py:94` |
+| PATCH | `/contacts/{contact_item_id}` | `app.contact` | `update_contact` | yes | `back/app/contact/router.py:107` |
+| POST | `/contacts/{source_contact_item_id}/merge` | `app.contact` | `merge_contacts` | yes | `back/app/contact/router.py:122` |
 | GET | `/conversations/agents/{agent_id}/active-work` | `app.conversation` | `read_agent_active_work` | yes | `back/app/conversation/router.py:33` |
 | GET | `/conversations/messages` | `app.conversation` | `read_conversation_messages` | yes | `back/app/conversation/router.py:52` |
 | DELETE | `/conversations/rounds/{round_id}` | `app.conversation` | `delete_conversation_round` | yes | `back/app/conversation/router.py:161` |

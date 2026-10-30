@@ -138,7 +138,7 @@ import { alignImage, imageAlignment } from '../imageAlignment'
 import { protectInteractiveHtml, restoreInteractiveHtml } from '../interactiveHtml'
 import { ResourceDetailDialog, type ResourceDetailTarget } from '../resourceDetail'
 import { ResourceEmbed, type ResourceEmbedTarget } from '../resourceEmbed'
-import { prepareDocumentCard } from '../resourceCards'
+import { isEmbeddedResourceCard, prepareDocumentCard } from '../resourceCards'
 import { documentPlayer, createDocumentPlayer, type PdfPreviewSource } from '../documentMedia'
 import { documentResourceHtml, withAttachmentInventory, type DocumentResource } from '../documentResources'
 import { pasteDocumentHtml } from '../pasteDocumentHtml'
@@ -302,7 +302,7 @@ function mountCard(target: ObjectHost): () => void {
   const link = links[0], uri = link?.getAttribute('href') ?? ''
   for (const image of target.element.querySelectorAll('img')) { const src = image.getAttribute('src') ?? ''; image.dataset.editorAttachment = src; image.removeAttribute('src'); disposals.push(resolveAttachment(src, image)) }
   if (profile === 'document') disposals.push(mountWebLinkPreview(target.element, resourceAgentId))
-  if ((target.element.matches('.galaris-process-diagram, .galaris-agent-card') || ['document', 'document_folder'].includes(richLinkTarget(uri)?.kind ?? '')) && richLinkTarget(uri)) {
+  if (isEmbeddedResourceCard(target.element) && richLinkTarget(uri)) {
     prepareDocumentCard(target.element)
     const element = document.createElement('div'); element.className = 'galaris-resource-embed'; target.element.append(element)
     const embed = { key: ++hostKey, element, uri, title: link?.textContent ?? '' }

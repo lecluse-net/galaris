@@ -9,6 +9,7 @@ export const editorialClasses = new Set('galaris-link-card galaris-media-audio g
 for (const kind of ['', '-info', '-warning', '-question', '-error', '-stop', '-forbidden', '-search']) editorialClasses.add('galaris-callout' + kind)
 editorialClasses.add('galaris-process-diagram')
 editorialClasses.add('galaris-agent-card')
+editorialClasses.add('galaris-contact-card')
 editorialClasses.add('galaris-web-card')
 editorialClasses.add('galaris-checklist')
 for (const value of tableStyleClasses) editorialClasses.add(value)

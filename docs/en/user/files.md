@@ -51,6 +51,16 @@ Under **Galaris → Goals**, click a Goal to open its dialog directly. Cycles ar
 displayed in Files listings or search; view them from the Goal. Goals without cycles
 remain accessible.
 
+Under **Galaris → Contacts**, browse the selected agent's private address book.
+Each entry uses the contact's name. Clicking opens its usual dialog: `CONTACT_EDIT` lets you
+edit the name, phone numbers and postal addresses; `CONTACT_ACCESS` displays the same fields
+read-only. Search matches names and coordinates.
+This requires `CONTACT_ACCESS` or `CONTACT_EDIT` in addition to Files access.
+In a Text document, **Galaris link** lets you select this contact from the same browser and
+insert its dedicated card. An existing Contact link can also become a card through **Show card**
+in its context menu. Clicking the card opens the same dialog. The document stores the name and
+URI; coordinates are loaded with the reader's rights rather than copied into its content.
+Sharing the document does not share the address book.
 Agents discover their contacts with `file_list` or `file_search` under `galaris://contact/`.
 The `galaris://contact/<uuid>` URIs support reading, exporting and editing through the owning
 agent's File Sharing tools. After `file_read` or `file_info`, pass the returned `etag` as

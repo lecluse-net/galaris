@@ -1,7 +1,11 @@
 import { api } from '@/core/api'
+import { notifyContactsChanged } from '../contactResource'
 import type { Contact, ContactCreate, ContactForgetResult, ContactMergeResult, ContactPage, ContactUpdate } from '../types'
 
 export const contactService = {
+  async get(contactItemId: string, signal?: AbortSignal): Promise<Contact> {
+    return (await api.get<Contact>(`/contacts/${encodeURIComponent(contactItemId)}`, { signal })).data
+  },
   async defaults(): Promise<{ country: string }> {
     return (await api.get<{ country: string }>('/contacts/defaults')).data
   },
@@ -30,6 +34,7 @@ export const contactService = {
     const response = await api.patch<Contact>(
       `/contacts/${encodeURIComponent(contactItemId)}`, data,
     )
+    notifyContactsChanged(contactItemId)
     return response.data
   },
 
@@ -38,6 +43,7 @@ export const contactService = {
       `/contacts/${encodeURIComponent(sourceContactItemId)}/merge`,
       { target_contact_item_id: targetContactItemId },
     )
+    notifyContactsChanged(sourceContactItemId, targetContactItemId)
     return response.data
   },
 
@@ -45,6 +51,7 @@ export const contactService = {
     const response = await api.delete<ContactForgetResult>(
       `/contacts/${encodeURIComponent(contactItemId)}`,
     )
+    notifyContactsChanged(contactItemId)
     return response.data
   },
 }

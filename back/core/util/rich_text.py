@@ -99,7 +99,7 @@ def valid_link(value: str) -> bool:
             return False
         return value == f"{uri.scheme}://{identity}"
     if uri.scheme == "galaris" and uri.netloc in {
-        "goal", "task", "agent", "topic", "text", "voice", "room", "voice_session"
+        "contact", "goal", "task", "agent", "topic", "text", "voice", "room", "voice_session"
     }:
         if uri.query or uri.fragment or not uri.path.startswith("/"):
             return False
@@ -171,6 +171,7 @@ EDITORIAL_CLASSES = {
     "galaris-media-pdf",
     "galaris-process-diagram",
     "galaris-agent-card",
+    "galaris-contact-card",
     "galaris-table-blue",
     "galaris-table-iris",
     "galaris-table-green",

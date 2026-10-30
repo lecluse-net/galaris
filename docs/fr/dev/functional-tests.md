@@ -9,6 +9,13 @@ déplacements et suppressions, oubli et pagination/recherche sur 501 fiches. Le 
 Les écritures et éditions contrôlent le JSON, les champs protégés, les coordonnées omises et
 le jeton de concurrence. `app/contact/tests/test_file_resource_concurrency.py` vérifie, dans
 deux transactions indépendantes, qu'une seule écriture d'un même snapshot est acceptée.
+Le scénario Contacts de `front/browser-tests/file-browser.spec.mjs` ouvre désormais la modale
+d'édition existante, vérifie l'enregistrement, la réouverture et le changement d'agent sur
+mobile et bureau ; l'ancienne ouverture JSON est remplacée par ce contrat métier.
+`front/browser-tests/contact-references.spec.mjs` couvre insertion depuis l'explorateur,
+conversion lien/carte, corps enregistré sans coordonnées ni DOM de rendu, consultation,
+édition, révocation, reprise après refus et vérification d'accès avant export. L'API de lecture
+d'une fiche vérifie aussi les refus Contacts et le périmètre des agents dans le parcours HTTP.
 
 Ce catalogue indique où chercher une preuve existante avant de modifier un contrat.
 Il décrit les garanties couvertes par les suites ; leur présence ne signifie pas qu'elles

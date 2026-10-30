@@ -9,6 +9,13 @@ cover `CONTACT_ACCESS`/`CONTACT_EDIT`, denial with Files privileges alone and ma
 Writes and edits check JSON, protected fields, omitted coordinates and the concurrency token.
 `app/contact/tests/test_file_resource_concurrency.py` uses independent transactions to prove
 that only one writer of the same snapshot succeeds.
+The Contacts scenario in `front/browser-tests/file-browser.spec.mjs` now opens the existing
+edit dialog, saves, reopens and changes Agent on mobile and desktop; this domain contract
+replaces the former generic JSON opening assertion.
+`front/browser-tests/contact-references.spec.mjs` covers browser insertion, link/card conversion,
+saved content without coordinates or rendering DOM, reading, editing, revocation, retry after
+denial and access rechecks before export. The single-card read API also verifies denied
+Contacts access and managed Agent scope in the HTTP journey.
 
 ## Agent renaming of Documents and Datasets
 

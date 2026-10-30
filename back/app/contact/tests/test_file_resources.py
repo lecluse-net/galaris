@@ -185,6 +185,16 @@ async def test_contact_browser_http_requires_domain_rights_and_managed_owner(cli
         uri, foreign_uri = [f"galaris://contact/{contact.memory_item_id}" for contact in contacts]
 
     base = "/api/file-share/browser/"
+    contact_url = f"/api/contacts/{contacts[0].memory_item_id}"
+    assert (await client.get(contact_url)).status_code == 401
+    assert (await client.get(contact_url, headers=headers[1])).status_code == 403
+    assert (await client.get(f"/api/contacts/{contacts[1].memory_item_id}", headers=headers[0])).status_code == 404
+    assert (await client.get(f"/api/contacts/{uuid4()}", headers=headers[0])).status_code == 404
+    for allowed in (headers[0], headers[2]):
+        response = await client.get(contact_url, headers=allowed)
+        assert response.status_code == 200, response.text
+        assert response.json()["memory_item_id"] == str(contacts[0].memory_item_id)
+        assert response.json()["display_name"] == "Synthetic Contact 0"
     params = {"agent_id": owner, "uri": "galaris://contact/"}
     assert (await client.get(base + "entries", params=params)).status_code == 401
     root = await client.get(base + "entries", params={**params, "uri": "galaris://"}, headers=headers[0])

@@ -76,6 +76,16 @@ Dans **Galaris → Goals**, cliquez sur un objectif pour ouvrir directement sa m
 Les cycles ne sont pas affichés dans les listes ni dans la recherche de Fichiers ;
 consultez-les depuis le Goal. Les objectifs sans cycle restent accessibles.
 
+Dans **Galaris → Contacts**, retrouvez le carnet privé de l’agent sélectionné.
+Chaque fiche porte le nom du contact. Un clic ouvre sa modale habituelle : vous pouvez
+modifier son nom, ses téléphones et ses adresses avec `CONTACT_EDIT` ; `CONTACT_ACCESS`
+permet de consulter les mêmes champs en lecture seule. La recherche porte sur les noms et coordonnées.
+Cette consultation exige `CONTACT_ACCESS` ou `CONTACT_EDIT`, en plus de l’accès à Fichiers.
+Dans un document Texte, **Lien Galaris** permet de sélectionner ce contact dans le même
+explorateur et d’insérer sa carte dédiée. Un lien Contact existant peut aussi être converti
+avec **Afficher la carte** dans son menu contextuel. Le clic sur la carte ouvre la même modale.
+Le document conserve le nom et l’URI ; les coordonnées sont chargées avec les droits du
+lecteur, sans être copiées dans son contenu. Partager le document ne partage pas le carnet.
 Les agents retrouvent leurs contacts avec `file_list` ou `file_search` sous
 `galaris://contact/`. Les URI `galaris://contact/<uuid>` permettent la lecture, l’export
 et la modification par les outils File Sharing de l’agent propriétaire. Après `file_read`

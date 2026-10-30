@@ -27,12 +27,20 @@ The native `galaris://contact/` collection exposes the selected Agent's canonica
 as JSON snapshots addressed by their contact UUID. Contact owns directory queries,
 serialization and owner filtering; the composition root binds its public facade to a File
 Sharing port for list, search, info, read and export, avoiding a dependency cycle through Contacts.
-Browser access requires `CONTACT_ACCESS` or `CONTACT_EDIT` and a managed Agent.
-Agent File Sharing tools may edit only `display_name` and `coordinates` through
-`file_write`/`file_edit`, with a mandatory `expected_etag` obtained from `file_read`/`file_info`.
-The Contact writer validates the owner and compares the token under a row lock before
-reusing Contact updates. Full snapshots preserve all identities and metadata; partial JSON
-preserves omitted fields and coordinate lists. Merge, split and forgetting remain dedicated
+The browser requires `CONTACT_ACCESS` or `CONTACT_EDIT` and a
+managed Agent, independently of generic file privileges. Entries display contact names and
+open the existing Contact edit dialog, read-only without `CONTACT_EDIT`. The same exact
+URI participates in the rich-resource system. Its dedicated `galaris-contact-card` persists
+only a name and URI; a rendering contribution reads current coordinates through the
+Contact API under the reader's own domain privileges and management scope. Saving a Contact
+refreshes mounted cards; session and privilege changes discard old reads. Export rechecks
+source access before capturing coordinates into a portable static rendering. The document
+does not own, copy or grant access to the address book.
+Agent File Sharing tools may edit only `display_name` and
+`coordinates` through `file_write`/`file_edit`, with a mandatory `expected_etag` obtained
+from `file_read`/`file_info`. The Contact writer validates the owner and compares the token
+under a row lock before reusing Contact updates. Full snapshots preserve all identities and
+metadata; partial JSON preserves omitted fields. Merge, split and forgetting remain dedicated
 Contact-domain actions. Other native business snapshots remain read-only.
 
 ### Progressive video playback (2026-10-18)

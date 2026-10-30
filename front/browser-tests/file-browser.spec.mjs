@@ -1,5 +1,5 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
-import { document, goal as goalFixture } from './data.mjs'
+import { document, goal as goalFixture, contactResource } from './data.mjs'
 
 const component = 'app/file_share/pages/index.vue'
 const routeComponent = 'test-support/browser/FileRouteHarness.vue'
@@ -59,6 +59,57 @@ async function setup(page) {
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', schemes)
   await page.route('**/api/file-share/browser/thumbnail?*', route => route.fulfill({ status: 404 }))
 }
+
+// The Contact modal replaces the former generic JSON opening contract.
+for (const width of [1440, 390]) test(`Contacts open their editor, save and close on agent change at ${width}px`, async ({ page }, testInfo) => {
+  await setup(page)
+  await page.setViewportSize({ width, height: 1000 })
+  const collection = { ...entry('galaris://contact/', 'Contacts', true), label_code: 'collection_contact' }
+  const contact = { ...entry('galaris://contact/00000000-0000-4000-8000-000000000741', 'Synthetic Person'),
+    media_type: 'application/vnd.galaris.contact+json', capabilities: ['copy', 'info', 'read'] }
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [schemes[1]])
+  await page.route('**/api/file-share/browser/entries?*', route => {
+    const params = new URL(route.request().url()).searchParams
+    const uri = params.get('uri')
+    return route.fulfill({ json: pageOf(uri, params.get('agent_id') === '8' ? [] : uri === 'galaris://' ? [collection] : [contact]) })
+  })
+  await jsonRoute(page, '**/api/file-share/browser/info?*', contact)
+  let saved = structuredClone(contactResource)
+  const writes = []
+  await jsonRoute(page, '**/api/contacts/defaults', { country: 'FR' })
+  await page.route(`**/api/contacts/${contactResource.memory_item_id}`, route => {
+    if (route.request().method() === 'PATCH') {
+      const data = route.request().postDataJSON(); writes.push(data)
+      saved = { ...saved, ...data }; contact.name = saved.display_name
+    }
+    return route.fulfill({ json: saved })
+  })
+  await mount(page, routeComponent, { route: '/files?agent_id=7', browserHistory: true, privileges: ['FILE_ACCESS', 'CONTACT_EDIT'] })
+  await page.getByRole('button', { name: 'Open Galaris', exact: true }).click()
+  await page.getByRole('button', { name: 'Open Contacts', exact: true }).click()
+  const person = page.getByRole('button', { name: 'Open Synthetic Person', exact: true })
+  await person.focus()
+  await page.keyboard.press('Enter')
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('synthetic@example.org')
+  await expect(dialog.getByLabel('Phone number', { exact: true })).toHaveValue('+33 1 23 45 67 89')
+  await expect(dialog.getByLabel('City', { exact: true })).toHaveValue('Synthetic City')
+  await page.screenshot({ path: testInfo.outputPath('contact-preview-light.png'), fullPage: true })
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: testInfo.outputPath('contact-preview-dark.png'), fullPage: true })
+  await dialog.getByLabel('Display name', { exact: true }).fill('Renamed Person')
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes).toEqual([{ display_name: 'Renamed Person' }])
+  const renamed = page.getByRole('button', { name: 'Open Renamed Person', exact: true })
+  await renamed.click()
+  await expect(dialog.getByLabel('Display name', { exact: true })).toHaveValue('Renamed Person')
+  await expect(dialog).toContainText('synthetic@example.org')
+  await page.evaluate(() => window.history.pushState({}, '', '/files?agent_id=8'))
+  await page.evaluate(() => window.dispatchEvent(new PopStateEvent('popstate')))
+  await expect(dialog).toHaveCount(0)
+  await expect(renamed).toHaveCount(0)
+})
 async function selectAgent(page, name) {
   if (!await page.getByRole('combobox').count()) {
     await page.getByRole('button', { name: `Browse files for ${name}`, exact: true }).click()

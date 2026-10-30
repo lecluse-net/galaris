@@ -212,7 +212,7 @@ def test_links_reject_unsupported_identity(uri):
     assert not valid_link(uri)
 
 
-@pytest.mark.parametrize("scheme", ["document", "data", "galaris://topic", "galaris://text", "galaris://voice", "galaris://room", "galaris://voice_session"])
+@pytest.mark.parametrize("scheme", ["document", "data", "galaris://contact", "galaris://topic", "galaris://text", "galaris://voice", "galaris://room", "galaris://voice_session"])
 def test_editorial_references_preserve_distinct_resource_schemes(scheme):
     uri = f"{scheme}/{DOCUMENT}" if scheme.startswith("galaris://") else f"{scheme}://{DOCUMENT}"
     content = f'<p><a href="{uri}">Synthetic resource</a></p>'
@@ -223,7 +223,7 @@ def test_editorial_references_preserve_distinct_resource_schemes(scheme):
         assert not valid_link(uri + suffix)
 
 
-@pytest.mark.parametrize(("uri", "card_class"), [("galaris://processes/synthetic_process", "galaris-process-diagram"), (f"galaris://processes/runs/{DOCUMENT}", "galaris-process-diagram"), ("galaris://agent/7", "galaris-agent-card"), (f"document://folders/{DOCUMENT}/", "galaris-link-card")])
+@pytest.mark.parametrize(("uri", "card_class"), [("galaris://processes/synthetic_process", "galaris-process-diagram"), (f"galaris://processes/runs/{DOCUMENT}", "galaris-process-diagram"), ("galaris://agent/7", "galaris-agent-card"), (f"galaris://contact/{DOCUMENT}", "galaris-contact-card"), (f"document://folders/{DOCUMENT}/", "galaris-link-card")])
 def test_resource_references_keep_the_card_choice_and_validate_the_exact_target(uri, card_class):
     html = f'<blockquote class="galaris-link-card {card_class}"><p><a href="{uri}">Synthetic resource</a></p></blockquote>'
     assert valid_link(uri)

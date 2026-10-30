@@ -397,6 +397,11 @@ clear them. For example, using the exact URI and token returned by discovery and
 To clear only phone numbers, write `{"coordinates":{"phone_numbers":[]}}`; postal addresses
 remain unchanged. A stale token is rejected: read again and reconcile before retrying.
 Delete, append and move remain unavailable.
+To cite a contact in a Text document, use its discovered canonical URI in
+`<blockquote class="galaris-link-card galaris-contact-card"><p><a href="galaris://contact/UUID">Escaped name</a></p></blockquote>`.
+Persist only the name and URI. The document reader loads identities, phone numbers and
+postal addresses under their own Contact privileges and managed-agent scope; inserting or
+sharing the card never grants directory access. Clicking opens the Contact dialog.
 Never invent a scheme or attachment UUID; call `file_schemes` or list the collection first.
 Discover shared document folders with `file_list("document://folders/")`. Each folder has a
 stable `document://folders/<uuid>/` URI. When the user names a folder, find it with

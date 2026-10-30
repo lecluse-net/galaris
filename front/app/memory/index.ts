@@ -1,2 +1,5 @@
 export { memoryService } from './services/memoryService'
 export type { MemoryItem, MemoryItemDetail } from './types'
+export { default as ContactResourceDialog } from './components/ContactResourceDialog.vue'
+export { default as ContactResourceCard } from './components/ContactResourceCard.vue'
+export { contactResourceId } from './contactResource'

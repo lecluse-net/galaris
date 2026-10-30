@@ -16192,7 +16192,7 @@
         "declared_path": "/contacts/{contact_item_id}",
         "file": "back/app/contact/router.py",
         "handler": "forget_contact",
-        "line": 129,
+        "line": 142,
         "method": "DELETE",
         "module": "app.contact"
       },
@@ -16200,8 +16200,17 @@
         "authorized": true,
         "declared_path": "/contacts/{contact_item_id}",
         "file": "back/app/contact/router.py",
-        "handler": "update_contact",
+        "handler": "read_contact",
         "line": 94,
+        "method": "GET",
+        "module": "app.contact"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/contacts/{contact_item_id}",
+        "file": "back/app/contact/router.py",
+        "handler": "update_contact",
+        "line": 107,
         "method": "PATCH",
         "module": "app.contact"
       },
@@ -16210,7 +16219,7 @@
         "declared_path": "/contacts/{source_contact_item_id}/merge",
         "file": "back/app/contact/router.py",
         "handler": "merge_contacts",
-        "line": 109,
+        "line": 122,
         "method": "POST",
         "module": "app.contact"
       },
@@ -22261,7 +22270,8 @@
           "front/app/memory/pages/index.vue",
           "front/app/memory/richContent.ts",
           "front/app/memory/services/contactService.ts",
-          "front/app/memory/services/memoryService.ts"
+          "front/app/memory/services/memoryService.ts",
+          "front/app/memory/useContactResource.ts"
         ],
         "source": "app/memory",
         "target": "core/api"
@@ -22271,7 +22281,8 @@
           "front/app/memory/components/MemoryDreamActions.vue",
           "front/app/memory/navigation.ts",
           "front/app/memory/pages/contacts.vue",
-          "front/app/memory/pages/index.vue"
+          "front/app/memory/pages/index.vue",
+          "front/app/memory/useContactResource.ts"
         ],
         "source": "app/memory",
         "target": "core/authorize"
@@ -22289,6 +22300,8 @@
         "files": [
           "front/app/memory/components/ContactCreateDialog.vue",
           "front/app/memory/components/ContactEditDialog.vue",
+          "front/app/memory/components/ContactResourceCard.vue",
+          "front/app/memory/components/ContactResourceDialog.vue",
           "front/app/memory/components/MemoryAttachmentButton.vue",
           "front/app/memory/components/MemoryContentPreviews.vue",
           "front/app/memory/components/MemoryGraph.vue",

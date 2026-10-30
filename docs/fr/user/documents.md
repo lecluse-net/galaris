@@ -84,6 +84,15 @@ depuis sa dernière génération : les petites modifications se cumulent. La mis
 seule ne compte pas. Un résumé saisi manuellement est préservé. Les deux seuils sont réglables
 dans les paramètres Dream et s'appliquent aussi aux jeux de données.
 
+## Insérer une carte Contact
+
+Pour insérer une fiche Contact dans le contenu, utilisez **Lien Galaris**, puis
+**Ressources Galaris → Contacts** dans l’explorateur. Sélectionnez le contact et validez.
+La carte affiche ses coordonnées selon les droits de chaque lecteur et ouvre sa modale
+au clic. Un lien Contact existant peut devenir une carte via **Afficher la carte** dans
+son menu contextuel ; **Afficher l’URL** rétablit le lien. Le partage du document ne donne
+aucun accès supplémentaire au carnet de l’agent. Voir aussi [Fichiers](files.md).
+
 ## Rédiger avec un agent
 
 L'icône **Conversation**, dans l'en-tête de la bibliothèque à côté du bouton d'affichage de celle-ci,

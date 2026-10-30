@@ -1,5 +1,6 @@
 <template>
-  <ProcessPreview v-if="target" ref="process" :uri="uri" :agent-id="agentId" inline />
+  <ContactResourceCard v-if="contactId" ref="contactCard" :contact-id="contactId" />
+  <ProcessPreview v-else-if="target" ref="process" :uri="uri" :agent-id="agentId" inline />
   <div v-else-if="agent !== null" ref="avatar" class="agent-citation-avatar"><ResourceThumbnail :uri="uri" :title="title" /></div>
   <div v-else-if="folderId" ref="folderThumbnail" class="folder-citation-thumbnail"><ResourceThumbnail :uri="uri" :agent-id="agentId" :title="title" /></div>
   <div v-else-if="documentId" class="document-citation-preview">
@@ -14,8 +15,12 @@ import { useI18n } from 'vue-i18n'
 import { defineAsyncView, ResourceThumbnail, WorkingDocumentThumbnail, documentIdFromResourceUri, documentFolderId, captureElementRendering, type RegisterDocumentCapture, type RenderedDocumentCapture } from '@/core/util'
 import { agentResourceId } from '@/app/agent'
 import { processResourceTarget } from '@/app/process/interface'
+import { contactResourceId } from '@/app/memory'
 const { uri, agentId = null, title = '', registerSnapshot } = defineProps<{ uri: string; agentId?: number | null; title?: string; registerSnapshot?: RegisterDocumentCapture }>()
 const ProcessPreview = defineAsyncView(async () => (await import('@/app/process')).ProcessPreview)
+const ContactResourceCard = defineAsyncView(async () => (await import('@/app/memory')).ContactResourceCard)
+const contactId = computed(() => contactResourceId(uri))
+const contactCard = useTemplateRef<{ capture: RenderedDocumentCapture }>('contactCard')
 const target = computed(() => processResourceTarget(uri))
 const agent = computed(() => agentResourceId(uri))
 const documentId = computed(() => documentIdFromResourceUri(uri))
@@ -30,6 +35,7 @@ async function copyIdentifier(): Promise<void> {
 }
 const process = useTemplateRef<{ capture: RenderedDocumentCapture }>('process'), avatar = useTemplateRef('avatar')
 async function capture(signal: AbortSignal): Promise<string> {
+  if (contactId.value && contactCard.value) return contactCard.value.capture(signal)
   if (folderId.value && folderThumbnail.value) return captureElementRendering(folderThumbnail.value, signal)
   if (target.value && process.value) return process.value.capture(signal)
   if (documentId.value && documentThumbnail.value) return captureElementRendering(documentThumbnail.value, signal)

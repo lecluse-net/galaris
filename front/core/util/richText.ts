@@ -24,7 +24,7 @@ export async function richLinkPreviewImage(uri: string, agentId: number | null, 
   return await contributions.find(value => value.previewImage)?.previewImage?.(uri, agentId, signal) ?? null
 }
 const uuid = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-const internal = new RegExp(`^(?:(?:document|memory|data)://${uuid}|document://folders/${uuid}/?|galaris://(?:goal|task|topic|text|voice|room|voice_session)/${uuid}|galaris://agent/[1-9][0-9]*|galaris://process(?:es)?/[A-Za-z_][A-Za-z0-9_.-]{0,254}|galaris://processes/runs/${uuid})$`)
+const internal = new RegExp(`^(?:(?:document|memory|data)://${uuid}|document://folders/${uuid}/?|galaris://(?:contact|goal|task|topic|text|voice|room|voice_session)/${uuid}|galaris://agent/[1-9][0-9]*|galaris://process(?:es)?/[A-Za-z_][A-Za-z0-9_.-]{0,254}|galaris://processes/runs/${uuid})$`)
 const attachment = new RegExp(`^document://(${uuid})/attachments/(${uuid})$`)
 export function attachmentReference(uri: string): [string, string] | null {
   const match = attachment.exec(uri)

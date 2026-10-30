@@ -218,6 +218,7 @@
     <ContactCreateDialog v-if="createDialog && canEdit && selectedAgentId !== null"
       :agent-id="selectedAgentId" @close="createDialog = false" @created="onContactCreated" />
 
+    <ContactResourceDialog v-if="referencedContact" :key="referencedContact" :contact-id="referencedContact" @close="closeReferencedContact" @changed="load" />
     <ContactEditDialog
       v-if="contactToEdit && canEdit"
       :key="contactToEdit.memory_item_id"
@@ -313,6 +314,7 @@
 import { navigationIcon } from '@/core/navigation'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import { useQuasar, type QTableProps } from 'quasar'
 import { apiErrorDetail } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -320,10 +322,17 @@ import { PageHeader } from '@/core/util'
 import { AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
 import { contactService } from '../services/contactService'
 import ContactEditDialog from '../components/ContactEditDialog.vue'
+import ContactResourceDialog from '../components/ContactResourceDialog.vue'
+import { contactResourceId } from '../contactResource'
 import ContactCreateDialog from '../components/ContactCreateDialog.vue'
 import type { Contact, ContactIdentity } from '../types'
 
 const { t, locale } = useI18n()
+const route = useRoute(), router = useRouter()
+const referencedContact = computed(() => typeof route.query.contact_id === 'string' ? contactResourceId(`galaris://contact/${route.query.contact_id}`) : null)
+function closeReferencedContact(): void {
+  void router.replace({ path: route.path, query: { ...route.query, contact_id: undefined } })
+}
 const $q = useQuasar()
 const agents = ref<AgentSelectionOption[]>([])
 const agentsLoading = ref(false)

@@ -51,6 +51,7 @@ const displayName = computed(() => executionResourceLabel(entry, locale.value) ?
 let request: AbortController | undefined
 let observer: IntersectionObserver | undefined
 const icon = computed(() => {
+  if (entry.uri.startsWith('galaris://contact/')) return 'contact_page'
   const target = resourceTarget(entry, agentId)
   if (target) return ({ goal: 'flag_circle', task: 'task_alt', round: 'forum', voice: 'record_voice_over', document: 'description', dataset: 'data_object', memory: 'memory' })[target.kind] || 'description'
   const kind = browserResourceKind(entry.media_type, entry.name)

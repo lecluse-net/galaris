@@ -19,6 +19,15 @@ Une carte de répertoire conserve un lien `document://folders/<uuid>/` dans
 `blockquote.galaris-link-card`. Son icône est chargée au rendu avec les droits du lecteur ;
 aucune image ni copie de ses documents n'est enregistrée dans le HTML.
 
+Une carte Contact conserve uniquement son nom et son URI `galaris://contact/<uuid>` dans
+`blockquote.galaris-link-card.galaris-contact-card`. L'insertion depuis **Lien Galaris** et la
+conversion d'un lien produisent le même HTML. Les identités, téléphones et adresses sont
+chargés au rendu par l'API Contacts avec `CONTACT_ACCESS`/`CONTACT_EDIT` et le périmètre du
+lecteur ; aucun partage documentaire ne donne accès au carnet. Le clic ouvre la modale
+Contact existante, modifiable avec `CONTACT_EDIT`. Les changements de session ou de droits
+effacent les données chargées. L'export capture un rendu statique après une nouvelle
+vérification d'accès ; les coordonnées n'entrent jamais dans le corps éditorial enregistré.
+
 La décision [0080](../../../project/decisions/0080-editorial-html.md) définit le périmètre.
 Pour les contenus éditoriaux et les documents de type `html`, le corps autoritaire est un fragment UTF-8 `text/html`, `content_profile_version: 1`.
 `rich-text` couvre les six catégories Memory, les objectifs et profils ; `document` ajoute
