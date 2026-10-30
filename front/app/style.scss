@@ -106,6 +106,21 @@ body .q-tooltip :is(.text-caption, .text-overline, small) {
     flex-shrink: 0;
 }
 
+/* Share the job-description footer surface across modal action bars. */
+.galaris-dialog-actions,
+:is(.galaris-dialog-card, .galaris-dialog-form) > .q-card__actions,
+.q-dialog__inner > .q-card > .q-card__actions {
+    background: var(--solaire-gray-light);
+}
+
+.body--dark {
+    .galaris-dialog-actions,
+    :is(.galaris-dialog-card, .galaris-dialog-form) > .q-card__actions,
+    .q-dialog__inner > .q-card > .q-card__actions {
+        background: var(--solaire-gray-dark);
+    }
+}
+
 /* One title bar for forms, details, confirmations and fullscreen viewers. */
 .galaris-dialog-title {
     display: flex;

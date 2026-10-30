@@ -142,7 +142,7 @@
                 </template>
             </q-select>
 
-            <div class="assignment-dialog-actions q-mt-md">
+            <div class="assignment-dialog-actions galaris-dialog-actions q-mt-md q-pa-md">
               <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
               <q-btn v-if="canManage" :label="$t('common.create')" type="submit" color="primary" />
             </div>

@@ -129,7 +129,7 @@
               :rules="[val => val && val.length > 0 || $t('authorize.privilegeLists.nameRequired')]"
               autofocus
             />
-            <div class="privilege-dialog-actions q-mt-md">
+            <div class="privilege-dialog-actions galaris-dialog-actions q-mt-md q-pa-md">
               <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
               <q-btn v-if="canManage" :label="isEdit ? $t('common.save') : $t('common.create')" type="submit" color="primary" />
             </div>

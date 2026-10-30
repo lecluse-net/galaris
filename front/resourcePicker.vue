@@ -20,7 +20,7 @@
       <q-banner v-if="error" role="alert">{{ error }}</q-banner>
       <AgentFileBrowser v-if="selectedAgent !== null" ref="browser" :key="selectedAgent" v-model:selected="selected" v-model:query="query" :agent-id="selectedAgent" :inert="busy || undefined" selection external-controls @confirm="confirm" @previewing="previewing = $event" />
       <q-card-section v-else class="col">{{ t('files.chooseAgent') }}</q-card-section>
-      <footer class="picker-footer">
+      <footer class="picker-footer galaris-dialog-actions">
       <q-separator />
       <div class="picker-footer-content">
       <div class="picker-selection" :aria-label="t('files.selection')">

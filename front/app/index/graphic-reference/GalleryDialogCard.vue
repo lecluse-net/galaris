@@ -1,16 +1,16 @@
 <template>
-  <q-card class="gallery-dialog-card">
+  <q-card class="gallery-dialog-card galaris-dialog-card">
     <q-card-section class="galaris-dialog-title row items-center no-wrap">
       <span class="text-h6">{{ t('graphicReference.modalTitle') }}</span><q-space />
       <q-btn flat round dense icon="close" :aria-label="t('graphicReference.close')" @click="emit('close')" />
     </q-card-section>
-    <q-card-section>
+    <q-card-section class="galaris-dialog-body">
       <p>{{ t('graphicReference.modalText') }}</p>
       <q-input v-model="name" outlined dense :label="t('graphicReference.name')" />
     </q-card-section>
     <q-separator />
-    <q-card-actions align="right">
-      <q-btn outline :label="t('graphicReference.cancel')" @click="emit('close')" />
+    <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+      <q-btn outline color="primary" :label="t('graphicReference.cancel')" @click="emit('close')" />
       <q-btn color="primary" :label="t('graphicReference.save')" @click="emit('save')" />
     </q-card-actions>
   </q-card>

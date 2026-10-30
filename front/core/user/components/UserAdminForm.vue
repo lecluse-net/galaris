@@ -51,7 +51,7 @@
             color="green"
           />
 
-          <div class="user-admin-actions">
+          <div class="user-admin-actions galaris-dialog-actions q-pa-md">
             <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
             <q-btn v-if="canSubmit" :label="isEdit ? $t('common.edit') : $t('common.create')" type="submit" color="primary" :loading="loading" />
           </div>

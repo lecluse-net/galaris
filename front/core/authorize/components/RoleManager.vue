@@ -114,7 +114,7 @@
               v-model="editedItem.display_name"
               :label="$t('authorize.roles.displayName')"
             />
-            <div class="role-dialog-actions q-mt-md">
+            <div class="role-dialog-actions galaris-dialog-actions q-mt-md q-pa-md">
               <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
               <q-btn v-if="canManage" :label="isEdit ? $t('common.save') : $t('common.create')" type="submit" color="primary" />
             </div>
@@ -172,7 +172,7 @@
             </div>
         </q-card-section>
 
-        <q-card-section class="role-dialog-actions">
+        <q-card-section class="role-dialog-actions galaris-dialog-actions">
             <q-btn flat :label="$t('common.close')" color="primary" v-close-popup />
             <q-btn v-if="canManage" flat :label="$t('common.save')" color="primary" @click="savePrivileges" />
         </q-card-section>

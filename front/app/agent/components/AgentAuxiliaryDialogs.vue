@@ -79,7 +79,7 @@
             map-options
             :rules="[value => !!value || $t('agent.genderRule')]"
           />
-          <div class="row justify-end q-mt-md q-gutter-sm">
+          <div class="galaris-dialog-actions row justify-end q-mt-md q-gutter-sm q-pa-md">
             <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
             <q-btn
               v-if="canEditCatalog"
@@ -120,7 +120,7 @@
             filled
             :hint="$t('agent.orderHint')"
           />
-          <div class="row justify-end q-mt-md q-gutter-sm">
+          <div class="galaris-dialog-actions row justify-end q-mt-md q-gutter-sm q-pa-md">
             <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
             <q-btn
               v-if="canEditCatalog"

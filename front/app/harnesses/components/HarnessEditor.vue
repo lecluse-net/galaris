@@ -165,7 +165,7 @@
           {{ entry.last_error }}
         </q-banner>
 
-        <div class="row items-center q-gutter-sm" :class="{ 'galaris-dialog-actions': embedded }">
+        <div class="row items-center q-gutter-sm" :class="{ 'galaris-dialog-actions q-pa-md': embedded }">
           <q-space />
           <q-btn v-if="embedded" flat :label="t('common.cancel')" @click="emit('close')" />
           <q-btn

@@ -406,7 +406,7 @@
                 </q-card-section>
               </q-card>
 
-              <div class="row justify-end q-mt-md q-gutter-sm">
+              <div class="galaris-dialog-actions row justify-end q-mt-md q-gutter-sm q-pa-md">
                 <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
                 <q-btn v-if="canSaveAgent" :label="$t('common.save')" type="submit" color="primary" :loading="agentStore.loading || harnessChangePending" />
               </div>
@@ -555,7 +555,7 @@
                 </q-banner>
               </template>
 
-              <div class="row justify-end q-gutter-x-sm">
+              <div class="galaris-dialog-actions row justify-end q-gutter-x-sm q-pa-md">
                 <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
                 <q-btn
                   v-if="canSaveAgent"
@@ -676,7 +676,7 @@
                 </template>
               </q-table>
 
-              <div class="row justify-end q-mt-md">
+              <div class="galaris-dialog-actions row justify-end q-mt-md q-pa-md">
                 <q-btn :label="$t('common.close')" color="grey" flat v-close-popup />
               </div>
             </div>
@@ -831,7 +831,7 @@
           />
         </q-card-section>
 
-        <q-card-actions align="right" class="q-pa-md bg-grey-2 galaris-dialog-actions">
+        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
           <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
           <q-btn
             v-if="richTextAgent && canManageAgent(richTextAgent)"
