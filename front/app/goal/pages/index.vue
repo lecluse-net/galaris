@@ -1059,9 +1059,6 @@
                       max-height="45vh"
                       :aria-label="t('goal.description')"
                     />
-                    <div class="text-caption text-grey-7 q-mt-xs">
-                      {{ t('goal.descriptionHtmlHint') }}
-                    </div>
                   </div>
                 </q-card-section>
               </q-card>
