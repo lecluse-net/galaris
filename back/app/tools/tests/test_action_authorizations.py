@@ -1,6 +1,7 @@
 """Approval protects the actual dispatch across retries and concurrent decisions."""
 
 import asyncio
+import json
 from unittest.mock import AsyncMock
 from dataclasses import replace
 from uuid import UUID, uuid4
@@ -1295,7 +1296,8 @@ def test_every_declared_native_function_has_explicit_approval_metadata():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("changed", [False, True])
 @pytest.mark.parametrize("remember", [False, True])
-async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, tmp_path, monkeypatch, changed, remember):
+@pytest.mark.parametrize("internal_harness", [False, True])
+async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, tmp_path, monkeypatch, changed, remember, internal_harness):
     from fastmcp import Client
     from app.file_share import resource_service
     from app.file_share.tests.local_file_transport import TemporaryFileTransport
@@ -1316,6 +1318,60 @@ async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, 
     arguments = {"source": "console://source.txt", "destination": "console://destination.txt", "unused": "private"}
     operation = str(uuid4())
     meta = {"galaris.execution/v1": {"operation_id": operation}}
+    if internal_harness:
+        from types import SimpleNamespace
+        from pydantic_ai import ApprovalRequired
+        from pydantic_ai.messages import ModelResponse, ToolCallPart
+        from app.agent.contracts import AgentRunRequest, AgentRunControl, AgentSnapshot, ResolvedModel
+        from app.harness.checkpoint import HarnessRunCheckpoint, wrap_toolsets
+        from app.harness.mcp_toolset import ExecutionEvidenceClient
+
+        save = AsyncMock()
+        request = AgentRunRequest(run_id=uuid4(), task_id=None,
+            agent=AgentSnapshot(id=action.agent_id, code="synthetic", first_name="Synthetic",
+                last_name="Agent", driver_code="internal"),
+            driver_code="internal", effort="standard", objective="Copy an approved resource",
+            model=ResolvedModel(id=1, code="synthetic", model_name="synthetic/model", label="Synthetic",
+                requested_effort="standard"), control=AgentRunControl(save_checkpoint=save))
+        journal = HarnessRunCheckpoint(request)
+        history = [ModelResponse(parts=[ToolCallPart("file_copy", arguments, "copy-call")])]
+        context = SimpleNamespace(messages=history, tool_call_id="copy-call")
+        async with ExecutionEvidenceClient(server) as client:
+            async def dispatch(name, values, _context, _tool):
+                return (await client.call_tool(name, values)).data
+
+            boundary = SimpleNamespace(call_tool=AsyncMock(side_effect=dispatch))
+            wrapped = wrap_toolsets([boundary], journal)[0]
+            with pytest.raises(ApprovalRequired):
+                await wrapped.call_tool("file_copy", arguments, context, None)
+            checkpoint = save.await_args.args[0]
+            identifier = UUID(checkpoint.data["effects"][0]["authorization_request_id"])
+            continuation = checkpoint.data["effects"][0]["authorization_continuation"]
+            assert continuation and continuation not in json.dumps(checkpoint.data["message_history"])
+            if changed:
+                source.write_text("changed source")
+            async with get_db_session() as db:
+                row = await db.get(ActionAuthorization, identifier)
+                assert await answer_action(identifier, user_id=row.approver_user_id, approved=True, remember=remember)
+            resumed = HarnessRunCheckpoint(replace(request, resume_checkpoint=checkpoint))
+            await resumed.prepare_resume()
+            approvals = await resumed.deferred_results()
+            assert approvals is not None and approvals.approvals["copy-call"] is True
+            context.messages = resumed.restored_messages()
+            result = await wrap_toolsets([boundary], resumed)[0].call_tool("file_copy", arguments, context, None)
+            destination = transport.resolve_path("destination.txt")
+            assert destination.exists() is (not changed)
+            if changed:
+                assert result["authorization_status"] == "invalidated"
+            else:
+                assert destination.read_text() == "approved source"
+            assert "authorization_continuation" not in save.await_args.args[0].data["effects"][0]
+            # A later recovery must reuse the receipt, never dispatch the copy twice.
+            recovered = HarnessRunCheckpoint(replace(request, resume_checkpoint=save.await_args.args[0]))
+            await recovered.prepare_resume()
+            await wrap_toolsets([boundary], recovered)[0].call_tool("file_copy", arguments, context, None)
+            assert boundary.call_tool.await_count == 2
+        return
     async with Client(server) as client:
         result = await client.call_tool("file_copy", arguments, meta=meta, raise_on_error=False)
         control = result.meta["galaris.authorization/v1"]

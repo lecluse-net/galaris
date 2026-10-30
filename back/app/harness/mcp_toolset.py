@@ -33,11 +33,15 @@ class ExecutionEvidenceClient(Client[Any]):
     async def call_tool(
         self, name: str, arguments: dict[str, Any] | None = None, **kwargs: Any
     ) -> Any:
+        from app.tools.facade import AUTHORIZATION_META_KEY, AuthorizationRequired, AuthorizationClosed
+
         execution = current_tool_execution()
         if execution is not None:
             kwargs["meta"] = {
                 **(kwargs.get("meta") or {}),
                 EXECUTION_META_KEY: {"operation_id": str(execution.operation_id)},
+                **({AUTHORIZATION_META_KEY: {"continuation": execution.authorization_continuation}}
+                   if execution.authorization_continuation else {}),
             }
         kwargs["raise_on_error"] = False
         try:
@@ -63,7 +67,6 @@ class ExecutionEvidenceClient(Client[Any]):
                     "result": result.structured_content,
                     "argument_warning": cast(dict[str, Any], raw_meta)[TOOL_ARGUMENTS_META_KEY],
                 }
-        from app.tools.facade import AUTHORIZATION_META_KEY, AuthorizationRequired, AuthorizationClosed
         if isinstance(raw_meta, dict):
             control = cast(dict[str, Any], raw_meta).get(AUTHORIZATION_META_KEY)
             if isinstance(control, dict):
@@ -72,7 +75,8 @@ class ExecutionEvidenceClient(Client[Any]):
                 if execution is not None:
                     execution.outcome = "rejected"
                 if authorization_control.get("disposition") == "authorization_required":
-                    raise AuthorizationRequired(identifier)
+                    continuation = authorization_control.get("continuation")
+                    raise AuthorizationRequired(identifier, continuation if isinstance(continuation, str) else None)
                 raise AuthorizationClosed(identifier, str(authorization_control.get("status") or "invalidated"))
         if execution is not None and isinstance(raw_meta, dict):
             raw_evidence: Any = cast(dict[str, Any], raw_meta).get(EXECUTION_META_KEY)

@@ -604,6 +604,44 @@ def test_terminal_diagnostics_distinguish_deadline_from_earlier_tool_failure() -
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("legacy_metadata", [False, True])
+async def test_terminal_diagnostics_prefer_structured_failure_to_partial_feedback(
+    monkeypatch: pytest.MonkeyPatch,
+    legacy_metadata: bool,
+) -> None:
+    reason = "Work remains blocked: selected_titles"
+    partial_feedback = "Four updates succeeded; one target remains blocked."
+    task = _task(
+        status=TaskStatus.ERROR,
+        execution_result={
+            "prompt": "Update selected titles",
+            "result": partial_feedback,
+            "success": False,
+            "failure": {"code": "runtime", "message": reason, "retry": "never"},
+            "metadata": {"failure_code": "WORK_BLOCKED", "failure_reason": reason}
+            if legacy_metadata else {},
+            "messages": [{"type": "tool", "tool_name": "file_rename",
+                "content": "An earlier rename was rejected", "success": False}],
+        },
+    )
+    attempt = SimpleNamespace(id=uuid4(), attempt_number=1, phase="DISPATCH",
+        status="ERROR", retryable=False, error=partial_feedback,
+        started_at=None, finished_at=None)
+    monkeypatch.setattr(task_mcp, "get_db", lambda: SimpleNamespace(
+        scalar=AsyncMock(side_effect=[attempt, None])))
+
+    diagnostics = await task_mcp._terminal_error_diagnostics(
+        task, task.get_execution_result(),
+    )
+
+    assert diagnostics["failure_reason"] == reason
+    assert diagnostics["failure_code"] == ("WORK_BLOCKED" if legacy_metadata else "runtime")
+    assert diagnostics["failure_source"] == (
+        "execution_metadata" if legacy_metadata else "execution_failure"
+    )
+
+
+@pytest.mark.asyncio
 async def test_terminal_diagnostics_never_hide_the_only_recorded_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

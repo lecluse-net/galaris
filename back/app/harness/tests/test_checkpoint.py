@@ -429,13 +429,22 @@ async def test_unfinished_effect_blocks_automatic_resume() -> None:
 
 
 @pytest.mark.asyncio
-async def test_recorded_tool_failure_does_not_block_resume_or_reexecute() -> None:
+@pytest.mark.parametrize("authorization_state", [
+    None, "denied", "invalidated", "expired", "executing", "completed", "failed", "outcome_unknown",
+    "unexpected password=synthetic-secret",
+])
+async def test_recorded_tool_failure_does_not_block_resume_or_reexecute(authorization_state: str | None) -> None:
     from app.tools.contracts import current_tool_execution
+    from app.tools.facade import AuthorizationClosed
+
+    request_id = uuid4()
 
     async def rejected(*_args):
         execution = current_tool_execution()
         assert execution is not None
         execution.outcome = "rejected"
+        if authorization_state is not None:
+            raise AuthorizationClosed(request_id, authorization_state)
         raise ModelRetry("command required")
 
     save = AsyncMock()
@@ -446,7 +455,17 @@ async def test_recorded_tool_failure_does_not_block_resume_or_reexecute() -> Non
     ctx = SimpleNamespace(messages=history, tool_call_id="call-1")
 
     failure = await toolset.call_tool("console_exec", {}, ctx, None)
-    assert failure["error"] == "command required"
+    if authorization_state is None:
+        assert failure["error"] == "command required"
+    else:
+        expected_state = "closed" if authorization_state.startswith("unexpected") else authorization_state
+        assert failure["authorization_status"] == expected_state
+        assert failure["authorization_request_id"] == str(request_id)
+        assert failure["code"] == "authorization_closed"
+        assert failure["retryable"] is False
+        assert expected_state in failure["error"]
+        assert "synthetic-secret" not in json.dumps(failure)
+        assert "Do not retry" in failure["instruction"]
     assert failure["outcome"] == "rejected"
 
     saved = cast(AgentRunCheckpoint, save.await_args.args[0])

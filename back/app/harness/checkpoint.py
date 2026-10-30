@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 from pydantic_ai import ModelRetry, ApprovalRequired, DeferredToolResults, ToolDenied
 from pydantic_ai.messages import ModelMessage
-from app.tools.facade import AuthorizationRequired, authorization_status
+from app.tools.facade import AuthorizationClosed, AuthorizationRequired, authorization_status
 from pydantic_core import to_jsonable_python
 from app.tools.contracts import ToolExecutionContext, tool_execution
 from .recovery_metrics import observe_recovery
@@ -53,6 +53,25 @@ def _tool_error_result(
             "Do not claim this action succeeded without evidence."
         ),
     }
+    if isinstance(error, AuthorizationClosed):
+        # Transport metadata is dynamic. Expose only the bounded authorization
+        # state, never arbitrary exception text or a continuation credential.
+        status = error.status if error.status in {
+            "denied", "expired", "invalidated", "executing", "completed", "failed", "outcome_unknown",
+        } else "closed"
+        result.update({
+            "code": "authorization_closed",
+            "authorization_status": status,
+            "authorization_request_id": str(error.request_id),
+            "retryable": False,
+            "error": f"Action authorization is {status}; this call was not dispatched.",
+            "instruction": (
+                "Do not retry this authorization by changing arguments or tools. "
+                "Inspect its status and the current resource state before requesting any new action; "
+                "an earlier dispatch may already have produced effects. "
+                "Continue independently authorized work and report any remaining blocker."
+            ),
+        })
     if outcome == "rejected" and scope_rejection is not None:
         # Only matching native execution evidence can supply this disposition.
         # Keep it in the durable receipt as well as the model-facing history.
@@ -595,13 +614,23 @@ class HarnessRunCheckpoint:
             observe_recovery("started", run_id=self.runtime_run_id, operation_id=effect_id)
         return effect_id
 
-    async def waiting_for_authorization(self, effect_id: str, request_id: UUID) -> None:
+    def authorization_continuation(self, effect_id: str) -> str | None:
+        """Return the private server token for this exact pending operation."""
+        value = next((effect.get("authorization_continuation") for effect in self.effects
+            if effect.get("id") == effect_id), None)
+        return value if isinstance(value, str) else None
+
+    async def waiting_for_authorization(
+        self, effect_id: str, request_id: UUID, continuation: str | None = None,
+    ) -> None:
         async with self._lock:
             for effect in self.effects:
                 if effect.get("id") == effect_id:
                     effect["status"] = "waiting_for_authorization"
                     effect["outcome"] = "rejected"
                     effect["authorization_request_id"] = str(request_id)
+                    if continuation is not None:
+                        effect["authorization_continuation"] = continuation
             await self._save(status="waiting_for_authorization")
 
     async def deferred_results(self) -> DeferredToolResults | None:
@@ -644,13 +673,14 @@ class HarnessRunCheckpoint:
             request_id = UUID(str(effect["authorization_request_id"]))
             status = await authorization_status(request_id, agent_id=self.request.agent_id)
             if status == "pending":
-                raise AuthorizationRequired(request_id)
+                raise AuthorizationRequired(request_id, self.authorization_continuation(str(effect["id"])))
             call_id = str(effect["tool_call_id"])
             if status == "approved":
                 results.approvals[call_id] = True
             else:
                 results.approvals[call_id] = ToolDenied(f"Authorization {status}; no action was repeated.")
                 effect["status"] = "completed"
+                effect.pop("authorization_continuation", None)
                 effect["result"] = {"authorization_status": status,
                     "dispatched": None if status in {"executing", "completed", "failed", "outcome_unknown"} else False}
                 if status in {"executing", "outcome_unknown"}:
@@ -672,6 +702,7 @@ class HarnessRunCheckpoint:
             serialized_result = _jsonable(result)
             for effect in self.effects:
                 if effect.get("id") == effect_id:
+                    effect.pop("authorization_continuation", None)
                     effect["status"] = "completed" if retry_error is None else "failed"
                     effect["outcome"] = "returned" if retry_error is None else "rejected"
                     effect["finished_at"] = datetime.now(timezone.utc).isoformat()
@@ -938,7 +969,8 @@ def wrap_toolsets(
                                 effect_policy=effect_policy,
                                 concurrency_policy=concurrency_policy,
                             )
-                            execution = ToolExecutionContext(UUID(effect_id), name)
+                            execution = ToolExecutionContext(UUID(effect_id), name,
+                                authorization_continuation=checkpoint.authorization_continuation(effect_id))
                             tool_error_outcome: Literal["rejected", "unknown"] | None = None
                             try:
                                 with tool_execution(execution):
@@ -947,7 +979,7 @@ def wrap_toolsets(
                                     )
                             except Exception as exc:
                                 if isinstance(exc, AuthorizationRequired):
-                                    await checkpoint.waiting_for_authorization(effect_id, exc.request_id)
+                                    await checkpoint.waiting_for_authorization(effect_id, exc.request_id, exc.continuation)
                                     raise ApprovalRequired(metadata={"authorization_request_id": str(exc.request_id)}) from exc
                                 if isinstance(exc, ApprovalRequired):
                                     raise
@@ -956,7 +988,7 @@ def wrap_toolsets(
                                     or effect_policy == "read" else "unknown"
                                 )
                                 result = _tool_error_result(exc, tool_error_outcome, scope_rejection=execution.scope_rejection)
-                            if reported_tool_failure(result) is not None:
+                            if tool_error_outcome is None and reported_tool_failure(result) is not None:
                                 tool_error_outcome = (
                                     "rejected" if execution.outcome == "rejected"
                                     or effect_policy == "read" else "unknown"
@@ -987,12 +1019,13 @@ def wrap_toolsets(
                                 or effect_policy == "read" else "unknown",
                                 scope_rejection=execution.scope_rejection,
                             )
-                        if reported_tool_failure(result) is not None:
-                            result = _returned_tool_error(
-                                result, "rejected" if execution.outcome == "rejected"
-                                or effect_policy == "read" else "unknown",
-                                scope_rejection=execution.scope_rejection,
-                            )
+                        else:
+                            if reported_tool_failure(result) is not None:
+                                result = _returned_tool_error(
+                                    result, "rejected" if execution.outcome == "rejected"
+                                    or effect_policy == "read" else "unknown",
+                                    scope_rejection=execution.scope_rejection,
+                                )
             except BaseException as exc:
                 error = exc
 

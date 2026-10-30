@@ -395,6 +395,8 @@ async def _terminal_error_diagnostics(
 
     metadata = execution_result.metadata if execution_result is not None else {}
     structured_reason = _bounded_text(metadata.get("failure_reason"))
+    failure = execution_result.failure if execution_result is not None else None
+    failure_reason_from_contract = _bounded_text(failure.message) if failure is not None else None
     message_reason, message_source = _failed_execution_message(execution_result)
     llm_reason = _bounded_text(llm_call.error) if llm_call is not None else None
     attempt_reason = _bounded_text(attempt.error) if attempt is not None else None
@@ -407,6 +409,7 @@ async def _terminal_error_diagnostics(
     )
     reason_candidates = (
         (structured_reason, "execution_metadata"),
+        (failure_reason_from_contract, "execution_failure"),
         (actionable_attempt_reason, "attempt"),
         (message_reason, message_source),
         (llm_reason, "llm_call"),
@@ -423,7 +426,9 @@ async def _terminal_error_diagnostics(
             break
 
     return {
-        "failure_code": _bounded_text(metadata.get("failure_code")),
+        "failure_code": _bounded_text(metadata.get("failure_code")) or (
+            failure.code if failure is not None else None
+        ),
         "failure_reason": failure_reason,
         "failure_source": failure_source,
         "last_error": task_reason,
