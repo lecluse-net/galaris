@@ -13,7 +13,7 @@
         <q-icon v-else class="file-tile-image" :name="icon" size="var(--file-icon-size)" color="primary" />
       </div>
       <div class="file-tile-name">{{ displayName }}</div>
-      <div v-if="!entry.is_collection" class="file-tile-meta text-caption">{{ entry.size === null ? entry.media_type : formatFileSize(entry.size, locale) }}</div>
+      <div v-if="!entry.is_collection && entry.size !== null" class="file-tile-meta text-caption">{{ formatFileSize(entry.size, locale) }}</div>
       <q-tooltip>{{ entry.uri }}</q-tooltip>
     </div>
   </q-btn>
