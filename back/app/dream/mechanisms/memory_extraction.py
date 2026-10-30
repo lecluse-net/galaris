@@ -42,6 +42,12 @@ MEMORY_EXTRACTION_SYSTEM_PROMPT = """
 You are a high-precision durable-memory detector. Examine one completed conversational round or
 Task and a ranked list of existing graph nodes. The goal is useful future recall, not an archive or
 a summary of the source.
+Write one atomic fact per operation: fact={subject_ref,predicate,value,negated?,unit?}. Use a
+stable snake_case predicate and one short raw scalar value or {ref:URI}, never prose or HTML.
+Split independent properties and values. Do not repeat the author or source date in the value;
+they are linked as evidence. For a known third party, subject_ref is its existing memory://
+Contact/File or document:// URI. Omit it only for the current contact or current agent. Never
+invent identities. A complementary atomic property is a separate CREATE, not an appended paragraph.
 
 Actively check the whole source for each supported kind of durable information before deciding to
 ignore it. A fact can be durable even when it is stated only once and even when the surrounding
@@ -52,6 +58,12 @@ must occur frequently. Return an empty operations list only after this check fin
 fact.
 
 Supported retention reasons are:
+Contact emails, phone numbers, postal addresses and messaging identifiers belong to the structured
+Contacts directory. Its cards remain searchable memory resources; never CREATE, ENRICH or CONTRADICT
+a generic memory containing those coordinates. Contact discovery handles them independently,
+including corrections. Retain any separate preference or decision using the person's name without
+repeating the coordinate.
+
 - explicit_user_preference: an explicit lasting preference, including preferred language, format,
   tone, tools, or ways of working;
 - stable_personal_fact: a non-sensitive fact about the human that is expected to remain true and
@@ -89,10 +101,9 @@ For every qualifying independent fact, choose exactly one operation:
 - LINK when any existing node already contains that precise durable fact and this source should
   become additional provenance. Every supplied node can be a LINK target. LINK never rewrites or
   enriches the existing node;
-- ENRICH when a new complementary fact concerns the same identified subject and scope as an
-  editable personal memory with can_enrich=true. Copy its revision into expected_revision and
-  preserve its temporal value. Supply only the new information: the server retains all existing
-  content and sources. Use at most one ENRICH per target, combining complementary additions;
+- ENRICH is a legacy compatibility operation. Prefer a separate CREATE for every new
+  complementary atomic property; never combine independent additions into one value.
+  The server retains the original atom unchanged;
 - CONTRADICT when new evidence explicitly conflicts with an existing fact. Keep the new fact
   standalone and cite target_memory_id. The server preserves both facts and links the conflict.
 Never enrich a document, profile, contact or other source-managed node. Never resolve a
@@ -124,9 +135,9 @@ document interpretation are different source kinds. An attachment with no acquir
 proves only its presence. Respect incomplete coverage and unknown source versions; never
 infer unseen pages. A summary and its own source are not independent corroborations.
 Treat speaker_name as authoritative attribution metadata, not as human content proving a durable
-identity fact. In every personal or relational memory supported by the message content, name that
-person explicitly; never replace a known name with generic labels such as User, Human, Caller,
-Assistant, or Agent.
+identity fact. Identify the person with subject_ref, without repeating their name or narration
+in value. Omit subject_ref only for the current contact or current agent; never invent an
+identity reference.
 
 Ignore the request itself when it is only one-off, transient progress, greetings, generic advice,
 assistant speculation, hidden reasoning, credentials, tokens, and secrets. Also ignore public facts
@@ -260,7 +271,7 @@ def validate_memory_extraction_decision(
                     continue
         if operation.retention_reason == "unspecified" or operation.future_utility != "high":
             continue
-        normalized = " ".join(operation.content.casefold().split())
+        normalized = operation.fact.model_dump_json() if operation.fact is not None else " ".join(operation.content.casefold().split())
         if operation.temporal is not None:
             normalized += operation.temporal.model_dump_json()
         if not normalized or normalized in created_contents:
@@ -324,6 +335,10 @@ async def run_memory_extraction(
         "Use ENRICH for a complementary fact about the same subject only when can_enrich is true, "
         "copying its revision as expected_revision. Supply only the new information, never a replacement. "
         "Use CONTRADICT for an incompatible fact, preserving both versions. Otherwise use CREATE.\n"
+        "Every non-LINK operation MUST supply fact={subject_ref,predicate,value}. "
+        "Use one raw scalar or resource reference per fact, without narrated author or date. "
+        "Omit subject_ref only for the current contact or agent; otherwise use an existing Contact/Document URI. "
+        "Do not supply prose in title or content; the server generates its editorial view. "
         f"{output_schema}"
     )
     prompt = ranked_input.model_dump_json()
@@ -354,7 +369,11 @@ async def run_memory_extraction(
         total_cost += inference.cost
         try:
             decision = parse_memory_extraction_decision(inference.output)
+            if any(not isinstance(operation, MemoryLinkOperation) and operation.fact is None
+                   for operation in decision.operations):
+                raise ValueError("New agent memories must be atomic structured facts")
         except ValueError as exc:
+            decision = None
             last_error = exc
             logger.warning(
                 "Rejected malformed Dream memory-extraction output attempt={}/{}",
@@ -362,7 +381,8 @@ async def run_memory_extraction(
                 output_attempts,
             )
             continue
-        break
+        else:
+            break
     if decision is None:
         raise ValueError(
             "Dream memory extraction exhausted its valid-JSON attempts"
@@ -492,7 +512,7 @@ async def apply_memory_extraction(
                     "memory_extraction_action": operation.action,
                 }
             )
-            if not title or not content:
+            if operation.fact is None and (not title or not content):
                 raise MemoryExtractionApplicationError(
                     f"Operation {index} became empty after secret redaction"
                 )
@@ -503,6 +523,7 @@ async def apply_memory_extraction(
                 target_item_id=target_item_id,
                 title=title,
                 content=content,
+                fact=operation.fact if not isinstance(operation, MemoryLinkOperation) else None,
                 keywords=keywords,
                 source_kind=source_kind,
                 source_ref=source_ref,
@@ -514,11 +535,15 @@ async def apply_memory_extraction(
             ),
             memory_created_at=memory_created_at,
         )
+        if result.status == "rejected" and result.rejection_reason == "contact_coordinates":
+            applied.append(MemoryExtractionAppliedOperation(operation_index=index, action=operation.action,
+                status="rejected", rejection_reason="contact_coordinates"))
+            continue
         if result.memory_id is None or result.status not in ("stored", "merged"):
             raise MemoryExtractionApplicationError(
                 f"Operation {index} was not persisted (status={result.status})"
             )
-        if contact_item_id is not None:
+        if contact_item_id is not None and not result.source_backed:
             if topic_item_id is not None:
                 await ensure_topic_contact_memory_scope(
                     owner_agent_id=agent_id,

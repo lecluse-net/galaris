@@ -18,6 +18,79 @@ from core.database import get_db_session
 from core.user import UserModel
 
 
+@pytest.mark.parametrize("question", [
+    "Quel est le mail de Nina Fiction ?", "Ouvre mon carnet d'adresses.",
+    "What is my invoice number?", "What is my number of invoices?", "Open my address book.",
+    "Quel est mon numéro de facture ?",
+])
+def test_other_people_and_business_identifiers_do_not_select_the_sender_contact(question):
+    from app.memory.passages import query_is_contact_self_reference
+    assert not query_is_contact_self_reference(question)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("question", ["Tu connais mon email ?", "What is my email address?", "Tu as mon mail ?", "Mon téléphone ?"])
+@pytest.mark.parametrize("strict", [False, True])
+async def test_current_contact_is_retrieved_without_its_name_among_other_contact_cards(
+    db, agents, memory_storage, monkeypatch, question, strict,
+):
+    from app.memory import create_address_book_contact
+    owner, peer = agents
+    wanted = await create_address_book_contact(owner_agent_id=owner.id,
+        display_name="Éloi Fiction", email="eloi-current@example.org")
+    foreign = await create_address_book_contact(owner_agent_id=peer.id,
+        display_name="Éloi Fiction", email="eloi-private@example.org")
+    for index in range(16):
+        await create_address_book_contact(owner_agent_id=owner.id,
+            display_name="Éloi Fiction" if index % 2 else f"Synthetic Correspondent {index}",
+            email=f"noise-{index}@example.org")
+    resolutions = []
+    async def unavailable():
+        resolutions.append(True)
+        raise MemoryEmbeddingNotConfiguredError("Synthetic provider outage")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", unavailable)
+    result = await retrieval.recall_items(retrieval.MemoryRecallRequest(
+        agent_id=owner.id, contact_item_id=wanted.memory_item_id, query=question, limit=3,
+        strict_contact_scope=strict))
+    assert result.hits[0].item.id == wanted.memory_item_id
+    assert foreign.memory_item_id not in {hit.item.id for hit in result.hits}
+    assert "eloi-current@example.org" in result.hits[0].excerpt
+    assert resolutions == []
+
+
+@pytest.mark.parametrize("question", ["Est-ce que Nina connaît mon email ?", "My email and the QUARTZ procedure?",
+    "Quel est mon numéro de facture ?", "Open my address book."])
+def test_a_contact_shortcut_cannot_hide_another_subject_or_a_business_question(question):
+    from app.memory.passages import query_is_direct_contact_lookup
+    assert not query_is_direct_contact_lookup(question)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ack", ["Oui.", "Merci !", "Yes.", "Thanks!"])
+async def test_contact_follow_up_keeps_the_named_person_across_short_acknowledgements(
+    db, agents, memory_storage, monkeypatch, ack,
+):
+    from app.memory import create_address_book_contact
+    owner, _ = agents
+    wanted = await create_address_book_contact(owner_agent_id=owner.id,
+        display_name="Éloi Fiction", email="eloi-followup@example.org")
+    await create_address_book_contact(owner_agent_id=owner.id,
+        display_name="Nina Fiction", email="nina-distractor@example.org")
+    async def unavailable():
+        raise MemoryEmbeddingNotConfiguredError("Synthetic provider outage")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", unavailable)
+    monkeypatch.setattr(agent_context, "_providers", {})
+    agent_context.register_context_provider("long_term_memory", bootstrap.memory_context_provider, priority=20)
+    prepared = await agent_context.build_agent_run_context(AgentContextRequest(
+        task_id=None, agent=AgentSnapshot(owner.id, owner.code, "Synthetic", "Agent", "internal"),
+        label="Conversation", objective="Et son email ?",
+        fallback_history=({"role": "user", "text": "Retrouvons la fiche de Éloi Fiction."},
+            {"role": "assistant", "text": "Je vérifie. Nina Fiction est une autre personne."},
+            {"role": "user", "text": ack})))
+    assert str(wanted.memory_item_id) in prepared.metadata.get("memory_context_ids", [])
+    assert "eloi-followup@example.org" in prepared.memory_context
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('message', ["Elle l'a validé.", 'She approved it.',
                                    'Et la contrainte ?', 'What about the constraint?'])

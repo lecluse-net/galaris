@@ -78,6 +78,29 @@ async def _owner(db: AsyncSession) -> Agent:
     return owner
 
 
+@pytest.mark.asyncio
+async def test_prepared_contact_copy_is_explicitly_omitted_without_blocking_other_atomic_facts(db, memory_extraction_storage, monkeypatch):
+    from core.params import runtime_settings
+    monkeypatch.setattr(runtime_settings, "LOCALIZATION", "France")
+    owner = await _owner(db)
+    prepared = MemoryExtractionPrepared(decision=MemoryExtractionDecision(operations=[
+        MemoryCreateOperation(title="Nina Fiction phone", content="<p>Nina Fiction : 07 06 05 04 03.</p>",
+            retention_reason="stable_personal_fact", future_utility="high"),
+        MemoryCreateOperation(title="Nina Fiction preference", content="<p>Nina Fiction prefers morning calls.</p>",
+            retention_reason="explicit_user_preference", future_utility="high"),
+    ]))
+    application = await apply_memory_extraction(prepared, agent_id=owner.id,
+        source_kind="manual", source_ref="synthetic:prepared-contact", source_excerpt="",
+        memory_created_at=datetime(2026, 10, 1, tzinfo=timezone.utc), metadata={},
+        contact_item_id=None, topic_item_id=None, idempotency_prefix="synthetic:prepared-contact")
+    assert application.stored_count == 1
+    assert application.operations[0].status == "rejected"
+    assert application.operations[0].rejection_reason == "contact_coordinates"
+    assert application.operations[1].status == "stored"
+    checkpoint = prepared.model_copy(update={"application": application})
+    assert MemoryExtractionPrepared.model_validate_json(checkpoint.model_dump_json()).application.stored_count == 1
+
+
 def test_default_prompt_actively_detects_single_durable_facts() -> None:
     prompt = " ".join(MEMORY_EXTRACTION_SYSTEM_PROMPT.split())
 
@@ -348,7 +371,7 @@ async def test_every_recalled_node_is_shown_for_fact_containment(
 async def test_ai_only_evidence_cannot_create_human_preferences(monkeypatch, speaker_kind):
     async def output(**_kwargs):
         return StructuredInferenceResult(output=json.dumps({"operations": [{"action": "CREATE",
-            "title": "Reporting preference", "content": "Camille prefers weekly reports.",
+            "fact": {"predicate": "report_frequency", "value": "weekly"},
             "retention_reason": "explicit_user_preference", "future_utility": "high"}]}), cost=0.0, messages=[])
     monkeypatch.setattr(memory_extraction, "run_text", output)
     prepared, _ = await run_memory_extraction(llm=cast(LLM, object()), use_decision_profile=False,
@@ -550,11 +573,11 @@ async def test_link_adds_provenance_without_rewriting_existing_memory(
         assert application.operations[0].status == "merged"
         assert await memory_service.source_refs(existing.id) == ["task:memory-link-test"]
     else:
-        # Personal evidence belongs to a private memory, never the shared Document.
-        assert application.operations[0].memory_id != existing.id
-        assert application.operations[0].status == "stored"
+        # The Document stays canonical; private evidence remains in the acquisition
+        # journal and is neither copied into a generic memory nor disclosed on it.
+        assert application.operations[0].memory_id == existing.id
+        assert application.operations[0].status == "merged"
         assert await memory_service.source_refs(existing.id) == []
-        assert await memory_service.source_refs(application.operations[0].memory_id) == ["task:memory-link-test"]
 
 
 @pytest.mark.asyncio

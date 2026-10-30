@@ -28,6 +28,12 @@ de texte. Son unique document de suivi utilise aussi `rich-text`, y compris dans
 Les ressources binaires/JSON/code et les compétences
 ne passent pas dans cette conversion.
 
+Les agents écrivent les souvenirs via `fact={subject_ref,predicate,value,negated?,unit?}`,
+avec une valeur brute typée par fait. Le serveur conserve la structure et ses liens, puis
+génère le fragment HTML d'affichage. Cette entrée structurée ne change pas le profil stocké.
+Les notes humaines historiques restent éditables ; les agents ne rédigent plus de paragraphes
+dans `memory_remember`. Voir la [décision 0257](../../../project/decisions/0257-atomic-memory-facts-and-source-priority.md).
+
 Le profil de contenu est distinct de `toolbarMode` (`full` ou `simple`). `DocumentEditor`
 impose `full` pour le contenu d'un document dans la bibliothèque, Discussion, les aperçus
 et le suivi des objectifs ; les droits et le profil restent ceux de la ressource.

@@ -17,6 +17,7 @@ from app.conversation import (
 )
 from app.messenger import Room
 from app.memory import mcp, service
+from app.memory.tests.fact_fixtures import remember_fact
 from app.memory.models import MemorySource
 from app.memory.schemas import MemoryItemCreate, MemoryPayload, MemorySourceCreate
 from app.task import Task, TaskStatus
@@ -98,7 +99,7 @@ async def test_existing_memory_is_linked_to_every_new_canonical_source(
 
     content = "The user always wants concise release summaries."
     first = json.loads(
-        await mcp.memory_remember(
+        await remember_fact(
             McpToolContext(
                 agent_id=owner.id,
                 runtime="internal",
@@ -113,7 +114,7 @@ async def test_existing_memory_is_linked_to_every_new_canonical_source(
     assert first["created"] is True
 
     second = json.loads(
-        await mcp.memory_remember(
+        await remember_fact(
             McpToolContext(
                 agent_id=owner.id,
                 runtime="internal",
@@ -137,7 +138,7 @@ async def test_existing_memory_is_linked_to_every_new_canonical_source(
         origin="text",
     )
     text_result = json.loads(
-        await mcp.memory_remember(
+        await remember_fact(
             McpToolContext(
                 agent_id=owner.id,
                 runtime="internal",
@@ -162,7 +163,7 @@ async def test_existing_memory_is_linked_to_every_new_canonical_source(
         origin="voice",
     )
     audio_result = json.loads(
-        await mcp.memory_remember(
+        await remember_fact(
             McpToolContext(
                 agent_id=owner.id,
                 runtime="internal",

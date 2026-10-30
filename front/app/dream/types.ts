@@ -67,6 +67,7 @@ export type DreamMechanismKey =
   | 'memory.link_topic_source'
   | 'memory.project_process'
   | 'memory.maintain_findings'
+  | 'contact.reconcile'
   | 'topic.suggest_maintenance'
   | 'memory.forget_stale'
 

@@ -19,7 +19,7 @@ test('Dream file rescanning and attachment options persist, restore after errors
     param.value = body.value
     return route.fulfill({ json: { ...param, status: 'ok' } })
   })
-  await mount(page, 'core/params/components/DreamSettingsPanel.vue', { privileges: ['PARAMS_EDIT'] })
+  await mount(page, 'core/params/components/DreamSettingsPanel.vue', { privileges: ['DREAM_EDIT'] })
   const restore = async () => page.evaluate(params => window.testApp.patchStore('core/params/stores/paramsStore.ts', 'useParamsStore', { params }), params)
   await restore()
   // Target the attachment labels: other Dream settings remain independent.
@@ -42,7 +42,7 @@ test('Dream file rescanning and attachment options persist, restore after errors
   await page.getByRole('option', { name: 'Every day at midnight', exact: true }).click()
   await expect.poll(() => requests.at(-1)).toEqual({ name: 'DREAM_FILE_RESCAN_SCHEDULE', value: 'daily_midnight' })
   await page.evaluate(() => window.testApp.unmount())
-  await page.evaluate(() => window.testApp.mount({ component: 'core/params/components/DreamSettingsPanel.vue', privileges: ['PARAMS_EDIT'] }))
+  await page.evaluate(() => window.testApp.mount({ component: 'core/params/components/DreamSettingsPanel.vue', privileges: ['DREAM_EDIT'] }))
   await restore()
   for (const label of labels) await expect(page.getByRole('checkbox', { name: label, exact: true })).toBeChecked()
   await expect(rescan.locator('..')).toContainText('Every day at midnight')
@@ -55,7 +55,7 @@ test('Dream file rescanning and attachment options persist, restore after errors
   await image.click()
   await expect.poll(() => requests.at(-1)).toEqual({ name: params[2].name, value: 'false' })
   await expect(image).toBeChecked()
-  await setPrivileges(page, [])
+  await setPrivileges(page, ['DREAM_CONFIG_ACCESS'])
   // A disabled Quasar select has no combobox input. Its field exposes the denial.
   await expect(page.locator('label').filter({ has: page.getByText('File rescanning', { exact: true }) })).toHaveAttribute('aria-disabled', 'true')
   for (const label of labels) await expect(page.getByRole('checkbox', { name: label, exact: true })).toBeDisabled()

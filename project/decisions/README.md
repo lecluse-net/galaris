@@ -1,5 +1,13 @@
 # Décisions d'architecture
 
+- [0258 — Contextual resource identity in Memory recall](0258-contextual-resource-identity-recall.md)
+
+- [0257 — Atomic Memory facts and canonical source priority](0257-atomic-memory-facts-and-source-priority.md)
+
+- [0256 — Contact acquisition and Dream reconciliation](0256-contact-acquisition-and-dream-reconciliation.md)
+
+- [0255 — Deterministic contact coordinate detection in the Dispatcher](0255-dispatcher-contact-coordinate-detection.md)
+
 - [0252 — Typed Documents with Text and Data submodules](0252-typed-documents.md)
 
 - [0250 — Current document receipts in Task admission](0250-current-document-receipts-for-task-admission.md)

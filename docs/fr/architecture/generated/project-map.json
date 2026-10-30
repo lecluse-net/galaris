@@ -217,6 +217,9 @@
       {
         "files": [
           "back/app/agent/avatar_generation.py",
+          "back/app/agent/contact_discovery.py",
+          "back/app/agent/contracts.py",
+          "back/app/agent/dispatcher.py",
           "back/app/agent/html_migration.py",
           "back/app/agent/models.py",
           "back/app/agent/planner_service.py",
@@ -736,6 +739,7 @@
       },
       {
         "files": [
+          "back/app/contact/discovery.py",
           "back/app/contact/router.py"
         ],
         "source": "app.contact",
@@ -750,8 +754,20 @@
       },
       {
         "files": [
+          "back/app/contact/discovery.py",
+          "back/app/contact/discovery_inference.py"
+        ],
+        "source": "app.contact",
+        "target": "app.llm"
+      },
+      {
+        "files": [
           "back/app/contact/countries.py",
+          "back/app/contact/directory.py",
+          "back/app/contact/discovery.py",
+          "back/app/contact/discovery_inference.py",
           "back/app/contact/facade.py",
+          "back/app/contact/reconciliation.py",
           "back/app/contact/router.py",
           "back/app/contact/schemas.py",
           "back/app/contact/service.py"
@@ -782,6 +798,11 @@
       },
       {
         "files": [
+          "back/app/contact/directory.py",
+          "back/app/contact/discovery.py",
+          "back/app/contact/discovery_inference.py",
+          "back/app/contact/models.py",
+          "back/app/contact/reconciliation.py",
           "back/app/contact/service.py"
         ],
         "source": "app.contact",
@@ -789,10 +810,22 @@
       },
       {
         "files": [
-          "back/app/contact/countries.py"
+          "back/app/contact/countries.py",
+          "back/app/contact/discovery.py",
+          "back/app/contact/reconciliation.py"
         ],
         "source": "app.contact",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/contact/countries.py",
+          "back/app/contact/directory.py",
+          "back/app/contact/discovery.py",
+          "back/app/contact/discovery_inference.py"
+        ],
+        "source": "app.contact",
+        "target": "core.util"
       },
       {
         "files": [
@@ -1495,6 +1528,13 @@
       },
       {
         "files": [
+          "back/app/dream/mechanisms/contact_reconciliation.py"
+        ],
+        "source": "app.dream",
+        "target": "app.contact"
+      },
+      {
+        "files": [
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
           "back/app/dream/mechanisms/topic_classification.py",
@@ -1544,6 +1584,7 @@
           "back/app/dream/live_topics.py",
           "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
+          "back/app/dream/mechanisms/contact_reconciliation.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/dataset_index.py",
           "back/app/dream/mechanisms/memory_decisions.py",
@@ -1663,6 +1704,7 @@
           "back/app/dream/evidence_access.py",
           "back/app/dream/manual.py",
           "back/app/dream/mechanisms/attachment_memory.py",
+          "back/app/dream/mechanisms/contact_reconciliation.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/dataset_index.py",
           "back/app/dream/mechanisms/document_structure.py",
@@ -1715,6 +1757,7 @@
       {
         "files": [
           "back/app/dream/mechanisms/attachment_memory.py",
+          "back/app/dream/mechanisms/contact_reconciliation.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/file_catalogue.py",
           "back/app/dream/mechanisms/memory_extraction.py",
@@ -3190,6 +3233,7 @@
           "back/app/memory/acquisition_service.py",
           "back/app/memory/automation.py",
           "back/app/memory/bootstrap.py",
+          "back/app/memory/contact_policy.py",
           "back/app/memory/context.py",
           "back/app/memory/deduplication.py",
           "back/app/memory/maintenance.py",
@@ -3246,6 +3290,7 @@
           "back/app/memory/attachment_analysis.py",
           "back/app/memory/attachment_description.py",
           "back/app/memory/catalogue_projection.py",
+          "back/app/memory/contact_policy.py",
           "back/app/memory/content_migration.py",
           "back/app/memory/context.py",
           "back/app/memory/document_structure.py",
@@ -6496,14 +6541,15 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 300,
+      "domain_edges": 302,
       "fan_in": [
         {
-          "count": 44,
+          "count": 45,
           "module": "app.llm",
           "modules": [
             "app.agent",
             "app.audio",
+            "app.contact",
             "app.conversation",
             "app.dashboard",
             "app.document",
@@ -6922,6 +6968,14 @@
         },
         {
           "count": 2,
+          "module": "app.contact",
+          "modules": [
+            "app.dream",
+            "bridge.mail"
+          ]
+        },
+        {
+          "count": 2,
           "module": "app.documentation",
           "modules": [
             "app.file_share",
@@ -6941,13 +6995,6 @@
           "module": "app.browser",
           "modules": [
             "app.chat"
-          ]
-        },
-        {
-          "count": 1,
-          "module": "app.contact",
-          "modules": [
-            "bridge.mail"
           ]
         },
         {
@@ -6980,6 +7027,27 @@
         }
       ],
       "fan_out": [
+        {
+          "count": 15,
+          "module": "app.dream",
+          "modules": [
+            "app.agent",
+            "app.connection",
+            "app.contact",
+            "app.conversation",
+            "app.dataset",
+            "app.document",
+            "app.goal",
+            "app.llm",
+            "app.memory",
+            "app.messenger",
+            "app.process",
+            "app.skill",
+            "app.task",
+            "app.topic",
+            "app.voice"
+          ]
+        },
         {
           "count": 15,
           "module": "app.file_share",
@@ -7018,26 +7086,6 @@
             "app.skill",
             "app.task",
             "app.tools",
-            "app.topic",
-            "app.voice"
-          ]
-        },
-        {
-          "count": 14,
-          "module": "app.dream",
-          "modules": [
-            "app.agent",
-            "app.connection",
-            "app.conversation",
-            "app.dataset",
-            "app.document",
-            "app.goal",
-            "app.llm",
-            "app.memory",
-            "app.messenger",
-            "app.process",
-            "app.skill",
-            "app.task",
             "app.topic",
             "app.voice"
           ]
@@ -7269,6 +7317,18 @@
         },
         {
           "count": 6,
+          "module": "app.contact",
+          "modules": [
+            "app.agent",
+            "app.conversation",
+            "app.llm",
+            "app.memory",
+            "app.messenger",
+            "app.task"
+          ]
+        },
+        {
+          "count": 6,
           "module": "app.goal",
           "modules": [
             "app.agent",
@@ -7325,17 +7385,6 @@
             "app.messenger",
             "app.tools",
             "app.voice"
-          ]
-        },
-        {
-          "count": 5,
-          "module": "app.contact",
-          "modules": [
-            "app.agent",
-            "app.conversation",
-            "app.memory",
-            "app.messenger",
-            "app.task"
           ]
         },
         {
@@ -9407,7 +9456,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_forget",
-        "line": 300,
+        "line": 322,
         "module": "app.memory",
         "name": "memory_forget",
         "namespace": "memory"
@@ -9415,7 +9464,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_remember",
-        "line": 195,
+        "line": 205,
         "module": "app.memory",
         "name": "memory_remember",
         "namespace": "memory"
@@ -9423,7 +9472,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_summarize",
-        "line": 321,
+        "line": 343,
         "module": "app.memory",
         "name": "memory_summarize",
         "namespace": "memory"
@@ -9431,7 +9480,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_upcoming",
-        "line": 278,
+        "line": 299,
         "module": "app.memory",
         "name": "memory_upcoming",
         "namespace": "memory"
@@ -10227,6 +10276,18 @@
         "line": 7,
         "module": "app.connection",
         "table": "connections"
+      },
+      {
+        "class_name": "ContactDiscoveryJob",
+        "file": "back/app/contact/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "memory_items.id"
+        ],
+        "history_mixin": true,
+        "line": 15,
+        "module": "app.contact",
+        "table": "contact_discovery_jobs"
       },
       {
         "class_name": "ConversationDeliveryResolution",
@@ -12407,6 +12468,7 @@
         "capabilities": [
           "contracts.py",
           "facade.py",
+          "models.py",
           "privileges.py",
           "router.py",
           "schemas.py",
@@ -16021,7 +16083,7 @@
         "declared_path": "/contacts",
         "file": "back/app/contact/router.py",
         "handler": "read_contacts",
-        "line": 56,
+        "line": 67,
         "method": "GET",
         "module": "app.contact"
       },
@@ -16030,7 +16092,7 @@
         "declared_path": "/contacts",
         "file": "back/app/contact/router.py",
         "handler": "create_contact",
-        "line": 73,
+        "line": 84,
         "method": "POST",
         "module": "app.contact"
       },
@@ -16039,7 +16101,16 @@
         "declared_path": "/contacts/defaults",
         "file": "back/app/contact/router.py",
         "handler": "read_contact_defaults",
-        "line": 35,
+        "line": 36,
+        "method": "GET",
+        "module": "app.contact"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/contacts/discovery",
+        "file": "back/app/contact/router.py",
+        "handler": "read_contact_discovery",
+        "line": 55,
         "method": "GET",
         "module": "app.contact"
       },
@@ -16048,7 +16119,7 @@
         "declared_path": "/contacts/{contact_item_id}",
         "file": "back/app/contact/router.py",
         "handler": "forget_contact",
-        "line": 118,
+        "line": 129,
         "method": "DELETE",
         "module": "app.contact"
       },
@@ -16057,7 +16128,7 @@
         "declared_path": "/contacts/{contact_item_id}",
         "file": "back/app/contact/router.py",
         "handler": "update_contact",
-        "line": 83,
+        "line": 94,
         "method": "PATCH",
         "module": "app.contact"
       },
@@ -16066,7 +16137,7 @@
         "declared_path": "/contacts/{source_contact_item_id}/merge",
         "file": "back/app/contact/router.py",
         "handler": "merge_contacts",
-        "line": 98,
+        "line": 109,
         "method": "POST",
         "module": "app.contact"
       },
@@ -18253,7 +18324,7 @@
         "declared_path": "/hermes/configurations",
         "file": "back/bridge/hermes/router.py",
         "handler": "list_hermes_configurations",
-        "line": 65,
+        "line": 66,
         "method": "GET",
         "module": "bridge.hermes"
       },
@@ -18262,7 +18333,7 @@
         "declared_path": "/hermes/configurations/{id}",
         "file": "back/bridge/hermes/router.py",
         "handler": "update_hermes_configuration",
-        "line": 83,
+        "line": 84,
         "method": "PUT",
         "module": "bridge.hermes"
       },
@@ -19441,7 +19512,7 @@
         "declared_path": "/memory/provider/remember",
         "file": "back/bridge/hermes/router.py",
         "handler": "hermes_provider_remember",
-        "line": 150,
+        "line": 151,
         "method": "POST",
         "module": "bridge.hermes"
       },
@@ -19450,7 +19521,7 @@
         "declared_path": "/memory/provider/search",
         "file": "back/bridge/hermes/router.py",
         "handler": "hermes_provider_search",
-        "line": 126,
+        "line": 127,
         "method": "POST",
         "module": "bridge.hermes"
       },

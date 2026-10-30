@@ -1,6 +1,6 @@
 from app.document.schemas import DocumentPayload
 from app.document.schemas import DocumentItemCreate
-from app.memory.tests.document_fixtures import create_document_reference, edit_document_reference, edit_document_summary
+from app.memory.tests.document_fixtures import create_document_reference, edit_document_summary
 """Documents stay findable, addressable and covered through canonical search."""
 
 import math
@@ -36,6 +36,97 @@ def vectors(monkeypatch):
     monkeypatch.setattr(semantic_index, "embed_many", embed)
     monkeypatch.setattr(retrieval, "embed_query", query)
     return model
+
+
+@pytest.mark.parametrize("suffix", ["/attachments/00000000-0000-0000-0000-000000000002", "/revisions/2", "-invalid", "suffix"])
+def test_a_subresource_or_invalid_suffix_cannot_be_promoted_to_its_parent_document(suffix):
+    from app.memory.passages import query_resource_references
+    assert query_resource_references("Reprendre document://00000000-0000-0000-0000-000000000001" + suffix) == ()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hybrid", [False, True])
+async def test_document_uri_inside_a_request_retrieves_the_exact_authorized_source(
+    db, agents, memory_storage, monkeypatch, vectors, hybrid,
+):
+    owner, peer = agents
+    wanted, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+        title="Dossier synthétique sans mots de la requête",
+        payload=DocumentPayload(text="<p>La valeur opérationnelle confirmée vaut 47 unités.</p>")))
+    hidden, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=peer.id,
+        title="Autre dossier synthétique", payload=DocumentPayload(text="<p>Valeur privée 93 unités.</p>")))
+    await semantic_index.process_embedding_job({"item_id": str(wanted.id)})
+    if not hybrid:
+        async def unavailable():
+            raise MemoryEmbeddingNotConfiguredError("Synthetic provider outage")
+        monkeypatch.setattr(retrieval, "resolve_embedding_model", unavailable)
+    found = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id,
+        query=f"Peux-tu reprendre document://{wanted.id} ?", limit=3))
+    assert found.hits and found.hits[0].item.id == wanted.id
+    assert "47 unités" in found.hits[0].excerpt
+    denied = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id,
+        query=f"Peux-tu reprendre document://{hidden.id} ?", limit=3))
+    assert hidden.id not in {hit.item.id for hit in denied.hits}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("label", ["Conversation", "Revue technique"])
+async def test_context_keeps_an_explicit_document_reference_after_a_long_preamble(
+    db, agents, memory_storage, monkeypatch, label,
+):
+    owner, _ = agents
+    wanted, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+        title="Consigne synthétique", payload=DocumentPayload(text="<p>Le seuil confirmé est 47 unités.</p>")))
+    async def unavailable():
+        raise MemoryEmbeddingNotConfiguredError("Synthetic provider outage")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", unavailable)
+    objective = ("Pour préparer notre prochaine séance, je voudrais que tu prennes le temps de relire "
+        "attentivement la ressource suivante en tenant compte de toutes les décisions déjà confirmées : "
+        f"document://{wanted.id}")
+    contribution = await bootstrap.memory_context_provider(AgentContextRequest(task_id=None,
+        agent=AgentSnapshot(owner.id, owner.code, "Synthetic", "Agent", "internal"),
+        label=label, objective=objective))
+    assert str(wanted.id) in contribution.metadata.get("memory_context_ids", [])
+
+
+@pytest.mark.asyncio
+async def test_multiple_explicit_references_keep_both_sources_without_granting_the_hidden_one(
+    db, agents, memory_storage, vectors,
+):
+    owner, peer = agents
+    nodes = []
+    for index, agent in enumerate((owner, owner, peer)):
+        document, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=agent.id,
+            title=f"Synthèse documentaire {index}",
+            payload=DocumentPayload(text=f"<p>Le résultat confirmé vaut {47 + index} unités.</p>")))
+        await semantic_index.process_embedding_job({"item_id": str(document.id)})
+        nodes.append(document)
+    result = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id,
+        query=f"Compare document://{nodes[0].id} et memory://{nodes[1].id} avec document://{nodes[2].id}.",
+        limit=5))
+    assert {hit.item.id for hit in result.hits[:2]} == {nodes[0].id, nodes[1].id}
+    assert nodes[2].id not in {hit.item.id for hit in result.hits}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("question", ["Quel document décrit le routage de mon email ?",
+    "Which document explains routing for my email?"])
+async def test_a_document_question_mentioning_my_email_does_not_become_a_contact_lookup(
+    db, agents, memory_storage, monkeypatch, question,
+):
+    from app.memory import create_address_book_contact
+    owner, _ = agents
+    contact = await create_address_book_contact(owner_agent_id=owner.id,
+        display_name="Éloi Fiction", email="eloi-routing@example.org")
+    document, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+        title="Routage messagerie / email routing",
+        payload=DocumentPayload(text="<p>Ce document décrit le routage de messagerie. This document explains email routing with a confirmed quota of 47 units.</p>")))
+    async def unavailable():
+        raise MemoryEmbeddingNotConfiguredError("Synthetic provider outage")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", unavailable)
+    result = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id,
+        contact_item_id=contact.memory_item_id, query=question, limit=3))
+    assert result.hits[0].item.id == document.id
 
 
 @pytest.mark.asyncio

@@ -44,6 +44,10 @@ export const parameterAccess: Record<string, readonly string[]> = {
     "BROWSER_CONFIG_ACCESS",
     "BROWSER_CONFIG_EDIT"
   ],
+  "CONTACT_CAPTURE_ENABLED": [
+    "MEMORY_CONFIG_ACCESS",
+    "MEMORY_CONFIG_EDIT"
+  ],
   "DEFAULT_LANGUAGE": [
     "LANGUAGE_CONFIG_ACCESS",
     "LANGUAGE_CONFIG_EDIT"
@@ -205,10 +209,6 @@ export const parameterAccess: Record<string, readonly string[]> = {
     "MEMORY_CONFIG_EDIT"
   ],
   "MEMORY_CONTRADICTION_MODE": [
-    "MEMORY_CONFIG_ACCESS",
-    "MEMORY_CONFIG_EDIT"
-  ],
-  "MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD": [
     "MEMORY_CONFIG_ACCESS",
     "MEMORY_CONFIG_EDIT"
   ],

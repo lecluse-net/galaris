@@ -22,6 +22,55 @@ and identities, before asking the model for another decision. Completed results 
 acknowledged; a non-idempotent effect without a receipt blocks recovery. Native
 authorization and freshness checks still apply.
 
+## Contact coordinate detection in the Dispatcher
+
+Every Dispatcher result adds `contact_infos` alongside its existing fields. The list contains
+email, phone, postal-address and messaging-identity occurrences detected locally in the complete
+current message. Entries expose `type`, `value`, `normalized_value`, `start`, `end`, and optional
+`country` and `platform`. Offsets refer to the scanned visible text after any HTML extraction.
+The short routing history and sender metadata do not supply coordinates.
+
+Detection covers human and AI messages, forced routes and `END` results. It adds no inference,
+DNS or database query. Phone parsing uses the explicit country in `LOCALIZATION`; international
+formats remain possible without a country. Emails receive syntax validation, numbers are
+possible-length candidates, and postal addresses follow French/English patterns or explicitly
+labeled postal blocks. These patterns guarantee neither universal coverage nor deliverability.
+
+Metadata and caches are prepared at startup. The 3 ms objective concerns measured local
+extraction; it is not a guarantee for unbounded messages, particularly long numeric blocks.
+No silent limit truncates detection results. The router then queues durable per-coordinate work
+in `app.contact`, independently from the reply, including `END` and **Reply now**. A coalesced round
+scans all newly admitted messages; old history supplies context only. Dispatcher evaluations
+remain side-effect-free.
+
+The Contacts worker first checks the agent's private directory. Known coordinates finish without
+an LLM call or contact mutation. Otherwise a structured ultra-low text call extracts the owner name
+and literal evidence; the same profile's decision model selects an existing contact, creation,
+ignore or unresolved identity. No tools or agentic loop participate. Saved coordinates come from
+the detector, never generated model output. Unknown messaging platforms or unsupported names
+prevent writes. Human and AI speaker names remain available without assigning forwarded details
+to their sender automatically.
+
+Context is bounded to fifty messages and roughly 32,000 history characters; centered coordinate
+excerpts preserve long inputs. Unresolved identities remain in the journal without creating a
+contact. Transient failures receive five attempts, expired leases resume, and interruption does
+not consume failure budget. Owner evidence and the final decision are checkpointed separately
+before application. Directory locking and fresh contact reads serialize concurrent work. Human
+edits that invalidate a decision cause reconsideration. Forgetting a contact cancels its queued
+old observations so they cannot recreate it.
+
+Dream runs `contact.reconcile` while idle. The similarity threshold proposes pairs within one
+private directory; an LLM decision must establish common identity. A matching name or shared family
+number is insufficient. An explicit unresolved-identity choice prevents merging; provider scores
+remain annotations rather than calibrated probabilities. Prepared decisions survive in
+receipts; application rechecks both contacts before canonical merging preserves coordinates,
+identities and history and rewires conversation and acquisition references.
+`CONTACT_CAPTURE_ENABLED` controls capture; `MEMORY_DUPLICATE_SIMILARITY_THRESHOLD` controls Dream
+candidate selection, defaulting to 92%. Memory acquisition, recall and duplicate or contradiction
+findings use that same setting. LLM work remains outside the detection budget. See
+[0255](../../../../project/decisions/0255-dispatcher-contact-coordinate-detection.md) and
+[0256](../../../../project/decisions/0256-contact-acquisition-and-dream-reconciliation.md).
+
 ## Work organization
 
 For a Task, the Dispatcher selects `direct`, `tracked` or `clarify` in its existing routing

@@ -25,6 +25,8 @@ def mechanisms() -> tuple[DreamMechanism, ...]:
 
 
 def register_default_mechanisms() -> None:
+    from .mechanisms.contact_reconciliation import contact_reconciliation_mechanism
+    register_mechanism(contact_reconciliation_mechanism)
     from .mechanisms.resource_summaries import document_summary_mechanism, dataset_summary_mechanism, on_summary_policy_change
     from core.params import params_service
     params_service.register_change_listener(on_summary_policy_change)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .temporal import MemoryTemporalAnchor, MemoryTemporalFilter, MemoryTemporalWindow
+from .facts import AtomicMemoryFact
 
 from datetime import datetime
 from typing import Any, Literal
@@ -622,12 +623,19 @@ class MemoryAcquisitionCreate(BaseModel):
     action: AcquisitionAction = "create"
     target_item_id: UUID | None = None
     title: str = Field(default="", max_length=500)
-    content: str = Field(min_length=1, max_length=2_000_000)
+    content: str = Field(default="", max_length=2_000_000)
+    fact: AtomicMemoryFact | None = None
     keywords: list[str] = Field(default_factory=list, max_length=50)
     source_kind: str = Field(default="manual", min_length=1, max_length=80)
     source_ref: str = Field(min_length=1, max_length=1_024)
     metadata: dict[str, Any] = Field(default_factory=dict)
     idempotency_key: str | None = Field(default=None, max_length=128)
+
+    @model_validator(mode="after")
+    def has_content(self) -> "MemoryAcquisitionCreate":
+        if self.fact is None and not self.content.strip():
+            raise ValueError("A memory acquisition requires an atomic fact or legacy content")
+        return self
 
 
 class MemoryAcquisitionResult(BaseModel):
@@ -636,6 +644,8 @@ class MemoryAcquisitionResult(BaseModel):
     created: bool
     applied: bool
     status: AcquisitionStatus
+    rejection_reason: Literal["contact_coordinates"] | None = None
+    source_backed: bool = False
 
 
 class MemoryForgetResult(BaseModel):

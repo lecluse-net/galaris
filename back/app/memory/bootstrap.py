@@ -29,7 +29,6 @@ from .service import projected_topic_item_id
 _MAINTENANCE_THRESHOLD_PARAMS = frozenset(
     {
         Params.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
-        Params.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD,
         Params.MEMORY_AGING_AFTER_DAYS,
     }
 )

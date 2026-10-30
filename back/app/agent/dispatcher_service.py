@@ -36,6 +36,13 @@ async def run(
 
     # Persist decision trace, cost, and any failure.
     await _update_task_after_dispatch(task, dispatch_result)
+    if task.agent_id is not None:
+        from .contact_discovery import route_contact_discovery
+        from .dispatcher import Dispatcher
+
+        await route_contact_discovery(agent_id=task.agent_id, source_kind="task", source_ref=str(task.id),
+            current_text=Dispatcher.contact_source_text(task), messages=task.messages or [],
+            coordinates=dispatch_result.contact_infos)
 
     # A failed dispatch is already terminal.
     if not dispatch_result.success:

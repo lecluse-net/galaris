@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from statistics import fmean
 from typing import Sequence
+from uuid import UUID
 
 from .facade import search_memory_detailed
 
@@ -39,6 +40,8 @@ class RecallEvaluationScenario:
     agent_id: int
     query: str
     semantic_query: str | None = None
+    contact_item_id: UUID | None = None
+    strict_contact_scope: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,6 +177,8 @@ async def evaluate_recall(
             scenario.query,
             agent_id=scenario.agent_id,
             semantic_query=scenario.semantic_query,
+            contact_item_id=scenario.contact_item_id,
+            strict_contact_scope=scenario.strict_contact_scope,
             limit=k,
             record_llm_access=False,
             telemetry_kind="evaluation",

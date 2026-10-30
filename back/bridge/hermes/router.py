@@ -17,6 +17,7 @@ from app.agent import (
     list_agent_records,
 )
 from app.memory import (
+    AtomicMemoryFact,
     MemoryAcquisitionCreate,
     MemoryAcquisitionResult,
     acquire_memory,
@@ -166,7 +167,7 @@ async def hermes_provider_remember(
             agent_id=agent_id,
             action="create",
             title=data.title,
-            content=data.content,
+            fact=AtomicMemoryFact.model_validate_json(data.content),
             source_kind="hermes_builtin_memory",
             source_ref=f"task:{task_id}:hermes-memory",
             metadata={

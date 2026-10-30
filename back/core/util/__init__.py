@@ -25,6 +25,9 @@ from .encryption import (
 from .router_loader import include_routers
 from .openapi import generate_filtered_openapi, is_not_internal_path, is_not_internal_tag
 from .jsonutil import as_dict, as_list
+from .countries import country_from_localization
+from .contact_detection import DetectedContactInfo, detect_contact_infos, prepare_contact_detection
+from .contact_keys import normalize_contact_coordinate
 from .temporal import TemporalAnchor
 from .calendar import local_timezone_name, month_bounds
 from .transfers import DEFAULT_DOWNLOAD_BYTES, copy_download, read_buffered_file
@@ -57,6 +60,11 @@ from .resource_summary import (
 from .source_files import source_code_media_type, source_code_response_headers
 
 __all__ = [
+    "DetectedContactInfo",
+    "normalize_contact_coordinate",
+    "detect_contact_infos",
+    "prepare_contact_detection",
+    "country_from_localization",
     "TemporalAnchor",
     "ContentProfile",
     "RichTextError",

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import re
-from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -13,7 +11,7 @@ from typing import Any, cast
 from uuid import UUID, uuid4
 
 from loguru import logger
-from sqlalchemy import case, false, func, or_, select, update
+from sqlalchemy import case, false, func, or_, select, true, update
 
 from app.agent.contracts import AgentTask, ExecutionResult, normalize_tool_name
 from core.database import get_db, get_db_session
@@ -21,7 +19,14 @@ from core.i18n import normalize_language, t
 from core.params import runtime_settings
 
 from . import acquisition_service
-from .models import MemoryAutomationJob, MemoryItem, MemorySource
+from .models import (
+    MemoryAutomationJob,
+    MemoryContactItem,
+    MemoryItem,
+    MemorySource,
+    MemoryTopicContactItem,
+    MemoryTopicContactScope,
+)
 from .schemas import (
     MemoryAcquisitionCreate,
     MemoryLinkReconciliationJobStatus,
@@ -30,32 +35,6 @@ from .schemas import (
 from .safety import redact_secrets
 from core.storage import get_storage
 
-_WORD_RE = re.compile(r"[^\W\d_][\w'-]{2,}", re.UNICODE)
-_STOPWORDS = {
-    "avec",
-    "dans",
-    "des",
-    "elle",
-    "est",
-    "les",
-    "mais",
-    "nous",
-    "pour",
-    "que",
-    "qui",
-    "sur",
-    "une",
-    "vous",
-    "and",
-    "for",
-    "from",
-    "that",
-    "the",
-    "this",
-    "was",
-    "with",
-    "your",
-}
 _CONTRADICTION_MARKERS = (
     "correction",
     "contrairement",
@@ -102,12 +81,6 @@ def _task_status(task: AgentTask) -> str:
 
 
 _redact_secrets = redact_secrets
-
-
-def _keywords(text: str) -> list[str]:
-    words = [word.casefold() for word in _WORD_RE.findall(text)]
-    counts = Counter(word for word in words if word not in _STOPWORDS)
-    return [word for word, _count in counts.most_common(10)]
 
 
 def _is_conversational_task(task: AgentTask, data: Mapping[str, Any]) -> bool:
@@ -180,6 +153,7 @@ async def enqueue_terminal_capture(task: AgentTask) -> None:
                 "message_platform": task.message_platform,
                 "message_group_id": task.message_group_id,
                 "language": normalize_language(data.get("language")),
+                "contact_item_id": str(task.contact_memory_item_id) if task.contact_memory_item_id is not None else None,
             },
         )
     )
@@ -499,56 +473,84 @@ async def _process_task_capture(payload: Mapping[str, Any]) -> None:
     if title is None:
         title = default_title
     async with get_db_session():
-        existing = await get_db().scalar(
-            select(MemoryItem)
-            .where(
-                MemoryItem.owner_agent_id == agent_id,
-                MemoryItem.source_managed.is_(False),
-                MemoryItem.node_kind == "memory",
-                or_(
-                    func.lower(MemoryItem.title) == title[:500].casefold(),
-                    func.lower(MemoryItem.search_text).startswith(title[:500].casefold() + ":", autoescape=True),
-                    func.lower(MemoryItem.search_text).startswith(title[:500].casefold() + "\n", autoescape=True),
-                    MemoryItem.metadata_["capture_label"].as_string() == title[:500],
-                ),
+        from .facts import AtomicMemoryFact
+        from .conversation_summary import summarize_transcript
+
+        job = await get_db().scalar(
+            select(MemoryAutomationJob).where(
+                MemoryAutomationJob.idempotency_key == f"task_capture:{task_id}"
             )
-            .order_by(MemoryItem.updated_at.desc().nullslast(), MemoryItem.created_at.desc())
-            .limit(1)
         )
-        action = "create"
-        if existing is not None:
-            folded = combined.casefold()
-            action = (
-                "contradict"
-                if any(marker in folded for marker in _CONTRADICTION_MARKERS)
-                else "update"
-            )
-        await acquisition_service.acquire_memory(
-            MemoryAcquisitionCreate(
+        # A claimed worker has a payload snapshot. Always consult the durable
+        # checkpoint first on retry, including when that snapshot is stale.
+        checkpoint = (job.payload if job is not None else payload).get("atomic_facts")
+        if isinstance(checkpoint, list):
+            facts = [AtomicMemoryFact.model_validate(raw) for raw in cast(list[object], checkpoint)]
+        else:
+            facts = await summarize_transcript(combined, agent_id=agent_id, task_id=UUID(task_id), language=language)
+            if job is not None:
+                job.payload = {**job.payload, "atomic_facts": [fact.model_dump(mode="json") for fact in facts]}
+                await get_db().commit()
+        scope = {"scope_mode": "contact", "contact_item_id": str(payload["contact_item_id"])} if payload.get("contact_item_id") else {}
+        for index, fact in enumerate(facts):
+            subject = fact.subject_ref or (f"memory://{scope['contact_item_id']}" if scope else f"galaris://agent/{agent_id}")
+            fact = fact.model_copy(update={"subject_ref": subject})
+            previous = None
+            if any(marker in combined.casefold() for marker in _CONTRADICTION_MARKERS):
+                contact_item_id = UUID(scope["contact_item_id"]) if scope else None
+                foreign_direct = select(MemoryContactItem.id).where(
+                    MemoryContactItem.item_id == MemoryItem.id,
+                    or_(
+                        MemoryContactItem.owner_agent_id != agent_id,
+                        MemoryContactItem.contact_item_id != contact_item_id
+                        if contact_item_id is not None else true(),
+                    ),
+                ).exists()
+                foreign_legacy = select(MemoryTopicContactItem.id).join(
+                    MemoryTopicContactScope,
+                    MemoryTopicContactScope.id == MemoryTopicContactItem.scope_id,
+                ).where(
+                    MemoryTopicContactItem.item_id == MemoryItem.id,
+                    or_(
+                        MemoryTopicContactScope.owner_agent_id != agent_id,
+                        MemoryTopicContactScope.contact_item_id != contact_item_id
+                        if contact_item_id is not None else true(),
+                    ),
+                ).exists()
+                previous_atoms = (await get_db().scalars(select(MemoryItem).where(
+                    MemoryItem.owner_agent_id == agent_id, MemoryItem.node_kind == "memory", MemoryItem.source_managed.is_(False),
+                    MemoryItem.deleted_at.is_(None),
+                    ~foreign_direct,
+                    ~foreign_legacy,
+                    MemoryItem.metadata_["atomic_fact"]["subject_ref"].as_string() == subject,
+                    MemoryItem.metadata_["atomic_fact"]["predicate"].as_string() == fact.predicate,
+                    MemoryItem.metadata_["atomic_fact"] != {"version": 1, **fact.model_dump(mode="json")},
+                ).order_by(MemoryItem.id).limit(2))).all()
+                if len(previous_atoms) == 1:
+                    previous = previous_atoms[0]
+            await acquisition_service.acquire_memory(MemoryAcquisitionCreate(
                 agent_id=agent_id,
-                action=action,
-                target_item_id=existing.id if existing is not None else None,
-                title=title[:500],
-                content=combined,
-                keywords=_keywords(combined),
+                action="contradict" if previous is not None else "create",
+                target_item_id=previous.id if previous is not None else None,
+                fact=fact,
                 source_kind="task",
                 source_ref=f"task:{task_id}",
                 metadata={
-                    "item_metadata": {"capture_label": title[:500]},
+                    **scope,
+                    "capture_label": title[:500],
                     "target_revision": (
-                        existing.revision if existing is not None else None
+                        previous.revision if previous is not None else None
                     ),
                     "tools_used": tools,
                     "message_platform": payload.get("message_platform"),
                     "message_group_id": payload.get("message_group_id"),
                     "language": language,
-                    "capture_version": 1,
+                    "capture_version": 2,
                 },
                 idempotency_key=hashlib.sha256(
-                    f"capture:{task_id}".encode("utf-8")
+                    f"capture:{task_id}:{index}:{fact.model_dump_json()}".encode("utf-8")
                 ).hexdigest(),
-            )
-        )
+            ))
 
 
 async def _process_resource_cleanup(payload: Mapping[str, Any]) -> None:

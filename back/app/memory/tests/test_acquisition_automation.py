@@ -29,6 +29,51 @@ from core.params import runtime_settings
 from core.util.rich_text import visible_text
 
 
+@pytest.fixture
+def capture_writer(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from app.memory import conversation_summary, AtomicMemoryFact
+    state = {"facts": [AtomicMemoryFact(predicate="endpoint_stable", value=True)], "prompts": []}
+    async def output(**kwargs):
+        state["prompts"].append(kwargs["prompt"])
+        return SimpleNamespace(output=conversation_summary.ConversationSummary(facts=state["facts"]))
+    monkeypatch.setattr(conversation_summary, "get_llm_for_agent", AsyncMock(return_value=object()))
+    monkeypatch.setattr(conversation_summary, "run_prompted", output)
+    return state
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("values", [
+    {"content": "<p>Nina Fiction : nina@example.org</p>"},
+    {"content": "<p>Nina Fiction : 12 rue des Fictions, 69003 Lyon.</p>"},
+    {"content": "<p>Telegram: @synthetic_nina</p>"},
+    {"content": '<p>Contact <a href="mailto:nina@example.org">Nina Fiction</a></p>'},
+    {"content": "<p>Nina Fiction : <strong>07 06</strong> 05 04 03.</p>"},
+    {"title": "nina@example.org"},
+    {"keywords": ["nina@example.org"]},
+    {"content": "<p>Nina Fiction : nina@example.org ; elle préfère les appels le matin.</p>"},
+])
+async def test_acquisition_rejects_contact_copies_before_deduplication_and_scrubs_its_journal(
+    db, agents, memory_storage, monkeypatch, values,
+):
+    monkeypatch.setattr(runtime_settings, "LOCALIZATION", "France")
+    owner, _ = agents
+    async def no_model(*args, **kwargs):
+        raise AssertionError("A contact copy must not consume an inference")
+    monkeypatch.setattr(acquisition_service, "_resolve_semantic_duplicate", no_model)
+    data = MemoryAcquisitionCreate.model_validate({"agent_id": owner.id, "content": "<p>A separate preference.</p>",
+        "source_ref": "synthetic:contact-copy", **values})
+    result = await acquisition_service.acquire_memory(data)
+    assert result.status == "rejected" and result.memory_id is None
+    assert result.rejection_reason == "contact_coordinates"
+    record = await acquisition_service.get_acquisition_record(result.acquisition_id)
+    assert "nina@example.org" not in record.content
+    assert "07 06" not in record.content
+    assert record.status == "rejected"
+    assert (await db.scalars(select(MemoryItem.id).where(MemoryItem.owner_agent_id == owner.id))).all() == []
+
+
 @pytest.mark.asyncio
 async def test_memory_acquisition_is_immediate_idempotent_and_attributable(
     agents: tuple[Agent, Agent],
@@ -324,6 +369,37 @@ async def test_acquisition_creates_when_no_candidate_reaches_global_threshold(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("source_equivalent", [False, True])
+async def test_equivalent_candidates_always_prefer_the_real_source_without_discarding_a_partly_new_fact(
+    db, agents, memory_storage, monkeypatch, source_equivalent,
+):
+    from app.llm.decision_contracts import ChoiceAnswer, DecisionResult
+    from app.llm.structured_service import StructuredInferenceResult
+    owner, _ = agents
+    generic, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+        payload=MemoryPayload(text="The synthetic workshop welcomes beginners.")))
+    source, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+        title="Synthetic source", payload=DocumentPayload(text="The synthetic workshop welcomes beginners.")))
+    async def candidates(**_kwargs):
+        return [[MemorySimilarityCandidate(memory_id=item.id, revision=item.revision, title=item.title,
+            excerpt=item.search_text, similarity=similarity) for item, similarity in [(generic, 1.0), (source, 0.99)]]]
+    async def decision(**kwargs):
+        assert set(kwargs["questions"]) == {"duplicate", "duplicate_1"}
+        return StructuredInferenceResult(output=DecisionResult(model="synthetic", answers={
+            "duplicate": ChoiceAnswer(choice="merge"),
+            "duplicate_1": ChoiceAnswer(choice="merge" if source_equivalent else "separate"),
+        }), cost=0.0, messages=[])
+    monkeypatch.setattr(acquisition_service, "find_similar_memory_candidates", candidates)
+    monkeypatch.setattr(acquisition_service, "run_profile_decision", decision)
+    result = await acquisition_service.acquire_memory(MemoryAcquisitionCreate(agent_id=owner.id,
+        content="The synthetic workshop welcomes beginners.", source_ref="synthetic:source-priority"))
+    assert result.memory_id == (source.id if source_equivalent else generic.id)
+    assert result.status == "merged"
+    assert result.source_backed is source_equivalent
+    assert await service.source_refs(source.id) == []
+
+
+@pytest.mark.asyncio
 async def test_semantic_merge_keeps_existing_content_and_adds_provenance(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
@@ -423,12 +499,20 @@ async def test_semantic_merge_can_link_a_source_managed_node_without_rewriting_i
 
 
 @pytest.mark.asyncio
-async def test_document_observation_creates_independent_private_knowledge(
+@pytest.mark.parametrize("scoped", [False, True])
+async def test_document_observation_keeps_the_source_without_copying_the_fact_or_disclosing_private_provenance(
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    scoped: bool,
 ) -> None:
     del memory_storage
     owner, _peer = agents
+    scope = {}
+    if scoped:
+        from app.memory import MessengerContactObservation, observe_messenger_contact
+        contact = await observe_messenger_contact(MessengerContactObservation(owner_agent_id=owner.id,
+            messaging_id="matrix", user_id="@synthetic-source:example.org", display_name="Nina Fiction"))
+        scope = {"scope_mode": "contact", "contact_item_id": str(contact)}
     document, _created = await create_document_reference(
         DocumentItemCreate(
             owner_agent_id=owner.id,
@@ -447,7 +531,7 @@ async def test_document_observation_creates_independent_private_knowledge(
             content="Production releases happen every Tuesday.",
             source_kind="task",
             source_ref="task:document-link",
-            metadata={"deduplication_decision": "merge"},
+            metadata={"deduplication_decision": "merge", **scope},
         )
     )
 
@@ -458,10 +542,11 @@ async def test_document_observation_creates_independent_private_knowledge(
     assert item.revision == 1
     assert visible_text(content.decode()) == "Production releases happen every Tuesday."
     assert await service.source_refs(document.id) == []
-    assert result.status == "stored" and result.memory_id != document.id
-    private = await service.item_record(result.memory_id)
-    assert private.owner_agent_id == owner.id and private.node_kind == "memory"
-    assert await service.source_refs(private.id) == ["task:document-link"]
+    assert result.status == "merged" and result.memory_id == document.id
+    assert result.source_backed
+    from core.database import get_db
+    assert (await get_db().scalars(select(MemoryItem.id).where(MemoryItem.owner_agent_id == owner.id,
+        MemoryItem.node_kind == "memory", MemoryItem.source_managed.is_(False)))).all() == []
     assert await service.source_refs(document.id) == []
 
 
@@ -556,6 +641,7 @@ async def test_terminal_capture_is_durable_idempotent_and_redacts_secrets(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     monkeypatch: pytest.MonkeyPatch,
+    capture_writer,
 ) -> None:
     owner, _peer = agents
     monkeypatch.setattr(automation.runtime_settings, "MEMORY_CAPTURE_ENABLED", True)
@@ -589,16 +675,19 @@ async def test_terminal_capture_is_durable_idempotent_and_redacts_secrets(
     assert candidate.status == "accepted"
     assert candidate.target_item_id is not None
     assert "super-secret" not in candidate.content
-    assert "password=[redacted]" in candidate.content
+    assert "super-secret" not in capture_writer["prompts"][0]
+    assert "password=[redacted]" in capture_writer["prompts"][0]
     assert candidate.source_ref == f"task:{task.id}"
     assert candidate.metadata_["language"] == "fr"
     _item, content, _access, _content_type, _media_type = await service.get_item(
         candidate.target_item_id,
         agent_id=owner.id,
     )
-    assert b"password=[redacted]" in content
-    assert b"Demande utilisateur" in content
-    assert b"R\xc3\xa9sultat" in content
+    assert b"endpoint_stable" in content
+    assert b"Demande utilisateur" not in content
+    assert b"R\xc3\xa9sultat" not in content
+    await automation._process_task_capture(job.payload)
+    assert len(capture_writer["prompts"]) == 1
 
 
 @pytest.mark.asyncio
@@ -789,23 +878,35 @@ async def test_acquisition_redacts_credentials_before_storage(
 
 
 @pytest.mark.asyncio
-async def test_capture_prefers_update_and_preserves_contradictions_as_linked_items(
+@pytest.mark.parametrize("foreign_scope", [False, True])
+async def test_capture_preserves_explicit_atomic_corrections_as_linked_items(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    capture_writer,
+    foreign_scope,
 ) -> None:
     del memory_storage
     owner, _peer = agents
-    existing, _created = await service.create_item(
-        MemoryItemCreate(
-            owner_agent_id=owner.id,
-            title="Deployment policy",
-            payload=MemoryPayload(text="Deployment policy: deploy every Friday."),
-        )
-    )
+    from app.memory import AtomicMemoryFact, create_address_book_contact
+    initial_scope = {}
+    capture_scope = {}
+    if foreign_scope:
+        first_contact = await create_address_book_contact(owner_agent_id=owner.id,
+            display_name="Nina Fiction", email="nina-capture@example.org")
+        other_contact = await create_address_book_contact(owner_agent_id=owner.id,
+            display_name="Milo Fiction", email="milo-capture@example.org")
+        initial_scope = {"scope_mode": "contact", "contact_item_id": str(first_contact.memory_item_id)}
+        capture_scope = {"contact_item_id": str(other_contact.memory_item_id)}
+    first = await acquisition_service.acquire_memory(MemoryAcquisitionCreate(agent_id=owner.id,
+        fact=AtomicMemoryFact(subject_ref=f"galaris://agent/{owner.id}", predicate="deployment_day", value="friday"),
+        metadata=initial_scope, source_ref="synthetic:deployment-policy"))
+    existing = await service.item_record(first.memory_id)
+    capture_writer["facts"] = [AtomicMemoryFact(subject_ref=f"galaris://agent/{owner.id}", predicate="deployment_day", value="friday", negated=True)]
     task_id = uuid4()
     await automation._process_task_capture(  # pyright: ignore[reportPrivateUsage]
         {
+            **capture_scope,
             "task_id": str(task_id),
             "agent_id": owner.id,
             "label": "Deployment policy",
@@ -820,35 +921,37 @@ async def test_capture_prefers_update_and_preserves_contradictions_as_linked_ite
         )
     )
     assert candidate is not None
-    assert candidate.action == "contradict"
-    assert candidate.target_item_id == existing.id
+    assert candidate.action == ("create" if foreign_scope else "contradict")
+    assert (candidate.target_item_id == existing.id) is not foreign_scope
     assert candidate.status == "accepted"
     result_memory_id = UUID(str(candidate.metadata_["result_memory_id"]))
     assert result_memory_id != existing.id
     links = await service.list_links(existing.id, actor_agent_id=owner.id)
-    assert len(links) == 1
-    assert links[0].relation_type == "contradicts"
-    assert links[0].target_item_id == result_memory_id
+    if foreign_scope:
+        assert not any(link.relation_type == "contradicts" for link in links)
+    else:
+        assert len(links) == 1
+        assert links[0].relation_type == "contradicts"
+        assert links[0].target_item_id == result_memory_id
 
 
 @pytest.mark.asyncio
-async def test_automatic_update_acquisition_uses_the_target_revision(
+async def test_capture_keeps_complementary_properties_in_separate_items(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    capture_writer,
 ) -> None:
     del memory_storage
     owner, _peer = agents
-    existing, _ = await service.create_item(
-        MemoryItemCreate(
-            owner_agent_id=owner.id,
-            title="Operational rule",
-            payload=MemoryPayload(text="Initial rule."),
-        )
-    )
+    from app.memory import AtomicMemoryFact
+    first = await acquisition_service.acquire_memory(MemoryAcquisitionCreate(agent_id=owner.id,
+        fact=AtomicMemoryFact(predicate="deployment_day", value="friday"), source_ref="synthetic:initial-rule"))
+    existing = await service.item_record(first.memory_id)
+    task_id = uuid4()
     await automation._process_task_capture(  # pyright: ignore[reportPrivateUsage]
         {
-            "task_id": str(uuid4()),
+            "task_id": str(task_id),
             "agent_id": owner.id,
             "label": existing.title,
             "objective": "Clarify the operational rule",
@@ -858,18 +961,19 @@ async def test_automatic_update_acquisition_uses_the_target_revision(
     )
     candidate = await db.scalar(
         select(MemoryAcquisition).where(
-            MemoryAcquisition.target_item_id == existing.id
+            MemoryAcquisition.source_ref == f"task:{task_id}"
         )
     )
     assert candidate is not None
-    assert candidate.metadata_["target_revision"] == 1
+    assert candidate.metadata_["target_revision"] is None
     assert candidate.status == "accepted"
     item, content, _access, _content_type, _media_type = await service.get_item(
         existing.id,
         agent_id=owner.id,
     )
-    assert item.revision == 2
-    assert b"Updated rule proposed by the completed task." in content
+    assert item.revision == 1
+    assert b"deployment_day" in content
+    assert candidate.target_item_id != existing.id
 
 
 @pytest.mark.asyncio
@@ -877,6 +981,7 @@ async def test_task_capture_never_targets_a_source_managed_title_collision(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    capture_writer,
 ) -> None:
     del memory_storage
     owner, _peer = agents

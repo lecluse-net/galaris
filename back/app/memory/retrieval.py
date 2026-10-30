@@ -14,7 +14,7 @@ from .query_policy import prepare_memory_read
 from .provenance import source_origin_expression
 
 from loguru import logger
-from sqlalchemy import Float, case, cast as sql_cast, exists, func, or_, select
+from sqlalchemy import Float, and_, case, cast as sql_cast, exists, false, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_db
@@ -54,7 +54,7 @@ from .schemas import (
 )
 from .topic_ranking import rank_topic_projection_embeddings
 from .semantic_index import complete_projection_clause
-from .passages import lexical_excerpt, query_identity
+from .passages import lexical_excerpt, query_identity, query_reference_ids, query_is_contact_self_reference, query_is_direct_contact_lookup
 from . import relevance
 from .temporal import MemoryTemporalFilter
 
@@ -63,7 +63,7 @@ RRF_RANK_CONSTANT = 60
 MAX_HYBRID_CANDIDATES = 500
 MIN_GRAPH_LINK_CONFIDENCE = 0.75
 SUGGESTED_TOPIC_RELATION = "topic_membership_candidate"
-RRF_RANKING_VERSION = "memory-query-evidence/v13"
+RRF_RANKING_VERSION = "memory-query-evidence/v14"
 MIN_INFERRED_TOPIC_SIMILARITY = 0.55
 _SOURCE_WEIGHTS: dict[MemoryRetrievalSource, float] = {
     "thematic_lexical": 1.25,
@@ -401,9 +401,13 @@ def _item_filters(
             )
         )
         if request.strict_contact_scope:
-            filters.append(
-                or_(directly_scoped_to_contact, legacy_scoped_to_contact)
-            )
+            self_contact = and_(
+                MemoryItem.id == request.contact_item_id,
+                MemoryItem.owner_agent_id == request.agent_id,
+                MemoryItem.source_managed.is_(True),
+                MemoryItem.managed_source_kind == "messenger_contact",
+            ) if query_is_contact_self_reference(request.recall_query or request.query) else false()
+            filters.append(or_(directly_scoped_to_contact, legacy_scoped_to_contact, self_contact))
         else:
             directly_conversation_scoped = exists(
                 select(MemoryContactItem.id).where(
@@ -428,10 +432,6 @@ def _item_filters(
                 or_(
                     MemoryItem.metadata_["memory_role"].as_string().is_(None),
                     MemoryItem.metadata_["memory_role"].as_string() != "topic",
-                ),
-                or_(
-                    MemoryItem.managed_source_kind.is_(None),
-                    MemoryItem.managed_source_kind != "messenger_contact",
                 ),
             ]
         )
@@ -768,8 +768,12 @@ async def _weighted_rank(
     matched_query = {identity: relevance.matched_terms(text, weights) for identity, text in evidence_text.items()}
     lexical_evidence = {identity: sum(weights[word] for word in matches) / total_weight
                         for identity, matches in matched_query.items()}
+    references = set(query_reference_ids(query))
     exact_ids = {identity for identity, item in candidate_items.items()
-                 if query_identity(query) == identity or relevance.fold(query.strip()) == relevance.fold(item.title.strip())}
+                 if identity in references or relevance.fold(query.strip()) == relevance.fold(item.title.strip())
+                 or (identity == scope_request.contact_item_id and item.owner_agent_id == scope_request.agent_id
+                     and item.managed_source_kind == "messenger_contact" and item.source_managed
+                     and query_is_direct_contact_lookup(query))}
     # Lexical/vector scores order candidates; they must never empty the recall.
     # Graph-only neighbours need an explicitly resolved relational target;
     # otherwise they remain contextual bonuses, not standalone evidence.
@@ -1050,6 +1054,10 @@ async def _weighted_rank(
 
 def _identity_title_terms(item: MemoryItemPublic) -> tuple[str, ...]:
     """A derived label naming several people describes evidence, not one profile."""
+    if item.managed_source_kind == "messenger_contact":
+        name = str(item.metadata.get("display_name_override") or item.metadata.get("display_name")
+                   or item.title.removeprefix("Contact — "))
+        return relevance.terms(name)
     if item.node_kind == "memory" and not item.source_managed:
         if len(relevance.entity_groups(item.title, limit=8)) != 1:
             return ()
@@ -1328,6 +1336,25 @@ async def _recall_items(
         limit=candidate_limit,
     )
     thematic_affinity = 1.0 if thematic_request is not None else 0.0
+    direct_identity = query_identity(request.query)
+    direct_contact = (request.contact_item_id is not None and query_is_direct_contact_lookup(request.query)
+        and (not request.semantic_query or query_is_direct_contact_lookup(request.semantic_query)))
+    if direct_contact:
+        direct_identity = request.contact_item_id
+    if direct_identity is not None:
+        # Existing identity + exact requested resource: do not retrieve, embed
+        # or rerank the rest of the directory. SQL scope and final admission
+        # still enforce live permissions, validity, revisions and source access.
+        direct_page = await service.search_items(global_request.model_copy(update={
+            "query": str(direct_identity), "limit": 1,
+        }), record_llm_access=False)
+        direct_hits = [hit.model_copy(update={"score": 1.0, "retrieval_sources": ["global_lexical"]})
+            for hit in direct_page.hits if not direct_contact or (
+                hit.item.source_managed and hit.item.managed_source_kind == "messenger_contact"
+                and hit.item.owner_agent_id == request.agent_id)]
+        return MemoryRecallResult(query=request.query.strip(), hits=direct_hits, mode="lexical",
+            ranking_version=RRF_RANKING_VERSION, global_candidate_count=len(direct_hits),
+            global_result_count=len(direct_hits))
     # Short titles and identifiers still need a lexical lookup, even when the
     # query has no terms long enough for the relaxed full-text expansion.
     global_page = await service.search_items(global_request, record_llm_access=False)

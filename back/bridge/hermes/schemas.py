@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.memory import MemorySearchHit
+from app.memory import AtomicMemoryFact, MemorySearchHit
 
 
 class HermesConfigUpdate(BaseModel):
@@ -71,3 +71,16 @@ class HermesMemoryRememberRequest(BaseModel):
     action: Literal["add", "replace"] = "add"
     session_id: str = Field(default="", max_length=500)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("content")
+    @classmethod
+    def require_atomic_fact(cls, value: str) -> str:
+        """The legacy string transport carries one typed fact, never prose."""
+        try:
+            AtomicMemoryFact.model_validate_json(value)
+        except ValueError as exc:
+            raise ValueError(
+                "Send one JSON atomic fact with subject_ref, predicate and value; "
+                "use the managed memory_remember tool for structured input."
+            ) from exc
+        return value

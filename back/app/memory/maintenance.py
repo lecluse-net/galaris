@@ -14,7 +14,7 @@ from typing import cast
 from uuid import UUID
 
 from sqlalchemy import Float, and_, delete, func, or_, select, update
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import cast as sql_cast
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -25,7 +25,7 @@ from core.user import user_service
 from . import service
 from .embedding import MemoryEmbeddingNotConfiguredError, resolve_embedding_model
 from .models import MemoryContactItem, MemoryEmbeddingChunk, MemoryFinding, MemoryItem, MemoryLink, MemorySource, MemoryTopicContactItem, MemoryUsage
-from app.document import DocumentAttachment
+from app.document import Document, DocumentAttachment
 from .schemas import MemoryFindingPublic
 
 
@@ -97,6 +97,21 @@ def _fingerprint(
 
 def _meaningful_at(item: MemoryItem) -> datetime:
     return item.updated_at or item.created_at
+
+
+def _source_backed(item: MemoryItem) -> bool:
+    return item.source_managed or item.node_kind in {"document", "file", "attachment", "directory"}
+
+
+def _source_contains_fact(source: MemoryItem, memory: MemoryItem) -> bool:
+    # Cross-domain absorption requires literal complete evidence, not just a high
+    # embedding score. Never collapse independent authoritative resources here.
+    fact = " ".join(memory.search_text.casefold().split())
+    return bool(fact) and fact in " ".join(source.search_text.casefold().split())
+
+
+def _duplicate_canonical(first: MemoryItem, second: MemoryItem) -> MemoryItem:
+    return min((first, second), key=lambda item: (not _source_backed(item), _meaningful_at(item), str(item.id)))
 
 
 async def file_pair_compatible(first: MemoryItem, second: MemoryItem) -> bool:
@@ -225,8 +240,6 @@ async def _indexed_candidates(
             source_chunk.source_fingerprint == item.semantic_fingerprint,
             candidate_chunk.source_fingerprint == candidate_item.semantic_fingerprint,
             candidate_item.owner_agent_id == item.owner_agent_id,
-            candidate_item.node_kind == "memory",
-            candidate_item.source_managed.is_(False),
         )
         .group_by(candidate_item.id)
         .subquery()
@@ -234,6 +247,7 @@ async def _indexed_candidates(
     rows = (
         await get_db().execute(
             select(MemoryItem, scores.c.similarity)
+            .options(joinedload(MemoryItem.document))
             .join(scores, scores.c.item_id == MemoryItem.id)
             .where(scores.c.similarity >= minimum_similarity)
             .order_by(scores.c.similarity.desc(), MemoryItem.id)
@@ -320,28 +334,32 @@ async def detect_for_item(item_id: UUID, *, manual: bool = False) -> list[UUID]:
             actionable.append(finding)
 
     contradiction_mode = "manual" if manual else runtime_settings.MEMORY_CONTRADICTION_MODE
-    minimum = min(
-        runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
-        runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD
-        if contradiction_mode != "off"
-        else 1.0,
-    )
+    minimum = runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD
     item_scope = await _scope_signature(item.id)
     candidates = (await _file_candidates(item) if item.file_sha256 is not None
                   else await _indexed_candidates(item, minimum_similarity=minimum))
     for candidate, similarity in candidates:
-        if item.file_sha256 is None and str(candidate.id) < str(item.id):
+        item_fact = item.metadata_.get("atomic_fact")
+        candidate_fact = candidate.metadata_.get("atomic_fact")
+        if item_fact is not None and candidate_fact is not None and item_fact != candidate_fact:
+            # Equal labels or embeddings never make two subjects/properties/values
+            # identical. Their typed assertion is the identity boundary.
             continue
-        if await _scope_signature(candidate.id) != item_scope:
+        backed = _source_backed(candidate) and not _source_backed(item)
+        if item.file_sha256 is None and not backed and str(candidate.id) < str(item.id):
+            continue
+        if backed and not _source_contains_fact(candidate, item):
+            continue
+        if not backed and await _scope_signature(candidate.id) != item_scope:
             continue
         if candidate.temporal != item.temporal:
             continue
-        signal = None if item.file_sha256 is not None else _contradiction_signal(item, candidate)
+        signal = None if item.file_sha256 is not None or backed else _contradiction_signal(item, candidate)
         if (
             contradiction_mode != "off"
             and signal is not None
             and similarity
-            >= runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD
+            >= runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD
         ):
             item_corrects = _has_correction_marker(item)
             candidate_corrects = _has_correction_marker(candidate)
@@ -357,7 +375,7 @@ async def detect_for_item(item_id: UUID, *, manual: bool = False) -> list[UUID]:
                 primary=item,
                 related=candidate,
                 score=similarity,
-                threshold=runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD,
+                threshold=runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
                 proposed_action="keep_newest",
                 details={
                     "signal": signal,
@@ -366,7 +384,8 @@ async def detect_for_item(item_id: UUID, *, manual: bool = False) -> list[UUID]:
                 reuse_pending=contradiction_mode == "automatic",
             )
         elif similarity >= runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD:
-            canonical = min((item, candidate), key=(lambda node: (node.created_at, str(node.id))) if item.file_sha256 else _meaningful_at)
+            canonical = (min((item, candidate), key=lambda node: (node.created_at, str(node.id)))
+                         if item.file_sha256 else _duplicate_canonical(item, candidate))
             finding = await _store_finding(
                 kind="duplicate",
                 primary=item,
@@ -445,7 +464,7 @@ async def reconcile_policy_findings() -> int:
             "automatic",
         ),
         "contradiction": (
-            runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD,
+            runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
             runtime_settings.MEMORY_CONTRADICTION_MODE,
         ),
         "aging": (
@@ -554,19 +573,29 @@ async def _invalidate_item_findings(item_id: UUID, *, except_id: UUID) -> None:
 
 
 async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id: UUID) -> None:
-    if canonical.node_kind == "document" or duplicate.node_kind == "document":
+    source_absorption = _source_backed(canonical) and not _source_backed(duplicate)
+    if canonical.node_kind == "document" and (canonical.document is None or canonical.document.deleted_at is not None):
+        raise service.MemoryConflictError("The canonical Document is no longer available.")
+    if (canonical.metadata_.get("atomic_fact") is not None and duplicate.metadata_.get("atomic_fact") is not None
+            and canonical.metadata_["atomic_fact"] != duplicate.metadata_["atomic_fact"]):
+        raise service.MemoryConflictError("Different atomic assertions cannot be merged as identical memories.")
+    if source_absorption and not _source_contains_fact(canonical, duplicate):
+        raise service.MemoryConflictError("The source no longer contains the complete duplicate fact.")
+    if not source_absorption and (canonical.node_kind == "document" or duplicate.node_kind == "document"):
         raise service.MemoryConflictError("Document memories cannot be merged independently of their documents.")
+    if _source_backed(duplicate) and not (canonical.file_sha256 and duplicate.file_sha256):
+        raise service.MemoryConflictError("Source-backed resources must survive personal-memory deduplication.")
     if canonical.id == duplicate.id:
         raise service.MemoryConflictError("A memory cannot be merged into itself.")
     if canonical.owner_agent_id != duplicate.owner_agent_id:
         raise service.MemoryConflictError("Memories owned by different agents cannot be merged.")
-    file_merge = canonical.file_sha256 is not None or duplicate.file_sha256 is not None
+    file_merge = not source_absorption and (canonical.file_sha256 is not None or duplicate.file_sha256 is not None)
     if file_merge and (canonical.file_sha256 != duplicate.file_sha256
                        or not await file_pair_compatible(canonical, duplicate)):
         raise service.MemoryConflictError("File identities or access scopes changed before merging.")
     if canonical.temporal != duplicate.temporal:
         raise service.MemoryConflictError("Memories with different temporal anchors cannot be merged.")
-    if await _scope_signature(canonical.id) != await _scope_signature(duplicate.id):
+    if not source_absorption and await _scope_signature(canonical.id) != await _scope_signature(duplicate.id):
         raise service.MemoryConflictError("Memory scopes changed and are no longer compatible.")
     db = get_db()
     existing_sources = {
@@ -578,6 +607,15 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
     for row in (
         await db.scalars(select(MemorySource).where(MemorySource.item_id == duplicate.id))
     ).all():
+        if source_absorption:
+            # Keep private provenance in the owner-bound finding, never append it
+            # to a potentially shared Document or File's exposed source list.
+            finding = await db.get(MemoryFinding, finding_id)
+            assert finding is not None
+            provenance = list(finding.details.get("absorbed_sources", []))
+            provenance.append({"source_kind": row.source_kind, "source_ref": row.source_ref})
+            finding.details = {**finding.details, "absorbed_sources": provenance}
+            continue
         if (row.source_kind, row.source_ref) in existing_sources:
             await db.delete(row)
         else:
@@ -614,7 +652,7 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
         await _invalidate_item_findings(canonical.id, except_id=finding_id)
         await db.flush()
         return
-    links = (
+    links: list[MemoryLink] = list((
         await db.scalars(
             select(MemoryLink).where(
                 or_(
@@ -623,7 +661,21 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
                 )
             )
         )
-    ).all()
+    ).all())
+    if source_absorption and links:
+        # Link metadata and even a relation between two readable resources can
+        # disclose private conversation evidence. A shared canonical source must
+        # not inherit the ordinary copy's graph provenance. Keep it owner-bound.
+        finding = await db.get(MemoryFinding, finding_id)
+        assert finding is not None
+        finding.details = {**finding.details, "absorbed_links": [
+            {"source_item_id": str(link.source_item_id), "target_item_id": str(link.target_item_id),
+             "relation_type": link.relation_type, "metadata": dict(link.metadata_)}
+            for link in links
+        ]}
+        for link in links:
+            await db.delete(link)
+        links = []
     for link in links:
         source_id = canonical.id if link.source_item_id == duplicate.id else link.source_item_id
         target_id = canonical.id if link.target_item_id == duplicate.id else link.target_item_id
@@ -643,8 +695,9 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
         else:
             link.source_item_id = source_id
             link.target_item_id = target_id
-    canonical.old_at = None
-    canonical.old_reason = None
+    if not source_absorption:
+        canonical.old_at = None
+        canonical.old_reason = None
     await _invalidate_item_findings(duplicate.id, except_id=finding_id)
     await _invalidate_item_findings(canonical.id, except_id=finding_id)
     await db.commit()
@@ -664,6 +717,13 @@ async def apply_finding(
     identities = [finding.primary_item_id]
     if finding.related_item_id is not None:
         identities.append(finding.related_item_id)
+    # Source owners lock Document before refreshing its Memory reference. Keep
+    # that order and hold the source revision through duplicate retirement.
+    document_ids = list(await get_db().scalars(select(MemoryItem.id).where(
+        MemoryItem.id.in_(identities), MemoryItem.node_kind == "document")))
+    if document_ids:
+        await get_db().scalars(select(Document).where(Document.id.in_(document_ids))
+            .order_by(Document.id).with_for_update().execution_options(populate_existing=True))
     locked = {item.id: item for item in await get_db().scalars(select(MemoryItem).where(
         MemoryItem.id.in_(identities),
     ).order_by(MemoryItem.id).with_for_update().execution_options(populate_existing=True))}
@@ -698,6 +758,11 @@ async def apply_finding(
                 raise service.MemoryConflictError("The canonical memory must belong to the finding.")
             canonical = primary if selected_id == primary.id else related
             duplicate = related if selected_id == primary.id else primary
+            if finding.kind == "duplicate" and _source_backed(canonical) != _source_backed(duplicate):
+                canonical = _duplicate_canonical(primary, related)
+                duplicate = related if canonical.id == primary.id else primary
+                finding.details = {**finding.details, "proposed_canonical_item_id": str(canonical.id),
+                                   "canonical_priority": "source_backed"}
             await _merge_items(canonical, duplicate, finding.id)
         finding.status = "applied"
         finding.resolved_at = datetime.now(timezone.utc)

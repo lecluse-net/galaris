@@ -13,7 +13,9 @@ from openai import ContentFilterFinishReasonError
 from pydantic import Field, create_model
 from loguru import logger
 from core.i18n import SUPPORTED_LANGUAGES
-from core.params import Params, params_service
+from core.params import Params, params_service, runtime_settings
+from core.util import DetectedContactInfo, country_from_localization, detect_contact_infos
+from .contact_discovery import plain_contact_text, route_contact_discovery
 from app.llm.structured_service import (
     StructuredInferenceResult,
     run_prompted,
@@ -414,6 +416,8 @@ class Dispatcher:
         routes = {route for route, _effort in choices}
 
         def finish(result: DispatchResult) -> DispatchResult:
+            self._attach_contact_infos(result, self.contact_source_text(task))
+            result.execution_time = time.time() - start_time
             return self.trace_result(task, result, routes, policy_notes, spec=spec, choices=choices)
 
         if not choices:
@@ -537,6 +541,7 @@ class Dispatcher:
         sender_is_ai: bool | None = None,
         agent: Any | None = None,
         agent_loader: Callable[[], Awaitable[Any | None]] | None = None,
+        contact_text: str | None = None,
     ) -> DispatchResult:
         """Reply directly to humans; gate only peer replies through inference."""
 
@@ -569,19 +574,26 @@ class Dispatcher:
         policy_notes = [
             "Conversation profile: direct standard execution only; planner disabled"
         ]
+
+        def finish(result: DispatchResult, *, policy_notes: list[str],
+                   allowed_routes: list[DispatchRoute] | None = None) -> DispatchResult:
+            self._attach_contact_infos(result, contact_text if contact_text is not None else self.contact_source_text(context))
+            result.execution_time = time.time() - start_time
+            return self._conversation_trace_result(result, policy_notes=policy_notes, allowed_routes=allowed_routes)
+
         depth = 0
 
         if effective_sender_is_ai:
             depth = self._ai_exchange_depth(context)
             if depth >= AI_EXCHANGE_MAX_DEPTH:
-                return self._conversation_trace_result(
+                return finish(
                     self._depth_end_result(start_time, depth),
                     policy_notes=[*policy_notes, "END enforced by the exchange depth cap"],
                     allowed_routes=["END"],
                 )
             burst, count, max_burst, window = await self._ai_burst_detected(context)
             if burst:
-                return self._conversation_trace_result(
+                return finish(
                     self._burst_end_result(start_time, count, max_burst, window),
                     policy_notes=[*policy_notes, "END enforced by the AI message burst cap"],
                     allowed_routes=["END"],
@@ -589,7 +601,7 @@ class Dispatcher:
 
             toggle = await params_service.get(Params.MESSENGER_AI_GATE, "on")
             if str(toggle).strip().lower() in ("off", "0", "false", "no", ""):
-                return self._conversation_trace_result(
+                return finish(
                     self._exec_decision_result(
                         start_time,
                         "AI contribution gate disabled; replying through direct execution.",
@@ -601,7 +613,7 @@ class Dispatcher:
                 )
 
         if not effective_sender_is_ai:
-            result = self._conversation_trace_result(
+            result = finish(
                 self._exec_decision_result(
                     start_time,
                     "Human conversation; direct execution without dispatcher inference.",
@@ -628,7 +640,7 @@ class Dispatcher:
             )
 
         if not await has_agent_profile_model(context.agent, model_usages.DISPATCHER):
-            return self._conversation_trace_result(
+            return finish(
                 self._exec_decision_result(
                     start_time,
                     "No dispatcher model is configured; replying through direct execution.",
@@ -661,11 +673,33 @@ class Dispatcher:
         if accounting.costs:
             result.cost = accounting.cost
         result.decision.effort = "standard"
-        return self._conversation_trace_result(
+        return finish(
             result,
             policy_notes=policy_notes,
             allowed_routes=list(allowed_routes),
         )
+
+    @staticmethod
+    def contact_source_text(task: AgentTask) -> str:
+        """Scan the complete current input, never the short routing history or labels."""
+        data = task.data if isinstance(task.data, Mapping) else {}
+        raw = data.get("text")
+        if isinstance(raw, str):
+            return raw
+        if task.objective and task.objective.strip():
+            return task.objective
+        if task.messages:
+            from .conversation_context import message_text
+
+            return message_text(task.messages[-1])
+        return ""
+
+    @staticmethod
+    def _attach_contact_infos(result: DispatchResult, source: str) -> None:
+        # Task objectives use editorial HTML; Messenger text can contain angle-bracket emails.
+        # Coordinates refer to plain visible input, never hidden HTML attributes or history.
+        result.contact_infos = detect_contact_infos(plain_contact_text(source),
+            default_country=country_from_localization(runtime_settings.LOCALIZATION) or None)
 
     @staticmethod
     def _conversation_trace_result(
@@ -1468,10 +1502,15 @@ async def dispatch_conversation(
     sender_is_ai: bool,
     agent: Any | None = None,
     agent_loader: Callable[[], Awaitable[Any | None]] | None = None,
+    current_messages: Sequence[Mapping[str, object]] | None = None,
 ) -> DispatchResult:
     """Public conversation profile of the shared dispatcher."""
 
-    return await get_dispatcher().run_conversation(
+    current = messages[-1].get("text") if messages else None
+    text = current if isinstance(current, str) else objective
+    if current_messages is not None:
+        text = "\n\n".join(value for item in current_messages if isinstance(value := item.get("text"), str))
+    result = await get_dispatcher().run_conversation(
         round_id=round_id,
         run_id=run_id,
         agent_id=agent_id,
@@ -1481,7 +1520,27 @@ async def dispatch_conversation(
         sender_is_ai=sender_is_ai,
         agent=agent,
         agent_loader=agent_loader,
+        contact_text=text,
     )
+    await route_contact_discovery(agent_id=agent_id, source_kind="conversation_round", source_ref=str(round_id),
+        current_text=text,
+        messages=messages, coordinates=result.contact_infos)
+    return result
+
+
+async def capture_conversation_contact_infos(*, round_id: UUID, agent_id: int, objective: str,
+                                             messages: Sequence[Mapping[str, object]],
+                                             current_messages: Sequence[Mapping[str, object]] | None = None) -> list[DetectedContactInfo]:
+    """A forced reply still captures details without invoking the contribution gate."""
+    current = messages[-1].get("text") if messages else None
+    text = current if isinstance(current, str) else objective
+    if current_messages is not None:
+        text = "\n\n".join(value for item in current_messages if isinstance(value := item.get("text"), str))
+    infos = detect_contact_infos(plain_contact_text(text),
+        default_country=country_from_localization(runtime_settings.LOCALIZATION) or None)
+    await route_contact_discovery(agent_id=agent_id, source_kind="conversation_round", source_ref=str(round_id),
+        current_text=text, messages=messages, coordinates=infos)
+    return infos
 
 
 async def preview_dispatcher_input(

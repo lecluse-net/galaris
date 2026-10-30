@@ -21,6 +21,99 @@ from app.memory.evaluation import (
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hybrid", [False, True])
+async def test_contextual_contact_and_document_corpus_meets_top_one_and_isolation_guarantees(
+    db, agents, memory_storage, monkeypatch, capsys, hybrid,
+):
+    """Real SQL, projections, vectors, ranking and admission; only HTTP is replaced.
+
+    Deliberately uninformative embeddings cannot rescue a broken exact identity
+    path or hide its dependence on provider quality. No production data is used.
+    """
+    import json
+    from sqlalchemy import event
+    from app.memory import create_address_book_contact, semantic_index
+    from app.memory.embedding import EmbeddingModel
+    from app.document.schemas import DocumentItemCreate, DocumentPayload
+    from app.memory.tests.document_fixtures import create_document_reference
+    from app.memory import relevance
+
+    owner, peer = agents
+    model = EmbeddingModel(key="synthetic-usage", code="synthetic-usage", model_name="synthetic-usage",
+        base_url="http://unused.invalid", api_key=None)
+    async def resolve():
+        return model
+    async def embed(texts, **_kwargs):
+        return [[1.0, 0.0] for _ in texts]
+    async def query(*_args, **_kwargs):
+        return [1.0, 0.0]
+    async def unavailable():
+        raise MemoryEmbeddingNotConfiguredError("Synthetic provider outage")
+    monkeypatch.setattr(semantic_index, "resolve_embedding_model", resolve)
+    monkeypatch.setattr(semantic_index, "embed_many", embed)
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", resolve if hybrid else unavailable)
+    monkeypatch.setattr(retrieval, "embed_query", query)
+    names = ("Éloi Martin", "Nina Morel", "Milo Garcia", "Camille Perrin", "Zoé Durant", "Noémie Vidal")
+    contacts = [await create_address_book_contact(owner_agent_id=owner.id,
+        display_name=name, email=f"synthetic-person-{index}@example.org") for index, name in enumerate(names)]
+    foreign = await create_address_book_contact(owner_agent_id=peer.id,
+        display_name=names[0], email="synthetic-private-person@example.org")
+    documents = []
+    for index, project in enumerate(("QUARTZ", "SOLSTICE", "HORIZON")):
+        document, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+            title=f"Protocole de restauration {project}",
+            payload=DocumentPayload(text=f"<p>La restauration {project} exige une sauvegarde vérifiée et {47 + index} unités.</p>")))
+        documents.append(document)
+    for index in range(24):
+        await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+            title=f"Note provisoire atelier {index}",
+            payload=MemoryPayload(text=f"<p>{names[index % len(names)]} a lu un brouillon QUARTZ SOLSTICE HORIZON pendant un atelier. Ce brouillon ne définit aucune procédure de restauration.</p>")))
+    if hybrid:
+        from app.memory.models import MemoryItem
+        from sqlalchemy import select
+        for identity in await db.scalars(select(MemoryItem.id)):
+            await semantic_index.process_embedding_job({"item_id": str(identity)})
+    forbidden = frozenset({str(foreign.memory_item_id)})
+    scenarios = []
+    for index, contact in enumerate(contacts):
+        for variant, text in enumerate((f"Quel est le mail de {names[index]} ?",
+                f"email de {relevance.fold(names[index])}", f"Contact {names[index]}")):
+            scenarios.append(RecallEvaluationScenario(RecallEvaluationCase(
+                f"named-{index}-{variant}", frozenset({str(contact.memory_item_id)}), forbidden), owner.id, text))
+        for variant, text in enumerate(("Tu as mon email ?", "What is my email address?", "Mon mail ?", "My contact details?")):
+            scenarios.append(RecallEvaluationScenario(RecallEvaluationCase(
+                f"scoped-{index}-{variant}", frozenset({str(contact.memory_item_id)}), forbidden), owner.id,
+                text, contact_item_id=contact.memory_item_id))
+    for index, document in enumerate(documents):
+        project = ("QUARTZ", "SOLSTICE", "HORIZON")[index]
+        for variant, text in enumerate((f"{project} sauvegarde vérifiée", document.title,
+                f"Reprendre le document document://{document.id}, s'il te plaît.")):
+            scenarios.append(RecallEvaluationScenario(RecallEvaluationCase(
+                f"document-{index}-{variant}", frozenset({str(document.id)}), forbidden), owner.id, text))
+    statements = 0
+    def count(*_args):
+        nonlocal statements
+        statements += 1
+    engine = db.sync_session.get_bind()
+    event.listen(engine, "before_cursor_execute", count)
+    try:
+        observations, summary = await evaluate_recall(scenarios, k=1)
+    finally:
+        event.remove(engine, "before_cursor_execute", count)
+    misses = [observation.case.case_id for observation in observations
+        if not observation.case.expected_ids.intersection(observation.returned_ids[:1])]
+    with capsys.disabled():
+        print("MEMORY_USAGE_QUALIFICATION=" + json.dumps({"hybrid": hybrid,
+            "cases": summary.case_count, "recall_at_1": summary.recall_at_k,
+            "mrr": summary.mean_reciprocal_rank, "leakage_rate": summary.leakage_rate,
+            "latency_p95_ms": round(summary.latency_p95_ms, 2), "sql_statements": statements,
+            "misses": misses}))
+    assert not misses
+    assert summary.recall_at_k == 1.0
+    assert summary.leakage_rate == 0.0
+
+
 def test_fixed_memory_quality_baseline_reports_recall_cost_and_degradation() -> None:
     """Keep representative preference/contact/project cases comparable over time."""
 
@@ -192,7 +285,7 @@ async def test_real_recall_pipeline_meets_quality_and_isolation_floor(
     )
     contact = await create(
         "Préférence Alice Matrix",
-        "Alice Matrix @alice:example préfère les résumés courts. sigalice293",
+        "Alice Matrix préfère les résumés courts. sigalice293",
     )
     decision = await create(
         "Décision stockage",

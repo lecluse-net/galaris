@@ -22,6 +22,59 @@ et identités d'origine, avant une nouvelle décision du modèle. Les résultats
 restent acquis ; un effet non idempotent sans reçu bloque la reprise. Les contrôles
 natifs d'autorisation et de fraîcheur restent appliqués.
 
+## Détection de coordonnées dans le Dispatcher
+
+Chaque résultat du Dispatcher ajoute `contact_infos` à ses champs existants. Ce tableau
+contient les occurrences de mails, téléphones, adresses postales et identifiants de messagerie
+détectées localement dans le message courant complet. Chaque entrée expose `type`, `value`,
+`normalized_value`, `start`, `end`, ainsi que `country` et `platform` si disponibles.
+Les positions portent sur le texte visible analysé, après extraction du HTML éventuel.
+L'historique court du routage et les métadonnées d'expéditeur ne sont pas analysés.
+
+La détection couvre les messages humains et IA, les routes imposées et les sorties `END`.
+Elle n'ajoute ni inférence, ni DNS, ni requête en base. Les téléphones sont interprétés selon
+le pays explicite de `LOCALIZATION` ; les formats internationaux restent possibles sans pays.
+Les mails sont validés syntaxiquement, les numéros sont des candidats de longueur plausible,
+et les adresses suivent des motifs français/anglais ou des blocs explicitement étiquetés.
+Ces motifs ne garantissent pas une couverture universelle ni l'existence d'une adresse.
+
+Les métadonnées et caches sont préparés au démarrage. L'objectif de 3 ms concerne l'extraction
+locale mesurée ; ce n'est pas une garantie sur tout message sans limite de taille, notamment
+sur les longs blocs numériques. Aucune limite silencieuse ne tronque les résultats.
+Après détection, le router dépose une demande durable par coordonnée dans `app.contact`,
+indépendamment de la réponse, y compris pour `END` et **Répondre maintenant**. Un round qui
+regroupe plusieurs nouveaux messages les analyse tous ; son ancien historique fournit seulement
+du contexte. Les évaluations du Dispatcher restent sans effet de bord.
+
+Le worker Contacts vérifie d'abord le carnet privé de l'agent. Une coordonnée connue termine sans
+LLM ni modification de fiche. Sinon, un appel structuré au modèle texte ultra-léger extrait le nom
+et des citations du contexte ; le modèle décisionnel du même profil choisit ensuite une fiche
+existante, une création, un rejet ou une identité incertaine. Aucun outil ni boucle agentique
+n'intervient. Les coordonnées enregistrées proviennent du détecteur, jamais d'une génération du
+modèle. Une plateforme inconnue ou un nom sans preuve empêche l'écriture. Les noms des expéditeurs
+humains et IA restent disponibles sans leur attribuer automatiquement les coordonnées transmises.
+
+Le contexte est borné à cinquante messages et environ 32 000 caractères d'historique ; un extrait
+centré sur la coordonnée conserve les grandes entrées. Une identité encore incertaine est
+conservée dans le journal sans créer de fiche. Les erreurs transitoires disposent de cinq essais ;
+un bail expiré est repris, et une interruption ne consomme pas cet effort. Les preuves du
+propriétaire et la décision sont sauvegardées séparément avant l'application. Un verrou de carnet
+et une relecture des fiches protègent les traitements concurrents. Une édition humaine périmant
+la décision entraîne une nouvelle lecture. L'oubli d'une fiche annule ses anciennes observations
+en attente pour empêcher sa recréation.
+
+Dream exécute `contact.reconcile` au repos. Le seuil de similarité propose des paires dans un même
+carnet ; une décision LLM doit confirmer leur identité commune. Un homonyme ou un numéro familial
+ne suffit pas. Un choix « identité indéterminée » bloque la fusion ; les scores du fournisseur
+restent des annotations, sans les assimiler à des probabilités calibrées. La décision préparée est conservée
+dans un reçu et les fiches sont revérifiées avant la fusion canonique, qui garde coordonnées,
+identités et historique et réaffecte les références de conversation et d'acquisition.
+`CONTACT_CAPTURE_ENABLED` contrôle l'acquisition ; `MEMORY_DUPLICATE_SIMILARITY_THRESHOLD`
+contrôle la présélection Dream, avec 92 % par défaut. Ce seuil unique est aussi celui de l'acquisition,
+du rappel et des signalements de doublon ou de contradiction mémoire. Le LLM reste hors du budget de détection.
+Voir [0255](../../../../project/decisions/0255-dispatcher-contact-coordinate-detection.md)
+et [0256](../../../../project/decisions/0256-contact-acquisition-and-dream-reconciliation.md).
+
 ## Organisation du travail
 
 Pour une tâche, le Dispatcher choisit `direct`, `tracked` ou `clarify` dans son inférence

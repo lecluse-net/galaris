@@ -255,6 +255,7 @@ dependencies = [
     { name = "markdown-it-py" },
     { name = "markupsafe" },
     { name = "nh3" },
+    { name = "phonenumberslite" },
     { name = "pillow" },
     { name = "pwdlib" },
     { name = "pyasn1" },
@@ -337,6 +338,7 @@ requires-dist = [
     { name = "markdown-it-py", specifier = ">=4,<5" },
     { name = "markupsafe", specifier = "~=3.0" },
     { name = "nh3", specifier = ">=0.3,<0.4" },
+    { name = "phonenumberslite", specifier = ">=9,<10" },
     { name = "pillow", specifier = "~=13.0" },
     { name = "pwdlib", specifier = "~=0.3" },
     { name = "pyasn1", specifier = "~=0.6" },
@@ -2420,6 +2422,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/66/f3/5a20387de9bcd0607871bfc2198ee0e15836da7baa4592ccd7f24c27c986/pathable-0.6.0.tar.gz", hash = "sha256:6404b8b82aef5ff0fd478934137128b99b12212ba35afdde5525ca4f8388ea58", size = 18970, upload-time = "2026-05-19T18:15:11.911Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/e8/6d75ffd9784bce2e93d1ae4415649427e39a53bb172d4672b2b59c6f0a7b/pathable-0.6.0-py3-none-any.whl", hash = "sha256:82c4ca6c98c502ad12e0d4e9779b6210afee93c38990988c8c5d1b49bdcdf566", size = 18983, upload-time = "2026-05-19T18:15:10.728Z" },
+]
+
+[[package]]
+name = "phonenumberslite"
+version = "9.0.42"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/68/1d/d34ed58de44e09b000369d429211862329dfe36a57005ed6ce8c6809b3e6/phonenumberslite-9.0.42.tar.gz", hash = "sha256:fc87e72d76d48ddbd4ebd97a42abe723787ff7d3336123dcf6dafc0f6e1f5c21", size = 293001, upload-time = "2026-10-27T07:49:18.621Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/86/cf/018ae824f0f5106fd8eaa17de8d922d7a6593f587462d96ccd11161852df/phonenumberslite-9.0.42-py2.py3-none-any.whl", hash = "sha256:7ae0a97b12e9f0749e7bed2c9c3da4df43648ea5ba021de86b36088d98a0915e", size = 473180, upload-time = "2026-10-27T07:49:17.009Z" },
 ]
 
 [[package]]

@@ -15,7 +15,7 @@ from typing import Any, Literal, Sequence, cast
 from uuid import UUID, uuid4
 
 from loguru import logger
-from sqlalchemy import and_, case, delete, exists, func, or_, select, union_all, update
+from sqlalchemy import and_, case, delete, exists, false, func, or_, select, union_all, update
 from sqlalchemy import literal as sql_literal
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Load, aliased, defer, joinedload, raiseload, selectinload
@@ -38,7 +38,7 @@ from .access import (
 from .admission import admit_search_hits
 from .source_access import source_checked_graph, source_evidence_admission
 from .query_policy import prepare_memory_read
-from .passages import lexical_excerpt, query_identity
+from .passages import lexical_excerpt, query_identity, query_reference_ids, query_is_contact_self_reference
 from . import relevance
 from .contracts import (
     MemoryAccess,
@@ -55,6 +55,7 @@ from app.document import Document
 from .provenance import MemorySourceTargets, source_targets
 from .schemas import MemoryForgetResult, MemoryFilterOption, MemoryFilterOptions, MemoryGraphCursor, MemoryGraphEdge, MemoryGraphExpandRequest, MemoryGraphNode, MemoryGraphPage, MemoryGraphRootsRequest, MemoryItemCreate, MemoryItemDetail, MemoryItemUpdate, MemoryLinkCreate, MemoryLinkPublic, MemoryPayload, MemoryRevisionPublic, MemoryRetentionPreview, MemorySearchHit, MemorySearchPage, MemorySearchRequest, MemorySortField, MemorySourceCreate
 from .safety import assert_safe_text, assert_safe_value
+from .contact_policy import CONTACT_COORDINATE_MESSAGE, contains_contact_coordinates
 from core.storage import get_storage
 from core.storage import prepare_content
 
@@ -723,6 +724,8 @@ async def create_item(data: MemoryItemCreate, *, actor_task_id: UUID | None=None
         data = data.model_copy(update={'media_type': 'text/html'})
     if data.content_type == 'text' or data.media_type.startswith('text/'):
         assert_safe_text(content.decode('utf-8', errors='replace'))
+        if contains_contact_coordinates(content=content.decode('utf-8', errors='replace'), title=data.title, keywords=data.keywords):
+            raise MemoryConflictError(CONTACT_COORDINATE_MESSAGE)
     assert_safe_value(data.model_dump(exclude={'payload', 'source'}, mode='python'))
     if data.source is not None:
         assert_safe_value(data.source.model_dump(mode='python'))
@@ -1392,10 +1395,23 @@ async def update_item(item_id: UUID, data: MemoryItemUpdate, *, actor_agent_id: 
             item.content_profile_version = 1
         if future_content_type == 'text' or future_media_type.startswith('text/'):
             assert_safe_text(content.decode('utf-8', errors='replace'))
+            if item.node_kind == 'memory' and not item.source_managed and contains_contact_coordinates(
+                content=content.decode('utf-8', errors='replace'), keywords=data.keywords or ()):
+                raise MemoryConflictError(CONTACT_COORDINATE_MESSAGE)
         digest = _content_hash(content)
         document_content = content
         content_changed = item.content_hash != digest
         if content_changed:
+            if item.node_kind == 'memory' and not item.source_managed and item.metadata_.get('atomic_fact') is not None:
+                if isinstance(actor_agent_id, int) and not administrative:
+                    raise MemoryConflictError('Atomic facts cannot be rewritten as prose; record a separate fact or explicit contradiction.')
+                # An intentional human editorial replacement becomes a legacy
+                # note; never retain stale structured fields or generated links.
+                data = data.model_copy(update={'metadata': {key: value for key, value in
+                    (data.metadata if data.metadata is not None else item.metadata_).items() if key != 'atomic_fact'}})
+                fields.add('metadata')
+                await get_db().execute(delete(MemoryLink).where(MemoryLink.source_item_id == item.id,
+                    MemoryLink.projection_key == 'atomic_fact'))
             new_resource_id, inline = await prepare_content(content, provider.code, content_type=future_content_type)
             item.resource_id = new_resource_id
             item.content = inline
@@ -1753,6 +1769,7 @@ async def forget_item(
 ) -> MemoryForgetResult:
     """Forget a user-managed memory after enforcing its durable protections."""
 
+    await get_db().scalar(select(MemoryItem.id).where(MemoryItem.id == item_id).with_for_update())
     item = await _get_item_record(item_id)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
@@ -1774,6 +1791,7 @@ async def forget_item(
 async def forget_merged_item(item_id: UUID) -> MemoryForgetResult:
     """Internal merge path after provenance and graph edges have been transferred."""
 
+    await get_db().scalar(select(MemoryItem.id).where(MemoryItem.id == item_id).with_for_update())
     item = await _get_item_record(item_id)
     if item is None:
         raise MemoryNotFoundError("Memory to merge no longer exists.")
@@ -2084,7 +2102,13 @@ async def search_items(
             )
         )
         if request.strict_contact_scope:
-            query = query.where(or_(directly_scoped_to_contact, legacy_scoped_to_contact))
+            self_contact = and_(
+                MemoryItem.id == request.contact_item_id,
+                MemoryItem.owner_agent_id == request.agent_id,
+                MemoryItem.managed_source_kind == "messenger_contact",
+                MemoryItem.source_managed.is_(True),
+            ) if query_is_contact_self_reference(request.recall_query or request.query) else false()
+            query = query.where(or_(directly_scoped_to_contact, legacy_scoped_to_contact, self_contact))
         else:
             directly_conversation_scoped = exists(
                 select(MemoryContactItem.id).where(MemoryContactItem.item_id == MemoryItem.id)
@@ -2106,10 +2130,6 @@ async def search_items(
             or_(
                 MemoryItem.metadata_["memory_role"].as_string().is_(None),
                 MemoryItem.metadata_["memory_role"].as_string() != "topic",
-            ),
-            or_(
-                MemoryItem.managed_source_kind.is_(None),
-                MemoryItem.managed_source_kind != "messenger_contact",
             ),
         )
     if request.exclude_agent_projections:
@@ -2173,6 +2193,15 @@ async def search_items(
         query = query.where(MemoryItem.id == identity)
         rank_expression = case((MemoryItem.id == identity, 1.0), else_=0.0)
     elif normalized:
+        references = query_reference_ids(request.recall_query or normalized)
+        reference_match = MemoryItem.id.in_(references) if references else false()
+        if request.contact_item_id is not None and query_is_contact_self_reference(request.recall_query or normalized):
+            reference_match = or_(reference_match, and_(
+                MemoryItem.id == request.contact_item_id,
+                MemoryItem.owner_agent_id == request.agent_id,
+                MemoryItem.source_managed.is_(True),
+                MemoryItem.managed_source_kind == "messenger_contact",
+            ))
         prefix = relevance.prefix_query(request.recall_query) if request.recall_query is not None else ""
         ts_query = func.to_tsquery("simple", prefix) if prefix else func.websearch_to_tsquery("simple", relevance.fold(normalized))
         rank_expression = func.ts_rank_cd(MemoryItem.search_vector_folded, ts_query)
@@ -2190,11 +2219,12 @@ async def search_items(
                     (MemoryItem.search_vector_folded.op("@@")(entity_query), 1.0), else_=0.0,
                 )
         matches = select(MemoryItem.id).where(
-            or_(MemoryItem.search_vector_folded.op("@@")(ts_query), fallback),
+            or_(MemoryItem.search_vector_folded.op("@@")(ts_query), fallback, reference_match),
         ).cte("lexical_matches").prefix_with("MATERIALIZED", dialect="postgresql")
         # Keep source/structural access checks on lexical candidates only. The
         # outer query still applies every ACL, validity and contextual filter.
         query = query.where(MemoryItem.id.in_(select(matches.c.id)))
+        rank_expression = case((reference_match, 100.0), else_=rank_expression)
     else:
         rank_expression = sql_literal(0.1)
     if temporal_union and temporal_window is not None:

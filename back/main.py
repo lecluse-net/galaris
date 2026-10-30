@@ -27,8 +27,10 @@ register_incident_runtime()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown."""
     from app.agent import register_dispatcher_output_contracts
+    from core.util import prepare_contact_detection
 
     register_dispatcher_output_contracts()
+    prepare_contact_detection()
     # Wait for database availability before the first query so a transient DNS
     # or remote startup delay cannot terminate Uvicorn permanently.
     from core.database import get_db_session, wait_for_db
@@ -64,6 +66,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         await configure_default_engine(task_scheduler.register_periodic_job, task_scheduler.unregister_periodic_job)
         register_runtime_settings()
+        from app.contact.facade import register_contact_runtime, process_contact_discovery
+        register_contact_runtime()
+        task_scheduler.register_periodic_job("contact-discovery", process_contact_discovery, interval=1.0, timeout=150.0)
         from app.task import reconcile_replacements, register_replacement_blocker, register_replacement_coordinator
         from app.process import replacement_blocked_task_ids, coordinate_replacement
         register_replacement_blocker("process", replacement_blocked_task_ids)

@@ -23,6 +23,7 @@ from app.memory.models import (
 from app.memory.schemas import MemoryItemUpdate, MemoryPayload
 from app.document import mcp as document_mcp, DocumentRevision, resource_service as documents
 from app.memory.tests.document_fixtures import project_document, edit_document_summary
+from app.memory.tests.fact_fixtures import remember_fact
 from app.messenger.models import Message, Room, MessengerUser
 from app.task.models import Task, TaskStatus
 from app.tools.mcp_loader import (
@@ -70,6 +71,71 @@ def test_memory_remember_description_preserves_storage_contract() -> None:
 
 
 @pytest.mark.asyncio
+async def test_memory_remember_requires_structured_facts_and_preserves_typed_values_and_contact_links(db, agents, memory_storage):
+    from app.memory.models import MemoryLink
+    owner, _ = agents
+    contact = await observe_messenger_contact(MessengerContactObservation(owner_agent_id=owner.id,
+        messaging_id="matrix", user_id="@synthetic-fact:example.org", display_name="Nina Fiction"))
+    ctx = McpToolContext(agent_id=owner.id, runtime="internal")
+    narrated = json.loads(await mcp.memory_remember(ctx, content="<p>Nina Fiction told me yesterday that she wants weekly reports.</p>"))
+    assert narrated["status"] == "rejected" and narrated["rejection_reason"] == "atomic_fact_required"
+    for predicate, value in [("report_frequency", "weekly"), ("wants_email_reports", True), ("report_limit", 3)]:
+        stored = json.loads(await mcp.memory_remember(ctx, fact={"subject_ref": f"memory://{contact}",
+            "predicate": predicate, "value": value}))
+        assert stored["status"] == "stored"
+        item = await db.get(MemoryItem, UUID(stored["memory_id"]))
+        fact = item.metadata_["atomic_fact"]
+        assert fact["subject_ref"] == f"memory://{contact}"
+        assert fact["predicate"] == predicate and fact["value"] == value
+        assert type(fact["value"]) is type(value)
+        assert "yesterday" not in item.content and "told me" not in item.content
+        assert await db.scalar(select(MemoryLink.id).where(MemoryLink.source_item_id == item.id,
+            MemoryLink.target_item_id == contact, MemoryLink.relation_type == "fact_subject")) is not None
+    rejected = json.loads(await mcp.memory_remember(ctx, fact={"subject_ref": f"memory://{contact}",
+        "predicate": "email", "value": "nina@example.org"}))
+    assert rejected["rejection_reason"] == "contact_coordinates"
+    forgotten = json.loads(await mcp.memory_forget(ctx, memory_id=stored["memory_id"]))
+    assert forgotten["memory_id"] == stored["memory_id"]
+    assert await service.item_record(contact) is not None
+    protected = json.loads(await mcp.memory_forget(ctx, memory_id=str(contact)))
+    assert "error" in protected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("already_in_contacts", [False, True])
+async def test_memory_remember_does_not_duplicate_a_phone_in_generic_memory(
+    db, agents, memory_storage, monkeypatch, already_in_contacts,
+):
+    from app.memory import ContactCoordinates, ContactPhoneNumber, create_address_book_contact, get_messenger_contact
+    from core.params import runtime_settings
+
+    monkeypatch.setattr(runtime_settings, "LOCALIZATION", "France")
+    owner, _ = agents
+    contact = None
+    if already_in_contacts:
+        contact = await create_address_book_contact(owner_agent_id=owner.id, display_name="Nina Fiction",
+            coordinates=ContactCoordinates(phone_numbers=[ContactPhoneNumber(number="+33 7 06 05 04 03", country="FR")]))
+    ctx = McpToolContext(agent_id=owner.id, runtime="internal")
+    arguments = dict(content="<p>Le numéro de téléphone de Nina Fiction est le 07 06 05 04 03.</p>",
+                     title="Téléphone de Nina Fiction")
+    result = json.loads(await remember_fact(ctx, **arguments))
+    assert result["status"] == "rejected"
+    assert result["memory_id"] is None
+    assert result["rejection_reason"] == "contact_coordinates"
+    assert (await db.scalars(select(MemoryItem).where(MemoryItem.owner_agent_id == owner.id,
+        MemoryItem.source_managed.is_(False), MemoryItem.node_kind == "memory"))).all() == []
+    replay = json.loads(await remember_fact(ctx, **arguments))
+    assert replay["acquisition_id"] == result["acquisition_id"]
+    assert replay["status"] == "rejected"
+    if contact is not None:
+        assert (await get_messenger_contact(contact.memory_item_id)).coordinates == contact.coordinates
+    preference = json.loads(await remember_fact(ctx,
+        content="<p>Nina Fiction préfère être appelée le matin.</p>"))
+    assert preference["status"] == "stored"
+    assert preference["memory_id"] is not None
+
+
+@pytest.mark.asyncio
 async def test_explicit_contradiction_preserves_both_claims_and_rejects_stale_or_foreign_targets(agents, memory_storage):
     from app.memory.schemas import MemoryItemCreate
     from app.memory.models import MemoryLink
@@ -81,13 +147,13 @@ async def test_explicit_contradiction_preserves_both_claims_and_rejects_stale_or
         title='Other private format', payload=MemoryPayload(text='<p>Another agent uses JSON.</p>')))
     ctx = McpToolContext(agent_id=owner.id, runtime='internal')
     content = '<p>Explicit correction: the report uses CSV, not XML.</p>'
-    stale = json.loads(await mcp.memory_remember(ctx, content=content,
+    stale = json.loads(await remember_fact(ctx, content=content,
         contradicts_memory_id=str(old.id), expected_revision=old.revision + 1))
     assert 'error' in stale
-    denied = json.loads(await mcp.memory_remember(ctx, content=content,
+    denied = json.loads(await remember_fact(ctx, content=content,
         contradicts_memory_id=str(foreign.id), expected_revision=foreign.revision))
     assert 'error' in denied
-    result = json.loads(await mcp.memory_remember(ctx, content=content,
+    result = json.loads(await remember_fact(ctx, content=content,
         contradicts_memory_id=str(old.id), expected_revision=old.revision))
     assert result['status'] == 'stored'
     corrected = UUID(result['memory_id'])
@@ -96,12 +162,12 @@ async def test_explicit_contradiction_preserves_both_claims_and_rejects_stale_or
     link = await get_db().scalar(select(MemoryLink).where(MemoryLink.source_item_id == old.id,
         MemoryLink.target_item_id == corrected, MemoryLink.relation_type == 'contradicts'))
     assert link is not None
-    repeated = json.loads(await mcp.memory_remember(ctx, content=content,
+    repeated = json.loads(await remember_fact(ctx, content=content,
         contradicts_memory_id=str(old.id), expected_revision=old.revision))
     assert repeated['memory_id'] == result['memory_id']
     from app.memory.schemas import MemoryTemporalAnchor
     anchor = MemoryTemporalAnchor(month=9, day=27)
-    anchored = json.loads(await mcp.memory_remember(ctx, content=content, temporal=anchor,
+    anchored = json.loads(await remember_fact(ctx, content=content, temporal=anchor,
         contradicts_memory_id=str(old.id), expected_revision=old.revision))
     assert anchored['memory_id'] != result['memory_id']
     assert (await service.item_record(UUID(anchored['memory_id']))).temporal == anchor.model_dump(mode='json')
@@ -125,13 +191,13 @@ async def test_contradiction_rechecks_revision_after_admission_and_can_retry_aft
     monkeypatch.setattr(acquisition_service, 'acquire_memory', interleaved)
     ctx = McpToolContext(agent_id=owner.id, runtime='internal')
     content = '<p>Confirmed correction: archive report format is CSV.</p>'
-    failed = json.loads(await mcp.memory_remember(ctx, content=content,
+    failed = json.loads(await remember_fact(ctx, content=content,
         contradicts_memory_id=str(target_id), expected_revision=first_revision))
     assert 'error' in failed and 'changed' in failed['error']
     assert failed['memory_preserved'] and not failed['contradiction_linked']
     monkeypatch.setattr(acquisition_service, 'acquire_memory', original)
     current = await service.item_record(target_id)
-    retried = json.loads(await mcp.memory_remember(ctx, content=content,
+    retried = json.loads(await remember_fact(ctx, content=content,
         contradicts_memory_id=str(target_id), expected_revision=current.revision))
     assert retried['status'] == 'stored' and UUID(retried['memory_id']) != target_id
     assert retried['memory_id'] == failed['memory_id'] and retried['contradiction_linked']
@@ -180,7 +246,7 @@ async def test_memory_remember_normalizes_json_encoded_keywords(
     owner, _peer = agents
 
     result = json.loads(
-        await mcp.memory_remember(
+        await remember_fact(
             McpToolContext(agent_id=owner.id, runtime="internal"),
             content="Deux capteurs équipent le robot Lyra : température et pression.",
             title="Capteurs du robot Lyra",
@@ -236,7 +302,7 @@ async def test_memory_remember_seals_identical_facts_to_the_exact_contact(
 
     async def remember(task: Task) -> dict[str, object]:
         return json.loads(
-            await mcp.memory_remember(
+            await remember_fact(
                 McpToolContext(
                     agent_id=owner.id,
                     runtime="internal",
@@ -323,7 +389,7 @@ async def test_memory_mcp_remember_search_read_and_summarize(
         task_id=previous_task.id,
     )
     previous_memory = json.loads(
-        await mcp.memory_remember(
+        await remember_fact(
             previous_ctx,
             content="The previous turn established the deployment baseline.",
             title="Previous deployment baseline",
@@ -339,7 +405,7 @@ async def test_memory_mcp_remember_search_read_and_summarize(
     )
 
     indexed = json.loads(
-        await mcp.memory_remember(
+        await remember_fact(
             ctx,
             content="Use Atlas for every declarative database schema change.",
             title="Database schema convention",
@@ -362,7 +428,9 @@ async def test_memory_mcp_remember_search_read_and_summarize(
     )
 
     loaded = json.loads(await file_mcp.read_file(ctx, f"memory://{memory_id}"))
-    assert loaded["content"].startswith("<p>Use Atlas")
+    # The editor view is generated from raw fields; retain the fact, not a
+    # historical paragraph wrapper.
+    assert "Use Atlas for every declarative database schema change." in loaded["content"]
     memory = await db.get(MemoryItem, UUID(memory_id))
     assert memory is not None
     assert memory.access_count == 2
@@ -370,7 +438,7 @@ async def test_memory_mcp_remember_search_read_and_summarize(
     assert memory.updated_at is None
 
     remembered = json.loads(
-        await mcp.memory_remember(
+        await remember_fact(
             ctx,
             content="The user prefers French answers.",
             title="Language preference",
@@ -424,7 +492,7 @@ async def test_memory_mcp_remember_search_read_and_summarize(
     from unittest.mock import AsyncMock
     from app.memory import conversation_summary
     monkeypatch.setattr(conversation_summary, "summarize_transcript", AsyncMock(
-        return_value="<p>Alice agreed to keep the decision.</p>"
+        return_value=[{"predicate": "decision_confirmed", "value": True}]
     ))
     summarized = json.loads(
         await mcp.memory_summarize(ctx, room_id="room-1", limit=20)

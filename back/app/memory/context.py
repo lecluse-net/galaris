@@ -17,6 +17,7 @@ from .schemas import MemorySearchHit
 from .service import record_llm_retrieval
 from .retrieval import admit_recall_hits, temporal_hits
 from .schemas import MemoryRecallRequest
+from .passages import query_resource_references
 
 
 _HEADER = (
@@ -60,6 +61,17 @@ Before a warranted write, check the injected memories and, if needed and availab
 targeted memory search. Skip an equivalent existing fact; do not store a paraphrase of it.
 Do not store transient status, secrets, raw transcripts, provisional drafts or notes, or facts
 already owned by an authoritative domain.
+For a warranted write, supply fact={subject_ref,predicate,value}: one linked subject, one
+snake_case property and one raw scalar value or {ref:URI}. Omit subject_ref only for the current
+conversation contact or current agent. Split independent values into separate memories. Do not
+narrate who said it or when; provenance and timestamps are recorded separately. Prose/HTML
+content is rejected. A fact linked to a Contact or Document is still an ordinary forgettable
+personal memory; only the direct source representation is protected.
+Contact email addresses, phone numbers, postal addresses and messaging identifiers belong to
+the structured Contacts directory. Its cards remain searchable memory resources. Never copy
+their coordinates into a generic memory, even when asked to remember them. Contact discovery
+handles new details separately; retain distinct preferences or decisions using the person's
+name without repeating their coordinates.
 
 Temporal anchors are optional. Supply year/month/day/weekday (ISO Monday=1), hour/minute
 only when the fact explicitly warrants temporal recall. Unset components
@@ -125,6 +137,10 @@ _TOPIC_RESET_RE = re.compile(
     r"new topic|different topic|switch (?:the )?topic|(?:let['’]s )?change (?:the )?(?:topic|files))\b",
     flags=re.IGNORECASE,
 )
+_ACKNOWLEDGEMENT_RE = re.compile(
+    r"^\s*(?:oui|non|ok|okay|d['’]accord|merci|parfait|bien|yes|no|thanks|thank you|sure|great)"
+    r"[\s.!?,;:…]*$", re.IGNORECASE,
+)
 
 
 def memory_policy_instructions() -> str:
@@ -160,6 +176,13 @@ def _experience_evidence_count(value: object) -> int:
 def _bounded_query(value: str) -> str:
     normalized = " ".join(value.split())
     normalized = _CYCLE_SUFFIX_RE.sub("", normalized).strip(" \t-—–:;,")
+    references = query_resource_references(normalized)
+    if references:
+        for reference in references:
+            normalized = normalized.replace(reference, " ")
+        # Up to five whole UUID URIs fit in the existing 240-character budget.
+        # Prose may be shortened; a half URI is not a usable identity anchor.
+        normalized = " ".join((*references[:5], normalized))
     words = normalized.split()
     return " ".join(words[:_MEMORY_QUERY_MAX_WORDS])[
         :_MEMORY_QUERY_MAX_CHARS
@@ -217,7 +240,8 @@ def _continuity_subject(
         if not isinstance(text, str):
             continue
         normalized = _without_speaker_prefixes(text)[:_SEMANTIC_HISTORY_MESSAGE_MAX_CHARS]
-        if normalized and normalized.casefold() != subject.casefold():
+        if (normalized and normalized.casefold() != subject.casefold()
+                and not _ACKNOWLEDGEMENT_RE.fullmatch(normalized)):
             return normalized
     return ""
 
@@ -246,6 +270,9 @@ def memory_context_query(
             if prior_subject:
                 subject = _bounded_query(f"{subject} {prior_subject}")
     contact = _bounded_query(" ".join(term for term in contact_terms if term))
+    references = query_resource_references(objective)
+    if references:
+        subject = _bounded_query(" ".join((subject, *references)))
     if not contact:
         return subject
     return _bounded_query(f"{contact} {subject}")

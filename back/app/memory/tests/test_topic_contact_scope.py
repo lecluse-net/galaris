@@ -85,9 +85,8 @@ async def test_contact_acquisition_never_merges_private_provenance_into_a_docume
             await acquire_memory(data)
         return
     result = await acquire_memory(data)
-    assert result.status == "stored" and result.memory_id != target_id
-    private = await service.item_record(result.memory_id)
-    assert private.owner_agent_id == owner_id and private.node_kind == "memory"
+    assert result.status == "merged" and result.memory_id == target_id
+    assert result.source_backed
     assert await service.source_refs(target_id) == []
     canonical = await documents.item_record(target_id)
     assert canonical.revision == original_revision
@@ -179,8 +178,12 @@ async def test_conversation_memories_are_isolated_by_topic_and_exact_contact(
         )
     )
 
-    assert [hit.item.id for hit in alice_recall.hits] == [alice_memory.id]
-    assert [hit.item.id for hit in bob_recall.hits] == [bob_memory.id]
+    # Known contact cards remain searchable across this agent's conversations;
+    # another interlocutor's personal facts still never cross the scope boundary.
+    assert [hit.item.id for hit in alice_recall.hits if not hit.item.source_managed] == [alice_memory.id]
+    assert [hit.item.id for hit in bob_recall.hits if not hit.item.source_managed] == [bob_memory.id]
+    assert bob_memory.id not in {hit.item.id for hit in alice_recall.hits}
+    assert alice_memory.id not in {hit.item.id for hit in bob_recall.hits}
     scopes = list((await db.scalars(select(MemoryTopicContactScope))).all())
     assert {(scope.topic_item_id, scope.contact_item_id) for scope in scopes} == {
         (topic.memory_item_id, alice_contact),

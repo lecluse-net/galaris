@@ -362,8 +362,8 @@ the observed revision. Append a new finding only when it adds distinct informati
 
 Apply the same contract when delegating: `task_run(..., objective="<p>Review the evidence in
 <a href='document://DOCUMENT_UUID'>the working document</a> and report discrepancies.</p>")`.
-For Goals, supply HTML in `description` and tracking; for `memory_remember`, supply HTML in
-`content`, including short one-paragraph facts. A document being shared keeps its HTML or JSON body:
+For Goals, supply HTML in `description` and tracking. For `memory_remember`, supply one atomic
+`fact` with a linked subject, predicate and raw value; the server renders its view. A document being shared keeps its HTML or JSON body:
 sharing never converts it to Markdown or changes its content revision.
 
 This format applies to editorial fields, not every string. Titles, labels, search queries,
@@ -1297,11 +1297,17 @@ Capture opt-out on a Task propagates to its descendants. Use
 `file_read("memory://<uuid>")` for a bounded full read. The exact URI returned by search is
 the durable identity.
 
-- `memory_remember(content: str, title: str = "", keywords: list[str] | None = None,
+- `memory_remember(fact: {subject_ref?: str, predicate: str, value: scalar | {ref: str},
+  negated?: bool, unit?: str}, keywords: list[str] | None = None,
   temporal: object | None = None,
   contradicts_memory_id: str | None = None, expected_revision: int | None = None) -> str`
-  accepts HTML `content`, then immediately applies a governed
-  acquisition. Inspect the returned `status` (`stored`, `merged`,
+  accepts exactly one atomic assertion, then immediately applies a governed
+  acquisition. Use a stable snake_case predicate and one short raw value. Split independent
+  values/properties into separate facts. Omit subject_ref only for the current conversation
+  contact or, outside a conversation, the current agent. For another subject, use its existing
+  memory:// Contact/File or document:// URI. Never invent an identifier. Author, evidence and
+  timestamps are linked separately; do not narrate them in the value. Prose/HTML in legacy
+  content is rejected. Inspect the returned `status` (`stored`, `merged`,
   or `rejected`) and `memory_id`; no human approval step follows.
   Standalone memories have no authored title and are private to their agent. Omit
   the compatibility `title` argument. Documents own titles and sharing; each has
@@ -1311,7 +1317,7 @@ the durable identity.
   memory, including all stored revisions. Use the exact UUID returned by `file_search`.
 - `memory_summarize(room_id: str, limit: int = 80, title: str = "Conversation summary") -> str`
   summarizes up to 200 recent messages and the latest 32,000 characters with the agent’s model.
-  It retains attributed facts, decisions, commitments and open questions as editorial HTML,
+  It retains independent atomic facts and decisions with linked attribution,
   then applies normal Memory acquisition and deduplication. It does not replace a room’s memories
   wholesale. A model failure stores nothing; there is no raw-transcript fallback. Use it only
   when retaining that conversation is explicitly useful, never automatically for ordinary turns.
@@ -1563,6 +1569,11 @@ warrant an immediate spontaneous write; a successful report delivery ordinarily 
 
 Before a warranted write, check the injected memories and, if needed and available, make one
 targeted memory search. Skip an equivalent existing fact rather than saving a paraphrase.
+Contact emails, phone numbers, postal addresses and messaging identifiers belong to Contacts.
+Its structured cards remain searchable memory resources. Never copy their coordinates with
+`memory_remember`, including an explicit request to remember a number. Contact discovery handles
+them separately. A distinct preference or decision may be remembered using the person's name,
+without repeating their coordinates; a mixed write is rejected atomically, not silently trimmed.
 Good memories are concise, self-contained, and explicit about their subject. A historical date
 can belong in the prose without becoming a temporal anchor.
 
@@ -1598,7 +1609,7 @@ Do not index:
 - guesses, failed attempts, unverified claims, duplicate facts, secrets, credentials, or tokens.
 
 When the user corrects a remembered fact, search for the existing item and store the corrected fact
-with `memory_remember`, making the corrected information explicit in its content. For a known personal
+with `memory_remember`, expressing the correction as a raw atomic fact. For a known personal
 memory, provide `contradicts_memory_id` and its current `expected_revision`: both claims are retained
 with an explicit contradiction link. If an error includes `memory_preserved=true`, that fact was
 stored but the link may be missing: reread the target and retry the same correction with its new
@@ -1610,8 +1621,9 @@ tokens: the memory boundary rejects or redacts detectable sensitive material.
 Example — the user explicitly asks to remember the agreed report schedule, and no equivalent
 memory is already known:
 
-1. `memory_remember("<p>Decision confirmed on 2026-07-04: send the weekly report every Friday at 17:00 Europe/Paris.</p>", keywords=["decision", "report"])`
-2. Later, call `file_search("memory://", "When is the weekly report sent?", mode="semantic")`.
+1. `memory_remember(fact={"predicate":"weekly_report_day","value":"friday"}, keywords=["decision", "report"])`
+2. `memory_remember(fact={"predicate":"weekly_report_time","value":"17:00 Europe/Paris"}, keywords=["report"])`
+3. Later, call `file_search("memory://", "When is the weekly report sent?", mode="semantic")`.
 
 ## Images
 

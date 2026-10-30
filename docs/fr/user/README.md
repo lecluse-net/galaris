@@ -730,6 +730,18 @@ relancer le processus.
 
 ## Mémoire, documents et dossiers thématiques
 
+Les souvenirs produits par les agents contiennent chacun un fait structuré : par exemple,
+un lien vers le contact, la propriété `langue_preferee` et la valeur `fr`. Les indications
+sur l'auteur et l'origine restent séparées. Les emails, téléphones, adresses et identifiants
+de messagerie vont dans **Contacts** ; les fiches restent recherchables par les agents.
+Les fiches représentant directement une ressource se gèrent depuis cette ressource.
+Un souvenir ordinaire lié à cette fiche reste supprimable dans Mémoire.
+
+Dans une conversation, « mon email » désigne la fiche du correspondant identifié. Un simple
+« oui » ou « merci » ne fait pas perdre la personne évoquée avant une relance. Vous pouvez
+aussi citer directement un lien `document://` ou `memory://` dans une phrase ; il reste pris
+en compte même après un long préambule, toujours avec les droits actuels de l'agent.
+
 Les PJ déposées dans Documents et Chat utilisent le stockage interne partagé. Leurs liens
 existants et leurs droits restent valables après migration. Un agent peut aussi créer un
 fichier privé indépendant via `file_create` avec `path="file://"` et un nom intelligible.
@@ -950,6 +962,24 @@ Les téléphones et adresses se modifient aussi dans une fiche existante et part
 de contacts. Une fusion conserve les coordonnées distinctes des deux fiches. Une scission les garde
 sur la fiche d'origine, avec l'historique ; elle ne les attribue pas automatiquement à l'identité
 séparée. Un nouveau message ne remplace pas les coordonnées saisies.
+
+L'option **Enregistrer les coordonnées détectées**, dans les réglages Memory, enrichit le carnet
+à partir des messages humains ou IA : mails, téléphones, adresses postales reconnues et identifiants
+de messagerie explicites. Le pays téléphonique vient de la localisation de l'application.
+Une coordonnée déjà connue ne déclenche aucun appel au modèle. Pour une nouvelle coordonnée,
+le contexte de conversation sert à retrouver son propriétaire, puis une décision choisit une fiche
+existante ou une nouvelle personne. Le traitement se déroule en arrière-plan, indépendamment de
+la réponse de l'agent. Il nécessite les modèles décisionnel et texte ultra-léger du profil.
+Les adresses sont conservées dans leur notation complète ; les motifs postaux couvrent les formes
+françaises et anglaises courantes, sans garantir toute adresse. Une attribution incertaine ne crée
+pas de fiche et n'est pas attribuée par défaut à l'expéditeur.
+
+Au repos, Dream examine les doublons possibles au-dessus du **Seuil de similarité commun**,
+réglé dans les paramètres Mémoire à 92 % par défaut. Cette même valeur s'applique à l'acquisition,
+au rappel, aux doublons et aux contradictions mémoire. Le modèle doit confirmer qu'il s'agit de la même personne : un nom identique
+ou une adresse familiale partagée ne suffit pas. Une fusion conserve les coordonnées, comptes et
+liens de conversation. La supervision Dream expose **Rapprochement des contacts en doublon**.
+Les coordonnées apprises restent privées à l'agent et n'accordent aucun droit d'accès supplémentaire.
 
 Pour le Chat interne, l’identité **Utilisateur Galaris** suffit : aucune seconde identité de
 messagerie interne n’est créée. Les anciens alias internes redondants sont retirés lors de

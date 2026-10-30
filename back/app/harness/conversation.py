@@ -31,6 +31,7 @@ from app.agent import (
     agent_service,
     build_agent_run_context,
     dispatch_conversation,
+    capture_conversation_contact_infos,
     analyze_conversation_work,
     conversation_work_analysis_context,
     memory_context_trace,
@@ -672,8 +673,15 @@ class HarnessConversationController:
                 messages=dispatch_messages,
                 sender_is_ai=turn.sender_is_ai,
                 agent_loader=lambda: agent_service.get(turn.agent_id),
+                current_messages=turn.messages,
             ))
             dispatch_trace: dict[str, object] = dispatch_result.model_dump(mode="json") if dispatch_result else {"forced_response": True}
+            if turn.force_response:
+                contact_infos = await capture_conversation_contact_infos(round_id=turn.round_id,
+                    agent_id=turn.agent_id, objective=turn.objective, messages=dispatch_messages,
+                    current_messages=turn.messages)
+                if contact_infos:
+                    dispatch_trace["contact_infos"] = [item.model_dump(mode="json") for item in contact_infos]
             dispatch_time = dispatch_result.execution_time if dispatch_result else 0.0
             dispatch_cost = dispatch_result.cost if dispatch_result else 0.0
             if dispatch_result is not None and not dispatch_result.success:

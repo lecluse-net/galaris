@@ -625,6 +625,7 @@ const mechanismTranslationKeys = {
   'memory.link_topic_source': 'dream.mechanisms.topicMemoryLinks',
   'memory.project_process': 'dream.mechanisms.processMemory',
   'memory.maintain_findings': 'dream.mechanisms.memoryMaintenance',
+  'contact.reconcile': 'dream.mechanisms.contactReconciliation',
   'topic.suggest_maintenance': 'dream.mechanisms.topicMaintenance',
   'memory.forget_stale': 'dream.mechanisms.staleMemory',
 } satisfies Record<DreamMechanismKey, string>

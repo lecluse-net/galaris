@@ -44,6 +44,33 @@ from app.topic import TopicClassification, service as topic_service
 from app.memory.tests.embedding_fixtures import published_chunk
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name", ["Éloi Fiction", "Eloi Fiction"])
+async def test_contact_cards_are_recalled_and_searchable_without_leaking_another_agents_directory(
+    db, agents, memory_storage, monkeypatch, name,
+):
+    from app.memory import create_address_book_contact
+
+    owner, peer = agents
+    contact = await create_address_book_contact(owner_agent_id=owner.id,
+        display_name=name, email="eloi@example.org")
+    foreign = await create_address_book_contact(owner_agent_id=peer.id,
+        display_name="Éloi Fiction", email="eloi@example.net")
+    await service.create_item(MemoryItemCreate(owner_agent_id=owner.id, title="Éloi and Nina workshop",
+        payload=MemoryPayload(text="Éloi Fiction and Nina Fiction organize a synthetic workshop together.")))
+    async def no_embeddings():
+        raise MemoryEmbeddingNotConfiguredError("Synthetic offline retrieval")
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", no_embeddings)
+    results = await file_facade.search_file_resources(agent_id=owner.id, task_id=None,
+        expected_kind="memory", query="mail de Éloi Fiction", mode="semantic", limit=50, offset=0)
+    encoded = str(results)
+    assert str(contact.memory_item_id) in encoded
+    assert "eloi@example.org" in encoded
+    assert str(foreign.memory_item_id) not in encoded
+    assert "eloi@example.net" not in encoded
+    assert results["hits"][0]["id"] == str(contact.memory_item_id)
+
+
 def test_recall_parameters_use_global_memory_preferences(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

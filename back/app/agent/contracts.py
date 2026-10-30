@@ -37,6 +37,7 @@ from pydantic import (
 )
 
 from core.i18n import is_supported
+from core.util import DetectedContactInfo
 from .scope_contracts import ExecutionScopeV1
 
 
@@ -912,6 +913,7 @@ class ConversationWorkAnalysis(BaseModel):
 
 
 class DispatchResult(BaseModel):
+    contact_infos: list[DetectedContactInfo] = Field(default_factory=list[DetectedContactInfo])
     decision_inference: dict[str, Any] | None = None
     prompt: str
     system_prompt: str = ""

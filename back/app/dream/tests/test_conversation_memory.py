@@ -325,7 +325,7 @@ async def test_late_transcription_has_a_new_receipt_and_preserves_existing_memor
 
     async def capture(content, ref):
         mode["outputs"] = [json.dumps({"operations": [{"action": "CREATE", "title": "Préférence de Camille",
-            "content": content, "retention_reason": "explicit_user_preference", "future_utility": "high",
+            "fact": {"predicate": "preferred_response_style", "value": content}, "retention_reason": "explicit_user_preference", "future_utility": "high",
             "evidence_refs": [ref]}]})] * 20
         claim = await conversation_memory_mechanism.claim_one()
         assert claim is not None
@@ -419,7 +419,7 @@ async def test_audio_only_capture_rechecks_evidence_after_preparation(runtime, m
     db.add(ConversationRoundMessage(round_id=round_.id, message_id=message.id, role="input", sequence=1))
     await db.commit()
     mode["outputs"] = [json.dumps({"operations": [{"action": "CREATE", "title": "Préférence de Camille",
-        "content": "Camille préfère des comptes rendus en français.", "retention_reason": "explicit_user_preference",
+        "fact": {"predicate": "preferred_report_language", "value": "fr"}, "retention_reason": "explicit_user_preference",
         "future_utility": "high", "evidence_refs": [f"{message.id}:{audio.id}"]}]})] * 20
     claim = await conversation_memory_mechanism.claim_one()
     assert claim is not None
@@ -441,5 +441,6 @@ async def test_audio_only_capture_rechecks_evidence_after_preparation(runtime, m
         source = await db.scalar(select(MemorySource).where(MemorySource.conversation_round_id == round_.id))
         assert source.metadata_["language"] == "fr"
         assert source.metadata_["source_evidence"][0]["message_id"] == str(message.id)
-        assert "Camille" in source.excerpt and source.metadata_["source_evidence"][0]["uri"].endswith(str(audio.id))
+        assert "preferred_report_language" in source.excerpt and f"memory://{contact}" in source.excerpt
+        assert source.metadata_["source_evidence"][0]["uri"].endswith(str(audio.id))
     assert len(requests) == 1

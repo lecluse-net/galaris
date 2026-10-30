@@ -441,7 +441,7 @@ class TaskMemoryMechanism:
             )
             updated = prepared.model_copy(update={"application": application})
             await replace_prepared_payload(claim, updated.model_dump(mode="json"))
-            return len(application.operations)
+            return application.stored_count
 
 
 task_memory_mechanism = TaskMemoryMechanism()

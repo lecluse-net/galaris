@@ -275,9 +275,27 @@ La page de recherche globale et ses tests dédiés ont été retirés ; les rech
 dans les écrans métier. Le parcours de première mission reste couvert sur Welcome.
 
 `app/dream/tests/test_memory_extraction.py` couvre ENRICH et CONTRADICT : contenu et mots-clés
-préservés, provenance, rejouabilité et refus d’une révision périmée. Ses anciens cas Documents
-créent désormais les ressources par le domaine Document et vérifient que la provenance personnelle
-reste dans un souvenir privé, conformément à la séparation Memory/Document.
+préservés, provenance, rejouabilité et refus d’une révision périmée. Les faits déjà présents
+dans un Document réutilisent sa référence sans ajouter de copie ni de provenance privée à la source.
+`test_atomic_facts.py` et `test_mcp.py` vérifient les valeurs typées, liens réels, homonymes,
+déduplication exacte, propriétés séparées, refus de prose et de coordonnées génériques.
+`test_semantic_search.py` rappelle les fiches Contacts avec et sans accents, sans fuite inter-agent.
+`test_maintenance.py` privilégie une source réelle malgré une copie plus ancienne et protège
+la fiche ; `test_mcp.py` supprime un fait lié tout en conservant son contact.
+`test_conversation_summary.py` et `test_acquisition_automation.py` couvrent l'extraction atomique,
+le masquage des secrets et la reprise depuis checkpoint sans nouvelle extraction.
+
+`test_conversation_recall.py` couvre aussi « mon email » sans nom, le scope strict, les
+acquiescements FR/EN et les numéros métier qui ne doivent pas sélectionner une fiche contact.
+`test_document_retrieval.py` préserve les URI citées en phrase, plusieurs sources à comparer,
+les liens en fin d'objectif long et le refus des références non autorisées.
+`test_recall_evaluation.py` qualifie 51 requêtes dans chacun des modes hybride et repli lexical,
+sur six contacts, trois documents et 24 notes distractrices. Les services et PostgreSQL sont
+réels ; seuls les appels fournisseur sont remplacés, avec des vecteurs volontairement uniformes.
+Le rapport agrégé donne recall@1, rang réciproque, fuites, p95 et nombre de requêtes SQL.
+Ce corpus exige 100 % au premier rang et zéro fuite ; il ne mesure pas la latence réseau ni
+l'infaillibilité sur toute formulation. Les recherches simples de coordonnées déjà identifiées
+vérifient aussi qu'aucun modèle d'embeddings n'est appelé.
 Le contrôle central `app/chat/tests/test_authorization.py` vérifie aussi les privilèges Documents
 sur la liste et la création dans une conversation, avec l’assertion d’accès à la room conservée.
 
@@ -1661,6 +1679,31 @@ d’erreur de Galaris ne remplacent pas ses consignes de vérification.
 erreurs. `app/file_share/tests/test_path_normalization.py` vérifie les écritures SFTP
 vers des dossiers absents et le confinement dans le home. Ce contrat remplace l’arrêt
 automatique sur erreur observée ; les interruptions sans réponse restent réconciliées.
+
+`app/agent/tests/test_dispatcher_contacts.py` et son corpus entièrement synthétique vérifient
+la liste additive `contact_infos` : mails, téléphones internationaux et séparateurs Unicode,
+adresses françaises/anglaises, blocs postaux et identifiants de messagerie. Les cas négatifs
+couvrent dates, prix, références de commande, mails malformés, liens génériques et directives.
+Un message contient simultanément deux mails, trois téléphones et cinq adresses. Les tests
+exercent aussi les routes humaines sans LLM, les sorties IA `END`, les routes Task imposées
+ou inférées, le texte visible HTML, les coordonnées après 500 caractères et la relecture des
+anciens résultats. Ils n'imposent pas de seuil temporel instable en CI et ne prouvent pas
+une couverture universelle des adresses. Les formats couvrent quinze pays téléphoniques,
+les extensions, liens Matrix avec relais, pseudos explicites, liens courts et vCards.
+Un générateur déterministe vérifie cinq cents messages : extraction attendue, normalisation,
+positions Unicode, absence de chevauchement et déterminisme.
+
+`app/contact/tests/test_discovery.py` suit le Dispatcher, le port, la file et la base réelle :
+propriétaire nommé dans l'historique, création puis enrichissement, dix coordonnées sur une
+fiche, coordonnées manuelles connues sans LLM, ambiguïté, propriétaire inventé, messages IA,
+rounds regroupés, interruption, baux expirés, checkpoints entre appels et éditions humaines.
+L'oubli annule les anciennes observations. `tests/test_contact_inference.py` traverse les vrais
+profils, SDK et cycles durables texte/décision ; seul HTTP fournisseur est remplacé.
+`app/dream/tests/test_contact_reconciliation.py` couvre la fusion canonique, ses références,
+les homonymes, l'identité indéterminée, les seuils, l'isolation par agent, la relecture et les
+décisions périmées. Le router protège aussi la consultation du journal par privilège et gestion
+de l'agent. Les tests du panneau Dream utilisent ses privilèges fonctionnels `DREAM_EDIT` et
+`DREAM_CONFIG_ACCESS` et conservent la sauvegarde, les erreurs et la lecture seule.
 
 Le contrat dispatcher du 16 septembre est couvert par `test_dispatcher_planning.py` et
 `back/tests/test_dispatcher_inference.py` : un round humain produit `EXEC standard` sans appel LLM,

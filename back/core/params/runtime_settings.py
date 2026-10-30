@@ -196,16 +196,15 @@ class RuntimeSettings(BaseModel):
     MEMORY_RECALL_DIVERSITY_LAMBDA: float = Field(default=0.20, ge=0.0, le=1.0)
     MEMORY_FORGET_AFTER_DAYS: int = Field(default=0, ge=0, le=36_500)
     MEMORY_CAPTURE_ENABLED: bool = True
+    CONTACT_CAPTURE_ENABLED: bool = True
     MEMORY_CAPTURE_MIN_CHARS: int = Field(default=120, ge=20, le=20_000)
     MEMORY_AUTOMATION_POLL_SECONDS: float = Field(default=5.0, ge=0.5, le=300.0)
     MEMORY_AUTOMATION_MAX_ATTEMPTS: int = Field(default=5, ge=1, le=50)
+    # One persisted similarity policy for acquisition, recall, maintenance and contacts.
     MEMORY_DUPLICATE_SIMILARITY_THRESHOLD: float = Field(
         default=0.92, ge=0.8, le=1.0
     )
     MEMORY_CONTRADICTION_MODE: Literal["off", "manual", "automatic"] = "manual"
-    MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD: float = Field(
-        default=0.86, ge=0.8, le=1.0
-    )
     MEMORY_AGING_MODE: Literal["off", "manual", "automatic"] = "manual"
     MEMORY_AGING_AFTER_DAYS: int = Field(default=365, ge=1, le=36_500)
     MEMORY_LINK_RECONCILIATION_TRIGGER_MODE: Literal[

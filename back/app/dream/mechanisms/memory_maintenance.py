@@ -37,7 +37,6 @@ class MemoryMaintenanceMechanism:
             "always-merge-backlog-v4:"
             f"{runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD}:"
             f"{runtime_settings.MEMORY_CONTRADICTION_MODE}:"
-            f"{runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD}:"
             f"{runtime_settings.MEMORY_AGING_MODE}:"
             f"{runtime_settings.MEMORY_AGING_AFTER_DAYS}"
         )

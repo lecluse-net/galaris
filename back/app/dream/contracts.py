@@ -8,7 +8,7 @@ from typing import Annotated, Any, Literal, Protocol, Union, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
-from app.memory import MemoryTemporalAnchor
+from app.memory import MemoryTemporalAnchor, AtomicMemoryFact
 from core.util import local_timezone_name
 
 
@@ -172,8 +172,9 @@ class MemoryCreateOperation(BaseModel):
 
     action: Literal["CREATE"] = "CREATE"
     temporal: MemoryTemporalAnchor | None = None
-    title: str = Field(min_length=1, max_length=500)
-    content: str = Field(min_length=1, max_length=8_000)
+    title: str = Field(default="", max_length=500)
+    content: str = Field(default="", max_length=8_000)
+    fact: AtomicMemoryFact | None = None
     keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
     retention_reason: MemoryRetentionReason = Field(
         default="unspecified",
@@ -209,8 +210,9 @@ class MemoryEnrichOperation(BaseModel):
     target_memory_id: str = Field(min_length=1, max_length=100)
     expected_revision: int = Field(ge=1)
     temporal: MemoryTemporalAnchor | None = None
-    title: str = Field(min_length=1, max_length=500)
-    content: str = Field(min_length=1, max_length=8_000)
+    title: str = Field(default="", max_length=500)
+    content: str = Field(default="", max_length=8_000)
+    fact: AtomicMemoryFact | None = None
     keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
     retention_reason: MemoryRetentionReason = "unspecified"
     future_utility: MemoryFutureUtility = "low"
@@ -223,8 +225,9 @@ class MemoryContradictOperation(BaseModel):
 
     action: Literal["CONTRADICT"] = "CONTRADICT"
     target_memory_id: str = Field(min_length=1, max_length=100)
-    title: str = Field(min_length=1, max_length=500)
-    content: str = Field(min_length=1, max_length=8_000)
+    title: str = Field(default="", max_length=500)
+    content: str = Field(default="", max_length=8_000)
+    fact: AtomicMemoryFact | None = None
     keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
     retention_reason: MemoryRetentionReason = "unspecified"
     future_utility: MemoryFutureUtility = "low"
@@ -298,8 +301,18 @@ class MemoryExtractionAppliedOperation(BaseModel):
 
     operation_index: int = Field(ge=0, le=11)
     action: Literal["CREATE", "LINK", "ENRICH", "CONTRADICT"]
-    memory_id: UUID
-    status: Literal["stored", "merged"]
+    memory_id: UUID | None = None
+    status: Literal["stored", "merged", "rejected"]
+    rejection_reason: Literal["contact_coordinates"] | None = None
+
+    @model_validator(mode="after")
+    def valid_outcome(self) -> "MemoryExtractionAppliedOperation":
+        if self.status == "rejected":
+            if self.memory_id is not None or self.rejection_reason != "contact_coordinates":
+                raise ValueError("An omitted contact coordinate requires an explicit policy outcome")
+        elif self.memory_id is None or self.rejection_reason is not None:
+            raise ValueError("A stored memory outcome requires its memory identifier")
+        return self
 
 
 class MemoryExtractionApplication(BaseModel):
@@ -309,6 +322,10 @@ class MemoryExtractionApplication(BaseModel):
         default_factory=lambda: list[MemoryExtractionAppliedOperation](),
         max_length=12,
     )
+
+    @property
+    def stored_count(self) -> int:
+        return sum(outcome.status in {"stored", "merged"} for outcome in self.operations)
 
 
 class MemoryExtractionPrepared(BaseModel):

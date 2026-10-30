@@ -21,6 +21,7 @@ from app.task import Task
 from core.database import get_db
 
 from .contracts import ReachableHumanContact
+from .models import ContactDiscoveryJob
 from .countries import apply_country_defaults
 from .schemas import (
     ContactIdentityRead,
@@ -214,6 +215,9 @@ async def _rewire_conversation_references(
         .where(Task.contact_memory_item_id == source_contact_item_id)
         .values(contact_memory_item_id=target_contact_item_id)
     )
+    await get_db().execute(update(ContactDiscoveryJob).where(
+        ContactDiscoveryJob.contact_item_id == source_contact_item_id,
+    ).values(contact_item_id=target_contact_item_id))
     return {
         "messages": _rowcount(messages),
         "conversation_rounds": _rowcount(rounds),
@@ -224,6 +228,9 @@ async def _rewire_conversation_references(
 async def _clear_conversation_references(
     contact_item_id: UUID,
 ) -> dict[str, int]:
+    await get_db().execute(update(ContactDiscoveryJob).where(
+        ContactDiscoveryJob.contact_item_id == contact_item_id,
+    ).values(contact_item_id=None, status="ignored", lease_token=None, lease_expires_at=None))
     messages = await get_db().execute(
         update(Message)
         .where(Message.contact_memory_item_id == contact_item_id)
@@ -249,6 +256,12 @@ async def _clear_conversation_references(
 async def merge_contacts(
     *, source_contact_item_id: UUID, target_contact_item_id: UUID
 ) -> ContactMergeResult:
+    from app.memory import get_messenger_contact
+    from .directory import lock_contact_directory
+
+    source = await get_messenger_contact(source_contact_item_id)
+    if source is not None:
+        await lock_contact_directory(source.owner_agent_id)
     merged, rewired = await merge_messenger_contacts(
         source_contact_item_id=source_contact_item_id,
         target_contact_item_id=target_contact_item_id,
@@ -258,6 +271,14 @@ async def merge_contacts(
 
 
 async def forget_contact(*, contact_item_id: UUID) -> ContactForgetResult:
+    from app.memory import get_messenger_contact
+    from .directory import lock_contact_directory
+
+    current = await get_messenger_contact(contact_item_id)
+    if current is not None:
+        await lock_contact_directory(current.owner_agent_id)
+        from .discovery import cancel_contact_discovery
+        await cancel_contact_discovery(contact_item_id)
     cleared = await forget_messenger_contact(
         contact_item_id=contact_item_id,
         clear_references=_clear_conversation_references,

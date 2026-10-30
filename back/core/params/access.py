@@ -34,7 +34,7 @@ def parameter_domain(name: str) -> str:
         "ai.topic-resolution-system-prompt", "ai.memory-extraction-system-prompt",
     }:
         return "dream"
-    if name.startswith(("MEMORY_", "MESSENGER_SESSION_")):
+    if name.startswith(("MEMORY_", "CONTACT_", "MESSENGER_SESSION_")):
         return "memory"
     if name.startswith(("MESSENGER_", "GALARIS_INTERNAL_MESSENGER_", "WEB_PUSH_", "messenger.")):
         return "messaging"

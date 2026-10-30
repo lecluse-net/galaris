@@ -16,6 +16,7 @@ from app.memory.models import (
     MemoryEmbeddingChunk,
     MemoryFinding,
     MemoryItem,
+    MemoryLink,
     MemorySource,
 )
 from app.memory.schemas import (
@@ -29,6 +30,83 @@ from core.params.runtime_settings import runtime_settings
 from app.share import ShareGrant
 from core.team import TeamModel
 from core.user import UserModel
+from .test_file_catalogue import console_catalogue as console_catalogue
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["contact", "document", "file"])
+async def test_source_backed_node_survives_an_older_generic_duplicate(db, agents, memory_storage, console_catalogue, monkeypatch, kind):
+    import hashlib
+    from app.memory import create_address_book_contact
+    from app.file_share import annotate_catalogue_entry, resource_service
+    from app.memory.tests.document_fixtures import create_document_reference, project_document
+    from app.document import resource_service as documents
+    from app.document.schemas import DocumentItemCreate, DocumentPayload, DocumentGlobalAccessUpdate
+    from core.util import visible_text
+
+    owner, _ = agents
+    older, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+        payload=MemoryPayload(text="Legacy standalone memory predating the source import."),
+        source=MemorySourceCreate(source_kind="task", source_ref="task:synthetic-private-evidence")))
+    if kind == "contact":
+        card = await create_address_book_contact(owner_agent_id=owner.id,
+            display_name="Éloi Fiction", email="eloi@example.org")
+        source = await service.item_record(card.memory_item_id)
+    elif kind == "document":
+        source, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+            title="Synthetic source rule", payload=DocumentPayload(text="<p>The synthetic workshop welcomes beginners.</p>")))
+    else:
+        ctx, _transport, _connection, _peer = console_catalogue
+        written = await resource_service.resource_write_text(ctx, "console://canonical.txt", "Synthetic file bytes")
+        identity = await annotate_catalogue_entry(ctx, written.uri, "The synthetic workshop welcomes beginners.")
+        source = await service.item_record(identity)
+    assert source is not None
+    with pytest.raises(service.MemoryPermissionError):
+        await service.forget_item(source.id, actor_agent_id=owner.id, administrative=True)
+    with pytest.raises(service.MemoryPermissionError):
+        await service.forget_merged_item(source.id)
+    _, original, _, _, _ = await service.get_item(source.id, agent_id=owner.id)
+    original_revision = source.revision
+    # Seed the old layout directly: this duplicate predates the contact-coordinate
+    # write policy, which intentionally prevents recreating it through today's API.
+    older.content = original.decode()
+    older.search_text = visible_text(original.decode())
+    older.content_hash = hashlib.sha256(original).hexdigest()
+    older.size_bytes = len(original)
+    older.created_at = older.updated_at = datetime.now(timezone.utc) - timedelta(days=2)
+    # A readable neighbor does not make the old private edge's evidence public.
+    neighbor, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+        title="Synthetic public neighbor",
+        payload=DocumentPayload(text="A distinct synthetic resource.")))
+    await documents.set_document_global_access(neighbor.id,
+        DocumentGlobalAccessUpdate(expected_revision=neighbor.revision, global_access=1),
+        actor_agent_id=owner.id)
+    await project_document(neighbor.id)
+    db.add(MemoryLink(source_item_id=older.id, target_item_id=neighbor.id,
+        relation_type="related", metadata_={"source_ref": "synthetic:private-link-evidence"}))
+    await db.commit()
+    async def candidates(*_args, **_kwargs):
+        return [(source, 0.99)]
+    monkeypatch.setattr(maintenance, "_indexed_candidates", candidates)
+    monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
+    finding_ids = await maintenance.detect_for_item(older.id, manual=True)
+    assert len(finding_ids) == 1
+    finding = await db.get(MemoryFinding, finding_ids[0])
+    assert finding.details["proposed_canonical_item_id"] == str(source.id)
+    # Even an old UI selection cannot replace the authoritative resource.
+    result = await maintenance.apply_finding(finding.id, canonical_item_id=older.id)
+    assert result.status == "applied"
+    assert result.details["canonical_priority"] == "source_backed"
+    assert result.details["absorbed_sources"] == [{"source_kind": "task", "source_ref": "task:synthetic-private-evidence"}]
+    assert result.details["absorbed_links"] == [{
+        "source_item_id": str(older.id), "target_item_id": str(neighbor.id),
+        "relation_type": "related", "metadata": {"source_ref": "synthetic:private-link-evidence"}}]
+    assert await db.scalar(select(MemoryLink.id).where(
+        MemoryLink.source_item_id == source.id, MemoryLink.target_item_id == neighbor.id)) is None
+    assert await db.scalar(select(MemoryItem.id).where(MemoryItem.id == older.id)) is None
+    reopened, content, _, _, _ = await service.get_item(source.id, agent_id=owner.id)
+    assert content == original and reopened.revision == original_revision
+    assert "task:synthetic-private-evidence" not in await service.source_refs(source.id)
 
 
 @pytest.mark.asyncio
@@ -393,21 +471,24 @@ async def test_dismissed_finding_is_not_recreated_for_the_same_revision_pair(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["duplicate", "contradiction"])
 async def test_threshold_change_obsoletes_and_can_reactivate_pending_finding(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
     monkeypatch: pytest.MonkeyPatch,
+    kind: str,
 ) -> None:
     del memory_storage
     owner, _peer = agents
     memories = []
-    for title in ("Préférence thé", "Préférence pour le thé"):
+    for index, title in enumerate(("Préférence thé", "Préférence pour le thé")):
         item, _created = await service.create_item(
             MemoryItemCreate(
                 owner_agent_id=owner.id,
                 title=title,
-                payload=MemoryPayload(text="La personne préfère le thé vert."),
+                payload=MemoryPayload(text=("Correction : la personne ne préfère plus le thé vert."
+                    if kind == "contradiction" and index else "La personne préfère le thé vert.")),
             )
         )
         memories.append(item)
@@ -421,11 +502,12 @@ async def test_threshold_change_obsoletes_and_can_reactivate_pending_finding(
 
     monkeypatch.setattr(maintenance, "_indexed_candidates", candidates)
     monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_SIMILARITY_THRESHOLD", 0.92)
-    monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
+    monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "manual" if kind == "contradiction" else "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
     finding_ids = await maintenance.detect_for_item(primary.id, manual=True)
     finding = await db.get(MemoryFinding, finding_ids[0])
     assert finding is not None
+    assert finding.kind == kind
 
     monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_SIMILARITY_THRESHOLD", 0.95)
     await maintenance.reconcile_policy_findings()
@@ -444,10 +526,12 @@ async def test_threshold_change_obsoletes_and_can_reactivate_pending_finding(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("threshold", [0.90, 0.92])
 async def test_contradiction_requires_an_explainable_textual_signal(
     agents: tuple[Agent, Agent],
     memory_storage: Path,
     monkeypatch: pytest.MonkeyPatch,
+    threshold: float,
 ) -> None:
     del memory_storage
     owner, _peer = agents
@@ -476,12 +560,17 @@ async def test_contradiction_requires_an_explainable_textual_signal(
         return [(related, 0.91)]
 
     monkeypatch.setattr(maintenance, "_indexed_candidates", candidates)
+    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_SIMILARITY_THRESHOLD", threshold)
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "manual")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
 
     finding_ids = await maintenance.detect_for_item(primary.id, manual=True)
     findings = await maintenance.list_findings(agent_id=owner.id)
 
+    if threshold > 0.91:
+        assert finding_ids == []
+        assert findings == []
+        return
     assert finding_ids == [findings[0].id]
     assert findings[0].kind == "contradiction"
     assert str(findings[0].details["signal"]).startswith("explicit_marker:")

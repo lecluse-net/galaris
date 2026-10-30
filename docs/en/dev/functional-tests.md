@@ -257,9 +257,26 @@ The global search page and its dedicated tests have been removed; search remains
 resource screens. The first-mission journey remains covered on Welcome.
 
 `app/dream/tests/test_memory_extraction.py` covers ENRICH and CONTRADICT: preserved content and
-keywords, provenance, replay and stale revision rejection. Its legacy Document scenarios now
-create resources through the Document domain and check that personal provenance remains in a
-private memory, following the Memory/Document separation.
+keywords, provenance, replay and stale revision rejection. Facts already present in a Document
+reuse its reference without adding copies or private provenance to the source.
+`test_atomic_facts.py` and `test_mcp.py` protect typed values, real links, homonyms, exact
+deduplication, separate properties, and rejection of prose and generic coordinate copies.
+`test_semantic_search.py` recalls Contact cards with accented and unaccented names without
+inter-agent leaks. `test_maintenance.py` prefers a real source over an older copy and protects
+its card; `test_mcp.py` forgets a linked fact while retaining its Contact.
+`test_conversation_summary.py` and `test_acquisition_automation.py` cover atomic extraction,
+secret redaction and checkpoint recovery without repeated extraction.
+
+`test_conversation_recall.py` also covers “my email” without a name, strict scope,
+French/English acknowledgements and business identifiers that must not select a Contact card.
+`test_document_retrieval.py` preserves embedded URI references, several sources to compare,
+links late in long objectives and denial of inaccessible references.
+`test_recall_evaluation.py` qualifies 51 queries in each of hybrid and lexical-fallback modes,
+against six contacts, three documents and 24 distracting notes. Services and PostgreSQL are
+real; only provider calls are replaced, with deliberately uniform vectors. The aggregate report
+includes recall@1, reciprocal rank, leakage, p95 and SQL statement count. The corpus requires
+100% first-rank recall and zero leakage; it measures neither network latency nor infallibility
+for every wording. Simple scoped coordinate lookups also verify that no embedding model runs.
 The central `app/chat/tests/test_authorization.py` check also covers Document privileges on
 conversation listing and creation while preserving the room access assertion.
 
@@ -1586,6 +1603,29 @@ cannot replace its verification instructions.
 `test_runtime_guards.py` preserves their error visibility. SFTP writes into missing directories
 and confinement within the home are covered by `app/file_share/tests/test_path_normalization.py`.
 Observed errors return to the agent; interruptions without a response still require reconciliation.
+
+`app/agent/tests/test_dispatcher_contacts.py` and its entirely synthetic corpus protect the
+additive `contact_infos` list: emails, international phones and Unicode separators,
+French/English addresses, postal blocks and messaging identities. Negative cases cover
+dates, prices, order references, malformed emails, generic links and routing directives.
+One message combines two emails, three phones and five addresses. Tests also exercise human
+routes without LLM calls, AI `END` results, forced and inferred Task routes, visible HTML
+text, coordinates beyond 500 characters and historical result readback. They impose no
+unstable CI timing threshold and do not prove universal postal coverage. Formats cover fifteen
+phone countries, extensions, Matrix relay links, explicit handles, short links and vCards.
+A deterministic generator checks five hundred messages against expected extraction, normalized
+keys, Unicode offsets, non-overlap and determinism.
+
+`app/contact/tests/test_discovery.py` follows the real Dispatcher, port, queue and database:
+owners named in history, creation then enrichment, ten coordinates on one contact, known manual
+coordinates without LLM calls, ambiguity, invented owners, AI sources, coalesced rounds,
+interruption, expired leases, between-call checkpoints and human edits. Forgetting cancels old
+observations. `tests/test_contact_inference.py` crosses actual profiles, SDK and durable text/native
+decision lifecycles with only provider HTTP replaced. `app/dream/tests/test_contact_reconciliation.py`
+covers canonical fusion and reference rewiring, homonyms, unresolved identity, thresholds, agent
+isolation, replay and stale decisions. The router also protects journal reads by privilege and
+agent management scope. Dream-panel browser tests use its functional `DREAM_EDIT` and
+`DREAM_CONFIG_ACCESS` privileges and retain saving, failure recovery and read-only behavior.
 
 The September 16 dispatcher contract is covered by `test_dispatcher_planning.py` and
 `back/tests/test_dispatcher_inference.py`: a human round produces `EXEC standard` without an LLM

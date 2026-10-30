@@ -6,6 +6,7 @@ import pytest
 from fastapi import HTTPException
 from httpx import AsyncClient
 from starlette.requests import Request
+from pydantic import ValidationError
 
 from app.agent import active_run
 from bridge.hermes.memory_provider import (
@@ -15,7 +16,16 @@ from bridge.hermes.memory_provider import (
     reset_memory_contexts,
 )
 from bridge.hermes.router import hermes_provider_search
-from bridge.hermes.schemas import HermesMemorySearchRequest
+from bridge.hermes.schemas import HermesMemoryRememberRequest, HermesMemorySearchRequest
+
+
+def test_legacy_hermes_memory_transport_requires_an_atomic_fact() -> None:
+    with pytest.raises(ValidationError, match="JSON atomic fact"):
+        HermesMemoryRememberRequest(content="Nina told me yesterday she wants reports.")
+    request = HermesMemoryRememberRequest(
+        content='{"predicate":"report_frequency","value":"weekly"}'
+    )
+    assert '"value":"weekly"' in request.content
 
 
 def test_bridge_routes_keep_configuration_and_memory_without_legacy_management() -> None:

@@ -13,15 +13,15 @@ from app.tools import McpToolContext
 
 
 @pytest.mark.asyncio
-async def test_summary_escapes_model_output_and_preserves_attribution(monkeypatch):
+async def test_summary_returns_separate_typed_facts_without_narrating_the_source(db, monkeypatch):
     monkeypatch.setattr(conversation_summary, "get_agent_record", AsyncMock(return_value=object()))
     monkeypatch.setattr(conversation_summary, "get_llm_for_agent", AsyncMock(return_value=object()))
     inference = AsyncMock(
         return_value=SimpleNamespace(
             output=conversation_summary.ConversationSummary(
                 facts=[
-                    "Alice agreed to review <draft> & reply tomorrow.",
-                    "Bob's proposal remains undecided.",
+                    {"predicate": "review_target", "value": "draft & follow-up"},
+                    {"predicate": "proposal_confirmed", "value": False},
                 ]
             )
         )
@@ -33,10 +33,7 @@ async def test_summary_escapes_model_output_and_preserves_attribution(monkeypatc
         task_id=None,
         language="en",
     )
-    assert (
-        result
-        == "<ul><li>Alice agreed to review &lt;draft&gt; &amp; reply tomorrow.</li><li>Bob&#x27;s proposal remains undecided.</li></ul>"
-    )
+    assert [fact.model_dump()["value"] for fact in result] == ["draft & follow-up", False]
     assert inference.await_args.kwargs["prompt"] == "Alice: I will review it tomorrow."
     assert inference.await_args.kwargs["agent_id"] == 7
 

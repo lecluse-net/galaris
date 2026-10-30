@@ -15,6 +15,7 @@ from app.memory import (
 from core.authorize import Privileges, RequireAllPrivilegesAssertion, authorize
 
 from . import service
+from .discovery_contracts import ContactDiscoveryRead
 from .schemas import (
     ContactDefaults,
     ContactForgetResult,
@@ -47,6 +48,16 @@ def _mutation_error(exc: Exception) -> HTTPException:
     if isinstance(exc, MemoryNotFoundError):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+
+
+@router.get("/discovery", response_model=list[ContactDiscoveryRead])
+@authorize(privileges=[Privileges.CONTACT_ACCESS, Privileges.CONTACT_EDIT])
+async def read_contact_discovery(agent_id: int = Query(gt=0), limit: int = Query(default=50, ge=1, le=500),
+                                 offset: int = Query(default=0, ge=0)) -> list[ContactDiscoveryRead]:
+    from .discovery import list_contact_discovery
+
+    await _require_agent_scope(agent_id)
+    return await list_contact_discovery(agent_id=agent_id, limit=limit, offset=offset)
 
 
 @router.get("", response_model=ContactPage)

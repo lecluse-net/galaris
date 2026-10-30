@@ -21,6 +21,61 @@ def query_identity(query: str) -> UUID | None:
         return None
 
 
+_RESOURCE_REFERENCE_RE = re.compile(
+    r"(?<![\w:/])(?:memory|document)://([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})(?![\w/-])",
+    re.IGNORECASE,
+)
+_SELF_COORDINATE_RE = re.compile(
+    r"\b(?:mon|ma|mes|my)\s+(?:(?:propre|personnelle?|personal|own)\s+)?"
+    r"(?:e[ -]?mails?|mails?|courriels?|telephones?|phones?|numero\s+de\s+telephone|"
+    r"numero(?!\s+(?:de|du|d['’])\b)|(?:phone\s+)?numbers?(?!\s+of\b)|"
+    r"adresses?|address(?:es)?(?!\s+book\b)|coordonnees|contact\s+(?:details|information))\b"
+)
+
+
+def query_resource_references(query: str) -> tuple[str, ...]:
+    """Preserve whole canonical URI tokens when bounding a context query."""
+    references: dict[UUID, str] = {}
+    for match in _RESOURCE_REFERENCE_RE.finditer(query):
+        references.setdefault(UUID(match[1]), match[0])
+        if len(references) == 16:
+            break
+    return tuple(references.values())
+
+
+def query_reference_ids(query: str) -> tuple[UUID, ...]:
+    """Recognize bounded exact references even inside a natural-language request."""
+    identity = query_identity(query)
+    if identity is not None:
+        return (identity,)
+    return tuple(UUID(value.split("://", 1)[1]) for value in query_resource_references(query))
+
+
+def query_is_contact_self_reference(query: str) -> bool:
+    """An explicit possessive coordinate request refers to the scoped sender."""
+    return _SELF_COORDINATE_RE.search(relevance.fold(query)) is not None
+
+
+_CONTACT_LOOKUP_WORDS = relevance.STOPWORDS | frozenset("""
+my connais connaissez connaissance sais savez rappelles rappeler donne donnez dis
+know knows remember have give tell please address email mail phone number telephone
+numero postale postal personnelle personnel personal propre own contact details information
+""".split())
+
+
+def query_is_direct_contact_lookup(query: str) -> bool:
+    """Only a simple scoped coordinate question can bypass semantic inference.
+
+    A named third party, relation, condition or additional subject keeps the
+    complete hybrid path. This shortcut neither infers nor changes an identity.
+    """
+    normalized = relevance.fold(query)
+    if not _SELF_COORDINATE_RE.search(normalized):
+        return False
+    remainder = _SELF_COORDINATE_RE.sub(" ", normalized)
+    return all(word in _CONTACT_LOOKUP_WORDS for word in re.findall(r"[^\W_]+", remainder))
+
+
 @dataclass(frozen=True)
 class Passage:
     text: str

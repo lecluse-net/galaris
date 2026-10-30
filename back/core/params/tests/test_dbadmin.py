@@ -32,21 +32,27 @@ async def test_new_installation_enables_only_internal_chat_and_preserves_channel
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("selected_mode", ["off", "manual", "automatic"])
-async def test_duplicate_mode_is_retired_without_changing_the_merge_threshold(db, selected_mode):
+async def test_legacy_similarity_settings_are_retired_without_changing_the_shared_threshold(db, selected_mode):
     from sqlalchemy import select
     from core.dbadmin import reconcile_dataset
     from core.params.models import Param
     from core.params.runtime_settings import runtime_settings
 
-    legacy_name = "MEMORY_DUPLICATE_MODE"
-    db.add(Param(name=legacy_name, value=selected_mode))
+    legacy_values = {
+        "MEMORY_DUPLICATE_MODE": selected_mode,
+        "MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD": "0.86",
+        "DREAM_CONTACT_MERGE_SIMILARITY_THRESHOLD": "0.99",
+    }
+    db.add_all(Param(name=name, value=value) for name, value in legacy_values.items())
     threshold = await db.get(Param, Params.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD)
     assert threshold is not None
     threshold.value = "0.97"
     await db.flush()
     await reconcile_dataset(db, datasets()[0])
-    assert await db.scalar(select(Param.value).where(Param.name == legacy_name)) is None
+    assert not (await db.scalars(select(Param.name).where(Param.name.in_(legacy_values)))).all()
     assert runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD == 0.97
+    similarity_names = (await db.scalars(select(Param.name).where(Param.name.endswith("SIMILARITY_THRESHOLD")))).all()
+    assert similarity_names == [Params.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD]
     result = await reconcile_dataset(db, datasets()[0])
     assert result.inserted == result.updated == result.removed == 0
     assert threshold.value == "0.97"

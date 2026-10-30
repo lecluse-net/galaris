@@ -1,6 +1,7 @@
 """Governed, durable memory public surface."""
 
 from .temporal import MemoryTemporalAnchor
+from .facts import AtomicMemoryFact, MemoryFactReference
 from .contact_coordinates import ContactCoordinates, ContactPhoneNumber, ContactPostalAddress
 
 
@@ -47,6 +48,9 @@ from .contracts import (
 )
 from .messenger_contact import observe_messenger_contact
 from .contact_directory import (
+    contact_owner_agent_ids,
+    commit_contact_changes,
+    lock_messenger_contact,
     create_address_book_contact,
     has_mail_contact,
     create_mail_contact,
@@ -125,6 +129,7 @@ __all__ = [
     "MessengerContactObservation",
     "MessengerContactRecord",
     "MemoryAcquisitionCreate",
+    "AtomicMemoryFact", "MemoryFactReference",
     "MemoryAcquisitionResult",
     "MemoryRecallRequest",
     "MemoryRecallResult",
@@ -169,6 +174,9 @@ __all__ = [
     "update_messenger_contact",
     "create_mail_contact",
     "create_address_book_contact",
+    "contact_owner_agent_ids",
+    "commit_contact_changes",
+    "lock_messenger_contact",
     "ContactCoordinates",
     "ContactPhoneNumber",
     "ContactPostalAddress",

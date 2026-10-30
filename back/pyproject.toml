@@ -27,6 +27,7 @@ dependencies = [
     "python-dotenv~=1.2",
     "email-validator~=2.3",           # Pydantic EmailStr validation
     "babel>=2.17,<3",                 # Localized country names for contact defaults
+    "phonenumberslite>=9,<10",        # Offline international phone extraction/validation
     # Authentication and cryptography
     "python-jose~=3.5",              # JWT
     "pwdlib~=0.3",                   # password hashing

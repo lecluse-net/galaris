@@ -271,20 +271,31 @@ avec au plus 500 résultats sans date et une indication de troncature. Sans text
 les souvenirs sans date répondant aux filtres ; les correspondances temporelles s’ajoutent
 séparément. Le rappel borné n’annonce ni total exact ni pagination exhaustive.
 
-La version `memory-query-evidence/v12` fusionne FTS et pgvector dans le Topic courant lorsqu’il
+La version `memory-query-evidence/v14` fusionne FTS et pgvector dans le Topic courant lorsqu’il
 existe, puis dans la portée globale autorisée. Les termes informatifs de la question, leur
 rareté, les identités nommées et les titres exacts dominent le classement ; la similarité
 sémantique les complète. Topic, liens confirmés, sources, fraîcheur et centralité servent de
 bonus contextuels secondaires. La diversité favorise les termes, identités et faits encore
 absents. Aucun score lexical ou vectoriel faible ne supprime à lui seul les candidats autorisés.
+
+Les URI `memory://` et `document://` présentes dans une phrase restent des ancres exactes,
+prioritaires avant la limite des candidats. La requête concise conserve leurs tokens complets,
+même en fin d'objectif ou derrière un autre libellé de tâche. « Mon email » utilise l'UUID
+du correspondant courant ; les numéros de facture et carnets d'adresses ne déclenchent pas
+cette règle. Une demande simple de coordonnées et une identité autonome passent par une
+lecture exacte sans embeddings ni reranking de l'annuaire. Une question plus riche conserve
+le chemin hybride. Les acquiescements seuls ne remplacent pas le dernier sujet humain d'une
+relance ; un changement explicite de sujet reste respecté. Admission, droits, validité et
+révisions sont toujours recontrôlés. Voir [0258](../../../../project/decisions/0258-contextual-resource-identity-recall.md).
 La centralité tient compte des liens accessibles autour du candidat, y compris hors du top-k. Les injections automatiques ne
 créent aucune association de co-usage : être présenté ensemble ne prouve pas une relation métier.
 Le vivier vaut 48 candidats et le résultat contient au plus huit items par défaut; le vivier,
 les poids et la diversité sont exclusivement configurés par les Params globaux de la section
 Mémoire. Une sélection de diversité pénalise les résultats
 trop proches et ne conserve qu'un représentant des quasi-doublons. Son seuil est l'unique
-`MEMORY_DUPLICATE_SIMILARITY_THRESHOLD`, partagé avec l'acquisition, les signalements et les
-fusions automatiques; il n'est pas surchargeable par appel. Le résultat détaillé interne
+`MEMORY_DUPLICATE_SIMILARITY_THRESHOLD`, partagé avec l'acquisition, les signalements de doublon
+ou de contradiction et les fusions automatiques, y compris les contacts Dream ; il n'est pas
+surchargeable par appel. Le résultat détaillé interne
 expose les sources de chaque hit et les nombres de candidats
 et résultats thématiques/globaux. Un contact exact borne aussi la voie globale : elle accepte les
 souvenirs de ce contact dans d'autres Topics et les souvenirs autonomes non conversationnels,
@@ -316,9 +327,10 @@ seule la frontière d'identité et son libellé ne pollue pas la requête théma
 explicite peut toujours employer un nom comme terme lexical, sans en faire une frontière : celle-ci
 reste l'UUID exact du contact et son appartenance persistée.
 
-Les projections publiques `memory_role=topic` et les fiches structurelles de contacts ne sont
-jamais rendues comme souvenirs factuels par cette surface. Leurs embeddings restent disponibles
-pour le classement et la navigation.
+Les projections publiques `memory_role=topic` restent exclues des souvenirs factuels.
+Les fiches Contacts structurées de l'agent sont recherchables et présentables dans le brief
+comme dans `file_search`. Le nom affiché fournit le signal d'identité lexical, sans le préfixe
+du titre. Cela n'élargit ni l'annuaire privé d'un autre agent ni les faits d'un autre interlocuteur.
 
 La branche vectorielle applique propriétaire, grants, visibilité, dates et types dans la
 requête SQL avant la distance. Elle ne considère que les chunks dont `model_key`, dimension et
@@ -356,11 +368,30 @@ séparément des appels explicites `memory_*`.
 
 La similarité vectorielle présélectionne des candidats de doublon ; à l'acquisition elle ne
 prouve pas leur équivalence. Sans décision affirmative configurée, le nouveau fait est conservé.
-Dream peut proposer `ENRICH` sur un souvenir personnel modifiable : le service conserve son
-texte complet, ses mots-clés, sa temporalité et ses sources, puis ajoute l'information et sa
-provenance avec contrôle de révision. `CONTRADICT` conserve une affirmation distincte et son
+Les agents fournissent un `fact` atomique : `subject_ref`, `predicate` en snake_case,
+`value` scalaire typé ou `{ref: URI}`, avec `negated` et `unit` facultatifs. Le sujet est
+une référence existante et autorisée ; son absence désigne le contact courant ou l'agent.
+Le serveur conserve `metadata.atomic_fact` versionné, construit la vue HTML et les liens
+`fact_subject`/`fact_value`. Auteur, date et citation restent dans la provenance. Un même
+atome dans la même portée est réutilisé sans LLM, sous verrou transactionnel ; les homonymes
+et propriétés différentes restent distincts. `memory_remember` et le transport Hermès refusent
+les paragraphes libres. Synthèse explicite, capture après tâche et Dream extraient aussi des
+atomes ; la capture checkpoint son extraction avant application. Notes humaines et anciens
+checkpoints restent lisibles. Une propriété complémentaire crée un autre atome, y compris
+pour un ancien `ENRICH` structuré. `CONTRADICT` conserve une affirmation distincte et son
 lien ; aucun contenu antérieur n'est déclaré faux ou effacé automatiquement. Les projections
 gérées et les souvenirs d'autres agents ne sont pas enrichissables par ce chemin.
+
+Parmi les candidats confirmés équivalents, la représentation adossée à une ressource prime
+sur une copie ordinaire, indépendamment de son âge. La maintenance n'absorbe une copie dans
+une ressource que sur preuve du fait complet ; deux ressources autoritaires restent distinctes.
+Le contenu, la révision et les droits de la source restent préservés. La provenance privée
+absorbée reste dans le journal/finding privé. Seules les représentations directes de ressources
+sont protégées contre l'oubli générique : un simple lien ou une citation ne protège pas le fait.
+Les coordonnées détectées sont refusées dans les souvenirs génériques et gérées dans Contacts,
+dont les fiches restent recherchables. Un écrit mêlant coordonnées et préférence est rejeté
+entièrement, avec invitation à soumettre le fait séparément. Les anciennes notes ne sont pas
+réécrites en masse. Voir [0257](../../../../project/decisions/0257-atomic-memory-facts-and-source-priority.md).
 
 L'extraction couvre les sous-tâches et cycles Goal réussis en conservant chaque producteur.
 Les instructions préparées, délégations et consignes Goal restent attribuées à l'IA ; les
@@ -432,7 +463,7 @@ ne conserve comme candidats de doublon que les correspondances qui atteignent l'
 puis applique chaque opération avec une identité stable.
 Cette décision crée un fait absent (`CREATE`), ajoute la source à un souvenir candidat sans le
 réécrire (`LINK`) ou s'abstient avec une liste vide (`IGNORE`). Le serveur refuse toute cible qui
-ne faisait pas partie du rappel, exclut les projections Topic/Contact et ne propose comme cible de
+ne faisait pas partie du rappel, exclut les projections Topic et ne propose comme cible de
 `LINK` qu'un souvenir possédé par l'agent courant. Le modèle doit encore vérifier l'identité du fait :
 un thème, une décision liée ou un recouvrement partiel ne suffit jamais. Un rattachement conversationnel peut compléter
 le contact et le Topic d'un souvenir global du même agent, mais ne peut jamais franchir la frontière

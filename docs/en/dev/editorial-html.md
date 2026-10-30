@@ -36,6 +36,12 @@ use `rich-text` in Goal-owned columns, without Documents or text history. Their 
 Document also uses `rich-text`, including in the library. Native binary/JSON/code resources and all skills
 retain their formats.
 
+Agents write memories through `fact={subject_ref,predicate,value,negated?,unit?}`, with one
+typed raw value per fact. The server retains structure and links, then generates the HTML
+display fragment. Structured input does not change the stored content profile. Historical
+human notes remain editable; agents no longer author paragraphs in `memory_remember`.
+See [decision 0257](../../../project/decisions/0257-atomic-memory-facts-and-source-priority.md).
+
 The content profile is independent of `toolbarMode` (`full` or `simple`). `DocumentEditor`
 enforces `full` for a document body in the library, Chat, previews and Goal tracking;
 the resource retains its own rights and content profile. Memories, Goal descriptions,

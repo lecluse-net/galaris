@@ -130,6 +130,7 @@ from .dispatcher import (
     dispatcher_system_prompt,
     preview_dispatcher_input,
     register_dispatcher_output_contracts,
+    capture_conversation_contact_infos,
 )
 from .conversation_context import (
     ConversationReplyFilter,
@@ -381,6 +382,9 @@ __all__ = [
     "preview_dispatcher_input",
     "register_dispatcher_output_contracts",
     "dispatch_conversation",
+    "capture_conversation_contact_infos",
+    "ContactDiscoverySource",
+    "register_contact_discovery",
     "analyze_conversation_work",
     "conversation_work_analysis_context",
     "ExecutorKind",
@@ -401,6 +405,7 @@ __all__ = [
 ]
 
 from .resource_facade import read_agent_resource, list_agent_resources, require_delegated_resource_access
+from .contact_discovery import ContactDiscoverySource, register_contact_discovery
 
 from .models import AgentTeam as AgentTeamModel
 from .facade import record_scope_preflight as record_scope_preflight

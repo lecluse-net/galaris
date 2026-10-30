@@ -38,6 +38,7 @@ async def test_single_choice_task_persists_dispatch_without_inference(runtime, m
     db, _llm, requests, _mode = runtime
     _context, _options, task_id, _attempt = await dispatch_context(db, "task")
     task = await task_service.get_by_id(task_id)
+    task.objective = "Écris à Nina, nina@example.org."
     spec = replace(INTERNAL_HARNESS, pipeline_policy=DriverPipelinePolicy(
         use_planner=False, execution_efforts=frozenset({"standard", "high"}),
         uses_llm_calls=False,
@@ -50,6 +51,7 @@ async def test_single_choice_task_persists_dispatch_without_inference(runtime, m
 
     await db.refresh(task)
     assert task.get_dispatch_result() == result
+    assert [item.normalized_value for item in task.get_dispatch_result().contact_infos] == ["nina@example.org"]
     assert task.status == TaskStatus.DISPATCH
     assert task.effort == "standard"
     assert requests == []

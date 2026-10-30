@@ -605,6 +605,17 @@ A local cancellation does not always guarantee that the external engine will sto
 
 ## Memory, Documents, and Topics
 
+Each agent-produced memory contains one structured fact: for example, a contact link,
+the property `preferred_language` and the value `en`. Author and source evidence stay separate.
+Emails, phones, addresses and messaging identifiers belong in **Contacts**; agents can still
+search those cards. Direct resource representations are managed through their source resource.
+An ordinary memory linked to a card remains forgettable in Memory.
+
+In conversation, “my email” refers to the identified correspondent's card. A short “yes” or
+“thanks” does not replace the person mentioned before a follow-up. You can also cite a
+`document://` or `memory://` link inside a sentence; it remains usable after a long preamble,
+subject to the agent's current access rights.
+
 Files uploaded to Documents and Chat use shared internal storage. Existing links and access
 rights remain valid after migration. An agent can also create an independent private file
 with `file_create`, `path="file://"` and a readable name. External references such as Nextcloud
@@ -801,6 +812,22 @@ Phone numbers and addresses can also be edited on existing contacts and are incl
 search. Merging retains distinct coordinates from both contacts. Splitting leaves them on the
 original contact with its history; it does not automatically attribute them to the separated
 identity. Incoming messages do not replace manually entered coordinates.
+
+**Save detected contact details**, in Memory settings, enriches the private directory from human
+or AI messages: emails, phone numbers, recognized postal addresses and explicit messaging identities.
+Phone parsing uses the application's location country. Known coordinates trigger no model call.
+For new coordinates, conversation context identifies the owner, then a decision selects an existing
+contact or a new person. Processing runs in the background independently from the agent's reply and
+requires the profile's decision and ultra-low text models. Postal addresses retain their complete
+notation; patterns cover common French and English forms without guaranteeing every address.
+Uncertain ownership creates no contact and never defaults to the sender.
+
+While idle, Dream reviews possible duplicates above the **Shared similarity threshold**,
+configured in Memory settings and defaulting to 92%. Memory acquisition, recall, duplicates and
+contradictions use that same value. The model must establish the same person: a matching name or shared family address
+is insufficient. Merging preserves coordinates, identities and conversation references. Dream
+monitoring shows **Duplicate contact reconciliation**. Learned details remain private to the agent
+and grant no additional resource access.
 
 For internal Chat, the **Galaris user** identity is sufficient: no second internal messaging
 identity is created. DbAdmin synchronization removes existing redundant internal aliases

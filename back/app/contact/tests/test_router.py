@@ -52,6 +52,9 @@ async def test_address_book_rename_split_and_merge_require_privilege_and_managed
             })} for user, role in zip((editor, reader), roles)]
 
         assert (await client.get("/api/contacts/defaults")).status_code == 401
+        assert (await client.get("/api/contacts/discovery", params={"agent_id": agents[0].id})).status_code == 401
+        assert (await client.get("/api/contacts/discovery", params={"agent_id": agents[0].id}, headers=headers[1])).status_code == 404
+        assert (await client.get("/api/contacts/discovery", params={"agent_id": agents[1].id}, headers=headers[1])).json() == []
         assert (await client.get("/api/contacts/defaults", headers=headers[1])).json() == {"country": "FR"}
         create = {"agent_id": agents[0].id, "display_name": "  External   correspondent ", "email": "OUTSIDE@example.org",
                   "coordinates": {"phone_numbers": [{"number": "01 23 45 67 89"}], "postal_addresses": [{"city": "Lyon"}]}}

@@ -13,10 +13,14 @@ from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.i18n import t
 
 from . import acquisition_service, service
+from .contact_policy import CONTACT_COORDINATE_MESSAGE
+from .contact_policy import contains_contact_coordinates
+from .facts import AtomicMemoryFact
 from .recall_scope import resolve_recall_scope
 from .schemas import (
     MemoryTemporalAnchor,
     MemoryAcquisitionCreate,
+    MemoryAcquisitionResult,
     MemoryRecallRequest,
     MemorySourceCreate,
 )
@@ -178,10 +182,16 @@ def _task_association_payload(
 
     name="memory_remember",
     description=(
-        "Store one durable governed memory as semantic HTML (paragraphs, lists, tables, links; no images). "
+        "Store one durable governed memory as one atomic structured fact. Supply fact with "
+        "subject_ref (an existing Contact or Document URI; omit for the current contact or agent), "
+        "one snake_case predicate and one raw scalar value or {ref: URI}. Split independent values into separate facts. "
+        "Do not narrate who said it or when: attribution and timestamps are linked by the server. "
+        "Legacy content accepts a structured fact encoded as JSON, never prose or HTML. "
         "Use sparingly for an explicit memory request, a correction, or an especially important "
         "confirmed fact worth retaining immediately. Leave routine extraction and duplicate checking "
         "to Dream; skip equivalent known memories. Storage is immediate and auditable. "
+        "Never store contact emails, phone numbers, postal addresses or messaging identifiers here: "
+        "Contacts handles them separately. Keep a person's preferences or decisions without their coordinates. "
         "For a correction or conflicting claim about a known personal memory, supply "
         "contradicts_memory_id and its expected_revision: both claims are preserved with an explicit "
         "contradiction link. A changed target requires rereading; never guess its UUID. "
@@ -194,12 +204,13 @@ def _task_association_payload(
 )
 async def memory_remember(
     ctx: McpToolContext,
-    content: str,
+    content: str = "",
     title: str = "",
     keywords: list[str] | str | None = None,
     temporal: MemoryTemporalAnchor | None = None,
     contradicts_memory_id: str | None = None,
     expected_revision: int | None = None,
+    fact: AtomicMemoryFact | None = None,
 ) -> str:
     source = _current_source(ctx)
     language = await context_language(ctx)
@@ -216,11 +227,20 @@ async def memory_remember(
                 raise ValueError("Read the target memory and supply its current expected_revision")
         elif expected_revision is not None:
             raise ValueError("expected_revision requires contradicts_memory_id")
+        if fact is None and not contains_contact_coordinates(content=content, title=title,
+                                                             keywords=_normalize_memory_keywords(keywords)):
+            try:
+                fact = AtomicMemoryFact.model_validate_json(content)
+            except ValueError:
+                return _json({"status": "rejected", "memory_id": None, "rejection_reason": "atomic_fact_required",
+                    "message": "Supply fact={subject_ref, predicate, value}; one raw property per memory. "
+                               "Omit subject_ref for the current contact. No narrated author, date, paragraph or HTML."})
         acquisition = await acquisition_service.acquire_memory(
             MemoryAcquisitionCreate(
                 agent_id=ctx.agent_id,
                 title=title,
                 content=content,
+                fact=fact,
                 keywords=_normalize_memory_keywords(keywords),
                 temporal=temporal,
                 source_kind=source.source_kind,
@@ -244,22 +264,23 @@ async def memory_remember(
                 agent_id=ctx.agent_id, action="contradict", target_item_id=target_id,
                 temporal=temporal,
                 title=title, content=content, keywords=_normalize_memory_keywords(keywords),
+                fact=fact,
                 source_kind=source.source_kind, source_ref=source.source_ref,
                 metadata={"media_type": "text/html", "requested_by": "agent", "language": language,
                     "target_revision": expected_revision, "other_item_id": str(preserved_memory_id),
                     **_scope_metadata(topic_item_id, contact_item_id)},
             ))
             contradiction_linked = True
-        association = await _associate_with_current_source(
-            ctx,
-            acquisition.memory_id,
-        )
+        association = (_SourceAssociation(associated=False) if acquisition.source_backed
+                       else await _associate_with_current_source(ctx, acquisition.memory_id))
         return _json(
             {
                 "acquisition_id": acquisition.acquisition_id,
                 "created": acquisition.created,
                 "status": acquisition.status,
                 "memory_id": acquisition.memory_id,
+                **({"rejection_reason": acquisition.rejection_reason, "message": CONTACT_COORDINATE_MESSAGE}
+                   if acquisition.rejection_reason == "contact_coordinates" else {}),
                 **({"contradiction_linked": contradiction_linked} if target_id is not None else {}),
                 **_task_association_payload(association),
             }
@@ -294,7 +315,8 @@ async def memory_upcoming(ctx: McpToolContext, limit: int = 50, offset: int = 0)
     description=(
         "Permanently forget one of your memories, including every stored revision. "
         "Use the exact UUID returned by file_search on memory://. "
-        "Document memories cannot be forgotten independently of their document."
+        "Items directly representing Contacts, Documents, Files or other source-owned resources "
+        "cannot be forgotten here. A personal fact linked to those resources remains forgettable."
     ),
 )
 async def memory_forget(ctx: McpToolContext, memory_id: str) -> str:
@@ -312,7 +334,7 @@ async def memory_forget(ctx: McpToolContext, memory_id: str) -> str:
 
     name="memory_summarize",
     description=(
-        "Summarize up to 200 recent room messages into durable memory: attributed facts, "
+        "Extract up to 12 separate atomic facts from up to 200 recent room messages: linked subjects, raw values, "
         "decisions, commitments and open questions. Input is bounded to the latest 32,000 "
         "characters. Existing memories are preserved; no raw-transcript fallback on model failure. "
         "Use only when the conversation is explicitly worth retaining."
@@ -357,36 +379,41 @@ async def memory_summarize(
         from .conversation_summary import summarize_transcript
 
         truncated = len(transcript) > 32_000
-        content = await summarize_transcript(
+        facts = await summarize_transcript(
             transcript[-32_000:], agent_id=ctx.agent_id, task_id=ctx.task_id, language=language,
         )
-        acquisition = await acquisition_service.acquire_memory(
-            MemoryAcquisitionCreate(
+        acquisitions: list[MemoryAcquisitionResult] = []
+        association = _SourceAssociation(associated=False)
+        for fact in facts:
+            acquisition = await acquisition_service.acquire_memory(MemoryAcquisitionCreate(
                 agent_id=ctx.agent_id,
-                title=resolved_title,
-                content=content,
+                fact=fact,
                 source_kind="messenger_room",
                 source_ref=f"room:{room_id}",
                 metadata={
                     "room_id": room_id,
+                    "summary_label": resolved_title,
                     "message_count": len(lines),
                     "transcript_truncated": truncated,
                     "media_type": "text/html",
                     "language": language,
                     **_scope_metadata(topic_item_id, contact_item_id),
                 },
-            )
-        )
-        association = await _associate_with_current_source(
-            ctx,
-            acquisition.memory_id,
-        )
+            ))
+            acquisitions.append(acquisition)
+            if not acquisition.source_backed:
+                attached = await _associate_with_current_source(ctx, acquisition.memory_id)
+                if attached.associated:
+                    association = attached
+        memory_ids = [item.memory_id for item in acquisitions if item.memory_id is not None]
         return _json(
             {
-                "acquisition_id": acquisition.acquisition_id,
-                "created": acquisition.created,
-                "status": acquisition.status,
-                "memory_id": acquisition.memory_id,
+                "acquisition_id": acquisitions[0].acquisition_id if acquisitions else None,
+                "created": any(item.created for item in acquisitions),
+                "status": "stored" if memory_ids else "rejected" if acquisitions else "ignored",
+                "memory_id": memory_ids[0] if memory_ids else None,
+                "memory_ids": memory_ids,
+                "facts": [item.model_dump(mode="json") for item in acquisitions],
                 **_task_association_payload(association),
             }
         )

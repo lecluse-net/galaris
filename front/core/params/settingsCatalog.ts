@@ -275,6 +275,8 @@ export const memoryContextFields: SettingField[] = [
 ]
 
 export const memoryCaptureFields: SettingField[] = [
+    { name: 'CONTACT_CAPTURE_ENABLED', labelKey: 'memorySettings.fields.contactCapture',
+      descriptionKey: 'memorySettings.fields.contactCaptureHint', input: 'boolean' },
     {
         name: 'MEMORY_CAPTURE_ENABLED',
         labelKey: 'memorySettings.fields.captureEnabled',
@@ -309,12 +311,6 @@ export const memoryAutomationFields: SettingField[] = [
             { value: 'manual', labelKey: 'memorySettings.maintenanceModes.manual' },
             { value: 'automatic', labelKey: 'memorySettings.maintenanceModes.automatic' },
         ],
-    },
-    {
-        name: 'MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD',
-        labelKey: 'memorySettings.fields.contradictionThreshold',
-        descriptionKey: 'memorySettings.fields.contradictionThresholdHint',
-        input: 'percentage-slider', min: 80, max: 100, step: 1,
     },
     {
         name: 'MEMORY_AGING_MODE',

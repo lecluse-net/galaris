@@ -255,19 +255,32 @@ results and a truncation indication. Without text it browses undated memories ma
 filters; temporal matches are added separately. Bounded recall announces neither an exact
 total nor exhaustive pagination.
 
-Version `memory-query-evidence/v12` merges FTS and pgvector in the current Topic when present,
+Version `memory-query-evidence/v14` merges FTS and pgvector in the current Topic when present,
 then in the authorized global scope. Informative query terms, their rarity, named identities
 and exact titles dominate ranking, complemented by semantic similarity. Topic, confirmed links,
 sources, freshness and centrality supply secondary context bonuses. Diversity favors terms,
 identities and facts not yet covered. A low lexical or vector score alone does not remove
-authorized candidates. Centrality accounts for accessible links around the candidate, including
+authorized candidates.
+
+Canonical `memory://` and `document://` references embedded in prose remain exact anchors,
+prioritized before candidate limits. Concise queries preserve whole URI tokens even late in
+an objective or behind a different Task label. “My email” uses the server-owned correspondent
+UUID; invoice numbers and address-book requests do not trigger that identity rule. Simple
+coordinate questions and standalone identities use exact reads without embeddings or directory
+reranking. Richer questions retain hybrid retrieval. Standalone acknowledgements do not replace
+the last human subject of a follow-up; explicit topic changes remain barriers. Access, validity,
+revisions and source admission are always rechecked.
+See [0258](../../../../project/decisions/0258-contextual-resource-identity-recall.md).
+
+Centrality accounts for accessible links around the candidate, including
 outside the top-k. Automatic injections create no
 co-use association: being presented together does not prove a business relationship. The pool is
 48 candidates and the result contains at most eight items by default; the pool, weights, and
 diversity are configured exclusively by the global Params in the Memory section. A diversity
 selection penalizes results that are too similar and keeps only one representative of near
 duplicates. Its threshold is the single `MEMORY_DUPLICATE_SIMILARITY_THRESHOLD`, shared with
-acquisition, findings, and automatic merges; it cannot be overridden per call. The internal
+acquisition, duplicate and contradiction findings, and automatic merges including Dream contacts;
+it cannot be overridden per call. The internal
 detailed result exposes each hit's sources and the numbers of thematic/global candidates and
 results. An exact contact also bounds the global path: it accepts memories from that contact in
 other Topics and autonomous non-conversational memories, but excludes any memory sealed by
@@ -298,8 +311,10 @@ alone constitutes the identity boundary, and its label does not pollute the them
 explicit search may still use a name as a lexical term, without making it a boundary: the boundary
 remains the contact's exact UUID and persisted membership.
 
-The public `memory_role=topic` projections and structural contact records are never rendered as
-factual memories by this surface. Their embeddings remain available for ranking and navigation.
+Public `memory_role=topic` projections remain excluded from factual recall. The agent's
+structured Contact cards are searchable and presentable in the brief and `file_search`.
+Display names provide lexical identity evidence without the card-title prefix. This widens
+neither another agent's private directory nor another correspondent's personal facts.
 
 The vector branch applies owner, grants, visibility, dates, and types in the SQL query before
 distance calculation. It considers only chunks whose `model_key`, dimension, and
@@ -333,10 +348,28 @@ the automatic brief separately from explicit `memory_*` calls.
 
 Vector similarity proposes duplicate candidates; at acquisition it never establishes full
 equivalence. Without an affirmative configured decision, the new fact is retained. Dream can
-propose `ENRICH` for an editable personal memory: the service retains complete content,
-keywords, temporal scope and sources, then adds information/provenance with revision checks.
+produce one atomic `fact`: authorized `subject_ref`, snake_case `predicate`, typed scalar
+`value` or `{ref: URI}`, optional `negated` and `unit`. An omitted subject means the current
+contact or owning agent. The server stores versioned `metadata.atomic_fact`, generates the
+HTML view and persists `fact_subject`/`fact_value` links. Author, date and citation stay in
+provenance. Exact scoped atoms reuse identity without an LLM, under a transaction lock;
+homonyms and different properties remain distinct. `memory_remember` and the Hermes transport
+reject free prose. Explicit summaries, terminal capture and Dream also extract atoms;
+capture checkpoints extraction before application. Human notes and historical checkpoints
+remain compatible. A complementary property creates another atom, including typed legacy
+`ENRICH` operations.
 `CONTRADICT` retains a distinct claim and link; existing content is not automatically declared
 false or erased. Managed projections and another agent's memories cannot be enriched this way.
+
+Among confirmed equivalent candidates, a source-backed representation wins over an ordinary
+copy regardless of age. Maintenance requires proof of the complete fact before absorption;
+independent authoritative resources remain distinct. Source content, revision and access stay
+unchanged. Absorbed private evidence stays in the private journal/finding. Only direct resource
+representations are protected against generic forgetting: a link or citation does not protect
+an ordinary fact. Detected coordinates are rejected in generic memories and handled by Contacts,
+whose cards remain searchable. Mixed coordinate/preference writes are rejected atomically with
+guidance to submit the independent fact separately. Historical notes are not bulk rewritten.
+See [0257](../../../../project/decisions/0257-atomic-memory-facts-and-source-priority.md).
 
 Extraction includes successful child Tasks and Goal-cycle Tasks with their producing identities.
 Prepared instructions, delegated work and Goal instructions remain attributed to AI; AI-only
@@ -406,7 +439,7 @@ matches that reach the single `MEMORY_DUPLICATE_SIMILARITY_THRESHOLD`. It checkp
 structured decision and then applies each operation with a stable identity.
 This decision creates an absent fact (`CREATE`), adds the source to a candidate memory without
 rewriting it (`LINK`), or abstains with an empty list (`IGNORE`). The server rejects any target that
-was not part of the recall, excludes Topic/Contact projections, and offers as a `LINK` target only
+was not part of the recall, excludes Topic projections, and offers as a `LINK` target only
 a memory owned by the current agent. The model must still verify the identity of the fact: a theme,
 a related decision, or partial overlap is never sufficient. A conversational attachment may
 complete the contact and Topic of a global memory belonging to the same agent, but can never cross
