@@ -2,6 +2,10 @@ import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 import { agent } from './data.mjs'
 
 const component = 'app/memory/pages/contacts.vue'
+const coordinates = {
+  phone_numbers: [{ label: '', number: '01 23 45 67 89', country: 'FR' }],
+  postal_addresses: [{ label: '', street: '12 rue Synthétique', postal_code: '69000', city: 'Lyon', region: '', country: 'FR' }],
+}
 const initial = {
   memory_item_id: '10000000-0000-4000-8000-000000000001', owner_agent_id: 7,
   display_name: 'Synthetic contact', memory_title: 'Contact — Synthetic contact',
@@ -13,6 +17,7 @@ const initial = {
 }
 
 async function fixtures(page) {
+  await jsonRoute(page, '**/api/contacts/defaults', { country: 'FR' })
   await jsonRoute(page, '**/api/agents?*', [agent, { ...agent, id: 8, first_name: 'Bob' }])
   await jsonRoute(page, '**/api/agents/selection?*', [
     { id: 7, label: 'Alice Example', has_avatar: false }, { id: 8, label: 'Bob Example', has_avatar: false },
@@ -40,7 +45,7 @@ for (const mobile of [false, true]) {
       writes.push(body)
       if (writes.length === 1) return route.fulfill({ status: 503, json: { detail: 'Synthetic temporary failure' } })
       const identities = initial.identities.filter(identity => !body.split_identity_ids.includes(identity.id))
-      const saved = { ...initial, display_name: body.display_name, identities }
+      const saved = { ...initial, display_name: body.display_name, identities, coordinates: body.coordinates }
       contacts.update(saved)
       contacts.add({ ...initial, memory_item_id: '10000000-0000-4000-8000-000000000099',
         display_name: body.display_name, identities: [initial.identities[1]], linked_memory_count: 0 })
@@ -53,6 +58,16 @@ for (const mobile of [false, true]) {
     await name.fill('')
     await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
     await name.fill('Edited contact')
+    await dialog.getByRole('button', { name: 'Add phone number', exact: true }).click()
+    const phone = dialog.getByRole('group', { name: 'Phone 1', exact: true })
+    await expect(phone.getByLabel('Country', { exact: true })).toHaveValue('FR')
+    await phone.getByLabel('Phone number', { exact: true }).fill(coordinates.phone_numbers[0].number)
+    await dialog.getByRole('button', { name: 'Add address', exact: true }).click()
+    const address = dialog.getByRole('group', { name: 'Postal address 1', exact: true })
+    await expect(address.getByLabel('Country', { exact: true })).toHaveValue('FR')
+    await address.getByLabel('Street and address details', { exact: true }).fill(coordinates.postal_addresses[0].street)
+    await address.getByLabel('Postal code', { exact: true }).fill('69000')
+    await address.getByLabel('City', { exact: true }).fill('Lyon')
     await dialog.getByRole('button', { name: 'Split identity 2', exact: true }).click()
     await expect(dialog.getByText('This identity will have its own contact after saving.', { exact: true })).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Split identity 1', exact: true })).toBeDisabled()
@@ -63,18 +78,23 @@ for (const mobile of [false, true]) {
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog.getByRole('alert').filter({ hasText: 'The contact could not be updated.' })).toContainText('Synthetic temporary failure')
     await expect(name).toHaveValue('Edited contact')
+    await expect(phone.getByLabel('Phone number', { exact: true })).toHaveValue(coordinates.phone_numbers[0].number)
     await expect(dialog.getByRole('button', { name: 'Undo split of identity 2', exact: true })).toBeEnabled()
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     expect(writes[0]).toEqual(writes[1])
     expect(writes[1]).toEqual({ display_name: 'Edited contact', split_identity_ids: [initial.identities[1].id],
-      expected_identity_ids: initial.identities.map(identity => identity.id) })
+      expected_identity_ids: initial.identities.map(identity => identity.id), coordinates })
     await expect(page.getByRole('button', { name: 'Edit contact Edited contact', exact: true })).toHaveCount(2)
     await page.getByRole('button', { name: 'Edit contact Edited contact', exact: true }).first().click()
     await expect(name).toHaveValue('Edited contact')
+    await expect(phone.getByLabel('Phone number', { exact: true })).toHaveValue(coordinates.phone_numbers[0].number)
+    await expect(address.getByLabel('City', { exact: true })).toHaveValue('Lyon')
     await expect(dialog.getByRole('button', { name: 'Split identity 1', exact: true })).toBeDisabled()
     await dialog.getByRole('button', { name: 'Save', exact: true }).hover()
     await page.screenshot({ path: `/artifacts/contacts-${mobile ? 'mobile' : 'desktop'}.png`, animations: 'disabled' })
+    await page.evaluate(() => window.testApp.dark(true))
+    await page.screenshot({ path: `/artifacts/contacts-${mobile ? 'mobile' : 'desktop'}-dark.png`, animations: 'disabled' })
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
   })
@@ -94,7 +114,7 @@ for (const mobile of [false, true]) {
       return route.fulfill({ status: 201, json: created })
     })
     await mount(page, component, { privileges: ['CONTACT_EDIT'] })
-    await page.getByRole('button', { name: 'Add email contact', exact: true }).click()
+    await page.getByRole('button', { name: 'Add contact', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('button', { name: 'Create contact', exact: true })).toBeDisabled()
     await dialog.getByLabel('Display name', { exact: true }).fill('External correspondent')
@@ -117,7 +137,7 @@ test('editing follows privileges and cancellation discards staged splitting', as
   await mount(page, component, { privileges: ['CONTACT_ACCESS'] })
   await page.getByText('Synthetic contact', { exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Add email contact', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Add contact', exact: true })).toHaveCount(0)
   await setPrivileges(page, ['CONTACT_EDIT', 'MEMORY_EDIT'])
   await expect(page.getByText('Synthetic contact', { exact: true })).toBeVisible()
   await page.getByRole('checkbox').last().check()
@@ -141,6 +161,47 @@ test('editing follows privileges and cancellation discards staged splitting', as
   await expect(page.getByText('Synthetic contact', { exact: true })).toBeVisible()
 })
 
+test('a contact can be created without email and country loading can recover', async ({ page }) => {
+  const contacts = await fixtures(page)
+  let defaultsCalls = 0
+  await page.route('**/api/contacts/defaults', route => {
+    defaultsCalls += 1
+    return defaultsCalls === 1 ? route.fulfill({ status: 503, json: {} }) : route.fulfill({ json: { country: 'CH' } })
+  })
+  let saved
+  await page.route('**/api/contacts', route => {
+    saved = route.request().postDataJSON()
+    const created = { ...initial, memory_item_id: '10000000-0000-4000-8000-000000000099',
+      display_name: saved.display_name, identities: [], coordinates: saved.coordinates }
+    contacts.add(created)
+    return route.fulfill({ status: 201, json: created })
+  })
+  await mount(page, component, { privileges: ['CONTACT_EDIT'] })
+  await page.getByRole('button', { name: 'Add contact', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Display name', { exact: true }).fill('Telephone contact')
+  await expect(dialog.getByRole('alert')).toContainText('The default country could not be loaded')
+  await dialog.getByRole('button', { name: 'Reload default country', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Add phone number', exact: true }).click()
+  await dialog.getByLabel('Phone number', { exact: true }).fill('021 555 01 02')
+  await expect(dialog.getByLabel('Country', { exact: true })).toHaveValue('CH')
+  await dialog.getByRole('button', { name: 'Add address', exact: true }).click()
+  await dialog.getByLabel('Street and address details', { exact: true }).fill('7 chemin Synthétique')
+  const address = dialog.getByRole('group', { name: 'Postal address 1', exact: true })
+  await address.getByLabel('Country', { exact: true }).fill('France')
+  await dialog.getByRole('button', { name: 'Add phone number', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Remove phone 2', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Create contact', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(saved.email).toBeUndefined()
+  expect(saved.coordinates.phone_numbers).toEqual([{ label: '', number: '021 555 01 02', country: 'CH' }])
+  expect(saved.coordinates.postal_addresses[0].country).toBe('France')
+  await page.getByText('Telephone contact', { exact: true }).click()
+  await expect(dialog.getByLabel('Phone number', { exact: true })).toHaveValue('021 555 01 02')
+  await expect(dialog.getByLabel('Street and address details', { exact: true })).toHaveValue('7 chemin Synthétique')
+})
+
 for (const creating of [false, true]) {
   test(`a late ${creating ? 'creation' : 'save'} cannot restore the previous agent's contact`, async ({ page }) => {
     await fixtures(page)
@@ -151,7 +212,7 @@ for (const creating of [false, true]) {
       await route.fulfill({ status: creating ? 201 : 200, json: { ...initial, display_name: 'Edited contact' } })
     })
     await mount(page, component, { privileges: ['CONTACT_EDIT'] })
-    await page.getByRole('button', { name: creating ? 'Add email contact' : 'Edit contact Synthetic contact', exact: true }).click()
+    await page.getByRole('button', { name: creating ? 'Add contact' : 'Edit contact Synthetic contact', exact: true }).click()
     await page.getByLabel('Display name', { exact: true }).fill('Edited contact')
     if (creating) await page.getByLabel('Email address', { exact: true }).fill('outside@example.org')
     const method = creating ? 'POST' : 'PATCH'

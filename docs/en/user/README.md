@@ -763,7 +763,13 @@ preserve sources and uncertainty, and read current data when drafting. The choic
 suited to the need: an isolated fact or short answer does not systematically require a
 Dataset. Prose drafted from this data does not automatically update when the Dataset changes.
 
-Agent profiles, Goals, and cycles are read-only projections: modify their source rather than their memory copy. Contacts from messaging systems contain only the minimum identity required and remain private to the owning Agent.
+Agent profiles, Goals, and cycles are read-only projections: modify their source rather than their memory copy. Contacts retain the required messaging identity and manually entered coordinates and remain private to the owning Agent.
+
+With `messenger_search_users`, an agent can also discover every other agent and every active
+Galaris user, even without prior exchanges. It can search by name, email, agent code or job title,
+or an `agent:<ID>` / `user:<ID>` address. Multiple terms can be supplied in any order. This search
+creates no private address-book entry and grants no permission to send; contact and conversation
+access rules still apply.
 
 In **Knowledge → Contacts**, select an agent and click a contact or its pencil action to edit
 its display name. One display name applies to the entire contact. The dialog offers neither
@@ -775,11 +781,21 @@ on the original contact. Memories and history remain on that original contact; f
 from the separated account resolve to its new contact. Cancel discards staged splitting.
 A concurrent edit requires reopening the contact before retrying.
 
-**Add email contact** accepts a name and a valid email address. This address book remains private
+**Add contact** accepts a name and at least an email, phone number or postal address. You can store
+multiple phone numbers and addresses, each with a label and country; an address contains street
+and additional details, postal code, city and region. The country defaults to the explicit country
+in **Preferences → Agent location**, for example “Lyon, France”, and remains editable for each entry.
+If no explicit country is recognized, the field stays empty; language and timezone do not supply a
+country. Later location changes do not rewrite existing entries. This address book remains private
 to the selected agent: the correspondent does not need to be a user or an agent. Creation sends
-no email, creates no account, and grants no access. An address already in this agent’s address
+no email, creates no account, and grants no access. An email address already in this agent’s address
 book is rejected regardless of case. These actions require `CONTACT_EDIT` and management access to that agent.
 Forgetting a contact and its linked memories also requires `MEMORY_EDIT`.
+
+Phone numbers and addresses can also be edited on existing contacts and are included in contact
+search. Merging retains distinct coordinates from both contacts. Splitting leaves them on the
+original contact with its history; it does not automatically attribute them to the separated
+identity. Incoming messages do not replace manually entered coordinates.
 
 For internal Chat, the **Galaris user** identity is sufficient: no second internal messaging
 identity is created. DbAdmin synchronization removes existing redundant internal aliases

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal, Protocol, runtime_checkable
 from uuid import UUID
+
+from .contact_coordinates import ContactCoordinates
 
 
 
@@ -119,6 +121,7 @@ class MessengerContactRecord:
     linked_memory_count: int
     created_at: datetime
     updated_at: datetime | None
+    coordinates: ContactCoordinates = field(default_factory=ContactCoordinates)
 
 
 @runtime_checkable

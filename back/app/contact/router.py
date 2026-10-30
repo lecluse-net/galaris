@@ -16,6 +16,7 @@ from core.authorize import Privileges, RequireAllPrivilegesAssertion, authorize
 
 from . import service
 from .schemas import (
+    ContactDefaults,
     ContactForgetResult,
     ContactMergeRequest,
     ContactMergeResult,
@@ -27,6 +28,14 @@ from .schemas import (
 
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
+
+
+@router.get("/defaults", response_model=ContactDefaults)
+@authorize(privileges=[Privileges.CONTACT_ACCESS, Privileges.CONTACT_EDIT])
+async def read_contact_defaults() -> ContactDefaults:
+    from .countries import default_country
+
+    return ContactDefaults(country=default_country())
 
 
 async def _require_agent_scope(agent_id: int) -> None:

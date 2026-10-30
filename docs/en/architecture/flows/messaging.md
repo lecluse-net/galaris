@@ -686,6 +686,23 @@ from old events.
 
 ### Search and New Message to a User
 
+Private contact coordinates are structured in `MemoryItem.metadata.coordinates`: `phone_numbers`
+and `postal_addresses`, with at most 50 entries per collection. The Contacts API validates and
+returns them and supports explicit replacement; an update that omits them preserves them. The
+Memory projection includes their values in content and keywords. Incoming observations preserve
+coordinates. A merge combines distinct entries in the same transaction and rejects overflow before
+any mutation. A split leaves them on the source contact. Creating a contact without email invents
+no messaging identity. The default country comes from an explicit country in `LOCALIZATION`,
+recognized offline in French, English or Chinese, rather than language or timezone.
+
+On the internal channel, `messenger_search_users` discovers every other non-deleted agent and
+every active platform user without requiring a room or a saved contact. Search accepts multiple
+terms in any order and ignores case: agent name, code or job title, user name or email, and
+`agent:<ID>` / `user:<ID>` addresses. The `%` and `_` characters are literal. Results distinguish
+humans, agents and bots and include the agent ID when available. Discovery creates neither a
+room, a Memory contact nor contact permission. The immediately reachable human directories used
+by Goal and Process still require an existing internal direct room.
+
 Messenger search traverses all active connections of available bridges that expose the
 `SEARCH_USERS` capability. Each remote directory is queried, results are synchronized into
 `messenger_users`, and the response is rebuilt from this repository. Each result separately

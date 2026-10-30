@@ -7,6 +7,7 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from app.memory import ContactCoordinates
 
 
 class ContactIdentityRead(BaseModel):
@@ -27,6 +28,11 @@ class ContactRead(BaseModel):
     linked_memory_count: int = Field(ge=0)
     created_at: datetime
     updated_at: datetime | None
+    coordinates: ContactCoordinates = Field(default_factory=ContactCoordinates)
+
+
+class ContactDefaults(BaseModel):
+    country: str
 
 
 class ContactPage(BaseModel):
@@ -49,6 +55,7 @@ class ContactUpdate(BaseModel):
     display_name: str = Field(min_length=1, max_length=500)
     split_identity_ids: list[UUID] = Field(default_factory=list[UUID], max_length=500)
     expected_identity_ids: list[UUID] | None = Field(default=None, max_length=500)
+    coordinates: ContactCoordinates | None = None
 
     @model_validator(mode="after")
     def require_identity_snapshot(self) -> ContactUpdate:
@@ -67,7 +74,14 @@ class ContactCreate(BaseModel):
 
     agent_id: int = Field(gt=0)
     display_name: str = Field(min_length=1, max_length=500)
-    email: EmailStr
+    email: EmailStr | None = None
+    coordinates: ContactCoordinates | None = None
+
+    @model_validator(mode="after")
+    def require_coordinate(self) -> ContactCreate:
+        if not self.email and not (self.coordinates and (self.coordinates.phone_numbers or self.coordinates.postal_addresses)):
+            raise ValueError("At least one email, phone number or postal address is required.")
+        return self
 
     @field_validator("display_name", mode="before")
     @classmethod

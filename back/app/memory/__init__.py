@@ -1,6 +1,7 @@
 """Governed, durable memory public surface."""
 
 from .temporal import MemoryTemporalAnchor
+from .contact_coordinates import ContactCoordinates, ContactPhoneNumber, ContactPostalAddress
 
 
 
@@ -46,6 +47,7 @@ from .contracts import (
 )
 from .messenger_contact import observe_messenger_contact
 from .contact_directory import (
+    create_address_book_contact,
     has_mail_contact,
     create_mail_contact,
     split_messenger_contact,
@@ -166,6 +168,10 @@ __all__ = [
     "merge_messenger_contacts",
     "update_messenger_contact",
     "create_mail_contact",
+    "create_address_book_contact",
+    "ContactCoordinates",
+    "ContactPhoneNumber",
+    "ContactPostalAddress",
     "has_mail_contact",
     "split_messenger_contact",
     "register_storage",

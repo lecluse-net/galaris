@@ -126,26 +126,28 @@
 
         <template #body-cell-actions="props">
           <q-td :props="props">
-            <q-btn
-              v-if="canEdit"
-              flat round dense color="primary" icon="edit"
-              :aria-label="t('contacts.editNamed', { name: props.row.display_name })"
-              @click.stop="contactToEdit = props.row"
-            >
-              <q-tooltip>{{ t('contacts.edit') }}</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canForget"
-              flat
-              round
-              dense
-              color="negative"
-              icon="person_remove"
-              :aria-label="t('contacts.forgetNamed', { name: props.row.display_name })"
-              @click.stop="openForget(props.row)"
-            >
-              <q-tooltip>{{ t('contacts.forget') }}</q-tooltip>
-            </q-btn>
+            <div class="row no-wrap items-center justify-end">
+              <q-btn
+                v-if="canEdit"
+                flat round dense color="primary" icon="edit"
+                :aria-label="t('contacts.editNamed', { name: props.row.display_name })"
+                @click.stop="contactToEdit = props.row"
+              >
+                <q-tooltip>{{ t('contacts.edit') }}</q-tooltip>
+              </q-btn>
+              <q-btn
+                v-if="canForget"
+                flat
+                round
+                dense
+                color="negative"
+                icon="person_remove"
+                :aria-label="t('contacts.forgetNamed', { name: props.row.display_name })"
+                @click.stop="openForget(props.row)"
+              >
+                <q-tooltip>{{ t('contacts.forget') }}</q-tooltip>
+              </q-btn>
+            </div>
           </q-td>
         </template>
 
@@ -180,26 +182,28 @@
                   />
                   <span v-else>{{ props.row.linked_memory_count }}</span>
                 </div>
-                <q-btn
-                  v-if="canEdit"
-                  flat round dense color="primary" icon="edit"
-                  :aria-label="t('contacts.editNamed', { name: props.row.display_name })"
-                  @click.stop="contactToEdit = props.row"
-                >
-                  <q-tooltip>{{ t('contacts.edit') }}</q-tooltip>
-                </q-btn>
-                <q-btn
-                  v-if="canForget"
-                  flat
-                  round
-                  dense
-                  color="negative"
-                  icon="person_remove"
-                  :aria-label="t('contacts.forgetNamed', { name: props.row.display_name })"
-                  @click.stop="openForget(props.row)"
-                >
-                  <q-tooltip>{{ t('contacts.forget') }}</q-tooltip>
-                </q-btn>
+                <div class="row no-wrap items-center">
+                  <q-btn
+                    v-if="canEdit"
+                    flat round dense color="primary" icon="edit"
+                    :aria-label="t('contacts.editNamed', { name: props.row.display_name })"
+                    @click.stop="contactToEdit = props.row"
+                  >
+                    <q-tooltip>{{ t('contacts.edit') }}</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    v-if="canForget"
+                    flat
+                    round
+                    dense
+                    color="negative"
+                    icon="person_remove"
+                    :aria-label="t('contacts.forgetNamed', { name: props.row.display_name })"
+                    @click.stop="openForget(props.row)"
+                  >
+                    <q-tooltip>{{ t('contacts.forget') }}</q-tooltip>
+                  </q-btn>
+                </div>
               </q-card-section>
             </q-card>
           </div>

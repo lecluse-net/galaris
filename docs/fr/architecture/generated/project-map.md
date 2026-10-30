@@ -11,13 +11,13 @@ tests restent l’autorité sur le comportement.
 
 - 78 modules backend déclarés ;
 - 40 modules frontend déclarés ;
-- 627 arêtes de dépendance backend ;
+- 628 arêtes de dépendance backend ;
 - 217 arêtes de dépendance frontend ;
 - 300 arêtes entre domaines `app`/`bridge` ;
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 763 handlers HTTP/WebSocket détectés ;
+- 764 handlers HTTP/WebSocket détectés ;
 - 180 tables SQLAlchemy détectées ;
 - 280 outils MCP natifs détectés ;
 - 55 pages Vue détectées.
@@ -231,11 +231,12 @@ tests restent l’autorité sur le comportement.
 | `app.console` | `core.util` | `back/app/console/file_transport.py` |
 | `app.contact` | `app.agent` | `back/app/contact/router.py` |
 | `app.contact` | `app.conversation` | `back/app/contact/service.py` |
-| `app.contact` | `app.memory` | `back/app/contact/facade.py`, `back/app/contact/router.py`, `back/app/contact/service.py` |
+| `app.contact` | `app.memory` | `back/app/contact/countries.py`, `back/app/contact/facade.py`, `back/app/contact/router.py`, `back/app/contact/schemas.py`, `back/app/contact/service.py` |
 | `app.contact` | `app.messenger` | `back/app/contact/service.py` |
 | `app.contact` | `app.task` | `back/app/contact/service.py` |
 | `app.contact` | `core.authorize` | `back/app/contact/router.py` |
 | `app.contact` | `core.database` | `back/app/contact/service.py` |
+| `app.contact` | `core.params` | `back/app/contact/countries.py` |
 | `app.conversation` | `app.agent` | `back/app/conversation/artifact_delivery.py`, `back/app/conversation/contact_authorization.py`, `back/app/conversation/context.py`, `back/app/conversation/contracts.py`, `back/app/conversation/directives.py`, `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/mcp.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/process_admission.py`, `back/app/conversation/router.py`, `back/app/conversation/runtime.py`, `back/app/conversation/scheduler.py`, `back/app/conversation/service.py`, `back/app/conversation/task_objective.py` |
 | `app.conversation` | `app.code` | `back/app/conversation/repository_display.py`, `back/app/conversation/service.py` |
 | `app.conversation` | `app.connection` | `back/app/conversation/contact_authorization.py`, `back/app/conversation/context.py`, `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/process_admission.py`, `back/app/conversation/process_interactions.py`, `back/app/conversation/resource_facade.py`, `back/app/conversation/scheduler.py`, `back/app/conversation/service.py`, `back/app/conversation/task_projection.py` |
@@ -1443,11 +1444,12 @@ tests restent l’autorité sur le comportement.
 | GET | `/console/executor/availability` | `app.console` | `executor_availability` | oui | `back/app/console/router.py:175` |
 | GET | `/console/executor/status` | `app.console` | `executor_status` | oui | `back/app/console/router.py:181` |
 | POST | `/console/host-key/scan` | `app.console` | `scan_host_key` | oui | `back/app/console/router.py:67` |
-| GET | `/contacts` | `app.contact` | `read_contacts` | oui | `back/app/contact/router.py:47` |
-| POST | `/contacts` | `app.contact` | `create_contact` | oui | `back/app/contact/router.py:64` |
-| DELETE | `/contacts/{contact_item_id}` | `app.contact` | `forget_contact` | oui | `back/app/contact/router.py:109` |
-| PATCH | `/contacts/{contact_item_id}` | `app.contact` | `update_contact` | oui | `back/app/contact/router.py:74` |
-| POST | `/contacts/{source_contact_item_id}/merge` | `app.contact` | `merge_contacts` | oui | `back/app/contact/router.py:89` |
+| GET | `/contacts` | `app.contact` | `read_contacts` | oui | `back/app/contact/router.py:56` |
+| POST | `/contacts` | `app.contact` | `create_contact` | oui | `back/app/contact/router.py:73` |
+| GET | `/contacts/defaults` | `app.contact` | `read_contact_defaults` | oui | `back/app/contact/router.py:35` |
+| DELETE | `/contacts/{contact_item_id}` | `app.contact` | `forget_contact` | oui | `back/app/contact/router.py:118` |
+| PATCH | `/contacts/{contact_item_id}` | `app.contact` | `update_contact` | oui | `back/app/contact/router.py:83` |
+| POST | `/contacts/{source_contact_item_id}/merge` | `app.contact` | `merge_contacts` | oui | `back/app/contact/router.py:98` |
 | GET | `/conversations/agents/{agent_id}/active-work` | `app.conversation` | `read_agent_active_work` | oui | `back/app/conversation/router.py:33` |
 | GET | `/conversations/messages` | `app.conversation` | `read_conversation_messages` | oui | `back/app/conversation/router.py:52` |
 | DELETE | `/conversations/rounds/{round_id}` | `app.conversation` | `delete_conversation_round` | oui | `back/app/conversation/router.py:161` |
@@ -2398,11 +2400,11 @@ tests restent l’autorité sur le comportement.
 | `memory_upcoming` | `memory` | `app.memory` | `memory_upcoming` | `back/app/memory/mcp.py:278` |
 | `messenger_list_rooms` | `messenger` | `app.messenger` | `mcp_list_rooms` | `back/app/messenger/mcp.py:748` |
 | `messenger_room_history` | `messenger` | `app.messenger` | `mcp_room_history` | `back/app/messenger/mcp.py:786` |
-| `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:1000` |
+| `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:1005` |
 | `messenger_room_send_message` | `messenger` | `app.messenger` | `mcp_room_send_message` | `back/app/messenger/mcp.py:321` |
-| `messenger_search_users` | `messenger` | `app.messenger` | `mcp_search_users` | `back/app/messenger/mcp.py:858` |
+| `messenger_search_users` | `messenger` | `app.messenger` | `mcp_search_users` | `back/app/messenger/mcp.py:861` |
 | `messenger_send_audio_message` | `messenger` | `app.messenger` | `mcp_send_audio_message` | `back/app/messenger/mcp.py:637` |
-| `messenger_send_file_to_user` | `messenger` | `app.messenger` | `mcp_send_file_to_user` | `back/app/messenger/mcp.py:946` |
+| `messenger_send_file_to_user` | `messenger` | `app.messenger` | `mcp_send_file_to_user` | `back/app/messenger/mcp.py:951` |
 | `messenger_send_message_to_user` | `messenger` | `app.messenger` | `mcp_send_message_to_user` | `back/app/messenger/mcp.py:370` |
 | `audio_read` | `multimedia` | `app.multimedia` | `audio_read` | `back/app/multimedia/mcp.py:13` |
 | `multimedia_get_run` | `multimedia` | `app.multimedia` | `multimedia_get_run` | `back/app/multimedia/mcp.py:51` |

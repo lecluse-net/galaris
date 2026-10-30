@@ -26,6 +26,7 @@ dependencies = [
     "pydantic_core~=2.50",           # version required by latest stable Pydantic
     "python-dotenv~=1.2",
     "email-validator~=2.3",           # Pydantic EmailStr validation
+    "babel>=2.17,<3",                 # Localized country names for contact defaults
     # Authentication and cryptography
     "python-jose~=3.5",              # JWT
     "pwdlib~=0.3",                   # password hashing

@@ -909,8 +909,14 @@ réponse courte ne nécessite pas systématiquement un jeu de données. Un docum
 de ces données ne se met pas automatiquement à jour lorsque le jeu de données change.
 
 Les fiches Agent, Goals et cycles sont des projections en lecture seule : modifiez leur source
-plutôt que leur copie mémoire. Les contacts issus des messageries ne contiennent que l’identité
-minimale nécessaire et restent privés à l’agent propriétaire.
+plutôt que leur copie mémoire. Les contacts issus des messageries conservent l'identité nécessaire
+et les coordonnées saisies ; ils restent privés à l’agent propriétaire.
+
+Avec `messenger_search_users`, un agent peut aussi découvrir tous les autres agents et tous les
+utilisateurs actifs de Galaris, même sans échange préalable. Il peut rechercher un nom, un e-mail,
+un code ou un poste d'agent, ou une adresse `agent:<ID>` / `user:<ID>`. Plusieurs termes peuvent
+être donnés dans n'importe quel ordre. Cette recherche ne crée pas de fiche dans le carnet privé
+et n'accorde aucun droit d'envoi ; les règles de contact et d'accès aux conversations s'appliquent.
 
 Dans **Connaissances → Contacts**, choisissez un agent puis cliquez sur le contact ou sur son
 crayon pour modifier son nom affiché. Un seul nom d’affichage s’applique à tout le contact.
@@ -922,12 +928,23 @@ moins un compte sur la fiche d’origine. Les souvenirs et l’historique resten
 les prochains échanges avec le compte séparé retrouveront sa nouvelle fiche. Annuler abandonne
 la scission préparée. Une modification concurrente exige de rouvrir le contact avant de réessayer.
 
-**Ajouter un contact mail** ouvre une fiche à renseigner avec un nom et une adresse mail valide.
+**Ajouter un contact** ouvre une fiche avec un nom et au moins un e-mail, un téléphone ou une
+adresse postale. Plusieurs téléphones et adresses peuvent être enregistrés, chacun avec son
+libellé et son pays ; une adresse contient rue et complément, code postal, ville et région.
+Le pays est proposé d'après **Préférences → Localisation** : indiquez par exemple « Lyon, France ».
+Il reste modifiable pour chaque coordonnée. Sans pays explicite reconnu, le champ reste vide ;
+la langue et le fuseau horaire ne sont pas utilisés pour en inventer un. Un changement ultérieur
+de localisation ne modifie pas les coordonnées déjà enregistrées.
 Ce carnet d’adresses reste privé à l’agent sélectionné : il n’est pas nécessaire que le correspondant
 possède un compte utilisateur ou soit un agent. La création n’envoie aucun mail, ne crée aucun
-compte et ne lui accorde aucun accès. Une adresse déjà présente dans le carnet de cet agent est
-refusée, indépendamment des majuscules. Ces actions nécessitent `CONTACT_EDIT` et la gestion de cet agent.
+compte et ne lui accorde aucun accès. Un e-mail déjà présent dans le carnet de cet agent est
+refusé, indépendamment des majuscules. Ces actions nécessitent `CONTACT_EDIT` et la gestion de cet agent.
 L'oubli d'un contact avec ses souvenirs liés exige également `MEMORY_EDIT`.
+
+Les téléphones et adresses se modifient aussi dans une fiche existante et participent à la recherche
+de contacts. Une fusion conserve les coordonnées distinctes des deux fiches. Une scission les garde
+sur la fiche d'origine, avec l'historique ; elle ne les attribue pas automatiquement à l'identité
+séparée. Un nouveau message ne remplace pas les coordonnées saisies.
 
 Pour le Chat interne, l’identité **Utilisateur Galaris** suffit : aucune seconde identité de
 messagerie interne n’est créée. Les anciens alias internes redondants sont retirés lors de

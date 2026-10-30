@@ -316,7 +316,7 @@ async def test_reachable_humans_filters_ai_and_deduplicates_canonical_contacts(
     ]
     assert all(item.is_human for item in results)
     assert results[0].contact_item_id == alice_contact_id
-    search.assert_awaited_once_with(7, "ali")
+    search.assert_awaited_once_with(7, "ali", require_internal_room=True)
     contacts.assert_awaited_once()
     assert contacts.await_args.kwargs["owner_agent_id"] == 7
     assert set(contacts.await_args.kwargs["messenger_identities"]) == {

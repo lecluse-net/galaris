@@ -19,6 +19,7 @@ from core.database import get_db
 from core.user import get_user_record
 
 from . import service
+from .contact_coordinates import ContactCoordinates
 from .contracts import (
     ContactReferenceCleaner,
     ContactReferenceRewriter,
@@ -114,6 +115,7 @@ async def list_messenger_contacts(
         filters.append(
             or_(
                 MemoryItem.title.ilike(pattern),
+                MemoryItem.search_text.ilike(pattern),
                 exists(
                     select(MemoryContactIdentity.id).where(
                         MemoryContactIdentity.contact_item_id == MemoryItem.id,
@@ -216,6 +218,7 @@ async def list_messenger_contacts(
                 linked_memory_count=linked_counts.get(item.id, 0),
                 created_at=item.created_at,
                 updated_at=item.updated_at,
+                coordinates=ContactCoordinates.model_validate(item.metadata_.get("coordinates", {})),
             )
         )
     return tuple(records), total
@@ -271,31 +274,38 @@ async def has_mail_contact(*, owner_agent_id: int, address: str) -> bool:
     ) is not None
 
 
-async def create_mail_contact(
-    *, owner_agent_id: int, display_name: str, email: str,
+async def create_address_book_contact(
+    *, owner_agent_id: int, display_name: str, email: str | None = None,
+    coordinates: ContactCoordinates | None = None,
 ) -> MessengerContactRecord:
-    """Create a private address-book entry without a User or Messenger account."""
+    """Create a private contact with email and/or phone and postal coordinates."""
     name = " ".join(display_name.split())
     if not name or len(name) > 500:
         raise service.MemoryConflictError("A contact name must contain 1 to 500 characters.")
-    address = str(_EMAIL_ADAPTER.validate_python(email)).casefold()
+    address = str(_EMAIL_ADAPTER.validate_python(email)).casefold() if email else None
+    if address is None and not (coordinates and (coordinates.phone_numbers or coordinates.postal_addresses)):
+        raise service.MemoryConflictError("At least one email, phone number or postal address is required.")
     db = get_db()
-    if await db.scalar(select(MemoryContactIdentity.id).where(
+    if address is not None and await db.scalar(select(MemoryContactIdentity.id).where(
         MemoryContactIdentity.owner_agent_id == owner_agent_id,
         MemoryContactIdentity.identity_kind == "messenger",
         MemoryContactIdentity.namespace == "mail",
         MemoryContactIdentity.external_id == address,
     )) is not None:
         raise service.MemoryConflictError("This email already belongs to a contact.")
-    identity = MessengerContactIdentityInput(kind="messenger", namespace="mail", external_id=address)
+    source_ref = f"address-book:{uuid4().hex}"
+    identities = (MessengerContactIdentityInput(kind="messenger", namespace="mail", external_id=address),) if address else ()
     try:
         item = await service.upsert_source_managed_item(contact_document(
-            MessengerContactObservation(owner_agent_id=owner_agent_id, messaging_id="mail", user_id=address),
-            source_ref=f"address-book:{uuid4().hex}", memory_item_id=None,
-            display_name=name, display_name_override=name, identities=(identity,),
+            MessengerContactObservation(owner_agent_id=owner_agent_id,
+                messaging_id="mail" if address else "address_book", user_id=address or source_ref),
+            source_ref=source_ref, memory_item_id=None,
+            display_name=name, display_name_override=name, identities=identities,
+            previous_metadata={"coordinates": coordinates.model_dump()} if coordinates is not None else None,
         ), defer_commit=True)
-        db.add(MemoryContactIdentity(owner_agent_id=owner_agent_id, contact_item_id=item.id,
-            identity_kind="messenger", namespace="mail", external_id=address))
+        if address is not None:
+            db.add(MemoryContactIdentity(owner_agent_id=owner_agent_id, contact_item_id=item.id,
+                identity_kind="messenger", namespace="mail", external_id=address))
         await service.commit_source_managed_items((item,))
     except IntegrityError as exc:
         await db.rollback()
@@ -308,9 +318,18 @@ async def create_mail_contact(
     return record
 
 
+async def create_mail_contact(
+    *, owner_agent_id: int, display_name: str, email: str,
+    coordinates: ContactCoordinates | None = None,
+) -> MessengerContactRecord:
+    return await create_address_book_contact(owner_agent_id=owner_agent_id, display_name=display_name,
+        email=email, coordinates=coordinates)
+
+
 async def split_messenger_contact(
     *, contact_item_id: UUID, identity_ids: tuple[UUID, ...],
     expected_identity_ids: tuple[UUID, ...], display_name: str,
+    coordinates: ContactCoordinates | None = None,
 ) -> MessengerContactRecord:
     """Move selected addresses into separate contacts; retain history on the original."""
     name = " ".join(display_name.split())
@@ -339,6 +358,9 @@ async def split_messenger_contact(
             display_name=row.display_name, galaris_user_id=row.galaris_user_id,
         )
     staged: list[MemoryItem] = []
+    metadata = dict(source.metadata_)
+    if coordinates is not None:
+        metadata["coordinates"] = coordinates.model_dump()
     try:
         for row in rows:
             if row.id not in selected_ids:
@@ -359,7 +381,7 @@ async def split_messenger_contact(
                 messaging_id=remaining[0].namespace, user_id=remaining[0].external_id),
             source_ref=source.managed_source_ref, memory_item_id=source.id,
             display_name=name, display_name_override=name,
-            previous_metadata=dict(source.metadata_), identities=remaining,
+            previous_metadata=metadata, identities=remaining,
         ), defer_commit=True)
         await service.commit_source_managed_items((*staged, source))
     except Exception:
@@ -371,14 +393,16 @@ async def split_messenger_contact(
 
 
 async def update_messenger_contact(
-    *, contact_item_id: UUID, display_name: str,
+    *, contact_item_id: UUID, display_name: str | None,
     identities: tuple[MessengerContactIdentityInput, ...] | None = None,
     expected_identities: tuple[ContactIdentityRecord, ...] | None = None,
+    coordinates: ContactCoordinates | None = None,
+    defer_commit: bool = False,
 ) -> MessengerContactRecord:
     """Atomically edit a private contact and its explicitly managed addresses."""
 
-    name = " ".join(display_name.split())
-    if not name or len(name) > 500:
+    name = " ".join(display_name.split()) if display_name is not None else None
+    if name is not None and (not name or len(name) > 500):
         raise service.MemoryConflictError("A contact name must contain 1 to 500 characters.")
     item = await _contact_item(contact_item_id, for_update=True)
     if item is None or item.owner_agent_id is None:
@@ -399,7 +423,9 @@ async def update_messenger_contact(
             external_id=identity.external_id, display_name=identity.display_name,
             galaris_user_id=identity.galaris_user_id,
         ) for identity in current.identities)
-    metadata = item.metadata_
+    metadata = dict(item.metadata_)
+    if coordinates is not None:
+        metadata["coordinates"] = coordinates.model_dump()
     if not item.managed_source_ref:
         raise service.MemoryConflictError("The contact has no canonical source reference.")
     user_id = metadata.get("galaris_user_id")
@@ -414,7 +440,7 @@ async def update_messenger_contact(
         source_ref=item.managed_source_ref,
         memory_item_id=item.id,
         display_name=str(metadata.get("display_name") or ""),
-        display_name_override=name,
+        display_name_override=name if name is not None else str(metadata.get("display_name_override") or "") or None,
         previous_metadata=dict(metadata),
         identities=projection_identities,
     )
@@ -434,7 +460,7 @@ async def update_messenger_contact(
         except IntegrityError as exc:
             raise service.MemoryConflictError("An identity is already linked to another contact or its user no longer exists.") from exc
     try:
-        await service.upsert_source_managed_item(document)
+        await service.upsert_source_managed_item(document, defer_commit=defer_commit)
     except Exception:
         # Projection preparation can fail before its own transaction guard.
         # Discard the identity writes as well, even when a caller handles the error.
@@ -659,6 +685,13 @@ async def merge_messenger_contacts(
             "Contacts owned by different agents cannot be merged."
         )
 
+    try:
+        coordinates = ContactCoordinates.model_validate(target.metadata_.get("coordinates", {})).merged_with(
+            ContactCoordinates.model_validate(source.metadata_.get("coordinates", {}))
+        )
+    except ValueError as exc:
+        raise service.MemoryConflictError("The merged contact exceeds the coordinate limit.") from exc
+
     external_counts = await rewire_references(
         source_contact_item_id, target_contact_item_id
     )
@@ -693,9 +726,13 @@ async def merge_messenger_contacts(
     merged_ids.append(str(source_contact_item_id))
     target.metadata_ = {
         **target.metadata_,
+        "coordinates": coordinates.model_dump(),
         "merged_contact_item_ids": list(dict.fromkeys(merged_ids)),
         **({"identities_managed": True} if source.metadata_.get("identities_managed") else {}),
     }
+    if coordinates.phone_numbers or coordinates.postal_addresses:
+        await update_messenger_contact(contact_item_id=target.id, display_name=None,
+            coordinates=coordinates, defer_commit=True)
     source_ref = source.managed_source_ref
     if source_ref is None:
         raise service.MemoryConflictError("The source contact has no projection identity.")

@@ -788,13 +788,96 @@ async def test_internal_messenger_lists_humans_and_reuses_the_latest_direct_room
     assert [(contact.id, contact.display_name) for contact in contacts] == [
         (f"user:{owner.id}", "Owner")
     ]
-    assert await messenger.search_users(member.email) == []
+    assert [contact.id for contact in await messenger.search_users(member.email)] == [
+        f"user:{member.id}"
+    ]
     assert Capability.SEARCH_USERS in messenger.capabilities
 
     resolved_room = await messenger.ensure_direct_room(f"user:{owner.id}")
     assert resolved_room.local_id == second_room.id
     with pytest.raises(LookupError, match="No direct Chat room"):
         await messenger.ensure_direct_room(f"user:{member.id}")
+
+
+@pytest.mark.asyncio
+async def test_internal_directory_discovers_platform_people_without_prior_contact(
+    db: AsyncSession,
+) -> None:
+    agent, owner, member = await _scope(db)
+    peer, _, _ = await _scope(db)
+    member.display_name = "Synthetic Directory Human"
+    peer.first_name = "Synthetic"
+    peer.last_name = "Directory Peer"
+    peer.job_title = "Directory analyst"
+    inactive = User(email=f"inactive-{uuid4().hex}@example.test", display_name="Directory inactive",
+                    hashed_password="unused", is_active=False)
+    deleted = Agent(user_id=owner.id, title_id=agent.title_id, first_name="Directory",
+                    last_name="Deleted", code=f"deleted-{uuid4().hex}",
+                    deleted_at=datetime.now(timezone.utc))
+    db.add_all([inactive, deleted])
+    await db.flush()
+    connection = await db.scalar(select(Connection).where(Connection.agent_id == agent.id))
+    assert connection is not None
+    messenger = await InternalMessenger.from_connection_id(connection.id)
+
+    # Listing is platform-wide even before a single room or contact has been created.
+    listed = {person.id: person for person in await messenger.search_users("")}
+    assert {f"user:{owner.id}", f"user:{member.id}", f"agent:{peer.id}"} <= listed.keys()
+    assert f"agent:{agent.id}" not in listed
+    assert f"agent:{deleted.id}" not in listed
+    assert f"user:{inactive.id}" not in listed
+    assert listed[f"agent:{peer.id}"].agent_id == peer.id
+    assert listed[f"agent:{peer.id}"].is_ai
+    assert not listed[f"user:{member.id}"].is_ai
+
+    for query, expected in [
+        ("  HUMAN   synthetic ", f"user:{member.id}"),
+        (member.email.upper(), f"user:{member.id}"),
+        (f"user:{member.id}", f"user:{member.id}"),
+        ("PEER synthetic", f"agent:{peer.id}"),
+        (peer.code, f"agent:{peer.id}"),
+        ("analyst", f"agent:{peer.id}"),
+        (f"agent:{peer.id}", f"agent:{peer.id}"),
+    ]:
+        assert [person.id for person in await messenger.search_users(query)] == [expected]
+    # SQL wildcard characters are literal user input, not directory-wide matches.
+    assert await messenger.search_users("%_") == []
+    assert await messenger.search_users("unknown synthetic identity") == []
+    assert await native_facade.search_internal_users(-1, "") == []
+    connection.active = False
+    await db.flush()
+    assert await messenger.search_users("") == []
+
+
+@pytest.mark.asyncio
+async def test_platform_search_preserves_account_links_and_reachable_contact_scope(db: AsyncSession) -> None:
+    from app.contact import list_reachable_humans
+    from app.memory import list_messenger_contacts
+    from app.messenger import service
+
+    agent, owner, member = await _scope(db)
+    peer, _, _ = await _scope(db)
+    users = [User(email=f"directory-{uuid4().hex}@example.test", display_name=f"Directory {index}",
+                  hashed_password="unused", is_active=True) for index in range(55)]
+    db.add_all(users)
+    await db.flush()
+
+    results = await service.search_agent_users(agent.id, "")
+    by_address = {user.external_id: user for _, _, _, user in results}
+    assert {f"user:{user.id}" for user in users} <= by_address.keys()
+    assert by_address[f"user:{member.id}"].galaris_user_id == member.id
+    assert by_address[f"agent:{peer.id}"].agent_id == peer.id
+    assert by_address[f"agent:{peer.id}"].is_ai
+    # Numeric addresses must not also match IDs sharing the same prefix.
+    exact = await service.search_agent_users(agent.id, f"user:{owner.id}")
+    assert [user.external_id for _, _, _, user in exact] == [f"user:{owner.id}"]
+    assert await list_messenger_contacts(owner_agent_id=agent.id) == ((), 0)
+    assert await list_reachable_humans(agent_id=agent.id) == ()
+
+    room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
+    assert room is not None
+    reachable = await list_reachable_humans(agent_id=agent.id)
+    assert [(person.user_id, person.galaris_user_id) for person in reachable] == [(f"user:{owner.id}", owner.id)]
 
 
 @pytest.mark.asyncio

@@ -8,16 +8,16 @@
             :label="t('contacts.displayName')" :disable="saving"
             :rules="[(value: string) => !!value.trim() || t('contacts.nameRequired')]" />
           <q-input v-model="email" outlined type="email" maxlength="320"
-            :label="t('contacts.email')" :disable="saving"
-            :rules="[(value: string) => !!value.trim() || t('contacts.emailRequired')]" />
+            :label="t('contacts.email')" :disable="saving" />
           <p class="text-caption">{{ t('contacts.createHelp') }}</p>
+          <ContactCoordinatesFields v-model="coordinates" :disabled="saving" />
           <q-banner v-if="error" role="alert">{{ error }}</q-banner>
         </q-card-section>
         <q-separator />
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn outline :label="t('contacts.cancel')" v-close-popup />
+          <q-btn outline color="primary" :label="t('contacts.cancel')" v-close-popup />
           <q-btn color="primary" type="submit" :label="t('contacts.create')" :loading="saving"
-            :disable="!displayName.trim() || !email.trim()" />
+            :disable="!displayName.trim() || !hasCoordinates" />
         </q-card-actions>
       </q-form>
     </q-card>
@@ -25,28 +25,35 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { DialogHeader } from '@/core/util'
 import { contactService } from '../services/contactService'
+import ContactCoordinatesFields from './ContactCoordinatesFields.vue'
+import type { ContactCoordinates, ContactCreate } from '../types'
 
 const { agentId } = defineProps<{ agentId: number }>()
 const emit = defineEmits<{ close: []; created: [] }>()
 const { t } = useI18n()
 const displayName = ref('')
 const email = ref('')
+const coordinates = ref<ContactCoordinates>({ phone_numbers: [], postal_addresses: [] })
+const hasCoordinates = computed(() => !!email.value.trim() || coordinates.value.phone_numbers.length > 0 || coordinates.value.postal_addresses.length > 0)
 const saving = ref(false)
 const error = ref('')
 let active = true
 onBeforeUnmount(() => { active = false })
 
 async function save(): Promise<void> {
-  if (saving.value || !displayName.value.trim() || !email.value.trim()) return
+  if (saving.value || !displayName.value.trim() || !hasCoordinates.value) return
   saving.value = true
   error.value = ''
   try {
-    await contactService.create({ agent_id: agentId, display_name: displayName.value.trim(), email: email.value.trim() })
+    const data: ContactCreate = { agent_id: agentId, display_name: displayName.value.trim() }
+    if (email.value.trim()) data.email = email.value.trim()
+    if (coordinates.value.phone_numbers.length || coordinates.value.postal_addresses.length) data.coordinates = coordinates.value
+    await contactService.create(data)
     if (active) emit('created')
   } catch (caught) {
     if (active) {

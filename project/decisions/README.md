@@ -356,3 +356,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0247 — Agent permission dashboard](0247-agent-permission-dashboard.md)
 - [0251 — Dream learns through personal skill packages](0251-dream-personal-skill-packages.md)
 - [0253 — Inline Goal descriptions and freely classified tracking Documents](0253-goal-current-html-columns.md)
+- [0254 — Private contact phone numbers and postal addresses](0254-private-contact-coordinates.md)

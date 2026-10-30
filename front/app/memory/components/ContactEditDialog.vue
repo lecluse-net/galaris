@@ -17,6 +17,7 @@
             <template #prepend><q-icon name="person_outline" /></template>
           </q-input>
           <p class="contact-edit-hint q-mt-sm q-mb-lg">{{ t('contacts.editHelp') }}</p>
+          <ContactCoordinatesFields v-model="coordinates" :disabled="saving" />
           <div class="row items-center justify-between q-mb-sm">
             <div class="text-subtitle2">{{ t('contacts.linkedAccounts') }}</div>
             <span class="contact-edit-hint">{{ contact.identities.length }}</span>
@@ -56,7 +57,7 @@
         </q-card-section>
         <q-separator />
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn outline :label="t('contacts.cancel')" v-close-popup />
+          <q-btn outline color="primary" :label="t('contacts.cancel')" v-close-popup />
           <q-btn
             color="primary"
             type="submit"
@@ -76,12 +77,17 @@ import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { DialogHeader } from '@/core/util'
 import { contactService } from '../services/contactService'
-import type { Contact, ContactUpdate } from '../types'
+import type { Contact, ContactCoordinates, ContactUpdate } from '../types'
+import ContactCoordinatesFields from './ContactCoordinatesFields.vue'
 
 const { contact } = defineProps<{ contact: Contact }>()
 const emit = defineEmits<{ close: []; saved: [] }>()
 const { t } = useI18n()
 const displayName = ref(contact.display_name)
+const coordinates = ref<ContactCoordinates>({
+  phone_numbers: contact.coordinates?.phone_numbers.map(phone => ({ ...phone })) ?? [],
+  postal_addresses: contact.coordinates?.postal_addresses.map(address => ({ ...address })) ?? [],
+})
 const splitIds = ref<string[]>([])
 function toggleSplit(id: string): void {
   if (saving.value) return
@@ -99,6 +105,9 @@ async function save(): Promise<void> {
   error.value = ''
   try {
     const data: ContactUpdate = { display_name: displayName.value.trim() }
+    if (JSON.stringify(coordinates.value) !== JSON.stringify(contact.coordinates ?? { phone_numbers: [], postal_addresses: [] })) {
+      data.coordinates = coordinates.value
+    }
     if (splitIds.value.length) {
       data.split_identity_ids = splitIds.value
       data.expected_identity_ids = contact.identities.map(identity => identity.id)

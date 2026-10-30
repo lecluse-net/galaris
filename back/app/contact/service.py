@@ -9,7 +9,7 @@ from sqlalchemy import update
 from app.conversation import ConversationRound
 from app.memory import (
     MessengerContactRecord,
-    create_mail_contact,
+    create_address_book_contact,
     split_messenger_contact,
     forget_messenger_contact,
     list_messenger_contacts,
@@ -21,6 +21,7 @@ from app.task import Task
 from core.database import get_db
 
 from .contracts import ReachableHumanContact
+from .countries import apply_country_defaults
 from .schemas import (
     ContactIdentityRead,
     ContactForgetResult,
@@ -75,7 +76,7 @@ async def list_reachable_humans(
 ) -> tuple[ReachableHumanContact, ...]:
     """List reachable humans and collapse routes belonging to one canonical contact."""
 
-    identities = [identity for identity in await search_agent_users(agent_id, query)
+    identities = [identity for identity in await search_agent_users(agent_id, query, require_internal_room=True)
         if not identity[3].is_ai and identity[3].agent_id is None]
     if not identities:
         return ()
@@ -147,6 +148,7 @@ def _read(record: MessengerContactRecord) -> ContactRead:
         linked_memory_count=record.linked_memory_count,
         created_at=record.created_at,
         updated_at=record.updated_at,
+        coordinates=record.coordinates,
     )
 
 
@@ -169,18 +171,22 @@ async def list_contacts(
 
 
 async def update_contact(*, contact_item_id: UUID, data: ContactUpdate) -> ContactRead:
+    coordinates = apply_country_defaults(data.coordinates)
     if data.split_identity_ids:
         return _read(await split_messenger_contact(contact_item_id=contact_item_id,
             identity_ids=tuple(data.split_identity_ids),
-            expected_identity_ids=tuple(data.expected_identity_ids or ()), display_name=data.display_name))
+            expected_identity_ids=tuple(data.expected_identity_ids or ()), display_name=data.display_name,
+            coordinates=coordinates))
     return _read(await update_messenger_contact(
         contact_item_id=contact_item_id, display_name=data.display_name,
+        coordinates=coordinates,
     ))
 
 
 async def create_contact(data: ContactCreate) -> ContactRead:
-    return _read(await create_mail_contact(owner_agent_id=data.agent_id,
-        display_name=data.display_name, email=str(data.email)))
+    return _read(await create_address_book_contact(owner_agent_id=data.agent_id,
+        display_name=data.display_name, email=str(data.email) if data.email else None,
+        coordinates=apply_country_defaults(data.coordinates)))
 
 
 def _rowcount(result: object) -> int:

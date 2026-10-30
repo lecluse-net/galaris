@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from core.database import get_db
 
 from . import service
+from .contact_coordinates import ContactCoordinates
 from .contracts import MessengerContactIdentityInput, MessengerContactObservation, SourceMemoryDocument
 from .models import MemoryContactIdentity, MemoryItem
 
@@ -61,12 +62,12 @@ def _bounded_display_name(value: str) -> str:
     return " ".join(value.split())[:_MAX_DISPLAY_NAME_LENGTH].strip()
 
 
-def _plain_inline(value: str) -> str:
-    return " ".join(value.split())[:_MAX_IDENTITY_LENGTH]
+def _plain_inline(value: str, max_length: int = _MAX_IDENTITY_LENGTH) -> str:
+    return " ".join(value.split())[:max_length]
 
 
-def _markdown_inline(value: str) -> str:
-    bounded = _plain_inline(value)
+def _markdown_inline(value: str, max_length: int = _MAX_IDENTITY_LENGTH) -> str:
+    bounded = _plain_inline(value, max_length)
     return "".join(
         f"\\{character}" if character in _MARKDOWN_INLINE_CHARS else character
         for character in bounded
@@ -149,6 +150,20 @@ def contact_document(
         metadata["galaris_user_id"] = observation.galaris_user_id
     if identities is not None:
         metadata.pop("galaris_user_id", None)
+    coordinates = ContactCoordinates.model_validate(metadata.get("coordinates", {}))
+    for phone in coordinates.phone_numbers:
+        content += f"\n- Téléphone : {_markdown_inline(phone.number)}"
+        if phone.country:
+            content += f" ({_markdown_inline(phone.country)})"
+        if phone.label:
+            content += f" — {_markdown_inline(phone.label)}"
+        keywords.extend((phone.number, phone.country, phone.label))
+    for address in coordinates.postal_addresses:
+        parts = (address.street, address.postal_code, address.city, address.region, address.country)
+        content += "\n- Adresse : " + ", ".join(_markdown_inline(part, 1000) for part in parts if part)
+        if address.label:
+            content += f" — {_markdown_inline(address.label)}"
+        keywords.extend((*parts, address.label))
     return SourceMemoryDocument(
         source_kind=MESSENGER_CONTACT_SOURCE_KIND,
         source_ref=source_ref,

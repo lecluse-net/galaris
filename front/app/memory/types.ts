@@ -44,18 +44,41 @@ export interface Contact {
   linked_memory_count: number
   created_at: string
   updated_at: string | null
+  coordinates: ContactCoordinates
+}
+
+export interface ContactPhoneNumber {
+  label: string
+  number: string
+  country: string
+}
+
+export interface ContactPostalAddress {
+  label: string
+  street: string
+  postal_code: string
+  city: string
+  region: string
+  country: string
+}
+
+export interface ContactCoordinates {
+  phone_numbers: ContactPhoneNumber[]
+  postal_addresses: ContactPostalAddress[]
 }
 
 export interface ContactCreate {
   agent_id: number
   display_name: string
-  email: string
+  email?: string
+  coordinates?: ContactCoordinates
 }
 
 export interface ContactUpdate {
   display_name: string
   split_identity_ids?: string[]
   expected_identity_ids?: string[]
+  coordinates?: ContactCoordinates
 }
 
 export interface ContactPage {

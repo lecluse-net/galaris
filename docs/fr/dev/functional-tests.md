@@ -117,6 +117,12 @@ actuels pour atteindre aussi les refus et la suppression des fichiers indépenda
 `app/contact/tests/test_service.py` borne la recherche sans route joignable à une
 lecture de connexions, avec 0 ou 501 contacts canoniques conservés. Le parcours réel
 active ensuite le Chat et retrouve son humain sans conserver le résultat vide.
+`app/contact/tests/test_coordinates.py` protège les téléphones et adresses postales :
+persistance, recherche isolée par agent, pays explicite issu de la localisation, conservation
+lors des observations/fusions/scissions et effacement explicite des champs. Le parcours HTTP
+existant protège aussi la création sans e-mail et la validation des coordonnées. Le scénario
+Chromium Contacts conserve le brouillon après erreur, rouvre les valeurs enregistrées et vérifie
+la reprise du chargement du pays ainsi que les interactions sur mobile.
 Les tests existants conservent filtrage des bots, fusion multicanal, ordre et route exacte.
 Les cas non vides à 0, 501 et 2 001 contacts sans rapport bornent aussi les lectures
 canoniques et le travail PostgreSQL, en conservant nom canonique, route et propriétaire.

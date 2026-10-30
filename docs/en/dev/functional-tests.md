@@ -109,6 +109,12 @@ uses current Document routes and privileges to reach denial and independent-file
 connection read, retaining 0 or 501 canonical contacts. The real journey then enables
 Chat and finds its human without retaining the empty result. Existing tests preserve
 bot filtering, cross-channel deduplication, ordering and the exact route.
+`app/contact/tests/test_coordinates.py` protects phone numbers and postal addresses:
+persistence, owner-scoped search, explicit country defaults from localization, preservation
+across observations/merges/splits and explicit clearing. The existing HTTP journey also protects
+creation without email and coordinate validation. The Contacts Chromium scenario preserves
+failed drafts, reopens saved values and exercises default-country loading recovery and mobile
+interactions.
 Non-empty cases with 0, 501 and 2,001 unrelated contacts also bound canonical reads
 and PostgreSQL work while preserving the canonical name, route and owner. Identity
 filters match exactly and select their union; an explicitly empty collection does not

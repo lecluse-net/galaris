@@ -2,6 +2,9 @@ import { api } from '@/core/api'
 import type { Contact, ContactCreate, ContactForgetResult, ContactMergeResult, ContactPage, ContactUpdate } from '../types'
 
 export const contactService = {
+  async defaults(): Promise<{ country: string }> {
+    return (await api.get<{ country: string }>('/contacts/defaults')).data
+  },
   async create(data: ContactCreate): Promise<Contact> {
     const response = await api.post<Contact>('/contacts', data)
     return response.data

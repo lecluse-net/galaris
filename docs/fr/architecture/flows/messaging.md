@@ -719,6 +719,25 @@ Hermès ; il ne tente pas d'inventer une room privée absente des anciens évén
 
 ### Recherche et nouveau message vers un utilisateur
 
+Les coordonnées privées d'un contact sont structurées dans `MemoryItem.metadata.coordinates` :
+`phone_numbers` et `postal_addresses`, avec 50 entrées maximum par collection. L'API Contacts
+les valide, les rend à la lecture et permet leur remplacement explicite ; une mise à jour qui
+les omet les conserve. La projection Memory inclut ces valeurs dans le contenu et les mots-clés.
+Les observations entrantes préservent les coordonnées. Une fusion réunit les entrées distinctes
+dans la même transaction et refuse un dépassement de limite avant toute modification. Une scission
+les conserve sur la fiche source. La création d'un contact sans e-mail n'invente aucune identité
+de messagerie. Le pays par défaut vient du pays explicite dans `LOCALIZATION`, reconnu localement
+en français, anglais ou chinois, et non de la langue ou du fuseau horaire.
+
+Sur le canal interne, `messenger_search_users` découvre tous les autres agents non supprimés et
+tous les utilisateurs actifs de la plateforme, sans exiger de salon ni de contact mémorisé.
+La recherche accepte plusieurs termes dans un ordre quelconque et ignore la casse : nom,
+code ou poste d'agent, nom ou e-mail utilisateur et adresse `agent:<ID>` / `user:<ID>`.
+Les caractères `%` et `_` sont littéraux. Les résultats distinguent humains, agents et bots,
+avec l'identifiant d'agent lorsqu'il existe. Une découverte ne crée ni salon, ni contact Memory,
+ni droit de contact. Les annuaires de personnes immédiatement joignables utilisés par Goal et
+Process continuent d'exiger un salon direct interne existant.
+
 La recherche Messenger parcourt toutes les connexions actives des bridges disponibles qui exposent
 la capacité `SEARCH_USERS`. Chaque annuaire distant est interrogé, les résultats sont synchronisés
 dans `messenger_users`, puis la réponse est reconstruite depuis ce référentiel. Chaque résultat

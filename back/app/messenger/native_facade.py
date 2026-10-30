@@ -133,48 +133,60 @@ async def search_internal_users(
     connection_id: int,
     query: str,
 ) -> list[ObservedMessengerUser]:
-    """Return active humans who already share an internal Chat room with the agent."""
+    """Discover platform users and colleagues independently of prior conversations.
 
-    filters = [
-        Room.connection_id == connection_id,
-        Room.kind == "direct",
-        MessengerUser.is_ai.is_(False),
-        MessengerUser.galaris_user_id.is_not(None),
-        User.is_active.is_(True),
-    ]
-    value = query.strip()[:200]
-    if value:
-        pattern = f"%{value}%"
-        filters.append(
-            or_(
-                MessengerUser.display_name.ilike(pattern),
-                MessengerUser.external_id.ilike(pattern),
-                User.email.ilike(pattern),
-            )
-        )
-    users = list(
-        (
-            await get_db().scalars(
-                select(MessengerUser)
-                .join(RoomUser, RoomUser.user_id == MessengerUser.id)
-                .join(Room, Room.id == RoomUser.room_id)
-                .join(User, User.id == MessengerUser.galaris_user_id)
-                .where(*filters)
-                .distinct()
-                .order_by(MessengerUser.display_name, MessengerUser.external_id)
-            )
-        ).all()
-    )
-    return [
-        ObservedMessengerUser(
-            id=user.external_id,
-            display_name=user.display_name,
-            is_ai=False,
+    Discovery grants neither contact permission nor room access. Inactive humans,
+    deleted agents and the calling agent are excluded; send guards remain authoritative.
+    """
+
+    scope = await internal_connection(connection_id)
+    if scope is None or not scope.active:
+        return []
+
+    value = query.strip()[:500].lower()
+    terms = value.split()
+    exact_address = re.fullmatch(r"(?:user|agent):[0-9]+", value) is not None
+    human_text = func.lower(func.concat_ws(
+        " ", User.display_name, User.email, func.concat("user:", User.id),
+    ))
+    agent_text = func.lower(func.concat_ws(
+        " ", Agent.first_name, Agent.last_name, Agent.code, Agent.job_title,
+        func.concat("agent:", Agent.id),
+    ))
+    users = (await get_db().scalars(
+        select(User).where(
+            User.is_active.is_(True),
+            *(human_text.contains(term, autoescape=True) for term in terms),
+            func.concat("user:", User.id) == value if exact_address else true(),
+        ).order_by(User.display_name, User.email, User.id)
+    )).all()
+    agents = (await get_db().execute(
+        select(Agent.id, Agent.first_name, Agent.last_name, Agent.code).where(
+            Agent.id != scope.agent_id,
+            *(agent_text.contains(term, autoescape=True) for term in terms),
+            func.concat("agent:", Agent.id) == value if exact_address else true(),
+        ).order_by(Agent.first_name, Agent.last_name, Agent.id)
+    )).all()
+
+    people: list[ObservedMessengerUser] = []
+    for user in users:
+        # Preserve the proven account link when the ordinary Messenger boundary
+        # synchronizes this identity, including users who have never opened Chat.
+        await _ensure_human(scope.tool_id, user)
+        people.append(ObservedMessengerUser(
+            id=human_external_id(user.id),
+            display_name=user.display_name or user.email,
             connection_id=connection_id,
-            tool_id=user.tool_id,
-        )
-        for user in users
-    ]
+            tool_id=scope.tool_id,
+        ))
+    people.extend(ObservedMessengerUser(
+        id=agent_external_id(agent.id),
+        display_name=" ".join(part for part in (agent.first_name, agent.last_name) if part) or agent.code,
+        agent_id=agent.id,
+        connection_id=connection_id,
+        tool_id=scope.tool_id,
+    ) for agent in agents)
+    return sorted(people, key=lambda person: (person.display_name.casefold(), person.id))
 
 
 async def internal_direct_room_observation(

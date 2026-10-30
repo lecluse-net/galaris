@@ -750,8 +750,10 @@
       },
       {
         "files": [
+          "back/app/contact/countries.py",
           "back/app/contact/facade.py",
           "back/app/contact/router.py",
+          "back/app/contact/schemas.py",
           "back/app/contact/service.py"
         ],
         "source": "app.contact",
@@ -784,6 +786,13 @@
         ],
         "source": "app.contact",
         "target": "core.database"
+      },
+      {
+        "files": [
+          "back/app/contact/countries.py"
+        ],
+        "source": "app.contact",
+        "target": "core.params"
       },
       {
         "files": [
@@ -9444,7 +9453,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_send_file",
-        "line": 1000,
+        "line": 1005,
         "module": "app.messenger",
         "name": "messenger_room_send_file",
         "namespace": "messenger"
@@ -9460,7 +9469,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_search_users",
-        "line": 858,
+        "line": 861,
         "module": "app.messenger",
         "name": "messenger_search_users",
         "namespace": "messenger"
@@ -9476,7 +9485,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_file_to_user",
-        "line": 946,
+        "line": 951,
         "module": "app.messenger",
         "name": "messenger_send_file_to_user",
         "namespace": "messenger"
@@ -16010,7 +16019,7 @@
         "declared_path": "/contacts",
         "file": "back/app/contact/router.py",
         "handler": "read_contacts",
-        "line": 47,
+        "line": 56,
         "method": "GET",
         "module": "app.contact"
       },
@@ -16019,8 +16028,17 @@
         "declared_path": "/contacts",
         "file": "back/app/contact/router.py",
         "handler": "create_contact",
-        "line": 64,
+        "line": 73,
         "method": "POST",
+        "module": "app.contact"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/contacts/defaults",
+        "file": "back/app/contact/router.py",
+        "handler": "read_contact_defaults",
+        "line": 35,
+        "method": "GET",
         "module": "app.contact"
       },
       {
@@ -16028,7 +16046,7 @@
         "declared_path": "/contacts/{contact_item_id}",
         "file": "back/app/contact/router.py",
         "handler": "forget_contact",
-        "line": 109,
+        "line": 118,
         "method": "DELETE",
         "module": "app.contact"
       },
@@ -16037,7 +16055,7 @@
         "declared_path": "/contacts/{contact_item_id}",
         "file": "back/app/contact/router.py",
         "handler": "update_contact",
-        "line": 74,
+        "line": 83,
         "method": "PATCH",
         "module": "app.contact"
       },
@@ -16046,7 +16064,7 @@
         "declared_path": "/contacts/{source_contact_item_id}/merge",
         "file": "back/app/contact/router.py",
         "handler": "merge_contacts",
-        "line": 89,
+        "line": 98,
         "method": "POST",
         "module": "app.contact"
       },

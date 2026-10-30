@@ -27,7 +27,7 @@ from core.database import get_db, get_db_session
 from app.messenger import contact_memory, facade, ingest
 from app.messenger.events import message_received
 from app.messenger.interface import Messenger, NotSupported
-from app.messenger.models import Message, MessengerUser, Room
+from app.messenger.models import Message, MessengerUser, Room, RoomUser
 from app.messenger.contracts import resolve_effective_topic_id
 from core.i18n import default_language, render_prompt, t
 
@@ -1052,7 +1052,7 @@ async def recent_user_room(
 
 
 async def search_agent_users(
-    agent_id: int, query: str
+    agent_id: int, query: str, *, require_internal_room: bool = False,
 ) -> list[tuple[int, int, str, MessengerUser]]:
     """Search every enabled channel and return every known exact identity.
 
@@ -1060,6 +1060,7 @@ async def search_agent_users(
     facade persists each remote identity before this service receives its local projection.
     Results retain both the local identity and the exact messaging route. They are not merged
     cross-channel or promoted to Memory contacts by search alone.
+    Callers selecting an immediately reachable human can require an existing Chat room.
     """
     from app.connection import connection_service
     from app.messenger.models import Capability
@@ -1094,7 +1095,15 @@ async def search_agent_users(
                 and messenger.supports(Capability.SEARCH_USERS)
             ):
                 continue
-            for user in await messenger.search_users(value):
+            users = await messenger.search_users(value)
+            if kind == "internal" and require_internal_room:
+                reachable_ids = set(await get_db().scalars(
+                    select(RoomUser.user_id).join(Room, Room.id == RoomUser.room_id).where(
+                        Room.connection_id == connection_id, Room.kind == "direct",
+                    )
+                ))
+                users = [user for user in users if user.id in reachable_ids]
+            for user in users:
                 if user.external_id == messenger.self_id:
                     continue
                 matches[(connection_id, user.id)] = (

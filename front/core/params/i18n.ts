@@ -167,7 +167,7 @@ export default {
         defaultLanguage: 'Langue par défaut',
         defaultLanguageHint: 'Facultative. La langue de l’utilisateur est prioritaire. Sans langue connue ni réglage, l’anglais est utilisé.',
         localization: 'Localisation des agents',
-        localizationHint: 'Facultative, vide par défaut. Lieu fourni aux agents pour contextualiser la date, l’heure et leurs réponses.',
+        localizationHint: 'Facultative, vide par défaut. Lieu fourni aux agents pour contextualiser leurs réponses. Indiquez « Ville, Pays » pour proposer aussi le pays des téléphones et adresses des contacts.',
       },
     },
     memorySettings: {
@@ -583,7 +583,7 @@ export default {
         defaultLanguage: 'Default language',
         defaultLanguageHint: 'Optional. The user’s language takes priority. English is used when no language or setting is available.',
         localization: 'Agent location',
-        localizationHint: 'Optional, empty by default. Place given to agents to contextualize the date, time, and their responses.',
+        localizationHint: 'Optional, empty by default. Place given to agents for context. Use “City, Country” to also provide the default country for contact phone numbers and postal addresses.',
       },
     },
     memorySettings: {
@@ -908,7 +908,7 @@ export default {
         defaultLanguage: '默认语言',
         defaultLanguageHint: '可选。优先使用用户的语言。没有已知语言或设置时使用英语。',
         localization: '智能体位置',
-        localizationHint: '可选，默认为空。提供给智能体的位置，用于理解日期、时间并生成符合上下文的回答。',
+        localizationHint: '可选，默认为空。为智能体提供位置背景。使用“城市，国家”也可为联系人的电话号码和邮寄地址提供默认国家。',
       },
     },
     memorySettings: {

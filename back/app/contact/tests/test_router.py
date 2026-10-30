@@ -14,11 +14,13 @@ from core.user.auth_service import create_access_token
 
 
 @pytest.mark.asyncio
-async def test_address_book_rename_split_and_merge_require_privilege_and_managed_agent(client, tmp_path):
+async def test_address_book_rename_split_and_merge_require_privilege_and_managed_agent(client, tmp_path, monkeypatch):
     # Direct identity editing/catalogue coverage is intentionally replaced by the
     # user-facing rename, split and checkbox/merge contracts.
     reset_storage_registry()
     register_storage(NativeFileStorage(tmp_path, max_bytes=1_000_000))
+    from core.params import runtime_settings
+    monkeypatch.setattr(runtime_settings, "LOCALIZATION", "Lyon, France")
     try:
         async with get_db_session() as db:
             editor = UserModel(email=f"contact-editor-{uuid4()}@example.test", hashed_password="unused", is_active=True)
@@ -49,7 +51,10 @@ async def test_address_book_rename_split_and_merge_require_privilege_and_managed
                 "sub": user.email, "user_id": user.id, "role_id": role.id,
             })} for user, role in zip((editor, reader), roles)]
 
-        create = {"agent_id": agents[0].id, "display_name": "  External   correspondent ", "email": "OUTSIDE@example.org"}
+        assert (await client.get("/api/contacts/defaults")).status_code == 401
+        assert (await client.get("/api/contacts/defaults", headers=headers[1])).json() == {"country": "FR"}
+        create = {"agent_id": agents[0].id, "display_name": "  External   correspondent ", "email": "OUTSIDE@example.org",
+                  "coordinates": {"phone_numbers": [{"number": "01 23 45 67 89"}], "postal_addresses": [{"city": "Lyon"}]}}
         assert (await client.post("/api/contacts", json=create)).status_code == 401
         assert (await client.post("/api/contacts", json=create, headers=headers[1])).status_code == 403
         assert (await client.post("/api/contacts", json={**create, "agent_id": agents[1].id}, headers=headers[0])).status_code == 404
@@ -58,9 +63,17 @@ async def test_address_book_rename_split_and_merge_require_privilege_and_managed
         created = await client.post("/api/contacts", json=create, headers=headers[0])
         assert created.status_code == 201, created.text
         entry = created.json()
+        assert entry["coordinates"]["phone_numbers"][0]["country"] == "FR"
+        assert entry["coordinates"]["postal_addresses"][0]["city"] == "Lyon"
         assert entry["display_name"] == "External correspondent"
         assert [(i["namespace"], i["external_id"], i["galaris_user_id"]) for i in entry["identities"]] == [("mail", "outside@example.org", None)]
         assert (await client.post("/api/contacts", json={**create, "email": "outside@example.org"}, headers=headers[0])).status_code == 409
+        phone_only = {key: value for key, value in create.items() if key != "email"}
+        response = await client.post("/api/contacts", json=phone_only, headers=headers[0])
+        assert response.status_code == 201, response.text
+        assert response.json()["identities"] == []
+        invalid_coordinates = {"coordinates": {"phone_numbers": [{"number": " "}]}}
+        assert (await client.post("/api/contacts", json={**phone_only, **invalid_coordinates}, headers=headers[0])).status_code == 422
         url = f"/api/contacts/{contact_ids[0]}"
         assert (await client.patch(url, json={"display_name": "Name"})).status_code == 401
         assert (await client.patch(url, json={"display_name": "Name"}, headers=headers[1])).status_code == 403
@@ -86,7 +99,7 @@ async def test_address_book_rename_split_and_merge_require_privilege_and_managed
         assert [i["namespace"] for i in result.json()["identities"]] == ["matrix"]
         assert (await client.patch(url, json=split, headers=headers[0])).status_code == 409
         page = (await client.get(f"/api/contacts?agent_id={agents[0].id}&limit=500", headers=headers[0])).json()
-        assert page["total"] == 3
+        assert page["total"] == 4
         detached = next(item for item in page["items"] if any(i["id"] == detached_id for i in item["identities"]))
         assert detached["memory_item_id"] != str(contact_ids[0])
         assert detached["identities"][0]["external_id"] == "known@example.org"

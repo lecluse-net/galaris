@@ -851,8 +851,11 @@ async def mcp_room_history(
 
     name="messenger_search_users",
     description=(
-        "List or search users across every enabled messaging channel, with their exact "
-        "user and messaging connection IDs."
+        "List or search contacts across every enabled messaging channel. Internal Chat "
+        "searches all platform agents and active users, even without prior contact, by "
+        "name, agent code or role, email or exact address. Empty query lists the directory. "
+        "Returns human/agent type and exact user and messaging connection IDs. "
+        "Discovery does not grant permission to send messages."
     ),
 )
 async def mcp_search_users(ctx: McpToolContext, query: str = "") -> str:
@@ -870,7 +873,9 @@ async def mcp_search_users(ctx: McpToolContext, query: str = "") -> str:
         (
             f"{user.display_name or user.external_id} (id: {user.id}; "
             f"external_id: {user.external_id}; connection_id: {connection_id}; "
-            f"tool_id: {tool_id}; channel: {platform})"
+            f"tool_id: {tool_id}; channel: {platform}; "
+            f"type: {'agent' if user.agent_id is not None else 'bot' if user.is_ai else 'human'}"
+            f"{'; agent_id: ' + str(user.agent_id) if user.agent_id is not None else ''})"
         )
         for connection_id, tool_id, platform, user in users
     ]

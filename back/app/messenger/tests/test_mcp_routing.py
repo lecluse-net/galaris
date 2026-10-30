@@ -321,8 +321,12 @@ async def test_addressed_task_without_connection_does_not_fall_back_cross_channe
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("agent_id,is_ai,expected_type", [(None, False, "human"), (42, True, "agent"), (None, True, "bot")])
 async def test_search_users_exposes_exact_ids_without_contact_state(
     monkeypatch: pytest.MonkeyPatch,
+    agent_id: int | None,
+    is_ai: bool,
+    expected_type: str,
 ) -> None:
     from app.messenger import service
     from core.database import database
@@ -342,6 +346,8 @@ async def test_search_users_exposes_exact_ids_without_contact_state(
                         tool_id=3,
                         external_id="@nicolas:example.test",
                         display_name="Nicolas",
+                        agent_id=agent_id,
+                        is_ai=is_ai,
                     ),
                 )
             ]
@@ -364,6 +370,8 @@ async def test_search_users_exposes_exact_ids_without_contact_state(
     assert "connection_id: 19" in result
     assert "tool_id: 3" in result
     assert "channel: matrix" in result
+    assert f"type: {expected_type}" in result
+    assert ("agent_id: 42" in result) == (agent_id is not None)
     assert "contact_id" not in result
 
 
