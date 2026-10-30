@@ -2170,11 +2170,6 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
 </script>
 
 <style scoped>
-.goal-schedule-dialog-card,
-.goal-detail-dialog {
-  border-radius: 12px;
-}
-
 .goal-schedule-dialog-card {
   display: flex;
   flex-direction: column;
@@ -2224,7 +2219,7 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  width: min(1400px, calc(100vw - 32px));
+  width: min(1500px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
   height: min(900px, calc(100vh - 32px));
   max-height: calc(100vh - 32px);
