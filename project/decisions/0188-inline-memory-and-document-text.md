@@ -24,3 +24,10 @@ Old writers must stop before the initial transfer. Production uses the existing
 update/startup DbAdmin path. Development is qualified separately; this work does
 not modify production. Backups include the migration schema and retained sources.
 Binary attachments and external providers retain their current storage.
+
+Canonical contacts are a live resource exception. Their Memory items and revisions
+keep `content = NULL`; reads rebuild the current contact JSON from canonical
+metadata and strong identities after authorization, even for old Memory revisions.
+Search projections remain indexed but never supply a stored contact body.
+`app.memory.live_contacts` removes historical generated bodies, and the inline
+transfer excludes these contacts so a replay cannot restore obsolete copies.

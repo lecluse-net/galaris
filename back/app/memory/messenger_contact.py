@@ -171,7 +171,7 @@ def contact_document(
         memory_item_id=memory_item_id,
         title=f"Contact — {safe_name}",
         content=content,
-        filename=f"messenger-contact-{source_ref}.md",
+        filename=f"messenger-contact-{source_ref}.json",
         keywords=tuple(keywords),
         metadata=metadata,
     )

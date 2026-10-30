@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from hashlib import sha256
 from typing import Literal
 from core.util import read_html_page
 from uuid import UUID
@@ -31,7 +32,7 @@ async def describe_file_resource(
 ) -> dict[str, object]:
     """Describe an authorized item without leaking its storage locator."""
 
-    item, _content, access, _content_type, media_type = await service.get_item(
+    item, content, access, _content_type, media_type = await service.get_item(
         item_id,
         agent_id=agent_id,
     )
@@ -39,14 +40,15 @@ async def describe_file_resource(
         raise service.MemoryConflictError("The selected memory is not a document.")
     if expected_kind == "memory" and item.node_kind == "document":
         raise service.MemoryConflictError("Use document:// for a working document.")
+    live_contact = item.source_managed and item.managed_source_kind == "messenger_contact"
     return {
         "id": str(item.id),
         "title": item.title,
         "filename": item.filename,
         "media_type": media_type,
-        "size": item.size_bytes,
+        "size": len(content) if live_contact else item.size_bytes,
         "revision": item.revision,
-        "checksum": item.content_hash,
+        "checksum": sha256(content).hexdigest() if live_contact else item.content_hash,
         "can_write": access.can_write and item.node_kind == "document",
         "updated_at": item.updated_at.isoformat() if item.updated_at else None,
         "metadata": {

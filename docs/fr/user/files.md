@@ -94,6 +94,8 @@ Le JSON peut modifier `display_name` et `coordinates` (téléphones et adresses 
 Les champs et listes omis sont conservés ; les listes fournies remplacent les listes existantes,
 et des listes vides les effacent. Une ancienne version est refusée : relisez la fiche
 avant de réessayer. Les identités et métadonnées restent protégées, ainsi que les autres carnets.
+Chaque lecture du contact, par son URI ou depuis Memory, produit le JSON de la fiche
+actuelle ; aucune copie de son contenu n’est conservée dans les souvenirs.
 
 Dans **Galaris → Dépôts de code**, cliquez sur le chemin d’un dépôt pour ouvrir
 l’éditeur de code. L’accès exige `CODE_ACCESS` et les droits propres au dépôt.

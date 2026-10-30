@@ -69,6 +69,8 @@ agent's File Sharing tools. After `file_read` or `file_info`, pass the returned 
 supplied lists replace the existing lists, and empty lists clear them. A stale version is rejected:
 read the contact again before retrying. Identities, metadata and other agents' directories
 remain protected.
+Every contact read, through its URI or Memory, produces JSON from the current
+directory entry; memories keep no copy of its content.
 
 Under **Galaris → Code repositories**, click a repository path to open the code editor.
 This requires `CODE_ACCESS` and the repository's own access rights. Closing the dialog

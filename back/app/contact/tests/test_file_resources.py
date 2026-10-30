@@ -16,6 +16,8 @@ from app.file_share.resource_contracts import ResourceContext
 from app.file_share.resource_uri import ResourceRevisionConflict
 from app.memory import ContactCoordinates
 from app.memory import MemoryNotFoundError
+from app.memory import service as memory_service
+from app.memory import describe_file_resource, read_file_resource_text
 from app.memory.models import MemoryItem
 from app.memory.tests.conftest import agents, memory_storage
 from app.tools import McpToolContext
@@ -51,6 +53,18 @@ async def test_contact_files_use_live_directory_and_private_snapshots(db, agents
     payload = json.loads(text["content"])
     assert payload.pop("etag") == text["etag"] == descriptor.etag
     assert payload == contact.model_dump(mode="json", exclude_none=True)
+    item, memory_json, access, content_type, media_type = await memory_service.get_item(contact.memory_item_id, agent_id=ctx.agent_id)
+    assert json.loads(memory_json) == payload
+    detail = await memory_service.item_to_detail(item, memory_json, access, content_type=content_type, media_type=media_type)
+    assert detail.media_type == "application/json"
+    assert detail.size_bytes == len(memory_json)
+    assert detail.payload.text == memory_json.decode()
+    memory_file = await read_file_resource_text(contact.memory_item_id, agent_id=ctx.agent_id,
+        task_id=None, expected_kind="memory", offset=0, max_chars=10000)
+    assert json.loads(memory_file["content"]) == payload
+    descriptor_memory = await describe_file_resource(contact.memory_item_id, agent_id=ctx.agent_id, expected_kind="memory")
+    assert descriptor_memory["size"] == len(memory_json)
+    assert descriptor_memory["checksum"] == hashlib.sha256(memory_json).hexdigest()
     partial = await files.resource_read(ctx, uri, max_chars=25)
     assert partial.next_offset == 25
     assert partial.content + (await files.resource_read(ctx, uri, offset=25)).content == text["content"]

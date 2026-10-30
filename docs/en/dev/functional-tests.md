@@ -2,6 +2,11 @@
 
 # Functional guarantees catalogue
 
+`app/memory/tests/test_messenger_contact.py` verifies that contacts store no content
+in Memory or its revisions, that every read returns current canonical JSON, and that
+DbAdmin cleanup is idempotent without restoring old copies when text migration is
+replayed. Ordinary memories and private access rules remain protected.
+
 `app/contact/tests/test_file_resources.py` exercises Contacts, File Sharing and MCP with the
 real database: current names and coordinates, JSON export, isolation between agents, denied
 moves/deletes, forgetting, and listing/search pagination across 501 entries. HTTP checks

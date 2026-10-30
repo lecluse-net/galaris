@@ -1,7 +1,7 @@
 """DbAdmin contributions for rebuildable memory projections."""
 
 from loguru import logger
-from sqlalchemy import String, cast, delete, exists, select, text, update, func
+from sqlalchemy import String, cast, delete, exists, or_, select, text, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -11,7 +11,7 @@ from core.dbadmin import (
 
 from .semantic_index import reconcile_embedding_index
 from .source_projection import rebuild_source_memories
-from .models import MemoryContactIdentity, MemoryItem
+from .models import MemoryContactIdentity, MemoryItem, MemoryRevision
 from .catalogue_projection import reconcile_catalogue_descriptions
 
 
@@ -67,6 +67,28 @@ async def _reconcile_internal_user_identities(session: AsyncSession) -> None:
             )),
         )
     )
+
+
+async def _reconcile_live_contacts(session: AsyncSession) -> None:
+    """Retire generated contact bodies while preserving canonical data/history."""
+    contacts = select(MemoryItem.id).where(
+        MemoryItem.source_managed.is_(True),
+        MemoryItem.managed_source_kind == "messenger_contact",
+    ).execution_options(include_historized=True)
+    await session.execute(update(MemoryItem).where(MemoryItem.id.in_(contacts), or_(
+        MemoryItem.memory_content.is_not(None), MemoryItem.memory_content_type != "text",
+        MemoryItem.memory_media_type != "application/json", MemoryItem.memory_content_profile_version.is_not(None),
+    )).values(
+        memory_content=None, memory_content_type="text",
+        memory_media_type="application/json", memory_content_profile_version=None,
+        updated_at=MemoryItem.updated_at,
+    ).execution_options(include_historized=True))
+    await session.execute(update(MemoryRevision).where(MemoryRevision.item_id.in_(contacts), or_(
+        MemoryRevision.content.is_not(None), MemoryRevision.content_type != "text",
+        MemoryRevision.media_type != "application/json", MemoryRevision.content_profile_version.is_not(None),
+    )).values(
+        content=None, content_type="text", media_type="application/json", content_profile_version=None,
+    ))
 
 
 def needs_document_append_backfill(transitions: SchemaTransitionSet) -> bool:
@@ -125,6 +147,10 @@ async def _reconcile_document_structure(_session: AsyncSession) -> None:
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_reconciler(DbAdminReconciler(
+        key="app.memory.live_contacts", handler=_reconcile_live_contacts,
+        depends_on=("app.memory.source_projections",),
+    ))
+    registry.register_reconciler(DbAdminReconciler(
         key="app.memory.internal_user_identities",
         handler=_reconcile_internal_user_identities,
         depends_on=("app.memory.source_projections",),
@@ -161,7 +187,7 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
 
     register_html_conversion(registry)
     from .html_migration import rebuild_html_text
-    registry.register_reconciler(DbAdminReconciler(key="app.memory.editorial_text", handler=rebuild_html_text, depends_on=("app.memory.source_projections",)))
+    registry.register_reconciler(DbAdminReconciler(key="app.memory.editorial_text", handler=rebuild_html_text, depends_on=("app.memory.source_projections", "app.memory.live_contacts")))
     registry.register_reconciler(
         DbAdminReconciler(
             key="app.memory.source_projections",

@@ -2,6 +2,11 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/memory/tests/test_messenger_contact.py` vérifie que les contacts ne stockent aucun
+contenu dans Memory ni ses révisions, que chaque lecture restitue le JSON canonique
+actuel, et que le nettoyage DbAdmin est idempotent sans restaurer les anciennes copies
+au rejeu de la migration textuelle. Les souvenirs ordinaires et les droits privés sont préservés.
+
 `app/contact/tests/test_file_resources.py` traverse Contacts, File Sharing et MCP avec la
 base réelle : noms et coordonnées actuels, export JSON, isolation entre agents, refus des
 déplacements et suppressions, oubli et pagination/recherche sur 501 fiches. Le parcours HTTP vérifie

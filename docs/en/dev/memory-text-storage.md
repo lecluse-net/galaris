@@ -18,6 +18,13 @@ Columns use `TEXT` without normalizing line endings. `NULL` remains possible for
 binary resources or external providers. Metadata lists and history pages exclude full payloads.
 Resource URIs, access rules and update conflicts retain their current guarantees.
 
+Contacts are an exception: `memory_items.content` and their
+`memory_revisions.content` remain `NULL`. Every read rebuilds JSON from the private
+directory's canonical metadata and identities, including requests for an old Memory
+revision. Search indexes remain projections; they never supply the read payload.
+The DbAdmin reconciler `app.memory.live_contacts` removes previous copies without
+changing identities or linked memories.
+
 ## Migration without deleting sources
 
 `app.memory.content_migration` registers the DbAdmin action

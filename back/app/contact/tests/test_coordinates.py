@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from uuid import uuid4
+import json
 
 import pytest
 from pydantic import ValidationError
@@ -15,6 +16,7 @@ from app.memory import (
     get_messenger_contact,
     list_messenger_contacts,
     observe_messenger_contact,
+    service as memory_service,
 )
 from app.memory.models import MemoryItem
 from app.memory.tests.conftest import memory_storage as memory_storage
@@ -72,8 +74,9 @@ async def test_coordinates_persist_search_merge_and_remain_on_the_original_when_
     assert len(merged.contact.coordinates.phone_numbers) == 2
     assert merged.contact.coordinates.postal_addresses == created.coordinates.postal_addresses
     memory = await db.get(MemoryItem, created.memory_item_id)
-    assert "01 23 45 67 89" in memory.memory_content
-    assert "+41 21 555 01 02" in memory.memory_content
+    assert memory.memory_content is None
+    payload = json.loads((await memory_service.get_item(memory.id, agent_id=agent.id))[1])
+    assert {phone["number"] for phone in payload["coordinates"]["phone_numbers"]} == {"01 23 45 67 89", "+41 21 555 01 02"}
 
     # An incoming observation cannot discard explicitly maintained coordinates.
     assert await observe_messenger_contact(MessengerContactObservation(owner_agent_id=agent.id,

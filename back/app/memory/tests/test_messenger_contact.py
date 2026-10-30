@@ -1,12 +1,13 @@
 from __future__ import annotations
-from core.util.rich_text import convert_to_html
 
 import asyncio
+import hashlib
+import json
 from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
@@ -131,7 +132,6 @@ async def test_address_book_entries_are_independent_private_and_unique(db, agent
 @pytest.mark.asyncio
 async def test_split_preserves_identity_history_and_rolls_back_all_projections_on_failure(db, agents, memory_storage, monkeypatch):
     from app.memory.models import MemoryContactItem
-    from core.storage import get_storage, ResourceStorageError
 
     owner, _peer = agents
     source_id = await observe_messenger_contact(_observation(owner.id))
@@ -152,18 +152,17 @@ async def test_split_preserves_identity_history_and_rolls_back_all_projections_o
     count_before = await db.scalar(select(func.count()).select_from(MemoryItem))
     projection = await db.get(MemoryItem, source_id)
     revision_before = projection.revision
-    storage = get_storage("native")
-    validate = storage._validate_content
+    upsert = service.upsert_source_managed_item
     calls = 0
-    def fail_second_write(content):
+    async def fail_second_write(*args, **kwargs):
         nonlocal calls
         calls += 1
         if calls == 2:
-            raise ResourceStorageError("Synthetic projection failure")
-        validate(content)
+            raise RuntimeError("Synthetic projection failure")
+        return await upsert(*args, **kwargs)
     with monkeypatch.context() as patch:
-        patch.setattr(storage, "_validate_content", fail_second_write)
-        with pytest.raises(ResourceStorageError, match="Synthetic projection failure"):
+        patch.setattr(service, "upsert_source_managed_item", fail_second_write)
+        with pytest.raises(RuntimeError, match="Synthetic projection failure"):
             await split_messenger_contact(contact_item_id=source_id, identity_ids=(selected.id,),
                 expected_identity_ids=original_ids, display_name="Single canonical name")
     assert calls == 2
@@ -200,6 +199,96 @@ def _observation(
 
 
 @pytest.mark.asyncio
+async def test_contact_content_is_live_json_without_stored_payload(db, agents, memory_storage):
+    from core.storage import get_storage
+
+    owner_id, peer_id = agents[0].id, agents[1].id
+    contact_id = await observe_messenger_contact(_observation(owner_id))
+    item, content, _access, content_type, media_type = await service.get_item(contact_id, agent_id=owner_id)
+    assert item.content is None
+    assert all(revision.content is None for revision in item.revisions)
+    assert (content_type, media_type) == ("text", "application/json")
+    payload = json.loads(content)
+    assert payload["display_name"] == "Aster"
+    assert payload["identities"][0]["external_id"] == "astertest"
+    pointer = item.resource_id
+    revision = item.revision
+    await observe_messenger_contact(_observation(owner_id, display_name="Synthetic renamed contact"))
+    # Change the canonical data without refreshing a generated Memory body.
+    await db.execute(update(MemoryContactIdentity).where(
+        MemoryContactIdentity.contact_item_id == contact_id,
+    ).values(display_name="Synthetic live name", external_id="synthetic-live-address").execution_options(synchronize_session=False))
+    await db.execute(update(MemoryItem).where(MemoryItem.id == contact_id).values(metadata_={
+        **dict(item.metadata_), "coordinates": {"phone_numbers": [{"number": "+33 1 23 45 67 89"}]},
+    }).execution_options(synchronize_session=False))
+    await db.commit()
+    loaded, current, *_ = await service.get_item(contact_id, agent_id=owner_id, revision=revision)
+    current_payload = json.loads(current)
+    assert current_payload["display_name"] == "Synthetic live name"
+    assert current_payload["identities"][0]["external_id"] == "synthetic-live-address"
+    assert current_payload["coordinates"]["phone_numbers"][0]["number"] == "+33 1 23 45 67 89"
+    assert loaded.revision == revision + 1
+    assert loaded.content is None
+    assert await get_storage("native").read(pointer) == current
+    with pytest.raises(service.MemoryPermissionError):
+        await service.get_item(contact_id, agent_id=peer_id)
+    assert not [path for path in memory_storage.rglob("*") if path.is_file()]
+
+
+@pytest.mark.asyncio
+async def test_contact_cleanup_is_idempotent_and_inline_migration_does_not_restore_bodies(db, agents, memory_storage):
+    from core.dbadmin import SchemaTransitionSet
+    from core.storage import get_storage
+    from app.memory.dbadmin import _reconcile_live_contacts
+    from app.memory.content_migration import inline_content_complete, migrate_inline_content
+
+    owner_id = agents[0].id
+    contact_id = await observe_messenger_contact(_observation(owner_id))
+    ordinary, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner_id,
+        title="Synthetic retained note", media_type="text/html", payload=MemoryPayload(text="<p>Retained ordinary memory.</p>")))
+    ordinary_id = ordinary.id
+    legacy = "<p>Synthetic obsolete contact body.</p>"
+    await db.execute(update(MemoryItem).where(MemoryItem.id == contact_id).values(
+        memory_content=legacy, memory_content_type="text", memory_media_type="text/html"))
+    old_pointer = str(uuid4())
+    await db.execute(update(MemoryRevision).where(MemoryRevision.item_id == contact_id).values(content=legacy, resource_id=old_pointer))
+    await db.commit()
+    await migrate_inline_content(db, SchemaTransitionSet())
+    # A retained migration backup must not require these generated bodies to
+    # reappear after cleanup, or overwrite their canonical metadata/identities.
+    await db.execute(text(
+        "INSERT INTO galaris_migration.memory_text_contents "
+        "(table_name, row_key, resource_ref, content, sha256, size_bytes) "
+        "SELECT 'memory_items', id, resource_id, :body, :digest, CAST(:size AS bigint) FROM memory_items WHERE id=:id "
+        "UNION ALL SELECT 'memory_revisions', id, resource_id, :body, :digest, CAST(:size AS bigint) "
+        "FROM memory_revisions WHERE item_id=:id"
+    ), {"id": contact_id, "body": legacy, "digest": hashlib.sha256(legacy.encode()).hexdigest(), "size": len(legacy.encode())})
+    await db.commit()
+    updated_at = await db.scalar(select(MemoryItem.updated_at).where(MemoryItem.id == contact_id))
+    for _ in range(2):
+        await _reconcile_live_contacts(db)
+        await db.commit()
+        await migrate_inline_content(db, SchemaTransitionSet())
+        await db.commit()
+        assert await inline_content_complete(db, SchemaTransitionSet())
+        assert await db.scalar(select(MemoryItem.memory_content).where(MemoryItem.id == contact_id)) is None
+        assert not await db.scalar(select(func.count()).select_from(MemoryRevision).where(
+            MemoryRevision.item_id == contact_id, MemoryRevision.content.is_not(None)))
+        assert await db.scalar(select(MemoryItem.updated_at).where(MemoryItem.id == contact_id)) == updated_at
+    db.expire_all()
+    _item, content, *_ = await service.get_item(contact_id, agent_id=owner_id, revision=1)
+    assert json.loads(content)["identities"][0]["external_id"] == "astertest"
+    assert await get_storage("native").read(old_pointer) == content
+    assert (await service.get_item(ordinary_id, agent_id=owner_id))[1] == b"<p>Retained ordinary memory.</p>"
+    await db.execute(text(
+        "UPDATE galaris_migration.memory_text_contents SET sha256=repeat('0', 64) "
+        "WHERE table_name='memory_items' AND row_key=:id"
+    ), {"id": contact_id})
+    assert not await inline_content_complete(db, SchemaTransitionSet())
+    await db.rollback()
+
+
+@pytest.mark.asyncio
 async def test_contact_projection_is_private_searchable_idempotent_and_renamable(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
@@ -220,7 +309,7 @@ async def test_contact_projection_is_private_searchable_idempotent_and_renamable
     assert len(item.managed_source_ref) == 64
     assert item.title == "Contact — Aster"
     assert item.filename == (
-        f"messenger-contact-{item.managed_source_ref}.md"
+        f"messenger-contact-{item.managed_source_ref}.json"
     )
     assert item.keywords == [
         "contact",
@@ -256,13 +345,9 @@ async def test_contact_projection_is_private_searchable_idempotent_and_renamable
     )
     assert loaded.id == item_id
     assert not access.can_write
-    assert content.decode("utf-8") == convert_to_html(
-        "# Contact Messenger\n"
-        "\n"
-        "- Nom affiché : Aster\n"
-        "- Messagerie : nextcloud_talk\n"
-        "- Identifiant utilisateur : astertest\n", "text/markdown"
-    )
+    payload = json.loads(content)
+    assert payload["display_name"] == "Aster"
+    assert [(identity["namespace"], identity["external_id"]) for identity in payload["identities"]] == [("nextcloud_talk", "astertest")]
     assert "connection_id" not in content.decode("utf-8")
     assert "connection_id" not in item.metadata_
     assert "room" not in item.metadata_
@@ -529,9 +614,7 @@ async def test_internal_chat_uses_only_galaris_contact_identity(db, agents, memo
     assert other_id != contact_id
     assert [(i.kind, i.external_id) for i in (await get_messenger_contact(other_id)).identities] == [("galaris_user", str(human.id))]
     _, content, *_ = await service.get_item(other_id, agent_id=peer.id)
-    assert f"Compte Galaris : {human.id}" in content.decode()
-    assert "Identifiant utilisateur" not in content.decode()
-    assert "Messagerie : internal" not in content.decode()
+    assert [(identity["kind"], identity["galaris_user_id"]) for identity in json.loads(content)["identities"]] == [("galaris_user", human.id)]
     assert await observe_messenger_contact(MessengerContactObservation(owner.id, "internal", f"user:{human.id}", "Native human", human.id)) == contact_id
 
 
@@ -633,7 +716,7 @@ async def test_galaris_user_identity_unifies_multiple_channels(
 
 
 @pytest.mark.asyncio
-async def test_contact_display_name_is_bounded_to_one_safe_markdown_line(
+async def test_contact_display_name_is_bounded_to_one_json_value(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
@@ -651,9 +734,7 @@ async def test_contact_display_name_is_bounded_to_one_safe_markdown_line(
         item_id,
         agent_id=owner.id,
     )
-    assert "<li>Nom affiché : Alice *administratrice*</li>" in content.decode(
-        "utf-8"
-    )
+    assert json.loads(content)["display_name"] == "Alice *administratrice*"
     assert "\n*administratrice*" not in content.decode("utf-8")
 
 

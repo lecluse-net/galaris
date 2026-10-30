@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Collection
 from datetime import datetime, timezone
+import json
 from uuid import uuid4
 
 from uuid import UUID
@@ -159,6 +160,7 @@ async def list_messenger_contacts(
                 MemoryContactIdentity.namespace,
                 MemoryContactIdentity.external_id,
             )
+            .execution_options(populate_existing=True)
         )
     ).all()
     for identity in identity_rows:
@@ -253,6 +255,26 @@ async def get_messenger_contact(contact_item_id: UUID) -> MessengerContactRecord
         (record for record in records if record.memory_item_id == contact_item_id),
         None,
     )
+
+
+async def read_contact_json(contact_item_id: UUID) -> bytes:
+    """Render the current directory record, without persisting its JSON body."""
+    item = await _contact_item(contact_item_id)
+    if item is None:
+        raise service.MemoryNotFoundError("Contact not found.")
+    # Refresh scalar source data without expiring the relationships already
+    # loaded by Memory's authorized reader (sources, history, document, ...).
+    await get_db().refresh(item, attribute_names=[
+        "metadata_", "search_title", "owner_agent_id", "created_at", "updated_at",
+    ])
+    record = await get_messenger_contact(contact_item_id)
+    if record is None:
+        raise service.MemoryNotFoundError("Contact not found.")
+    payload: dict[str, object] = TypeAdapter(MessengerContactRecord).dump_python(
+        record, mode="json", exclude_none=True,
+    )
+    payload["memory_title"] = payload.pop("title")
+    return json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
 
 
 async def has_mail_contact(*, owner_agent_id: int, address: str) -> bool:

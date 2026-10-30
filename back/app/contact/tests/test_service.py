@@ -658,7 +658,8 @@ async def test_forget_erases_contact_memories_and_clears_conversation_lineage(
 
         assert result.forgotten_contact_item_id == contact_id
         assert result.forgotten_memories == 1
-        assert result.resources_deleted == 2
+        # Only the linked ordinary memory owns stored content; the contact is live.
+        assert result.resources_deleted == 1
         assert result.cleared == {
             "messages": 1,
             "conversation_rounds": 1,

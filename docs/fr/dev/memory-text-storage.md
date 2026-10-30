@@ -20,6 +20,13 @@ reste possible pour les ressources binaires ou fournies par un provider externe.
 Les listes de métadonnées et les pages d’historique excluent les contenus complets.
 URI, droits et conflits de modification conservent leurs règles actuelles.
 
+Les contacts font exception : `memory_items.content` et leurs
+`memory_revisions.content` restent `NULL`. Chaque lecture reconstruit le JSON depuis
+les métadonnées et identités canoniques du carnet privé, même lorsqu’une ancienne
+révision Memory est demandée. Les index de recherche restent des projections ; ils
+ne servent pas de contenu à la lecture. Le reconciler DbAdmin `app.memory.live_contacts`
+retire les anciennes copies sans modifier les identités ni les souvenirs liés.
+
 ## Migration sans effacement des sources
 
 `app.memory.content_migration` enregistre l’action DbAdmin

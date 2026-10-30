@@ -822,6 +822,9 @@ async def upsert_source_managed_item(
     if defer_commit and recreate:
         raise ValueError("Deferred projections cannot recreate an existing resource.")
     source_kind = document.source_kind.strip()
+    live_contact = source_kind == "messenger_contact"
+    content_type = "text"
+    media_type = "application/json" if live_contact else "text/html"
     source_ref = document.source_ref.strip()
     if not source_kind or len(source_kind) > 80:
         raise ValueError("A managed memory source kind is required.")
@@ -900,7 +903,7 @@ async def upsert_source_managed_item(
 
     if item is None:
         provider = get_storage(selected_provider_code)
-        resource_id, inline = await prepare_content(content, provider.code)
+        resource_id, inline = (str(uuid4()), None) if live_contact else await prepare_content(content, provider.code)
         item = MemoryItem(
             owner_agent_id=document.owner_agent_id,
             topic_id=document.topic_id,
@@ -908,9 +911,9 @@ async def upsert_source_managed_item(
             resource_id=resource_id,
             content=inline,
             title=normalized_title,
-            content_type="text",
-            media_type="text/html",
-            content_profile_version=1,
+            content_type=content_type,
+            media_type=media_type,
+            content_profile_version=None if live_contact else 1,
             filename=normalized_filename,
             keywords=normalized_keywords,
             metadata_=normalized_metadata,
@@ -962,8 +965,8 @@ async def upsert_source_managed_item(
                 item.owner_agent_id != document.owner_agent_id,
                 item.topic_id != document.topic_id,
                 item.title != normalized_title,
-                item.content_type != "text",
-                item.media_type != "text/html",
+                item.content_type != content_type,
+                item.media_type != media_type,
                 item.filename != normalized_filename,
                 dict(item.metadata_) != normalized_metadata,
                 item.visibility != document.visibility,
@@ -973,9 +976,10 @@ async def upsert_source_managed_item(
         )
     )
     if content_changed:
-        new_resource_id, inline = await prepare_content(content, provider.code)
-        item.resource_id = new_resource_id
-        item.content = inline
+        if not live_contact:
+            new_resource_id, inline = await prepare_content(content, provider.code)
+            item.resource_id = new_resource_id
+            item.content = inline
         item.content_hash = digest
         item.size_bytes = len(content)
         item.search_text = _search_text(
@@ -986,9 +990,13 @@ async def upsert_source_managed_item(
     item.owner_agent_id = document.owner_agent_id
     item.topic_id = document.topic_id
     item.title = normalized_title
-    item.content_type = "text"
-    item.media_type = "text/html"
-    item.content_profile_version = 1
+    if live_contact:
+        # Contact data belongs to metadata and strong identities. The generated
+        # body is only a search projection, never a stored payload or snapshot.
+        item.content = None
+    item.content_type = content_type
+    item.media_type = media_type
+    item.content_profile_version = None if live_contact else 1
     item.keywords = normalized_keywords
     item.metadata_ = normalized_metadata
     item.filename = normalized_filename
@@ -1078,7 +1086,15 @@ async def get_item(
     content_type = item.content_type
     media_type = item.media_type
     content = b""
-    if memory_content and item.document is not None:
+    if item.source_managed and item.managed_source_kind == "messenger_contact":
+        from .contact_directory import read_contact_json
+
+        # Even an old revision resolves the current canonical contact. History
+        # retains identity/metadata changes, not a second copy of contact data.
+        content = await read_contact_json(item.id)
+        content_type, media_type = "text", "application/json"
+        provider_code, resource_id = "", ""
+    elif memory_content and item.document is not None:
         provider_code = item.document.summary_provider_code
         resource_id = item.document.summary_resource_id if item.document.summary_size_bytes else ""
         content_type, media_type = "text", item.document.summary_media_type
@@ -1241,7 +1257,7 @@ async def item_to_detail(
     if memory_content and item.document is not None:
         values["content_profile"] = "rich-text"
         values["content_profile_version"] = 1
-    elif revision is not None and revision != item.revision:
+    elif revision is not None and revision != item.revision and item.managed_source_kind != "messenger_contact":
         selected = await _read_revision(item.id, revision)
         if selected is None:
             raise MemoryNotFoundError("Memory revision not found.")
@@ -1256,6 +1272,8 @@ async def item_to_detail(
             keywords=list(selected.keywords),
             temporal=selected.temporal,
         )
+    if item.source_managed and item.managed_source_kind == "messenger_contact":
+        values.update(content_hash=_content_hash(content), size_bytes=len(content))
     return MemoryItemDetail(
         **values,
         payload=encode_payload(

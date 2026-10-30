@@ -23,13 +23,25 @@ TABLES = ("memory_items", "documents", "memory_revisions", "document_revisions",
 ARCHIVE = "galaris_migration.memory_text_contents"
 
 
+def _exclude_live_contacts(table: str, alias: str) -> str:
+    if table not in {"memory_items", "memory_revisions"}:
+        return ""
+    key = "id" if table == "memory_items" else "item_id"
+    return (
+        " AND NOT EXISTS (SELECT 1 FROM memory_items contact "
+        f"WHERE contact.id = {alias}.{key} AND contact.source_managed "
+        "AND contact.managed_source_kind = 'messenger_contact')"
+    )
+
+
 def needs_inline_content(delta: SchemaTransitionSet) -> bool:
     return any(delta.table_added(table) or delta.column_added(table, "content") for table in TABLES)
 
 
 def _native_text(table: str) -> str:
     text_type = "" if table.endswith("_summary_revisions") else " AND content_type IN ('text', 'json')"
-    return "provider_code = 'native' AND resource_id NOT IN ('forgotten', 'merged')" + text_type
+    return ("provider_code = 'native' AND resource_id NOT IN ('forgotten', 'merged')"
+            + text_type + _exclude_live_contacts(table, table))
 
 
 async def _read_source(resource_ref: str, root: Path) -> bytes:
@@ -59,7 +71,8 @@ async def inline_content_complete(session: AsyncSession, _delta: SchemaTransitio
                 WHERE backup.table_name = :table AND (
                     backup.sha256 <> encode(sha256(convert_to(backup.content, 'UTF8')), 'hex')
                     OR backup.size_bytes <> octet_length(backup.content)
-                    OR (target.id IS NOT NULL AND target.resource_id = backup.resource_ref AND (
+                    OR (target.id IS NOT NULL AND target.resource_id = backup.resource_ref
+                        {_exclude_live_contacts(table, 'target')} AND (
                         target.content IS NULL
                         OR convert_to(target.content, 'UTF8') <> convert_to(backup.content, 'UTF8')
                     ))
