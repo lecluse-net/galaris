@@ -80,6 +80,7 @@ async def repository_scope(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_discovery_is_owner_only_and_full_paths_distinguish_checkouts(repository_scope, db):
+    from app.code import list_code_resources, read_code_resource
     from app.code.contracts import RepositoryCandidates
 
     users, agent, _, target, runtime = repository_scope
@@ -99,6 +100,12 @@ async def test_discovery_is_owner_only_and_full_paths_distinguish_checkouts(repo
     assert first.id != second.id
     assert service.info(first, "edit").label == "work/project"
     assert service.info(second, "edit").label == "archive/project"
+    for workspace, path in ((first, "work/project"), (second, "archive/project")):
+        resource = await read_code_resource(workspace.id, agent.id)
+        assert resource is not None
+        assert resource["label"] == path
+    resources = await list_code_resources(agent.id, "project", 0, 50)
+    assert {resource["label"] for resource in resources} == {"work/project", "archive/project"}
 
 
 @pytest.mark.asyncio

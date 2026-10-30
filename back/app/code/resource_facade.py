@@ -6,11 +6,11 @@ from sqlalchemy import select
 
 from core.database import get_db
 from .models import CodeGrant, CodeWorkspace
-from .service import workspace_for_agent
+from .service import info, workspace_for_agent
 
 
 def _projection(workspace: CodeWorkspace) -> dict[str, object]:
-    return {"id": str(workspace.id), "label": workspace.label, "branch": workspace.branch,
+    return {"id": str(workspace.id), "label": info(workspace, "read").label, "branch": workspace.branch,
             "head": workspace.head, "uri": f"galaris://code/{workspace.id}",
             "description": "Current shared Git checkout; this reference is not a historical snapshot."}
 

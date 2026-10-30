@@ -47,7 +47,7 @@ const thumbnail = ref('')
 const documentId = computed(() => /^document:\/\/([^/]+)$/.exec(entry.uri)?.[1] ?? null)
 const process = computed(() => ['process', 'process_run'].includes(resourceTarget(entry, agentId)?.kind ?? ''))
 const resourceAgent = computed(() => agentResourceId(entry.uri))
-const displayName = computed(() => collectionLabel(entry.uri, t) ?? ((process.value || resourceAgent.value !== null) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name))
+const displayName = computed(() => collectionLabel(entry.uri, t) ?? ((process.value || resourceAgent.value !== null || entry.uri.startsWith('galaris://code/')) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name))
 let request: AbortController | undefined
 let observer: IntersectionObserver | undefined
 const icon = computed(() => {
