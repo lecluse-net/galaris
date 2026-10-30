@@ -1101,7 +1101,7 @@ watch(() => props.roomId, () => {
   box-sizing: border-box;
   min-height: 40px;
   align-self: stretch;
-  padding: 6px 7px;
+  padding: 4px 7px;
   border: 1px dashed var(--chat-border-strong, rgba(35, 46, 66, .22));
   border-radius: 5px;
   overflow: hidden;
@@ -1181,12 +1181,12 @@ watch(() => props.roomId, () => {
 
 .composer-actions {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  flex-wrap: nowrap;
 }
 
 .composer-actions--stacked {
   flex-direction: column;
-  align-items: center;
 }
 
 .composer-send-button {
@@ -1198,7 +1198,20 @@ watch(() => props.roomId, () => {
 }
 
 .composer-input-shell :deep(.q-field__control) {
+  min-height: 44px;
+  padding-left: 4px;
   padding-right: 4px;
+}
+
+.composer-input-shell :deep(.q-field__native) {
+  min-height: 40px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.composer-input-shell :deep(.q-field__prepend) {
+  height: 44px;
+  align-self: flex-start;
 }
 
 .command-help-button :deep(.q-icon) {

@@ -132,3 +132,6 @@ Pour reproduire une référence graphique précise, comparer des exemples côte 
 zoom et à la même densité de pixels. En cas d'écart, mesurer les styles calculés : une bordure
 CSS fractionnaire peut être arrondie avant le zoom, contrairement à un trait SVG. Copier la
 valeur déclarée ne suffit donc pas à vérifier l'épaisseur réellement dessinée.
+Pour une correction d'alignement seule, comparer aussi la hauteur, les marges et les adaptations
+au contenu avant/après : les conserver sauf demande contraire, en tenant compte des voisins
+qui étirent le composant. Vérifier les transitions entre contenu court et long dans les deux sens.

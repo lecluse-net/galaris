@@ -3,10 +3,9 @@
     flat
     round
     dense
-    size="sm"
-    icon="sentiment_satisfied_alt"
     :aria-label="t('chat.emoji.open')"
   >
+    <q-icon name="sentiment_satisfied_alt" size="18px" />
     <q-tooltip>{{ t('chat.emoji.open') }}</q-tooltip>
     <q-menu
       v-model="open"
