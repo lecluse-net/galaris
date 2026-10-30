@@ -8,7 +8,7 @@
         <q-icon v-else-if="isSkillPackage(entry)" name="psychology" size="var(--file-icon-size)" color="primary" />
         <FolderIcon v-else-if="entry.is_collection" size="var(--file-icon-size)" />
         <WorkingDocumentThumbnail v-else-if="documentId && entry.capabilities.includes('read')" class="file-tile-document" :document-id="documentId" :agent-id="agentId" :updated-at="entry.modified_at" />
-        <ResourceThumbnail v-else-if="process || resourceAgent !== null" :uri="entry.uri" :agent-id="selectable ? null : agentId" :title="displayName" />
+        <ResourceThumbnail v-else-if="process || resourceAgent !== null" :class="{ 'file-tile-agent': resourceAgent !== null }" :uri="entry.uri" :agent-id="selectable ? null : agentId" :title="displayName" />
         <img v-else-if="thumbnail" class="file-tile-image" :src="thumbnail" :alt="entry.name" loading="lazy" />
         <q-icon v-else class="file-tile-image" :name="icon" size="var(--file-icon-size)" color="primary" />
       </div>
@@ -85,6 +85,8 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect(); if (thumbnail.
 .file-tile-content { width: 100%; min-width: 0; padding: 6px 0; text-align: center; }
 .file-tile-preview { height: var(--file-preview-height); display: grid; place-items: center; margin-bottom: 2px; }
 .file-tile-preview img { width: 100%; height: var(--file-preview-height); object-fit: contain; }
+.file-tile-preview :deep(.file-tile-agent) { width: var(--file-icon-size); height: var(--file-icon-size); }
+.file-tile-preview :deep(.file-tile-agent img) { width: 100%; height: 100%; object-fit: cover; }
 .file-tile-preview .file-tile-document { width: 100%; height: 100%; }
 .file-tile-image { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .14)); }
 :global(body.body--dark .file-tile-image) { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .32)); }
