@@ -8,12 +8,14 @@ import pytest
 from sqlalchemy import select
 
 from app.agent.models import Agent, Title
+from app.agent import AgentManagementScope
 from app.contact import service
 from app.contact.schemas import ContactCreate, ContactUpdate
 from app.file_share import mcp, resource_service as files
 from app.file_share.resource_contracts import ResourceContext
 from app.file_share.resource_uri import ResourceRevisionConflict
 from app.memory import ContactCoordinates
+from app.memory import MemoryNotFoundError
 from app.memory.models import MemoryItem
 from app.memory.tests.conftest import agents, memory_storage
 from app.tools import McpToolContext
@@ -127,6 +129,46 @@ async def test_contact_files_write_and_edit_validate_preserve_identity_and_rejec
     await files.resource_write(ctx, uri, b'{"coordinates":{"phone_numbers":[],"postal_addresses":[]}}', expected_etag=partial.etag)
     cleared = await service.get_contact(agent_id=owner.id, contact_item_id=contact.memory_item_id)
     assert cleared.display_name == "Synthetic Edited" and cleared.coordinates == ContactCoordinates()
+
+
+@pytest.mark.asyncio
+async def test_contact_ownership_cannot_be_widened_by_management_scope_or_forged_metadata(db, agents, memory_storage):
+    from app.contact import mcp as contacts_mcp
+
+    owner, other = agents
+    # Even the same correspondent has a distinct private card for each agent.
+    contacts = [await service.create_contact(ContactCreate(agent_id=agent.id,
+        display_name="Synthetic Private Person", email="private-person@example.org")) for agent in (owner, other)]
+    owner_uri, peer_uri = [f"galaris://contact/{contact.memory_item_id}" for contact in contacts]
+    owner_ctx = ResourceContext(agent_id=owner.id, runtime="internal")
+    global_scope = AgentManagementScope(user_id=123456, agent_ids=None)
+    peer_ctx = ResourceContext(agent_id=other.id, runtime="internal", skill_management=True, management_scope=global_scope)
+    peer_tool = McpToolContext(agent_id=other.id, runtime="internal",
+        resources={"agent_id": owner.id, "management_scope": global_scope})
+    original = await files.resource_read(owner_ctx, owner_uri)
+    peer_original = await files.resource_read(peer_ctx, peer_uri)
+    assert [entry.uri for entry in (await files.resource_list(peer_ctx, "galaris://contact/")).entries] == [peer_uri]
+
+    # Possessing a foreign URI and a valid version token never grants authority.
+    with pytest.raises(FileNotFoundError):
+        await files.resource_write(peer_ctx, owner_uri,
+            json.dumps({"display_name": "Unauthorized", "owner_agent_id": other.id}).encode(),
+            expected_etag=original.etag)
+    with pytest.raises(FileNotFoundError):
+        await mcp.write_file(peer_tool, owner_uri, '{"display_name":"Unauthorized"}', expected_etag=original.etag)
+    with pytest.raises(FileNotFoundError):
+        await mcp.edit_file(peer_tool, owner_uri, 1, 1, "{}", expected_etag=original.etag)
+    with pytest.raises(MemoryNotFoundError):
+        await contacts_mcp.mcp_contact_update(peer_tool, contacts[0].memory_item_id, "Unauthorized")
+    with pytest.raises(ValueError, match="read-only"):
+        await files.resource_write(peer_ctx, peer_uri,
+            json.dumps({"display_name": "Unauthorized transfer", "owner_agent_id": owner.id}).encode(),
+            expected_etag=peer_original.etag)
+
+    await db.commit()
+    db.expunge_all()
+    assert (await files.resource_read(owner_ctx, owner_uri)).content == original.content
+    assert (await files.resource_read(peer_ctx, peer_uri)).content == peer_original.content
 
 
 @pytest.mark.asyncio

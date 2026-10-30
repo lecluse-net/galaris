@@ -25,6 +25,11 @@ async def test_contact_tools_are_discovered_mounted_and_scoped_by_the_server():
     assert names <= tools.keys()
     for name in names:
         assert {"ctx", "agent_id", "owner_agent_id"}.isdisjoint(tools[name].parameters["properties"])
+    files = build_galaris_fastmcp(7, runtime="internal", enabled_tool_codes={"file_sharing"})
+    file_tools = {item.name: item for item in await files.list_tools()}
+    for name in ("file_write", "file_edit"):
+        assert {"ctx", "agent_id", "actor_agent_id", "owner_agent_id", "management_scope"}.isdisjoint(
+            file_tools[name].parameters["properties"])
     assert tools["contact_list"].parameters["properties"]["limit"]["maximum"] == 500
     other = build_galaris_fastmcp(7, runtime="internal", enabled_tool_codes={"memory"})
     assert names.isdisjoint(item.name for item in await other.list_tools())

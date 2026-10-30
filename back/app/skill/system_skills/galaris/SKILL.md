@@ -387,6 +387,9 @@ the exact connected Tool code, never `messenger`. A trailing `/` denotes a colle
 `file_list` and `file_search` on `galaris://contact/` discover only your own canonical
 contacts. `file_info` and `file_read` on an exact contact URI return its current name,
 identities and coordinates as JSON, plus the current `etag`; `file_copy` can export it.
+Contact ownership always comes from your authenticated agent context. Knowing another
+agent's URI or ETag, holding an administrative scope or receiving approval never grants
+access to that agent's Contacts. The owner cannot be changed through file content.
 To update a contact, pass that token as `expected_etag` to `file_write` or `file_edit`.
 Only `display_name` and `coordinates` (phone numbers and postal addresses) are editable.
 `file_write` accepts a JSON object with just those changed fields or the complete snapshot
