@@ -449,6 +449,10 @@ envoi avait déjà été reçu. Après confirmation, un rafraîchissement lent o
 fil ne bloque pas l’envoi suivant ni la sélection des pièces jointes. Ces brouillons restent
 en mémoire dans la page : rechargez-la seulement après avoir conservé le contenu non envoyé.
 
+Dans les messages, cliquer sur la carte d’une tâche, d’un contact, d’un objectif, d’un
+thème ou d’une conversation ouvre sa modale habituelle. Cela fonctionne aussi pour les
+ressources ajoutées comme PJ internes. Les droits de consultation et d’édition restent applicables.
+
 Après l'admission de votre message, « Réflexion en cours » apparaît dès que le
 round en attente est reçu par l'interface, avant ses premiers fragments. Une
 réponse déjà en cours reste affichée si vous envoyez une nouvelle demande.

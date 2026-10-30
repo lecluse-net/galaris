@@ -366,6 +366,10 @@ to avoid a second admission if the first send was already received. Once confirm
 unavailable conversation refresh does not block the next send or attachment selection. These
 drafts remain in page memory: save any unsent content before reloading the page.
 
+In messages, clicking a Task, Contact, Goal, Topic or conversation card opens its usual
+dialog. This also works for resources added as internal attachments. Existing read and
+edit permissions still apply.
+
 In native Chat, the small buttons beside “Thinking” control that response: **Pause** saves
 progress, **Resume** continues from it, and **Stop** removes the Agent’s response from the
 round, including its provisional text. Your message remains visible. **Reply now** requests an answer using available

@@ -132,6 +132,36 @@ for (const mixed of [false, true]) test(`internal image attachments ${mixed ? 'w
   expect(errors()).toEqual([])
 })
 
+test('an internal task attachment opens its usual modal after sending and reload', async ({ page, request }, testInfo) => {
+  const errors = collectPageErrors(page)
+  const fixture = await prepare(page, request)
+  const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}`,
+    'X-Editorial-Profile-Version': '1' }
+  const created = await request.post('/api/tasks', { headers, data: {
+    label: 'Synthetic attached task', objective: '<p>Full objective from the attached task</p>',
+    agent_id: fixture.agent_id, status: 'SUCCESS',
+  } })
+  expect(created.ok(), await created.text()).toBeTruthy()
+  const task = await created.json()
+  const sent = await request.post(`/api/chat/rooms/${fixture.rooms[0]}/messages`, { headers, data: {
+    client_message_id: crypto.randomUUID(), text: '', resource_uris: [`galaris://task/${task.id}`],
+  } })
+  expect(sent.ok(), await sent.text()).toBeTruthy()
+  const message = await sent.json()
+  const preview = page.locator(`[data-message-id="${message.id}"] .resource-preview-main`)
+  for (const reload of [false, true]) {
+    if (reload) await page.reload()
+    await preview.click()
+    await expect(page.getByRole('dialog').locator('.task-detail')).toContainText('Full objective from the attached task')
+    await page.screenshot({ path: testInfo.outputPath(`attached-task-${reload ? 'reopened' : 'sent'}.png`), animations: 'disabled' })
+    await page.getByRole('dialog').getByRole('button', { name: /^(Close|Fermer)$/, exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  }
+  await release(request, fixture.rooms[0])
+  await errors.settle()
+  expect(errors()).toEqual([])
+})
+
 test('progress is visible before completion and survives durable handoff and reload', async ({ page, request }) => {
   const fixture = await prepare(page, request)
   await send(page)

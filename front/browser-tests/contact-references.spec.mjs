@@ -17,6 +17,38 @@ async function fixtures(page) {
   return { deny: value => { denied = value }, contact: () => contact }
 }
 
+test('message resource cards open the contact modal with access checks and retry', async ({ page }, testInfo) => {
+  const source = await fixtures(page)
+  await jsonRoute(page, '**/api/chat/rooms/room/messages/message/previews', [{
+    uri, kind: 'resource', title: 'Synthetic Person', description: '', metadata: {},
+    media_type: 'application/vnd.galaris.contact+json', content: '{"summary":"Preview only"}',
+    content_format: 'json', download_available: true, image_available: false, open_mode: 'inline',
+  }])
+  await mount(page, 'app/chat/components/MessageResourcePreviews.vue', {
+    props: { roomId: 'room', messageId: 'message' }, privileges: ['CONTACT_ACCESS'],
+  })
+  const open = page.locator('.resource-preview-main')
+  await open.click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByLabel('Display name', { exact: true })).toHaveValue('Synthetic Person')
+  await expect(dialog.getByLabel('Display name', { exact: true })).toBeDisabled()
+  await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('contact-modal-light.png'), animations: 'disabled' })
+  await page.locator('.q-dialog__backdrop').last().click({ position: { x: 4, y: 4 } })
+  await expect(dialog).toHaveCount(0)
+  source.deny(true)
+  await open.click()
+  await expect(dialog.getByRole('alert')).toContainText('Contacts could not be loaded.')
+  source.deny(false)
+  await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(dialog.getByLabel('Display name', { exact: true })).toHaveValue('Synthetic Person')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: testInfo.outputPath('contact-modal-dark-mobile.png'), animations: 'disabled' })
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+})
+
 for (const width of [1440, 390]) test(`a Contact card inserts through Files, survives saving and opens its editor at ${width}px`, async ({ page }, testInfo) => {
   await fixtures(page)
   await page.setViewportSize({ width, height: 1000 })

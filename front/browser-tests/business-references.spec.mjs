@@ -92,6 +92,37 @@ const cases = [
   ['room', `/chat?room=${id}`, room.label, 'No messages in this conversation yet.'],
 ]
 
+for (const [kind, , title, detail] of cases) test(`message resource cards open the ${kind} modal`, async ({ page }, testInfo) => {
+  await fixtures(page)
+  const uri = `galaris://${kind}/${id}`
+  await jsonRoute(page, '**/api/chat/rooms/source/messages/another-message/previews', [])
+  await jsonRoute(page, '**/api/chat/rooms/source/messages/message/previews', [{
+    uri, kind: ['task', 'goal', 'text', 'voice'].includes(kind) ? kind : 'resource', title,
+    description: '', metadata: {}, media_type: 'application/json', content: '{"summary":"Preview only"}',
+    content_format: 'json', download_available: true, image_available: false, open_mode: 'inline',
+  }])
+  await mount(page, 'app/chat/components/MessageResourcePreviews.vue', {
+    props: { roomId: 'source', messageId: 'message' },
+    privileges: ['TASK_ACCESS', 'GOAL_ACCESS', 'TOPIC_ACCESS', 'CONVERSATION_ACCESS', 'VOICE_HISTORY_ACCESS', 'CHAT_ACCESS'],
+  })
+  const open = page.locator('.resource-preview-main')
+  await open.focus()
+  await page.keyboard.press('Enter')
+  const dialog = page.getByRole('dialog')
+  const content = kind === 'room' ? 'No messages' : detail
+  await expect(dialog).toContainText(content)
+  await page.screenshot({ path: testInfo.outputPath(`${kind}-modal-light.png`), animations: 'disabled' })
+  await page.locator('.q-dialog__backdrop').last().click({ position: { x: 4, y: 4 } })
+  await expect(dialog).toHaveCount(0)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => window.testApp.dark(true))
+  await open.click()
+  await expect(dialog).toContainText(content)
+  await page.screenshot({ path: testInfo.outputPath(`${kind}-modal-dark-mobile.png`), animations: 'disabled' })
+  await page.evaluate(() => window.testApp.setProps({ messageId: 'another-message' }))
+  await expect(dialog).toHaveCount(0)
+})
+
 for (const [kind, url, title, detail] of cases) for (const format of ['uri', 'url']) {
   test(`${kind} ${format} becomes a reversible compact card and reopens its modal`, async ({ page, context }, testInfo) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])

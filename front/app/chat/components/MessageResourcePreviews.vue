@@ -280,7 +280,8 @@
   />
   <ResourceDetailDialog v-if="datasetDialogOpen && datasetTarget" :target="datasetTarget"
     @close="datasetDialogOpen = false" @changed="invalidateMessagePreviewReaders" />
-  <ResourceDetailDialog v-if="folderTarget" :target="folderTarget" @close="folderTarget = null" />
+  <ResourceDetailDialog v-if="detailTarget" :target="detailTarget" @close="detailTarget = null"
+    @changed="invalidateMessagePreviewReaders" />
 </template>
 
 <script setup lang="ts">
@@ -409,7 +410,7 @@ function kindLabel(kind: MessageResourcePreviewKind): string {
 }
 
 const documentAgentId = computed(() => props.viewerAgentId ?? props.conversationAgentId)
-const folderTarget = shallowRef<ResourceDetailTarget | null>(null)
+const detailTarget = shallowRef<ResourceDetailTarget | null>(null)
 
 function resourceKind(preview: MessageResourcePreview | null): BrowserResourceKind | null {
   if (!preview?.download_available) return null
@@ -417,7 +418,7 @@ function resourceKind(preview: MessageResourcePreview | null): BrowserResourceKi
 }
 
 function downloadOnly(preview: MessageResourcePreview): boolean {
-  return preview.download_available && resourceKind(preview) === null
+  return preview.download_available && resourceKind(preview) === null && !richLinkTarget(preview.uri)
 }
 
 function modelSource(preview: MessageResourcePreview): Model3dSource {
@@ -494,7 +495,7 @@ async function load(resetDialog = true): Promise<void> {
   const currentGeneration = ++generation
   const selectedUri = resetDialog ? null : selected.value?.uri ?? null
   if (resetDialog) {
-    folderTarget.value = null
+    detailTarget.value = null
     loading.value = true
     previews.value = []
     selected.value = null
@@ -523,6 +524,7 @@ async function load(resetDialog = true): Promise<void> {
       const refreshedSelection = loaded.find(item => item.uri === selectedUri) ?? null
       selected.value = refreshedSelection
       if (!refreshedSelection || refreshedSelection.deleted) {
+        detailTarget.value = null
         datasetDialogOpen.value = false
         dialogOpen.value = false
         documentDialogOpen.value = false
@@ -606,17 +608,23 @@ function handlePreviewClick(event: MouseEvent, preview: MessageResourcePreview):
 }
 
 function openPreview(preview: MessageResourcePreview): void {
-  if (documentFolderId(preview.uri)) {
-    folderTarget.value = richLinkTarget(preview.uri, preview.title, props.viewerAgentId)
+  if (preview.deleted) return
+  const target = richLinkTarget(preview.uri, preview.title, props.viewerAgentId)
+  if (target && target.kind !== 'document' && target.kind !== 'dataset') {
+    resetResource()
+    selected.value = preview
+    dialogOpen.value = documentDialogOpen.value = datasetDialogOpen.value = false
+    detailTarget.value = target
     return
   }
+  detailTarget.value = null
   if (isDirectory(preview)) {
     if (canOpenDirectory(preview)) emit('openDirectory', preview.uri, props.messageId)
     return
   }
   if (preview.kind === 'code') { emit('openRepository', preview.uri.replace('galaris://code/', '')); return }
-  if (preview.deleted || resourceKind(preview) === 'audio') return
-  if (richLinkTarget(preview.uri)?.kind === 'dataset') {
+  if (resourceKind(preview) === 'audio') return
+  if (target?.kind === 'dataset') {
     resetResource()
     selected.value = preview
     dialogOpen.value = documentDialogOpen.value = false
