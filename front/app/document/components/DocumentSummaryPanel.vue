@@ -1,6 +1,5 @@
 <template>
-  <section class="document-summary-panel document-secondary-panel column no-wrap" :aria-label="t('resourceSummary.title')"
-    :style="{ minHeight, maxHeight: maxHeight || undefined }">
+  <section class="document-summary-panel document-secondary-panel column no-wrap" :aria-label="t('resourceSummary.title')">
     <header class="document-secondary-header">
       <q-icon name="short_text" color="primary" size="26px" />
       <div class="text-h6 document-secondary-heading">{{ t('resourceSummary.title') }}</div>
@@ -32,7 +31,7 @@
       </div>
     </header>
     <q-separator />
-    <div class="document-secondary-content q-pa-sm scroll col">
+    <div class="document-secondary-content q-px-sm q-pt-sm col column no-wrap overflow-hidden">
       <div v-if="loading" class="row justify-center q-pa-md" role="status">
         <q-spinner color="primary" size="32px" :aria-label="t('resourceSummary.loading')" />
       </div>
@@ -45,8 +44,8 @@
       </q-banner>
       <template v-if="summary && !loading">
         <div v-if="!writable && !hasContent" class="text-grey-7 q-pa-sm">{{ t('resourceSummary.empty') }}</div>
-        <RichTextEditor v-else v-model="draft" profile="rich-text" toolbar-mode="simple" :readonly="!writable || busy"
-          :aria-label="t('resourceSummary.title')" :min-height="minHeight" :max-height="maxHeight" auto-grow />
+        <RichTextEditor v-else v-model="draft" class="document-summary-editor" profile="rich-text" toolbar-mode="simple" :readonly="!writable || busy"
+          :aria-label="t('resourceSummary.title')" min-height="0" auto-grow />
         <div v-if="dirty" class="text-caption q-pa-sm" role="status">
           {{ t('documents.summaryUnsaved') }}
         </div>
@@ -79,7 +78,7 @@ import { documentService } from '../services/documentService'
 import type { DocumentDetail } from '../types'
 
 const props = defineProps<{
-  documentId: string; agentId: number | null; editable: boolean; minHeight: string; maxHeight?: string
+  documentId: string; agentId: number | null; editable: boolean
 }>()
 const emit = defineEmits<{ close: []; updated: [summary: DocumentDetail] }>()
 const { t } = useI18n()
@@ -169,3 +168,24 @@ watch(() => [props.documentId, props.agentId], () => { regenerationOpen.value = 
 onBeforeUnmount(() => { generation++; controller?.abort() })
 defineExpose({ flush })
 </script>
+
+<style scoped>
+.document-summary-editor,
+.document-summary-editor :deep(.editorial-workspace),
+.document-summary-editor :deep(.editorial-body),
+.document-summary-editor :deep(.editorial-body > div) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.document-summary-editor :deep(.editorial-toolbar) {
+  flex-shrink: 0;
+}
+
+.document-summary-editor :deep([data-editor-surface]) {
+  flex: 1;
+}
+</style>

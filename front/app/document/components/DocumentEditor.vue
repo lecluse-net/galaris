@@ -1,5 +1,5 @@
 <template>
-  <div ref="focusContainer" class="document-editor">
+  <div ref="focusContainer" class="document-editor" :class="{ 'document-editor--summary': summaryOpen }">
     <div v-if="loading" class="document-editor-state">
       <q-spinner color="primary" size="36px" />
     </div>
@@ -216,7 +216,6 @@
       <DocumentSummaryPanel v-else-if="summaryOpen" ref="summaryPanel"
         :key="currentDocument.id + ':' + requestAgentId"
         :document-id="currentDocument.id" :agent-id="requestAgentId" :editable="canEditDocument"
-        :min-height="contentMinHeight" :max-height="contentMaxHeight"
         @close="closeDocumentSummary" @updated="onSummaryUpdated" />
       <DocumentHistoryDialog
         v-else
@@ -1333,6 +1332,9 @@ function restoreDraft(document: DocumentDetail): void {
 
 <style scoped>
 .document-editor { min-width: 0; }
+.document-editor--summary { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.document-editor--summary > .document-editor-toolbar { flex-shrink: 0; }
+.document-editor--summary :deep(> .document-summary-panel) { flex: 1 1 auto; min-height: 0; }
 .document-editor-state { min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .document-editor-error { color: var(--solaire-red-accent); background: var(--solaire-red-light); }
 .document-editor-error--dark { background: var(--solaire-red-dark); }
