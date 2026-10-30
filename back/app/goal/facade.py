@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from core.database import get_db
+from core.params import Params, params_service, prompt_default
 
 from .models import (
     Goal,
@@ -18,6 +19,20 @@ from .models import (
     GoalStatus,
     GoalVerdict,
 )
+
+
+def goal_tracking_system_prompt() -> str:
+    """Return the packaged Goal judgement default without accessing runtime state."""
+    value = prompt_default(Params.AI_GOAL_TRACKING_SYSTEM_PROMPT)
+    if not value or not value.strip():
+        raise RuntimeError("Missing built-in Goal tracking system prompt.")
+    return value
+
+
+async def resolve_goal_tracking_system_prompt() -> str:
+    """Resolve the editable prompt for a new judgement or Lab dataset."""
+    value = await params_service.get_or_default(Params.AI_GOAL_TRACKING_SYSTEM_PROMPT)
+    return value.strip() if value and value.strip() else goal_tracking_system_prompt()
 
 
 @dataclass(frozen=True, slots=True)

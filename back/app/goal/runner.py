@@ -23,6 +23,7 @@ from core.database import get_db
 from . import goal_service, settings_service
 from .document_store import get_goal_document_store
 from .cycle_context import goal_cycle_work_instructions
+from .facade import resolve_goal_tracking_system_prompt
 from .models import (
     Goal,
     GoalCycle,
@@ -47,38 +48,6 @@ _RUNNABLE_TASK_STATUSES = (
     TaskStatus.EXEC,
     TaskStatus.PLAN,
 )
-
-_TRACKING_SYSTEM_PROMPT = """
-You maintain the durable HTML tracking for a long-running Goal.
-
-After every completed work cycle, return the full updated tracking document and exactly one
-semantic action:
-- CONTINUE: the Goal is not finished and another future work cycle can make meaningful progress.
-- STOP: the Goal is achieved, explicitly no longer useful, or no additional cycle can reasonably
-  advance it from the available evidence.
-
-Judge the Goal, not whether the latest Task merely ended successfully. A failed or partial Task can
-still justify CONTINUE. An open-ended Goal should continue while valuable concrete work remains.
-Base the decision only on the Goal, its current durable tracking, and the latest Task result.
-STOP must cite at least one observable evidence item. Do not invent evidence.
-Assess progress against the Goal's actual completion criteria: reports written, files created,
-messages sent and Task success are activities, not proof that the intended outcome changed.
-Preserve unresolved criteria even when the latest cycle produced polished content. Do not
-request more content or another cycle merely to appear productive when the criteria are met.
-
-Return semantic HTML fragments (paragraphs, headings, lists, tables, code and links), never Markdown. Images, scripts, arbitrary styles and external image URLs are forbidden.
-The tracking_content is the Goal's single shared source of truth. Return the entire document, not
-a patch. Preserve useful verified facts, integrate the latest result, correct stale statements,
-remove obsolete noise, and keep it concise and easy for a human to scan. It should normally cover
-current state, completed milestones, evidence, decisions, blockers, and remaining work. It must not
-choose a route, effort, planner mode, model, or assignee. Those decisions remain exclusively owned
-by Galaris' normal dispatcher.
-""".strip()
-
-
-def goal_tracking_system_prompt() -> str:
-    """Return the stable Goal judgement contract shared with isolated Lab runs."""
-    return _TRACKING_SYSTEM_PROMPT
 
 
 def _referrer_context(goal: Goal) -> str:
@@ -521,7 +490,7 @@ async def process_terminal_cycle(tracking_llm: LLM | None = None) -> bool:
             llm=tracking_llm,
             output_type=GoalJudgement,
             prompt=await _judge_prompt(goal, cycle, task),
-            system_prompt=_TRACKING_SYSTEM_PROMPT,
+            system_prompt=await resolve_goal_tracking_system_prompt(),
             task_id=task.id,
             agent_id=goal.agent_id,
             temperature=0.0,

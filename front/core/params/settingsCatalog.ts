@@ -30,6 +30,15 @@ export const languageFields: SettingField[] = [
     },
 ]
 
+export const goalFields: SettingField[] = [
+    {
+        name: 'ai.goal-tracking-system-prompt',
+        labelKey: 'goalSettings.trackingPrompt',
+        descriptionKey: 'goalSettings.trackingPromptHint',
+        input: 'prompt',
+    },
+]
+
 export const executorInstructionFields: SettingField[] = [
     {
         name: 'ai.executor-system-prompt',

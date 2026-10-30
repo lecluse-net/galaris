@@ -8,6 +8,10 @@ export default {
       params: 'Préférences',
       params_desc: 'Configuration guidée de l’application',
     },
+    goalSettings: {
+      trackingPrompt: 'Prompt de suivi des objectifs',
+      trackingPromptHint: 'Prompt complet utilisé après chaque cycle pour actualiser le suivi et décider de poursuivre ou de terminer. Les modifications s’appliquent aux prochains jugements. Effacer le contenu restaure le prompt standard.',
+    },
     params: {
       title: 'Paramètres',
       janus: 'Janus',
@@ -66,7 +70,7 @@ export default {
       },
       agentInstructions: 'Instructions pour les agents',
       executorInstructions: 'Instructions des exécuteurs',
-      executorInstructionsHelp: 'Les trois premiers textes Markdown sont ajoutés comme dernier nœud du prompt de leur exécuteur. La politique conversationnelle remplace la règle par défaut commune au texte et à la voix.',
+      executorInstructionsHelp: 'Les instructions des exécuteurs complètent leurs prompts de tâche, texte et voix. La politique conversationnelle et le prompt de suivi des objectifs remplacent leurs règles par défaut respectives.',
       updated: 'Paramètre « {name} » mis à jour',
       updateError: 'Erreur lors de la mise à jour de « {name} »',
       // Libellés/descriptions des paramètres (clé = nom du paramètre, « . » et « - » → « _ »).
@@ -424,6 +428,10 @@ export default {
       params: 'Preferences',
       params_desc: 'Guided application configuration',
     },
+    goalSettings: {
+      trackingPrompt: 'Goal tracking prompt',
+      trackingPromptHint: 'Complete prompt used after each cycle to update tracking and decide whether to continue or stop. Changes apply to subsequent judgements. Clearing the content restores the standard prompt.',
+    },
     params: {
       title: 'Settings',
       janus: 'Janus',
@@ -482,7 +490,7 @@ export default {
       },
       agentInstructions: 'Agent instructions',
       executorInstructions: 'Executor instructions',
-      executorInstructionsHelp: 'The first three Markdown texts are appended as the final node of their executor prompt. The conversation policy replaces the default rule shared by text and voice.',
+      executorInstructionsHelp: 'Executor instructions supplement their Task, text and voice prompts. The conversation policy and Goal tracking prompt replace their respective default rules.',
       updated: 'Setting "{name}" updated',
       updateError: 'Error while updating "{name}"',
       // Param labels/descriptions (key = param name, "." and "-" → "_").
@@ -840,6 +848,10 @@ export default {
       params: '偏好设置',
       params_desc: '应用程序引导式配置',
     },
+    goalSettings: {
+      trackingPrompt: '目标跟踪提示词',
+      trackingPromptHint: '每个周期结束后用于更新跟踪并决定继续或停止的完整提示词。修改适用于后续评估。清空内容可恢复默认提示词。',
+    },
     params: {
       title: '设置',
       janus: 'Janus',
@@ -856,7 +868,7 @@ export default {
         llm: { title: 'LLM 调用历史', description: '永久删除已不再运行的 LLM 调用跟踪。', preserved: '运行中的 LLM 调用会保留。', button: '清除 LLM 调用', confirmTitle: '清除 LLM 调用历史？', confirmMessage: '所有已完成 LLM 调用的跟踪将被永久删除。', success: 'LLM 调用历史已清除', error: '清除 LLM 调用历史时出错' },
         incidents: { title: '错误日志', description: '永久删除已保存的故障事件、跟踪和分组模式。', preserved: '仍会继续收集新错误。', button: '清空错误日志', confirmTitle: '清空错误日志？', confirmMessage: '所有故障事件、详细跟踪和已归类模式将被永久删除。', success: '错误日志已清空', error: '清除错误日志时出错' },
       },
-      agentInstructions: '智能体指令', executorInstructions: '执行器指令', executorInstructionsHelp: '前三段 Markdown 文本会作为相应执行器提示词的最后一个节点添加。对话策略会替换文字和语音共用的默认规则。',
+      agentInstructions: '智能体指令', executorInstructions: '执行器指令', executorInstructionsHelp: '执行器指令补充任务、文字和语音提示词。对话策略和目标跟踪提示词分别替换各自的默认规则。',
       updated: '参数“{name}”已更新', updateError: '更新“{name}”时出错',
       def: {
         ai_executor_system_prompt: { label: '任务执行器', description: '添加到所有运行时任务提示词末尾的指令。留空 = 不添加额外指令。' },

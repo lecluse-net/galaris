@@ -344,7 +344,7 @@ tests restent l’autorité sur le comportement.
 | `app.goal` | `core.database` | `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.dbadmin` | `back/app/goal/dbadmin.py` |
 | `app.goal` | `core.i18n` | `back/app/goal/referrer_wait.py` |
-| `app.goal` | `core.params` | `back/app/goal/settings_service.py` |
+| `app.goal` | `core.params` | `back/app/goal/facade.py`, `back/app/goal/settings_service.py` |
 | `app.goal` | `core.scheduling` | `back/app/goal/__init__.py` |
 | `app.goal` | `core.storage` | `back/app/goal/dbadmin.py` |
 | `app.goal` | `core.user` | `back/app/goal/events.py`, `back/app/goal/goal_service.py` |
@@ -384,7 +384,7 @@ tests restent l’autorité sur le comportement.
 | `app.lab` | `app.conversation` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.dataset` | `back/app/lab/process_evaluation.py`, `back/app/lab/process_evaluation_router.py` |
 | `app.lab` | `app.dream` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/run_inference.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
-| `app.lab` | `app.goal` | `back/app/lab/mechanism_registry.py` |
+| `app.lab` | `app.goal` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py` |
 | `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/cost_report.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.memory` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `app.messenger` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |

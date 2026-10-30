@@ -46,8 +46,11 @@ test('personal chat display preferences require an enabled accessible chat and r
   await expect(select).toHaveCount(0)
 })
 
-test('prompt customization displays a diff, persists choices and respects revoked rights', async ({ page }) => {
-  const name = 'ai.executor-system-prompt'
+for (const [name, label, privileges] of [
+  ['ai.executor-system-prompt', 'Task executor', ['INSTRUCTION_CONFIG_EDIT']],
+  ['ai.goal-tracking-system-prompt', 'Goal tracking prompt', ['GOAL_CONFIG_EDIT']],
+]) {
+test(`${name}: customization displays a diff, persists choices and respects revoked rights`, async ({ page }) => {
   let param = { name, value: 'Custom instructions', secret: false, configured: true,
     prompt: { default_value: 'Default instructions', customized: true, default_changed: true } }
   const requests = []
@@ -59,9 +62,13 @@ test('prompt customization displays a diff, persists choices and respects revoke
       prompt: { ...param.prompt, default_changed: false, customized: body.prompt_action !== 'use_default' } }
     return route.fulfill({ json: { ...param, status: 'ok' } })
   })
-  await mount(page, 'core/params/components/PromptSettingEditor.vue', { props: { field: { name, input: 'prompt', labelKey: 'promptEditor.content' } }, privileges: ['PARAMS_EDIT'] })
-  await page.evaluate(param => window.testApp.patchStore('core/params/stores/paramsStore.ts', 'useParamsStore', { params: [param] }), param)
-  const editor = page.locator('textarea')
+  await page.route('**/api/params', route => route.fulfill({ json: { params: [param] } }))
+  await mount(page, 'core/params/components/PreferencesSectionPage.vue', {
+    props: { section: 'instructions' }, route: '/params/instructions', privileges,
+  })
+  const block = page.getByRole('region', { name: label, exact: true })
+  await block.locator('.q-expansion-item__container > .q-item').click()
+  const editor = block.locator('textarea')
   await expect(editor).toHaveValue('Custom instructions')
   await page.getByRole('button', { name: 'Show differences', exact: true }).click()
   await expect(page.locator('.prompt-editor__diff-line--removed')).toContainText('Default instructions')
@@ -75,10 +82,16 @@ test('prompt customization displays a diff, persists choices and respects revoke
   await page.getByRole('dialog').getByRole('button', { name: 'Use default', exact: true }).click()
   await expect.poll(() => requests.at(-1)).toMatchObject({ value: null, prompt_action: 'use_default' })
   await expect(editor).toHaveValue('Default instructions')
-  await setPrivileges(page, [])
+  await setPrivileges(page, privileges.map(code => code.replace('_EDIT', '_ACCESS')))
+  // Refreshing privileges remounts the page with its advanced sections closed.
+  await block.getByRole('button', { name: `Expand "${label}"`, exact: true }).click()
+  await expect(editor).toBeVisible()
   await expect(editor).not.toBeEditable()
   await expect(page.getByRole('button', { name: 'Save customization', exact: true })).toBeDisabled()
+  await setPrivileges(page, [])
+  await expect(page.locator('.settings-panel')).toHaveCount(0)
 })
+}
 
 // Keyboard navigation and attribution safety move with the links to About.
 test('sidebar footer exposes its build version and About remains reachable in compact mode', async ({ page }) => {

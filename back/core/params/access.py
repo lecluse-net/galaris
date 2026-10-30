@@ -57,7 +57,7 @@ def parameter_domain(name: str) -> str:
         return "logs"
     if name == "PYDANTIC_AI_BINARY_INPUT_MAX_BYTES" or name.startswith(("HARNESS_MANAGER_", "harness.", "hermes.default.")):
         return "harnesses"
-    if name == "goal.runtime.settings":
+    if name in {"goal.runtime.settings", "ai.goal-tracking-system-prompt"}:
         return "goals"
     if name == "janus.aliases":
         return "janus"

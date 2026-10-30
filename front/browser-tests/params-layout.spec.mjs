@@ -90,7 +90,7 @@ const sectionCatalogs = {
   audio: ['audioMeetingSummaryFields', 'audioVideoSummaryFields'],
   process: ['processGeneralFields', 'processAdvancedFields'],
   tasks: ['taskSchedulerFields', 'taskRetryFields', 'taskCreationFields', 'taskBudgetFields', 'taskCollaborationFields'],
-  search: ['searchFields'], instructions: ['executorInstructionFields'],
+  search: ['searchFields'], instructions: ['executorInstructionFields', 'goalFields'],
   messaging: ['commonMessagingFields'], harnesses: [], janus: [], logs: ['traceRetentionFields'],
 }
 
@@ -128,7 +128,9 @@ for (const [section, catalogs] of Object.entries(sectionCatalogs)) {
   test(`preferences ${section}: every existing setting remains available on desktop and mobile`, async ({ page }, testInfo) => {
     await fixtures(page)
     await mount(page, 'core/params/components/PreferencesSectionPage.vue', {
-      props: { section }, privileges: ['PARAMS_ACCESS', 'PARAMS_EDIT', 'TASK_PURGE', 'LLM_CALL_PURGE', 'INCIDENT_PURGE'],
+      props: { section }, privileges: section === 'instructions'
+        ? ['INSTRUCTION_CONFIG_ACCESS', 'INSTRUCTION_CONFIG_EDIT', 'GOAL_CONFIG_ACCESS', 'GOAL_CONFIG_EDIT']
+        : ['PARAMS_ACCESS', 'PARAMS_EDIT', 'TASK_PURGE', 'LLM_CALL_PURGE', 'INCIDENT_PURGE'],
     })
     await expect(page.locator('.settings-panel')).toBeVisible()
     await expect(page.locator('.q-expansion-item--expanded')).toHaveCount(0)

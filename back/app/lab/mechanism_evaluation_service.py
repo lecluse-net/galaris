@@ -311,7 +311,11 @@ async def prepare_dataset(
             else await executor_prompt_service.default_suffix(definition.executor)
         )
     configuration: dict[str, Any] = {}
-    if mechanism == "planner":
+    if mechanism == "goal_tracking":
+        from app.goal.facade import resolve_goal_tracking_system_prompt
+
+        configuration = {"system_prompt": await resolve_goal_tracking_system_prompt()}
+    elif mechanism == "planner":
         configuration = _planner_configuration_dump(await default_planner_lab_configuration())
     elif mechanism == "topic_classification":
         configuration = _topic_configuration_dump(await default_topic_lab_configuration())

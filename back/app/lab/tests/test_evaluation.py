@@ -124,6 +124,29 @@ def test_lab_exposes_all_isolated_ai_mechanisms() -> None:
 
 
 @pytest.mark.asyncio
+async def test_goal_tracking_dataset_freezes_the_configured_prompt(db: AsyncSession) -> None:
+    from core.params import params_service
+
+    name = Params.AI_GOAL_TRACKING_SYSTEM_PROMPT
+    assert await params_service.set(name, "Synthetic Goal tracking policy v1")
+    dataset = await mechanism_evaluation_service.create_dataset(
+        "goal_tracking", MechanismDatasetCreate(name="Synthetic Goal tracking")
+    )
+    assert dataset.configuration["system_prompt"] == "Synthetic Goal tracking policy v1"
+
+    assert await params_service.set(name, "Synthetic Goal tracking policy v2")
+    await db.commit()
+    persisted = await db.get(LabEvaluationDataset, dataset.id)
+    assert persisted is not None
+    await db.refresh(persisted)
+    assert persisted.configuration["system_prompt"] == "Synthetic Goal tracking policy v1"
+    next_dataset = await mechanism_evaluation_service.prepare_dataset(
+        "goal_tracking", MechanismDatasetCreate(name="Next synthetic Goal tracking")
+    )
+    assert next_dataset.configuration["system_prompt"] == "Synthetic Goal tracking policy v2"
+
+
+@pytest.mark.asyncio
 async def test_planner_dataset_owns_and_freezes_its_prompt(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,

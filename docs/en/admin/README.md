@@ -373,6 +373,12 @@ current default, and **Revert to default** re-enables automatic tracking. After 
 changes a default, a customization is never overwritten: the editor asks whether to keep the
 instance version or adopt the newly provided version.
 
+**Preferences → Instructions** exposes the complete `ai.goal-tracking-system-prompt` prompt.
+`GOAL_CONFIG_ACCESS` and `GOAL_CONFIG_EDIT` control reading and editing it.
+Each new judgement uses the configured value; a judgement already started keeps its request.
+New Goal tracking Lab datasets copy that value, then keep their own version independently
+of later changes in Preferences.
+
 A change of vector model triggers an asynchronous rebuild. Until it is complete, deep recall
 explicitly falls back to lexical search.
 The text chunks of each memory are sent to the selected provider: select an external provider only

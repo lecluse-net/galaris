@@ -612,6 +612,10 @@ export const parameterAccess: Record<string, readonly string[]> = {
     "INSTRUCTION_CONFIG_ACCESS",
     "INSTRUCTION_CONFIG_EDIT"
   ],
+  "ai.goal-tracking-system-prompt": [
+    "GOAL_CONFIG_ACCESS",
+    "GOAL_CONFIG_EDIT"
+  ],
   "ai.memory-extraction-system-prompt": [
     "DREAM_CONFIG_ACCESS",
     "DREAM_EDIT"

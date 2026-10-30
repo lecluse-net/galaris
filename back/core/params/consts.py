@@ -87,6 +87,7 @@ class Params:
     AI_TOPIC_CONTINUITY_SYSTEM_PROMPT = "ai.topic-continuity-system-prompt"
     AI_TOPIC_RESOLUTION_SYSTEM_PROMPT = "ai.topic-resolution-system-prompt"
     AI_MEMORY_EXTRACTION_SYSTEM_PROMPT = "ai.memory-extraction-system-prompt"
+    AI_GOAL_TRACKING_SYSTEM_PROMPT = "ai.goal-tracking-system-prompt"
     AUDIO_SUMMARY_MEETING_SEGMENT_SYSTEM_PROMPT = (
         "audio.summary-meeting-segment-system-prompt"
     )
@@ -401,6 +402,12 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
         "empty_uses_default": True,
     },
     Params.AI_MEMORY_EXTRACTION_SYSTEM_PROMPT: {
+        "value": None,
+        "kind": "prompt",
+        "display_default": True,
+        "empty_uses_default": True,
+    },
+    Params.AI_GOAL_TRACKING_SYSTEM_PROMPT: {
         "value": None,
         "kind": "prompt",
         "display_default": True,

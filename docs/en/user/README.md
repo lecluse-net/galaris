@@ -244,6 +244,11 @@ Galaris updates Goal tracking automatically at the end of the cycle, using the e
 returned by the Agent. A requested delivery still needs to be performed with the required
 permissions; automatic tracking does not replace it.
 
+In **Preferences → Instructions**, authorized users can customize the tracking prompt: the current-state
+synthesis, information to preserve, and continuation decision. Changes apply to subsequent
+judgements. **Restore default** restores the Galaris instructions, which merge repetitions
+without imposing a target length.
+
 When an Agentic HR Agent has the corresponding management capabilities, you can ask it, for example:
 
 > Give the Sales Agent the durable Goal “Structure prospect tracking,” with the Management Agent as the referent, then tell me how it is progressing.

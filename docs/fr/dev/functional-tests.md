@@ -1710,6 +1710,11 @@ compétence chargée, comme les consignes d'usage direct des URI et d'état rée
 La même vérification couvre le rappel des souvenirs pertinents et des compétences personnelles
 ou génériques, sans charger le guide complet dans le socle. Les tests de `core/params` couvrent
 les sources canoniques et la conservation des personnalisations lors d'un changement de défaut.
+Le scénario de jugement de `app/goal/tests/test_goal_runner.py` vérifie que le prompt configuré
+atteint l'inférence et que le défaut est utilisé après réinitialisation. Le scénario de
+`app/lab/tests/test_evaluation.py` vérifie que chaque nouveau dataset de suivi copie cette valeur
+sans modifier les précédents. Les contrôles de droits des paramètres et le parcours partagé
+d'édition de prompt couvrent aussi ce réglage dans **Préférences → Instructions**.
 `app/conversation/tests/test_task_objective.py` vérifie leur transmission à la préparation
 d'objectif sans imposer de méthode navigateur non demandée. Le scénario d'attente de
 `app/task/tests/test_agent_run_trace.py` vérifie aussi, en base, le retrait des anciens UUIDs

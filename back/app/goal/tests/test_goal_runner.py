@@ -985,9 +985,13 @@ async def test_continue_schedules_from_task_finish_and_keeps_paused_goal_paused(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("custom_prompt", [None, "Maintain the synthetic Goal using its verified evidence."])
 async def test_terminal_cycle_is_judged_once_and_stop_completes_goal(
-    db, monkeypatch: pytest.MonkeyPatch
+    db, monkeypatch: pytest.MonkeyPatch, custom_prompt: str | None
 ) -> None:
+    from core.params import Params, params_service
+
+    assert await params_service.set(Params.AI_GOAL_TRACKING_SYSTEM_PROMPT, custom_prompt)
     agent = await _new_agent(db)
     goal = await make_goal(
         title="Finite objective",
@@ -1061,7 +1065,13 @@ async def test_terminal_cycle_is_judged_once_and_stop_completes_goal(
     assert tracking_call["task_id"] == task_id
     assert tracking_call["agent_id"] == agent_id
     assert tracking_call["request_limit"] == 2
-    assert infer_call_type([], tracking_call["system_prompt"]) == "goal_tracking"
+    assert tracking_call["system_prompt"] == (
+        custom_prompt if custom_prompt is not None else await params_service.declared_default(
+            Params.AI_GOAL_TRACKING_SYSTEM_PROMPT
+        )
+    )
+    if custom_prompt is None:
+        assert infer_call_type([], tracking_call["system_prompt"]) == "goal_tracking"
 
 
 @pytest.mark.asyncio

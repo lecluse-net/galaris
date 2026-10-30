@@ -382,6 +382,12 @@ version éditée au défaut courant et **Revenir au défaut** réactive le suivi
 mise à jour qui change un défaut, une personnalisation n’est jamais écrasée : l’éditeur demande de
 garder la version de l’instance ou d’adopter la nouvelle version fournie.
 
+**Préférences → Instructions** expose le prompt complet `ai.goal-tracking-system-prompt`.
+Les droits `GOAL_CONFIG_ACCESS` et `GOAL_CONFIG_EDIT` contrôlent sa lecture et sa modification.
+Chaque nouveau jugement utilise la valeur configurée ; un jugement déjà lancé conserve sa
+requête. Les nouveaux jeux de données de suivi du Lab en copient la valeur, puis gardent leur
+propre version indépendamment des modifications ultérieures dans Préférences.
+
 Un changement de modèle vectoriel déclenche une reconstruction asynchrone. Tant qu'elle n'est pas
 terminée, le rappel approfondi se replie explicitement sur la recherche lexicale.
 Les chunks textuels de chaque mémoire sont transmis au provider choisi : ne sélectionnez un

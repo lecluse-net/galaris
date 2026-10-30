@@ -2131,6 +2131,7 @@
       },
       {
         "files": [
+          "back/app/goal/facade.py",
           "back/app/goal/settings_service.py"
         ],
         "source": "app.goal",
@@ -2497,6 +2498,7 @@
       },
       {
         "files": [
+          "back/app/lab/mechanism_evaluation_service.py",
           "back/app/lab/mechanism_registry.py"
         ],
         "source": "app.lab",

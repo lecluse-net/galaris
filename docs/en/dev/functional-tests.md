@@ -1634,6 +1634,11 @@ The same guarantee covers direct URI use and actual authorization states.
 It also covers guidance to use relevant memories and personal or library skills without
 loading the full guide into the foundation. The `core/params` tests cover canonical sources
 and preservation of customizations when a packaged default changes.
+The judgement scenario in `app/goal/tests/test_goal_runner.py` checks that the configured prompt
+reaches inference and that resetting it restores the default. The scenario in
+`app/lab/tests/test_evaluation.py` checks that each new tracking dataset copies that value
+without changing previous datasets. Parameter authorization checks and the shared prompt-editing
+journey also cover this setting in **Preferences → Instructions**.
 `app/conversation/tests/test_task_objective.py` verifies delivery to objective preparation
 without imposing an unrequested browser method. The authorization-wait scenario in
 `app/task/tests/test_agent_run_trace.py` also verifies, in the database, that resumed success

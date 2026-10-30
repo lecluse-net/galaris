@@ -38,7 +38,7 @@ async def test_each_settings_domain_reads_only_its_keys_and_only_its_writer_can_
         assert set(rows) == expected, code
         key = sorted(expected)[0]
         saved = await client.put(f"/api/params/{key}", headers=headers, json={"value": rows[key]["value"]})
-        assert saved.status_code == (200 if index and domain != "goals" else 403), (code, key, saved.text)
+        assert saved.status_code == (200 if index and key != "goal.runtime.settings" else 403), (code, key, saved.text)
         foreign = next(str(row["name"]) for row in declared_rows() if parameter_privileges(str(row["name"])) not in ((), pair))
         assert (await client.put(f"/api/params/{foreign}", headers=headers, json={"value": None})).status_code == 403
         if index:

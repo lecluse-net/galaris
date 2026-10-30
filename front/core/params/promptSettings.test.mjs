@@ -14,6 +14,7 @@ const promptNames = [
   'ai.topic-continuity-system-prompt',
   'ai.topic-resolution-system-prompt',
   'ai.memory-extraction-system-prompt',
+  'ai.goal-tracking-system-prompt',
   'audio.summary-meeting-segment-system-prompt',
   'audio.summary-meeting-reduce-system-prompt',
   'audio.summary-meeting-final-system-prompt',

@@ -150,9 +150,9 @@
                     </q-tab-panel>
 
                     <q-tab-panel name="instructions" class="settings-panel">
-                        <div class="text-h6 text-primary q-mb-xs">{{ t('params.executorInstructions') }}</div>
+                        <div class="text-h6 text-primary q-mb-xs">{{ t('params.agentInstructions') }}</div>
                         <div class="text-body2 text-grey-7 q-mb-lg">{{ t('params.executorInstructionsHelp') }}</div>
-                        <SettingsBlock v-for="field in executorInstructionFields" :key="field.name"
+                        <SettingsBlock v-for="field in instructionFields" :key="field.name"
                             :title="t(field.labelKey)" :description="field.descriptionKey ? t(field.descriptionKey) : undefined"
                             icon="description" advanced>
                             <SettingsFields :fields="[field]" />
@@ -186,6 +186,7 @@ import {
     audioMeetingSummaryFields,
     audioVideoSummaryFields,
     executorInstructionFields,
+    goalFields,
     languageFields,
     processAdvancedFields,
     processGeneralFields,
@@ -195,7 +196,7 @@ import {
     voiceFields,
 } from '../settingsCatalog'
 import { useParamsStore } from '../stores/paramsStore'
-import { sectionPrivileges } from '../access'
+import { parameterReadPrivileges, sectionPrivileges } from '../access'
 import BridgeSettingsPanel from './BridgeSettingsPanel.vue'
 import PreferencesMenuGrid from './PreferencesMenuGrid.vue'
 import SettingsFields from './SettingsFields.vue'
@@ -216,6 +217,8 @@ const { t } = useI18n()
 const $q = useQuasar()
 const paramsStore = useParamsStore()
 const privilegeStore = usePrivilegeStore()
+const instructionFields = computed(() => [...executorInstructionFields, ...goalFields]
+    .filter(field => privilegeStore.hasAnyPrivilege(parameterReadPrivileges(field.name))))
 const canViewSection = computed(() => privilegeStore.hasAnyPrivilege(sectionPrivileges(section)))
 const canEdit = computed(() => privilegeStore.hasPrivilege(sectionPrivileges(section)[1] ?? ''))
 const currentSection = computed(() => preferenceSections.find(item => item.key === section) ?? preferenceSections[0])
@@ -285,7 +288,7 @@ async function copyJanusApiUrl(): Promise<void> {
 watch([() => section, canViewSection], async ([, allowed]) => {
     if (!allowed) return
     await Promise.all([
-        ...(privilegeStore.hasAnyPrivilege(sectionPrivileges(section).slice(0, 2)) ? [paramsStore.fetchParams()] : []),
+        ...(section === 'instructions' || privilegeStore.hasAnyPrivilege(sectionPrivileges(section).slice(0, 2)) ? [paramsStore.fetchParams()] : []),
         ...(section === 'harnesses' ? harnessBridgeSettings.map(contribution => contribution.refreshAvailability?.()) : []),
     ])
     syncParamValues()

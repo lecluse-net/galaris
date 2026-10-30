@@ -288,6 +288,11 @@ Galaris actualise automatiquement le suivi de l'objectif à la fin du cycle, à 
 preuves remontées par l'agent. Une livraison demandée reste une action à réaliser avec
 les autorisations nécessaires ; le suivi automatique ne la remplace pas.
 
+Dans **Préférences → Instructions**, les personnes autorisées peuvent personnaliser le prompt
+de suivi : synthèse de l'état actuel, informations à conserver et décision de poursuite.
+La modification s'applique aux prochains jugements. **Revenir au défaut** restaure les
+consignes Galaris, qui fusionnent les répétitions sans imposer de cible de longueur.
+
 Lorsqu’une DRH agentique dispose des capacités de gestion correspondantes, vous pouvez lui
 demander par exemple :
 
