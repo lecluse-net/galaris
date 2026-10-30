@@ -39,6 +39,17 @@
           size="15px"
           class="compact-operation-spinner"
         />
+        <q-icon
+          v-if="operation.kind === 'tool'"
+          :name="operation.step.success === false ? 'close' : 'check'"
+          size="10px"
+          class="compact-operation-outcome"
+          :class="{ 'compact-operation-outcome--error': operation.step.success === false }"
+          role="img"
+          aria-hidden="false"
+          :aria-label="t(operation.step.success === false ? 'task.dispatch.failure' : 'task.dispatch.success')"
+          :title="t(operation.step.success === false ? 'task.dispatch.failure' : 'task.dispatch.success')"
+        />
       </div>
       <div
         v-if="operation.arguments.length || operation.preview"
@@ -71,7 +82,7 @@ import { shouldAnimateTaskStatus, type AIMessage, type ExecutionResult, type Tas
 import { compactStreamingTail } from '../compactTaskOperations'
 
 const MAX_VISIBLE_OPERATIONS = 4
-const MAX_TOOL_PREVIEW_CHARS = 1_000
+const MAX_PREVIEW_CHARS = 1_000
 
 const props = withDefaults(defineProps<{
   executionResult?: ExecutionResult
@@ -132,14 +143,15 @@ function operationLabel(step: AIMessage, kind: OperationKind): string {
 }
 
 function operationPreview(step: AIMessage, kind: OperationKind): string {
+  if (kind === 'tool') return ''
   const normalized = (step.content || '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/[`*_>#-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
   if (kind === 'text' || kind === 'thinking') return compactStreamingTail(normalized)
-  return normalized.length > MAX_TOOL_PREVIEW_CHARS
-    ? `${normalized.slice(0, MAX_TOOL_PREVIEW_CHARS - 1).trim()}…`
+  return normalized.length > MAX_PREVIEW_CHARS
+    ? `${normalized.slice(0, MAX_PREVIEW_CHARS - 1).trim()}…`
     : normalized
 }
 
@@ -202,6 +214,8 @@ function operationColor(kind: OperationKind): string {
 .compact-operation-heading { display: flex; width: 100%; min-width: 0; align-items: flex-start; gap: 4px; }
 .compact-operation-icon { flex: 0 0 auto; margin-top: -1px; }
 .compact-operation-label { flex: 1 1 auto; min-width: 0; color: var(--chat-text, #344054); overflow-wrap: anywhere; font-weight: 650; }
+.compact-operation-outcome { box-sizing: border-box; flex: 0 0 auto; align-self: center; width: 14px; height: 14px; border: 1px solid currentColor; border-radius: 50%; color: var(--solaire-green-accent); }
+.compact-operation-outcome--error { color: var(--solaire-red-accent); }
 .compact-operation-body { min-width: 0; margin-left: 20px; }
 .compact-arguments-table { width: 100%; margin: 2px 0 1px; table-layout: auto; overflow: hidden; border: 1px solid var(--chat-border, rgba(35, 46, 66, .09)); border-collapse: separate; border-spacing: 0; border-radius: 3px; color: var(--chat-task-text-muted, #475467); background: var(--chat-parameters-bg, #fff); font-size: inherit; line-height: 1.15; }
 .compact-arguments-table th,.compact-arguments-table td { height: 16px; padding: 0 3px; overflow: hidden; border-bottom: 1px solid var(--chat-border, rgba(35, 46, 66, .09)); background: transparent; text-align: left; white-space: nowrap; }
@@ -211,7 +225,6 @@ function operationColor(kind: OperationKind): string {
 .compact-arguments-table code { display: block; overflow: hidden; font: inherit; text-overflow: ellipsis; white-space: nowrap; }
 .compact-operation-preview { display: block; min-width: 0; margin-top: 1px; color: var(--chat-task-text-muted, #475467); overflow-wrap: anywhere; }
 .compact-operation--stream-tail .compact-operation-preview { display: -webkit-box; max-height: 2.56em; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
-.compact-operation--tool .compact-operation-preview { display: -webkit-box; max-height: 6.4em; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; }
 .compact-operation-spinner { flex: 0 0 auto; margin-left: 1px; }
 .compact-operation--error,.compact-operation--error .compact-operation-preview { color: var(--q-negative); }
 .compact-operation--summary { display: flex; min-width: 0; align-items: center; gap: 6px; color: var(--chat-task-text-subtle, #667085); }

@@ -164,10 +164,6 @@
                 />
                 </div>
               </div>
-              <div v-if="isTaskExpanded(row.task) && row.task.objective" class="agent-task-objective">
-                <q-icon name="outlined_flag" size="14px" class="agent-task-objective-icon" />
-                <span>{{ richTextExcerpt(row.task.objective) }}</span>
-              </div>
               <CompactTaskOperations
                 v-if="isTaskExpanded(row.task)"
                 display="operations"
@@ -229,7 +225,6 @@
 <script setup lang="ts">
 import { ActionContextMenu, PanelState, useResourceCopy, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
-import { richTextExcerpt } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -911,8 +906,6 @@ onBeforeUnmount(() => {
 .agent-task-details { flex: 0 0 auto; min-height: 25px; padding: 0 4px; font-size: .72rem; }
 .agent-task-previous-operations { margin-top: 2px; }
 .agent-task-operations { margin-top: 6px; }
-.agent-task-objective { display: flex; min-width: 0; align-items: flex-start; gap: 4px; margin-top: 4px; padding-top: 3px; border-top: 1px solid var(--chat-border, rgba(35, 46, 66, .08)); color: var(--chat-task-text-muted, #475467); font-size: var(--chat-task-font-size); line-height: 1.25; overflow-wrap: anywhere; word-break: break-word; }
-.agent-task-objective-icon { flex: 0 0 auto; margin-top: 1px; color: var(--chat-task-text-subtle, #667085); }
 .agent-task-meta { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 4px; color: var(--chat-task-text-subtle, #667085); font-size: var(--chat-task-font-size); line-height: 1.1; overflow-wrap: anywhere; }
 .agent-task-topic { min-width: 0; max-width: 100%; }
 .agent-tasks-panel--embedded .agent-task-actions { flex-wrap: wrap; justify-content: flex-end; }

@@ -80,18 +80,15 @@ test('completed task expansion is local to the row and does not open task detail
   await toggles.nth(0).click()
   await expect(toggles.nth(0)).toHaveAttribute('aria-expanded', 'true')
   await expect(toggles.nth(1)).toHaveAttribute('aria-expanded', 'false')
-  await expect(page.getByText('Objective 1', { exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   const first = page.locator('.agent-task-row').nth(0)
   await first.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Collapse task', exact: true }).click()
   await expect(toggles.nth(0)).toHaveAttribute('aria-expanded', 'false')
-  await expect(page.getByText('Objective 1', { exact: true })).toHaveCount(0)
   await first.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Expand task', exact: true }).click()
   await expect(toggles.nth(0)).toHaveAttribute('aria-expanded', 'true')
   await expect(toggles.nth(1)).toHaveAttribute('aria-expanded', 'false')
-  await expect(page.getByText('Objective 1', { exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
@@ -127,7 +124,7 @@ test('Task previews display complete messages without streaming, including after
   ] } }
   const activities = [snapshot]
   await panel(page, [item], 1, activities)
-  await expect(page.locator('.agent-task-operations')).toContainText('Ready')
+  await expect(page.locator('.agent-task-operations')).toContainText('search')
   const event = { task_id: item.id, run_id: 'run', sequence: 4, kind: 'message', message: { type: 'text', stream_id: 'text', stream_complete: false, content: ' world' } }
   await page.evaluate(async data => {
     await window.testApp.emitSocket('agent_run.event', { data })
