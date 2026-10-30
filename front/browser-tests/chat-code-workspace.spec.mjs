@@ -47,7 +47,7 @@ async function setup(page, { directory = false, codeAccess = true, workspaceLabe
     // This fixture tests iframe retention only. Native IDE behavior has a separate real-runtime suite.
     return route.fulfill({ contentType: 'text/html', body: `<textarea aria-label="Synthetic unsaved source"></textarea><script>parent.postMessage({type:'galaris.code.ready',session:'session-${id}'},location.origin)</script>` })
   })
-  await mount(page, 'test-support/browser/CodeChatHarness.vue', { route: '/chat?room=room-a', privileges: ['CHAT_SEND', 'MEMORY_ACCESS', 'MEMORY_EDIT', ...(codeAccess ? ['CODE_ACCESS'] : [])] })
+  await mount(page, 'test-support/browser/CodeChatHarness.vue', { route: '/chat?room=room-a', privileges: ['CHAT_SEND', 'DOCUMENT_ACCESS', 'DOCUMENT_EDIT', ...(codeAccess ? ['CODE_ACCESS'] : [])] })
   await expect(page.locator('.conversation-pane')).toContainText(message.text)
   return { opens, closes, directoryRequests }
 }

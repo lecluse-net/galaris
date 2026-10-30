@@ -1,6 +1,6 @@
 <template>
   <section class="code-workspace-pane" :aria-label="t('code.title')">
-    <q-toolbar>
+    <q-toolbar v-if="showToolbar !== false">
       <q-icon name="code" class="q-mr-sm" />
       <q-toolbar-title class="text-body2 ellipsis">{{ editor?.session.workspace.label ?? t('code.title') }}</q-toolbar-title>
       <slot name="actions" />
@@ -37,24 +37,24 @@ import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { useCodeStore } from '../stores/codeStore'
 import { codeErrorTranslationKey } from '../services/codeService'
-const props = defineProps<{ workspaceId: string }>()
+const { workspaceId, showToolbar = true } = defineProps<{ workspaceId: string; showToolbar?: boolean }>()
 const emit = defineEmits<{ hide: [] }>()
 const store = useCodeStore()
 const { t } = useI18n()
 const $q = useQuasar()
 const anchor = ref<HTMLElement | null>(null)
 const confirmReload = ref(false)
-const editor = computed(() => store.editors.find(item => item.session.workspace.id === props.workspaceId))
-watch([anchor, () => props.workspaceId], ([element, id]) => { store.anchor = element; store.activeId = id }, { immediate: true, flush: 'post' })
+const editor = computed(() => store.editors.find(item => item.session.workspace.id === workspaceId))
+watch([anchor, () => workspaceId], ([element, id]) => { store.anchor = element; store.activeId = id }, { immediate: true, flush: 'post' })
 onBeforeUnmount(() => { if (store.anchor === anchor.value) store.hide() })
 async function retry(): Promise<void> {
-  try { await store.recover(props.workspaceId) }
+  try { await store.recover(workspaceId) }
   catch (error) {
     if (error instanceof Error && error.message === 'code_recovery_reload_required') confirmReload.value = true
     else $q.notify({ type: 'negative', message: t(codeErrorTranslationKey(error)) })
   }
 }
-function reload(): void { store.reloadRecovery(props.workspaceId); confirmReload.value = false }
+function reload(): void { store.reloadRecovery(workspaceId); confirmReload.value = false }
 </script>
 
 <style scoped>

@@ -21228,6 +21228,7 @@
       {
         "files": [
           "front/app/chat/availability.ts",
+          "front/app/chat/code/components/CodeWorkspaceDialog.vue",
           "front/app/chat/components/AgentExecutionTrace.vue",
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/ChatNotificationBootstrap.vue",
@@ -21266,6 +21267,7 @@
       },
       {
         "files": [
+          "front/app/chat/code/components/CodeWorkspaceDialog.vue",
           "front/app/chat/code/components/RepositoryBrowser.vue",
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/ChatDocumentPane.vue",

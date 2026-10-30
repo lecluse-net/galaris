@@ -38,6 +38,10 @@ Under **Galaris → Goals**, click a Goal to open its dialog directly. Cycles ar
 displayed in Files listings or search; view them from the Goal. Goals without cycles
 remain accessible.
 
+Under **Galaris → Code repositories**, click a repository path to open the code editor.
+This requires `CODE_ACCESS` and the repository's own access rights. Closing the dialog
+hides the editor; reopening it preserves unsaved files.
+
 When no location is selected, the central grid displays available schemes as folders.
 Click one to open its root, then a directory in the tree or the central grid. Use the breadcrumbs
 or parent directory button to go back up. Files have a thumbnail when their format

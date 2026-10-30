@@ -4,6 +4,15 @@ import test from 'node:test'
 import { compareFileEntries, resourceTarget, resourceLabel, isSkillPackage } from './presentation.ts'
 import messages from './i18n.ts'
 
+test('repository references open the code editor with their path and selected agent', () => {
+  const id = '11111111-1111-4111-8111-111111111111'
+  const entry = { uri: `galaris://code/${id}`, name: `code-${id}.json`, metadata: { label: 'work/project' } }
+  assert.deepEqual(resourceTarget(entry, 7), { kind: 'code', id, title: 'work/project', agentId: 7 })
+  for (const uri of ['galaris://code/', `${entry.uri}/`, `${entry.uri}/source.py`]) {
+    assert.equal(resourceTarget({ ...entry, uri }, 7), null)
+  }
+})
+
 test('system label codes use the selected locale while custom names and unknown codes keep their fallback', () => {
   const translate = locale => key => messages[locale].files.resourceLabels[key.split('.').at(-1)] ?? key
   const resource = { label_code: 'collection_task', name: 'Tasks' }

@@ -1,5 +1,6 @@
 <template>
   <GoalPreview v-if="target.kind === 'goal'" :key="target.id" :preview-goal-id="target.id" @close="emit('close')" />
+  <CodeWorkspaceDialog v-else-if="target.kind === 'code'" :key="target.id" :workspace-id="target.id" :title="target.title" @close="emit('close')" />
   <NativeRunDialog v-else-if="target.kind === 'process_run'" :key="target.id + ':' + target.agentId"
     :run-id="target.id" :agent-id="target.agentId" :title="target.title" @close="emit('close')" />
   <ExternalRunDialog v-else-if="target.kind === 'external_process_run'" :key="target.id" :run-id="target.id" @close="emit('close')" />
@@ -88,6 +89,7 @@ const TopicDetail = defineAsyncView(async () => (await import('@/app/topic')).To
 const DocumentFolderCollection = defineAsyncView(async () => (await import('@/app/document')).DocumentFolderCollection)
 const AgentPreview = defineAsyncView(async () => (await import('@/app/agent')).AgentPreview)
 const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).GoalPreview)
+const CodeWorkspaceDialog = defineAsyncView(async () => (await import('@/app/chat/interface')).CodeWorkspaceDialog)
 const NativeRunDialog = defineAsyncView(async () => (await import('@/app/process')).NativeRunDialog)
 const ExternalRunDialog = defineAsyncView(async () => (await import('@/app/process')).ExternalRunDialog)
 const ProcessPreview = defineAsyncView(async () => (await import('@/app/process')).ProcessPreview)

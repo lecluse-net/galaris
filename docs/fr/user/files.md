@@ -61,6 +61,10 @@ Dans **Galaris → Goals**, cliquez sur un objectif pour ouvrir directement sa m
 Les cycles ne sont pas affichés dans les listes ni dans la recherche de Fichiers ;
 consultez-les depuis le Goal. Les objectifs sans cycle restent accessibles.
 
+Dans **Galaris → Dépôts de code**, cliquez sur le chemin d’un dépôt pour ouvrir
+l’éditeur de code. L’accès exige `CODE_ACCESS` et les droits propres au dépôt.
+Fermer la fenêtre masque l’éditeur ; le rouvrir conserve les fichiers non enregistrés.
+
 Les boutons **Précédent** et **Suivant** du navigateur retrouvent les agents,
 emplacements et répertoires visités. Le fil d’Ariane et le bouton de répertoire parent
 participent au même historique. L’URL conserve l’agent et l’emplacement courants :
