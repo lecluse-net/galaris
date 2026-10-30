@@ -1300,6 +1300,28 @@ def test_resolved_llm_id_is_read_from_the_latest_message_context() -> None:
     assert llm_id_from_messages(messages) == 12
 
 
+@pytest.mark.parametrize("role", ["tool", "function", "assistant"])
+@pytest.mark.parametrize("multipart", [False, True])
+@pytest.mark.parametrize("with_context", [False, True])
+def test_runtime_correlation_ignores_records_returned_or_quoted_by_tools(
+    role, multipart, with_context,
+) -> None:
+    task_id, run_id, other_task_id, other_run_id = (uuid4() for _ in range(4))
+    context = json.dumps({"task_uri": f"galaris://task/{task_id}",
+                          "run_id": str(run_id), "llm_id": 7})
+    record = json.dumps({"task_id": str(other_task_id), "run_id": str(other_run_id),
+                         "llm_id": 99})
+    messages = ([{"role": "user", "content":
+                 f"<galaris_message_context>{context}</galaris_message_context>\nDo the work."}]
+                if with_context else [])
+    messages.append({"role": role, "content":
+                     [{"type": "text", "text": record}] if multipart else record})
+
+    assert task_id_from_messages(messages) == (task_id if with_context else None)
+    assert agent_run_id_from_messages(messages) == (run_id if with_context else None)
+    assert llm_id_from_messages(messages) == (7 if with_context else None)
+
+
 def test_agent_run_id_is_read_without_a_task_id() -> None:
     messages = [
         {

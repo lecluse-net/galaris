@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
@@ -169,18 +170,25 @@ def reasoning_to_text(message: dict[str, Any]) -> str:
     return max(populated, key=len, default="")
 
 
+def _correlation_texts(messages: Any) -> Iterator[str]:
+    """Read prompt metadata without promoting tool records or model output to context."""
+    if not isinstance(messages, list):
+        return
+    for raw_message in reversed(_as_list(messages)):
+        if not isinstance(raw_message, dict):
+            continue
+        message = _as_dict(raw_message)
+        if message.get("role") in {"system", "developer", "user"}:
+            yield content_to_text(message.get("content"))
+
+
 def task_id_from_messages(messages: Any) -> UUID | None:
     """Extract the current task from the latest prompt message context.
 
     Search backwards because every user turn carries its own task ID. Legacy text-line and HTML
     marker formats are fallback options.
     """
-    if not isinstance(messages, list):
-        return None
-    for message in reversed(_as_list(messages)):
-        if not isinstance(message, dict):
-            continue
-        text = content_to_text(_as_dict(message).get("content"))
+    for text in _correlation_texts(messages):
         match = (
             TASK_URI_JSON_RE.search(text)
             or TASK_ID_JSON_RE.search(text)
@@ -195,14 +203,8 @@ def task_id_from_messages(messages: Any) -> UUID | None:
 def agent_run_id_from_messages(messages: Any) -> UUID | None:
     """Extract the immutable agent run correlation from the latest message context."""
 
-    if not isinstance(messages, list):
-        return None
-    for message in reversed(_as_list(messages)):
-        if not isinstance(message, dict):
-            continue
-        match = AGENT_RUN_ID_JSON_RE.search(
-            content_to_text(_as_dict(message).get("content"))
-        )
+    for text in _correlation_texts(messages):
+        match = AGENT_RUN_ID_JSON_RE.search(text)
         if match:
             return UUID(match.group(1))
     return None
@@ -210,12 +212,8 @@ def agent_run_id_from_messages(messages: Any) -> UUID | None:
 
 def llm_id_from_messages(messages: Any) -> int | None:
     """Extract the model frozen by the latest driver request."""
-    if not isinstance(messages, list):
-        return None
-    for message in reversed(_as_list(messages)):
-        if not isinstance(message, dict):
-            continue
-        match = LLM_ID_JSON_RE.search(content_to_text(_as_dict(message).get("content")))
+    for text in _correlation_texts(messages):
+        match = LLM_ID_JSON_RE.search(text)
         if match:
             return int(match.group(1))
     return None

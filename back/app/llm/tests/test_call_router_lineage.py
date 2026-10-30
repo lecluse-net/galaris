@@ -78,6 +78,35 @@ async def test_current_process_task_wins_over_the_durable_fallback(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("with_context", [False, True])
+async def test_child_task_snapshot_cannot_replace_the_runtime_task(
+    monkeypatch: pytest.MonkeyPatch, with_context: bool,
+) -> None:
+    import json
+    import app.agent as agent_domain
+    import app.task as task_domain
+
+    parent_id, child_id = uuid4(), uuid4()
+    monkeypatch.setattr(agent_domain, "get_current_task", lambda _agent_id: None)
+    durable_lookup = AsyncMock(return_value=parent_id)
+    monkeypatch.setattr(task_domain, "unique_leased_task_for_agent", durable_lookup)
+    messages = ([{"role": "user", "content": json.dumps({"task_id": str(parent_id)})}]
+                if with_context else [])
+    messages.append({"role": "tool", "content": json.dumps({
+        "id": str(child_id), "agent_id": 43,
+        "activity": {"task_id": str(child_id)},
+    })})
+
+    assert await resolve_runtime_task_id(
+        raw_task_id=None, messages=messages, agent_id=42,
+    ) == parent_id
+    if with_context:
+        durable_lookup.assert_not_awaited()
+    else:
+        durable_lookup.assert_awaited_once_with(42)
+
+
+@pytest.mark.asyncio
 async def test_runtime_task_falls_back_to_the_unique_durable_agent_lease(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
