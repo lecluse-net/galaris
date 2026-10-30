@@ -24,7 +24,10 @@ def _actor(ctx: ResourceContext) -> int | HumanActor:
 
 
 async def folder_info(ctx: ResourceContext, uri: ResourceUri) -> ResourceDescriptor:
-    return ResourceDescriptor.model_validate(await describe_folder_resource(_identity(uri), _actor(ctx)))
+    descriptor = ResourceDescriptor.model_validate(await describe_folder_resource(_identity(uri), _actor(ctx)))
+    if uri.segments == ("folders",):
+        descriptor.label_code = "collection_document_folders"
+    return descriptor
 
 
 async def folder_list(ctx: ResourceContext, uri: ResourceUri, *, limit: int, cursor: str | None,
@@ -32,7 +35,13 @@ async def folder_list(ctx: ResourceContext, uri: ResourceUri, *, limit: int, cur
     listing = await list_folder_resources(_identity(uri), _actor(ctx),
         limit=limit, offset=int(cursor or "0"), query=query, navigation=navigation)
     listing["uri"] = str(uri)
-    return ResourceListing.model_validate(listing)
+    result = ResourceListing.model_validate(listing)
+    for entry in [*result.entries, *result.ancestors]:
+        if entry.uri == "document://":
+            entry.label_code = "scheme_document"
+        elif entry.uri == "document://folders/":
+            entry.label_code = "collection_document_folders"
+    return result
 
 
 class FolderTreeRead(ResourceRead):

@@ -135,7 +135,7 @@ import { useQuasar, type QTreeNode } from 'quasar'
 import { FolderIcon, ResourceAttachments, ResourceDetailDialog, FullscreenPreview, AudioResourcePlayer, browserResourceKind, richLinkTarget, saveBlobAsResource, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
 import { fileBrowserService, type FileEntry, type FileScheme } from '../services/fileBrowserService'
 import { useFileDirectories } from '../browserState'
-import { parentDirectory, resourceTarget, collectionLabel, compareFileEntries, isSkillPackage } from '../presentation'
+import { parentDirectory, resourceTarget, resourceLabel, collectionLabel, compareFileEntries, isSkillPackage } from '../presentation'
 import FileTile from './FileTile.vue'
 import FileEntryActions from './FileEntryActions.vue'
 
@@ -198,16 +198,20 @@ const previewSource: AttachmentSource = {
   videoUrl: entry => fileBrowserService.videoUrl(agentId, entry.id, selection),
   releaseVideoUrl: fileBrowserService.releaseVideoUrl,
 }
+function entryLabel(entry: FileEntry): string {
+  const scheme = schemes.value.find(scheme => `${scheme.scheme}://` === entry.uri)
+  return (scheme && resourceLabel(scheme, t)) || resourceLabel(entry, t) || collectionLabel(entry.uri, t) || scheme?.label || entry.name
+}
 const breadcrumbs = computed(() => {
   const ancestors = currentUri.value ? directory(currentUri.value).ancestors : []
   if (ancestors.length) {
-    return ancestors.map(entry => ({ uri: entry.uri,
-      label: collectionLabel(entry.uri, t) ?? schemes.value.find(scheme => `${scheme.scheme}://` === entry.uri)?.label ?? entry.name }))
+    return ancestors.map(entry => ({ uri: entry.uri, label: entryLabel(entry) }))
   }
   // Folder UUIDs identify resources; they are never useful navigation labels,
   // including while a direct link is loading or waiting for a retry.
   if (/^document:\/\/folders\/[^/]+\/$/.test(currentUri.value)) {
-    return [{ uri: 'document://', label: schemes.value.find(scheme => scheme.scheme === 'document')?.label ?? t('nav.documents') }]
+    const scheme = schemes.value.find(scheme => scheme.scheme === 'document')
+    return [{ uri: 'document://', label: scheme ? resourceLabel(scheme, t) ?? scheme.label : t('nav.documents') }]
   }
   const crumbs: { uri: string; label: string }[] = []
   let uri: string | null = currentUri.value
@@ -215,8 +219,11 @@ const breadcrumbs = computed(() => {
     const path = uri.replace(/\/$/, '')
     let label = path.includes('://') && !path.endsWith(':/') ? path.split('/').at(-1) || uri : uri
     try { label = decodeURIComponent(label) } catch { /* Keep the provider's original label. */ }
-    crumbs.unshift({ uri, label: collectionLabel(uri, t) ?? label })
-    uri = parentDirectory(uri)
+    const parent = parentDirectory(uri)
+    const entry = parent ? directory(parent).entries.find(entry => entry.uri === uri) : undefined
+    const scheme = schemes.value.find(scheme => `${scheme.scheme}://` === uri)
+    crumbs.unshift({ uri, label: entry ? entryLabel(entry) : (scheme && resourceLabel(scheme, t)) || collectionLabel(uri, t) || label })
+    uri = parent
   }
   return crumbs
 })
@@ -228,7 +235,7 @@ function isVisible(entry: FileEntry): boolean {
 function treeNode(entry: FileEntry, ancestors: Set<string> = new Set()): BrowserNode {
   const state = directory(entry.uri)
   const disabledRoot = schemes.value.some(scheme => `${scheme.scheme}://` === entry.uri && (!scheme.capabilities.includes('list') || scheme.root_listable === false))
-  const node: BrowserNode = { id: entry.uri, label: collectionLabel(entry.uri, t) ?? entry.name, entry, disabledRoot,
+  const node: BrowserNode = { id: entry.uri, label: entryLabel(entry), entry, disabledRoot,
     icon: isSkillPackage(entry) ? 'psychology' : entry.is_collection ? 'folder' : 'insert_drive_file',
     lazy: entry.is_collection && !isSkillPackage(entry) && !disabledRoot && !state.loaded }
   if (entry.is_collection && !isSkillPackage(entry) && state.loaded && !ancestors.has(entry.uri) && ancestors.size < 64) {
@@ -238,7 +245,7 @@ function treeNode(entry: FileEntry, ancestors: Set<string> = new Set()): Browser
   return node
 }
 const treeNodes = computed(() => schemes.value.filter(scheme => scheme.capabilities.includes('list') && scheme.root_listable !== false).map(scheme => ({ ...treeNode({ uri: `${scheme.scheme}://`,
-  name: scheme.label, is_collection: true, media_type: '', size: null, capabilities: scheme.capabilities }), scheme: scheme.scheme })))
+  name: scheme.label, label_code: scheme.label_code, is_collection: true, media_type: '', size: null, capabilities: scheme.capabilities }), scheme: scheme.scheme })))
 async function loadSchemes(): Promise<void> {
   schemesRequest?.abort()
   const request = new AbortController(); schemesRequest = request

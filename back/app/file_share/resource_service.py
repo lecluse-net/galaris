@@ -621,6 +621,9 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
                 root_listable=bool(target["has_file_share"]),
             )
         )
+    for item in schemes:
+        if item.native:
+            item.label_code = f"scheme_{item.scheme}"
     unique = {item.scheme: item for item in schemes}
     return [unique[scheme] for scheme in sorted(unique)]
 
@@ -652,7 +655,7 @@ async def resource_info(
         from .managed_files import managed_file_info
 
         if not reference.locator:
-            return ResourceDescriptor(uri="file://", name="files", is_collection=True,
+            return ResourceDescriptor(uri="file://", name="files", label_code="scheme_file", is_collection=True,
                 media_type="inode/directory", capabilities=["create", "info", "list"])
         return await managed_file_info(ctx, UUID(reference.locator))
     if reference.scheme == "galaris":
@@ -682,6 +685,7 @@ async def resource_info(
                     collection=True,
                 ),
                 name="attachments",
+                label_code="collection_attachments",
                 is_collection=True,
                 media_type="inode/directory",
                 capabilities=_attachment_collection_capabilities(

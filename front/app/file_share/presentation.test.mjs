@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { compareFileEntries, resourceTarget, isSkillPackage } from './presentation.ts'
+import { compareFileEntries, resourceTarget, resourceLabel, isSkillPackage } from './presentation.ts'
+import messages from './i18n.ts'
+
+test('system label codes use the selected locale while custom names and unknown codes keep their fallback', () => {
+  const translate = locale => key => messages[locale].files.resourceLabels[key.split('.').at(-1)] ?? key
+  const resource = { label_code: 'collection_task', name: 'Tasks' }
+  assert.equal(resourceLabel(resource, translate('fr')), 'Tâches')
+  assert.equal(resourceLabel(resource, translate('en')), 'Tasks')
+  assert.equal(resourceLabel({ label_code: 'scheme_galaris' }, translate('fr')), 'Ressources Galaris')
+  assert.equal(resourceLabel({ name: 'Tasks' }, translate('fr')), null)
+  assert.equal(resourceLabel({ label_code: 'future_provider' }, translate('fr')), null)
+})
 
 test('only skill packages open a skill modal, leaving library branches and files navigable', () => {
   for (const uri of ['galaris://skill/sample/', 'galaris://skill/personnal/7/private-guide/']) {

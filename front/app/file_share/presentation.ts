@@ -9,6 +9,14 @@ export function executionResourceLabel(entry: FileEntry, locale?: string): strin
   return new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(createdAt))
 }
 
+/** Unknown codes keep the provider label, including user-defined names. */
+export function resourceLabel(resource: { label_code?: string | null }, translate: (key: string) => string): string | null {
+  if (!resource.label_code) return null
+  const key = `files.resourceLabels.${resource.label_code}`
+  const label = translate(key)
+  return label === key ? null : label
+}
+
 /** Provider positions preserve meaningful order within virtual collections. */
 export function compareFileEntries(left: FileEntry, right: FileEntry, locale: string): number {
   const position = (entry: FileEntry): number => typeof entry.metadata?.sort_order === 'number'

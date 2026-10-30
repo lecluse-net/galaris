@@ -259,6 +259,7 @@ def _collection_descriptor(kind: GalarisResourceKind) -> ResourceDescriptor:
     return ResourceDescriptor(
         uri=f"galaris://{'processes' if kind == 'process' else kind}/",
         name=labels[kind],
+        label_code=f"collection_{kind}",
         is_collection=True,
         media_type="application/vnd.galaris.collection+json",
         capabilities=list(_COLLECTION_CAPABILITIES),
@@ -295,7 +296,7 @@ async def _goal_listing(
     if ctx.browser_navigation:
         return ResourceListing(uri=str(reference), entries=[_goal_browser_entry(payload)] if offset == 0 else [],
             truncated=False, next_cursor=None,
-            ancestors=[ResourceDescriptor(uri="galaris://", name="Galaris", is_collection=True,
+            ancestors=[ResourceDescriptor(uri="galaris://", name="Galaris", label_code="scheme_galaris", is_collection=True,
                 capabilities=list(_COLLECTION_CAPABILITIES)), _collection_descriptor("goal"), _goal_folder(payload)])
     from app.goal import list_goal_cycle_resources
 
@@ -315,7 +316,7 @@ async def _goal_listing(
     more = len(cycles) > available
     return ResourceListing(uri=str(reference), entries=entries, truncated=more,
         next_cursor=str(offset + len(entries)) if more else None,
-        ancestors=[ResourceDescriptor(uri="galaris://", name="Galaris", is_collection=True,
+        ancestors=[ResourceDescriptor(uri="galaris://", name="Galaris", label_code="scheme_galaris", is_collection=True,
             capabilities=list(_COLLECTION_CAPABILITIES)), _collection_descriptor("goal"), _goal_folder(payload)])
 
 
@@ -455,6 +456,7 @@ async def galaris_resource_info(
         return ResourceDescriptor(
             uri="galaris://",
             name="Galaris",
+            label_code="scheme_galaris",
             is_collection=True,
             media_type="application/vnd.galaris.collection+json",
             capabilities=capabilities,
@@ -524,7 +526,7 @@ async def galaris_resource_list(
         # The first row is a real subcollection; subsequent cursors address definitions.
         available = limit - (1 if offset == 0 else 0)
         payloads = await _list_payloads(ctx, "process", offset=max(0, offset - 1), limit=available + 1)
-        entries = ([ResourceDescriptor(uri="galaris://processes/runs/", name="Runs", is_collection=True,
+        entries = ([ResourceDescriptor(uri="galaris://processes/runs/", name="Runs", label_code="collection_runs", is_collection=True,
             capabilities=["info", "list"])] if offset == 0 else [])
         entries.extend(_descriptor("process", item) for item in payloads[:available])
         return ResourceListing(uri=str(reference), entries=entries, truncated=len(payloads) > available,

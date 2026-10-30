@@ -3,6 +3,7 @@ import { api } from '@/core/api'
 export interface FileScheme {
   scheme: string
   label: string
+  label_code?: string | null
   capabilities: string[]
   native: boolean
   root_listable?: boolean
@@ -10,6 +11,7 @@ export interface FileScheme {
 export interface FileEntry {
   uri: string
   name: string
+  label_code?: string | null
   is_collection: boolean
   media_type: string
   size: number | null

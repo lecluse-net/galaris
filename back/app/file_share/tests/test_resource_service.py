@@ -435,6 +435,7 @@ async def test_console_is_the_only_advertised_local_scheme_with_ssh(
 
     assert console.example == "console://reports/result.pdf"
     assert console.label == "Local files (SSH console home)"
+    assert all(item.label_code == f"scheme_{item.scheme}" for item in schemes if item.native)
     assert "workspace" not in by_scheme
     assert set(console.capabilities) == {
         "append",
@@ -540,6 +541,8 @@ async def test_scheme_listing_uses_connected_tool_codes_not_capability_names(
         "telegram-bot://<room-id>/<attachment-id>"
     )
     assert by_scheme["nextcloud"].scheme == "nextcloud"
+    assert by_scheme["nextcloud"].label_code is None
+    assert by_scheme["telegram-bot"].label_code is None
 
 
 def test_preferred_local_uri_uses_console_only_when_available() -> None:

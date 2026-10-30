@@ -29,6 +29,12 @@ async def test_galaris_root_lists_the_supported_business_collections(db) -> None
         "galaris://code/",
         "galaris://skill/",
     }
+    for entry in result.entries:
+        kind = entry.uri.removeprefix("galaris://").strip("/")
+        code = f"collection_{'process' if kind == 'processes' else kind}"
+        assert entry.label_code == code
+    info = await resource_service.resource_info(ResourceContext(agent_id=7, runtime="internal"), "galaris://task/")
+    assert info.label_code == "collection_task"
 
 
 @pytest.mark.asyncio
@@ -156,6 +162,7 @@ async def test_galaris_task_is_a_scoped_read_only_json_file(
     assert observed == {"task_id": identifier, "actor_agent_id": 7}
     assert descriptor.uri == uri
     assert descriptor.name == f"task-{identifier}.json"
+    assert descriptor.label_code is None  # Resource titles are never system labels.
     assert descriptor.media_type == "application/vnd.galaris.task+json"
     assert descriptor.metadata["label"] == "Prepare release"
     assert descriptor.metadata["created_at"] == "2026-01-02T03:04:05+00:00"

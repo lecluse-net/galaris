@@ -42,14 +42,14 @@ import { apiErrorDetail } from '@/core/api'
 import { usePrivilegeStore } from '@/core/authorize'
 import { ActionContextMenu, RenameFileButton, type ContextAction } from '@/core/util'
 import { fileBrowserService, type FileEntry } from '../services/fileBrowserService'
-import { skillCollectionLabel, executionResourceLabel } from '../presentation'
+import { resourceLabel, skillCollectionLabel, executionResourceLabel } from '../presentation'
 
 const { entry, agentId, target, open, download, contextOnly = false } = defineProps<{
   entry: FileEntry; agentId: number; target: string; open: () => unknown; download?: () => Promise<void>; contextOnly?: boolean
 }>()
 const emit = defineEmits<{ changed: [entry: FileEntry, replacement: string | null] }>()
 const { t, locale } = useI18n(), $q = useQuasar(), privileges = usePrivilegeStore()
-const displayName = computed(() => executionResourceLabel(entry, locale.value) ?? skillCollectionLabel(entry.uri, t) ?? entry.name)
+const displayName = computed(() => executionResourceLabel(entry, locale.value) ?? resourceLabel(entry, t) ?? skillCollectionLabel(entry.uri, t) ?? entry.name)
 const renameButton = useTemplateRef<InstanceType<typeof RenameFileButton>>('renameButton')
 const canEdit = computed(() => {
   const source = typeof entry.metadata?.rename_uri === 'string' ? entry.metadata.rename_uri : entry.uri

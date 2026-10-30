@@ -48,11 +48,11 @@ class ProcessRunProvider:
 
     async def info(self, ctx: ResourceContext, uri: ResourceUri, **options: Any) -> ResourceDescriptor:
         if self._root(uri):
-            return ResourceDescriptor(uri=str(uri), name="Runs", is_collection=True, capabilities=["info", "list"])
+            return ResourceDescriptor(uri=str(uri), name="Runs", label_code="collection_runs", is_collection=True, capabilities=["info", "list"])
         identity, suffix = self._target(uri)
         if suffix == "attachments":
             payload = await self._data(ctx, uri)
-            return ResourceDescriptor(uri=str(uri), name="attachments", is_collection=True,
+            return ResourceDescriptor(uri=str(uri), name="attachments", label_code="collection_attachments", is_collection=True,
                 capabilities=["info", "list", "copy", *(["create"] if payload["can_write"] else [])])
         if suffix.startswith("attachments/"):
             from app.process import run_file_path

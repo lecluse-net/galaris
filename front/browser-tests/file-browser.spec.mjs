@@ -14,6 +14,44 @@ const entry = (uri, name, collection = false) => ({ uri, name, is_collection: co
   media_type: collection ? 'inode/directory' : 'text/plain', size: collection ? null : 24, capabilities: ['info', 'read'] })
 const pageOf = (uri, entries, next_cursor = null) => ({ uri, entries, next_cursor, truncated: !!next_cursor })
 
+for (const picker of [false, true]) for (const width of [1440, 390]) test(`system resource labels follow the locale in ${picker ? 'the picker' : '/files'} at ${width}px`, async ({ page }, testInfo) => {
+  await setup(page)
+  await page.setViewportSize({ width, height: 1000 })
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [
+    { scheme: 'galaris', label: 'Galaris business resources', label_code: 'scheme_galaris', capabilities: ['list'], native: true },
+  ])
+  const task = { ...entry('galaris://task/', 'Tasks', true), label_code: 'collection_task' }
+  const custom = entry('galaris://task/custom/', 'Tasks', true)
+  await page.route('**/api/file-share/browser/entries?*', route => {
+    const uri = new URL(route.request().url()).searchParams.get('uri')
+    return route.fulfill({ json: pageOf(uri, uri === 'galaris://' ? [task, custom] : []) })
+  })
+  await mount(page, picker ? 'resourcePicker.vue' : routeComponent, {
+    locale: 'fr', route: '/files?agent_id=7', browserHistory: true,
+    props: picker ? { modelValue: true, agentId: 7 } : {}, privileges: ['FILE_ACCESS'],
+  })
+  await page.getByRole('button', { name: 'Ouvrir Ressources Galaris', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Ouvrir Tâches', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Ouvrir Tasks', exact: true })).toBeVisible()
+  if (width >= 1024) await expect(page.locator('.file-tree')).toContainText('Tâches')
+  if (picker) {
+    await page.getByRole('checkbox', { name: 'Sélectionner Tâches', exact: true }).check()
+    await expect(page.locator('.picker-selection')).toContainText('Tâches')
+  }
+  await page.getByRole('button', { name: 'Ouvrir Tâches', exact: true }).click()
+  await expect(page.getByRole('navigation', { name: 'Navigation des fichiers' })).toContainText('Tâches')
+  await page.screenshot({ path: testInfo.outputPath('resource-labels-light.png'), fullPage: true })
+  await page.evaluate(async () => {
+    const { setLocale } = await import('/core/i18n/index.ts')
+    await setLocale('en')
+  })
+  await expect(page.getByRole('navigation', { name: 'File navigation' })).toContainText('Tasks')
+  await expect(page.locator('.file-scheme-label')).toHaveText('Galaris resources')
+  if (picker) await expect(page.locator('.picker-selection')).toContainText('Tasks')
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: testInfo.outputPath('resource-labels-dark.png'), fullPage: true })
+})
+
 async function setup(page) {
   await jsonRoute(page, '**/api/agents/selection?*', [
     { id: 7, label: 'Alice Example', has_avatar: false }, { id: 8, label: 'Bob Example', has_avatar: false },

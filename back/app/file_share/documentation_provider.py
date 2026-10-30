@@ -29,7 +29,7 @@ def _path(reference: ResourceUri) -> str:
 
 
 def collection_descriptor(uri: str = "galaris://documentation/") -> ResourceDescriptor:
-    return ResourceDescriptor(uri=uri, name="Galaris documentation", is_collection=True,
+    return ResourceDescriptor(uri=uri, name="Galaris documentation", label_code="collection_documentation", is_collection=True,
                               capabilities=["info", "list"], media_type="inode/directory")
 
 

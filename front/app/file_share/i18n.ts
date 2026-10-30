@@ -2,6 +2,20 @@ export default {
   fr: {
     nav: { files: 'Fichiers', files_desc: 'Explorer les fichiers et ressources accessibles à chaque agent' },
     files: {
+      resourceLabels: {
+        scheme_galaris: 'Ressources Galaris', scheme_file: 'Fichiers Galaris',
+        scheme_document: 'Documents Galaris', scheme_memory: 'Mémoires Galaris',
+        scheme_data: 'Données Galaris', scheme_https: 'Ressources HTTPS publiques',
+        scheme_console: 'Fichiers locaux (console SSH)',
+        collection_task: 'Tâches', collection_voice: 'Conversations vocales',
+        collection_text: 'Conversations textuelles', collection_goal: 'Objectifs',
+        collection_agent: 'Profils des agents', collection_goal_cycle: 'Cycles d’objectifs',
+        collection_process: 'Processus', collection_code: 'Dépôts de code',
+        collection_skill: 'Compétences', collection_personal_skills: 'Compétences personnelles',
+        collection_uncategorized_skills: 'Sans catégorie', collection_runs: 'Exécutions',
+        collection_documentation: 'Documentation Galaris', collection_attachments: 'Pièces jointes',
+        collection_document_folders: 'Collections',
+      },
       settingsDescription: 'Consulter et piloter l’indexation des fichiers de chaque agent',
       preview: 'Aperçu', previewItem: 'Aperçu de {name}', navigation: 'Navigation des fichiers',
       actions: 'Actions pour {name}', deleteTitle: 'Supprimer un élément',
@@ -26,6 +40,20 @@ export default {
   en: {
     nav: { files: 'Files', files_desc: 'Browse files and resources available to each agent' },
     files: {
+      resourceLabels: {
+        scheme_galaris: 'Galaris resources', scheme_file: 'Galaris files',
+        scheme_document: 'Galaris documents', scheme_memory: 'Galaris memories',
+        scheme_data: 'Galaris data', scheme_https: 'Public HTTPS resources',
+        scheme_console: 'Local files (SSH console)',
+        collection_task: 'Tasks', collection_voice: 'Voice conversations',
+        collection_text: 'Text conversations', collection_goal: 'Goals',
+        collection_agent: 'Agent profiles', collection_goal_cycle: 'Goal cycles',
+        collection_process: 'Processes', collection_code: 'Code repositories',
+        collection_skill: 'Skills', collection_personal_skills: 'Personal skills',
+        collection_uncategorized_skills: 'Uncategorized', collection_runs: 'Runs',
+        collection_documentation: 'Galaris documentation', collection_attachments: 'Attachments',
+        collection_document_folders: 'Collections',
+      },
       settingsDescription: 'View and manage file indexing for each agent',
       preview: 'Preview', previewItem: 'Preview {name}', navigation: 'File navigation',
       actions: 'Actions for {name}', deleteTitle: 'Delete an item',
@@ -50,6 +78,20 @@ export default {
   zh: {
     nav: { files: '文件', files_desc: '浏览每个智能体可访问的文件和资源' },
     files: {
+      resourceLabels: {
+        scheme_galaris: 'Galaris 资源', scheme_file: 'Galaris 文件',
+        scheme_document: 'Galaris 文档', scheme_memory: 'Galaris 记忆',
+        scheme_data: 'Galaris 数据', scheme_https: '公共 HTTPS 资源',
+        scheme_console: '本地文件（SSH 控制台）',
+        collection_task: '任务', collection_voice: '语音对话',
+        collection_text: '文本对话', collection_goal: '目标',
+        collection_agent: '智能体资料', collection_goal_cycle: '目标周期',
+        collection_process: '流程', collection_code: '代码仓库',
+        collection_skill: '技能', collection_personal_skills: '个人技能',
+        collection_uncategorized_skills: '未分类', collection_runs: '运行',
+        collection_documentation: 'Galaris 文档资料', collection_attachments: '附件',
+        collection_document_folders: '集合',
+      },
       settingsDescription: '查看和管理每个智能体的文件索引',
       preview: '预览', previewItem: '预览 {name}', navigation: '文件导航',
       actions: '{name} 的操作', deleteTitle: '删除项目',

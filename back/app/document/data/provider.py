@@ -72,13 +72,13 @@ class DatasetProvider:
 
     async def info(self, ctx: ResourceContext, uri: ResourceUri, **options: Any) -> ResourceDescriptor:
         if not uri.locator:
-            return ResourceDescriptor(uri="data://", name="Datasets", is_collection=True,
+            return ResourceDescriptor(uri="data://", name="Datasets", label_code="scheme_data", is_collection=True,
                 media_type="inode/directory", capabilities=["create", "info", "list", "search"])
         dataset = await service.record(UUID(uri.segments[0]), ctx.management_scope or ctx.agent_id)
         state = await service.describe(dataset, ctx.management_scope or ctx.agent_id, content=False)
         if len(uri.segments) > 1:
             if len(uri.segments) == 2:
-                return ResourceDescriptor(uri=f"data://{dataset.id}/attachments/", name="attachments", is_collection=True,
+                return ResourceDescriptor(uri=f"data://{dataset.id}/attachments/", name="attachments", label_code="collection_attachments", is_collection=True,
                     media_type="inode/directory", capabilities=["info", "list", "search", *(["create"] if state["can_write"] else [])])
             attachment = await self._attachment(uri, ctx)
             names = await registered_file_names([attachment.file_id]) if attachment.file_id else {}

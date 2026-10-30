@@ -66,6 +66,7 @@ class ResourceDescriptor(BaseModel):
     indexing_status: Literal["excluded", "indexed", "failed"] = "excluded"
     uri: str
     name: str = ""
+    label_code: str | None = None  # Optional system label translated by UI consumers.
     is_collection: bool = False
     media_type: str = "application/octet-stream"
     size: int | None = Field(default=None, ge=0)
@@ -178,6 +179,7 @@ class ResourceSchemeDescription(BaseModel):
     """Indexing preferences cover file transports, never Messenger branches."""
     scheme: str
     label: str
+    label_code: str | None = None
     example: str
     capabilities: list[ResourceCapability]
     native: bool

@@ -105,6 +105,7 @@ async def info(ctx: ResourceContext, reference: ResourceUri) -> ResourceDescript
                 raise FileNotFoundError('Skill owner not found')
             name = labels[target.owner]
         return ResourceDescriptor(uri=target.root, name=name, is_collection=True,
+            label_code=("collection_personal_skills" if target.personal else "collection_skill") if target.owner is None else None,
             capabilities=['info', 'list', 'search', *(['create'] if can_create else [])])
     package = await _ref(ctx, target)
     metadata = await interface.describe_package(package.id, actor_agent_id=ctx.agent_id,
@@ -131,6 +132,7 @@ async def info(ctx: ResourceContext, reference: ResourceUri) -> ResourceDescript
 
 def _category_entry(category: int | None, label: str) -> ResourceDescriptor:
     return ResourceDescriptor(uri=SkillUri(False, category=category, grouped=True).root, name=label,
+        label_code="collection_uncategorized_skills" if category is None else None,
         is_collection=True, capabilities=['info', 'list', 'search'], metadata={'category_id': category})
 
 
@@ -159,6 +161,7 @@ async def listing(ctx: ResourceContext, reference: ResourceUri, *, max_entries: 
     elif not target.personal and not target.grouped:
         if offset == 0:
             entries.append(ResourceDescriptor(uri='galaris://skill/personnal/', name='Personal skills',
+                label_code='collection_personal_skills',
                 is_collection=True, capabilities=['info', 'list', 'search']))
         categories = await interface.list_package_categories(actor_agent_id=ctx.agent_id, administration=admin,
             offset=max(0, offset - 1), limit=limit + 1)
@@ -177,15 +180,15 @@ async def listing(ctx: ResourceContext, reference: ResourceUri, *, max_entries: 
     truncated = len(entries) > limit
     ancestors: list[ResourceDescriptor] = []
     if category_entry is not None:
-        ancestors = [ResourceDescriptor(uri=uri, name=name, is_collection=True,
-            capabilities=['info', 'list', 'search']) for uri, name in (
-                ('galaris://', 'Galaris'), ('galaris://skill/', 'Skills'))]
+        ancestors = [ResourceDescriptor(uri=uri, name=name, label_code=code, is_collection=True,
+            capabilities=['info', 'list', 'search']) for uri, name, code in (
+                ('galaris://', 'Galaris', 'scheme_galaris'), ('galaris://skill/', 'Skills', 'collection_skill'))]
         ancestors.append(category_entry)
     elif target.personal and target.owner is not None and target.code is None:
-        ancestors = [ResourceDescriptor(uri=uri, name=name, is_collection=True,
-            capabilities=['info', 'list', 'search']) for uri, name in (
-                ('galaris://', 'Galaris'), ('galaris://skill/', 'Skills'),
-                ('galaris://skill/personnal/', 'Personal skills'))]
+        ancestors = [ResourceDescriptor(uri=uri, name=name, label_code=code, is_collection=True,
+            capabilities=['info', 'list', 'search']) for uri, name, code in (
+                ('galaris://', 'Galaris', 'scheme_galaris'), ('galaris://skill/', 'Skills', 'collection_skill'),
+                ('galaris://skill/personnal/', 'Personal skills', 'collection_personal_skills'))]
         ancestors.append(await info(ctx, reference))
     return ResourceListing(uri=str(reference), entries=entries[:limit], truncated=truncated,
                            next_cursor=str(offset + limit) if truncated else None, ancestors=ancestors)
