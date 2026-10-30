@@ -1,23 +1,23 @@
 <template>
   <section
-    class="document-history-panel column no-wrap"
+    class="document-history-panel document-secondary-panel column no-wrap"
     :style="{ minHeight, maxHeight: maxHeight || undefined }"
   >
-    <header class="document-history-header row items-center no-wrap q-pa-md">
-      <q-icon name="history" color="primary" size="26px" class="q-mr-sm" />
-      <div class="col">
-        <div class="text-h6">{{ t('documents.history') }}</div>
-        <div class="text-caption text-grey-7">{{ t('documents.historyHint') }}</div>
-      </div>
-      <q-btn
-        flat
-        dense
-        no-caps
+    <header class="document-secondary-header">
+      <q-icon name="history" color="primary" size="26px" />
+      <div class="text-h6 document-secondary-heading" :title="t('documents.history')">{{ t('documents.history') }}</div>
+      <div class="document-secondary-actions"><q-btn
+        class="document-secondary-back-wide"
+        outline
         icon="arrow_back"
         color="primary"
         :label="t('documents.historyBack')"
         @click="emit('close')"
       ><q-tooltip>{{ t('documents.historyBack') }}</q-tooltip></q-btn>
+      <q-btn class="document-secondary-back-compact" flat round color="primary" icon="arrow_back"
+        :aria-label="t('documents.historyBack')" @click="emit('close')">
+        <q-tooltip>{{ t('documents.historyBack') }}</q-tooltip>
+      </q-btn></div>
     </header>
     <q-separator />
 
@@ -194,6 +194,7 @@
 </template>
 
 <script setup lang="ts">
+import '../documentSecondaryView.css'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
@@ -364,8 +365,6 @@ async function resolveHistoricalImage(documentId: string, attachmentId: string):
 </script>
 
 <style scoped>
-.document-history-panel { min-width: 0; height: min(720px, calc(100vh - 240px)); overflow: hidden; }
-.document-history-header { flex: 0 0 auto; min-width: 0; background: rgba(33, 150, 243, 0.06); }
 .document-history-body { min-height: 0; }
 .document-history-list { flex: 0 0 310px; min-width: 0; }
 .document-history-detail { min-width: 0; min-height: 0; }
@@ -382,9 +381,9 @@ async function resolveHistoricalImage(documentId: string, attachmentId: string):
 .document-diff-number { padding: 2px 7px; color: #78909c; text-align: right; user-select: none; border-right: 1px solid rgba(0, 0, 0, 0.08); }
 .document-diff-marker { padding: 2px 5px; text-align: center; user-select: none; }
 .document-diff-text { min-width: 0; padding: 2px 7px 2px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-:global(body.body--dark) .document-diff-heading { color: #bbdefb; background: rgba(33, 150, 243, 0.16); }
-:global(body.body--dark) .document-diff-line--added { color: #c8e6c9; background: rgba(76, 175, 80, 0.16); }
-:global(body.body--dark) .document-diff-line--removed { color: #ffcdd2; background: rgba(244, 67, 54, 0.16); }
+:global(body.body--dark .document-diff-heading) { color: var(--solaire-blue-light); background: var(--solaire-blue-dark); }
+:global(body.body--dark .document-diff-line--added) { color: var(--solaire-green-light); background: var(--solaire-green-dark); }
+:global(body.body--dark .document-diff-line--removed) { color: var(--solaire-red-light); background: var(--solaire-red-dark); }
 @media (max-width: 1023.98px) {
   .document-history-body { flex-direction: column; }
   .document-history-list { flex: 0 0 auto; max-width: 100%; border-bottom: 1px solid rgba(0, 0, 0, 0.12); }
@@ -395,12 +394,10 @@ async function resolveHistoricalImage(documentId: string, attachmentId: string):
   .document-history-list .document-history-state { min-height: 112px; }
   .document-history-body > :deep(.q-separator--vertical) { display: none; }
   .document-history-detail-toolbar { align-items: flex-start; flex-wrap: wrap; }
-  :global(body.body--dark) .document-history-list { border-bottom-color: rgba(255, 255, 255, 0.2); }
-  :global(body.body--dark) .document-history-revisions.q-list--separator :deep(.q-item-type + .q-item-type) { border-left-color: rgba(255, 255, 255, 0.2); }
+  :global(body.body--dark .document-history-list) { border-bottom-color: rgba(255, 255, 255, 0.2); }
+  :global(body.body--dark .document-history-revisions.q-list--separator .q-item-type + .q-item-type) { border-left-color: rgba(255, 255, 255, 0.2); }
 }
 @media (max-width: 599.98px) {
-  .document-history-header { align-items: flex-start; }
-  .document-history-header :deep(.q-btn__content .block) { display: none; }
   .document-history-detail-toolbar { gap: 6px; padding: 6px; }
   .document-history-detail-toolbar :deep(.q-space) { display: none; }
   .document-history-detail-toolbar :deep(.q-btn__content .block) { display: none; }

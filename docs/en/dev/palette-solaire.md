@@ -61,6 +61,10 @@ and `iris` denotes Iris violet.
 - Keep general surfaces and text neutral. The approved preview uses `#FFFFFF` and `#101010`
   for light and dark general surfaces, with `#292C30` and `#EEEEF0` text respectively.
   These neutrals are not additional accents.
+- Horizontal and vertical resizable separators use the same colour as native Quasar borders,
+  adapted to the light or dark theme. Keep their native background instead of substituting
+  a Solaire grey or accent; the visual reference shows both orientations inside a bordered
+  card using that same colour.
 - Choose readable neutral text for each background; a vivid accent does not by itself ensure
   small-text readability. Pair states with a label or icon.
 - Keep color meanings consistent between screens. The palette does not require every component

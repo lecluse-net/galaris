@@ -27,10 +27,14 @@ The Data editor preserves invalid JSON drafts without saving them or leaving the
 
 ## Current description and keywords
 
-The small **View summary** icon beside the editor title and Topic opens the current summary
-and keywords for reading. Content is refreshed each time it opens. Close with its button,
-Escape or a backdrop click. The dialog also reports missing summaries and offers retry
-after a loading error.
+The small **View summary** icon beside the editor title and Topic displays the current summary
+in place of the editing area, like history. This view hides keywords. Content is refreshed each
+time it opens, with retry after loading errors. With editing rights, edit the summary and click
+**Save summary**. **Back to document** also saves changes before returning to the content.
+Errors and conflicts preserve your draft in the summary view.
+**Regenerate summary** asks for confirmation, then replaces the summary, including manual edits, using the saved
+document and configured Dream model, even for short documents. It preserves the document body,
+content versions and keywords. Readers without editing rights see a read-only summary.
 
 Each Document has one current shared description and current keywords, without separate history.
 Only its content keeps restorable versions; restoring content preserves the current description

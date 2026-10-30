@@ -190,6 +190,9 @@ class DocumentDetail(DocumentPublic):
     payload: DocumentPayload
     source_refs: list[str] = Field(default_factory=list)
 
+class DocumentSummaryRegenerate(BaseModel):
+    expected_lock_version: int = Field(ge=1)
+
 class DocumentContentRevisionPublic(BaseModel):
     media_type: str = "text/markdown"
     content_profile_version: int | None = None

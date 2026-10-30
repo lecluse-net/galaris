@@ -29,10 +29,16 @@ L'éditeur Données conserve un brouillon JSON invalide sans l'enregistrer ni qu
 
 ## Résumé courant et mots-clés
 
-La petite icône **Voir le résumé**, près du titre et du sujet dans l'éditeur, ouvre le résumé
-courant et ses mots-clés en lecture. Le contenu est rechargé à chaque ouverture. La fenêtre
-se ferme avec son bouton, la touche Échap ou un clic à l'extérieur ; elle indique aussi
-l'absence de résumé et permet de réessayer après une erreur de chargement.
+La petite icône **Voir le résumé**, près du titre et du sujet dans l'éditeur, affiche le résumé
+courant à la place de la zone d'édition, comme l'historique. Cette vue ne montre pas les mots-clés.
+Le contenu est rechargé à chaque ouverture ; une erreur de chargement permet de réessayer.
+Avec les droits d'édition, modifiez le résumé puis cliquez sur **Enregistrer le résumé**.
+**Revenir au document** enregistre aussi les modifications avant de retrouver le contenu.
+En cas d'erreur ou de conflit, le brouillon reste affiché pour éviter de perdre la saisie.
+**Régénérer le résumé** demande confirmation puis remplace le résumé, y compris les modifications manuelles,
+à partir du document enregistré et du modèle Dream configuré, même pour un document court.
+Cette action conserve le contenu, ses versions et les mots-clés. Sans droits d'édition, le résumé
+reste en lecture seule.
 
 Chaque document possède un résumé partagé et des mots-clés courants, sans historique propre.
 Seul le contenu du document conserve ses versions ; restaurer un ancien contenu ne remplace

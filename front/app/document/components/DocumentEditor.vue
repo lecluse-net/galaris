@@ -30,7 +30,7 @@
               dense
               hide-bottom-space
               :aria-label="t('documents.title')"
-              :readonly="historyOpen || !canEditDocument || isGoalDocument(currentDocument)"
+              :readonly="historyOpen || summaryOpen || !canEditDocument || isGoalDocument(currentDocument)"
               :rules="[requiredRule]"
             />
           </div>
@@ -53,10 +53,12 @@
               </q-badge>
               <ResourceTopicBadge :key="currentDocument.id" :topic-id="currentDocument.topic_id ?? null"
                 kind="document" :id="currentDocument.id"
-                :editable="canEditDocument && !historyOpen && !topicChangeInFlight"
+                :editable="canEditDocument && !historyOpen && !summaryOpen && !topicChangeInFlight"
                 :reassign-topic="changeDocumentTopic" />
-              <ResourceSummaryButton :resource-key="`${currentDocument.id}:${requestAgentId ?? 'user'}`"
-                :title="currentDocument.title" :load="loadSummary" />
+              <q-btn flat round dense size="sm" color="primary" icon="short_text"
+                :aria-label="t('resourceSummary.open')" @click="openDocumentSummary">
+                <q-tooltip>{{ t('resourceSummary.open') }}</q-tooltip>
+              </q-btn>
               <q-btn
                 flat
                 dense
@@ -119,7 +121,7 @@
       <q-separator />
 
       <q-card-section
-        v-if="!historyOpen"
+        v-if="!historyOpen && !summaryOpen"
         class="row q-col-gutter-xs document-editor-fields q-pa-xs"
       >
         <div class="document-editor-owner-cell">
@@ -211,6 +213,11 @@
             :document-id="currentDocument.id" :agent-id="requestAgentId" :editable="canEditDocument" />
         </div>
       </q-card-section>
+      <DocumentSummaryPanel v-else-if="summaryOpen" ref="summaryPanel"
+        :key="currentDocument.id + ':' + requestAgentId"
+        :document-id="currentDocument.id" :agent-id="requestAgentId" :editable="canEditDocument"
+        :min-height="contentMinHeight" :max-height="contentMaxHeight"
+        @close="closeDocumentSummary" @updated="onSummaryUpdated" />
       <DocumentHistoryDialog
         v-else
         :document-id="currentDocument.id"
@@ -258,7 +265,7 @@ import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHre
 import { websocket } from '@/core/websocket'
 import { useAgentChoices } from '@/app/agent'
 import { OwnerSelect, type OwnerOption } from '@/app/share'
-import { ResourceTopicBadge, reassignResourceTopic, ResourceSummaryButton, type ResourceSummaryView } from '@/core/util'
+import { ResourceTopicBadge, reassignResourceTopic } from '@/core/util'
 import { documentType } from '../documentTypes'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
@@ -278,6 +285,7 @@ import DocumentSharingPanel from './DocumentSharingPanel.vue'
 import DocumentAttachments from '@/app/document/components/DocumentAttachments.vue'
 import { DocumentResourceReferences, richLinkTarget, richLinkCard, useReferenceFormatting } from '@/core/util'
 import DocumentHistoryDialog from '@/app/document/components/DocumentHistoryDialog.vue'
+import DocumentSummaryPanel from './DocumentSummaryPanel.vue'
 
 type DocumentShareAccess = 'none' | 'read' | 'edit'
 type AutosaveState = 'saved' | 'pending' | 'saving' | 'invalid' | 'error'
@@ -345,12 +353,6 @@ watch(deleteDialogOpen, () => { deletionError.value = '' })
 const refreshing = ref(false)
 const refreshError = ref(false)
 const currentDocument = ref<DocumentDetail | null>(null)
-async function loadSummary(signal: AbortSignal): Promise<ResourceSummaryView> {
-  const current = currentDocument.value
-  if (!current) return { content: '', mediaType: 'text/html', keywords: [] }
-  const result = await documentService.summary(current.id, requestAgentId.value, signal)
-  return { content: result.payload.text ?? '', mediaType: result.media_type === 'text/plain' ? 'text/plain' : 'text/html', keywords: result.keywords }
-}
 const topicChangeInFlight = ref(false)
 async function changeDocumentTopic(topicId: string): Promise<number> {
   if (!canEditDocument.value || topicChangeInFlight.value) throw new Error(t('topic.assignmentAudit.changeError'))
@@ -435,6 +437,10 @@ async function exportCurrentBundle(html: string, signal: AbortSignal): Promise<B
 }
 const attachmentsLoading = ref(false)
 const historyOpen = ref(false)
+const summaryOpen = ref(false)
+const summaryPanel = useTemplateRef<InstanceType<typeof DocumentSummaryPanel>>('summaryPanel')
+const switchingView = ref(false)
+watch(() => [props.documentId, props.agentId], () => { summaryOpen.value = false; historyOpen.value = false })
 const editorGlobalAccess = ref<DocumentGlobalAccess>(0)
 const sharingAccessByAgentId = ref<Record<number, DocumentShareAccess>>({})
 const lastSavedDraft = ref<DocumentDraft | null>(null)
@@ -746,8 +752,36 @@ function addKeyword(value: string, done: NewKeywordDone): void {
 }
 
 async function openDocumentHistory(): Promise<void> {
-  if (hasUnsavedChanges.value) await persistAutosave()
-  historyOpen.value = true
+  await switchDocumentView('history')
+}
+
+async function openDocumentSummary(): Promise<void> { await switchDocumentView('summary') }
+async function switchDocumentView(view: 'history' | 'summary'): Promise<void> {
+  if (switchingView.value) return
+  switchingView.value = true
+  const id = props.documentId, agentId = props.agentId
+  try {
+    if (!await flushEditor() || id !== props.documentId || agentId !== props.agentId) return
+    historyOpen.value = view === 'history'
+    summaryOpen.value = view === 'summary'
+  } finally { switchingView.value = false }
+}
+function onSummaryUpdated(summary: DocumentDetail): void {
+  const current = currentDocument.value
+  if (current?.id === summary.id && current.revision === summary.revision) {
+    currentDocument.value = { ...current, lock_version: summary.lock_version, updated_at: summary.updated_at }
+    emit('updated', currentDocument.value)
+  }
+}
+async function closeDocumentSummary(): Promise<void> {
+  try {
+    await mergeLatestDocument(props.documentId)
+    summaryOpen.value = false
+  } catch { refreshError.value = true }
+}
+async function flushEditor(): Promise<boolean> {
+  if (summaryPanel.value && !await summaryPanel.value.flush()) return false
+  return await flushAutosave()
 }
 
 function closeDocumentHistory(): void {
@@ -1243,16 +1277,16 @@ watch([requestedRowAction, loading, ownerOptionsReady], () => {
   requestedRowAction.value = null
   if (action === 'delete') {
     if (canDeleteDocument.value) deleteDialogOpen.value = true
-  } else if (canEditDocument.value && !isGoalDocument(currentDocument.value) && !historyOpen.value) {
+  } else if (canEditDocument.value && !isGoalDocument(currentDocument.value) && !historyOpen.value && !summaryOpen.value) {
     titleInput.value?.focus()
     titleInput.value?.select()
   }
 }, { flush: 'post' })
 function captureFocus(): DocumentFocus | null {
-  if (loading.value || historyOpen.value || currentDocument.value?.id !== props.documentId) return null
+  if (loading.value || historyOpen.value || summaryOpen.value || currentDocument.value?.id !== props.documentId) return null
   return documentFocus.capture(currentDocument.value.revision)
 }
-defineExpose({ flush: flushAutosave, requestRowAction, captureFocus })
+defineExpose({ flush: flushEditor, requestRowAction, captureFocus })
 
 async function resolveInlineImage(documentId: string, attachmentId: string, signal?: AbortSignal): Promise<Blob> {
   return documentService.documentAttachmentBlob(documentId, attachmentId, requestAgentId.value, signal)

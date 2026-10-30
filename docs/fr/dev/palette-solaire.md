@@ -62,6 +62,10 @@ En particulier, `violet` désigne Orchidée et `iris` désigne Violet iris.
 - Garder les surfaces générales et les textes neutres. L’aperçu approuvé utilise `#FFFFFF`
   et `#101010` pour les surfaces générales claires et sombres, avec respectivement `#292C30`
   et `#EEEEF0` pour les textes. Ces neutres ne sont pas des accents supplémentaires.
+- Les séparateurs redimensionnables horizontaux et verticaux utilisent la même couleur que
+  les bordures natives Quasar, adaptée au thème clair ou sombre. Ne pas remplacer leur fond
+  par un gris Solaire ou un accent ; la référence graphique montre les deux orientations
+  dans une carte bordée avec cette même couleur.
 - Choisir un texte neutre lisible sur chaque fond ; un accent vif ne garantit pas à lui seul
   la lisibilité d’un petit texte. Accompagner les états d’un libellé ou d’une icône.
 - Conserver une signification cohérente des couleurs entre les écrans. La palette ne requiert

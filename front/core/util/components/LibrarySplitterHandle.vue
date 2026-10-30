@@ -12,5 +12,5 @@ defineProps<{ horizontal?: boolean }>()
 .document-splitter-handle--horizontal .q-icon { transform: rotate(90deg); }
 .document-splitter-handle:hover, .document-splitter-handle:focus-visible { color: var(--solaire-blue-accent); }
 .document-splitter-handle:focus-visible { outline: 2px solid var(--solaire-blue-accent); }
-:global(body.body--dark) .document-splitter-handle { background: var(--q-dark-page); box-shadow: 0 2px 8px rgba(0, 0, 0, .38); }
+:global(body.body--dark .document-splitter-handle) { background: var(--q-dark-page); box-shadow: 0 2px 8px rgba(0, 0, 0, .38); }
 </style>

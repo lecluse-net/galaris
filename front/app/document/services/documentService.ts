@@ -56,10 +56,16 @@ async linkThumbnail(url: string, agentId: number | null, signal: AbortSignal): P
   })
   return response.status === 204 ? null : response.data
 },
-async updateSummary(id: string, agentId: number, data: DocumentUpdate): Promise<DocumentDetail> {
+async updateSummary(id: string, agentId: number | null, data: DocumentUpdate): Promise<DocumentDetail> {
   return (await api.put<DocumentDetail>(`/documents/${id}/summary`, data, {
     params: { actor_agent_id: agentId }, headers: { 'X-Editorial-Profile-Version': '1' },
   })).data
+},
+
+async regenerateSummary(id: string, agentId: number | null, expectedLockVersion: number): Promise<DocumentDetail> {
+  return (await api.post<DocumentDetail>(`/documents/${id}/summary/regenerate`, {
+    expected_lock_version: expectedLockVersion,
+  }, { params: { actor_agent_id: agentId ?? undefined } })).data
 },
 
 async internalAttachments(id: string, agentId: number | null, resourceAgentId: number, signal?: AbortSignal): Promise<DocumentInternalAttachments> {

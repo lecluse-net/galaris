@@ -127,10 +127,16 @@ destinataire après découpage, et une réouverture relit le nom modifié.
 ## Lectures natives des Documents
 
 `resource-summaries.spec.mjs` vérifie l'accès en lecture au résumé courant depuis les
-éditeurs Document et Dataset, les mots-clés, l'état vide, les erreurs et la reprise,
+éditeurs Document et Dataset, les mots-clés masqués dans la vue Document, l'état vide, les erreurs et la reprise,
 le rechargement à la réouverture et le rejet des réponses tardives après changement
-de ressource. La fenêtre commune conserve les fermetures par bouton, Échap et arrière-plan ;
-le parcours est aussi inspecté sur un petit viewport.
+de ressource. Le résumé Document remplace l'éditeur et revient au contenu sans le modifier ;
+sa saisie, son enregistrement, la conservation du brouillon après erreur ou conflit et la
+régénération sont couverts. Les lecteurs ne disposent pas des actions d'écriture.
+La fenêtre Dataset conserve les fermetures par bouton, Échap et arrière-plan ;
+le parcours est aussi inspecté sur petit viewport et en sombre.
+`app/document/tests/test_summary_editing.py` vérifie les droits, les résumés manuels,
+la régénération forcée des petits documents Texte et Données, les sources longues,
+la protection contre un résultat tardif et la conservation du contenu, de ses versions et des mots-clés.
 
 `app/dream/tests/test_resource_summaries.py` couvre les seuils stricts de taille et de
 changement cumulé, les petits contenus, la protection des descriptions manuelles, le

@@ -118,9 +118,15 @@ batches, and reopening reads a changed name.
 ## Native Document reads
 
 `resource-summaries.spec.mjs` checks read access to current summaries in the Document and
-Dataset editors, keywords, empty results, errors and retry, fresh reads on reopening and
-rejection of late responses after a resource change. The shared dialog supports close-button,
-Escape and backdrop dismissal; the journey is also inspected at a small viewport.
+Dataset editors, hidden keywords in the Document view, empty results, errors and retry, fresh reads on reopening and
+rejection of late responses after a resource change. The Document summary replaces the editor
+and returns to unchanged content; editing, saving, draft preservation after errors or conflicts
+and forced regeneration are covered. Readers have no write actions.
+The Dataset dialog supports close-button, Escape and backdrop dismissal; the journey is also
+inspected at a small viewport and in dark mode.
+`app/document/tests/test_summary_editing.py` covers rights, manual summaries, forced regeneration
+for short Text and Data sources, long sources, stale inference and preservation of the body,
+content versions and keywords.
 
 `app/dream/tests/test_resource_summaries.py` covers strict size and cumulative-change
 thresholds, small resources, manual descriptions, coalesced requests, policy changes and

@@ -731,7 +731,6 @@ defineExpose({ reload: refresh, refreshDocuments, removeDocument, updateDocument
 .library-error { color: var(--solaire-red-accent); background: var(--solaire-red-light); }
 .library-navigation--dark .library-error { background: var(--solaire-red-dark); }
 .library-navigation :deep(.q-splitter__panel) { min-height: 0; overflow: auto; }
-.library-navigation :deep(.q-splitter__separator) { background: var(--solaire-gray-light); }
 .tag-row { min-width: 0; }
 .tag-row--drop { background: var(--solaire-blue-light); }
 .node-drop-before { box-shadow: inset 0 2px var(--solaire-blue-accent); }
@@ -748,6 +747,5 @@ defineExpose({ reload: refresh, refreshDocuments, removeDocument, updateDocument
 .document-list-scroll { flex: 1; min-height: 0; overflow: auto; }
 .library-pagination { flex-shrink: 0; gap: 4px 12px; }
 .tag-dialog { width: min(440px, calc(100vw - 24px)); }
-.library-navigation--dark :deep(.q-splitter__separator) { background: var(--solaire-gray-dark); }
 .library-navigation--dark .tag-row--drop { background: var(--solaire-blue-dark); }
 </style>

@@ -11,6 +11,16 @@ test('the visual reference is available only for the exact dev environment', asy
 
 test('reference interactions remain local and the catalogue survives theme and viewport changes', async ({ page }, testInfo) => {
   await mount(page, 'test-support/browser/GraphicReferenceHarness.vue', { locale: 'fr' })
+  // Both orientations share the surrounding card's native theme border colour.
+  const expectBorderSeparators = async () => {
+    await expect.poll(() => page.locator('.gallery-splitter').evaluate(element => {
+      const border = getComputedStyle(element.closest('.q-card')).borderLeftColor
+      const separators = [...element.querySelectorAll('.q-splitter__separator')]
+      return separators.length === 2 && separators.every(separator => getComputedStyle(separator).backgroundColor === border)
+    })).toBe(true)
+  }
+  await expectBorderSeparators()
+  await page.locator('#navigation').screenshot({ path: testInfo.outputPath('separators-light.png') })
   const toggles = page.locator('#toggles')
   await toggles.getByRole('button', { name: 'Grille', exact: true }).click()
   await expect(toggles.getByRole('button', { name: 'Grille', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -52,6 +62,8 @@ test('reference interactions remain local and the catalogue survives theme and v
   await expect(glyphs.getByRole('cell', { name: 'search', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Thème sombre', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Thème clair', exact: true })).toBeVisible()
+  await expectBorderSeparators()
+  await page.locator('#navigation').screenshot({ path: testInfo.outputPath('separators-dark.png') })
   await toggles.screenshot({ path: testInfo.outputPath('toggles-desktop-dark.png') })
   await page.screenshot({ path: testInfo.outputPath('reference-desktop-dark.png'), fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })

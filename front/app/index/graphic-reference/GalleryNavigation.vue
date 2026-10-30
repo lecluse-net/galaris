@@ -8,7 +8,8 @@
       <q-tree :nodes="nodes" node-key="key" default-expand-all :aria-label="t('graphicReference.tree')"><template #default-header="scope"><FolderIcon :expanded="scope.expanded" size="22px" /><span class="q-ml-sm">{{ scope.node.label }}</span></template></q-tree>
     </div>
     <div class="col-12 col-md-6">
-      <q-splitter v-model="vertical" :limits="[20, 80]" class="gallery-splitter" :separator-style="{ background: 'var(--solaire-gray-light)' }">
+      <q-card flat bordered>
+      <q-splitter v-model="vertical" :limits="[20, 80]" class="gallery-splitter">
         <template #before><div class="q-pa-md">{{ t('graphicReference.before') }}</div></template>
         <template #separator><DocumentSplitterHandle role="separator" tabindex="0" aria-orientation="vertical" :aria-label="t('graphicReference.resize')" :aria-valuenow="vertical" :aria-valuemin="20" :aria-valuemax="80" @keydown="resize($event, false)" /></template>
         <template #after>
@@ -19,6 +20,7 @@
           </q-splitter>
         </template>
       </q-splitter>
+      </q-card>
       <q-separator spaced />
       <GraphViewControls class="inline-flex"><q-btn v-for="icon in ['add', 'remove', 'center_focus_strong']" :key="icon" flat round dense :icon="icon" :aria-label="icon" /></GraphViewControls>
     </div>
@@ -43,6 +45,5 @@ function resize(event: KeyboardEvent, isHorizontal: boolean): void {
 }
 </script>
 <style scoped>
-.gallery-splitter { border: 1px solid var(--solaire-gray-accent); border-radius: 6px; }
 .inline-flex { display: inline-flex; }
 </style>

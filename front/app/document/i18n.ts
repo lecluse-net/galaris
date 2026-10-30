@@ -465,6 +465,14 @@ documents: {
       historyRestoreDone: 'Le contenu a été restauré dans une nouvelle version.',
       historyRestoreError: 'Le contenu n’a pas pu être restauré. Rechargez le document et réessayez.',
       historyBack: 'Revenir au document',
+      summarySave: 'Enregistrer le résumé',
+      summaryRegenerate: 'Régénérer le résumé',
+      summaryHint: 'La régénération remplace le résumé, y compris vos modifications manuelles.',
+      summaryUnsaved: 'Modifications non enregistrées.',
+      summaryReload: 'Recharger le résumé enregistré',
+      summaryConflict: 'Le document ou son résumé a changé. Votre brouillon est conservé ; rechargez le résumé enregistré avant de réessayer.',
+      summarySaveError: 'Impossible d’enregistrer le résumé. Vos modifications sont conservées ; réessayez.',
+      summaryRegenerateError: 'Impossible de régénérer le résumé. Vérifiez le modèle Dream configuré, puis réessayez.',
       historyClose: 'Fermer',
       historyCancel: 'Annuler',
     }
@@ -935,6 +943,14 @@ documents: {
       historyRestoreDone: 'The content was restored as a new version.',
       historyRestoreError: 'The content could not be restored. Reload the document and try again.',
       historyBack: 'Back to document',
+      summarySave: 'Save summary',
+      summaryRegenerate: 'Regenerate summary',
+      summaryHint: 'Regeneration replaces the summary, including your manual edits.',
+      summaryUnsaved: 'Unsaved changes.',
+      summaryReload: 'Reload saved summary',
+      summaryConflict: 'The document or summary changed. Your draft is preserved; reload the saved summary before retrying.',
+      summarySaveError: 'Unable to save the summary. Your changes are preserved; try again.',
+      summaryRegenerateError: 'Unable to regenerate the summary. Check the configured Dream model and try again.',
       historyClose: 'Close',
       historyCancel: 'Cancel',
     }
@@ -1155,6 +1171,12 @@ documents: {
       historyDiff: '更改', historyIdentical: '此版本与当前内容相同。', historyAdditions: '{count} 处新增', historyDeletions: '{count} 处删除', historyRestore: '恢复此版本',
       historyRestoreTitle: '恢复内容', historyRestoreConfirm: '仅用版本 {revision} 替换当前内容？标题、文件夹、所有者、共享、关键词和附件将保持不变。',
       historyRestoreDone: '内容已恢复为新版本。', historyRestoreError: '无法恢复内容。请重新加载文档后再试。', historyBack: '返回文档', historyClose: '关闭', historyCancel: '取消',
+      summarySave: '保存摘要', summaryRegenerate: '重新生成摘要',
+      summaryHint: '重新生成会替换摘要，包括您的手动修改。',
+      summaryUnsaved: '有未保存的更改。', summaryReload: '重新加载已保存的摘要',
+      summaryConflict: '文档或摘要已更改。您的草稿已保留；请重新加载已保存的摘要后再试。',
+      summarySaveError: '无法保存摘要。您的更改已保留；请重试。',
+      summaryRegenerateError: '无法重新生成摘要。请检查配置的 Dream 模型后重试。',
     }
 }
 }

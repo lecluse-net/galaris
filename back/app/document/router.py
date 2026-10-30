@@ -74,6 +74,7 @@ from .schemas import (
     DocumentPublic,
     DocumentDetail,
     DocumentUpdate,
+    DocumentSummaryRegenerate,
 )
 from .document_apps import AppDatasetRequest, AppDatasetResult, AppGrantUpdate, AppPermissions
 from .document_app_service import app_dataset, app_permissions, set_app_permission
@@ -133,6 +134,17 @@ async def edit_document_summary(document_id: UUID, data: DocumentUpdate,
     try:
         actor = await _document_request_actor(document_id, actor_agent_id)
         return await edit_summary(document_id, data, actor=actor)
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+@router.post("/{document_id}/summary/regenerate", response_model=DocumentDetail)
+@authorize(privileges=[Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def regenerate_document_summary(document_id: UUID, data: DocumentSummaryRegenerate,
+    actor_agent_id: int | None = Query(default=None, gt=0)) -> DocumentDetail:
+    from .summary_service import regenerate_summary
+    try:
+        actor = await _document_request_actor(document_id, actor_agent_id)
+        return await regenerate_summary(document_id, expected_lock_version=data.expected_lock_version, actor=actor)
     except Exception as exc:
         raise _http_error(exc) from exc
 
