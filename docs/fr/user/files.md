@@ -34,6 +34,16 @@ disponible sinon. Cliquez sur un fichier pour afficher son aperçu, sur un Docum
 une tâche, un Dataset ou un échange pour ouvrir sa vue métier existante. Les formats
 sans lecteur intégré se téléchargent.
 
+Dans **Galaris → Skills**, cliquez sur un skill générique ou personnel pour ouvrir sa
+modale de lecture, avec `SKILL.md` affiché en premier. Ses fichiers restent consultables
+dans cette modale. Les skills génériques sont regroupés dans des dossiers virtuels portant
+le nom de leur catégorie ; **Sans catégorie** rassemble les skills non classés.
+Seules les catégories contenant des skills accessibles sont affichées. Le classement ne
+déplace aucun fichier et conserve les liens des skills, même après renommage ou changement
+de catégorie. **Compétences personnelles** conserve les dossiers nommés d’après le prénom
+et le nom de chaque agent. Le sélecteur de pièces jointes permet toujours de parcourir les
+fichiers du skill.
+
 Dans **Documents** (`document://`), les répertoires apparaissent directement à la racine,
 avec les fichiers qui ne sont classés dans aucun répertoire accessible. Ouvrir un répertoire
 affiche ses sous-répertoires et ses fichiers, sans mélanger les fichiers des niveaux inférieurs.
@@ -47,12 +57,9 @@ Les documents Texte et Données sont regroupés dans cet emplacement. Les docume
 affichent une miniature et les documents Données leur icône dédiée. Il n’y a plus
 d’emplacement `data://` séparé dans Fichiers ; les URI `data://…` existantes restent utilisables.
 
-Dans **Galaris → Goals**, chaque objectif possède un répertoire nommé d’après son titre,
-y compris s’il n’a pas encore de cycle. Son contenu affiche d’abord l’objectif lui-même,
-puis ses cycles dans l’ordre croissant, nommés `0001`, `0002`, etc. Le numéro conserve au moins
-quatre chiffres sans tronquer les cycles au-delà de `9999`. Le fil d’Ariane affiche le titre
-de l’objectif ; renommer celui-ci conserve le lien du répertoire. La collection séparée
-**Goal cycles** n’est plus affichée.
+Dans **Galaris → Goals**, cliquez sur un objectif pour ouvrir directement sa modale.
+Les cycles ne sont pas affichés dans les listes ni dans la recherche de Fichiers ;
+consultez-les depuis le Goal. Les objectifs sans cycle restent accessibles.
 
 Les boutons **Précédent** et **Suivant** du navigateur retrouvent les agents,
 emplacements et répertoires visités. Le fil d’Ariane et le bouton de répertoire parent

@@ -1,7 +1,20 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { compareFileEntries, resourceTarget } from './presentation.ts'
+import { compareFileEntries, resourceTarget, isSkillPackage } from './presentation.ts'
+
+test('only skill packages open a skill modal, leaving library branches and files navigable', () => {
+  for (const uri of ['galaris://skill/sample/', 'galaris://skill/personnal/7/private-guide/']) {
+    assert.equal(isSkillPackage({ uri, is_collection: true }), true)
+    assert.equal(isSkillPackage({ uri, is_collection: false }), false)
+  }
+  for (const uri of ['galaris://skill/', 'galaris://skill/_category-1/', 'galaris://skill/_uncategorized/',
+    'galaris://skill/personnal/', 'galaris://skill/personnal',
+    'galaris://skill/personnal/7/', 'galaris://skill/sample/SKILL.md', 'galaris://skill/sample/references/',
+    'galaris://skill/personnal/7/private-guide/references/']) {
+    assert.equal(isSkillPackage({ uri, is_collection: true }), false)
+  }
+})
 
 test('virtual collections retain the Goal before cycles and sort cycles by their numeric sequence', () => {
   const entry = (name, order) => ({ name, is_collection: false, metadata: { sort_order: order } })

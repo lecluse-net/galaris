@@ -34,11 +34,9 @@ Text and Data documents share this location. Text documents display a thumbnail 
 documents their dedicated icon. Files no longer shows a separate `data://` location;
 existing `data://…` URIs remain usable.
 
-Under **Galaris → Goals**, each Goal has a directory named after its title,
-including Goals without cycles. Its contents show the Goal itself first, followed by
-its cycles in ascending order, named `0001`, `0002`, etc. Numbers use at least four digits
-without truncating cycles beyond `9999`. Breadcrumbs display the Goal title;
-renaming it preserves the directory link. The separate **Goal cycles** collection is no longer shown.
+Under **Galaris → Goals**, click a Goal to open its dialog directly. Cycles are not
+displayed in Files listings or search; view them from the Goal. Goals without cycles
+remain accessible.
 
 When no location is selected, the central grid displays available schemes as folders.
 Click one to open its root, then a directory in the tree or the central grid. Use the breadcrumbs
@@ -46,6 +44,14 @@ or parent directory button to go back up. Files have a thumbnail when their form
 can be rendered and an icon otherwise. Click a file to preview it, or a Document,
 Task, Dataset or conversation to open its existing domain view. Formats without an
 integrated viewer are downloaded.
+
+Under **Galaris → Skills**, click a generic or personal skill to open its reading dialog,
+with `SKILL.md` displayed first. Its files remain available inside the dialog. Generic
+skills are grouped into virtual folders named after their category; **Uncategorized**
+contains skills without a category. Only categories containing accessible skills appear.
+Grouping moves no files and preserves skill links after renaming or reclassification.
+**Personal skills** retains owner folders showing each agent's first and last name.
+The attachment picker still lets you browse the skill's files.
 
 Your browser's **Back** and **Forward** buttons restore previously visited Agents,
 locations and directories. Breadcrumbs and the parent-directory button use the same

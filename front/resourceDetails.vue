@@ -3,6 +3,8 @@
   <NativeRunDialog v-else-if="target.kind === 'process_run'" :key="target.id + ':' + target.agentId"
     :run-id="target.id" :agent-id="target.agentId" :title="target.title" @close="emit('close')" />
   <ExternalRunDialog v-else-if="target.kind === 'external_process_run'" :key="target.id" :run-id="target.id" @close="emit('close')" />
+  <SkillResourceDialog v-else-if="target.kind === 'skill' && target.agentId != null" :key="target.id + ':' + target.agentId"
+    :uri="target.id" :label="target.title || ''" :agent-id="target.agentId" @close="emit('close')" />
   <WorkingDocumentDialog v-else-if="target.kind === 'document' || target.kind === 'dataset'" ref="resourceEditor" :model-value="true"
     :document-id="target.id" :agent-id="target.agentId ?? null" :title="target.title" :editable="target.kind === 'dataset'"
     @update:model-value="!$event && emit('close')" @deleted="changedAndClose" />
@@ -89,6 +91,7 @@ const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).Goa
 const NativeRunDialog = defineAsyncView(async () => (await import('@/app/process')).NativeRunDialog)
 const ExternalRunDialog = defineAsyncView(async () => (await import('@/app/process')).ExternalRunDialog)
 const ProcessPreview = defineAsyncView(async () => (await import('@/app/process')).ProcessPreview)
+const SkillResourceDialog = defineAsyncView(() => import('./skillResourceDialog.vue'))
 const ConversationRoundDetailView = defineAsyncView(async () => (await import('@/app/conversation')).ConversationRoundDetailView)
 const VoiceConversationDetailView = defineAsyncView(async () => (await import('@/app/voice')).VoiceConversationDetailView)
 const RoomDiscussion = defineAsyncView(async () => (await import('@/app/chat/interface')).RoomDiscussion)

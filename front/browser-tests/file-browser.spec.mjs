@@ -32,7 +32,7 @@ async function selectAgent(page, name) {
   await expect(page.getByRole('listbox')).toHaveCount(0)
 }
 
-for (const width of [1440, 390]) test(`Goals folders retain the Goal first across pages, reopening and history at ${width}px`, async ({ page }, testInfo) => {
+for (const width of [1440, 390]) test(`Goals open their modal while cycles stay outside file navigation at ${width}px`, async ({ page }, testInfo) => {
   await setup(page)
   await page.setViewportSize({ width, height: 1000 })
   const id = '00000000-0000-4000-8000-000000000731'
@@ -56,7 +56,7 @@ for (const width of [1440, 390]) test(`Goals folders retain the Goal first acros
     const params = new URL(route.request().url()).searchParams
     const uri = params.get('uri')
     const listing = uri === folder.uri ? { ...pageOf(uri, params.has('cursor') ? cycles.slice(1) : [goal, cycles[0]], params.has('cursor') ? null : '2'), ancestors: [galaris, root, folder] }
-      : pageOf(uri, uri === root.uri ? [folder] : [root])
+      : pageOf(uri, uri === root.uri ? [goal] : [root])
     return route.fulfill({ json: listing })
   })
   await jsonRoute(page, '**/api/file-share/browser/info?*', cycles[0])
@@ -64,24 +64,23 @@ for (const width of [1440, 390]) test(`Goals folders retain the Goal first acros
   await mount(page, routeComponent, { route: '/files?agent_id=7&uri=' + encodeURIComponent(galaris.uri), browserHistory: true, privileges: ['FILE_ACCESS', 'GOAL_ACCESS'] })
   await expect(page.getByRole('button', { name: 'Open Goal cycles', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Open Goals', exact: true }).click()
-  await page.getByRole('button', { name: `Open ${folder.name}`, exact: true }).click()
   const names = page.locator('.file-main .file-tile-name')
-  await expect(names).toHaveText([goal.name, '0001', '0002', '10000'])
-  const navigation = page.getByRole('navigation', { name: 'File navigation', exact: true })
-  await expect(navigation.getByRole('button', { name: folder.name, exact: true })).toBeVisible()
-  await page.screenshot({ path: testInfo.outputPath('goal-cycles-light.png'), animations: 'disabled' })
+  await expect(names).toHaveText([goal.name])
+  await page.screenshot({ path: testInfo.outputPath('goals-light.png'), animations: 'disabled' })
   await page.getByRole('button', { name: `Open ${goal.name}`, exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText('Synthetic objective description')
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'Open 0001', exact: true }).click()
-  await expect(page.getByRole('dialog')).toContainText('sequence')
-  await page.keyboard.press('Escape')
   await page.evaluate(() => window.history.back())
-  await expect(names).toHaveText([folder.name])
+  await expect(page.getByRole('button', { name: 'Open Goals', exact: true })).toBeVisible()
   await page.evaluate(() => window.history.forward())
-  await expect(names).toHaveText([goal.name, '0001', '0002', '10000'])
+  await expect(names).toHaveText([goal.name])
   await page.evaluate(() => window.testApp.dark(true))
-  await page.screenshot({ path: testInfo.outputPath('goal-cycles-dark.png'), animations: 'disabled' })
+  await page.screenshot({ path: testInfo.outputPath('goals-dark.png'), animations: 'disabled' })
+  // Old directory links or cached provider results must not reintroduce cycle tiles.
+  await mount(page, routeComponent, { route: '/files?agent_id=7&uri=' + encodeURIComponent(folder.uri), browserHistory: true, privileges: ['FILE_ACCESS', 'GOAL_ACCESS'] })
+  await expect(page.locator('.file-main .file-tile-name')).toHaveText([goal.name])
+  await page.getByRole('button', { name: `Open ${goal.name}`, exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('Synthetic objective description')
 })
 
 for (const width of [1440, 390]) test(`browser history restores agents and directories, including failed and late loads at ${width}px`, async ({ page }) => {

@@ -431,72 +431,10 @@
       </q-card>
     </q-dialog>
 
-    <!-- Full package viewer. -->
-    <q-dialog v-model="viewerDialog" maximized transition-show="slide-up" transition-hide="slide-down">
-      <q-card class="column no-wrap galaris-dialog-card">
-        <q-toolbar class="galaris-dialog-title bg-primary text-white">
-          <q-toolbar-title>{{ t('skills.viewTitle', { label: store.currentSkill?.label || '' }) }}</q-toolbar-title>
-          <q-btn outline color="white" icon="download" :label="t('skills.download')" @click="store.currentSkill && downloadSkill(store.currentSkill)" />
-          <q-btn
-            flat
-            round
-            dense
-            icon="close"
-            v-close-popup
-            :aria-label="t('skills.cancel')"
-          />
-        </q-toolbar>
-        <q-splitter v-model="splitter" class="col galaris-dialog-body--contained galaris-dialog-body">
-          <template #before>
-            <q-scroll-area class="fit q-pa-sm">
-              <q-tree
-                :nodes="fileTree"
-                node-key="key"
-                label-key="label"
-                v-model:selected="selectedTreeKey"
-                default-expand-all
-                no-transition
-                @update:selected="onTreeSelect"
-              />
-            </q-scroll-area>
-          </template>
-          <template #after>
-            <q-inner-loading :showing="store.contentLoading" />
-            <div v-if="selectedFile" class="column fit">
-              <q-toolbar class="bg-grey-2">
-                <q-icon :name="selectedFile.text ? 'description' : 'data_object'" class="q-mr-sm" />
-                <q-toolbar-title class="text-subtitle1">{{ selectedFile.path }}</q-toolbar-title>
-                <span class="text-caption text-grey-7 q-mr-md">{{ formatSize(selectedFile.size) }}</span>
-                <q-btn flat round color="primary" icon="download" :aria-label="t('skills.download')" @click="downloadSelectedFile">
-                  <q-tooltip>{{ t('skills.download') }}</q-tooltip>
-                </q-btn>
-              </q-toolbar>
-              <q-separator />
-              <template v-if="selectedFile.text">
-                <q-tabs v-if="isMarkdown" v-model="viewerTab" dense align="left" class="text-primary">
-                  <q-tab name="preview" :label="t('skills.preview')" icon="visibility" />
-                  <q-tab name="source" :label="t('skills.source')" icon="code" />
-                </q-tabs>
-                <q-tab-panels v-if="isMarkdown" v-model="viewerTab" class="col scroll">
-                  <q-tab-panel name="preview"><Markdown :content="store.currentContent" compact-frontmatter /></q-tab-panel>
-                  <q-tab-panel name="source">
-                    <CodeEditor :model-value="store.currentContent" language="markdown" readonly :visible-lines="30" />
-                  </q-tab-panel>
-                </q-tab-panels>
-                <div v-else class="q-pa-md col scroll">
-                  <CodeEditor :model-value="store.currentContent" :language="selectedLanguage" readonly :visible-lines="30" />
-                </div>
-              </template>
-              <div v-else class="col row flex-center text-grey-7 q-gutter-sm">
-                <q-icon name="draft" size="3em" />
-                <span>{{ t('skills.binaryFile') }}</span>
-              </div>
-            </div>
-            <div v-else class="fit row flex-center text-grey-7">{{ t('skills.noFile') }}</div>
-          </template>
-        </q-splitter>
-      </q-card>
-    </q-dialog>
+    <SkillViewerDialog v-if="viewerDialog" :label="store.currentSkill?.label || ''" :files="store.currentFiles"
+      :path="store.currentPath" :content="store.currentContent" :loading="store.contentLoading" package-download
+      @close="viewerDialog = false" @select="onTreeSelect" @download="store.currentSkill && downloadSkill(store.currentSkill)"
+      @download-file="downloadSelectedFile" />
 
     <!-- ZIP / Markdown drag and drop import. -->
     <q-dialog v-model="importDialog" @hide="resetImport">
@@ -648,14 +586,7 @@ import SkillRowMenu from '../components/SkillRowMenu.vue'
 import { skillService, type Skill, type SkillFile } from '../services/skillService'
 import { useSkillStore } from '../stores/skillStore'
 
-import { languageForSkillFile as languageFor, type CodeLanguage } from '../fileLanguage'
-interface FileTreeNode {
-  key: string
-  label: string
-  icon: string
-  selectable?: boolean
-  children?: FileTreeNode[]
-}
+import SkillViewerDialog from '../components/SkillViewerDialog.vue'
 interface SkillGroup {
   key: string
   label: string
@@ -703,9 +634,6 @@ const editorOriginalMarkdown = ref('')
 const editorTab = ref<'source' | 'preview'>('source')
 const editorForm = reactive({ code: '', label: '', markdown: '', category_id: null as number | null })
 const viewerDialog = ref(false)
-const viewerTab = ref<'preview' | 'source'>('preview')
-const splitter = ref(27)
-const selectedTreeKey = ref<string | null>(null)
 const importDialog = ref(false)
 const importFiles = shallowRef<File[]>([])
 const importing = ref(false)
@@ -815,13 +743,6 @@ const columns = computed<QTableProps['columns']>(() => [
     headerStyle: 'width: 232px;',
   },
 ])
-
-const selectedFile = computed(() =>
-  store.currentFiles.find(file => file.path === selectedTreeKey.value) || null
-)
-const isMarkdown = computed(() => selectedFile.value?.path.toLowerCase().endsWith('.md') ?? false)
-const selectedLanguage = computed<CodeLanguage>(() => languageFor(selectedFile.value?.path || ''))
-const fileTree = computed<FileTreeNode[]>(() => buildFileTree(store.currentFiles))
 
 watch(() => editorForm.code, (code, previous) => {
   if (editingSkill.value) return
@@ -976,8 +897,6 @@ async function saveEditor(): Promise<void> {
 async function openViewer(skill: Skill): Promise<void> {
   try {
     await store.openSkill(skill)
-    selectedTreeKey.value = store.currentPath
-    viewerTab.value = 'preview'
     viewerDialog.value = true
   } catch (error) {
     notifyError(error)
@@ -990,36 +909,9 @@ async function onTreeSelect(key: string | null): Promise<void> {
   if (!file) return
   try {
     await store.openFile(file)
-    viewerTab.value = file.path.toLowerCase().endsWith('.md') ? 'preview' : 'source'
   } catch (error) {
     notifyError(error)
   }
-}
-
-function buildFileTree(files: SkillFile[]): FileTreeNode[] {
-  const roots: FileTreeNode[] = []
-  for (const file of files) {
-    const parts = file.path.split('/')
-    let children = roots
-    let currentPath = ''
-    parts.forEach((part, index) => {
-      currentPath = currentPath ? `${currentPath}/${part}` : part
-      const isFile = index === parts.length - 1
-      let node = children.find(item => item.key === currentPath)
-      if (!node) {
-        node = {
-          key: currentPath,
-          label: part,
-          icon: isFile ? (file.text ? 'description' : 'draft') : 'folder',
-          selectable: isFile,
-          ...(isFile ? {} : { children: [] }),
-        }
-        children.push(node)
-      }
-      if (!isFile) children = node.children || []
-    })
-  }
-  return roots
 }
 
 function saveBlob(blob: Blob, filename: string): void {
@@ -1039,11 +931,11 @@ async function downloadSkill(skill: Skill): Promise<void> {
   }
 }
 
-async function downloadSelectedFile(): Promise<void> {
-  if (!store.currentSkill || !selectedFile.value) return
+async function downloadSelectedFile(file: SkillFile): Promise<void> {
+  if (!store.currentSkill) return
   try {
-    const response = await skillService.downloadFile(store.currentSkill.id, selectedFile.value.path)
-    saveBlob(response.data, selectedFile.value.name)
+    const response = await skillService.downloadFile(store.currentSkill.id, file.path)
+    saveBlob(response.data, file.name)
   } catch (error) {
     notifyError(error)
   }

@@ -2436,8 +2436,14 @@ Le navigateur **Connaissances → Fichiers** est couvert par
 reprise après erreur sans perte des entrées, aperçu au clavier et changement d’agent
 pendant une réponse tardive, menus de mutation, confirmations, refus d’accès et
 renommage du répertoire ouvert.
-Le parcours sous Goals vérifie l’absence de collection Goal cycles séparée, les répertoires titrés, l’objectif avant les cycles numérotés,
-la continuation, l’ouverture et le retour historique sur mobile et bureau.
+`front/browser-tests/file-browser-skills.spec.mjs` couvre les catégories virtuelles, les skills
+sans catégorie et personnels, les noms des propriétaires et l'ouverture des modales sur mobile
+et bureau. `app/file_share/tests/test_skill_categories.py` protège pagination, recherche limitée
+à la catégorie, droits vivants et conservation des URI après reclassement ou suppression.
+Le parcours Goals vérifie l’ouverture directe des objectifs en modale, l’absence de cycles
+dans Fichiers, le retour historique et les anciens liens de répertoires sur mobile et bureau.
+Le contrat d’affichage des cycles numérotés dans Fichiers est retiré ; leurs URI et droits
+restent couverts par les tests du fournisseur et du domaine Goal.
 `app/goal/tests/test_resource_facade.py` couvre aussi les objectifs sans cycle, les titres
 identiques, le renommage, les numéros supérieurs à `9999`, la recherche par numéro et les refus
 de portée. `front/app/file_share/presentation.test.mjs` protège l’ordre fourni par la projection

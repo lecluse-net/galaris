@@ -276,6 +276,18 @@ async def test_team_scope_is_the_live_union_of_all_memberships_and_never_grants_
             await mcp.mcp_skill_read(ctx, skill_id=package.id)
     owners = await listing(resource_ctx, parse_resource_uri('galaris://skill/personnal/'), max_entries=50, cursor=None)
     assert len(owners.entries) == 4
+    assert {entry.uri: entry.name for entry in owners.entries} == {
+        f'galaris://skill/personnal/{owner.id}/': f'{owner.first_name} {owner.last_name}'
+        for owner in [actor, *colleagues[:3]]
+    }
+    owner_uri = parse_resource_uri(f'galaris://skill/personnal/{peer.id}/')
+    peer.first_name, peer.last_name = 'Synthetic', 'Renamed owner'
+    await db.flush()
+    assert (await info(resource_ctx, owner_uri)).name == 'Synthetic Renamed owner'
+    lineage = await listing(resource_ctx, owner_uri, max_entries=50, cursor=None)
+    assert lineage.ancestors[-1].name == 'Synthetic Renamed owner'
+    assert lineage.ancestors[-1].uri == str(owner_uri)
+    assert colleagues[-1].id not in await interface.personal_owner_labels(actor.id, [colleagues[-1].id])
     outside = packages[-1]
     with pytest.raises(FileNotFoundError):
         await mcp.mcp_skill_read(ctx, skill_id=outside.id, administration=True)

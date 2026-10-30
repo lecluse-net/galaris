@@ -5,6 +5,7 @@
       <div class="file-tile-preview">
         <q-icon v-if="/^[a-z][a-z0-9+.-]*:\/\/$/.test(entry.uri)" name="storage" size="var(--file-icon-size)" color="primary" />
         <LibraryIcon v-else-if="documentFolderId(entry.uri)" :icon="typeof entry.metadata?.icon === 'string' ? entry.metadata.icon : null" size="var(--file-icon-size)" />
+        <q-icon v-else-if="isSkillPackage(entry)" name="psychology" size="var(--file-icon-size)" color="primary" />
         <FolderIcon v-else-if="entry.is_collection" size="var(--file-icon-size)" />
         <WorkingDocumentThumbnail v-else-if="documentId && entry.capabilities.includes('read')" class="file-tile-document" :document-id="documentId" :agent-id="agentId" :updated-at="entry.modified_at" />
         <ResourceThumbnail v-else-if="process || resourceAgent !== null" :uri="entry.uri" :agent-id="selectable ? null : agentId" :title="displayName" />
@@ -36,7 +37,7 @@ import { QBtn } from 'quasar'
 import { FolderIcon, LibraryIcon, documentFolderId, WorkingDocumentThumbnail, ResourceThumbnail, browserResourceKind, formatFileSize, queuePreview } from '@/core/util'
 import { agentResourceId } from '@/app/agent'
 import { fileBrowserService, type FileEntry } from '../services/fileBrowserService'
-import { resourceTarget, collectionLabel } from '../presentation'
+import { resourceTarget, collectionLabel, isSkillPackage } from '../presentation'
 
 const { entry, agentId, compact = false, selectable = false, selected = false } = defineProps<{ entry: FileEntry; agentId: number; compact?: boolean; selectable?: boolean; selected?: boolean }>()
 const emit = defineEmits<{ open: [entry: FileEntry, event: Event]; activate: [entry: FileEntry]; select: [entry: FileEntry, event: Event]; preview: [entry: FileEntry] }>()
@@ -51,7 +52,7 @@ let request: AbortController | undefined
 let observer: IntersectionObserver | undefined
 const icon = computed(() => {
   const target = resourceTarget(entry, agentId)
-  if (target) return ({ task: 'task_alt', round: 'forum', voice: 'record_voice_over', document: 'description', dataset: 'data_object', memory: 'memory' })[target.kind] || 'description'
+  if (target) return ({ goal: 'flag_circle', task: 'task_alt', round: 'forum', voice: 'record_voice_over', document: 'description', dataset: 'data_object', memory: 'memory' })[target.kind] || 'description'
   const kind = browserResourceKind(entry.media_type, entry.name)
   return ({ image: 'image', pdf: 'picture_as_pdf', audio: 'audio_file', video: 'movie', html: 'html', model3d: 'view_in_ar', markdown: 'article', text: 'description' })[kind ?? 'text']
 })

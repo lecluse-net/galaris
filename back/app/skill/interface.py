@@ -9,7 +9,7 @@ from dataclasses import replace
 from collections.abc import Callable
 from typing import Literal
 from uuid import UUID
-from sqlalchemy import select, update, func
+from sqlalchemy import Select, select, update, func
 from sqlalchemy.orm import selectinload, raiseload
 from loguru import logger
 
@@ -26,7 +26,7 @@ from .contracts import (
     SkillRevisionConflict,
     SkillScope,
 )
-from .models import AgentSkill, Skill, SkillOwnershipRelease
+from .models import AgentSkill, Skill, SkillCategory, SkillOwnershipRelease
 from .learning_policy import eligible_learning_ids
 
 
@@ -123,21 +123,19 @@ async def _authorize(
             raise FileNotFoundError("Skill not found")
 
 
-async def _list_package_records(
+async def _package_query(
     *, actor_agent_id: int, administration: bool = False,
-    offset: int = 0, limit: int = 50, include_unavailable: bool = False,
+    include_unavailable: bool = False,
     kind: Literal["generic", "personal"] | None = None, owner_agent_id: int | None = None,
     target_agent_id: int | None = None,
-    code: str | None = None,
-) -> list[Skill]:
+    code: str | None = None, category: int | Literal["uncategorized"] | None = None,
+) -> Select[tuple[Skill]]:
     await _actor(actor_agent_id)
     scope = await get_agent_scope(actor_agent_id)
     if administration and scope not in (SkillScope.TEAM, SkillScope.ALL):
         raise PermissionError("Skills administration is required")
     if include_unavailable and scope == SkillScope.USAGE:
         raise PermissionError("Skills management scope is required")
-    if offset < 0 or not 1 <= limit <= 501:
-        raise ValueError("Invalid Skills pagination")
     if target_agent_id is not None and not administration:
         raise PermissionError("A target agent requires global administration")
     allowed = await manageable_agents(actor_agent_id, scope) if administration else None
@@ -167,6 +165,24 @@ async def _list_package_records(
         query = query.where(Skill.owner_agent_id == owner_agent_id)
     if code is not None:
         query = query.where(Skill.code == storage.validate_code(code))
+    if category is not None:
+        query = query.where(Skill.owner_agent_id.is_(None),
+            Skill.category_id.is_(None) if category == "uncategorized" else Skill.category_id == category)
+    return query
+
+
+async def _list_package_records(
+    *, actor_agent_id: int, administration: bool = False,
+    offset: int = 0, limit: int = 50, include_unavailable: bool = False,
+    kind: Literal["generic", "personal"] | None = None, owner_agent_id: int | None = None,
+    target_agent_id: int | None = None, code: str | None = None,
+    category: int | Literal["uncategorized"] | None = None,
+) -> list[Skill]:
+    if offset < 0 or not 1 <= limit <= 501:
+        raise ValueError("Invalid Skills pagination")
+    query = await _package_query(actor_agent_id=actor_agent_id, administration=administration,
+        include_unavailable=include_unavailable, kind=kind, owner_agent_id=owner_agent_id,
+        target_agent_id=target_agent_id, code=code, category=category)
     records = (await get_db().scalars(
         query.options(raiseload(Skill.assignments)).order_by(Skill.id).offset(offset).limit(limit)
         .execution_options(populate_existing=True)
@@ -181,12 +197,31 @@ async def list_packages(
     *, actor_agent_id: int, administration: bool = False,
     offset: int = 0, limit: int = 50, include_unavailable: bool = False,
     kind: Literal["generic", "personal"] | None = None, owner_agent_id: int | None = None,
-    target_agent_id: int | None = None,
+    target_agent_id: int | None = None, category: int | Literal["uncategorized"] | None = None,
 ) -> list[SkillPackageRef]:
     return [_reference(record) for record in await _list_package_records(
         actor_agent_id=actor_agent_id, administration=administration, offset=offset, limit=limit,
         include_unavailable=include_unavailable, kind=kind, owner_agent_id=owner_agent_id,
-        target_agent_id=target_agent_id)]
+        target_agent_id=target_agent_id, category=category)]
+
+
+async def list_package_categories(
+    *, actor_agent_id: int, administration: bool = False, offset: int = 0, limit: int = 50,
+    category: int | Literal["uncategorized"] | None = None,
+) -> list[tuple[int | None, str]]:
+    """Virtual categories containing generic packages visible to the calling agent."""
+    if offset < 0 or not 1 <= limit <= 501:
+        raise ValueError("Invalid Skills pagination")
+    include_unavailable = await get_agent_scope(actor_agent_id) != SkillScope.USAGE
+    query = await _package_query(actor_agent_id=actor_agent_id, administration=administration,
+        include_unavailable=include_unavailable, kind="generic", category=category)
+    if not administration and not include_unavailable:
+        codes = await get_db().scalars(query.with_only_columns(Skill.code))
+        query = query.where(Skill.code.in_([code for code in codes if storage.inspect(code).valid]))
+    rows = await get_db().execute(query.outerjoin(SkillCategory, SkillCategory.id == Skill.category_id)
+        .with_only_columns(Skill.category_id, SkillCategory.label).distinct()
+        .order_by(Skill.category_id.asc().nulls_last()).offset(offset).limit(limit))
+    return [(identity, label or "Uncategorized") for identity, label in rows]
 
 
 def _summary(record: Skill) -> dict[str, object]:
@@ -380,6 +415,17 @@ async def personal_owners(actor_agent_id: int, offset: int, limit: int) -> list[
         query = query.where(Skill.owner_agent_id.in_(allowed))
     owners = await get_db().scalars(query.distinct().order_by(Skill.owner_agent_id).offset(offset).limit(limit))
     return [owner for owner in owners if owner is not None]
+
+
+async def personal_owner_labels(actor_agent_id: int, owner_ids: list[int]) -> dict[int, str]:
+    """Resolve visible owners' current names without exposing other agents."""
+    await _actor(actor_agent_id)
+    allowed = await manageable_agents(actor_agent_id)
+    query = select(Agent.id, Agent.first_name, Agent.last_name).where(Agent.id.in_(owner_ids))
+    if allowed is not None:
+        query = query.where(Agent.id.in_(allowed))
+    rows = await get_db().execute(query)
+    return {identity: f"{first_name} {last_name}".strip() for identity, first_name, last_name in rows}
 
 
 async def _authorize_mutation(record: Skill, actor_agent_id: int | None, administration: bool) -> None:

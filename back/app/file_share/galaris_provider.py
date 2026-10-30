@@ -269,18 +269,29 @@ def _goal_folder(payload: dict[str, Any]) -> ResourceDescriptor:
     )
 
 
+def _goal_browser_entry(payload: dict[str, Any]) -> ResourceDescriptor:
+    entry = _descriptor("goal", payload)
+    entry.name = _item_name("goal", payload)
+    return entry
+
+
 async def _goal_listing(
     ctx: ResourceContext, reference: ResourceUri, goal_id: UUID | None, *, offset: int, limit: int,
 ) -> ResourceListing:
     if goal_id is None:
         goals = await _list_payloads(ctx, "goal", offset=offset, limit=limit + 1)
-        entries = [_goal_folder(goal) for goal in goals[:limit]]
+        entries = [(_goal_browser_entry(goal) if ctx.browser_navigation else _goal_folder(goal)) for goal in goals[:limit]]
         more = len(goals) > limit
         return ResourceListing(uri=str(reference), entries=entries, truncated=more,
             next_cursor=str(offset + len(entries)) if more else None)
     payload = await _read_payload(ctx, "goal", goal_id)
     if payload is None:
         raise FileNotFoundError(str(reference))
+    if ctx.browser_navigation:
+        return ResourceListing(uri=str(reference), entries=[_goal_browser_entry(payload)] if offset == 0 else [],
+            truncated=False, next_cursor=None,
+            ancestors=[ResourceDescriptor(uri="galaris://", name="Galaris", is_collection=True,
+                capabilities=list(_COLLECTION_CAPABILITIES)), _collection_descriptor("goal"), _goal_folder(payload)])
     from app.goal import list_goal_cycle_resources
 
     available = limit - (1 if offset == 0 else 0)
@@ -498,6 +509,10 @@ async def galaris_resource_list(
     if not route.is_collection:
         raise ResourceUriError("file_list requires a galaris:// collection URI.")
     limit = max(1, min(max_entries, 500))
+    if ctx.browser_navigation and route.kind == "goal_cycle" and not (
+        reference.segments[:1] == ("goal",) and len(reference.segments) == 2
+    ):
+        return ResourceListing(uri=str(reference), entries=[], truncated=False, next_cursor=None)
     if route.kind == "goal" or route.kind == "goal_cycle" and len(reference.segments) <= 2:
         return await _goal_listing(ctx, reference, route.goal_cycles_for, offset=offset, limit=limit)
     if route.kind == "process" and reference.segments[:1] == ("processes",):
@@ -609,6 +624,8 @@ async def galaris_resource_search(
         )
     else:
         kinds = (route.kind,)
+    if ctx.browser_navigation:
+        kinds = tuple(kind for kind in kinds if kind != "goal_cycle")
     payloads: list[tuple[GalarisResourceKind, dict[str, Any]]] = []
     for kind in kinds:
         remaining = limit + 1 - len(payloads)
@@ -631,7 +648,8 @@ async def galaris_resource_search(
         mode=mode,
         hits=[
             ResourceSearchHit(
-                resource=_goal_folder(payload) if kind == "goal" and route.kind == "goal" else _descriptor(kind, payload),
+                resource=(_goal_browser_entry(payload) if ctx.browser_navigation else _goal_folder(payload))
+                    if kind == "goal" and (ctx.browser_navigation or route.kind == "goal") else _descriptor(kind, payload),
                 excerpt=_excerpt(payload, query),
             )
             for kind, payload in selected

@@ -22416,6 +22416,7 @@
           "front/app/skill/components/PersonalSkillManager.vue",
           "front/app/skill/components/SkillPolicyToggle.vue",
           "front/app/skill/components/SkillRowMenu.vue",
+          "front/app/skill/components/SkillViewerDialog.vue",
           "front/app/skill/pages/index.vue"
         ],
         "source": "app/skill",

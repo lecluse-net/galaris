@@ -846,6 +846,10 @@ or revocation blocks subsequent management calls.
   Configure generic authorizations afterward; retrying the release does not reset them.
 
 Generic files remain under `galaris://skill/<code>/`. Bundled system packages are read-only.
+`file_list("galaris://skill/")` groups visible generic packages into virtual category folders
+and an Uncategorized folder, alongside the Personal skills branch. Follow the returned folder
+URIs to list their packages; the package and file URIs stay canonical when a category is renamed
+or a package is reclassified. Category folders are read-only navigation, not file destinations.
 Your assigned generic and personal packages are combined without overwriting homonyms.
 Dream-created packages remain personal and follow their learning eligibility policy.
 Content and authorization changes apply at the next context/execution construction, without

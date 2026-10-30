@@ -59,6 +59,7 @@ class ResourceContext:
     skill_management: bool = False
     conversation_turn: object | None = None
     management_scope: AgentManagementScope | None = None
+    browser_navigation: bool = False
 
 
 class ResourceDescriptor(BaseModel):

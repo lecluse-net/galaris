@@ -227,6 +227,32 @@ async def test_galaris_process_uses_the_assigned_workflow_id_and_cursor_page(
 
 
 @pytest.mark.asyncio
+async def test_browser_lists_and_searches_goals_without_loading_their_cycles(monkeypatch):
+    import app.goal as goal
+
+    identity = uuid4()
+    payload = {"id": str(identity), "title": "Synthetic objective", "status": "ACTIVE"}
+    monkeypatch.setattr(goal, "list_goal_resources", AsyncMock(return_value=[payload]))
+    monkeypatch.setattr(goal, "read_goal_resource", AsyncMock(return_value=payload))
+    cycles = AsyncMock(side_effect=AssertionError("File browsing must not load Goal cycles"))
+    monkeypatch.setattr(goal, "list_goal_cycle_resources", cycles)
+    ctx = ResourceContext(agent_id=11, runtime="internal", browser_navigation=True)
+    canonical = f"galaris://goal/{identity}"
+    listing = await resource_service.resource_list(ctx, "galaris://goal/")
+    assert [(entry.uri, entry.name, entry.is_collection) for entry in listing.entries] == [
+        (canonical, payload["title"], False)]
+    legacy = await resource_service.resource_list(ctx, canonical + "/")
+    assert [entry.uri for entry in legacy.entries] == [canonical]
+    assert not legacy.truncated and legacy.next_cursor is None
+    search = await resource_service.resource_search(ctx, "galaris://goal/", "Synthetic")
+    assert [hit.resource.uri for hit in search.hits] == [canonical]
+    for uri in ["galaris://goal_cycle/", canonical + "/cycles/"]:
+        assert not (await resource_service.resource_list(ctx, uri)).entries
+        assert not (await resource_service.resource_search(ctx, uri, "Synthetic")).hits
+    cycles.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_nested_goal_cycle_collection_preserves_goal_scope(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

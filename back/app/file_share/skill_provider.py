@@ -18,10 +18,14 @@ class SkillUri:
     owner: int | None = None
     code: str | None = None
     path: str | None = None
+    category: int | None = None
+    grouped: bool = False
 
     @property
     def root(self) -> str:
         prefix = 'galaris://skill/'
+        if self.grouped:
+            return prefix + (f'_category-{self.category}/' if self.category is not None else '_uncategorized/')
         if self.personal:
             prefix += 'personnal/'
             if self.owner is not None:
@@ -35,6 +39,17 @@ def route(reference: ResourceUri) -> SkillUri:
     if reference.scheme != 'galaris' or reference.segments[:1] != ('skill',):
         raise PermissionError('Business snapshots are read-only; only galaris://skill/ files support mutations')
     parts = list(reference.segments[1:])
+    # Underscores cannot start a package code, so virtual folders never shadow a skill.
+    if parts and (parts[0].startswith('_category-') or parts[0] == '_uncategorized'):
+        if len(parts) != 1:
+            raise ResourceUriError('A category contains canonical skill references, not nested package paths')
+        category = None
+        if parts[0] != '_uncategorized':
+            value = parts[0].removeprefix('_category-')
+            if not value.isdecimal() or int(value) < 1:
+                raise ResourceUriError('A skill category must be a positive category ID')
+            category = int(value)
+        return SkillUri(False, category=category, grouped=True)
     personal = bool(parts and parts[0] == 'personnal')
     owner = None
     if personal:
@@ -75,10 +90,21 @@ async def info(ctx: ResourceContext, reference: ResourceUri) -> ResourceDescript
     target = route(reference)
     await _owner(ctx, target)
     scope = await interface.get_agent_scope(ctx.agent_id)
+    if target.grouped:
+        categories = await interface.list_package_categories(actor_agent_id=ctx.agent_id,
+            administration=await administrative(ctx), category=target.category if target.category is not None else 'uncategorized', limit=1)
+        if not categories:
+            raise FileNotFoundError('Skill category not found')
+        return _category_entry(*categories[0])
     if target.code is None:
         can_create = (scope != SkillScope.USAGE and target.owner in (None, ctx.agent_id)) if target.personal else scope == SkillScope.ALL
-        return ResourceDescriptor(uri=target.root, name=('Personal skills' if target.personal else 'Skills')
-            if target.owner is None else f'Agent {target.owner}', is_collection=True,
+        name = 'Personal skills' if target.personal else 'Skills'
+        if target.owner is not None:
+            labels = await interface.personal_owner_labels(ctx.agent_id, [target.owner])
+            if target.owner not in labels:
+                raise FileNotFoundError('Skill owner not found')
+            name = labels[target.owner]
+        return ResourceDescriptor(uri=target.root, name=name, is_collection=True,
             capabilities=['info', 'list', 'search', *(['create'] if can_create else [])])
     package = await _ref(ctx, target)
     metadata = await interface.describe_package(package.id, actor_agent_id=ctx.agent_id,
@@ -103,6 +129,11 @@ async def info(ctx: ResourceContext, reference: ResourceUri) -> ResourceDescript
                *(['delete', 'move'] if item['path'] != 'SKILL.md' else [])] if mutable else [])])
 
 
+def _category_entry(category: int | None, label: str) -> ResourceDescriptor:
+    return ResourceDescriptor(uri=SkillUri(False, category=category, grouped=True).root, name=label,
+        is_collection=True, capabilities=['info', 'list', 'search'], metadata={'category_id': category})
+
+
 async def listing(ctx: ResourceContext, reference: ResourceUri, *, max_entries: int, cursor: str | None) -> ResourceListing:
     target = route(reference)
     await _owner(ctx, target)
@@ -111,6 +142,7 @@ async def listing(ctx: ResourceContext, reference: ResourceUri, *, max_entries: 
     if offset < 0:
         raise ValueError('Invalid Skills cursor')
     entries: list[ResourceDescriptor] = []
+    category_entry: ResourceDescriptor | None = None
     admin = await administrative(ctx)
     scope = await interface.get_agent_scope(ctx.agent_id)
     if target.code is not None:
@@ -121,24 +153,42 @@ async def listing(ctx: ResourceContext, reference: ResourceUri, *, max_entries: 
             entries.append(await info(ctx, parse_resource_uri(target.root + '/'.join(quote(part, safe='-._~') for part in item['path'].split('/')))))
     elif target.personal and target.owner is None:
         owners = await interface.personal_owners(ctx.agent_id, offset, limit + 1)
-        entries = [ResourceDescriptor(uri=f'galaris://skill/personnal/{owner}/', name=f'Agent {owner}',
-            is_collection=True, capabilities=['info', 'list', 'search']) for owner in owners]
-    else:
-        # Keep the branch as a separate collection, never a generic package row.
-        branch = not target.personal and offset == 0
-        if branch:
+        labels = await interface.personal_owner_labels(ctx.agent_id, owners)
+        entries = [ResourceDescriptor(uri=f'galaris://skill/personnal/{owner}/', name=labels[owner],
+            is_collection=True, capabilities=['info', 'list', 'search']) for owner in owners if owner in labels]
+    elif not target.personal and not target.grouped:
+        if offset == 0:
             entries.append(ResourceDescriptor(uri='galaris://skill/personnal/', name='Personal skills',
                 is_collection=True, capabilities=['info', 'list', 'search']))
+        categories = await interface.list_package_categories(actor_agent_id=ctx.agent_id, administration=admin,
+            offset=max(0, offset - 1), limit=limit + 1)
+        entries.extend(_category_entry(identity, label) for identity, label in categories)
+    else:
+        if target.grouped:
+            category_entry = await info(ctx, reference)
         packages = await interface.list_packages(actor_agent_id=ctx.agent_id, administration=admin,
             kind='personal' if target.personal else 'generic', owner_agent_id=target.owner,
             include_unavailable=scope != SkillScope.USAGE,
-            offset=max(0, offset - (0 if target.personal else 1)), limit=limit + 1)
+            category=(target.category if target.category is not None else 'uncategorized') if target.grouped else None,
+            offset=offset, limit=limit + 1)
         from .resource_uri import parse_resource_uri
         for item in packages:
             entries.append(await info(ctx, parse_resource_uri(item.uri)))
     truncated = len(entries) > limit
+    ancestors: list[ResourceDescriptor] = []
+    if category_entry is not None:
+        ancestors = [ResourceDescriptor(uri=uri, name=name, is_collection=True,
+            capabilities=['info', 'list', 'search']) for uri, name in (
+                ('galaris://', 'Galaris'), ('galaris://skill/', 'Skills'))]
+        ancestors.append(category_entry)
+    elif target.personal and target.owner is not None and target.code is None:
+        ancestors = [ResourceDescriptor(uri=uri, name=name, is_collection=True,
+            capabilities=['info', 'list', 'search']) for uri, name in (
+                ('galaris://', 'Galaris'), ('galaris://skill/', 'Skills'),
+                ('galaris://skill/personnal/', 'Personal skills'))]
+        ancestors.append(await info(ctx, reference))
     return ResourceListing(uri=str(reference), entries=entries[:limit], truncated=truncated,
-                           next_cursor=str(offset + limit) if truncated else None)
+                           next_cursor=str(offset + limit) if truncated else None, ancestors=ancestors)
 
 
 async def read(ctx: ResourceContext, reference: ResourceUri, *, offset: int, max_chars: int) -> ResourceRead:
@@ -228,10 +278,13 @@ async def search(ctx: ResourceContext, reference: ResourceUri, query: str, *, mo
     if min(package_offset, file_offset) < 0:
         raise ValueError('Invalid Skills search cursor')
     admin = await administrative(ctx)
+    if target.grouped:
+        await info(ctx, reference)
     packages = [await _ref(ctx, target)] if target.code else await interface.list_packages(
         actor_agent_id=ctx.agent_id, administration=admin,
         include_unavailable=await interface.get_agent_scope(ctx.agent_id) != SkillScope.USAGE,
-        kind='personal' if target.personal else None, owner_agent_id=target.owner,
+        kind='personal' if target.personal else 'generic' if target.grouped else None, owner_agent_id=target.owner,
+        category=(target.category if target.category is not None else 'uncategorized') if target.grouped else None,
         offset=package_offset, limit=50)
     hits: list[ResourceSearchHit] = []
     scanned, size = 0, 0

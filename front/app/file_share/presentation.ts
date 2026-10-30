@@ -16,7 +16,14 @@ export function collectionLabel(uri: string, translate: (key: string) => string)
 export function skillCollectionLabel(uri: string, translate: (key: string) => string): string | null {
   if (uri === 'galaris://skill/') return translate('files.skillLibrary')
   if (uri === 'galaris://skill/personnal/') return translate('files.personalSkills')
+  if (uri === 'galaris://skill/_uncategorized/') return translate('skills.categories.none')
   return null
+}
+
+export function isSkillPackage(entry: FileEntry): boolean {
+  if (!entry.is_collection) return false
+  return /^galaris:\/\/skill\/(?!personnal(?:\/|$))[a-z0-9]+(?:-[a-z0-9]+)*\/?$/.test(entry.uri)
+    || /^galaris:\/\/skill\/personnal\/[1-9][0-9]*\/[a-z0-9]+(?:-[a-z0-9]+)*\/?$/.test(entry.uri)
 }
 
 export function parentDirectory(uri: string): string | null {
@@ -30,6 +37,7 @@ export function parentDirectory(uri: string): string | null {
 }
 
 export function resourceTarget(entry: FileEntry, agentId: number): ResourceDetailTarget | null {
+  if (isSkillPackage(entry)) return { kind: 'skill', id: entry.uri, title: entry.name, agentId }
   const match = /^(document|memory|data):\/\/([^/]+)$/.exec(entry.uri)
   if (match) return { kind: match[1] === 'data' ? 'dataset' : match[1]!, id: match[2]!, title: entry.name, agentId }
   const title = typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name
@@ -37,7 +45,7 @@ export function resourceTarget(entry: FileEntry, agentId: number): ResourceDetai
   if (run) return { kind: 'process_run', id: run[1]!, title, agentId }
   const process = /^galaris:\/\/process(?:es)?\/([A-Za-z_][A-Za-z0-9_.-]{0,254})$/.exec(entry.uri)
   if (process && (entry.uri.startsWith('galaris://processes/') || entry.metadata?.tool_code === 'galaris')) return { kind: 'process', id: process[1]!, title, agentId }
-  const business = /^galaris:\/\/(task|text|voice)\/([^/]+)$/.exec(entry.uri)
+  const business = /^galaris:\/\/(task|text|voice|goal)\/([^/]+)$/.exec(entry.uri)
   if (!business) return null
   return { kind: business[1] === 'text' ? 'round' : business[1]!, id: business[2]!, title: entry.name, agentId }
 }

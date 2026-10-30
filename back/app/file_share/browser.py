@@ -68,6 +68,7 @@ async def browser_context(agent_id: int, *, management: bool = False, scope: Age
     console = ConsoleRunResource(config) if config is not None else None
     try:
         yield ResourceContext(agent_id=agent_id, runtime="internal", console_resource=console,
+            browser_navigation=True,
             skill_management=await can_manage_skill_resources(agent_id),
             management_scope=scope or (await current_management_scope() if management else None))
     finally:

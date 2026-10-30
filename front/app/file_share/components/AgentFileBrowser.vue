@@ -27,7 +27,8 @@
                   @update:expanded="expanded = [...$event]" @update:selected="selectTree" @lazy-load="lazyLoad">
                   <template #default-header="scope">
                     <div class="file-tree-entry row items-center no-wrap full-width" :title="scope.node.entry.uri">
-                      <FolderIcon :expanded="scope.expanded" size="26px" class="q-mr-xs" />
+                      <q-icon v-if="isSkillPackage(scope.node.entry)" name="psychology" color="primary" size="26px" class="q-mr-xs" />
+                      <FolderIcon v-else :expanded="scope.expanded" size="26px" class="q-mr-xs" />
                       <span class="ellipsis">{{ scope.node.label }}</span>
                       <FileEntryActions v-if="!selection" :entry="scope.node.entry" :agent-id="agentId" target=".q-tree__node-header" context-only
                         :open="() => openEntry(scope.node.entry)" @changed="entryChanged" />
@@ -134,7 +135,7 @@ import { useQuasar, type QTreeNode } from 'quasar'
 import { FolderIcon, ResourceAttachments, ResourceDetailDialog, FullscreenPreview, AudioResourcePlayer, browserResourceKind, richLinkTarget, saveBlobAsResource, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
 import { fileBrowserService, type FileEntry, type FileScheme } from '../services/fileBrowserService'
 import { useFileDirectories } from '../browserState'
-import { parentDirectory, resourceTarget, collectionLabel, compareFileEntries } from '../presentation'
+import { parentDirectory, resourceTarget, collectionLabel, compareFileEntries, isSkillPackage } from '../presentation'
 import FileTile from './FileTile.vue'
 import FileEntryActions from './FileEntryActions.vue'
 
@@ -201,7 +202,7 @@ const breadcrumbs = computed(() => {
   const ancestors = currentUri.value ? directory(currentUri.value).ancestors : []
   if (ancestors.length) {
     return ancestors.map(entry => ({ uri: entry.uri,
-      label: schemes.value.find(scheme => `${scheme.scheme}://` === entry.uri)?.label ?? entry.name }))
+      label: collectionLabel(entry.uri, t) ?? schemes.value.find(scheme => `${scheme.scheme}://` === entry.uri)?.label ?? entry.name }))
   }
   // Folder UUIDs identify resources; they are never useful navigation labels,
   // including while a direct link is loading or waiting for a retry.
@@ -220,13 +221,17 @@ const breadcrumbs = computed(() => {
   return crumbs
 })
 interface BrowserNode extends QTreeNode { id: string; entry: FileEntry; disabledRoot?: boolean; scheme?: string }
-function isVisible(entry: FileEntry): boolean { return !entry.name.startsWith('.') }
+function isVisible(entry: FileEntry): boolean {
+  return !entry.name.startsWith('.') && !/^galaris:\/\/goal_cycle(?:\/|$)/.test(entry.uri)
+    && !/^galaris:\/\/goal\/[^/]+\/cycles(?:\/|$)/.test(entry.uri)
+}
 function treeNode(entry: FileEntry, ancestors: Set<string> = new Set()): BrowserNode {
   const state = directory(entry.uri)
   const disabledRoot = schemes.value.some(scheme => `${scheme.scheme}://` === entry.uri && (!scheme.capabilities.includes('list') || scheme.root_listable === false))
   const node: BrowserNode = { id: entry.uri, label: collectionLabel(entry.uri, t) ?? entry.name, entry, disabledRoot,
-    icon: entry.is_collection ? 'folder' : 'insert_drive_file', lazy: entry.is_collection && !disabledRoot && !state.loaded }
-  if (entry.is_collection && state.loaded && !ancestors.has(entry.uri) && ancestors.size < 64) {
+    icon: isSkillPackage(entry) ? 'psychology' : entry.is_collection ? 'folder' : 'insert_drive_file',
+    lazy: entry.is_collection && !isSkillPackage(entry) && !disabledRoot && !state.loaded }
+  if (entry.is_collection && !isSkillPackage(entry) && state.loaded && !ancestors.has(entry.uri) && ancestors.size < 64) {
     const next = new Set([...ancestors, entry.uri])
     node.children = state.entries.filter(child => child.is_collection && isVisible(child)).map(child => treeNode(child, next))
   }
@@ -277,6 +282,7 @@ function navigate(uri: string, closeTree = true, history: false | 'push' | 'repl
 async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false): Promise<void> {
   if (!metadataFresh) { uriRequest?.abort(); uriLoading.value = false; uriError.value = false }
   if (selection && !entry.is_collection) { toggleEntry(entry, event); return }
+  if (!selection && isSkillPackage(entry)) { target.value = resourceTarget(entry, agentId); return }
   if (entry.is_collection) { navigate(entry.uri, true, metadataFresh ? false : 'push'); return }
   target.value = resourceTarget(entry, agentId) ?? richLinkTarget(entry.uri, String(entry.metadata?.label ?? entry.name), agentId)
   if (target.value) return

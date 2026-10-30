@@ -2335,8 +2335,14 @@ The **Knowledge → Files** browser is covered by
 `front/browser-tests/file-browser.spec.mjs`: navigation, loading on scroll, retry
 without losing entries, keyboard preview and agent changes during a late response.
 It also covers mutation menus, confirmations, access denials and renaming the open directory.
-The Goals journey checks the absence of a separate Goal cycles collection, titled directories, the Goal before numbered cycles, continuation,
-opening and browser history on desktop and mobile. `app/goal/tests/test_resource_facade.py`
+`front/browser-tests/file-browser-skills.spec.mjs` covers virtual categories, uncategorized and
+personal skills, owner names and modal opening on desktop and mobile.
+`app/file_share/tests/test_skill_categories.py` protects pagination, category-scoped search,
+live access rules and stable URIs after reclassification or category deletion.
+The Goals journey checks direct modal opening, absence of cycles from Files, browser history
+and old directory links on desktop and mobile. Displaying numbered cycles in Files is no
+longer a contract; their URIs and access rules remain covered by provider and Goal tests.
+`app/goal/tests/test_resource_facade.py`
 also covers Goals without cycles, duplicate titles, renaming, numbers beyond `9999`, searching
 by number and scope denials. `front/app/file_share/presentation.test.mjs` protects the order
 provided by the projection while preserving ordinary alphabetical file sorting.
