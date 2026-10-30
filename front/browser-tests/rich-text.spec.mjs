@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
+import { selectDocumentContext, test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 
 const corpus = '<h2>Été</h2><p><u>Underlined</u> <mark data-color="#fff59d" style="background-color: #fff59d">highlight</mark></p><ol start="3"><li><p>First</p><ul><li><p>Nested</p></li></ul></li></ol><table><tbody><tr><th colspan="2" colwidth="120,180"><p>Header</p></th></tr><tr><td><p>Left</p></td><td><p>Right</p></td></tr></tbody></table><pre><code class="language-html">  &lt;p&gt;\n    a  b\n</code></pre>'
 const lastValue = page => page.evaluate(() => window.testApp.events.filter(value => value.name === 'update:modelValue').at(-1)?.value)
@@ -79,13 +79,13 @@ for (const width of [1440, 390]) test(`image alignment moves the image and survi
     }, alignment)).toBeLessThan(2)
   }
   for (const alignment of ['left', 'center', 'right']) {
-    await picture.click({ button: 'right' })
+    await selectDocumentContext(page, picture)
     await page.keyboard.press('Escape')
     await command(page, alignment === 'left' ? 'Align left' : alignment === 'right' ? 'Align right' : 'Center')
     await expectAlignment(alignment)
   }
-  await picture.click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Image properties', exact: true }).click()
+  await selectDocumentContext(page, picture)
+  await page.getByRole('button', { name: 'Image properties', exact: true }).click()
   await page.getByRole('textbox', { name: 'Alternative text', exact: true }).fill('Aligned illustration')
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
   await expectAlignment('right')
@@ -130,8 +130,8 @@ test(`image resizing survives a fresh editor and reader (${variant}, ${delta}px)
   await reopenImage(page, saved)
   await expect.poll(async () => (await picture.boundingBox()).width).toBeCloseTo(resizedWidth, 0)
   await picture.click()
-  await page.keyboard.press('Shift+F10')
-  await page.getByRole('menuitem', { name: 'Image properties', exact: true }).click()
+  await expect(page.getByRole('toolbar', { name: 'Contextual actions', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Image properties', exact: true }).click()
   await page.getByRole('textbox', { name: 'Alternative text', exact: true }).fill('Updated description')
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
   saved = await lastValue(page)
@@ -165,8 +165,8 @@ test('native image handles resize, undo, captions and reopening retain the attac
   await command(page, 'Redo')
   await expect.poll(async () => (await page.locator('[data-editor-surface] img').boundingBox()).width).toBeCloseTo(draggedWidth, 0)
   await page.locator('[data-editor-surface] img').click()
-  await page.keyboard.press('Shift+F10')
-  await page.getByRole('menuitem', { name: 'Image properties', exact: true }).click()
+  await expect(page.getByRole('toolbar', { name: 'Contextual actions', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Image properties', exact: true }).click()
   await page.getByRole('textbox', { name: 'Caption', exact: true }).fill('Figure one')
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
   const saved = await lastValue(page)
@@ -200,8 +200,8 @@ test('native upload emits canonical HTML when the upload finishes and supports a
   await (await chooser).setFiles({ name: 'blue.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') })
   await expect.poll(() => lastValue(page)).toContain(uri)
   await page.locator('[data-editor-surface] img').click()
-  await page.keyboard.press('Shift+F10')
-  await page.getByRole('menuitem', { name: 'Image properties', exact: true }).click()
+  await expect(page.getByRole('toolbar', { name: 'Contextual actions', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Image properties', exact: true }).click()
   await page.getByRole('textbox', { name: 'Alternative text', exact: true }).fill('A blue square')
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
   expect(await lastValue(page)).toContain('alt="A blue square"')
@@ -214,8 +214,8 @@ for (const width of [1440, 390]) test(`table presets preserve editable structure
   const source = '<p>Before the table</p><figure class="table" style="width: 90%"><table><tbody><tr><th colspan="2" colwidth="120,180"><p>Synthetic summary</p></th></tr><tr><td><p>One</p></td><td><p>Two</p></td></tr><tr><td><p>Three</p></td><td><p>Four</p></td></tr></tbody></table><figcaption>Synthetic caption</figcaption></figure>'
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: source, ariaLabel: 'Editorial content' } })
   const surface = page.locator('[data-editor-surface]'), table = surface.locator('table')
-  const tools = page.getByRole('menu', { name: 'Table', exact: true })
-  const openStyles = async () => { await surface.getByText('One', { exact: true }).click({ button: 'right' }); await tools.getByRole('menuitem', { name: 'Table styles', exact: true }).hover() }
+  const tools = page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
+  const openStyles = async () => { await selectDocumentContext(page, surface.getByText('One', { exact: true })); await tools.getByRole('button', { name: 'Table styles', exact: true }).click() }
   await openStyles()
   await expect(page.getByRole('group', { name: 'Color palettes' })).toBeVisible()
   await page.locator('.editorial-table-gallery').screenshot({ path: testInfo.outputPath('table-style-gallery.png'), animations: 'disabled' })
@@ -240,8 +240,8 @@ for (const width of [1440, 390]) test(`table presets preserve editable structure
   await expect(table).toHaveClass(/galaris-table-green/)
   await expect(table).not.toHaveClass(/galaris-table-(blue|orange|minimal|contrast)/)
   await surface.getByText('Four', { exact: true }).click()
-  await page.keyboard.press('Shift+F10')
-  await tools.getByRole('menuitem', { name: 'Add row', exact: true }).click()
+  await expect(page.getByRole('toolbar', { name: 'Contextual actions', exact: true })).toBeVisible()
+  await tools.getByRole('button', { name: 'Add row', exact: true }).click()
   await expect(table.locator('tr')).toHaveCount(4)
   await expect(table.locator('th')).toHaveAttribute('colspan', '2')
   await expect(table.locator('th')).toHaveAttribute('colwidth', '120,180')
@@ -303,19 +303,23 @@ test('native tables allow rows, merge/split, properties and column resizing', as
   await expect(tools.getByRole('menuitem', { name: 'Merge cells', exact: true })).toHaveAttribute('aria-disabled', 'true')
   await expect(tools.getByRole('menuitem', { name: 'Split cell', exact: true })).toHaveAttribute('aria-disabled', 'true')
   await tools.getByRole('menuitem', { name: 'Add row', exact: true }).click()
+  await expect(tools).toBeHidden()
   await expect(page.locator('[data-editor-surface] tr')).toHaveCount(3)
   await page.keyboard.press('Shift+F10')
   await tools.getByRole('menuitem', { name: 'Delete row', exact: true }).click()
+  await expect(tools).toBeHidden()
   await expect(page.locator('[data-editor-surface] tr')).toHaveCount(2)
   await cells.first().click()
   await cells.nth(1).click({ modifiers: ['Shift'] })
   await page.keyboard.press('Shift+F10')
   await expect(tools.getByRole('menuitem', { name: 'Merge cells', exact: true })).not.toHaveAttribute('aria-disabled', 'true')
   await tools.getByRole('menuitem', { name: 'Merge cells', exact: true }).click()
+  await expect(tools).toBeHidden()
   await expect(cells.first()).toHaveAttribute('colspan','2')
   await page.keyboard.press('Shift+F10')
   await expect(tools.getByRole('menuitem', { name: 'Split cell', exact: true })).not.toHaveAttribute('aria-disabled', 'true')
   await tools.getByRole('menuitem', { name: 'Split cell', exact: true }).click()
+  await expect(tools).toBeHidden()
   await expect(cells).toHaveCount(4)
   await page.keyboard.press('Shift+F10')
   await expect(tools.getByRole('menuitem', { name: 'Split cell', exact: true })).toHaveAttribute('aria-disabled', 'true')
@@ -341,10 +345,12 @@ test('native tables allow rows, merge/split, properties and column resizing', as
   await cells.first().click()
   await page.keyboard.press('Shift+F10')
   await tools.getByRole('menuitem', { name: 'Insert row above', exact: true }).click()
+  await expect(tools).toBeHidden()
   await expect(page.locator('[data-editor-surface] tr')).toHaveCount(3)
   await page.keyboard.press('Shift+F10')
   await tools.getByRole('menuitem', { name: 'Delete row', exact: true }).click()
   await expect(page.locator('[data-editor-surface] tr')).toHaveCount(2)
+  await expect(tools).toBeHidden()
   await page.keyboard.press('Shift+F10')
   await tools.getByRole('menuitem', { name: 'Table properties', exact: true }).click()
   await page.getByRole('textbox', { name: 'Caption', exact: true }).fill('Synthetic table caption')
@@ -504,13 +510,13 @@ for (const mode of ['reader', 'editor', 'document editor']) {
     for (const name of ['External']) {
       const link = page.getByRole('link', { name, exact: true })
       await expect(link).toHaveAttribute('target', '_blank')
-      if (mode === 'editor') {
+      if (editing) {
         await link.click()
         expect(context.pages()).toHaveLength(1)
         expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(origin)
       }
       const opened = context.waitForEvent('page')
-      await link.click(mode === 'editor' ? { modifiers: ['Control'] } : {})
+      await link.click(editing ? { modifiers: ['Control'] } : {})
       const tab = await opened
       await expect.poll(() => tab.url()).toContain('https://example.com')
       expect(await tab.evaluate(() => window.opener)).toBeNull()
@@ -518,9 +524,10 @@ for (const mode of ['reader', 'editor', 'document editor']) {
       expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(origin)
     }
     if (editing) {
-      await page.getByRole('link', { name: 'External', exact: true }).click({ button: 'right' })
+      if (profile === 'document') await selectDocumentContext(page, page.getByRole('link', { name: 'External', exact: true }))
+      else await page.getByRole('link', { name: 'External', exact: true }).click({ button: 'right' })
       const opened = context.waitForEvent('page')
-      await page.getByRole('menuitem', { name: 'Open', exact: true }).click()
+      await page.getByRole(profile === 'document' ? 'button' : 'menuitem', { name: 'Open', exact: true }).click()
       const tab = await opened
       await expect.poll(() => tab.url()).toContain('https://example.com')
       await tab.close()

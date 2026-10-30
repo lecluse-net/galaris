@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute, editorHtml, setPrivileges } from './fixtures.mjs'
+import { selectDocumentContext, test, expect, mount, jsonRoute, editorHtml, setPrivileges } from './fixtures.mjs'
 import { contactResource } from './data.mjs'
 
 const uri = `galaris://contact/${contactResource.memory_item_id}`
@@ -82,7 +82,7 @@ for (const width of [1440, 390]) test(`a Contact card inserts through Files, sur
   await page.evaluate(() => window.testApp.dark(true))
   await card.screenshot({ path: testInfo.outputPath('contact-card-dark.png') })
 
-  await card.locator('p a').click()
+  await card.locator('p a').click({ modifiers: ['Control'] })
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByLabel('Display name', { exact: true })).toHaveValue('Synthetic Person')
   await dialog.getByLabel('Phone number', { exact: true }).fill('+33 9 87 65 43 21')
@@ -107,23 +107,23 @@ test('Contact card conversion is reversible and denied reads never enter the sav
   const source = await fixtures(page)
   await mount(page, editorComponent, { props: { profile: 'document', modelValue: `<p><a href="${uri}">Synthetic Person</a></p>` }, privileges: ['CONTACT_ACCESS'] })
   const editor = page.locator('[data-editor-surface]')
-  await editor.locator('a').click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
+  await selectDocumentContext(page, editor.locator('a'))
+  await page.getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(editor.locator('.galaris-contact-card')).toContainText('synthetic@example.org')
-  await editor.locator('.galaris-contact-card > p').last().click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show URL', exact: true }).click()
+  await selectDocumentContext(page, editor.locator('.galaris-contact-card > p').last())
+  await page.getByRole('button', { name: 'Show URL', exact: true }).click()
   await expect(editor.locator('.galaris-contact-card')).toHaveCount(0)
   source.deny(true)
-  await editor.locator('a').click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
+  await selectDocumentContext(page, editor.locator('a'))
+  await page.getByRole('button', { name: 'Show card', exact: true }).click()
   // Reversing an existing card restores authored name/URI, then rechecks its
   // private details. A fresh conversion still requires a successful read.
   await expect(editor.locator('.galaris-contact-card').getByRole('alert')).toBeVisible()
   await expect(editor.locator('.galaris-contact-card')).not.toContainText('synthetic@example.org')
   expect(await editorHtml(page)).not.toContain('synthetic@example.org')
   await mount(page, editorComponent, { props: { profile: 'document', modelValue: `<p><a href="${uri}">Synthetic Person</a></p>` }, privileges: ['CONTACT_ACCESS'] })
-  await editor.locator('a').click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
+  await selectDocumentContext(page, editor.locator('a'))
+  await page.getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(editor.locator('.galaris-contact-card')).toHaveCount(0)
   expect(await editorHtml(page)).toContain(uri)
   await mount(page, readerComponent, { props: { content: storedCard, profile: 'document' }, privileges: ['CONTACT_ACCESS'] })

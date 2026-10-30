@@ -72,6 +72,10 @@
               >
                 <q-tooltip>{{ t('documents.historyOpen') }}</q-tooltip>
               </q-btn>
+              <time
+                :datetime="currentDocument.updated_at ?? currentDocument.created_at"
+                :title="t('documents.lastModified', { date: lastModifiedDate })"
+              >{{ lastModifiedDate }}</time>
             </div>
             <q-btn
               v-if="canDeleteDocument"
@@ -352,6 +356,14 @@ watch(deleteDialogOpen, () => { deletionError.value = '' })
 const refreshing = ref(false)
 const refreshError = ref(false)
 const currentDocument = ref<DocumentDetail | null>(null)
+const lastModifiedDate = computed(() => {
+  const document = currentDocument.value
+  if (!document) return ''
+  return new Intl.DateTimeFormat(locale.value, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(document.updated_at ?? document.created_at))
+})
 const topicChangeInFlight = ref(false)
 async function changeDocumentTopic(topicId: string): Promise<number> {
   if (!canEditDocument.value || topicChangeInFlight.value) throw new Error(t('topic.assignmentAudit.changeError'))

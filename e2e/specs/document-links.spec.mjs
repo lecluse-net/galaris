@@ -106,7 +106,7 @@ test('documents dropped from the list and tree persist as titled links and rever
   await openTarget.click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.locator('[data-editor-surface]')).toContainText('Preserve the report body')
-  await dialog.getByRole('link', { name: source.title, exact: true }).first().click()
+  await dialog.getByRole('link', { name: source.title, exact: true }).first().click({ modifiers: ['Control'] })
   await expect(dialog.locator('[data-editor-surface]')).toHaveText('Independent referenced document')
   await expect(dialog).toHaveCount(1)
   await expect(page).toHaveURL(/\/files$/)

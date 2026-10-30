@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu">
+  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu" @galaris-document-object-focus="selectEmbeddedObject">
     <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
       <template v-if="personalVoice" #voice>
         <EditorialToolButton flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="readonly || sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
@@ -15,13 +15,12 @@
           </q-list></q-menu>
         </EditorialToolButton>
       </template>
-      <template v-if="mobileDocument && !readonly && !sourceMode" #context>
-        <div class="editorial-mobile-context" role="toolbar" :aria-label="t('richEditor.contextActions')" @mousedown.prevent>
-          <EditorialContextActions v-if="activeContext" toolbar :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
-          <EditorialToolbar v-if="mobileTextContext" contextual :editor="editor" :revision="revision" :mode="toolbarMode" document :disabled-actions="disabledActions" @action="action" />
-        </div>
-      </template>
     </EditorialToolbar>
+    <Teleport to="body">
+      <div v-if="profile === 'document' && activeContext && contextFocused && !readonly && !sourceMode && !resourceDetail && !dialogOpen && !mathOpen" ref="contextToolbar" class="rich-editor editorial-context-toolbar" role="toolbar" :aria-label="t('richEditor.contextActions')" :style="contextToolbarStyle" @mousedown.prevent>
+        <EditorialContextActions toolbar :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" @focus-editor="editor?.view.focus()" />
+      </div>
+    </Teleport>
     <div v-if="findOpen" class="editorial-search-bar" role="search" :aria-label="t('richEditor.find')">
       <q-input ref="searchInput" v-model="fields.search" class="editorial-search-input" dense outlined :label="t('richEditor.find')" @keydown.enter.prevent="findNext" />
       <q-input v-model="fields.replace" class="editorial-search-input" dense outlined :label="t('richEditor.replace')" :disable="readonly" @keydown.enter.prevent="replaceMatch" />
@@ -51,7 +50,7 @@
       </Teleport>
       <Teleport v-for="target in resourceEmbeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" :agent-id="resourceAgentId" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerResourceSnapshot(target.key, capture)" /></Teleport>
     </template>
-      <q-menu v-if="activeContext || pointerTextContext" :id="pointerMenuId" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" :max-height="pointerMenuMaxHeight" role="presentation" @escape-key="queueContextFocus" @hide="restoreContextFocus">
+      <q-menu v-if="profile !== 'document' && (activeContext || pointerTextContext)" :id="pointerMenuId" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" :max-height="pointerMenuMaxHeight" role="presentation" @escape-key="queueContextFocus" @hide="restoreContextFocus">
         <q-list dense role="menu" :aria-label="t(!activeContext ? 'richEditor.content' : activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : activeContext.kind === 'equation' ? 'richEditor.equation.context' : 'richEditor.resources.insert')" @mousedown.prevent>
           <EditorialContextActions v-if="activeContext" :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runPointerAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
           <template v-if="pointerTextContext && editor && !readonly">
@@ -60,8 +59,6 @@
               <q-item-section avatar><q-icon :name="key === 'copy' ? 'content_copy' : key === 'cut' ? 'content_cut' : 'content_paste'" /></q-item-section>
               <q-item-section>{{ t('richEditor.clipboard.' + key) }}</q-item-section>
             </q-item>
-            <q-separator />
-            <EditorialToolbar menu :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :find-open="findOpen" :outline-open="outlineOpen" :disabled-actions="disabledActions" @action="runPointerTextAction" />
           </template>
         </q-list>
       </q-menu>
@@ -162,7 +159,7 @@ const { t, locale } = useI18n(), $q = useQuasar(), slots = useSlots()
 const referenceFormatting = useReferenceFormatting()
 const navigateDocument = useDocumentNavigation()
 const keyboardShortcuts = computed(() => [
-  ...editorialShortcuts.filter(([, , command]) => !readonly || readingShortcutCommands.has(command)).map(([key, binding, , value]) => ({ label: t('richEditor.' + key, { level: Number(value) }), keys: shortcutKeys(binding, Boolean($q.platform.is.safari)) })),
+  ...editorialShortcuts.filter(([, , command]) => (profile !== 'document' || command !== 'shortcuts.contextFocus') && (!readonly || readingShortcutCommands.has(command))).map(([key, binding, , value]) => ({ label: t('richEditor.' + key, { level: Number(value) }), keys: shortcutKeys(binding, Boolean($q.platform.is.safari)) })),
   ...([
     ...(!readonly ? [
     ['shortcuts.tableNavigation', 'Tab / Shift+Tab'], ['shortcuts.listNesting', 'Tab / Shift+Tab'], ['shortcuts.codeIndentation', 'Tab / Shift+Tab'],
@@ -363,7 +360,10 @@ function createEditor(): void {
           const link = window.getSelection()?.anchorNode?.parentElement?.closest('a'); const uri = link?.dataset.richReference ?? link?.getAttribute('href') ?? selectionUri(); if (uri) { navigate(uri); return true }
         }
         if (event.altKey && !mod && !event.shiftKey && event.key === 'F10') { root.value?.querySelector<HTMLElement>('[role="toolbar"] button')?.focus(); return true }
-        if (!mod && !event.altKey && (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10')) { event.preventDefault(); void openKeyboardContextMenu(); return true }
+        if (!mod && !event.altKey && (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10')) {
+          if (profile === 'document') return false
+          event.preventDefault(); void openKeyboardContextMenu(); return true
+        }
         const shortcut = profile === 'document' ? documentShortcut(event, altGraphPressed) : undefined
         if (shortcut?.[2] === 'find') { event.preventDefault(); showDialog('find'); return true }
         if (shortcut && readingShortcutCommands.has(shortcut[2])) { event.preventDefault(); action(shortcut[2], shortcut[3]); return true }
@@ -417,7 +417,64 @@ const activeContext = computed(() => {
   return { kind }
 })
 const mobileDocument = computed(() => profile === 'document' && toolbarMode === 'full' && $q.screen.lt.md)
-const mobileTextContext = computed(() => { void revision.value; return editor.value && !(editor.value.state.selection instanceof NodeSelection) && !editor.value.isActive('codeBlock') })
+const contextToolbar = useTemplateRef<HTMLElement>('contextToolbar')
+const contextFocused = ref(false)
+const contextToolbarStyle = ref<Record<string, string>>({ visibility: 'hidden' })
+let contextFrame: number | undefined
+function updateContextFocus(event: Event): void {
+  const target = event.target
+  if (!(target instanceof Node)) return
+  if (target instanceof Element && target.closest('.q-menu')) return
+  contextFocused.value = Boolean(root.value?.contains(target) || contextToolbar.value?.contains(target))
+}
+function positionContextToolbar(): void {
+  contextFrame = undefined
+  const current = editor.value, toolbar = contextToolbar.value
+  if (!current || current.isDestroyed || !toolbar) return
+  const selection = current.state.selection
+  const dom = selection instanceof NodeSelection ? current.view.nodeDOM(selection.from) : current.view.domAtPos(selection.from).node
+  const element = dom instanceof Element ? dom : dom?.parentElement
+  const target = element?.closest('.galaris-image-object, blockquote.galaris-link-card, .embedded-code-widget, [data-math], a, pre, td, th') ?? element
+  if (!target || !current.view.dom.contains(target)) { contextToolbarStyle.value = { visibility: 'hidden' }; return }
+  const bounds = target.getBoundingClientRect(), size = toolbar.getBoundingClientRect()
+  const viewport = window.visualViewport
+  const topEdge = viewport?.offsetTop ?? 0, leftEdge = viewport?.offsetLeft ?? 0
+  const rightEdge = leftEdge + (viewport?.width ?? window.innerWidth), bottomEdge = topEdge + (viewport?.height ?? window.innerHeight)
+  const editorBounds = current.view.dom.getBoundingClientRect()
+  if (bounds.bottom <= Math.max(topEdge, editorBounds.top) || bounds.top >= Math.min(bottomEdge, editorBounds.bottom) || bounds.right <= leftEdge || bounds.left >= rightEdge) {
+    contextToolbarStyle.value = { visibility: 'hidden' }; return
+  }
+  const left = Math.max(leftEdge + 8, Math.min(bounds.left + (bounds.width - size.width) / 2, rightEdge - size.width - 8))
+  const top = bounds.top >= topEdge + size.height + 8 ? bounds.top - size.height - 6 : Math.min(bounds.bottom + 6, bottomEdge - size.height - 8)
+  contextToolbarStyle.value = { left: `${left}px`, top: `${Math.max(topEdge + 8, top)}px` }
+}
+function scheduleContextToolbar(): void {
+  if (contextFrame === undefined) contextFrame = requestAnimationFrame(positionContextToolbar)
+}
+watch([contextToolbar, revision], scheduleContextToolbar, { flush: 'post' })
+watch(contextToolbar, (toolbar, _, cleanup) => {
+  if (!toolbar) return
+  const resize = new ResizeObserver(scheduleContextToolbar)
+  resize.observe(toolbar)
+  cleanup(() => resize.disconnect())
+})
+onMounted(() => {
+  document.addEventListener('focusin', updateContextFocus)
+  document.addEventListener('pointerdown', updateContextFocus, true)
+  window.addEventListener('scroll', scheduleContextToolbar, true)
+  window.addEventListener('resize', scheduleContextToolbar)
+  window.visualViewport?.addEventListener('resize', scheduleContextToolbar)
+  window.visualViewport?.addEventListener('scroll', scheduleContextToolbar)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('focusin', updateContextFocus)
+  document.removeEventListener('pointerdown', updateContextFocus, true)
+  window.removeEventListener('scroll', scheduleContextToolbar, true)
+  window.removeEventListener('resize', scheduleContextToolbar)
+  window.visualViewport?.removeEventListener('resize', scheduleContextToolbar)
+  window.visualViewport?.removeEventListener('scroll', scheduleContextToolbar)
+  if (contextFrame !== undefined) cancelAnimationFrame(contextFrame)
+})
 watch(mobileDocument, () => pointerMenu.value?.hide())
 const canInsertBeside = computed(() => {
   void revision.value
@@ -551,7 +608,20 @@ function openSelectionDialog(): void {
   if (!uri) return
   resourceDetail.value = richLinkTarget(uri)
 }
+function selectEmbeddedObject(event: Event): void {
+  const current = editor.value, target = event.target
+  if (profile !== 'document' || readonly || !current || current.isDestroyed || !(target instanceof Element)) return
+  const object = target.closest('.embedded-code-widget')
+  if (!object || !current.view.dom.contains(object)) return
+  contextFocused.value = true
+  const position = current.view.posAtDOM(object, 0)
+  const node = current.state.doc.nodeAt(position)
+  if (node && NodeSelection.isSelectable(node) && !(current.state.selection instanceof NodeSelection && current.state.selection.from === position)) {
+    current.commands.setNodeSelection(position)
+  }
+}
 async function openContextMenu(event: MouseEvent): Promise<void> {
+  if (profile === 'document') { event.stopPropagation(); return }
   if (mobileDocument.value) return
   if (readonly) { event.preventDefault(); event.stopPropagation(); return }
   const current = editor.value, target = event.target
@@ -621,6 +691,7 @@ function editorClick(event: MouseEvent): void {
   if (!(event.target instanceof Element) || !event.target.closest('[data-editor-surface]')) return
   selectedCardImage.value = event.target instanceof HTMLImageElement ? event.target.dataset.editorAttachment ?? event.target.dataset.editorPreview ?? '' : ''
   if (readonly && event.target.closest('.galaris-image-object')) return
+  if (profile === 'document' && !readonly && event.target.closest('button, [role="button"]')) return
   if ((readonly || profile === 'document') && event.target.closest('.q-btn, input, select, textarea, [data-document-player]')) return
   const link = event.target.closest('[data-editor-surface] a')
     ?? (readonly || profile === 'document' ? event.target.closest('blockquote.galaris-link-card')?.querySelector('a') : null)
@@ -630,6 +701,19 @@ function editorClick(event: MouseEvent): void {
   const targetKind = richLinkTarget(uri)?.kind
   const cardTitle = card && card.querySelector('a') === link && (documentUriFromLink(uri, window.location.origin) || targetKind)
   event.preventDefault()
+  if (profile === 'document' && !readonly && !event.ctrlKey && !event.metaKey) {
+    const current = editor.value
+    if (current) {
+      const object = event.target.closest('.galaris-image-object, blockquote.galaris-link-card')
+      if (object) current.chain().setNodeSelection(current.view.posAtDOM(object, 0)).focus().run()
+      else {
+        const position = current.view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
+        if (position !== undefined) current.chain().setTextSelection(position).extendMarkRange('link').focus().run()
+      }
+    }
+    event.stopPropagation()
+    return
+  }
   if (profile === 'document' || event.ctrlKey || event.metaKey || readonly || cardTitle) {
     event.stopPropagation()
     navigate(uri)
@@ -890,7 +974,7 @@ const contextActions = computed(() => {
   } else if (activeContext.value?.kind === 'table') {
     for (const item of tableActions.value) add(item.key, editorialIcon(item.key, item.icon), item.key, () => tableAction(item.key), item.disabled)
   } else if (activeContext.value?.kind === 'equation') {
-    add('edit', editorialIcon('edit', 'edit'), 'equation.edit', () => openMath('inline', editor.value?.state.selection.from))
+    if (toolbarMode === 'simple') add('edit', editorialIcon('edit', 'edit'), 'equation.edit', () => openMath('inline', editor.value?.state.selection.from))
     for (const key of ['cut', 'copy'] as const) add(key, editorialIcon(key, key === 'cut' ? 'content_cut' : 'content_copy'), 'clipboard.' + key, () => { void clipboardAction(key) })
     add('remove', 'delete', 'equation.remove', () => {
       const current = editor.value
@@ -902,7 +986,7 @@ const contextActions = computed(() => {
     add('open', editorialIcon('open', 'open_in_new'), 'open', openSelection)
     add('copyReference', 'link', 'copy', () => { void copyToClipboard(selectionUri()).then(() => $q.notify({ type: 'positive', message: t('common.copied') })).catch(() => $q.notify({ type: 'negative', message: t('richEditor.copyError') })) })
     if (selectedDocumentUri.value) add('openInDialog', 'open_in_new', 'openInDialog', openSelectionDialog)
-    if (selectedType.value !== 'resourceCard') add('edit', editorialIcon('edit', 'edit'), selectedType.value.includes('Image') ? 'imageProperties' : 'link', () => showDialog(selectedType.value.includes('Image') ? 'image' : 'link'), readonly)
+    if (selectedType.value.includes('Image')) add('edit', editorialIcon('edit', 'edit'), 'imageProperties', () => showDialog('image'), readonly)
     if (selectedCardImage.value) add('image', editorialIcon('image', 'image'), 'resources.openImage', () => navigate(selectedCardImage.value))
     if (canConvertCard.value) add('convert', 'view_agenda', 'resources.' + (selectedType.value === 'resourceCard' ? 'asUrl' : 'asCard'), convertCard, readonly || busyCard.value)
     add('remove', 'delete', selectedType.value === 'resourceCard' || selectedType.value.includes('Image') ? 'remove' : 'removeLink', removeSelected, readonly)
@@ -914,10 +998,6 @@ const contextActions = computed(() => {
   return actions
 })
 function runContextAction(key: string): void { const item = contextActions.value.find(item => item.key === key); if (item && !item.disabled) item.run() }
-function runPointerTextAction(key: string, value?: string): void {
-  pointerMenu.value?.hide()
-  action(key, value)
-}
 const clipboardActions = ['cut', 'copy', 'paste'] as const
 async function clipboardAction(key: typeof clipboardActions[number]): Promise<void> {
   const current = editor.value
@@ -1075,7 +1155,14 @@ function syncKeyboardSelection(): void {
 function syncReadingSelection(): void { const selection = editor.value?.state.selection; if (selection instanceof TextSelection && !selection.empty) syncCollapsedSelection() }
 function editSource(value: string): void { sourceDraft.value = value; publish(profile === 'document' ? restoreInteractiveHtml(editableHtml(value)) : editableHtml(value)) }
 async function copyCode(): Promise<void> { const current = editor.value; if (!current) return; try { await copyToClipboard(current.state.selection.$from.parent.textContent); $q.notify({ type: 'positive', message: t('richEditor.codeTools.copied') }) } catch { $q.notify({ type: 'negative', message: t('richEditor.codeTools.copyFailed') }) } }
-function setCodeLanguage(language: string): void { const current = editor.value; if (!current || readonly) return; current.view.dispatch(closeHistory(current.state.tr)); current.chain().focus().updateAttributes('codeBlock', { language }).run() }
+async function setCodeLanguage(language: string): Promise<void> {
+  const current = editor.value
+  if (!current || readonly) return
+  current.view.dispatch(closeHistory(current.state.tr))
+  current.chain().focus().updateAttributes('codeBlock', { language }).run()
+  await nextTick()
+  if (editor.value === current && !current.isDestroyed && !readonly) current.view.focus()
+}
 async function exportAction(key: string): Promise<void> { if (exportJobs.has(key)) return; const pending = request(); exportJobs.set(key, pending); exportBusy.value = [...exportJobs.keys()]; try { const content = sourceMode.value ? sourceDraft.value : html(), title = documentTitle || ariaLabel || t('richEditor.content'); if (key === 'print') await printDocument(content, title, pending.signal, resolveImage, renderedResolver.value); else if (key === 'exportPdf' && exportPdf) await exportDocumentPdf(content, title, pending.signal, exportPdf, resolveImage, renderedResolver.value); else if (key === 'resources.documentExportBundle' && exportBundle) await exportDocumentBundle(withAttachmentInventory(content, attachments, t('richEditor.resources.attachments')), title, pending.signal, exportBundle, resolveImage, renderedResolver.value) } catch { if (!pending.signal.aborted) $q.notify({ type: 'negative', message: t(key === 'print' ? 'richEditor.printFailed' : key === 'exportPdf' ? 'richEditor.exportPdfFailed' : 'richEditor.resources.exportFailed') }) } finally { requests.delete(pending); if (exportJobs.get(key) === pending) { exportJobs.delete(key); exportBusy.value = [...exportJobs.keys()] } } }
 const shareOpen = ref(false), sharePreparing = ref(false), sharing = ref(false), shareError = ref(''), shareFile = shallowRef<File | null>(null); let shareRequest: AbortController | undefined
 const nativeShareData = computed<ShareData | null>(() => { if (!shareFile.value || !navigator.share || !navigator.canShare) return null; const files = [shareFile.value]; for (const data of [{ files, title: documentTitle, ...(documentUrl ? { url: documentUrl } : {}) }, { files, title: documentTitle, ...(documentUrl ? { text: documentUrl } : {}) }, { files }]) if (navigator.canShare(data)) return data; return null })

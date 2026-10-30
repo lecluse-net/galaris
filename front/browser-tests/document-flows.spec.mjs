@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
+import { selectDocumentContext, test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
 async function library(page, agentId = null) {
@@ -92,16 +92,16 @@ for (const location of ['list', 'tree']) test(`dragging a document from the ${lo
   await expect(editor).toContainText('Working copy')
   expect(await editorHtml(page)).toContain(`href="document://${id}"`)
   expect(moves).toEqual([])
-  await editor.locator('a').click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
+  await selectDocumentContext(page, editor.locator('a'))
+  await page.getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(editor.locator('.galaris-link-card > p').first()).toHaveText(source.title)
   await expect.poll(() => writes.at(-1)?.payload?.text).toContain('galaris-link-card')
   expect(writes.at(-1).payload.text).toContain(`document://${id}`)
   await page.screenshot({ path: testInfo.outputPath(`document-reference-${location}.png`), animations: 'disabled' })
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   await expect(editor.locator('.galaris-link-card > p').first()).toHaveText(source.title)
-  await editor.locator('.galaris-link-card > p').first().click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show URL', exact: true }).click()
+  await selectDocumentContext(page, editor.locator('.galaris-link-card > p').first())
+  await page.getByRole('button', { name: 'Show URL', exact: true }).click()
   await expect(editor.locator('a')).toHaveText(source.title)
   await editor.locator('a').click({ modifiers: ['Control'] })
   await expect(editor).toHaveText('Referenced content')

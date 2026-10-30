@@ -39,7 +39,7 @@ for (const mode of ['read', 'edit', 'readonly']) for (const format of ['uri', 'u
       await page.keyboard.press('Escape')
       expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/documents')
     }
-    await (card ? page.getByText('Reference summary', { exact: true }) : reference).click()
+    await (card ? page.getByText('Reference summary', { exact: true }) : reference).click(mode === 'edit' ? { modifiers: ['Control'] } : {})
     await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(`/documents?document_id=${id}`)
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(popups).toHaveLength(0)
@@ -58,7 +58,7 @@ for (const mode of ['read', 'edit']) for (const width of [1440, 390]) test(`docu
   await mount(page, `core/util/components/${mode === 'edit' ? 'RichTextEditor' : 'RichText'}.vue`, { props: { profile: 'document', ...(mode === 'edit' ? { modelValue: html } : { content: html }) } })
   const card = page.locator('.galaris-link-card')
   await expect(card.locator('.document-thumbnail img')).toHaveJSProperty('naturalWidth', 1)
-  await card.locator('.document-citation-thumbnail').click()
+  await card.locator('.document-citation-thumbnail').click(mode === 'edit' ? { modifiers: ['Control'] } : {})
   await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(`/documents?document_id=${id}`)
   await expect(page.getByRole('dialog')).toHaveCount(0)
   const copy = card.getByRole('button', { name: 'Copy content', exact: true })
@@ -134,7 +134,7 @@ for (const mode of ['read', 'edit', 'readonly']) test(`a Task citation opens its
   const url = page.url(), popups = []
   page.on('popup', popup => popups.push(popup))
   const open = async () => {
-    await page.getByRole('link', { name: 'Synthetic cited task', exact: true }).click()
+    await page.getByRole('link', { name: 'Synthetic cited task', exact: true }).click(mode === 'edit' ? { modifiers: ['Control'] } : {})
     await expect(page.getByRole('dialog').locator('.task-detail')).toContainText('Synthetic task objective')
     expect(page.url()).toBe(url); expect(popups).toHaveLength(0)
   }

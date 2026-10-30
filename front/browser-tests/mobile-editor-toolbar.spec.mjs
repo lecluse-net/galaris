@@ -28,8 +28,8 @@ test.describe('document cursor toolbar', () => {
     expect(await page.evaluate(() => window.getSelection().toString())).toBe('Selected words')
     await page.getByRole('button', { name: 'Bold', exact: true }).tap()
     await expect(editor.locator('p strong').first()).toHaveText('Selected words')
-    await toolbar.getByRole('button', { name: 'Text', exact: true }).tap()
-    await page.getByRole('menuitemcheckbox', { name: 'Strike', exact: true }).tap()
+    await page.getByRole('button', { name: 'More tools', exact: true }).tap()
+    await page.getByRole('button', { name: 'Strike', exact: true }).tap()
     await expect(editor.locator('p s').first()).toHaveText('Selected words')
     await expect(page.getByRole('menu')).toHaveCount(0)
 
@@ -59,9 +59,10 @@ test.describe('document cursor toolbar', () => {
     await page.evaluate(() => window.testApp.dark(true))
     await page.screenshot({ path: testInfo.outputPath('mobile-context-dark.png'), fullPage: true })
     await page.setViewportSize({ width: 1024, height: 900 })
-    await expect(toolbar).toHaveCount(0)
+    await editor.locator('td p').first().click()
+    await expect(toolbar.getByRole('button', { name: 'Add row', exact: true })).toBeVisible()
     await editor.locator('td p').first().click({ button: 'right' })
-    await expect(page.getByRole('menu', { name: 'Table', exact: true })).toBeVisible()
+    await expect(page.getByRole('menu', { name: 'Table', exact: true })).toBeHidden()
     await page.keyboard.press('Escape')
     await page.setViewportSize({ width: 390, height: 844 })
     await page.evaluate(() => window.testApp.setProps({ readonly: true }))
@@ -184,7 +185,7 @@ for (const profile of ['document', 'rich-text']) {
 
     await page.getByRole('button', { name: 'Galaris link', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
+    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
     await expect(editor).toContainText('Keep this text on mobile')
   })
 }

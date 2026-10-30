@@ -1,4 +1,26 @@
-import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, editorHtml, selectDocumentContext } from './fixtures.mjs'
+
+for (const width of [390, 1440]) test(`ordinary document text keeps browser spelling and keyboard menus (${width}px)`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p>Browser spelling suggestions</p>' } })
+  const editor = page.locator('[data-editor-surface]')
+  await editor.click()
+  await expect(editor).toHaveJSProperty('spellcheck', true)
+  await expect(page.getByRole('toolbar', { name: 'Contextual actions', exact: true })).toHaveCount(0)
+  expect(await editor.evaluate(element => {
+    const box = element.getBoundingClientRect()
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: box.left + 20, clientY: box.top + 20 })
+    element.dispatchEvent(event)
+    return event.defaultPrevented
+  })).toBe(false)
+  await expect(page.getByRole('menu')).toBeHidden()
+  for (const key of ['ContextMenu', 'F10']) expect(await editor.evaluate((element, key) => {
+    const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key, shiftKey: key === 'F10' })
+    element.dispatchEvent(event)
+    return event.defaultPrevented
+  }, key)).toBe(false)
+  await expect(editor).toHaveText('Browser spelling suggestions')
+})
 
 for (const width of [390, 1440]) test(`select all restores document focus and replaces the complete content (${width}px)`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 })
@@ -54,11 +76,7 @@ for (const width of [390, 1440]) test(`simple fields preserve rich content and s
   }
   await editor.getByText('Plain context target', { exact: true }).click({ button: 'right' })
   const menu = page.getByRole('menu', { name: 'Content', exact: true })
-  await menu.getByRole('menuitem', { name: 'Insert', exact: true }).hover()
-  await expect(page.getByRole('menuitem', { name: 'Insert or edit link', exact: true })).toBeVisible()
-  await expect(page.getByRole('menuitem', { name: 'Galaris link', exact: true })).toBeVisible()
-  await expect(page.getByRole('menuitem', { name: 'Insert table', exact: true })).toBeVisible()
-  await page.keyboard.press('Escape')
+  await expect(menu.getByRole('menuitem', { name: 'Paste', exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
   async function selectParagraph(text) {
     await editor.getByText(text, { exact: true }).click()
@@ -96,23 +114,21 @@ for (const width of [390, 1440]) test(`simple fields preserve rich content and s
   await expect(page.locator('li[data-checked="true"]')).toHaveText('Checklist sample')
 })
 
-test('clicking elsewhere in the same editor closes a right-click menu and its submenu', async ({ page }) => {
-  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<h2>Synthetic heading</h2><p>Outside target</p>' } })
+test('clicking elsewhere in the same editor closes its clipboard menu', async ({ page }) => {
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<h2>Synthetic heading</h2><p>Outside target</p>' } })
   const editor = page.locator('[data-editor-surface]')
   await editor.locator('h2').click({ button: 'right' })
   const menu = page.getByRole('menu', { name: 'Content', exact: true })
-  await menu.getByRole('menuitem', { name: 'Style', exact: true }).hover()
-  await expect(page.getByRole('menuitemradio', { name: 'Heading 2', exact: true })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'Paste', exact: true })).toBeVisible()
   await editor.locator('p').click({ position: { x: 10, y: 10 } })
   await expect(menu).toBeHidden()
-  await expect(page.getByRole('menuitemradio', { name: 'Heading 2', exact: true })).toBeHidden()
   await page.keyboard.type('Usable ')
   await expect(editor.locator('p')).toContainText('Usable ')
 })
 
 // Mobile documents use the cursor toolbar; its selection/actions are exercised
 // in mobile-editor-toolbar.spec.mjs rather than requiring a right-click there.
-for (const width of [1440]) test(`text context menu preserves the selection and changes heading styles (${width}px)`, async ({ page }, testInfo) => {
+for (const width of [1440]) test(`toolbar formatting preserves the selection after closing the clipboard menu (${width}px)`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: {
     profile: 'document', modelValue: '<h2>Synthetic heading</h2><p>Selected words stay here</p><p>Untouched paragraph</p>',
@@ -126,20 +142,21 @@ for (const width of [1440]) test(`text context menu preserves the selection and 
   const selected = await page.evaluate(() => window.getSelection().toString())
   expect(selected.trim()).toBe('Selected words')
   await paragraph.click({ button: 'right', position: { x: 25, y: 10 } })
-  await expect(menu).toBeVisible()
-  await menu.getByRole('menuitemcheckbox', { name: 'Bold', exact: true }).click()
+  await expect(menu).toBeHidden()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Bold', exact: true }).click()
   await expect(paragraph.locator('strong')).toHaveText(selected)
   await expect(editor.locator('p').last()).toHaveText('Untouched paragraph')
-  await editor.locator('h2').click({ button: 'right' })
-  await menu.getByRole('menuitem', { name: 'Style', exact: true }).hover()
+  await editor.locator('h2').click()
+  await page.getByRole('button', { name: 'Style', exact: true }).click()
   await expect(page.getByRole('menuitemradio', { name: 'Heading 2', exact: true })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('menuitemradio', { name: 'Heading 3', exact: true })).toBeInViewport()
   await page.screenshot({ path: testInfo.outputPath('text-context-styles.png') })
   await page.getByRole('menuitemradio', { name: 'Heading 3', exact: true }).focus()
   await page.keyboard.press('Enter')
   await expect(editor.locator('h3')).toHaveText('Synthetic heading')
-  await editor.locator('h3').click({ button: 'right' })
-  await menu.getByRole('menuitem', { name: 'Style', exact: true }).click()
+  await editor.locator('h3').click()
+  await page.getByRole('button', { name: 'Style', exact: true }).click()
   await page.getByRole('menuitemradio', { name: 'Normal text', exact: true }).click()
   await expect(editor.locator('h3')).toHaveCount(0)
   await expect(editor.locator('p').first()).toHaveText('Synthetic heading')
@@ -152,36 +169,33 @@ for (const width of [1440]) test(`text context menu preserves the selection and 
   await expect(editor).toHaveText('Replacement document')
 })
 
-test('text context menus target lists and retain link and table actions', async ({ page }) => {
+test('toolbar list and text actions preserve their targets alongside specific context commands', async ({ page }) => {
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue:
     '<p>First paragraph</p><ul><li><p>List item</p></li></ul><p><a href="https://example.org">Linked words</a></p><table><tbody><tr><td>Cell words</td></tr></tbody></table>',
   } })
   const editor = page.locator('[data-editor-surface]')
   await editor.locator('p').first().click()
-  await editor.locator('li p').click({ button: 'right' })
-  await page.getByRole('menu', { name: 'Content', exact: true }).getByRole('menuitem', { name: 'Paragraph', exact: true }).click()
-  const bullet = page.getByRole('menuitemcheckbox', { name: 'Bullet list', exact: true })
-  await expect(bullet).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByRole('menuitem', { name: 'List properties', exact: true })).toBeVisible()
+  await editor.locator('li p').click()
+  const bullet = page.getByRole('button', { name: 'Bullet list', exact: true })
+  await expect(bullet).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'List properties', exact: true })).toBeVisible()
   await bullet.click()
   await expect(editor.locator('ul')).toHaveCount(0)
   await expect(editor.locator('p').first()).toHaveText('First paragraph')
-  for (const [selector, label, command] of [['a', 'Insert a link or file', 'Insert or edit link'], ['td p', 'Table', 'Add row']]) {
+  for (const [selector, command] of [['a', 'Open'], ['td p', 'Add row']]) {
     const target = editor.locator(selector)
-    await target.click()
-    await page.keyboard.press('Home')
-    await page.keyboard.press('Shift+End')
-    await target.click({ button: 'right', position: { x: 10, y: 10 } })
-    const menu = page.getByRole('menu', { name: label, exact: true })
-    await expect(menu.getByRole('menuitem', { name: command, exact: true })).toBeVisible()
-    await menu.getByRole('menuitemcheckbox', { name: 'Italic', exact: true }).click()
+    await selectDocumentContext(page, target)
+    const tools = page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
+    await expect(tools.getByRole('button', { name: command, exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'Italic', exact: true }).click()
     await expect(target.locator('em')).toHaveText(selector === 'a' ? 'Linked words' : 'Cell words')
   }
 })
 
 test('text clipboard menus preserve rich content and refuse failed or stale cuts', async ({ page }) => {
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
-  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p><strong>Clipboard</strong> text</p>' } })
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<p><strong>Clipboard</strong> text</p>' } })
   const editor = page.locator('[data-editor-surface]'), menu = page.getByRole('menu', { name: 'Content', exact: true })
   await editor.locator('p').click()
   await page.keyboard.press('Control+a')
@@ -225,7 +239,7 @@ const contextCases = [
   ['image', `<figure class="image"><img src="${attachment}" width="120" height="80" alt="Synthetic image"></figure>`, 'img', 'Insert a link or file'],
   ['card', '<blockquote class="galaris-link-card"><p><a href="https://example.org/guide">Synthetic guide</a></p></blockquote>', 'blockquote a', 'Insert a link or file'],
   ['agent', '<blockquote class="galaris-link-card galaris-agent-card"><p><a href="galaris://agent/7">Synthetic agent</a></p></blockquote>', '.agent-citation-avatar', 'Insert a link or file'],
-  ['process', '<blockquote class="galaris-link-card galaris-process-diagram"><p><a href="galaris://processes/synthetic_context">Synthetic process</a></p></blockquote>', '.process-preview--inline', 'Insert a link or file'],
+  ['process', '<blockquote class="galaris-link-card galaris-process-diagram"><p><a href="galaris://processes/synthetic_context">Synthetic process</a></p></blockquote>', 'blockquote.galaris-process-diagram', 'Insert a link or file'],
   ['object', '<section><details><summary>Synthetic object</summary>Preserved content</details></section>', '.embedded-code-widget', 'Embedded application'],
 ]
 
@@ -243,7 +257,7 @@ for (const mode of ['read', 'readonly']) for (const width of [1440, 390]) test(`
       const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
       element.dispatchEvent(event)
       return event.defaultPrevented
-    })).toBe(width >= 1024)
+    })).toBe(false)
     await target.click({ button: 'right' })
     await expect(page.getByRole('menu')).toBeHidden()
     await expect(page.locator('.editorial-context')).toHaveCount(0)
@@ -259,8 +273,8 @@ for (const mode of ['read', 'readonly']) for (const width of [1440, 390]) test(`
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
 })
 
-for (const width of [1440]) for (const [kind, html, selector, label] of contextCases) {
-  test(`right-click ${kind} preserves content and exposes its editing commands (${width}px)`, async ({ page }, testInfo) => {
+for (const width of [390, 1440]) for (const [kind, html, selector] of contextCases) {
+  test(`selecting ${kind} exposes contextual toolbar commands without changing content (${width}px)`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
     await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ status: 404 }))
     await jsonRoute(page, '**/api/processes/internal/resource-preview?*', {
@@ -271,31 +285,34 @@ for (const width of [1440]) for (const [kind, html, selector, label] of contextC
     })
     await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p>Before</p>' + html + '<p>After</p>' } })
     const editor = page.locator('[data-editor-surface]'), target = editor.locator(selector).first()
-    const menu = page.getByRole('menu', { name: label, exact: true })
-    const toolbar = page.getByRole('toolbar', { name: label, exact: true })
-    await target.click({ button: 'right' })
-    await expect(menu).toBeVisible()
-    await expect(toolbar).toBeHidden()
-    await page.keyboard.press('Escape')
-    await expect(menu).toBeHidden()
-    await page.keyboard.press(width === 390 ? 'ContextMenu' : 'Shift+F10')
-    await expect(menu.getByRole('menuitem').first()).toBeFocused()
-    await page.keyboard.press('Escape')
-    await expect(menu).toBeHidden()
-    await target.click({ button: 'right' })
-    await expect(menu).toBeVisible()
-    await expect(toolbar).toBeHidden()
+    const popups = []
+    page.on('popup', popup => popups.push(popup))
+    await target.click(kind === 'process' ? { position: { x: 4, y: 4 } } : {})
+    const toolbar = page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
+    await expect(toolbar.getByRole('button').first()).toBeVisible()
+    expect(popups).toEqual([])
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(await target.evaluate(element => {
+      const box = element.getBoundingClientRect()
+      const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: box.left + 5, clientY: box.top + 5 })
+      element.dispatchEvent(event)
+      return event.defaultPrevented
+    })).toBe(false)
+    for (const key of ['ContextMenu', 'F10']) expect(await target.evaluate((element, key) => {
+      const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key, shiftKey: key === 'F10' })
+      element.dispatchEvent(event)
+      return event.defaultPrevented
+    }, key)).toBe(false)
+    await expect(page.getByRole('menu')).toBeHidden()
     expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
-    await page.screenshot({ path: testInfo.outputPath(`${kind}-right-click.png`) })
-    await page.keyboard.press('Escape')
-    await expect(menu).toBeHidden()
-    await expect(toolbar).toBeHidden()
-    await target.click({ button: 'right' })
+    await page.screenshot({ path: testInfo.outputPath(`${kind}-context-toolbar.png`) })
     if (kind === 'link') {
-      await menu.getByRole('menuitem', { name: 'Insert or edit link', exact: true }).click()
+      const editLink = page.getByRole('button', { name: 'Insert or edit link', exact: true })
+      if (!await editLink.isVisible()) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+      await editLink.click()
       await expect(page.getByRole('dialog').getByRole('textbox', { name: 'URL or Galaris reference', exact: true })).toHaveValue('https://example.org/guide')
     } else {
-      await menu.getByRole('menuitem', { name: 'Insert paragraph after block', exact: true }).click()
+      await toolbar.getByRole('button', { name: 'Insert paragraph after block', exact: true }).click()
       await page.keyboard.type('Inserted paragraph')
       expect(await editorHtml(page)).toContain('Inserted paragraph')
       expect(await editorHtml(page)).toContain('After')
@@ -306,27 +323,23 @@ for (const width of [1440]) for (const [kind, html, selector, label] of contextC
 test('right-click targets another table, preserves selected cells and closes stale menus on document changes', async ({ page }) => {
   const table = text => `<table><tbody><tr><td>${text}</td><td>Second cell</td></tr></tbody></table>`
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: table('First table') + '<p>Between</p>' + table('Second table') } })
-  const tables = page.locator('[data-editor-surface] table'), menu = page.getByRole('menu', { name: 'Table', exact: true })
+  const tables = page.locator('[data-editor-surface] table'), menu = page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
   await tables.first().locator('td').first().click()
-  await tables.last().locator('td').first().click({ button: 'right' })
-  await menu.getByRole('menuitem', { name: 'Add row', exact: true }).click()
+  await tables.last().locator('td').first().click()
+  await menu.getByRole('button', { name: 'Add row', exact: true }).click()
   await expect(tables.first().locator('tr')).toHaveCount(1)
   await expect(tables.last().locator('tr')).toHaveCount(2)
   const cells = tables.last().locator('td')
   await cells.first().click()
   await cells.nth(1).click({ modifiers: ['Shift'] })
-  await cells.first().click({ button: 'right' })
-  await expect(menu.getByRole('menuitem', { name: 'Merge cells', exact: true })).not.toHaveAttribute('aria-disabled', 'true')
-  await menu.getByRole('menuitem', { name: 'Merge cells', exact: true }).click()
+  await expect(menu.getByRole('button', { name: 'Merge cells', exact: true })).not.toBeDisabled()
+  await menu.getByRole('button', { name: 'Merge cells', exact: true }).click()
   await expect(cells.first()).toHaveAttribute('colspan', '2')
-  await cells.first().click({ button: 'right' })
-  await menu.getByRole('menuitem', { name: 'Split cell', exact: true }).click()
+  await menu.getByRole('button', { name: 'Split cell', exact: true }).click()
   await expect(cells).toHaveCount(4)
-  await cells.first().click({ button: 'right' })
-  await menu.getByRole('menuitem', { name: 'Table styles', exact: true }).hover()
+  await menu.getByRole('button', { name: 'Table styles', exact: true }).click()
   await page.getByRole('button', { name: 'Ocean', exact: true }).click()
   await expect(tables.last()).toHaveClass(/galaris-table-blue/)
-  await cells.first().click({ button: 'right' })
   await page.evaluate(() => window.testApp.setProps({ modelValue: '<p>New document</p>' }))
   await expect(menu).toBeHidden()
   await expect(page.locator('[data-editor-surface]')).toHaveText('New document')
@@ -334,17 +347,17 @@ test('right-click targets another table, preserves selected cells and closes sta
 
 test('right-click code menus keep language controls and close when editing rights are removed', async ({ page }) => {
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<pre><code class="language-javascript">const answer = 42;</code></pre>' } })
-  const code = page.locator('[data-editor-surface] pre code'), menu = page.getByRole('menu', { name: 'Code block options', exact: true })
-  await code.click({ button: 'right' })
-  await menu.getByRole('menuitem', { name: 'Block language', exact: true }).hover()
+  const code = page.locator('[data-editor-surface] pre code'), menu = page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
+  await code.click()
+  await menu.getByRole('button', { name: 'Block language', exact: true }).click()
   await page.getByRole('menuitemradio', { name: 'Python', exact: true }).click()
   expect(await editorHtml(page)).toContain('language-python')
-  await code.click({ button: 'right' })
+  await code.click()
   await expect(menu).toBeVisible()
   await page.evaluate(() => window.testApp.setProps({ readonly: true }))
   await expect(menu).toBeHidden()
   const saved = await editorHtml(page)
-  await code.click({ button: 'right' })
+  await code.click()
   await expect(menu).toBeHidden()
   await expect(page.getByRole('toolbar', { name: 'Code block options', exact: true })).toBeHidden()
   expect(await editorHtml(page)).toBe(saved)

@@ -454,16 +454,16 @@ la création de code, listes à cocher, tableaux et séparateurs, ainsi que l'é
 réouverture et lecture. Les pièces jointes et équations ne sont pas proposées dans la barre simple.
 La commande Tout sélectionner rend le focus au document après la recherche et permet
 de remplacer tout le contenu, tableau compris, puis d'annuler sur mobile et bureau.
-`editor-toolbar.spec.mjs` vérifie les menus au clic droit des tableaux, liens, images,
+`editor-toolbar.spec.mjs` vérifie la barre contextuelle des tableaux, liens, images,
 cartes, agents, processus, blocs de code et objets HTML sur mobile et bureau : commandes au pointeur et au clavier, ciblage direct, fusion/scission des cellules,
 styles, langage, lecture seule et fermeture lors d’un changement de document.
 La même suite couvre les sélections de texte, titres et listes, les commandes de mise en forme
-dans les liens et cellules, le presse-papiers enrichi, les coupes refusées ou tardives et le
-blocage du clic droit et l’absence de barres contextuelles en lecture seule ou visualisation,
+depuis la barre d'outils dans les liens et cellules, le presse-papiers enrichi, les coupes refusées ou tardives et le
+clic droit et raccourcis contextuels laissés au navigateur, sans barre vide ni barres contextuelles en lecture seule ou visualisation,
 avec ouverture des liens et fonds de cartes au clic gauche sur mobile et bureau.
-`e2e/specs/editorial-html.spec.mjs` vérifie aussi les propriétés d’un tableau par clic droit,
+`e2e/specs/editorial-html.spec.mjs` vérifie aussi les propriétés d’un tableau depuis la barre contextuelle,
 leur sauvegarde réelle et leur conservation après rechargement.
-Ce parcours vérifie également le changement de niveau de titre depuis **Style** au clic droit,
+Ce parcours vérifie également le changement de niveau de titre depuis **Style** dans la barre d'outils,
 sa sauvegarde puis son rechargement.
 
 `context-menus.spec.mjs` protège l’ouverture au clic droit et au clavier sans bouton dédié, la
@@ -589,8 +589,9 @@ couvertes par `internal-file-picker.spec.mjs`.
 `agents.spec.mjs` couvre la carte insérée, son avatar, le choix lien/carte, la sauvegarde
 sans UI injectée et l'ouverture de la carte complète par son titre en lecture et en édition,
 sur mobile et bureau ; en lecture seule, l’avatar ouvre aussi la fiche.
-`galaris-links.spec.mjs` vérifie le clic simple sur le titre des cartes documentaires,
-la sélection par clic droit et l’ouverture des cartes et liens dans le texte au clic simple, même en édition. Il vérifie aussi que
+`galaris-links.spec.mjs` vérifie l'ouverture des cartes documentaires et des liens :
+clic simple en lecture seule, Ctrl/Cmd+clic en édition. `editor-toolbar.spec.mjs` vérifie
+que le clic simple en édition sélectionne l'objet et expose ses actions sans navigation. Il vérifie aussi que
 les tâches s'ouvrent et se rouvrent en modale sans navigation, en lecture et en édition.
 
 `chat-document-workspace.spec.mjs` vérifie que les liens et cartes documentaires remplacent
@@ -2328,10 +2329,11 @@ L’annulation et le changement de document empêchent de proposer un PDF devenu
 Garanties : `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 `rich-text.spec.mjs` et `document-print.spec.mjs` dans `front/browser-tests/`.
 
-Pour le profil `document` uniquement, la sous-barre mobile suit la sélection de texte,
-tableau, image et code, conserve la sélection pendant les commandes tactiles et laisse
-l'appui long au navigateur, y compris en lecture seule. Les champs `rich-text` et le
-clic droit desktop conservent leur comportement. Cette sous-barre défile horizontalement
+Pour le profil `document` uniquement, la sous-barre centrée suit la sélection d'un
+tableau, d'une image, d'un lien, d'une équation ou de code sur mobile et bureau. Elle
+disparaît sans espace réservé lorsqu'il n'y a pas d'actions. Les commandes tactiles conservent
+la sélection ; le clic droit, `Maj+F10` et l'appui long restent natifs, y compris en lecture seule.
+Les champs `rich-text` gardent leurs menus. La sous-barre défile horizontalement
 pour garder une hauteur stable lors des changements de contexte. Couverture : `mobile-editor-toolbar.spec.mjs`
 et `editor-toolbar.spec.mjs`.
 

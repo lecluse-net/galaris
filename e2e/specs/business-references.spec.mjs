@@ -10,7 +10,7 @@ test('activity and topic references persist as compact cards and open modals aft
     await context.exposeBinding('__fixtureClipboardRead', () => clipboardText)
     await page.addInitScript(() => {
       // Firefox/WebKit do not expose Chromium's clipboard permissions. Replace
-      // only the OS boundary; the copy action and Paste menu stay real.
+      // only the OS boundary; the copy action and editor paste handling stay real.
       Object.defineProperty(navigator, 'clipboard', { value: {
         writeText: value => window.__fixtureClipboardWrite(value), readText: () => window.__fixtureClipboardRead(),
       } })
@@ -53,14 +53,21 @@ test('activity and topic references persist as compact cards and open modals aft
   if (browserName === 'chromium') await page.keyboard.press('Control+v')
   else {
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`galaris://task/${task.id}`)
-    await editor.locator('p').last().click({ button: 'right' })
-    await page.getByRole('menuitem', { name: /^(Paste|Coller)$/, exact: true }).click()
+    await editor.evaluate(async element => {
+      const clipboardData = new DataTransfer()
+      clipboardData.setData('text/plain', await navigator.clipboard.readText())
+      element.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }))
+    })
   }
   await expect(editor.locator('a')).toHaveText(task.label)
-  await editor.locator('a').click({ button: 'right' })
+  await editor.locator('a').evaluate(element => {
+    const range = document.createRange(); range.selectNodeContents(element)
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range)
+    document.dispatchEvent(new Event('selectionchange'))
+  })
   const save = () => page.waitForResponse(response => new URL(response.url()).pathname === `/api/documents/${document.id}` && response.request().method() === 'PATCH')
   const cardSaved = save()
-  await page.getByRole('menuitem', { name: /^(Show card|Afficher une carte)$/ }).click()
+  await page.getByRole('button', { name: /^(Show card|Afficher une carte)$/ }).click()
   const card = editor.locator('.galaris-link-card')
   await expect(card).toContainText(task.label)
   await expect(card).not.toContainText('Full objective')

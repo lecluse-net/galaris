@@ -44,6 +44,31 @@ export const test = base.extend({
 })
 export { expect }
 
+// Select content without opening a link or invoking the browser's native menu.
+export async function selectDocumentContext(page, target) {
+  if (!await target.evaluate(element => Boolean(element.closest('.selectedCell')))) await target.click()
+  await target.evaluate(element => {
+    const editor = element.closest('[data-editor-surface]')
+    if (element.closest('.selectedCell')) return
+    const object = element.closest('.galaris-image-object, blockquote.galaris-link-card, .embedded-code-widget, [data-math]')
+    if (object) {
+      editor.editor.chain().setNodeSelection(editor.editor.view.posAtDOM(object, 0)).focus().run()
+      return
+    }
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    const selection = window.getSelection()
+    selection.removeAllRanges()
+    selection.addRange(range)
+    document.dispatchEvent(new Event('selectionchange'))
+    editor.editor.chain().setTextSelection({
+      from: editor.editor.view.posAtDOM(range.startContainer, range.startOffset),
+      to: editor.editor.view.posAtDOM(range.endContainer, range.endOffset),
+    }).focus().run()
+  })
+  return page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
+}
+
 // Inspect portable document HTML through the editor serializer, independently of UI controls.
 export async function editorHtml(page) {
   return page.locator('[data-editor-surface]').evaluate(async element => {

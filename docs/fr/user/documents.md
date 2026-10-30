@@ -90,7 +90,7 @@ Pour insérer une fiche Contact dans le contenu, utilisez **Lien Galaris**, puis
 **Ressources Galaris → Contacts** dans l’explorateur. Sélectionnez le contact et validez.
 La carte affiche ses coordonnées selon les droits de chaque lecteur et ouvre sa modale
 au clic. Un lien Contact existant peut devenir une carte via **Afficher la carte** dans
-son menu contextuel ; **Afficher l’URL** rétablit le lien. Le partage du document ne donne
+sa barre contextuelle ; **Afficher l’URL** rétablit le lien. Le partage du document ne donne
 aucun accès supplémentaire au carnet de l’agent. Voir aussi [Fichiers](files.md).
 
 ## Rédiger avec un agent
@@ -151,7 +151,7 @@ Dans la barre d’outils, **Texte** regroupe les **Caractères spéciaux** et l�
 l’affiche sur une ligne séparée. Les deux boutons ouvrent l’éditeur visuel MathLive,
 avec son clavier de symboles et un champ **Source LaTeX** synchronisé. Un clic sélectionne
 la formule ; un double-clic ou **Entrée** sur la sélection ouvre son éditeur.
-Le clic droit ou **Maj+F10** ouvre son menu : modifier, couper, copier, supprimer et écrire
+Sa barre contextuelle propose couper, copier, supprimer et écrire
 avant ou après. Ces deux dernières actions placent le curseur à côté d’une formule en ligne
 ou créent un paragraphe à côté d’un bloc. Sur mobile, les actions apparaissent dans la barre
 contextuelle après sélection de la formule. **Ctrl/Cmd+Z** permet d’annuler une suppression.
@@ -166,13 +166,20 @@ une ligne enregistre son état dans le document, avec sa sauvegarde et ses révi
 Les états restent visibles après réouverture, en lecture seule et dans les exports.
 Ces listes ne nécessitent aucun jeu de données.
 
-Sur mobile (largeur inférieure à 1024 px), une sous-barre d'icônes apparaît sous la barre
-d'outils des documents modifiables. Ses commandes suivent le curseur ou la sélection :
+Sur ordinateur comme sur mobile, une barre d'icônes flottante apparaît juste au-dessus
+de l'élément sélectionné dans les documents modifiables. Ses commandes suivent la sélection :
 tableau et cellule, image, lien ou bloc de code. Les menus d'icônes donnent accès aux
-options de texte et de paragraphe ; les styles courants restent dans la barre principale.
+propriétés de l'objet sélectionné. Les commandes de texte, de paragraphe et d'insertion
+restent dans la barre principale, avec **Plus d'outils** pour ses commandes supplémentaires.
 Faites glisser la sous-barre horizontalement pour atteindre toutes ses commandes.
-L'appui long conserve la sélection et les commandes natives de copier/coller. Sur
-ordinateur, les commandes contextuelles restent accessibles au clic droit.
+Cette barre est centrée sur l'élément et n'apparaît que si la sélection propose des actions, sans laisser
+de blanc lorsqu'elle disparaît. Le clic droit, **Maj+F10** et l'appui long restent ceux du
+navigateur : correction orthographique, dictionnaire et presse-papiers selon ses capacités.
+En édition, un clic gauche sur un lien ou une carte les sélectionne sans les ouvrir.
+Utilisez **Ouvrir** dans la barre contextuelle, ou **Ctrl/Cmd+clic**, pour suivre leur cible.
+En lecture seule, le clic gauche continue d'ouvrir la cible.
+Les commandes communes ne sont pas répétées. Pour modifier un lien ou une équation,
+sélectionnez-le puis utilisez le bouton correspondant dans la barre d'outils.
 
 ## Créer et retrouver
 

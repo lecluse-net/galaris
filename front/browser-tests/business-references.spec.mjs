@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute, editorHtml, setPrivileges } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, editorHtml, setPrivileges, selectDocumentContext } from './fixtures.mjs'
 import { goal as goalFixture, result } from './data.mjs'
 
 const id = '00000000-0000-4000-8000-000000000251'
@@ -136,13 +136,12 @@ for (const [kind, url, title, detail] of cases) for (const format of ['uri', 'ur
     if (format === 'uri') await paste(page, uri)
     else {
       await page.evaluate(value => navigator.clipboard.writeText(value), new URL(url, page.url()).href)
-      await surface.locator('p').click({ button: 'right' })
-      await page.getByRole('menuitem', { name: 'Paste', exact: true }).click()
+      await paste(page, await page.evaluate(() => navigator.clipboard.readText()))
     }
     const link = surface.locator('a')
     await expect(link).toContainText(title)
-    await link.click({ button: 'right' })
-    await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
+    await selectDocumentContext(page, link)
+    await page.getByRole('button', { name: 'Show card', exact: true }).click()
     const card = surface.locator('blockquote.galaris-link-card')
     await expect(card).toContainText(title)
     if (['task', 'text', 'voice'].includes(kind)) await expect(card).not.toContainText(/FULL /)
@@ -150,29 +149,29 @@ for (const [kind, url, title, detail] of cases) for (const format of ['uri', 'ur
     expect(stored).toContain(uri)
     expect(stored).toContain('Keep surrounding text')
     expect(stored).not.toMatch(/<button|blob:/)
-    await card.locator('p').nth(1).click({ button: 'right' })
-    await page.getByRole('menuitem', { name: 'Show URL', exact: true }).click()
+    await selectDocumentContext(page, card.locator('p').nth(1))
+    await page.getByRole('button', { name: 'Show URL', exact: true }).click()
     await expect(card).toHaveCount(0)
-    await surface.locator('a').click({ button: 'right' })
-    await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
+    await selectDocumentContext(page, surface.locator('a'))
+    await page.getByRole('button', { name: 'Show card', exact: true }).click()
     expect(await editorHtml(page)).toBe(stored)
-    await card.click({ position: { x: 4, y: 4 } })
+    await card.click({ position: { x: 4, y: 4 }, modifiers: ['Control'] })
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     if (kind !== 'room') await expect(dialog).toContainText(detail)
     if (kind === 'room') {
       // Discussions expose reference copying on the card, without a modal copy button.
       await page.keyboard.press('Escape')
-      await card.click({ button: 'right', position: { x: 4, y: 4 } })
-      await page.getByRole('menuitem', { name: 'Copy reference', exact: true }).click()
+      await selectDocumentContext(page, card)
+      await page.getByRole('toolbar', { name: 'Contextual actions', exact: true }).getByRole('button', { name: 'Copy reference', exact: true }).click()
     } else if (kind === 'task') {
       await dialog.locator('.task-detail').click({ button: 'right' })
       await page.getByRole('menuitem', { name: 'Copy reference', exact: true }).click()
     } else await dialog.getByRole('button', { name: 'Copy reference', exact: true }).first().click()
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(uri)
-    await page.keyboard.press('Escape')
+    if (await dialog.count()) await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
     await expect(dialog).toHaveCount(0)
-    await card.locator('a').click()
+    await card.locator('a').click({ modifiers: ['Control'] })
     await expect(dialog).toBeVisible()
     await page.locator('.q-dialog__backdrop').last().click({ position: { x: 4, y: 4 } })
     await expect(dialog).toHaveCount(0)

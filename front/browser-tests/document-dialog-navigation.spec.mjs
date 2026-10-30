@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { selectDocumentContext, test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
 async function documents(page) {
@@ -46,7 +46,7 @@ for (const width of [1440, 390]) {
     const title = dialog.getByLabel('Title', { exact: true })
     const back = dialog.getByRole('button', { name: 'Previous document', exact: true })
     const forward = dialog.getByRole('button', { name: 'Next document', exact: true })
-    const open = async name => dialog.getByRole('link', { name, exact: true }).click()
+    const open = async name => dialog.getByRole('link', { name, exact: true }).click({ modifiers: ['Control'] })
     await expect(title).toHaveValue('Alpha')
     await expect(back).toBeDisabled()
     await expect(forward).toBeDisabled()
@@ -152,11 +152,11 @@ test('a denied destination keeps the current document and closing discards a lat
     route: '/chat', props: { modelValue: true, documentId: state.items[0].id, agentId: 7 },
   })
   const dialog = page.getByRole('dialog')
-  await dialog.getByRole('link', { name: 'Open Beta', exact: true }).click()
+  await dialog.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
   await expect(page.getByText('Documents could not be loaded.', { exact: true })).toBeVisible()
   await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
   mode = 'late'
-  await dialog.getByRole('link', { name: 'Open Beta', exact: true }).click()
+  await dialog.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
   try {
     await expect.poll(() => started).toBe(true)
     await page.locator('.q-dialog__backdrop').click({ position: { x: 5, y: 5 } })
@@ -174,8 +174,8 @@ test('opening a separate dialog from a document dialog preserves each navigation
   })
   const parent = page.getByRole('dialog').first()
   await expect(parent.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
-  await parent.getByText('Open Beta', { exact: true }).click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Open in a dialog', exact: true }).click()
+  await selectDocumentContext(page, parent.getByText('Open Beta', { exact: true }))
+  await page.getByRole('button', { name: 'Open in a dialog', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(2)
   const child = page.getByRole('dialog').nth(1)
   await expect(child.getByLabel('Title', { exact: true })).toHaveValue('Beta')
@@ -186,7 +186,7 @@ test('opening a separate dialog from a document dialog preserves each navigation
   await expect(page.getByRole('button', { name: 'Open in a dialog', exact: true })).toBeHidden()
   await page.evaluate(() => window.history.back())
   await expect(child.getByLabel('Title', { exact: true })).toHaveValue('Beta')
-  await child.getByRole('link', { name: 'Open Alpha', exact: true }).click()
+  await child.getByRole('link', { name: 'Open Alpha', exact: true }).click({ modifiers: ['Control'] })
   await expect(child.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
   await child.getByRole('button', { name: 'Previous document', exact: true }).click()
   await expect(child.getByLabel('Title', { exact: true })).toHaveValue('Beta')
@@ -202,9 +202,9 @@ test('rapid browser traversal ignores a late document without rolling back the l
   })
   const dialog = page.getByRole('dialog')
   const title = dialog.getByLabel('Title', { exact: true })
-  await dialog.getByRole('link', { name: 'Open Beta', exact: true }).click()
+  await dialog.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
   await expect(title).toHaveValue('Beta')
-  await dialog.getByRole('link', { name: 'Open Gamma', exact: true }).click()
+  await dialog.getByRole('link', { name: 'Open Gamma', exact: true }).click({ modifiers: ['Control'] })
   await expect(title).toHaveValue('Gamma')
   let release, started = false, finished = false
   const gate = new Promise(resolve => { release = resolve })

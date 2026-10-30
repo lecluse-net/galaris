@@ -432,15 +432,15 @@ creation of code, checklists, tables and separators, and checked state after reo
 and reading. The simple toolbar does not offer attachments or equation insertion.
 Select all restores document focus after searching, replaces the complete body including
 tables, and supports undo on mobile and desktop.
-`editor-toolbar.spec.mjs` checks right-click menus for tables, links, images, cards,
+`editor-toolbar.spec.mjs` checks contextual toolbars for tables, links, images, cards,
 agents, processes, code blocks and HTML objects on mobile and desktop: pointer and keyboard commands, direct targeting, cell merge/split, styles, language,
 read-only restrictions and dismissal when switching documents.
-The same suite covers text selections, headings and lists, formatting commands inside links
-and cells, the rich clipboard, rejected or delayed cuts, blocked right-click and absent contextual
+The same suite covers text selections, headings and lists, toolbar formatting commands inside links
+and cells, the rich clipboard, rejected or delayed cuts, native right-click and keyboard menus, no empty row and absent contextual
 toolbars in read-only and viewing modes, with left-click opening links and card backgrounds on mobile and desktop.
-`e2e/specs/editorial-html.spec.mjs` also checks table properties through right-click,
+`e2e/specs/editorial-html.spec.mjs` also checks table properties through the contextual toolbar,
 real persistence and preservation after reload.
-This journey also checks changing heading levels through the right-click **Style** menu,
+This journey also checks changing heading levels through the toolbar **Style** menu,
 including persistence and reload.
 
 `context-menus.spec.mjs` protects pointer and keyboard opening without a dedicated button, dismissal, changing
@@ -573,8 +573,9 @@ Navigation and multiple selection remain covered by `internal-file-picker.spec.m
 `agents.spec.mjs` covers inserted cards, avatars, link/card switching, saving without
 injected UI and opening the complete agent card through its title in reading and editing,
 on mobile and desktop; in read-only mode, the avatar also opens the card.
-`galaris-links.spec.mjs` checks single-click navigation through document card titles,
-right-click selection and single-click card and text link navigation, including while editing. It also checks that
+`galaris-links.spec.mjs` checks document card and text link navigation through a single
+click in read-only views and Ctrl/Cmd+click while editing. `editor-toolbar.spec.mjs` checks
+that a plain editing click selects the object and exposes actions without navigation. It also checks that
 Task citations open and reopen in a modal without navigation in reading and editing modes.
 
 `chat-document-workspace.spec.mjs` checks that document links and cards replace the Chat
@@ -2235,10 +2236,11 @@ changes prevent an outdated PDF from being offered.
 Coverage: `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 `rich-text.spec.mjs` and `document-print.spec.mjs` in `front/browser-tests/`.
 
-For the `document` profile only, the mobile icon row follows text, table, image and code
-selections, preserves the selection during touch commands and leaves long press to the
-browser, including in read-only views. Other `rich-text` fields and desktop right-click
-retain their behavior. The icon row scrolls horizontally to keep its height stable when
+For the `document` profile only, the centered row follows table, image, link, equation and
+code selections on desktop and mobile. It disappears without reserved space when there
+are no actions and preserves the selection during touch commands. Right-click, `Shift+F10`
+and long press remain native, including in read-only views. Other `rich-text` fields retain
+their menus. The icon row scrolls horizontally to keep its height stable when
 the context changes. Coverage: `mobile-editor-toolbar.spec.mjs` and `editor-toolbar.spec.mjs`.
 
 `document-flows.spec.mjs` checks repeated deletion during a delayed save response, the final

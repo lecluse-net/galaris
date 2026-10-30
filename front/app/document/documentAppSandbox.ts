@@ -17,7 +17,7 @@ function hasAuthoredJavaScript(app: DocumentApp): boolean {
   )
 }
 
-export function appSandboxDocument(app: DocumentApp, dark = false, contextMenu = false): string {
+export function appSandboxDocument(app: DocumentApp, dark = false, notifyFocus = false): string {
   // CSS, SVG and native disclosures need isolation, but no 3D engine. Keep the
   // existing library available to all authored scripts, including inline handlers.
   const libraries = hasAuthoredJavaScript(app) ? '<script>' + threeSource.replace(/<\/script/gi, '<\\/script') + '</script>' : ''
@@ -41,10 +41,8 @@ export function appSandboxDocument(app: DocumentApp, dark = false, contextMenu =
         Object.defineProperty(constructor, 'createObjectURL', {value: passiveBlobUrl, writable: false, configurable: false});
       }
       ${applicationSnapshotScript}
-      if (${quoted(contextMenu)}) addEventListener('contextmenu', event => {
-        if (!event.isTrusted) return;
-        event.preventDefault();
-        parent.postMessage({type: 'galaris-app-context-menu', x: event.clientX, y: event.clientY}, '*');
+      if (${quoted(notifyFocus)}) for (const type of ['pointerdown', 'focusin']) addEventListener(type, event => {
+        if (event.isTrusted) parent.postMessage({type: 'galaris-app-focus'}, '*');
       }, true);
       const applyDocumentContrast = (${applyDocumentContrast.toString()});
       function updateTheme(dark) {
@@ -143,10 +141,7 @@ export function appSandboxDocument(app: DocumentApp, dark = false, contextMenu =
          if (event.source === parent && event.data === 'galaris-host-connect' && !port) { port = event.ports[0]; connect(); }
          if (event.source === frame.contentWindow && event.data === 'galaris-app-ready') { ready = true; frame.contentWindow.postMessage({type:'galaris-host-theme', dark}, '*'); connect(); }
          if (event.source === frame.contentWindow && event.data?.type === 'galaris-app-height') parent.postMessage(event.data, '*');
-         if (event.source === frame.contentWindow && event.data?.type === 'galaris-app-context-menu') {
-           const box = frame.getBoundingClientRect();
-           parent.postMessage({type: 'galaris-app-context-menu', x: box.left + event.data.x, y: box.top + event.data.y}, '*');
-         }
+         if (event.source === frame.contentWindow && event.data?.type === 'galaris-app-focus') parent.postMessage({type: 'galaris-app-focus'}, '*');
        });
        frame.src = URL.createObjectURL(new Blob([${quoted(inner)}], {type: 'text/html'}));`
     + '</script></body></html>'

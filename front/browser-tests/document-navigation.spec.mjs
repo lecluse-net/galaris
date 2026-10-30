@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { selectDocumentContext, test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
 async function library(page, kind = 'text') {
@@ -95,7 +95,7 @@ for (const mobile of [false, true]) {
     const title = page.getByLabel('Title', { exact: true })
     await expect(title).toHaveValue('Alpha')
     // Opening the document uses this library's navigation, including on mobile.
-    await page.getByRole('link', { name: 'Open Beta', exact: true }).click()
+    await page.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
     await expect(title).toHaveValue('Beta')
     await expect(page.getByRole('dialog')).toHaveCount(mobile ? 1 : 0)
     const buttons = mobile ? page.getByRole('dialog') : page.locator('.page-header')
@@ -126,8 +126,8 @@ test('the Documents contextual dialog action leaves the library selection and hi
     route: `/documents?document_id=${state.items[0].id}`, privileges: ['DOCUMENT_EDIT'],
   })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
-  await page.getByRole('link', { name: 'Open Beta', exact: true }).click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Open in a dialog', exact: true }).click()
+  await selectDocumentContext(page, page.getByRole('link', { name: 'Open Beta', exact: true }))
+  await page.getByRole('button', { name: 'Open in a dialog', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Beta')
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
@@ -145,14 +145,14 @@ test('a dialog branch preserves the library forward action without reloading or 
   })
   const title = page.getByLabel('Title', { exact: true })
   const header = page.locator('.page-header')
-  await page.getByRole('link', { name: 'Open Beta', exact: true }).click()
+  await page.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
   await expect(title).toHaveValue('Beta')
   await header.getByRole('button', { name: 'Previous document', exact: true }).click()
   await expect(title).toHaveValue('Alpha')
-  await page.getByRole('link', { name: 'Open Beta', exact: true }).click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Open in a dialog', exact: true }).click()
+  await selectDocumentContext(page, page.getByRole('link', { name: 'Open Beta', exact: true }))
+  await page.getByRole('button', { name: 'Open in a dialog', exact: true }).click()
   const dialog = page.getByRole('dialog')
-  await dialog.getByRole('link', { name: 'Open Gamma', exact: true }).click()
+  await dialog.getByRole('link', { name: 'Open Gamma', exact: true }).click({ modifiers: ['Control'] })
   await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Gamma')
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
   await expect(dialog).toHaveCount(0)

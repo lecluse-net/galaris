@@ -120,15 +120,10 @@ watch(() => $q.dark.isActive, dark => { frame.value?.contentWindow?.postMessage(
 function navigated(event: MessageEvent): void {
   if (event.source !== frame.value?.contentWindow) return
   if (event.data === 'galaris-app-navigated') stop()
-  const data = event.data as { type?: string; height?: unknown; x?: unknown; y?: unknown } | null
+  const data = event.data as { type?: string; height?: unknown } | null
   if (data?.type === 'galaris-app-height' && typeof data.height === 'number' && Number.isFinite(data.height)) height.value = Math.max(40, Math.min(3000, data.height))
-  if (data?.type === 'galaris-app-context-menu' && running.value && host.value?.closest('[data-editor-surface][contenteditable="true"]')) {
-    const target = frame.value
-    if (!target || !target.offsetWidth || !target.offsetHeight || typeof data.x !== 'number' || typeof data.y !== 'number' || !Number.isFinite(data.x) || !Number.isFinite(data.y)
-      || data.x < 0 || data.y < 0 || data.x > target.clientWidth || data.y > target.clientHeight) return
-    const box = target.getBoundingClientRect()
-    target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true,
-      clientX: box.left + data.x * box.width / target.offsetWidth, clientY: box.top + data.y * box.height / target.offsetHeight }))
+  if (data?.type === 'galaris-app-focus' && running.value && document.activeElement === frame.value && host.value?.closest('[data-editor-surface][contenteditable="true"]')) {
+    host.value.dispatchEvent(new CustomEvent('galaris-document-object-focus', { bubbles: true }))
   }
 }
 onMounted(() => {

@@ -50,7 +50,10 @@ Les souvenirs, descriptions d'objectifs, profils d'agents, objectifs de tâches 
 utilisent `simple` : commandes textuelles essentielles, code en ligne et en bloc, listes
 à cocher, tableaux, séparateurs et liens Galaris, une rangée par groupe et retour à la ligne.
 Le plein écran, les pièces jointes et l'insertion d'équations restent réservés au mode complet.
-Les menus contextuels de texte suivent ce mode. Le contenu existant est conservé ;
+Les commandes communes restent dans la barre d'outils. Dans les documents, une seconde
+barre flottante, centrée au-dessus de l'élément, propose seulement les actions propres à la sélection ; elle disparaît sans
+espace réservé lorsqu'il n'y a aucune action. Le clic droit et l'appui long restent natifs.
+Le contenu existant est conservé ;
 ce choix d'interface ne change ni le format stocké ni les règles d'assainissement du HTML.
 Le mode complet conserve son adaptation sous 1024 px ; le mode simple conserve ses groupes
 avec retour à la ligne. Les deux exemples vivent dans la Référence graphique.
@@ -232,12 +235,11 @@ la vue d’édition, sans effet sur les données ni l’historique d’annulatio
 modifiés sont recolorés. Le lecteur et l’impression colorent une copie du HTML filtré ;
 les classes de coloration ne sont jamais enregistrées dans le document.
 
-En édition, le menu au clic droit d’un bloc propose langage, numéros de ligne, retour à la
-ligne et copie. Le changement de langage cible explicitement ce bloc sans en créer ni en
-fusionner d’autres. `Maj+F10` ouvre le menu au clavier et `Échap` le ferme. En lecture
-seule, aucune barre contextuelle ni aucun menu applicatif au clic droit n'est affiché.
-Sur mobile, le profil `document` utilise une sous-barre contextuelle liée à la sélection
-au lieu d'intercepter l'appui long ; le menu natif et la sélection restent disponibles,
+En édition documentaire, sélectionner un bloc affiche ses commandes de langage, numéros
+de ligne, retour à la ligne et copie au-dessus de l'élément, sur mobile comme sur bureau.
+Le changement de langage cible ce bloc sans en créer ni en fusionner d'autres. Les champs
+`rich-text` conservent leur menu au clic droit ou `Maj+F10`. En lecture seule, aucune barre
+contextuelle ni aucun menu applicatif documentaire n'est affiché. Le menu natif et la sélection restent disponibles,
 y compris en lecture seule. La copie reste aussi disponible au clavier et via le bouton dédié du bloc.
 
 Les options sont conservées sur `<code>` par `data-code-lines="true"` et
@@ -421,9 +423,10 @@ Le remplacement ne demande aucune réécriture des documents ou des révisions e
 Les tâches, objectifs, sujets, discussions, rounds texte, appels et tours vocaux peuvent
 être copiés depuis leurs menus contextuels ou fiches, puis collés comme liens titrés.
 Le sélecteur **Lien Galaris → Objets Galaris** les recherche également. Les URI et les
-URL de cette installation sont normalisées avant insertion. Le menu contextuel et la
-barre d'outils basculent entre lien et carte en édition. En lecture seule ou visualisation,
-le clic gauche sur un lien ou le fond d’une carte ouvre sa cible ; le clic droit est bloqué sur ordinateur
+URL de cette installation sont normalisées avant insertion. La barre contextuelle
+bascule entre lien et carte en édition documentaire. Le clic gauche sélectionne un lien
+ou une carte sans l'ouvrir ; **Ouvrir** et **Ctrl/Cmd+clic** suivent la cible. En lecture seule ou visualisation,
+le clic gauche sur un lien ou le fond d’une carte ouvre sa cible ; le clic droit reste natif
 et les barres contextuelles sont absentes. Ces références ouvrent leur fiche en modale avec les droits actuels du
 lecteur, sans changer le document consulté.
 

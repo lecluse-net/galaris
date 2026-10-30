@@ -80,7 +80,7 @@ apply to Datasets.
 To insert a Contact card into the content, use **Galaris link**, then **Galaris resources →
 Contacts** in the browser. Select the contact and confirm. The card displays coordinates
 according to each reader's rights and opens its dialog when clicked. An existing Contact link
-can become a card using **Show card** in its context menu; **Show URL** restores the link.
+can become a card using **Show card** in its contextual toolbar; **Show URL** restores the link.
 Sharing the document grants no additional access to the agent's address book. See [Files](files.md).
 
 ## Write with an agent
@@ -134,8 +134,8 @@ In the toolbar, **Text** includes **Special characters** and the inline equation
 **Inline equation** inserts a formula within the text; **Block equation** displays it
 on a separate line. Both buttons open the MathLive visual editor, with its symbol
 keyboard and a synchronized **LaTeX source** field. A click selects a formula; double-click
-or press **Enter** on the selection to open its editor. Right-click or **Shift+F10** opens
-its menu: edit, cut, copy, delete and write before or after. The last two actions place the
+or press **Enter** on the selection to open its editor. Its contextual toolbar offers
+cut, copy, delete and write before or after. The last two actions place the
 cursor beside an inline formula or create a paragraph beside a block. On mobile, the actions
 appear in the contextual toolbar after selecting a formula. **Ctrl/Cmd+Z** undoes deletion.
 **Apply** saves the formula; **Cancel**, **Escape**
@@ -148,12 +148,18 @@ its state in the document, including autosave and revisions. **Enter** adds a li
 **Tab** and **Shift+Tab** nest or unnest lines. States survive reopening and remain visible
 in read-only views and exports. These lists require no Dataset.
 
-On mobile (below 1024 px), an icon row appears below the toolbar of editable documents.
+On desktop and mobile, a floating toolbar appears just above the selected element in editable documents.
 Its commands follow the cursor or selection: table and cell, image, link or code block.
-Icon menus provide text and paragraph options; common styles remain in the main toolbar.
+Icon menus provide properties specific to the selection. Text, paragraph and insertion
+commands stay in the main toolbar, with **More tools** for its additional commands.
 Swipe the icon row horizontally to reach all its commands.
-Long press retains native text selection and copy/paste commands. On desktop, contextual
-commands remain available through right-click.
+This toolbar is centered on the element and appears only when the selection offers actions, without leaving a gap
+when it disappears. Right-click, **Shift+F10** and long press remain native: spelling,
+dictionary and clipboard commands depend on the browser's capabilities.
+While editing, a left click selects a link or card without opening it. Use **Open** in the
+contextual toolbar, or **Ctrl/Cmd+click**, to follow its target. Read-only views keep direct left-click navigation.
+Common commands are not repeated. To edit a link or equation, select it
+and use the corresponding toolbar button.
 
 ## Create and find Documents
 

@@ -1,7 +1,7 @@
 <template>
   <template v-if="toolbar">
     <EditorialToolButton v-if="kind === 'code'" flat dense color="primary" icon="code" :label="t('richEditor.codeTools.language')" :disable="readonly">
-      <q-menu no-refocus :transition-duration="0"><q-list dense role="menu" :aria-label="t('richEditor.codeTools.language')" @mousedown.prevent>
+      <q-menu no-refocus :transition-duration="0" @hide="emit('focus-editor')"><q-list dense role="menu" :aria-label="t('richEditor.codeTools.language')" @mousedown.prevent>
         <q-item v-for="option in languages" :key="option.value" v-close-popup clickable role="menuitemradio" :aria-checked="language === option.value" @click="emit('language', option.value)">
           <q-item-section>{{ option.label }}</q-item-section>
         </q-item>
@@ -50,7 +50,7 @@ defineProps<{
   toolbar?: boolean
 }>()
 const emit = defineEmits<{
-  action: [key: string]; language: [value: string]; 'table-style': [palette?: TablePalette, treatment?: TableTreatment]
+  action: [key: string]; language: [value: string]; 'table-style': [palette?: TablePalette, treatment?: TableTreatment]; 'focus-editor': []
 }>()
 const { t } = useI18n()
 </script>

@@ -57,7 +57,9 @@ the resource retains its own rights and content profile. Memories, Goal descript
 Agent profiles, Task objectives and summaries use `simple`: essential text commands,
 inline and block code, checklists, tables, separators and Galaris links, with one wrapping
 row per group. Fullscreen, attachments and equation insertion remain in full mode.
-Text context menus follow the same mode. Existing content
+Common commands stay in the toolbar. Documents use a floating toolbar centered above the element for actions
+specific to the selection; it disappears without reserved space when there are no actions.
+Right-click and long press remain native. Existing content
 is preserved; this UI choice changes neither storage format nor HTML sanitization.
 Full mode retains its layout below 1024 px; simple mode keeps its wrapping groups.
 Both examples are available in the Visual reference.
@@ -222,11 +224,11 @@ and blocks exceeding 50,000 characters remain readable without highlighting.
 without affecting data or undo history. Only changed blocks are highlighted again. Reading
 and printing highlight a copy of sanitized HTML; syntax classes are never saved in documents.
 
-While editing, the block’s right-click menu offers language, line numbers, line wrapping and
-copy. Changing the language explicitly targets that block without inserting or merging other
-blocks. `Shift+F10` opens the menu from the keyboard and `Escape` dismisses it. In read-only mode, no contextual
-toolbar or application context menu appears. On mobile, the `document` profile uses a
-selection-dependent icon row instead of intercepting long press. Native selection and
+In document editing, selecting a block exposes its language, line numbers, wrapping and
+copy commands above the element on desktop and mobile. Changing the language targets
+that block without inserting or merging blocks. Other `rich-text` fields retain their
+right-click and `Shift+F10` menus. Read-only documents have no contextual toolbar or application
+context menu. Native selection and
 context menus remain available, including in read-only views. Copying remains available through
 the keyboard and the block's dedicated copy button.
 
@@ -398,9 +400,10 @@ Replacing the editor requires no rewrite of stored documents or revisions.
 Tasks, Goals, Topics, discussions, text rounds, voice calls and voice turns can be copied
 from their context menus or detail views and pasted as titled links. The **Galaris link →
 Galaris objects** picker also searches these objects. Native URIs and URLs from this
-installation are normalized before insertion. The editor toolbar and context menu switch
-between link and card while editing. In read-only or viewing mode, left-clicking a link or
-card background opens its target; right-click is blocked on desktop and contextual toolbars are absent. These references
+installation are normalized before insertion. The contextual toolbar switches
+between link and card while editing. A left click selects a link or card; **Open** and
+**Ctrl/Cmd+click** follow its target. In read-only or viewing mode, left-clicking a link or
+card background opens its target; right-click remains native and contextual toolbars are absent. These references
 open their detail modal with the reader's current rights, keeping the containing Document
 in place.
 

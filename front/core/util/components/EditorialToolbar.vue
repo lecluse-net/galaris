@@ -1,25 +1,5 @@
 <template>
-  <template v-if="menu">
-    <EditorialCommand v-for="item in contextPrimary" :key="item.key" menu :item="item" :option-active="optionActive" @action="dispatch" />
-    <q-separator />
-    <q-item v-for="group in contextGroups" :key="group.name" clickable role="menuitem" aria-haspopup="menu" :aria-label="t('richEditor.groups.' + group.name)">
-      <q-item-section>{{ t('richEditor.groups.' + group.name) }}</q-item-section>
-      <q-item-section side><q-icon name="chevron_right" /></q-item-section>
-      <ContextSubmenu max-height="70vh" max-width="calc(100vw - 16px)">
-        <q-list dense role="menu" :aria-label="t('richEditor.groups.' + group.name)" @mousedown.prevent>
-          <EditorialCommand v-for="item in group.items" :key="item.key" menu :item="item" :option-active="optionActive" @action="dispatch" />
-        </q-list>
-      </ContextSubmenu>
-    </q-item>
-  </template>
-  <div v-else-if="contextual" class="editorial-context-text-tools">
-    <EditorialToolButton v-for="group in contextGroups" :key="group.name" flat dense color="primary" :icon="contextGroupIcons[group.name]" :label="t('richEditor.groups.' + group.name)">
-      <q-menu :model-value="contextGroup === group.name" no-refocus :transition-duration="0" @update:model-value="contextGroup = $event ? group.name : null"><q-list dense role="menu" :aria-label="t('richEditor.groups.' + group.name)" @mousedown.prevent>
-        <EditorialCommand v-for="item in group.items" :key="item.key" menu :item="item" :option-active="optionActive" @action="dispatch" />
-      </q-list></q-menu>
-    </EditorialToolButton>
-  </div>
-  <div v-else class="editorial-toolbar" :class="{ 'editorial-toolbar-simple': mode === 'simple' }" role="toolbar" :aria-label="t('richEditor.content')" @mousedown.prevent @keydown="navigateToolbar">
+  <div class="editorial-toolbar" :class="{ 'editorial-toolbar-simple': mode === 'simple' }" role="toolbar" :aria-label="t('richEditor.content')" @mousedown.prevent @keydown="navigateToolbar">
     <template v-if="!mobile">
     <div v-for="group in groups" :key="group.name" role="group" :aria-label="t('richEditor.groups.' + group.name)" class="editorial-toolbar-group">
       <span v-if="mode === 'full'" class="editorial-toolbar-title">{{ t('richEditor.groups.' + group.name) }}</span>
@@ -50,7 +30,6 @@
         </div></q-menu>
       </q-btn>
     </div>
-    <slot v-if="$q.screen.lt.md" name="context" />
   </div>
 </template>
 <script setup lang="ts">
@@ -60,26 +39,22 @@ import { useI18n } from 'vue-i18n'
 import type { Editor } from '@tiptap/core'
 import { calloutKinds } from '../tiptapContent'
 import EditorialCommand, { type EditorialCommandItem as Item } from './EditorialCommand.vue'
-import EditorialToolButton from './EditorialToolButton.vue'
-import ContextSubmenu from './ContextSubmenu.vue'
 import pdfIcon from '../icons/bootstrap/file-earmark-pdf-fill.svg?raw'
 import zipIcon from '../icons/bootstrap/file-zip-fill.svg?raw'
 import { solaire } from '../solaire'
 import { editorialIcon } from '../editorialIcons'
 import { imageAlignment } from '../imageAlignment'
-const { editor, revision, mode = 'full', document = false, outlineOpen = false, source = false, findOpen = false, fullWidth = false, fullscreen = false, fits = true, disabledActions = [], menu = false, contextual = false } = defineProps<{
-  editor: Editor; revision: number; mode?: 'full' | 'simple'; document?: boolean; outlineOpen?: boolean; source?: boolean; findOpen?: boolean; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]; menu?: boolean; contextual?: boolean
+const { editor, revision, mode = 'full', document = false, outlineOpen = false, source = false, findOpen = false, fullWidth = false, fullscreen = false, fits = true, disabledActions = [] } = defineProps<{
+  editor: Editor; revision: number; mode?: 'full' | 'simple'; document?: boolean; outlineOpen?: boolean; source?: boolean; findOpen?: boolean; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]
 }>()
 const emit = defineEmits<{ action: [key: string, value?: string] }>()
 const { t } = useI18n()
 const $q = useQuasar()
 const slots = useSlots()
 const moreOpen = ref(false)
-const contextGroup = ref<string | null>(null)
 const alignments = ['left', 'center', 'right', 'justify'] as const
 function dispatch(key: string, value?: string): void {
   moreOpen.value = false
-  contextGroup.value = null
   const alignment = alignments.some(alignment => alignment === key)
   emit('action', alignment ? 'alignment' : key, alignment ? key : value)
 }
@@ -161,12 +136,4 @@ const groups = computed(() => {
     .filter(group => group.rows.some(row => row.length) || group.name === 'reading' && Boolean(slots.voice))
 })
 const readingHelp = computed(() => groups.value.find(group => group.name === 'reading')?.rows.flat().find(item => item.key === 'help'))
-const contextPrimaryKeys = ['heading', 'bold', 'italic', 'underline', 'removeFormat']
-const contextGroupIcons = { editing: 'edit', text: 'text_format', paragraph: 'format_align_left', insert: 'add', reading: 'visibility' }
-const contextPrimary = computed(() => contextPrimaryKeys.flatMap(key => groups.value.flatMap(group => group.rows.flat()).find(item => item.key === key) ?? []))
-const contextGroups = computed(() => groups.value.filter(group => group.name !== 'reading').map(group => ({
-  name: group.name,
-  items: group.rows.flat().filter(item => !contextPrimaryKeys.includes(item.key) && !['print', 'exportPdf', 'resources.documentExportBundle', 'share.action'].includes(item.key)
-    && (item.key !== 'listProperties' || editor.isActive('bulletList') || editor.isActive('orderedList'))),
-})).filter(group => group.items.length))
 </script>
