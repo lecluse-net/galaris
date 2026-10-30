@@ -128,6 +128,6 @@ defineExpose({ flush })
 </script>
 
 <style scoped>
-.document-navigation-dialog { display: flex; width: min(94vw, 980px); max-width: 980px; min-height: 420px; max-height: calc(100dvh - 32px); flex-direction: column; }
+.document-navigation-dialog { display: flex; width: min(94vw, 1080px); max-width: 1080px; min-height: 420px; max-height: calc(100dvh - 32px); flex-direction: column; }
 .document-navigation-dialog-body { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
 </style>
