@@ -8,6 +8,7 @@ from core.util import TemporalAnchor as DocumentTemporalAnchor
 from .contracts import DocumentAccess
 from .document_types import DocumentType
 from .tag_icons import validate_icon
+from .content_limits import validate_document_size
 from app.share import Collaborator, SharingState, GrantUpdate, SharingUpdate, SingleGrantUpdate
 
 DocumentNodeKind = Literal["document"]
@@ -30,13 +31,15 @@ DocumentGlobalAccess = Literal[0, 1, 2]
 class DocumentPayload(BaseModel):
     """Exactly one textual or base64-encoded payload."""
 
-    text: str | None = Field(default=None, max_length=2_000_000)
+    text: str | None = None
     base64: str | None = None
 
     @model_validator(mode="after")
     def one_payload(self) -> "DocumentPayload":
         if (self.text is None) == (self.base64 is None):
             raise ValueError("Provide exactly one of text or base64.")
+        if self.text is not None:
+            validate_document_size(self.text)
         return self
 
 class DocumentSourceCreate(BaseModel):
@@ -469,6 +472,12 @@ class DocumentOwnerOptions(BaseModel):
     agents: list[DocumentOwnerOption]
     users: list[DocumentOwnerOption]
 
+class DocumentImportReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    uri: str = Field(min_length=1, max_length=4096)
+    agent_id: int = Field(gt=0)
+
+
 class DocumentCreate(BaseModel):
     """Create one human-managed document with an explicit owner and editor."""
 
@@ -480,6 +489,7 @@ class DocumentCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     document_type: Literal["text", "data", "html"] = "text"
     folder: str = Field(default="", max_length=500)
+    import_from: DocumentImportReference | None = None
 
     @model_validator(mode="after")
     def validate_owner_and_editor(self) -> "DocumentCreate":

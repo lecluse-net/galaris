@@ -69,8 +69,9 @@ Une création native de Dataset ne crée pas de Document dans Memory. Les ancien
 documentaires ne fonctionnent comme alias que pour les Datasets migrés et vérifiés.
 Le JSON UTF-8 est validé avant enregistrement, sans modifier sa mise en forme ; une saisie
 invalide reste un brouillon et n'est jamais convertie en HTML. Toute racine JSON valide est
-admise ; NaN et Infinity sont refusés. La limite est 2 000 000 octets, sous réserve du quota
-de stockage. Voir la [décision 0187](../../../project/decisions/0187-dataset-domain-and-typed-contracts.md)
+admise ; NaN et Infinity sont refusés. Le quota de ressources configurable
+`MEMORY_RESOURCE_MAX_BYTES` s’applique, sans plafond documentaire distinct de 2 Mo.
+Voir la [décision 0187](../../../project/decisions/0187-dataset-domain-and-typed-contracts.md)
 et le [contrat Dataset](datasets.md).
 
 Créer directement avec
@@ -162,8 +163,11 @@ HTML vers Markdown. Une conversion d’import appelle `convert_to_html` avec le 
 Une mise à jour du MIME sans le nouveau corps est refusée.
 
 `core.util.rich_text` valide les structures avant nh3 et sérialise de manière déterministe.
-Les limites sont 2 000 000 octets HTML, 500 000 caractères visibles, 50 000 éléments, profondeur
-64. Le suivi Goal limite sa sortie agentique à 120 000 caractères sérialisés et 30 000 visibles.
+Le profil `rich-text` limite les contenus à 2 000 000 octets HTML et 500 000 caractères
+visibles. Les documents Texte suivent le quota configurable `MEMORY_RESOURCE_MAX_BYTES`,
+sans plafond documentaire distinct de 2 Mo ni de 500 000 caractères visibles.
+Les deux profils conservent les limites structurelles de 50 000 éléments et de profondeur 64.
+Le suivi Goal limite sa sortie agentique à 120 000 caractères sérialisés et 30 000 visibles.
 Les couleurs acceptent les valeurs hexadécimales, RGB/HSL et une liste de noms CSS ; les
 alignements sont left/center/right/justify. Les styles sont limités à la typographie, aux
 couleurs, dimensions et propriétés de tableaux. Les dimensions CSS sont bornées à 1 600 unités

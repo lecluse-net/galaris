@@ -2,7 +2,7 @@
   <q-dialog v-model="open" :maximized="$q.screen.lt.md" :allow-focus-outside="previewing" :no-esc-dismiss="previewing" @hide="emit('hide')">
     <q-card class="internal-file-picker galaris-dialog-card column no-wrap">
       <q-toolbar class="galaris-dialog-title">
-        <q-toolbar-title>{{ t('documents.internalAttachments.add') }}</q-toolbar-title>
+        <q-toolbar-title>{{ title || t('documents.internalAttachments.add') }}</q-toolbar-title>
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-toolbar>
       <div class="picker-toolbar">
@@ -31,7 +31,7 @@
       </div>
       <q-card-actions align="right" class="galaris-dialog-actions q-pa-none">
         <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
-        <q-btn color="primary" :label="t('files.selectFiles')" :disable="!selected.length || selectedAgent === null" :loading="busy" @click="confirm" />
+        <q-btn color="primary" :label="t('files.selectFiles')" :disable="!validSelection || selectedAgent === null" :loading="busy" @click="confirm" />
       </q-card-actions>
       </div>
       </footer>
@@ -44,13 +44,14 @@ import { useI18n } from 'vue-i18n'
 import { AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import { AgentFileBrowser, type FileEntry } from '@/app/file_share/interface'
 const open = defineModel<boolean>({ default: false })
-const { agentId = null, busy = false, error = '' } = defineProps<{ agentId?: number | null; busy?: boolean; error?: string }>()
+const { agentId = null, busy = false, error = '', title = '', single = false } = defineProps<{ agentId?: number | null; busy?: boolean; error?: string; title?: string; single?: boolean }>()
 const emit = defineEmits<{ select: [entries: FileEntry[], agentId: number]; hide: [] }>()
 const { t } = useI18n()
 const selectedAgent = ref<number | null>(agentId), selected = ref<FileEntry[]>([]), agents = ref<AgentSelectionOption[]>([])
 const loadingAgents = ref(false), agentError = ref(false)
 const previewing = ref(false)
 const query = ref<string | null>('')
+const validSelection = computed(() => single ? selected.value.length === 1 && !selected.value[0]!.is_collection : selected.value.length > 0)
 const browser = useTemplateRef<InstanceType<typeof AgentFileBrowser>>('browser')
 let request: AbortController | undefined
 const agentOptions = computed(() => agents.value.map(agent => ({ value: agent.id, label: agent.label, hasAvatar: agent.has_avatar })))
@@ -65,7 +66,7 @@ async function loadAgents(): Promise<void> {
   } catch { if (!controller.signal.aborted) agentError.value = true }
   finally { if (!controller.signal.aborted) loadingAgents.value = false }
 }
-function confirm(): void { if (!busy && selectedAgent.value !== null && selected.value.length) emit('select', selected.value, selectedAgent.value) }
+function confirm(): void { if (!busy && selectedAgent.value !== null && validSelection.value) emit('select', selected.value, selectedAgent.value) }
 watch(selectedAgent, () => { selected.value = []; previewing.value = false; query.value = '' })
 watch(open, value => { selected.value = []; if (value) void loadAgents(); else { request?.abort(); previewing.value = false } }, { immediate: true })
 onBeforeUnmount(() => request?.abort())

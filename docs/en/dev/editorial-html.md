@@ -66,8 +66,9 @@ resources under `data://`, with their own rights and history in **Knowledge → 
 Native Dataset creation does not create a Memory Document. Old Document links are aliases
 only for verified migrated Datasets. UTF-8 JSON is validated before saving without rewriting
 its formatting; invalid input remains a recoverable draft and is never converted to HTML.
-Any valid JSON root is supported; NaN and Infinity are rejected. The limit is 2,000,000 bytes,
-subject to the storage quota. See [decision 0187](../../../project/decisions/0187-dataset-domain-and-typed-contracts.md)
+Any valid JSON root is supported; NaN and Infinity are rejected. The configurable
+`MEMORY_RESOURCE_MAX_BYTES` resource quota applies, without a separate 2 MB document cap.
+See [decision 0187](../../../project/decisions/0187-dataset-domain-and-typed-contracts.md)
 and the [Dataset contract](datasets.md).
 
 Create directly with
@@ -155,7 +156,10 @@ use explicit HTML contracts. Memory rejects downgrades from HTML to Markdown and
 changes without a replacement body. Imports call `convert_to_html` with the declared source MIME.
 
 `core.util.rich_text` validates structures before nh3 and serializes deterministically.
-Limits are 2,000,000 serialized bytes, 500,000 visible characters, 50,000 elements and depth 64.
+The `rich-text` profile limits content to 2,000,000 serialized bytes and 500,000 visible
+characters. Text documents follow the configurable `MEMORY_RESOURCE_MAX_BYTES` quota,
+without a separate 2 MB or 500,000-visible-character document cap.
+Both profiles retain the structural limits of 50,000 elements and depth 64.
 Agentic Goal tracking allows 120,000 serialized and 30,000 visible characters. Colors accept
 hexadecimal, RGB/HSL and an explicit set of CSS names; alignment is left/center/right/justify.
 Styles are restricted to typography, colors, dimensions and table properties. CSS dimensions

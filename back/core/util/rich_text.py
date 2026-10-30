@@ -452,7 +452,7 @@ class _Parser(HTMLParser):
 
 
 def parse_html(content: str, *, profile: ContentProfile = "rich-text") -> HtmlNode:
-    if len(content.encode("utf-8")) > MAX_HTML_BYTES:
+    if profile != "document" and len(content.encode("utf-8")) > MAX_HTML_BYTES:
         raise RichTextError("Serialized HTML exceeds its byte limit.")
     parser = _Parser(profile=profile)
     parser.feed(content)
@@ -537,8 +537,6 @@ def normalize_html(content: str, *, profile: ContentProfile = "rich-text") -> st
         # Executable document HTML is stored as source. Every consumer must render
         # it through an opaque sandbox or an inert, sanitized projection.
         normalized = root.html()
-        if len(visible_text(normalized)) > MAX_TEXT_CHARS:
-            raise RichTextError("Visible text exceeds its character limit.")
         if not root.children:
             return ""
         return normalized
@@ -603,7 +601,7 @@ def normalize_html(content: str, *, profile: ContentProfile = "rich-text") -> st
     )
     normalized = parse_html(clean, profile=profile).html()
     text = visible_text(normalized)
-    if len(text) > MAX_TEXT_CHARS:
+    if profile != "document" and len(text) > MAX_TEXT_CHARS:
         raise RichTextError("Visible text exceeds its character limit.")
     if (
         not text.replace("\xa0", " ").strip()

@@ -23,6 +23,28 @@ sans défilement horizontal. Le plein écran, les pièces jointes et l'insertion
 restent réservés au mode complet ;
 les contenus déjà enregistrés restent conservés.
 
+## Importer un fichier
+
+Dans le menu **Nouveau document**, choisissez **Nouveau document depuis…**, puis
+sélectionnez un fichier dans la boîte de dialogue des fichiers. Renseignez ensuite
+le titre et le propriétaire et créez le document dans le classement courant.
+Les fichiers JSON deviennent des documents **Données** ; les pages HTML (`.html`,
+`.htm`), fichiers Markdown (`.md`, `.markdown`) et textes bruts (`.txt`) deviennent
+des documents **Texte**. Les fichiers doivent être en UTF-8. L’import n’a pas de
+plafond spécifique de 2 Mo ; le quota de ressources configuré pour l’application
+s’applique comme pour les autres fichiers.
+
+Vous pouvez aussi sélectionner un document **Texte** ou **Données** existant dans
+ce même sélecteur, y compris un document personnel. Le nouveau document conserve
+son type et une copie de son contenu. Les images et pièces jointes des documents
+Texte sont copiées avec de nouvelles identités ; les droits et l’historique de
+l’original ne sont pas repris.
+
+L’import copie le contenu sans conserver de lien ni de pièce jointe vers le fichier
+source. Les modifications ou la suppression de l’un n’affectent pas l’autre.
+Un format incompatible affiche « Le format de fichier n’est pas supporté pour l’import. »
+Un contenu invalide ou un refus d’accès empêche la création du document.
+
 ## Choisir le type de document
 
 Chaque icône **Nouveau document** ouvre le menu des types sous l’icône cliquée, avant toute création. Choisissez **Texte**

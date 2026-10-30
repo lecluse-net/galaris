@@ -20,6 +20,25 @@ Each group has one row and wraps when space is limited, without horizontal scrol
 Fullscreen, attachments and equation insertion remain in full mode;
 previously saved content is preserved.
 
+## Import a file
+
+In the **New document** menu, choose **New document from…**, then select a file in
+the file picker. Set its title and owner and create it in the current classification.
+JSON files become **Data** documents; HTML pages (`.html`, `.htm`), Markdown files
+(`.md`, `.markdown`) and plain text (`.txt`) become **Text** documents.
+Files must use UTF-8. Import has no separate 2 MB cap; the application's configured
+resource quota applies as it does to other files.
+
+You can also select an existing **Text** or **Data** document in the same picker,
+including a personal document. The new document retains its type and a copy of
+its content. Text document images and attachments are copied with new identities;
+the original permissions and history are not copied.
+
+Import copies the content without retaining a link or attachment to the source file.
+Editing or deleting either resource does not affect the other.
+An incompatible format displays “The file format is not supported for import.”
+Invalid content or denied access prevents document creation.
+
 ## Choose a document type
 
 Each **New document** icon opens the type menu below the clicked icon before creating any record. Choose **Text** or

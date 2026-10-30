@@ -48,12 +48,12 @@ class Request(BaseModel):
 
 class CreateDataset(Request):
     title: str = Field(min_length=1, max_length=500)
-    content: str = Field(default="[]", max_length=2_000_000)
+    content: str = "[]"
     owner_agent_id: int | None = Field(default=None, gt=0)
 
 
 class WriteDataset(Request):
-    content: str = Field(max_length=2_000_000)
+    content: str
     expected_revision: int = Field(ge=1)
     expected_lock_version: int | None = Field(default=None, ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=500)

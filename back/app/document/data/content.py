@@ -3,11 +3,10 @@ import json
 import math
 from typing import Any, cast
 
-MAX_BYTES = 2_000_000
+from ..content_limits import validate_document_size
 
 def parse_json(content: str, *, historical: bool = False) -> Any:
-    if len(content.encode("utf-8")) > MAX_BYTES:
-        raise ValueError("Dataset content exceeds 2,000,000 bytes")
+    validate_document_size(content)
 
     def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
         result: dict[str, Any] = {}

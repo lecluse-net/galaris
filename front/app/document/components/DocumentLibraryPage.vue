@@ -105,8 +105,14 @@
           <q-item-section avatar><q-icon :name="type.icon" /></q-item-section>
           <q-item-section>{{ t(type.label) }}</q-item-section>
         </q-item>
+        <q-separator />
+        <q-item v-close-popup clickable role="menuitem" @click="openDocumentImport">
+          <q-item-section avatar><q-icon name="file_open" /></q-item-section>
+          <q-item-section>{{ t('documents.importFrom') }}</q-item-section>
+        </q-item>
       </q-list>
     </q-menu>
+    <ResourcePicker v-model="importPickerOpen" :agent-id="selectedAgentId" single :title="t('documents.importFrom')" @select="selectImportSource" />
     <q-dialog v-model="createDocumentOpen">
       <q-card class="documents-create-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
@@ -145,6 +151,8 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
+import ResourcePicker from '@/resourcePicker.vue'
+import { isAxiosError } from 'axios'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
@@ -228,6 +236,8 @@ const canGoForward = computed(() => !navigatingHistory.value && history.canGoFor
 const typeMenu = useTemplateRef<QMenu>('typeMenu')
 const createMenuTarget = shallowRef<HTMLElement | false>(false)
 const createDocumentType = ref<DocumentKind>('text')
+const importPickerOpen = ref(false)
+const importSource = ref<{ uri: string; agent_id: number } | null>(null)
 const createDocumentOpen = ref(false)
 const creatingDocument = ref(false)
 const createDocumentOwner = ref('')
@@ -371,15 +381,30 @@ function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, at
   void nextTick(() => typeMenu.value?.show())
 }
 async function chooseDocumentType(type: DocumentKind): Promise<void> {
+  importSource.value = null
   createDocumentType.value = type
   await prepareCreateDocument(createDocumentTag.value ?? undefined, createDocumentParent.value ?? undefined, createDocumentAtRoot.value)
 }
-async function prepareCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false): Promise<void> {
+function openDocumentImport(): void {
+  importSource.value = null
+  importPickerOpen.value = true
+}
+function selectImportSource(files: { uri: string; name: string; media_type: string; is_collection: boolean }[], agentId: number): void {
+  const file = files[0]
+  if (!file || files.length !== 1 || file.is_collection) return
+  importPickerOpen.value = false
+  const nativeDocument = /^(document|data):\/\/[^/]+$/.test(file.uri)
+  createDocumentType.value = file.media_type.split(';')[0] === 'application/json' || !nativeDocument && /\.json$/i.test(file.name) ? 'data' : 'text'
+  importSource.value = { uri: file.uri, agent_id: agentId }
+  void prepareCreateDocument(createDocumentTag.value ?? undefined, createDocumentParent.value ?? undefined, createDocumentAtRoot.value,
+    file.name.replace(/\.[^.]+$/, '') || file.name)
+}
+async function prepareCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false, title = ''): Promise<void> {
   createDocumentTag.value = tag ?? null
   createDocumentParent.value = parent ?? null
   createDocumentAtRoot.value = atRoot
   createDocumentActorAgentId.value = selectedAgentId.value ?? agentStore.sortedAgents[0]?.id ?? null
-  createDocumentTitle.value = ''
+  createDocumentTitle.value = title
   createDocumentOwner.value = ''
   createOwnerOptions.value = { agents: [], users: [] }
   createDocumentOpen.value = true
@@ -418,6 +443,7 @@ async function createDocument(): Promise<void> {
       actor_agent_id: actorAgentId,
       title,
       folder: '',
+      ...(importSource.value ? { import_from: importSource.value } : {}),
     })
     createDocumentOpen.value = false
     let classified = false
@@ -438,8 +464,9 @@ async function createDocument(): Promise<void> {
     if ($q.screen.lt.md) await openMobileDocument(document.id, documentActor)
     else await selectDocument(document.id, documentActor)
     if ((!tag && !parent && !atRoot) || classified) $q.notify({ type: 'positive', message: t('documents.created') })
-  } catch {
-    $q.notify({ type: 'negative', message: t('documents.createError') })
+  } catch (error) {
+    const unsupported = isAxiosError(error) && error.response?.status === 415
+    $q.notify({ type: 'negative', message: t(unsupported ? 'documents.importUnsupported' : importSource.value ? 'documents.importError' : 'documents.createError') })
   } finally {
     creatingDocument.value = false
   }

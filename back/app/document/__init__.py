@@ -143,5 +143,7 @@ from .resource_summaries import (
     source as document_summary_source, apply as apply_document_summary,
     reconcile as reconcile_document_summaries,
 )
+from .file_import import DocumentImportSource, register_document_import_reader, read_native_document_import
+__all__ += ["DocumentImportSource", "register_document_import_reader", "read_native_document_import"]
 __all__ += ["count_pending_document_summaries", "claim_document_summary", "document_summary_source",
             "apply_document_summary", "reconcile_document_summaries"]

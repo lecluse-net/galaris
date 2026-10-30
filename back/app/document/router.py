@@ -202,6 +202,9 @@ async def _require_agent_scope(
 
 
 def _http_error(exc: Exception) -> HTTPException:
+    from .file_import import UnsupportedDocumentImport
+    if isinstance(exc, UnsupportedDocumentImport):
+        return HTTPException(415, detail={"code": "unsupported_import_format"})
     from .data.contracts import DatasetConflictError, DatasetNotFoundError, DatasetPermissionError, DatasetWriteLimitError
     if isinstance(exc, HTTPException):
         return exc
@@ -238,15 +241,22 @@ async def create_managed_document(data: DocumentCreate) -> DocumentPublic:
 
     try:
         scope = await _require_agent_scope(data.actor_agent_id) if data.actor_agent_id is not None else await current_management_scope()
+        content = ""
+        document_type = data.document_type
+        clone_source = None
+        if data.import_from is not None:
+            from .file_import import import_document_content
+            document_type, content, clone_source = await import_document_content(data.import_from.uri, data.import_from.agent_id, scope)
         if data.owner_kind == "agent":
             await _require_agent_scope(data.owner_id)
             item = await document_service.create_document(
                 owner_agent_id=data.owner_id,
                 title=data.title,
-                document_type=data.document_type,
-                content="",
+                document_type=document_type,
+                content=content,
                 task_id=None,
                 folder=data.folder,
+                clone_source=clone_source,
             )
         else:
             current_user = await get_user_record(scope.user_id)
@@ -265,9 +275,10 @@ async def create_managed_document(data: DocumentCreate) -> DocumentPublic:
                 owner_user_id=data.owner_id,
                 editor_agent_id=data.actor_agent_id,
                 title=data.title,
-                document_type=data.document_type,
-                content="",
+                document_type=document_type,
+                content=content,
                 folder=data.folder,
+                clone_source=clone_source,
             )
         return service.item_to_public(
             item,

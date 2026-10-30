@@ -108,6 +108,10 @@ async def read_internal_attachment(uri: str, agent_id: int, scope: "AgentManagem
 
 register_internal_attachment_reader(read_internal_attachment)
 
+from app.document import register_document_import_reader
+from .document_import import read_document_import_source
+register_document_import_reader(read_document_import_source)
+
 __all__ = [
     "resource_privileges",
     "register_native_provider", "register_resource_aliases",

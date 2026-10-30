@@ -1,6 +1,7 @@
 """Canonical documentary persistence, revisions, ownership and live permissions."""
 from __future__ import annotations
 from .models import Document
+from .document_cloning import DocumentCloneSource, PreparedDocumentClone, prepare_document_clone
 import base64
 import binascii
 import hashlib
@@ -1191,7 +1192,15 @@ def _revision_for(item: Document, *, author_agent_id: int | None, task_id: UUID 
     return DocumentRevision(document_id=item.id, revision=item.revision, provider_code=item.provider_code, resource_id=item.resource_id, content=item.content, file_id=item.file_id, storage_kind=item.storage_kind, content_hash=item.content_hash, content_type=item.content_type, media_type=item.media_type, content_profile_version=item.content_profile_version, filename=item.filename, title=item.title, metadata_=dict(item.metadata_), temporal=item.temporal, task_id=task_id, author_agent_id=author_agent_id, author_user_id=author_user_id, document_content_version=document_content_version, document_append=document_append)
 
 
-async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = None, deletion_protected: bool = False, deduplicate: bool = False, owner_user_id: int | None = None, initial_editor_agent_id: int | None = None, workflow_metadata: bool = False) -> tuple[Document, bool]:
+async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = None, deletion_protected: bool = False, deduplicate: bool = False, owner_user_id: int | None = None, initial_editor_agent_id: int | None = None, workflow_metadata: bool = False, clone_source: DocumentCloneSource | None = None, prepared_clone: PreparedDocumentClone | None = None) -> tuple[Document, bool]:
+    if clone_source is not None:
+        if data.document_type not in {"text", "html"}:
+            raise ValueError("Attachment cloning requires a Text document")
+        async with prepare_document_clone(clone_source, decode_payload(data.payload).decode("utf-8")) as prepared:
+            copied = data.model_copy(update={"payload": DocumentPayload(text=prepared.content)})
+            return await create_item(copied, actor_task_id=actor_task_id, deletion_protected=deletion_protected,
+                deduplicate=deduplicate, owner_user_id=owner_user_id, initial_editor_agent_id=initial_editor_agent_id,
+                workflow_metadata=workflow_metadata, prepared_clone=prepared)
     if data.owner_agent_id is None and owner_user_id is None:
         raise DocumentPermissionError("A Document requires a human or Agent owner")
     if not workflow_metadata and any(key in data.metadata for key in ("creation_command", "process_code")):
@@ -1206,7 +1215,8 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
     if data.document_type in {"text", "html"} and media_type in {"text/html", "text/markdown", "text/plain"}:
         content = convert_to_html(content.decode(), media_type, profile="rich-text" if deletion_protected else "document").encode()
         media_type = "text/html"
-    if data.document_type in {"text", "html"} and image_references(content.decode("utf-8", errors="replace")):
+    permitted_images = {f"document://{prepared_clone.identity}/attachments/{attachment.id}" for attachment in prepared_clone.attachments} if prepared_clone else set[str]()
+    if data.document_type in {"text", "html"} and image_references(content.decode("utf-8", errors="replace")) - permitted_images:
         raise DocumentPermissionError("The image must belong to this document's attachments")
     assert_safe_text(content.decode("utf-8", errors="replace"))
     assert_safe_value(data.model_dump(exclude={"payload", "source"}))
@@ -1215,11 +1225,21 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
     pointer, inline = await prepare_content(content, data.provider_code, content_type=data.content_type)
     from .data.models import Dataset
     model = Dataset if data.document_type == "data" else Document
-    item = model(id=uuid4(), owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, title=data.title.strip(), provider_code=data.provider_code, resource_id=pointer, content=inline, revision=1, content_hash=_content_hash(content), size_bytes=len(content), content_type=data.content_type, media_type=media_type, content_profile_version=1 if media_type == "text/html" else None, filename=data.filename, document_type=data.document_type, keywords=_keywords(data.keywords), metadata_=dict(data.metadata), deletion_protected=deletion_protected, valid_from=data.valid_from, valid_until=data.valid_until, temporal=data.temporal.model_dump(mode="json") if data.temporal else None, search_text=_search_text(content, content_type=data.content_type, media_type=media_type))
+    initial_metadata = dict(data.metadata)
+    if prepared_clone and prepared_clone.attachments:
+        initial_metadata["document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"}) for attachment in prepared_clone.attachments]
+    item = model(id=prepared_clone.identity if prepared_clone else uuid4(), owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, title=data.title.strip(), provider_code=data.provider_code, resource_id=pointer, content=inline, revision=1, content_hash=_content_hash(content), size_bytes=len(content), content_type=data.content_type, media_type=media_type, content_profile_version=1 if media_type == "text/html" else None, filename=data.filename, document_type=data.document_type, keywords=_keywords(data.keywords), metadata_=initial_metadata, deletion_protected=deletion_protected, valid_from=data.valid_from, valid_until=data.valid_until, temporal=data.temporal.model_dump(mode="json") if data.temporal else None, search_text=_search_text(content, content_type=data.content_type, media_type=media_type))
     db=get_db()
     try:
         db.add(item)
         await db.flush()
+        if prepared_clone:
+            from core.storage import register_file
+            from .document_structure import sync_document_structure
+            for attachment in prepared_clone.attachments:
+                await register_file(attachment.id, name=attachment.name, media_type=attachment.media_type,
+                    alias=f"document://{item.id}/attachments/{attachment.id}")
+            await sync_document_structure(item)
         db.add(_revision_for(item, author_agent_id=None if owner_user_id is not None else data.owner_agent_id, task_id=actor_task_id))
         from .resource_summaries import refresh_pending
         await refresh_pending(item, content)

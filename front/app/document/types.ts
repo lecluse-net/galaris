@@ -201,6 +201,7 @@ export interface DocumentOwnerOptions {
 }
 
 export interface DocumentCreate {
+  import_from?: { uri: string; agent_id: number }
   document_type?: 'text' | 'data' | 'html'
   owner_kind: DocumentOwnerKind
   owner_id: number
