@@ -237,6 +237,25 @@ parcourir aussi ses descendants. L’action **Afficher les documents non classé
 près de la recherche, présente les documents sans classement personnel. La pagination
 propose 10, 20, 50, 100 ou 500 documents, avec 50 par défaut.
 
+Dans l’arborescence et la liste de la bibliothèque, **Ctrl+clic** (ou **Cmd+clic** sur Mac)
+ajoute ou retire un document de la sélection sans l’ouvrir. **Maj+clic** sélectionne
+l’intervalle depuis le dernier clic individuel ; les sous-documents repliés sont exclus.
+**Ctrl/Cmd+Maj+clic** ajoute cet intervalle à la sélection existante. Un clic simple
+remplace la sélection et ouvre le document. Le compteur permet d’effacer une sélection multiple.
+Un changement de recherche, de filtre ou de page vide la sélection.
+
+Pour déplacer plusieurs documents, faites glisser n’importe quel document sélectionné vers
+un dossier, sous un document ou vers la zone des documents non classés. Le geste transporte
+toute la sélection et conserve son ordre ; le dépôt avant ou après une ligne déplace le groupe
+à cette position. Un sous-document sélectionné avec son parent suit celui-ci sans être détaché.
+Cela fonctionne aussi depuis la liste paginée avec cases à cocher vers l’arborescence.
+Les déplacements sont enregistrés document par document : en cas d’échec partiel, un bilan
+apparaît et les documents en échec restent sélectionnés pour réessayer.
+
+Dans la liste avec cases à cocher, ces raccourcis fonctionnent aussi sur les titres et les
+cases. Un clic sur le fond d’une ligne la sélectionne ; un clic simple sur son titre ouvre
+le document. Les documents protégés contre les opérations groupées ne sont pas sélectionnables.
+
 Sélectionnez des documents ou cochez **Sélectionner cette page**, puis ouvrez
 **Actions sur la sélection** : supprimer après confirmation, changer le propriétaire,
 ajouter ou retirer des mots-clés, ajouter, modifier ou retirer un partage. La sélection

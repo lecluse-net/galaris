@@ -24,6 +24,7 @@ for (const width of [1440, 390]) test(`folder bulk actions preserve distinct set
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
   const user = await checked(await request.get('/api/auth/me', { headers }))
   const folder = await checked(await request.post('/api/documents/tags', { headers, data: { name: `Synthetic bulk ${seed.agent_id}`, parent_id: null } }))
+  const destination = await checked(await request.post('/api/documents/tags', { headers, data: { name: `Synthetic destination ${seed.agent_id}`, parent_id: null } }))
   const child = await checked(await request.post('/api/documents/tags', { headers, data: { name: 'Synthetic nested reports', parent_id: folder.id } }))
   const docs = []
   for (let index = 0; index < 3; index++) {
@@ -57,7 +58,9 @@ for (const width of [1440, 390]) test(`folder bulk actions preserve distinct set
     await page.getByRole('option', { name: option, exact: true }).click()
   }
   async function action(name) {
-    await list.getByRole('checkbox', { name: 'Sélectionner cette page', exact: true }).check()
+    await list.getByRole('checkbox', { name: `Sélectionner ${docs[0].title}`, exact: true }).check()
+    await list.getByRole('link', { name: docs[1].title, exact: true }).click({ modifiers: ['Shift'] })
+    await expect(list.getByText('2 sélectionné(s)', { exact: true })).toBeVisible()
     await list.getByRole('button', { name: 'Actions sur la sélection', exact: true }).click()
     await choose('Opération', name)
   }
@@ -100,7 +103,29 @@ for (const width of [1440, 390]) test(`folder bulk actions preserve distinct set
   for (const doc of docs.slice(0, 2)) expect((await state(doc.id)).level).toBe('private')
   expect((await state(docs[0].id)).grants).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'user', id: user.id })]))
   await page.screenshot({ path: testInfo.outputPath(`bulk-folder-${width}.png`), animations: 'disabled' })
-  await list.getByRole('button', { name: 'Fermer la liste', exact: true }).click()
+  const tree = page.getByRole('tree')
+  const folderTarget = tree.getByText(destination.name, { exact: true })
+  if (width < 1024) {
+    // The mobile list replaces the navigation pane. Exercise its visible tree instead.
+    await list.getByRole('button', { name: 'Fermer la liste', exact: true }).click()
+    for (const name of [folder.name, child.name]) {
+      const node = tree.getByRole('treeitem').filter({ has: page.getByText(name, { exact: true }) }).last()
+      if (await node.getAttribute('aria-expanded') !== 'true') await node.press('Space')
+    }
+    for (const doc of docs.slice(0, 2)) await tree.getByText(doc.title, { exact: true }).click({ modifiers: ['Control'] })
+    await tree.getByText(docs[1].title, { exact: true }).dragTo(folderTarget)
+  } else {
+    // Drag from the paginated list through the assembled page into the navigation tree.
+    await list.getByRole('checkbox', { name: 'Sélectionner cette page', exact: true }).check()
+    await list.getByRole('link', { name: docs[1].title, exact: true }).dragTo(folderTarget)
+  }
+  await expect.poll(async () => {
+    const result = await checked(await request.post('/api/documents/library', { headers, data: {
+      tag_id: destination.id, include_descendants: false, classification: 'classified', limit: 50, offset: 0,
+    } }))
+    return result.entries.map(entry => entry.item.id).sort()
+  }).toEqual(docs.slice(0, 2).map(doc => doc.id).sort())
+  if (width >= 1024) await list.getByRole('button', { name: 'Fermer la liste', exact: true }).click()
   await page.getByRole('button', { name: 'Afficher les documents non classés en liste', exact: true }).click()
   const unclassified = page.getByRole('region', { name: 'Documents non classés', exact: true })
   await expect(unclassified.getByRole('link', { name: docs[2].title, exact: true })).toBeVisible()

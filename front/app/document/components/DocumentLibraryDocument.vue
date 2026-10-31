@@ -3,8 +3,8 @@
     <div v-library-shortcuts="shortcuts" class="document-branch-row row no-wrap items-center" :title="t('documents.shortcuts.document')" aria-keyshortcuts="F2 F3 F4 F7 Delete" :class="[dropClass, { 'document-branch-row--compact': compact }]"
       @dragover.stop="emit('dragover', $event, entry, parentDocumentId, tagId, listOnly)"
       @dragleave.stop="emit('dragleave')" @drop.prevent.stop="emit('drop')">
-      <DocumentLibraryEntryRow class="col" :entry="entry" :loading="false" :compact="compact" :selected-document-id="selectedDocumentId"
-        @select="emit('select', $event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')">
+      <DocumentLibraryEntryRow class="col" :entry="entry" :loading="false" :compact="compact" :selected-document-id="selectedDocumentId" :selected="selectedDocumentIds?.includes(entry.item.id)"
+        @select="(entry, event) => emit('select', entry, event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')">
         <template #toggle>
           <span v-if="!treeRow" class="document-branch-toggle-slot">
             <button v-if="hasChildren" type="button" class="document-branch-toggle"
@@ -30,9 +30,9 @@
         <q-btn flat dense :label="t('documents.retry')" @click="emit('retry', entry.item.id)" />
       </q-banner>
       <DocumentLibraryDocument v-for="child in visibleChildren" :key="child.item.id" :entry="child" :parent-document-id="entry.item.id" :ancestors="[...(ancestors ?? []), entry.item.id]"
-        :compact="true" :selected-document-id="selectedDocumentId" :busy="busy" :children="children" :loading="loading" :errors="errors"
+        :compact="true" :selected-document-id="selectedDocumentId" :selected-document-ids="selectedDocumentIds" :busy="busy" :children="children" :loading="loading" :errors="errors"
         :expanded="expanded" :drop-target="dropTarget" :drop-placement="dropPlacement"
-        @select="emit('select', $event)" @create="(entry, type, event) => emit('create', entry, type, event)" @action="(entry, action) => emit('action', entry, action)"
+        @select="(entry, event) => emit('select', entry, event)" @create="(entry, type, event) => emit('create', entry, type, event)" @action="(entry, action) => emit('action', entry, action)"
         @toggle="emit('toggle', $event)" @retry="emit('retry', $event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')"
         @dragover="(event, value, parent, tag, list) => emit('dragover', event, value, parent, tag, list)" @dragleave="emit('dragleave')" @drop="emit('drop')" />
       <span v-if="!loading[branchKey] && !errors[branchKey] && !(children[branchKey]?.length)" class="text-caption q-pa-sm">{{ t('documents.library.noSubdocuments') }}</span>
@@ -51,6 +51,7 @@ import { documentRowShortcuts, vLibraryShortcuts, type DocumentRowAction } from 
 const props = defineProps<{
   entry: DocumentLibraryEntry
   selectedDocumentId: string | null
+  selectedDocumentIds?: string[]
   compact?: boolean
   treeRow?: boolean
   ancestors?: string[]
@@ -67,7 +68,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   action: [entry: DocumentLibraryEntry, action: DocumentRowAction]
-  select: [entry: DocumentLibraryEntry]; create: [entry: DocumentLibraryEntry, type?: DocumentKind, event?: Event]
+  select: [entry: DocumentLibraryEntry, event?: Event]; create: [entry: DocumentLibraryEntry, type?: DocumentKind, event?: Event]
   toggle: [id: string]; retry: [id: string]; dragstart: [event: DragEvent, id: string]; dragend: []
   dragover: [event: DragEvent, entry: DocumentLibraryEntry, parent?: string | null, tag?: string | null, listOnly?: boolean]
   dragleave: []; drop: []

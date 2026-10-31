@@ -35,16 +35,18 @@
       </ul>
     </q-banner>
     <q-list separator>
-      <q-item v-for="entry in entries" :key="entry.item.id" v-library-shortcuts="rowShortcuts(entry)" tabindex="0" :title="t('documents.shortcuts.document')" aria-keyshortcuts="F2 F3 F4 F7 Delete">
+      <q-item v-for="entry in entries" :key="entry.item.id" v-library-shortcuts="rowShortcuts(entry)" clickable :active="selected.includes(entry.item.id)" :aria-selected="selected.includes(entry.item.id)" :disable="busy || loading" :title="t('documents.shortcuts.document')" aria-keyshortcuts="F2 F3 F4 F7 Delete"
+        :draggable="!busy && !loading" @dragstart.stop="startDrag($event, entry)" @dragend="emit('dragend')"
+        @click="selectRow(entry, $event)" @mousedown="preventTextSelection">
         <q-item-section side>
           <q-checkbox :model-value="selected.includes(entry.item.id)" :aria-label="t('documents.bulk.selectDocument', { title: entry.item.title })"
-            :disable="busy || loading || !canSelect(entry)" @update:model-value="toggle(entry.item.id)" />
+            :disable="busy || loading || !canSelect(entry)" @click.stop @update:model-value="(_value, event) => toggle(entry.item.id, event)" />
         </q-item-section>
         <q-item-section side class="bulk-thumbnail">
           <DocumentThumbnail :document-id="entry.item.id" :document-type="entry.item.document_type" :revision="entry.item.revision" :updated-at="entry.item.updated_at" :agent-id="documentEntryActor(entry)" />
         </q-item-section>
         <q-item-section>
-          <q-item-label><a :href="documentResourceHref(entry.item.id)" class="bulk-document-link" @click.prevent="!busy && emit('select', entry)">{{ entry.item.title }}</a></q-item-label>
+          <q-item-label><a :href="documentResourceHref(entry.item.id)" draggable="false" class="bulk-document-link" @click.stop.prevent="openDocument(entry, $event)">{{ entry.item.title }}</a></q-item-label>
           <q-item-label caption>{{ entry.owner_label }}</q-item-label>
           <div class="row q-gutter-xs"><q-chip v-for="keyword in entry.item.keywords" :key="keyword" dense class="bulk-keyword"><span class="ellipsis">{{ keyword }}</span></q-chip></div>
         </q-item-section>
@@ -78,10 +80,12 @@ import DocumentBulkDialog from '@/app/document/components/DocumentBulkDialog.vue
 import DocumentThumbnail from '@/app/document/components/DocumentThumbnail.vue'
 import DocumentRowMenu from '@/app/document/components/DocumentRowMenu.vue'
 import { documentRowShortcuts, vLibraryShortcuts, type DocumentRowAction } from '@/app/document/libraryShortcuts'
+import { useDocumentSelection } from '@/app/document/useDocumentSelection'
+import { documentDragSelection, setDocumentDragData } from '../documentDrag'
 
 const props = defineProps<{ folder: DocumentTag | null }>()
 const DocumentSharingPanel = defineAsyncView(() => import('./DocumentSharingPanel.vue'))
-const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; create: [entry: DocumentLibraryEntry, type?: DocumentKind]; select: [entry: DocumentLibraryEntry]; close: []; changed: [ids: string[]]; deleted: [id: string] }>()
+const emit = defineEmits<{ dragstart: [event: DragEvent, entries: DocumentLibraryEntry[]]; dragend: []; action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; create: [entry: DocumentLibraryEntry, type?: DocumentKind]; select: [entry: DocumentLibraryEntry]; close: []; changed: [ids: string[]]; deleted: [id: string] }>()
 const { t } = useI18n()
 const privilegeStore = usePrivilegeStore()
 const mutations = useDocumentMutations()
@@ -96,7 +100,8 @@ const page = ref(1)
 const pageSize = ref(50)
 const total = ref(0)
 const entries = ref<DocumentLibraryEntry[]>([])
-const selected = ref<string[]>([])
+const selection = useDocumentSelection()
+const { selected } = selection
 const selectedEntries = computed(() => entries.value.filter(entry => selected.value.includes(entry.item.id)))
 const selectable = computed(() => entries.value.filter(canSelect))
 const allSelected = computed(() => !selected.value.length ? false : selectable.value.length === selected.value.length ? true : null)
@@ -118,8 +123,32 @@ let refreshTimer: ReturnType<typeof setTimeout> | undefined
 function canSelect(entry: DocumentLibraryEntry): boolean {
   return privilegeStore.hasPrivilege(privileges.DOCUMENT_EDIT) && entry.item.access.can_write && !entry.item.read_only && !entry.item.source_managed
 }
-function toggle(id: string): void { selected.value = selected.value.includes(id) ? selected.value.filter(value => value !== id) : [...selected.value, id] }
-function togglePage(): void { selected.value = allSelected.value === true ? [] : selectable.value.map(entry => entry.item.id) }
+function selectRow(entry: DocumentLibraryEntry, event: Event, toggle = false): void {
+  if (busy.value || loading.value || !canSelect(entry)) return
+  selection.select('list', entry.item.id, selectable.value.map(value => ({ key: value.item.id, id: value.item.id })), event, toggle)
+}
+function startDrag(event: DragEvent, entry: DocumentLibraryEntry): void {
+  if (busy.value || loading.value) { event.preventDefault(); return }
+  const values = documentDragSelection(entry.item.id, selected.value, entries.value, entries.value)
+  setDocumentDragData(event, values)
+  emit('dragstart', event, values)
+}
+function toggle(id: string, event: Event): void {
+  const entry = entries.value.find(value => value.item.id === id)
+  if (entry && (event instanceof MouseEvent || event instanceof KeyboardEvent)) selectRow(entry, event, true)
+}
+function openDocument(entry: DocumentLibraryEntry, event: MouseEvent): void {
+  if (event.ctrlKey || event.metaKey || event.shiftKey) selectRow(entry, event)
+  else if (!busy.value && !loading.value) emit('select', entry)
+}
+function preventTextSelection(event: MouseEvent): void {
+  if (event.shiftKey || event.ctrlKey || event.metaKey) event.preventDefault()
+}
+function togglePage(): void {
+  const all = allSelected.value === true
+  selection.clear()
+  selected.value = all ? [] : selectable.value.map(entry => entry.item.id)
+}
 async function load(): Promise<void> {
   if (disposed || busy.value) return
   const current = ++generation
@@ -137,7 +166,7 @@ async function load(): Promise<void> {
     if (page.value > max) { page.value = max; return }
     entries.value = result.entries
     selected.value = selected.value.filter(id => result.entries.some(entry => entry.item.id === id && canSelect(entry)))
-  } catch { if (!disposed && current === generation) { loadError.value = true; entries.value = []; selected.value = [] } }
+  } catch { if (!disposed && current === generation) { loadError.value = true; entries.value = []; selection.clear() } }
   finally { if (!disposed && current === generation) loading.value = false }
 }
 function failureReason(error: unknown): FailureReason {
@@ -193,6 +222,7 @@ function resetSession(event: Event): void {
   const session = sessionGeneration()
   if ((event as CustomEvent<string | null>).detail !== null && session === authSession) return
   authSession = session
+  selection.clear()
   ++operationGeneration; ++generation; controller?.abort(); clearTimeout(refreshTimer)
   entries.value = []; selected.value = []; outcome.value = null; dialogOpen.value = false; busy.value = false; loading.value = false
   void load()
@@ -202,15 +232,15 @@ function invalidateAccess(): void {
   // is authorized afresh; finish the batch before replacing its selection snapshot.
   if (busy.value) return
   ++generation; controller?.abort()
-  entries.value = []; selected.value = []; dialogOpen.value = false
+  entries.value = []; selection.clear(); dialogOpen.value = false
   void load()
 }
 watch([() => props.folder?.id, recursive, query, pageSize], () => {
-  selected.value = []; outcome.value = null
+  selection.clear(); outcome.value = null
   if (page.value !== 1) page.value = 1
   else void load()
 })
-watch(page, () => { selected.value = []; void load() })
+watch(page, () => { selection.clear(); void load() })
 onMounted(() => {
   void load()
   websocket.createWebsocket()
@@ -232,6 +262,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .bulk-list { min-width: 0; }
+.bulk-list .q-item[aria-selected="true"] { background: var(--solaire-blue-light); }
+body.body--dark .bulk-list .q-item[aria-selected="true"] { background: var(--solaire-blue-dark); }
 .bulk-heading { overflow-wrap: anywhere; }
 .bulk-search { flex: 1 1 240px; min-width: 0; max-width: 100%; }
 .bulk-keyword { max-width: 100%; }

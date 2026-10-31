@@ -22,7 +22,7 @@
           <q-splitter v-model="conversationSplitterModel" :limits="conversationSplitterLimits" :disable="!chatOpen || $q.screen.lt.md"
             class="documents-conversation-splitter" :class="{ 'documents-conversation-splitter--closed': !chatOpen || $q.screen.lt.md }">
             <template #before>
-              <DocumentBulkList v-if="listingOpen" :folder="listingFolder" @action="documentRowAction" @create="(entry, type) => openCreateDocument(undefined, entry, false, type)" @close="listingOpen = false" @select="selectEntry" @deleted="onDocumentDeleted" @changed="ids => navigation?.refreshDocuments(ids)" />
+              <DocumentBulkList v-if="listingOpen" :folder="listingFolder" @dragstart="(event, entries) => navigation?.startDocumentSelectionDrag(event, entries)" @dragend="navigation?.clearDrag()" @action="documentRowAction" @create="(entry, type) => openCreateDocument(undefined, entry, false, type)" @close="listingOpen = false" @select="selectEntry" @deleted="onDocumentDeleted" @changed="ids => navigation?.refreshDocuments(ids)" />
               <div v-else-if="!selectedDocumentId" class="documents-placeholder text-grey-7">
                 <q-icon name="article" size="48px" />
                 <div>{{ t('documents.selectDocument') }}</div>

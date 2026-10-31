@@ -40,7 +40,7 @@ async function fixture(page, { count = 2, folder: initialFolder = folder } = {})
     return route.fulfill({ json: item })
   })
   await page.route(/\/api\/documents\/doc-\d+\/sharing(?:-level)?$/, async route => {
-    const id = new URL(route.request().url()).pathname.split('/')[4]
+    const id = new URL(route.request().url()).pathname.split('/')[3]
     const state = states[Number(id.split('-')[1])]
     if (route.request().method() === 'GET') return route.fulfill({ json: state })
     const data = route.request().postDataJSON(); writes.push({ id, ...data })
@@ -58,7 +58,7 @@ async function fixture(page, { count = 2, folder: initialFolder = folder } = {})
     agents: [], users: [{ kind: 'user', id: 1, label: 'New Owner', subtitle: '', is_current_user: true }],
   })
   await page.route('**/api/documents/*/owner', route => {
-    const id = new URL(route.request().url()).pathname.split('/')[4]
+    const id = new URL(route.request().url()).pathname.split('/')[3]
     const data = route.request().postDataJSON(); writes.push({ documentId: id, ...data })
     return route.fulfill({ json: docs.find(item => item.id === id) })
   })
@@ -146,6 +146,44 @@ test('sharing commands preserve different existing shares and update or remove o
   expect(states[0].level).toBe('groups')
   expect(states[1].level).toBe('private')
   expect(states[0].grants).toEqual([other])
+})
+
+test('range and individual clicks update the bulk action selection and checkbox anchors', async ({ page }) => {
+  const { writes } = await fixture(page, { count: 5 })
+  const link = index => page.getByRole('link', { name: `Report 0${index}`, exact: true })
+  const checkbox = index => page.getByRole('checkbox', { name: `Select Report 0${index}`, exact: true })
+  await checkbox(1).check()
+  await checkbox(4).click({ modifiers: ['Shift'] })
+  await expect(page.getByText('4 selected', { exact: true })).toBeVisible()
+  await link(2).click({ modifiers: ['Control'] })
+  await expect(checkbox(2)).not.toBeChecked()
+  await link(0).click({ modifiers: ['Control', 'Shift'] })
+  await expect(page.getByText('5 selected', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select'))).toEqual([])
+  await page.locator('.bulk-list .q-item').filter({ has: link(3) }).click({ position: { x: 380, y: 15 } })
+  await expect(page.getByText('1 selected', { exact: true })).toBeVisible()
+  await expect(checkbox(3)).toBeChecked()
+  await action(page, 'Add keywords')
+  const keywords = page.getByRole('combobox', { name: 'Keywords', exact: true })
+  await keywords.fill('selected'); await keywords.press('Enter')
+  await apply(page)
+  expect(writes.map(write => write.id)).toEqual(['doc-3'])
+})
+
+test('bulk intervals skip protected documents while their titles remain available for reading', async ({ page }) => {
+  const { docs } = await fixture(page, { count: 4 })
+  docs[1].read_only = true
+  docs[2].access.can_write = false
+  await page.evaluate(() => window.testApp.emitSocket('document.update', { data: {} }))
+  await expect(page.getByRole('checkbox', { name: 'Select Report 01', exact: true })).toBeDisabled()
+  await expect(page.getByRole('checkbox', { name: 'Select Report 02', exact: true })).toBeDisabled()
+  await page.getByRole('checkbox', { name: 'Select Report 00', exact: true }).check()
+  await page.getByRole('link', { name: 'Report 03', exact: true }).click({ modifiers: ['Shift'] })
+  await expect(page.getByText('2 selected', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Report 01', exact: true }).click({ modifiers: ['Control'] })
+  await expect(page.getByText('2 selected', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Report 01', exact: true }).click()
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').at(-1).value.item.id)).toBe('doc-1')
 })
 
 test('ownership uses each current revision', async ({ page }) => {

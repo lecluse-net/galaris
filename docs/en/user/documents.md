@@ -213,6 +213,24 @@ owners and keywords. Enable **Include subfolders and sub-documents** to include 
 **Show unclassified documents as a list**, beside the search field, opens documents without
 personal classification. Pages default to 50 documents and offer 10, 20, 50, 100 or 500.
 
+In the library tree and list, **Ctrl+click** (**Cmd+click** on Mac) adds or removes an
+individual document without opening it. **Shift+click** selects the range from the last
+individual click, excluding collapsed descendants. **Ctrl/Cmd+Shift+click** adds that range
+to the existing selection. A plain click replaces the selection and opens the document.
+The counter lets you clear multiple selections. Changing search, filters or pages resets selection.
+
+To move several documents, drag any selected document onto a folder, inside another document,
+or into the unclassified documents area. The gesture carries the entire selection in its
+displayed order; dropping before or after a row places the group at that position.
+A descendant selected together with its parent follows that parent without being detached.
+You can also drag from the paginated list with checkboxes into the tree.
+Moves are saved document by document. If some fail, a summary appears and failed documents
+remain selected for retry.
+
+In the list with checkboxes, these shortcuts also work on titles and checkboxes.
+Clicking a row's background selects it; a plain click on its title opens the document.
+Documents protected against bulk operations cannot be selected.
+
 Select individual documents or **Select this page**, then open **Selection actions** to
 delete after confirmation, change ownership, add or remove keywords, or add, change or remove
 a share. Selection covers the displayed page and resets when changing pages or search.

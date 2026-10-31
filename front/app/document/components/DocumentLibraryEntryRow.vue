@@ -1,6 +1,6 @@
 <template>
-  <q-item clickable class="document-row" :dense="compact" :class="{ 'document-row--compact': compact }" :active="selectedDocumentId === entry.item.id" :disable="loading" draggable="true"
-    @click.stop="emit('select', entry)" @dragstart.stop="startDrag" @dragend.stop="emit('dragend')">
+  <q-item clickable class="document-row" :dense="compact" :class="{ 'document-row--compact': compact }" :active="selected ?? selectedDocumentId === entry.item.id" :aria-selected="selected ?? selectedDocumentId === entry.item.id" :disable="loading" draggable="true"
+    @click.stop="emit('select', entry, $event)" @mousedown="preventTextSelection" @dragstart.stop="startDrag" @dragend.stop="emit('dragend')">
     <slot name="toggle" />
     <q-item-section>
       <q-item-label class="row items-center no-wrap"><DocumentIcon :document-id="entry.item.id" :document-type="entry.item.document_type" :title="entry.item.title" readonly size="26px" class="library-document-icon" :class="compact ? 'q-mr-xs' : 'q-mr-sm'" /><span class="ellipsis" :title="entry.item.title">{{ entry.item.title }}</span></q-item-label>
@@ -15,22 +15,20 @@ import { useI18n } from 'vue-i18n'
 import type { DocumentLibraryEntry } from '../types'
 import DocumentIcon from '@/app/document/components/DocumentIcon.vue'
 import DocumentThumbnail from '@/app/document/components/DocumentThumbnail.vue'
+import { setDocumentDragData } from '../documentDrag'
 const props = defineProps<{
   entry: DocumentLibraryEntry
   loading: boolean
   compact?: boolean
   selectedDocumentId: string | null
+  selected?: boolean
 }>()
-const emit = defineEmits<{ select: [entry: DocumentLibraryEntry]; dragstart: [event: DragEvent, id: string]; dragend: [] }>()
+const emit = defineEmits<{ select: [entry: DocumentLibraryEntry, event: Event]; dragstart: [event: DragEvent, id: string]; dragend: [] }>()
+function preventTextSelection(event: MouseEvent): void {
+  if (event.shiftKey || event.ctrlKey || event.metaKey) event.preventDefault()
+}
 function startDrag(event: DragEvent): void {
-  if (event.dataTransfer) {
-    const link = document.createElement('a')
-    link.href = `document://${props.entry.item.id}`; link.textContent = props.entry.item.title
-    event.dataTransfer.setData('text/html', link.outerHTML)
-    event.dataTransfer.setData('text/plain', link.href)
-    event.dataTransfer.setData('text/uri-list', link.href)
-    event.dataTransfer.effectAllowed = 'copyMove'
-  }
+  setDocumentDragData(event, [props.entry])
   emit('dragstart', event, props.entry.item.id)
 }
 const { t, locale } = useI18n()
@@ -38,6 +36,8 @@ function formatDate(value: string): string { return new Intl.DateTimeFormat(loca
 </script>
 <style scoped>
 .document-row { padding-left: 4px; padding-right: 1px; }
+.document-row[aria-selected="true"] { background: var(--solaire-blue-light); }
+body.body--dark .document-row[aria-selected="true"] { background: var(--solaire-blue-dark); }
 .library-document-icon { width: 26px; height: 24px; min-width: 26px; min-height: 24px; padding: 0; }
 .library-document-preview { position: relative; align-self: stretch; width: 124px; min-width: 124px; padding-left: 4px; }
 .library-document-preview .library-document-thumbnail { position: absolute; top: -4px; right: 0; bottom: -4px; width: 120px; height: auto; }

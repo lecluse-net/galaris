@@ -17,9 +17,9 @@
           </template>
           <template #header-document="{ node }">
             <div class="full-width" :aria-label="node.parentDocumentId ? t('documents.library.subdocuments', { name: node.parentDocumentTitle }) : node.tag ? t('documents.library.tagDocuments', { name: node.tag.name }) : t('documents.folderRoot')">
-              <DocumentLibraryDocument :entry="node.entry" compact tree-row :tag-id="node.parentDocumentId ? null : node.tag?.id" :parent-document-id="node.parentDocumentId" :selected-document-id="selectedDocumentId" :busy="busy"
+              <DocumentLibraryDocument :entry="node.entry" compact tree-row :tag-id="node.parentDocumentId ? null : node.tag?.id" :parent-document-id="node.parentDocumentId" :selected-document-id="selectedDocumentId" :selected-document-ids="selectedDocumentIds" :busy="busy"
                 :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
-                @select="emit('select', $event)" @create="(entry, type, event) => emit('create', undefined, entry, false, type, event)" @action="(entry, action) => emit('action', entry, action)"
+                @select="(entry, event) => selectDocument(entry, 'tree', node.id, event)" @create="(entry, type, event) => emit('create', undefined, entry, false, type, event)" @action="(entry, action) => emit('action', entry, action)"
                 @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
                 @dragover="dragOverDocument" @dragleave="dropTarget = null" @drop="dropNode" />
             </div>
@@ -67,10 +67,14 @@
           <q-btn flat round dense icon="view_list" :aria-label="t('documents.bulk.openUnclassified')" @click="emit('browse', null)"><q-tooltip>{{ t('documents.bulk.openUnclassified') }}</q-tooltip></q-btn>
         </div>
         <q-banner v-if="loadError" dense class="library-error" role="alert">{{ t('documents.loadError') }}<q-btn flat :label="t('documents.retry')" @click="reload" /></q-banner>
+        <div v-if="selectedDocumentIds.length > 1" class="row items-center q-px-sm">
+          <span class="col text-caption" role="status">{{ t('documents.bulk.selected', { count: selectedDocumentIds.length }) }}</span>
+          <q-btn flat round dense icon="deselect" :aria-label="t('documents.bulk.clearSelection')" @click="selection.clear" />
+        </div>
         <q-list class="document-list-scroll" separator :aria-busy="loading" :aria-label="t(onlyUnclassified ? 'documents.library.orphans' : 'documents.library.all')">
-          <DocumentLibraryDocument v-for="entry in visibleEntries" :key="entry.item.id" :entry="entry" list-only :selected-document-id="selectedDocumentId" :busy="busy"
+          <DocumentLibraryDocument v-for="entry in visibleEntries" :key="entry.item.id" :entry="entry" list-only :selected-document-id="selectedDocumentId" :selected-document-ids="selectedDocumentIds" :busy="busy"
             :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
-            @select="emit('select', $event)" @create="(entry, type, event) => emit('create', undefined, entry, false, type, event)" @action="(entry, action) => emit('action', entry, action)"
+            @select="(entry, event) => selectDocument(entry, 'list', entry.item.id, event)" @create="(entry, type, event) => emit('create', undefined, entry, false, type, event)" @action="(entry, action) => emit('action', entry, action)"
             @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
             @dragover="dragOverDocument" @dragleave="dropTarget = null" @drop="dropNode" />
           <div v-if="!loading && !loadError && !visibleEntries.length" class="q-pa-md text-caption">{{ t('documents.empty') }}</div>
@@ -113,7 +117,15 @@ import { useDocumentMutations } from '@/app/document/stores/documentMutations'
 import DocumentLibraryDocument from '@/app/document/components/DocumentLibraryDocument.vue'
 import DocumentSplitterHandle from '@/app/document/components/DocumentSplitterHandle.vue'
 import type { DocumentRowAction } from '@/app/document/libraryShortcuts'
-defineProps<{ selectedDocumentId: string | null }>()
+import { documentSelectionModifiers, useDocumentSelection, type DocumentSelectionItem } from '@/app/document/useDocumentSelection'
+import { documentDragSelection, setDocumentDragData } from '../documentDrag'
+const props = defineProps<{ selectedDocumentId: string | null }>()
+const selection = useDocumentSelection()
+const { selected: selectedDocumentIds } = selection
+watch(() => props.selectedDocumentId, id => {
+  if (selectedDocumentIds.value.length === 1 && selectedDocumentIds.value[0] === id) return
+  selection.clear(); selectedDocumentIds.value = id ? [id] : []
+}, { immediate: true })
 const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; browse: [folder: DocumentTag | null]; select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot?: boolean, type?: DocumentKind, event?: Event] }>()
 const { t } = useI18n()
 const $q = useQuasar()
@@ -134,6 +146,7 @@ const query = ref<string | null>('')
 const page = ref(1)
 const pageSize = ref(50)
 const filters = ref(defaultLibraryFilters())
+let preserveSelectionOnSort = false
 const initialType = new URLSearchParams(window.location.search).get('type')
 if (initialType === 'text' || initialType === 'data') filters.value.document_type = initialType
 const loading = ref(false)
@@ -173,6 +186,7 @@ const dropTarget = ref<string | null>(null)
 const dropPlacement = ref<'inside' | 'before' | 'after'>('inside')
 let pendingDrop: Omit<DocumentOrderMove, 'node'> | null = null
 let drag: { kind: 'tag' | 'document'; id: string } | null = null
+let draggedDocuments: DocumentLibraryEntry[] = []
 let documentFromTree = false
 let generation = 0
 let accessGeneration = 0
@@ -254,6 +268,43 @@ const treeExpanded = computed({
     expandedDocuments.value = next
     expanded.value = value.filter(id => tags.value.some(tag => tag.id === id))
   },
+})
+const visibleTreeDocuments = computed(() => {
+  const items: DocumentSelectionItem[] = []
+  const open = new Set(treeExpanded.value)
+  const visit = (nodes: TagNode[]): void => {
+    for (const node of nodes) {
+      if (node.entry) items.push({ key: node.id, id: node.entry.item.id })
+      if (node.children && open.has(node.id)) visit(node.children)
+    }
+  }
+  visit(tree.value)
+  return items
+})
+const visibleListDocuments = computed(() => {
+  const items: DocumentSelectionItem[] = []
+  const visit = (values: DocumentLibraryEntry[], ancestors: string[] = []): void => {
+    for (const entry of values) {
+      if (ancestors.includes(entry.item.id)) continue
+      items.push({ key: entry.item.id, id: entry.item.id })
+      const key = `doc:${entry.item.id}`
+      if (expandedDocuments.value.includes(key)) visit(branchEntries.value[key] ?? [], [...ancestors, entry.item.id])
+    }
+  }
+  visit(visibleEntries.value)
+  return items
+})
+function selectDocument(entry: DocumentLibraryEntry, scope: 'tree' | 'list', key: string, event?: Event): void {
+  if (busy.value || (scope === 'list' && loading.value)) return
+  const items = scope === 'tree' ? visibleTreeDocuments.value : visibleListDocuments.value
+  selection.select(scope, scope === 'list' ? entry.item.id : key, items, event)
+  const modifiers = documentSelectionModifiers(event)
+  if (!modifiers?.ctrlKey && !modifiers?.metaKey && !modifiers?.shiftKey) emit('select', entry)
+}
+watch([visibleTreeDocuments, visibleListDocuments], ([treeItems, listItems]) => {
+  if (busy.value || drag) return
+  const visible = new Set([...treeItems, ...listItems].map(item => item.id))
+  selectedDocumentIds.value = selectedDocumentIds.value.filter(id => visible.has(id))
 })
 const listFilters = computed(() => ({ ...libraryRequestFilters(filters.value), query: query.value ?? '' }))
 function publishEntries(incoming?: DocumentLibraryEntry[]): void {
@@ -337,9 +388,9 @@ function supersedeReads(ids: string[]): void {
   if (loading.value) { loading.value = false; queueChange({ list_changed: true }) }
   branches.invalidate(ids)
 }
-function applyDocumentMove(move: DocumentOrderMove): void {
+function applyDocumentMove(move: DocumentOrderMove, source?: DocumentLibraryEntry): void {
   const id = move.node.id
-  const entry = [...entries.value, ...Object.values(branchSnapshots.value).flat()].find(value => value.item.id === id)
+  const entry = [...entries.value, ...Object.values(branchSnapshots.value).flat()].find(value => value.item.id === id) ?? source
   if (!entry) return
   const target = move.parent_document_id ? `doc:${move.parent_document_id}` : move.parent_id ?? (move.at_root ? 'root' : null)
   const affected = move.list_only ? [] : [...new Set([...documentFolders([id]), ...(target ? [target] : [])])]
@@ -579,24 +630,72 @@ async function requestDelete(tag: DocumentTag, confirmed = false): Promise<void>
 }
 function startTagDrag(event: DragEvent, id: string): void {
   if (busy.value) { event.preventDefault(); return }
+  clearDrag()
   documentFromTree = false
   drag = { kind: 'tag', id }; event.dataTransfer?.setData('text/plain', id)
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 function startDocumentDrag(event: DragEvent, id: string): void {
   if (busy.value) { event.preventDefault(); return }
-  drag = { kind: 'document', id }
   documentFromTree = event.target instanceof Element && Boolean(event.target.closest('.document-tree, .document-children'))
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copyMove'
+  const known = [...entries.value, ...Object.values(branchSnapshots.value).flat()]
+  const ordered = (documentFromTree ? visibleTreeDocuments.value : visibleListDocuments.value)
+    .flatMap(value => { const entry = known.find(entry => entry.item.id === value.id); return entry ? [entry] : [] })
+  draggedDocuments = documentDragSelection(id, selectedDocumentIds.value, ordered, known)
+  if (!selectedDocumentIds.value.includes(id)) { selection.clear(); selectedDocumentIds.value = [id] }
+  drag = { kind: 'document', id }
+  setDocumentDragData(event, draggedDocuments)
 }
-async function moveDocument(documentId: string, tagId: string | null, atRoot = false): Promise<void> {
-  const change = { document_ids: [documentId], tag_ids: tagId ? [tagId] : [], list_changed: true }
-  if (await mutate(() => documentService.moveDocumentToTag(documentId, tagId, atRoot), change,
-    () => applyDocumentMove({ node: { kind: 'document', id: documentId }, parent_id: tagId, at_root: atRoot })) && tagId) {
-    let tag = tags.value.find(value => value.id === tagId)
-    while (tag) {
-      if (!expanded.value.includes(tag.id)) expanded.value.push(tag.id)
-      tag = tags.value.find(value => value.id === tag?.parent_id)
+function startDocumentSelectionDrag(event: DragEvent, values: DocumentLibraryEntry[]): void {
+  if (busy.value || !values.length) { event.preventDefault(); return }
+  clearDrag()
+  const known = [...entries.value, ...Object.values(branchSnapshots.value).flat(), ...values]
+  draggedDocuments = documentDragSelection(values[0]!.item.id, values.map(entry => entry.item.id), values, known)
+  drag = { kind: 'document', id: values[0]!.item.id }
+  documentFromTree = true
+  selectedDocumentIds.value = values.map(entry => entry.item.id)
+  setDocumentDragData(event, draggedDocuments)
+}
+async function moveDocuments(values: DocumentLibraryEntry[], target: Omit<DocumentOrderMove, 'node'>): Promise<void> {
+  if (busy.value || !values.length) return
+  const session = sessionGeneration
+  // Moving into a shared folder can invalidate access through our own writes.
+  // Each request is authorized afresh; only a new session stops the batch.
+  const active = () => !disposed && session === sessionGeneration
+  const failed: string[] = []
+  let succeeded = 0
+  let anchor = target.anchor
+  busy.value = true
+  try {
+    for (const entry of values) {
+      if (!active()) return
+      const move: DocumentOrderMove = { ...target, anchor, node: { kind: 'document', id: entry.item.id } }
+      try {
+        if (!move.anchor && !move.list_only && !move.parent_document_id) await documentService.moveDocumentToTag(entry.item.id, move.parent_id, move.at_root)
+        else await documentService.reorderDocuments(move)
+        if (!active()) return
+        applyDocumentMove(move, entry)
+        queueChange({ document_ids: [entry.item.id, ...(move.parent_document_id ? [move.parent_document_id] : [])], list_changed: true })
+        succeeded++
+        // Inserting repeatedly after the original anchor would reverse the group.
+        if (anchor && target.after) anchor = move.node
+      } catch {
+        if (!active()) return
+        failed.push(entry.item.id)
+      }
+    }
+    if (failed.length) {
+      selectedDocumentIds.value = failed
+      $q.notify({ type: 'negative', message: values.length === 1 ? t('documents.library.error') : t('documents.bulk.result', { success: succeeded, failed: failed.length }) })
+    }
+    if (target.list_only && (filters.value.sort_by !== 'position' || filters.value.sort_desc)) {
+      preserveSelectionOnSort = true
+      filters.value = { ...filters.value, sort_by: 'position', sort_desc: false }
+    }
+  } finally {
+    if (!disposed && session === sessionGeneration) {
+      busy.value = false
+      if (pendingChanges.length) void flushChanges()
     }
   }
 }
@@ -625,7 +724,7 @@ function dragOverNode(event: DragEvent, anchor: DocumentOrderNode, parentId: str
 }
 function dragOverDocument(event: DragEvent, entry: DocumentLibraryEntry, parentDocumentId?: string | null, tagId?: string | null, listOnly = false): void {
   pendingDrop = null; dropTarget.value = null
-  if (!drag || busy.value || drag.kind !== 'document' || drag.id === entry.item.id) return
+  if (!drag || busy.value || drag.kind !== 'document' || draggedDocuments.some(value => value.item.id === entry.item.id)) return
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
   const ratio = (event.clientY - bounds.top) / bounds.height
   const inside = ratio >= 0.25 && ratio <= 0.75
@@ -635,7 +734,7 @@ function dragOverDocument(event: DragEvent, entry: DocumentLibraryEntry, parentD
   const seen = new Set<string>()
   const known = [...entries.value, ...Object.values(branchSnapshots.value).flat()]
   while (ancestor && !seen.has(ancestor)) {
-    if (ancestor === drag.id) return
+    if (draggedDocuments.some(value => value.item.id === ancestor)) return
     seen.add(ancestor); ancestor = known.find(value => value.item.id === ancestor)?.parent_document_id
   }
   event.preventDefault()
@@ -656,39 +755,36 @@ function dropClass(key: string): Record<string, boolean> {
     'node-drop-after': dropTarget.value === key && dropPlacement.value === 'after' }
 }
 async function dropNode(): Promise<void> {
-  const node = drag; const target = pendingDrop; clearDrag()
+  const node = drag; const target = pendingDrop; const documents = draggedDocuments; clearDrag()
   if (!node || !target) return
-  if (target.parent_document_id) {
-    await mutate(() => documentService.reorderDocuments({ node, ...target }), {
-      document_ids: [node.id, target.parent_document_id], list_changed: true,
-    }, () => applyDocumentMove({ node, ...target }))
-    return
-  }
+  if (node.kind === 'document') { await moveDocuments(documents, target); return }
   if (!target.anchor && !target.list_only) {
-    if (node.kind === 'document') { await moveDocument(node.id, target.parent_id, target.at_root); return }
     const tag = tags.value.find(value => value.id === node.id)
     if (tag) await mutate(() => documentService.saveDocumentTag({ name: tag.name, parent_id: target.parent_id }, tag.id))
-  } else if (await mutate(() => documentService.reorderDocuments({ node, ...target }), {
+  } else await mutate(() => documentService.reorderDocuments({ node, ...target }), {
     tags_changed: !target.list_only,
     tag_ids: target.list_only || !target.parent_id ? [] : [target.parent_id],
-    document_ids: node.kind === 'document' && !target.list_only ? [node.id] : [],
-    list_changed: target.list_only || (node.kind === 'document' && (!target.parent_id || !documentFolders([node.id]).length)),
-  }, node.kind === 'document' ? () => applyDocumentMove({ node, ...target }) : undefined)) {
-    if (target.parent_id === null && node.kind === 'document' && (filters.value.sort_by !== 'position' || filters.value.sort_desc)) filters.value = { ...filters.value, sort_by: 'position', sort_desc: false }
-  }
+    list_changed: target.list_only,
+  })
   if (target.parent_id && !expanded.value.includes(target.parent_id)) expanded.value.push(target.parent_id)
 }
-function clearDrag(): void { drag = null; documentFromTree = false; dropTarget.value = null; pendingDrop = null }
+function clearDrag(): void { drag = null; draggedDocuments = []; documentFromTree = false; dropTarget.value = null; pendingDrop = null }
 async function drop(parentId: string | null, atRoot = false): Promise<void> {
-  const value = drag; clearDrag()
+  const value = drag; const documents = draggedDocuments; clearDrag()
   if (!value) return
-  if (value.kind === 'document') { await moveDocument(value.id, parentId, atRoot); return }
+  if (value.kind === 'document') { await moveDocuments(documents, { parent_id: parentId, at_root: atRoot }); return }
   const tag = tags.value.find(tag => tag.id === value.id)
   if (!tag || (parentId && isDescendant(parentId, tag.id))) return
   await mutate(() => documentService.saveDocumentTag({ name: tag.name, parent_id: parentId }, tag.id))
 }
-watch([query, filters, pageSize, onlyUnclassified], () => { if (!ready) return; if (page.value !== 1) page.value = 1; else void reload() })
-watch(page, () => { if (ready) void reload() })
+watch([query, filters, pageSize, onlyUnclassified], () => {
+  if (!preserveSelectionOnSort) selection.clear()
+  preserveSelectionOnSort = false
+  if (!ready) return
+  if (page.value !== 1) page.value = 1
+  else void reload()
+})
+watch(page, () => { selection.clear(); if (ready) void reload() })
 watch(() => [...expanded.value], (value, previous) => {
   for (const id of previous) if (!value.includes(id)) branches.close(id)
   for (const id of value) if (!previous.includes(id)) void branches.load(id)
@@ -706,6 +802,7 @@ async function changeSession(event: Event): Promise<void> {
   const currentSession = authSessionGeneration()
   if ((event as CustomEvent<string | null>).detail !== null && currentSession === authSession) return
   authSession = currentSession
+  selection.clear()
   const session = ++sessionGeneration
   ++facetsGeneration
   listController?.abort()
@@ -724,7 +821,7 @@ onMounted(async () => {
   await Promise.all([loadTags(), reload(), branches.load('root')])
 })
 onBeforeUnmount(() => { disposed = true; ++generation; ++tagGeneration; listController?.abort(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession) })
-defineExpose({ reload: refresh, refreshDocuments, removeDocument, updateDocument })
+defineExpose({ reload: refresh, refreshDocuments, removeDocument, updateDocument, startDocumentSelectionDrag, clearDrag })
 </script>
 <style scoped>
 .library-navigation { height: 100%; min-height: 0; }

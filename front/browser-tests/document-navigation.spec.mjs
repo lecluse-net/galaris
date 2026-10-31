@@ -119,6 +119,20 @@ for (const mobile of [false, true]) {
   })
 }
 
+test('opening a library document preserves the anchor for multiple selection without changing the editor', async ({ page }) => {
+  await library(page)
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
+  const list = page.getByRole('list', { name: 'Unclassified documents', exact: true })
+  await list.getByText('Beta', { exact: true }).click()
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Beta')
+  await list.getByText('Gamma', { exact: true }).click({ modifiers: ['Shift'] })
+  await expect(list.locator('.document-row[aria-selected="true"]')).toHaveCount(2)
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Beta')
+  await list.getByText('Alpha', { exact: true }).click({ modifiers: ['Control'] })
+  await expect(list.locator('.document-row[aria-selected="true"]')).toHaveCount(3)
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Beta')
+})
+
 test('the Documents contextual dialog action leaves the library selection and history unchanged', async ({ page }) => {
   const state = await library(page)
   state.items[0].payload.text += `<p><a href="document://${state.items[1].id}">Open Beta</a></p>`
