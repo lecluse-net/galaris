@@ -1775,13 +1775,22 @@ de l’utilisateur pour les changements actuels.
 
 Les fichiers racine `AGENTS.md`, `INSTALL.md` et `CHANGELOG.md` sont rédigés exclusivement en anglais.
 
-`CHANGELOG.md` commence à la première version effectivement publiée. Avant celle-ci,
-aucune entrée de changements, version anticipée ou reconstitution d’historique n’est ajoutée.
-La première publication y inscrit sa version et sa date réelle. Ensuite, chaque changement
-notable pour les utilisateurs ou administrateurs ajoute une entrée en anglais dans `Unreleased` ;
-ces entrées sont regroupées sous la version et la date lors de sa publication. Décrire les effets
-observables, les incompatibilités et les actions de mise à jour nécessaires, sans recopier le
-journal Git.
+Les versions suivent [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)
+(`MAJOR.MINOR.PATCH`), avec des tags Git sans préfixe `v`, comme `0.3.0`.
+Les versions `0.x.y` correspondent au développement initial, avec une API publique instable.
+Les tags publiés sont immuables ; les anciens tags `0.1` et `0.2` restent des alias de
+compatibilité de `0.1.0` et `0.2.0`.
+
+Mettre à jour `CHANGELOG.md` uniquement sur demande explicite de l’utilisateur, normalement
+avant chaque publication ; ne pas l’alimenter au fil des fonctionnalités, corrections ou
+changements documentaires courants. Relire toute la plage depuis la version précédente pour
+rédiger en anglais des descriptions cohérentes des effets notables pour les utilisateurs et
+administrateurs, sans retouches cosmétiques ni maintenance interne. Suivre
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) : version la plus récente en premier,
+titres de version liés, dates réelles de publication au format `YYYY-MM-DD`, et sections
+applicables `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` et `Security`. Les changements
+préparés restent sous `Unreleased` jusqu’à la publication. Décrire les incompatibilités et
+actions de mise à jour nécessaires sans recopier le journal Git.
 
 Tous les nouveaux messages de commit doivent être rédigés exclusivement en anglais,
 titre et corps compris, afin de faciliter les contributions internationales.

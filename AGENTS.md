@@ -354,13 +354,23 @@ immutable. Consult the `galaris-process-tools` skill.
 ### Documentation maintenance
 
 - Write the root `AGENTS.md`, `INSTALL.md`, and `CHANGELOG.md` files exclusively in English.
-- Maintain `CHANGELOG.md` starting with the first actually published release. Before that
-  release, do not add change entries, an anticipated version, or reconstructed history.
-  At the first release, record its version and actual publication date. From then on,
-  systematically accompany every notable user- or administrator-facing change with an English
-  entry under `Unreleased`, then group these entries under the version and date when it is
-  published. Describe observable effects, incompatibilities, and required upgrade actions
-  without copying the Git log.
+- Follow [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) for releases:
+  `MAJOR.MINOR.PATCH`. Use patch increments for compatible fixes, minor increments for
+  compatible additions, and major increments for incompatible public API changes once stable.
+  Versions `0.x.y` denote initial development with an unstable public API. Git release tags
+  use the version without a `v` prefix, for example `0.1.0`, `0.2.0`, and `0.3.0`.
+  Never move or replace a published tag. Preserve historical `0.1` and `0.2` tags as
+  compatibility aliases of `0.1.0` and `0.2.0`.
+- Update `CHANGELOG.md` only when the user explicitly requests it, normally before each
+  publication. Do not update it incrementally during feature work, fixes, or routine
+  documentation changes. On request, review the full range since the previous release and
+  curate a coherent English description of notable user- and administrator-facing effects;
+  omit cosmetic adjustments and internal maintenance. Follow
+  [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): newest version first, linked
+  version headings, actual publication dates in `YYYY-MM-DD`, and applicable `Added`,
+  `Changed`, `Deprecated`, `Removed`, `Fixed`, and `Security` sections. Keep prepared future
+  changes under `Unreleased` until publication. Describe incompatibilities and required
+  upgrade actions without copying the Git log.
 - Regenerate `docs/fr/architecture/generated/` and `docs/en/architecture/generated/` with
   `make project-context`; do not edit their files by hand.
 - After documentation or navigation changes, update the FR/EN user journeys and run

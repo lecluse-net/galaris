@@ -1724,12 +1724,20 @@ Creating a commit requires an explicit user request for the current changes.
 
 The root `AGENTS.md`, `INSTALL.md`, and `CHANGELOG.md` files are written exclusively in English.
 
-`CHANGELOG.md` starts with the first version actually released. Until then, do not add
-change entries, anticipated versions or reconstructed history. Record the first release's
-version and actual publication date. Afterwards, every notable change for users or
-administrators adds an English entry under `Unreleased`; group these entries under the
-version and date when it is released. Describe observable effects, breaking changes and
-required upgrade actions, without copying the Git log.
+Releases follow [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)
+(`MAJOR.MINOR.PATCH`), with Git tags without a `v` prefix, such as `0.3.0`.
+Versions `0.x.y` denote initial development with an unstable public API. Published tags
+are immutable; historical `0.1` and `0.2` tags remain compatibility aliases of `0.1.0` and `0.2.0`.
+
+Update `CHANGELOG.md` only on an explicit user request, normally before each publication;
+do not update it incrementally during feature work, fixes or routine documentation changes.
+Review the full range since the previous release and curate coherent English descriptions
+of notable effects for users and administrators, excluding cosmetic adjustments and internal
+maintenance. Follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): newest version
+first, linked version headings, actual publication dates in `YYYY-MM-DD`, and applicable
+`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` and `Security` sections. Prepared future
+changes stay under `Unreleased` until publication. Include breaking changes and required
+upgrade actions without copying the Git log.
 
 All new commit messages must be written exclusively in English, including the subject
 and body, to support international contributions.
