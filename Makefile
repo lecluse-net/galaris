@@ -532,6 +532,10 @@ qualify-documents: ## Inventory private documents, run bounded profile trials, o
 		-v "$(CURDIR)/artifacts/document-qualification:/qualification/results" \
 		backend scripts/qualify_documents.py $(ARGS)
 .PHONY: qualify-documents
+
+qualify-document-rag: ## Run bounded real-agent RAG cases on disposable synthetic documents (ARGS)
+	@bash bin/qualify-document-rag.sh $(ARGS)
+.PHONY: qualify-document-rag
 .PHONY: qualify-lab
 
 qualify-matrix: ## Send synthetic text/file to an explicitly authorized Matrix test room (ARGS)

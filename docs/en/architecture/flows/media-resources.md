@@ -256,7 +256,7 @@ and other settings are preserved. Newly created models use the discovered capabi
 No schema change or automatic migration is required.
 
 `PYDANTIC_AI_BINARY_INPUT_MAX_BYTES` bounds the total unique native bytes per run (20,000,000 by
-default), including media staged for specialist fallback. Prepared text is limited to 120,000
+default), including media staged for specialist fallback. Non-document media transcripts are limited to 120,000
 characters per run, prioritizing current messages. Oversized or inaccessible files,
 unavailable fallback and empty analysis carry an explicit notice.
 `image_read`, `audio_read`, `video_read`, `audio_transcribe` and appropriate file
@@ -265,6 +265,49 @@ A URI alone is never treated as already observed content. Automatic STT is skipp
 audio whose format and declared size qualify for native input. Preflight counting reserves an
 approximate 4096 tokens per media item instead of counting base64 as prose; actual consumption
 comes from the provider's reported usage.
+
+PDF, Office and text documents are prepared before admission. The reader locally compares
+their complete text and visual pages against the model's context capacity, after conversation,
+static tools, output and a 20% margin. Unknown capacity uses a 32,000-token fallback.
+A complete document is supplied when it fits; otherwise RAG selects cited passages within
+an input budget shared between files. No LLM decides this routing. Configured embeddings
+complement lexical ranking; failure retains lexical retrieval with a warning. Selected
+passages are not exhaustive evidence. `document_analyze` retains resumable full traversal
+and visual analysis.
+
+`app.llm` owns ranking and `app.file_share` enforces the exact URI's permissions.
+For managed files, `core.storage.file_derivatives` stores a replaceable passage/vector index
+tied to the immutable source and embedding generation. A short independent transaction
+publishes this cache without committing its caller's business changes. Reference retirement
+purges the index in the same transaction. A shared source lock prevents publication after
+deletion; rollback preserves the previous index. Remote files without a storage identity
+and inline gateway inputs use request-local indexes. Preparation workspaces follow source
+retirement through a composition-bound cleanup port. Active conversion is cancelled and
+drained before deletion; short source-locked registration prevents late workspace creation.
+Cleanup callbacks run no SQL. Cache eviction on rollback is rebuildable. Immutable reads
+reuse the manifest after checking access, metadata and the file fingerprint (size, inode,
+device and modification/change timestamps). Changed fingerprints and remote sources require
+fresh materialization. Prepared text stays in RAM only during a read; disk cache is bounded
+by seven days, 2 GiB and 256 entries per agent. See decision 0261.
+
+`file_search` also accepts an exact documentary file URI with `mode="semantic"` or
+`mode="text"`, allowing follow-up questions without attaching the source again.
+One result represents the file and its structured passages (physical page, character
+offsets and text), within a 1,800-token budget before the JSON envelope. Lexical
+search makes no embedding calls and does not replace the vector index. Collection
+searches and Document/Memory/Data body searches retain their existing contracts.
+`file_info` advertises `content_search` for managed documentary files, and automatic
+RAG inputs explain how to query their source URI again. Access is rechecked after
+retrieval; a shared index grants no permission. These paths create no memories.
+Application composition binds the reader port, without a File Sharing business
+dependency on the LLM domain. Removing a current attachment retains its source for
+revisions; deleting the owning Document retires these references and purges its index.
+
+Semantic ranking filters candidates below cosine 0.5; lexical matches remain independently
+eligible. Rank alone is not relevance or answer evidence. A `file_read` base64 result does
+not prove decoded text or exhaustive coverage. Confirmed external deletion retains
+`state=deleted` if extraction cleanup fails, with `indexing_status=failed`, so callers
+are not encouraged to replay the source mutation.
 
 In history, an attachment remains nested in the message that transported it and exposes its URI constructed with the exact Tool code, the room's provider locator, and the file's local UUID. The projection provided to runtimes prefixes the message with its posting timestamp, sender, and human or AI nature; this rule applies to conversational executions, Tasks, and audio-turn history. Messenger and file-share are capabilities and create no schemes. File-only messages are not eliminated by session or runtime projections.
 

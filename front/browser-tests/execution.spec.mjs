@@ -465,7 +465,7 @@ for (const canWrite of [true, false]) {
     await jsonRoute(page, '**/api/documents/keywords?*', [])
     await jsonRoute(page, '**/api/documents/folders?*', [])
     await jsonRoute(page, `**/api/documents/${id}/attachments?*`, [])
-    await mount(page, 'app/task/components/ExecutionMemoryPanel.vue', { privileges: ['MEMORY_EDIT'], props: {
+    await mount(page, 'app/task/components/ExecutionMemoryPanel.vue', { privileges: ['MEMORY_EDIT', 'DOCUMENT_EDIT'], props: {
       agentId: 7, calls: [], context: { enabled: true, query: 'Question', count: 2, retrievedCount: 2,
         truncated: false, memoryIds: [id, 'memory-a'], error: '' },
     } })
@@ -602,7 +602,7 @@ test('LLM detail switches between real editors and normalized terminal response'
 test('task call stream keeps agent process calls, excludes unrelated ownership and handles deletion', async ({ page }) => {
   await jsonRoute(page, '**/api/llm-providers/llms', [])
   await jsonRoute(page, '**/api/llm-calls?task_id=task-a', [])
-  await mount(page, 'app/llm/components/LlmCalls.vue', { props: { taskId: 'task-a' } })
+  await mount(page, 'app/llm/components/LlmCalls.vue', { props: { taskId: 'task-a' }, privileges: ['LLM_CALL_ACCESS'] })
   for (const item of [
     { ...call, id: 'owned', task_id: 'task-a', process_run_id: 'process-a', purpose: 'agent.execution' },
     { ...call, id: 'process', task_id: 'task-a', process_run_id: 'process-a', purpose: 'process.analysis' },
@@ -621,7 +621,7 @@ test('task overview mouse and keyboard filters send mutually exclusive server pa
     requests.push(new URL(route.request().url()).searchParams.toString())
     return route.fulfill({ json: { items: [], total: 0, has_more: false, summary: { running: 2, completed: 3, paused: 1, errors: 1 } } })
   })
-  await mount(page, 'app/task/pages/index.vue', { route: '/task?tab=tasks' })
+  await mount(page, 'app/task/pages/index.vue', { route: '/task?tab=tasks', privileges: ['TASK_ACCESS'] })
   for (const [label, interaction, parameter] of [['Paused', 'click', 'paused_only'], ['Running', 'Enter', 'active'], ['Errors', 'Space', 'errors_only']]) {
     const metric = page.getByRole('button', { name: new RegExp(`^${label}\\b`) })
     if (interaction === 'click') await metric.click()

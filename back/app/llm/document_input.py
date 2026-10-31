@@ -17,6 +17,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from core.document import PreparedDocument, prepare_document, page_images
 from core.util import as_dict, as_list, complete_io
 from .provider_models import LLM
+from .document_budget import document_input_budget, document_tokens
+from .document_rag import retrieve_prepared_document
 
 Send = Callable[[dict[str, Any]], Awaitable[JSONResponse | StreamingResponse]]
 _MAX_INLINE_BYTES = 64 * 1024 * 1024
@@ -28,6 +30,21 @@ def has_documents(body: dict[str, Any]) -> bool:
     return any(as_dict(part).get("type") == "file"
                for message in as_list(body.get("messages"))
                for part in as_list(as_dict(message).get("content")))
+
+
+def _retrieval_query(body: dict[str, Any]) -> str:
+    for raw in reversed(as_list(body.get('messages'))):
+        message = as_dict(raw)
+        if message.get('role') != 'user':
+            continue
+        content = message.get('content')
+        text = content if isinstance(content, str) else '\n'.join(
+            str(as_dict(part).get('text') or '') for part in as_list(content)
+            if as_dict(part).get('type') == 'text')
+        lines = [line for line in text.splitlines() if not line.startswith(('[Document ', '[Native media '))]
+        if query := '\n'.join(lines).strip():
+            return query[-8000:]
+    return ''
 
 
 def _image(path: Path) -> dict[str, Any]:
@@ -112,6 +129,7 @@ def _annotate(response: JSONResponse | StreamingResponse, mode: str, pages: int,
     response.headers["X-Galaris-Document-Batches"] = str(batches)
     response.headers["X-Galaris-Document-Coverage"] = (
         "native-unverified" if mode.startswith("direct") else
+        "retrieved-passages" if mode == "rag" else
         "partial" if mode.endswith("partial") or response.status_code >= 400 else "source-units-supplied")
     response.headers["X-Galaris-Document-Semantic-Verified"] = "false"
     if reason:
@@ -224,6 +242,33 @@ async def _route_documents(body: dict[str, Any], llm: LLM, send: Send) -> JSONRe
                 retained.append({"type": "text", "text": f"[Document {name}; {len(document.pages)} source pages]"})
             as_dict(as_list(stripped["messages"])[message_index])["content"] = retained
         pages = sum(len(document.pages) for document, _ in prepared)
+        input_budget = document_input_budget(llm.context_length, stripped) if mode == 'auto' else 0
+        if mode == "auto" and sum(document_tokens(document, visual=bool(llm.input_image))
+                                   for document, _ in prepared) > input_budget:
+            if input_budget < 256 * len(prepared):
+                return JSONResponse({"error": {"message": "No document retrieval budget remains after conversation, tools and output reserves"}}, status_code=413)
+            request = deepcopy(stripped)
+            query = _retrieval_query(stripped)
+            retrieved_passages = 0
+            for document, directory in prepared:
+                budget = input_budget // len(prepared)
+                if document_tokens(document, visual=bool(llm.input_image)) <= budget:
+                    parts: list[dict[str, Any]] = [{"type": "text", "text": document.text()}]
+                    if llm.input_image:
+                        for page in document.pages:
+                            if image := document.image_path(page, directory):
+                                parts.append(await complete_io(_image, image))
+                else:
+                    try:
+                        selection = await retrieve_prepared_document(document, query, token_budget=budget)
+                    except ValueError:
+                        return JSONResponse({"error": {"message": "Document has no searchable text or exceeds the retrieval budget; use dedicated visual/exhaustive analysis"}}, status_code=422)
+                    parts = [{"type": "text", "text": selection.text}]
+                    retrieved_passages += selection.selected_passages
+                request["messages"].append({"role": "user", "content": parts})
+            response = _annotate(await send(request), "rag", pages, 1, "document-exceeds-available-context")
+            response.headers['X-Galaris-Document-Retrieved-Passages'] = str(retrieved_passages)
+            return response
         reason = ""
         if mode == "auto" and native_possible:
             response = await send(native)

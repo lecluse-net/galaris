@@ -46,6 +46,7 @@ async def attachment_context(committed_database, monkeypatch, tmp_path):
         token = create_access_token({"sub": owner.email, "user_id": owner.id, "role_id": role.id})
         context = {
             "url": f"/api/chat/rooms/{room.id}/attachments",
+            "agent_id": agent.id,
             "room_id": room.id, "connection_id": room.connection_id, "room_external_id": room.external_id,
             "headers": {"Authorization": f"Bearer {token}"}, "uri": source.uri,
             "denied_uri": denied.uri, "root": tmp_path / "chat",
@@ -56,26 +57,41 @@ async def attachment_context(committed_database, monkeypatch, tmp_path):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("references", ["omitted", "empty", "mixed"])
-async def test_multipart_upload_preserves_internal_references_and_uploaded_bytes(attachment_context, references):
+@pytest.mark.parametrize("file_count", [1, 3])
+async def test_multipart_upload_preserves_internal_references_and_uploaded_bytes(attachment_context, references, file_count):
     ctx = attachment_context
     identifier = str(uuid4())
     data = {"client_message_id": identifier, "text": "Synthetic attachments", "language": "en"}
     expected = [ctx["uri"]] if references == "mixed" else []
     if references != "omitted":
         data["resource_uris"] = json.dumps(expected)
+    uploads = [(f"external-{index}.txt", f"Synthetic external attachment {index}".encode(), "text/plain")
+               for index in range(file_count)]
     response = await ctx["client"].post(ctx["url"], headers=ctx["headers"], data=data,
-        files={"files": ("external.txt", b"Synthetic external attachment", "text/plain")})
+        files=[("files", upload) for upload in uploads])
     assert response.status_code == 201, response.text
     message = response.json()
     assert message["resource_uris"] == expected
     assert message["text"] == data["text"]
-    assert len(message["files"]) == 1 and message["files"][0]["name"] == "external.txt"
+    assert [file["name"] for file in message["files"]] == [upload[0] for upload in uploads]
     async with get_db_session() as db:
         stored = await db.get(Message, UUID(message["id"]))
         assert stored is not None and stored.resource_uris == expected
         hydrated = (await journal.hydrate_messages([stored]))[0]
-        assert len(hydrated.files) == 1
-        assert await storage.read_bytes(hydrated.files[0].id) == b"Synthetic external attachment"
+        assert len(hydrated.files) == file_count
+        from app.agent.contracts import TaskMessage
+        from app.agent.conversation_context import message_prompt
+        from app.file_share import resource_read
+
+        current = TaskMessage.from_messenger(hydrated)
+        prompt = message_prompt(current)
+        by_name = {file.name: file for file in current.attachments}
+        for name, content, _mime in uploads:
+            attachment = by_name[name]
+            assert attachment.uri in prompt
+            assert await storage.read_bytes(attachment.id) == content
+            read = await resource_read(ResourceContext(ctx["agent_id"], "internal"), attachment.uri)
+            assert read.content == content.decode()
     reopened = await ctx["client"].get(f'/api/chat/rooms/{ctx["room_id"]}/messages', headers=ctx["headers"])
     assert reopened.status_code == 200, reopened.text
     assert any(item["id"] == message["id"] and item["resource_uris"] == expected

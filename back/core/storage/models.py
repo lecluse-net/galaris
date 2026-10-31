@@ -5,6 +5,8 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import JSONB
+from pydantic import JsonValue
 
 from core.database import Base, HistoryMixin
 
@@ -38,6 +40,20 @@ class FileAlias(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     uri: Mapped[str] = mapped_column(Text, unique=True)
     file_id: Mapped[UUID] = mapped_column(ForeignKey("files.id"), index=True)
+
+
+class StoredFileDerivative(Base):
+    """Rebuildable, bounded projections which share their source file's lifetime."""
+
+    __tablename__ = "file_derivatives"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    file_id: Mapped[UUID] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), index=True)
+    namespace: Mapped[str] = mapped_column(String(80))
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict[str, JsonValue]] = mapped_column(JSONB)
+
+    __table_args__ = (UniqueConstraint("file_id", "namespace"),)
 
 
 class FileStore(Base):

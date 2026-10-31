@@ -19,6 +19,7 @@ from core.util import complete_io
 
 from .resource_contracts import ResourceContext, ResourceDescriptor, ResourceListing
 from .models import ManagedFileOwner
+from .document_search import supports_document_search
 
 
 _DOMAIN_FILE_PREFIXES = ("document://", "data://", "chat://", "galaris://processes/runs/")
@@ -69,11 +70,16 @@ def _can_delete_file(ctx: ResourceContext, file_id: UUID, owner: int | None, ali
 def _descriptor(record: StoredFile, *, can_rename: bool, can_delete: bool = False) -> ResourceDescriptor:
     if record.backend != "disk":
         raise ValueError("Unsupported managed file storage backend")
-    return ResourceDescriptor(
+    descriptor = ResourceDescriptor(
         uri=f"file://{record.id}", name=record.name, media_type=record.media_type,
         size=record.size_bytes, checksum=record.sha256, capabilities=["info", "read", "copy", *(["delete"] if can_delete else [])],
         metadata={"can_rename": can_rename},
     )
+    if supports_document_search(descriptor):
+        descriptor.capabilities.append('search')
+        descriptor.metadata['content_search'] = {'tool': 'file_search', 'uri': descriptor.uri,
+            'modes': ['text', 'semantic'], 'exhaustive': False}
+    return descriptor
 
 
 async def managed_file_info(ctx: ResourceContext, file_id: UUID) -> ResourceDescriptor:

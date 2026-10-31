@@ -2,6 +2,48 @@
 
 # Explorer les fichiers d’un agent
 
+## Documents volumineux transmis à un agent
+
+En mode automatique, Galaris estime localement la place du document dans le contexte
+du modèle choisi, en tenant compte de la conversation, des outils et de la réponse
+à produire. Un document qui tient est fourni intégralement ; sinon, Galaris utilise
+le RAG : il recherche dans le texte extrait et fournit des passages avec leurs pages
+et positions. Le choix ne demande aucun appel à un LLM. Si la capacité du modèle
+est inconnue, une limite prudente de 32 000 tokens est utilisée.
+
+La recherche combine mots et embeddings quand le modèle d'embedding est configuré.
+Sans embeddings disponibles, elle fonctionne par mots et indique cette limite.
+Les passages sélectionnés ne constituent pas une lecture exhaustive : pour analyser
+toutes les pages ou leurs figures, demandez une analyse complète avec
+`document_analyze`. Les pages sans texte extractible sont signalées.
+
+L'agent peut ensuite poser d'autres questions sur le même fichier avec
+`file_search(uri="file://…", query="question précise", mode="semantic")`, ou utiliser
+l'URI exacte d'une pièce jointe documentaire ou d'un fichier distant lisible.
+Chaque question vérifie les droits courants et réutilise l'index disponible pour
+fournir une sélection de passages avec leurs pages et positions. `mode="text"`
+recherche par mots sans appel d'embedding. Les métadonnées des fichiers documentaires
+gérés indiquent cette capacité à l'agent. Ces recherches ne créent ni souvenir personnel
+ni copie du fichier dans la mémoire Galaris.
+
+L'index RAG d'un fichier téléversé géré par Galaris suit ses droits et sa durée de vie.
+Supprimer le fichier purge ses passages indexés et ses vecteurs ; une indexation
+encore en cours ne peut pas les recréer après suppression. Retirer une référence
+purge aussi ce cache ; une autre référence encore autorisée peut le reconstruire.
+Les fichiers distants et les données de fichier envoyées directement à la passerelle
+sans identité de stockage Galaris utilisent un index limité à la requête.
+
+Les extractions temporaires suivent aussi la suppression de la source ; une conversion
+en cours est interrompue avant leur effacement. Pour les fichiers immuables gérés,
+les questions suivantes réutilisent la préparation sans relire tous les octets, après
+vérification des droits et de l'identité du fichier. Les sources distantes sans identité
+immuable restent relues pour éviter de servir un ancien contenu.
+
+Un passage sémantiquement trop éloigné n'est pas retenu. Un résultat reste une preuve
+à interpréter dans son contexte : ne rien retrouver ne prouve pas que l'information
+est absente du document. Recevoir des octets PDF en base64 ne prouve pas une lecture
+du texte ou de toutes les pages.
+
 L’accès à **Fichiers** utilise `FILE_ACCESS` ou `FILE_EDIT`. Le second autorise aussi les
 mutations de fichiers. Les Documents, Datasets et souvenirs conservent leurs propres droits :
 un droit Fichiers ne les ouvre pas, et lire une pièce jointe depuis son domaine ne demande

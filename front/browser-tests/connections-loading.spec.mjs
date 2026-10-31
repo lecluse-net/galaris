@@ -8,6 +8,7 @@ for (const width of [390, 1440]) {
     const tool = { id: 8, code: 'synthetic_connector', label: 'Synthetic connector', can_disable: true, can_edit: true,
       connection_schema: { params: { host: { type: 'string', label: 'Service host', required: false }, token: { type: 'password', label: 'Token', required: false } } }, global_params: {} }
     await jsonRoute(page, '**/api/tools', [tool])
+    await jsonRoute(page, '**/api/connections/tool-options', [tool])
     await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
     for (const endpoint of ['mail/approvers', 'file-share/bridges', 'messenger/bridges']) {
       await jsonRoute(page, `**/api/${endpoint}`, [])
@@ -38,7 +39,7 @@ for (const width of [390, 1440]) {
     })
     await mount(page, 'app/tools/pages/index.vue', {
       route: '/tools?tab=connections',
-      privileges: ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL'],
+      privileges: ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL', 'PERMISSION_ACCESS'],
     })
     const rows = page.locator(width < 1024 ? '.connection-mobile-card' : '.connection-table tbody tr')
     await expect(rows).toContainText('initial.example.test')
@@ -70,6 +71,34 @@ for (const width of [390, 1440]) {
     await expect(dialog).toHaveCount(0)
     await expect(rows).toContainText('saved.example.test')
     expect(params.token).toBeNull()
+    await expect(page.getByRole('link', { name: 'Scopes and permissions', exact: true })).toHaveAttribute('href', '/permissions')
+    let refreshes = 0
+    await page.route('**/api/connections/refresh-tools', route => {
+      refreshes++
+      if (refreshes === 1) return route.fulfill({ status: 503, json: { detail: 'Synthetic catalogue failure' } })
+      const partial = refreshes === 2
+      return route.fulfill({ json: { complete: !partial, created: 0, agents_scanned: 2,
+        agents_refreshed: partial ? 1 : 2, agent_failures: partial ? 1 : 0, source_failures: 0,
+        tools_discovered: 7, documents_indexed: 7, embeddings_refreshed: 0, documents_pruned: 0,
+        semantic_available: true, degradation_reason: null } })
+    })
+    const refresh = page.getByRole('button', { name: /Create missing internal connections/ })
+    await refresh.click()
+    const failure = page.getByRole('alert').filter({ hasText: 'Error while refreshing connections and tool catalogs' })
+    await expect(failure).toBeVisible()
+    await expect(rows).toContainText('saved.example.test')
+    await failure.getByRole('button', { name: 'Retry', exact: true }).press('Enter')
+    await expect(failure).toHaveCount(0)
+    await expect(page.getByRole('status').filter({ hasText: 'Partial refresh: 1/2' })).toBeVisible()
+    await refresh.click()
+    await expect(page.getByRole('status').filter({ hasText: 'Refresh complete:' })).toContainText('7 tool(s) discovered')
+    expect(refreshes).toBe(3)
+    await page.getByRole('combobox', { name: 'Filter by agent', exact: true }).click()
+    await page.getByRole('option', { name: 'Alice Example', exact: true }).click()
+    await expect(page.getByRole('link', { name: 'Scopes and permissions', exact: true })).toHaveAttribute('href', '/permissions?agent_id=7')
+    await expect(page.locator('.q-notification')).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath('connections-loaded.png'), fullPage: true, animations: 'disabled' })
+    await page.evaluate(() => window.testApp.dark(true))
+    await page.screenshot({ path: testInfo.outputPath('connections-loaded-dark.png'), fullPage: true, animations: 'disabled' })
   })
 }

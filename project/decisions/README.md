@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0261 — Capacity-routed, source-owned document retrieval](0261-capacity-routed-source-owned-document-rag.md)
+
 - [0260 — Yield peer requests at a safe tool boundary](0260-peer-wait-at-tool-boundary.md)
 
 - [0259 — ChatGPT Fast model variants](0259-chatgpt-fast-model-variants.md)

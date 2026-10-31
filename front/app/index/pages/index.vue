@@ -1,32 +1,33 @@
 <template>
     <HomePublic v-if="!authStore.isAuthenticated" />
-    <q-page v-else-if="onboardingStore.loading" class="home-loading">
+    <q-page v-else-if="onboardingStore.loading || (!helpStore.ready && !helpStore.loadError)" class="home-loading">
       <q-spinner-orbit color="primary" size="56px" />
       <div class="text-subtitle1">{{ t('onboarding.loading') }}</div>
     </q-page>
-    <WelcomePage v-else-if="!onboardingStore.error && onboardingStore.needsInitialSetup" />
+    <WelcomePage v-else-if="onboardingStore.needsInitialSetup || !helpStore.dismissed.includes(WELCOME_DISMISSAL_KEY)" />
     <HomeActionCenter v-else />
 </template>
 
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAuthStore } from '@/core/user'
-import { useOnboardingStore, WelcomePage } from '@/app/onboarding'
+import { useAuthStore, useHelpStore } from '@/core/user'
+import { useOnboardingStore, WelcomePage, WELCOME_DISMISSAL_KEY } from '@/app/onboarding'
 import HomeActionCenter from '../components/HomeActionCenter.vue'
 import HomePublic from '../components/HomePublic.vue'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
+const helpStore = useHelpStore()
 
 watch(
-  () => authStore.isAuthenticated,
-  (isAuthenticated) => {
-    if (isAuthenticated) {
+  () => authStore.isAuthenticated ? authStore.user?.id : null,
+  (accountId) => {
+    onboardingStore.clearState()
+    if (accountId != null) {
       void onboardingStore.fetchOverview()
-    } else {
-      onboardingStore.clearState()
+      void helpStore.load()
     }
   },
   { immediate: true },

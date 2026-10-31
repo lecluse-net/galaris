@@ -311,8 +311,8 @@ sont pas actualisés par cette action. Les modèles créés ensuite utilisent di
 capacités découvertes. Aucun changement de schéma ni migration automatique n'est nécessaire.
 
 `PYDANTIC_AI_BINARY_INPUT_MAX_BYTES` borne le total des octets natifs uniques préparés pour un run
-(20 000 000 par défaut), y compris les médias préparés pour un repli spécialisé. Le texte préparé
-est limité à 120 000 caractères par run. La priorité va aux messages courants. Un dépassement,
+(20 000 000 par défaut), y compris les médias préparés pour un repli spécialisé. Les transcriptions
+des médias hors documents sont limitées à 120 000 caractères par run. La priorité va aux messages courants. Un dépassement,
 un repli indisponible ou une analyse vide produit un avis explicite dans le contexte ;
 l'agent peut appeler `image_read`, `audio_read`,
 `video_read`, `audio_transcribe` ou un lecteur adapté. Ces outils restent disponibles et gardent
@@ -321,6 +321,53 @@ comme du contenu déjà vu. La transcription automatique n'est évitée que pour
 format et la taille annoncée permettent l'entrée native. Le comptage préalable ne traite pas le
 base64 comme du texte : il réserve approximativement 4096 tokens par média ; seuls les usages
 renvoyés par le fournisseur font foi pour la consommation réelle.
+
+Les PDF et documents bureautiques ou texte sont préparés avant admission. Le lecteur compare
+localement leur texte complet et leurs pages visuelles à la capacité de contexte du modèle,
+moins conversation, outils statiques, réponse et marge de 20 %. Sans capacité connue, le
+repli est de 32 000 tokens. Le document complet est fourni s'il tient ; sinon le lecteur RAG
+sélectionne des passages cités dans un budget partagé entre les fichiers. Aucun LLM ne décide
+du routage. Les embeddings configurés complètent le classement lexical ; une panne conserve
+la recherche lexicale avec un avertissement. Les passages ne prouvent aucune lecture exhaustive.
+`document_analyze` conserve le parcours complet reprenable et le traitement visuel.
+
+`app.llm` possède le classement et `app.file_share` applique les droits de l'URI exacte.
+Pour les fichiers gérés, `core.storage.file_derivatives` conserve un index remplaçable de
+passages et vecteurs, lié au fichier immuable et à la génération d'embedding. Une transaction
+courte indépendante publie ce cache sans valider les mutations métier de l'appelant.
+Retirer une référence purge l'index dans la même transaction. Le verrou partagé sur la source
+empêche une publication tardive après suppression ; un rollback conserve l'index précédent.
+Les fichiers distants sans identité de stockage et les entrées inline de la passerelle utilisent
+un index limité à la requête. Les espaces temporaires de préparation sont aussi invalidés
+à la retraite de leur fichier source par un port de nettoyage enregistré à la composition.
+Une conversion active est annulée et drainée avant effacement ; l'enregistrement court d'un
+nouvel espace prend le verrou de la source pour empêcher une création tardive. Les callbacks
+de nettoyage n'exécutent aucune requête SQL. Une éviction sur rollback est reconstruisible.
+Les lectures immuables réutilisent le manifeste après vérification des droits, métadonnées
+et empreinte de fichier (taille, inode, périphérique et horodatages de modification/changement).
+Une empreinte différente ou une source distante impose une nouvelle matérialisation.
+Le texte préparé n'est conservé en RAM que pendant une lecture ; le cache disque est borné
+à sept jours, 2 Gio et 256 entrées par agent. Voir la décision 0261.
+
+`file_search` accepte aussi une URI exacte de fichier documentaire avec `mode="semantic"`
+ou `mode="text"`. Ce parcours permet des questions successives sans nouvelle pièce jointe.
+Un résultat représente le fichier et ses passages structurés (page physique, offsets en
+caractères, texte) dans un budget de 1 800 tokens avant l'enveloppe JSON. La recherche
+lexicale ne fait aucun appel d'embedding et ne remplace pas l'index vectoriel. Les recherches
+de collections et des corps Document/Memory/Data conservent leurs contrats existants.
+`file_info` annonce `content_search` pour les fichiers documentaires gérés, et les entrées
+RAG automatiques indiquent comment réinterroger leur URI. Les droits sont revérifiés après
+la recherche ; l'index partagé ne confère aucun accès. Ces parcours ne créent aucun souvenir.
+Le lecteur est fourni par un port enregistré dans la composition de l'application,
+sans dépendance du métier File Sharing vers le domaine LLM. Retirer une pièce jointe
+de la version courante conserve sa source pour les révisions ; la suppression du Document
+propriétaire retire ces références et purge aussi son index.
+
+Le classement sémantique filtre les candidats de cosinus inférieur à 0,5 ; les correspondances
+lexicales restent indépendantes. Un rang ne constitue pas une preuve de pertinence ou de réponse.
+Le retour base64 de `file_read` ne prouve pas un texte décodé ni une couverture exhaustive.
+Une suppression externe confirmée reste `state=deleted` si le nettoyage d'extraction échoue,
+avec `indexing_status=failed`, afin de ne pas inciter à rejouer la mutation.
 
 Dans l'historique, une pièce jointe reste imbriquée dans le message qui l'a transportée et expose
 son URI construite avec le code exact du Tool, le locator provider de la room et l'UUID local du

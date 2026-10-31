@@ -339,8 +339,14 @@ register_process_human_messenger(ProcessHumanMessenger())
 from app.document import register_document
 register_document()
 from app.contact.facade import read_contact_resource, list_contact_resources, write_contact_resource
-from app.file_share import register_contact_resource_provider
+from app.file_share import register_contact_resource_provider, register_document_retriever
+from app.llm.facade import retrieve_prepared_document
 register_contact_resource_provider(read_contact_resource, list_contact_resources, write_contact_resource)
+# File Sharing owns source access; the LLM domain supplies its document reader.
+register_document_retriever(retrieve_prepared_document)
+from core.storage import register_file_derivative_cleanup
+from app.file_share import purge_prepared_files
+register_file_derivative_cleanup(purge_prepared_files)
 from app.memory import register_memory
 register_memory()
 from app.agent import register_default_agent

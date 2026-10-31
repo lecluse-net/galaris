@@ -22,8 +22,10 @@ async def route_response_documents(body: dict[str, Any], llm: LLM, send: Send) -
     for raw in as_list(body.get("input")):
         item = as_dict(raw)
         if not item.get("role"):
-            # Tool/reasoning items have stateful semantics. Do not transform them.
-            return await send(body)
+            # Keep stateful tool/reasoning items opaque and in their exact position.
+            # They still count against input capacity but are never rewritten.
+            messages.append({'role': 'assistant', 'content': [], '_galaris_response_item': deepcopy(item)})
+            continue
         content = item.get("content")
         if isinstance(content, str):
             messages.append({"role": item["role"], "content": content})
@@ -51,6 +53,9 @@ async def route_response_documents(body: dict[str, Any], llm: LLM, send: Send) -
         inputs: list[dict[str, Any]] = []
         for message in as_list(payload.get("messages")):
             item = as_dict(message)
+            if '_galaris_response_item' in item:
+                inputs.append(as_dict(item['_galaris_response_item']))
+                continue
             content = item.get("content")
             if isinstance(content, str):
                 inputs.append({"role": item["role"], "content": content})

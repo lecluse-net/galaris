@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { selectOption } from '../select-option.mjs'
 
 test('Welcome keeps the first mission and its saved document available on desktop and mobile', async ({ page, request }) => {
   const errors = collectPageErrors(page)
@@ -16,8 +17,10 @@ test('Welcome keeps the first mission and its saved document available on deskto
   expect((await request.put('/api/params/DEFAULT_LANGUAGE', { headers, data: { value: 'fr' } })).ok()).toBeTruthy()
   await errors.settle()
   await page.goto('/welcome')
-  await page.getByRole('combobox', { name: 'Agent', exact: true }).click()
-  await page.getByRole('option', { name: new RegExp(`Browser.*${fixture.email.slice(4, fixture.email.indexOf('@'))}`) }).click()
+  const agentResponse = await request.get(`/api/agents/${fixture.agent_id}`, { headers })
+  expect(agentResponse.ok()).toBeTruthy()
+  const agent = await agentResponse.json()
+  await selectOption(page, page.getByRole('combobox', { name: 'Agent', exact: true }), `${agent.first_name} ${agent.last_name}`)
   const prompt = page.getByRole('textbox', { name: 'Demande à confier', exact: true })
   await prompt.fill(`@exec @standard ${await prompt.inputValue()}`)
   await page.getByRole('button', { name: 'Lancer la mission', exact: true }).click()
@@ -33,6 +36,8 @@ test('Welcome keeps the first mission and its saved document available on deskto
   await expect(page.locator('[data-editor-surface]')).toContainText('The venue is booked.')
   await errors.settle()
   await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Bienvenue sur Galaris' })).toBeVisible()
+  await page.getByRole('button', { name: 'Configuration terminée — ouvrir l’accueil', exact: true }).click()
   await expect(page.locator('.home-page')).toBeVisible()
   await page.setViewportSize({ width: 390, height: 1000 })
   await errors.settle()

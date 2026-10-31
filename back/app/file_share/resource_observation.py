@@ -93,6 +93,18 @@ def observe_operation(function: Callable[P, Awaitable[T]]) -> Callable[P, Awaita
                     # No URI, content or credentials in diagnostic output.
                     logger.warning("File catalogue preparation failed: {}", type(error).__name__)
             result = await function(*args, **kwargs)
+            try:
+                if isinstance(result, ResourceMutation) and result.operation == 'delete':
+                    from .document_facade import purge_prepared_uri
+                    await purge_prepared_uri(ctx.agent_id, result.uri)
+                elif isinstance(result, ResourceTransfer) and result.moved:
+                    from .document_facade import purge_prepared_uri
+                    await purge_prepared_uri(ctx.agent_id, result.source_uri)
+            except OSError:
+                # The provider effect is confirmed. Preserve that result and
+                # report failed derived-data cleanup instead of inviting replay.
+                failed = True
+                logger.error('File removal confirmed; document extraction cleanup failed')
             if scopes:
                 repairs: list[FileObservationRepair] = []
                 try:

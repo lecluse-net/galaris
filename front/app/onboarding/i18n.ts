@@ -54,7 +54,9 @@ export default {
       },
       ready: {
         title: 'Votre instance est prête',
-        description: 'Un LLM et un agent sont disponibles. Votre accueil vous indiquera désormais les actions qui demandent votre attention.',
+        loadError: 'Impossible de vérifier votre confirmation de configuration. Réessayez.',
+        saveError: 'Votre confirmation n’a pas pu être enregistrée. Réessayez.',
+        description: 'Un LLM et un agent sont disponibles. Confirmez que la configuration vous convient pour ne plus afficher cette page à l’accueil. Vous pourrez la rouvrir à l’adresse /welcome.',
       },
       authentication: {
         title: 'Connectez-vous pour configurer Galaris',
@@ -70,7 +72,7 @@ export default {
         refresh: 'Vérifier à nouveau',
         previous: 'Étape précédente',
         next: 'Étape suivante',
-        home: 'Ouvrir l’accueil',
+        home: 'Configuration terminée — ouvrir l’accueil',
       },
       steps: {
         language: {
@@ -160,7 +162,9 @@ export default {
       },
       ready: {
         title: 'Your instance is ready',
-        description: 'An LLM and an agent are available. Your home page will now highlight anything that needs your attention.',
+        loadError: 'Unable to check your setup confirmation. Try again.',
+        saveError: 'Your confirmation was not saved. Try again.',
+        description: 'An LLM and an agent are available. Confirm that setup is complete to stop showing this page at home. You can reopen it at /welcome.',
       },
       authentication: {
         title: 'Sign in to configure Galaris',
@@ -176,7 +180,7 @@ export default {
         refresh: 'Check again',
         previous: 'Previous step',
         next: 'Next step',
-        home: 'Open home',
+        home: 'Setup complete — open home',
       },
       steps: {
         language: {
@@ -249,10 +253,10 @@ export default {
       required: '必需', optional: '建议', tipsTitle: '需要准备的内容', permissionRequired: '您的账户没有完成此步骤所需的权限。请让管理员进行配置。',
       summary: { title: '设置流程', description: '您可以随时通过 /welcome 地址返回此页面。' },
       status: { configured: '已配置', required: '需要设置', recommended: '建议', restricted: '需要权限' },
-      ready: { title: '您的实例已就绪', description: 'LLM 和智能体均已可用。主页现在会突出显示需要您关注的事项。' },
+      ready: { title: '您的实例已就绪', description: 'LLM 和智能体均已可用。确认配置完成后，主页将不再显示此页面。您仍可通过 /welcome 重新打开它。', loadError: '无法检查您的配置确认。请重试。', saveError: '您的确认未能保存。请重试。' },
       authentication: { title: '登录以配置 Galaris', description: '只有已登录用户才能查看配置状态和执行设置操作。', action: '登录' },
       error: { title: '无法检查配置', description: 'Galaris 无法读取实例状态。请稍后重试。' },
-      actions: { retry: '重试', refresh: '重新检查', previous: '上一步', next: '下一步', home: '打开主页' },
+      actions: { retry: '重试', refresh: '重新检查', previous: '上一步', next: '下一步', home: '配置完成 — 打开主页' },
       steps: {
         language: {
           title: '默认语言',

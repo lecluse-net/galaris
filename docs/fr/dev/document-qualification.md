@@ -10,8 +10,11 @@ le texte simple et les images sont également acceptés. Un format impossible à
 convertir échoue explicitement. L'OCR reste une aide à vérifier contre le rendu.
 
 Les passerelles Chat et Responses acceptent `galaris_document_mode` : `auto`, `direct` ou `prepared`.
-En automatique, un modèle capable de lire un PDF reçoit le fichier et sa couverture
-si les images sont acceptées ; sinon il reçoit la préparation. Le repli concerne
+En automatique, le texte extrait est comparé au budget de contexte disponible, sans appel
+de classification au LLM. Au-delà du budget, le modèle reçoit des passages RAG bornés.
+Si le contenu tient dans le contexte, un modèle capable de lire un PDF reçoit le fichier
+et sa couverture si les images sont acceptées ; sinon il reçoit la préparation.
+Le mode `prepared` reste disponible pour une analyse explicite par lots. Le repli concerne
 les refus documentaires et les réponses structurées qui signalent une lecture
 incomplète. Une réponse libre apparemment valide ne prouve pas une lecture correcte.
 Les flux ouverts et les appels d'outils ne sont pas rejoués.
@@ -31,6 +34,33 @@ Les outils ne sont pas acceptés dans une consolidation multi-lots. Les en-tête
 Le nombre de pages source ne prouve pas que le modèle a correctement lu chaque page.
 
 ## Protocole reproductible
+
+### Parcours RAG avec un agent et un modèle réels
+
+En développement, `make qualify-document-rag` utilise le modèle de conversation configuré,
+les vrais outils MCP de lecture et un provider de fichiers temporaire isolé. Le corpus est
+entièrement synthétique : deux PDF de 20 pages, dont une dernière page scannée, questions
+sur la fin d'un fichier, plusieurs fichiers et une information absente. Aucun Agent, Task,
+Document ou souvenir n'est créé ; seules les traces techniques des appels réels sont enregistrées.
+
+```bash
+make qualify-document-rag
+make qualify-document-rag ARGS='--embedding-code my-embedding-model --cases tail scan multiple missing'
+```
+
+Le code d'embedding optionnel sélectionne une ressource déjà configurée pour cette mesure,
+sans modifier le profil partagé. Chaque cas est borné à six requêtes modèle, huit appels
+d'outils, 1 600 tokens de sortie par requête et 180 secondes ; chaque cas ne peut apparaître
+qu'une fois. Le rapport sous `artifacts/document-rag-qualification/` contient les reçus MCP,
+les réponses, les tokens et les durées. Le contrôle compare les valeurs et unités au référentiel
+indépendant et vérifie les citations de pages/positions contre les passages réellement
+retournés, y compris une sous-plage contenant la valeur citée. Des octets base64 ne prouvent
+pas une lecture complète. Le transport isolé ne
+qualifie ni le scheduler, ni les ACL d'un connecteur réel, ni un runtime externe ; leurs
+garanties restent couvertes séparément. Une panne, un rapport absent ou un cas échoué
+produit une sortie non nulle.
+
+### Corpus documentaire et essais par profil
 
 Les sources privées restent dans `refs/` et les rapports dans `artifacts/`.
 Une suite de questions doit être vérifiée indépendamment des réponses du modèle :

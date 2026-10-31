@@ -9,8 +9,11 @@ Markdown, HTML and EPUB; plain text and images are also supported. Unsupported o
 failed conversions produce explicit failures. OCR must be checked against the image.
 
 The Chat and Responses gateways accept `galaris_document_mode`: `auto`, `direct` or `prepared`.
-Automatic mode sends a compatible PDF to a file-capable model with its rendered cover
-when images are supported; other inputs use preparation. Document refusals and
+Automatic mode compares extracted text against the available context budget without
+an LLM classification call. Over-budget content supplies bounded RAG passages. When
+content fits, a compatible PDF goes to a file-capable model with its rendered cover
+when images are supported; other inputs use preparation. The `prepared` mode remains
+available for explicit batched analysis. Document refusals and
 structured answers reporting incomplete reading may trigger fallback. Apparently
 valid free-form output does not prove correct reading. Open streams and tool effects
 are never automatically replayed.
@@ -28,6 +31,32 @@ does not accept tools. `X-Galaris-Document-*` headers describe mode, source page
 batches, calls and fallback reason. Source page counts do not prove semantic coverage.
 
 ## Reproducible protocol
+
+### RAG journeys with a real agent and model
+
+In development, `make qualify-document-rag` uses the configured conversation model,
+real MCP read functions and an isolated temporary filesystem provider. The corpus is
+entirely synthetic: two 20-page PDFs, including a scanned final page, questions about
+the tail, multiple files and an absent fact. No Agent, Task, Document or memory is
+created; only technical traces of real model calls are recorded.
+
+```bash
+make qualify-document-rag
+make qualify-document-rag ARGS='--embedding-code my-embedding-model --cases tail scan multiple missing'
+```
+
+The optional embedding code selects an already configured resource for this measurement
+without changing the shared profile. Each case is bounded by six model requests, eight
+tool calls, 1,600 output tokens per request and 180 seconds, and can appear only once.
+The report under `artifacts/document-rag-qualification/` retains MCP receipts, answers,
+tokens and durations. Independent references check values and units, while page and
+character citations must match actually returned passages, including a contained range
+that holds the cited value. Base64 bytes do not
+prove complete reading. This isolated transport qualifies neither the scheduler nor
+real connector ACLs or external runtimes; those guarantees have separate coverage.
+A failed case, missing report or provider failure returns a nonzero exit status.
+
+### Document corpus and profile trials
 
 Keep private sources under `refs/` and reports under `artifacts/`. Independently
 review the question suite before evaluating model answers: visual titles, exact

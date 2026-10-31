@@ -16,7 +16,7 @@ test('LLM trace deltas preserve context, recover one missing batch and ignore la
     await new Promise(resolve => { release = resolve })
     await route.fulfill({ json: { ...call, response_text: 'Recovered🙂漢字', updated_at: '2026-01-01T12:00:00.000004Z' } })
   })
-  await mount(page, 'app/llm/components/LlmCalls.vue', { props: { taskId: 'synthetic-task' } })
+  await mount(page, 'app/llm/components/LlmCalls.vue', { props: { taskId: 'synthetic-task' }, privileges: ['LLM_CALL_ACCESS'] })
   const preview = page.getByRole('button', { name: 'Expand', exact: true })
   await expect(preview).toContainText('Initial🙂')
   const emit = data => page.evaluate(data => window.testApp.emitSocket('llm_call.progress', { data }), data)

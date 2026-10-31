@@ -12,6 +12,10 @@ Planned for **0.3.0**; includes changes since 0.2.0.
 
 ### Added
 
+- **Document retrieval:** automatically select bounded, cited RAG passages when
+  document inputs exceed the model's available context. Agents can search authorized
+  files again through `file_search`; retrieval creates no personal memories. Source
+  deletion purges derived indexes and temporary preparations, including active builds.
 - **Document import and copying:** create independent Text or Data documents from
   HTML, Markdown, text and JSON files, or copy an existing document with its images
   and attachments.
@@ -35,6 +39,11 @@ Planned for **0.3.0**; includes changes since 0.2.0.
 
 ### Changed
 
+- **Welcome:** keep the setup journey as each user's home page until they explicitly
+  confirm completion, including on preconfigured instances. The Galaris logo returns
+  to the journey while setup is pending.
+- **Connections:** expose agent permissions directly and retain tool-catalogue refresh
+  results, with retry after failures without losing the connection list.
 - **One document library:** Text and Data documents now live together in
   **Knowledge → Documents**, with type filters, folders, sharing and content history.
   Existing Dataset links and `data://` references remain usable. Shared folders can

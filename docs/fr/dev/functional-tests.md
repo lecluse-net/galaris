@@ -27,6 +27,34 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+## RAG documentaire selon la capacité et purge du fichier
+
+`app/llm/tests/test_document_rag.py` couvre le choix local direct/RAG selon le contexte,
+la conversation, les outils et la réserve de sortie, les preuves en fin de fichier,
+les citations bornées, la réutilisation des embeddings et la reconstruction d'un
+index incomplet. Les parcours Chat et Responses conservent le protocole et les outils.
+`app/file_share/tests/test_document_rag.py` utilise un vrai téléversement et deux agents :
+passages recherchés, réouverture sans réindexation, refus d'accès, même source fournie
+intégralement à un modèle plus grand, purge SQL à la suppression et suppression pendant
+l'appel d'embedding. `core/storage/tests/test_derivatives.py` vérifie le rollback et
+la publication tardive avec des transactions réellement indépendantes. Les limites
+de requêtes de suppression en lot restent couvertes par `test_lifecycle.py`.
+
+Le même scénario File Sharing exerce `file_search` MCP dans les contextes internal et
+Hermes : deux questions sur une source, index réutilisé, pages et offsets exacts,
+recherche lexicale sans embeddings, refus d'accès et aucune création de MemoryItem
+ou révision. Une pièce jointe documentaire partagée réutilise son index entre agents,
+puis refuse le lecteur après révocation du partage.
+
+`app/file_share/tests/test_document_preparation.py` couvre la réutilisation immuable mesurée,
+le refus d'accès au cache, la purge, l'interruption d'une conversion à la suppression et
+l'échec explicite du nettoyage après une suppression externe confirmée. Les analyses
+reprenables, les changements de lecteur et les changements de source restent couverts par
+`tests/test_document_analysis.py`. `tests/test_document_rag_qualification.py` vérifie que
+le contrôle de qualification refuse faits/citations fabriqués et affirmations de lecture
+complète fondées sur du base64. `make qualify-document-rag` exécute les cas avec un vrai
+modèle sur des sources synthétiques, sans entrer dans le scheduler ni créer de souvenir.
+
 ## Renommer les Documents et Datasets par un agent
 
 Le renommage agentique des titres est couvert par
@@ -1022,8 +1050,9 @@ miniature en mobile et desktop. Le scénario « internal image attachments » de
 une image locale dans le même message, et leurs cartes après rechargement.
 `test_native_resources.py` couvre les droits de publication ;
 `test_native_facade.py` conserve la séparation texte/références dans le journal et le runtime.
-`app/chat/tests/test_attachment_http.py` traverse le véritable endpoint multipart : fichier
-uploadé seul, liste interne vide ou mélange avec une URI interne, persistance et relecture.
+`app/chat/tests/test_attachment_http.py` traverse le véritable endpoint multipart : un ou trois TXT
+dans un même envoi, liste interne vide ou mélange avec une URI interne, persistance et relecture.
+Chaque fichier reste référencé dans le prompt agentique et lisible par la façade de fichiers.
 Les références mal formées, non textuelles, trop nombreuses ou inaccessibles sont refusées
 avant stockage de l'upload et publication. Ce niveau HTTP couvre le décodage du formulaire,
 qui n'était pas exercé par les appels Python directs des tests précédents.
@@ -1936,8 +1965,14 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | MCP Lab | Piloter les dix contrats avec le catalogue réel ; conserver les effets et reçus atomiques, les révisions, les autorisations courantes et la pagination ; publier une génération une seule fois, comparer les traitements et distinguer les avis d'agents ; attribuer et retirer la compétence dédiée | `app/lab/tests/test_mcp.py`, `app/skill/tests/test_storage.py`, `lab-insights.spec.mjs` |
 | `incident` | Regrouper les échecs, diagnostiquer/résoudre selon les droits, conserver la preuve du correctif | `test_incident_service.py`, `test_router.py`, `test_retention.py`, `lab-access.spec.mjs`, `e2e/specs/incident.spec.mjs` |
 | `dashboard` / frontend `index` | Montrer les indicateurs du périmètre autorisé avec des agrégations bornées ; réutiliser les mois consultés, actualiser et invalider le cache au changement de droits | `test_dashboard_service.py`, `dashboardStore.test.mjs`, `dashboard.spec.mjs`, `shell.spec.mjs`, `preferences.spec.mjs` |
-| `onboarding` | Initialiser l’application sans écraser une configuration existante | `test_services.py` |
+| `onboarding` | Initialiser sans écraser la configuration ; conserver Welcome même préconfigurée jusqu’à confirmation personnelle persistée ; erreurs, relance, changement de compte, mobile et réouverture | `test_services.py`, `front/browser-tests/onboarding.spec.mjs`, `e2e/specs/onboarding.spec.mjs` |
 | `webhook` | Authentifier et identifier une livraison entrante sans admettre deux fois le même événement | `test_router.py`, `test_delivery_identity.py` |
+
+`test_scheduler.py` vérifie l’admission d’une nouvelle tâche du harnais interne avec une ou
+quatre tâches déjà actives du même agent ; le harnais externe conserve sa limite distincte.
+`tests/test_document_pipeline.py` vérifie que le contexte d’un PDF de vingt pages contient la
+dernière page et indique la couverture visuelle manquante avec la voie d’analyse reprenable.
+Ces vérifications ne prouvent pas la compréhension sémantique de chaque page par un modèle réel.
 
 ### Sélection et création de sujets
 

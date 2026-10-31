@@ -22,6 +22,32 @@ saved content without coordinates or rendering DOM, reading, editing, revocation
 denial and access rechecks before export. The single-card read API also verifies denied
 Contacts access and managed Agent scope in the HTTP journey.
 
+## Capacity-routed document RAG and file deletion
+
+`app/llm/tests/test_document_rag.py` covers local direct/RAG admission against model
+context, conversation, tools and output reserve, tail evidence, bounded citations,
+embedding reuse and incomplete-index rebuilding. Chat and Responses journeys preserve
+the selected protocol and tools. `app/file_share/tests/test_document_rag.py` uses a
+real upload and two agents: retrieved passages, reopening without reindexing, denied
+access, the same source supplied completely to a larger model, SQL purge on deletion
+and deletion during an embedding call. `core/storage/tests/test_derivatives.py`
+checks rollback and late publication with independent committed transactions.
+Batch deletion query bounds remain covered by `test_lifecycle.py`.
+
+The same File Sharing scenario exercises MCP `file_search` in internal and Hermes
+contexts: two questions on one source, reused index, exact pages and offsets, lexical
+search without embeddings, denied access and no new MemoryItem or revision. A shared
+Document attachment reuses its index across agents and rejects the reader after
+the sharing grant is revoked.
+
+`app/file_share/tests/test_document_preparation.py` covers measured immutable reuse,
+denied cached access, purge, conversion interruption on deletion and explicit cleanup
+failure after confirmed external deletion. `tests/test_document_analysis.py` retains
+coverage of resumable analysis, reader upgrades and source changes.
+`tests/test_document_rag_qualification.py` verifies rejection of fabricated facts/citations
+and unsupported full-reading claims based on base64. `make qualify-document-rag` executes
+real-model cases on synthetic sources, without entering the scheduler or creating memories.
+
 ## Agent renaming of Documents and Datasets
 
 Agent title renaming is covered by `app/file_share/tests/test_resource_rename.py`:
@@ -969,8 +995,9 @@ on mobile and desktop. The “internal image attachments” scenario in
 a local image in the same message, and their cards after reload.
 `test_native_resources.py` covers publication permissions;
 `test_native_facade.py` preserves separate text and references in the journal and runtime.
-`app/chat/tests/test_attachment_http.py` exercises the actual multipart endpoint: an upload
-alone, an empty internal list or an upload mixed with an internal URI, persistence and reload.
+`app/chat/tests/test_attachment_http.py` exercises the actual multipart endpoint: one or three TXT
+files in one submission, an empty internal list or files mixed with an internal URI, persistence
+and reload. Every file remains referenced in the agent prompt and readable through the file facade.
 Malformed, non-string, excessive or inaccessible references are rejected before upload
 storage and publication. This HTTP coverage includes form decoding, which the previous
 direct Python calls did not exercise.
@@ -1856,8 +1883,14 @@ are in `front/browser-tests/`.
 | `incident` | Group, diagnose and resolve failures with authorization and correction evidence | `test_incident_service.py`, `test_router.py`, `test_retention.py`, `lab-access.spec.mjs`, `e2e/specs/incident.spec.mjs` |
 | `dashboard` / frontend `index` | Scoped metrics with bounded aggregations; reuse visited months, refresh and invalidate the cache when access changes | `test_dashboard_service.py`, `dashboardStore.test.mjs`, `dashboard.spec.mjs`, `shell.spec.mjs`, `preferences.spec.mjs` |
 | MCP Lab | Control all ten contracts through the real catalogue; atomic effects and receipts, revisions, live authorizations and pagination; publish generation once, compare treatments, retain separate agent opinions and assign/revoke the dedicated skill | `app/lab/tests/test_mcp.py`, `app/skill/tests/test_storage.py`, `lab-insights.spec.mjs` |
-| `onboarding` | Initialize without overwriting existing configuration | `test_services.py` |
+| `onboarding` | Initialize without overwriting configuration; keep Welcome even when preconfigured until persisted personal confirmation; errors, retry, account changes, mobile and reopening | `test_services.py`, `front/browser-tests/onboarding.spec.mjs`, `e2e/specs/onboarding.spec.mjs` |
 | `webhook` | Authenticate and identify incoming deliveries without duplicate admission | `test_router.py`, `test_delivery_identity.py` |
+
+`test_scheduler.py` verifies admission of a new internal-harness Task with one or four active
+Tasks for the same agent; the external harness keeps its separate limit.
+`tests/test_document_pipeline.py` checks that a twenty-page PDF's context contains its last page
+and reports missing visual coverage with the resumable analysis path. These checks do not prove
+a real model's semantic understanding of every page.
 
 ### Topic selection and creation
 

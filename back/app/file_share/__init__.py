@@ -187,9 +187,14 @@ from .web_preview import WebMetadata, web_metadata
 
 from .web_preview import document_web_preview as document_web_preview
 from .web_preview import document_web_image
-from .document_facade import prepared_resource
+from .document_facade import prepared_resource, purge_prepared_files
+from .document_rag_cache import document_rag_cache
+from .document_retrieval import register_document_retriever
 from .galaris_provider import register_code_resource_provider, register_contact_resource_provider
 __all__ += ["prepared_resource"]
+__all__ += ["purge_prepared_files"]
+__all__ += ["document_rag_cache"]
+__all__ += ["register_document_retriever"]
 __all__ += ["register_code_resource_provider", "register_contact_resource_provider"]
 from core.preview import register_web_image_provider
 

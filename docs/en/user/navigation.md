@@ -30,6 +30,15 @@ Search within the relevant screens: Documents, Discussion, Activity, Goals, File
 Welcome (`/welcome`) offers **Complete your first mission** after setup, to prepare a request
 and follow its document. See the [discovery guide](README.md).
 
+Welcome remains the default home page until you select **Setup complete — open home**, even on a
+preconfigured instance. The Galaris logo returns to it during setup. Confirmation belongs to your
+account; `/welcome` remains available afterwards.
+
+In **Tools → Connections**, **Scopes and permissions** opens Permissions for the filtered agent,
+or lets you select one. **Refresh tools** reloads connected service catalogues and rebuilds their
+search index. The result stays visible afterwards, including partial refreshes. A failed refresh
+can be retried without losing the connection list.
+
 During Dream acquisition, complementary information may enrich an editable personal memory
 while preserving its content, keywords and sources. A contradiction remains a separate memory
 linked to the previous one; it does not erase the old information. A concurrent edit blocks

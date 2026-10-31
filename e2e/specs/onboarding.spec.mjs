@@ -78,16 +78,26 @@ welcomeTest('welcome persists the default language and opens configuration pages
   const language = page.getByRole('combobox', { name: 'Langue par défaut' })
   await expect(language).toBeVisible()
   await language.click()
-  // Saving the language mounts Home's independent panels. Wait for those reads
-  // before replacing its document to exercise persistence after a reload.
+  const saved = page.waitForResponse(response => response.url().endsWith('/api/params/DEFAULT_LANGUAGE') && response.request().method() === 'PUT')
+  await page.getByRole('option', { name: 'Français', exact: true }).click()
+  expect((await saved).ok()).toBeTruthy()
+  await expect(page.locator('.welcome-page')).toBeVisible()
+  await pageErrors.settle()
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Bienvenue sur Galaris' })).toBeVisible()
+  const confirmation = page.getByRole('button', { name: 'Configuration terminée — ouvrir l’accueil', exact: true })
+  await expect(confirmation).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('welcome-confirmation.png'), fullPage: true })
+  // Explicit confirmation mounts Home's independent panels. Wait for their reads
+  // before reloading to verify the account's persisted choice.
   const homeLoaded = Promise.all([
     '/api/chat/rooms', '/api/tasks/recent', '/api/processes/runs',
     '/api/memory/recent', '/api/incidents/recent', '/api/dashboard',
   ].map(path => page.waitForResponse(response => new URL(response.url()).pathname === path)
     .then(response => response.finished())))
-  const saved = page.waitForResponse(response => response.url().endsWith('/api/params/DEFAULT_LANGUAGE') && response.request().method() === 'PUT')
-  await page.getByRole('option', { name: 'Français', exact: true }).click()
-  expect((await saved).ok()).toBeTruthy()
+  const dismissed = page.waitForResponse(response => response.url().endsWith('/api/auth/me/help-dismissals/onboarding.welcome') && response.request().method() === 'PUT')
+  await confirmation.press('Enter')
+  expect((await dismissed).status()).toBe(204)
   await expect(page.locator('.home-page')).toBeVisible()
   await homeLoaded
   await pageErrors.settle()

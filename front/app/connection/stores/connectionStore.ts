@@ -199,7 +199,6 @@ export const useConnectionStore = defineStore('connection', {
                 const response = await connectionService.refreshToolCatalogs()
                 return response.data
             } catch (error) {
-                this.error = error
                 console.error('Error refreshing tool catalogs:', error)
                 throw error
             } finally {

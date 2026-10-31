@@ -30,6 +30,27 @@ def attached_message(mime: str = "image/png", *, text: str = "Inspect this") -> 
 
 
 @pytest.mark.asyncio
+async def test_exhausted_context_reports_document_unseen_without_downloading_or_indexing(monkeypatch):
+    from app import file_share
+    from app.file_share import ResourceContext
+    from app.harness.media import prepare_native_inputs
+
+    uri = 'console://Synthetic.txt'
+    monkeypatch.setattr(file_share, 'resource_info', AsyncMock(return_value=ResourceDescriptor(
+        uri=uri, name='Synthetic.txt', media_type='text/plain', size=100)))
+    prepare = AsyncMock()
+    materialize = AsyncMock()
+    monkeypatch.setattr(file_share, 'prepared_resource', prepare)
+    monkeypatch.setattr(file_share, 'materialize_resource', materialize)
+    result = await prepare_native_inputs(LLM(context_length=4096), ResourceContext(7, 'internal'),
+        [TaskMessage(resource_uris=[uri])], [], prompt='Synthetic full context. ' * 2000)
+    assert 'document input budget exhausted' in result[uri].reason
+    assert result[uri].content is None and not result[uri].prepared_parts
+    prepare.assert_not_called()
+    materialize.assert_not_called()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("mime", ["image/png", "audio/ogg", "video/mp4", "application/pdf"])
 @pytest.mark.parametrize("source", ["uploaded", "internal"])
 @pytest.mark.parametrize("native", [True, False])
@@ -73,8 +94,9 @@ async def test_current_and_previous_media_reach_model_without_analysis_tool(monk
 
     @asynccontextmanager
     async def prepared(ctx, uri):
-        reads.append(uri)
-        analyses.append(mime)
+        if not native:
+            reads.append(uri)
+            analyses.append(mime)
         yield SimpleNamespace(text=lambda: "Synthetic media transcript", pages=[]), Path("unused-synthetic-preparation")
 
     model = TestModel(call_tools=[], custom_output_text="I can inspect both images")

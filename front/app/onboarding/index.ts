@@ -1,5 +1,5 @@
 export { default as WelcomePage } from './components/WelcomePage.vue'
-export { useOnboardingStore } from './stores/onboardingStore'
+export { useOnboardingStore, WELCOME_DISMISSAL_KEY } from './stores/onboardingStore'
 export type {
   OnboardingOverviewResponse,
   OnboardingStatusResponse,

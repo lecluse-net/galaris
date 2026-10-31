@@ -12,6 +12,8 @@ import onboardingService, {
 
 export type { OnboardingStatusResponse, OnboardingOverviewResponse }
 
+export const WELCOME_DISMISSAL_KEY = 'onboarding.welcome'
+
 interface OnboardingState {
   languageConfigured: boolean | null
   llmProvider: OnboardingStatusResponse | null

@@ -13,7 +13,8 @@ from core.util import complete_io
 
 from .disk import DiskFileDriver, fingerprint, sync_directory
 from .identity import ensure_disk_identity
-from .models import FileAlias, StoredFile
+from .models import FileAlias, StoredFile, StoredFileDerivative
+from .derivatives import discard_file_derivative_workspaces
 
 
 async def retire_file_references(prefix: str, *, session: AsyncSession | None = None) -> list[UUID]:
@@ -37,14 +38,19 @@ async def retire_file_reference(uri: str, *, session: AsyncSession | None = None
 async def _retire(clause: ColumnElement[bool], *, session: AsyncSession | None) -> list[UUID]:
     db = session if session is not None else get_db()
     await ensure_disk_identity(db)
-    identifiers = list(await db.scalars(select(FileAlias.file_id).where(
-        clause,
-    ).distinct()))
+    identifiers = list(await db.scalars(select(StoredFile.id).where(
+        select(FileAlias.id).where(FileAlias.file_id == StoredFile.id, clause).exists(),
+    ).order_by(StoredFile.id).with_for_update().execution_options(include_historized=True)))
     await db.execute(delete(FileAlias).where(clause))
     retired: list[UUID] = []
     identifiers.sort()
     # Bound bind parameters and loaded ORM state even for a whole domain's files.
     for offset in range(0, len(identifiers), 500):
+        # Drop derived text/vectors with the removed reference, including when an
+        # archive still retains the immutable bytes. A live other alias may rebuild.
+        # Lock sources before projections, matching derivative publication order.
+        await db.execute(delete(StoredFileDerivative).where(
+            StoredFileDerivative.file_id.in_(identifiers[offset:offset + 500])))
         records = await db.scalars(select(StoredFile).where(
             StoredFile.id.in_(identifiers[offset:offset + 500]),
             ~select(FileAlias.id).where(FileAlias.file_id == StoredFile.id).exists(),
@@ -54,6 +60,7 @@ async def _retire(clause: ColumnElement[bool], *, session: AsyncSession | None) 
             retired.append(record.id)
         await db.flush()
     await db.flush()
+    await discard_file_derivative_workspaces(identifiers)
     return retired
 
 
@@ -73,6 +80,7 @@ async def purge_retired_file(file_id: UUID, *, session: AsyncSession | None = No
         raise ValueError("A referenced managed file cannot be purged")
     if record.backend != "disk":
         raise ValueError("Unsupported managed file storage backend")
+    await db.execute(delete(StoredFileDerivative).where(StoredFileDerivative.file_id == file_id))
     path = DiskFileDriver().path(record.storage_key)
 
     def remove() -> bool:

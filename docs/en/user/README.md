@@ -42,10 +42,12 @@ then closes by default. **Preferences → System → Allow users to create their
 reopens it immediately; new accounts have no permissions until a role is assigned.
 Disabling this setting closes the signup form and API while existing accounts can still log in.
 
-After login, Home displays Welcome when the instance default language, a usable LLM, or an agent
-is missing, even if your profile already has a language. Without configuration permissions, the
-journey explains the required access. Saving the language restores the normal home page when
-the other required items are configured; `/welcome` remains accessible.
+After login, Home displays Welcome until you explicitly confirm setup, even on a preconfigured
+instance. The Galaris logo returns you to this journey from configuration screens. Once the default
+language, a usable LLM and an agent are configured, select **Setup complete — open home** to use the
+regular home page. This choice is saved for your account across devices; if saving fails, the journey
+stays visible and you can retry. `/welcome` remains accessible. If a required item later becomes
+unavailable, the journey reappears. Without configuration permissions, it explains the required access.
 
 The LLM step opens **Providers & models**. It is complete only when a conversational model
 belongs to an active provider with its required credentials configured. OpenRouter is enabled

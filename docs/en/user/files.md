@@ -2,6 +2,43 @@
 
 # Browse an agent’s files
 
+## Large documents supplied to an agent
+
+In automatic mode, Galaris locally estimates whether the complete document fits the
+selected model's context after the conversation, tools and output reserve. A document
+that fits is supplied completely; otherwise RAG searches its extracted text and supplies
+selected passages with source pages and positions. No LLM call makes this decision.
+Unknown model capacity uses a conservative 32,000-token fallback.
+
+Retrieval combines words and embeddings when an embedding model is configured.
+If embeddings are unavailable, lexical retrieval remains available with an explicit
+notice. Selected passages are not an exhaustive reading: request full analysis with
+`document_analyze` for all pages or their figures. Pages without extractable text
+are reported.
+
+The agent can ask further questions about the same file with
+`file_search(uri="file://…", query="specific question", mode="semantic")`, or use the
+exact URI of a Document attachment or a readable remote file. Each query rechecks
+current access and reuses the available index, returning selected passages with
+source pages and positions. `mode="text"` searches lexically without embedding calls.
+Managed documentary file metadata advertises this capability to the agent. These
+queries create neither personal memories nor a copy of the file in Galaris Memory.
+
+A Galaris-managed uploaded file's RAG index follows its access rules and lifetime.
+Deleting the file purges its indexed passages and vectors; an ongoing indexing job
+cannot recreate them after deletion. Removing a reference also purges this cache;
+another still-authorized reference may rebuild it. Remote files and inline gateway
+file inputs without a Galaris storage identity use request-local indexes.
+
+Temporary extractions follow source deletion too; an active conversion is stopped
+before its files are removed. Subsequent questions on managed immutable files reuse
+preparation without rereading all source bytes, after rechecking access and file identity.
+Remote sources without an immutable identity are still reread to avoid stale content.
+
+Semantically distant passages are excluded. Results remain contextual evidence:
+retrieving nothing does not prove that the information is absent from the document.
+Receiving base64 PDF bytes does not establish decoded text or complete page reading.
+
 **Files** requires `FILE_ACCESS` or `FILE_EDIT`; the latter also permits file mutations.
 Documents, Datasets and memories retain their own privileges: Files access does not open
 them, and reading an attachment through its domain does not require global Files access.

@@ -64,20 +64,31 @@
           </div>
         </section>
 
-        <q-banner v-if="mandatoryReady" rounded class="ready-banner">
+        <q-banner v-if="mandatoryReady" rounded role="status" class="ready-banner">
           <template #avatar>
             <q-icon name="task_alt" color="positive" />
           </template>
           <div class="text-weight-bold">{{ t('onboarding.ready.title') }}</div>
           <div class="text-caption">{{ t('onboarding.ready.description') }}</div>
+          <p v-if="helpStore.loadError" role="alert">{{ t('onboarding.ready.loadError') }}</p>
+          <p v-if="helpStore.saveErrors.includes(WELCOME_DISMISSAL_KEY)" role="alert">{{ t('onboarding.ready.saveError') }}</p>
           <template #action>
             <q-btn
-              flat
+              v-if="helpStore.loadError"
+              outline
               no-caps
-              color="positive"
+              color="primary"
+              :label="t('common.retry')"
+              @click="helpStore.load()"
+            />
+            <q-btn
+              no-caps
+              color="primary"
               icon-right="arrow_forward"
               :label="t('onboarding.actions.home')"
-              to="/"
+              :disable="!helpStore.ready"
+              :loading="helpStore.pending.includes(WELCOME_DISMISSAL_KEY)"
+              @click="completeSetup"
             />
           </template>
         </q-banner>
@@ -214,10 +225,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { languageFields, SettingsFields, useParamsStore } from '@/core/params'
-import { useAuthStore } from '@/core/user'
-import { useOnboardingStore } from '../stores/onboardingStore'
+import { useAuthStore, useHelpStore } from '@/core/user'
+import { useOnboardingStore, WELCOME_DISMISSAL_KEY } from '../stores/onboardingStore'
 import FirstMission from './FirstMission.vue'
 
 type StepKey = 'language' | 'llm' | 'agent' | 'tools' | 'connections' | 'skills' | 'processes'
@@ -241,6 +253,8 @@ interface StepStatus {
 
 const { t } = useI18n()
 const authStore = useAuthStore()
+const helpStore = useHelpStore()
+const router = useRouter()
 const onboardingStore = useOnboardingStore()
 const privilegeStore = usePrivilegeStore()
 const paramsStore = useParamsStore()
@@ -255,6 +269,15 @@ const configuredLanguage = computed(() => {
 const languageLoading = ref(false)
 const languageLoadError = ref(false)
 const activeStep = ref(1)
+
+watch(() => helpStore.accountId, () => {
+  if (!helpStore.ready && !helpStore.loadError) void helpStore.load()
+}, { immediate: true })
+
+async function completeSetup(): Promise<void> {
+  await helpStore.dismiss(WELCOME_DISMISSAL_KEY)
+  if (helpStore.dismissed.includes(WELCOME_DISMISSAL_KEY)) await router.push('/')
+}
 
 async function loadLanguage(): Promise<void> {
   languageLoading.value = true

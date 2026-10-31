@@ -11,14 +11,14 @@ tests remain authoritative for behavior.
 
 - 78 declared backend modules;
 - 40 declared frontend modules;
-- 632 backend dependency edges;
+- 633 backend dependency edges;
 - 217 frontend dependency edges;
 - 303 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
 - 768 detected HTTP/WebSocket handlers;
-- 181 detected SQLAlchemy tables;
+- 182 detected SQLAlchemy tables;
 - 284 detected native MCP tools;
 - 55 detected Vue pages.
 
@@ -327,17 +327,17 @@ tests remain authoritative for behavior.
 | `app.file_share` | `app.tools` | `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `bridge.affine` | `back/app/file_share/bridges.py` |
 | `app.file_share` | `core.authorize` | `back/app/file_share/browser_policy.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/document_import.py`, `back/app/file_share/media_access.py`, `back/app/file_share/media_router.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `core.database` | `back/app/file_share/browser_policy.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/document_import.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_access.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/thumbnail_service.py` |
+| `app.file_share` | `core.database` | `back/app/file_share/browser_policy.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/document_import.py`, `back/app/file_share/document_rag_cache.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_access.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `core.dbadmin` | `back/app/file_share/dbadmin.py` |
-| `app.file_share` | `core.document` | `back/app/file_share/document_facade.py`, `back/app/file_share/thumbnail_service.py` |
+| `app.file_share` | `core.document` | `back/app/file_share/document_facade.py`, `back/app/file_share/document_retrieval.py`, `back/app/file_share/document_search.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `core.i18n` | `back/app/file_share/bridges.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/messenger_transport.py` |
 | `app.file_share` | `core.params` | `back/app/file_share/document_import.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_delivery.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/web_preview.py` |
 | `app.file_share` | `core.secrets` | `back/app/file_share/media_access.py` |
 | `app.file_share` | `core.settings` | `back/app/file_share/media_router.py` |
-| `app.file_share` | `core.storage` | `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
+| `app.file_share` | `core.storage` | `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/document_facade.py`, `back/app/file_share/document_rag_cache.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
 | `app.file_share` | `core.user` | `back/app/file_share/browser_router.py`, `back/app/file_share/document_folders.py`, `back/app/file_share/document_import.py`, `back/app/file_share/media_access.py` |
-| `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
+| `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/document_facade.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/models.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
@@ -364,6 +364,7 @@ tests remain authoritative for behavior.
 | `app.harness` | `app.tools` | `back/app/harness/checkpoint.py`, `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `core.authorize` | `back/app/harness/router.py` |
 | `app.harness` | `core.database` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/runtime.py` |
+| `app.harness` | `core.document` | `back/app/harness/media.py` |
 | `app.harness` | `core.failure_journal` | `back/app/harness/runtime.py` |
 | `app.harness` | `core.i18n` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `core.params` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
@@ -417,13 +418,13 @@ tests remain authoritative for behavior.
 | `app.llm` | `core.authorize` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/provider_router.py` |
 | `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/cost_report.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py`, `back/app/llm/document_store.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_notifications.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
 | `app.llm` | `core.dbadmin` | `back/app/llm/dbadmin.py`, `back/app/llm/initial_configuration.py` |
-| `app.llm` | `core.document` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py` |
+| `app.llm` | `core.document` | `back/app/llm/document_analysis.py`, `back/app/llm/document_budget.py`, `back/app/llm/document_input.py`, `back/app/llm/document_rag.py` |
 | `app.llm` | `core.failure_journal` | `back/app/llm/llm_call_service.py` |
 | `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_quota.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.params` | `back/app/llm/call_deadline.py`, `back/app/llm/dbadmin.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/profile_service.py`, `back/app/llm/retention.py` |
 | `app.llm` | `core.scheduling` | `back/app/llm/__init__.py` |
 | `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_service.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
-| `app.llm` | `core.util` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py`, `back/app/llm/document_responses.py`, `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_generation_service.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_facade.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_stream.py`, `back/app/llm/responses_trace.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
+| `app.llm` | `core.util` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py`, `back/app/llm/document_rag.py`, `back/app/llm/document_responses.py`, `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_generation_service.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_facade.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_stream.py`, `back/app/llm/responses_trace.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
 | `app.mcp` | `app.agent` | `back/app/mcp/router.py` |
 | `app.mcp` | `app.tools` | `back/app/mcp/router.py`, `back/app/mcp/runtime_adapter.py` |
 | `app.mcp` | `core.authorize` | `back/app/mcp/router.py` |
@@ -770,12 +771,12 @@ tests remain authoritative for behavior.
 | `core.preview` | `core.user` | `back/core/preview/web.py` |
 | `core.preview` | `core.util` | `back/core/preview/model3d.py`, `back/core/preview/pdf.py`, `back/core/preview/svg.py` |
 | `core.rate_limit` | `core.params` | `back/core/rate_limit.py` |
-| `core.storage` | `core.database` | `back/core/storage/lifecycle.py`, `back/core/storage/models.py`, `back/core/storage/names.py`, `back/core/storage/registry.py` |
+| `core.storage` | `core.database` | `back/core/storage/derivatives.py`, `back/core/storage/lifecycle.py`, `back/core/storage/models.py`, `back/core/storage/names.py`, `back/core/storage/registry.py` |
 | `core.storage` | `core.dbadmin` | `back/core/storage/dbadmin.py` |
 | `core.storage` | `core.params` | `back/core/storage/resources.py` |
 | `core.storage` | `core.settings` | `back/core/storage/disk.py`, `back/core/storage/identity.py`, `back/core/storage/migration.py` |
 | `core.storage` | `core.user` | `back/core/storage/registry.py` |
-| `core.storage` | `core.util` | `back/core/storage/identity.py`, `back/core/storage/lifecycle.py`, `back/core/storage/migration.py`, `back/core/storage/registry.py`, `back/core/storage/resources.py` |
+| `core.storage` | `core.util` | `back/core/storage/derivatives.py`, `back/core/storage/identity.py`, `back/core/storage/lifecycle.py`, `back/core/storage/migration.py`, `back/core/storage/registry.py`, `back/core/storage/resources.py` |
 | `core.team` | `core.authorize` | `back/core/team/router.py` |
 | `core.team` | `core.database` | `back/core/team/models.py`, `back/core/team/router.py`, `back/core/team/service.py` |
 | `core.team` | `core.user` | `back/core/team/service.py` |
@@ -2072,13 +2073,14 @@ tests remain authoritative for behavior.
 | `failure_incident_traces` | `FailureIncidentTrace` | `app.incident` | no | `failure_incidents.id` | `back/app/incident/models.py:172` |
 | `failure_incidents` | `FailureIncident` | `app.incident` | no | `agents.id`, `conversation_rounds.id`, `failure_incidents.id`, `failure_patterns.id`, `llm_calls.id`, `process_runs.id`, `task_attempts.id`, `tasks.id` | `back/app/incident/models.py:81` |
 | `failure_patterns` | `FailurePattern` | `app.incident` | no | — | `back/app/incident/models.py:27` |
-| `file_aliases` | `FileAlias` | `core.storage` | no | `files.id` | `back/core/storage/models.py:33` |
+| `file_aliases` | `FileAlias` | `core.storage` | no | `files.id` | `back/core/storage/models.py:35` |
 | `file_catalog_entries` | `FileCatalogEntry` | `app.file_share` | no | `agents.id`, `connections.id`, `memory_urls.id` | `back/app/file_share/models.py:28` |
+| `file_derivatives` | `StoredFileDerivative` | `core.storage` | no | `files.id` | `back/core/storage/models.py:45` |
 | `file_index_runs` | `FileIndexRun` | `app.file_share` | no | `agents.id`, `connections.id` | `back/app/file_share/models.py:74` |
 | `file_observation_repairs` | `FileObservationRepair` | `app.file_share` | no | `agents.id`, `connections.id` | `back/app/file_share/models.py:101` |
 | `file_owners` | `ManagedFileOwner` | `app.file_share` | no | `agents.id`, `files.id` | `back/app/file_share/models.py:18` |
-| `file_stores` | `FileStore` | `core.storage` | no | — | `back/core/storage/models.py:43` |
-| `files` | `StoredFile` | `core.storage` | yes | — | `back/core/storage/models.py:12` |
+| `file_stores` | `FileStore` | `core.storage` | no | — | `back/core/storage/models.py:59` |
+| `files` | `StoredFile` | `core.storage` | yes | — | `back/core/storage/models.py:14` |
 | `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:343` |
 | `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:219` |
 | `goals` | `Goal` | `app.goal` | yes | `agents.id`, `connections.id`, `documents.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:75` |
@@ -2273,19 +2275,19 @@ tests remain authoritative for behavior.
 | `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:35` |
 | `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:20` |
 | `dataset_query` | `file_sharing` | `app.document` | `dataset_query` | `back/app/document/data/mcp.py:23` |
-| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:395` |
-| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:464` |
-| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:309` |
-| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:546` |
-| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:425` |
+| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:404` |
+| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:473` |
+| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:318` |
+| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:555` |
+| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:434` |
 | `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:170` |
 | `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:142` |
-| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:516` |
-| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:254` |
-| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:495` |
+| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:525` |
+| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:263` |
+| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:504` |
 | `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:121` |
-| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:205` |
-| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:360` |
+| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:211` |
+| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:369` |
 | `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:38` |
 | `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:19` |
 | `contact_create` | `galaris` | `app.contact` | `mcp_contact_create` | `back/app/contact/mcp.py:48` |

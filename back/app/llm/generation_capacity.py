@@ -71,7 +71,7 @@ async def _metadata(connection: ProviderConnection, model: str) -> LLMModelInfo 
         return metadata
 
 
-def _input_reserve(body: dict[str, Any]) -> int:
+def estimate_request_tokens(body: dict[str, Any]) -> int:
     """Conservative local estimate, not a tokenizer or billing measurement.
 
     Include history, tools and output schemas. Count UTF-8 rather than characters
@@ -126,7 +126,7 @@ async def apply_generation_capacity(
         return body
     context = metadata.context_length
     if isinstance(context, int) and not isinstance(context, bool) and context > 0:
-        available = context - _input_reserve(body)
+        available = context - estimate_request_tokens(body)
         if available <= 0:
             return body  # Let the authoritative provider handle a full/unknown context.
         capacity = min(capacity, available)

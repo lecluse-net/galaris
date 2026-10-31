@@ -2729,6 +2729,13 @@ async def resource_search(
     normalized_query = query.strip()
     if not normalized_query:
         raise ValueError("A non-empty file search query is required.")
+    if (mode != 'name' and reference.locator and not reference.is_collection
+        and (reference.scheme not in {'galaris', 'memory', 'document', 'data'}
+             or _document_attachment_ids(reference) is not None)):
+        descriptor = await resource_info(ctx, reference)
+        if not descriptor.is_collection:
+            from .document_search import search_document
+            return await search_document(ctx, descriptor, normalized_query, mode=mode, cursor=cursor)
     limit = 50 if max_results is None else max(1, min(max_results, 500))
     if reference.scheme == "file":
         if reference.locator:

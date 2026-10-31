@@ -271,10 +271,12 @@ async def test_on_action_done_frees_agent() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("measured_admission", [False, True])
-async def test_internal_harness_can_claim_two_tasks_for_the_same_agent(
+@pytest.mark.parametrize("active_count", [1, 4])
+async def test_internal_harness_can_claim_work_while_other_tasks_run_for_the_same_agent(
     db,
     monkeypatch: pytest.MonkeyPatch,
     measured_admission: bool,
+    active_count: int,
 ) -> None:
     """The embedded Harness has no per-agent concurrency ceiling."""
 
@@ -300,18 +302,18 @@ async def test_internal_harness_can_claim_two_tasks_for_the_same_agent(
     await db.flush()
     agent_id = agent.id
     title_id = title.id
-    active_id = uuid4()
     queued_id = uuid4()
-    active = Task(
-        id=active_id,
-        label="active-work",
+    active = [Task(
+        id=uuid4(),
+        label=f"active-work-{index}",
         status=TaskStatus.EXEC,
         ai=True,
         agent_id=agent_id,
         lease_token=uuid4(),
         lease_owner="other-worker",
         lease_expires_at=datetime.now(timezone.utc).replace(year=2099),
-    )
+    ) for index in range(active_count)]
+    active_ids = [task.id for task in active]
     queued = Task(
         id=queued_id,
         label="new-conversation-work",
@@ -335,7 +337,7 @@ async def test_internal_harness_can_claim_two_tasks_for_the_same_agent(
             "preparation_finished_at": "2026-01-01T00:00:15Z",
             "enqueued_at": "2026-01-01T00:00:15.200Z",
         }}
-    db.add_all([active, queued])
+    db.add_all([*active, queued])
     await db.commit()
     scheduler._fast_path.clear()  # pyright: ignore[reportPrivateUsage]
     scheduler._fast_path_ids.clear()  # pyright: ignore[reportPrivateUsage]
@@ -361,7 +363,7 @@ async def test_internal_harness_can_claim_two_tasks_for_the_same_agent(
         assert len(queue_measurements) == 1
         assert queue_measurements[0] >= 0
 
-    await db.execute(delete(Task).where(Task.id.in_([active_id, queued_id])))
+    await db.execute(delete(Task).where(Task.id.in_([*active_ids, queued_id])))
     await db.execute(delete(Agent).where(Agent.id == agent_id))
     await db.execute(delete(Title).where(Title.id == title_id))
     await db.commit()

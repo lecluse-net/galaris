@@ -34,6 +34,15 @@ Fichiers et Mémoire. La page Welcome (`/welcome`) propose **Réaliser votre pre
 après la configuration, pour préparer une demande et suivre son document.
 Voir le [guide de découverte](README.md).
 
+Welcome reste l’accueil par défaut jusqu’au clic sur **Configuration terminée — ouvrir l’accueil**,
+même si l’instance est préconfigurée. Le logo Galaris permet donc d’y revenir pendant la préparation.
+La confirmation est propre à votre compte ; `/welcome` reste disponible ensuite.
+
+Dans **Outils → Connexions**, **Périmètres et autorisations** ouvre Permissions pour l’agent filtré,
+ou propose d’en sélectionner un. **Actualiser les outils** recharge les catalogues des services
+connectés et reconstruit leur index de recherche. Le bilan reste affiché après l’opération,
+y compris en cas d’actualisation partielle. Un échec permet de réessayer sans perdre la liste.
+
 Lors de l’acquisition Dream, une information complémentaire peut enrichir un souvenir personnel
 modifiable en conservant son contenu, ses mots-clés et ses sources. Une contradiction reste un
 souvenir distinct relié au précédent ; elle n’efface pas l’ancienne information. Une modification

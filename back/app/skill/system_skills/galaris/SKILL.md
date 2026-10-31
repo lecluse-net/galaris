@@ -497,8 +497,25 @@ the change, not dropping the precondition. Without an explicit token, an edit or
 protects its own read-modify-write operation. Generic Nextcloud operations never delete or
 relocate a directory. An ambiguous upload or share failure is not permission to retry blindly:
 inspect the remote state before repeating a mutation.
+For an exact PDF, Office or text file URI, including `file://UUID` and Document attachment
+URIs, call `file_search(uri=SOURCE_URI, query="your specific question", mode="semantic")`
+to retrieve bounded, cited passages. An automatically supplied RAG selection also carries
+the exact source URI; use it to ask further questions instead of treating the first selection
+as the entire file. `mode="text"` performs lexical retrieval without embedding calls.
+File metadata advertises `content_search` for managed documentary files. Every query checks
+current source permissions and reuses the file's index when available. A hit contains
+the file and its selected `passages`; `index_coverage` describes RAG retrieval, while
+`indexing_status` concerns the separate file catalogue. Page numbers are physical and offsets are characters
+within the page (or the separately labeled structured source). Exact-file retrieval has no
+cursor: refine the query for different evidence. A missing hit does not prove absence, and
+selected passages do not establish exhaustive coverage; use `document_analyze` for a complete
+or visual analysis. Retrieval does not create personal memories or copy the source into Memory.
+
 `file_read` detects UTF-8 text and returns bounded pages; small binaries are returned completely
 with `encoding="base64"`. A binary larger than 1 MiB must stay out of model context. Pass its URI
+to `file_search` for document passages. Raw base64 is not decoded text or verified page coverage;
+never claim a complete PDF/Office reading merely because the binary payload was returned.
+For exhaustive or visual coverage, use `document_analyze` and its actual coverage result. Pass the URI
 directly to a specialized tool, or copy it to `console://` only when console software must process
 it. Use `file_create` for a new URI, `file_write` to replace an existing complete
 resource, `file_append` to add content, and `file_edit` to replace a 1-based inclusive line range

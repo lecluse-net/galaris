@@ -187,9 +187,15 @@ async def file_info(
 
     name="file_search",
     description=(
-        "Search below a collection URI by name or bounded UTF-8 content. Returns canonical "
-        "resource URIs that can be passed directly to every compatible file tool. Use "
-        "galaris:// to find tasks, conversation rounds, goals, goal cycles, and assigned "
+        "Search a collection, or query an exact document file URI. Returns canonical "
+        "resource URIs that can be passed directly to every compatible file tool. "
+        "mode='semantic' on an exact PDF, Office or text file URI (including file://UUID and "
+        "document attachments) for bounded RAG passages with physical pages and character offsets. "
+        "Use mode='text' for lexical passages without embedding calls. Repeat with another query "
+        "to investigate further; one exact-file result contains selected passages, has no pagination, "
+        "and does not create a memory. Access is rechecked for each query. "
+        "For exact-file RAG, index_coverage describes retrieval; indexing_status refers to the separate file catalogue. "
+        "Use galaris:// to find tasks, conversation rounds, goals, goal cycles, and assigned "
         "processes; authorized skill files are searched below galaris://skill/. "
         "galaris:// supports name and text search, not semantic search; use memory:// for "
         "semantic recall. On document://, mode='name' matches titles and filenames only and "
@@ -238,8 +244,11 @@ async def search_files(
     description=(
         "Read any resource URI. UTF-8 text is returned in bounded pages; small binary files "
         "are returned completely as base64. Keep large binaries out of model context: pass their "
-        "URI to a specialized tool, or copy to console:// only when console software must handle "
-        "them. Use next_offset to continue text reads. Dataset JSON pages retain character offsets and include "
+        "exact URI to file_search with mode='semantic' for cited document passages, or "
+        "use a specialized tool, or copy to console:// only when console software must handle "
+        "them. Raw base64 is not decoded text or verified page coverage: do not claim full PDF/Office "
+        "reading from a binary payload. Use document_analyze for exhaustive or visual analysis of "
+        "documents. Use next_offset to continue text reads. Dataset JSON pages retain character offsets and include "
         "one-based start_line/end_line, total_lines and start_line_complete/end_line_complete flags for file_edit; "
         "a false flag means the first/last line is partial, so read its missing text before replacing that line. "
         "A document://folders/<uuid>/ read returns a complete JSON hierarchy page of up to 200 items, "

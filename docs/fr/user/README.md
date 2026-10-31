@@ -48,10 +48,13 @@ aux utilisateurs de créer leur compte** les ouvre immédiatement ; les nouveaux
 restent sans droits jusqu’à l’attribution d’un rôle. Sa désactivation ferme le formulaire
 et l’API d’inscription, sans empêcher les comptes existants de se connecter.
 
-À la connexion, l’accueil affiche Welcome si la langue par défaut de l’instance, un LLM utilisable
-ou un agent manque, même si la langue de votre profil est déjà renseignée. Sans droits de
-configuration, le parcours indique les permissions nécessaires. Une fois la langue enregistrée,
-l’accueil normal revient si les autres éléments requis sont configurés ; `/welcome` reste accessible.
+À la connexion, l’accueil affiche Welcome jusqu’à votre confirmation explicite, même si l’instance
+est déjà préconfigurée. Le logo Galaris vous ramène à ce parcours depuis les écrans de configuration.
+Une fois la langue par défaut, un LLM utilisable et un agent configurés, cliquez sur
+**Configuration terminée — ouvrir l’accueil** pour retrouver l’accueil habituel. Ce choix est
+enregistré pour votre compte, sur tous vos appareils ; un échec d’enregistrement laisse le parcours
+visible et permet de réessayer. `/welcome` reste accessible. Si un élément indispensable manque
+ensuite, le parcours réapparaît. Sans droit de configuration, il explique les accès nécessaires.
 
 L’étape LLM ouvre **Fournisseurs & modèles**. Elle n’est franchie que lorsqu’un modèle
 conversationnel est associé à un fournisseur actif dont les identifiants requis sont renseignés.

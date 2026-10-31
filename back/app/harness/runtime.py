@@ -1157,10 +1157,17 @@ class Agent(AgentRuntime):
         native_inputs: dict[str, NativeInput] = {}
         if self._agent_id is not None and not (active_checkpoint is not None and active_checkpoint.history):
             from app.file_share import ResourceContext
+            from pydantic_ai import Tool
+            input_tools: list[dict[str, Any]] = []
+            for registered in self._tools:
+                definition = (registered if isinstance(registered, Tool) else Tool(registered)).tool_def
+                input_tools.append({'name': definition.name, 'description': definition.description,
+                                    'parameters': definition.parameters_json_schema})
             native_inputs = await prepare_native_inputs(
                 self.llm,
                 ResourceContext(self._agent_id, "internal", self._task_id),
                 current_messages or (), message_history or (),
+                prompt=prompt, system_prompt=self.system_prompt, tools=input_tools,
             )
             if native_inputs:
                 from core.database import release_db_transaction

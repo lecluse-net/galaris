@@ -232,7 +232,8 @@ async def test_malformed_provider_batch_is_explicit_failure(tmp_path, monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_text_only_harness_prepares_authorized_chat_pdf(db, tmp_path, monkeypatch):
+async def test_text_only_harness_prepares_authorized_chat_pdf(inference_db, tmp_path, monkeypatch):
+    db = inference_db
     from app.chat.tests.test_native_facade import _scope
     from app.agent.contracts import TaskMessage
     from app.file_share import ResourceContext
@@ -244,7 +245,7 @@ async def test_text_only_harness_prepares_authorized_chat_pdf(db, tmp_path, monk
     agent, owner, _ = await _scope(db)
     room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
     messenger = await get_messenger(room.connection_id)
-    path = tmp_path / 'source.pdf'; pdf(path)
+    path = tmp_path / 'source.pdf'; pdf(path, count=20)
     message = TaskMessage.from_messenger(await messenger.upload_file(room.id, path.read_bytes(), name='source.pdf'))
     uri = message.attachments[0].uri
     inputs = await prepare_native_inputs(LLM(input_file=False, input_image=False),
@@ -252,6 +253,8 @@ async def test_text_only_harness_prepares_authorized_chat_pdf(db, tmp_path, monk
     parts = inputs[uri].parts(uri)
     assert '1200' in str(parts) and 'Page 1' in str(parts) and uri in str(parts)
     assert 'visual coverage incomplete' in str(parts)
+    assert 'sentinel page 20' in str(parts)
+    assert 'document_analyze' in str(parts)
 
     stranger, _, _ = await _scope(db)
     denied = await prepare_native_inputs(LLM(input_file=False),

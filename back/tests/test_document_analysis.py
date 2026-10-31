@@ -564,10 +564,17 @@ async def test_document_worker_uses_the_real_mcp_agreement(runtime, tmp_path, mo
     from app.tools.authorization import answer_action
     from app.tools.authorization_models import ActionAuthorization
     from core.database import get_db_session
+    from core.authorize.models import Assignment, Privilege, Role
     from uuid import UUID
 
     db, llm, _, _ = runtime
     agent, uri = await setup_source(db, tmp_path, monkeypatch, count=2)
+    privilege = await db.scalar(select(Privilege).where(Privilege.code == 'PERMISSION_DECIDE'))
+    assert privilege is not None
+    role = Role(code=f'synthetic-document-approver-{uuid4().hex}', privileges=[privilege])
+    db.add(role)
+    await db.flush()
+    db.add(Assignment(user_id=agent.user_id, role_id=role.id))
     profile = LlmProfile(label='Synthetic approved reader', text_standard_llm_id=llm.id)
     db.add(profile); await db.flush()
     agent.profile_id = profile.id

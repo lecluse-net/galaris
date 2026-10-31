@@ -33,6 +33,15 @@
       </div>
       <div class="row q-gutter-sm items-center connection-actions">
         <q-btn
+          v-if="canViewPermissions"
+          outline
+          no-caps
+          color="primary"
+          icon="policy"
+          :label="$t('connection.managePermissions')"
+          :to="{ path: '/permissions', query: filterAgent ? { agent_id: filterAgent } : {} }"
+        />
+        <q-btn
           v-if="canEdit"
           outline
           no-caps
@@ -48,6 +57,15 @@
         <q-btn v-if="canEdit" color="primary" icon="add" :label="$t('connection.newConnection')" @click="openDialog()" />
       </div>
     </div>
+
+    <p v-if="canEdit" class="text-caption q-mb-md">{{ $t('connection.refreshToolsHint') }}</p>
+    <q-banner v-if="refreshNotice" rounded :role="refreshFailed ? 'alert' : 'status'" class="q-mb-md">
+      <template #avatar><q-icon :name="refreshFailed ? 'error_outline' : 'info_outline'" :color="refreshFailed ? 'negative' : 'primary'" /></template>
+      {{ refreshNotice }}
+      <template v-if="refreshFailed" #action>
+        <q-btn outline color="primary" :label="$t('common.retry')" :loading="connectionStore.loading" @click="onRefreshTools" />
+      </template>
+    </q-banner>
 
     <q-banner v-if="connectionStore.error" role="alert" class="bg-negative text-white q-mb-md" rounded>
       {{ $t('connection.auth.loadConnectionsError') }}
@@ -294,6 +312,11 @@ const { t, te } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
+const canViewPermissions = computed(() => privilegeStore.hasAnyPrivilege([
+  privileges.PERMISSION_ACCESS, privileges.PERMISSION_DECIDE, privileges.PERMISSION_REVOKE,
+]))
+const refreshNotice = ref('')
+const refreshFailed = ref(false)
 
 const showDialog = ref(false)
 const showDeleteDialog = ref(false)
@@ -538,13 +561,13 @@ async function toggleActive(connection: Connection) {
 }
 
 async function onRefreshTools() {
-  if (!canEdit.value) return
+  if (!canEdit.value || connectionStore.loading) return
+  refreshNotice.value = ''
+  refreshFailed.value = false
   try {
     const result = await connectionStore.refreshToolCatalogs()
     await reloadConnections()
-    $q.notify({
-      type: result.complete ? 'positive' : 'warning',
-      message: result.complete
+    refreshNotice.value = result.complete
         ? t('connection.refreshToolsComplete', {
             created: result.created,
             agents: result.agents_refreshed,
@@ -557,10 +580,11 @@ async function onRefreshTools() {
             sources: result.source_failures,
             failures: result.agent_failures
           })
-    })
+    $q.notify({ type: result.complete ? 'positive' : 'warning', message: refreshNotice.value })
   } catch (error) {
     console.error('Error refreshing tool catalogs:', error)
-    $q.notify({ type: 'negative', message: t('connection.refreshToolsError') })
+    refreshFailed.value = true
+    refreshNotice.value = t('connection.refreshToolsError')
   }
 }
 
@@ -924,7 +948,7 @@ body.body--dark .config-col-value {
   }
 
   .connection-actions > .q-btn {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     min-width: 0;
   }
 }
