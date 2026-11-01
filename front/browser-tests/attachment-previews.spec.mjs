@@ -353,6 +353,7 @@ for (const surface of ['document', 'message', 'resource']) {
       for await (const chunk of await download.createReadStream()) chunks.push(chunk)
       expect(Buffer.concat(chunks).toString('utf8')).toBe(content)
       await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+      await expect(dialog).toHaveCount(0)
       await page.setViewportSize({ width: 390, height: 844 })
       await open.click()
       await expect(editor).toHaveValue(content)
