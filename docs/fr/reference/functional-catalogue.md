@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **30 octobre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **1er novembre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -151,6 +151,9 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 - **Parcours de bienvenue.** Sept étapes sélectionnables présentent la configuration initiale,
   dont la langue par défaut. La timeline s’adapte à la largeur, avec précédent/suivant et accès
   aux écrans de configuration selon les droits ; le choix de langue s’enregistre automatiquement.
+  Ce parcours reste la page d’accueil du compte jusqu’à sa confirmation explicite, même sur une
+  instance préconfigurée. Le logo Galaris y ramène tant qu’il n’est pas terminé ; un échec
+  d’enregistrement conserve le parcours visible et permet de réessayer.
 - **Accueil guidé.** Les blocs de découverte contrôlent la présence d’un modèle de chat réellement
   utilisable, d’agents, d’outils, d’une connexion de messagerie active, de compétences et de processus.
   Ils tiennent compte des droits et de la configuration déjà présente.
@@ -964,7 +967,39 @@ Les lots et leur consolidation utilisent la capacité de sortie publiée du mod�
 plafond fixe de 1 600 tokens. Une réponse vide produit un diagnostic conservé avec sa couverture,
 sans fausse preuve d’artefact ni nouvelle soumission facturable automatique.
 
+<a id="document-rag"></a>
+### Recherche de passages dans les grandes sources
+
+En mode automatique, une estimation locale compare le coût d’entrée du document à la capacité
+du modèle, après réservation de la conversation, des outils et de la réponse. Plusieurs documents
+se partagent le budget restant ; une capacité inconnue utilise un repli prudent de 32 000 tokens.
+Un document qui tient peut être transmis intégralement. Sinon, le **RAG documentaire** fournit
+une sélection bornée de passages issus du texte extrait, avec pages physiques et positions en
+caractères. Aucun LLM ne décide du routage. Les modes explicites direct et préparé restent disponibles.
+
+La recherche combine mots et embeddings si le modèle vectoriel est disponible ; une panne ou
+son absence produit un repli lexical signalé. Les pages sans texte extractible et les limites
+restent visibles. Des passages retrouvés ne prouvent ni une lecture exhaustive ni la compréhension
+des figures ; l’absence de résultat ne prouve pas l’absence d’un fait. `document_analyze` reste
+le parcours d’analyse complète, avec sa couverture et ses propres limites.
+
+L’agent peut approfondir avec `file_search` sur l’URI exacte d’un PDF, fichier Office ou texte,
+y compris une pièce jointe documentaire. `mode="semantic"` renvoie des passages citables ;
+`mode="text"` recherche par mots sans appel d’embeddings. Le résultat d’un fichier est borné et
+sans pagination : une question plus précise permet de poursuivre. Les droits et la version
+sont revérifiés à chaque recherche. Cette opération ne crée aucun souvenir personnel.
+
+Les fichiers immuables gérés réutilisent leur préparation et leur index sous les droits de la
+source. Le retrait d’une référence purge l’index dérivé ; une autre référence encore autorisée
+peut le reconstruire. La suppression de la source empêche une indexation tardive de le recréer
+et nettoie aussi les préparations temporaires en cours. Les sources distantes sans identité
+immuable sont relues ; leurs index et ceux des fichiers incorporés à la passerelle restent
+limités à la requête. Cet index est distinct du catalogue privé de fichiers et de Memory.
+
 Sources : [formats, budgets et qualification](../dev/document-qualification.md),
+[parcours de recherche](../user/files.md),
+[routage et limites RAG](../../../project/decisions/0261-capacity-routed-source-owned-document-rag.md),
+[recherche autorisée et cycle de vie](../../../back/app/file_share/tests/test_document_rag.py),
 [contrats XLS](../../../back/tests/test_legacy_spreadsheets.py),
 [contrats MCP](../../../back/app/llm/mcp.py),
 [reprise, couverture et annulation](../../../back/tests/test_document_analysis.py).
@@ -2442,6 +2477,14 @@ Les raccourcis de bibliothèque permettent de renommer (F2), créer un document 
 Ils ciblent la ligne survolée ou au focus, sont suspendus pendant la saisie et respectent les droits.
 Les menus contextuels sont accessibles au clic droit, au bouton d’actions et au clavier.
 
+Dans l’arbre et la liste de bibliothèque, Ctrl/Cmd+clic ajoute ou retire un document sans
+l’ouvrir ; Maj+clic sélectionne un intervalle visible et Ctrl/Cmd+Maj+clic l’ajoute à la sélection.
+Un glisser-déposer depuis un document sélectionné déplace le groupe dans son ordre, vers un
+dossier, un document parent ou la racine ; avant/après une ligne, il conserve cette position.
+Un enfant sélectionné avec son parent suit ce dernier sans être détaché. Le classement des
+autres personnes ne change pas ; les droits hérités suivent la destination. Les échecs restent
+sélectionnés pour réessayer. Recherche, filtre ou changement de page effacent la sélection.
+
 Sources : [bibliothèque et actions groupées](../user/navigation.md),
 [interactions de gestion en masse](../../../front/browser-tests/document-bulk.spec.mjs).
 
@@ -2515,6 +2558,10 @@ au changement de session ; une ancienne réponse ne remplace pas une icône nouv
 Voir le [contrat de classement personnel](../../../project/decisions/0099-personal-document-classification.md).
 
 ### Édition riche
+
+Les outils contextuels flottants suivent le texte ou l’objet sélectionné : lien, image,
+tableau, formule ou carte de ressource. Ils proposent les actions applicables sans remplacer
+le menu natif du navigateur, utilisable pour copier, coller et sélectionner sur mobile.
 
 L’éditeur complet permet des équations **en ligne ou en bloc** avec MathLive : saisie visuelle,
 clavier de symboles et source LaTeX synchronisée. Double-clic ou Entrée rouvre une formule ; le
@@ -2823,6 +2870,11 @@ conservation. Les changements de métadonnées/partage ont leur propre contrôle
 
 Après un conflit de version du partage, le formulaire peut recharger sa version de référence
 et réessayer sans perdre les choix en cours ; les droits actuels restent revérifiés.
+
+Un brouillon JSON invalide ne remplace jamais le contenu enregistré. Lors d’un retour navigateur
+depuis le dialogue documentaire, la confirmation propose de rester et corriger, ou d’abandonner
+explicitement le brouillon pour retrouver la dernière version sauvegardée. Annuler est l’action
+au focus par défaut ; une fermeture sans confirmation conserve la saisie.
 
 ### Partager
 
@@ -3271,6 +3323,9 @@ Les opérations de configuration suivantes concernent les **Tools optionnels** :
 - Remplir les paramètres définis par le Tool, individuellement ou en lot.
 - Centraliser des valeurs globales : une connexion peut les surcharger sauf si la valeur globale
   est **imposée**. Les secrets conservent un stockage chiffré et une lecture masquée.
+  Le formulaire de connexion affiche cet héritage lorsque le lecteur possède aussi un droit
+  de consultation ou d’édition des Tools. Un accès limité aux Connexions ne révèle pas ces
+  valeurs globales ; les secrets et la configuration de transport restent protégés.
 - Découvrir les fonctions d’une connexion et choisir **Actif**, **Bloqué** ou **Sur demande** ;
   **Hériter** retire la surcharge. L’ordre est surcharge de connexion, état global, défaut logiciel.
 - Utiliser les libellés, descriptions et choix fixes des paramètres dans les connexions, valeurs
@@ -3278,6 +3333,8 @@ Les opérations de configuration suivantes concernent les **Tools optionnels** :
 - Rafraîchir les connexions et catalogues ou synchroniser les connexions intégrées manquantes.
 - Consulter pour chaque agent l’origine native/externe/mixte des outils, leur disponibilité et
   les erreurs de découverte.
+  Un échec de rafraîchissement conserve la liste et le diagnostic du catalogue ; le réessai
+  reste disponible sans recréer la connexion.
 
 La matrice **Autorisations** présente les modes Activé/Désactivé/Sur demande dans les colonnes
 **Global (tous)** et **Cette connexion**. Seule la règle applicable à l’agent sélectionné est mise en évidence.
@@ -3599,6 +3656,10 @@ Sur `document://`, `file_search(mode="name")` recherche titres et noms de fichie
 pagination et ACL, en retournant des métadonnées compactes sans extraits du corps ni chargement
 du modèle d’embeddings. Les modes texte et sémantique conservent la recherche de contenu ;
 `memory://` conserve son rappel hybride dans tous les modes.
+
+Sur l’URI exacte d’un fichier documentaire, les modes texte et sémantique proposent aussi la
+[recherche de passages RAG](#document-rag). Ils ne changent
+pas la sémantique de recherche des collections ni les droits du provider.
 
 ### Partages Samba et Windows
 
@@ -4372,9 +4433,10 @@ Sources : [corpus et protocole](../dev/lab-reference-corpus.md),
 Le Lab propose aussi des **campagnes de processus réels** dans son espace Processus, distinctes
 des dix mécanismes d’évaluation IA. Un agent peut créer un Dataset privé d’entrées entièrement
 synthétiques avec sorties exactes attendues facultatives, ou générer **1 à 20 cas** depuis le
-contrat d’entrée du processus avec le modèle Lab. Le Dataset de campagne est une ressource
-JSON native `data://`, avec ses propres droits et révisions, jamais un Document de stockage.
-Il est réutilisable ; les données de chaque exécution restent dans son run Process.
+contrat d’entrée du processus avec le modèle Lab. Le Dataset de campagne est un document
+Données JSON `data://` de la bibliothèque commune, avec ses propres droits et révisions.
+Il est réutilisable ; la définition BPMN et les données de chaque exécution restent dans
+Process, indépendamment de ce jeu d’entrées.
 
 Lancer une campagne admet de vrais runs, avec la dernière définition enregistrée à chaque
 admission : appels externes et effets métier peuvent donc se produire, sans mocks automatiques.
@@ -4946,10 +5008,15 @@ existence n’équivaut pas à une certification de toutes les combinaisons de f
   non committés, avec services de test séparés, empreinte des sources, journaux et bilan sous
   `artifacts/validation/`. Une modification des sources pendant la campagne invalide la
   qualification du worktree courant ; la commande ne crée ni commit ni déploiement.
+  Le délai global est de deux heures par défaut ; `make validate-stability` prévoit quatre
+  heures et trois répétitions E2E par navigateur. `VALIDATION_TIMEOUT_SECONDS` permet de
+  l’ajuster. Lire le bilan complet et ses échecs avant de qualifier une publication.
 - **Couverture mesurée sur tout le backend.** `make tests-coverage` inclut les modules jamais
   importés et produit les rapports complets ainsi que le sous-ensemble critique. Le seuil bloquant
   de **95 %** porte sur ce sous-ensemble agrégé, lignes et branches combinées ; les planchers par
   domaine et le contrôle des branches critiques modifiées complètent cette mesure.
+  Les contrôles d’inventaire refusent aussi les sélections critiques pointant vers des sources
+  retirées ou ne couvrant plus aucun fichier d’un domaine déclaré.
 - **Preuves de non-régression.** Les scénarios couvrent notamment sessions et réponses tardives,
   réouverture des sélecteurs et onglets, versions documentaires, concurrence des processus,
   publication du Lab, médias, stockage, transferts et diagnostics DbAdmin. Les mutations
@@ -5418,7 +5485,7 @@ ordinaires restent dans le périmètre de l’agent.
 | `file_list` | `file_sharing` | Lister une collection de fichiers, pièces jointes ou objets projetés. |
 | `file_info` | `file_sharing` | Lire les métadonnées et les capacités d’une ressource. |
 | `dataset_query` | `file_sharing` | Interroger un document Données autorisé : filtres JSON, projection, tri, pages et agrégats, avec révision attendue. |
-| `file_search` | `file_sharing` | Rechercher noms/contenus sous une collection ; appliquer le rappel hybride et les chemins structurels autorisés pour Memory. |
+| `file_search` | `file_sharing` | Rechercher noms/contenus d’une collection ou passages RAG d’un fichier documentaire exact, avec pages, positions et droits revérifiés ; conserver le rappel hybride et les chemins autorisés pour Memory. |
 | `file_read` | `file_sharing` | Lire une page de texte/blocs HTML, le JSON d’un Dataset paginé en caractères ou un binaire borné, avec suite de lecture et révision. |
 | `file_create` | `file_sharing` | Créer une ressource texte/binaire, une pièce jointe, un Document HTML `document://` ou un Dataset JSON `data://`, avec son contenu complet. |
 | `file_write` | `file_sharing` | Remplacer le contenu selon ses préconditions et la révision attendue ; conserver le type du document et valider le JSON d’un Dataset. |

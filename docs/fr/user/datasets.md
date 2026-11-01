@@ -21,6 +21,11 @@ Un JSON valide est enregistré automatiquement. Un brouillon invalide reste visi
 et ne remplace jamais le contenu enregistré ; la navigation vérifie sa sauvegarde.
 Les modifications concurrentes demandent une relecture et préservent le brouillon.
 
+Si vous utilisez **Précédent** depuis le dialogue du document avec un JSON invalide,
+choisissez **Annuler** pour rester et corriger, ou **Abandonner** pour retrouver le
+dernier contenu enregistré et quitter. Annuler reçoit le focus par défaut ; fermer
+la confirmation conserve le brouillon.
+
 Titre, propriétaire, sujet, partage, mots-clés, résumé et historique utilisent les
 commandes communes. Le partage peut viser des personnes, agents ou équipes ; pouvoir
 modifier le JSON ne donne pas le droit de repartager le document. Un lien depuis un
@@ -54,4 +59,8 @@ La recherche sémantique dépend du modèle vectoriel et de l'indexation Dream.
 Une application HTML dans un document Texte conserve un accord personnel pour accéder
 aux Données. Cet accord dépend de la version de la page, ne remplace pas le partage et
 peut être révoqué. Les écritures utilisent le quota commun côté serveur.
+Elles sont limitées à 2 000 000 octets UTF-8 par contenu JSON résultant, puis à
+30 écritures et 4 000 000 octets résultants par minute et couple utilisateur–Données,
+tous documents et onglets confondus. Une écriture réussie permet de continuer à utiliser
+le formulaire ; un changement de droits ou une révocation reste appliqué aux appels suivants.
 Les définitions de processus métier restent dans Process ; elles ne sont pas des documents Données.

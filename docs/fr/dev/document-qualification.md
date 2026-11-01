@@ -138,8 +138,12 @@ Sans vision, la limite reste visible. La couverture des unités fournies ne cert
 jamais la justesse sémantique (`semantic_accuracy_verified=false`).
 
 Le cache de préparation utilise un répertoire temporaire privé du processus, hors de `/data`,
-séparé par agent, URI, empreinte et version du lecteur. Chaque accès revalide les droits et les
-octets de la source. Rétention opportuniste : sept jours ; quota : 2 Gio par agent et processus.
+séparé par agent, URI, empreinte et version du lecteur. Chaque accès revalide les droits et
+l’identité de la source. Après la première matérialisation et vérification d’empreinte, un
+fichier immuable géré réutilise sa préparation si son identité et ses métadonnées restent
+inchangées ; un fichier distant sans cette garantie est relu. Le retrait de la source invalide
+aussi les préparations et arrête les conversions en cours. Rétention opportuniste : sept jours ;
+quotas : 2 Gio et 256 entrées par agent et processus.
 La fin normale du processus nettoie le cache. Après un redémarrage, la source est reconvertie
 si nécessaire ; les résultats et lots d'inférence restent durables en base et ne sont pas refacturés.
 Le worker reprend ses pages terminées encore disponibles via des checkpoints atomiques.

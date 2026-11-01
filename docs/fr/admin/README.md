@@ -1099,6 +1099,7 @@ rôles. Les synchronisations suivantes ne recréent pas la rubrique et ne rétab
 les affectations initiales. Les catégories existantes portant les noms initiaux sont
 reprises avec leurs identifiants et leur répartition ; les autres catégories sont conservées.
 
+<a id="backup-and-restore"></a>
 ## 9. Sauvegarde et restauration
 
 Un exercice entièrement isolé est disponible avec `make tests-restore` : dump et
@@ -1150,7 +1151,7 @@ volumes.
 ```bash
 make update
 # Ou sélectionner un tag exact, sinon une branche distante :
-make update VERSION=v1.2.3
+make update VERSION=1.2.3
 ```
 
 Sans `VERSION`, `make update` construit et déploie les sources présentes sans récupération Git,
@@ -1207,6 +1208,34 @@ Le harness manager possède un cycle de déploiement indépendant et peut résid
 machine. `make update` ne le met jamais à jour et ne redémarre aucun service hôte externe. Sa mise
 à jour s'effectue sur son propre hôte avec le Makefile de `harness_manager`, en coordonnant
 explicitement la compatibilité avec les déploiements Galaris qui le consomment.
+
+<a id="upgrade-0-3"></a>
+### Passer de 0.2.0 à 0.3.0
+
+Cette procédure s’applique une fois le tag **`0.3.0`** publié, sans préfixe `v`.
+Consultez les notes de version dans le fichier `CHANGELOG.md` à la racine du dépôt
+avant de sélectionner ce tag.
+
+Avant la mise à jour, arrêtez les écrivains applicatifs pour sauvegarder au même point logique
+la base PostgreSQL complète, les fichiers conservés dans les volumes applicatifs, `.env` et
+les clés de chiffrement. Gardez aussi l’identité des anciennes images. Un dump seul ne couvre
+pas les pièces jointes ; voir [Sauvegarde et restauration](#backup-and-restore).
+Ne laissez pas un ancien backend écrire pendant les transferts de données.
+
+Une fois le tag publié, utilisez `make update VERSION=0.3.0` depuis un checkout propre, ou
+déployez le bundle immuable déjà qualifié avec `RELEASE_DIR`. Le démarrage applique les
+convergences DbAdmin et les transferts reprenables avant d’annoncer le backend prêt.
+En cas d’échec, conservez les diagnostics et corrigez leur cause avant de relancer la même
+procédure ; ne remplacez pas cette étape par une modification SQL manuelle. Un retour arrière
+exige la restauration cohérente de la base et des fichiers avec les anciennes images.
+
+Après la mise à jour, retrouvez Texte et Données dans **Connaissances → Documents** et vérifiez
+un document existant, ses pièces jointes et ses droits avec le compte concerné. Les anciens
+liens Dataset et les URI `data://` restent utilisables. Les résumés deviennent des métadonnées
+courantes ; l’historique restaurable concerne le contenu. Les procédures apprises se retrouvent
+dans les compétences personnelles, avec leurs preuves et réglages. Les définitions BPMN et
+les données des runs restent dans Process. Consultez les guides [Documents](../user/documents.md),
+[Données](../user/datasets.md) et [Compétences](../user/skills.md) pour ces parcours.
 
 ## 11. Surveillance et dépannage
 

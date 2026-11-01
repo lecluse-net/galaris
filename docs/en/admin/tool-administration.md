@@ -329,6 +329,11 @@ A secret can be preserved, removed, or replaced through a `secret_reference` bou
 code and endpoint. A mask never replaces a secret. Entire batches validate before writing
 and persist in one transaction.
 
+Connection forms display inherited global parameters and enforced values when you also have
+Tool viewing or editing rights. Connection-only rights do not expose these globals; secrets
+remain masked and this catalogue does not expose transport configuration. A failed catalogue
+refresh preserves the connection list and diagnostic; retry without recreating the connection.
+
 Functions resolve **connection override → global state → software default**. Modes are
 **Enabled**, **Disabled**, and **Ask**; **Inherit** (`default`) removes an override.
 In the **Authorizations** matrix, **Global (all)** and **This connection** offer Enabled, Disabled and Ask.

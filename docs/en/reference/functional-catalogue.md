@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **30 October 2026**,
+This catalogue describes features present in the repository as of **1 November 2026**,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -142,6 +142,9 @@ transport result. Resource origins, executed tools, results and available delive
 - **Welcome journey.** Seven selectable setup steps include the default language. The timeline
   wraps to the available width, provides previous/next navigation and links to configuration
   screens under the user's rights; language selection saves automatically.
+  Welcome remains the account's home page until explicitly confirmed, including on a
+  preconfigured instance. The Galaris logo returns there while it is pending; a failed save
+  keeps the journey visible and offers retry.
 - **Guided home page:** discovery panels check usable chat models, agents, tools, active
   messaging, skills and processes, respecting rights and existing configuration.
 - **Guided first mission:** once essential setup is complete, Welcome offers a notes summary,
@@ -774,7 +777,38 @@ The profile's document model is used with fallback to its standard text model if
 `model_slot="text"` selects the latter. The same profile's vision model can provide observations
 for a text model without image input. These analyses create no business Process definition or run.
 
+<a id="document-rag"></a>
+### Retrieving passages from large sources
+
+In automatic mode, a local estimate compares document input cost with model capacity after
+reserving conversation, tools and output. Multiple documents share the remaining budget;
+unknown capacity uses a conservative 32,000-token fallback. A fitting document can be supplied
+in full. Otherwise, **document RAG** supplies bounded passages from extracted text, with physical
+pages and character offsets. No LLM makes the routing decision. Explicit direct and prepared
+modes remain available.
+
+Retrieval combines words and embeddings when the vector model is available; missing or failed
+embeddings produce an explicit lexical fallback. Unextractable pages and limits remain visible.
+Selected passages prove neither exhaustive reading nor understanding of figures; no result
+does not prove a fact absent. `document_analyze` remains the complete-analysis path, with its
+coverage and its own limits.
+
+An agent can investigate further with `file_search` on an exact PDF, Office or text file URI,
+including a document attachment. `mode="semantic"` returns citable passages; `mode="text"`
+uses words without embedding calls. A single file returns a bounded result without pagination;
+refine the question to continue. Each search rechecks access and source version and creates
+no personal memory.
+
+Managed immutable files reuse preparation and indexes under source permissions. Retiring a
+reference purges the derived index; another still-authorized reference may rebuild it. Source
+deletion prevents late index publication and cleans active temporary preparations too. Remote
+sources without immutable identity are reread; their indexes and inline gateway uploads remain
+request-local. This index is separate from the private file catalogue and Memory.
+
 Sources: [formats, budgets and qualification](../dev/document-qualification.md),
+[retrieval journey](../user/files.md),
+[RAG routing and limits](../../../project/decisions/0261-capacity-routed-source-owned-document-rag.md),
+[authorized search and lifecycle](../../../back/app/file_share/tests/test_document_rag.py),
 [XLS contracts](../../../back/tests/test_legacy_spreadsheets.py),
 [MCP contracts](../../../back/app/llm/mcp.py),
 [recovery, coverage and cancellation](../../../back/tests/test_document_analysis.py).
@@ -1913,6 +1947,13 @@ Library shortcuts rename (F2), create a Document/subdocument (F3), open (F4), cr
 subdocument (F7) and request deletion (Delete). They target the hovered/focused row, suspend during
 typing and respect permissions. Context menus support right-click, action buttons and keyboard.
 
+In the library tree and list, Ctrl/Cmd+click adds or removes a document without opening it;
+Shift+click selects a visible range and Ctrl/Cmd+Shift+click adds that range. Dragging a selected
+document moves the group in order into a folder, parent document or root; dropping before/after
+a row preserves that position. A selected child follows its selected parent without detaching.
+Other people's filing stays unchanged; inherited rights follow the destination. Failed items
+remain selected for retry. Changing search, filters or page clears the selection.
+
 Sources: [library and bulk actions](../user/navigation.md),
 [bulk-management interactions](../../../front/browser-tests/document-bulk.spec.mjs).
 
@@ -1978,6 +2019,10 @@ deletion and can reset to default. Failed saves preserve the confirmed choice fo
 changes clear caches and old responses cannot replace newly saved icons.
 
 ### Rich editing
+
+Floating contextual tools follow selected text or objects: links, images, tables, formulas and
+resource cards. They offer applicable actions while leaving the native browser menu available
+for copying, pasting and mobile selection.
 
 The full editor supports **inline and block equations** through MathLive, with visual entry,
 a symbol keyboard and synchronised LaTeX source. Double-click or Enter reopens a formula; its
@@ -2215,6 +2260,10 @@ A capture completed after a content change cannot publish a stale image.
 See [decision 0163](../../../project/decisions/0163-single-document-thumbnail.md).
 
 ### Saving, history and human–agent collaboration
+
+An invalid JSON draft never replaces saved content. Browser Back from the document dialog
+offers staying to correct it or explicitly discarding the draft to restore the last saved
+version. Cancel receives initial focus; dismissal without confirmation preserves the draft.
 
 Autosave retains an in-tab draft. Expected revisions detect concurrent changes and preserve the
 draft for an explicit choice. Collaboration uses saves and version control, not real-time keystroke
@@ -2571,6 +2620,11 @@ removes an override. Parameter labels, descriptions and fixed choices appear con
 connections, global settings and MCP tests. Values outside a choice list are rejected and YAML
 import/export preserves this metadata.
 
+Connection forms display inherited global values when the reader also has Tool viewing or
+editing rights. Connection-only access does not reveal those values; secrets and transport
+configuration remain protected. A failed catalogue refresh keeps the connection list and
+diagnostic available, with retry without recreating the connection.
+
 The **Authorizations** matrix presents Enabled/Disabled/Ask under **Global (all)** and **This connection**.
 Only the rule applicable to the selected agent is highlighted. Selecting a global mode saves
 that rule and atomically clears this connection's override; other agents' overrides remain.
@@ -2845,6 +2899,9 @@ read-only business projections: allowed fields can be edited with `expected_etag
 On `document://`, `file_search(mode="name")` searches titles and filenames with pagination and ACLs,
 returning compact metadata without body passages or loading the embedding model. Text and semantic
 modes retain content search; `memory://` retains hybrid recall in every mode.
+
+Exact documentary file URIs also support [RAG passage retrieval](#document-rag)
+in text and semantic modes. Collection-search semantics and provider permissions remain unchanged.
 
 ### Samba and Windows shares
 
@@ -3454,8 +3511,9 @@ Sources: [corpora and protocol](../dev/lab-reference-corpus.md),
 The Lab's Process workspace also evaluates **real Process campaigns**, separately from its ten AI
 mechanisms. Agents can create private Datasets of entirely synthetic input with optional exact
 expected outputs, or generate **1–20 cases** from a Process input contract using the Lab model.
-Campaign Datasets are native JSON `data://` resources with their own rights and revisions,
-never storage Documents. They remain reusable; each execution's data stays in its Process run.
+Campaign Datasets are JSON Data documents in the common library, with `data://` URIs and their
+own rights and revisions. They remain reusable; BPMN definitions and each execution's data stay
+in Process, independently from that input dataset.
 
 Starting a campaign admits real runs with the latest saved definition at each admission; remote
 calls/business effects may occur without automatic mocks. Cases retain run reference, inputs,
@@ -3893,9 +3951,14 @@ is not certification of every provider combination.
 - `make validate` tests an isolated snapshot including uncommitted changes, with separate services,
   source fingerprints, logs and `artifacts/validation/` summaries. Later source edits invalidate current
   worktree qualification; it neither commits nor deploys.
+  The default global deadline is two hours; `make validate-stability` allows four hours and
+  three E2E repetitions per browser. Override it with `VALIDATION_TIMEOUT_SECONDS` when needed.
+  Read the complete summary and failures before qualifying a publication.
 - `make tests-coverage` includes never-imported backend modules and reports full/critical subsets.
   The blocking 95% threshold applies to the aggregate critical subset, combining lines/branches;
   domain floors and changed-critical-branch checks complement it.
+  Inventory controls also reject critical selections pointing to removed sources or selecting
+  no file in a declared domain.
 - Regression scenarios cover sessions/late responses, reopening selectors/tabs, document versions,
   Process concurrency, Lab publication, media, storage/transfers and DbAdmin diagnostics. Mutation
   checks reintroduce defects into disposable copies and verify previously green scenarios detect them.
@@ -4321,7 +4384,7 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `file_list` | `file_sharing` | List files, attachments or projected business objects. |
 | `file_info` | `file_sharing` | Read metadata/capabilities. |
 | `dataset_query` | `file_sharing` | Query authorised Data with JSON filters, projection, sorting, pages and aggregates at an expected revision. |
-| `file_search` | `file_sharing` | Search collection names/content; Memory uses hybrid recall and authorised structural paths. |
+| `file_search` | `file_sharing` | Search collection names/content or RAG passages in an exact documentary file, with pages, offsets and renewed access checks; Memory retains hybrid recall and authorized paths. |
 | `file_read` | `file_sharing` | Read paginated text/HTML blocks, Dataset JSON by character or bounded binary, with continuation/revision. |
 | `file_create` | `file_sharing` | Create text/binary, attachments, HTML Documents `document://` or JSON Datasets `data://`, with complete content. |
 | `file_write` | `file_sharing` | Replace under preconditions/expected revision; retain type and validate Dataset JSON. |

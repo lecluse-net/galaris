@@ -151,8 +151,9 @@ déjà autorisés continuent à être restaurés.
 
 ## Livraison et retour arrière
 
-`make build-release RELEASE_REF=<commit>` archive le commit puis construit/exporte quatre images
-dans `artifacts/releases/<commit>`. Les changements non commités ne font pas partie de cet
+`make build-release RELEASE_REF=<commit>` archive le commit puis construit/exporte cinq images :
+backend, frontend, exécuteurs Browser, SSH et Code, dans `artifacts/releases/<commit>`.
+Les changements non commités ne font pas partie de cet
 artefact. Les bases sont figées par digest ; les paquets système sont résolus à la construction.
 L’objectif est de promouvoir les mêmes images, sans promettre une reconstruction bit à bit.
 

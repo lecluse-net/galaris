@@ -66,6 +66,11 @@ Planned for **0.3.0**; includes changes since 0.2.0.
   WhatsApp receive connection and delivery fixes and are explicitly marked experimental.
 - **Editor interactions:** contextual tools follow the selected object while native
   browser menus remain available; mobile text selection and deletion are preserved.
+- **Upgrade preparation:** back up the complete database, stored files and encryption
+  keys together before upgrading. Use `make update` to apply the resumable Text/Data
+  document migrations, and keep older backends from writing during that transition.
+  Existing Dataset links and historical source data are retained; see the
+  [upgrade guide](docs/en/admin/README.md#upgrade-0-3).
 
 ### Removed
 
@@ -87,6 +92,26 @@ Planned for **0.3.0**; includes changes since 0.2.0.
   resolution by retrying with the provider's default.
 - Keep explicitly blocked Task milestones from being reported as successful.
   Agents awaiting a colleague can suspend and resume without sending the request again.
+- Keep consented document applications usable after saving Data, enforce their write
+  limits before consuming quota, and preserve access revocations. Browser Back from an
+  invalid JSON draft offers staying to correct it or explicitly discarding it without
+  replacing saved data.
+- Restrict active Process work to the agent's participation and current access rights,
+  restore authorized Process browsing in Files, and retain Lab campaign references to
+  Data documents after migration.
+- Make secondary-profile failover reliable after provider connection errors, timeouts
+  and eligible HTTP failures while preserving completed Tool actions.
+- Show inherited global Tool parameters to authorized connection editors while keeping
+  secrets masked and connection-only readers restricted.
+- Preserve requested Tools/LLM tabs while permissions load or refresh, and restore
+  keyboard folder renaming and context-menu focus.
+- Restore managed external Console editor installation and updates after runtime
+  security upgrades by including their complete build dependencies.
+
+### Security
+
+- Update PDF and ASN.1 dependencies and bundled Browser, SSH and Code executor
+  runtimes to include available security fixes.
 
 ## [0.2.0] - 2026-10-25
 

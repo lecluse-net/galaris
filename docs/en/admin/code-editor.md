@@ -133,6 +133,13 @@ environment and its service restarts are not provided.
 
 ## Operations, recovery and verification
 
+If `make update` fails at the `editors` stage, inspect the JSON diagnostic at the displayed
+path. It retains the command, status and redacted output. A Docker build failure differs
+from a refusal caused by active sessions. The backend supplies the complete bundle, including
+locked editor dependencies, and transfers it over SSH. After fixing the sources, rebuild the
+backend through the normal update procedure before retrying; do not patch bundles manually
+on the remote machine. Existing Console access, port, credentials and profiles are retained.
+
 The backend reconciles sessions every ten seconds. Streams recheck grants and connection
 configuration at the same interval. IDE profiles survive expiry and revocation for authorized
 recovery; retaining a profile grants no access. The pane provides no session deletion

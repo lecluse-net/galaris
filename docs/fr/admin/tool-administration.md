@@ -300,6 +300,12 @@ et signale une découverte partielle sans supprimer leur index existant.
 
 ## Paramètres, droits et commandes
 
+Les formulaires de connexion affichent les paramètres globaux hérités et les valeurs imposées
+si vous disposez aussi des droits de consultation ou d’édition des Tools. Un droit limité aux
+Connexions n’ouvre pas ces valeurs globales ; les secrets restent masqués et la configuration
+de transport n’est pas exposée par ce catalogue. Après un échec de rafraîchissement, la liste
+des connexions et le diagnostic restent consultables ; réessayez sans recréer la connexion.
+
 Dans le formulaire d'un Tool personnalisé, chaque liste de paramètres des drivers propose
 **Nouveau paramètre…** en dernière position. Cette action ajoute un paramètre au bloc de droite,
 avec un nom unique et le type adapté, puis l'associe au champ courant. Le paramètre et son

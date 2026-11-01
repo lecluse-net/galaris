@@ -138,6 +138,14 @@ Le terminal complet de la Console et le redémarrage de ses services ne sont pas
 
 ## Exploitation, récupération et vérification
 
+Si `make update` échoue à l’étape `editors`, consultez le diagnostic JSON dont le chemin
+est affiché. Il conserve la commande, son statut et les sorties masquées. Un échec Docker
+de construction se distingue d’un refus dû à des sessions actives. Le backend fournit le
+bundle complet, avec les dépendances verrouillées de l’éditeur, puis le transfère par SSH.
+Après correction des sources, reconstruisez le backend par la procédure normale de mise à
+jour avant de réessayer ; ne complétez pas manuellement les bundles sur la machine distante.
+Les accès Console, le port, les credentials et les profils existants restent conservés.
+
 Le backend réconcilie les sessions toutes les dix secondes. Les flux revérifient les droits
 et la connexion à la même fréquence. Les profils IDE sont conservés après expiration ou
 révocation pour permettre une récupération autorisée ; leur conservation n’accorde aucun

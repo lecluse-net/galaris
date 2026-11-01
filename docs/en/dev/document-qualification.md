@@ -129,7 +129,11 @@ coverage never certifies semantic accuracy (`semantic_accuracy_verified=false`).
 
 The preparation cache uses a private process-owned temporary directory outside `/data`,
 partitioned by agent, URI, checksum and reader version. Every access rechecks permissions
-and source bytes. Opportunistic retention is seven days; quota is 2 GiB per agent and process.
+and source identity. After initial materialization and hash verification, a managed immutable
+file reuses preparation while identity and metadata remain unchanged; a remote source without
+that guarantee is reread. Source retirement also invalidates preparations and stops active
+conversions. Opportunistic retention is seven days; quotas are 2 GiB and 256 entries per agent
+and process.
 Normal process termination cleans the cache. After a restart, sources are converted again
 when needed; results and inference batches remain durable in the database without duplicate
 billing. Atomic page checkpoints reuse completed conversion work while it remains available.

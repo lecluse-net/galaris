@@ -21,6 +21,10 @@ Valid JSON saves automatically. Invalid drafts remain visible and never replace 
 content; navigation checks whether the draft has saved. Concurrent edits require a
 fresh read and preserve the draft.
 
+If you use browser **Back** from the document dialog with invalid JSON, choose
+**Cancel** to stay and correct it, or **Discard** to restore the last saved content
+and leave. Cancel receives initial focus; dismissing confirmation preserves the draft.
+
 Title, owner, Topic, sharing, keywords, summary and history use the common commands.
 Sharing can target people, agents or teams; permission to edit JSON does not confer
 permission to reshare it. A reference from Text grants no access to its Data target.
@@ -49,5 +53,8 @@ model and Dream indexing.
 
 An HTML application inside a Text document retains personal consent to access Data.
 That consent depends on the page revision, does not replace sharing and can be revoked.
-Writes use the shared server-side quota. Business process definitions remain in Process;
-they are not Data documents.
+Writes use the shared server-side quota: at most 2,000,000 UTF-8 bytes per resulting
+JSON content, then 30 writes and 4,000,000 resulting bytes per minute per user–Data pair,
+across documents and tabs. A successful write lets the form continue working; access
+changes and revocation still apply to subsequent calls. Business process definitions
+remain in Process; they are not Data documents.

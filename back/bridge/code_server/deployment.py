@@ -87,8 +87,22 @@ def deployment_files() -> dict[str, bytes]:
     source = Path("/opt/galaris-code-deployment")
     if not source.is_dir():
         source = Path(__file__).resolve().parents[3] / "code-executor"
-    paths = ["Dockerfile", "runtime.py", "profiles.py", "provision-credential.py", "deploy.py", "extension/package.json", "extension/extension.js", "extension/LICENSE.md"]
+    paths = ["Dockerfile", "runtime.py", "profiles.py", "provision-credential.py", "deploy.py", "extension/package.json", "extension/extension.js", "extension/LICENSE.md", "security-deps/package.json", "security-deps/package-lock.json"]
     return {name: (source / name).read_bytes() for name in paths}
+
+
+async def _deployment_directory(sftp: asyncssh.SFTPClient, home: str, directory: str) -> None:
+    try:
+        await sftp.lstat(directory)
+    except asyncssh.SFTPNoSuchFile:
+        try:
+            await sftp.mkdir(directory)
+        except asyncssh.SFTPFailure:
+            await sftp.lstat(directory)  # Concurrent deployment of the same bundle.
+    canonical = str(await sftp.realpath(directory))
+    if canonical != directory or not canonical.startswith(home + "/"):
+        raise ValueError("The editor deployment path leaves the account home")
+    await sftp.chmod(directory, 0o700)
 
 
 async def _deployment_credential(sftp: asyncssh.SFTPClient, home: str) -> str:
@@ -146,21 +160,17 @@ async def _deploy(connection_id: int, *, upgrade: bool, update_only: bool = Fals
                 digest.update(name.encode())
                 digest.update(payload)
             root = home
-            for part in (".galaris", "code-editor", "bundle-" + digest.hexdigest(), "extension"):
+            for part in (".galaris", "code-editor", "bundle-" + digest.hexdigest()):
                 directory = str(PurePosixPath(root) / part)
-                try:
-                    await sftp.lstat(directory)
-                except asyncssh.SFTPNoSuchFile:
-                    try:
-                        await sftp.mkdir(directory)
-                    except asyncssh.SFTPFailure:
-                        await sftp.lstat(directory)  # Concurrent deployment of the same bundle.
-                canonical = str(await sftp.realpath(directory))
-                if canonical != directory or not canonical.startswith(home + "/"):
-                    raise ValueError("The editor deployment path leaves the account home")
-                await sftp.chmod(directory, 0o700)
+                await _deployment_directory(sftp, home, directory)
                 root = directory
-            bundle = str(PurePosixPath(root).parent)
+            bundle = root
+            for parent in sorted({PurePosixPath(name).parent for name in files}):
+                root = bundle
+                for part in parent.parts:
+                    directory = str(PurePosixPath(root) / part)
+                    await _deployment_directory(sftp, home, directory)
+                    root = directory
             for name, payload in files.items():
                 path = str(PurePosixPath(bundle) / name)
                 temporary = str(PurePosixPath(path).with_name("." + PurePosixPath(path).name + ".part-" + uuid4().hex))

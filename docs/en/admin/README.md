@@ -1074,6 +1074,7 @@ unassigned without removing role grants. Later synchronizations neither recreate
 category nor restore initial assignments. Existing categories bearing the initial names
 retain their identifiers and organization; other categories are preserved.
 
+<a id="backup-and-restore"></a>
 ## 9. Backup and Restore
 
 A fully isolated rehearsal is available with `make tests-restore`: PostgreSQL dump and
@@ -1124,7 +1125,7 @@ volumes.
 ```bash
 make update
 # Or select an exact tag, otherwise a remote branch:
-make update VERSION=v1.2.3
+make update VERSION=1.2.3
 ```
 
 Without `VERSION`, `make update` builds and deploys existing sources without fetching Git
@@ -1175,6 +1176,31 @@ The harness manager has an independent deployment cycle and may reside on anothe
 machine. `make update` never updates it and does not restart any external host service. Its
 update is performed on its own host with the `harness_manager` Makefile, explicitly coordinating
 compatibility with the Galaris deployments that consume it.
+
+<a id="upgrade-0-3"></a>
+### Upgrading from 0.2.0 to 0.3.0
+
+Use this procedure once the **`0.3.0`** tag is published, without a `v` prefix.
+Read the release notes in the repository's root `CHANGELOG.md` before selecting that tag.
+
+Before updating, stop application writers to back up the complete PostgreSQL database,
+files retained in application volumes, `.env` and encryption keys at the same logical point.
+Keep the previous image identities too. A dump alone does not cover attachments; see
+[Backup and Restore](#backup-and-restore). Do not leave an older backend writing during
+data transfers.
+
+Once the tag is published, use `make update VERSION=0.3.0` from a clean checkout, or deploy an
+already-qualified immutable bundle with `RELEASE_DIR`. Startup applies DbAdmin convergence
+and resumable transfers before reporting backend readiness. On failure, retain diagnostics
+and fix the cause before retrying the same procedure; do not substitute manual SQL changes.
+Rollback requires restoring the database and files consistently with the previous images.
+
+After updating, find Text and Data under **Knowledge → Documents** and check an existing
+document, its attachments and permissions with the relevant account. Old Dataset links and
+`data://` URIs remain usable. Summaries become current metadata; restorable history concerns
+content. Learned procedures appear in personal skills with their evidence and settings.
+BPMN definitions and run data stay in Process. See [Documents](../user/documents.md),
+[Data](../user/datasets.md) and [Skills](../user/skills.md) for these journeys.
 
 ## 11. Monitoring and Troubleshooting
 

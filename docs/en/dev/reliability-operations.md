@@ -139,8 +139,9 @@ restored.
 
 ## Release and rollback
 
-`make build-release RELEASE_REF=<commit>` archives a commit and exports four production images
-to `artifacts/releases/<commit>`. Uncommitted changes are excluded. Base images use digests;
+`make build-release RELEASE_REF=<commit>` archives a commit and exports five production images:
+backend, frontend, Browser, SSH and Code executors, to `artifacts/releases/<commit>`.
+Uncommitted changes are excluded. Base images use digests;
 system packages are resolved at build time. Promote the same images without rebuilding; a bitwise
 reproducible rebuild is not promised.
 

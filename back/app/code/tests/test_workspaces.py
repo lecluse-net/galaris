@@ -638,6 +638,24 @@ async def test_editor_deployment_endpoint_requires_edit_rights_and_agent_ownersh
         assert "sessions_active" in blocked.json()["detail"]
 
 
+def test_editor_deployment_bundle_contains_its_local_docker_build_inputs():
+    from fnmatch import fnmatch
+    from shlex import split
+    from bridge.code_server.deployment import deployment_files
+
+    files = deployment_files()
+    for line in files["Dockerfile"].decode().replace("\\\n", " ").splitlines():
+        instruction = line.split(maxsplit=1)
+        if not instruction or instruction[0].upper() not in {"COPY", "ADD"}:
+            continue
+        arguments = split(line, comments=True)
+        if any(argument.startswith("--from=") for argument in arguments):
+            continue
+        for source in (argument for argument in arguments[1:-1] if not argument.startswith("--")):
+            assert any(fnmatch(name, source) or name.startswith(source.rstrip("/") + "/")
+                       for name in files), f"Missing Docker build input in editor deployment bundle: {source}"
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("forwarding_works,management_works", [(False, True), (True, True), (True, False)])
 @pytest.mark.parametrize("automatic", [False, "current", "changed", "busy", "wrong_port", "wrong_credential", "unmanaged", "remote_busy", "remote_unknown"])
@@ -665,7 +683,11 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
             # Current runtimes remain usable; upgrades must preserve live buffers.
             await service.open_session(workspace.id, None)
     await db.commit()
+    from pathlib import PurePosixPath
+    import asyncssh
+
     files = {}
+    directories = {"/", "/home", target.home}
 
     class RemoteFile:
         def __init__(self, path):
@@ -683,7 +705,12 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
         async def realpath(self, path):
             return path
         async def lstat(self, path):
+            if path not in directories:
+                raise asyncssh.SFTPNoSuchFile("Synthetic missing directory")
             return object()
+        async def mkdir(self, path):
+            assert str(PurePosixPath(path).parent) in directories
+            directories.add(path)
         async def chmod(self, path, mode):
             pass
         async def posix_rename(self, source, destination):
@@ -694,6 +721,7 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
                 raise asyncssh.SFTPNoSuchFile("Synthetic missing file")
             files.pop(path)
         def open(self, path, *args, **kwargs):
+            assert str(PurePosixPath(path).parent) in directories
             return RemoteFile(path)
         def exit(self):
             pass

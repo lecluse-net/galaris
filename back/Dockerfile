@@ -79,6 +79,7 @@ RUN uv sync --frozen --no-cache
 COPY --from=harness_manager main.py update.py Makefile pyproject.toml uv.lock README.md .env.example /opt/galaris-harness-manager/
 COPY --from=code_executor Dockerfile runtime.py profiles.py provision-credential.py deploy.py /opt/galaris-code-deployment/
 COPY --from=code_executor extension/ /opt/galaris-code-deployment/extension/
+COPY --from=code_executor security-deps/ /opt/galaris-code-deployment/security-deps/
 COPY --from=product_docs . /opt/galaris-documentation/docs/
 COPY --from=project_docs decisions/ /opt/galaris-documentation/project/decisions/
 COPY --from=project_docs plans/ /opt/galaris-documentation/project/plans/
@@ -118,6 +119,7 @@ COPY --chown=app:app . /app/
 COPY --from=harness_manager main.py update.py Makefile pyproject.toml uv.lock README.md .env.example /opt/galaris-harness-manager/
 COPY --from=code_executor Dockerfile runtime.py profiles.py provision-credential.py deploy.py /opt/galaris-code-deployment/
 COPY --from=code_executor extension/ /opt/galaris-code-deployment/extension/
+COPY --from=code_executor security-deps/ /opt/galaris-code-deployment/security-deps/
 COPY --from=product_docs . /opt/galaris-documentation/docs/
 COPY --from=project_docs decisions/ /opt/galaris-documentation/project/decisions/
 COPY --from=project_docs plans/ /opt/galaris-documentation/project/plans/
