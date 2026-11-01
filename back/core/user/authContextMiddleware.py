@@ -1,7 +1,8 @@
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError as JWTError
 from loguru import logger
 from core import settings
 from core.secrets import auth_secret_key

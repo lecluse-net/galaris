@@ -9,7 +9,7 @@ import sys
 from io import BytesIO
 
 from cryptography.fernet import Fernet, InvalidToken
-from jose import jwt
+import jwt
 from sqlalchemy import select, text
 from fastapi import UploadFile
 import httpx

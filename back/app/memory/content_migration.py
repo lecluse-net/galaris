@@ -62,8 +62,12 @@ async def inline_content_complete(session: AsyncSession, _delta: SchemaTransitio
     for table in TABLES:
         if table == "memory_summary_revisions" and not await session.scalar(text("SELECT to_regclass('public.memory_summary_revisions') IS NOT NULL")):
             continue
+        # TABLES and ARCHIVE are fixed; SQL helpers emit only fixed fragments and aliases.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         if await session.scalar(text(f"SELECT EXISTS (SELECT 1 FROM {table} WHERE {_native_text(table)} AND content IS NULL)")):
             return False
+        # TABLES and ARCHIVE are fixed; SQL helpers emit only fixed fragments and aliases.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         damaged = await session.scalar(text(f"""
             SELECT EXISTS (
                 SELECT 1 FROM {ARCHIVE} backup
@@ -86,6 +90,8 @@ async def inline_content_complete(session: AsyncSession, _delta: SchemaTransitio
 
 async def migrate_inline_content(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
     await session.execute(text("CREATE SCHEMA IF NOT EXISTS galaris_migration"))
+    # TABLES and ARCHIVE are fixed; SQL helpers emit only fixed fragments and aliases.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""
         CREATE TABLE IF NOT EXISTS {ARCHIVE} (
             table_name text NOT NULL, row_key uuid NOT NULL, resource_ref text NOT NULL,
@@ -100,6 +106,8 @@ async def migrate_inline_content(session: AsyncSession, _delta: SchemaTransition
         # A fixed order and row locks prevent a metadata write from racing the
         # transfer. Upgrade orchestration must also stop old application writers.
         while True:
+            # TABLES and ARCHIVE are fixed; SQL helpers emit only fixed fragments and aliases.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             rows = (await session.execute(text(f"""
                 SELECT id, resource_id, content_hash FROM {table}
                 WHERE {_native_text(table)} AND content IS NULL ORDER BY id LIMIT 100 FOR UPDATE
@@ -119,11 +127,15 @@ async def migrate_inline_content(session: AsyncSession, _delta: SchemaTransition
                     raise ValueError("Native text contains NUL; migration sources were preserved")
                 parameters = {"table": table, "key": row.id, "ref": row.resource_id,
                               "content": content, "digest": digest, "size": len(payload)}
+                # TABLES and ARCHIVE are fixed; SQL helpers emit only fixed fragments and aliases.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 await session.execute(text(f"""
                     INSERT INTO {ARCHIVE} (table_name, row_key, resource_ref, content, sha256, size_bytes)
                     VALUES (:table, :key, :ref, :content, :digest, :size)
                     ON CONFLICT (table_name, row_key) DO NOTHING
                 """), parameters)
+                # TABLES and ARCHIVE are fixed; SQL helpers emit only fixed fragments and aliases.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 matches = await session.scalar(text(f"""
                     SELECT resource_ref = :ref AND sha256 = :digest AND size_bytes = :size
                         AND convert_to(content, 'UTF8') = convert_to(CAST(:content AS text), 'UTF8')
@@ -131,6 +143,8 @@ async def migrate_inline_content(session: AsyncSession, _delta: SchemaTransition
                 """), parameters)
                 if not matches:
                     raise ValueError("Native text differs from its migration backup; sources were preserved")
+                # TABLES and ARCHIVE are fixed; SQL helpers emit only fixed fragments and aliases.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 await session.execute(text(f"UPDATE {table} SET content = :content WHERE id = :key"), parameters)
     if not await inline_content_complete(session, _delta):
         raise ValueError("Native text migration verification failed; sources were preserved")

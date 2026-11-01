@@ -3,7 +3,7 @@
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from jose import jwt
+import jwt
 
 
 @pytest_asyncio.fixture
@@ -13,7 +13,7 @@ async def token_owner(client: AsyncClient):
     login = await client.post("/api/auth/login-json", json=credentials)
     assert login.status_code == 200
     access = login.json()["access_token"]
-    claims = jwt.get_unverified_claims(access)
+    claims = jwt.decode(access, options={"verify_signature": False})
     # The first account is an administrator: even its API token must be denied.
     assert claims["role_code"] == "admin"
     web_headers = {"Authorization": f"Bearer {access}"}
@@ -181,7 +181,7 @@ async def test_agent_mcp_credentials_also_require_web_authentication(client, tok
 ])
 async def test_api_token_cannot_manage_accounts_or_preferences(client, token_owner, method, path, payload):
     web_headers, token, _ = token_owner
-    claims = jwt.get_unverified_claims(web_headers["Authorization"].removeprefix("Bearer "))
+    claims = jwt.decode(web_headers["Authorization"].removeprefix("Bearer "), options={"verify_signature": False})
     path = path.format(user_id=token["user_id"], assignment_id=claims["assignment_id"])
     api_headers = {"Authorization": f"Bearer {token['token']}"}
     before = await client.get("/api/auth/me", headers=web_headers)
@@ -206,7 +206,7 @@ async def test_api_token_cannot_manage_accounts_or_preferences(client, token_own
 @pytest.mark.parametrize("route", ["self", "admin"])
 async def test_web_password_change_still_works_and_revokes_old_web_session(client, token_owner, route):
     web_headers, token, _ = token_owner
-    claims = jwt.get_unverified_claims(web_headers["Authorization"].removeprefix("Bearer "))
+    claims = jwt.decode(web_headers["Authorization"].removeprefix("Bearer "), options={"verify_signature": False})
     default_role = await client.put(
         f"/api/authorize/assignments/{claims['assignment_id']}/default", headers=web_headers,
     )

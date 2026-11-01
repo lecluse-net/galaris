@@ -18,6 +18,8 @@ async def preserved_resources(session: AsyncSession, provider: str, pointers: Co
     """Retired summary pointers still retain their original stored bytes."""
     if not pointers or not await archive_exists(session):
         return set()
+    # _ARCHIVE is a fixed migration-owned identifier; external values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     return set(await session.scalars(text(f"SELECT snapshot->>'resource_id' FROM {_ARCHIVE} WHERE snapshot->>'provider_code'=:provider AND snapshot->>'resource_id'=ANY(CAST(:pointers AS text[]))"),
         {"provider": provider, "pointers": list(pointers)}))
 
@@ -31,7 +33,11 @@ async def preserve_current(session: AsyncSession, _delta: SchemaTransitionSet) -
         return
     await session.execute(text("LOCK TABLE document_summary_revisions IN SHARE MODE"))
     await session.execute(text("CREATE SCHEMA IF NOT EXISTS galaris_migration"))
+    # _ARCHIVE is a fixed migration-owned identifier; external values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"CREATE TABLE IF NOT EXISTS {_ARCHIVE} (identity uuid PRIMARY KEY, snapshot jsonb NOT NULL, digest text NOT NULL)"))
+    # _ARCHIVE is a fixed migration-owned identifier; external values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"INSERT INTO {_ARCHIVE} SELECT id,to_jsonb(r),encode(sha256(convert_to(to_jsonb(r)::text,'UTF8')),'hex') FROM document_summary_revisions r ON CONFLICT DO NOTHING"))
     if not await _archive_complete(session):
         raise RuntimeError("Historical summary source changed or its archive is damaged; retirement refused")
@@ -45,6 +51,8 @@ async def preserve_current(session: AsyncSession, _delta: SchemaTransitionSet) -
 async def _archive_complete(session: AsyncSession) -> bool:
     if not await archive_exists(session):
         return False
+    # _ARCHIVE is a fixed migration-owned identifier; external values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     return not bool(await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM {_ARCHIVE}
         WHERE digest<>encode(sha256(convert_to(snapshot::text,'UTF8')),'hex')) OR EXISTS(
         SELECT 1 FROM document_summary_revisions r LEFT JOIN {_ARCHIVE} a ON a.identity=r.id

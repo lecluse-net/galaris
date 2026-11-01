@@ -136,6 +136,8 @@ async def _normalize_memory_snapshots(
     for table, column in await _memory_snapshot_columns(session):
         table_sql, column_sql = "public." + _snapshot_identifier(table), _snapshot_identifier(column)
         # Scope the scan by the owning contract, then update only changed rows.
+        # SQL identifiers are double-quote escaped; predicates are fixed and row values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         rows = await session.stream(text(
             f"SELECT id, {column_sql} FROM {table_sql} "
             f"WHERE {_memory_snapshot_row_filter(table)} AND {column_sql}::text ~ :pattern"
@@ -144,6 +146,8 @@ async def _normalize_memory_snapshots(
             original = _JSON_VALUE.validate_python(row[1])
             cleaned = _normalize_memory_column(original, column)
             if cleaned != original:
+                # SQL identifiers are double-quote escaped; predicates are fixed and row values are bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 await session.execute(text(
                     f"UPDATE {table_sql} SET {column_sql} = CAST(:value AS jsonb) WHERE id = :id"
                 ), {"id": row[0], "value": json.dumps(cleaned, ensure_ascii=False)})
@@ -154,6 +158,8 @@ async def _memory_snapshots_normalized(
 ) -> bool:
     for table, column in await _memory_snapshot_columns(session):
         table_sql, column_sql = "public." + _snapshot_identifier(table), _snapshot_identifier(column)
+        # SQL identifiers are double-quote escaped; predicates are fixed and row values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         rows = await session.stream(text(
             f"SELECT {column_sql} FROM {table_sql} "
             f"WHERE {_memory_snapshot_row_filter(table)} AND {column_sql}::text ~ :pattern"
@@ -248,6 +254,8 @@ async def _purge_execution_preparation(
         # Identifiers come from PostgreSQL, quoted independently of their values.
         table_sql = '"' + table.replace('"', '""') + '"'
         column_sql = '"' + column.replace('"', '""') + '"'
+        # SQL identifiers are double-quote escaped; predicates are fixed and row values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         rows = await session.stream(text(
             f"SELECT id, {column_sql} FROM {table_sql} "
             f"WHERE {column_sql}::text ILIKE '%briefing%'"
@@ -255,6 +263,8 @@ async def _purge_execution_preparation(
         async for row in rows:
             cleaned = _without_execution_preparation(row[1])
             if cleaned != row[1]:
+                # SQL identifiers are double-quote escaped; predicates are fixed and row values are bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 await session.execute(text(
                     f"UPDATE {table_sql} SET {column_sql} = CAST(:value AS jsonb) WHERE id = :id"
                 ), {"id": row[0], "value": json.dumps(cleaned)})
@@ -281,6 +291,8 @@ async def _execution_preparation_is_purged(
     for table, column in await _preparation_snapshots(session):
         table_sql = '"' + table.replace('"', '""') + '"'
         column_sql = '"' + column.replace('"', '""') + '"'
+        # SQL identifiers are double-quote escaped; predicates are fixed and row values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         rows = await session.stream(text(
             f"SELECT {column_sql} FROM {table_sql} WHERE {column_sql}::text ILIKE '%briefing%'"
         ))

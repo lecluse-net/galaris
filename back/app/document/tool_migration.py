@@ -12,6 +12,8 @@ _MAPPING = """(VALUES ('document_share','document_share'),
 
 
 async def complete(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
+    # Identifiers and SQL fragments come only from _MAPPING and the fixed policy tuple.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     return not bool(await session.scalar(text(f"""SELECT EXISTS (
         SELECT 1 FROM tool_function_state old JOIN tools src ON src.id=old.tool_id AND src.code='memory'
         JOIN {_MAPPING} mapping(old_name,new_name) ON mapping.old_name=old.function_name
@@ -40,6 +42,8 @@ async def transfer(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
         ("connection_function_state", "connection_id", "origin.id", "recipient.id"),
     ):
         joins = "" if reference == "tool_id" else "JOIN connections origin ON origin.tool_id=src.id JOIN connections recipient ON recipient.tool_id=dst.id AND recipient.agent_id=origin.agent_id"
+        # Identifiers and SQL fragments come only from _MAPPING and the fixed policy tuple.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"""INSERT INTO {table}({reference},function_name,capability_kind,enabled,state)
             SELECT {target},mapping.new_name,old.capability_kind,
                 max(CASE coalesce(old.state,CASE WHEN old.enabled THEN 'enabled' ELSE 'disabled' END)

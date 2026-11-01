@@ -32,6 +32,8 @@ async def transfer_resource_acl(session: AsyncSession, table: str) -> None:
     while rows := list(
         (
             await session.execute(
+                # _SOURCES validates the table and supplies fixed grant identifiers; row values are bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 text(
                     f"SELECT id, to_jsonb(r) AS source FROM public.{table} r WHERE share_id IS NULL ORDER BY id LIMIT 100 FOR UPDATE"
                 )
@@ -64,6 +66,8 @@ async def transfer_resource_acl(session: AsyncSession, table: str) -> None:
             for grants_table, foreign, principal in grant_sources:
                 for grant in (
                     await session.execute(
+                        # _SOURCES validates the table and supplies fixed grant identifiers; row values are bound.
+                        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                         text(
                             f"SELECT to_jsonb(g) FROM public.{grants_table} g WHERE {foreign} = :identity"
                         ),
@@ -134,6 +138,8 @@ async def transfer_resource_acl(session: AsyncSession, table: str) -> None:
             if sorted(copied, key=lambda g: json.dumps(g, sort_keys=True)) != snapshot["grants"]:
                 raise ValueError("Legacy sharing transfer did not preserve all grants")
             await session.execute(
+                # _SOURCES validates the table and supplies fixed grant identifiers; row values are bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 text(
                     f"UPDATE public.{table} SET share_id = :share, share_kind = :kind WHERE id = :identity"
                 ),
@@ -166,6 +172,8 @@ async def complete(session: AsyncSession) -> bool:
         if not await _has_column(session, table, "share_id"):
             continue
         if await session.scalar(
+            # _SOURCES validates the table and supplies fixed grant identifiers; row values are bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"SELECT EXISTS (SELECT 1 FROM public.{table} r LEFT JOIN public.share_configs s ON s.id = r.share_id WHERE r.share_id IS NULL OR s.id IS NULL OR s.resource_kind IS DISTINCT FROM r.share_kind)"
             )

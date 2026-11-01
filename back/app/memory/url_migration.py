@@ -72,6 +72,8 @@ async def backfill_memory_urls(session: AsyncSession, _transitions: SchemaTransi
                      WHERE location.memory_node_id=node.id ORDER BY location.url LIMIT 1))
                 WHERE node.primary_url IS NULL
             """))
+        # Table names come only from the literal tuple in this migration.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(
             f"UPDATE {table} SET metadata=metadata-'resource_uri'-'resource_uris' "
             "WHERE metadata ?| ARRAY['resource_uri', 'resource_uris']"

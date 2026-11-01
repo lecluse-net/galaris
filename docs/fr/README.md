@@ -84,6 +84,10 @@ Ce parcours décrit le contrat du code :
 - SQLAlchemy, Atlas, RBAC, API, toolsets MCP, Vue, Pinia et i18n ;
 - tests isolés, typage strict et règles de contribution.
 
+Pour publier une version, suivre le [contrôle avant publication](dev/security-validation.md) :
+le commit exact doit passer les CI Quality et Security et un nouveau scan des sources
+avant la création du tag et de la Release.
+
 Pour une navigation orientée maintenance, consulter aussi
 [`docs/fr/architecture`](architecture/README.md) : invariants, flux, machines d’état et
 [cartographie générée](architecture/generated/project-map.md) des modules, routes, tables,

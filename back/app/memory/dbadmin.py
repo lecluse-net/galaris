@@ -24,11 +24,15 @@ from .catalogue_projection import reconcile_catalogue_descriptions
 async def _reconcile_temporal_timezone(session: AsyncSession) -> None:
     """Keep calendar components while retiring per-memory timezone overrides."""
     for table in ("memory_items", "memory_revisions"):
+        # Table names come only from the literal tuples in this reconciler.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(
             f"UPDATE {table} SET temporal = temporal - 'timezone' "
             "WHERE temporal ? 'timezone'"
         ))
     for table in ("memory_items", "memory_revisions", "memory_candidates", "memory_sources"):
+        # Table names come only from the literal tuples in this reconciler.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(
             f"UPDATE {table} SET metadata = jsonb_set(metadata, '{{temporal}}', "
             "(metadata -> 'temporal') - 'timezone') "

@@ -477,6 +477,14 @@ security-check: ## Scan versioned dependencies, secrets and security-sensitive c
 	@bash bin/security-check.sh
 .PHONY: security-check
 
+release-check: ## Require exact-commit Quality/Security CI and fresh source security before publication
+	@bash bin/check-release.sh
+.PHONY: release-check
+
+tests-release-check: ## Prove publication blocks failed, missing or stale evidence without publishing
+	@bash bin/test-release-check.sh
+.PHONY: tests-release-check
+
 tests-restore: ## Rehearse database, files and encryption-key restoration in isolation
 	@bash bin/test-restore.sh
 .PHONY: tests-restore

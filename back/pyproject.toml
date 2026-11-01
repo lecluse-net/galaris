@@ -29,7 +29,7 @@ dependencies = [
     "babel>=2.17,<3",                 # Localized country names for contact defaults
     "phonenumberslite>=9,<10",        # Offline international phone extraction/validation
     # Authentication and cryptography
-    "python-jose~=3.5",              # JWT
+    "PyJWT>=2.15.1,<3",              # JWT; reject asymmetric keys as HMAC secrets
     "pwdlib~=0.3",                   # password hashing
     "bcrypt~=5.0",                   # pwdlib hashing backend
     "cryptography~=50.0",            # encryption (core/util/encryption)
@@ -83,7 +83,6 @@ dependencies = [
     "cffi~=2.1",
     "click~=8.5",
     "dnspython~=2.9",
-    "ecdsa~=0.19",
     "h11~=0.16",
     "httptools~=0.9",
     "idna~=3.20",

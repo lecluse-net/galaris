@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0262 — Source publication requires exact-commit security evidence](0262-source-release-security-gate.md)
+
 - [0261 — Capacity-routed, source-owned document retrieval](0261-capacity-routed-source-owned-document-rag.md)
 
 - [0260 — Yield peer requests at a safe tool boundary](0260-peer-wait-at-tool-boundary.md)

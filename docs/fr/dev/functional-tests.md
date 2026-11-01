@@ -1340,6 +1340,16 @@ le refus avant création de tâche et les portées des deux agents.
 aux changements de rôle, aux fins de transaction et après la réponse ;
 `core/user/tests/test_refresh_session.py` couvre le contrôle compte/session regroupé,
 les jetons historiques, l’expiration, la révocation et les UserToken.
+`make tests-release-check` exécute les scripts de publication avec Git réel et des frontières
+scanner/API synthétiques : refus des CI absentes, échouées, annulées, périmées ou issues
+d’un fork, sélection du dernier résultat, archive du commit exact et arrêt de la construction
+sur alerte. `tests/test_release_publication.py` vérifie que la publication dépend de ce contrôle
+et utilise le commit qualifié.
+`core/user/tests/test_security_unit.py` conserve un jeton entièrement synthétique émis par
+l’ancien python-jose pour vérifier la compatibilité après passage à PyJWT. Il reproduit aussi
+une signature HMAC forgée avec une clé publique DER et exige son refus, même si HS256 est
+autorisé. Les vérificateurs applicatifs gardent leur liste fixe d’algorithmes et leur secret
+privé ; aucune exclusion Trivy n’est ajoutée pour cette vulnérabilité.
 `core/user/tests/test_token_management.py` exerce les routes HTTP réelles : gestion
 des jetons personnels et MCP réservée aux JWT web, refus des UserToken même administrateurs,
 absence de mutation après refus, isolation entre propriétaires et fermeture des conversions
