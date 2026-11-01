@@ -101,6 +101,16 @@ une restauration de vos sauvegardes réelles. Pour celles-ci, suivre la
 instance distincte, avec les mêmes clés, le dump et les volumes cohérents, puis
 vérifier une connexion et un téléchargement de pièce jointe.
 
+`UPGRADE_FROM=référence make tests-upgrade` et `UPGRADE_SOURCE=chemin make tests-upgrade`
+construisent l’ancien backend avec son propre Dockerfile, ses dépendances verrouillées et
+ses sources embarquées. La CI choisit le dernier tag sémantique présent parmi les ancêtres
+du parent du candidat, plutôt que le simple commit précédent. Le même environnement historique sert à créer les données et à
+vérifier le retour arrière ; il ne réutilise pas les dépendances du candidat. Une image
+historique immuable fournie par `UPGRADE_PREVIOUS_IMAGE` reste réutilisée telle quelle.
+`make tests-release-check` protège cette séparation, l’arrêt sur échec de construction et
+la conservation des images fournies. La répétition complète utilise toujours une base et
+des fichiers temporaires, sans intervenir sur l’instance applicative.
+
 ## Inventaire initial des images — 5 septembre 2026
 
 Lors de cette revue historique, aucun correctif HIGH/CRITICAL alors disponible ne restait

@@ -25,8 +25,13 @@ async def prune_traces(*, preview: bool = False, batch_size: int = 100) -> int:
         (
             await db.scalars(
                 select(FailureIncidentTrace)
-                .options(load_only(FailureIncidentTrace.incident_id, FailureIncidentTrace.truncated_fields,
-                                   raiseload=True))
+                .options(
+                    load_only(
+                        FailureIncidentTrace.incident_id,
+                        FailureIncidentTrace.truncated_fields,
+                        raiseload=True,
+                    )
+                )
                 .join(FailureIncident, FailureIncident.id == FailureIncidentTrace.incident_id)
                 .where(
                     FailureIncident.recovered_at < cutoff,

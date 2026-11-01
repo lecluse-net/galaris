@@ -92,6 +92,15 @@ separate instance following the [administration procedure](../admin/README.md), 
 a consistent dump, persistent volumes and the original keys; verify login and an
 authorized attachment download afterwards.
 
+`UPGRADE_FROM=reference make tests-upgrade` and `UPGRADE_SOURCE=path make tests-upgrade`
+build the historical backend with its own Dockerfile, locked dependencies and bundled
+sources. CI selects the latest semantic tag among the candidate parent's ancestors,
+rather than just the previous commit. That same historical environment seeds data and verifies rollback; it does not
+reuse candidate dependencies. An immutable image supplied with `UPGRADE_PREVIOUS_IMAGE`
+is reused unchanged. `make tests-release-check` protects that separation, stopping on
+build failures and retaining supplied images. The complete rehearsal still uses temporary
+databases and files without touching the application instance.
+
 ## Initial image inventory — 5 September 2026
 
 At this historical review, no HIGH/CRITICAL fix then available remained unapplied.

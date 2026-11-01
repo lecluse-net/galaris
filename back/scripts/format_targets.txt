@@ -24,8 +24,8 @@ core/database/storage.py
 app/process/checkpoints.py
 app/process/export.py
 app/file_share/interface.py
-app/memory/content_diff.py
-app/memory/revision_queries.py
+app/document/content_diff.py
+app/document/revision_queries.py
 app/lab/run_publication.py
 app/lab/run_contracts.py
 app/lab/run_claims.py

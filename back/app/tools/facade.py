@@ -5,7 +5,10 @@ from uuid import UUID
 from collections.abc import Collection
 from .schemas import Tool
 from .runtime_principals import RuntimePrincipal, register_runtime_principal_port
-from .mcp_authorization import bind_native_action, authorization_context_key as authorization_context_key
+from .mcp_authorization import (
+    bind_native_action,
+    authorization_context_key as authorization_context_key,
+)
 from .authorization import authorization_policy as agent_authorization_policy
 from .secrets import public_connection_schema as public_connection_schema
 from .secrets import resolve_connection_references as resolve_connection_references
@@ -16,7 +19,10 @@ from .authorization_views import (
     prepared_authorization_links as prepared_authorization_links,
 )
 from .admin_network import diagnostic_client as mcp_http_client
-from .management_scope import AdministrationScope as AdministrationScope, administration_scope as administration_scope
+from .management_scope import (
+    AdministrationScope as AdministrationScope,
+    administration_scope as administration_scope,
+)
 from .assertions import tool_can_edit as tool_can_edit
 
 
@@ -109,7 +115,9 @@ from .authorization import (
 from .deletion import register_tool_deletion_cleanup, ToolDeletionSelection, AfterToolDeletion
 
 __all__ = [
-    "register_tool_deletion_cleanup", "ToolDeletionSelection", "AfterToolDeletion",
+    "register_tool_deletion_cleanup",
+    "ToolDeletionSelection",
+    "AfterToolDeletion",
     "mcp_http_client",
     "resolve_connection_references",
     "RestAuth",

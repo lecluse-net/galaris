@@ -12,7 +12,7 @@ cleanup() {
 trap cleanup EXIT
 git clone --quiet --shared --no-checkout "$PWD" "$case_root/repo"
 mkdir -p "$case_root/repo/bin" "$case_root/commands" "$case_root/responses"
-cp bin/security-check.sh bin/build-release.sh "$case_root/repo/bin/"
+cp bin/security-check.sh bin/build-release.sh bin/test-upgrade.sh "$case_root/repo/bin/"
 if [[ -f bin/check-release.sh ]]; then cp bin/check-release.sh "$case_root/repo/bin/"; fi
 export RELEASE_REF
 RELEASE_REF=$(git rev-parse HEAD)
@@ -23,6 +23,30 @@ cat > "$case_root/commands/docker" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'docker %s\n' "$*" >> "$CALLS"
+if [[ ${UPGRADE_CAPTURE:-0} == 1 ]]; then
+  source_config=''
+  for argument in "$@"; do
+    if [[ $argument == */previous-source.yaml ]]; then source_config=$argument; fi
+  done
+  if [[ " $* " == *' build backend '* && -n "$source_config" ]]; then
+    jq -e --arg source "$UPGRADE_EXPECTED_SOURCE" '
+      (.services.backend.image | startswith("galaris-upgrade-previous:")) and
+      .services.backend.build.context == ($source + "/back") and
+      .services.backend.build.additional_contexts.harness_manager == ($source + "/harness_manager") and
+      .services.backend.build.additional_contexts.code_executor == ($source + "/code-executor") and
+      .services.backend.build.additional_contexts.product_docs == ($source + "/docs") and
+      .services.backend.build.additional_contexts.project_docs == ($source + "/project")
+    ' "$source_config" >/dev/null
+    if [[ ${UPGRADE_BUILD_FAIL:-0} == 1 ]]; then exit 19; fi
+    cp "$source_config" "$RESPONSES/previous-built.json"
+  fi
+  if [[ " $* " == *' /probe.py seed'* && -n ${UPGRADE_EXPECTED_SOURCE:-} ]]; then
+    test -f "$RESPONSES/previous-built.json" || { echo 'Historical source has no matching dependency image' >&2; exit 23; }
+    test -n "$source_config"
+    cmp "$source_config" "$RESPONSES/previous-built.json"
+  fi
+  exit 0
+fi
 if [[ " $* " == *' aquasec/trivy:0.74.0 '* ]]; then
   if [[ " $* " == *' image --input '* ]]; then cat "$IMAGE_FINDINGS"; exit 0; fi
   while [[ $1 != -v ]]; do shift; done
@@ -177,3 +201,29 @@ jq '.Results[0].Vulnerabilities[0].FixedVersion = "synthetic-fixed-version"' "$I
 mv "$case_root/changed" "$IMAGE_FINDINGS"
 if bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1; then exit 1; fi
 echo 'PASS: unfixed image criticals are visible and available fixes still block'
+
+# Historical source must use its own complete runtime, including removed dependencies.
+historical_source="$case_root/historical source"
+mkdir -p "$historical_source/"{back,harness_manager,code-executor,docs,project}
+printf '# synthetic historical models\n' > "$historical_source/back/modules.py"
+printf 'synthetic-retired-dependency==1.0\n' > "$historical_source/back/pyproject.toml"
+green
+UPGRADE_CAPTURE=1 UPGRADE_EXPECTED_SOURCE="$historical_source" UPGRADE_SOURCE="$historical_source" \
+  bash bin/test-upgrade.sh > "$case_root/output" 2>&1
+test "$(grep -c 'docker compose .* build backend' "$CALLS")" -eq 1
+test "$(grep -c 'previous-source.yaml.* run .* /probe.py' "$CALLS")" -eq 2
+echo 'PASS: historical-source seed and rollback share their own dependency image'
+
+green
+if UPGRADE_CAPTURE=1 UPGRADE_EXPECTED_SOURCE="$historical_source" UPGRADE_SOURCE="$historical_source" UPGRADE_BUILD_FAIL=1 \
+  bash bin/test-upgrade.sh > "$case_root/output" 2>&1; then exit 1; fi
+if grep -q 'up --detach --wait db-test' "$CALLS"; then exit 1; fi
+echo 'PASS: historical image build failure stops before creating the test database'
+
+green
+immutable_previous="sha256:$(printf '%064d' 1)"
+UPGRADE_CAPTURE=1 UPGRADE_PREVIOUS_IMAGE="$immutable_previous" \
+  bash bin/test-upgrade.sh > "$case_root/output" 2>&1
+if grep -q 'docker compose .* build backend' "$CALLS"; then exit 1; fi
+if grep -q "docker image rm $immutable_previous" "$CALLS"; then exit 1; fi
+echo 'PASS: supplied immutable previous images are reused and never removed'

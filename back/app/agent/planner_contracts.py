@@ -111,10 +111,20 @@ class PlanStep(BaseModel):
 
     # Model generation must choose the work-unit shape and executable tools.
     # Python defaults remain for persisted plans and programmatic construction.
-    model_config = ConfigDict(json_schema_extra={
-        "required": ["objective", "label", "effort", "tools", "steps",
-                     "item_count", "item_work", "collection"],
-    })
+    model_config = ConfigDict(
+        json_schema_extra={
+            "required": [
+                "objective",
+                "label",
+                "effort",
+                "tools",
+                "steps",
+                "item_count",
+                "item_work",
+                "collection",
+            ],
+        }
+    )
 
     requirement_ids: list[str] = Field(
         default_factory=list,

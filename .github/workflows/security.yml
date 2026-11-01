@@ -63,16 +63,24 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Prepare isolated test configuration
         run: |
           cp .env.example .env
           sed -i 's/^APP_ENV=prod$/APP_ENV=test/' .env
           bash bin/update-secrets.sh
       - run: make tests-restore
-      - name: Fetch previous release source
-        run: git fetch --no-tags --depth=2 origin "${{ github.sha }}"
+      - name: Select previous semantic release tag
+        run: |
+          set -euo pipefail
+          previous=$(git tag --merged HEAD^ --sort=-version:refname |
+            awk '/^[0-9]+\.[0-9]+\.[0-9]+$/ && !found { print; found = 1 }')
+          [[ -n "$previous" ]] || { echo 'No previous semantic release tag found.' >&2; exit 1; }
+          printf 'UPGRADE_FROM=%s\n' "$previous" >> "$GITHUB_ENV"
+          echo "Upgrade baseline: $previous ($(git rev-parse "$previous^{commit}"))"
       - name: Rehearse populated database upgrade
-        run: UPGRADE_FROM=HEAD^ make tests-upgrade
+        run: make tests-upgrade
       - run: make tests-harness-manager
       - run: make tests-executor
 

@@ -68,14 +68,24 @@ async def content_revision(item_id: UUID, revision: int) -> DocumentRevision | N
 
 
 async def content_revision_page(
-    item_id: UUID, *, limit: int, offset: int, before_revision: int | None = None,
+    item_id: UUID,
+    *,
+    limit: int,
+    offset: int,
+    before_revision: int | None = None,
 ) -> tuple[list[DocumentRevision], int]:
     if not 1 <= limit <= 500 or offset < 0:
         raise ValueError("Invalid revision pagination")
     versions = _content_version_ids(item_id)
     if before_revision is not None:
-        versions = select(DocumentRevision.id).where(DocumentRevision.id.in_(versions), DocumentRevision.revision < before_revision)
-    query = select(DocumentRevision).options(defer(DocumentRevision.content)).where(DocumentRevision.id.in_(versions))
+        versions = select(DocumentRevision.id).where(
+            DocumentRevision.id.in_(versions), DocumentRevision.revision < before_revision
+        )
+    query = (
+        select(DocumentRevision)
+        .options(defer(DocumentRevision.content))
+        .where(DocumentRevision.id.in_(versions))
+    )
     total = int(await get_db().scalar(select(func.count()).select_from(versions.subquery())) or 0)
     rows = list(
         await get_db().scalars(

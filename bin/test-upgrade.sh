@@ -4,8 +4,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 upgrade_root=$(mktemp -d "${TMPDIR:-/tmp}/galaris-upgrade.XXXXXX")
 compose=(docker compose -p "galaris-upgrade-$$" -f compose.test.yaml)
+previous_image_tag=""
 cleanup() {
   "${compose[@]}" down --remove-orphans --rmi local >/dev/null 2>&1 || true
+  if [[ -n "$previous_image_tag" ]]; then docker image rm "$previous_image_tag" >/dev/null 2>&1 || true; fi
   rm -rf "$upgrade_root"
 }
 trap cleanup EXIT
@@ -51,6 +53,22 @@ previous_mounts=()
 if [[ -n "$previous_source" ]]; then
   test -f "$previous_source/back/modules.py"
   previous_mounts=(-v "$previous_source:/repo:ro")
+  # Historical code must run with its own lockfile, Python and bundled sources.
+  # Mounting it into the candidate image breaks whenever a dependency is removed.
+  previous_image_tag="galaris-upgrade-previous:$$"
+  jq -n --arg source "$previous_source" --arg image "$previous_image_tag" '{
+    services: {backend: {image: $image, build: {
+      context: ($source + "/back"),
+      additional_contexts: {
+        harness_manager: ($source + "/harness_manager"),
+        code_executor: ($source + "/code-executor"),
+        product_docs: ($source + "/docs"),
+        project_docs: ($source + "/project")
+      }
+    }}}
+  }' > "$upgrade_root/previous-source.yaml"
+  previous_compose+=(-f "$upgrade_root/previous-source.yaml")
+  "${previous_compose[@]}" build backend
 fi
 if [[ -n "${UPGRADE_CANDIDATE_IMAGE:-}" ]]; then
   candidate_id=$(docker image inspect --format '{{.Id}}' "$UPGRADE_CANDIDATE_IMAGE")

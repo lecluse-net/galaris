@@ -221,7 +221,9 @@ async def evaluate_claim(run: RunClaim) -> CaseEvaluation:
         expected = snapshot.get("expected_output")
         with (
             llm_call_accounting() as accounting,
-            llm_correlation_scope(f"lab://run/{run.run_id}/candidate/{case_id}/{snapshot.get('repetition', 1)}/{run.token}"),
+            llm_correlation_scope(
+                f"lab://run/{run.run_id}/candidate/{case_id}/{snapshot.get('repetition', 1)}/{run.token}"
+            ),
             reasoning_effort_scope(cast(ReasoningEffort | None, snapshot.get("reasoning_effort"))),
             llm_execution_scope(
                 requester_user_id=run.created_by,
@@ -294,7 +296,9 @@ async def evaluate_claim(run: RunClaim) -> CaseEvaluation:
     if accounting is not None and accounting.costs:
         cost = accounting.cost
     score_details["candidate_cost_accounting"] = (
-        accounting.snapshot() if accounting is not None else CostSummary(total_cost=0, quality="exact")
+        accounting.snapshot()
+        if accounting is not None
+        else CostSummary(total_cost=0, quality="exact")
     ).model_dump(mode="json")
     score_details["candidate_cost_accounting"]["recorded_cost"] = cost
 
@@ -339,7 +343,9 @@ async def evaluate_judgment(run: RunClaim) -> CaseEvaluation:
             rubric = MechanismRubric.from_snapshot(run.mechanism, configuration["rubric"])
             with (
                 llm_call_accounting() as accounting,
-                llm_correlation_scope(f"lab://run/{run.run_id}/judge/{run.campaign_id}/{run.result_id}/{run.token}"),
+                llm_correlation_scope(
+                    f"lab://run/{run.run_id}/judge/{run.campaign_id}/{run.result_id}/{run.token}"
+                ),
                 reasoning_effort_scope(
                     cast(ReasoningEffort | None, configuration.get("reasoning_effort"))
                 ),
@@ -392,7 +398,9 @@ async def evaluate_judgment(run: RunClaim) -> CaseEvaluation:
     if accounting is not None and accounting.costs:
         cost = accounting.cost
     details["judge_cost_accounting"] = (
-        accounting.snapshot() if accounting is not None else CostSummary(total_cost=0, quality="exact")
+        accounting.snapshot()
+        if accounting is not None
+        else CostSummary(total_cost=0, quality="exact")
     ).model_dump(mode="json")
     details["judge_cost_accounting"]["recorded_cost"] = cost
     return CaseEvaluation(

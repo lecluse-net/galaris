@@ -1,4 +1,5 @@
 """Recent private memories, independently of the document library."""
+
 from collections.abc import Collection
 from datetime import datetime, timezone
 from sqlalchemy import or_, select
@@ -7,6 +8,7 @@ from core.database import get_db
 from .access import readable_item_for_agents_clause
 from .models import MemoryItem
 from .schemas import RecentMemoryItem
+
 
 async def list_recent_memories(
     *,
