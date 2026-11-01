@@ -8,7 +8,8 @@ import hmac
 from uuid import UUID
 
 from fastapi import HTTPException
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 from pydantic import BaseModel, ValidationError
 
 from core.authorize import check_privilege, role_id_ctx

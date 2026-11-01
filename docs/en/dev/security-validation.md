@@ -13,6 +13,14 @@ HIGH/CRITICAL source findings block even when no fix exists, except for reviewed
 expiring entries in `security/trivy-ignore.yaml`. DbAdmin SAST exceptions are local
 to generated or explicitly escaped SQL identifiers and literals.
 
+Application JWTs use PyJWT with a fixed HS256 algorithm list and a private secret.
+python-jose and its unused ecdsa dependency are removed, along with the old associated
+Trivy exception. The [functional guarantees](functional-tests.md) cover existing-token
+compatibility and rejection of a DER public key used as an HMAC secret. Migration SAST
+annotations justify each statement through closed identifier lists, declared models or
+escaped names; external values remain bound parameters. They do not disable the global
+SQL rule and require review when interpolated fragments change.
+
 Backend, frontend, browser and SSH images are rebuilt with security updates.
 `bash bin/security-check.sh image IMAGE` saves the complete inventory under
 `artifacts/security/` and fails if an available HIGH/CRITICAL fix remains unapplied.
@@ -32,6 +40,41 @@ on an isolated worktree snapshot. `make validate-stability` adds three E2E repet
 browser. Read `artifacts/validation/*/summary.txt` and its failures; later edits invalidate
 validation. `make security-check` and `make tests-restore` can also run separately for
 targeted verification.
+
+## Before publication
+
+After pushing the final commit to `main`, wait for Quality and Security, then run
+**before creating or pushing the tag**:
+
+```bash
+make release-check RELEASE_REF=HEAD
+```
+
+This requires Docker and jq. It uses GitHub CLI (`gh`) with Actions read access; when
+`gh` is absent, curl queries the public API read-only. Private repositories require
+authenticated `gh`. `GH_REPO=owner/repository` can specify the repository. It checks the latest execution of
+each workflow for the exact commit, then runs fresh Trivy and Semgrep scans on its Git
+archive, independently of uncommitted files. Missing, failed, cancelled, skipped or
+pending CI blocks publication; success for another commit cannot qualify. New changes
+must be committed, pushed and checked again.
+
+**Publish release** requires the same check before creating the GitHub Release. It can
+wait up to four hours for running CI, then performs the fresh source scan. Errors appear
+in Actions annotations and the step summary; logs and CI results are retained in the
+`release-check` artifact. Network or scanner failures also block publication.
+`make build-release` also scans committed sources before building images. None of these
+checks creates a tag.
+
+Source scans block HIGH/CRITICAL findings even without a fix. Image scans retain their
+policy for unfixed system packages and display the number of unfixed critical findings;
+a passing image scan never substitutes for source checks. These provide different
+guarantees.
+
+Creating a Release manually in GitHub bypasses the workflow: use **Publish release**.
+Branch and tag protections remain separate GitHub settings. The check cannot establish
+the absence of still-unknown vulnerabilities. The
+[publication decision](../../../project/decisions/0262-source-release-security-gate.md)
+records the sequencing defect and the chosen contract.
 
 ## Repeatable restore rehearsal
 

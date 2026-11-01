@@ -32,6 +32,8 @@ async def legacy_inventory(session: AsyncSession) -> list[LegacyFile]:
     # also stops old application workers before launching DbAdmin.
     await session.execute(text("SET LOCAL lock_timeout = '10s'"))
     for table in ("documents", "document_revisions", "memory_items", "memory_revisions", "document_attachments", "messenger_files", "messenger_messages", "messenger_message_files"):
+        # Table names come only from the fixed legacy-storage tuple above.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"LOCK TABLE {table} IN SHARE MODE"))
     entries: dict[tuple[str, str], _Candidate] = {}
 

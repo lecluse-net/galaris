@@ -27,12 +27,24 @@ async def exists(session: AsyncSession, table: str) -> bool:
 
 async def preserve(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
     await session.execute(text("CREATE SCHEMA IF NOT EXISTS galaris_migration"))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"CREATE TABLE IF NOT EXISTS {_ARCHIVE} (source text NOT NULL, identity uuid NOT NULL, snapshot jsonb NOT NULL, digest text NOT NULL, PRIMARY KEY(source,identity))"))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"CREATE TABLE IF NOT EXISTS {_TRANSFERS} (identity uuid PRIMARY KEY, finalized boolean NOT NULL DEFAULT false)"))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"CREATE TABLE IF NOT EXISTS {_STATE} (singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton), classified boolean NOT NULL DEFAULT false)"))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"INSERT INTO {_STATE}(singleton) VALUES(true) ON CONFLICT DO NOTHING"))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"CREATE TABLE IF NOT EXISTS {_ROLES} (role_id integer NOT NULL, code text NOT NULL, applied boolean NOT NULL DEFAULT false, PRIMARY KEY(role_id,code))"))
     if await exists(session, "public.role_privileges"):
+        # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"""INSERT INTO {_ROLES}(role_id,code)
             SELECT rp.role_id,CASE p.code WHEN 'DATASET_READ' THEN 'DOCUMENT_ACCESS'
                 WHEN 'DATASET_EDIT' THEN 'DOCUMENT_EDIT' ELSE 'DOCUMENT_ADMIN' END
@@ -44,16 +56,24 @@ async def preserve(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
     # publishes its marker. A failure rolls back both rows and markers.
     for table in (*_SOURCES, *_DOCUMENT_PLACEMENTS, "documents", "document_revisions", "share_configs", "share_grants"):
         if await exists(session, f"public.{table}"):
+            # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"LOCK TABLE public.{table} IN SHARE MODE"))
     for table in _SOURCES:
         if await exists(session, f"public.{table}"):
+            # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"INSERT INTO {_ARCHIVE} SELECT :source,id,to_jsonb(r),encode(sha256(convert_to(to_jsonb(r)::text,'UTF8')),'hex') FROM public.{table} r ON CONFLICT DO NOTHING"), {"source": table})
     # Also preserve documentary projections and their historical bytes before
     # merging a verified shared identity.
     for table, condition in (("documents", "id"), ("document_revisions", "document_id"),
                              *((table, "document_id") for table in _DOCUMENT_PLACEMENTS)):
+        # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"INSERT INTO {_ARCHIVE} SELECT :source,id,to_jsonb(r),encode(sha256(convert_to(to_jsonb(r)::text,'UTF8')),'hex') FROM public.{table} r WHERE {condition} IN (SELECT id FROM datasets) ON CONFLICT DO NOTHING"), {"source": table})
     cursor: UUID | None = None
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     while rows := (await session.execute(text(f"SELECT id FROM datasets WHERE (CAST(:cursor AS uuid) IS NULL OR id>CAST(:cursor AS uuid)) AND NOT EXISTS(SELECT 1 FROM {_TRANSFERS} t WHERE t.identity=datasets.id) ORDER BY id LIMIT 100"), {"cursor": cursor})).scalars().all():
         for identity in rows:
             collision = await session.scalar(text("SELECT document_type NOT IN ('dataset','data') FROM documents WHERE id=:id"), {"id": identity})
@@ -107,6 +127,8 @@ async def preserve(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
                 WHERE s.dataset_id=:id AND (d.id IS NULL OR s.content IS DISTINCT FROM d.content))"""), {"id": identity})
             if invalid:
                 raise ValueError("Dataset content or revision transfer verification failed")
+            # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"INSERT INTO {_TRANSFERS}(identity) VALUES(:id)"), {"id": identity})
         cursor = rows[-1]
 
@@ -114,10 +136,14 @@ async def preserve(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
 async def preserved(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
     if not await exists(session, _TRANSFERS):
         return False
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if await session.scalar(text(f"SELECT EXISTS(SELECT 1 FROM {_ARCHIVE} WHERE digest<>encode(sha256(convert_to(snapshot::text,'UTF8')),'hex'))")):
         return False
     if not await exists(session, "public.datasets"):
         return True
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     return not await session.scalar(text(f"SELECT EXISTS(SELECT 1 FROM datasets s WHERE NOT EXISTS(SELECT 1 FROM {_TRANSFERS} t WHERE t.identity=s.id))"))
 
 
@@ -125,6 +151,8 @@ async def finalize(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     if not await exists(session, _TRANSFERS):
         await preserve(session, delta)
     await session.execute(text("UPDATE documents SET document_type='text' WHERE document_type IN ('html','form')"))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""UPDATE documents d SET document_type='data',creation_key=s.creation_key,
         summary_media_type='text/plain',
         summary_resource_id=md5('summary:' || d.id::text)::uuid::text,
@@ -132,12 +160,20 @@ async def finalize(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         summary_content_hash=encode(sha256(convert_to(coalesce(d.summary_content,''),'UTF8')),'hex'),
         creation_fingerprint=s.creation_fingerprint FROM datasets s JOIN {_TRANSFERS} t ON t.identity=s.id
         WHERE d.id=s.id AND NOT t.finalized"""))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""UPDATE document_revisions d SET author_user_id=s.author_user_id
         FROM dataset_revisions s JOIN {_TRANSFERS} t ON t.identity=s.dataset_id
         WHERE d.document_id=s.dataset_id AND d.revision=s.revision AND NOT t.finalized"""))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if not await session.scalar(text(f"SELECT classified FROM {_STATE}")):
         await _classification(session)
+        # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"UPDATE {_STATE} SET classified=true"))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"UPDATE {_TRANSFERS} SET finalized=true WHERE NOT finalized"))
 
 
@@ -148,6 +184,8 @@ async def _classification(session: AsyncSession) -> None:
     # Keeping their incoming placements could silently inherit a shared folder's
     # rights. Their snapshots remain in the archive; Dataset placements win.
     for table in _DOCUMENT_PLACEMENTS:
+        # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"DELETE FROM {table} WHERE document_id IN (SELECT identity FROM {_TRANSFERS})"))
     tags = (await session.execute(text("SELECT * FROM dataset_tags ORDER BY id"))).mappings().all()
     for tag in tags:
@@ -176,23 +214,35 @@ async def _classification(session: AsyncSession) -> None:
 
 async def complete(session: AsyncSession, delta: SchemaTransitionSet) -> bool:
     return (await preserved(session, delta) and await exists(session, _STATE)
+        # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         and bool(await session.scalar(text(f"SELECT classified FROM {_STATE}")))
         and not await session.scalar(text("SELECT EXISTS(SELECT 1 FROM documents WHERE document_type IN ('html','form'))"))
+        # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         and not await session.scalar(text(f"SELECT EXISTS(SELECT 1 FROM {_TRANSFERS} WHERE NOT finalized)")))
 
 
 async def restore_roles(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""INSERT INTO role_privileges(role_id,privilege_id)
         SELECT old.role_id,p.id FROM {_ROLES} old JOIN roles r ON r.id=old.role_id
         JOIN privileges p ON p.code=old.code WHERE NOT old.applied ON CONFLICT DO NOTHING"""))
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     missing = await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM {_ROLES} old JOIN roles r ON r.id=old.role_id
         LEFT JOIN privileges p ON p.code=old.code WHERE p.id IS NULL AND NOT old.applied)"""))
     if missing:
         raise ValueError("Common Document privileges have not been initialized")
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"UPDATE {_ROLES} SET applied=true"))
 
 
 async def roles_complete(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
+    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     return await exists(session, _ROLES) and not await session.scalar(text(f"SELECT EXISTS(SELECT 1 FROM {_ROLES} WHERE NOT applied)"))
 
 

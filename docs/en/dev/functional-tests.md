@@ -1273,6 +1273,16 @@ and both agents' scopes.
 `app/agent/tests/test_management_scope.py` covers scope invalidation on writes, role changes,
 transaction boundaries and after the response; `core/user/tests/test_refresh_session.py`
 covers combined account/session validation, legacy tokens, expiry, revocation and UserToken.
+`make tests-release-check` executes publication scripts with real Git and synthetic scanner/API
+boundaries: missing, failed, cancelled, stale or fork CI is rejected, the latest result is
+selected, the exact commit is archived and source findings stop image builds.
+`tests/test_release_publication.py` checks that publication depends on this gate and uses
+the qualified commit.
+`core/user/tests/test_security_unit.py` retains an entirely synthetic token issued by the old
+python-jose library to verify compatibility after moving to PyJWT. It also reproduces an HMAC
+signature forged with a DER public key and requires rejection even when HS256 is allowed.
+Application verifiers retain their fixed algorithm lists and private secret; no Trivy exclusion
+is added for this vulnerability.
 `core/user/tests/test_token_management.py` exercises real HTTP routes: personal and MCP
 token management restricted to web JWTs, rejection of UserToken even for administrators,
 no mutation on denial, owner isolation, and blocked UserToken-to-JWT conversion through

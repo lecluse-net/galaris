@@ -7,7 +7,8 @@ from typing import Any, Dict, cast
 
 from socketio import AsyncServer, ASGIApp  # pyright: ignore[reportMissingTypeStubs]
 from fastapi import FastAPI
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 from loguru import logger
 from sqlalchemy import select
 
@@ -408,7 +409,7 @@ def _extract_auth_token(auth: object) -> str | None:
 def _role_id_from_token(token: str) -> int | None:
     """Return the signed active-role claim, or None for personal API tokens."""
     try:
-        payload: dict[str, Any] = jwt.decode(  # type: ignore
+        payload: dict[str, Any] = jwt.decode(
             token,
             auth_secret_key(),
             algorithms=[settings.ALGORITHM],

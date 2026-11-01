@@ -2,7 +2,7 @@
 
 import pytest
 from httpx import AsyncClient
-from jose import jwt
+import jwt
 from starlette import status
 
 from core.authorize.update_admin_role import ADMIN_ROLE_CODE

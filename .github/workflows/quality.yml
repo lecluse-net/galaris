@@ -108,6 +108,9 @@ jobs:
       - name: Development and production update commands
         run: make tests-update
 
+      - name: Publication rejects failed, missing or stale evidence
+        run: make tests-release-check
+
       - name: Audit shipped frontend dependencies
         run: >-
           docker run --rm

@@ -11,24 +11,58 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: publish-release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    name: Release check
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 260
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Record the source commit
+        id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Require exact-commit CI and fresh source security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_CHECK_TIMEOUT_SECONDS: '14400'
+        run: make release-check
+      - name: Preserve pre-publication evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-check
+          path: artifacts/release-check/
+          retention-days: 30
+
   publish:
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ needs.preflight.outputs.commit }}
       - name: Extract curated release notes
         shell: bash
         run: |
@@ -49,6 +83,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git fetch --no-tags origin "refs/tags/$RELEASE_TAG"
+          if [[ "$(git rev-parse 'FETCH_HEAD^{commit}')" != "$RELEASE_COMMIT" ]]; then
+            echo '::error::Release tag changed after qualification; publication blocked.'
+            exit 1
+          fi
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "Release $RELEASE_TAG already exists; leaving it unchanged."
             exit 0

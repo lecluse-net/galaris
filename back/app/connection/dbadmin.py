@@ -43,16 +43,22 @@ async def _convert(session: AsyncSession, _: SchemaTransitionSet) -> None:
         ("tool_function_state", "JOIN tools t ON t.id = s.tool_id"),
         ("connection_function_state", "JOIN connections c ON c.id = s.connection_id JOIN tools t ON t.id = c.tool_id"),
     ):
+        # Table names and JOIN clauses come only from the fixed tuple above.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"""
             INSERT INTO galaris_migration.ignored_system_function_policies
             SELECT '{table}', s.id, to_jsonb(s) FROM {table} s {join}
             WHERE s.state IS NULL AND NOT t.can_disable ON CONFLICT DO NOTHING
         """))
+        # Table names and JOIN clauses come only from the fixed tuple above.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"""
             DELETE FROM {table} WHERE id IN (
                 SELECT s.id FROM {table} s {join} WHERE s.state IS NULL AND NOT t.can_disable
             )
         """))
+        # Table names and JOIN clauses come only from the fixed tuple above.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"""
             UPDATE {table} SET state = CASE WHEN enabled THEN 'enabled' ELSE 'disabled' END
             WHERE state IS NULL

@@ -84,16 +84,22 @@ async def backup_documents(session: AsyncSession, delta: SchemaTransitionSet) ->
             continue
         # Names come exclusively from the closed constant above. Lock all sources
         # before copying any of them to obtain a consistent multi-table snapshot.
+        # Table names come only from ARCHIVED_TABLES; row values use bind parameters.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"LOCK TABLE public.{table} IN SHARE MODE"))
     for table in ARCHIVED_TABLES:
         if table in counts:
             continue
+        # Table names come only from ARCHIVED_TABLES; row values use bind parameters.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"""
             INSERT INTO galaris_migration.memory_document_split_rows (table_name, row_key, snapshot, digest)
             SELECT :table, id::text, to_jsonb(source),
                 encode(sha256(convert_to(to_jsonb(source)::text, 'UTF8')), 'hex')
             FROM public.{table} source
         """), {"table": table})
+        # Table names come only from ARCHIVED_TABLES; row values use bind parameters.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         counts[table] = int(await session.scalar(text(f"SELECT count(*) FROM public.{table}")) or 0)
     # Attachment bytes are addressed by manifest IDs rather than the Memory
     # description's resource pointer. Preserve both, including old revisions.
@@ -137,7 +143,11 @@ async def verify_unchanged_sources(session: AsyncSession) -> None:
     for table in ARCHIVED_TABLES:
         if not await session.scalar(text("SELECT to_regclass(:table) IS NOT NULL"), {"table": f"public.{table}"}):
             continue
+        # Table names come only from ARCHIVED_TABLES; row values use bind parameters.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"LOCK TABLE public.{table} IN SHARE ROW EXCLUSIVE MODE"))
+        # Table names come only from ARCHIVED_TABLES; row values use bind parameters.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         changed = await session.scalar(text(f"""
             SELECT EXISTS (
                 SELECT 1 FROM public.{table} source FULL JOIN (

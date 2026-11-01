@@ -83,6 +83,10 @@ This path describes the code contract:
 - SQLAlchemy, Atlas, RBAC, API, MCP toolsets, Vue, Pinia, and i18n;
 - isolated tests, strict typing, and contribution rules.
 
+To publish a version, follow the [pre-publication check](dev/security-validation.md):
+the exact commit must pass Quality and Security CI and a fresh source scan before the
+tag and Release are created.
+
 For maintenance-oriented navigation, also consult
 [`docs/en/architecture`](architecture/README.md): invariants, flows, state machines, and the
 [generated map](architecture/generated/project-map.md) of modules, routes, tables,

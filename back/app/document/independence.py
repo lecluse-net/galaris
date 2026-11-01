@@ -60,6 +60,8 @@ async def relax_legacy_memory_policy(session: AsyncSession, delta: SchemaTransit
     # Keep archive, normalization and DDL in the same rollback boundary.
     await session.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
     for column in await _required_legacy_memory_policy_columns(session):
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f'ALTER TABLE public.memory_items ALTER COLUMN "{column}" DROP NOT NULL'))
 
 
@@ -70,9 +72,15 @@ async def _exists(session: AsyncSession, table: str) -> bool:
 async def backup_complete(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
     if not await _exists(session, _MANIFEST):
         return False
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if not await session.scalar(text(f"SELECT backed_up FROM {_MANIFEST}")):
         return False
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     damaged = await session.scalar(text(f"SELECT EXISTS (SELECT 1 FROM {_ARCHIVE} WHERE digest <> encode(sha256(convert_to(snapshot::text,'UTF8')),'hex'))"))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     missing = await session.scalar(text(f"""SELECT EXISTS (
         SELECT 1 FROM {_MANIFEST} m CROSS JOIN LATERAL jsonb_each_text(m.counts) expected
         WHERE expected.value::bigint <> (SELECT count(*) FROM {_ARCHIVE} a WHERE a.source=expected.key))"""))
@@ -81,9 +89,17 @@ async def backup_complete(session: AsyncSession, _delta: SchemaTransitionSet) ->
 
 async def backup(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     await session.execute(text("CREATE SCHEMA IF NOT EXISTS galaris_migration"))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"CREATE TABLE IF NOT EXISTS {_ARCHIVE} (source text NOT NULL, identity uuid NOT NULL, snapshot jsonb NOT NULL, digest text NOT NULL, PRIMARY KEY(source,identity))"))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"CREATE TABLE IF NOT EXISTS {_MANIFEST} (singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton), backed_up boolean NOT NULL DEFAULT false, transferred boolean NOT NULL DEFAULT false, counts jsonb NOT NULL DEFAULT '{{}}')"))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"INSERT INTO {_MANIFEST}(singleton) VALUES(true) ON CONFLICT DO NOTHING"))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if await session.scalar(text(f"SELECT backed_up FROM {_MANIFEST}")):
         if not await backup_complete(session, delta):
             raise RuntimeError("Document independence archive integrity check failed")
@@ -92,6 +108,8 @@ async def backup(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     # describe the same committed state even if a writer is still finishing.
     for table in _SOURCES:
         if await _exists(session, f"public.{table}"):
+            # SQL fragments use module constants, closed legacy-column lists or declared model names.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"LOCK TABLE public.{table} IN SHARE MODE"))
     for table in _SOURCES:
         if not await _exists(session, f"public.{table}"):
@@ -102,19 +120,31 @@ async def backup(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         # Legacy integer grant keys are preserved inside their snapshots; archive identities
         # are deterministic UUIDs derived from the table and original primary key.
         identity = "id" if table not in {"memory_item_grants", "document_user_grants", "document_team_grants"} else "md5(:source || ':' || id::text)::uuid"
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"INSERT INTO {_ARCHIVE}(source,identity,snapshot,digest) SELECT :source,{identity},to_jsonb(row),encode(sha256(convert_to(to_jsonb(row)::text,'UTF8')),'hex') FROM public.{table} row{where} ON CONFLICT DO NOTHING"), {"source": table})
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         count = await session.scalar(text(f"SELECT count(*) FROM public.{table}{where}"))
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         copied = await session.scalar(text(f"SELECT count(*) FROM {_ARCHIVE} WHERE source=:source"), {"source": table})
         if count != copied:
             raise RuntimeError(f"Incomplete document preservation for {table}")
     legacy_shares = await session.scalar(text("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='memory_items' AND column_name='share_id')"))
     if legacy_shares:
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"INSERT INTO {_ARCHIVE}(source,identity,snapshot,digest) SELECT 'memory_policies',id,jsonb_build_object('share_id',share_id),encode(sha256(convert_to(jsonb_build_object('share_id',share_id)::text,'UTF8')),'hex') FROM memory_items ON CONFLICT DO NOTHING"))
     if await session.scalar(text("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='dataset_revisions' AND column_name='source_revision_id')")):
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"""INSERT INTO {_ARCHIVE}(source,identity,snapshot,digest)
             SELECT 'dataset_revision_origins',id,jsonb_build_object('source_revision_id',source_revision_id),
                 encode(sha256(convert_to(jsonb_build_object('source_revision_id',source_revision_id)::text,'UTF8')),'hex')
             FROM dataset_revisions WHERE source_revision_id IS NOT NULL ON CONFLICT DO NOTHING"""))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""UPDATE {_MANIFEST} SET backed_up=true, counts=(
         SELECT coalesce(jsonb_object_agg(source,total),'{{}}') FROM (
             SELECT source,count(*) total FROM {_ARCHIVE} GROUP BY source) counts)"""))
@@ -130,6 +160,8 @@ async def backup(session: AsyncSession, delta: SchemaTransitionSet) -> None:
 async def transfer_complete(session: AsyncSession, delta: SchemaTransitionSet) -> bool:
     if not await backup_complete(session, delta):
         return False
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if not await session.scalar(text(f"SELECT transferred FROM {_MANIFEST}")):
         return False
     invalid = await session.scalar(text("""SELECT EXISTS(SELECT 1 FROM documents WHERE
@@ -145,16 +177,22 @@ async def transfer_complete(session: AsyncSession, delta: SchemaTransitionSet) -
         LEFT JOIN document_urls target ON target.document_id=d.id AND target.url=source.url
         WHERE target.id IS NULL)""")):
         return False
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM {_ARCHIVE} a
         JOIN documents d ON d.id=(a.snapshot->>'memory_node_id')::uuid
         LEFT JOIN document_urls target ON target.id=a.identity
         WHERE a.source='memory_urls' AND (target.id IS NULL OR target.document_id<>d.id
             OR target.url IS DISTINCT FROM a.snapshot->>'url'))""")):
         return False
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM {_ARCHIVE} m
         LEFT JOIN documents d ON d.id=m.identity
         WHERE m.source='memory_items' AND {_DOCUMENT_SOURCE} AND d.id IS NULL)""")):
         return False
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM {_ARCHIVE} a
         LEFT JOIN dataset_revisions target ON target.id=a.identity
         WHERE a.source='dataset_revision_origins' AND (target.id IS NULL OR
@@ -166,6 +204,8 @@ async def transfer_complete(session: AsyncSession, delta: SchemaTransitionSet) -
         ("memory_revisions", "document_revisions", "item_id"),
         ("memory_sources", "document_sources", "item_id"),
     ):
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         mismatch = await session.scalar(text(f"""SELECT EXISTS (
             SELECT 1 FROM {_ARCHIVE} a JOIN documents d ON d.id=(a.snapshot->>'{parent}')::uuid
             LEFT JOIN {table} target ON target.id=a.identity
@@ -174,6 +214,8 @@ async def transfer_complete(session: AsyncSession, delta: SchemaTransitionSet) -
                 OR to_jsonb(target)->>'content_hash' IS DISTINCT FROM a.snapshot->>'content_hash'))"""), {"source": source})
         if mismatch:
             return False
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     return not bool(await session.scalar(text(f"""SELECT EXISTS (
         SELECT 1 FROM {_ARCHIVE} a LEFT JOIN documents d ON d.id=a.identity
         WHERE a.source='documents' AND (d.id IS NULL
@@ -186,6 +228,8 @@ async def transfer_complete(session: AsyncSession, delta: SchemaTransitionSet) -
 async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     if not await backup_complete(session, delta):
         raise RuntimeError("A verified documentary archive is required before transfer")
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if await session.scalar(text(f"SELECT transferred FROM {_MANIFEST}")):
         await _transfer_locations(session)
         if not await transfer_complete(session, delta):
@@ -193,6 +237,8 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         return
     # Source rows remain available during expansion. Refuse an edit between archive
     # and transfer, rather than restoring an older body or attribution over it.
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     changed = await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM {_ARCHIVE} a
         JOIN memory_items current ON current.id=a.identity WHERE a.source='memory_items'
         AND a.snapshot->>'node_kind'='document' AND (
@@ -241,12 +287,18 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         projection += ",coalesce(value->>'memory_item_id',value->>'id')::uuid"
     moved = ("owner_agent_id","owner_user_id","lock_version","keywords","metadata","deletion_protected","valid_from","valid_until","temporal","last_accessed_at","access_count","search_text","summary_provider_code","summary_resource_id","summary_content","summary_content_hash","summary_size_bytes")
     updates = ",".join(f'"{column}"=EXCLUDED."{column}"' for column in moved)
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(payloads+"""INSERT INTO share_configs(id,resource_kind,global_access,group_access,revision)
         SELECT (value->>'share_id')::uuid,'document',
             coalesce((value->>'global_access')::integer,CASE WHEN value->>'visibility'='shared' THEN 1 ELSE 0 END),
             coalesce((value->>'group_access')::integer,0),1 FROM payloads
         ON CONFLICT(id) DO NOTHING"""))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(payloads+f"INSERT INTO documents({names}) SELECT {projection} FROM payloads CROSS JOIN LATERAL jsonb_populate_record(NULL::documents,value) record ON CONFLICT(id) DO UPDATE SET {updates}"))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""INSERT INTO document_urls(id,document_id,url)
         SELECT a.identity,d.id,a.snapshot->>'url' FROM {_ARCHIVE} a
         JOIN documents d ON d.id=(a.snapshot->>'memory_node_id')::uuid
@@ -255,6 +307,8 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     # Earlier releases had separate grant tables. Copy their identities and
     # effective permissions before those tables can be contracted by Atlas.
     for source, principal in (("memory_item_grants","agent_id"),("document_user_grants","user_id"),("document_team_grants","team_id")):
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"""INSERT INTO share_grants(id,share_id,{principal},can_write)
             SELECT md5(d.share_id::text||':{principal}:'||(grant_row.snapshot->>'{principal}'))::uuid,
                 d.share_id,(grant_row.snapshot->>'{principal}')::integer,
@@ -263,6 +317,8 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
             WHERE grant_row.source=:source GROUP BY d.share_id,grant_row.snapshot->>'{principal}'
             ON CONFLICT(share_id,{principal})
             DO UPDATE SET can_write=share_grants.can_write OR EXCLUDED.can_write"""), {"source":source})
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     mismatch = await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM {_ARCHIVE} a JOIN documents d ON d.id=a.identity
         WHERE a.source='documents' AND (d.resource_id IS DISTINCT FROM a.snapshot->>'resource_id'
         OR d.content_hash IS DISTINCT FROM a.snapshot->>'content_hash' OR d.revision IS DISTINCT FROM (a.snapshot->>'revision')::integer))"""))
@@ -276,23 +332,31 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         table=model.__tablename__
         extra=",'storage_kind',coalesce(a.snapshot->>'storage_kind','text'),'document_append',coalesce((a.snapshot->>'document_append')::boolean,false) OR coalesce(a.snapshot->>'reason'='Document content appended',false)" if model is DocumentRevision else ""
         conflict=",".join(f'"{column}"=EXCLUDED."{column}"' for column in columns if column!='id')
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"""INSERT INTO {table}({names}) SELECT {values} FROM {_ARCHIVE} a
             JOIN documents d ON d.id=(a.snapshot->>'{parent}')::uuid
             CROSS JOIN LATERAL jsonb_populate_record(NULL::{table},a.snapshot || jsonb_build_object('document_id',d.id{extra})) record
             WHERE a.source=:source ON CONFLICT(id) DO UPDATE SET {conflict}"""),{"source":source})
     # Each folder owns its canonical policy; graph companion creation is optional.
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""UPDATE dataset_revisions target
         SET document_source_revision_id=(a.snapshot->>'source_revision_id')::uuid
         FROM {_ARCHIVE} a WHERE a.source='dataset_revision_origins' AND a.identity=target.id"""))
     job_columns = [column.name for column in DocumentAutomationJob.__table__.columns if column.computed is None]
     job_names = ",".join(f'"{name}"' for name in job_columns)
     job_values = ",".join(f'record."{name}"' for name in job_columns)
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""INSERT INTO document_automation_jobs({job_names})
         SELECT {job_values} FROM {_ARCHIVE} a
         CROSS JOIN LATERAL jsonb_populate_record(NULL::document_automation_jobs,
             a.snapshot || CASE WHEN a.snapshot->>'status'='running'
                 THEN jsonb_build_object('status','pending','locked_at',NULL) ELSE '{{}}'::jsonb END) record
         WHERE a.source='memory_automation_jobs' ON CONFLICT(id) DO NOTHING"""))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""UPDATE document_tags tag SET share_id=(node.snapshot->>'share_id')::uuid,
         share_kind='document',lock_version=coalesce((node.snapshot->>'lock_version')::integer,1)+1
         FROM {_ARCHIVE} node WHERE node.source='memory_items' AND node.identity=tag.memory_item_id
@@ -307,6 +371,8 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     await session.execute(text("""UPDATE memory_items SET node_kind='document',provider_code='native',resource_id='',content='',
         content_hash=encode(sha256(''::bytea),'hex'),size_bytes=0,revision=1,lock_version=lock_version+1
         WHERE id IN (SELECT id FROM documents)"""))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"UPDATE {_MANIFEST} SET transferred=true"))
     if not await transfer_complete(session,delta):
         raise RuntimeError("Document independence postcondition failed")
@@ -329,6 +395,8 @@ async def retired_policies(session: AsyncSession, _delta: SchemaTransitionSet) -
         OR EXISTS(SELECT 1 FROM memory_sources WHERE item_id IN (SELECT id FROM documents))
         OR EXISTS(SELECT 1 FROM memory_automation_jobs WHERE kind='goal_folder_reconcile')""")):
         return False
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     return not bool(await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM share_configs cfg WHERE cfg.id IN (
         SELECT (snapshot->>'share_id')::uuid FROM {_ARCHIVE} WHERE source='memory_policies')
         AND NOT EXISTS(SELECT 1 FROM documents WHERE share_id=cfg.id)
@@ -343,13 +411,19 @@ async def retire_policies(session: AsyncSession, _delta: SchemaTransitionSet) ->
     # The old revision identity FK has now contracted. History and provenance
     # belong solely to Document; its optional graph reference has no payload.
     for table in ("memory_revisions", "memory_sources"):
+        # SQL fragments use module constants, closed legacy-column lists or declared model names.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"DELETE FROM {table} WHERE item_id IN (SELECT id FROM documents)"))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     missing_jobs = await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM {_ARCHIVE} a
         LEFT JOIN document_automation_jobs target ON target.id=a.identity
         WHERE a.source='memory_automation_jobs' AND target.id IS NULL)"""))
     if missing_jobs:
         raise RuntimeError("Document automation jobs were not preserved")
     await session.execute(text("DELETE FROM memory_automation_jobs WHERE kind='goal_folder_reconcile'"))
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""DELETE FROM share_configs cfg WHERE cfg.id IN (
         SELECT (snapshot->>'share_id')::uuid FROM {_ARCHIVE} WHERE source='memory_policies')
         AND NOT EXISTS(SELECT 1 FROM documents WHERE share_id=cfg.id)
@@ -382,6 +456,8 @@ async def preserved_resource(session: AsyncSession, provider: str, pointer: str)
 async def preserved_resources(session: AsyncSession, provider: str, pointers: Collection[str]) -> set[str]:
     if not await _exists(session,_ARCHIVE):
         return set()
+    # SQL fragments use module constants, closed legacy-column lists or declared model names.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     return set(await session.scalars(text(f"""SELECT snapshot->>'resource_id' FROM {_ARCHIVE}
         WHERE snapshot->>'provider_code'=:provider AND snapshot->>'resource_id'=ANY(CAST(:pointers AS text[]))
         UNION SELECT snapshot->>'summary_resource_id' FROM {_ARCHIVE}

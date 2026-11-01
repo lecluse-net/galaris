@@ -361,6 +361,12 @@ immutable. Consult the `galaris-process-tools` skill.
   use the version without a `v` prefix, for example `0.1.0`, `0.2.0`, and `0.3.0`.
   Never move or replace a published tag. Preserve historical `0.1` and `0.2` tags as
   compatibility aliases of `0.1.0` and `0.2.0`.
+- Before creating or pushing a release tag, run `make release-check RELEASE_REF=<commit>`
+  on the final committed source. It requires successful Quality and Security workflows
+  for that exact commit and a fresh source scan. Missing, failed, cancelled or pending
+  evidence blocks publication; report the blocking result before publishing. A passing
+  image scan that permits unfixed advisories is not source-release approval. Publish
+  GitHub Releases through the guarded workflow rather than bypassing it in the UI.
 - Update `CHANGELOG.md` only when the user explicitly requests it, normally before each
   publication. Do not update it incrementally during feature work, fixes, or routine
   documentation changes. On request, review the full range since the previous release and

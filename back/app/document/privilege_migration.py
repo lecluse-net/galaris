@@ -16,10 +16,14 @@ async def preserved(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
 
 async def preserve(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
     await session.execute(text("CREATE SCHEMA IF NOT EXISTS galaris_migration"))
+    # _TABLE is a fixed migration-owned identifier; no external SQL is interpolated.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""CREATE TABLE IF NOT EXISTS {_TABLE} (
         role_id integer NOT NULL, code text NOT NULL, PRIMARY KEY(role_id,code))"""))
     if not await session.scalar(text("SELECT to_regclass('public.role_privileges') IS NOT NULL")):
         return
+    # _TABLE is a fixed migration-owned identifier; no external SQL is interpolated.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""INSERT INTO {_TABLE}(role_id,code)
         SELECT rp.role_id,replace(p.code,'MEMORY_','DOCUMENT_')
         FROM role_privileges rp JOIN privileges p ON p.id=rp.privilege_id
@@ -30,6 +34,8 @@ async def preserve(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
 async def complete(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
     if not await preserved(session, _delta):
         return False
+    # _TABLE is a fixed migration-owned identifier; no external SQL is interpolated.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     return not bool(await session.scalar(text(f"""SELECT EXISTS (
         SELECT 1 FROM {_TABLE} old JOIN roles r ON r.id=old.role_id
         LEFT JOIN privileges p ON p.code=old.code
@@ -38,6 +44,8 @@ async def complete(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
 
 
 async def restore(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
+    # _TABLE is a fixed migration-owned identifier; no external SQL is interpolated.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     await session.execute(text(f"""INSERT INTO role_privileges(role_id,privilege_id)
         SELECT old.role_id,p.id FROM {_TABLE} old JOIN roles r ON r.id=old.role_id
         JOIN privileges p ON p.code=old.code ON CONFLICT DO NOTHING"""))

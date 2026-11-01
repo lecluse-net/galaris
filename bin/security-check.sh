@@ -2,15 +2,26 @@
 # Reproducible local/CI scans; ignored files and live data never enter the scanner.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+case "${1:-}" in
+  '') [[ $# == 0 ]] ;;
+  image|source) [[ $# == 2 ]] ;;
+  *) echo "Usage: $0 [source COMMIT | image IMAGE]" >&2; exit 2 ;;
+esac
 scan_root=$(mktemp -d "${TMPDIR:-/tmp}/galaris-security.XXXXXX")
 trap 'rm -rf "$scan_root"' EXIT
 mkdir -p "$scan_root/source"
-git ls-files -z --cached --others --exclude-standard -- . ':!:refs' |
-  while IFS= read -r -d '' entry; do
-    if [[ -f "$entry" && ! -L "$entry" ]]; then printf '%s\0' "$entry"; fi
-  done |
-  tar --null -T - -cf - |
-  tar -xf - -C "$scan_root/source"
+if [[ ${1:-} == source ]]; then
+  source_commit=$(git rev-parse --verify --end-of-options "$2^{commit}")
+  echo "Scanning committed source: $source_commit"
+  git archive "$source_commit" | tar -xf - -C "$scan_root/source"
+else
+  git ls-files -z --cached --others --exclude-standard -- . ':!:refs' |
+    while IFS= read -r -d '' entry; do
+      if [[ -f "$entry" && ! -L "$entry" ]]; then printf '%s\0' "$entry"; fi
+    done |
+    tar --null -T - -cf - |
+    tar -xf - -C "$scan_root/source"
+fi
 
 trivy=(docker run --rm -v "$scan_root/source:/src:ro" -w /src aquasec/trivy:0.74.0)
 if [[ ${1:-} == image ]]; then
@@ -24,8 +35,14 @@ if [[ ${1:-} == image ]]; then
   # means no available HIGH/CRITICAL fix was left unapplied, not no known CVEs.
   jq '[.Results[]?.Vulnerabilities[]?] | {
     total: length,
-    fix_available: map(select(.FixedVersion != null and .FixedVersion != "")) | length
+    fix_available: map(select(.FixedVersion != null and .FixedVersion != "")) | length,
+    unfixed_critical: map(select(.Severity == "CRITICAL" and
+      (.FixedVersion == null or .FixedVersion == ""))) | length
   }' "$report"
+  if jq -e 'any(.Results[]?.Vulnerabilities[]?;
+    .Severity == "CRITICAL" and (.FixedVersion == null or .FixedVersion == ""))' "$report" >/dev/null; then
+    echo 'WARNING: unfixed CRITICAL findings remain. Image policy success is not release approval; run make release-check.' >&2
+  fi
   jq -e 'all(.Results[]?.Vulnerabilities[]?;
     .FixedVersion == null or .FixedVersion == "")' "$report" >/dev/null
 else

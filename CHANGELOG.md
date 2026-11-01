@@ -8,6 +8,23 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-01
+
+### Changed
+
+- Require successful Quality and Security checks for the exact release commit,
+  followed by a fresh source security scan, before publishing a GitHub Release.
+  Missing or unsuccessful evidence blocks publication with retained diagnostics.
+  Immutable image bundle builds also check committed sources before building.
+
+### Security
+
+- Replace python-jose with PyJWT 2.15.1 to remove the dependency affected by
+  CVE-2026-85394 and reject DER public keys used as HMAC secrets. Existing HS256
+  access tokens remain compatible. Remove the unused ecdsa dependency and its
+  former vulnerability exception.
+- Update the locked follow-redirects dependency to 1.16.2 for CVE-2026-116689.
+
 ## [0.3.0] - 2026-11-01
 
 ### Added
@@ -193,7 +210,8 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 - Initial tagged release of Galaris: self-hosted agents, text and voice conversations,
   durable Tasks and Goals, tools, memory, documents, external messaging and AI Lab.
 
-[Unreleased]: https://github.com/lecluse-net/galaris/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/lecluse-net/galaris/compare/0.3.1...HEAD
+[0.3.1]: https://github.com/lecluse-net/galaris/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/lecluse-net/galaris/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/lecluse-net/galaris/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/lecluse-net/galaris/tree/0.1.0

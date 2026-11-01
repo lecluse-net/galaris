@@ -28,6 +28,8 @@ async def _legacy_rows(session: AsyncSession) -> list[dict[str, Any]]:
         return []
     # Every identifier comes from the fixed tuple, never from persisted values.
     selection = ", ".join(f"hermes_{name} AS {name}" for name in fields)
+    # The column projection is selected only from _FIELDS, never from stored values.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     rows = (await session.execute(text(f"SELECT id AS agent_id, agent_driver, {selection} FROM agents"))).mappings()
     return [dict(row) for row in rows if row["agent_driver"] == "hermes" or any(
         row.get(name) not in (None, False, "", {}, "hermes-agent") for name in fields

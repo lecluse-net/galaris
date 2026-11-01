@@ -14,6 +14,15 @@ explicite dans `security/trivy-ignore.yaml`. Chaque exception décrit l'absence
 d'exposition concernée et expire. Les exclusions SAST du SQL DbAdmin sont locales aux
 instructions qui construisent des identifiants générés ou correctement échappés.
 
+Les JWT applicatifs utilisent PyJWT avec une liste d’algorithmes fixée à HS256 et un secret
+privé. La dépendance python-jose et sa dépendance inutilisée ecdsa sont retirées, ainsi que
+l’ancienne exception Trivy associée. Les [garanties fonctionnelles](functional-tests.md)
+couvrent la compatibilité des anciens jetons et le refus d’une clé publique DER utilisée
+comme secret HMAC. Les annotations SAST de migrations justifient chaque instruction par ses
+identifiants en liste fermée, issus des modèles ou échappés ; les valeurs externes restent
+liées par paramètres. Elles ne désactivent pas la règle SQL globale et doivent être revues
+si les fragments interpolés changent.
+
 Les images backend, frontend, navigateur et SSH sont construites avec leurs paquets
 actualisés. `bash bin/security-check.sh image IMAGE` conserve l'inventaire complet
 dans `artifacts/security/` et échoue si un correctif HIGH/CRITICAL reste disponible.
@@ -35,6 +44,41 @@ sur un instantané isolé du worktree. `make validate-stability` ajoute trois r�
 par navigateur. Lire le rapport `artifacts/validation/*/summary.txt` et ses échecs ; toute
 modification ultérieure invalide la validation. Les cibles `make security-check` et
 `make tests-restore` peuvent aussi être exécutées séparément pour un contrôle ciblé.
+
+## Contrôle avant publication
+
+Après le dernier commit poussé sur `main`, attendre les workflows Quality et Security,
+puis exécuter **avant de créer ou pousser le tag** :
+
+```bash
+make release-check RELEASE_REF=HEAD
+```
+
+Cette commande requiert Docker et jq. Elle utilise GitHub CLI (`gh`) avec un accès en
+lecture aux Actions ; si `gh` est absent, curl interroge l’API publique en lecture seule.
+Un dépôt privé exige un `gh` authentifié. `GH_REPO=propriétaire/dépôt` peut préciser le dépôt. Elle vérifie
+la dernière exécution de chaque workflow pour le commit exact, puis relance Trivy et
+Semgrep sur son archive Git, indépendamment des fichiers non committés. Une CI absente,
+échouée, annulée, ignorée ou encore en cours bloque ; un succès d’un autre commit ne
+convient pas. Toute nouvelle modification doit être commitée, poussée et contrôlée.
+
+Le workflow **Publish release** exige le même contrôle avant de créer la Release GitHub.
+Il peut attendre les CI en cours jusqu’à quatre heures, puis effectue le scan frais.
+Ses erreurs apparaissent dans les annotations et le résumé Actions ; les journaux et
+résultats CI sont conservés dans l’artefact `release-check`. Une erreur réseau ou une
+indisponibilité du scanner bloque aussi. `make build-release` scanne également les
+sources du commit avant de construire les images. Aucun de ces contrôles ne crée de tag.
+
+Le scan des sources bloque les alertes HIGH/CRITICAL même sans correctif. Le scan des
+images conserve sa politique pour les paquets système sans correctif et affiche leur
+nombre de critiques ; un résultat d’image réussi ne remplace jamais le contrôle des
+sources. Ce sont deux garanties différentes.
+
+Une création manuelle dans l’interface GitHub contourne le workflow : utiliser **Publish
+release**. Les protections de branches et de tags restent des réglages GitHub distincts.
+Le contrôle n’établit pas l’absence de vulnérabilités encore inconnues. La
+[décision de publication](../../../project/decisions/0262-source-release-security-gate.md)
+décrit la cause du défaut de séquencement et le contrat retenu.
 
 ## Restauration répétable
 

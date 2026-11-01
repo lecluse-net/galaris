@@ -16,7 +16,8 @@ Usage:
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 from loguru import logger
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError as JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -242,7 +243,7 @@ async def authenticate_from_jwt_token(token: str, *, set_context: bool = True) -
     """
     # Decode and validate the token.
     try:
-        payload: dict[str, Any] = jwt.decode( # type: ignore
+        payload: dict[str, Any] = jwt.decode(
             token,
             auth_secret_key(),
             algorithms=[settings.ALGORITHM]
@@ -340,7 +341,7 @@ def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta]
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt: str = jwt.encode( # type: ignore
+    encoded_jwt: str = jwt.encode(
         to_encode,
         auth_secret_key(),
         algorithm=settings.ALGORITHM

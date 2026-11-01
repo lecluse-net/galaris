@@ -9,7 +9,8 @@ from typing import Any
 from loguru import logger
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError as JWTError
 from core import settings
 from core.secrets import auth_secret_key
 from core.i18n import t
@@ -82,7 +83,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, auth_secret_key(), algorithms=[settings.ALGORITHM])  # type: ignore
+        payload = jwt.decode(token, auth_secret_key(), algorithms=[settings.ALGORITHM])
         return payload
     except JWTError:
         raise HTTPException(

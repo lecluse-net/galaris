@@ -156,7 +156,7 @@ async def test_environment_cleanup_requires_valid_internal_keys_but_ignores_old_
 @pytest.mark.asyncio
 @pytest.mark.parametrize("legacy", ["", "existing-signing-key-preserved-0000001"])
 async def test_internal_signing_key_is_generated_ignoring_environment_and_survives_restart(db, monkeypatch, legacy):
-    from jose import jwt
+    import jwt
     from sqlalchemy import delete, select
     from core import settings
     from core.dbadmin import reconcile_dataset

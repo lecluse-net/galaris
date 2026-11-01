@@ -8,6 +8,8 @@ if [[ -e "$release_output" ]]; then
   echo "Release destination already exists: $release_output" >&2
   exit 2
 fi
+# Source policy blocks unfixed application advisories before expensive image builds.
+bash bin/security-check.sh source "$release_ref"
 release_source=$(mktemp -d "${TMPDIR:-/tmp}/galaris-release.XXXXXX")
 trap 'rm -rf "$release_source"' EXIT
 git archive "$release_ref" | tar -x -C "$release_source"
