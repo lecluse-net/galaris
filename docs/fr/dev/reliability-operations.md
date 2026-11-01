@@ -159,6 +159,8 @@ Avancez `main` et poussez le tag correspondant sans préfixe `v`, par exemple `0
 Le workflow **Publish release** vérifie ce format, extrait les notes de cette section et crée
 la release GitHub avec le jeton du dépôt. Une publication existante reste inchangée lors d’un
 réessai ; ne déplacez jamais un tag publié. Cette publication fournit les archives des sources.
+Si le déclenchement automatique n’a pas eu lieu, utilisez **Run workflow** sur **Publish release**
+et renseignez le tag existant ; aucune recréation ni déplacement du tag n’est nécessaire.
 La qualification des images et le déploiement utilisent séparément le parcours ci-dessous.
 
 ### Construire et qualifier les images

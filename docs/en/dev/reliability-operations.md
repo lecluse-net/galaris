@@ -147,7 +147,8 @@ the matching tag without a `v` prefix, for example `0.3.0`. The **Publish releas
 checks that format, extracts notes from the section and creates the GitHub release using the
 repository token. An existing publication remains unchanged on retry; never move a published
 tag. This publication provides source archives. Image qualification and deployment use the
-separate procedure below.
+separate procedure below. If automatic triggering did not occur, select **Run workflow** on
+**Publish release** and enter the existing tag; no tag recreation or movement is required.
 
 ### Build and qualify images
 
