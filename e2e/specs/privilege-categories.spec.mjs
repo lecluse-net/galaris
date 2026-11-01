@@ -17,7 +17,7 @@ for (const [language, width, labels] of [
   const headers = { Authorization: `Bearer ${session.access_token}` }
   await checked(await request.put('/api/auth/me', { headers, data: { language } }))
   const categories = await checked(await request.get('/api/authorize/privilege-lists', { headers }))
-  expect(categories.filter(item => item.translation_key)).toHaveLength(12)
+  expect(categories.filter(item => item.translation_key)).toHaveLength(14)
   expect(categories.some(item => item.display_name === 'Chat')).toBe(false)
   const key = 'authorize.privilegeLists.defaults.agentsTeams'
   const installed = categories.find(item => item.translation_key === key)

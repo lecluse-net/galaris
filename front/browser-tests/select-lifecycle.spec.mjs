@@ -149,9 +149,9 @@ test('a saved topic changed by the parent keeps its newest label when the previo
 
 test('agent choices load on first opening even while another agent-store resource is loading', async ({ page }) => {
   let requests = 0
-  await page.route('**/api/agents?*', route => {
+  await page.route('**/api/agents/selection?*', route => {
     requests += 1
-    return route.fulfill({ json: [{ id: 7, first_name: 'Alice', last_name: 'Example' }] })
+    return route.fulfill({ json: [{ id: 7, label: 'Alice Example', has_avatar: false }] })
   })
   await mount(page, choices.agent.component, { props: {
     options: [{ value: 7, label: 'Alice Example' }], modelValue: null, label: 'Choice',

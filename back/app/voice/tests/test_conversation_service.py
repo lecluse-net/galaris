@@ -114,6 +114,8 @@ async def test_early_authorization_decision_is_retried_after_voice_turn_suspends
         title = Title(label="Synthetic voice approval", gender="X")
         db.add_all([manager, title])
         await db.flush()
+        from tests.authorization_fixtures import grant_privileges
+        await grant_privileges(db, manager.id, "PERMISSION_DECIDE")
         agent = Agent(user_id=manager.id, title_id=title.id, code=f"voice-approval-{uuid4().hex}",
                       first_name="Synthetic", last_name="Voice")
         db.add(agent)

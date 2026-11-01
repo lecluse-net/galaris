@@ -70,7 +70,7 @@ for (const domain of ['document', 'dataset']) for (const width of [390, 1280]) {
     await mount(page, component, options)
     await expect(resource).toBeVisible()
     await root.getByRole('button', { name: isDocument ? 'Create a document at the root' : 'Create a Dataset at the root', exact: true }).click()
-    expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1)?.args)).toEqual(isDocument ? [undefined, undefined, true] : [undefined, true])
+    expect(await page.evaluate(count => window.testApp.events.filter(event => event.name === 'create').at(-1)?.args.slice(0, count), isDocument ? 3 : 2)).toEqual(isDocument ? [undefined, undefined, true] : [undefined, true])
     await page.screenshot({ path: testInfo.outputPath(`${domain}-root.png`), animations: 'disabled' })
   })
 }

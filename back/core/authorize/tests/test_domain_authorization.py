@@ -28,6 +28,19 @@ async def owned_agent(user_id):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("code", ["PROCESS_READ", "PROCESS_EDIT", "FILE_ACCESS"])
+async def test_native_process_browser_preserves_process_domain_permissions(client, code):
+    headers, user_id = await actor([code])
+    agent_id = await owned_agent(user_id)
+    for uri in ("galaris://", "galaris://processes/", "galaris://processes/runs/"):
+        response = await client.get('/api/file-share/browser/entries', headers=headers,
+            params={"agent_id": agent_id, "uri": uri})
+        assert response.status_code == (403 if code == "FILE_ACCESS" else 200), (uri, response.text)
+        if code != "FILE_ACCESS" and uri == "galaris://":
+            assert "galaris://processes/" in {entry["uri"] for entry in response.json()["entries"]}
+
+
+@pytest.mark.asyncio
 async def test_messaging_reception_check_keeps_provider_scope_and_edit_privilege(client):
     for grants, status in [(["MESSAGING_CONFIG_ACCESS"], 403), (["MESSAGING_CONFIG_EDIT"], 200)]:
         headers, _ = await actor(grants)

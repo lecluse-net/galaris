@@ -50,6 +50,8 @@ The **Document type** filter selects all types, Text or Data. It combines with s
 and the other filters before pagination. Each type has a distinct icon, editor and
 preview. Title, owner, sharing, Topic, keywords, summary and history follow common rules.
 The Data editor preserves invalid JSON drafts without saving them or leaving the document.
+Using the browser Back action to close its window asks whether to keep or discard the draft.
+Discarding restores the last saved content.
 
 
 ## Current description and keywords

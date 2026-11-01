@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
@@ -6,6 +7,7 @@ for (const mobile of [false, true]) {
   test(`ToolAdmin prepares a secret candidate and administers a Tool (${mobile ? 'mobile' : 'desktop'})`, async ({ page, request }) => {
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
     const pageErrors = collectPageErrors(page)
+    await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: /^(Plus tard|Later|稍后)$/, exact: true }).click())
     const fixture = await (await request.post('/api/__test/seed')).json()
     const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
     await pageErrors.settle()

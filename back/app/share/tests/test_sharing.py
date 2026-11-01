@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.dataset import service as datasets
 from app.dataset.models import Dataset
+from app.document.data.models import LegacyDataset
 from app.dataset import sharing as dataset_sharing
 from app.document import document_service
 from app.memory.models import MemoryItem
@@ -60,7 +61,7 @@ async def test_cross_type_policy_reuse_is_rejected_and_document_projection_has_o
     assert record.share_id == document.share_id
     async with db.begin_nested() as savepoint:
         with pytest.raises(IntegrityError):
-            await db.execute(update(MemoryItem).where(MemoryItem.id == document.id).values(share_id=dataset.share_id))
+            await db.execute(update(Document).where(Document.id == document.id).values(share_id=dataset.share_id))
             await db.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
         await savepoint.rollback()
 
@@ -77,12 +78,29 @@ async def test_acl_upgrade_preserves_existing_access_tombstones_and_replays_with
     db.add_all([human, team])
     await db.flush()
     if kind == "dataset":
-        resource = await datasets.create(owner.id, title="Synthetic old resource", content="{}")
-        model, table, legacy, foreign = Dataset, "datasets", "dataset_grants", "dataset_id"
+        # The retained grant ORM now references canonical Documents. Recreate the
+        # historical FK before seeding the source Dataset in this transaction.
+        await db.execute(text("ALTER TABLE dataset_grants DROP CONSTRAINT dataset_grants_dataset_id_fkey"))
+        await db.execute(text("ALTER TABLE dataset_grants ADD CONSTRAINT dataset_grants_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES datasets(id)"))
+        resource = LegacyDataset(owner_agent_id=owner.id, title="Synthetic old resource", content="{}")
+        db.add(resource)
+        await db.flush()
+        model, table, legacy, foreign = LegacyDataset, "datasets", "dataset_grants", "dataset_id"
     elif kind == "document":
         resource = await document_service.create_document(owner_agent_id=owner.id,
             title="Synthetic old resource", content="<p>Synthetic preserved prose</p>", task_id=None)
-        model, table, legacy, foreign = MemoryItem, "documents", "memory_item_grants", "item_id"
+        model, table, legacy, foreign = Document, "documents", "memory_item_grants", "item_id"
+        db.add(MemoryItem(id=resource.id, node_kind="document", owner_agent_id=owner.id,
+            resource_id=str(resource.id), content_hash=resource.content_hash,
+            search_title="Synthetic old resource", search_text="Synthetic preserved prose"))
+        await db.flush()
+        await db.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
+        await db.execute(text("ALTER TABLE memory_items ADD COLUMN share_id uuid, ADD COLUMN share_kind varchar(30)"))
+        await db.execute(text("ALTER TABLE documents ADD COLUMN memory_item_id uuid"))
+        await db.execute(text("ALTER TABLE documents ADD COLUMN global_access integer DEFAULT 0, ADD COLUMN group_access integer DEFAULT 0"))
+        await db.execute(text("UPDATE documents SET memory_item_id = id WHERE id = :id"), {"id": resource.id})
+        for source, principal in (("memory_item_grants", "agent"), ("document_user_grants", "user"), ("document_team_grants", "team")):
+            await db.execute(text(f"CREATE TABLE {source} (item_id uuid, {principal}_id integer, can_write boolean)"))
     else:
         tool = await db.scalar(select(ToolModel.id).where(ToolModel.code == "galaris"))
         resource = ProcessDefinition(agent_id=owner.id, tool_id=tool, label="Synthetic old resource",
@@ -92,8 +110,6 @@ async def test_acl_upgrade_preserves_existing_access_tombstones_and_replays_with
         model, table, legacy, foreign = ProcessDefinition, "process_definitions", "process_definition_grants", "process_id"
     if deleted:
         resource.soft_delete()
-        if kind == "document":
-            resource.document.soft_delete()
         await db.flush()
     identity, original_share = resource.id, resource.share_id
     reader_id, human_id, team_id = reader.id, human.id, team.id
@@ -144,7 +160,11 @@ async def test_acl_upgrade_preserves_existing_access_tombstones_and_replays_with
 @pytest.mark.asyncio
 async def test_interrupted_acl_transfer_rolls_back_and_resumes_without_losing_legacy_grants(db, agents, monkeypatch):
     owner, reader = agents
-    resource = await datasets.create(owner.id, title="Synthetic interrupted upgrade", content="{}")
+    await db.execute(text("ALTER TABLE dataset_grants DROP CONSTRAINT dataset_grants_dataset_id_fkey"))
+    await db.execute(text("ALTER TABLE dataset_grants ADD CONSTRAINT dataset_grants_dataset_id_fkey FOREIGN KEY (dataset_id) REFERENCES datasets(id)"))
+    resource = LegacyDataset(owner_agent_id=owner.id, title="Synthetic interrupted upgrade", content="{}")
+    db.add(resource)
+    await db.flush()
     identity = resource.id
     await db.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
     await db.execute(text("ALTER TABLE datasets ALTER COLUMN share_id DROP NOT NULL"))

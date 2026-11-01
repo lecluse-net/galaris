@@ -265,7 +265,7 @@ async def test_internal_harness_reports_paid_secondary_cost_after_subscription_f
                             label="Synthetic", requested_effort="standard"),
     )
     result = await run(request)
-    assert result.success and result.metadata["profile_fallback_used"] is True
+    assert result.success and result.metadata["profile_fallback_used"] is True, result.metadata
     assert requests == ["primary", "secondary"]
     calls = list(await db.scalars(select(LLMCall).where(LLMCall.agent_run_id == request.run_id)))
     assert result.cost > 0

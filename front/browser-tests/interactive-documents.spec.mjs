@@ -24,5 +24,5 @@ test('Dataset links remain distinct canonical references in authored HTML', asyn
   const id = '00000000-0000-4000-8000-000000000005'
   const content = `<p><a href="data://${id}">Synthetic Dataset</a></p>`
   await mount(page, 'core/util/components/RichText.vue', { props: { profile: 'document', content } })
-  await expect(page.getByRole('link', { name: 'Synthetic Dataset', exact: true })).toHaveAttribute('href', `/dataset/${id}`)
+  await expect(page.getByRole('link', { name: 'Synthetic Dataset', exact: true })).toHaveAttribute('href', `/documents?document_id=${id}`)
 })

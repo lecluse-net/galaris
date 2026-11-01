@@ -22,4 +22,9 @@ def test_topic_content_requires_topic_access() -> None:
 
 def test_topic_refs_are_available_to_execution_monitoring() -> None:
     metadata = getattr(router.read_topic_refs, "_authorize_meta")
-    assert metadata["privileges"] == ["TASK_ACCESS", "TOPIC_ACCESS", "TOPIC_EDIT"]
+    assert set(metadata["privileges"]) == {
+        "TASK_ACCESS", "TASK_EDIT", "TOPIC_ACCESS", "TOPIC_EDIT",
+        "CONVERSATION_ACCESS", "CONVERSATION_CONTROL", "VOICE_HISTORY_ACCESS", "VOICE_HISTORY_CONTROL",
+        "CHAT_ACCESS", "DOCUMENT_ACCESS", "DOCUMENT_EDIT", "DOCUMENT_ADMIN",
+        "MEMORY_ACCESS", "MEMORY_EDIT", "MEMORY_ADMIN", "DATASET_READ", "DATASET_EDIT", "DATASET_ADMIN",
+    }

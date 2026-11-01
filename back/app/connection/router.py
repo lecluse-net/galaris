@@ -110,7 +110,9 @@ async def list_function_permissions(agent_id: int | None = None,
 @router.get("/tool-options")
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
 async def connection_tool_options() -> list[dict[str, Any]]:
-    return await connection_service.connection_tool_options()
+    user = await get_current_user()
+    include_globals = user is not None and await check_privilege(user, [Privileges.TOOL_ACCESS, Privileges.TOOL_EDIT], get_db())
+    return await connection_service.connection_tool_options(include_globals=include_globals)
 
 
 @router.get("/permission-options", response_model=list[PermissionConnectionOption])

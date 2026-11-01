@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, setPrivileges, dataDocumentRoutes } from './fixtures.mjs'
 import { document, goal as goalFixture, contactResource } from './data.mjs'
 
 const component = 'app/file_share/pages/index.vue'
@@ -250,7 +250,7 @@ for (const width of [1440, 390]) test(`browser history restores agents and direc
   await expect(page.getByRole('button', { name: 'Open Notes.txt', exact: true })).toBeVisible()
 })
 
-for (const width of [1440, 390]) test(`browser Back protects an unsaved Dataset opened from Files at ${width}px`, async ({ page }) => {
+for (const width of [1440, 390]) test(`browser Back protects an unsaved Dataset opened from Files at ${width}px`, async ({ page }, testInfo) => {
   await setup(page)
   await page.setViewportSize({ width, height: 1000 })
   const id = '00000000-0000-4000-8000-000000000321'
@@ -259,19 +259,19 @@ for (const width of [1440, 390]) test(`browser Back protects an unsaved Dataset 
     global_access: 0, group_access: 0, keywords: [], created_at: '2026-01-01T00:00:00Z' }
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'data', label: 'Datasets', capabilities: ['list'], native: true }])
   await jsonRoute(page, '**/api/file-share/browser/entries?*', pageOf('data://', [entry(dataset.uri, dataset.title)]))
-  await jsonRoute(page, `**/api/datasets/${id}`, dataset)
-  await jsonRoute(page, `**/api/datasets/${id}/owner`, { owner: null, options: [] })
-  await jsonRoute(page, `**/api/datasets/${id}/sharing`, { lock_version: 1, can_manage: true, level: 'private', can_write: false,
-    grants: [], options: [], owner: null, owner_groups: [] })
-  await mount(page, routeComponent, { route: '/files?agent_id=7', browserHistory: true, privileges: ['FILE_ACCESS', 'DATASET_EDIT'] })
+  await dataDocumentRoutes(page, dataset)
+  await mount(page, routeComponent, { route: '/files?agent_id=7', browserHistory: true, privileges: ['FILE_ACCESS', 'DOCUMENT_EDIT'] })
   if (width < 1024) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
   await page.getByText('data://', { exact: true }).click()
   await page.getByRole('button', { name: `Open ${dataset.title}`, exact: true }).click()
-  const input = page.getByRole('textbox', { name: 'JSON content', exact: true })
-  await expect(input).toHaveValue('{\n  "amount": 0\n}')
+  const input = page.locator('textarea.code-editor')
+  await expect(input).toHaveValue(dataset.content)
   await input.fill('{')
   await page.evaluate(() => window.history.back())
   const discard = page.getByRole('dialog').filter({ hasText: 'Discard unsaved changes before continuing?' })
+  await expect(discard).toBeVisible()
+  await expect(discard.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused()
+  await page.screenshot({ path: testInfo.outputPath('discard-data-draft.png'), animations: 'disabled' })
   await discard.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(input).toHaveValue('{')
   await expect.poll(() => new URL(page.url()).searchParams.get('uri')).toBe('data://')
@@ -281,7 +281,7 @@ for (const width of [1440, 390]) test(`browser Back protects an unsaved Dataset 
   await expect.poll(() => new URL(page.url()).searchParams.get('uri')).toBeNull()
   await page.evaluate(() => window.history.forward())
   await page.getByRole('button', { name: `Open ${dataset.title}`, exact: true }).click()
-  await expect(input).toHaveValue('{\n  "amount": 0\n}')
+  await expect(input).toHaveValue(dataset.content)
 })
 
 for (const width of [1440, 390]) test(`file and directory menus rename, confirm deletion, recover from errors and recheck permissions at ${width}px`, async ({ page }, testInfo) => {
@@ -586,6 +586,9 @@ test('a Galaris document opens its existing modal with the selected agent scope'
 
 for (const width of [1440, 390]) test(`document folders restore their named lineage from stable URIs at ${width}px`, async ({ page }, testInfo) => {
   await setup(page)
+  await jsonRoute(page, '**/api/documents/doc-unfiled?*', {
+    item: { ...document, id: 'doc-unfiled', title: 'Synthetic unfiled' }, agent_id: 7,
+  })
   await page.setViewportSize({ width, height: 1000 })
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', [
     { scheme: 'document', label: 'Documents', capabilities: ['list', 'info', 'read'], native: true },

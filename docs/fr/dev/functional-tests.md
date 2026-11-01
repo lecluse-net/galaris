@@ -125,11 +125,15 @@ parcours HTTP vérifie le refus avec Contacts seul puis l'effet avec les deux dr
 
 `domain-access.spec.mjs` vérifie les onglets et requêtes permis, les changements de rôle,
 les permissions sans administration des connexions et l'indexation sans Dream/Files sur
-ordinateur et mobile. `agent-selection.spec.mjs` conserve sélection, réouverture et changement
+ordinateur et mobile. Il conserve aussi l'onglet Modèles demandé dans l'URL pendant le
+renouvellement des droits. `agent-selection.spec.mjs` conserve sélection, réouverture et changement
 de session. `e2e/specs/rbac-domains.spec.mjs` connecte un rôle Contacts seul à l'application
 assemblée, crée un contact, le retrouve après rechargement et vérifie les refus Memory,
 catalogue Agent et agent étranger sur ordinateur/mobile. Les données sont entièrement fictives.
 Le même parcours refuse les requêtes API de domaines non autorisés dans l'interface globale.
+Le sélecteur des connexions expose les paramètres globaux hérités aux lecteurs du domaine
+Tools uniquement, sans valeur secrète ni configuration privée du transport. Les rôles limités
+aux connexions conservent leur projection restreinte.
 `front/scripts/navigation-context.test.mjs` vérifie aussi que les droits générés des paramètres
 figurent dans les deux cartes documentaires, tout en refusant les imports non examinés.
 `app/chat/availability.test.mjs` vérifie que les sondes Chat/Mail attendent les droits et
@@ -695,6 +699,22 @@ liste et filtre HTML, lecture, droits et conservation du contenu sans réécritu
 <a id="datasets"></a>
 
 ## Documents typés et contrats Données
+
+`app/document/tests/test_document_apps.py` vérifie qu'une écriture de contenu Données
+notifie les lecteurs sans révoquer les applications HTML en cours. Un changement d'accès
+coalescé avec une écriture conserve son invalidation ; un rollback n'émet aucun événement.
+Les droits indépendants, les consentements liés à la révision et les quotas restent vérifiés.
+`e2e/specs/document-apps.spec.mjs` exerce deux formulaires, leurs écritures et leur export PDF.
+`front/browser-tests/file-browser.spec.mjs` couvre aussi le retour navigateur sur un brouillon
+JSON invalide : Annuler est sélectionné par défaut, conserve le brouillon, et l'abandon permet
+de rouvrir le dernier contenu enregistré sur mobile comme sur ordinateur.
+
+`app/share/tests/test_upgrade.py` vérifie les interruptions et la reprise Atlas sur plus
+d'un lot de processus historiques, avec droits agents/utilisateurs/équipes et tombstones.
+La séparation des Documents et la conversion Données sont couvertes par les deux suites
+de migration documentaire ci-dessous ; les anciennes ACL sont aussi reconstruites dans
+`app/share/tests/test_sharing.py`. Les parcours `library-roots.spec.mjs` et `library-icons.spec.mjs`
+utilisent la bibliothèque documentaire commune plutôt que l'écran Dataset retiré.
 
 `app/document/tests/test_typed_documents.py` vérifie la bibliothèque commune filtrée par
 type, l'identité unique du JSON, ses droits, les brouillons invalides côté serveur et la
@@ -1691,7 +1711,7 @@ du fournisseur (succès, abonnement disparu, refus et indisponibilité), avec un
 | Process → humain → messagerie | Demande privée interne ou externe, réponse JSON simple convertie en valeurs typées, fichier seul avec URI source, échec de livraison repris, refus d'un autre auteur ou d'une réponse tardive ; aucun message sans rapport ne termine l'étape. Une activité IA attend sans tâche auxiliaire, reprend même après une réponse rapide et conserve une pause utilisateur ; anciennes attentes retirées, doublons idempotents, Dataset et message final conservés | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → fichier → agent | Le contenu, sa révision, ses URI et ses ACL restent cohérents entre lecture et écriture | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
 | Datasets et compatibilité documentaire | Création Texte/Données et bibliothèque commune filtrée par type, identité native `data://`, JSON source préservé et erreurs sans nouvelle ressource/révision ; droits et historique propres, copie/restauration et conflits ; anciens alias et brouillons invalides préservés. Les parcours Données utilisent l’éditeur Document commun | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
-| HTML interactif dans un document | Formulaires HTML directs vers Dataset partagé, ACL et accords personnels liés à la révision ; révocation, copie non autorisée entre Datasets, validation JSON et quotas entre workers ; texte éditable et barre habituelle, sans vue Source documentaire ; impression et PDF statiques avec filtrage des ressources ; isolation, WebRTC, saturation du pont et réponses tardives | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
+| HTML interactif dans un document | Formulaires HTML directs vers Dataset partagé, ACL et accords personnels liés à la révision ; révocation, copie non autorisée entre Datasets, validation JSON et quotas entre workers ; texte éditable et barre habituelle, sans vue Source documentaire ; impression et PDF statiques avec filtrage des ressources ; isolation, WebRTC, saturation du pont et réponses tardives | `back/app/document/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Arrêt / reprise / concurrence | Un ancien worker ne remplace pas le propriétaire courant ; les effets ambigus ne sont pas rejoués aveuglément | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Accusé d’outil perdu | Une commande SSH reste unique après perte de réponse et relecture PostgreSQL ; un timeout MCP après effet bloque le rejeu ; le retry conserve le journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |
 
@@ -2261,9 +2281,17 @@ Il couvre aussi le dépliage des dossiers et sous-documents sur 120 puis 960 doc
 avec le contexte utilisateur et les périmètres d'agents limité ou global. Les résultats et les
 droits restent vérifiés ; un budget d'accès aux pages PostgreSQL détecte les réévaluations
 imbriquées des droits, même lorsque les données sont en cache. Les mesures sont écrites dans
-`artifacts/memory-tree-benchmark*.json`. Les scénarios de classement vérifient que les filtres
+`artifacts/memory-tree-benchmark*.json`. Le corpus synthétique est analysé avant ces mesures
+pour ne pas dépendre des statistiques laissées par les autres tests ou du passage d'autovacuum.
+Les scénarios de classement vérifient que les filtres
 « tous » et « classés » donnent les mêmes branches, avec les mêmes droits et la même pagination ;
 le filtre « non classés » continue d'exclure ces documents.
+
+Les contrats de calendrier de `test_temporal.py` sont exercés pour Memory et pour le noyau
+partagé : dates partielles, années bissextiles et heures locales ambiguës ou inexistantes.
+`tests/test_tts_service.py` vérifie aussi les contrôles de voix Azure, l'échappement du SSML
+et le refus d'un résultat audio vide. Les erreurs SMB synthétiques complètent le pair Samba
+réel : authentification, délai et statuts serveur gardent leur sens sans divulguer les diagnostics privés.
 
 - `back/app/document/tests/test_goal_folders.py` : suivi présent dans la liste non classée,
   absent de l'arbre et de sa racine, classement manuel préservé après renommage du Goal,

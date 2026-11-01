@@ -44,7 +44,7 @@ test('Documents creates Text through its type menu and exposes the common type f
     return route.fulfill({ status: 201, json: state.current() })
   })
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
-  await page.locator('header').getByRole('button', { name: 'Create document', exact: true }).click()
+  await page.getByRole('button', { name: 'Create document', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Scenarios')

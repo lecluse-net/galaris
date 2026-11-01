@@ -6,8 +6,10 @@ for (const active of [true, false]) {
     const params = { host: 'console.example.test' }
     const writes = []
     await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Alice', last_name: 'Example', agent_driver: 'internal' }])
-    await jsonRoute(page, '**/api/tools', [{ id: 8, code: 'console', label: 'Console', can_disable: true, can_edit: false,
-      connection_schema: { params: { host: { type: 'string' } } }, global_params: {} }])
+    const tools = [{ id: 8, code: 'console', label: 'Console', can_disable: true, can_edit: false,
+      connection_schema: { params: { host: { type: 'string' } } }, global_params: {} }]
+    await jsonRoute(page, '**/api/tools', tools)
+    await jsonRoute(page, '**/api/connections/tool-options', tools)
     for (const endpoint of ['file-share/bridges', 'messenger/bridges', 'mail/approvers']) {
       await jsonRoute(page, `**/api/${endpoint}`, [])
     }

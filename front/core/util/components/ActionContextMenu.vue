@@ -56,6 +56,7 @@ async function run(action: ContextAction): Promise<void> {
   // Recheck reactive permissions/state, including changes while the menu is open.
   const current = actions.find(value => value.key === action.key)
   if (!current || current.disabled) return
+  menu.value?.hide()
   try { await current.run() }
   catch (error) { $q.notify({ type: 'negative', message: apiErrorDetail(error) ?? t('common.anError') }) }
 }

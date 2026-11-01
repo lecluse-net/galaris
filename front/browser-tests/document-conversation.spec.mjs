@@ -630,9 +630,14 @@ for (const mobile of [false]) for (const input of ['mouse', 'keyboard']) test(`d
     cursor: { offset: input === 'keyboard' ? 16 : 31 },
   } })
   // A deliberate caret move replaces the old range, even after returning from the chat.
+  await expect(draft).toHaveValue('')
   if (mobile) await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
   await paragraph.click()
   await page.keyboard.press('Home')
+  await expect.poll(() => paragraph.evaluate(element => {
+    const selection = window.getSelection()
+    return selection?.focusNode === element.firstChild ? selection.focusOffset : null
+  })).toBe(0)
   if (mobile) await page.getByRole('button', { name: 'Conversation', exact: true }).click()
   await draft.fill('Insert at the cursor')
   await panel.getByRole('button', { name: 'Post', exact: true }).click()

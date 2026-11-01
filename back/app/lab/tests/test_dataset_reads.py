@@ -123,6 +123,8 @@ async def test_dataset_http_preserves_mechanism_permissions_and_counts(client):
         assert (await client.get(path)).status_code == 401
     headers = []
     for index in range(2):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={
             "email": f"dataset-reader-{index}@example.com", "password": password,
         })

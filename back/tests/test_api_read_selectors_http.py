@@ -61,6 +61,8 @@ async def test_selector_routes_keep_read_permissions_scopes_pagination_and_reope
         assert (await client.get(path)).status_code == 401, path
     headers = []
     for index in range(3):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={
             "email": f"synthetic-selector-http-{index}@example.com", "password": password,
         })

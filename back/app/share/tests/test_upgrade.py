@@ -1,21 +1,19 @@
-"""The full Atlas/DbAdmin pipeline upgrades a populated historical ACL schema."""
+"""Atlas upgrades batched legacy Process ACLs without changing sources.
+
+Historical Document/Memory separation and its ACLs are exercised through the
+real Atlas pipeline in app/document/tests/test_independence_upgrade.py. Dataset
+conversion and populated FK redirection are covered in test_typed_document_upgrade;
+its legacy ACL transfer matrix is covered in this package's test_sharing. Memory
+is private in the target schema and no longer has a share owner or grant ORM.
+"""
 
 from dataclasses import replace
-from hashlib import sha256
-from uuid import uuid4
 
 import pytest
 from sqlalchemy import select, text
 
 from app.agent import Agent
 from app.agent.models import Title
-from app.dataset.models import Dataset, DatasetGrant
-from app.memory.models import (
-    MemoryItem,
-    MemoryItemGrant,
-    DocumentUserGrant,
-    DocumentTeamGrant,
-)
 from app.process.models import ProcessDefinition, ProcessDefinitionGrant
 from app.share.dbadmin import register_dbadmin
 from app.share.migration import complete
@@ -39,14 +37,7 @@ async def sources(session):
             ).scalars()
         )
         for table in (
-            "memory_items",
-            "documents",
-            "datasets",
             "process_definitions",
-            "memory_item_grants",
-            "document_user_grants",
-            "document_team_grants",
-            "dataset_grants",
             "process_definition_grants",
         )
     }
@@ -100,92 +91,45 @@ async def test_populated_legacy_upgrade_keeps_exact_rights_sources_and_restarts_
         for index in range(121):
             public = index % 3
             groups = (index // 3) % 3 if public == 0 else 0
-            for kind in ("memory", "document", "dataset", "process"):
-                if kind in {"memory", "document"}:
-                    row = MemoryItem(
-                        id=uuid4(),
-                        node_kind=kind,
-                        owner_agent_id=owner.id,
-                        title=f"Synthetic legacy {kind} {index}",
-                        resource_id="",
-                        content_hash=sha256(b"").hexdigest(),
-                        media_type="text/html",
-                        content_profile_version=1,
-                    )
-                    table = "memory_items" if kind == "memory" else "documents"
-                elif kind == "dataset":
-                    row = Dataset(
-                        owner_agent_id=owner.id,
-                        title=f"Synthetic legacy JSON {index}",
-                        content=f'{{"index":{index}}}',
-                    )
-                    table = "datasets"
-                else:
-                    row = ProcessDefinition(
-                        agent_id=owner.id,
-                        tool_id=tool,
-                        label=f"Synthetic legacy workflow {index}",
-                        engine_process_id=f"legacy_{index}",
-                        code=f"legacy_{index}",
-                        bpmn_xml="<synthetic/>",
-                    )
-                    table = "process_definitions"
-                db.add(row)
-                await db.flush()
-                if index % 5 == 0:
-                    row.soft_delete()
-                    if kind == "document":
-                        row.document.soft_delete()
-                grants = set()
-                if kind != "memory":
-                    for principal, identity, write in (
-                        ("agent", peer.id, bool(index % 2)),
-                        ("user", recipient.id, not bool(index % 2)),
-                        ("team", team.id, bool(index % 3)),
-                    ):
-                        if kind == "document":
-                            model = {
-                                "agent": MemoryItemGrant,
-                                "user": DocumentUserGrant,
-                                "team": DocumentTeamGrant,
-                            }[principal]
-                            grant = model(
-                                item_id=row.id,
-                                can_write=write,
-                                **{principal + "_id": identity},
-                            )
-                        else:
-                            model, foreign = (
-                                (DatasetGrant, "dataset_id")
-                                if kind == "dataset"
-                                else (ProcessDefinitionGrant, "process_id")
-                            )
-                            grant = model(
-                                can_write=write,
-                                **{foreign: row.id, principal + "_id": identity},
-                            )
-                        db.add(grant)
-                        grants.add((principal, identity, write))
-                    await db.flush()
-                    await db.execute(
-                        text(
-                            f"UPDATE {table} SET global_access = :public, group_access = :groups WHERE id = :id"
-                        ),
-                        {"id": row.id, "public": public, "groups": groups},
-                    )
-                expected[(table, str(row.id))] = (
-                    public if kind != "memory" else 0,
-                    groups if kind != "memory" else 0,
-                    grants,
+            row = ProcessDefinition(
+                agent_id=owner.id,
+                tool_id=tool,
+                label=f"Synthetic legacy workflow {index}",
+                engine_process_id=f"legacy_{index}",
+                code=f"legacy_{index}",
+                bpmn_xml="<synthetic/>",
+            )
+            db.add(row)
+            await db.flush()
+            if index % 5 == 0:
+                row.soft_delete()
+            grants = set()
+            for principal, identity, write in (
+                ("agent", peer.id, bool(index % 2)),
+                ("user", recipient.id, not bool(index % 2)),
+                ("team", team.id, bool(index % 3)),
+            ):
+                grant = ProcessDefinitionGrant(
+                    can_write=write,
+                    **{"process_id": row.id, principal + "_id": identity},
                 )
+                db.add(grant)
+                grants.add((principal, identity, write))
+            await db.flush()
+            await db.execute(
+                text("UPDATE process_definitions SET global_access = :public, group_access = :groups WHERE id = :id"),
+                {"id": row.id, "public": public, "groups": groups},
+            )
+            expected[("process_definitions", str(row.id))] = (public, groups, grants)
         await db.commit()
         before = await sources(db)
-        for table in ("documents", "memory_items", "datasets", "process_definitions"):
+        for table in ("documents", "document_tags", "datasets", "process_definitions"):
             await db.execute(
                 text(
                     f"ALTER TABLE {table} DROP COLUMN share_id CASCADE, DROP COLUMN share_kind CASCADE"
                 )
             )
+        await db.execute(text("ALTER TABLE document_sharing_intents DROP CONSTRAINT document_sharing_intents_share_id_fkey"))
         await db.execute(text("DROP TABLE share_grants, share_configs"))
         await db.commit()
     registry = DbAdminRegistry()
@@ -207,7 +151,7 @@ async def test_populated_legacy_upgrade_keeps_exact_rights_sources_and_restarts_
             assert await db.scalar(text("SELECT count(*) FROM share_configs")) == 0
             assert (
                 await db.scalar(
-                    text("SELECT count(*) FROM datasets WHERE share_id IS NULL")
+                    text("SELECT count(*) FROM process_definitions WHERE share_id IS NULL")
                 )
                 == 121
             )
@@ -250,9 +194,9 @@ async def test_populated_legacy_upgrade_keeps_exact_rights_sources_and_restarts_
             )
             == 0
         )
-        assert await db.scalar(text("SELECT count(*) FROM share_configs")) == 484
+        assert await db.scalar(text("SELECT count(*) FROM share_configs")) == 121
     replay = await orchestrator.synchronize_database(target_registry=registry)
     assert replay.verdict is DbAdminVerdict.CONVERGED
     async with committed_database() as db:
         assert await sources(db) == before
-        assert await db.scalar(text("SELECT count(*) FROM share_configs")) == 484
+        assert await db.scalar(text("SELECT count(*) FROM share_configs")) == 121

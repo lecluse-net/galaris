@@ -116,11 +116,15 @@ HTTP workflow checks denial with Contacts alone and the effect with both privile
 
 `domain-access.spec.mjs` checks allowed tabs and requests, role changes, permissions without
 Connection administration and independent indexing without Dream/Files on desktop/mobile.
+It also preserves the Models tab requested in the URL while permissions are refreshed.
 `agent-selection.spec.mjs` retains selection, reopening and session changes.
 `e2e/specs/rbac-domains.spec.mjs` signs a Contacts-only role into the assembled application,
 creates a contact, finds it after reloading and checks denial of Memory, the Agent catalogue
 and a foreign agent on desktop/mobile. All fixture data is synthetic.
 The same journey rejects unauthorized domain requests from the application shell.
+Connection selectors expose inherited global parameters only to readers of the Tools domain,
+without secret values or private transport configuration. Connection-only roles retain
+their restricted projection.
 `front/scripts/navigation-context.test.mjs` also checks that generated parameter rights appear
 in both documentation maps while unreviewed imports remain rejected.
 `app/chat/availability.test.mjs` verifies that Chat/Mail probes wait for grants and ignore
@@ -661,6 +665,21 @@ listing and HTML filtering, reads, permissions and content preservation without 
 <a id="datasets"></a>
 
 ## Typed Documents and Data contracts
+
+`app/document/tests/test_document_apps.py` checks that Data content writes notify readers
+without revoking running HTML applications. Coalescing an access change with a content write
+retains its invalidation; rollback emits no event. Independent permissions, revision-bound
+consent and quotas remain covered. `e2e/specs/document-apps.spec.mjs` exercises two forms,
+their writes and PDF export. `front/browser-tests/file-browser.spec.mjs` also checks browser
+Back with invalid JSON: Cancel receives initial focus and preserves the draft, while discard
+allows reopening the last saved content on mobile and desktop.
+
+`app/share/tests/test_upgrade.py` checks Atlas interruption and recovery across more than
+one batch of historical Processes, retaining agent/user/team grants and tombstones.
+Document separation and Data conversion are covered by the two Document migration suites
+below; historical ACLs are also reconstructed in `app/share/tests/test_sharing.py`.
+`library-roots.spec.mjs` and `library-icons.spec.mjs` use the shared document library rather
+than the retired Dataset screen.
 
 `app/document/tests/test_typed_documents.py` checks the common library filtered by type,
 one JSON identity, permissions, server rejection of invalid content and restoration of
@@ -1615,7 +1634,7 @@ unavailability), using a real DB.
 | Process → human → messaging | Private internal or external request, plain JSON reply converted to typed values, file-only message with source URI, retried delivery failure, rejection of another sender or a late reply; unrelated messages never complete the activity. An AI activity waits without an auxiliary Task, resumes even after an early answer, and preserves user holds; historical waits are retired, duplicates stay idempotent, and the Dataset and final message are preserved | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → file → agent | Content, revision, canonical URIs and ACLs agree across readers and writers | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
 | Datasets and document compatibility | Shared library, Text/Data creation and type filtering, native `data://` identity, exact JSON source and errors without extra resources/revisions; independent rights/history, copy/restore and conflicts; legacy aliases and invalid drafts preserved. Data journeys use the common Document editor | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
-| Interactive document HTML | Ordinary HTML forms using shared Datasets, viewer ACLs and personal revision-bound consent; revocation, unapproved cross-Dataset copies, JSON validation and quotas across workers; editable prose and usual toolbar, without a document Source view; static print/PDF with resource filtering; isolation, WebRTC, bridge saturation and late responses | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
+| Interactive document HTML | Ordinary HTML forms using shared Datasets, viewer ACLs and personal revision-bound consent; revocation, unapproved cross-Dataset copies, JSON validation and quotas across workers; editable prose and usual toolbar, without a document Source view; static print/PDF with resource filtering; isolation, WebRTC, bridge saturation and late responses | `back/app/document/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Restart / concurrency | Stale workers cannot replace current owners; ambiguous effects are not blindly replayed | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Lost tool acknowledgement | An SSH command remains unique after a lost response and PostgreSQL reload; MCP timeouts after effects block replay; retry preserves the journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |
 
@@ -2173,9 +2192,17 @@ its counter includes `WITH`.
 It also covers expanding folders and subdocuments across 120 and then 960 synthetic documents, with a human
 user and either a limited or unrestricted agent scope. Results and permissions remain checked;
 a PostgreSQL buffer-access budget detects nested permission rescans even with cached data.
-Measurements are written to `artifacts/memory-tree-benchmark*.json`. Classification scenarios
+Measurements are written to `artifacts/memory-tree-benchmark*.json`. The synthetic corpus is
+analyzed before measurement so planner statistics do not depend on prior tests or autovacuum timing.
+Classification scenarios
 verify that the "all" and "classified" filters produce the same branches, permissions and
 pagination; the "unclassified" filter continues to exclude those documents.
+
+Calendar contracts in `test_temporal.py` exercise both Memory and the shared core: partial
+dates, leap years and ambiguous or nonexistent local times. `tests/test_tts_service.py` also
+checks Azure voice controls, SSML escaping and rejection of empty audio. Synthetic SMB
+errors complement the real Samba peer: authentication, deadlines and server statuses retain
+their meaning without disclosing private diagnostics.
 
 - `back/app/document/tests/test_goal_folders.py`: tracking appears in the unclassified list,
   outside the tree and its root; manual placement survives Goal renames and old jobs have no

@@ -1,5 +1,5 @@
 # Dev stage - used for development (code mounted as volume)
-FROM node:26-alpine@sha256:2d984a15c9b54fd0aeb608b8e0d0d83529eb34d2966db27a1fb4f1edc3d298a3 as dev-stage
+FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 as dev-stage
 
 # The node:alpine image already has a 'node' user with UID 1000
 # which matches the typical host user UID. We use it directly.
@@ -26,7 +26,7 @@ EXPOSE 8484
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8484"]
 
 # Build stage - used only for production build
-FROM node:26-alpine@sha256:2d984a15c9b54fd0aeb608b8e0d0d83529eb34d2966db27a1fb4f1edc3d298a3 as build-stage
+FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 as build-stage
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -41,7 +41,7 @@ ENV VITE_APP_NAME=${VITE_APP_NAME}
 RUN npm run build
 
 # Production stage
-FROM nginx:stable-alpine@sha256:dc5069ad14f19660b141b21236140b91656bf89bbc3e2417c70ae650cd66104c as prod-stage
+FROM nginx:stable-alpine@sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949 as prod-stage
 RUN apk upgrade --no-cache
 ENV APP_NAME=galaris
 COPY --from=build-stage /app/dist /usr/share/nginx/html

@@ -157,4 +157,4 @@ async def test_diagnostics_route_requires_configuration_privileges(monkeypatch, 
         with pytest.raises(HTTPException) as exc:
             await guards_module.global_authorization_guard(request, current_user=user)
         assert exc.value.status_code == 403
-    assert check.await_args.args[1] == [Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT]
+    assert check.await_args.args[1] == [Privileges.HARNESS_CONFIG_ACCESS, Privileges.HARNESS_CONFIG_EDIT]

@@ -48,6 +48,8 @@ async def test_file_read_http_permissions_isolation_and_reopening(client):
         assert (await client.get(path, params={"agent_id": owner_id})).status_code == 401
     headers = []
     for index in range(2):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={
             "email": f"file-reader-{index}@example.com", "password": password,
         })
@@ -109,6 +111,8 @@ async def test_video_stream_reads_only_requested_bytes_and_rechecks_access(clien
 
     # Replace the remote provider, preserving the real URI facade and HTTP workflow.
     monkeypatch.setattr(resource_service, "resolve_resource_transport_with_service", resolve)
+    # Each actor represents an independent browser session.
+    client.cookies.clear()
     login = await client.post("/api/auth/login-json", json={
         "email": "media-reader@example.com", "password": "synthetic-media-password",
     })

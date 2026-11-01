@@ -1,6 +1,6 @@
 """Scope admission and preflight survive tool rollback and worker recovery."""
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -134,7 +134,11 @@ async def test_native_artifact_creation_with_task_preserves_content_and_domain(
         assert recovered == content.encode()
     async with get_db_session() as db:
         after = [await db.scalar(select(func.count()).select_from(model)) for model in (Document, Dataset)]
-        assert [after[i] - before[i] for i in range(2)] == [int(scheme == "document"), int(scheme == "data")]
+        # Data is a specialization of the canonical Document table.
+        assert [after[i] - before[i] for i in range(2)] == [int(scheme != "file"), int(scheme == "data")]
+        if scheme != "file":
+            created = await db.get(Document, UUID(uri.split("://", 1)[1]))
+            assert created.document_type == ("data" if scheme == "data" else "text")
         assert not parse_scope((await db.get(Task, task_id)).data).grants
 
 

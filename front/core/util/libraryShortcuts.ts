@@ -18,6 +18,9 @@ function dispatch(event: KeyboardEvent): void {
   if (!action) return
   event.preventDefault()
   event.stopPropagation()
+  // A hovered row can own the shortcut while focus is elsewhere. Focus its
+  // actual anchor before an action opens a menu or transfers focus to a field.
+  row.focus({ preventScroll: true })
   action()
 }
 
@@ -26,6 +29,7 @@ export const vLibraryShortcuts: ObjectDirective<HTMLElement, LibraryShortcuts> =
   mounted(element, binding) {
     if (!rows.size) window.addEventListener('keydown', dispatch)
     element.setAttribute('data-library-shortcut-row', '')
+    if (!element.hasAttribute('tabindex')) element.tabIndex = -1
     rows.set(element, binding.value)
   },
   updated(element, binding) { rows.set(element, binding.value) },

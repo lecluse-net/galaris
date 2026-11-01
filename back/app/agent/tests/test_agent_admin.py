@@ -68,7 +68,7 @@ async def _make_admin_fixture(db):
     other = UserModel(email=f"other-{uuid4().hex}@example.test", hashed_password="unused", is_active=True)
     title = Title(label="Synthetic title", gender="F")
     privileges = (await db.scalars(select(Privilege).where(Privilege.code.in_(
-        ["AGENT_EDIT", "CONNECTION_EDIT", "TEAM_ACCESS", "TEAM_EDIT", "TEAM_MEMBERS_EDIT", "TASK_EDIT"])))).all()
+        ["AGENT_EDIT", "CONNECTION_EDIT", "TEAM_ACCESS", "TEAM_EDIT", "TEAM_MEMBERS_EDIT", "TASK_EDIT", "PERMISSION_DECIDE"])))).all()
     role = Role(code=f"agent-admin-{uuid4().hex}", privileges=list(privileges))
     db.add_all([owner, other, title, role])
     await db.flush()

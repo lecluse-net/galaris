@@ -52,6 +52,11 @@ async def test_personal_tree_does_not_repeat_whole_library_access_checks(db, age
         "user_id": user_id, "parent_document_id": parent_id, "document_id": row["id"], "position": index,
     } for index, row in enumerate(rows[halfway:nested_until])])
     await db.commit()
+    # Bulk fixture writes and rolled-back tests leave planner statistics
+    # unrelated to this corpus. Measure the same dataset regardless of whether
+    # autovacuum happens to analyze it during an isolated or complete run.
+    await db.execute(text("ANALYZE documents, share_configs, share_grants, document_tags, "
+                          "document_tag_assignments, document_nesting, document_list_positions"))
     db.expunge_all()
     measurements = []
     for scope_name, agent_ids in (("managed", {owner_id}), ("all_agents", None)):

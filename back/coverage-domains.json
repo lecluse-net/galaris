@@ -27,9 +27,9 @@
     "line_min": 83.71,
     "branch_min": 61.53
   },
-  "memory": {
+  "storage": {
     "prefixes": [
-      "app/memory/"
+      "core/storage/resources.py"
     ],
     "line_min": 89.47,
     "branch_min": 72.22

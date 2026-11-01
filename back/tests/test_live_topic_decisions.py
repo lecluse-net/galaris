@@ -182,6 +182,7 @@ async def test_live_topic_runs_alongside_admission_and_dispatch_then_dream_skips
         assert (await current_turn_scope(turn))[0] == topic.id
         # A tool invoked from the already-frozen turn must use the late topic.
         from app.memory import mcp as memory_tools
+        from app.memory import AtomicMemoryFact
         from app.memory.models import MemoryTopicContactItem, MemoryTopicContactScope
         from app.tools.mcp_loader import McpToolContext
 
@@ -194,7 +195,7 @@ async def test_live_topic_runs_alongside_admission_and_dispatch_then_dream_skips
                     runtime="internal",
                     resources={"conversation_turn": turn},
                 ),
-                content="Morgan waters tomato plants on Monday mornings.",
+                fact=AtomicMemoryFact(predicate="tomato_watering_schedule", value="Monday mornings"),
                 title="Watering schedule",
             )
         )

@@ -23,11 +23,19 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/code/gateway.py",  # IDE websocket and detached stream revocation watcher own short sessions.
     "app/connection/oauth_runtime.py",  # HTTP auth callbacks isolate sessions and serialize refresh rotation.
     "app/conversation/facade.py",
+    "app/conversation/contact_authorization.py",  # Detached mail intake decisions and cancellation own short sessions.
     "app/conversation/scheduler.py",
     "app/conversation/service.py",
     "app/documentation/__main__.py",  # Standalone CLI owns the documentation index refresh transaction.
+    "app/document/automation.py",  # Durable cleanup worker claims and applies in independent transactions.
+    "app/document/lifecycle.py",  # Post-commit notifications run outside the source transaction.
+    "app/document/document_thumbnail_service.py",  # Detached renderer rechecks the source before publication.
     "app/dream/attachment_processing.py",  # Attachment worker opens a session per model/media operation.
     "app/dream/mechanisms/attachment_memory.py",  # Scheduler claim/prepare/apply run without an ambient session.
+    "app/dream/mechanisms/contact_reconciliation.py",  # Scheduler prepares and applies a durable decision.
+    "app/dream/mechanisms/dataset_index.py",  # Autonomous Data indexing worker.
+    "app/dream/mechanisms/resource_summaries.py",  # Autonomous resource summary worker.
+    "app/dream/mechanisms/resource_topic_classification.py",  # Autonomous classification claim and application.
     "app/dream/mechanisms/conversation_memory.py",
     "app/dream/mechanisms/document_structure.py",  # Autonomous reconciliation claims and applies separately.
     "app/dream/mechanisms/file_catalogue.py",  # Scheduler-owned claims, materialization and application use short sessions.
@@ -49,7 +57,6 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/llm/inference_execution.py",  # Independent admission, heartbeat and inference execution roots.
     "app/mcp/router.py",
     "app/memory/automation.py",
-    "app/memory/document_thumbnail_service.py",  # Detached thumbnail worker starts without the HTTP session.
     "app/memory/html_migration.py",  # Read-only CLI audit under the __main__ guard.
     "app/memory/semantic_index.py",
     "app/messenger/journal.py",
@@ -76,14 +83,17 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/voice/runtime_control.py",  # Detached session fence watcher and cross-worker ownership probes.
     "bridge/hermes/manager.py",
     "bridge/hermes/skill_sync.py",
+    "bridge/mail/messenger.py",  # Incoming mail listener and detached durable admission.
     "bridge/matrix/voice_listener.py",
     "bridge/nextcloud/call_listener.py",
     "bridge/one_bot/router.py",
     "core/dbadmin/actions.py",
     "core/dbadmin/journal.py",
     "core/params/internal_secrets.py",  # Standalone post-migration verification CLI.
+    "core/storage/derivatives.py",  # Awaited isolated publication locks the live immutable source.
     "core/websocket.py",
     "main.py",
+    "code_editor_update.py",  # Standalone authenticated editor update CLI.
 }
 
 

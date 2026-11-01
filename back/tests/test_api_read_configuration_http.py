@@ -28,7 +28,7 @@ from core.util import SECRET_MASK
 async def test_configuration_http_keeps_scopes_secrets_atomicity_and_reopening(client, memory_storage):
     password = "synthetic-configuration-password"
     async with get_db_session() as db:
-        codes = ["CONNECTION_EDIT", "GOAL_ACCESS", "TASK_ACCESS", "READ_USER", "AGENT_EDIT"]
+        codes = ["CONNECTION_EDIT", "GOAL_ACCESS", "VOICE_HISTORY_ACCESS", "READ_USER", "AGENT_EDIT"]
         privileges = list(await db.scalars(select(Privilege).where(Privilege.code.in_(codes))))
         global_permission = await db.scalar(select(Privilege).where(Privilege.code == "AGENT_MANAGE_ALL"))
         assert len(privileges) == len(codes) and global_permission is not None
@@ -77,6 +77,8 @@ async def test_configuration_http_keeps_scopes_secrets_atomicity_and_reopening(c
     assert (await client.post(bulk_path, json=payload)).status_code == 401
     headers = []
     for index in range(4):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={"email": f"synthetic-config-{index}@example.com", "password": password})
         assert login.status_code == 200, login.text
         headers.append({"Authorization": f"Bearer {login.json()['access_token']}"})

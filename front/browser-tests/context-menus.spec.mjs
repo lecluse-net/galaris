@@ -155,6 +155,7 @@ test('document menus reuse row actions and respect read-only and deletion protec
   await expect(page.getByRole('menuitem', { name: 'Delete', exact: true })).toHaveCount(0)
   await page.getByRole('menuitem', { name: 'Rename', exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'action').map(event => event.args[1]))).toEqual(['rename'])
+  await expect(page.getByRole('menu')).toHaveCount(0)
   await page.evaluate(entry => window.testApp.setProps({ entry }), { ...entry, item: { ...entry.item, read_only: true } })
   await row.click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: 'Rename', exact: true })).toHaveCount(0)

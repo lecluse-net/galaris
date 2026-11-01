@@ -1,4 +1,5 @@
 import { test as base, expect } from '@playwright/test'
+import { document as documentFixture } from './data.mjs'
 
 export const test = base.extend({
   page: async ({ page }, use) => {
@@ -100,4 +101,18 @@ export async function setPrivileges(page, privileges) {
 
 export async function jsonRoute(page, url, json) {
   await page.route(url, route => route.fulfill({ json }))
+}
+
+// Read-only fixtures for Data links opened in the shared Document editor.
+// Unexpected writes still reach the fixture guard and fail the scenario.
+export async function dataDocumentRoutes(page, source, agentId = 7) {
+  const item = { ...documentFixture, ...source, document_type: 'data', media_type: 'application/json',
+    content_profile: 'document', content_profile_version: null,
+    payload: { text: source.content }, access: { can_read: true, can_write: source.can_write === true } }
+  await page.route(new RegExp(`/api/documents/${source.id}(?:\\?.*)?$`), route => route.request().method() === 'GET'
+    ? route.fulfill({ json: { item, agent_id: agentId } }) : route.fallback())
+  await jsonRoute(page, `**/api/documents/${source.id}/attachments*`, [])
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [], users: [] })
+  return item
 }

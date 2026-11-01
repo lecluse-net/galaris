@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from typing import Any, Optional, Self
 from urllib.parse import parse_qs, urlsplit
+from xml.etree import ElementTree
 
 import pytest
 
@@ -18,6 +19,7 @@ from app.llm.provider_models import LLM, LLMProvider
 from app.llm.resource_discovery import provider_connection
 from bridge.elevenlabs import speech as elevenlabs_speech
 from bridge.google import speech as google_speech
+from bridge.azure_speech import speech as azure_speech
 
 
 class _FakeResponse:
@@ -200,6 +202,43 @@ async def test_google_cloud_decodes_mp3_and_maps_common_voice_controls() -> None
         "pitch": 2.0,
     }
     assert generated.content == b"google-mp3"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("voice,language,expected_voice,expected_language", [
+    ("", "", "fr-FR-DeniseNeural", "fr-FR"),
+    ('voice:custom"<&', "en-US", 'custom"<&', "en-US"),
+])
+async def test_azure_speech_preserves_text_and_voice_controls_in_ssml(voice, language, expected_voice, expected_language):
+    resource = _resource("azure_speech", "voice:fr-FR-DeniseNeural", configuration={"region": " WestEurope "})
+    text = 'Synthetic <script>literal</script> & "quoted" text'
+    generated = await azure_speech.AzureSpeech().synthesize(
+        provider_connection(resource.provider, "key"), model=resource.llm_name,
+        resource_type=resource.resource_type, text=text,
+        options=tts_service.TTSOptions(voice=voice, language=language, speed=1.25, pitch=-2),
+    )
+    request = _FakeAsyncClient.requests[0]
+    assert request["url"] == "https://westeurope.azure.example/cognitiveservices/v1"
+    assert request["headers"]["Ocp-Apim-Subscription-Key"] == "key"
+    assert request["headers"]["X-Microsoft-OutputFormat"] == "audio-24khz-48kbitrate-mono-mp3"
+    ssml = ElementTree.fromstring(request["content"])
+    assert ssml.attrib["{http://www.w3.org/XML/1998/namespace}lang"] == expected_language
+    assert ssml.find("voice").attrib["name"] == expected_voice
+    prosody = ssml.find("voice/prosody")
+    assert prosody.attrib == {"rate": "+25%", "pitch": "-2st"}
+    assert prosody.text == text and list(prosody) == []
+    assert generated.content == b"ID3-audio" and generated.voice == expected_voice
+
+
+@pytest.mark.asyncio
+async def test_azure_empty_audio_cannot_be_reported_as_success():
+    _FakeAsyncClient.response = _FakeResponse()
+    resource = _resource("azure_speech", "voice:fr-FR-DeniseNeural", configuration={"region": "westeurope"})
+    with pytest.raises(RuntimeError, match="empty audio"):
+        await azure_speech.AzureSpeech().synthesize(
+            provider_connection(resource.provider, "key"), model=resource.llm_name,
+            resource_type=resource.resource_type, text="Synthetic text", options=tts_service.TTSOptions(),
+        )
 
 
 @pytest.mark.asyncio

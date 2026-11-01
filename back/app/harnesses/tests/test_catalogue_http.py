@@ -42,6 +42,8 @@ async def test_catalogue_http_scopes_counts_and_rechecks_after_reassignment(clie
         assert (await client.get(url)).status_code == 401
     headers = {}
     for name, count in (("owner", 1), ("empty", 0), ("denied", None)):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={
             "email": f"catalogue-{name}@example.com", "password": password,
         })

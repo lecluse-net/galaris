@@ -173,15 +173,24 @@ async def test_calendar_roles_use_scoped_metadata_and_do_not_open_connector_conf
 
 
 @pytest.mark.asyncio
-async def test_connector_metadata_does_not_disclose_global_tool_configuration(client):
-    headers, _ = await actor(["CONNECTION_ACCESS"])
+@pytest.mark.parametrize("tool_privilege", [None, "TOOL_ACCESS", "TOOL_EDIT"])
+async def test_connector_metadata_does_not_disclose_global_tool_configuration(client, tool_privilege):
+    headers, _ = await actor(["CONNECTION_ACCESS", *([tool_privilege] if tool_privilege else [])])
     async with get_db_session() as db:
-        db.add(Tool(code=f"synthetic-{uuid4()}", label="Synthetic schema",
+        tool = Tool(code=f"synthetic-{uuid4()}", label="Synthetic schema",
             mcp_config={"type": "http", "url": "https://synthetic-private.invalid", "env": {"TOKEN": "private-marker"}},
-            global_params={"token": {"value": "private-marker", "type": "password"}},
-            connection_schema={"properties": {"key": {"type": "password"}}}))
+            global_params={"token": {"value": "private-marker"}, "region": {"value": "synthetic-region", "forced": True}},
+            connection_schema={"params": {"token": {"type": "password"}, "region": {"type": "string"}}})
+        db.add(tool)
+        await db.flush()
+        identity = tool.id
     response = await client.get("/api/connections/tool-options", headers=headers)
     assert response.status_code == 200 and response.json()
     assert "private-marker" not in response.text and "synthetic-private.invalid" not in response.text
-    assert all(item["global_params"] == {} for item in response.json())
-    assert (await client.get("/api/tools", headers=headers)).status_code == 403
+    if tool_privilege:
+        item = next(item for item in response.json() if item["id"] == identity)
+        assert item["global_params"]["region"] == {"value": "synthetic-region", "configured": True, "secret": False, "forced": True}
+        assert item["global_params"]["token"] == {"value": None, "configured": True, "secret": True, "forced": False}
+    else:
+        assert all(item["global_params"] == {} for item in response.json())
+    assert (await client.get("/api/tools", headers=headers)).status_code == (200 if tool_privilege else 403)

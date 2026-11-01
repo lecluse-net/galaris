@@ -212,7 +212,8 @@ class ProfileFallbackModel(WrapperModel):
         with fallback_route_scope(self.route):
             try:
                 selected = self.secondary if self.using_secondary else self.wrapped
-                return await selected.request(messages, self._selected_settings(model_settings), model_request_parameters)
+                return await selected.request(selected.prepare_messages(messages, model_request_parameters),
+                    self._selected_settings(model_settings), model_request_parameters)
             except Exception as exc:
                 if self.using_secondary or not provider_failure_allows_fallback(exc):
                     raise
@@ -221,7 +222,8 @@ class ProfileFallbackModel(WrapperModel):
         await self._record_failed_call(failure)
         self._switch(failure)
         with fallback_route_scope(self.route):
-            return await self.secondary.request(messages, self._selected_settings(model_settings), model_request_parameters)
+            return await self.secondary.request(self.secondary.prepare_messages(messages, model_request_parameters),
+                self._selected_settings(model_settings), model_request_parameters)
 
     @asynccontextmanager
     async def request_stream(
@@ -232,7 +234,8 @@ class ProfileFallbackModel(WrapperModel):
             async def open_model(model: Model, stack: AsyncExitStack) -> StreamedResponse:
                 stack.enter_context(fallback_route_scope(self.route))
                 return await stack.enter_async_context(model.request_stream(
-                    messages, self._selected_settings(model_settings), model_request_parameters, run_context,
+                    model.prepare_messages(messages, model_request_parameters),
+                    self._selected_settings(model_settings), model_request_parameters, run_context,
                 ))
 
             async def open_secondary(exc: Exception) -> StreamedResponse:

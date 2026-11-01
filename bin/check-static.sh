@@ -9,7 +9,7 @@ docker build --build-context harness_manager=./harness_manager \
   --build-context code_executor=./code-executor \
   --build-context product_docs=./docs --build-context project_docs=./project \
   --target builder -t "$tag-back" back
-docker run --rm -e APP_ENV=test -e AUTH_SECRET_KEY=ci-auth-secret-ci-auth-secret-0001 \
+docker run --rm --network none -e APP_ENV=test -e AUTH_SECRET_KEY=ci-auth-secret-ci-auth-secret-0001 \
   -e BROWSER_EXECUTOR_TOKEN=ci-browser-token-ci-browser-00001 \
   -e ENCRYPTION_MASTER_KEY=ci-encryption-secret-ci-encryption-01 "$tag-back" python -m pyright
 docker run --rm "$tag-back" ruff check app core bridge scripts main.py

@@ -257,6 +257,8 @@ for (const editable of [true, false]) {
     expect(focus.viewport.text).not.toContain('Section 0:')
     expect(focus.viewport.text).not.toContain('Section 99:')
 
+    await expect(draft).toHaveValue('')
+    await content.focus()
     await paragraph.evaluate(element => {
       const selection = window.getSelection()
       selection.collapse(element.firstChild, 3)

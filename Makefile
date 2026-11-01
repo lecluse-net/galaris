@@ -458,7 +458,7 @@ validate: ## Validate a frozen local snapshot without a CI server or development
 .PHONY: validate
 
 validate-stability: ## Full validation with three E2E repetitions per browser
-	@VALIDATION_E2E_REPEATS=3 bash bin/validate.sh
+	@VALIDATION_TIMEOUT_SECONDS=$${VALIDATION_TIMEOUT_SECONDS:-14400} VALIDATION_E2E_REPEATS=3 bash bin/validate.sh
 .PHONY: validate-stability
 
 tests-validation-source: ## Prove local validation preserves and fingerprints uncommitted changes

@@ -17,7 +17,7 @@ from core.util import complete_io
 from . import interface, storage
 from .contracts import SkillPackageCreate, SkillRevisionConflict, SkillScope
 from .learning_contracts import (
-    LearnedSkillApplyResult, LearnedSkillContext, LearnedSkillDecision,
+    LearnedSkillAction, LearnedSkillApplyResult, LearnedSkillContext, LearnedSkillDecision, LearnedSkillOperation,
 )
 from .learning_policy import eligible_learning_ids, is_injectable
 from .models import Skill, SkillLearningEvidence
@@ -41,14 +41,14 @@ async def list_learning_context(agent_id: int, *, limit: int = 20) -> list[Learn
     eligible = await eligible_learning_ids(agent_id)
     result: list[LearnedSkillContext] = []
     for row in rows:
-        def read_source() -> tuple[str, str] | None:
-            path = storage.resolve_file(row.code, "SKILL.md", owner_agent_id=agent_id)
+        def read_source(code: str = row.code) -> tuple[str, str] | None:
+            path = storage.resolve_file(code, "SKILL.md", owner_agent_id=agent_id)
             with path.open("rb") as stream:
                 content = stream.read(64_001)
             if len(content) > 64_000:
                 return None
             markdown = content.decode("utf-8")
-            _, description = storage.metadata_from_markdown(markdown, expected_code=row.code)
+            _, description = storage.metadata_from_markdown(markdown, expected_code=code)
             return markdown, description
         try:
             source = await complete_io(read_source)
@@ -147,7 +147,7 @@ async def apply_learning_decision(
             assert target is not None
             markdown = await complete_io(storage.read_text, target.code, "SKILL.md", owner_agent_id=agent_id)
 
-        def record_evidence(record: Skill) -> None:
+        def record_evidence(record: Skill, *, action: LearnedSkillAction = action, independent: bool = independent, operation: LearnedSkillOperation = operation, refs: list[str] = refs, markdown: str = markdown) -> None:
             weight = max(0.1, min(float(evidence_weight), 2.0))
             negative = action == "WEAKEN"
             record.learning_positive_weight = (record.learning_positive_weight or 0.0) + (weight if independent and not negative else 0)

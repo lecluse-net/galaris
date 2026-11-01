@@ -371,7 +371,7 @@ function globalPolicyState(row: ConnectionFunctionInfo): EffectiveFunctionState 
 const policyLabel = (state: FunctionState) => t(`connection.auth.${state === 'ask' ? 'stateAsk' : state === 'disabled' ? 'stateDisabled' : state === 'enabled' ? 'stateEnabled' : 'stateDefault'}`)
 
 const agentFilterOptions = computed(() =>
-  agents.value.map(a => ({ label: `${a.first_name} ${a.last_name}`, value: a.id }))
+  agents.value.map(a => ({ label: `${a.first_name} ${a.last_name}`.trim(), value: a.id }))
 )
 
 function localizedToolLabel(tool: { code: string; label: string; can_edit?: boolean }): string {
@@ -388,7 +388,7 @@ const stateFilterOptions = computed(() => [
 
 function getAgentName(agentId: number): string {
   const a = agents.value.find(e => e.id === agentId)
-  return a ? `${a.first_name} ${a.last_name}` : `#${agentId}`
+  return a ? `${a.first_name} ${a.last_name}`.trim() : `#${agentId}`
 }
 
 function getToolLabel(toolId: number): string {

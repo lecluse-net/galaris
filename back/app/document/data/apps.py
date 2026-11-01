@@ -2,9 +2,11 @@
 
 from typing import Any, cast
 from uuid import UUID
+from pydantic import JsonValue
 from sqlalchemy import select
 from app.agent import AgentManagementScope
 from app.document import AppConsentRequired, AppWriteLimitError
+from ..document_app_security import encode_app_data
 from core.database import get_db
 from .models import Dataset, DatasetAppConsent, DatasetAlias
 from . import service
@@ -82,7 +84,7 @@ async def application(operation: str, actor: AgentManagementScope, context: dict
             cast(list[Any], value).append(request["value"])
         else:
             value = request["value"]
-        content = service.encode(value)
+        content = encode_app_data(cast(JsonValue, value))
         service.parse_json(content)
         try:
             await service.reserve_budget(actor.user_id, dataset.id, len(content.encode()))

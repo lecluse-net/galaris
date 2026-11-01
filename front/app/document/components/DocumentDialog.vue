@@ -28,7 +28,7 @@ import { computed, onBeforeUnmount, provide, ref, shallowRef, useTemplateRef, wa
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { documentNavigationKey, DocumentNavigationButtons, useDocumentHistory } from '@/core/util'
+import { documentNavigationKey, DocumentNavigationButtons, useDocumentHistory, showConfirmationDialog } from '@/core/util'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import type { DocumentDetail } from '../types'
 import DocumentEditor from '@/app/document/components/DocumentEditor.vue'
@@ -47,7 +47,7 @@ const router = useRouter()
 const history = useDocumentHistory({
   active: () => open.value,
   leave: async () => {
-    if (!await flush()) return false
+    if (!await requestLeave()) return false
     open.value = false
     return true
   },
@@ -64,8 +64,29 @@ const busy = ref(false)
 const loadError = ref(false)
 let generation = 0
 let disposed = false
+let pendingLeave: Promise<boolean> | null = null
+let leaveDialog: ReturnType<typeof showConfirmationDialog> | null = null
 
 async function flush(): Promise<boolean> { return await editor.value?.flush() ?? true }
+function requestLeave(): Promise<boolean> {
+  if (pendingLeave) return pendingLeave
+  const selected = editor.value
+  pendingLeave = (async () => {
+    if (await flush()) return true
+    if (disposed || !open.value || editor.value !== selected) return false
+    const discard = await new Promise<boolean>(resolve => {
+      leaveDialog = showConfirmationDialog({
+        title: t('documents.unsaved'), message: t('documents.discardConfirm'),
+        cancel: { label: t('common.cancel'), flat: false, outline: true },
+        ok: { label: t('documents.discard'), flat: false, color: 'negative' }, focus: 'cancel',
+      }).onOk(() => resolve(true)).onDismiss(() => resolve(false))
+    })
+    if (!discard || disposed || !open.value || editor.value !== selected) return false
+    await selected?.discardDraft()
+    return true
+  })().finally(() => { pendingLeave = null; leaveDialog = null })
+  return pendingLeave
+}
 async function selectDocument(id: string, position?: number, initial = false): Promise<void> {
   const selection = ++generation
   busy.value = true
@@ -123,7 +144,7 @@ watch([open, () => documentId, () => agentId], ([visible, id], previous) => {
   if (id) void selectDocument(id, undefined, true)
 }, { immediate: true })
 watch(() => router.currentRoute.value.fullPath, () => { open.value = false })
-onBeforeUnmount(() => { disposed = true; ++generation })
+onBeforeUnmount(() => { disposed = true; ++generation; leaveDialog?.hide() })
 defineExpose({ flush })
 </script>
 

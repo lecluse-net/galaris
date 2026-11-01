@@ -1,5 +1,6 @@
 // WebKit emits a native XHR page error when a full navigation cancels a request.
-// Exclude it only with matching requestfailed evidence; real CORS/JS errors remain.
+// Exclude it only with matching failed or interrupted request evidence;
+// real CORS/JS errors remain.
 export function collectPageErrors(page, { waitForRequest = () => true } = {}) {
   const errors = []
   const cancellations = []
@@ -10,8 +11,12 @@ export function collectPageErrors(page, { waitForRequest = () => true } = {}) {
       // Requests from the departing document can start during navigation and
       // disappear without a requestfinished/requestfailed event.
       replacingDocument = true
+      for (const pendingRequest of pending) cancellations.push({ url: pendingRequest.url(), at: Date.now() })
       pending.clear()
-    } else if (!replacingDocument && new URL(request.url()).pathname.startsWith('/api/') && waitForRequest(request)) pending.add(request)
+    } else if (new URL(request.url()).pathname.startsWith('/api/') && waitForRequest(request)) {
+      if (replacingDocument) cancellations.push({ url: request.url(), at: Date.now() })
+      else pending.add(request)
+    }
   })
   page.on('framenavigated', frame => {
     if (frame === page.mainFrame()) replacingDocument = false

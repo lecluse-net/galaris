@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, dataDocumentRoutes } from './fixtures.mjs'
 import { document, result } from './data.mjs'
 
 const at = '2026-09-01T12:00:00Z'
@@ -59,7 +59,7 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
   await jsonRoute(page, '**/api/documents/doc-a/attachments', [])
   await jsonRoute(page, '**/api/documents/keywords', [])
   await jsonRoute(page, '**/api/documents/doc-a/content/revisions?*', { items: [], total: 0 })
-  await jsonRoute(page, '**/api/datasets/topic-dataset', { id: 'topic-dataset', uri: 'data://topic-dataset',
+  await dataDocumentRoutes(page, { id: 'topic-dataset', uri: 'data://topic-dataset',
     title: 'Synthetic linked Dataset', content: '{"quantity":3}', revision: 1, lock_version: 1,
     can_write: false, can_manage: false, can_delete: false, keywords: [], read_only: false,
     global_access: 0, group_access: 0, owner_agent_id: null, owner_user_id: null })
@@ -95,7 +95,7 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
     expect(await page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/topic/topic-a')
   }
   await page.getByText('Synthetic linked Dataset', { exact: true }).click()
-  await expect(dialog.getByRole('textbox', { name: 'JSON content', exact: true })).toHaveValue('{\n  "quantity": 3\n}')
+  await expect(dialog.locator('textarea.code-editor')).toHaveValue('{"quantity":3}')
   await page.screenshot({ path: testInfo.outputPath('topic-dataset-dialog.png'), animations: 'disabled' })
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
   await expect(dialog).toHaveCount(0)

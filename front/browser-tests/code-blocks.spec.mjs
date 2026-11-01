@@ -91,7 +91,7 @@ test('the actual document screen shows code colors and autosaves only authored c
     current = { ...current, ...body, revision: current.revision + 1 }
     return route.fulfill({ json: current })
   })
-  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['DOCUMENT_EDIT'] })
   const code = page.locator('[data-editor-surface] pre code').first()
   await expect(code.locator('.hljs-keyword').first()).toHaveText('const')
   expect(updates).toEqual([])

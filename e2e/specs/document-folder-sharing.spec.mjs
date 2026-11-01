@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -7,11 +8,10 @@ test.use({ serviceWorkers: 'allow' })
 
 async function chooseFolder(page, name, width, agentLabel, previewFile = false) {
   const dialog = page.getByRole('dialog')
-  await dialog.getByRole('combobox', { name: 'Agent', exact: true }).click()
+  await dialog.getByRole('combobox', { name: 'Agent', exact: true }).press('Enter')
   await page.getByRole('option', { name: agentLabel, exact: true }).click()
   if (width < 1024) await dialog.getByRole('button', { name: /^(Show locations|Afficher les emplacements)$/, exact: true }).click()
   await dialog.getByText('document://', { exact: true }).click()
-  await dialog.getByRole('main').getByRole('button', { name: /^(Open|Ouvrir) (Folders|Répertoires)$/, exact: true }).click()
   if (previewFile) {
     await dialog.getByRole('main').getByRole('button', { name: new RegExp(`^(Open|Ouvrir) ${name}$`) }).click()
     const content = page.waitForResponse(response => response.url().includes('/file-share/browser/content?'))
@@ -21,7 +21,7 @@ async function chooseFolder(page, name, width, agentLabel, previewFile = false) 
     await expect(preview.locator('iframe')).toBeVisible()
     await preview.getByRole('button', { name: /^(Close|Fermer)$/, exact: true }).click()
     await expect(preview).toHaveCount(0)
-    await dialog.getByRole('navigation', { name: /^(File navigation|Navigation des fichiers)$/, exact: true }).getByRole('button', { name: /^(Folders|Répertoires)$/, exact: true }).click()
+    await dialog.getByRole('navigation', { name: /^(File navigation|Navigation des fichiers)$/, exact: true }).getByRole('button', { name: 'Documents', exact: true }).click()
   }
   await dialog.getByRole('checkbox', { name: new RegExp(`^(Select|Sélectionner) ${name}$`) }).check()
 }
@@ -35,7 +35,6 @@ for (const width of [1440, 390]) test(`shared folders stay live in Documents and
   test.setTimeout(90_000)
   await page.setViewportSize({ width, height: 900 })
   const errors = collectPageErrors(page)
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const fixture = await (await request.post('/api/__test/seed')).json()
   await page.goto('/user/login')
   await page.locator('input[type=email]').fill(fixture.email)
@@ -44,6 +43,13 @@ for (const width of [1440, 390]) test(`shared folders stay live in Documents and
   await page.locator('button[type=submit]').click()
   const session = await (await authentication).json()
   await expect(page.locator('input[type=password]')).toHaveCount(0)
+  await errors.settle()
+  const promptToDismiss = notificationPrompt(page)
+  if (await promptToDismiss.isVisible()) {
+    await promptToDismiss.getByRole('button', { name: 'Plus tard', exact: true }).click()
+    await expect(promptToDismiss).toBeHidden()
+  }
+  await page.addLocatorHandler(promptToDismiss, prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
   const checked = async response => { expect(response.ok(), await response.text()).toBeTruthy(); return response.json() }
   const agents = await checked(await request.get('/api/agents/selection', { headers, params: { scope: 'management' } }))
@@ -82,6 +88,7 @@ for (const width of [1440, 390]) test(`shared folders stay live in Documents and
   expect((await saved).ok()).toBeTruthy()
   await expect(page.locator('.internal-file-picker')).toHaveCount(0)
   await expect(page.locator('.folder-citation-thumbnail')).toBeVisible()
+  await errors.settle()
   await page.reload()
   await expect(page.locator('.folder-citation-thumbnail')).toBeVisible()
   const carrier = await checked(await request.get(`/api/documents/${documents[1].id}`, { headers }))

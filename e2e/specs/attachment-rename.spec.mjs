@@ -30,8 +30,8 @@ for (const width of [1440, 390]) test(`attachment names survive document and fil
   const before = (await (await request.get(`/api/documents/${document.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   await errors.settle()
   await page.goto(`/documents?document_id=${document.id}`)
-  await page.locator('.document-attachments .resource-preview-block').hover()
-  await page.getByRole('button', { name: 'Renommer Original.txt', exact: true }).click()
+  await page.locator('.document-attachments__item').filter({ hasText: 'Original.txt' }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Renommer', exact: true }).click()
   const dialog = page.getByRole('dialog').filter({ hasText: 'Renommer le fichier' })
   await dialog.getByRole('textbox', { name: 'Nom du fichier', exact: true }).fill('Final résumé.txt')
   const saved = page.waitForResponse(response => response.request().method() === 'PATCH'
@@ -39,12 +39,11 @@ for (const width of [1440, 390]) test(`attachment names survive document and fil
   await dialog.getByRole('textbox', { name: 'Nom du fichier', exact: true }).press('Enter')
   expect((await saved).ok()).toBeTruthy()
   await expect(dialog).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Renommer Final résumé.txt', exact: true })).toBeVisible()
+  await expect(page.locator('.document-attachments__item')).toContainText('Final résumé.txt')
   await info.attach('renamed-attachment', { body: await page.screenshot(), contentType: 'image/png' })
   await errors.settle()
   await page.reload()
-  await page.locator('.document-attachments .resource-preview-block').hover()
-  await expect(page.getByRole('button', { name: 'Renommer Final résumé.txt', exact: true })).toBeVisible()
+  await expect(page.locator('.document-attachments__item')).toContainText('Final résumé.txt')
   const current = (await (await request.get(`/api/documents/${document.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   expect(current.revision).toBe(before.revision)
   expect(current.payload.text).toBe(before.payload.text)
@@ -53,17 +52,19 @@ for (const width of [1440, 390]) test(`attachment names survive document and fil
   await errors.settle()
   await page.goto(`/files?agent_id=${fixture.agent_id}`)
   if (width < 1024) {
-    await page.locator('.q-drawer__backdrop').click({ position: { x: width - 8, y: 200 } })
+    const backdrop = page.locator('.q-drawer__backdrop')
+    if (await backdrop.isVisible()) await backdrop.click({ position: { x: width - 8, y: 200 } })
     await page.getByRole('button', { name: 'Afficher les emplacements', exact: true }).click()
   }
-  await page.getByText('file://', { exact: true }).click()
-  await page.getByRole('button', { name: 'Renommer Final résumé.txt', exact: true }).click()
+  await page.getByRole('main').getByRole('button', { name: 'Ouvrir Fichiers', exact: true }).click()
+  await page.locator('.file-main').getByRole('button', { name: 'Ouvrir Final résumé.txt', exact: true }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Renommer', exact: true }).click()
   await page.getByRole('textbox', { name: 'Nom du fichier', exact: true }).fill('Browser report.txt')
   const browserSaved = page.waitForResponse(response => response.request().method() === 'PATCH'
     && response.url().includes(`/file-share/files/${attachment.id}`))
   await page.getByRole('button', { name: 'Renommer', exact: true }).click()
   expect((await browserSaved).ok()).toBeTruthy()
-  await expect(page.getByRole('button', { name: 'Renommer Browser report.txt', exact: true })).toBeVisible()
+  await expect(page.locator('.file-main')).toContainText('Browser report.txt')
   // Keep the loaded directory in the SPA, then rename through another authorized surface.
   const elsewhere = await request.patch(`/api/documents/${document.id}/attachments/${attachment.id}?actor_agent_id=${fixture.agent_id}`,
     { headers, data: { name: 'Canonical viewer name.txt' } })
@@ -71,11 +72,10 @@ for (const width of [1440, 390]) test(`attachment names survive document and fil
   await page.getByRole('button', { name: 'Ouvrir Browser report.txt', exact: true }).click()
   await expect(page.getByRole('article', { name: 'Canonical viewer name.txt', exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('button', { name: 'Renommer Canonical viewer name.txt', exact: true })).toBeVisible()
+  await expect(page.locator('.file-main')).toContainText('Canonical viewer name.txt')
   await errors.settle()
   await page.goto(`/documents?document_id=${document.id}`)
-  await page.locator('.document-attachments .resource-preview-block').hover()
-  await expect(page.getByRole('button', { name: 'Renommer Canonical viewer name.txt', exact: true })).toBeVisible()
+  await expect(page.locator('.document-attachments__item')).toContainText('Canonical viewer name.txt')
   await errors.settle()
   expect(errors()).toEqual([])
 })

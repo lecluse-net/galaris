@@ -4,7 +4,7 @@ import { collectPageErrors } from '../page-errors.mjs'
 test.use({ serviceWorkers: 'allow' })
 
 for (const width of [1440, 390]) {
-  test(`folder image uploads persist in Documents and Datasets at ${width}px`, async ({ page, request }, testInfo) => {
+  test(`folder image uploads persist in the shared document library at ${width}px`, async ({ page, request }, testInfo) => {
     const errors = collectPageErrors(page)
     const fixture = await (await request.post('/api/__test/seed')).json()
     await page.setViewportSize({ width, height: 900 })
@@ -29,7 +29,9 @@ for (const width of [1440, 390]) {
       return canvas.toDataURL('image/png')
     })
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><path d="M0 16L16 0L32 16Z"/>${' '.repeat(100_001)}</svg>`
-    for (const [domain, path] of [['documents', '/documents'], ['datasets', '/dataset']]) {
+    // Text and Data now use the same folder catalogue; legacy Dataset folders
+    // are covered by backend compatibility tests rather than a retired screen.
+    for (const [domain, path] of [['documents', '/documents']]) {
       const response = await request.post(`/api/${domain}/tags`, { headers, data: { name: `Synthetic ${domain} images`, parent_id: null } })
       expect(response.ok(), await response.text()).toBeTruthy()
       const folder = await response.json()

@@ -157,6 +157,8 @@ async def test_source_http_preserves_permissions_and_manager_scope(client):
     assert (await client.get(path)).status_code == 401
     headers = []
     for index in range(3):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={
             "email": f"source-reader-{index}@example.com", "password": password,
         })

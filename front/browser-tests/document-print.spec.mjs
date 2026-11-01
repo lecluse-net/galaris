@@ -43,7 +43,8 @@ test('PDF preserves process diagrams and agent portraits without clickable objec
   await printed.setContent(snapshot)
   await printed.evaluate(() => Promise.all([...document.images].map(image => image.decode())))
   await expect(printed.locator('.galaris-process-diagram')).toContainText('Synthetic PDF review')
-  await expect(printed.locator('.galaris-process-diagram svg')).toHaveCount(1)
+  // Node icons may themselves be SVGs; preserve the diagram's arrow layer.
+  await expect(printed.locator('.galaris-process-diagram svg:has(marker)')).toHaveCount(1)
   await expect(printed.locator('.galaris-agent-card img')).toHaveJSProperty('naturalWidth', 128)
   await expect(printed.locator('.galaris-document-card img')).toHaveJSProperty('naturalWidth', 1)
   await expect(printed.locator('.galaris-document-card > p').last()).toHaveText(documentId)

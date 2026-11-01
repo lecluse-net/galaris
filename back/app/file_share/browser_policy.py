@@ -44,6 +44,8 @@ def resource_privileges(uri: str, *, write: bool = False) -> tuple[str, ...]:
         if write:
             return ()
         collection = reference.segments[0] if reference.segments else ""
+        if collection == "processes":
+            collection = "process"
         if not collection:
             return tuple(dict.fromkeys(code for values in domains.values() for code in values))
         return domains.get(collection, ())

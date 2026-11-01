@@ -1624,8 +1624,14 @@ Its structured cards remain searchable memory resources. Never copy their coordi
 `memory_remember`, including an explicit request to remember a number. Contact discovery handles
 them separately. For an explicit address-book change, follow the `galaris://contact/`
 discovery, reading and conditional editing workflow above instead of creating a memory.
+Use `contact_list(query="", limit=50, offset=0)` to search only the calling agent's
+private directory. Read `contact_get(contact_id)` with its canonical UUID before editing.
 `contact_create` requires a name and at least one email, phone or postal address. Search first
-to avoid duplicates. Existing email and messaging identities cannot be edited with these tools.
+to avoid duplicates. `contact_update(contact_id, display_name, coordinates=None)` changes the
+name and, when supplied, replaces the complete phone and postal-address lists. Omit coordinates
+to preserve them; use empty lists only to clear them intentionally. Existing email and
+messaging identities cannot be edited with these tools. Creation and updates follow their
+live one-action authorization policy; neither sends a message nor creates a user.
 Saving an email makes it a known contact under the default inbound Mail admission policy.
 A distinct preference or decision may be remembered using the person's name,
 without repeating their coordinates; a mixed write is rejected atomically, not silently trimmed.

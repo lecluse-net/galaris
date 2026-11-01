@@ -24,6 +24,7 @@ from app.tools.authorization_models import ActionAuthorization
 from core.database import get_db_session
 from core.user import UserModel
 from core.util import BufferedAdmissionDeferred
+from tests.authorization_fixtures import grant_privileges
 
 
 @pytest_asyncio.fixture
@@ -35,6 +36,7 @@ async def governed_process(committed_database, monkeypatch):
         remote = ToolModel(code=code, label="Synthetic process engine", connection_schema={})
         db.add_all([user, title, remote])
         await db.flush()
+        await grant_privileges(db, user.id, "PERMISSION_DECIDE")
         agent = Agent(user_id=user.id, title_id=title.id, code=code,
                       first_name="Process", last_name="Approval")
         db.add(agent)

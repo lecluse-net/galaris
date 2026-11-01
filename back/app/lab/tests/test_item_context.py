@@ -11,13 +11,18 @@ from app.lab.models import LabEvaluationCase, LabEvaluationDataset
 def test_item_context_cannot_override_shared_settings(mechanism):
     contract = CONTRACTS[mechanism]
     descriptor = contract.descriptor()
+    # Executor fixtures support a shared default and an explicit per-case tool
+    # reply. Other item context remains isolated from benchmark parameters.
+    overrides = {"tool_responses", "tool_response_arguments"} if mechanism.endswith("_executor") else set()
     assert not (
         descriptor["context_schema"]["properties"].keys()
         & descriptor["parameters_schema"]["properties"].keys()
-    )
+    ) - overrides
     with pytest.raises(ValueError, match="Extra inputs"):
         resolve_input(mechanism, LabInput(variable_value="Request", context={"language": "fr"}), {})
     for name in contract.context_type.model_fields:
+        if name in overrides:
+            continue
         with pytest.raises(ValueError, match="Extra inputs"):
             resolve_input(mechanism, LabInput(variable_value="Request"), {name: []})
 

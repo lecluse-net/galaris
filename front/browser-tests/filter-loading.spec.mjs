@@ -113,14 +113,14 @@ test('a topic request superseded by a session change is not a lookup error', asy
 
 test('user assignment search reports a real failure and recovers without an unhandled rejection', async ({ page }) => {
   await jsonRoute(page, '**/api/authorize/assignments?*', { items: [], total: 0 })
-  await jsonRoute(page, '**/api/authorize/roles', [])
-  await page.route('**/api/auth/users?*', route => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
+  await jsonRoute(page, '**/api/authorize/role-options', [])
+  await page.route('**/api/authorize/assignment-user-options?*', route => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
   await mount(page, 'core/authorize/components/AssignmentManager.vue', { privileges: ['MANAGE_ASSIGNMENT'] })
   await page.getByRole('button', { name: 'New Assignment', exact: true }).click()
   const input = page.getByRole('combobox', { name: 'User *', exact: true })
   await input.fill('Alice')
   await expect(page.locator('.q-field--error')).toBeVisible()
-  await jsonRoute(page, '**/api/auth/users?*', [{ id: 2, email: 'alice@example.invalid', display_name: 'Alice' }])
+  await jsonRoute(page, '**/api/authorize/assignment-user-options?*', [{ id: 2, email: 'alice@example.invalid', display_name: 'Alice' }])
   await input.fill('alice@example')
   await page.getByRole('option').filter({ hasText: 'alice@example.invalid' }).click()
   await expect(page.locator('.q-field--error')).toHaveCount(0)

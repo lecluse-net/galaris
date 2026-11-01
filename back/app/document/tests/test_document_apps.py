@@ -1,4 +1,5 @@
 from .legacy_fixtures import legacy_dataset
+import asyncio
 import json
 from html import escape
 from uuid import uuid4
@@ -76,13 +77,29 @@ async def test_generated_html_cannot_authorize_itself_even_for_dataset_owner(db,
 
 
 @pytest.mark.asyncio
-async def test_form_submission_preserves_history_and_checks_both_revisions(db, agents, memory_storage):
+async def test_form_submission_preserves_history_and_checks_both_revisions(db, agents, memory_storage, monkeypatch):
     document, dataset, scope, _ = await setup(db, agents)
     await approve(document, scope)
+    # Drain creation/access notifications before observing this submission.
+    await asyncio.sleep(0)
+    from core import websocket
+    events = []
+    updated = asyncio.Event()
+
+    async def emit(resource, action, data, *args, **kwargs):
+        if resource == "document":
+            events.append((action, data))
+            if action == "update" and data["id"] == str(dataset.id):
+                updated.set()
+
+    monkeypatch.setattr(websocket, "emit", emit)
     read = await app_dataset(document.id, "form", "entries", AppDatasetRequest(document_revision=1), scope)
     assert read.data == [] and read.revision == 1
     change = AppDatasetRequest(document_revision=1, operation="append", expected_revision=1, value={"value": "<script>literal</script>"})
     written = await app_dataset(document.id, "form", "entries", change, scope)
+    await asyncio.wait_for(updated.wait(), timeout=2)
+    assert [action for action, _ in events] == ["update"], "Content writes must not revoke running HTML applications"
+    assert events[0][1]["revision"] == 2
     assert written.data == [{"value": "<script>literal</script>"}] and written.revision == 2
     with pytest.raises(service.DocumentConflictError):
         await app_dataset(document.id, "form", "entries", change, scope)
@@ -97,6 +114,43 @@ async def test_form_submission_preserves_history_and_checks_both_revisions(db, a
     await approve(document, scope, revision=2)
     current = await app_dataset(document.id, "form", "entries", AppDatasetRequest(document_revision=2), scope)
     assert current.data == written.data
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("rollback", [False, True])
+async def test_content_coalescing_preserves_committed_access_changes_and_suppresses_rollback(db, agents, memory_storage, monkeypatch, rollback):
+    from app.dataset import service as datasets
+    from core import websocket
+
+    owner_id = agents[0].id
+    dataset = await datasets.create(owner_id, title="Synthetic notification transaction", content="[]")
+    identity = dataset.id
+    await db.commit()
+    await asyncio.sleep(0)
+    events = []
+    invalidated = asyncio.Event()
+
+    async def emit(resource, action, data, *args, **kwargs):
+        if resource == "document":
+            events.append((action, data))
+            if action == "invalidate":
+                invalidated.set()
+
+    monkeypatch.setattr(websocket, "emit", emit)
+    await datasets.metadata(identity, owner_id, expected_lock_version=dataset.lock_version, values={"global_access": 1})
+    await datasets.replace(identity, owner_id, content='["committed"]', expected_revision=1)
+    assert events == []
+    if rollback:
+        await db.rollback()
+        await asyncio.sleep(0)
+        assert events == []
+        stored = await datasets.record(identity, owner_id)
+        assert stored.content == "[]" and stored.global_access == 0
+    else:
+        await db.commit()
+        await asyncio.wait_for(invalidated.wait(), timeout=2)
+        assert [action for action, _ in events] == ["update", "invalidate"]
+        assert events[0][1]["id"] == str(identity) and events[0][1]["revision"] == 2
 
 
 @pytest.mark.asyncio

@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
@@ -9,7 +10,7 @@ async function checked(response) {
 
 async function login(page, credentials) {
   page.setDefaultTimeout(20_000)
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt =>
+  await page.addLocatorHandler(notificationPrompt(page), prompt =>
     prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   await page.goto('/user/login')
   await page.locator('input[type=email]').fill(credentials.email)

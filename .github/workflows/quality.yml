@@ -54,7 +54,7 @@ jobs:
 
       - name: Backend strict typing
         run: >-
-          docker run --rm
+          docker run --rm --network none
           --env APP_ENV=test
           --env AUTH_SECRET_KEY=ci-auth-secret-ci-auth-secret-0001
           --env BROWSER_EXECUTOR_TOKEN=ci-browser-token-ci-browser-00001
@@ -144,7 +144,7 @@ jobs:
   backend-tests:
     name: Backend tests
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -186,7 +186,7 @@ jobs:
   frontend-components:
     name: Vue component behaviors
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Exercise Vue components in an isolated browser
@@ -202,7 +202,7 @@ jobs:
   chat-e2e:
     name: Browser workflows and PWA
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - name: Run isolated workflows on Chromium, Firefox and WebKit

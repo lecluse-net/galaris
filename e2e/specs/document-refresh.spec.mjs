@@ -60,7 +60,7 @@ test('remote changes and sharing updates reconcile documents without removing ac
   let readGate = gate
   const requests = []
   await page.route('**/api/documents/library', async route => {
-    requests.push(route.request().postDataJSON().tag_id)
+    requests.push(route.request().postDataJSON().tag_id ?? null)
     await readGate
     await route.continue()
   })
@@ -68,8 +68,8 @@ test('remote changes and sharing updates reconcile documents without removing ac
     headers, data: { title: updatedTitle, expected_revision: documents[0].revision },
   })
   expect(updated.ok(), await updated.text()).toBeTruthy()
-  await expect.poll(() => requests.length).toBe(2)
-  expect(new Set(requests)).toEqual(new Set([null, folder.id]))
+  // The shared library also refreshes its root branch alongside the list and folder.
+  await expect.poll(() => new Set(requests)).toEqual(new Set([null, folder.id]))
   await expect(list.getByText(folderTitle, { exact: true })).toBeVisible()
   await expect(tree.getByText(folderTitle, { exact: true })).toBeVisible()
   release()

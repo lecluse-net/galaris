@@ -16,18 +16,39 @@ from app.tools.schemas import Tool
 from bridge.samba.file_share import SambaFileClient
 from bridge.samba import sdk
 from smbprotocol.header import NtStatus
+from smbprotocol.header import SMB2HeaderResponse
+from smbprotocol.exceptions import SMBAuthenticationError, SMBResponseException
 
 
-@pytest.mark.parametrize("status", [NtStatus.STATUS_ACCESS_DENIED, 0xC00000A2, 0xC0000001])
-def test_nested_sdk_boundaries_preserve_denials_and_sanitized_statuses(status):
-    original = OSError("Synthetic private provider response")
-    original.ntstatus = status
-    with pytest.raises(PermissionError if status != 0xC0000001 else OSError) as failure:
+@pytest.mark.parametrize("layer", ["os", "response"])
+@pytest.mark.parametrize("status", [NtStatus.STATUS_ACCESS_DENIED, 0xC00000A2, 0xC0000001, NtStatus.STATUS_BAD_NETWORK_NAME])
+def test_nested_sdk_boundaries_preserve_denials_and_sanitized_statuses(status, layer):
+    if layer == "os":
+        original = OSError("Synthetic private provider response")
+        original.ntstatus = status
+    else:
+        header = SMB2HeaderResponse()
+        header["status"] = status
+        original = SMBResponseException(header)
+    expected = (FileNotFoundError if status == NtStatus.STATUS_BAD_NETWORK_NAME else
+                OSError if status == 0xC0000001 else PermissionError)
+    with pytest.raises(expected) as failure:
         with sdk._errors(), sdk._errors():
             raise original
     assert "private provider response" not in str(failure.value)
-    if status == 0xC0000001:
+    if status == 0xC0000001 and layer == "os":
         assert "0xc0000001" in str(failure.value)
+
+
+@pytest.mark.parametrize("original,expected", [
+    (SMBAuthenticationError("Synthetic private credential detail"), PermissionError),
+    (TimeoutError("Synthetic private server detail"), TimeoutError),
+])
+def test_nested_sdk_failures_keep_authentication_and_deadline_meaning_without_private_details(original, expected):
+    with pytest.raises(expected) as failure:
+        with sdk._errors(), sdk._errors():
+            raise original
+    assert "private" not in str(failure.value)
 
 
 def test_bridge_discovery_and_connection_parameter_mapping():

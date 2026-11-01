@@ -57,6 +57,8 @@ ou seulement les Données. Il se combine avec la recherche et les autres filtres
 pagination. Les deux types ont des icônes distinctes, un éditeur et un aperçu adaptés.
 Titre, propriétaire, partage, sujet, mots-clés, résumé et historique suivent les mêmes règles.
 L'éditeur Données conserve un brouillon JSON invalide sans l'enregistrer ni quitter le document.
+Si vous utilisez le retour du navigateur pour fermer sa fenêtre, une confirmation permet
+de conserver le brouillon ou de l'abandonner. L'abandon restaure le dernier contenu enregistré.
 
 
 ## Résumé courant et mots-clés

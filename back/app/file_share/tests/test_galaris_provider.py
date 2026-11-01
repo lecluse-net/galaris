@@ -31,6 +31,8 @@ async def test_galaris_root_lists_the_supported_business_collections(db) -> None
         "galaris://skill/",
     }
     for entry in result.entries:
+        from app.file_share.browser_policy import resource_privileges
+        assert resource_privileges(entry.uri), "Every advertised business collection needs an HTTP domain gate"
         kind = entry.uri.removeprefix("galaris://").strip("/")
         code = f"collection_{'process' if kind == 'processes' else kind}"
         assert entry.label_code == code

@@ -111,6 +111,8 @@ async def test_assignment_http_preserves_self_access_and_administrative_permissi
         assert (await client.get(url)).status_code == 401
     headers = {}
     for name in ("manager", "local"):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={
             "email": f"assignment-{name}@example.com", "password": password,
         })

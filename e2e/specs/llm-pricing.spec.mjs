@@ -30,13 +30,14 @@ test('manual pricing survives saving and reopening in the assembled application'
     await page.setViewportSize({ width, height: 1100 })
     await errors.settle()
     await page.goto('/llm?tab=models')
-    if (width < 1024) {
-      await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
-        await backdrop.click({ position: { x: width - 10, y: 200 } })
-      })
-    }
     const item = page.locator(width < 1024 ? '.llm-grid-card' : 'tbody tr')
       .filter({ hasText: 'Synthetic pricing model' })
+    await expect(item).toBeVisible()
+    if (width < 1024) {
+      await expect(page.locator('.q-drawer')).toHaveClass(/q-drawer--mobile/)
+      const backdrop = page.locator('.q-drawer__backdrop')
+      if (await backdrop.isVisible()) await backdrop.click({ position: { x: width - 10, y: 200 } })
+    }
     await item.getByRole('button', { name: 'Modifier', exact: true }).click()
     const dialog = page.getByRole('dialog')
     const nightly = dialog.getByRole('switch', { name: 'Actualiser les tarifs chaque nuit', exact: true })
@@ -52,6 +53,12 @@ test('manual pricing survives saving and reopening in the assembled application'
     expect(await stored.json()).toMatchObject({ pricing_auto_update: false, cost_per_input_token: 7 })
     await errors.settle()
     await page.reload()
+    await expect(item).toBeVisible()
+    if (width < 1024) {
+      await expect(page.locator('.q-drawer')).toHaveClass(/q-drawer--mobile/)
+      const backdrop = page.locator('.q-drawer__backdrop')
+      if (await backdrop.isVisible()) await backdrop.click({ position: { x: width - 10, y: 200 } })
+    }
     await item.getByRole('button', { name: 'Modifier', exact: true }).click()
     await expect(nightly).not.toBeChecked()
     await expect(dialog.getByRole('spinbutton', { name: 'Coût input (par 1M tokens)', exact: true })).toHaveValue('7')

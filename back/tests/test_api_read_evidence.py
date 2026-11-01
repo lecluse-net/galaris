@@ -130,7 +130,8 @@ async def test_lab_run_detail_omits_frozen_corpus_but_workers_still_read_it(db, 
 
 
 @pytest.mark.asyncio
-async def test_comparison_batches_headers_preserving_latest_judge_and_same_run(db):
+@pytest.mark.parametrize("case_count", [1, 40])
+async def test_comparison_batches_headers_preserving_latest_judge_and_same_run(db, case_count):
     dataset = LabEvaluationDataset(name="Synthetic comparison evidence", mechanism="planner")
     db.add(dataset)
     await db.flush()
@@ -142,17 +143,21 @@ async def test_comparison_batches_headers_preserving_latest_judge_and_same_run(d
     for run in runs:
         db.add_all([LabJudgmentCampaign(run_id=run.id, sequence=1, configuration={"old": str(run.id)}),
                     LabJudgmentCampaign(run_id=run.id, sequence=2, configuration={})])
-        db.add(LabEvaluationRunCase(run_id=run.id, case_snapshot={"name": "Synthetic pair", "input_data": {}, "expected_output": {}}, actual_output={"answer": "kept"}))
+        db.add_all([LabEvaluationRunCase(run_id=run.id,
+            case_snapshot={"name": f"Synthetic pair {index}", "input_data": {"index": index}, "expected_output": {}},
+            actual_output={"answer": "kept"}) for index in range(case_count)])
     await db.commit()
     async with measured(db, "evidence-comparison", {LabEvaluationRun: ("case_snapshots",)}) as report:
         result = await comparison_service.compare("planner", *ids, "model", include_outputs=True)
-    assert result["comparable"] and len(result["items"]) == 1
+    assert result["comparable"] and len(result["items"]) == case_count
     assert (await comparison_service.compare("planner", ids[0], ids[0], "model"))["comparable"]
     with pytest.raises(LookupError):
         await comparison_service.compare("planner", ids[0], uuid4(), "model")
     with pytest.raises(LookupError):
         await comparison_service.compare("topic", *ids, "model")
-    assert report["bytes"] == 0 and report["queries"] <= 14, report
+    # Pair risks, dimensions and uncertainty add fixed aggregate reads. The same
+    # bound for one and forty rows catches per-result reads without loading bodies.
+    assert report["bytes"] == 0 and report["queries"] <= 23, report
 
 
 @pytest_asyncio.fixture

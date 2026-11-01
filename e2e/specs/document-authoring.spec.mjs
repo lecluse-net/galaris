@@ -37,7 +37,7 @@ test('Documents persists checklist state and converses in a room also available 
   await page.goto(`/documents?document_id=${document.id}`)
   const editor = page.locator('[data-editor-surface]')
   await expect(editor).toContainText('Review draft')
-  const conversationToggle = page.getByRole('toolbar', { name: /^(Content|Contenu)$/ }).getByRole('button', { name: 'Conversation', exact: true })
+  const conversationToggle = page.getByRole('button', { name: 'Conversation', exact: true })
   await expect(conversationToggle).toHaveAttribute('aria-expanded', 'false')
   expect(documentConversationRequests).toEqual([])
   await editor.locator('p').click()

@@ -162,7 +162,7 @@ async def test_human_options_use_goal_directory_and_active_local_humans(db, nati
     ])
     monkeypatch.setattr(contacts, "search_agent_users", search)
     assert await human_options(owner.id) == [{"id": active.id, "label": "Synthetic manager"}]
-    search.assert_awaited_once_with(owner.id, "")
+    search.assert_awaited_once_with(owner.id, "", require_internal_room=True)
 
 
 @pytest.mark.asyncio
@@ -1724,6 +1724,8 @@ async def test_tool_activity_uses_live_mcp_rights_and_finishes_its_context(infer
         approver = UserModel(email=f"process-approver-{uuid4().hex}@example.test", hashed_password="synthetic")
         db.add(approver)
         await db.flush()
+        from tests.authorization_fixtures import grant_privileges
+        await grant_privileges(db, approver.id, "PERMISSION_DECIDE")
         owner.user_id = approver.id
     tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
     connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
@@ -2177,7 +2179,7 @@ async def test_lab_real_campaign_idempotency_exact_evidence_and_private_inputs(d
     dataset = await lab.create_synthetic_dataset(owner.id, agent_id=owner.id, title="Invented cases",
         cases=[lab.ProcessCaseInput(input={"value": 7}, expected={"value": 7})], invocation_key="synthetic-inputs")
     assert dataset["dataset_uri"] == f"data://{dataset['dataset_id']}"
-    assert await db.scalar(select(func.count()).select_from(Document)) == documents_before
+    assert await db.scalar(select(func.count()).select_from(Document)) == documents_before + 1
     assert await lab.create_synthetic_dataset(owner.id, agent_id=owner.id, title="Invented cases",
         cases=[lab.ProcessCaseInput(input={"value": 7}, expected={"value": 7})], invocation_key="synthetic-inputs") == dataset
     with pytest.raises(DatasetConflictError):
@@ -2187,7 +2189,7 @@ async def test_lab_real_campaign_idempotency_exact_evidence_and_private_inputs(d
         await dataset_record(UUID(dataset["dataset_id"]), stranger.id)
     campaign = await lab.start_campaign(owner.id, agent_id=owner.id, code=definition.code,
         dataset_id=UUID(dataset["dataset_id"]), title="Real synthetic benchmark", invocation_key="one-campaign")
-    assert campaign.dataset_id == UUID(dataset["dataset_id"]) and campaign.dataset_document_id is None
+    assert campaign.dataset_document_id == UUID(dataset["dataset_id"]) and campaign.dataset_id is None
     assert (await lab.start_campaign(owner.id, agent_id=owner.id, code=definition.code,
         dataset_id=UUID(dataset["dataset_id"]), title="Real synthetic benchmark", invocation_key="one-campaign")).id == campaign.id
     with pytest.raises(PermissionError):

@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -8,7 +9,7 @@ test.use({ serviceWorkers: 'allow' })
 test('Text and Data share a library while linked content retains its own rights', async ({ page, request }) => {
   const pageErrors = collectPageErrors(page)
   test.setTimeout(120_000)
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
+  await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const fixture = await (await request.post('/api/__test/seed')).json()
   await page.goto('/user/login')
   await page.locator('input[type=email]').fill(fixture.email)
@@ -42,7 +43,7 @@ test('Text and Data share a library while linked content retains its own rights'
   const editor = page.locator('[data-editor-surface]')
   await editor.click()
   await page.getByRole('button', { name: /^(Lien Galaris|Galaris link)$/, exact: true }).first().click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Galaris Datasets', exact: true }).click()
+  await page.getByRole('dialog').getByRole('main').getByRole('button', { name: /^(Open|Ouvrir) Documents$/, exact: true }).click()
   await page.getByRole('dialog').locator('.file-main').getByRole('button', { name: new RegExp(`^(Select|Sélectionner) ${dataset.title}$`) }).click()
   const saved = page.waitForResponse(response => response.url().includes(`/documents/${document.id}`) && response.request().method() === 'PATCH')
   await page.getByRole('dialog').getByRole('button', { name: /^(Sélectionner|Select)$/, exact: true }).click()

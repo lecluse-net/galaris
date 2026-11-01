@@ -78,11 +78,11 @@ def test_approver_directory_is_available_to_connection_readers() -> None:
 def test_outbound_reviews_require_the_official_approver_assertion() -> None:
     for endpoint in (approve_outbound_mail, reject_outbound_mail):
         metadata = getattr(endpoint, "_authorize_meta")
-        assert metadata["privileges"] == [Privileges.CONNECTION_ACCESS]
+        assert metadata["privileges"] == [Privileges.MAIL_EDIT]
         assert metadata["assertion"] is MailApproverAssertion
 
 
-def test_mail_availability_requires_connection_access() -> None:
+def test_mail_availability_requires_mail_access() -> None:
     metadata = getattr(read_mail_status, "_authorize_meta")
 
-    assert metadata["privileges"] == [Privileges.CONNECTION_ACCESS]
+    assert metadata["privileges"] == [Privileges.MAIL_ACCESS, Privileges.MAIL_EDIT]

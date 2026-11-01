@@ -22,7 +22,7 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:0.11@sha256:77280f2f771df71f90786c314fe1bbc1e023feac652969bbf139c280babf2eb7 /uv /bin/uv
 
 # Install Atlas
-COPY --from=arigaio/atlas@sha256:15cd73c56b2a8d8d7d5e8176df4d50bb190dc5ae4a12afd1043f1a5560dd7456 /atlas /bin/atlas
+COPY --from=arigaio/atlas@sha256:bafdd9c5921bd717626b5411fd0895e723702e638186e3f71bfb8299c043fa3a /atlas /bin/atlas
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

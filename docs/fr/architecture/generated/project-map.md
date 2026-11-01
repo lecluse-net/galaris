@@ -450,7 +450,7 @@ tests restent l’autorité sur le comportement.
 | `app.memory` | `core.storage` | `back/app/memory/__init__.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/content_migration.py`, `back/app/memory/contracts.py`, `back/app/memory/document_structure.py`, `back/app/memory/html_migration.py`, `back/app/memory/inline_content.py`, `back/app/memory/native_content.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py` |
 | `app.memory` | `core.team` | `back/app/memory/bootstrap.py` |
 | `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/contact_directory.py`, `back/app/memory/events.py`, `back/app/memory/maintenance.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
-| `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/contact_policy.py`, `back/app/memory/content_migration.py`, `back/app/memory/context.py`, `back/app/memory/document_structure.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py` |
+| `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/contact_policy.py`, `back/app/memory/content_migration.py`, `back/app/memory/context.py`, `back/app/memory/document_structure.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/maintenance.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py` |
 | `app.messenger` | `app.agent` | `back/app/messenger/agent_identity.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_resources.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.connection` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/ingest.py`, `back/app/messenger/journal.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.conversation` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
@@ -1410,37 +1410,37 @@ tests restent l’autorité sur le comportement.
 | GET | `/code/workspaces/{identifier}` | `app.code` | `get_workspace` | oui | `back/app/code/router.py:41` |
 | POST | `/code/workspaces/{identifier}/sessions` | `app.code` | `create_session` | oui | `back/app/code/router.py:68` |
 | GET | `/codex/runtime-credential` | `bridge.codex` | `runtime_credential` | non | `back/bridge/codex/router.py:31` |
-| GET | `/connections` | `app.connection` | `list_connections` | oui | `back/app/connection/router.py:325` |
-| POST | `/connections` | `app.connection` | `create_connection` | oui | `back/app/connection/router.py:347` |
-| GET | `/connections/find-by-param` | `app.connection` | `find_agents_by_param` | oui | `back/app/connection/router.py:214` |
+| GET | `/connections` | `app.connection` | `list_connections` | oui | `back/app/connection/router.py:327` |
+| POST | `/connections` | `app.connection` | `create_connection` | oui | `back/app/connection/router.py:349` |
+| GET | `/connections/find-by-param` | `app.connection` | `find_agents_by_param` | oui | `back/app/connection/router.py:216` |
 | GET | `/connections/function-permissions` | `app.connection` | `list_function_permissions` | oui | `back/app/connection/router.py:103` |
-| GET | `/connections/oauth/client-metadata` | `app.connection` | `oauth_client_metadata` | non | `back/app/connection/router.py:148` |
-| GET | `/connections/oauth/client-metadata/loopback/{scheme}/{host}/{port}` | `app.connection` | `oauth_local_client_metadata` | non | `back/app/connection/router.py:154` |
-| GET | `/connections/overview` | `app.connection` | `list_connection_overviews` | oui | `back/app/connection/router.py:312` |
-| GET | `/connections/permission-options` | `app.connection` | `permission_connection_options` | oui | `back/app/connection/router.py:118` |
-| POST | `/connections/refresh-tools` | `app.connection` | `refresh_connections_and_tool_catalogs` | oui | `back/app/connection/router.py:272` |
-| POST | `/connections/sync-integrated` | `app.connection` | `sync_integrated_connections` | oui | `back/app/connection/router.py:284` |
-| POST | `/connections/test-mcp-tools` | `app.connection` | `test_mcp_tools` | oui | `back/app/connection/router.py:635` |
+| GET | `/connections/oauth/client-metadata` | `app.connection` | `oauth_client_metadata` | non | `back/app/connection/router.py:150` |
+| GET | `/connections/oauth/client-metadata/loopback/{scheme}/{host}/{port}` | `app.connection` | `oauth_local_client_metadata` | non | `back/app/connection/router.py:156` |
+| GET | `/connections/overview` | `app.connection` | `list_connection_overviews` | oui | `back/app/connection/router.py:314` |
+| GET | `/connections/permission-options` | `app.connection` | `permission_connection_options` | oui | `back/app/connection/router.py:120` |
+| POST | `/connections/refresh-tools` | `app.connection` | `refresh_connections_and_tool_catalogs` | oui | `back/app/connection/router.py:274` |
+| POST | `/connections/sync-integrated` | `app.connection` | `sync_integrated_connections` | oui | `back/app/connection/router.py:286` |
+| POST | `/connections/test-mcp-tools` | `app.connection` | `test_mcp_tools` | oui | `back/app/connection/router.py:637` |
 | GET | `/connections/tool-options` | `app.connection` | `connection_tool_options` | oui | `back/app/connection/router.py:112` |
-| DELETE | `/connections/{connection_id}` | `app.connection` | `delete_connection` | oui | `back/app/connection/router.py:446` |
-| GET | `/connections/{connection_id}` | `app.connection` | `get_connection` | oui | `back/app/connection/router.py:341` |
-| PATCH | `/connections/{connection_id}` | `app.connection` | `update_connection` | oui | `back/app/connection/router.py:386` |
-| PUT | `/connections/{connection_id}/capabilities` | `app.connection` | `set_capability_policy` | oui | `back/app/connection/router.py:756` |
-| GET | `/connections/{connection_id}/functions` | `app.connection` | `list_connection_functions` | oui | `back/app/connection/router.py:695` |
-| PUT | `/connections/{connection_id}/functions/{function_name}` | `app.connection` | `set_connection_function` | oui | `back/app/connection/router.py:704` |
-| PUT | `/connections/{connection_id}/functions/{function_name}/global` | `app.connection` | `set_connection_function_global` | oui | `back/app/connection/router.py:718` |
-| PUT | `/connections/{connection_id}/management-scope` | `app.connection` | `update_management_scope` | oui | `back/app/connection/router.py:471` |
-| DELETE | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_disconnect` | oui | `back/app/connection/router.py:207` |
-| GET | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_status` | oui | `back/app/connection/router.py:163` |
-| POST | `/connections/{connection_id}/oauth/callback` | `app.connection` | `oauth_callback` | oui | `back/app/connection/router.py:183` |
-| POST | `/connections/{connection_id}/oauth/device` | `app.connection` | `oauth_device` | oui | `back/app/connection/router.py:194` |
-| POST | `/connections/{connection_id}/oauth/start` | `app.connection` | `oauth_start` | oui | `back/app/connection/router.py:173` |
-| GET | `/connections/{connection_id}/params` | `app.connection` | `get_connection_params` | oui | `back/app/connection/router.py:485` |
-| POST | `/connections/{connection_id}/params` | `app.connection` | `create_or_update_param` | oui | `back/app/connection/router.py:532` |
-| POST | `/connections/{connection_id}/params/bulk` | `app.connection` | `create_or_update_params_bulk` | oui | `back/app/connection/router.py:558` |
-| DELETE | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `delete_param` | oui | `back/app/connection/router.py:618` |
-| GET | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `get_single_param` | oui | `back/app/connection/router.py:505` |
-| PATCH | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `update_connection_param` | oui | `back/app/connection/router.py:584` |
+| DELETE | `/connections/{connection_id}` | `app.connection` | `delete_connection` | oui | `back/app/connection/router.py:448` |
+| GET | `/connections/{connection_id}` | `app.connection` | `get_connection` | oui | `back/app/connection/router.py:343` |
+| PATCH | `/connections/{connection_id}` | `app.connection` | `update_connection` | oui | `back/app/connection/router.py:388` |
+| PUT | `/connections/{connection_id}/capabilities` | `app.connection` | `set_capability_policy` | oui | `back/app/connection/router.py:758` |
+| GET | `/connections/{connection_id}/functions` | `app.connection` | `list_connection_functions` | oui | `back/app/connection/router.py:697` |
+| PUT | `/connections/{connection_id}/functions/{function_name}` | `app.connection` | `set_connection_function` | oui | `back/app/connection/router.py:706` |
+| PUT | `/connections/{connection_id}/functions/{function_name}/global` | `app.connection` | `set_connection_function_global` | oui | `back/app/connection/router.py:720` |
+| PUT | `/connections/{connection_id}/management-scope` | `app.connection` | `update_management_scope` | oui | `back/app/connection/router.py:473` |
+| DELETE | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_disconnect` | oui | `back/app/connection/router.py:209` |
+| GET | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_status` | oui | `back/app/connection/router.py:165` |
+| POST | `/connections/{connection_id}/oauth/callback` | `app.connection` | `oauth_callback` | oui | `back/app/connection/router.py:185` |
+| POST | `/connections/{connection_id}/oauth/device` | `app.connection` | `oauth_device` | oui | `back/app/connection/router.py:196` |
+| POST | `/connections/{connection_id}/oauth/start` | `app.connection` | `oauth_start` | oui | `back/app/connection/router.py:175` |
+| GET | `/connections/{connection_id}/params` | `app.connection` | `get_connection_params` | oui | `back/app/connection/router.py:487` |
+| POST | `/connections/{connection_id}/params` | `app.connection` | `create_or_update_param` | oui | `back/app/connection/router.py:534` |
+| POST | `/connections/{connection_id}/params/bulk` | `app.connection` | `create_or_update_params_bulk` | oui | `back/app/connection/router.py:560` |
+| DELETE | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `delete_param` | oui | `back/app/connection/router.py:620` |
+| GET | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `get_single_param` | oui | `back/app/connection/router.py:507` |
+| PATCH | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `update_connection_param` | oui | `back/app/connection/router.py:586` |
 | POST | `/console/connections/{connection_id}/generate-key` | `app.console` | `generate_connection_key` | oui | `back/app/console/router.py:86` |
 | POST | `/console/connections/{connection_id}/install-editor` | `app.console` | `install_connection_code_editor` | oui | `back/app/console/router.py:150` |
 | POST | `/console/connections/{connection_id}/install-helper` | `app.console` | `install_connection_galaris_exec` | oui | `back/app/console/router.py:115` |

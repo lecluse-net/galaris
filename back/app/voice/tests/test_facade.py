@@ -31,6 +31,7 @@ def test_call_listeners_running_aggregates_registered_providers(
         "nextcloud_talk": SimpleNamespace(listeners_running=lambda: True),
     }
     monkeypatch.setattr(facade, "_providers", providers)
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["matrix", "nextcloud_talk"]')
 
     assert facade.call_listeners_running() is True
 

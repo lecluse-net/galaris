@@ -55,7 +55,7 @@ import app.task
 
 @pytest.mark.parametrize(("domain", "expected"), [
     ("chat", {"chat-web-push": (1.0, 900.0)}),
-    ("llm", {"llm-running-call-reconciliation": (60.0, 900.0), "llm-document-analysis": (1.0, 1250.0)}),
+    ("llm", {"llm-running-call-reconciliation": (60.0, 900.0), "llm-document-analysis": (1.0, 1250.0), "llm-nightly-pricing": (60.0, 900.0)}),
     ("goal", {"goal-runner": (2.0, 900.0)}),
     ("lab", {"lab-operations": (1.0, 720.0), "lab-process-campaigns": (1.0, 900.0), "lab-mechanism-evaluations": (1.0, 900.0)}),
     ("voice", {"voice-turn-deletions": (2.0, 900.0)}),

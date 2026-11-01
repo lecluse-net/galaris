@@ -103,11 +103,18 @@ def _source_backed(item: MemoryItem) -> bool:
     return item.source_managed or item.node_kind in {"document", "file", "attachment", "directory"}
 
 
-def _source_contains_fact(source: MemoryItem, memory: MemoryItem) -> bool:
+async def _source_contains_fact(source: MemoryItem, memory: MemoryItem) -> bool:
     # Cross-domain absorption requires literal complete evidence, not just a high
     # embedding score. Never collapse independent authoritative resources here.
     fact = " ".join(memory.search_text.casefold().split())
-    return bool(fact) and fact in " ".join(source.search_text.casefold().split())
+    evidence = source.search_text
+    if source.managed_source_kind == "messenger_contact":
+        # Contact search deliberately omits coordinates. Compare the live,
+        # authorized card instead before absorbing a historical private copy.
+        from core.util import visible_text
+        _, content, *_ = await service.get_item(source.id, agent_id=memory.owner_agent_id)
+        evidence = visible_text(content.decode("utf-8"))
+    return bool(fact) and fact in " ".join(evidence.casefold().split())
 
 
 def _duplicate_canonical(first: MemoryItem, second: MemoryItem) -> MemoryItem:
@@ -348,7 +355,7 @@ async def detect_for_item(item_id: UUID, *, manual: bool = False) -> list[UUID]:
         backed = _source_backed(candidate) and not _source_backed(item)
         if item.file_sha256 is None and not backed and str(candidate.id) < str(item.id):
             continue
-        if backed and not _source_contains_fact(candidate, item):
+        if backed and not await _source_contains_fact(candidate, item):
             continue
         if not backed and await _scope_signature(candidate.id) != item_scope:
             continue
@@ -579,7 +586,7 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
     if (canonical.metadata_.get("atomic_fact") is not None and duplicate.metadata_.get("atomic_fact") is not None
             and canonical.metadata_["atomic_fact"] != duplicate.metadata_["atomic_fact"]):
         raise service.MemoryConflictError("Different atomic assertions cannot be merged as identical memories.")
-    if source_absorption and not _source_contains_fact(canonical, duplicate):
+    if source_absorption and not await _source_contains_fact(canonical, duplicate):
         raise service.MemoryConflictError("The source no longer contains the complete duplicate fact.")
     if not source_absorption and (canonical.node_kind == "document" or duplicate.node_kind == "document"):
         raise service.MemoryConflictError("Document memories cannot be merged independently of their documents.")

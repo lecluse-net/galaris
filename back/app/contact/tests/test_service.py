@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import event, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
@@ -83,6 +83,9 @@ async def seed_reachable_directory(db, count):
 @pytest.mark.parametrize("count", [0, 501, 2001])
 async def test_reachable_directory_bounds_canonical_reads_and_keeps_owner_names_and_routes(db, memory_storage, count):
     owner_id, connection_id, own_contact, foreign_contact = await seed_reachable_directory(db, count)
+    # Query-plan measurements need representative statistics, independently of
+    # autovacuum timing and the tests that previously populated these tables.
+    await db.execute(text("ANALYZE memory_items, memory_contact_identities"))
     db.expunge_all()
     connection = await db.connection()
     captured = []

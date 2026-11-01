@@ -38,6 +38,7 @@ from app.lab.tests.test_stability_and_review import benchmark  # noqa: F401
 from app.lab.mechanism_rubrics import get_rubric
 from core.database import get_db_session
 from core.user.models import User
+from tests.authorization_fixtures import grant_privileges
 
 
 async def provision(db):
@@ -45,6 +46,7 @@ async def provision(db):
     title = Title(label=f"Lab {uuid4().hex}", gender="X")
     db.add_all([user, title])
     await db.flush()
+    await grant_privileges(db, user.id, "PERMISSION_DECIDE")
     agent = Agent(
         user_id=user.id,
         title_id=title.id,

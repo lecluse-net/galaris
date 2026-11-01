@@ -121,9 +121,18 @@ verrous, baux, réveils et traitements restent réels. La cadence de production 
 Les composants utilisent quatre workers avec un contexte navigateur et des fixtures HTTP
 propres à chaque test. `make validate` conserve tous ses contrôles et exécute chaque parcours
 une fois sur chacun des trois navigateurs. `make validate-stability` répète les parcours trois fois
-par navigateur pour rechercher les instabilités. Les deux commandes ont une limite de 45 minutes ;
+par navigateur pour rechercher les instabilités. La validation simple a une limite de deux heures,
+et la stabilité de quatre heures ;
 un dépassement arrête les tests, nettoie leurs environnements et signale un résultat incomplet.
 `VALIDATION_TIMEOUT_SECONDS` permet d'adapter explicitement cette limite.
+La couverture backend seule a pris environ 45 minutes sur le corpus de la version 0.3 ;
+la limite inclut aussi la préparation et les contrôles des exécuteurs après les suites parallèles.
+La CI réserve 90 minutes au backend, 45 aux composants, quatre heures aux trois répétitions
+E2E et trois heures à la qualification séquentielle du bundle de release.
+La sélection de couverture critique suit le stockage natif déplacé vers
+`core/storage/resources.py`, avec les mêmes seuils. Les contrôles de qualité refusent
+un motif qui ne correspond plus à une source ou un domaine critique sans fichier sélectionné ;
+le diagnostic de couverture nomme les domaines absents.
 La validation lance backend, composants, E2E et mutations en parallèle après les contrôles statiques.
 Les mutations travaillent sur leurs propres copies jetables des sources. Il attend
 toutes les suites, conserve leur code d'échec et refuse toujours un instantané modifié.

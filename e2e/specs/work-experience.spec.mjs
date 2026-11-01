@@ -1,9 +1,11 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
 
 test('Welcome keeps the first mission and its saved document available on desktop and mobile', async ({ page, request }) => {
   const errors = collectPageErrors(page)
+  await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const fixture = await (await request.post('/api/__test/seed?mode=first-mission')).json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
   await page.goto('/user/login'); await refresh
@@ -20,6 +22,7 @@ test('Welcome keeps the first mission and its saved document available on deskto
   const agentResponse = await request.get(`/api/agents/${fixture.agent_id}`, { headers })
   expect(agentResponse.ok()).toBeTruthy()
   const agent = await agentResponse.json()
+  await errors.settle()
   await selectOption(page, page.getByRole('combobox', { name: 'Agent', exact: true }), `${agent.first_name} ${agent.last_name}`)
   const prompt = page.getByRole('textbox', { name: 'Demande à confier', exact: true })
   await prompt.fill(`@exec @standard ${await prompt.inputValue()}`)

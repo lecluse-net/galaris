@@ -12,7 +12,16 @@ const tools = [
     can_edit: true, conversation_enabled: false, connection_schema: { params: {} }, global_params: {} },
 ]
 const connections = tools.slice(0, 5).map(tool => ({ id: tool.id, tool_id: tool.id, agent_id: 7, active: true }))
-const privileges = ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL']
+const permissionOptions = rows => rows.map(connection => {
+  const tool = tools.find(tool => tool.id === connection.tool_id)
+  return { ...connection, tool_code: tool.code, tool_label: tool.label,
+    tool_can_edit: tool.can_edit, tool_can_disable: tool.can_disable }
+})
+async function connectionRoutes(page, rows) {
+  await jsonRoute(page, '**/api/connections?*', rows)
+  await jsonRoute(page, '**/api/connections/permission-options?*', permissionOptions(rows))
+}
+const privileges = ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'PERMISSION_DECIDE', 'AGENT_MANAGE_ALL']
 
 for (const width of [390, 1400]) {
   test(`Connection Tool selection groups the allowed built-in and custom choices (${width})`, async ({ page }, testInfo) => {
@@ -270,7 +279,7 @@ for (const mobile of [false, true]) {
     test(`Global function policies are explicit and connections can inherit (${mobile ? 'mobile' : 'desktop'}, ${defaultState})`, async ({ page }) => {
       await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
       await routes(page)
-      await jsonRoute(page, '**/api/connections?*', [connections[4]])
+      await connectionRoutes(page, [connections[4]])
       const locale = mobile ? 'fr' : 'en'
       const labels = mobile
         ? { enabled: 'Activé', disabled: 'Désactivé', ask: 'Sur demande', inherit: 'Hériter', global: 'Global (tous)', connection: 'Cette connexion' }
@@ -421,7 +430,7 @@ for (const mobile of [false, true]) {
     await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
     await routes(page)
     const second = { id: 12, tool_id: 5, agent_id: 7, active: true }
-    await jsonRoute(page, '**/api/connections?*', [connections[4], second])
+    await connectionRoutes(page, [connections[4], second])
     const names = ['external_read', 'external_list']
     const globals = Object.fromEntries(names.map(name => [name, 'enabled']))
     const locals = { 5: { external_read: 'default', external_list: 'default' }, 12: { external_read: 'ask', external_list: 'default' } }
@@ -512,7 +521,7 @@ for (const mobile of [false, true]) {
     await local.getByRole('button', { name: 'Enabled', exact: true }).click()
     await expect.poll(() => writes.length).toBe(8)
     await local.getByRole('button', { name: 'Disabled', exact: true }).click()
-    await jsonRoute(page, '**/api/connections?*', [second])
+    await connectionRoutes(page, [second])
     await page.evaluate(async privileges => {
       await window.testApp.mount({ component: 'app/connection/components/AuthorizationManager.vue', privileges })
     }, privileges)
@@ -565,12 +574,14 @@ for (const [locale, description, publicLabel, askChoice, allowChoice, saveLabel]
 }
 
 async function routes(page) {
+  await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Alice Example', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/tools', tools)
+  await jsonRoute(page, '**/api/connections/tool-options', tools)
   await jsonRoute(page, '**/api/file-share/bridges', [])
   await jsonRoute(page, '**/api/messenger/bridges', [])
   await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Alice', last_name: 'Example', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/mail/approvers', [])
-  await jsonRoute(page, '**/api/connections?*', connections)
+  await connectionRoutes(page, connections)
   await jsonRoute(page, '**/api/connections/overview?*', connections.map(connection => ({ ...connection, params: {}, configured_params: [] })))
   for (const connection of connections) {
     await jsonRoute(page, `**/api/connections/${connection.id}/params?*`, { ...connection, connection_id: connection.id, params: {}, configured_params: [] })
@@ -592,7 +603,7 @@ for (const mobile of [false, true]) {
       await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
       await routes(page)
       const customConnection = { id: 6, tool_id: 6, agent_id: 7, active: true }
-      await jsonRoute(page, '**/api/connections?*', [...connections, customConnection])
+      await connectionRoutes(page, [...connections, customConnection])
       await jsonRoute(page, '**/api/connections/overview?*', [...connections, customConnection].map(connection => ({ ...connection, params: {}, configured_params: [] })))
       await jsonRoute(page, '**/api/connections/6/params?*', { connection_id: 6, params: {}, configured_params: [] })
       await jsonRoute(page, '**/api/connections/6/functions', { success: true, functions: [] })

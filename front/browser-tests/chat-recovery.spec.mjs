@@ -250,13 +250,13 @@ for (const attachment of [false, true]) {
     await expect(page.locator('.q-notification')).toBeVisible()
     await expect(draft).toHaveValue('Synthetic recoverable message')
     await expect(post).toBeEnabled()
-    if (attachment) await expect(page.getByRole('button', { name: 'Rename synthetic-notes.txt', exact: true })).toBeVisible()
+    if (attachment) await expect(page.getByRole('button', { name: 'Remove synthetic-notes.txt', exact: true })).toBeVisible()
     await expect(page.locator('input[type=file]')).toBeEnabled()
     await post.click()
     await expect(draft).toHaveValue('')
     await expect.poll(() => attempts.length).toBe(2)
     expect(attempts[1]).toBe(attempts[0])
-    await expect(page.getByRole('button', { name: 'Rename synthetic-notes.txt', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Remove synthetic-notes.txt', exact: true })).toHaveCount(0)
   })
 }
 

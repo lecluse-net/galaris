@@ -1,9 +1,10 @@
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { prepareClipboard } from '../clipboard.mjs'
 
-test('documents dropped from the list and tree persist as titled links and reversible cards', async ({ page, request, context }) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+test('documents dropped from the list and tree persist as titled links and reversible cards', async ({ page, request, context, browserName }) => {
+  await prepareClipboard(context, browserName)
   const errors = collectPageErrors(page)
   const fixture = await (await request.post('/api/__test/seed')).json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
@@ -58,6 +59,7 @@ test('documents dropped from the list and tree persist as titled links and rever
   await identifier.click()
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(source.id)
   await expect(page.getByRole('dialog')).toHaveCount(0)
+  await errors.settle()
   await page.reload()
   await expect(editor.locator('.galaris-link-card > p').first()).toHaveText(source.title)
   await editor.locator('.galaris-link-card > p').first().click()
@@ -76,6 +78,7 @@ test('documents dropped from the list and tree persist as titled links and rever
   await dropAtEnd(tree.getByText(source.title, { exact: true }), editor.locator('p').last())
   await expect(editor.locator('a')).toHaveCount(2)
   expect((await secondSave).ok()).toBeTruthy()
+  await errors.settle()
   await page.reload()
   await expect(editor.locator('a')).toHaveCount(2)
   for (const link of await editor.locator('a').all()) await expect(link).toHaveText(source.title)
@@ -99,9 +102,10 @@ test('documents dropped from the list and tree persist as titled links and rever
   const agents = await checked(await request.get('/api/agents/selection?scope=management', { headers }))
   const actor = agents.find(agent => agent.id === fixture.agent_id)
   expect(actor).toBeTruthy()
+  await errors.settle()
   await page.goto('/files')
   await page.getByRole('button', { name: `Explorer les fichiers de ${actor.label}`, exact: true }).click()
-  await page.getByText('Galaris document', { exact: true }).click()
+  await page.getByRole('main').getByRole('button', { name: 'Ouvrir Documents', exact: true }).click()
   const openTarget = page.locator('.file-main').getByRole('button', { name: `Ouvrir ${target.title}`, exact: true })
   await openTarget.click()
   const dialog = page.getByRole('dialog')
@@ -109,7 +113,7 @@ test('documents dropped from the list and tree persist as titled links and rever
   await dialog.getByRole('link', { name: source.title, exact: true }).first().click({ modifiers: ['Control'] })
   await expect(dialog.locator('[data-editor-surface]')).toHaveText('Independent referenced document')
   await expect(dialog).toHaveCount(1)
-  await expect(page).toHaveURL(/\/files$/)
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/files')
   await dialog.getByRole('button', { name: /^(Previous document|Document précédent)$/, exact: true }).click()
   await expect(dialog.locator('[data-editor-surface]')).toContainText('Preserve the report body')
   await dialog.getByRole('button', { name: /^(Next document|Document suivant)$/, exact: true }).click()

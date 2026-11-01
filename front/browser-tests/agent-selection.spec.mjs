@@ -36,7 +36,7 @@ test('Memory and Contacts reuse the last chosen agent when navigating between pa
     contactAgents.push(Number(new URL(route.request().url()).searchParams.get('agent_id')))
     return route.fulfill({ json: { items: [], total: 0 } })
   })
-  await mount(page, harness, { route: '/memory', props: { page: 'memory' } })
+  await mount(page, harness, { route: '/memory', props: { page: 'memory' }, privileges: ['MEMORY_ACCESS', 'CONTACT_ACCESS'] })
   await expect.poll(() => memoryAgents.at(-1)).toBe(7)
   await choose(page, 'Bob Exemple')
   await expect.poll(() => memoryAgents.at(-1)).toBe(8)

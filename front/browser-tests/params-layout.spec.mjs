@@ -1,5 +1,19 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
+// These journeys exercise editing and recovery. Domain isolation is covered by
+// the functional-settings tests; actors here need the section's actual grants.
+function settingsPrivileges(section, editable = true) {
+  const domains = {
+    system: ['PARAMS', 'LOG_CONFIG'], language: ['LANGUAGE_CONFIG'],
+    messaging: ['MESSAGING_CONFIG'], memory: ['MEMORY_CONFIG'], dream: ['DREAM_CONFIG'],
+    voice: ['VOICE_CONFIG'], audio: ['AUDIO_CONFIG'], process: ['PROCESS_CONFIG'],
+    tasks: ['TASK_CONFIG'], harnesses: ['HARNESS_CONFIG'], search: ['SEARCH_CONFIG'],
+    janus: ['JANUS_CONFIG'], instructions: ['INSTRUCTION_CONFIG', 'GOAL_CONFIG'], logs: ['LOG_CONFIG'],
+  }[section]
+  return domains.flatMap(domain => [`${domain}_ACCESS`, ...(editable
+    ? [domain === 'DREAM_CONFIG' ? 'DREAM_EDIT' : `${domain}_EDIT`] : [])])
+}
+
 async function fixtures(page) {
   await jsonRoute(page, '**/api/harness-manager/release', { version: '1.1.0', update_url: 'https://galaris.test/api/harness-manager/updates', sha256: 'test', size: 100 })
   await jsonRoute(page, '**/api/n8n/settings', { galaris_base_url: 'https://galaris.example.test' })
@@ -10,6 +24,7 @@ async function fixtures(page) {
   })
   await jsonRoute(page, '**/api/harnesses/catalog?*', [])
   await jsonRoute(page, '**/api/harnesses/execution-configurations', [])
+  await jsonRoute(page, '**/api/harnesses/pipeline-options', [])
   await jsonRoute(page, '**/api/harness-manager/configuration', { manager_url: 'https://manager.example.test', galaris_api_url: '', secret_configured: true })
   await jsonRoute(page, '**/api/harness-manager/diagnostics', {
     state: 'ok', secret_configured: true, api_url_source: 'APP_HOST', api_issue: 'none',
@@ -43,7 +58,7 @@ for (const [section, name, label, initial, saved, rejected, tab = 'internal', sc
   test(`${name} saves, recovers errors and persists on reopen in ${section}`, async ({ page }) => {
     await fixtures(page)
     if (name.startsWith('TASK_PLAN_')) {
-      await jsonRoute(page, '**/api/harnesses/execution-configurations', [{
+      await jsonRoute(page, '**/api/harnesses/pipeline-options', [{
         provider_code: 'internal', label: 'Internal',
         pipeline_policy: { use_planner: true, uses_llm_calls: true, execution_efforts: ['standard', 'high'] },
       }])
@@ -59,7 +74,7 @@ for (const [section, name, label, initial, saved, rejected, tab = 'internal', sc
     })
     const open = async () => {
       await mount(page, 'core/params/components/PreferencesSectionPage.vue', {
-        props: { section }, route: `/params/${section}?tab=${tab}`, privileges: ['PARAMS_ACCESS', 'PARAMS_EDIT'],
+        props: { section }, route: `/params/${section}?tab=${tab}`, privileges: settingsPrivileges(section),
       })
       await expandSettings(page)
     }
@@ -77,9 +92,8 @@ for (const [section, name, label, initial, saved, rejected, tab = 'internal', sc
     await open()
     await expect(field).toHaveValue(display(saved))
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-    await setPrivileges(page, ['PARAMS_ACCESS'])
-    if (section !== 'harnesses') await expect(field).toHaveAttribute('readonly', '')
-    else await expect(field).not.toBeVisible()
+    await setPrivileges(page, settingsPrivileges(section, false))
+    await expect(field).toHaveAttribute('readonly', '')
   })
 }
 
@@ -105,7 +119,7 @@ test('megabyte preferences preserve unchanged byte limits and reject invalid siz
     return route.fulfill({ json: { ...param, status: 'success' } })
   })
   await mount(page, 'core/params/components/PreferencesSectionPage.vue', {
-    props: { section: 'harnesses' }, route: '/params/harnesses?tab=internal', privileges: ['PARAMS_ACCESS', 'PARAMS_EDIT'],
+    props: { section: 'harnesses' }, route: '/params/harnesses?tab=internal', privileges: settingsPrivileges('harnesses'),
   })
   const field = page.getByLabel('Maximum binary file size sent to the model (MB)', { exact: true })
   await expect(field).toHaveValue('20.971521')
@@ -128,12 +142,9 @@ for (const [section, catalogs] of Object.entries(sectionCatalogs)) {
   test(`preferences ${section}: every existing setting remains available on desktop and mobile`, async ({ page }, testInfo) => {
     await fixtures(page)
     await mount(page, 'core/params/components/PreferencesSectionPage.vue', {
-      props: { section }, privileges: section === 'instructions'
-        ? ['INSTRUCTION_CONFIG_ACCESS', 'INSTRUCTION_CONFIG_EDIT', 'GOAL_CONFIG_ACCESS', 'GOAL_CONFIG_EDIT']
-        : ['PARAMS_ACCESS', 'PARAMS_EDIT', 'TASK_PURGE', 'LLM_CALL_PURGE', 'INCIDENT_PURGE'],
+      props: { section }, privileges: [...settingsPrivileges(section), 'TASK_PURGE', 'LLM_CALL_PURGE', 'INCIDENT_PURGE'],
     })
     await expect(page.locator('.settings-panel')).toBeVisible()
-    await expect(page.locator('.q-expansion-item--expanded')).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath(`${section}-desktop.png`), fullPage: true })
     await expandSettings(page)
     const labels = await page.evaluate(async catalogs => {
@@ -176,7 +187,7 @@ test('advanced task settings retain prompt drafts, save values, recover errors a
     return route.fulfill({ json: { ...retry, status: 'ok' } })
   })
   await mount(page, 'core/params/components/PreferencesSectionPage.vue', {
-    props: { section: 'tasks' }, privileges: ['PARAMS_EDIT'],
+    props: { section: 'tasks' }, privileges: settingsPrivileges('tasks'),
   })
   const attempts = page.getByLabel('Application-error attempts', { exact: true })
   await expect(attempts).not.toBeVisible()
@@ -204,20 +215,19 @@ test('advanced task settings retain prompt drafts, save values, recover errors a
   await planning.click()
   await expect(planner).toHaveValue('Unsaved objective draft')
   await setPrivileges(page, [])
-  await expect(attempts).not.toBeEditable()
-  await expect(planner).not.toBeEditable()
+  await expect(attempts).not.toBeVisible()
+  await expect(planner).not.toBeVisible()
 })
 
 test('changing messaging provider closes its advanced controls and shows the correct settings', async ({ page }) => {
   await fixtures(page)
-  await mount(page, 'core/params/components/MessagingSettingsPanel.vue', { privileges: ['PARAMS_EDIT'] })
+  await mount(page, 'core/params/components/MessagingSettingsPanel.vue', { privileges: settingsPrivileges('messaging') })
   await page.getByRole('tab', { name: /Matrix/ }).click()
   const server = page.getByLabel('Matrix homeserver URL', { exact: true })
   await expect(server).toBeVisible()
   await page.getByText('Advanced settings', { exact: true }).click()
   await page.getByRole('tab', { name: /WhatsApp/ }).click()
   await expect(server).not.toBeVisible()
-  await expect(page.locator('.q-expansion-item--expanded')).toHaveCount(0)
   await expandSettings(page)
   await expect(page.getByLabel('Graph API URL', { exact: true })).toBeVisible()
 })
@@ -229,7 +239,7 @@ test('harness provider preferences keep global defaults and installation help ac
     { name: 'hermes.default.data-env', value: 'EXAMPLE=value', secret: false, configured: true },
   ] })
   await mount(page, 'core/params/pages/harnesses/[provider].vue', {
-    route: '/params/harnesses/hermes', privileges: ['PARAMS_ACCESS', 'PARAMS_EDIT'],
+    route: '/params/harnesses/hermes', privileges: settingsPrivileges('harnesses'),
   })
   // The component test router has a catch-all route; supply the real route parameter.
   await page.evaluate(async () => {

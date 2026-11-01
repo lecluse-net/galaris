@@ -144,13 +144,16 @@ test(`OAuth reuses an existing connection and its saved parameters (${scenario})
   let savedRegion = 'us'
   await page.route('**/api/connections/overview?*', route => route.fulfill({ json: scenario === 'listed'
     ? [{ ...existing, params: { region: savedRegion, secret: null }, configured_params: ['secret'] }] : [] }))
-  await jsonRoute(page, '**/api/tools', [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
+  const tools = [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
     mcp_config: { type: 'http', auth: { type: 'none' } },
     global_params: { secret: { configured: true, value: null, forced: false } }, connection_schema: { params: {
       region: { type: 'string', label: 'Service region', default: 'eu', required: false },
       secret: { type: 'password', label: 'Service secret', required: false },
-    } } }])
+    } } }]
+  await jsonRoute(page, '**/api/tools', tools)
+  await jsonRoute(page, '**/api/connections/tool-options', tools)
   await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
+  await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic Agent', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/mail/approvers', [])
   await page.route('**/api/connections?*', route => {
     const params = new URL(route.request().url()).searchParams
@@ -220,10 +223,13 @@ test('OAuth retries a parameter save without recreating the connection or losing
   let creations = 0
   let parameterWrites = 0
   let starts = 0
-  await jsonRoute(page, '**/api/tools', [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
+  const tools = [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
     mcp_config: { type: 'http', auth: { type: 'none' } },
-    connection_schema: { params: { region: { type: 'string', label: 'Service region', required: false } } } }])
+    connection_schema: { params: { region: { type: 'string', label: 'Service region', required: false } } } }]
+  await jsonRoute(page, '**/api/tools', tools)
+  await jsonRoute(page, '**/api/connections/tool-options', tools)
   await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
+  await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic Agent', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/mail/approvers', [])
   await page.route('**/api/connections?*', route => route.fulfill({ json: connections }))
   await page.route('**/api/connections', route => {
@@ -276,6 +282,7 @@ test('OAuth retries a parameter save without recreating the connection or losing
 for (const transport of ['http', 'sse', 'stdio']) {
   test(`account authorization belongs to the ${transport} connection`, async ({ page }) => {
     await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
+  await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic Agent', agent_driver: 'internal' }])
     await jsonRoute(page, '**/api/connections/42/oauth', { connected: false, pending: false, reconnect_required: false })
     await mount(page, 'app/connection/components/ConnectionForm.vue', {
       privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL'],
@@ -296,6 +303,7 @@ for (const transport of ['http', 'sse', 'stdio']) {
 for (const changeConnection of [false, true]) {
 test(`account authorization saves first and retries errors (connection changes: ${changeConnection})`, async ({ page }) => {
   await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
+  await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic Agent', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/connections/84/oauth', { connected: false, pending: false, reconnect_required: false })
   const starts = []
   await page.route('**/api/connections/*/oauth/start', route => {

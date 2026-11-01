@@ -26,9 +26,9 @@ test('file previews open a read-only Process modal and a Run modal with their di
     page: 1, page_size: 50, events: [], event_cursor: 0, breakpoints: [], node_statuses: {}, can_control: false, paused: false,
     data: {}, files: [], data_revision: 1, data_uri: runUri + '/data', attachments_uri: runUri + '/attachments/' })
   await jsonRoute(page, `**/api/processes/internal/runs/${runId}/metrics*`, { direct: {}, inclusive: {}, tasks: {}, nodes: {}, partial: false })
-  await mount(page, 'app/file_share/pages/index.vue', { privileges: ['MEMORY_ACCESS', 'PROCESS_READ'] })
+  await mount(page, 'app/file_share/pages/index.vue', { privileges: ['FILE_ACCESS', 'PROCESS_READ'] })
   await page.getByRole('button', { name: 'Browse files for Alice Example', exact: true }).click()
-  await page.getByText('Galaris', { exact: true }).click()
+  await page.locator('.file-scheme-label').getByText('Galaris', { exact: true }).click()
   await expect(page.locator('.process-thumbnail svg')).toHaveCount(2)
   await expect(page.locator('.process-thumbnail-run')).toHaveCount(1)
   await page.locator('.file-main').getByRole('button', { name: 'Open Synthetic process', exact: true }).click()

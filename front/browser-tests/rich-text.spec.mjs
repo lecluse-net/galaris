@@ -215,7 +215,11 @@ for (const width of [1440, 390]) test(`table presets preserve editable structure
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: source, ariaLabel: 'Editorial content' } })
   const surface = page.locator('[data-editor-surface]'), table = surface.locator('table')
   const tools = page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
-  const openStyles = async () => { await selectDocumentContext(page, surface.getByText('One', { exact: true })); await tools.getByRole('button', { name: 'Table styles', exact: true }).click() }
+  const openStyles = async () => {
+    await surface.press('Control+Home')
+    await selectDocumentContext(page, surface.getByText('One', { exact: true }))
+    await tools.getByRole('button', { name: 'Table styles', exact: true }).click()
+  }
   await openStyles()
   await expect(page.getByRole('group', { name: 'Color palettes' })).toBeVisible()
   await page.locator('.editorial-table-gallery').screenshot({ path: testInfo.outputPath('table-style-gallery.png'), animations: 'disabled' })

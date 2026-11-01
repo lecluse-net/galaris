@@ -13,11 +13,13 @@ bash bin/test-e2e.sh
 while read -r image_id image_tag; do
   case "$image_tag" in
     galaris-release-code-executor:*)
+      # The installed image owns the runtime. The deployment controller is
+      # qualified from source by tests-code, outside that production image.
       docker run --rm --network none --entrypoint python3 \
         --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
         --security-opt systempaths=unconfined --cap-add SYS_ADMIN --cap-add NET_ADMIN \
         -v "$PWD/code-executor/tests:/opt/galaris-code/tests:ro" -w /opt/galaris-code \
-        "$image_id" -m unittest discover -s tests -v ;;
+        "$image_id" -m unittest -v tests.test_runtime tests.test_profiles tests.test_git ;;
     galaris-release-browser-executor:*)
       docker run --rm --network none --init --entrypoint npm "$image_id" test ;;
     galaris-release-ssh-executor:*)

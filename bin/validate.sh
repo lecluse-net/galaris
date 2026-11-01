@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Qualify one frozen worktree, including uncommitted changes, with isolated services.
 set -euo pipefail
-validation_limit=${VALIDATION_TIMEOUT_SECONDS:-2700}
+# Backend coverage alone takes about 45 minutes; leave time for setup and the
+# executor gates that follow it. The deadline still bounds and cleans up a run.
+validation_limit=${VALIDATION_TIMEOUT_SECONDS:-7200}
 validation_repeats=${VALIDATION_E2E_REPEATS:-1}
 for value in "$validation_limit" "$validation_repeats"; do
   if [[ ! $value =~ ^[1-9][0-9]*$ ]]; then

@@ -114,5 +114,5 @@ test('two document applications collect into the same Dataset with isolated Java
   await expect(page.locator('.document-application iframe')).toHaveCount(0)
   expect(escaped).toEqual([])
   await page.goto(`/dataset/${dataset.id}`)
-  await expect(page.getByRole('textbox', { name: /^(JSON content|Contenu JSON)$/ })).toHaveValue(stored.content)
+  await expect(page.locator('textarea.code-editor')).toHaveValue(stored.content)
 })

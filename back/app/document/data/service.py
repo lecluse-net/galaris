@@ -146,7 +146,7 @@ async def replace(identity: UUID, actor: DataActor, *, content: str, expected_re
         **actor_keys(actor)))
     await get_db().flush()
     from .projection import changed
-    await changed(dataset)
+    await changed(dataset, invalidate_access=False)
     return dataset
 
 

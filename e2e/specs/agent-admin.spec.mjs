@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -17,12 +18,12 @@ async function setupAdministration(page, request) {
   // Resolve optional onboarding before opening the growing agent catalogue.
   // Its locator handler would otherwise run inside the portrait assertions.
   await pageErrors.settle()
-  const notificationPrompt = page.locator('.chat-notification-prompt')
-  if (await notificationPrompt.isVisible()) {
-    await notificationPrompt.getByRole('button', { name: 'Plus tard', exact: true }).click()
-    await expect(notificationPrompt).toBeHidden()
+  const promptToDismiss = notificationPrompt(page)
+  if (await promptToDismiss.isVisible()) {
+    await promptToDismiss.getByRole('button', { name: 'Plus tard', exact: true }).click()
+    await expect(promptToDismiss).toBeHidden()
   }
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), async prompt => {
+  await page.addLocatorHandler(notificationPrompt(page), async prompt => {
     await prompt.getByRole('button', { name: 'Plus tard', exact: true }).click()
   })
   const headers = { Authorization: `Bearer ${session.access_token}` }

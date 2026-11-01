@@ -37,10 +37,10 @@ class LegacyDataset(Shareable, HistoryMixin, Base):
     creation_fingerprint: Mapped[str | None] = mapped_column(String(64))
     __table_args__ = (
         *Shareable.share_constraints("datasets", "dataset"),
-        CheckConstraint("owner_agent_id IS NULL OR owner_user_id IS NULL"),
-        CheckConstraint("global_access IN (0,1,2) AND group_access IN (0,1,2)"),
-        CheckConstraint("global_access = 0 OR group_access = 0"),
-        CheckConstraint("revision > 0 AND lock_version > 0"),
+        CheckConstraint("owner_agent_id IS NULL OR owner_user_id IS NULL", name="ck_datasets_owner"),
+        CheckConstraint("global_access IN (0,1,2) AND group_access IN (0,1,2)", name="ck_datasets_access_levels"),
+        CheckConstraint("global_access = 0 OR group_access = 0", name="ck_datasets_access_exclusive"),
+        CheckConstraint("revision > 0 AND lock_version > 0", name="ck_datasets_revisions"),
     )
 
 

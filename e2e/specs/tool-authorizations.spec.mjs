@@ -1,12 +1,17 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { selectOption } from '../select-option.mjs'
 
 for (const width of [390, 1440]) {
   test(`human approval protects the exact action and survives reopening at ${width}px`, async ({ page, request }) => {
     test.setTimeout(90_000)
     await page.setViewportSize({ width, height: 900 })
     const errors = collectPageErrors(page)
+    await page.addLocatorHandler(notificationPrompt(page), async prompt => {
+      await prompt.getByRole('button', { name: 'Plus tard', exact: true }).click()
+    })
     const fixture = await (await request.post('/api/__test/seed')).json()
     const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
     await page.goto('/user/login')
@@ -127,19 +132,14 @@ for (const width of [390, 1440]) {
     }
     await errors.settle()
     await page.goto('/tools')
-    await page.addLocatorHandler(page.locator('.chat-notification-prompt'), async prompt => {
-      await prompt.getByRole('button', { name: 'Plus tard', exact: true }).click()
-    })
     if (width < 1024) {
       await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
         await backdrop.click({ position: { x: width - 10, y: 200 } })
       }, { times: 1 })
     }
     await page.getByRole('tab', { name: 'Autorisations', exact: true }).click()
-    await page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }).click()
-    await page.getByRole('option', { name: `${operator.first_name} ${operator.last_name}`, exact: true }).click()
-    await page.getByRole('combobox', { name: 'Filtrer par outil', exact: true }).click()
-    await page.getByRole('option', { name: 'AgentAdmin', exact: true }).click()
+    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${operator.first_name} ${operator.last_name}`)
+    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par outil', exact: true }), 'AgentAdmin')
     await page.getByRole('textbox', { name: 'Rechercher une fonction', exact: true }).fill('agent_update')
     const global = page.getByRole('group', { name: 'Global (tous): agent_update', exact: true })
     const local = page.getByRole('group', { name: 'Cette connexion: agent_update', exact: true })

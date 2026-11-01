@@ -20,7 +20,7 @@ class LabProcessCampaign(HistoryMixin, Base):
     owner_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
     dataset_id: Mapped[UUID | None] = mapped_column(ForeignKey("datasets.id", ondelete="RESTRICT"))
     # Existing campaigns retain their original FK during the additive transition.
-    # New campaigns exclusively reference the native Dataset column above.
+    # New campaigns exclusively reference their canonical Data document below.
     dataset_document_id: Mapped[UUID | None] = mapped_column(ForeignKey("documents.id", ondelete="RESTRICT"))
     process_code: Mapped[str] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(300))

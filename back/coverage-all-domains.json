@@ -76,6 +76,13 @@
     "line_min": 61,
     "branch_min": 37
   },
+  "app/document/": {
+    "prefixes": [
+      "app/document/"
+    ],
+    "line_min": 80,
+    "branch_min": 65
+  },
   "app/documentation/": {
     "prefixes": [
       "app/documentation/"

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { selectOption } from '../select-option.mjs'
 
 for (const width of [1440, 390]) {
   test(`human personal skill administration persists through reopening at ${width}px`, async ({ page, request }, testInfo) => {
@@ -27,8 +28,7 @@ for (const width of [1440, 390]) {
       if (await backdrop.isVisible()) await backdrop.click({ position: { x: 380, y: 400 } })
     }
     await page.getByRole('tab', { name: 'Compétences personnelles', exact: true }).click()
-    await page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }).click()
-    await page.getByRole('option', { name: fixture.agent_label, exact: true }).click()
+    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), fixture.agent_label)
     await page.getByText(guide.label, { exact: true }).click()
     let dialog = page.getByRole('dialog')
     await expect(dialog.getByLabel('Libellé', { exact: true })).not.toHaveAttribute('readonly')
@@ -113,13 +113,11 @@ for (const width of [1440, 390]) {
     expect((await request.get('/api/skills/authorizations', { headers, params: { skill_id: guide.id } })).status()).toBe(404)
     await page.getByRole('tab', { name: 'Compétences personnelles', exact: true }).click()
     // The reload used to verify global activation clears this local filter.
-    await page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }).click()
-    await page.getByRole('option', { name: fixture.agent_label, exact: true }).click()
+    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), fixture.agent_label)
     await page.getByText(editedLabel, { exact: true }).click()
     await expect(page.getByRole('dialog').getByText('Verified human edit', { exact: true })).toBeVisible()
     const ownerSelect = page.getByRole('dialog').getByRole('combobox', { name: 'Agent propriétaire', exact: true })
-    await ownerSelect.click()
-    await page.getByRole('option', { name: fixture.recipient_label, exact: true }).click()
+    await selectOption(page, ownerSelect, fixture.recipient_label)
     await page.getByRole('dialog').getByRole('button', { name: 'Changer de propriétaire', exact: true }).click()
     await page.getByRole('dialog').last().getByRole('button', { name: 'Changer de propriétaire', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)

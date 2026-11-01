@@ -4,7 +4,7 @@ test('Browser preferences appear only for an active connection and refresh after
   let enabled = false
   await page.route('**/api/browser/status', route => route.fulfill({ json: { enabled } }))
   await jsonRoute(page, '**/api/connections/7', { id: 7, tool_id: 2, agent_id: 1, active: true })
-  await mount(page, 'core/params/pages/index.vue', { privileges: ['PARAMS_ACCESS', 'PARAMS_EDIT'] })
+  await mount(page, 'core/params/pages/index.vue', { privileges: ['BROWSER_CONFIG_ACCESS', 'BROWSER_CONFIG_EDIT'] })
   const link = page.getByRole('link', { name: /Browser/ })
   await expect(link).toHaveCount(0)
   enabled = true
@@ -26,7 +26,7 @@ test('direct Browser preferences access recovers status failures and returns hom
   await page.route('**/api/browser/status', route => route.fulfill(failed
     ? { status: 503, json: { detail: 'offline' } } : { json: { enabled: false } }))
   await mount(page, 'app/browser/pages/settings.vue', {
-    route: '/browser/settings', privileges: ['PARAMS_ACCESS'],
+    route: '/browser/settings', privileges: ['BROWSER_CONFIG_ACCESS'],
   })
   await expect(page.getByText('Browser preferences could not be loaded.')).toBeVisible()
   await expect(page.locator('input')).toHaveCount(0)
@@ -53,7 +53,7 @@ test(`${name} preserves values across saves, errors, reopen and read-only access
     param.value = route.request().postDataJSON().value
     return route.fulfill({ json: { ...param, status: 'success' } })
   })
-  await mount(page, 'app/browser/pages/settings.vue', { privileges: ['PARAMS_ACCESS', 'PARAMS_EDIT'] })
+  await mount(page, 'app/browser/pages/settings.vue', { privileges: ['BROWSER_CONFIG_ACCESS', 'BROWSER_CONFIG_EDIT'] })
   const width = page.getByLabel(label, { exact: true })
   const display = value => String(Number(value) / divisor)
   await expect(width).toHaveValue(display(initial))
@@ -69,7 +69,7 @@ test(`${name} preserves values across saves, errors, reopen and read-only access
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.evaluate(() => window.testApp.mount({ component: 'app/browser/pages/settings.vue' }))
   await expect(width).toHaveValue(display(saved))
-  await setPrivileges(page, ['PARAMS_ACCESS'])
+  await setPrivileges(page, ['BROWSER_CONFIG_ACCESS'])
   await expect(width).toHaveAttribute('readonly', '')
 })
 }
@@ -77,7 +77,7 @@ test(`${name} preserves values across saves, errors, reopen and read-only access
 test('a late Browser availability response cannot restore a signed-out preference page', async ({ page }) => {
   let pending
   await page.route('**/api/browser/status', route => { pending = route })
-  await mount(page, 'core/params/pages/index.vue', { privileges: ['PARAMS_ACCESS'] })
+  await mount(page, 'core/params/pages/index.vue', { privileges: ['BROWSER_CONFIG_ACCESS'] })
   await expect.poll(() => Boolean(pending)).toBe(true)
   await page.evaluate(() => window.testApp.auth.$patch({ token: null }))
   await pending.fulfill({ json: { enabled: true } })

@@ -18,18 +18,29 @@ from .values import ValueContractError as ValueContractError
 
 async def active_work_for_agent(agent_id: int, *, reader: AgentManagementScope | None = None) -> tuple[dict[str, object], ...]:
     """Current work in the agent's participation scope, without administrative expansion."""
-    from sqlalchemy import select
+    from sqlalchemy import and_, or_, select
     from .models import ProcessRun
     from .native_runs import readable_run_clause
     from .run_observation import observe_run
 
     query = select(ProcessRun).where(
-        readable_run_clause(agent_id), ProcessRun.status.in_(("queued", "running", "waiting", "unknown")),
+        or_(
+            and_(ProcessRun.engine_code == "galaris", readable_run_clause(agent_id),
+                or_(ProcessRun.launcher_agent_id == agent_id,
+                    ProcessRun.launch_snapshot["participant_agents"].contains([agent_id]))),
+            and_(ProcessRun.engine_code != "galaris", ProcessRun.launcher_agent_id == agent_id),
+        ),
+        ProcessRun.status.in_(("queued", "running", "waiting", "unknown")),
         ProcessRun.engine_metadata["native"]["cancel_requested"].as_boolean().is_not(True),
         ProcessRun.engine_metadata["native"]["paused"].as_boolean().is_not(True),
     )
     if reader is not None:
-        query = query.where(readable_run_clause(reader))
+        external_scope = (ProcessRun.launcher_agent_id.is_not(None) if reader.agent_ids is None
+                          else ProcessRun.launcher_agent_id.in_(reader.agent_ids))
+        query = query.where(or_(
+            and_(ProcessRun.engine_code == "galaris", readable_run_clause(reader)),
+            and_(ProcessRun.engine_code != "galaris", external_scope),
+        ))
     runs = list(await get_db().scalars(ProcessRun.histo_filter(query.order_by(ProcessRun.created_at.desc(), ProcessRun.id))))
     visible = {str(run.id) for run in runs}
     items: list[dict[str, object]] = []

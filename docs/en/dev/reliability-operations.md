@@ -111,8 +111,15 @@ locks, leases, wakeups and execution remain real. Production polling is unchange
 Components use four workers with browser contexts and HTTP fixtures isolated per test.
 `make validate` retains every gate and runs each journey once on each of the three browsers.
 `make validate-stability` repeats journeys three times per browser to detect instability.
-Both commands have a 45-minute deadline: exceeding it stops tests, cleans up their environments
+Normal validation has a two-hour deadline and stability validation four hours: exceeding it stops tests, cleans up their environments
 and reports an incomplete result. Set `VALIDATION_TIMEOUT_SECONDS` to explicitly adjust it.
+Backend coverage alone took about 45 minutes on the 0.3 corpus; the deadline also includes
+setup and the executor checks that follow the parallel suites.
+CI allows 90 minutes for the backend, 45 for components, four hours for three E2E repetitions,
+and three hours for sequential release-bundle qualification.
+Critical coverage follows native storage moved to `core/storage/resources.py`, keeping
+the same floors. Quality controls reject patterns without an existing source or critical
+domains without a selected file; coverage diagnostics name missing domains.
 Validation runs backend, components
 E2E and mutations concurrently after static checks. Mutations use their own disposable
 source copies. It waits for every suite, propagates failures and

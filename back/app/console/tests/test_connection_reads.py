@@ -195,7 +195,7 @@ async def test_console_discovery_http_permissions_scopes_and_reopening(client):
     password = "synthetic-console-reader-password"
     async with get_db_session() as db:
         privileges = list((await db.scalars(select(Privilege).where(Privilege.code.in_(
-            ["MEMORY_ACCESS", "CONSOLE_ACCESS"],
+            ["MEMORY_ACCESS", "CONSOLE_ACCESS", "FILE_ACCESS"],
         )))).all())
         role = Role(code="synthetic-console-reader", privileges=privileges)
         password_hash = encrypt_password(password)
@@ -226,6 +226,8 @@ async def test_console_discovery_http_permissions_scopes_and_reopening(client):
     assert (await client.get(schemes_path, params={"agent_id": owner_id})).status_code == 401
     headers = []
     for index in range(2):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={
             "email": f"console-reader-{index}@example.com", "password": password,
         })

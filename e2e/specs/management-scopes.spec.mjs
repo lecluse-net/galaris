@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
@@ -10,7 +11,7 @@ test('five administrative Tools retain a human-selected scope and enforce it on 
     return response.status() === 204 ? null : response.json()
   }
   const fixture = await checked(await request.post('/api/__test/seed'))
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt =>
+  await page.addLocatorHandler(notificationPrompt(page), prompt =>
     prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   await page.goto('/user/login')
   await page.locator('input[type=email]').fill(fixture.email)
@@ -80,6 +81,7 @@ test('five administrative Tools retain a human-selected scope and enforce it on 
     await checked(await request.put(`/api/connections/${connection.id}/functions/${domain.function}`, { headers, data: { state: 'enabled' } }))
     expect((await invoke(domain)).is_error, `${domain.code}: usage must not administer`).toBe(true)
     await page.goto('/tools?tab=connections')
+    await errors.settle()
     await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${caller.first_name} ${caller.last_name}`)
     const row = page.locator('tbody tr').filter({ hasText: domain.label })
     await expect(row).toHaveCount(1)

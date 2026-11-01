@@ -47,7 +47,7 @@ async def test_live_work_prompt_keeps_old_waits_and_excludes_finished_stopped_an
             for status in (TaskStatus.SUCCESS, TaskStatus.ERROR)],
     ]
     definition = ProcessDefinition(agent_id=owner.id, tool_id=tool.id,
-        engine_process_id=uuid4().hex, label="Synthetic workflow")
+        engine_process_id=uuid4().hex, label="Synthetic workflow", code=uuid4().hex, bpmn_xml="<synthetic/>")
     db.add_all([*tasks, definition])
     await db.flush()
     runs: dict[str, ProcessRun] = {}
@@ -64,7 +64,7 @@ async def test_live_work_prompt_keeps_old_waits_and_excludes_finished_stopped_an
         ("Other process", "running", {}, other.id),
     ]:
         run = ProcessRun(process_id=definition.id, launcher_agent_id=agent_id,
-            engine_code="galaris" if label == "Human question" else "fake",
+            engine_code="galaris" if label in {"Human question", "Participant process"} else "fake",
             correlation_id=uuid4().hex, callback_token=uuid4().hex, status=status,
             created_at=old, engine_metadata={"native": metadata},
             launch_snapshot={"process_label": label, "workflow_id": "synthetic-workflow",
@@ -140,7 +140,7 @@ async def test_active_work_api_enforces_privileges_scope_and_pagination(client) 
         db.add(agent)
         await db.flush()
         definition = ProcessDefinition(agent_id=agent.id, tool_id=tool.id,
-            engine_process_id=suffix, label="Synthetic monitoring process")
+            engine_process_id=suffix, label="Synthetic monitoring process", code=suffix, bpmn_xml="<synthetic/>")
         db.add(definition)
         await db.flush()
         db.add_all(Task(agent_id=agent.id, label=f"Pending {index}", status=TaskStatus.CREATE) for index in range(2))

@@ -20,7 +20,7 @@ async def test_preferences_diagnostics_enforce_rights_and_never_execute_or_revea
     original = runtime_settings.model_dump()
     headers = {}
     async with get_db_session() as db:
-        for name, permission in [('editor', 'PARAMS_EDIT'), ('reader', 'PARAMS_ACCESS'), ('outsider', None)]:
+        for name, permission in [('editor', 'PROCESS_CONFIG_EDIT'), ('reader', 'PROCESS_CONFIG_ACCESS'), ('outsider', None)]:
             user = User(email=f'n8n-{uuid4().hex}@example.test', hashed_password='unused')
             db.add(user)
             await db.flush()

@@ -1,15 +1,32 @@
 import { test, expect, mount, setPrivileges, jsonRoute } from './fixtures.mjs'
 
-test('Skill assignment alone opens its catalogue without exposing the learned-skill reader', async ({ page }) => {
+test('Tools deep links select their permitted tab after delayed authorization and follow navigation', async ({ page }) => {
+  for (const path of ['mail/approvers', 'tools', 'file-share/bridges', 'messenger/bridges']) await jsonRoute(page, `**/api/${path}`, [])
+  await jsonRoute(page, '**/api/connections/overview?*', [])
+  await jsonRoute(page, '**/api/connections/tool-options', [])
+  await jsonRoute(page, '**/api/connections/permission-options?*', [])
+  await mount(page, 'app/tools/pages/index.vue', { route: '/tools?tab=connections', privileges: [] })
+  await expect(page.getByRole('tab')).toHaveCount(0)
+  await setPrivileges(page, ['TOOL_ACCESS', 'CONNECTION_ACCESS', 'PERMISSION_ACCESS'])
+  await expect(page.getByRole('tab', { name: 'Connections', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await page.evaluate(() => window.testApp.router.push('/tools?tab=authorizations'))
+  await expect(page.getByRole('tab', { name: 'Authorizations', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await setPrivileges(page, ['TOOL_ACCESS'])
+  await expect(page.getByRole('tab', { name: 'Tools', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Authorizations', exact: true })).toHaveCount(0)
+})
+
+test('Skill assignment opens its catalogue and assignment controls without editing the catalogue', async ({ page }) => {
   await jsonRoute(page, '**/api/skills', [])
   await jsonRoute(page, '**/api/skills/agents', [])
   await jsonRoute(page, '**/api/skills/categories', [])
   await mount(page, 'app/skill/pages/index.vue', { privileges: ['SKILL_ASSIGN'] })
-  await expect(page.getByRole('tab', { name: 'Self-learning', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Authorizations', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Import a skill', exact: true })).toHaveCount(0)
   await setPrivileges(page, ['SKILL_ACCESS'])
-  await expect(page.getByRole('tab', { name: 'Self-learning', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('tab', { name: 'Authorizations', exact: true })).toHaveCount(0)
   await setPrivileges(page, ['SKILL_ASSIGN'])
-  await expect(page.getByRole('tab', { name: 'Self-learning', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Authorizations', exact: true })).toBeVisible()
 })
 
 test('shell notifications wait for Chat access and stop when the role loses it', async ({ page }) => {
@@ -74,6 +91,22 @@ test('model-only and profile-only roles open their allowed tab without loading p
   await expect(page.getByRole('tab')).toHaveCount(1)
   await expect(page.getByRole('tab')).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('tab', { name: 'Available models', exact: true })).toHaveCount(0)
+})
+
+test('the requested Models tab survives an empty authorization state and subsequent loading', async ({ page }) => {
+  await jsonRoute(page, '**/api/llm-providers', [])
+  await jsonRoute(page, '**/api/llm-providers/catalog', { items: [], users: [], active_user_count: 0 })
+  await jsonRoute(page, '**/api/llm-providers/llms', [])
+  await jsonRoute(page, '**/api/llm-profiles', { profiles: [], current_profile_id: null })
+  await mount(page, 'app/llm/pages/index.vue', { route: '/llm?tab=models', privileges: [] })
+  await expect(page.getByRole('tab')).toHaveCount(0)
+  await setPrivileges(page, ['LLM_PROVIDER_ACCESS', 'LLM_MODEL_ACCESS', 'LLM_PROFILE_ACCESS'])
+  await expect(page.getByRole('tab', { name: 'Available models', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await setPrivileges(page, [])
+  await expect(page.getByRole('tab')).toHaveCount(0)
+  await setPrivileges(page, ['LLM_PROVIDER_ACCESS', 'LLM_MODEL_ACCESS', 'LLM_PROFILE_ACCESS'])
+  await expect(page.getByRole('tab', { name: 'Available models', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.query.tab)).toBe('models')
 })
 
 for (const width of [1440, 390]) test(`indexing preferences can be delegated without Files or Dream access at ${width}px`, async ({ page }, testInfo) => {

@@ -170,7 +170,7 @@ test('a failed topic lookup explains the error and recovers on the next search',
   await mount(page, 'app/topic/components/TopicSelect.vue', { props: { modelValue: null, label: 'Topic' } })
   await page.getByRole('combobox', { name: 'Topic', exact: true }).click()
   await expect(page.getByText('Topic lookup unavailable', { exact: false })).toBeVisible()
-  await expect(page.getByRole('listbox')).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Topic', exact: true })).toHaveAttribute('aria-expanded', 'true')
   let release
   const pending = new Promise(resolve => { release = resolve })
   await page.route('**/api/topics?*', async route => {

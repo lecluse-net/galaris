@@ -17,6 +17,7 @@ import httpx2
 from fastapi.responses import JSONResponse, StreamingResponse
 from openai import AsyncOpenAI
 from pydantic_ai.messages import ModelMessagesTypeAdapter
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -30,7 +31,7 @@ from .call_capture import TextCallCapture, text_call_capture
 from .contracts import InferenceEvent, ProtocolInferenceRequest
 from .models import LLMCall, LLMCallEvent
 from .provider_models import LLM
-from .provider_facade import ProviderAuthenticationError, ReasoningEffort
+from .provider_facade import ProviderAuthenticationError, ProviderUnavailableError, ReasoningEffort
 from .profile_gateway import profile_error, resolve_profile_model
 from .text_inference import RecordedTextModel, persist_events, message_for_part
 from .trace import extract_prompts
@@ -242,8 +243,14 @@ async def run_protocol(
         exc = transport.failure or exc
         result.success = False
         result.metadata.update(error=str(exc) or type(exc).__name__, error_type=type(exc).__name__)
+        if isinstance(exc, Exception) and provider_failure_allows_fallback(exc):
+            # SDK wrappers retain typed causes only in-process. Preserve the
+            # availability classification before the durable JSON boundary.
+            result.metadata["provider_unavailable"] = True
         if isinstance(exc, ProviderAuthenticationError):
             result.metadata["error_status"] = exc.status_code
+        if isinstance(exc, ModelHTTPError):
+            result.metadata.update(model_http_error=True, error_status=exc.status_code, error_model_name=exc.model_name)
         if isinstance(exc, asyncio.CancelledError):
             raise
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
@@ -289,9 +296,14 @@ def _raise_failure(result: AIResult | None) -> None:
     kind = metadata.get("error_type")
     if kind == "ProviderAuthenticationError":
         raise ProviderAuthenticationError(message, status_code=int(metadata.get("error_status", 401)))
-    if kind in {"TimeoutException", "ReadTimeout", "ConnectTimeout", "PoolTimeout", "WriteTimeout"}:
+    if kind == "ModelHTTPError" or metadata.get("model_http_error") is True:
+        raise ModelHTTPError(status_code=int(metadata.get("error_status", 500)),
+            model_name=str(metadata.get("error_model_name", "")), body=message)
+    if metadata.get("provider_unavailable") is True:
+        raise ProviderUnavailableError(message)
+    if kind in {"TimeoutException", "ReadTimeout", "ConnectTimeout", "PoolTimeout", "WriteTimeout", "APITimeoutError"}:
         raise httpx.TimeoutException(message)
-    if kind in {"TransportError", "ReadError", "ConnectError", "RemoteProtocolError"}:
+    if kind in {"TransportError", "ReadError", "ConnectError", "RemoteProtocolError", "APIConnectionError"}:
         raise httpx.TransportError(message)
     if kind == "LookupError":
         raise LookupError(message)
@@ -469,8 +481,6 @@ async def _request(
         try:
             response = await protocol_response(request)
             if isinstance(response, JSONResponse) and response.status_code >= 400:
-                from pydantic_ai.exceptions import ModelHTTPError
-
                 failure = ModelHTTPError(response.status_code, llm.llm_name, json.loads(bytes(response.body)))
                 if fallback is None or not provider_failure_allows_fallback(failure):
                     return response

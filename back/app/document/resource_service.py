@@ -807,10 +807,10 @@ async def update_item(
     provider = get_storage(item.provider_code)
     if "payload" in fields and data.payload is not None:
         content = decode_payload(data.payload)
-        if item.node_kind == "document":
-            validate_document_content(item.document_type, content)
         if item.document_type == "data" and (data.content_type not in (None, "text") or data.media_type not in (None, "application/json")):
             raise DocumentConflictError("A Data document remains JSON")
+        if item.node_kind == "document":
+            validate_document_content(item.document_type, content)
         future_content_type = data.content_type or item.content_type
         future_media_type = data.media_type or item.media_type
         if future_content_type == "text" and future_media_type in {

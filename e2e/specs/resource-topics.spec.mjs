@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
@@ -5,7 +6,7 @@ import { collectPageErrors } from '../page-errors.mjs'
 test('Document and Dataset topic badges persist manual assignments through the real application', async ({ page, request }) => {
   const errors = collectPageErrors(page)
   test.setTimeout(120_000)
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt => prompt.getByRole('button', { name: /^(Plus tard|Later)$/, exact: true }).click())
+  await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: /^(Plus tard|Later)$/, exact: true }).click())
   const fixture = await (await request.post('/api/__test/seed')).json()
   await page.goto('/user/login')
   await page.locator('input[type=email]').fill(fixture.email)
@@ -36,7 +37,9 @@ test('Document and Dataset topic badges persist manual assignments through the r
     const audit = page.getByRole('dialog').last()
     await audit.getByRole('combobox').click()
     await page.getByRole('option', { name: topics[1].title, exact: true }).click()
-    const saved = page.waitForResponse(response => response.url().endsWith(`/topics/resources/${kind}/${resource.id}`) && response.request().method() === 'PUT')
+    // Text and Data use the common Document editor; the dataset API above
+    // remains a compatibility entry point for the initial assignment.
+    const saved = page.waitForResponse(response => response.url().endsWith(`/topics/resources/document/${resource.id}`) && response.request().method() === 'PUT')
     await audit.getByRole('button', { name: /^(Enregistrer le sujet|Save dossier)$/, exact: true }).click()
     expect((await saved).ok()).toBeTruthy()
     await expect(page.getByRole('button', { name: new RegExp(topics[1].title) })).toBeVisible()

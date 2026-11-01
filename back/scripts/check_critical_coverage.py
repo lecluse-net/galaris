@@ -87,8 +87,9 @@ def measure(xml: Path, domains: dict[str, Domain]) -> tuple[dict[str, Counts], d
                 total.branches += branches
                 if hit < branches:
                     missing.setdefault(filename, set()).add(int(line.attrib["number"]))
-    if any(row.lines == 0 for row in counts.values()):
-        raise ValueError("A critical domain is missing from the coverage report")
+    absent = [name for name, row in counts.items() if row.lines == 0]
+    if absent:
+        raise ValueError("Critical domains are missing from the coverage report: " + ", ".join(absent))
     return counts, missing
 
 

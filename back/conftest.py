@@ -199,9 +199,12 @@ async def db() -> AsyncIterator[AsyncSession]:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(committed_database) -> AsyncIterator[AsyncClient]:
+async def client(committed_database, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncClient]:
     """Provide an ASGI client whose request commits remain rollback-only."""
 
+    # Cookie security must match the synthetic transport, independently of the
+    # developer's HTTPS deployment. Auth tests may override this explicitly.
+    monkeypatch.setattr(settings, "APP_HOST", "http://localhost")
     await engine.dispose(close=False)
     from core.database import middleware as database_middleware
 

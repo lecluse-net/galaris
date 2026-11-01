@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, editorHtml, selectDocumentContext } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
 const id = '00000000-0000-4000-8000-000000000321'
@@ -107,12 +107,12 @@ for (const format of ['uri', 'url']) test(`a pasted Dataset ${format} converts t
   }, input)
   const link = page.getByRole('link', { name: dataset.title, exact: true })
   await expect(link).toBeVisible()
-  await link.click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
+  await selectDocumentContext(page, link)
+  await page.getByRole('toolbar', { name: 'Contextual actions' }).getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(page.locator('.galaris-link-card')).toContainText(dataset.title)
   const saved = await editorHtml(page)
   expect(saved).toContain(uri); expect(saved).toContain('Keep this'); expect(saved).not.toContain('amount')
-  await page.locator('.galaris-link-card a').click()
+  await page.locator('.galaris-link-card a').click({ modifiers: ['Control'] })
   await expect(page.getByRole('dialog').locator('.document-editor')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')

@@ -454,6 +454,9 @@ async def test_populated_upgrade_through_dbadmin_preserves_content_and_resumes_a
         # Keep its rows/tables; Atlas restores these constraints with the registry.
         await connection.execute(text("ALTER TABLE dataset_attachments DROP CONSTRAINT dataset_attachments_file_id_fkey"))
         await connection.execute(text("ALTER TABLE process_run_files DROP CONSTRAINT process_run_files_file_id_fkey"))
+        await connection.execute(text("ALTER TABLE documents DROP CONSTRAINT documents_file_id_fkey"))
+        await connection.execute(text("ALTER TABLE document_revisions DROP CONSTRAINT document_revisions_file_id_fkey"))
+        await connection.execute(text("ALTER TABLE file_derivatives DROP CONSTRAINT file_derivatives_file_id_fkey"))
         await connection.execute(text("DROP TABLE file_owners, file_aliases, files, file_stores"))
         await connection.execute(text("DELETE FROM dbadmin_actions WHERE key LIKE 'core.storage.%'"))
 

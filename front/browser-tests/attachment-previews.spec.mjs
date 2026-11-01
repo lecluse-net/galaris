@@ -52,7 +52,12 @@ for (const kind of ['image', 'markdown']) test(`message ${kind} attachments load
     ...imageFile(`file-${index}`), ...(kind === 'markdown' ? { name: `file-${index}.md`, mime_type: 'text/markdown', kind: 'file' } : {}),
   }], index ? 'Synthetic context paragraph.\n\n'.repeat(25) : ''))
   await mount(page, 'app/chat/components/MessageTimeline.vue', { containerStyle: { height: '480px', overflow: 'auto' },
-    props: { roomId: 'room-1', agentId: 7, agentName: 'Test', activity: [], liveRound: null, messages } })
+    props: { roomId: 'room-1', agentId: 7, agentName: 'Test', activity: [], liveRound: null,
+      messages: messages.map(message => ({ ...message, files: [] })) } })
+  // Measure the real viewport after the lazy Markdown renderer establishes
+  // message heights. Before that, the next attachment can briefly be nearby.
+  await expect(page.getByText('Synthetic context paragraph.', { exact: true }).first()).toBeVisible()
+  await page.evaluate(messages => window.testApp.setProps({ messages }), messages)
   const first = kind === 'image' ? page.getByRole('img', { name: 'file-0.png', exact: true }) : page.getByRole('heading', { name: 'file-0', exact: true })
   await expect(first).toBeVisible()
   expect(reads).toEqual(['file-0'])

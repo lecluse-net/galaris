@@ -318,6 +318,7 @@ def test_mcp_loader_discovers_decorated_tools_by_tool_code() -> None:
         "file_move",
         "file_rename",
         "file_delete",
+        "dataset_query",
     } == set(names["file_sharing"])
     assert {
         "task",

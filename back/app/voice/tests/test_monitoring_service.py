@@ -445,7 +445,7 @@ async def test_voice_monitoring_detail_exposes_session_startup_error(
     assert detail.turns == []
 
 
-def test_voice_monitoring_routes_require_task_access() -> None:
+def test_voice_monitoring_routes_require_voice_history_privileges() -> None:
     from app.voice.router import (
         export_voice_conversation_turn,
         read_voice_conversation,
@@ -460,7 +460,7 @@ def test_voice_monitoring_routes_require_task_access() -> None:
         read_voice_conversations,
     ):
         assert endpoint._authorize_meta["privileges"] == [  # pyright: ignore[reportFunctionMemberAccess]
-            Privileges.TASK_ACCESS
+            Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL
         ]
 
     from app.voice.router import (
@@ -475,7 +475,7 @@ def test_voice_monitoring_routes_require_task_access() -> None:
         update_voice_conversation_turn_topic,
     ):
         assert endpoint._authorize_meta["privileges"] == [  # pyright: ignore[reportFunctionMemberAccess]
-            Privileges.TASK_EDIT
+            Privileges.VOICE_HISTORY_CONTROL
         ]
 
 
@@ -788,12 +788,12 @@ async def test_audio_administration_http_permissions_scope_and_deferred_deletion
         db.add_all([*users, *roles])
         await db.flush()
         privileges = {p.code: p.id for p in await db.scalars(select(Privilege).where(
-            Privilege.code.in_(["TASK_ACCESS", "TASK_EDIT"])
+            Privilege.code.in_(["VOICE_HISTORY_ACCESS", "VOICE_HISTORY_CONTROL"])
         ))}
         assert len(privileges) == 2
         db.add_all([RolePrivilege(role_id=roles[0].id, privilege_id=value)
                     for value in privileges.values()])
-        db.add(RolePrivilege(role_id=roles[1].id, privilege_id=privileges["TASK_ACCESS"]))
+        db.add(RolePrivilege(role_id=roles[1].id, privilege_id=privileges["VOICE_HISTORY_ACCESS"]))
         for i, user in enumerate(users):
             db.add(Assignment(user_id=user.id, role_id=roles[1 if i == 2 else 0].id, is_default=True))
         agent = await _agent(db, user_id=users[0].id)

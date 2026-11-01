@@ -77,7 +77,7 @@ async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage, 
         dataset = await create_dataset(owner_id, title="Synthetic HTTP campaign source",
                                        content='{"synthetic":true,"cases":[{"input":{}}]}')
         campaign = LabProcessCampaign(owner_agent_id=owner_id, owner_user_id=users[0].id,
-                                       dataset_id=dataset.id, process_code=process.code,
+                                       dataset_document_id=dataset.id, process_code=process.code,
                                        title="Synthetic campaign", invocation_key="synthetic-http", fingerprint="s" * 64)
         db.add(campaign)
         await db.flush()
@@ -104,6 +104,8 @@ async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage, 
         assert (await client.get(path)).status_code == 401, path
     headers = []
     for index in range(3):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={
             "email": f"api-read-lot-{index}@example.com", "password": password,
         })

@@ -1,6 +1,6 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
-async function setup(page, { locale = 'en', privileges = ['PARAMS_ACCESS', 'PARAMS_EDIT'] } = {}) {
+async function setup(page, { locale = 'en', privileges = ['PROCESS_CONFIG_ACCESS', 'PROCESS_CONFIG_EDIT'] } = {}) {
   const values = {
     PROCESS_N8N_BASE_URL: 'https://n8n.example.test', PROCESS_N8N_API_TOKEN: null,
     PROCESS_N8N_WEBHOOK_BASE_URL: '', PROCESS_GALARIS_BASE_URL: '',
@@ -103,11 +103,11 @@ test('n8n setup preserves failed saves, retries diagnostics and keeps advanced s
   await expect(page.getByLabel('Webhook authentication secret', { exact: true })).toHaveValue(/^[a-f0-9]{64}$/)
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByLabel('Webhook authentication secret', { exact: true })).toHaveValue('')
-  await mount(page, 'core/params/components/PreferencesSectionPage.vue', { props: { section: 'process' }, privileges: ['PARAMS_ACCESS', 'PARAMS_EDIT'] })
+  await mount(page, 'core/params/components/PreferencesSectionPage.vue', { props: { section: 'process' }, privileges: ['PROCESS_CONFIG_ACCESS', 'PROCESS_CONFIG_EDIT'] })
   await expect(page.getByText('http://galaris.internal:8000', { exact: true })).toBeVisible()
   await button.click()
   await expect.poll(() => Boolean(pendingTest)).toBe(true)
-  await setPrivileges(page, ['PARAMS_ACCESS'])
+  await setPrivileges(page, ['PROCESS_CONFIG_ACCESS'])
   await pendingTest.fulfill({ json: { ok: true, code: 'healthy', message: 'stale response' } })
   await expect(button).toHaveCount(0)
   await expect(page.getByRole('status')).toHaveCount(0)
@@ -117,7 +117,7 @@ test('n8n setup preserves failed saves, retries diagnostics and keeps advanced s
 test('n8n automatic addresses can recover after a load failure', async ({ page }) => {
   await setup(page)
   await page.route('**/api/n8n/settings', route => route.fulfill({ status: 503, json: {} }))
-  await mount(page, 'core/params/components/PreferencesSectionPage.vue', { props: { section: 'process' }, privileges: ['PARAMS_EDIT'] })
+  await mount(page, 'core/params/components/PreferencesSectionPage.vue', { props: { section: 'process' }, privileges: ['PROCESS_CONFIG_EDIT'] })
   await expect(page.getByRole('alert')).toContainText('Could not load automatic addresses')
   await expect(page.getByRole('button', { name: 'Test connection', exact: true })).toBeDisabled()
   await jsonRoute(page, '**/api/n8n/settings', { galaris_base_url: 'https://recovered.example.test' })

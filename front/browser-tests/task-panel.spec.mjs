@@ -159,7 +159,7 @@ test('custom Harness uses only correlated calls and replaces updates and deleted
   const calls = [{ ...call, task_id: item.id, agent_run_id: 'run', response_text: 'First response' },
     { ...call, id: 'foreign', task_id: item.id, agent_run_id: 'previous', response_text: 'Private previous run' }]
   await page.route('**/api/llm-calls?*', route => route.fulfill({ json: calls }))
-  await panel(page, [item], 1, [activityFor(item, false)])
+  await panel(page, [item], 1, [activityFor(item, false)], ['LLM_CALL_ACCESS'])
   const operations = page.locator('.agent-task-operations')
   await expect(operations).toContainText('First response')
   await expect(operations).not.toContainText('Private previous run')
@@ -220,6 +220,7 @@ test('task details restore activity and expose the admitted demand and recorded 
   expect(snapshotReads).toHaveLength(1)
   await expect(page.getByText('Failure', { exact: true })).toHaveCount(0)
   await page.getByRole('tab', { name: 'Details', exact: true }).click()
+  await page.clock.runFor(300)
   await expect(page.getByRole('status').filter({ hasText: 'Pause requested' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Usage and budgets', exact: true })).toContainText('123 tokens · $0.2500')
   await page.locator('summary').filter({ hasText: 'Request and deliveries' }).click()

@@ -57,8 +57,9 @@ const tab = ref(
     ? route.query.tab
     : (allowedTabs.value[0] ?? 'tools')
 )
-watch(allowedTabs, tabs => {
-  if (!tabs.includes(tab.value as ToolTab)) tab.value = tabs[0] ?? 'tools'
+watch([() => route.query.tab, allowedTabs], ([requested, tabs]) => {
+  if (typeof requested === 'string' && tabs.includes(requested as ToolTab)) tab.value = requested
+  else if (!tabs.includes(tab.value as ToolTab)) tab.value = tabs[0] ?? 'tools'
 }, { immediate: true })
 </script>
 

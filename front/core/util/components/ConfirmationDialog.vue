@@ -1,5 +1,5 @@
 <template>
-  <q-dialog :ref="dialog.dialogRef" :aria-labelledby="titleId" @hide="dialog.onDialogHide">
+  <q-dialog :ref="dialog.dialogRef" :aria-labelledby="titleId" @show="focusAction" @hide="dialog.onDialogHide">
     <q-card class="q-dialog-plugin galaris-dialog-card">
       <DialogHeader :title="title || t('common.confirm')" :title-id="titleId" />
       <q-card-section class="confirmation-message galaris-dialog-body">{{ message }}</q-card-section>
@@ -24,6 +24,11 @@ const dialog = useDialogPluginComponent()
 const { t } = useI18n()
 const $q = useQuasar()
 const titleId = useId()
+
+function focusAction(): void {
+  // Route traversal and a parent dialog can move focus during the transition.
+  if (focus !== 'none') dialog.dialogRef.value?.focus()
+}
 
 function buttonProps(value: boolean | string | QBtnProps, label: string): QBtnProps {
   return { flat: true, color, label: typeof value === 'string' ? value : label,

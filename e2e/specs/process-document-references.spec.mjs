@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
@@ -5,7 +6,7 @@ import { collectPageErrors } from '../page-errors.mjs'
 test('native Processes and runs remain live references in authored Documents', async ({ page, request }) => {
   test.setTimeout(120_000)
   const errors = collectPageErrors(page)
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
+  await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const fixture = await (await request.post('/api/__test/seed?mode=process-human')).json()
   await page.goto('/user/login')
   await page.locator('input[type=email]').fill(fixture.email)
@@ -36,18 +37,18 @@ test('native Processes and runs remain live references in authored Documents', a
   await expect(inline.getByRole('button', { name: 'Synthetic start · start', exact: true })).toBeVisible()
   await inline.hover()
   await inline.getByRole('button', { name: /^(Zoom in|Agrandir)$/, exact: true }).click()
-  await inline.getByRole('button', { name: /^(Open preview|Ouvrir l’aperçu)$/, exact: true }).click()
+  await page.locator('.galaris-link-card a').first().click({ modifiers: ['Control'] })
   await expect(page.getByRole('dialog').getByText(/^(Read-only access|Accès en lecture seule)$/)).toBeVisible()
   await expect(page.getByRole('dialog').getByRole('button', { name: /^(Save|Enregistrer)$/, exact: true })).toHaveCount(0)
   await page.getByRole('dialog').getByRole('button', { name: /^(Close|Fermer)$/, exact: true }).click()
   const editor = page.locator('[data-editor-surface]')
   await editor.click(); await page.keyboard.press('Control+End'); await page.keyboard.press('Enter')
   await page.getByRole('button', { name: /^(Galaris link|Lien Galaris)$/, exact: true }).click()
-  await page.getByRole('dialog').locator('.file-scheme-label').filter({ hasText: /^Galaris business resources$/ }).click()
+  await page.getByRole('dialog').locator('.file-scheme-label').filter({ hasText: /^(Galaris resources|Ressources Galaris)$/ }).click()
   const files = page.getByRole('dialog').locator('.file-main')
-  await files.getByRole('button', { name: /^(Select|Sélectionner) Processes$/, exact: true }).dblclick()
+  await files.getByRole('button', { name: /^(Open|Ouvrir) (Processes|Processus)$/, exact: true }).click()
   await files.getByRole('button', { name: new RegExp(`^(Select|Sélectionner) ${definition.title}$`), exact: true }).click()
-  await files.getByRole('button', { name: /^(Select|Sélectionner) Runs$/, exact: true }).dblclick()
+  await files.getByRole('button', { name: /^(Open|Ouvrir) (Runs|Exécutions)$/, exact: true }).click()
   await files.getByRole('button', { name: new RegExp(`^(Select|Sélectionner) ${definition.title} ·`), exact: false }).click()
   const saving = page.waitForResponse(response => response.url().includes(`/documents/${document.id}`) && response.request().method() === 'PATCH')
   await page.getByRole('dialog').getByRole('button', { name: /^(Select|Sélectionner)$/, exact: true }).click()

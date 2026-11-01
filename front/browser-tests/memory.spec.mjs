@@ -50,7 +50,7 @@ for (const width of [1440, 390]) test(`Dream actions refresh the node, preserve 
     })
     await route.fulfill({ json: { receipt_id: 'synthetic-receipt', result_count: 1 } })
   })
-  await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'], route: '/memory?agent=7' })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
   await page.getByText('Current memory', { exact: true }).click()
   const dialog = page.getByRole('dialog')
   const generate = dialog.getByRole('button', { name: 'Generate description', exact: true })
@@ -126,7 +126,7 @@ for (const width of [1440, 390]) for (const nodeKind of ['document', 'file']) {
       calls++
       return route.fulfill({ json: { receipt_id: `synthetic-thumbnail-${calls}`, result_count: 1 } })
     })
-    await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'], route: '/memory?agent=7' })
+    await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'DOCUMENT_EDIT'], route: '/memory?agent=7' })
     const row = page.locator(width >= 1024 ? '.memory-list-table tbody tr' : '.memory-mobile-card').filter({ hasText: 'Current memory' })
     await expect(row.locator('img')).toHaveJSProperty('naturalWidth', 80)
     await row.locator('img').click()
@@ -160,7 +160,7 @@ test('Dream action responses cannot affect another node or expose actions withou
     await route.fulfill({ json: { receipt_id: 'synthetic-receipt', result_count: 1 } })
   })
   await mount(page, 'app/memory/components/MemoryDreamActions.vue', {
-    privileges: ['DOCUMENT_EDIT'], props: { itemId: 'doc-a', agentId: 7 },
+    privileges: ['MEMORY_EDIT'], props: { itemId: 'doc-a', agentId: 7 },
   })
   await page.getByRole('button', { name: 'Generate description', exact: true }).click()
   await expect.poll(() => typeof release).toBe('function')
@@ -172,7 +172,7 @@ test('Dream action responses cannot affect another node or expose actions withou
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)))
   await expect(page.locator('.q-notification')).toHaveCount(0)
   await mount(page, 'app/memory/components/MemoryDreamActions.vue', {
-    privileges: ['DOCUMENT_ACCESS'], props: { itemId: 'doc-a', agentId: 7 },
+    privileges: ['MEMORY_ACCESS'], props: { itemId: 'doc-a', agentId: 7 },
   })
   await expect(page.getByRole('button', { name: 'Generate description', exact: true })).toHaveCount(0)
 })
@@ -189,7 +189,7 @@ test('Dream actions report loading failures and unchanged results in toasts', as
     receipt_id: 'synthetic-receipt', result_count: 0,
   })
   await mount(page, 'app/memory/components/MemoryDreamActions.vue', {
-    privileges: ['DOCUMENT_EDIT'], props: { itemId: 'doc-a', agentId: 7 },
+    privileges: ['MEMORY_EDIT'], props: { itemId: 'doc-a', agentId: 7 },
   })
   await expect(page.locator('.q-notification').filter({ hasText: 'Could not load Dream actions.' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Dream actions' })).not.toContainText('Could not load Dream actions.')
@@ -296,7 +296,7 @@ for (const width of [1920, 390]) test(`graph opens modals with metadata and pres
     .map(([source_item_id, target_item_id], index) => ({ id: `edge-${index}`, source_item_id, target_item_id,
       relation_type: 'related_to', confidence: 1, suggested: false }))
   await jsonRoute(page, '**/api/memory/graph/roots', { nodes, edges, has_more: false, next_cursor: null, edges_truncated: false })
-  await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'], route: '/memory?agent=7' })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'DOCUMENT_EDIT'], route: '/memory?agent=7' })
   await page.getByRole('tab', { name: 'Graph', exact: true }).click()
   await settledGraph(page)
   await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
@@ -352,7 +352,7 @@ for (const nodeKind of ['file', 'directory']) {
       }
       return route.fulfill({ json: item })
     })
-    await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'], route: '/memory?agent=7' })
+    await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'DOCUMENT_EDIT'], route: '/memory?agent=7' })
     await page.getByText('Current memory', { exact: true }).click()
     const dialog = page.getByRole('dialog')
     const editor = dialog.locator('[data-editor-surface]')
@@ -765,7 +765,7 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
     const { item } = await memoryItemFixtures(page)
     Object.assign(item, { node_kind: 'folder', title: 'Reports collection' })
-    await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'], route: '/memory?agent=7' })
+    await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'DOCUMENT_EDIT'], route: '/memory?agent=7' })
     await page.getByText('Reports collection', { exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'View', exact: true })).toHaveCount(0)
@@ -877,7 +877,7 @@ for (const width of [1440, 390]) {
         : item
       return route.fulfill({ json: historical })
     })
-    await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT', 'TASK_ACCESS'], route: '/memory?agent=7' })
+    await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'TASK_ACCESS'], route: '/memory?agent=7' })
     await page.getByText('Current memory', { exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByText('Current body', { exact: true })).toBeVisible()
@@ -1057,7 +1057,7 @@ test('memory list combines hybrid search and calendar, then opens a returned mem
     return route.fulfill({ json: { hits: deleted ? [] : [{ item, score: 0.9 }], total: deleted ? 0 : 1, has_more: false,
       recall_truncated: searched, degradation_reason: searched ? 'embedding_unavailable' : null } })
   })
-  await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'], route: '/memory?agent=7' })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'DOCUMENT_EDIT'], route: '/memory?agent=7' })
   await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
   await page.getByPlaceholder('Search titles, keywords, and content').fill('project evidence')
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
@@ -1091,7 +1091,7 @@ test('document editor autosaves with its revision and preserves read-only conten
   await expect.poll(() => updates).toHaveLength(1)
   expect(updates[0]).toMatchObject({ title: 'Edited title', expected_revision: 3 })
   expect(updates[0]).not.toHaveProperty('payload')
-  await expect(page.locator('.document-editor-uri-badge')).toContainText('document://doc-a')
+  await expect(page.getByRole('button', { name: 'Copy document URL', exact: true })).toBeVisible()
   await page.evaluate(() => window.testApp.setProps({ editable: false }))
   await expect(title).not.toBeEditable()
 })
@@ -1105,7 +1105,10 @@ test('document library paginates on demand and opens a selected document on mobi
   await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
   const offsets = []
   await page.route('**/api/documents/library', route => {
-    const { offset, limit } = route.request().postDataJSON()
+    const { offset, limit, classification } = route.request().postDataJSON()
+    if (classification !== 'unclassified') return route.fulfill({ json: {
+      entries: [], total: 0, keywords: [], has_more: false,
+    } })
     offsets.push(offset)
     expect(limit).toBe(50)
     return route.fulfill({ json: { entries: [{ item: offset === 0 ? document : secondPageDocument, agent_ids: [7], writable_agent_ids: [7] }], total: 51, keywords: [], has_more: offset === 0 } })
@@ -1116,7 +1119,7 @@ test('document library paginates on demand and opens a selected document on mobi
   await expect(page.getByText('Second page document', { exact: true })).toBeVisible()
   expect(offsets).toEqual([0, 50])
   await page.getByRole('button', { name: '1', exact: true }).click()
-  await page.getByText('Test document', { exact: true }).click()
+  await page.getByLabel('Unclassified documents', { exact: true }).getByText('Test document', { exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Test document')
   await page.keyboard.press('Escape')
@@ -1144,7 +1147,7 @@ for (const remoteField of ['content', 'keywords']) test(`a remote document ${rem
   current = remoteField === 'content'
     ? { ...document, revision: 4, payload: { text: '# Remote content' } }
     : { ...document, lock_version: document.lock_version + 1, keywords: ['shared-classification'] }
-  await page.evaluate(({ revision, lock_version }) => window.testApp.emitSocket('memory.update', {
+  await page.evaluate(({ revision, lock_version }) => window.testApp.emitSocket('document.update', {
     data: { id: 'doc-a', node_kind: 'document', revision, lock_version },
   }), current)
   await page.clock.runFor(250)
@@ -1167,6 +1170,12 @@ for (const width of [1440, 390]) test(`document keyword changes refresh its open
   const { item } = await memoryItemFixtures(page)
   Object.assign(item, { node_kind: 'document', document_id: item.id })
   const writes = []
+  await page.route('**/api/documents/doc-a/summary?*', async route => {
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    Object.assign(item, body, { lock_version: item.lock_version + 1 })
+    return route.fulfill({ json: item })
+  })
   await page.route('**/api/memory/items/doc-a?*', async route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: item })
     const body = route.request().postDataJSON()
@@ -1174,7 +1183,7 @@ for (const width of [1440, 390]) test(`document keyword changes refresh its open
     Object.assign(item, body, { lock_version: item.lock_version + 1 })
     return route.fulfill({ json: item })
   })
-  await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'], route: '/memory?agent=7' })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'DOCUMENT_EDIT'], route: '/memory?agent=7' })
   const openMemory = () => width < 1024
     ? page.locator('.memory-mobile-title').filter({ hasText: 'Current memory' }).click()
     : page.getByText('Current memory', { exact: true }).click()
@@ -1186,7 +1195,7 @@ for (const width of [1440, 390]) test(`document keyword changes refresh its open
   await dialog.locator('[data-editor-surface]').fill('Local synthesis draft')
   const expectedLock = ++item.lock_version
   item.keywords = ['shared-classification']
-  await page.evaluate(({ revision, lock_version }) => window.testApp.emitSocket('memory.update', {
+  await page.evaluate(({ revision, lock_version }) => window.testApp.emitSocket('document.update', {
     data: { id: 'doc-a', node_kind: 'document', revision, lock_version },
   }), item)
   await expect(keywords).toHaveText(['shared-classification'])
@@ -1211,12 +1220,16 @@ test('conflicting shared keyword changes preserve the memory draft and its origi
   Object.assign(item, { node_kind: 'document', document_id: item.id })
   const originalLock = item.lock_version
   const writes = []
+  await page.route('**/api/documents/doc-a/summary?*', async route => {
+    writes.push(route.request().postDataJSON())
+    await route.fulfill({ status: 409, json: { detail: 'Document or synthesis changed; reload and retry' } })
+  })
   await page.route('**/api/memory/items/doc-a?*', async route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: item })
     writes.push(route.request().postDataJSON())
     await route.fulfill({ status: 409, json: { detail: 'Document or synthesis changed; reload and retry' } })
   })
-  await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'], route: '/memory?agent=7' })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'DOCUMENT_EDIT'], route: '/memory?agent=7' })
   await page.getByText('Current memory', { exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('combobox', { name: 'Keywords', exact: true }).fill('local-keyword')
@@ -1224,7 +1237,7 @@ test('conflicting shared keyword changes preserve the memory draft and its origi
   await page.keyboard.press('Escape')
   item.keywords = ['remote-keyword']
   item.lock_version++
-  await page.evaluate(() => window.testApp.emitSocket('memory.update', {
+  await page.evaluate(() => window.testApp.emitSocket('document.update', {
     data: { id: 'doc-a', node_kind: 'document', revision: 3 },
   }))
   await expect.poll(() => page.evaluate(() => window.testApp.pinia.state.value.memory.currentItem.keywords)).toEqual(['remote-keyword'])
@@ -1251,10 +1264,10 @@ test('document keyword refreshes recover errors and ignore late replies after re
     }
     await route.fulfill({ contentType: 'application/json', body: snapshot })
   })
-  const notify = () => page.evaluate(() => window.testApp.emitSocket('memory.update', {
+  const notify = () => page.evaluate(() => window.testApp.emitSocket('document.update', {
     data: { id: 'doc-a', node_kind: 'document', revision: 3 },
   }))
-  await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'], route: '/memory?agent=7' })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'DOCUMENT_EDIT'], route: '/memory?agent=7' })
   await page.getByText('Current memory', { exact: true }).click()
   const dialog = page.getByRole('dialog')
   const keywords = dialog.locator('.memory-form-keywords .q-chip__content')
@@ -1314,7 +1327,7 @@ test('overlapping edits keep a durable draft and require an explicit conflict ch
   await page.clock.install()
   await title.fill('My unsaved title')
   current = { ...current, title: 'Concurrent title', revision: 4 }
-  await page.evaluate(() => window.testApp.emitSocket('memory.update', { data: { id: 'doc-a', node_kind: 'document', revision: 4 } }))
+  await page.evaluate(() => window.testApp.emitSocket('document.update', { data: { id: 'doc-a', node_kind: 'document', revision: 4 } }))
   await page.clock.runFor(1500)
   await expect(page.getByText('This document changed elsewhere.', { exact: false })).toBeVisible()
   expect(updates).toEqual([])

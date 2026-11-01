@@ -12,6 +12,7 @@ from sqlalchemy import event, inspect, select
 
 from app.agent import AgentManagementScope
 from app.agent.models import Agent, Title
+from app.dataset import service as datasets
 from app.dataset.compatibility import LegacyDatasetAdapter
 from app.dataset.models import Dataset, DatasetRevision
 from app.incident import router as incidents
@@ -267,8 +268,7 @@ async def test_lab_task_lists_keep_summaries_without_task_payloads_or_agent_avat
 async def test_process_campaign_inspection_leaves_worker_inputs_unloaded(db, read_actors, memory_storage):
     owner, peer = read_actors
     owner_id, peer_id = owner.id, peer.id
-    document = await document_service.create_document(owner_agent_id=owner_id, title="Synthetic campaign reference",
-                                                      task_id=None, content="<p>Synthetic reference</p>")
+    document = await datasets.create(owner_id, title="Synthetic campaign reference", content="[]")
     campaign = LabProcessCampaign(owner_agent_id=owner_id, dataset_document_id=document.id,
                                    process_code="synthetic_campaign", title="Synthetic campaign", invocation_key="synthetic",
                                    fingerprint="s" * 64)
@@ -283,7 +283,7 @@ async def test_process_campaign_inspection_leaves_worker_inputs_unloaded(db, rea
     ids = [case.id for case in cases]
     async with measured(db, "process-campaign", {LabProcessCase: ("input", "expected", "files")}) as report:
         result = await process_evaluation.inspect_campaign(identity, owner_id)
-    assert result["dataset_uri"] == f"document://{document.id}"
+    assert result["dataset_uri"] == f"data://{document.id}"
     assert result["total"] == 41 and [item["id"] for item in result["items"]] == [str(value) for value in ids]
     assert [item["evidence"] for item in result["items"]] == [{"synthetic": index} for index in range(41)]
     assert (await process_evaluation.inspect_campaign(identity, owner_id, page=2, page_size=10))["items"] == result["items"][10:20]

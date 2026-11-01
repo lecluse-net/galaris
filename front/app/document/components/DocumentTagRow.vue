@@ -6,7 +6,7 @@
       <q-tooltip>{{ t(renaming ? 'documents.library.iconHint' : 'documents.library.renameHint') }}</q-tooltip>
       <DocumentTagIconPicker v-model="iconOpen" :busy="busy" :save="saveIcon" />
     </q-btn>
-    <q-input v-if="renaming" v-model="name" autofocus dense outlined class="col" maxlength="100" :disable="busy"
+    <q-input v-if="renaming" ref="nameInput" v-model="name" autofocus dense outlined class="col" maxlength="100" :disable="busy"
       :aria-label="t('documents.library.name')" @click.stop @dblclick.stop @keydown.stop
       @keydown.enter.prevent="rename" @keydown.esc.prevent="finishRename" @blur="blurName" @focus="selectName">
       <template #append><q-btn flat dense round size="sm" icon="check" :aria-label="t('documents.library.save')" @mousedown.prevent @click.stop="rename" /></template>
@@ -27,7 +27,8 @@
         <q-tooltip>{{ t('documents.library.deleteTag') }}</q-tooltip>
       </q-btn>
     </div>
-    <q-menu v-if="!renaming" :id="menuId" ref="contextMenu" v-model="menuOpen" no-parent-event touch-position class="tag-context-menu" role="menu" :aria-label="t('documents.library.tagActions', { name: tag.name })">
+    <q-menu :id="menuId" ref="contextMenu" v-model="menuOpen" no-parent-event touch-position no-refocus class="tag-context-menu" role="menu" :aria-label="t('documents.library.tagActions', { name: tag.name })"
+      @before-show="rememberMenuFocus" @escape-key="restoreFocusAfterEscape" @hide="afterMenuHide">
       <q-list dense>
         <template v-for="action in contextActions" :key="action.key">
           <q-separator v-if="action.separator" />
@@ -43,10 +44,10 @@
 </template>
 <script setup lang="ts">
 import { documentTypes, type DocumentKind } from '../documentTypes'
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import type { QMenu } from 'quasar'
+import type { QInput, QMenu } from 'quasar'
 import { useContextMenuDismissal } from '@/core/util'
 import type { DocumentTag } from '../types'
 import { vLibraryShortcuts, type LibraryShortcuts } from '@/app/document/libraryShortcuts'
@@ -69,6 +70,16 @@ const name = ref('')
 const iconOpen = ref(false)
 const menuOpen = ref(false)
 const contextMenu = useTemplateRef<QMenu>('contextMenu')
+const nameInput = useTemplateRef<QInput>('nameInput')
+let menuFocus: HTMLElement | null = null
+let restoreMenuFocus = false
+function rememberMenuFocus(): void { menuFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null; restoreMenuFocus = false }
+function restoreFocusAfterEscape(): void { restoreMenuFocus = true }
+function afterMenuHide(): void {
+  if (renaming.value) nameInput.value?.focus()
+  else if (restoreMenuFocus && menuFocus?.isConnected) menuFocus.focus({ preventScroll: true })
+  restoreMenuFocus = false
+}
 const menuId = useContextMenuDismissal(menuOpen, () => contextMenu.value)
 function openPointerMenu(event: MouseEvent): void {
   if (renaming.value) return
@@ -102,7 +113,13 @@ async function createChild(): Promise<void> {
 async function createSibling(): Promise<void> {
   if (!props.busy) await props.create(t('documents.library.newFolderName'), props.tag.parent_id, props.tag.id)
 }
-function startRename(): void { if (!props.busy && !renaming.value) { menuOpen.value = false; name.value = props.tag.name; renaming.value = true } }
+function startRename(): void {
+  if (props.busy || renaming.value) return
+  menuOpen.value = false
+  name.value = props.tag.name
+  renaming.value = true
+  void nextTick(() => nameInput.value?.focus())
+}
 function finishRename(): void { iconOpen.value = false; renaming.value = false; emit('renamed') }
 function clickIcon(event: Event): void {
   if (!renaming.value) return

@@ -81,7 +81,7 @@ test('Harness Manager saves a new key, preserves it on reopen and exports only s
     installation = route.request().postDataJSON()
     return route.fulfill({ contentType: 'application/zip', body: 'test-archive' })
   })
-  const mountForm = () => mount(page, 'app/harnesses/components/HarnessManagerConfiguration.vue', { privileges: ['PARAMS_EDIT'] })
+  const mountForm = () => mount(page, 'app/harnesses/components/HarnessManagerConfiguration.vue', { privileges: ['HARNESS_CONFIG_EDIT'] })
   await mountForm()
   await page.getByRole('button', { name: 'Generate a new installation key' }).click()
   await page.getByRole('textbox', { name: 'Manager URL', exact: true }).fill('https://manager.example.test')
@@ -125,7 +125,7 @@ test('Harness Manager saves a new key, preserves it on reopen and exports only s
   await page.getByRole('button', { name: 'Save and check connection' }).click()
   await expect.poll(() => writes).toHaveLength(2)
   expect(writes[1]).not.toHaveProperty('secret')
-  await setPrivileges(page, ['PARAMS_ACCESS'])
+  await setPrivileges(page, ['HARNESS_CONFIG_ACCESS'])
   await expect(page.getByRole('button', { name: 'Generate .env with saved secret' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Save and check connection' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Download ready-to-install ZIP' })).toHaveCount(0)
@@ -146,7 +146,7 @@ test(`Harness Manager ignores late ${format} exports after ${invalidate} and pre
     await pending
     await route.fulfill({ contentType: 'text/plain', body: 'SECRET=old-export' })
   })
-  await mount(page, 'app/harnesses/components/HarnessManagerConfiguration.vue', { privileges: ['PARAMS_EDIT'] })
+  await mount(page, 'app/harnesses/components/HarnessManagerConfiguration.vue', { privileges: ['HARNESS_CONFIG_EDIT'] })
   await page.getByRole('button', { name: 'Prepare installation', exact: true }).click()
   await page.getByRole('textbox', { name: 'Instance directory (BASE_DIR)' }).fill('/srv/initial')
   const button = format === 'environment' ? 'Generate .env with saved secret' : 'Download ready-to-install ZIP'
@@ -184,7 +184,7 @@ test('configured model availability checks query its provider and update the row
     requests.push(new URL(route.request().url()).searchParams.get('capability'))
     return route.fulfill({ json: { models: available ? [{ id: 'example-v1' }] : [] } })
   })
-  await mount(page, 'app/llm/components/ConfiguredLlmManager.vue', { privileges: ['LLM_PROVIDER_EDIT'] })
+  await mount(page, 'app/llm/components/ConfiguredLlmManager.vue', { privileges: ['LLM_MODEL_EDIT'] })
   const row = page.locator('tbody tr').filter({ hasText: 'Example model' })
   const check = row.getByRole('button', { name: /check/i })
   await check.click()
@@ -211,7 +211,7 @@ test('available models keep long names, prices and actions accessible without ho
   await jsonRoute(page, '**/api/llm-providers/llms', [model])
   await jsonRoute(page, '**/api/llm-providers/2/resources?*', { models: [{ id: model.llm_name }] })
   await mount(page, 'app/llm/pages/index.vue', {
-    locale: 'fr', route: '/llm?tab=models', privileges: ['LLM_PROVIDER_EDIT'],
+    locale: 'fr', route: '/llm?tab=models', privileges: ['LLM_MODEL_EDIT'],
   })
   for (const width of [1024, 1280, 1440, 768, 600, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })

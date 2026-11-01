@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -6,7 +7,7 @@ import { collectPageErrors } from '../page-errors.mjs'
 test('a Data document preserves JSON, metadata and history in the common editor', async ({ page, request }) => {
   test.setTimeout(120_000)
   const errors = collectPageErrors(page)
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
+  await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   await page.addLocatorHandler(page.locator('body:not(:has([role="dialog"])) .q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
   const fixture = await (await request.post('/api/__test/seed')).json()
   await page.goto('/user/login')

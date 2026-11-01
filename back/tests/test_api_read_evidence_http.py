@@ -26,7 +26,7 @@ from core.user.user_service import encrypt_password
 async def test_evidence_routes_keep_scope_authorization_outputs_and_reopening(client):
     password = "synthetic-evidence-password"
     async with get_db_session() as db:
-        codes = ["AGENT_API_ACCESS", "LLM_PROVIDER_ACCESS", "PARAMS_EDIT", "TASK_ACCESS", "TOPIC_ACCESS",
+        codes = ["AGENT_API_ACCESS", "LLM_PROVIDER_ACCESS", "LLM_PROFILE_EDIT", "PARAMS_EDIT", "TASK_ACCESS", "TOPIC_ACCESS", "CONVERSATION_ACCESS",
                  "DISPATCHER_EVALUATION_ACCESS", "PLANNER_EVALUATION_ACCESS"]
         permissions = list(await db.scalars(select(Privilege).where(Privilege.code.in_(codes))))
         assert len(permissions) == len(codes)
@@ -80,6 +80,8 @@ async def test_evidence_routes_keep_scope_authorization_outputs_and_reopening(cl
     assert (await client.put(profile_path, json={"text_low_llm_id": model_id})).status_code == 401
     headers = []
     for index in range(3):
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={"email": f"synthetic-evidence-http-{index}@example.com", "password": password})
         assert login.status_code == 200, login.text
         headers.append({"Authorization": f"Bearer {login.json()['access_token']}"})

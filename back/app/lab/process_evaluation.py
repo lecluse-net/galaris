@@ -97,7 +97,7 @@ async def start_campaign(actor: int | AgentManagementScope, *, agent_id: int, co
             raise ValueError("This invocation key belongs to different campaign inputs")
         return existing
     campaign = LabProcessCampaign(owner_agent_id=agent_id, owner_user_id=actor.user_id if isinstance(actor, AgentManagementScope) else None,
-        dataset_id=dataset_id, process_code=code, title=title, invocation_key=invocation_key, fingerprint=digest)
+        dataset_document_id=source.id, process_code=code, title=title, invocation_key=invocation_key, fingerprint=digest)
     get_db().add(campaign)
     await get_db().flush()
     get_db().add_all([LabProcessCase(campaign_id=campaign.id, position=index, input=case.input, expected=case.expected,
@@ -127,7 +127,7 @@ async def inspect_campaign(identity: UUID, actor: int | AgentManagementScope, *,
     )).where(LabProcessCase.campaign_id == identity).order_by(LabProcessCase.position).offset((page - 1) * page_size).limit(page_size)))
     total = await get_db().scalar(select(func.count()).select_from(LabProcessCase).where(LabProcessCase.campaign_id == identity))
     return {"id": str(campaign.id), "title": campaign.title, "code": campaign.process_code, "status": campaign.status,
-        "dataset_uri": f"data://{campaign.dataset_id}" if campaign.dataset_id is not None else f"document://{campaign.dataset_document_id}",
+        "dataset_uri": f"data://{campaign.dataset_document_id or campaign.dataset_id}",
         "total": total, "page": page, "page_size": page_size,
         "items": [{"id": str(case.id), "position": case.position, "status": case.status, "run_id": str(case.run_id) if case.run_id else None, "evidence": case.evidence} for case in rows]}
 

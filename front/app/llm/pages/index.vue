@@ -88,6 +88,10 @@ watch([canViewProviders, canViewModels, canViewUsage], () => {
 })
 
 watch(activeTab, tab => {
+  // Clearing or refreshing privileges can temporarily leave no panel. That
+  // fallback must not replace the requested tab in browser history.
+  if (!privilegeStore.loaded || !(canViewProviders.value || canViewModels.value || canViewUsage.value)
+    || tabFromQuery(tab) !== tab) return
   if (route.query.tab === tab) return
   void router.replace({ query: { ...route.query, tab } })
 })

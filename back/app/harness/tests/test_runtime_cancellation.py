@@ -191,7 +191,7 @@ async def test_mcp_disconnect_resumes_pending_safe_call_before_model_decision(ef
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("approved", [True, False])
-async def test_authorization_resume_preserves_arguments_and_current_context(monkeypatch, approved):
+async def test_authorization_resume_preserves_arguments_and_current_context(db, monkeypatch, approved):
     import json
     from pydantic_ai import DeferredToolRequests
     from pydantic_ai.models.function import DeltaToolCall

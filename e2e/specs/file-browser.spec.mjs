@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
@@ -6,7 +7,7 @@ import { collectPageErrors } from '../page-errors.mjs'
 for (const width of [1440, 390]) test(`Files browses real agent resources and reopens previews at ${width}px`, async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   const errors = collectPageErrors(page)
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
+  await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const seeded = await request.post('/api/__test/seed')
   expect(seeded.ok(), await seeded.text()).toBeTruthy()
   const fixture = await seeded.json()
@@ -48,7 +49,7 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
   }
   await page.getByRole('button', { name: `Explorer les fichiers de ${agent.label}`, exact: true }).click()
   await expect(page.getByRole('combobox', { name: 'Agent', exact: true })).toBeVisible()
-  const root = page.getByRole('main').getByRole('button', { name: 'Ouvrir Galaris managed file', exact: true })
+  const root = page.getByRole('main').getByRole('button', { name: 'Ouvrir Fichiers', exact: true })
   await root.click()
   const file = page.locator('.file-main').getByRole('button', { name: 'Ouvrir Synthetic browser.txt', exact: true })
   await expect(file).toBeVisible()
@@ -119,10 +120,10 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
   const tail = await request.get(grant.url, { headers: { Range: 'bytes=-8' } })
   expect(tail.status()).toBe(206)
   expect((await tail.body()).length).toBe(8)
-  if (width < 1024 && !(await page.getByText('Galaris document', { exact: true }).isVisible())) {
+  if (width < 1024 && !(await page.locator('.file-scheme-label').getByText('Documents', { exact: true }).isVisible())) {
     await page.getByRole('button', { name: 'Afficher les emplacements', exact: true }).click()
   }
-  await page.getByText('Galaris document', { exact: true }).click()
+  await page.locator('.file-scheme-label').getByText('Documents', { exact: true }).click()
   await page.locator('.file-main').getByRole('button', { name: 'Ouvrir Synthetic browser document', exact: true }).click()
   await expect(page.getByRole('dialog').getByText('Synthetic assembled document content', { exact: true })).toBeVisible()
   await page.getByRole('dialog').getByRole('button', { name: 'Fermer', exact: true }).first().click()

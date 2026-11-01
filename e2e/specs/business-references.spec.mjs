@@ -1,21 +1,10 @@
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { prepareClipboard } from '../clipboard.mjs'
 
 test('activity and topic references persist as compact cards and open modals after reloading a document', async ({ page, request, context, browserName }) => {
-  if (browserName === 'chromium') await context.grantPermissions(['clipboard-read', 'clipboard-write'])
-  else {
-    let clipboardText = ''
-    await context.exposeBinding('__fixtureClipboardWrite', (_source, text) => { clipboardText = text })
-    await context.exposeBinding('__fixtureClipboardRead', () => clipboardText)
-    await page.addInitScript(() => {
-      // Firefox/WebKit do not expose Chromium's clipboard permissions. Replace
-      // only the OS boundary; the copy action and editor paste handling stay real.
-      Object.defineProperty(navigator, 'clipboard', { value: {
-        writeText: value => window.__fixtureClipboardWrite(value), readText: () => window.__fixtureClipboardRead(),
-      } })
-    })
-  }
+  await prepareClipboard(context, browserName)
   const errors = collectPageErrors(page)
   const fixture = await (await request.post('/api/__test/seed')).json()
   await page.goto('/user/login')
@@ -56,7 +45,10 @@ test('activity and topic references persist as compact cards and open modals aft
     await editor.evaluate(async element => {
       const clipboardData = new DataTransfer()
       clipboardData.setData('text/plain', await navigator.clipboard.readText())
-      element.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }))
+      const event = new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true })
+      // Firefox replaces constructor-supplied clipboard data with an empty store.
+      Object.defineProperty(event, 'clipboardData', { value: clipboardData })
+      element.dispatchEvent(event)
     })
   }
   await expect(editor.locator('a')).toHaveText(task.label)
@@ -75,19 +67,21 @@ test('activity and topic references persist as compact cards and open modals aft
   await page.reload()
   await expect(card).toContainText(task.label)
   const route = page.url()
-  await card.locator('a').click()
+  await card.locator('a').click({ modifiers: ['Control'] })
   await expect(page.getByRole('dialog').locator('.task-detail')).toContainText('Full objective kept outside the card')
   expect(page.url()).toBe(route)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  // The toolbar finds the actual Topic API object and inserts it without a file copy.
+  // Topic URIs resolve through the Topic API; a dossier is not a file resource.
   await editor.locator('p').first().click(); await page.keyboard.press('Home')
-  await page.getByRole('button', { name: /^(Galaris link|Lien Galaris)$/ }).click()
-  await page.getByRole('tab', { name: /^(Galaris objects|Objets Galaris)$/ }).click()
-  await page.getByRole('textbox', { name: /Search Galaris objects|Rechercher un objet Galaris/ }).fill(topic.title)
   const topicSaved = save()
-  await page.getByRole('dialog').getByText(topic.title, { exact: true }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await editor.evaluate((element, uri) => {
+    const clipboardData = new DataTransfer()
+    clipboardData.setData('text/plain', uri)
+    const event = new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', { value: clipboardData })
+    element.dispatchEvent(event)
+  }, `galaris://topic/${topic.id}`)
   const topicLink = editor.getByRole('link', { name: topic.title, exact: true })
   await expect(topicLink).toBeVisible()
   expect((await topicSaved).ok()).toBeTruthy()

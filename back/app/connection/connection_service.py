@@ -1034,7 +1034,7 @@ async def resolve_function(connection: Connection, function_name: str, *, capabi
                                    capability_kind=capability_kind, native=native)
 
 
-async def connection_tool_options() -> list[dict[str, Any]]:
+async def connection_tool_options(*, include_globals: bool = False) -> list[dict[str, Any]]:
     from app.tools import tool_service
     from app.tools.facade import public_connection_schema
     records = await tool_service.get_all_tool_records()
@@ -1045,7 +1045,8 @@ async def connection_tool_options() -> list[dict[str, Any]]:
              "has_listener": bool(t.listener_config), "conversation_enabled": t.conversation_enabled,
              "mcp_config": {"type": t.mcp_config.get("type")} if t.mcp_config else None,
              "connection_schema": public_connection_schema(t.connection_schema or {}),
-             "global_params": {}, "created_at": t.created_at, "updated_at": t.updated_at}
+             "global_params": {name: value.model_dump(mode="json") for name, value in tool_service.public_global_params(t).items()} if include_globals else {},
+             "created_at": t.created_at, "updated_at": t.updated_at}
             for t in records]
 
 

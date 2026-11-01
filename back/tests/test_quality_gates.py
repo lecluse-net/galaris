@@ -1,6 +1,8 @@
 """Negative controls: the gates must reject plausible but insufficient evidence."""
 
 import json
+from configparser import ConfigParser
+from fnmatch import fnmatch
 import sys
 from pathlib import Path
 
@@ -8,13 +10,26 @@ import pytest
 
 from pydantic import TypeAdapter
 
-from scripts.check_critical_coverage import Domain, check_source_inventory, main as coverage_main
+from scripts.check_critical_coverage import Domain, check_source_inventory, source_owners, main as coverage_main
 
 
 def test_all_backend_sources_belong_to_one_declared_coverage_domain():
     root = Path(__file__).resolve().parents[1]
     domains = TypeAdapter(dict[str, Domain]).validate_json((root / "coverage-all-domains.json").read_text())
     check_source_inventory(root, domains)
+    configuration = ConfigParser()
+    configuration.read(root / "coverage-critical.ini")
+    sources = [path for layer in ("app", "bridge", "core") for path in (root / layer).rglob("*.py")
+               if not {"tests", "default-agent"} & set(path.relative_to(root).parts)]
+    selected: set[str] = set()
+    for pattern in configuration.get("run", "include").split():
+        matches = [path.relative_to(root).as_posix() for path in sources if fnmatch(path.as_posix(), pattern)]
+        assert matches, f"Critical coverage pattern points to no production source: {pattern}"
+        selected.update(matches)
+    critical = TypeAdapter(dict[str, Domain]).validate_json((root / "coverage-domains.json").read_text())
+    assert all(len(source_owners(filename, critical)) == 1 for filename in selected)
+    for name in critical:
+        assert any(name in source_owners(filename, critical) for filename in selected), f"Critical domain has no selected source: {name}"
 
 
 @pytest.mark.parametrize("fault", [None, "missing_domain", "overlapping_domain", "filename_prefix", "missing_root"])
@@ -54,7 +69,7 @@ def test_coverage_inventory_checks_sources_independently_of_reports(tmp_path, mo
 def test_coverage_gate_rejects_hidden_gaps(tmp_path, monkeypatch, fault):
     config = tmp_path / "domains.json"
     config.write_text(json.dumps({
-        "critical": {"prefixes": ["app/critical/"], "line_min": 100, "branch_min": 100},
+        "critical-fixture": {"prefixes": ["app/critical/"], "line_min": 100, "branch_min": 100},
         "easy": {"prefixes": ["core/easy/"], "line_min": 100, "branch_min": 100},
     }))
     critical = '<class filename="app/critical/service.py"><lines><line number="1" hits="1" branch="true" condition-coverage="100% (2/2)"/></lines></class>'
@@ -75,8 +90,10 @@ def test_coverage_gate_rejects_hidden_gaps(tmp_path, monkeypatch, fault):
                                      "--report", str(tmp_path / "result.json")])
     from defusedxml.common import DefusedXmlException
 
-    with pytest.raises((SystemExit, ValueError, DefusedXmlException)):
+    with pytest.raises((SystemExit, ValueError, DefusedXmlException)) as failure:
         coverage_main()
+    if fault == "missing_domain":
+        assert "critical-fixture" in str(failure.value)
 
 
 def lab_run():

@@ -45,6 +45,8 @@ class _HoldingTransport(CallTransport):
 async def test_call_provider_comes_from_exact_connection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from core.params import runtime_settings
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["matrix"]')
     provider = object()
     connection = SimpleNamespace(id=42, agent_id=7, tool_id=5, active=True)
     tool = SimpleNamespace(

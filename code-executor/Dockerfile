@@ -1,11 +1,22 @@
 # Keep the upstream MIT notices in the image. Upgrade tag and digest together.
-FROM ghcr.io/coder/code-server:4.141.0@sha256:72ab24b5680ee597dd647b30d82625752f40109b5f61bef90ffbf1ea1f02dbb8 AS runtime
+FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS node-runtime
+WORKDIR /security-deps
+COPY security-deps/package*.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+FROM ghcr.io/coder/code-server:4.144.0@sha256:b9e8056bb74bd0c4f90284c7559eddeccd38400cfedc28e64c9d3ca50fef1f83 AS runtime
 
 USER root
 ENV DEBIAN_FRONTEND=noninteractive PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends bubblewrap python3 python3-aiohttp git openssh-client tini \
     && rm -rf /var/lib/apt/lists/*
+
+# The editor uses this bundled Node path. Keep its security fixes independent of
+# the upstream editor release. Our supervisor owns identities; fixuid is unused.
+COPY --from=node-runtime /usr/local/bin/node /usr/lib/code-server/lib/node
+COPY --from=node-runtime /security-deps/node_modules/undici /usr/lib/code-server/lib/vscode/node_modules/undici
+RUN rm -f /usr/local/bin/fixuid
 
 COPY runtime.py /opt/galaris-code/runtime.py
 COPY profiles.py /opt/galaris-code/profiles.py

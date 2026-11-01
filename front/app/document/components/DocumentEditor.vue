@@ -1297,7 +1297,22 @@ function captureFocus(): DocumentFocus | null {
   if (loading.value || historyOpen.value || summaryOpen.value || currentDocument.value?.id !== props.documentId) return null
   return documentFocus.capture(currentDocument.value.revision)
 }
-defineExpose({ flush: flushEditor, requestRowAction, captureFocus })
+async function discardDraft(): Promise<void> {
+  if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = undefined }
+  await waitForActiveSave()
+  saveQueued = false
+  const saved = conflictDocument.value ? draftFromDocument(conflictDocument.value) : lastSavedDraft.value
+  if (!saved) return
+  applyingDocument = true
+  if (conflictDocument.value) currentDocument.value = conflictDocument.value
+  lastSavedDraft.value = cloneDraft(saved)
+  applyEditorDraft(saved)
+  conflictDocument.value = null
+  autosaveState.value = 'saved'
+  applyingDocument = false
+  preserveDraft()
+}
+defineExpose({ flush: flushEditor, discardDraft, requestRowAction, captureFocus })
 
 async function resolveInlineImage(documentId: string, attachmentId: string, signal?: AbortSignal): Promise<Blob> {
   return documentService.documentAttachmentBlob(documentId, attachmentId, requestAgentId.value, signal)

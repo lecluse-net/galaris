@@ -12,6 +12,7 @@
     :clearable="clearable"
     emit-value
     map-options
+    no-option-prefetch
     hide-bottom-space
     options-dense
     use-input

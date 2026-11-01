@@ -1,10 +1,11 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
 for (const width of [1440, 390]) test(`exclusive memory branches remain accessible in 3D after zoom and reopening at ${width}px`, async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt =>
+  await page.addLocatorHandler(notificationPrompt(page), prompt =>
     prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const errors = collectPageErrors(page)
   const seeded = await request.post('/api/__test/seed')

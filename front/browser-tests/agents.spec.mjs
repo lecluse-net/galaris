@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, selectDocumentContext } from './fixtures.mjs'
 import { agent } from './data.mjs'
 
 async function agentFixtures(page) {
@@ -26,23 +26,23 @@ for (const width of [1440, 390]) test(`an agent citation switches to an avatar c
     } })
   })
   const editor = page.locator('[data-editor-surface]')
-  await editor.getByRole('link', { name: 'Alice Example', exact: true }).click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
+  await selectDocumentContext(page, editor.getByRole('link', { name: 'Alice Example', exact: true }))
+  await page.getByRole('toolbar', { name: 'Contextual actions' }).getByRole('button', { name: 'Show card', exact: true }).click()
   const card = editor.locator('.galaris-agent-card')
   await expect(card).toContainText(agent.job_title)
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   await card.screenshot({ path: testInfo.outputPath('agent-citation-card.png') })
-  await card.locator('p a').click()
+  await card.locator('p a').click({ modifiers: ['Control'] })
   await expect(page.getByRole('dialog').locator('.agent-card')).toContainText('Alice Example')
   await page.keyboard.press('Escape')
-  await card.locator('.agent-citation-avatar').click()
+  await card.locator('.agent-citation-avatar').click({ modifiers: ['Control'] })
   await expect(page.getByRole('dialog').locator('.agent-card')).toContainText('Alice Example')
   await page.keyboard.press('Escape')
-  await card.getByText(agent.job_title, { exact: true }).click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show URL', exact: true }).click()
+  await selectDocumentContext(page, card.getByText(agent.job_title, { exact: true }))
+  await page.getByRole('toolbar', { name: 'Contextual actions' }).getByRole('button', { name: 'Show URL', exact: true }).click()
   await expect(card).toHaveCount(0)
-  await editor.getByRole('link', { name: 'Alice Example', exact: true }).click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
+  await selectDocumentContext(page, editor.getByRole('link', { name: 'Alice Example', exact: true }))
+  await page.getByRole('toolbar', { name: 'Contextual actions' }).getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(card).toHaveCount(1)
   const source = await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1).value)
   expect(source).toContain('galaris-agent-card'); expect(source).toContain('galaris://agent/7')
@@ -313,7 +313,7 @@ test('models load on demand without losing the saved profile, voice or identity 
     writes.push(data)
     return route.fulfill({ json: { ...saved, ...data } })
   })
-  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT', 'LLM_PROVIDER_ACCESS', 'PARAMS_ACCESS'] })
+  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT', 'LLM_PROFILE_ACCESS', 'LLM_MODEL_ACCESS', 'LLM_PROVIDER_ACCESS'] })
   try {
     await page.getByRole('button', { name: 'Edit agent', exact: true }).click()
     const dialog = page.getByRole('dialog')

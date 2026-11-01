@@ -13,6 +13,7 @@ from app.memory.temporal import MemoryTemporalAnchor, MemoryTemporalFilter, next
 from app.memory.schemas import MemorySearchRequest
 from app.memory import bootstrap, observe_messenger_contact, MessengerContactObservation, ensure_contact_memory_scope
 from app.agent import AgentContextRequest, AgentSnapshot
+from core.util.temporal import TemporalAnchor, TemporalFilter, next_match as shared_next_match
 
 
 @pytest.fixture(autouse=True)
@@ -33,12 +34,13 @@ def global_timezone(monkeypatch):
     ({'hour': 2, 'minute': 30, 'timezone': 'Europe/Paris'}, '2026-03-29T00:00:00+00:00', '2026-03-29T22:00:00+00:00', None),
     ({'hour': 2, 'minute': 30, 'timezone': 'Europe/Paris'}, '2026-10-25T00:45:00+00:00', '2026-10-25T02:00:00+00:00', '2026-10-25T01:30:00+00:00'),
 ])
-def test_partial_calendar_matches(parts, start, end, expected, monkeypatch):
+@pytest.mark.parametrize(('anchor_model', 'match'), [(MemoryTemporalAnchor, next_match), (TemporalAnchor, shared_next_match)], ids=['memory', 'shared'])
+def test_partial_calendar_matches(parts, start, end, expected, monkeypatch, anchor_model, match):
     parts = dict(parts)
     monkeypatch.setenv('TZ', parts.pop('timezone', 'UTC'))
-    anchor = MemoryTemporalAnchor.model_validate(parts)
+    anchor = anchor_model.model_validate(parts)
     assert 'timezone' not in anchor.model_dump()
-    result = next_match(anchor, datetime.fromisoformat(start), datetime.fromisoformat(end))
+    result = match(anchor, datetime.fromisoformat(start), datetime.fromisoformat(end))
     assert result == (datetime.fromisoformat(expected) if expected else None)
 
 
@@ -48,9 +50,10 @@ def test_partial_calendar_matches(parts, start, end, expected, monkeypatch):
     {'hour': 24}, {'minute': 60}, {'second': 0}, {'day': True}, {'hour': 9.5},
     {'day': 1, 'timezone': 'Invalid/Zone'}, {'day': 1, 'timezone': 'UTC'},
 ])
-def test_impossible_or_empty_constraints_are_rejected(parts):
+@pytest.mark.parametrize('anchor_model', [MemoryTemporalAnchor, TemporalAnchor], ids=['memory', 'shared'])
+def test_impossible_or_empty_constraints_are_rejected(parts, anchor_model):
     with pytest.raises(ValidationError):
-        MemoryTemporalAnchor.model_validate(parts)
+        anchor_model.model_validate(parts)
 
 
 @pytest.mark.asyncio
@@ -230,9 +233,10 @@ async def test_dream_create_persists_optional_calendar(agents, memory_storage):
     ('2026-10-25T02:30:00+01:00', '2026-10-25T01:30:00+00:00'),
     ('2026-10-25T02:30:00+02:00', '2026-10-25T00:30:00+00:00'),
 ])
-def test_target_date_resolves_in_global_timezone(target, expected, monkeypatch):
+@pytest.mark.parametrize('filter_model', [MemoryTemporalFilter, TemporalFilter], ids=['memory', 'shared'])
+def test_target_date_resolves_in_global_timezone(target, expected, monkeypatch, filter_model):
     monkeypatch.setenv('TZ', 'Europe/Paris')
-    assert MemoryTemporalFilter(target_at=target).target_at == datetime.fromisoformat(expected)
+    assert filter_model(target_at=target).target_at == datetime.fromisoformat(expected)
 
 
 @pytest.mark.parametrize('data', [
@@ -240,10 +244,11 @@ def test_target_date_resolves_in_global_timezone(target, expected, monkeypatch):
     {'target_at': '2026-02-30T09:30'}, {'timezone': 'Invalid/Zone'}, {'timezone': 'UTC'},
     {'lookahead_hours': -1}, {'lookahead_hours': 745}, {'lookahead_hours': True},
 ])
-def test_target_date_rejects_invalid_or_ambiguous_inputs(data, monkeypatch):
+@pytest.mark.parametrize('filter_model', [MemoryTemporalFilter, TemporalFilter], ids=['memory', 'shared'])
+def test_target_date_rejects_invalid_or_ambiguous_inputs(data, monkeypatch, filter_model):
     monkeypatch.setenv('TZ', 'Europe/Paris')
     with pytest.raises(ValidationError):
-        MemoryTemporalFilter.model_validate(data)
+        filter_model.model_validate(data)
 
 
 @pytest.mark.asyncio

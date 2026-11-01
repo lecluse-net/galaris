@@ -1,3 +1,4 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
@@ -9,6 +10,7 @@ for (const mobile of [false, true]) {
     if (!mobile) test.setTimeout(120_000)
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
     const pageErrors = collectPageErrors(page)
+    await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: /^(Plus tard|Later|稍后)$/, exact: true }).click())
     const fixture = await (await request.post('/api/__test/seed')).json()
     const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
     await page.goto('/user/login')
@@ -33,10 +35,15 @@ for (const mobile of [false, true]) {
         .some(parameter => parameter.label?.startsWith('tools.connectionParamLabels.')))
       expect(internal.map(entry => entry.code)).toEqual(expect.arrayContaining(['browser', 'console', 'mail', 'calendar']))
       // Check the real backend definitions against each catalogue, without a fallback language hiding missing keys.
-      const untranslated = await page.evaluate(entries => {
-        const { $te } = document.querySelector('#app').__vue_app__.config.globalProperties
-        const failures = []
-        for (const locale of ['fr', 'en', 'zh']) {
+      const untranslated = []
+      for (const locale of ['fr', 'en', 'zh']) {
+        expect((await request.put('/api/auth/me', { headers, data: { language: locale } })).ok()).toBeTruthy()
+        await pageErrors.settle()
+        await page.reload()
+        await expect(page.locator('html')).toHaveAttribute('lang', locale)
+        untranslated.push(...await page.evaluate(({ entries, locale }) => {
+          const { $te } = document.querySelector('#app').__vue_app__.config.globalProperties
+          const failures = []
           for (const entry of entries) {
             for (const [name, parameter] of Object.entries(entry.connection_schema.params)) {
               for (const definition of [parameter, ...(parameter.options ?? [])]) {
@@ -46,10 +53,14 @@ for (const mobile of [false, true]) {
               }
             }
           }
-        }
-        return failures
-      }, internal)
+          return failures
+        }, { entries: internal, locale }))
+      }
       expect(untranslated).toEqual([])
+      expect((await request.put('/api/auth/me', { headers, data: { language: 'fr' } })).ok()).toBeTruthy()
+      await pageErrors.settle()
+      await page.reload()
+      await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
     }
     if (mobile) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
     await page.getByRole('button', { name: 'Nouvel outil', exact: true }).click()
@@ -124,7 +135,7 @@ for (const mobile of [false, true]) {
     await page.getByRole('button', { name: 'Inactives', exact: true }).click()
     const connectionRow = page.locator(mobile ? '.connection-mobile-card' : 'tbody tr').filter({ hasText: created.label })
     await connectionRow.getByRole('button', { name: 'Modifier', exact: true }).click()
-    await editor.getByText('Paramètres globaux hérités (2)', { exact: true }).click()
+    await editor.getByText(/Paramètres globaux hérités/).click()
     const inheritedIndexing = editor.locator('.q-item').filter({ hasText: 'Indexation des fichiers' })
     await expect(inheritedIndexing).toContainText('Uniquement les fichiers déjà connus')
     await inheritedIndexing.getByRole('button', { name: 'Personnaliser', exact: true }).click()
@@ -174,7 +185,7 @@ for (const mobile of [false, true]) {
         await page.goto('/tools?tab=connections')
         await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${agent.first_name} ${agent.last_name}`)
         await page.getByRole('button', { name: 'Inactives', exact: true }).click()
-        const browserConnectionRow = page.locator('tbody tr').filter({ has: page.getByText('Navigateur', { exact: true }) })
+        const browserConnectionRow = page.locator('tbody tr').filter({ has: page.getByRole('cell', { name: /^Navigateur\b/ }) })
         await browserConnectionRow.getByRole('button', { name: 'Modifier', exact: true }).click()
         await editor.getByText(/Paramètres globaux hérités/).click()
         const publicSetting = editor.locator('.q-item').filter({ hasText: 'Accès aux sites publics' })

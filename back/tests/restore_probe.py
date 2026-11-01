@@ -54,19 +54,30 @@ async def seed_application_document() -> None:
         await resource_service.update_item(document.id, DocumentUpdate(expected_revision=1,
             payload=DocumentPayload(text=CURRENT_DOCUMENT_CONTENT)), actor_agent_id=agent.id)
         await resource_service.update_summary(document.id, DocumentUpdate(
+            payload=DocumentPayload(text=ARCHIVED_SUMMARY)), actor_agent_id=agent.id)
+        await resource_service.update_summary(document.id, DocumentUpdate(
             payload=DocumentPayload(text=DOCUMENT_SUMMARY), keywords=["synthetic", "restore"]), actor_agent_id=agent.id)
         attachment = await document_attachment_service.add_document_attachment(
             document.id, actor_agent_id=agent.id,
             upload=UploadFile(file=BytesIO(b"restored application attachment"), filename="canary.txt"),
         )
-        from app.document.summary_retirement import preserve_current
-        from core.dbadmin import SchemaTransitionSet
-        archive_identity = uuid4()
-        await db.execute(text("CREATE TABLE document_summary_revisions (id uuid PRIMARY KEY, provider_code text, resource_id text, content text)"))
-        await db.execute(text("INSERT INTO document_summary_revisions VALUES (:id,'native',:pointer,:content)"),
-            {"id": archive_identity, "pointer": str(uuid4()), "content": ARCHIVED_SUMMARY})
-        await preserve_current(db, SchemaTransitionSet())
-        await db.execute(text("DROP TABLE document_summary_revisions"))
+        historical = await db.scalar(text("SELECT to_regclass('public.document_summary_revisions')"))
+        if historical:
+            # Seed through the old binary's real summary workflow. Candidate
+            # DbAdmin must preserve this row; rollback must read the old table.
+            archive_identity = await db.scalar(text("SELECT id FROM document_summary_revisions WHERE document_id=:document AND content=:content ORDER BY revision DESC LIMIT 1"),
+                {"document": document.id, "content": ARCHIVED_SUMMARY})
+            assert archive_identity is not None
+        else:
+            # Current-only restore drills still exercise retained history bytes.
+            from app.document.summary_retirement import preserve_current
+            from core.dbadmin import SchemaTransitionSet
+            archive_identity = uuid4()
+            await db.execute(text("CREATE TABLE document_summary_revisions (id uuid PRIMARY KEY, provider_code text, resource_id text, content text)"))
+            await db.execute(text("INSERT INTO document_summary_revisions VALUES (:id,'native',:pointer,:content)"),
+                {"id": archive_identity, "pointer": str(uuid4()), "content": ARCHIVED_SUMMARY})
+            await preserve_current(db, SchemaTransitionSet())
+            await db.execute(text("DROP TABLE document_summary_revisions"))
         await db.commit()
         (ROOT / "application.json").write_text(json.dumps({
             "agent_id": agent.id, "document_id": str(document.id), "attachment_id": str(attachment.id),
@@ -105,9 +116,13 @@ async def verify_application_document() -> None:
                 assert summary.status_code in {403, 404}
                 assert historical.status_code in {403, 404}
     async with get_db_session() as db:
-        assert await db.scalar(text("SELECT snapshot->>'content' FROM galaris_migration.document_summary_history_sources WHERE identity=CAST(:id AS uuid)"),
-            {"id": identifiers["summary_archive_identity"]}) == ARCHIVED_SUMMARY
-        assert not await db.scalar(text("SELECT EXISTS(SELECT 1 FROM galaris_migration.document_summary_history_sources WHERE digest<>encode(sha256(convert_to(snapshot::text,'UTF8')),'hex'))"))
+        if await db.scalar(text("SELECT to_regclass('public.document_summary_revisions')")):
+            assert await db.scalar(text("SELECT content FROM document_summary_revisions WHERE id=CAST(:id AS uuid)"),
+                {"id": identifiers["summary_archive_identity"]}) == ARCHIVED_SUMMARY
+        else:
+            assert await db.scalar(text("SELECT snapshot->>'content' FROM galaris_migration.document_summary_history_sources WHERE identity=CAST(:id AS uuid)"),
+                {"id": identifiers["summary_archive_identity"]}) == ARCHIVED_SUMMARY
+            assert not await db.scalar(text("SELECT EXISTS(SELECT 1 FROM galaris_migration.document_summary_history_sources WHERE digest<>encode(sha256(convert_to(snapshot::text,'UTF8')),'hex'))"))
 
 
 async def run(mode: str) -> None:

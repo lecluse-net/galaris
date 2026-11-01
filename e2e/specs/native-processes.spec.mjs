@@ -1,7 +1,8 @@
+import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
-  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt =>
+  await page.addLocatorHandler(notificationPrompt(page), prompt =>
     prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
 })
 

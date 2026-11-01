@@ -46,6 +46,8 @@ async def test_human_tool_purge_requires_edit_privilege_and_the_current_confirma
     assert (await client.delete(path, params={"cascade": "true"})).status_code == 401
     headers = []
     for email in users:
+        # Each actor represents an independent browser session.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={"email": email, "password": password})
         assert login.status_code == 200, login.text
         headers.append({"Authorization": f"Bearer {login.json()['access_token']}"})
