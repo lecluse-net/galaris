@@ -8,7 +8,7 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 
 ## [Unreleased]
 
-Planned for **0.3.0**; includes changes since 0.2.0.
+## [0.3.0] - 2026-11-01
 
 ### Added
 
@@ -193,6 +193,7 @@ Planned for **0.3.0**; includes changes since 0.2.0.
 - Initial tagged release of Galaris: self-hosted agents, text and voice conversations,
   durable Tasks and Goals, tools, memory, documents, external messaging and AI Lab.
 
-[Unreleased]: https://github.com/lecluse-net/galaris/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/lecluse-net/galaris/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/lecluse-net/galaris/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/lecluse-net/galaris/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/lecluse-net/galaris/tree/0.1.0

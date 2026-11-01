@@ -139,6 +139,18 @@ restored.
 
 ## Release and rollback
 
+### Publish sources
+
+After qualifying the final code, move prepared notes from `Unreleased` into a dated version
+section in `CHANGELOG.md`, then prepare and commit the documentation. Advance `main` and push
+the matching tag without a `v` prefix, for example `0.3.0`. The **Publish release** workflow
+checks that format, extracts notes from the section and creates the GitHub release using the
+repository token. An existing publication remains unchanged on retry; never move a published
+tag. This publication provides source archives. Image qualification and deployment use the
+separate procedure below.
+
+### Build and qualify images
+
 `make build-release RELEASE_REF=<commit>` archives a commit and exports five production images:
 backend, frontend, Browser, SSH and Code executors, to `artifacts/releases/<commit>`.
 Uncommitted changes are excluded. Base images use digests;

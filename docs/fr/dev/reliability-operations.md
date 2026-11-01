@@ -151,6 +151,18 @@ déjà autorisés continuent à être restaurés.
 
 ## Livraison et retour arrière
 
+### Publier les sources
+
+Après qualification du code final, déplacez les notes préparées de `Unreleased` vers une
+section de version datée dans `CHANGELOG.md`, puis préparez et committez la documentation.
+Avancez `main` et poussez le tag correspondant sans préfixe `v`, par exemple `0.3.0`.
+Le workflow **Publish release** vérifie ce format, extrait les notes de cette section et crée
+la release GitHub avec le jeton du dépôt. Une publication existante reste inchangée lors d’un
+réessai ; ne déplacez jamais un tag publié. Cette publication fournit les archives des sources.
+La qualification des images et le déploiement utilisent séparément le parcours ci-dessous.
+
+### Construire et qualifier les images
+
 `make build-release RELEASE_REF=<commit>` archive le commit puis construit/exporte cinq images :
 backend, frontend, exécuteurs Browser, SSH et Code, dans `artifacts/releases/<commit>`.
 Les changements non commités ne font pas partie de cet

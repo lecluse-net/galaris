@@ -1,0 +1,50 @@
+name: Publish release
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract curated release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          awk -v tag="$RELEASE_TAG" \
+            -v source_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$RELEASE_TAG/" '
+            index($0, "## [" tag "] - ") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found {
+              gsub(/\]\(docs\//, "](" source_url "docs/")
+              print
+            }
+            END { if (!found) exit 1 }
+          ' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
+          grep -q '^### ' "$RUNNER_TEMP/release-notes.md"
+      - name: Publish source release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; leaving it unchanged."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" --verify-tag \
+            --title "Galaris $RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/release-notes.md" --latest
