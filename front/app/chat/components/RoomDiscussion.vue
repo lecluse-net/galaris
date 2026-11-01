@@ -129,6 +129,12 @@ async function loadMessages(direction: Direction, force = false): Promise<void> 
       loading.value = false
       restoring = false
       if (recentRequested) { recentRequested = false; void loadMessages('recent', true) }
+      else if (navigating && !error.value) {
+        // Navigation can start while the first page is still restoring its layout.
+        // Reconsider that intent once loading finishes, even without another scroll event.
+        const info = scrollArea.value?.getScroll()
+        if (info) onScroll(info)
+      }
     }
   }
 }

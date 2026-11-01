@@ -668,8 +668,11 @@ function queueContextFocus(): void { restoreContextOnHide = true }
 async function restoreContextFocus(): Promise<void> {
   if (!restoreContextOnHide) return
   restoreContextOnHide = false
+  const current = editor.value
   await nextTick()
-  editor.value?.view.focus()
+  // A click/keystroke may already have returned to the editor while the menu
+  // was closing. Refocusing it would replace the newer native selection.
+  if (current && editor.value === current && !current.isDestroyed && !current.view.hasFocus()) current.view.focus()
 }
 async function showContextMenu(event: MouseEvent, request: number): Promise<void> {
   const current = editor.value
@@ -1074,6 +1077,7 @@ function action(key: string, value?: string): void {
   if (key === 'stopReading') { personalVoice?.stop(); return }
   if (key === 'find' && !sourceMode.value) { if (findOpen.value) closeFind(); else showDialog('find'); return }
   if (readonly || sourceMode.value) return
+  if (current.view.hasFocus()) syncKeyboardSelection()
   current.view.dispatch(closeHistory(current.state.tr))
   const chain = current.chain()
   if (!current.view.hasFocus()) chain.focus()

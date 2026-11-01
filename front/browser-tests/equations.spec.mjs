@@ -126,7 +126,11 @@ for (const [profile, width, dark] of [['document', 1440, false], ['document', 39
     await editor.locator('[data-math="inline"]').dblclick()
     await page.locator('.q-dialog__backdrop').last().click({ position: { x: 2, y: 2 } })
     await expect(dialog(page)).toHaveCount(0)
-    await page.evaluate(() => { const element = document.querySelector('[data-editor-surface]'); const editor = element.editor; editor.commands.setNodeSelection(2); editor.view.focus() })
+    await editor.locator('[data-math="inline"]').evaluate(element => {
+      const editor = element.closest('[data-editor-surface]').editor
+      editor.commands.setNodeSelection(editor.view.posAtDOM(element, 0))
+      editor.view.focus()
+    })
     await page.keyboard.press('Enter')
     await expect(dialog(page)).toBeVisible()
     await page.keyboard.press('Escape')

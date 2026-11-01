@@ -1933,7 +1933,9 @@ without mixing conversations or losing the finished response.
 `front/browser-tests/chat-window.spec.mjs` measures mounted bubbles for 1,000 synthetic
 messages and protects both ends, replies and read visibility. The full chat and discussion
 viewer cross the virtualization threshold by loading pages of 50 messages on desktop
-and mobile, then reopen at the bottom. Scenarios preserve the reading anchor through
+and mobile, then reopen at the bottom. Each older page is requested once; legitimate
+first-page refreshes and a fresh read on reopening remain allowed. Navigation during
+initial layout restoration must not be lost. Scenarios preserve the reading anchor through
 variable heights, prepended history, streaming and resizing; they also cover focus,
 selection, keyboard navigation, native search, Markdown caching and offscreen audio playback.
 Native search and active interactions may retain additional bubbles.

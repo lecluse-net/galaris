@@ -879,7 +879,7 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await work.click({ button: 'right' })
   await menu.getByRole('menuitem', { name: 'Create Text document', exact: true }).click()
   await expect(menu).toHaveCount(0)
-  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1).args[0].id)).toBe('work')
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1)?.args[0]?.id)).toBe('work')
   await page.getByText('Work', { exact: true }).focus()
   await page.keyboard.press('Shift+F10')
   await menu.getByRole('menuitem', { name: 'Expand all in this folder', exact: true }).press('Enter')

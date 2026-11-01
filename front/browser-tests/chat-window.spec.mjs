@@ -121,10 +121,10 @@ for (const surface of ['chat', 'discussion']) for (const width of [1440, 390]) {
       members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }
     await jsonRoute(page, '**/api/chat/rooms/window-room', room)
     await jsonRoute(page, '**/api/chat/rooms/window-room/speech/status*', { available_agent_ids: [] })
-    let reads = 0
+    const pages = []
     await page.route('**/api/chat/rooms/window-room/messages?*', route => {
       const number = Number(new URL(route.request().url()).searchParams.get('page'))
-      reads++
+      pages.push(number)
       return route.fulfill({ json: { items: Array.from({ length: 50 }, (_, index) => {
         const n = 200 - number * 50 + index
         return { ...message(n), room_id: room.id, created_at: new Date(Date.UTC(2026, 9, 1) + n * 1000).toISOString() }
@@ -152,7 +152,7 @@ for (const surface of ['chat', 'discussion']) for (const width of [1440, 390]) {
         element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -100000 }))
         element.scrollTop = 0
       })
-      await expect.poll(() => reads).toBe(number)
+      await expect.poll(() => pages.filter(page => page > 1)).toEqual(Array.from({ length: number - 1 }, (_, index) => index + 2))
       const oldestBefore = page.locator(`[data-message-id="message-${200 - (number - 1) * 50}"]`)
       await expect(oldestBefore).toBeInViewport()
       await expect.poll(() => scroll.evaluate(element => element.scrollTop)).toBeGreaterThan(100)
@@ -167,9 +167,13 @@ for (const surface of ['chat', 'discussion']) for (const width of [1440, 390]) {
     await expect.poll(() => scroll.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThan(5)
     await page.screenshot({ path: testInfo.outputPath('long-history.png') })
     await page.evaluate(() => window.testApp.unmount())
+    const recentReads = pages.filter(page => page === 1).length
     await open()
     await expect(last).toBeInViewport()
-    expect(reads).toBe(5)
+    // Returning to the latest messages may refresh page 1. Reopening must do so
+    // again, while each older page is fetched only once during navigation.
+    expect(pages.filter(page => page === 1)).toHaveLength(recentReads + 1)
+    expect(pages.filter(page => page > 1)).toEqual([2, 3, 4])
   })
 }
 

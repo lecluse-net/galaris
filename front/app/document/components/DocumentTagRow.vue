@@ -32,7 +32,7 @@
       <q-list dense>
         <template v-for="action in contextActions" :key="action.key">
           <q-separator v-if="action.separator" />
-          <q-item v-close-popup clickable role="menuitem" :aria-label="action.label" :disable="action.disabled" :class="{ 'tag-delete': action.negative }" @click="action.run()">
+          <q-item clickable role="menuitem" :aria-label="action.label" :disable="action.disabled" :class="{ 'tag-delete': action.negative }" @click="runMenuAction(action.run)">
             <q-item-section avatar><q-icon :name="action.icon" :class="{ 'tag-action-icon': !action.negative }" /></q-item-section>
             <q-item-section>{{ action.label }}</q-item-section>
             <q-item-section v-if="action.shortcut" side>{{ action.shortcut }}</q-item-section>
@@ -73,12 +73,21 @@ const contextMenu = useTemplateRef<QMenu>('contextMenu')
 const nameInput = useTemplateRef<QInput>('nameInput')
 let menuFocus: HTMLElement | null = null
 let restoreMenuFocus = false
+let pendingMenuAction: (() => void | Promise<void>) | undefined
 function rememberMenuFocus(): void { menuFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null; restoreMenuFocus = false }
 function restoreFocusAfterEscape(): void { restoreMenuFocus = true }
-function afterMenuHide(): void {
+async function afterMenuHide(): Promise<void> {
+  const action = pendingMenuAction
+  pendingMenuAction = undefined
+  if (action) { restoreMenuFocus = false; await action(); return }
   if (renaming.value) nameInput.value?.focus()
   else if (restoreMenuFocus && menuFocus?.isConnected) menuFocus.focus({ preventScroll: true })
   restoreMenuFocus = false
+}
+function runMenuAction(action: () => void | Promise<void>): void {
+  // Start focus-taking actions after Quasar releases the closing menu's focus trap.
+  pendingMenuAction = action
+  contextMenu.value?.hide()
 }
 const menuId = useContextMenuDismissal(menuOpen, () => contextMenu.value)
 function openPointerMenu(event: MouseEvent): void {

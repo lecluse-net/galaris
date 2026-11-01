@@ -373,7 +373,7 @@ for (const mode of ['edit', 'read']) test(`${mode}: failed attachment downloads 
   expect(await page.evaluate(() => window.createdMediaUrls)).toEqual([])
 })
 
-for (const legacy of [false, true]) test(`document link thumbnails survive saving, reopening and repeated conversions (legacy=${legacy})`, async ({ page }, testInfo) => {
+for (const legacy of [false, true]) for (const journey of ['conversions', 'previews', 'fallback']) test(`document link thumbnails survive saving and reopening: ${journey} (legacy=${legacy})`, async ({ page }, testInfo) => {
   const url = 'https://example.org/news'
   const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: `<p><a href="${url}">${url}</a></p>` } }
   const attachment = { id: attachmentId, name: 'link-preview.jpg', media_type: 'image/jpeg', size_bytes: 100 }
@@ -418,42 +418,48 @@ for (const legacy of [false, true]) test(`document link thumbnails survive savin
   expect(current.payload.text).not.toContain('blob:')
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
-  for (let i = 0; i < 3; i++) {
-    await selectDocumentContext(page, card.locator('strong'))
-    await page.getByRole('button', { name: 'Show URL', exact: true }).click()
-    await expect(card).toHaveCount(0)
-    await selectDocumentContext(page, page.locator('[data-editor-surface] a'))
-    await page.getByRole('button', { name: 'Show card', exact: true }).click()
-    await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
+  if (journey === 'conversions') {
+    for (let i = 0; i < 3; i++) {
+      await selectDocumentContext(page, card.locator('strong'))
+      await page.getByRole('button', { name: 'Show URL', exact: true }).click()
+      await expect(card).toHaveCount(0)
+      await selectDocumentContext(page, page.locator('[data-editor-surface] a'))
+      await page.getByRole('button', { name: 'Show card', exact: true }).click()
+      await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
+    }
+    expect(imageCalls).toBeGreaterThanOrEqual(2)
+    expect(cardCalls).toBe(1)
+    return
   }
-  expect(imageCalls).toBeGreaterThanOrEqual(2)
-  expect(cardCalls).toBe(1)
   const savedContent = current.payload.text
   const savedRevision = current.revision
-  for (let i = 0; i < 2; i++) {
-    await selectDocumentContext(page, card.locator('img'))
-    await page.getByRole('button', { name: 'View image in fullscreen', exact: true }).click()
-    const preview = page.locator('.fullscreen-preview')
-    await expect(preview.getByRole('img')).toHaveJSProperty('naturalWidth', 1)
-    await preview.getByRole('button', { name: 'Show actual size (1:1)', exact: true }).click()
-    await preview.getByRole('button', { name: 'Close', exact: true }).click()
-    await expect(preview).toHaveCount(0)
-    await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
-  }
-  expect(current.payload.text).toBe(savedContent)
-  expect(current.revision).toBe(savedRevision)
-  if (!legacy) {
-    const snapshot = await page.evaluate(async content => {
-      const { preparePortableDocumentSnapshot } = await import('/core/util/documentSnapshot.ts')
-      return preparePortableDocumentSnapshot(content, 'News', new AbortController().signal)
-    }, current.payload.text)
-    expect(snapshot).toContain('data:image/png;base64,')
-    expect(snapshot).not.toContain('/attachments/')
-    await page.locator('[data-editor-surface]').screenshot({ path: testInfo.outputPath('cached-link-preview.png') })
-    await mount(page, 'core/util/components/RichText.vue', { props: { profile: 'document', content: current.payload.text } })
-    await expect(page.locator('.rich-content img')).toHaveJSProperty('naturalWidth', 1)
-    await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
-    await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
+  if (journey === 'previews') {
+    for (let i = 0; i < 2; i++) {
+      await selectDocumentContext(page, card.locator('img'))
+      await page.getByRole('button', { name: 'View image in fullscreen', exact: true }).click()
+      const preview = page.locator('.fullscreen-preview')
+      await expect(preview.getByRole('img')).toHaveJSProperty('naturalWidth', 1)
+      await preview.getByRole('button', { name: 'Show actual size (1:1)', exact: true }).click()
+      await preview.getByRole('button', { name: 'Close', exact: true }).click()
+      await expect(preview).toHaveCount(0)
+      await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
+    }
+    expect(current.payload.text).toBe(savedContent)
+    expect(current.revision).toBe(savedRevision)
+    if (!legacy) {
+      const snapshot = await page.evaluate(async content => {
+        const { preparePortableDocumentSnapshot } = await import('/core/util/documentSnapshot.ts')
+        return preparePortableDocumentSnapshot(content, 'News', new AbortController().signal)
+      }, current.payload.text)
+      expect(snapshot).toContain('data:image/png;base64,')
+      expect(snapshot).not.toContain('/attachments/')
+      await page.locator('[data-editor-surface]').screenshot({ path: testInfo.outputPath('cached-link-preview.png') })
+      await mount(page, 'core/util/components/RichText.vue', { props: { profile: 'document', content: current.payload.text } })
+      await expect(page.locator('.rich-content img')).toHaveJSProperty('naturalWidth', 1)
+      await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
+      await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
+    }
+    return
   }
   // An unavailable preview stays reversible without repetitive notifications.
   await jsonRoute(page, `**/api/documents/${documentId}/link-card?*`, {

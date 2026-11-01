@@ -2017,6 +2017,9 @@ pendant une réponse en cours, sans mélange entre conversations ni perte de la 
 1 000 messages synthétiques et protège les extrémités, les réponses et la visibilité de lecture.
 Le chat complet et le lecteur de discussions franchissent le seuil de virtualisation
 en chargeant des pages de 50 messages, sur desktop et mobile, puis se rouvrent en bas.
+Chaque page ancienne est demandée une seule fois ; les rafraîchissements légitimes de
+la première page et sa relecture à la réouverture restent permis. La navigation pendant
+la restauration initiale ne doit pas être perdue.
 Les scénarios conservent l’ancre avec des hauteurs variables, des ajouts d’historique,
 le streaming et le redimensionnement ; ils couvrent aussi le focus, la sélection,
 le clavier, la recherche native, le cache Markdown et la lecture audio hors écran.

@@ -8,7 +8,7 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 
 ## [Unreleased]
 
-## [0.3.1] - 2026-11-01
+## [0.3.1] - 2026-11-02
 
 ### Changed
 
@@ -16,6 +16,14 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
   followed by a fresh source security scan, before publishing a GitHub Release.
   Missing or unsuccessful evidence blocks publication with retained diagnostics.
   Immutable image bundle builds also check committed sources before building.
+
+### Fixed
+
+- Preserve early history navigation while conversations finish loading, and apply
+  editor toolbar formatting to the current text selection after dismissing a menu.
+- Keep the folder name field focused when renaming from its context menu.
+- Verify upgrades from an earlier release with that release's own dependencies,
+  including rollback, instead of importing historical code with candidate packages.
 
 ### Security
 
