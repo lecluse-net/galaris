@@ -48,31 +48,54 @@ async function controls(page, props = {}, html = '<p>Document</p>', simple = fal
 
 for (const simple of [false, true]) test(`dictation writes live at the cursor without duplicating snapshots and releases the microphone (simple=${simple})`, async ({ page }) => {
   let requests = 0
-  await page.route('**/api/llm/me/transcription', route => {
+  const snapshots = Array.from({ length: 3 }, () => Promise.withResolvers())
+  const transcripts = ['spoken words', 'Spoken words, and more.', 'Spoken words, and more. Elsewhere.']
+  await page.route('**/api/llm/me/transcription', async route => {
     expect(route.request().headers()['content-type']).toContain('multipart/form-data')
-    requests += 1
-    return route.fulfill({ json: { text: requests === 1 ? 'spoken words' : requests === 2 ? 'Spoken words, and more.' : 'Spoken words, and more. Elsewhere.' } })
+    const index = Math.min(requests++, snapshots.length - 1)
+    await snapshots[index].promise
+    return route.fulfill({ json: { text: transcripts[index] } })
   })
   await controls(page, {}, '<p>Document</p>', simple)
   if (simple) await page.setViewportSize({ width: 390, height: 844 })
   const editor = page.locator('[data-editor-surface]')
+  const textBeforeCaret = () => editor.evaluate(element => {
+    const selection = window.getSelection()
+    if (!selection?.isCollapsed || !selection.anchorNode || !element.contains(selection.anchorNode)) return null
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    range.setEnd(selection.anchorNode, selection.anchorOffset)
+    return range.toString()
+  })
   await editor.click()
-  await page.keyboard.press('Home')
-  await page.keyboard.press('ArrowRight')
-  await page.keyboard.press('ArrowRight')
-  await page.keyboard.press('ArrowRight')
-  await page.getByRole('button', { name: 'Dictate', exact: true }).click()
-  await expect.poll(() => page.evaluate(() => window.dictationTracks.length)).toBeGreaterThan(0)
-  await expect(editor).toHaveText('Doc spoken words ument')
-  if (simple) await page.setViewportSize({ width: 1024, height: 900 })
-  await expect(page.getByRole('button', { name: 'Finish dictation' })).toBeEnabled()
-  await expect(editor).toHaveText('Doc spoken words and more. ument')
-  await page.keyboard.press('Control+End')
-  await expect(editor).toHaveText('Doc spoken words and more. ument Elsewhere.')
-  await page.getByRole('button', { name: 'Finish dictation' }).click()
-  await expect.poll(() => page.evaluate(() => window.dictationTracks.every(track => track.readyState === 'ended'))).toBe(true)
-  await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toBeEnabled()
-  await expect(editor).toHaveText('Doc spoken words and more. ument Elsewhere.')
+  await expect(editor).toBeFocused()
+  await editor.press('Home')
+  await expect.poll(textBeforeCaret).toBe('')
+  for (const prefix of ['D', 'Do', 'Doc']) {
+    await editor.press('ArrowRight')
+    await expect.poll(textBeforeCaret).toBe(prefix)
+  }
+  try {
+    await page.getByRole('button', { name: 'Dictate', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => window.dictationTracks.length)).toBeGreaterThan(0)
+    await expect.poll(() => requests).toBe(1)
+    snapshots[0].resolve()
+    await expect(editor).toHaveText('Doc spoken words ument')
+    if (simple) await page.setViewportSize({ width: 1024, height: 900 })
+    await expect(page.getByRole('button', { name: 'Finish dictation' })).toBeEnabled()
+    snapshots[1].resolve()
+    await expect(editor).toHaveText('Doc spoken words and more. ument')
+    await editor.press('Control+End')
+    await expect.poll(textBeforeCaret).toBe('Doc spoken words and more. ument')
+    snapshots[2].resolve()
+    await expect(editor).toHaveText('Doc spoken words and more. ument Elsewhere.')
+    await page.getByRole('button', { name: 'Finish dictation' }).click()
+    await expect.poll(() => page.evaluate(() => window.dictationTracks.every(track => track.readyState === 'ended'))).toBe(true)
+    await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toBeEnabled()
+    await expect(editor).toHaveText('Doc spoken words and more. ument Elsewhere.')
+  } finally {
+    for (const snapshot of snapshots) snapshot.resolve()
+  }
 })
 
 for (const simple of [false, true]) test(`a late dictation response cannot insert into another text (simple=${simple})`, async ({ page }) => {
