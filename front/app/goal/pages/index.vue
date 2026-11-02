@@ -2362,7 +2362,7 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
 
 .goal-table :deep(th:nth-child(1)),
 .goal-table :deep(td:nth-child(1)) {
-  width: 24%;
+  width: 22%;
 }
 
 .goal-table :deep(th:nth-child(2)),
@@ -2377,7 +2377,7 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
 
 .goal-table :deep(th:nth-child(4)),
 .goal-table :deep(td:nth-child(4)) {
-  width: 10%;
+  width: 12%;
 }
 
 .goal-table :deep(th:nth-child(5)),
