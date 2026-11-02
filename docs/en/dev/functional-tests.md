@@ -1627,8 +1627,8 @@ the Document privileges assigned by DbAdmin during migration. Its synthetic agen
 valid avatar so optional missing-image reads cannot mask unexpected authorization failures.
 `app/agent/tests/test_selection.py` checks avatar reads for scoped authenticated readers,
 outside-scope rejection, team catalogue access and denied uploads/deletions. The session-race
-journeys exercise Memory and Document subscriptions separately and create each resource
-through its owning API before delaying authentication on the first direct load.
+journeys exercise page-owned Document invalidation subscriptions and create Memory and
+Document resources through their owning APIs before delaying authentication on the first direct load.
 Before a deliberate reload, they wait for
 the relevant HTTP responses. `e2e/page-errors.mjs` retains JavaScript and network errors;
 it excludes a native WebKit XHR error only when cancellation of that same request is observed.

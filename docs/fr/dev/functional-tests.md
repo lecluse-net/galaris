@@ -1706,8 +1706,8 @@ agent synthétique possède un avatar valide pour distinguer les images absentes
 d’autorisation inattendus.
 `app/agent/tests/test_selection.py` vérifie la lecture des avatars dans le périmètre du
 lecteur authentifié, le refus hors périmètre, le catalogue des équipes et les refus d’écriture
-et de suppression. Les parcours de courses de session distinguent les abonnements Memory
-et Document et créent chaque ressource via son API propriétaire avant de retarder
+et de suppression. Les parcours de courses de session vérifient les abonnements Document
+propres aux pages et créent les ressources Memory et Document via leur API propriétaire avant de retarder
 l’authentification au premier chargement direct.
 Avant un rechargement volontaire, ils attendent les réponses HTTP concernées. Le collecteur
 `e2e/page-errors.mjs` conserve les erreurs JavaScript et réseau ; il exclut une erreur XHR

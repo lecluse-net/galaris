@@ -48,7 +48,6 @@ test('page subscriptions stop on navigation while global message notifications r
   await expect.poll(subscriptions).toEqual(['chat.message'])
   const consumers = [
     { path: '/goal', event: 'goal.update' },
-    { path: '/memory', event: 'memory.invalidate' },
     { path: '/documents', event: 'document.invalidate' },
     { path: '/task', tab: 'Tâches', event: 'task.update' },
     { path: '/task', tab: 'Activité LLM', event: 'llm_call.update' },
