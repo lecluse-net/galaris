@@ -58,6 +58,14 @@ for (const width of [390, 1440]) {
     await view.click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('Publish report')
+    await expect(dialog.getByRole('button', { name: /^pause$/i })).toBeVisible()
+    // Finish the dialog's slide transition before targeting its moving action row.
+    await dialog.evaluate(async element => {
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      await Promise.all(element.getAnimations({ subtree: true })
+        .filter(animation => animation.effect?.getTiming().iterations !== Infinity)
+        .map(animation => animation.finished.catch(() => {})))
+    })
     await dialog.getByRole('button', { name: /^pause$/i }).click()
     await expect.poll(() => commands).toEqual([{ command: 'pause', payload: { expected_revision: 4 } }])
     await expect(dialog.getByRole('button', { name: /^pause$/i })).toHaveCount(0)
