@@ -847,14 +847,6 @@ async def update_item(
                         raise DocumentPermissionError(
                             "The image must belong to this document's attachments."
                         )
-            if _is_goal_document(item) and item.metadata_.get("goal_document_kind") == "tracking":
-                if (
-                    len(content.decode("utf-8")) > 120_000
-                    or len(visible_text(content.decode("utf-8"))) > 30_000
-                ):
-                    raise DocumentConflictError(
-                        "Goal tracking exceeds its serialized or visible text limit."
-                    )
             future_media_type = "text/html"
             data = data.model_copy(update={"media_type": "text/html"})
             fields.add("media_type")

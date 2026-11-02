@@ -1404,9 +1404,6 @@ async def update_item(item_id: UUID, data: MemoryItemUpdate, *, actor_agent_id: 
             content = convert_to_html(content.decode('utf-8'), future_media_type, profile=item.content_profile).encode('utf-8')
             if item.media_type == 'text/html' and data.media_type not in (None, 'text/html'):
                 raise MemoryConflictError('This content now requires explicit text/html writes. Refresh the client.')
-            if _is_goal_document(item) and item.metadata_.get('goal_document_kind') == 'tracking':
-                if len(content.decode('utf-8')) > 120000 or len(visible_text(content.decode('utf-8'))) > 30000:
-                    raise MemoryConflictError('Goal tracking exceeds its serialized or visible text limit.')
             future_media_type = 'text/html'
             data = data.model_copy(update={'media_type': 'text/html'})
             fields.add('media_type')

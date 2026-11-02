@@ -1,7 +1,7 @@
 """API and structured-judgement contracts for Goals."""
 
 from __future__ import annotations
-from core.util import normalize_html, visible_text
+from core.util import normalize_html
 
 from datetime import datetime
 from typing import Annotated, Literal
@@ -32,14 +32,8 @@ def _required_html(value: str) -> str:
 HtmlBody = Annotated[str, AfterValidator(_required_html)]
 
 
-def _tracking_html(value: str) -> str:
-    normalized = normalize_html(value)
-    if len(normalized) > 120_000 or len(visible_text(normalized)) > 30_000:
-        raise ValueError("Goal tracking exceeds its serialized or visible text limit.")
-    return normalized
-
-
-TrackingBody = Annotated[str, AfterValidator(_tracking_html)]
+# Concision is a generation policy; valid tracking is preserved without a size cap.
+TrackingBody = Annotated[str, AfterValidator(normalize_html)]
 
 
 class GoalScheduleWindow(BaseModel):
@@ -209,7 +203,7 @@ class GoalUpdate(BaseModel):
     expected_revision: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=400)
     description: HtmlBody | None = Field(default=None, min_length=1)
-    tracking_content: TrackingBody | None = Field(default=None, max_length=120_000)
+    tracking_content: TrackingBody | None = None
     agent_id: int | None = Field(default=None, gt=0)
     referrer: GoalReferrerInput | None = None
     cycle_delay_seconds: int | None = Field(default=None, ge=0)
@@ -253,7 +247,7 @@ class GoalApiUpdate(BaseModel):
     expected_revision: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=400)
     description: HtmlBody | None = Field(default=None, min_length=1)
-    tracking_content: TrackingBody | None = Field(default=None, max_length=120_000)
+    tracking_content: TrackingBody | None = None
     agent_id: int | None = Field(default=None, gt=0)
     referrer: GoalMessengerReferrerInput | None = None
     cycle_delay_seconds: int | None = Field(default=None, ge=0)
@@ -425,7 +419,7 @@ class GoalJudgement(BaseModel):
     action: Literal["CONTINUE", "STOP"]
     reason: str = Field(min_length=1, max_length=4000)
     progress: GoalProgress
-    tracking_content: str = Field(min_length=1, max_length=120_000)
+    tracking_content: HtmlBody = Field(min_length=1)
 
     @field_validator("progress", mode="before")
     @classmethod
@@ -443,14 +437,6 @@ class GoalJudgement(BaseModel):
         if not stripped:
             raise ValueError("Reason must not be empty")
         return stripped
-
-    @field_validator("tracking_content")
-    @classmethod
-    def strip_tracking_content(cls, value: str) -> str:
-        normalized = normalize_html(value)
-        if not normalized or len(visible_text(normalized)) > 30_000:
-            raise ValueError("Goal tracking requires 1 to 30000 visible characters of HTML.")
-        return normalized
 
     @model_validator(mode="after")
     def require_stop_evidence(self) -> "GoalJudgement":

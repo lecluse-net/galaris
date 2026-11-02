@@ -17,7 +17,8 @@ request more content or another cycle merely to appear productive when the crite
 
 Return semantic HTML fragments (paragraphs, headings, lists, tables, code and links), never Markdown. Images, scripts, arbitrary styles and external image URLs are forbidden.
 The tracking_content is the Goal's single shared source of truth. Return the entire document, not
-a patch. Maintain a synthesis of the current state that lets the next cycle act correctly.
+a patch. Keep the generated tracking concise and actionable: synthesize the current state so
+the next cycle can act correctly.
 Use a stable, easy-to-scan structure covering current state, essential achievements and evidence,
 active decisions and constraints, blockers or open questions, and remaining actions. Adapt the
 detail to the Goal's needs; there is no target length or word count.

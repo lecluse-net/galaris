@@ -26,6 +26,7 @@ from app.goal.models import (
 from app.goal.schemas import (
     GoalAgentReferrerInput,
     GoalApiCreate,
+    GoalApiUpdate,
     GoalCommand,
     GoalCreate,
     GoalJudgement,
@@ -438,6 +439,23 @@ def test_goal_judgement_accepts_progress_without_changing_its_content(
     assert GoalJudgement.model_validate_json(json.dumps(payload)) == expected
 
 
+@pytest.mark.parametrize("contract", [GoalJudgement, GoalUpdate, GoalApiUpdate])
+@pytest.mark.parametrize("repetitions", [1_600, 6_500])
+def test_goal_tracking_preserves_long_content(
+    contract: type[GoalJudgement] | type[GoalUpdate] | type[GoalApiUpdate],
+    repetitions: int,
+) -> None:
+    tracking = "<p>" + "Synthetic milestone. " * repetitions + "Final evidence.</p>"
+    payload = (
+        _judgement().model_dump()
+        if contract is GoalJudgement
+        else {"expected_revision": 1}
+    )
+    payload["tracking_content"] = tracking
+
+    assert contract.model_validate_json(json.dumps(payload)).tracking_content == tracking
+
+
 @pytest.mark.asyncio
 async def test_goal_keeps_html_description_and_only_one_tracking_document(db, monkeypatch):
     agent = await _new_agent(db)
@@ -463,16 +481,19 @@ async def test_goal_keeps_html_description_and_only_one_tracking_document(db, mo
     assert updated is not None and updated.revision == created.revision + 1
     assert updated.description == "<p>Revised objective</p>"
     assert updated.tracking_document_id == tracking.id
+    api_tracking = "<p>" + "Synthetic API milestone. " * 6_500 + "Final API evidence.</p>"
     combined = await goal_service.update(created.id, GoalUpdate(
         expected_revision=updated.revision, description=updated.description,
-        tracking_content="<p>API tracking with unchanged objective</p>"))
+        tracking_content=api_tracking))
     assert combined is not None and combined.revision == updated.revision + 1
+    assert combined.tracking_content == api_tracking
     updated = combined
+    document_tracking = "<p>" + "Synthetic document milestone. " * 6_500 + "Final document evidence.</p>"
     await document_service.update_item(tracking.id, DocumentUpdate(
-        expected_revision=tracking.revision, payload=DocumentPayload(text="<p>Document tracking</p>")),
+        expected_revision=tracking.revision, payload=DocumentPayload(text=document_tracking)),
         actor_agent_id=agent.id)
     refreshed = await goal_service.get_read(created.id)
-    assert refreshed.tracking_content == "<p>Document tracking</p>"
+    assert refreshed.tracking_content == document_tracking
     assert refreshed.revision == updated.revision + 1
     renamed = await goal_service.update(created.id, GoalUpdate(
         expected_revision=refreshed.revision, title="Renamed objective"))
@@ -1536,12 +1557,18 @@ async def test_manual_cycle_request_survives_failed_tracking_recovery(
     await db.commit()
     goal_id, task_id = goal.id, task.id
     monkeypatch.setattr("app.task.scheduler.wake", lambda *_args, **_kwargs: None)
+    tracking = "<p>" + "Synthetic milestone. " * 6_500 + "Final evidence.</p>"
+
+    async def judge_long_tracking(**_kwargs) -> StructuredInferenceResult[GoalJudgement]:
+        payload = {**_judgement(verdict).model_dump(), "tracking_content": tracking}
+        return StructuredInferenceResult(
+            output=GoalJudgement.model_validate(payload), cost=0.02, messages=[],
+        )
+
     monkeypatch.setattr(
         runner,
         "run_structured",
-        AsyncMock(return_value=StructuredInferenceResult(
-            output=_judgement(verdict), cost=0.02, messages=[],
-        )),
+        AsyncMock(side_effect=judge_long_tracking),
     )
 
     command = goal_service.run_now if command_name == "run_now" else goal_service.resume
@@ -1570,6 +1597,7 @@ async def test_manual_cycle_request_survives_failed_tracking_recovery(
     persisted_goal = await db.get(Goal, goal_id)
     assert persisted_goal is not None
     assert persisted_goal.manual_run_requested_at is None
+    assert (await goal_service.read_markdown(persisted_goal)).tracking == tracking
 
 
 @pytest.mark.asyncio
