@@ -76,12 +76,8 @@ test(`${provider} setup creates the actual Tool and preserves its configuration 
   await page.reload()
   // Authentication restores the shell asynchronously after a full reload.
   await expect(page.getByRole('tab', { name: provider, exact: true })).toBeVisible()
-  if (await page.locator('.q-drawer__backdrop').isVisible()) {
-    await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
-    await expect(page.locator('.q-drawer__backdrop')).not.toBeVisible()
-  }
   const checked = page.waitForResponse(response => response.url().endsWith('/api/tools') && response.request().method() === 'GET')
-  await page.getByRole('tab', { name: provider, exact: true }).click()
+  await withSidebarDismissal(page, () => page.getByRole('tab', { name: provider, exact: true }).click())
   await expect(guide.getByRole('link', { name: 'Ouvrir les outils et connexions', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: `Créer l’outil ${provider}`, exact: true })).toHaveCount(0)
   const checkedResponse = await checked

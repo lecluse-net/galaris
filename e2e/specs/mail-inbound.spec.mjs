@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 for (const width of [390, 1440]) {
   test(`received email waits for consent and resumes from the journal at ${width}px`, async ({ page, request }, testInfo) => {
@@ -17,14 +18,13 @@ for (const width of [390, 1440]) {
     await expect(page.locator('input[type=password]')).toHaveCount(0)
     await errors.settle()
     await page.goto('/connection/mail')
-    if (width < 1024 && await page.locator('.q-drawer__backdrop').isVisible()) {
-      await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
-    }
-    await page.getByRole('tab', { name: 'Réception', exact: true }).click()
-    await page.getByLabel('Rechercher par agent, expéditeur ou objet').fill(fixture.inbound_subject)
-    await expect(page.getByRole('button', { name: 'Voir le mail', exact: true })).toHaveCount(1)
-    await expect(page.getByText(fixture.inbound_subject, { exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Voir le mail', exact: true }).click()
+    await withSidebarDismissal(page, async () => {
+      await page.getByRole('tab', { name: 'Réception', exact: true }).click()
+      await page.getByLabel('Rechercher par agent, expéditeur ou objet').fill(fixture.inbound_subject)
+      await expect(page.getByRole('button', { name: 'Voir le mail', exact: true })).toHaveCount(1)
+      await expect(page.getByText(fixture.inbound_subject, { exact: true })).toBeVisible()
+      await page.getByRole('button', { name: 'Voir le mail', exact: true }).click()
+    })
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('Contenu non lu.')
     await expect(dialog).not.toContainText('Contenu synthétique du courriel reçu.')

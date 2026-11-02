@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 for (const scenario of [
   { label: 'Autoriser l’envoi', status: 'sent', mobile: false, mode: 'mail', channel: 'chat' },
@@ -36,10 +37,7 @@ for (const scenario of [
       await errors.settle()
       await page.goto(`/permissions?agent_id=${fixture.agent_id}`)
       await expect(page.getByRole('region', { name: 'Approbations en attente', exact: true })).toBeVisible()
-      if (scenario.mobile && await page.locator('.q-drawer__backdrop').isVisible()) {
-        await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
-      }
-      await page.getByRole('button', { name: 'Examiner la demande', exact: true }).click()
+      await withSidebarDismissal(page, () => page.getByRole('button', { name: 'Examiner la demande', exact: true }).click())
       const dialog = page.getByRole('dialog')
       await expect(dialog).toContainText('recipient@example.org')
       await expect(dialog).toContainText('Compte rendu synthétique')
@@ -58,11 +56,7 @@ for (const scenario of [
       await page.goto('/connection/mail')
       const pending = page.getByRole('region', { name: 'En attente d’envoi', exact: true })
       await expect(pending.getByText('Compte rendu synthétique', { exact: true }).first()).toBeVisible()
-      if (scenario.mobile && await page.locator('.q-drawer__backdrop').isVisible()) {
-        await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
-        await expect(page.locator('.q-drawer__backdrop')).toBeHidden()
-      }
-      await pending.getByRole('button', { name: 'Examiner', exact: true }).click()
+      await withSidebarDismissal(page, () => pending.getByRole('button', { name: 'Examiner', exact: true }).click())
       const dialog = page.getByRole('dialog')
       await expect(dialog).toContainText('recipient@example.org')
       await expect(dialog).toContainText('archive@example.org')

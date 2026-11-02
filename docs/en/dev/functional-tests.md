@@ -1620,9 +1620,11 @@ use search and pagination to retrieve their data. The local `internal` driver, w
 definition is available, does not trigger supervisor status reads. Other drivers remain
 inspected, including the network driver shared by Codex, Claude and DeepSeek runtimes.
 Unavailable driver metadata does not hide supervision or recovery after an error.
-Selectors without a search input use native keyboard paging followed by an exact option
-click, including virtualized options. Each popup closes before the next opens; titles
-remain selectable beyond the first 500 entries.
+Selectors without a search input use native paging and arrow navigation, then Enter
+once the exact option is active, including virtualized options. Each popup closes before
+the next opens; titles remain selectable beyond the first 500 entries.
+Mobile page actions dismiss an optional navigation drawer even when it appears late.
+Dismissal handlers are scoped to those actions and removed before subsequent dialogs.
 The real REST Tool journey checks built-in/custom grouping through the Connections
 metadata endpoint, alongside credential redaction. Its backend authorization scenario
 preserves that classification for readers with or without Tool administration privileges.

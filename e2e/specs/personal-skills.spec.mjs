@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
 import { notificationPrompt } from '../notification-prompt.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 for (const width of [1440, 390]) {
   test(`human personal skill administration persists through reopening at ${width}px`, async ({ page, request }, testInfo) => {
@@ -24,13 +25,9 @@ for (const width of [1440, 390]) {
     })
     await errors.settle()
     await page.goto('/skill')
-    if (width < 1024) {
-      const backdrop = page.locator('.q-drawer__backdrop')
-      if (await backdrop.isVisible()) await backdrop.click({ position: { x: 380, y: 400 } })
-    }
-    await page.getByRole('tab', { name: 'Compétences personnelles', exact: true }).click()
+    await withSidebarDismissal(page, () => page.getByRole('tab', { name: 'Compétences personnelles', exact: true }).click())
     await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), fixture.agent_label)
-    await page.getByText(guide.label, { exact: true }).click()
+    await withSidebarDismissal(page, () => page.getByText(guide.label, { exact: true }).click())
     let dialog = page.getByRole('dialog')
     await expect(dialog.getByLabel('Libellé', { exact: true })).not.toHaveAttribute('readonly')
     const originalSource = (await (await request.get(`/api/skills/personal/${guide.id}/content`, { headers })).json()).content
@@ -89,11 +86,7 @@ for (const width of [1440, 390]) {
     expect(authorizations.authorizations.length).toBeGreaterThan(0)
     expect(authorizations.authorizations.every(row => !row.effective)).toBe(true)
     await page.reload()
-    if (width < 1024) {
-      const backdrop = page.locator('.q-drawer__backdrop')
-      if (await backdrop.isVisible()) await backdrop.click({ position: { x: 380, y: 400 } })
-    }
-    await page.getByRole('textbox', { name: 'Rechercher une compétence', exact: true }).fill(editedLabel)
+    await withSidebarDismissal(page, () => page.getByRole('textbox', { name: 'Rechercher une compétence', exact: true }).fill(editedLabel))
     await expect(page.getByText('Désactivée pour tous', { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('generic-skill-disabled.png'), fullPage: true, animations: 'disabled' })
     await page.getByRole('button', { name: 'Activer pour tous', exact: true }).click()

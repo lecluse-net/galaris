@@ -2,6 +2,7 @@ import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 // The preview contains an opaque sandboxed frame. Playwright's service-worker
 // blocking script accesses navigator.serviceWorker there and raises SecurityError.
@@ -24,11 +25,6 @@ async function chooseFolder(page, name, width, agentLabel, previewFile = false) 
     await dialog.getByRole('navigation', { name: /^(File navigation|Navigation des fichiers)$/, exact: true }).getByRole('button', { name: 'Documents', exact: true }).click()
   }
   await dialog.getByRole('checkbox', { name: new RegExp(`^(Select|Sélectionner) ${name}$`) }).check()
-}
-
-async function closeMobileDrawer(page, width) {
-  const backdrop = page.locator('.q-drawer__backdrop')
-  if (width < 1024 && await backdrop.isVisible()) await backdrop.click({ position: { x: width - 8, y: 150 } })
 }
 
 for (const width of [1440, 390]) test(`shared folders stay live in Documents and Chat at ${width}px`, async ({ page, request }, testInfo) => {
@@ -99,17 +95,15 @@ for (const width of [1440, 390]) test(`shared folders stay live in Documents and
   await errors.settle()
   await page.goto(url)
   await expect(page.getByRole('heading', { name: folder.name, exact: true })).toBeVisible()
-  await closeMobileDrawer(page, width)
-  await page.getByText('Synthetic permitted note', { exact: true }).click()
+  await withSidebarDismissal(page, () => page.getByText('Synthetic permitted note', { exact: true }).click())
   await expect(page.getByRole('dialog')).toContainText('Synthetic collection content.')
   await page.getByRole('dialog').getByRole('button', { name: /^(Close|Fermer)$/, exact: true }).click()
   await errors.settle()
   await page.goto(`/chat?room=${fixture.rooms[0]}`)
   const composer = page.locator('.composer-shell')
   await expect(composer.locator('textarea')).toBeVisible()
-  await closeMobileDrawer(page, width)
   if (width < 1024) {
-    await composer.getByRole('button', { name: /^(Add attachments|Ajouter des pièces jointes)$/, exact: true }).click()
+    await withSidebarDismissal(page, () => composer.getByRole('button', { name: /^(Add attachments|Ajouter des pièces jointes)$/, exact: true }).click())
     await page.getByText(/^(Add an internal attachment|Ajouter une PJ interne)$/, { exact: true }).click()
   } else await composer.getByRole('button', { name: /^(Add an internal attachment|Ajouter une PJ interne)$/, exact: true }).click()
   await chooseFolder(page, folder.name, width, agentLabel)

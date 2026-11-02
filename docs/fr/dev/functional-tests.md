@@ -1699,9 +1699,12 @@ Le driver local `internal`, quand sa définition est disponible, ne déclenche p
 lectures d'état du superviseur. Les autres drivers restent inspectés, dont le driver
 réseau commun aux runtimes Codex, Claude et DeepSeek. Une indisponibilité du catalogue
 ne masque pas leur supervision ni sa reprise après erreur.
-Les sélecteurs sans champ de recherche utilisent les touches natives de pagination puis
-un clic sur l’option exacte, y compris leurs options virtualisées. Chaque popup se ferme
-avant l’ouverture du suivant ; les civilités restent sélectionnables au-delà des 500 premières références.
+Les sélecteurs sans champ de recherche utilisent la pagination et les flèches natives,
+puis Entrée lorsque l’option exacte est active, y compris leurs options virtualisées.
+Chaque popup se ferme avant l’ouverture du suivant ; les civilités restent sélectionnables
+au-delà des 500 premières références.
+Les actions sur une page mobile ferment le tiroir de navigation optionnel même s’il
+apparaît tardivement. Les gestionnaires sont limités à ces actions et retirés avant les dialogues suivants.
 Le parcours réel des outils REST vérifie les groupes intégrés/personnalisés via le catalogue
 des Connexions, ainsi que la protection des identifiants. Son scénario backend d’autorisation
 conserve ce classement avec ou sans privilège d’administration des outils.

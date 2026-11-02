@@ -12,6 +12,11 @@ export async function selectOption(page, combobox, label) {
   expect(listId).toBeTruthy()
   const list = page.locator(`[id=${JSON.stringify(listId)}]`)
   await expect(list.getByRole('option').first()).toBeVisible()
+  if (await combobox.inputValue() === label) {
+    await combobox.press('Escape')
+    await expect(list).toBeHidden()
+    return
+  }
   // A virtual list moving under a parked pointer can change its keyboard focus.
   await page.mouse.move(0, 0)
   const option = list.getByRole('option', { name: label, exact: true })
@@ -25,7 +30,19 @@ export async function selectOption(page, combobox, label) {
     if (await combobox.getAttribute('aria-activedescendant') === previous) await combobox.press('Home')
     return option.isVisible()
   }, { intervals: [50] }).toBe(true)
-  await option.click()
+  // Clicking a row while virtual scrolling settles can hit a recycled neighbour.
+  // Navigate through the public ARIA positions and commit the exact active option.
+  await expect.poll(async () => {
+    const targetId = await option.getAttribute('id')
+    const activeId = await combobox.getAttribute('aria-activedescendant')
+    if (targetId && activeId === targetId) return true
+    const targetPosition = Number(await option.getAttribute('aria-posinset'))
+    const active = list.locator(`[id=${JSON.stringify(activeId)}]`)
+    const activePosition = Number(await active.getAttribute('aria-posinset'))
+    await combobox.press(activePosition < targetPosition ? 'ArrowDown' : 'ArrowUp')
+    return await combobox.getAttribute('aria-activedescendant') === targetId
+  }, { intervals: [50] }).toBe(true)
+  await combobox.press('Enter')
   await expect(combobox).toHaveValue(label)
   await expect(list).toBeHidden()
 }
