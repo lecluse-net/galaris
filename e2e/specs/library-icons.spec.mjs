@@ -44,6 +44,7 @@ for (const width of [1440, 390]) {
       ]) {
         await page.getByText(folder.name, { exact: true }).click({ button: 'right' })
         await page.getByRole('menuitem', { name: /^(Modifier le dossier|Edit folder)$/, exact: true }).click()
+        await expect(page.getByRole('textbox', { name: /^(Nom|Name)$/, exact: true })).toBeFocused()
         const trigger = page.getByRole('button', { name: new RegExp(`^(Icône du dossier|Icon for folder) ${folder.name}$`) })
         await trigger.click()
         await expect(page.getByRole('button', { name: /^(Téléverser une image|Upload an image)$/, exact: true })).toBeVisible()

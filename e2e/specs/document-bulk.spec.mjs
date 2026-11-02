@@ -1,5 +1,7 @@
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
+import { selectOption } from '../select-option.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 import { collectPageErrors } from '../page-errors.mjs'
 
 async function checked(response) {
@@ -44,9 +46,7 @@ for (const width of [1440, 390]) test(`folder bulk actions preserve distinct set
   const detail = id => request.get(`/api/documents/${id}`, { headers }).then(checked)
   await errors.settle()
   await page.goto('/documents')
-  // The mobile drawer is independent of the Documents workspace.
-  if (width < 1024) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
-  await page.getByText(folder.name, { exact: true }).click({ button: 'right' })
+  await withSidebarDismissal(page, () => page.getByText(folder.name, { exact: true }).click({ button: 'right' }))
   await page.getByRole('menuitem', { name: 'Afficher en liste', exact: true }).click()
   const list = page.getByRole('region', { name: folder.name, exact: true })
   await expect(list.getByRole('link', { name: docs[0].title, exact: true })).toBeVisible()
@@ -54,8 +54,7 @@ for (const width of [1440, 390]) test(`folder bulk actions preserve distinct set
   await list.getByRole('checkbox', { name: 'Inclure les sous-dossiers et sous-documents', exact: true }).check()
   await expect(list.getByRole('link', { name: docs[1].title, exact: true })).toBeVisible()
   async function choose(field, option) {
-    await page.getByRole('dialog').getByRole('combobox', { name: field, exact: true }).click()
-    await page.getByRole('option', { name: option, exact: true }).click()
+    await selectOption(page, page.getByRole('dialog').getByRole('combobox', { name: field, exact: true }), option)
   }
   async function action(name) {
     await list.getByRole('checkbox', { name: `Sélectionner ${docs[0].title}`, exact: true }).check()

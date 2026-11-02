@@ -2461,6 +2461,9 @@ depuis le détail du graphe, réouverture après un événement de plein écran 
 erreurs/reprises et réponses tardives lors d'un changement d'agent.
 `e2e/specs/file-indexing.spec.mjs` vérifie avec les API réelles les miniatures, aperçus,
 téléchargements originaux et réouvertures sur desktop et mobile, avec un provider synthétique.
+La préparation attend la fin des projections documentaires de sa propre fixture avant
+d'ouvrir l'interface : leurs invalidations de droits restent actives et les aperçus ne
+sont pas préchargés pour masquer une fermeture tardive.
 Elle exerce aussi le scheduler Dream réel : un répertoire par tour inactif, reçus et jauges,
 absence d'appel LLM, checkpoint atomique et rejouable, reprise après conflit de révision,
 reparcours hebdomadaire sans doublon, ajouts/retraits et minuit local avec changement d'heure.

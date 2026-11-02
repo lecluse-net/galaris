@@ -58,8 +58,14 @@ test('an occupied agent code is explained and becomes reusable after archival', 
   const joined = await request.put(`/api/agents/${replacement.id}`, { headers, data: { team_ids: [team.id] } })
   expect(joined.status(), await joined.text()).toBe(200)
   expect((await joined.json()).team_ids).toEqual([team.id])
+  await pageErrors.settle()
   await page.reload()
-  await expect(page.getByText(firstName, { exact: true })).toBeVisible()
+  const teamTab = page.getByRole('tab', { name: new RegExp(`^${team.name}$`, 'i') })
+  const replacementName = page.getByText(firstName, { exact: true })
+  // A sole group needs no filter tabs; a populated catalogue keeps its selected group.
+  await expect(teamTab.or(replacementName).first()).toBeVisible()
+  if (await teamTab.isVisible()) await teamTab.click()
+  await expect(replacementName).toBeVisible()
   const removed = await request.put(`/api/agents/teams/${team.id}/members/${replacement.id}`, {
     headers, data: { present: false },
   })

@@ -128,6 +128,7 @@ for (const width of [1440, 390]) test(`file import uses the resource picker and 
 
 test('a native document is selectable as a source and retains its type regardless of its title extension', async ({ page }) => {
   const uri = 'document://00000000-0000-4000-8000-000000000019'
+  const sourceId = uri.slice('document://'.length)
   const requests = []
   await jsonRoute(page, '**/api/agents?*', [agent])
   await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Alice', has_avatar: false }])
@@ -137,6 +138,11 @@ test('a native document is selectable as a source and retains its type regardles
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'document', label: 'Documents', capabilities: ['list'], native: true }])
   await page.route('**/api/file-share/browser/thumbnail?*', route => route.fulfill({ status: 404 }))
   await page.route('**/api/documents/*/thumbnail*', route => route.fulfill({ status: 204 }))
+  // The picker may read native content to prepare its thumbnail before selection.
+  await page.route(`**/api/documents/${sourceId}?*`, route => route.request().method() === 'GET'
+    ? route.fulfill({ json: { item: { ...fixture, id: sourceId, title: 'Synthetic report.json',
+      document_type: 'text', media_type: 'text/html', payload: { text: '<p>Synthetic report.</p>' } }, agent_id: 7 } })
+    : route.fallback())
   await jsonRoute(page, '**/api/file-share/browser/entries?*', { entries: [{ uri, name: 'Synthetic report.json', is_collection: false, media_type: 'text/html', size: 25, capabilities: ['read', 'info'] }], next_cursor: null, truncated: false })
   await page.route('**/api/documents', route => {
     requests.push(route.request().postDataJSON())

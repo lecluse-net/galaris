@@ -2359,6 +2359,9 @@ after a move, and preview denial after revocation or byte changes. `memory.spec.
 thumbnails and fullscreen from the graph details, reopening after a late fullscreen event,
 errors/retries and late responses after an agent change. `e2e/specs/file-indexing.spec.mjs` checks real-API thumbnails, previews,
 original downloads and reopening on desktop and mobile with a synthetic provider.
+Setup waits for its own fixture's document projections to finish before opening the UI:
+their access invalidations remain active, and previews are never preloaded to conceal
+a late closure.
 It also exercises the real Dream scheduler: one directory per idle turn, receipts and gauges,
 no LLM calls, atomic replayable checkpoints, revision-conflict recovery, duplicate-free weekly
 rescanning, additions/removals, and local midnight across daylight-saving changes.

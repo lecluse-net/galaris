@@ -1,5 +1,6 @@
 """Synthetic file-provider boundary for assembled Memory preview journeys."""
 
+import asyncio
 from dataclasses import replace
 from pathlib import Path
 
@@ -13,8 +14,9 @@ from app.file_share.resource_contracts import ResourceContext
 from app.file_share.tests.local_file_transport import TemporaryFileTransport
 from app.tools import ToolModel
 from app.memory import detect_memory_findings, maintenance
+from app.memory.models import MemoryAutomationJob
 from app.document import document_attachment_service, resource_service as documents, DocumentItemCreate, DocumentPayload
-from core.database import get_db
+from core.database import get_db, release_db_transaction
 
 
 class BrowserFileTransport(TemporaryFileTransport):
@@ -65,5 +67,19 @@ async def seed_catalogue(agent_id: int, root: Path) -> dict[str, object]:
         document.id, actor_agent_id=agent_id, name='triangle.obj', media_type='model/obj',
         content=b'v -1 -1 0\nv 1 -1 0\nv 0 1 0\nf 1 2 3\n',
     )
+    # Finish this fixture's actual projection work before the browser starts.
+    # Its delayed access invalidations must not interrupt an unrelated file preview.
+    async with asyncio.timeout(30):
+        while True:
+            statuses = list(await db.scalars(select(MemoryAutomationJob.status).where(
+                MemoryAutomationJob.kind == 'document_projection',
+                MemoryAutomationJob.payload['identity'].astext == str(document.id),
+            )))
+            if statuses and all(status == 'success' for status in statuses):
+                break
+            if 'error' in statuses:
+                raise RuntimeError('Synthetic document projection failed')
+            await release_db_transaction()
+            await asyncio.sleep(0.05)
     return {'file_item_id': str(entries[0].memory_node_id), 'file_uris': [entry.uri for entry in entries],
             'model_document_id': str(document.id), 'model_attachment_id': str(attachment.id)}

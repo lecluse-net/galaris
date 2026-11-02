@@ -80,7 +80,7 @@ async function afterMenuHide(): Promise<void> {
   const action = pendingMenuAction
   pendingMenuAction = undefined
   if (action) { restoreMenuFocus = false; await action(); return }
-  if (renaming.value) nameInput.value?.focus()
+  if (renaming.value) nameInput.value?.nativeEl?.focus({ preventScroll: true })
   else if (restoreMenuFocus && menuFocus?.isConnected) menuFocus.focus({ preventScroll: true })
   restoreMenuFocus = false
 }
@@ -127,7 +127,7 @@ function startRename(): void {
   menuOpen.value = false
   name.value = props.tag.name
   renaming.value = true
-  void nextTick(() => nameInput.value?.focus())
+  void nextTick(() => nameInput.value?.nativeEl?.focus({ preventScroll: true }))
 }
 function finishRename(): void { iconOpen.value = false; renaming.value = false; emit('renamed') }
 function clickIcon(event: Event): void {

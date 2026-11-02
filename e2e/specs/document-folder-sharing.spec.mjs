@@ -1,6 +1,7 @@
 import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { selectOption } from '../select-option.mjs'
 
 // The preview contains an opaque sandboxed frame. Playwright's service-worker
 // blocking script accesses navigator.serviceWorker there and raises SecurityError.
@@ -8,8 +9,7 @@ test.use({ serviceWorkers: 'allow' })
 
 async function chooseFolder(page, name, width, agentLabel, previewFile = false) {
   const dialog = page.getByRole('dialog')
-  await dialog.getByRole('combobox', { name: 'Agent', exact: true }).press('Enter')
-  await page.getByRole('option', { name: agentLabel, exact: true }).click()
+  await selectOption(page, dialog.getByRole('combobox', { name: 'Agent', exact: true }), agentLabel)
   if (width < 1024) await dialog.getByRole('button', { name: /^(Show locations|Afficher les emplacements)$/, exact: true }).click()
   await dialog.getByText('document://', { exact: true }).click()
   if (previewFile) {

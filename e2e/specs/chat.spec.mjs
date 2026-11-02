@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { notificationPrompt } from '../notification-prompt.mjs'
 
 const socketEvents = new WeakMap()
 test.beforeEach(async ({ page }) => {
+  await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const events = []
   socketEvents.set(page, events)
   page.on('websocket', socket => {

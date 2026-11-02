@@ -1,6 +1,7 @@
 import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 // Metadata, sharing, ownership, classification and navigation use the common
 // Document journeys. This scenario retains Data's exact JSON/history guarantees.
@@ -8,7 +9,6 @@ test('a Data document preserves JSON, metadata and history in the common editor'
   test.setTimeout(120_000)
   const errors = collectPageErrors(page)
   await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
-  await page.addLocatorHandler(page.locator('body:not(:has([role="dialog"])) .q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
   const fixture = await (await request.post('/api/__test/seed')).json()
   await page.goto('/user/login')
   await page.locator('input[type=email]').fill(fixture.email)
@@ -38,6 +38,7 @@ test('a Data document preserves JSON, metadata and history in the common editor'
   expect((await checked(await request.get(`/api/datasets/${dataset.id}`, { headers }))).content).toBe(changed)
   await json.fill('{"saved":true}')
   await expect.poll(async () => (await checked(await request.get(`/api/datasets/${dataset.id}`, { headers }))).content).toBe('{"saved":true}')
+  await errors.settle()
   await page.reload()
   await expect(json).toHaveValue('{"saved":true}')
   await page.getByRole('button', { name: /^(Afficher l’historique du contenu|Open content history)$/, exact: true }).click()
@@ -50,8 +51,11 @@ test('a Data document preserves JSON, metadata and history in the common editor'
   await expect(title).toHaveValue('Synthetic renamed Data')
   await page.screenshot({ path: test.info().outputPath('data-document-desktop.png'), fullPage: true, animations: 'disabled' })
   await page.setViewportSize({ width: 390, height: 844 })
+  await errors.settle()
   await page.reload()
   await expect(json).toHaveValue(source)
+  await withSidebarDismissal(page, () => json.click())
   await page.screenshot({ path: test.info().outputPath('data-document-mobile.png'), fullPage: true, animations: 'disabled' })
+  await errors.settle()
   expect(errors()).toEqual([])
 })
