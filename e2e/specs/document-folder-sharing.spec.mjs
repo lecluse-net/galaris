@@ -84,6 +84,7 @@ for (const width of [1440, 390]) test(`shared folders stay live in Documents and
   expect((await saved).ok()).toBeTruthy()
   await expect(page.locator('.internal-file-picker')).toHaveCount(0)
   await expect(page.locator('.folder-citation-thumbnail')).toBeVisible()
+  await expect(page.getByRole('status', { name: /^(Saved automatically|Enregistré automatiquement)$/, exact: true })).toBeVisible()
   await errors.settle()
   await page.reload()
   await expect(page.locator('.folder-citation-thumbnail')).toBeVisible()
