@@ -203,18 +203,22 @@ jobs:
           retention-days: 7
 
   chat-e2e:
-    name: Browser workflows and PWA
+    name: Browser workflows and PWA / ${{ matrix.browser }}
     runs-on: ubuntu-latest
     timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     steps:
       - uses: actions/checkout@v4
-      - name: Run isolated workflows on Chromium, Firefox and WebKit
-        run: make tests-e2e ARGS='--repeat-each=3 --max-failures=1'
+      - name: Run isolated workflows on ${{ matrix.browser }}
+        run: make tests-e2e ARGS='--project=${{ matrix.browser }} --repeat-each=3 --max-failures=1'
       - name: Preserve browser traces and service logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chat-e2e
+          name: chat-e2e-${{ matrix.browser }}
           path: artifacts/e2e/
           retention-days: 7
 

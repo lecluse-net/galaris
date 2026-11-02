@@ -24,6 +24,11 @@ and displayed in Actions before the Release can be created. Immutable bundle cre
 also scans its committed source before starting image builds. Image inventory output
 distinguishes unfixed critical findings from available fixes and is never release approval.
 
+Browser qualification uses separate Chromium, Firefox and WebKit runners, retaining
+three repetitions per journey and an isolated stack per browser. The matrix does not
+cancel siblings after a failure. Every browser result contributes to required Quality;
+resource isolation cannot turn a failed or missing browser qualification into approval.
+
 ## Limits and verification
 
 Direct Git pushes and manual GitHub UI publication can bypass repository scripts;

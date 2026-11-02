@@ -434,6 +434,11 @@ privilèges. Le parcours E2E `document-authoring.spec.mjs` traverse la persistan
 le streaming, puis retrouve la même conversation dans Chat. Les fixtures des consommateurs
 utilisent les privilèges `DOCUMENT_*` et les événements `document.update`/`document.delete` :
 les anciennes fixtures Memory masquaient le décalage des contrôles du Chat.
+Le parcours clavier attend la sélection native avant Tab et le focus de l’éditeur avant
+Home, puis vérifie la plage et le curseur réellement transmis au Chat.
+L’annulation d’une activation de harnais utilise son action nommée, y compris dans
+les confirmations mobiles plein écran. Les scénarios de dialogue partagés couvrent
+la fermeture par l’arrière-plan lorsqu’il est visible.
 
 `app/tools/tests/test_management_scopes.py` protège les portées locales des connexions
 Process, ToolAdmin, Goals et Galaris Admin : absence de délégation implicite, filtrage

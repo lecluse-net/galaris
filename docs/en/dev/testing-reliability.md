@@ -44,7 +44,10 @@ They also verify session restoration behind a proxy with a non-default port.
 WebSocket unit tests protect pending connections against concurrent consumers
 and cover disconnection, reconnection and session changes. Service workers are
 disabled in these journeys; PWA update behavior needs separate coverage.
-CI repeats every journey three times in the same isolated stack. Live/durable
+CI repeats every journey three times in the same isolated stack. Chromium, Firefox
+and WebKit each have their own CI runner and `chat-e2e-<browser>` artifact, giving
+each stack its own CPU and memory budget. All three qualifications are required;
+one failure does not cancel the other browsers' diagnostics. Live/durable
 handoff also covers overlapping HTTP reads: activity is read after messages,
 and an older response must not erase an already known durable link.
 

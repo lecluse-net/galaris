@@ -598,6 +598,7 @@ for (const mobile of [false]) for (const input of ['mouse', 'keyboard']) test(`d
   if (input === 'keyboard') {
     await page.keyboard.press('End')
     await page.keyboard.press('Shift+Home')
+    await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toBe('Working content')
     // Tab must save the range before the next field takes focus.
     await page.keyboard.press('Tab')
   } else {
@@ -633,6 +634,7 @@ for (const mobile of [false]) for (const input of ['mouse', 'keyboard']) test(`d
   await expect(draft).toHaveValue('')
   if (mobile) await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
   await paragraph.click()
+  await expect(page.locator('[data-editor-surface]')).toBeFocused()
   await page.keyboard.press('Home')
   await expect.poll(() => paragraph.evaluate(element => {
     const selection = window.getSelection()

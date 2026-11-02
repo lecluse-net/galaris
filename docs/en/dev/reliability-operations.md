@@ -132,7 +132,7 @@ the card backdrop filter disabled. Its protocol reports `crashed: true`.
 WPE has not been requalified with later versions. GTK retains the same actions, assertions and tracing; this coverage
 does not replace testing on real Safari/iOS devices.
 
-The E2E runner and its browser image use matching Playwright 1.64.0 versions. This includes
+The shared E2E and Vue component runner and its browser image use matching Playwright 1.64.0 versions. This includes
 the [WebKit service-worker offline fix](https://github.com/microsoft/playwright/pull/42894).
 The PWA journey retains its offline loading, cache update and authenticated conversation
 preservation assertions.

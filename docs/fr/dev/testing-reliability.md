@@ -21,6 +21,10 @@ Les rapports, captures sur échec, traces navigateur et logs de services sont da
 `artifacts/e2e/`, également conservés sept jours en CI. Les relances automatiques
 sont désactivées : un échec intermittent reste un échec.
 La CI répète chaque parcours trois fois dans la même stack isolée.
+Chromium, Firefox et WebKit ont chacun leur runner CI et leur artefact
+`chat-e2e-<navigateur>` : leurs stacks ne se disputent pas le CPU et la mémoire
+d’une même machine. Les trois qualifications restent obligatoires ; l’échec
+de l’une n’annule pas les diagnostics des autres.
 
 Exemples :
 

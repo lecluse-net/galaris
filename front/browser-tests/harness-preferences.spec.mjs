@@ -151,7 +151,7 @@ test('managed toggles persist, reveal Hermes configuration and confirm agent rea
   const dialog = page.getByRole('dialog')
   await expect(dialog).toContainText('3')
   await expect(dialog).toContainText('internal')
-  await page.locator('.q-dialog__backdrop').click({ position: { x: 5, y: 5 } })
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   await expect(hermes).toBeChecked()
   expect(writes).toHaveLength(1)

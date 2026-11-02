@@ -431,6 +431,10 @@ without a saved conversation, paging and searching more than 100
 conversations on mobile and desktop, saving before sending, preserving drafts after failures,
 and checking privileges. It also covers mouse/keyboard selection across opening chat,
 sending selection after autosave and retry, and invalidating positions when content is replaced.
+The keyboard journey waits for the native selection before Tab and for editor focus before
+Home, then verifies the range and cursor actually sent to Chat.
+Harness activation cancellation uses its named action, including fullscreen mobile
+confirmations. Shared dialog scenarios cover dismissing an exposed backdrop.
 The `document-authoring.spec.mjs` E2E journey uses
 real persistence and streaming, then opens the same conversation in Chat. Consumer fixtures
 use `DOCUMENT_*` privileges and `document.update`/`document.delete` events: the old Memory

@@ -144,7 +144,7 @@ sans traces et sans le filtre graphique de la carte. Le protocole signale `crash
 Le port WPE n’a pas été requalifié avec les versions suivantes. GTK conserve les mêmes actions, assertions
 et traces ; cette couverture ne remplace pas un essai sur Safari/iOS réels.
 
-Le runner E2E et son image navigateur sont alignés sur Playwright 1.64.0. Cette version
+Le runner commun aux E2E et aux composants Vue et son image navigateur sont alignés sur Playwright 1.64.0. Cette version
 inclut le [correctif WebKit du mode hors ligne des service workers](https://github.com/microsoft/playwright/pull/42894).
 Le parcours PWA conserve ses assertions de chargement hors ligne, de mise à jour du cache
 et de conservation de la conversation authentifiée.
