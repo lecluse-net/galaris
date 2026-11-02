@@ -1,11 +1,12 @@
 """Interactive process lists must not spend seconds compiling resource ACLs."""
 
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, select, text, update
+from sqlalchemy import delete, event, select, text, update
 from sqlalchemy.exc import InvalidRequestError
 
 from app.agent import AgentManagementScope
@@ -14,6 +15,23 @@ from app.process.models import ProcessNodeRun, ProcessRun
 from tests.sql_reads import measured_reads
 from .test_native_bpmn import committed_native as committed_native, graph
 from .test_lifecycle_workflows import workflow as workflow
+
+
+@asynccontextmanager
+async def jit_during_reads(db):
+    connection = await db.connection()
+    settings = []
+
+    def capture(_connection, cursor, statement, _parameters, _context, _many):
+        if statement.lstrip().upper().startswith(("SELECT", "WITH")):
+            cursor.execute("SHOW jit")
+            settings.append(cursor.fetchone()[0])
+
+    event.listen(connection.sync_connection, "before_cursor_execute", capture)
+    try:
+        yield settings
+    finally:
+        event.remove(connection.sync_connection, "before_cursor_execute", capture)
 
 
 @pytest.mark.asyncio
@@ -159,18 +177,22 @@ async def test_process_catalogues_bound_planner_work_and_restore_transaction_def
         await db.execute(text("SET LOCAL jit_inline_above_cost = 0"))
         await db.execute(text("SET LOCAL jit_optimize_above_cost = 0"))
         started = time.perf_counter()
-        page = await query(scope)
+        async with jit_during_reads(db) as settings:
+            page = await query(scope)
         elapsed = time.perf_counter() - started
         assert (page.total if query is catalogue.page_for else page["total"]) == (5 if query is native_runs.list_runs else 1)
-        assert elapsed < 2, "A small interactive catalogue must not compile its resource ACLs"
+        print(f"CATALOGUE_READ {query.__module__}: queries={len(settings)} seconds={elapsed:.6f}")
+        assert settings and set(settings) == {"off"}, "Interactive ACL reads must disable PostgreSQL JIT before querying"
         await db.commit()
         assert await db.scalar(text("SHOW jit")) == original
     await db.execute(text("SET LOCAL jit = on"))
     await db.execute(text("SET LOCAL jit_above_cost = 0"))
     started = time.perf_counter()
-    rows, total = await process_service.paginate_runs(native_actor=scope)
+    async with jit_during_reads(db) as settings:
+        rows, total = await process_service.paginate_runs(native_actor=scope)
     assert total == 5 and len(rows) == 5
-    assert time.perf_counter() - started < 2
+    print(f"CATALOGUE_READ paginate: queries={len(settings)} seconds={time.perf_counter() - started:.6f}")
+    assert settings and set(settings) == {"off"}, "Interactive ACL reads must disable PostgreSQL JIT before querying"
     await db.rollback()
     assert await db.scalar(text("SHOW jit")) == original
 
@@ -193,26 +215,28 @@ async def test_single_run_reads_bound_acl_compilation(inference_db, committed_na
     db.add(occurrence)
     await db.commit()
     scope = AgentManagementScope(user_id=owner.user_id, agent_ids=frozenset({owner.id}))
+    db.expunge_all()
     original = await db.scalar(text("SHOW jit"))
     await db.execute(text("SET LOCAL jit = on"))
     await db.execute(text("SET LOCAL jit_above_cost = 0"))
     await db.execute(text("SET LOCAL jit_inline_above_cost = 0"))
     await db.execute(text("SET LOCAL jit_optimize_above_cost = 0"))
     started = time.perf_counter()
-    if view == "run":
-        result = await native_runs.inspect_run(run.id, scope)
-        assert result["total"] == 1 and result["nodes"][0]["id"] == str(occurrence.id)
-    elif view == "metrics":
-        result = await native_runs.run_metrics(run.id, scope)
-        assert result["direct"]["calls"] == 0 and str(occurrence.id) in result["occurrences"]
-    elif view == "activity":
-        result = await native_runs.activity_occurrences(run.id, "work", scope)
-        assert result["total"] == 1 and result["items"][0]["id"] == str(occurrence.id)
-    else:
-        result = await native_runs.inspect_occurrence(run.id, occurrence.id, scope)
-        assert result["id"] == str(occurrence.id) and result["attempts"] == []
+    async with jit_during_reads(db) as settings:
+        if view == "run":
+            result = await native_runs.inspect_run(run.id, scope)
+            assert result["total"] == 1 and result["nodes"][0]["id"] == str(occurrence.id)
+        elif view == "metrics":
+            result = await native_runs.run_metrics(run.id, scope)
+            assert result["direct"]["calls"] == 0 and str(occurrence.id) in result["occurrences"]
+        elif view == "activity":
+            result = await native_runs.activity_occurrences(run.id, "work", scope)
+            assert result["total"] == 1 and result["items"][0]["id"] == str(occurrence.id)
+        else:
+            result = await native_runs.inspect_occurrence(run.id, occurrence.id, scope)
+            assert result["id"] == str(occurrence.id) and result["attempts"] == []
     elapsed = time.perf_counter() - started
-    print(f"SINGLE_RUN_READ {view}: seconds={elapsed:.6f}")
-    assert elapsed < 2, "Inspecting one occurrence must not spend seconds compiling ACLs"
+    print(f"SINGLE_RUN_READ {view}: queries={len(settings)} seconds={elapsed:.6f}")
+    assert settings and set(settings) == {"off"}, "Interactive ACL reads must disable PostgreSQL JIT before querying"
     await db.rollback()
     assert await db.scalar(text("SHOW jit")) == original

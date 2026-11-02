@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 import { document } from './data.mjs'
 
 async function openFolderIcon(button) {
@@ -45,7 +45,7 @@ for (const journey of ['choose', 'reset']) test(`document icons: ${journey === '
     icons['doc-a'] = data.icon
     return route.fulfill({ json: data })
   })
-  await mount(page, 'app/document/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Test document' } })
+  await mount(page, 'app/document/components/DocumentIcon.vue', { privileges: ['DOCUMENT_ACCESS'], props: { documentId: 'doc-a', title: 'Test document' } })
   const button = page.getByRole('button', { name: 'Icon for document Test document', exact: true })
   const listIcon = page.locator('.document-list-scroll').getByRole('img', { name: 'Icon for document Test document', exact: true })
   const treeIcon = page.getByLabel('Documents in folder Work', { exact: true }).getByRole('img', { name: 'Icon for document Test document', exact: true })
@@ -93,7 +93,7 @@ for (const journey of ['choose', 'reset']) test(`document icons: ${journey === '
   await expect(listIcon).not.toContainText('🚀')
   reopened.assignments.add('work')
   icons['doc-a'] = 'emoji:1F680'
-  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
+  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { privileges: ['DOCUMENT_ACCESS'], props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
   await page.getByText('Work', { exact: true }).click()
   await expect(treeIcon).toContainText('🚀')
   expect(writes).toEqual([{ icon: null }, { icon: null }])
@@ -113,7 +113,7 @@ test('late icon reads cannot undo a saved choice and session changes discard per
     if (data.icon === null) await new Promise(resolve => { releaseWrite = resolve })
     return route.fulfill({ json: data })
   })
-  await mount(page, 'app/document/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Report' } })
+  await mount(page, 'app/document/components/DocumentIcon.vue', { privileges: ['DOCUMENT_ACCESS'], props: { documentId: 'doc-a', title: 'Report' } })
   const button = page.getByRole('button', { name: 'Icon for document Report', exact: true })
   await expect.poll(() => Boolean(releaseRead)).toBe(true)
   await button.click()
@@ -137,6 +137,30 @@ test('late icon reads cannot undo a saved choice and session changes discard per
   await (await writeResponse).finished()
   await expect(button).toBeEnabled()
   await expect(button).toContainText('😀')
+})
+
+test('document references retain a default icon without Documents privileges and react to role changes', async ({ page }) => {
+  const reads = []
+  await page.route('**/api/documents/icons/resolve', route => {
+    reads.push(route.request().postDataJSON())
+    return route.fulfill({ json: { 'doc-a': 'emoji:1F680' } })
+  })
+  await mount(page, 'app/document/components/DocumentIcon.vue', {
+    privileges: ['MEMORY_ACCESS'], props: { documentId: 'doc-a', title: 'Synthetic reference' },
+  })
+  const icon = page.getByRole('img', { name: 'Icon for document Synthetic reference', exact: true })
+  const button = page.getByRole('button', { name: 'Icon for document Synthetic reference', exact: true })
+  await expect(icon).toBeVisible()
+  await expect(button).toHaveCount(0)
+  expect(reads).toEqual([])
+  await setPrivileges(page, ['DOCUMENT_ACCESS'])
+  await expect(button).toContainText('🚀')
+  expect(reads).toEqual([{ document_ids: ['doc-a'] }])
+  await setPrivileges(page, ['MEMORY_ACCESS'])
+  await expect(icon).toBeVisible()
+  await expect(icon).not.toContainText('🚀')
+  await expect(button).toHaveCount(0)
+  expect(reads).toHaveLength(1)
 })
 
 for (const width of [1440, 390]) {

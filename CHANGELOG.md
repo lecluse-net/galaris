@@ -29,6 +29,8 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
   joins over long polling.
 - Keep custom Tools classified separately from built-in Tools when opening Connections.
 - Display avatars in scoped Agent selectors without requiring Agent administration rights.
+- Avoid loading document previews and personal icons without Documents privileges,
+  and ownership editing options for read-only Document roles.
 - Verify upgrades from an earlier release with that release's own dependencies,
   including rollback, instead of importing historical code with candidate packages.
 

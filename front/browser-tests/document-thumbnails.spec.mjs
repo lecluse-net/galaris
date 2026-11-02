@@ -1,6 +1,10 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount as mountComponent, jsonRoute, setPrivileges } from './fixtures.mjs'
 import { document as documentFixture } from './data.mjs'
 import { writeFile } from 'node:fs/promises'
+
+async function mount(page, component, options = {}) {
+  return mountComponent(page, component, { privileges: ['DOCUMENT_ACCESS'], ...options })
+}
 
 test.beforeEach(async ({ page }) => {
   await jsonRoute(page, '**/api/memory/items/*?agent_id=*', { ...documentFixture, payload: { text: '' } })
@@ -9,6 +13,29 @@ test.beforeEach(async ({ page }) => {
 })
 
 const png = Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64')
+
+test('document thumbnails avoid protected reads without Documents privileges and clear after revocation', async ({ page }) => {
+  let captures = 0
+  await page.route('**/api/documents/doc-a/thumbnail*', route => {
+    captures += 1
+    return route.fulfill({ contentType: 'image/webp', body: png })
+  })
+  await page.route('**/api/documents/doc-a?*', () => { throw new Error('A Memory-only role must not read Document content') })
+  await mount(page, 'app/document/components/DocumentThumbnail.vue', {
+    privileges: ['MEMORY_ACCESS'], props: { documentId: 'doc-a', revision: 1, agentId: 7 },
+  })
+  await expect(page.locator('.document-thumbnail .q-icon')).toBeVisible()
+  await expect(page.locator('.document-thumbnail img')).toHaveCount(0)
+  expect(captures).toBe(0)
+  await page.unroute('**/api/documents/doc-a?*')
+  await setPrivileges(page, ['DOCUMENT_ACCESS'])
+  await expect(page.locator('.document-thumbnail img')).toHaveJSProperty('naturalWidth', 1)
+  expect(captures).toBe(1)
+  await setPrivileges(page, ['MEMORY_ACCESS'])
+  await expect(page.locator('.document-thumbnail img')).toHaveCount(0)
+  await expect(page.locator('.document-thumbnail .q-icon')).toBeVisible()
+  expect(captures).toBe(1)
+})
 
 for (const mime of ['image/svg+xml', 'application/octet-stream']) test(`SVG thumbnails and original previews render for ${mime}`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })

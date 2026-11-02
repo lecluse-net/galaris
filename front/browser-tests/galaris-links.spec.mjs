@@ -28,7 +28,7 @@ for (const mode of ['read', 'edit', 'readonly']) for (const format of ['uri', 'u
     const popups = []
     page.on('popup', popup => popups.push(popup))
     await mount(page, `core/util/components/${mode === 'read' ? 'RichText' : 'RichTextEditor'}.vue`, {
-      route: '/documents', props: { profile: 'document', ...(mode === 'read' ? { content: html } : { modelValue: html, readonly: mode === 'readonly' }) },
+      privileges: ['DOCUMENT_ACCESS'], route: '/documents', props: { profile: 'document', ...(mode === 'read' ? { content: html } : { modelValue: html, readonly: mode === 'readonly' }) },
     })
     const reference = page.getByRole('link', { name: 'Referenced document', exact: true })
     await iconResponse
@@ -55,7 +55,7 @@ for (const mode of ['read', 'edit']) for (const width of [1440, 390]) test(`docu
   await page.setViewportSize({ width, height: 900 })
   await jsonRoute(page, `**/api/documents/${id}`, { item: { ...documentFixture, id, title, media_type: 'text/html', document_type: 'html', payload: { text: '<h1>Illustrated source</h1>' } }, agent_id: null })
   await page.route(`**/api/documents/${id}/thumbnail*`, route => route.fulfill({ contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64') }))
-  await mount(page, `core/util/components/${mode === 'edit' ? 'RichTextEditor' : 'RichText'}.vue`, { props: { profile: 'document', ...(mode === 'edit' ? { modelValue: html } : { content: html }) } })
+  await mount(page, `core/util/components/${mode === 'edit' ? 'RichTextEditor' : 'RichText'}.vue`, { privileges: ['DOCUMENT_ACCESS'], props: { profile: 'document', ...(mode === 'edit' ? { modelValue: html } : { content: html }) } })
   const card = page.locator('.galaris-link-card')
   await expect(card.locator('.document-thumbnail img')).toHaveJSProperty('naturalWidth', 1)
   await card.locator('.document-citation-thumbnail').click(mode === 'edit' ? { modifiers: ['Control'] } : {})

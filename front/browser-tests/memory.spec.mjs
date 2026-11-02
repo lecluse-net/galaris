@@ -241,7 +241,7 @@ for (const width of [1440, 390]) test(`memory list displays available thumbnails
   await page.route('**/api/file-share/items/unavailable-a/resources/image-a/thumbnail?*', route => route.fulfill({ status: 404 }))
   await page.route('**/api/documents/00000000-0000-0000-0000-000000000001/attachments/00000000-0000-0000-0000-000000000002/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: png }))
   await page.route('**/api/documents/document-a/thumbnail?*', route => route.fulfill({ contentType: 'image/webp', body: png }))
-  await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_ACCESS', 'DOCUMENT_ACCESS'], route: '/memory?agent=7' })
   const rows = page.locator(width >= 1024 ? '.memory-list-table tbody tr' : '.memory-mobile-card')
   for (const item of items) {
     const row = rows.filter({ hasText: item.title })

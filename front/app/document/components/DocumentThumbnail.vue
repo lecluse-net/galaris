@@ -9,7 +9,8 @@
 <script setup lang="ts">
 import type { DocumentType } from '../types'
 import { documentType as getDocumentType } from '../documentTypes'
-import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
 import { queuePreview } from '@/core/util'
 import { websocket } from '@/core/websocket'
@@ -25,6 +26,10 @@ const props = defineProps<{
   fill?: boolean
 }>()
 const container = useTemplateRef<HTMLElement>('container')
+const privilegeStore = usePrivilegeStore()
+const canReadDocument = computed(() => privilegeStore.hasAnyPrivilege([
+  privileges.DOCUMENT_ACCESS, privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN,
+]))
 const url = ref('')
 const loading = ref(false)
 let visible = false
@@ -42,7 +47,7 @@ async function load(): Promise<void> {
   controller?.abort()
   clearImage()
   loading.value = false
-  if (!visible || !sessionAvailable) return
+  if (!visible || !sessionAvailable || !canReadDocument.value) return
   const request = new AbortController()
   controller = request
   loading.value = true
@@ -74,7 +79,7 @@ function invalidate(): void {
 const unsubscribeThumbnailReady = onThumbnailReady(ready => {
   if (ready.itemId !== props.documentId || ready.agentId !== (props.agentId ?? null)) return
   resetSession()
-  if (visible && sessionAvailable) url.value = URL.createObjectURL(ready.blob)
+  if (visible && sessionAvailable && canReadDocument.value) url.value = URL.createObjectURL(ready.blob)
 })
 
 function onDocumentUpdate(event: { data?: { id?: string } }): void {
@@ -91,7 +96,7 @@ function onSessionChanged(event: Event): void {
   if (sessionAvailable) void load()
 }
 
-watch(() => [props.documentId, props.revision, props.updatedAt, props.agentId], invalidate)
+watch(() => [props.documentId, props.revision, props.updatedAt, props.agentId, canReadDocument.value], invalidate)
 onMounted(() => {
   websocket.createWebsocket()
   websocket.onEvent('document', 'update', onDocumentUpdate)

@@ -153,6 +153,10 @@ retrait du droit ; réattribuer le droit ne rejoue pas une ancienne réponse.
 rôle distinct pour chaque lecteur et opérateur, y compris les rubriques Lab, les réglages,
 les utilisateurs et l'administration RBAC. Les exceptions de composition Chat/Équipes et
 la portée globale de Dream sont explicites. Aucun refus API de domaine voisin n'est ignoré.
+Une référence Document synthétique exerce Memory avec du contenu et un rôle Memory seul,
+sans demander les icônes ni les aperçus Documents. Les lecteurs Documents ne chargent pas
+les choix de changement de propriétaire. Les scénarios de composants couvrent les changements
+de rôle, conservent les icônes autorisées et effacent les miniatures après révocation.
 Les scénarios d'aperçus utilisent les droits de leur source, et non une ancienne délégation
 Task utilisée indistinctement pour tous les objets. `useAgentChoices.test.mjs` vérifie les
 réponses tardives, changements de rôle, refus et fermeture des sélecteurs de métadonnées.
@@ -854,9 +858,13 @@ protège l'affichage indépendant des définitions et la conservation des agents
 
 `back/app/process/tests/test_catalogue_performance.py` mesure les listes autorisées sur une
 base PostgreSQL isolée avec cinq exécutions et force les seuils de compilation JIT qui
-reproduisaient plusieurs secondes de latence. Il vérifie le budget interactif des listes
-d'exécutions et de définitions ainsi que le rétablissement des paramètres de transaction
-après commit et rollback. Les tests de permissions des processus conservent les refus,
+reproduisaient plusieurs secondes de latence. Il contrôle le réglage JIT local à la transaction
+avant les lectures réelles des catalogues et des inspections de runs, métriques, activités et
+occurrences, puis son rétablissement après commit et rollback. Les fixtures d'inspection
+vident leur cache d'identité ORM pour provoquer de vraies lectures. L'ancien seuil global
+de deux secondes est retiré : il ne distinguait pas la compilation SQL des pauses ailleurs
+dans la suite. Les durées restent diagnostiques ; une mutation jetable qui réactive le JIT
+doit faire échouer ce contrôle. Les tests de permissions des processus conservent les refus,
 les partages et l'exclusion des définitions orphelines ; l'optimisation du filtre d'accès
 retire les branches de dossiers et de pièces jointes inutiles à ces listes.
 La même suite borne à trois les lectures SQL des pages de 10, 50 et 500 résumés liés

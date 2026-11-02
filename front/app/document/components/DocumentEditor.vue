@@ -831,6 +831,11 @@ async function loadDocument(): Promise<void> {
 
 async function loadOwnerOptions(): Promise<void> {
   const generation = ++ownerLoadGeneration
+  if (!privilegeStore.hasAnyPrivilege([privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN])) {
+    ownerOptions.value = { agents: [], users: [] }
+    ownerOptionsReady.value = true
+    return
+  }
   try {
     const incoming = await documentService.listDocumentOwnerOptions()
     if (disposed || generation !== ownerLoadGeneration) return

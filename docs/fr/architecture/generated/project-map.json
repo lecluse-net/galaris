@@ -21702,10 +21702,12 @@
         "files": [
           "front/app/document/components/DocumentBulkList.vue",
           "front/app/document/components/DocumentEditor.vue",
+          "front/app/document/components/DocumentIcon.vue",
           "front/app/document/components/DocumentLibraryNavigation.vue",
           "front/app/document/components/DocumentLibraryPage.vue",
           "front/app/document/components/DocumentRowMenu.vue",
           "front/app/document/components/DocumentTagRow.vue",
+          "front/app/document/components/DocumentThumbnail.vue",
           "front/app/document/navigation.ts"
         ],
         "source": "app/document",

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { createDocument } from '../documents.mjs'
 
 // Exercise the assembled shell and real APIs: a domain must not fetch its
 // neighbour's administrative catalogue merely to display existing records.
@@ -55,6 +56,7 @@ const cases = [
 ]
 
 let credentials
+let documentReference
 const roles = new Map()
 const checked = async response => {
   expect(response.ok(), await response.text()).toBeTruthy()
@@ -80,6 +82,12 @@ test.beforeAll(async ({ request }) => {
   const owner = await checked(await request.get(`/api/agents/${fixture.agent_id}`, { headers }))
   const agent = await checked(await request.post('/api/agents', { headers, data: { user_id: user.id, title_id: owner.title_id,
     code: `domain-${suffix}`, first_name: 'Synthetic', last_name: 'Domain operator' } }))
+  // Memory can contain document references even when this role cannot use Documents.
+  const document = await checked(await createDocument(request, { headers, data: {
+    owner_agent_id: agent.id, title: `Synthetic domain reference ${suffix}`,
+    payload: { text: '<p>Synthetic reference content</p>' },
+  } }))
+  documentReference = { id: document.id, title: document.title, agentId: agent.id }
   // This journey rejects every failed API read, including optional avatar reads.
   const avatar = await request.post(`/api/agents/${agent.id}/avatar`, { headers, multipart: {
     file: { name: 'synthetic-avatar.png', mimeType: 'image/png', buffer: Buffer.from(
@@ -93,6 +101,16 @@ for (const [code, path] of cases) test(`${code} opens its function without neigh
   const active = await checked(await page.request.post('/api/authorize/switch-role', {
     headers: { Authorization: `Bearer ${session.access_token}` }, data: { role_id: roles.get(code) },
   }))
+  if (path === '/memory') {
+    // Wait for the actual asynchronous Document projection before opening the page.
+    await expect.poll(async () => {
+      const result = await checked(await page.request.post('/api/memory/browse', {
+        headers: { Authorization: `Bearer ${active.access_token}` },
+        data: { agent_id: documentReference.agentId, query: documentReference.title, limit: 50 },
+      }))
+      return result.hits.some(hit => hit.item.id === documentReference.id)
+    }, { timeout: 30_000 }).toBe(true)
+  }
   await page.addInitScript(token => localStorage.setItem('access_token', token), active.access_token)
   const errors = collectPageErrors(page)
   const failures = []
@@ -102,6 +120,7 @@ for (const [code, path] of cases) test(`${code} opens its function without neigh
   })
   await page.goto(path)
   await expect(page.locator('.q-page')).toBeVisible()
+  if (path === '/memory') await expect(page.getByText(documentReference.title, { exact: true })).toBeVisible()
   if (path === '/dataset') {
     await expect(page).toHaveURL(url => url.pathname === '/documents' && url.searchParams.get('type') === 'data')
   } else {

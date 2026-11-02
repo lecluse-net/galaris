@@ -143,7 +143,11 @@ never replays an old answer.
 `e2e/specs/rbac-isolation.spec.mjs` opens assembled application functions using a distinct
 role for each reader/operator, including Lab sections, settings, users and RBAC management.
 Chat/Team composition exceptions and Dream's global scope are explicit. Unexpected API
-denials from neighbouring domains are never ignored. Preview scenarios use their source
+denials from neighbouring domains are never ignored. A synthetic document reference makes
+the Memory-only role exercise populated content without requesting Documents icons or previews.
+Document readers do not load ownership editing options. Component scenarios cover role
+changes, preserve authorized personal icons and clear thumbnails after revocation.
+Preview scenarios use their source
 rights rather than reusing Task access for every object. `useAgentChoices.test.mjs`
 checks late responses, role changes, denial and disposal of metadata selectors.
 
@@ -806,8 +810,12 @@ a filter change.
 
 `back/app/process/tests/test_catalogue_performance.py` measures authorized lists against
 isolated PostgreSQL with five executions and forces the JIT compilation thresholds that
-reproduced several seconds of latency. It checks the interactive budget for execution and
-definition lists and transaction settings reverting after commit and rollback. Process
+reproduced several seconds of latency. It checks the transaction-local JIT setting before
+the actual reads for catalogues and run, metric, activity and occurrence inspections, and
+verifies settings reverting after commit and rollback. Inspection fixtures discard their
+ORM identity map so they perform real reads. The former two-second wall-clock assertion
+is retired: it could not distinguish SQL compilation from pauses elsewhere in the test run.
+Durations remain diagnostic, and a disposable mutation that enables JIT must fail the guard. Process
 permission tests preserve denials, sharing and orphan definition exclusion; the access
 filter optimization removes folder and attachment branches that these lists do not need.
 The same suite bounds SQL reads to three for pages of 10, 50 and 500 summaries linked

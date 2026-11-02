@@ -16,7 +16,7 @@ test('PDF preserves process diagrams and agent portraits without clickable objec
     { id: 'end', kind: 'end', title: 'Complete', config: {}, x: 0, y: 0, body: null },
   ], flows: [{ id: 'one', source: 'start', target: 'review' }, { id: 'two', source: 'review', target: 'end' }] }
   await jsonRoute(page, '**/api/processes/internal/resource-preview?*', { uri: processUri, kind: 'process', id: 'synthetic_pdf_review', title: 'Synthetic PDF process', description: 'An invented review workflow.', revision: 1, graph, process_uri: processUri })
-  await mount(page, 'core/util/components/RichTextEditor.vue')
+  await mount(page, 'core/util/components/RichTextEditor.vue', { privileges: ['DOCUMENT_ACCESS'] })
   const portrait = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128
     const ctx = canvas.getContext('2d'); ctx.fillStyle = '#087FF5'; ctx.fillRect(0, 0, 128, 128)
