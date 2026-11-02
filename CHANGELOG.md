@@ -25,6 +25,10 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 - Recheck open Memory details after access refreshes and reconnects, preserving authorized
   drafts and closing revoked details instead of leaving an empty dialog.
 - Keep the folder name field focused when renaming from its context menu.
+- Group realtime subscription updates during page startup to preserve Chat room
+  joins over long polling.
+- Keep custom Tools classified separately from built-in Tools when opening Connections.
+- Display avatars in scoped Agent selectors without requiring Agent administration rights.
 - Verify upgrades from an earlier release with that release's own dependencies,
   including rollback, instead of importing historical code with candidate packages.
 

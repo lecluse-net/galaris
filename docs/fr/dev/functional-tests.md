@@ -1694,8 +1694,21 @@ Le driver local `internal`, quand sa définition est disponible, ne déclenche p
 lectures d'état du superviseur. Les autres drivers restent inspectés, dont le driver
 réseau commun aux runtimes Codex, Claude et DeepSeek. Une indisponibilité du catalogue
 ne masque pas leur supervision ni sa reprise après erreur.
-Les sélecteurs sans champ de recherche sont parcourus au clavier, y compris leurs options
-virtualisées ; les civilités restent sélectionnables au-delà des 500 premières références.
+Les sélecteurs sans champ de recherche utilisent les touches natives de pagination puis
+un clic sur l’option exacte, y compris leurs options virtualisées. Chaque popup se ferme
+avant l’ouverture du suivant ; les civilités restent sélectionnables au-delà des 500 premières références.
+Le parcours réel des outils REST vérifie les groupes intégrés/personnalisés via le catalogue
+des Connexions, ainsi que la protection des identifiants. Son scénario backend d’autorisation
+conserve ce classement avec ou sans privilège d’administration des outils.
+Le parcours d’isolation des rôles suit les anciens liens Dataset vers la bibliothèque des
+documents Données avec les privilèges Document attribués par DbAdmin à la migration. Son
+agent synthétique possède un avatar valide pour distinguer les images absentes des échecs
+d’autorisation inattendus.
+`app/agent/tests/test_selection.py` vérifie la lecture des avatars dans le périmètre du
+lecteur authentifié, le refus hors périmètre, le catalogue des équipes et les refus d’écriture
+et de suppression. Les parcours de courses de session distinguent les abonnements Memory
+et Document et créent chaque ressource via son API propriétaire avant de retarder
+l’authentification au premier chargement direct.
 Avant un rechargement volontaire, ils attendent les réponses HTTP concernées. Le collecteur
 `e2e/page-errors.mjs` conserve les erreurs JavaScript et réseau ; il exclut une erreur XHR
 native de WebKit uniquement si une annulation de la même requête est observée.
@@ -2480,6 +2493,10 @@ portrait, carré, panorama et document, au premier affichage, après dézoom/zoo
 Il vérifie aussi les octets originaux et la limite des dimensions natives en pixels.
 Les assertions des transformations ECharts sont retirées avec le moteur 2D ; ces parcours
 3D conservent les garanties de proportions et de réutilisation du cache.
+Le recadrage global conserve les branches déjà chargées sans nouvelle expansion ; son
+nombre exact d'éléments masqués dépend de la caméra et ne constitue pas une garantie.
+Le chargement différé initial, les populations cachées et leur légende restent couverts
+par les scénarios 3D dédiés.
 Un répertoire synthétique de 84 images vérifie aussi les miniatures simultanées et leur
 réutilisation avec une estimation de mémoire navigateur réduite, sur desktop annonçant 2 ou
 16 cœurs. Les miniatures chargées restent en cache après un déplacement complet hors champ,
@@ -2657,6 +2674,11 @@ repris et ce qui ne constitue plus une exigence. Mesurer les régressions échap
 la durée et les mutations pertinentes, pas un objectif de nombre de tests.
 
 ## Rafraîchissement Chat et corrections ciblées
+
+`front/core/websocket.test.mjs` exerce une rafale de 32 souscriptions, le retrait d'un
+consommateur partagé, la reconnexion avec les intérêts courants et l'abandon des mises à
+jour en attente après déconnexion. Le regroupement évite de multiplier les paquets du
+transport polling pendant le montage ; les handlers locaux restent immédiatement actifs.
 
 `front/app/chat/storeCatchUp.test.mjs` et `front/browser-tests/chat-recovery.spec.mjs`
 vérifient le regroupement des signaux, la conservation d'une invalidation reçue pendant

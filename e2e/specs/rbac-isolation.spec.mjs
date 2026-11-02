@@ -19,7 +19,8 @@ const cases = [
     ['CONNECTION', '/tools?tab=connections'], ['MAIL', '/connection/mail'],
     ['CALENDAR', '/connection/calendars'],
   ].flatMap(([prefix, path]) => ['ACCESS', 'EDIT'].map(suffix => [`${prefix}_${suffix}`, path])),
-  ['DATASET_READ', '/dataset'], ['DATASET_EDIT', '/dataset'],
+  // DbAdmin upgrades legacy Dataset roles to the corresponding Document privilege.
+  ['DATASET_READ', '/dataset', ['DOCUMENT_ACCESS']], ['DATASET_EDIT', '/dataset', ['DOCUMENT_EDIT']],
   ['PROCESS_READ', '/process'], ['PROCESS_EDIT', '/process'],
   ['FILE_INDEX_ACCESS', '/params/files'], ['FILE_INDEX_RUN', '/params/files'],
   ['CONVERSATION_ACCESS', '/task?tab=conversations'], ['CONVERSATION_CONTROL', '/task?tab=conversations'],
@@ -37,7 +38,7 @@ const cases = [
   ['DREAM_CONFIG_ACCESS', '/params/dream'], ['DREAM_EDIT', '/params/dream'],
   ['DREAM_ACCESS', '/dream', ['AGENT_MANAGE_ALL']],
   ['BROWSER_CONFIG_ACCESS', '/browser/settings'], ['BROWSER_CONFIG_EDIT', '/browser/settings'],
-  ['DOCUMENT_ADMIN', '/documents'], ['DATASET_ADMIN', '/dataset'], ['MEMORY_ADMIN', '/memory'],
+  ['DOCUMENT_ADMIN', '/documents'], ['DATASET_ADMIN', '/dataset', ['DOCUMENT_ADMIN']], ['MEMORY_ADMIN', '/memory'],
   ['PROCESS_ADMIN', '/process'], ['SKILL_ASSIGN', '/skill'], ['PERMISSION_REVOKE', '/permissions'],
   ['INCIDENT_ACCESS', '/incident'], ['INCIDENT_EDIT', '/incident'],
   ...['READ_USER', 'CREATE_USER', 'UPDATE_USER', 'DELETE_USER'].map(code => [code, '/user/users']),
@@ -77,8 +78,14 @@ test.beforeAll(async ({ request }) => {
     roles.set(code, role.id)
   }
   const owner = await checked(await request.get(`/api/agents/${fixture.agent_id}`, { headers }))
-  await checked(await request.post('/api/agents', { headers, data: { user_id: user.id, title_id: owner.title_id,
+  const agent = await checked(await request.post('/api/agents', { headers, data: { user_id: user.id, title_id: owner.title_id,
     code: `domain-${suffix}`, first_name: 'Synthetic', last_name: 'Domain operator' } }))
+  // This journey rejects every failed API read, including optional avatar reads.
+  const avatar = await request.post(`/api/agents/${agent.id}/avatar`, { headers, multipart: {
+    file: { name: 'synthetic-avatar.png', mimeType: 'image/png', buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64') },
+  } })
+  expect(avatar.status(), await avatar.text()).toBe(204)
 })
 
 for (const [code, path] of cases) test(`${code} opens its function without neighbouring privileges`, async ({ page }) => {
@@ -95,7 +102,11 @@ for (const [code, path] of cases) test(`${code} opens its function without neigh
   })
   await page.goto(path)
   await expect(page.locator('.q-page')).toBeVisible()
-  await expect(page).toHaveURL(new RegExp(new URL(path, 'http://test').pathname.replaceAll('/', '\\/')))
+  if (path === '/dataset') {
+    await expect(page).toHaveURL(url => url.pathname === '/documents' && url.searchParams.get('type') === 'data')
+  } else {
+    await expect(page).toHaveURL(new RegExp(new URL(path, 'http://test').pathname.replaceAll('/', '\\/')))
+  }
   await errors.settle()
   expect(failures).toEqual([])
   expect(errors()).toEqual([])

@@ -390,11 +390,11 @@ async def upload_avatar(
 
 
 @crud_router.get("/{id}/avatar")
-@authorize(privileges=[Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT, "TEAM_ACCESS"])
+@authorize()
 async def download_avatar(
     id: int,
-):
-    """Download the avatar image for an agent."""
+) -> Response:
+    """Read display metadata within the same scope as Agent selection."""
     user = await user_service.get_current_user()
     catalogue_access = user is not None and (
         await check_privilege(user, "TEAM_ACCESS", get_db())

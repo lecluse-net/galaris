@@ -3,5 +3,5 @@
   "private": true,
   "type": "module",
   "scripts": { "pretest": "node --test page-errors.test.mjs", "test": "playwright test" },
-  "devDependencies": { "@playwright/test": "1.62.1" }
+  "devDependencies": { "@playwright/test": "1.64.0" }
 }

@@ -1616,8 +1616,19 @@ use search and pagination to retrieve their data. The local `internal` driver, w
 definition is available, does not trigger supervisor status reads. Other drivers remain
 inspected, including the network driver shared by Codex, Claude and DeepSeek runtimes.
 Unavailable driver metadata does not hide supervision or recovery after an error.
-Selectors without a search input are navigated
-with the keyboard, including virtualized options; titles remain selectable beyond the first 500 entries.
+Selectors without a search input use native keyboard paging followed by an exact option
+click, including virtualized options. Each popup closes before the next opens; titles
+remain selectable beyond the first 500 entries.
+The real REST Tool journey checks built-in/custom grouping through the Connections
+metadata endpoint, alongside credential redaction. Its backend authorization scenario
+preserves that classification for readers with or without Tool administration privileges.
+The role-isolation journey follows legacy Dataset links to the Data document library with
+the Document privileges assigned by DbAdmin during migration. Its synthetic agent has a
+valid avatar so optional missing-image reads cannot mask unexpected authorization failures.
+`app/agent/tests/test_selection.py` checks avatar reads for scoped authenticated readers,
+outside-scope rejection, team catalogue access and denied uploads/deletions. The session-race
+journeys exercise Memory and Document subscriptions separately and create each resource
+through its owning API before delaying authentication on the first direct load.
 Before a deliberate reload, they wait for
 the relevant HTTP responses. `e2e/page-errors.mjs` retains JavaScript and network errors;
 it excludes a native WebKit XHR error only when cancellation of that same request is observed.
@@ -2378,6 +2389,9 @@ square, panorama and document, on first display, after zooming out/in and after 
 It also verifies original thumbnail bytes and the native pixel limit. The former ECharts
 transform assertions are retired with the 2D renderer; these 3D journeys preserve the
 image proportions and cache reuse guarantees.
+Fitting the overview retains loaded branches without another expansion; its exact
+hidden-item count depends on the camera and is not a guarantee. Dedicated 3D scenarios
+still cover initial deferred loading, hidden populations and their captions.
 A synthetic directory of 84 images also checks simultaneous thumbnails and their reuse
 with a reduced browser memory estimate, on desktops reporting 2 or 16 cores. Previous small
 graphs did not detect the incorrect 64-thumbnail limit. Loaded thumbnails remain cached,
@@ -2546,6 +2560,11 @@ retired tests identify guarantees retained elsewhere and incidental constraints 
 Track escaped regressions, flakiness, feedback time and relevant mutations rather than test count.
 
 ## Chat refresh and targeted corrections
+
+`front/core/websocket.test.mjs` exercises a burst of 32 subscriptions, shared-consumer
+removal, reconnection with current interests and dropping pending updates after logout.
+Coalescing avoids multiplying polling packets during mounting; local handlers remain
+immediately active.
 
 `front/app/chat/storeCatchUp.test.mjs` and `front/browser-tests/chat-recovery.spec.mjs`
 check signal coalescing, invalidations received during reads, recovery after errors

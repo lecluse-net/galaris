@@ -187,8 +187,10 @@ async def test_connector_metadata_does_not_disclose_global_tool_configuration(cl
     response = await client.get("/api/connections/tool-options", headers=headers)
     assert response.status_code == 200 and response.json()
     assert "private-marker" not in response.text and "synthetic-private.invalid" not in response.text
+    item = next(item for item in response.json() if item["id"] == identity)
+    assert item["can_edit"] is True  # Definition origin, independent of this reader's privileges.
+    assert next(item for item in response.json() if item["code"] == "calendar")["can_edit"] is False
     if tool_privilege:
-        item = next(item for item in response.json() if item["id"] == identity)
         assert item["global_params"]["region"] == {"value": "synthetic-region", "configured": True, "secret": False, "forced": True}
         assert item["global_params"]["token"] == {"value": None, "configured": True, "secret": True, "forced": False}
     else:

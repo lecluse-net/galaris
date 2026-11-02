@@ -9,6 +9,8 @@ for (const surface of ['document', 'message', 'resource']) {
   test(`${surface} 3D preview renders geometry, supports camera navigation and cleans up`, async ({ page }) => {
     // Software WebGL captures share CPU with the parallel validation suites.
     test.setTimeout(60_000)
+    // Bound software-WebGL readback cost for camera image comparisons.
+    await page.setViewportSize({ width: 800, height: 600 })
     if (surface === 'document') await page.route('**/api/documents/document-1/attachments/model-1/thumbnail?*', async route => {
       const data = await page.evaluate(async cube => {
         const { createModelThumbnail } = await import('/core/util/model3dRuntime.ts')

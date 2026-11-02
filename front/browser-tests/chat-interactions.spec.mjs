@@ -13,6 +13,7 @@ const choice = {
 const resolved = { ...choice, status: 'RESOLVED', selected_option_id: 'create', can_answer: false }
 const endpoint = '**/api/chat/rooms/room-1/interactions/choice-1'
 const options = { locale: 'fr', props: { roomId: 'room-1', interaction: choice } }
+const recordedAnswerStatus = page => page.getByRole('status').filter({ hasText: /^Réponse enregistrée/ })
 
 for (const [locale, expected] of [
   ['fr', 'Réponse à « Demande d’autorisation » (#FA12BC34) : Autoriser cette action'],
@@ -72,7 +73,7 @@ test('the conversation displays actionable choices and preserves ordinary text m
   await expect(page.getByText('Message ordinaire conservé.', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('choices-mobile.png'), fullPage: true })
   await create.click()
-  await expect(page.getByRole('status')).toHaveText('Réponse enregistrée.')
+  await expect(recordedAnswerStatus(page)).toHaveText('Réponse enregistrée.')
   await expect(create).toHaveAttribute('aria-pressed', 'true')
 })
 
@@ -93,14 +94,14 @@ test('a click submits one exact choice, locks both buttons and survives reopenin
   await expect(create).toBeDisabled()
   await expect(reject).toBeDisabled()
   release()
-  const acknowledgement = page.getByRole('status').filter({ hasText: /^Réponse enregistrée\.$/ })
-  await expect(acknowledgement).toBeVisible()
+  const acknowledgement = recordedAnswerStatus(page)
+  await expect(acknowledgement).toHaveText('Réponse enregistrée.')
   await expect(create).toHaveAttribute('aria-pressed', 'true')
   // A history request started before the click may return the old pending snapshot.
   await page.evaluate(interaction => window.testApp.setProps({ interaction }), choice)
   await expect(create).toBeDisabled()
   await mount(page, component, { ...options, props: { ...options.props, interaction: resolved } })
-  await expect(acknowledgement).toBeVisible()
+  await expect(acknowledgement).toHaveText('Réponse enregistrée.')
   await expect(create).toBeDisabled()
   expect(submissions).toHaveLength(1)
 })
@@ -111,7 +112,7 @@ test('expired and read-only choices cannot be submitted', async ({ page }) => {
   await page.evaluate(interaction => window.testApp.setProps({ readonly: false, interaction }), {
     ...choice, expires_at: '2000-01-01T00:00:00Z',
   })
-  await expect(page.getByRole('status')).toHaveText('Cette demande a expiré.')
+  await expect(page.getByRole('status').filter({ hasText: /^Cette demande a expiré/ })).toHaveText('Cette demande a expiré.')
   await expect(page.getByRole('button').first()).toBeDisabled()
 })
 
@@ -120,11 +121,11 @@ test('a lost response reloads the recorded decision before enabling another answ
   await jsonRoute(page, endpoint, { ...resolved, status: 'PROCESSING' })
   await mount(page, component, options)
   await page.getByRole('button', { name: 'Créer ce dossier' }).click()
-  await expect(page.getByRole('status')).toHaveText('Réponse enregistrée, traitement en cours…')
+  await expect(recordedAnswerStatus(page)).toHaveText('Réponse enregistrée, traitement en cours…')
   await expect(page.getByRole('button').last()).toBeDisabled()
   await expect(page.getByRole('alert')).toHaveCount(0)
   await page.evaluate(interaction => window.testApp.setProps({ interaction }), resolved)
-  await expect(page.getByRole('status')).toHaveText('Réponse enregistrée.')
+  await expect(recordedAnswerStatus(page)).toHaveText('Réponse enregistrée.')
 })
 
 test('an unrecorded failure allows retrying the same choice', async ({ page }) => {
@@ -142,7 +143,7 @@ test('an unrecorded failure allows retrying the same choice', async ({ page }) =
   await expect(page.getByRole('alert')).toContainText('Réessayez')
   await expect(create).toBeEnabled()
   await create.click()
-  await expect(page.getByRole('status')).toHaveText('Réponse enregistrée.')
+  await expect(recordedAnswerStatus(page)).toHaveText('Réponse enregistrée.')
   expect(attempts).toBe(2)
 })
 
@@ -166,5 +167,5 @@ test('a late response from another room cannot change the current choice', async
   await response
   await expect(page.getByRole('region', { name: 'Une autre demande' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Créer ce dossier' })).toBeEnabled()
-  await expect(page.getByRole('status')).toHaveCount(0)
+  await expect(recordedAnswerStatus(page)).toHaveCount(0)
 })

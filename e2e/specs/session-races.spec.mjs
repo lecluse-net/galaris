@@ -48,7 +48,8 @@ test('page subscriptions stop on navigation while global message notifications r
   await expect.poll(subscriptions).toEqual(['chat.message'])
   const consumers = [
     { path: '/goal', event: 'goal.update' },
-    { path: '/documents', event: 'memory.update' },
+    { path: '/memory', event: 'memory.invalidate' },
+    { path: '/documents', event: 'document.invalidate' },
     { path: '/task', tab: 'Tâches', event: 'task.update' },
     { path: '/task', tab: 'Activité LLM', event: 'llm_call.update' },
     { path: '/task', tab: 'Processus', event: 'process_run.update' },
@@ -247,11 +248,14 @@ for (const width of [390, 1440]) {
     const token = await page.evaluate(() => localStorage.getItem('access_token'))
     for (const nodeKind of ['memory', 'document']) {
       const title = `First load ${nodeKind} ${fixture.agent_id}`
-      const created = await request.post('/api/memory/items', {
+      const options = {
         headers: { Authorization: `Bearer ${token}`, 'X-Editorial-Profile-Version': '1' },
         data: { owner_agent_id: fixture.agent_id, title, node_kind: nodeKind,
           media_type: 'text/html', payload: { text: '<p>Existing content must load without reloading the page.</p>' } },
-      })
+      }
+      const created = nodeKind === 'document'
+        ? await createDocument(request, options)
+        : await request.post('/api/memory/items', options)
       expect(created.ok(), await created.text()).toBeTruthy()
       const item = await created.json()
       let release

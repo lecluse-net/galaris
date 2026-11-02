@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 for (const width of [1440, 390]) test(`a Contacts-only role creates and reopens contacts without Memory or Agent administration at ${width}px`, async ({ page, request }) => {
   test.setTimeout(90_000)
@@ -49,10 +50,7 @@ for (const width of [1440, 390]) test(`a Contacts-only role creates and reopens 
   })
   await errors.settle()
   await page.goto('/memory/contacts')
-  if (width < 1024) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
-    await backdrop.click({ position: { x: width - 10, y: 200 } })
-  })
-  await page.getByRole('button', { name: 'Add email contact', exact: true }).click()
+  await withSidebarDismissal(page, () => page.getByRole('button', { name: 'Add contact', exact: true }).click())
   const dialog = page.getByRole('dialog')
   const name = `Synthetic correspondent ${width}`
   await dialog.getByLabel('Display name', { exact: true }).fill(name)

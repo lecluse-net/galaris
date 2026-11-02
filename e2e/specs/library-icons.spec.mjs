@@ -38,6 +38,8 @@ for (const width of [1440, 390]) {
       await errors.settle()
       await page.goto(path)
       await closeSidebar()
+      await expect(page.getByText(folder.name, { exact: true })).toBeVisible()
+      await errors.settle()
       for (const [name, mimeType, buffer] of [
         ['Synthetic large.svg', 'image/svg+xml', Buffer.from(svg)],
         ['Synthetic raster.png', 'image/png', Buffer.from(raster.split(',')[1], 'base64')],
@@ -58,6 +60,7 @@ for (const width of [1440, 390]) {
         await page.reload()
         await closeSidebar()
         await expect.poll(() => trigger.locator('img').evaluate(image => image.naturalWidth)).toBe(32)
+        await errors.settle()
       }
       await page.screenshot({ path: testInfo.outputPath(`${domain}-image-icon-${width}.png`), animations: 'disabled' })
     }

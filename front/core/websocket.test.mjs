@@ -215,7 +215,7 @@ test('the displayed page is restored on reconnect and cleared on leave or logout
   assert.deepEqual(displayed(), ['room.display', { room: null }])
 })
 
-test('only events with active consumers are requested, preserving shared and global listeners', () => {
+test('only events with active consumers are requested, preserving shared listeners and coalescing mount bursts', async () => {
   const fixture = setup()
   const { websocket, socket, finishHandshake, receive } = fixture
   websocket.createWebsocket()
@@ -228,6 +228,7 @@ test('only events with active consumers are requested, preserving shared and glo
   websocket.onEvent('chat', 'message', inbox)
   websocket.onEvent('llm_call', 'update', pageA)
   websocket.onEvent('llm_call', 'update', pageB)
+  await Promise.resolve()
   assert.deepEqual(subscriptions(), ['chat.message', 'llm_call.update'])
   receive('llm_call.update', { data: {} })
   assert.equal(calls, 2)
@@ -237,14 +238,30 @@ test('only events with active consumers are requested, preserving shared and glo
   receive('llm_call.update', { data: {} })
   assert.equal(calls, 3)
   websocket.offEvent('llm_call', 'update', pageB)
+  await Promise.resolve()
   assert.deepEqual(subscriptions(), ['chat.message'])
   websocket.onEvent('llm_call', 'update', pageA)
+  await Promise.resolve()
   assert.deepEqual(subscriptions(), ['chat.message', 'llm_call.update'])
   websocket.offEvent('llm_call', 'update')
+  await Promise.resolve()
   assert.deepEqual(subscriptions(), ['chat.message'])
+  // Mounted consumers can exceed Engine.IO's 16-packet polling payload limit.
+  const beforeBurst = socket.emissions.length
+  for (let index = 0; index < 32; index++) websocket.onEvent('synthetic', `event-${index}`, pageA)
+  websocket.offEvent('synthetic', 'event-0', pageA)
+  await Promise.resolve()
+  const updates = socket.emissions.slice(beforeBurst).filter(item => item[0] === 'events.subscribe')
+  assert.equal(updates.length, 1)
+  assert.deepEqual(updates[0][1].events, ['chat.message',
+    ...Array.from({ length: 31 }, (_, index) => `synthetic.event-${index + 1}`)])
+  receive('synthetic.event-0', {})
+  assert.equal(calls, 3)
+  receive('synthetic.event-1', {})
+  assert.equal(calls, 4)
 })
 
-test('reconnection authenticates with current subscriptions after offline navigation', () => {
+test('reconnection authenticates with current subscriptions and logout drops queued updates', async () => {
   const fixture = setup()
   const { websocket, socket, finishHandshake, changeToken, serverDisconnect } = fixture
   websocket.createWebsocket()
@@ -257,9 +274,13 @@ test('reconnection authenticates with current subscriptions after offline naviga
   socket.connect()
   assert.deepEqual(fixture.authPayload.events, ['memory.update'])
   finishHandshake()
-  assert.deepEqual(socket.emissions.at(-2), ['events.subscribe', { events: ['memory.update'] }])
-  changeToken(null)
+  await Promise.resolve()
+  assert.deepEqual(socket.emissions.filter(item => item[0] === 'events.subscribe').at(-1), ['events.subscribe', { events: ['memory.update'] }])
+  const beforeLogout = socket.emissions.length
   websocket.offEvent('memory', 'update', listener)
+  changeToken(null)
+  await Promise.resolve()
+  assert.equal(socket.emissions.length, beforeLogout)
   changeToken('another-user-token')
   assert.deepEqual(fixture.authPayload.events, [])
 })

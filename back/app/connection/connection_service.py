@@ -1036,10 +1036,10 @@ async def resolve_function(connection: Connection, function_name: str, *, capabi
 
 async def connection_tool_options(*, include_globals: bool = False) -> list[dict[str, Any]]:
     from app.tools import tool_service
-    from app.tools.facade import public_connection_schema
+    from app.tools.facade import public_connection_schema, tool_can_edit
     records = await tool_service.get_all_tool_records()
     return [{"id": t.id, "code": t.code, "label": t.label, "description": t.description,
-             "can_disable": t.can_disable, "can_edit": False,
+             "can_disable": t.can_disable, "can_edit": tool_can_edit(t),
              "has_mcp": bool(t.mcp_config), "has_api": bool(t.rest_config),
              "has_file_share": bool(t.file_share_config), "has_messenger": bool(t.messenger_config),
              "has_listener": bool(t.listener_config), "conversation_enabled": t.conversation_enabled,

@@ -140,9 +140,14 @@ toutes les suites, conserve leur code d'échec et refuse toujours un instantané
 
 Sous Linux, WebKit utilise le port GTK officiel via Xvfb. Le port WPE headless du build 2336
 (Playwright 1.62.1) a produit des crashs natifs intermittents pendant la saisie MFA, y compris
-sans traces et sans le filtre graphique de la carte. Le protocole signale `crashed: true` ;
-ce défaut WPE n’est pas considéré comme corrigé. GTK conserve les mêmes actions, assertions
+sans traces et sans le filtre graphique de la carte. Le protocole signale `crashed: true`.
+Le port WPE n’a pas été requalifié avec les versions suivantes. GTK conserve les mêmes actions, assertions
 et traces ; cette couverture ne remplace pas un essai sur Safari/iOS réels.
+
+Le runner E2E et son image navigateur sont alignés sur Playwright 1.64.0. Cette version
+inclut le [correctif WebKit du mode hors ligne des service workers](https://github.com/microsoft/playwright/pull/42894).
+Le parcours PWA conserve ses assertions de chargement hors ligne, de mise à jour du cache
+et de conservation de la conversation authentifiée.
 
 Le chat rattrape les projections HTTP manquantes tant que sa réponse reste provisoire,
 puis arrête ce rattrapage à convergence ou à la fermeture du store. Sans autorisation de

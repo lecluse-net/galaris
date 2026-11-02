@@ -15,8 +15,8 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
     { name: 'firefox', use: { browserName: 'firefox' } },
-    // Playwright's Linux launcher selects GTK without --headless. WPE build 2336
-    // crashes intermittently during MFA input; GTK runs the same assertions and
+    // Playwright's Linux launcher selects GTK without --headless. Retain this
+    // mode after earlier WPE MFA-input crashes; it runs the same assertions and
     // tracing under the runner's Xvfb display (see reliability-operations.md).
     { name: 'webkit', use: { browserName: 'webkit', headless: false } },
   ],

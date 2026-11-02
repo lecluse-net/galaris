@@ -183,6 +183,8 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 - **Actualisation en direct.** Messages, activité, états de tâche, appels LLM et Dream utilisent
   les événements temps réel. Les abonnements ciblent les consommateurs actifs, sous contrôle
   des droits ; une reconnexion restaure les abonnements et resynchronise les vues concernées.
+  L'ouverture des pages regroupe les demandes d'abonnement pour préserver le suivi du Chat
+  pendant le démarrage.
 - **Recherche, filtres et pagination.** Les listes métier proposent les filtres adaptés : texte,
   agent, statut, période, sujet, propriétaire ou fournisseur selon le domaine. La convention des
   listes paginées est 50 lignes par défaut avec 10, 20, 50, 100 ou 500 lignes.
@@ -347,6 +349,8 @@ libère ce code pour un nouvel agent sans effacer l’historique ; les anciens a
 Les sélecteurs d’agents
 filtrent selon l’action : agents administrables pour une modification, interlocuteurs autorisés
 pour un chat, membres possibles pour une équipe.
+La lecture des avatars suit le périmètre du sélecteur sans exiger l’administration des agents ;
+leur téléversement et leur suppression conservent leurs droits distincts.
 
 Les civilités standard suivent la langue de l’interface ; les libellés personnalisés restent
 ceux saisis par l’administrateur. Leur initialisation préserve les suppressions et personnalisations.
@@ -3274,7 +3278,8 @@ variables d’un événement entrant.
 
 - Consulter les outils intégrés et les outils ajoutés ; rechercher leurs fonctions et descriptions.
 - Distinguer **Outils personnalisés**, ouvert par défaut, et **Outils internes à Galaris**.
-  Les sélecteurs de connexions et d’autorisations reprennent cette origine. Un bridge dédié
+  Les sélecteurs de connexions et d’autorisations reprennent cette origine, même à l’ouverture
+  du catalogue Connexions avec un rôle limité. Un bridge dédié
   ne rend pas automatiquement interne un Tool créé par l’utilisateur.
 - Filtrer aussi le catalogue par texte sur le nom traduit, le code et la description, sans tenir
   compte de la casse ni des accents ; effacer la recherche rétablit la liste et un message signale

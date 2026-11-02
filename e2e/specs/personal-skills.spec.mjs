@@ -1,13 +1,14 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
+import { notificationPrompt } from '../notification-prompt.mjs'
 
 for (const width of [1440, 390]) {
   test(`human personal skill administration persists through reopening at ${width}px`, async ({ page, request }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     const errors = collectPageErrors(page)
     const fixture = await (await request.post('/api/__test/seed?mode=personal-skills')).json()
-    await page.addLocatorHandler(page.getByRole('button', { name: 'Plus tard', exact: true }), button => button.click())
+    await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
     await page.goto('/user/login')
     await page.locator('input[type=email]').fill(fixture.email)
     await page.locator('input[type=password]').fill(fixture.password)
@@ -100,8 +101,7 @@ for (const width of [1440, 390]) {
     expect((await (await request.get(`/api/skills/${guide.id}`, { headers })).json()).enabled).toBe(true)
     await page.getByRole('button', { name: 'Passer en personnel', exact: true }).click()
     const ownership = page.getByRole('dialog')
-    await ownership.getByRole('combobox', { name: 'Agent propriétaire', exact: true }).click()
-    await page.getByRole('option', { name: fixture.agent_label, exact: true }).click()
+    await selectOption(page, ownership.getByRole('combobox', { name: 'Agent propriétaire', exact: true }), fixture.agent_label)
     await expect(page.getByRole('option')).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath('make-skill-personal.png'), fullPage: true, animations: 'disabled' })
     await ownership.getByRole('button', { name: 'Passer en personnel', exact: true }).click()
@@ -126,14 +126,12 @@ for (const width of [1440, 390]) {
     expect(transferred.skill.enabled).toBe(true)
     expect((await (await request.get(`/api/skills/personal/${guide.id}/content`, { headers })).json()).content).toContain('Verified human edit')
     await expect(page.getByText(editedLabel, { exact: true })).toHaveCount(0)
-    await page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }).click()
-    await page.getByRole('option', { name: fixture.recipient_label, exact: true }).click()
+    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), fixture.recipient_label)
     await page.getByText(editedLabel, { exact: true }).click()
     await expect(page.getByRole('dialog').getByRole('combobox', { name: 'Agent propriétaire', exact: true })).toHaveValue(fixture.recipient_label)
     await page.getByRole('dialog').getByRole('button', { name: 'Annuler', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }).click()
-    await page.getByRole('option', { name: fixture.agent_label, exact: true }).click()
+    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), fixture.agent_label)
     await page.getByText(disposable.label, { exact: true }).click({ button: 'right' })
     await page.getByRole('menuitem', { name: 'Supprimer', exact: true }).click()
     await page.getByRole('dialog').last().getByRole('button', { name: 'Supprimer', exact: true }).click()

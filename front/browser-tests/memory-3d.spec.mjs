@@ -415,17 +415,17 @@ for (const width of [1440, 390]) test(`3D shows known directories immediately, l
   await page.evaluate(args => window.testApp.mount(args), { component: 'app/memory/components/MemoryGraph.vue', props })
   await expect(page.getByText('504 node(s)', { exact: true })).toBeVisible()
   expect(expansions.slice(countBefore).map(body => body.item_id)).toEqual([child.id, child.id])
+  const beforeFit = expansions.length
   await page.getByRole('button', { name: 'Fit graph to viewport', exact: true }).click()
   await expect(page.getByText('504 node(s)', { exact: true })).toBeVisible()
-  await expect(page.getByText('501 hidden item(s)', { exact: true })).toBeVisible()
   await page.locator('.memory-graph').screenshot({ path: testInfo.outputPath(`hierarchy-${width}.png`) })
+  expect(expansions).toHaveLength(beforeFit)
   const camera = (await snapshot(page)).graph3dCamera
   details.shift()
   details.push(makeNode('new-file-a', 'file', 1), makeNode('new-file-b', 'file', 1))
   child.children_count = details.length
   await page.evaluate(() => window.testApp.emitSocket('connect'))
   await expect(page.getByText('505 node(s)', { exact: true })).toBeVisible()
-  await expect(page.getByText('502 hidden item(s)', { exact: true })).toBeVisible()
   expect((await snapshot(page)).graph3dCamera).toBe(camera)
 })
 

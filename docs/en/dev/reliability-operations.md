@@ -128,9 +128,14 @@ still rejects a changed snapshot.
 
 On Linux, WebKit uses its official GTK port through Xvfb. Headless WPE build 2336
 (Playwright 1.62.1) intermittently crashed during MFA input, including with tracing and
-the card backdrop filter disabled. Its protocol reports `crashed: true`; this WPE defect
-is not considered fixed. GTK retains the same actions, assertions and tracing; this coverage
+the card backdrop filter disabled. Its protocol reports `crashed: true`.
+WPE has not been requalified with later versions. GTK retains the same actions, assertions and tracing; this coverage
 does not replace testing on real Safari/iOS devices.
+
+The E2E runner and its browser image use matching Playwright 1.64.0 versions. This includes
+the [WebKit service-worker offline fix](https://github.com/microsoft/playwright/pull/42894).
+The PWA journey retains its offline loading, cache update and authenticated conversation
+preservation assertions.
 
 Chat catches up on missing HTTP projections while its visible response remains provisional,
 then stops at convergence or store shutdown. Without notification permission, it neither

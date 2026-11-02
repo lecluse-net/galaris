@@ -2,12 +2,13 @@ import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { collectPageErrors } from '../page-errors.mjs'
+import { notificationPrompt } from '../notification-prompt.mjs'
 
 for (const width of [1440, 390]) {
   test(`Office thumbnails use real conversions and preserve downloads at ${width}px`, async ({ page, request }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
-    await page.addLocatorHandler(page.getByRole('button', { name: 'Plus tard', exact: true }),
-      postpone => postpone.click())
+    await page.addLocatorHandler(notificationPrompt(page),
+      prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
     const errors = collectPageErrors(page)
     const fixture = await (await request.post('/api/__test/seed')).json()
     const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))

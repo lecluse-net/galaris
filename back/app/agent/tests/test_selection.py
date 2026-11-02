@@ -1,6 +1,7 @@
 """The common selector follows operation scopes, without granting task management to teammates."""
 
 from uuid import uuid4
+from base64 import b64decode
 
 import pytest
 from sqlalchemy import select
@@ -12,6 +13,32 @@ from core.team.service import set_human_membership
 from app.agent.models import Agent, Title
 from app.agent.dialogue_service import set_agent_membership
 from app.task.models import Task
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("privileges", [[], ["FILE_ACCESS"], ["TEAM_ACCESS"]])
+async def test_selection_avatar_reads_preserve_scope_without_agent_administration(client, privileges):
+    from core.authorize.tests.test_guard_policy_parameters import actor
+    from core.authorize.tests.test_domain_authorization import owned_agent
+
+    headers, user_id = await actor(privileges)
+    _, outsider_id = await actor([])
+    own = await owned_agent(user_id)
+    outside = await owned_agent(outsider_id)
+    portrait = b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=")
+    async with get_db_session() as db:
+        for identity in [own, outside]:
+            agent = await db.get(Agent, identity)
+            agent.avatar = portrait
+    url = f"/api/agents/{own}/avatar"
+    assert (await client.get(url)).status_code == 401
+    response = await client.get(url, headers=headers)
+    assert response.status_code == 200
+    assert response.content == portrait and response.headers["content-type"] == "image/png"
+    assert (await client.get(f"/api/agents/{outside}/avatar", headers=headers)).status_code == (200 if "TEAM_ACCESS" in privileges else 404)
+    assert (await client.get("/api/agents", headers=headers)).status_code == 403
+    assert (await client.post(url, headers=headers, files={"file": ("portrait.png", portrait, "image/png")})).status_code == 403
+    assert (await client.delete(url, headers=headers)).status_code == 403
 
 
 @pytest.mark.asyncio

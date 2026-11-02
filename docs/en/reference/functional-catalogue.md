@@ -165,6 +165,7 @@ transport result. Resource origins, executed tools, results and available delive
   Updates renew interface cache and reload tabs while preserving sessions.
 - **Live updates:** messages, activity, Tasks, LLM calls and Dream use events; subscriptions
   target active authorized consumers and restore/resynchronize after reconnect.
+  Page startup groups subscription requests to preserve live Chat updates while opening views.
 - **Search/filter/pagination:** domain-specific text, agent, state, period, topic, owner and
   provider filters; default 50 items with 10, 20, 50, 100 and 500 choices.
 - **Lazy selectors:** agents/topics load on opening, retain selections, allow retry and reject
@@ -283,6 +284,8 @@ new agent while preserving history; older archived agents also release their cod
 An active duplicate produces an explicit error. Selectors filter by action: manageable agents,
 authorized chat partners or eligible team members. Standard titles follow UI language; custom
 labels, deletions and customizations survive initialization.
+Avatar reads follow the selector's scope without requiring Agent administration;
+uploads and deletions retain their separate permissions.
 
 An agent can have only a first name. Creation and updates require a non-empty first name that
 is not whitespace-only; the last name is optional and can be omitted or cleared.
@@ -2577,7 +2580,8 @@ Sources: [API](../../../back/app/skill/router.py), [schemas](../../../back/app/s
 ### Catalogue and configuration
 
 **Custom Tools**, initially selected, is separate from **Galaris internal Tools**. Connection
-and authorisation selectors retain this origin; using a dedicated bridge does not make a
+and authorisation selectors retain this origin, including when opening the Connections
+catalogue with a restricted role; using a dedicated bridge does not make a
 user-created Tool internal. Creating a custom Tool requires at least one active capability.
 
 Deleting it through the interface previews dependent connections, settings, permissions,

@@ -35,6 +35,7 @@ class WebSocket {
     private _authIdentity: string | null = null
     private _desiredRooms = new Set<string>()
     private _eventListeners = new Map<string, Set<(data: any) => void>>()
+    private _subscriptionsQueued = false
 
     constructor() {
         window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, (event: Event) => {
@@ -200,9 +201,16 @@ class WebSocket {
 
     /** Replace the server's interest list when the first/last consumer changes. */
     private syncEventSubscriptions(): void {
-        if (this._socket?.connected) {
-            this._socket.emit('events.subscribe', { events: [...this._eventListeners.keys()] })
-        }
+        if (!this._socket?.connected || this._subscriptionsQueued) return
+        this._subscriptionsQueued = true
+        // A mount burst must not exceed Engine.IO's polling packet limit.
+        // Publish the final interest set once; local listeners change immediately.
+        queueMicrotask(() => {
+            this._subscriptionsQueued = false
+            if (this._socket?.connected) {
+                this._socket.emit('events.subscribe', { events: [...this._eventListeners.keys()] })
+            }
+        })
     }
 
     /** Run a callback after every successful initial connection or reconnection. */

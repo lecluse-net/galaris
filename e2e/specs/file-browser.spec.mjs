@@ -85,6 +85,7 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
   await expect(renamed).toHaveCount(0)
   const removed = await request.get(`/api/file-share/browser/info?agent_id=${fixture.agent_id}&uri=${encodeURIComponent(uploaded.uri)}`, { headers })
   expect(removed.status()).toBe(404)
+  await errors.settle()
   await page.locator('.file-main').getByRole('button', { name: 'Ouvrir Synthetic appendix.txt', exact: true }).click()
   await expect(page.getByRole('dialog').getByText('Synthetic assembled attachment content', { exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
