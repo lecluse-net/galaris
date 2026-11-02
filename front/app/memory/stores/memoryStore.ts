@@ -1,6 +1,6 @@
 import { documentService } from '@/app/document'
 import { defineStore } from 'pinia'
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { websocket } from '@/core/websocket'
 import { memoryService } from '../services/memoryService'
 import type {
@@ -30,6 +30,7 @@ export const useMemoryStore = defineStore('memory', () => {
   const revisionsHaveMore = ref(false)
   const revisionsLoading = ref(false)
   let detailRequest = 0
+  let detailSelection: { id: string; revision?: number } | null = null
   let searchRequest = 0
   const links = ref<MemoryLink[]>([])
   const findings = ref<MemoryFinding[]>([])
@@ -47,6 +48,7 @@ export const useMemoryStore = defineStore('memory', () => {
   const degradationReason = ref<string | null>(null)
   const loading = ref(false)
   const detailLoading = ref(false)
+  const detailError = shallowRef<unknown>(null)
   const saving = ref(false)
   const error = ref<unknown>(null)
   const hasMore = ref(false)
@@ -154,6 +156,7 @@ export const useMemoryStore = defineStore('memory', () => {
     degradationReason.value = null
     searchRequest++
     detailRequest++
+    detailSelection = null
     hits.value = []
     temporalWindow.value = null
     findings.value = []
@@ -164,13 +167,18 @@ export const useMemoryStore = defineStore('memory', () => {
     hasMore.value = false
     loading.value = false
     detailLoading.value = false
+    detailError.value = null
     revisionsLoading.value = false
     revisionsHaveMore.value = false
   }
 
   function refreshAccess(): void {
+    const selection = detailSelection
     invalidateAccess()
     void search().catch(() => { /* The store exposes the refresh error. */ })
+    if (selection) {
+      void openItem(selection.id, selection.revision).catch(() => { /* The store exposes the recheck error. */ })
+    }
   }
   function refreshDocumentReferences(): void {
     // Keep an open summary draft while its source is updated. The detail view
@@ -201,11 +209,19 @@ export const useMemoryStore = defineStore('memory', () => {
     if (selectedAgentId.value === null) throw new Error('An agent is required')
     const request = ++detailRequest
     const reuseRevisions = revision !== undefined && currentItem.value?.id === id && revisions.value.length > 0
+    const previousRevisions = revisions.value
+    detailSelection = { id, revision }
+    if (currentItem.value?.id !== id) {
+      currentItem.value = null
+      revisions.value = []
+      links.value = []
+    }
     detailLoading.value = true
+    detailError.value = null
     try {
       const [item, itemRevisions, itemLinks] = await Promise.all([
         memoryService.getItem(id, selectedAgentId.value, revision),
-        reuseRevisions ? Promise.resolve(revisions.value) : memoryService.listRevisions(id, selectedAgentId.value, revisionPageSize.value),
+        reuseRevisions ? Promise.resolve(previousRevisions) : memoryService.listRevisions(id, selectedAgentId.value, revisionPageSize.value),
         memoryService.listLinks(id, selectedAgentId.value),
       ])
       if (request === detailRequest) {
@@ -215,6 +231,12 @@ export const useMemoryStore = defineStore('memory', () => {
         links.value = itemLinks
       }
       return item
+    } catch (caught) {
+      if (request === detailRequest) {
+        detailError.value = caught
+        error.value = caught
+      }
+      throw caught
     } finally {
       if (request === detailRequest) detailLoading.value = false
     }
@@ -350,6 +372,7 @@ export const useMemoryStore = defineStore('memory', () => {
     degradationReason,
     loading,
     detailLoading,
+    detailError,
     saving,
     error,
     hasMore,

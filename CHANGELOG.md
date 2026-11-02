@@ -22,6 +22,8 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 - Preserve early history navigation while conversations finish loading, and apply
   editor toolbar formatting to the current text selection after dismissing a menu.
 - Preserve the reading position when late content expands a partly visible Chat message.
+- Recheck open Memory details after access refreshes and reconnects, preserving authorized
+  drafts and closing revoked details instead of leaving an empty dialog.
 - Keep the folder name field focused when renaming from its context menu.
 - Verify upgrades from an earlier release with that release's own dependencies,
   including rollback, instead of importing historical code with candidate packages.

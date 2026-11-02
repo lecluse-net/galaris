@@ -1965,6 +1965,8 @@ selon les seuils de taille et de changement cumulé, en préservant un résumé 
 Le document et sa synthèse partagent une seule liste de mots-clés, modifiable depuis les deux
 fiches sous les droits du document. Cette seule modification ne crée pas de révision de contenu.
 Les mises à jour distantes préservent les brouillons ; un conflit conserve les saisies.
+Une reconnexion ou une actualisation des accès relit le détail ouvert après avoir masqué
+ses données. Un accès confirmé restaure le détail et son brouillon ; un refus ferme la fiche.
 La synthèse suit la durée de vie du document : elle ne peut pas être oubliée ou fusionnée
 indépendamment. Supprimer le document supprime aussi sa synthèse et les versions du contenu.
 La migration conserve les URI, versions et destinataires des documents existants. Les anciens

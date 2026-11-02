@@ -2259,6 +2259,10 @@ their meaning without disclosing private diagnostics.
   moves and session changes on desktop and mobile.
 - `front/browser-tests/memory.spec.mjs` and `document-sharing.spec.mjs`: on-demand pagination,
   mobile opening, creation and saving with a human identity.
+  Memory details are rechecked after invalidation: an authorized draft returns after the check,
+  revocation closes the detail, and an old search cannot restore its data.
+  `front/app/memory/revisionPagination.test.mjs` also covers invalidation during opening,
+  reconnects, stale failures and responses from a previous agent.
 - `back/app/document/tests/test_goal_folders.py`: historical jobs no longer recreate folders.
   `test_document_structure.py` verifies that an attachment description notifies only its memory.
 - `e2e/specs/document-refresh.spec.mjs`: remote API edits and real websocket events refresh only

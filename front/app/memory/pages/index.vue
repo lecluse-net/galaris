@@ -602,6 +602,7 @@ const canAdminister = computed(() => privilegeStore.hasPrivilege(privileges.MEMO
 const canViewTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
 const activeTab = ref<'list' | 'graph'>('list')
 const detailDialog = ref(false)
+let detailOpenRequest = 0
 const memoryGraph = useTemplateRef<InstanceType<typeof MemoryGraph>>('memoryGraph')
 const graphContext = ref<{ node: MemoryGraphNode; relations: MemoryGraphRelation[] } | null>(null)
 const currentMetadata = computed(() => {
@@ -625,9 +626,16 @@ const currentRoleLabel = computed(() => {
 })
 watch(detailDialog, open => {
   if (!open) {
+    detailOpenRequest++
     graphContext.value = null
     memoryGraph.value?.closeDetails()
   }
+})
+watch(() => store.currentItem, item => {
+  if (detailDialog.value && item && item.node_kind !== 'folder' && editingId.value === null) prepareEditor(item)
+})
+watch(() => store.detailLoading, loading => {
+  if (!loading && store.currentItem === null) detailDialog.value = false
 })
 const detailTab = ref<'memory' | 'links' | 'history'>('memory')
 const currentContentIsText = computed(() => store.currentItem?.content_type === 'text'
@@ -945,15 +953,16 @@ async function onTableRequest(request: TableRequest): Promise<void> {
 
 async function openDetail(id: string, node?: MemoryGraphNode, relations: MemoryGraphRelation[] = []): Promise<void> {
   if (store.hits.some(hit => hit.item.id === id && hit.item.node_kind === 'folder')) return
+  const request = ++detailOpenRequest
   editingId.value = null
   graphContext.value = node ? { node, relations } : null
   detailTab.value = 'memory'
   detailDialog.value = true
   try {
     const item = await store.openItem(id)
-    if (item.node_kind === 'folder') { detailDialog.value = false; return }
-    if (detailDialog.value && store.currentItem?.id === item.id) prepareEditor(item)
+    if (request === detailOpenRequest && item.node_kind === 'folder') detailDialog.value = false
   } catch (error) {
+    if (request !== detailOpenRequest || store.detailError !== error) return
     detailDialog.value = false
     notifyError(error)
   }

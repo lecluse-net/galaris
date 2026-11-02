@@ -1557,6 +1557,8 @@ Document and synthesis share one keyword list editable from either form under do
 Changing keywords alone creates no content revision. Remote updates preserve drafts and conflicting
 edits keep user input. The synthesis cannot be independently forgotten or merged; deleting its
 document also deletes its summary and content versions.
+Reconnecting or refreshing access rechecks an open detail after hiding its data. Confirmed
+access restores the detail and its draft; denied access closes it.
 Migration preserves existing document URIs, versions and recipients. Previously shared memories
 become documents; private memories retain former titles within their content. A verified SQL
 backup precedes transfer and retains referenced resources; it does not replace file-storage backups.

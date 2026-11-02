@@ -2354,6 +2354,10 @@ réel : authentification, délai et statuts serveur gardent leur sens sans divul
   les déplacements et le changement de session sur ordinateur et mobile.
 - `front/browser-tests/memory.spec.mjs` et `document-sharing.spec.mjs` : pagination à la demande,
   ouverture mobile, création et sauvegarde avec l'identité humaine.
+  Le détail Mémoire est relu après invalidation : son brouillon autorisé revient après le contrôle,
+  une révocation ferme la fiche, et une ancienne recherche ne rétablit pas les données.
+  `front/app/memory/revisionPagination.test.mjs` couvre aussi l'invalidation pendant une ouverture,
+  la reconnexion, les échecs périmés et les réponses d'un ancien agent.
 - `e2e/specs/document-refresh.spec.mjs` : modification distante via l'API et les vrais événements
   websocket, requêtes limitées au dossier concerné et à la page visible, lignes conservées dans l'arbre et la liste.
 - `e2e/specs/resource-sharing.spec.mjs` : partage Documents/Processus entre deux sessions,

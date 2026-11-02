@@ -832,13 +832,35 @@ for (const delayedStage of ['memory', 'info', 'content']) {
   })
 }
 
-for (const nodeKind of ['memory', 'document']) test(`revocation clears an open ${nodeKind} memory and ignores a late browse response`, async ({ page }) => {
+for (const nodeKind of ['memory', 'document']) for (const revokeOn of ['invalidate', 'reopen']) test(`access refresh preserves an authorized ${nodeKind} draft and revocation on ${revokeOn} clears it despite a late browse response`, async ({ page }) => {
   const { item } = await memoryItemFixtures(page)
   Object.assign(item, { node_kind: nodeKind })
-  await jsonRoute(page, '**/api/memory/items/doc-a?*', item)
-  await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
+  let allowed = true, reads = 0, hold = false, releaseRead
+  await page.route('**/api/memory/items/doc-a?*', async route => {
+    reads++
+    if (hold) { hold = false; await new Promise(resolve => { releaseRead = resolve }) }
+    await route.fulfill(allowed ? { json: item } : { status: 403, json: { detail: 'Access revoked' } })
+  })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT'], route: '/memory?agent=7' })
   await page.getByText('Current memory', { exact: true }).click()
   await expect(page.getByText('Current body', { exact: true })).toBeVisible()
+  const dialog = page.getByRole('dialog')
+  const editor = dialog.locator('[data-editor-surface]')
+  await editor.fill('Synthetic unsaved draft')
+  hold = true
+  await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
+  await expect.poll(() => reads).toBe(2)
+  await expect(page.getByText('Synthetic unsaved draft', { exact: true })).toHaveCount(0)
+  releaseRead()
+  await expect(editor).toHaveText('Synthetic unsaved draft')
+  await expect(dialog.getByRole('tab', { name: 'Links and relations', exact: true })).toBeVisible()
+  allowed = false
+  if (revokeOn === 'reopen') {
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await page.getByText('Current memory', { exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+  }
   let release
   const pending = new Promise(resolve => { release = resolve })
   let started = false
@@ -852,7 +874,8 @@ for (const nodeKind of ['memory', 'document']) test(`revocation clears an open $
   await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
   await expect.poll(() => started).toBe(true)
   await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
-  await expect(page.getByText('Current body', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Synthetic unsaved draft', { exact: true })).toHaveCount(0)
+  await expect(dialog).toHaveCount(0)
   release()
   await expect(page.getByText('Current memory', { exact: true })).toHaveCount(0)
 });
