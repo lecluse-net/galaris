@@ -367,6 +367,9 @@ checks saving the description through the UI, reopening tracking and preserving 
 after a Goal rename. `app/document/tests/test_goal_folders.py` replaces automatic
 filing contracts with unclassified-list visibility, absence from the tree, preserved manual
 placement and neutralized historical jobs.
+`app/memory/tests/test_source_projection.py` also checks that linking or removing a derived
+Goal projection preserves its edit revision and history metadata: an already open edit can
+save, while a genuinely stale edit is still rejected.
 
 This catalogue locates existing evidence before a contract changes. It describes
 guarantees covered by suites; their presence does not mean they have run on your checkout.
@@ -470,6 +473,10 @@ creation of code, checklists, tables and separators, and checked state after reo
 and reading. The simple toolbar does not offer attachments or equation insertion.
 Native selections after Home and Shift+End survive until formatting; mobile and desktop
 repetitions also check synchronization after key release.
+The document authoring journey checks that clicking a paragraph targets its checklist and
+preserves that checklist after saving and reloading.
+Nested confirmations retain the requested Cancel focus during browser Back; Files tests
+check that cancellation preserves the invalid draft.
 Select all restores document focus after searching, replaces the complete body including
 tables, and supports undo on mobile and desktop.
 `editor-toolbar.spec.mjs` checks contextual toolbars for tables, links, images, cards,

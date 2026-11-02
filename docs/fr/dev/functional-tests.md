@@ -466,6 +466,9 @@ description depuis l'interface, la réouverture du suivi et son classement perso
 `app/document/tests/test_goal_folders.py` remplace les anciennes garanties de classement
 automatique par la présence en liste non classée, l'absence de placement dans l'arbre,
 le respect du classement manuel et la neutralisation des anciens jobs.
+`app/memory/tests/test_source_projection.py` vérifie aussi que le rattachement ou le retrait
+d’une projection dérivée conserve la révision et les métadonnées historiques du Goal : une
+édition déjà ouverte peut enregistrer, tandis qu’une édition réellement périmée reste rejetée.
 
 `metric-card.spec.mjs` protège la valeur affichée, le chargement, l’activation facultative
 à la souris et au clavier et l’état sélectionné de `MetricCard`. Les historiques texte et
@@ -495,6 +498,10 @@ la création de code, listes à cocher, tableaux et séparateurs, ainsi que l'é
 réouverture et lecture. Les pièces jointes et équations ne sont pas proposées dans la barre simple.
 Les sélections natives après Home et Maj+Fin sont conservées jusqu’au formatage ; les
 répétitions sur mobile et bureau vérifient aussi la synchronisation après relâchement des touches.
+Le parcours d’écriture documentaire vérifie qu’un clic dans un paragraphe cible la liste à
+cocher, puis conserve cette liste après sauvegarde et rechargement.
+Les confirmations imbriquées conservent le focus demandé sur Annuler lors d’un Retour
+navigateur ; les tests Files vérifient que l’annulation garde le brouillon invalide.
 La commande Tout sélectionner rend le focus au document après la recherche et permet
 de remplacer tout le contenu, tableau compris, puis d'annuler sur mobile et bureau.
 `editor-toolbar.spec.mjs` vérifie la barre contextuelle des tableaux, liens, images,

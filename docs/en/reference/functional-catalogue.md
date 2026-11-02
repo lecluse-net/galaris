@@ -1488,6 +1488,8 @@ trigger. These trigger modes are exclusive and parent relationships cannot cycle
 intersect with global scheduling rules; each Goal keeps its own mode. Controls include pause,
 resume, finish, manual cycle, global pause and calendar display. Definition edits check revisions;
 the agent cannot change after cycles exist, and unfinished Goals cannot be deleted.
+Attaching or removing a derived Memory projection preserves the edit revision; concurrent
+changes to the Goal itself still cause a revision conflict.
 
 ### Work, judgement and follow-up
 

@@ -1885,6 +1885,8 @@ par passages successifs.
 - Appliquer une pause globale ou un calendrier commun à l’ensemble du runner de Goals.
 - Modifier description, suivi et réglages avec contrôle de révision. L’affectation de l’agent
   ne peut plus être changée comme une simple préférence après le début des cycles.
+  Le rattachement ou le retrait d’une projection Memory dérivée conserve la révision d’édition ;
+  une modification concurrente du Goal provoque toujours un conflit de révision.
 - Supprimer un Goal lorsque son état le permet ; une exécution inachevée doit être traitée auparavant.
 
 ### Travail, jugement et suivi

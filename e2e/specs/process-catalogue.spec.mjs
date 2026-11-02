@@ -51,6 +51,7 @@ test('the process catalogue loads summaries and opens its editor with the real A
   const definitions = page.waitForResponse(response => new URL(response.url()).pathname === '/api/processes/catalogue')
   const runs = page.waitForResponse(response => new URL(response.url()).pathname === '/api/processes/internal/runs')
   const started = Date.now()
+  await errors.settle()
   await page.goto('/process')
   const link = page.getByRole('link', { name: /^(Edit|Modifier): Synthetic catalogue process$/ })
   await expect(link).toBeVisible()
@@ -100,6 +101,7 @@ test('the process catalogue loads summaries and opens its editor with the real A
   await page.setViewportSize({ width: 390, height: 1000 })
   await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop =>
     backdrop.click({ position: { x: 380, y: 150 } }))
+  await errors.settle()
   await page.goto('/process')
   await expect(page.getByRole('link', { name: /^(Edit|Modifier): Synthetic catalogue process$/ })).toBeVisible()
   const externalRow = page.getByLabel(/^(Runs|Exécutions): Synthetic external catalogue process$/, { exact: true })
@@ -118,6 +120,7 @@ test('the process catalogue loads summaries and opens its editor with the real A
   await page.getByRole('main').getByRole('link', { name: /^(Back to list|Retour à la liste)$/ }).click()
   await expect(externalRow).toHaveAttribute('aria-expanded', 'true')
   await page.getByRole('link', { name: /^(Edit|Modifier): Synthetic external catalogue process$/ }).click()
+  await errors.settle()
   await page.reload()
   await expect(description).toHaveValue('Synthetic saved description')
   await expect(page.getByRole('button', { name: /^(Save|Enregistrer)$/ })).toBeVisible()

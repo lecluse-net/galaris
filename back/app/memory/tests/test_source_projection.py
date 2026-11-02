@@ -8,6 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent
+from app.goal import goal_service
+from app.goal.schemas import GoalUpdate
 from app.goal.models import (
     Goal,
     GoalCycle,
@@ -130,6 +132,7 @@ async def test_source_projection_links_rebuilds_updates_and_deletes_with_source(
     owner.job_title = "Responsable SRE"
     await db.commit()
     goal, cycle = await _goal_with_cycle(db, owner, peer)
+    goal_snapshot = (goal.revision, goal.updated_at, goal.updated_by)
 
     agent_memory_id = await sync_agent_source(owner.id)
     goal_memory_id = await sync_goal_source(goal.id)
@@ -140,7 +143,18 @@ async def test_source_projection_links_rebuilds_updates_and_deletes_with_source(
     await db.refresh(cycle)
     assert owner.memory_item_id == agent_memory_id
     assert goal.memory_item_id == goal_memory_id
+    assert (goal.revision, goal.updated_at, goal.updated_by) == goal_snapshot
     assert cycle.memory_item_id is not None
+    # A form opened before projection can still save; a second canonical edit
+    # using that same revision must still conflict.
+    updated_goal = await goal_service.update(goal.id, GoalUpdate(
+        expected_revision=goal_snapshot[0], description="<p>Revised synthetic objective</p>",
+    ))
+    assert updated_goal is not None and updated_goal.revision == goal_snapshot[0] + 1
+    with pytest.raises(goal_service.GoalRevisionConflict):
+        await goal_service.update(goal.id, GoalUpdate(
+            expected_revision=goal_snapshot[0], description="<p>Stale synthetic objective</p>",
+        ))
 
     projected = list(
         (
@@ -206,6 +220,8 @@ async def test_source_projection_links_rebuilds_updates_and_deletes_with_source(
     goal.memory_item_id = None
     cycle.memory_item_id = None
     await db.commit()
+    await db.refresh(goal)
+    goal_snapshot = (goal.revision, goal.updated_at, goal.updated_by)
     rebuilt = await rebuild_source_memories(missing_only=True)
     assert rebuilt.failures == ()
     assert rebuilt.agents_synced == 2
@@ -215,6 +231,7 @@ async def test_source_projection_links_rebuilds_updates_and_deletes_with_source(
     await db.refresh(cycle)
     assert owner.memory_item_id == agent_memory_id
     assert goal.memory_item_id == goal_memory_id
+    assert (goal.revision, goal.updated_at, goal.updated_by) == goal_snapshot
     assert cycle.memory_item_id == old_cycle_memory_id
 
     previous_revision = cycle_item.revision
@@ -239,6 +256,8 @@ async def test_source_projection_links_rebuilds_updates_and_deletes_with_source(
 
     goal.soft_delete()
     await db.commit()
+    await db.refresh(goal)
+    goal_snapshot = (goal.revision, goal.updated_at, goal.updated_by)
     # Startup/manual reconciliation also heals a delete event that could not be
     # enqueued while Memory was temporarily unavailable.
     orphan_rebuild = await rebuild_source_memories(missing_only=True)
@@ -250,6 +269,7 @@ async def test_source_projection_links_rebuilds_updates_and_deletes_with_source(
     )
     assert deleted_goal is not None
     assert deleted_goal.memory_item_id is None
+    assert (deleted_goal.revision, deleted_goal.updated_at, deleted_goal.updated_by) == goal_snapshot
     await db.refresh(cycle)
     assert cycle.memory_item_id is None
     with pytest.raises(service.MemoryNotFoundError):

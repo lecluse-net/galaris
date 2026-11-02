@@ -1,11 +1,14 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
+import { notificationPrompt } from '../notification-prompt.mjs'
 
 test('an occupied agent code is explained and becomes reusable after archival', async ({ page, request }) => {
   const seeded = await request.post('/api/__test/seed')
   expect(seeded.ok()).toBeTruthy()
   const pageErrors = collectPageErrors(page)
+  await page.addLocatorHandler(notificationPrompt(page), prompt =>
+    prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const fixture = await seeded.json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
   await pageErrors.settle()
@@ -19,6 +22,8 @@ test('an occupied agent code is explained and becomes reusable after archival', 
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}` }
   const original = await (await request.get(`/api/agents/${fixture.agent_id}`, { headers })).json()
+  const existingTeam = await request.post('/api/teams', { headers, data: { name: `Synthetic code team ${fixture.agent_id}` } })
+  expect(existingTeam.status(), await existingTeam.text()).toBe(201)
   const errors = []
   page.on('response', response => {
     const path = new URL(response.url()).pathname
@@ -29,6 +34,8 @@ test('an occupied agent code is explained and becomes reusable after archival', 
   })
   await pageErrors.settle()
   await page.goto('/agent')
+  await page.getByRole('tab', { name: 'Sans équipe', exact: true }).click()
+  await expect(page.getByText(`${original.first_name} ${original.last_name}`, { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Nouvel Agent', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel("Code de l'agent", { exact: true }).fill(original.code)
@@ -51,6 +58,7 @@ test('an occupied agent code is explained and becomes reusable after archival', 
   await expect(dialog).toHaveCount(0)
   await pageErrors.settle()
   await page.reload()
+  await page.getByRole('tab', { name: 'Sans équipe', exact: true }).click()
   await expect(page.getByText(firstName, { exact: true })).toBeVisible()
   const teamResponse = await request.post('/api/teams', { headers, data: { name: `Synthetic team ${replacement.id}` } })
   expect(teamResponse.status(), await teamResponse.text()).toBe(201)

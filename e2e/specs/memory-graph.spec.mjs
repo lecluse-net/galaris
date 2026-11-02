@@ -82,7 +82,7 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
     await page.mouse.up()
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    const chart = await page.locator('.memory-graph__chart--3d').boundingBox()
+    let chart = await canvas.boundingBox()
     // Hidden mass can animate the caption's offset from the glyph. Observe
     // the rendered glyph center to verify panning follows the pointer.
     const beforePanCenter = await center()
@@ -96,6 +96,9 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
     await expect.poll(async () => (await center()).x).toBeCloseTo(beforePanCenter.x, 0)
     await expect(page.getByRole('dialog')).toHaveCount(0)
     // Aim at an off-center node after panning, rather than the chart's center.
+    // Freshness labels can wrap above the chart while the first gesture saves.
+    await canvas.hover({ position: { x: 15, y: 15 } })
+    chart = await canvas.boundingBox()
     await page.mouse.move(chart.x + 15, chart.y + 15)
     await page.mouse.down()
     await page.mouse.move(chart.x + 75, chart.y + 15, { steps: 5 })
@@ -132,6 +135,7 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
   const positions = await savedPositions()
   expect((await savedView()).preferences).toMatchObject({ expanded_branches: [] })
   expect((await savedView()).preferences.camera_3d).toMatchObject({ position: expect.any(Array), target: expect.any(Array) })
+  await errors.settle()
   await page.goto(`/memory?agent=${fixture.agent_id}`)
   await page.getByRole('tab', { name: 'Graphe', exact: true }).click()
   await expect(grouped).toBeVisible()
@@ -172,6 +176,7 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
   const document = await documentResponse.json()
   const capturedThumbnail = page.waitForResponse(response => response.url().includes(`/documents/${document.id}/thumbnail`)
     && response.request().method() === 'POST' && response.status() === 200)
+  await errors.settle()
   await page.goto(`/memory?agent=${fixture.agent_id}`)
   const documentRow = page.locator(width >= 1024 ? '.memory-list-table tbody tr' : '.memory-mobile-card')
     .filter({ hasText: document.title })

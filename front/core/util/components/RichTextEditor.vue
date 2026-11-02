@@ -693,6 +693,8 @@ async function showContextMenu(event: MouseEvent, request: number): Promise<void
 }
 function editorClick(event: MouseEvent): void {
   if (!(event.target instanceof Element) || !event.target.closest('[data-editor-surface]')) return
+  // A toolbar can take focus before the native selectionchange reaches the editor.
+  if (!readonly && !event.target.closest('button, [role="button"], input, select, textarea, [contenteditable="false"]')) syncKeyboardSelection()
   selectedCardImage.value = event.target instanceof HTMLImageElement ? event.target.dataset.editorAttachment ?? event.target.dataset.editorPreview ?? '' : ''
   if (readonly && event.target.closest('.galaris-image-object')) return
   if (profile === 'document' && !readonly && event.target.closest('button, [role="button"]')) return

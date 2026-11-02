@@ -25,10 +25,12 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 - Recheck open Memory details after access refreshes and reconnects, preserving authorized
   drafts and closing revoked details instead of leaving an empty dialog.
 - Keep the folder name field focused when renaming from its context menu.
-- Preserve native keyboard selections while the editor updates, so formatting
+- Preserve native text selections while the editor updates, so formatting
   applies to the highlighted text.
+- Preserve the requested initial focus in nested confirmation dialogs.
 - Preserve file selection when a thumbnail finishes loading during a click.
 - Keep Dream monitoring available when no vector model is configured.
+- Preserve Goal edit revisions when asynchronous Memory projections are attached or removed.
 - Group realtime subscription updates during page startup to preserve Chat room
   joins over long polling.
 - Keep custom Tools classified separately from built-in Tools when opening Connections.

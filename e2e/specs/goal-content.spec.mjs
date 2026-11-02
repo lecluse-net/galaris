@@ -8,6 +8,7 @@ test('Goal descriptions save inline while tracking remains editable and personal
     return response.json()
   }
   const fixture = await checked(await request.post('/api/__test/seed'))
+  const renamedTitle = `Renamed synthetic Goal ${fixture.agent_id}`
   await page.goto('/user/login')
   await page.locator('input[type=email]').fill(fixture.email)
   await page.locator('input[type=password]').fill(fixture.password)
@@ -20,7 +21,7 @@ test('Goal descriptions save inline while tracking remains editable and personal
   const referrer = referrers.find(item => item.is_current_user)
   expect(referrer).toBeTruthy()
   let goal = await checked(await request.post('/api/goals', { headers, data: {
-    agent_id: fixture.agent_id, title: 'Synthetic editorial Goal', description: '<p>Initial objective</p>',
+    agent_id: fixture.agent_id, title: `Synthetic editorial Goal ${fixture.agent_id}`, description: '<p>Initial objective</p>',
     referrer: { type: 'MESSENGER', connection_id: referrer.connection_id,
       user_id: referrer.user_id, display_name: referrer.display_name }, active: false,
   } }))
@@ -44,20 +45,26 @@ test('Goal descriptions save inline while tracking remains editable and personal
   goal = await checked(await saved)
   expect(goal.description).toContain('Revised objective')
   expect(goal.tracking_document_id).toBe(trackingId)
+  await expect(dialog.locator('.goal-description')).toContainText('Revised objective')
+  await errors.settle()
   await page.reload()
   await expect(dialog.locator('.goal-description')).toContainText('Revised objective')
 
   await checked(await request.patch(`/api/documents/${trackingId}?actor_agent_id=${fixture.agent_id}`, { headers, data: {
     expected_revision: tracking.revision, payload: { text: '<p>Independent tracking evidence</p>' },
   } }))
+  await dialog.getByRole('tab', { name: /^(Suivi|Tracking)$/ }).click()
+  await expect(dialog.locator('[data-editor-surface]')).toContainText('Independent tracking evidence')
+  await errors.settle()
   await page.reload()
   await dialog.getByRole('tab', { name: /^(Suivi|Tracking)$/ }).click()
   await expect(dialog.locator('[data-editor-surface]')).toContainText('Independent tracking evidence')
   await page.keyboard.press('Escape')
 
   const folder = await checked(await request.post('/api/documents/tags', { headers, data: {
-    name: 'Synthetic personal projects', parent_id: null,
+    name: `Synthetic personal projects ${fixture.agent_id}`, parent_id: null,
   } }))
+  await errors.settle()
   await page.goto('/documents')
   const list = page.getByRole('list', { name: /^(Documents non classés|Unclassified documents)$/ })
   const tree = page.getByRole('tree')
@@ -67,13 +74,19 @@ test('Goal descriptions save inline while tracking remains editable and personal
     && response.request().method() === 'PUT')
   await list.getByText(tracking.title, { exact: true }).dragTo(tree.getByText(folder.name, { exact: true }))
   expect((await moved).ok()).toBeTruthy()
+  await errors.settle()
+  await expect(tree.getByText(tracking.title, { exact: true })).toBeVisible()
+  await expect(list.getByText(tracking.title, { exact: true })).toHaveCount(0)
   goal = await checked(await request.get(`/api/goals/${goal.id}`, { headers }))
   await checked(await request.put(`/api/goals/${goal.id}`, { headers, data: {
-    expected_revision: goal.revision, title: 'Renamed synthetic Goal',
+    expected_revision: goal.revision, title: renamedTitle,
   } }))
+  await expect(tree.getByText(`${renamedTitle} — Suivi`, { exact: true })).toBeVisible()
+  await errors.settle()
   await page.reload()
   await tree.getByText(folder.name, { exact: true }).click()
-  await expect(tree.getByText('Renamed synthetic Goal — Suivi', { exact: true })).toBeVisible()
-  await expect(list.getByText('Renamed synthetic Goal — Suivi', { exact: true })).toHaveCount(0)
+  await expect(tree.getByText(`${renamedTitle} — Suivi`, { exact: true })).toBeVisible()
+  await expect(list.getByText(`${renamedTitle} — Suivi`, { exact: true })).toHaveCount(0)
+  await errors.settle()
   expect(errors()).toEqual([])
 })

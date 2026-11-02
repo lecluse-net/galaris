@@ -6,6 +6,9 @@ import { withSidebarDismissal } from '../sidebar.mjs'
 
 for (const width of [1440, 390]) {
   test(`human personal skill administration persists through reopening at ${width}px`, async ({ page, request }, testInfo) => {
+    // This journey covers editing, promotion, global policy, demotion, transfer
+    // and deletion, including native selection in the accumulated catalogue.
+    test.slow()
     await page.setViewportSize({ width, height: 900 })
     const errors = collectPageErrors(page)
     const fixture = await (await request.post('/api/__test/seed?mode=personal-skills')).json()

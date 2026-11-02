@@ -27,6 +27,12 @@ async function setupAdministration(page, request) {
     await prompt.getByRole('button', { name: 'Plus tard', exact: true }).click()
   })
   const headers = { Authorization: `Bearer ${session.access_token}` }
+  const team = await request.post('/api/teams', { headers, data: { name: `Synthetic portrait team ${fixture.agent_id}` } })
+  expect(team.ok(), await team.text()).toBeTruthy()
+  // These portraits belong to unassigned agents, even when other teams exist.
+  const unassigned = page.locator('body:not(:has([role="dialog"]:visible))')
+    .getByRole('tab', { name: /^(No team|Sans équipe)$/, exact: true }).and(page.locator('[aria-selected="false"]'))
+  await page.addLocatorHandler(unassigned, tab => tab.click())
   const prefix = `/api/__test/agent-admin/${fixture.agent_id}`
   const setup = await (await request.post(`${prefix}/setup`)).json()
   const invoke = async (name, data) => {

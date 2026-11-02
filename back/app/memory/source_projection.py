@@ -574,8 +574,11 @@ async def sync_goal_source(
             source_ref=f"goal:{goal_id}",
             item_id=goal.memory_item_id if goal is not None else None,
         )
-        if goal is not None:
-            goal.memory_item_id = None
+        if goal is not None and goal.memory_item_id is not None:
+            await get_db().execute(
+                update(Goal).where(Goal.id == goal.id)
+                .values(memory_item_id=None, updated_at=Goal.updated_at)
+            )
             await get_db().commit()
         return None
 
@@ -592,8 +595,14 @@ async def sync_goal_source(
         provider_code=provider_code,
         recreate=recreate,
     )
-    goal.memory_item_id = goal_item.id
-    await get_db().commit()
+    if goal.memory_item_id != goal_item.id:
+        # A derived Memory link must not revise the canonical Goal or invalidate
+        # an edit opened before this asynchronous projection finished.
+        await get_db().execute(
+            update(Goal).where(Goal.id == goal.id)
+            .values(memory_item_id=goal_item.id, updated_at=Goal.updated_at)
+        )
+        await get_db().commit()
     for cycle in cycles:
         cycle_item = await service.upsert_source_managed_item(
             goal_cycle_projection(cycle),
@@ -722,7 +731,7 @@ async def _remove_orphaned_source_memories() -> int:
                         Goal.id == source_uuid,
                         Goal.memory_item_id == item.id,
                     )
-                    .values(memory_item_id=None)
+                    .values(memory_item_id=None, updated_at=Goal.updated_at)
                 )
         else:
             try:
