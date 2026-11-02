@@ -15,7 +15,7 @@ for (const width of [1440, 390]) test(`an agent citation switches to an avatar c
   await agentFixtures(page)
   await jsonRoute(page, '**/api/agents/7', agent)
   await jsonRoute(page, '**/api/harnesses/agents/7/status', { status: 'stopped', managed: false, containerized: false, capabilities: [], available_actions: [] })
-  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=', 'base64')
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
   await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ contentType: 'image/png', body: png }))
   await mount(page, 'core/util/components/RichTextEditor.vue', { privileges: ['AGENT_ACCESS'] })
   await page.evaluate(async () => {
@@ -128,7 +128,7 @@ for (const width of [390, 1440]) {
     await jsonRoute(page, '**/api/agents/titles?*', [{ id: 1, label: 'agent_titles.ms', gender: 'F' }])
     await jsonRoute(page, '**/api/harnesses/catalog?*', [])
     await jsonRoute(page, '**/api/harnesses/agents/*', { harness_id: null })
-    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
     await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ contentType: 'image/png', body: png }))
     let calls = 0, release
     const pending = new Promise(resolve => { release = resolve })
@@ -419,7 +419,7 @@ test('a refreshed portrait survives an older catalogue avatar response', async (
   const target = { ...agent, id: 8, code: 'synthetic-portrait', first_name: 'Lyra', last_name: 'Synthetic', agent_driver: 'internal', is_owner: true }
   let catalogue = [{ ...agent, agent_driver: 'internal', has_avatar: true, updated_at: '2026-01-01T12:00:00Z' }, { ...target, has_avatar: false, updated_at: null }]
   await page.route('**/api/agents?*', route => route.fulfill({ json: catalogue }))
-  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
   let release, started = false
   const pending = new Promise(resolve => { release = resolve })
   await page.route('**/api/agents/7/avatar?*', async route => {

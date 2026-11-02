@@ -1,6 +1,6 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
-const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
 const messages = count => Array.from({ length: count }, (_, index) => ({
   id: `message-${index}`, external_id: `message-${index}`, text: `Reply ${index}`, files: [],
   sender: { agent_id: 7, display_name: 'Test Agent', is_ai: true },

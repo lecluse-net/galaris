@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { notificationPrompt } from '../notification-prompt.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 for (const [provider, service] of [['Telegram', 'telegram'], ['Matrix', 'matrix']]) {
 test(`${provider} setup creates the actual Tool and preserves its configuration on reopening`, async ({ page, request }, testInfo) => {
@@ -7,12 +9,16 @@ test(`${provider} setup creates the actual Tool and preserves its configuration 
   const seeded = await request.post('/api/__test/seed')
   expect(seeded.ok(), await seeded.text()).toBeTruthy()
   const fixture = await seeded.json()
+  const matrixHomeserver = `https://matrix-${fixture.agent_id}.example.test`
   const refreshed = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
   await page.goto('/user/login')
   await refreshed
   await page.locator('input[type=email]').fill(fixture.email)
   await page.locator('input[type=password]').fill(fixture.password)
+  const authenticated = page.waitForResponse(response => response.url().endsWith('/api/auth/login-json'))
   await page.locator('button[type=submit]').click()
+  const session = await (await authenticated).json()
+  const headers = { Authorization: `Bearer ${session.access_token}` }
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   await errors.settle()
   await page.goto('/params/messaging')
@@ -20,7 +26,7 @@ test(`${provider} setup creates the actual Tool and preserves its configuration 
   if (service === 'matrix') {
     const homeserver = page.getByRole('textbox', { name: 'URL du homeserver Matrix', exact: true })
     const saved = page.waitForResponse(response => response.url().endsWith('/api/params/MESSENGER_MATRIX_HOMESERVER') && response.request().method() === 'PUT')
-    await homeserver.fill('https://matrix.example.test')
+    await homeserver.fill(matrixHomeserver)
     await homeserver.press('Tab')
     const savedResult = await saved
     expect(savedResult.ok(), await savedResult.text()).toBeTruthy()
@@ -35,7 +41,7 @@ test(`${provider} setup creates the actual Tool and preserves its configuration 
   expect(result.ok(), await result.text()).toBeTruthy()
   const tool = await result.json()
   expect(tool).toMatchObject({ code: service, label: provider,
-    messenger_config: { service, settings: service === 'matrix' ? { homeserver: 'https://matrix.example.test' } : {}, param_map: { token: 'token' } },
+    messenger_config: { service, settings: service === 'matrix' ? { homeserver: matrixHomeserver } : {}, param_map: { token: 'token' } },
     connection_schema: { params: { token: { type: 'password', required: service === 'telegram', default: '' } } } })
   if (service === 'matrix') expect(tool).toMatchObject({
     messenger_config: { param_map: { user_id: 'user_id', token: 'token', password: 'password' } },
@@ -88,12 +94,15 @@ test(`${provider} setup creates the actual Tool and preserves its configuration 
   await expect(page.getByRole('tab', { name: 'Connexions', exact: true })).toHaveAttribute('aria-selected', 'true')
   await errors.settle()
   expect(errors()).toEqual([])
+  const removed = await request.delete(`/api/tools/${tool.id}`, { headers })
+  expect(removed.status(), await removed.text()).toBe(204)
 })
 }
 
 for (const width of [390, 1440]) test(`external reception is visible and the manager can deny from Permissions at ${width}px`, async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const errors = collectPageErrors(page)
+  await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const seeded = await request.post('/api/__test/seed?mode=contact-authorization')
   expect(seeded.ok(), await seeded.text()).toBeTruthy()
   const fixture = await seeded.json()
@@ -102,14 +111,14 @@ for (const width of [390, 1440]) test(`external reception is visible and the man
   await refreshed
   await page.locator('input[type=email]').fill(fixture.email)
   await page.locator('input[type=password]').fill(fixture.password)
+  const authenticated = page.waitForResponse(response => response.url().endsWith('/api/auth/login-json'))
   await page.locator('button[type=submit]').click()
+  const session = await (await authenticated).json()
+  const headers = { Authorization: `Bearer ${session.access_token}` }
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   await errors.settle()
   await page.goto('/task?tab=conversations')
-  if (width < 1024 && await page.locator('.q-drawer__backdrop').isVisible()) {
-    await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
-  }
-  await page.getByText('Synthetic external message awaiting manager consent', { exact: true }).first().click()
+  await withSidebarDismissal(page, () => page.getByText('Synthetic external message awaiting manager consent', { exact: true }).first().click())
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByText('424200', { exact: true })).toBeVisible()
   await expect(dialog.getByText('synthetic_external_person', { exact: true })).toBeVisible()
@@ -126,12 +135,15 @@ for (const width of [390, 1440]) test(`external reception is visible and the man
   await expect(page.getByRole('button', { name: 'Refuser et mémoriser', exact: true })).toHaveCount(0)
   await errors.settle()
   await page.goto('/task?tab=conversations')
-  if (width < 1024 && await page.locator('.q-drawer__backdrop').isVisible()) {
-    await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
-  }
-  await page.getByText('Synthetic external message awaiting manager consent', { exact: true }).first().click()
+  await withSidebarDismissal(page, () => page.getByText('Synthetic external message awaiting manager consent', { exact: true }).first().click())
   await expect(dialog).toContainText('Le manager a refusé les échanges avec cette personne.')
   await page.screenshot({ path: testInfo.outputPath('external-contact-denied.png'), fullPage: true, animations: 'disabled' })
   await errors.settle()
   expect(errors()).toEqual([])
+  // Remove only this scenario's synthetic transport and its dependent conversation.
+  const impact = await request.get(`/api/tools/${fixture.external_tool_id}/deletion-impact`, { headers })
+  expect(impact.ok(), await impact.text()).toBeTruthy()
+  const { version } = await impact.json()
+  const removed = await request.delete(`/api/tools/${fixture.external_tool_id}?cascade=true&expected_version=${encodeURIComponent(version)}`, { headers })
+  expect(removed.status(), await removed.text()).toBe(204)
 })

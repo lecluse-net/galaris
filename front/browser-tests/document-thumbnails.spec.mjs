@@ -188,7 +188,7 @@ for (const { surface, agentId, resolvedAgentId } of [
   const item = { ...documentFixture, id, revision: 12, lock_version: 17, title: 'Rapport de mission', payload: { text: body } }
   const query = agentId === null ? '' : `?agent_id=${agentId}`
   await jsonRoute(page, `**/api/documents/${id}${query}`, { item, agent_id: resolvedAgentId })
-  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=', 'base64')
+  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
   await page.route(`**/api/documents/${id}/attachments/${attachment}*`, route => {
     const requestedAgentId = new URL(route.request().url()).searchParams.get('agent_id')
     return requestedAgentId === (resolvedAgentId === null ? null : String(resolvedAgentId))

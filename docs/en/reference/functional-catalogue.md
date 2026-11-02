@@ -935,6 +935,9 @@ not added. Live updates preserve authorised detail access, and collapsed Tasks r
 indicator. The currently displayed document is marked in the list; previews remain visible and
 list icons cannot be changed from Chat.
 
+The history reading position stays stable when late content expands a partly visible
+message, while older messages load and during streaming.
+
 A failed send retains text and attachments for an explicit retry. If the server admitted a
 message but its network response was lost, the canonical receipt recovers it without a second
 admission. Late receipts cannot clear a newer draft or another conversation's draft. The

@@ -1,6 +1,6 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
-const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
 const message = index => ({ id: `message-${index}`, external_id: `message-${index}`,
   text: `Synthetic message ${index}`, files: [], is_mine: false,
   sender: { display_name: 'Participant', is_ai: false }, created_at: '2026-10-01T12:00:00Z' })

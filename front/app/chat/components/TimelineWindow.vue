@@ -31,6 +31,7 @@ let observer: ResizeObserver | null = null
 let updateFrame: number | null = null
 let restoreFrame: number | null = null
 let width = 0
+let previousViewportHeight = 0
 let generation = 0
 type Anchor = { key: string; offset: number } | { bottom: true }
 let pendingAnchor: Anchor | null = null
@@ -89,16 +90,18 @@ function setScrollPosition(top: number): void {
 function captureAnchor(): Anchor | null {
   if (!surface.value || !target) return null
   const view = viewport()
-  if (scrollHeight() - view.height - scrollPosition() <= 48) return { bottom: true }
-  let crossing: Anchor | null = null
+  // A resize can deliver its scroll before ResizeObserver records the new height.
+  const bottomHeight = Math.max(view.height, previousViewportHeight)
+  if (scrollHeight() - bottomHeight - scrollPosition() <= 48) return { bottom: true }
   for (const item of items) {
     const row = rows.get(item.key)
     if (!row) continue
     const rect = row.getBoundingClientRect()
-    if (rect.top >= view.top && rect.top < view.top + view.height) return { key: item.key, offset: rect.top - view.top }
-    if (rect.top < view.top && rect.bottom > view.top) crossing = { key: item.key, offset: rect.top - view.top }
+    // Keep the partly visible reading row when its content grows asynchronously.
+    // Anchoring the next full row instead would move the text currently being read.
+    if (rect.bottom > view.top && rect.top < view.top + view.height) return { key: item.key, offset: rect.top - view.top }
   }
-  return crossing
+  return null
 }
 
 function cancelRestore(): void {
@@ -222,10 +225,13 @@ watch(renderedKeys, async () => { await nextTick(); emit('rendered') }, { flush:
 
 onMounted(() => {
   target = findTarget()
+  previousViewportHeight = viewport().height
   update()
   observer = new ResizeObserver(() => {
     const anchor = pendingAnchor ?? readingAnchor ?? captureAnchor()
-    let changed = bounds.value.height !== Math.max(viewport().height, 200)
+    const height = viewport().height
+    let changed = previousViewportHeight !== height
+    previousViewportHeight = height
     const newWidth = surface.value?.getBoundingClientRect().width ?? 0
     if (newWidth > 0 && Math.abs(newWidth - width) > 1) { width = newWidth; measured.clear(); changed = true }
     for (const [key, row] of rows) {

@@ -32,7 +32,7 @@ test.afterEach(async ({ page, request }, info) => {
   console.error('Runtime state on failure:', JSON.stringify(diagnostics))
 })
 
-async function prepare(page, request, mode = 'normal') {
+async function prepare(page, request, mode = 'normal', errors) {
   const response = await request.post(`/api/__test/seed?mode=${mode}`)
   expect(response.ok()).toBeTruthy()
   const fixture = await response.json()
@@ -43,6 +43,7 @@ async function prepare(page, request, mode = 'normal') {
   await page.locator('input[type=password]').fill(fixture.password)
   await page.locator('button[type=submit]').click()
   await expect(page.locator('input[type=password]')).toHaveCount(0)
+  await errors?.settle()
   const restoredSession = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
   await page.goto(`/chat?room=${fixture.rooms[0]}`)
   expect((await restoredSession).status()).toBe(200)
@@ -79,8 +80,8 @@ async function final(page) {
 
 for (const mixed of [false, true]) test(`internal image attachments ${mixed ? 'with a local upload ' : ''}retain their canonical URI and cards after sending and reload`, async ({ page, request }, testInfo) => {
   const errors = collectPageErrors(page)
-  const fixture = await prepare(page, request)
-  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')
+  const fixture = await prepare(page, request, 'normal', errors)
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
   const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}` }
   const upload = await request.post(`/api/file-share/files?agent_id=${fixture.agent_id}`, {
     headers, multipart: { upload: { name: 'Synthetic attachment.png', mimeType: 'image/png', buffer: png } },
@@ -120,6 +121,7 @@ for (const mixed of [false, true]) test(`internal image attachments ${mixed ? 'w
   }
   await release(request, fixture.rooms[0])
   await final(page)
+  await errors.settle()
   await page.reload()
   await expect(image).toBeVisible()
   await expect(image).toHaveJSProperty('naturalWidth', 1)
@@ -134,7 +136,7 @@ for (const mixed of [false, true]) test(`internal image attachments ${mixed ? 'w
 
 test('an internal task attachment opens its usual modal after sending and reload', async ({ page, request }, testInfo) => {
   const errors = collectPageErrors(page)
-  const fixture = await prepare(page, request)
+  const fixture = await prepare(page, request, 'normal', errors)
   const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}`,
     'X-Editorial-Profile-Version': '1' }
   const created = await request.post('/api/tasks', { headers, data: {
@@ -150,7 +152,7 @@ test('an internal task attachment opens its usual modal after sending and reload
   const message = await sent.json()
   const preview = page.locator(`[data-message-id="${message.id}"] .resource-preview-main`)
   for (const reload of [false, true]) {
-    if (reload) await page.reload()
+    if (reload) { await errors.settle(); await page.reload() }
     await preview.click()
     await expect(page.getByRole('dialog').locator('.task-detail')).toContainText('Full objective from the attached task')
     await page.screenshot({ path: testInfo.outputPath(`attached-task-${reload ? 'reopened' : 'sent'}.png`), animations: 'disabled' })
@@ -355,7 +357,7 @@ test('tool progress and final text survive persistence', async ({ page, request 
 test('Task tool details remain inspectable live, after reload and after completion', async ({ page, request }) => {
   test.setTimeout(120_000)
   const errors = collectPageErrors(page)
-  const fixture = await prepare(page, request, 'task-tools')
+  const fixture = await prepare(page, request, 'task-tools', errors)
   await send(page)
   await release(request, fixture.rooms[0])
   const row = page.locator('.agent-task-row')
@@ -374,6 +376,7 @@ test('Task tool details remain inspectable live, after reload and after completi
   }
   try {
     await inspect()
+    await errors.settle()
     await page.reload()
     await inspect()
     expect((await request.post(`/api/__test/task-tools/${fixture.agent_id}/release`)).ok()).toBeTruthy()
@@ -450,7 +453,7 @@ test('failed HTTP projections are retried after the final socket event, without 
 
 test('switching rooms isolates live content and preserves the finished response', async ({ page, request }) => {
   const errors = collectPageErrors(page)
-  const fixture = await prepare(page, request)
+  const fixture = await prepare(page, request, 'normal', errors)
   await send(page)
   const otherRoom = page.locator('.conversation-list .room-item:not([aria-current="true"])')
   await expect(otherRoom).toHaveCount(1)

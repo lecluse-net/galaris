@@ -17,7 +17,7 @@ test('activity and topic references persist as compact cards and open modals aft
   async function checked(response) { expect(response.ok(), await response.text()).toBeTruthy(); return response.json() }
   const topic = await checked(await request.post('/api/topics', { headers, data: { title: 'Synthetic reference dossier', description: 'Dossier details', keywords: [] } }))
   const task = await checked(await request.post('/api/tasks', { headers, data: {
-    label: 'Synthetic reference work', objective: '<p>Full objective kept outside the card</p>', agent_id: fixture.agent_id,
+    label: `Synthetic reference work ${fixture.agent_id}`, objective: '<p>Full objective kept outside the card</p>', agent_id: fixture.agent_id,
     status: 'SUCCESS', topic_id: topic.id,
   } }))
   const document = await checked(await createDocument(request, { headers, data: {
@@ -73,7 +73,9 @@ test('activity and topic references persist as compact cards and open modals aft
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   // Topic URIs resolve through the Topic API; a dossier is not a file resource.
-  await editor.locator('p').first().click(); await page.keyboard.press('Home')
+  // Navigate to the authored text without clicking the floating card toolbar
+  // that can occupy the empty centre of the paragraph's block box.
+  await editor.focus(); await editor.press('Control+Home')
   const topicSaved = save()
   await editor.evaluate((element, uri) => {
     const clipboardData = new DataTransfer()

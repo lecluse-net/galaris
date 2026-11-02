@@ -44,4 +44,5 @@ async def seed_contact_authorization(agent_id: int) -> dict[str, object]:
         .where(ConversationRound.contact_authorization_pending.is_(True), Room.connection_id == connection.id)
         .order_by(ConversationRound.created_at.desc()).limit(1))
     assert round_ is not None
-    return {"external_round_id": str(round_.id), "external_name": "Synthetic External Person"}
+    return {"external_round_id": str(round_.id), "external_name": "Synthetic External Person",
+            "external_tool_id": tool.id}

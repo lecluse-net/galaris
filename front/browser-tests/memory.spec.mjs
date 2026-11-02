@@ -261,7 +261,7 @@ for (const width of [1440, 390]) test(`memory list displays available thumbnails
 test('memory item thumbnails discard late responses after agent changes and clear on logout', async ({ page }) => {
   const item = { ...document, node_kind: 'file' }
   const resource = { id: 'image-a', name: 'Image.png', media_type: 'image/png', size_bytes: 100 }
-  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
   await jsonRoute(page, '**/api/file-share/items/doc-a/resources?*', [resource])
   let release, lateFinished = false
   await page.route('**/api/file-share/items/doc-a/resources/image-a/thumbnail?*', async route => {
@@ -371,7 +371,7 @@ for (const nodeKind of ['file', 'directory']) {
 
 for (const width of [1440, 390]) test(`file graph details show all locations, thumbnails and fullscreen previews at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
-  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1kAAAAASUVORK5CYII=', 'base64')
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
   const resources = [
     { id: 'copy-a', uri: 'console://synthetic/image.png', name: 'image.png', media_type: 'image/png', size_bytes: png.length },
     { id: 'copy-b', uri: 'synthetic-talk://room/image-copy.png', name: 'image-copy.png', media_type: 'image/png', size_bytes: png.length },

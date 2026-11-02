@@ -26,7 +26,7 @@ test('resource card descriptions preserve readable text from HTML, Markdown and 
 const documentId = '00000000-0000-0000-0000-000000000001'
 const attachmentId = '00000000-0000-0000-0000-000000000002'
 const uri = `document://${documentId}/attachments/${attachmentId}`
-const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII='
+const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII='
 const component = 'core/util/components/RichTextEditor.vue'
 
 test('a document card stays one object when writing around it, deleting it and undoing', async ({ page }, testInfo) => {
@@ -373,7 +373,9 @@ for (const mode of ['edit', 'read']) test(`${mode}: failed attachment downloads 
   expect(await page.evaluate(() => window.createdMediaUrls)).toEqual([])
 })
 
-for (const legacy of [false, true]) for (const journey of ['conversions', 'previews', 'fallback']) test(`document link thumbnails survive saving and reopening: ${journey} (legacy=${legacy})`, async ({ page }, testInfo) => {
+for (const legacy of [false, true]) for (const journey of [
+  'conversions', 'previews', ...(legacy ? [] : ['snapshot']), 'fallback',
+]) test(`document link thumbnails survive saving and reopening: ${journey} (legacy=${legacy})`, async ({ page }, testInfo) => {
   const url = 'https://example.org/news'
   const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: `<p><a href="${url}">${url}</a></p>` } }
   const attachment = { id: attachmentId, name: 'link-preview.jpg', media_type: 'image/jpeg', size_bytes: 100 }
@@ -446,19 +448,20 @@ for (const legacy of [false, true]) for (const journey of ['conversions', 'previ
     }
     expect(current.payload.text).toBe(savedContent)
     expect(current.revision).toBe(savedRevision)
-    if (!legacy) {
-      const snapshot = await page.evaluate(async content => {
-        const { preparePortableDocumentSnapshot } = await import('/core/util/documentSnapshot.ts')
-        return preparePortableDocumentSnapshot(content, 'News', new AbortController().signal)
-      }, current.payload.text)
-      expect(snapshot).toContain('data:image/png;base64,')
-      expect(snapshot).not.toContain('/attachments/')
-      await page.locator('[data-editor-surface]').screenshot({ path: testInfo.outputPath('cached-link-preview.png') })
-      await mount(page, 'core/util/components/RichText.vue', { props: { profile: 'document', content: current.payload.text } })
-      await expect(page.locator('.rich-content img')).toHaveJSProperty('naturalWidth', 1)
-      await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
-      await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
-    }
+    return
+  }
+  if (journey === 'snapshot') {
+    const snapshot = await page.evaluate(async content => {
+      const { preparePortableDocumentSnapshot } = await import('/core/util/documentSnapshot.ts')
+      return preparePortableDocumentSnapshot(content, 'News', new AbortController().signal)
+    }, current.payload.text)
+    expect(snapshot).toContain('data:image/png;base64,')
+    expect(snapshot).not.toContain('/attachments/')
+    await page.locator('[data-editor-surface]').screenshot({ path: testInfo.outputPath('cached-link-preview.png') })
+    await mount(page, 'core/util/components/RichText.vue', { props: { profile: 'document', content: current.payload.text } })
+    await expect(page.locator('.rich-content img')).toHaveJSProperty('naturalWidth', 1)
+    await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
+    await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
     return
   }
   // An unavailable preview stays reversible without repetitive notifications.

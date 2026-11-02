@@ -56,15 +56,27 @@ test('variable-height history preserves its reading anchor through prepend, stre
   await expect.poll(async () => (await anchor(page))?.id).not.toBe('message-0')
   // Let asynchronous Markdown and height observers finish before capturing the reading position.
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+  const reading = await anchor(page)
+  expect(reading).not.toBeNull()
+  await page.locator(`[data-message-id="${reading.id}"]`).evaluate(element => {
+    const container = element.closest('.q-page-container')
+    container.scrollTop += element.getBoundingClientRect().top - container.getBoundingClientRect().top + 24
+  })
   const before = await anchor(page)
   expect(before).not.toBeNull()
+  expect(before.offset).toBeLessThan(0)
+  const original = page.locator(`[data-message-id="${before.id}"]`)
+  const offset = () => original.evaluate(element => element.getBoundingClientRect().top
+    - element.closest('.q-page-container').getBoundingClientRect().top)
+  // Model a late image/Markdown height update in the partly visible reading row.
+  await original.locator('.message-text').evaluate(element => {
+    element.style.minHeight = `${element.scrollHeight + 120}px`
+  })
+  await expect.poll(async () => Math.abs(await offset() - before.offset)).toBeLessThan(4)
   await page.evaluate(messages => window.testApp.setProps({ messages }), [
     ...Array.from({ length: 50 }, (_, index) => message(index - 50)), ...items,
   ])
-  const original = page.locator(`[data-message-id="${before.id}"]`)
   await expect(original).toBeVisible()
-  const offset = () => original.evaluate(element => element.getBoundingClientRect().top
-    - element.closest('.q-page-container').getBoundingClientRect().top)
   await expect.poll(async () => Math.abs(await offset() - before.offset)).toBeLessThan(4)
   await page.evaluate(() => window.testApp.setProps({ liveRound: {
     room_id: 'window-room', round_id: 'live-round', topic_id: null, active: true, success: true,
@@ -78,7 +90,11 @@ test('variable-height history preserves its reading anchor through prepend, stre
   await scrollTo(page, 'end')
   await expect(page.locator('.message-bubble--live')).toContainText('Progress outside the reading window.')
   await expect.poll(() => page.locator('.q-page-container').evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThan(5)
-  await page.locator('.q-page-container').evaluate(element => { element.style.height = '280px' })
+  await page.locator('.q-page-container').evaluate(element => {
+    element.style.height = '280px'
+    // A browser can deliver the resulting scroll before its ResizeObserver callback.
+    element.dispatchEvent(new Event('scroll'))
+  })
   await expect.poll(() => page.locator('.q-page-container').evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThan(5)
 })
 

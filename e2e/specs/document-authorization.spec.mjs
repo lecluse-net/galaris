@@ -26,6 +26,7 @@ for (const scenario of [
       await page.locator('input[type=password]').fill(fixture.password)
       await page.locator('button[type=submit]').click()
       await expect(page.locator('input[type=password]')).toHaveCount(0)
+      await errors.settle()
       await page.goto(`/chat?room=${fixture.rooms[0]}`)
       await page.locator('.composer-fields textarea').fill('Crée un document de synthèse, puis lance une tâche de fond pour le compléter en conservant le contenu initial.')
       await page.locator('.composer-fields textarea').press('Enter')
@@ -34,6 +35,7 @@ for (const scenario of [
       expect((await read()).tasks).toEqual([])
 
       // Reopening must restore the persisted question; it cannot require a live model request.
+      await errors.settle()
       await page.reload()
       const choose = async allowed => {
         const action = page.getByRole('button', { name: allowed ? 'Autoriser cette action' : 'Refuser cette action', exact: true, disabled: false })
@@ -57,6 +59,10 @@ for (const scenario of [
       } else {
         await expect.poll(async () => (await read()).approvals.map(row => [row.function, row.status]), { timeout: 40_000 })
           .toEqual([['file_create', 'completed'], ['file_write', 'pending']])
+        // The question is persisted before the worker finishes its claim.
+        // Observe the completed pause before asserting its atomic lease release.
+        await expect.poll(async () => (await read()).attempts.some(attempt =>
+          attempt.status === 'WAITING_APPROVAL' && attempt.finished)).toBe(true)
         const waiting = await read()
         expect(waiting.documents).toHaveLength(1)
         expect(waiting.documents[0].revision).toBe(1)
@@ -67,6 +73,7 @@ for (const scenario of [
         expect(waiting.tasks[0].lease).toBeNull()
         expect(waiting.attempts.some(attempt => attempt.status === 'WAITING_APPROVAL' && attempt.finished)).toBe(true)
         expect(waiting.approvals[1].context).toBe(`task:${waiting.tasks[0].uri.split('/').at(-1)}`)
+        await errors.settle()
         await page.reload()
         const pending = page.locator('.interaction-choice').filter({ has: page.getByRole('button', {
           name: 'Autoriser cette action', exact: true, disabled: false,
@@ -76,6 +83,8 @@ for (const scenario of [
         await page.screenshot({ path: testInfo.outputPath('document-update-awaiting-consent.png'), fullPage: true })
         await choose(scenario.update)
         await expect.poll(async () => (await read()).tasks[0]?.status, { timeout: 40_000 }).toMatch(/SUCCESS|ERROR/)
+        await expect.poll(async () => (await read()).attempts.some(attempt =>
+          ['SUCCESS', 'ERROR'].includes(attempt.status) && attempt.finished)).toBe(true)
         const final = await read()
         expect(final.documents).toHaveLength(1)
         expect(final.documents[0].uri).toBe(waiting.documents[0].uri)
@@ -89,6 +98,7 @@ for (const scenario of [
         expect(final.tasks[0].lease).toBeNull()
         expect(final.tasks[0].data.authorization_requests ?? []).toEqual([])
         expect(final.tasks[0].result.result).toContain(scenario.update ? 'Document complété' : 'Action interdite')
+        await errors.settle()
         await page.reload()
         expect((await read()).documents).toEqual(final.documents)
         expect((await read()).approvals).toEqual(final.approvals)

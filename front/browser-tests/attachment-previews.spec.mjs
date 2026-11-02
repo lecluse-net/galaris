@@ -34,7 +34,7 @@ function silentAudio() {
   return wav
 }
 
-const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
 const historyMessage = (id, files, text = '') => ({ id, external_id: id, text, files,
   is_mine: true, sender: { display_name: 'Test', is_ai: false }, created_at: '2026-01-01T12:00:00Z' })
 const imageFile = id => ({ id, name: `${id}.png`, mime_type: 'image/png', kind: 'image', size_bytes: pixel.length })

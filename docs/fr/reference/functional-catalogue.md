@@ -1100,6 +1100,9 @@ les métadonnées de politique conversationnelle séparément de la configuratio
 connexions. L’espacement des messages s’adapte à la largeur disponible de la conversation,
 y compris dans un panneau étroit sur ordinateur.
 
+La position de lecture dans l’historique reste stable lorsque du contenu tardif agrandit
+un message partiellement visible, pendant le chargement de messages plus anciens et le streaming.
+
 Le chat natif sert aux conversations **entre un humain et un agent**. L’utilisateur peut :
 
 - choisir un agent autorisé et créer plusieurs conversations nommées ;

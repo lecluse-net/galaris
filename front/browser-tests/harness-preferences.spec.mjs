@@ -267,6 +267,8 @@ test('external harnesses are created, reopened, updated and deleted from a modal
   await page.getByRole('listitem').filter({ hasText: 'Renamed API' }).getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(dialog.getByLabel('Harness name', { exact: true })).toHaveValue('Renamed API')
   await dialog.getByLabel('Harness name', { exact: true }).fill('Discard me')
+  // The mobile dialog fills the viewport; exercise its exposed backdrop on desktop.
+  await page.setViewportSize({ width: 1440, height: 900 })
   await page.locator('.q-dialog__backdrop').click({ position: { x: 3, y: 3 } })
   await expect(dialog).toHaveCount(0)
   await page.getByRole('listitem').filter({ hasText: 'Renamed API' }).getByRole('button', { name: 'Edit', exact: true }).click()

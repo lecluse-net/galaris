@@ -2021,7 +2021,8 @@ Chaque page ancienne est demandée une seule fois ; les rafraîchissements légi
 la première page et sa relecture à la réouverture restent permis. La navigation pendant
 la restauration initiale ne doit pas être perdue.
 Les scénarios conservent l’ancre avec des hauteurs variables, des ajouts d’historique,
-le streaming et le redimensionnement ; ils couvrent aussi le focus, la sélection,
+le streaming et le redimensionnement, y compris lorsqu’un contenu tardif agrandit le
+message partiellement visible en cours de lecture ; ils couvrent aussi le focus, la sélection,
 le clavier, la recherche native, le cache Markdown et la lecture audio hors écran.
 La recherche native et les interactions actives peuvent conserver davantage de bulles.
 

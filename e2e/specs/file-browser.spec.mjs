@@ -3,6 +3,7 @@ import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { collectPageErrors } from '../page-errors.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 for (const width of [1440, 390]) test(`Files browses real agent resources and reopens previews at ${width}px`, async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
@@ -42,12 +43,7 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
   await errors.settle()
   await page.goto('/files')
   await expect(page.getByRole('heading', { name: 'Fichiers', exact: true })).toBeVisible()
-  // Close the initially open mobile drawer once the destination page is ready;
-  // a global handler can race the login transition and click an already hidden backdrop.
-  if (width < 1024 && await page.locator('.q-drawer__backdrop').isVisible()) {
-    await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
-  }
-  await page.getByRole('button', { name: `Explorer les fichiers de ${agent.label}`, exact: true }).click()
+  await withSidebarDismissal(page, () => page.getByRole('button', { name: `Explorer les fichiers de ${agent.label}`, exact: true }).click())
   await expect(page.getByRole('combobox', { name: 'Agent', exact: true })).toBeVisible()
   const root = page.getByRole('main').getByRole('button', { name: 'Ouvrir Fichiers', exact: true })
   await root.click()
@@ -96,9 +92,11 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
   await page.screenshot({ path: testInfo.outputPath('files-page.png'), fullPage: true })
   const ranges = []
   page.on('response', response => {
-    if (response.url().includes('/file-share/browser/media/') && response.request().method() === 'GET') ranges.push(response)
+    // Native media loaders can emit status-0 probes before their real HTTP request.
+    if (response.url().includes('/file-share/browser/media/') && response.request().method() === 'GET' && response.status() > 0) ranges.push(response)
   })
   for (let attempt = 0; attempt < 2; attempt++) {
+    const readsBefore = ranges.length
     await page.locator('.file-main').getByRole('button', { name: 'Ouvrir Synthetic video.mp4', exact: true }).click()
     const player = page.getByRole('dialog').locator('video')
     await expect.poll(() => player.evaluate(element => ({
@@ -107,14 +105,17 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
     }))).toEqual({ ready: true, error: null })
     await player.evaluate(element => { element.muted = true; return element.play() })
     await expect.poll(() => player.evaluate(element => element.currentTime)).toBeGreaterThan(0)
+    await expect.poll(() => ranges.length).toBeGreaterThan(readsBefore)
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
   }
   expect(ranges.length).toBeGreaterThanOrEqual(2)
   for (const response of ranges) {
-    expect(response.status()).toBe(206)
-    expect(response.headers()['content-range']).toMatch(/^bytes /)
-    expect(response.request().headers().authorization).toBeUndefined()
+    const requestHeaders = await response.request().allHeaders()
+    // A browser may request the complete small fixture without a Range header.
+    expect(response.status()).toBe(requestHeaders.range ? 206 : 200)
+    if (requestHeaders.range) expect(response.headers()['content-range']).toMatch(/^bytes /)
+    expect(requestHeaders.authorization).toBeUndefined()
   }
   const grant = await checked(await request.post(`/api/file-share/browser/media?agent_id=${fixture.agent_id}&uri=${encodeURIComponent(video.uri)}`, { headers }))
   const tail = await request.get(grant.url, { headers: { Range: 'bytes=-8' } })

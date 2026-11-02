@@ -1,6 +1,7 @@
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 for (const width of [1440, 390]) test(`attachment names survive document and file-browser reopening at ${width}px`, async ({ page, request }, info) => {
   const errors = collectPageErrors(page)
@@ -52,9 +53,7 @@ for (const width of [1440, 390]) test(`attachment names survive document and fil
   await errors.settle()
   await page.goto(`/files?agent_id=${fixture.agent_id}`)
   if (width < 1024) {
-    const backdrop = page.locator('.q-drawer__backdrop')
-    if (await backdrop.isVisible()) await backdrop.click({ position: { x: width - 8, y: 200 } })
-    await page.getByRole('button', { name: 'Afficher les emplacements', exact: true }).click()
+    await withSidebarDismissal(page, () => page.getByRole('button', { name: 'Afficher les emplacements', exact: true }).click())
   }
   await page.getByRole('main').getByRole('button', { name: 'Ouvrir Fichiers', exact: true }).click()
   await page.locator('.file-main').getByRole('button', { name: 'Ouvrir Final résumé.txt', exact: true }).click({ button: 'right' })

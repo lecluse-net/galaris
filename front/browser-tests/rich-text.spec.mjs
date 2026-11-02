@@ -33,7 +33,7 @@ test('reader rejects active HTML, remote images and unsafe links', async ({ page
 
 
 const uri = 'document://00000000-0000-0000-0000-000000000001/attachments/00000000-0000-0000-0000-000000000002'
-const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII='
+const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII='
 async function command(page, name) {
   const button = page.getByRole('button', { name, exact: typeof name === 'string' }).first()
   const overflow = page.viewportSize().width < 1024 && !await button.isVisible()

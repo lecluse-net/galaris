@@ -95,7 +95,7 @@ for (const surface of ['document', 'message', 'resource']) {
 
 test('Memory 3D thumbnails reopen from the server without downloading or rendering the model', async ({ page }) => {
   let reads = 0
-  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=', 'base64')
+  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
   await page.route('**/api/documents/document-1/attachments/model-1/thumbnail?*', async route => {
     reads++
     await route.fulfill({ contentType: 'image/png', body: image })

@@ -1,6 +1,6 @@
 import { test, expect, mount } from './fixtures.mjs'
 
-const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
 const harness = 'test-support/browser/AgentAvatarHarness.vue'
 
 test('management avatars reuse cached bytes across mounts while each consumer owns its image URL', async ({ page }) => {

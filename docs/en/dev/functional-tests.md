@@ -1936,7 +1936,8 @@ viewer cross the virtualization threshold by loading pages of 50 messages on des
 and mobile, then reopen at the bottom. Each older page is requested once; legitimate
 first-page refreshes and a fresh read on reopening remain allowed. Navigation during
 initial layout restoration must not be lost. Scenarios preserve the reading anchor through
-variable heights, prepended history, streaming and resizing; they also cover focus,
+variable heights, prepended history, streaming and resizing, including late content
+growth in the partly visible message being read; they also cover focus,
 selection, keyboard navigation, native search, Markdown caching and offscreen audio playback.
 Native search and active interactions may retain additional bubbles.
 
