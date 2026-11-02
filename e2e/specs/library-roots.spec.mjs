@@ -19,16 +19,16 @@ test('Text and Data documents keep their tree position across folder moves and r
   for (const domain of ['text', 'data']) {
     const isDocument = domain === 'text'
     const response = isDocument ? await createDocument(request, { headers, data: {
-      owner_agent_id: fixture.agent_id, title: 'Synthetic root document', payload: { text: '<p>Root content</p>' },
-    } }) : await request.post('/api/datasets', { headers, data: { title: 'Synthetic root Dataset', content: '{"root":true}' } })
+      owner_agent_id: fixture.agent_id, title: `Synthetic root document ${fixture.agent_id}`, payload: { text: '<p>Root content</p>' },
+    } }) : await request.post('/api/datasets', { headers, data: { title: `Synthetic root Dataset ${fixture.agent_id}`, content: '{"root":true}' } })
     expect(response.ok(), await response.text()).toBeTruthy()
     const item = await response.json()
-    const untouchedTitle = `Synthetic unclassified ${domain}`
+    const untouchedTitle = `Synthetic unclassified ${domain} ${fixture.agent_id}`
     const untouchedResponse = isDocument ? await createDocument(request, { headers, data: { owner_agent_id: fixture.agent_id, title: untouchedTitle } })
       : await request.post('/api/datasets', { headers, data: { title: untouchedTitle, content: '{}' } })
     expect(untouchedResponse.ok(), await untouchedResponse.text()).toBeTruthy()
     const untouched = await untouchedResponse.json()
-    const createdFolder = await request.post('/api/documents/tags', { headers, data: { name: `Synthetic ${domain} folder`, parent_id: null } })
+    const createdFolder = await request.post('/api/documents/tags', { headers, data: { name: `Synthetic ${domain} folder ${fixture.agent_id}`, parent_id: null } })
     expect(createdFolder.ok(), await createdFolder.text()).toBeTruthy()
     const folder = await createdFolder.json()
     await errors.settle()
@@ -46,17 +46,21 @@ test('Text and Data documents keep their tree position across folder moves and r
     await list.getByText(item.title, { exact: true }).dragTo(root)
     expect((await pinned).ok()).toBeTruthy()
     await expect(root.getByRole('button').first()).toBeEnabled()
+    // Finish the persisted branch refresh before starting the next drag.
+    await errors.settle()
     await expect(row).toBeVisible()
     await expect(list.getByText(item.title, { exact: true })).toHaveCount(0)
     const placed = moveResponse()
     await row.dragTo(tree.getByText(folder.name, { exact: true }))
     expect((await placed).ok()).toBeTruthy()
     await expect(root.getByRole('button').first()).toBeEnabled()
+    await errors.settle()
     await expect(row).toHaveCount(1)
     await expect(row).toBeVisible()
     const moved = moveResponse()
     await row.dragTo(root)
     expect((await moved).ok()).toBeTruthy()
+    await errors.settle()
     await page.reload()
     // Folders start closed, so this resource can only be reached at the root.
     await expect(row).toBeVisible()
@@ -72,7 +76,7 @@ test('Text and Data documents keep their tree position across folder moves and r
     await root.getByRole('button').first().click()
     await page.getByRole('menuitem', { name: isDocument ? /^(Text|Texte)$/ : /^(Data|Données)$/, exact: true }).click()
     const dialog = page.getByRole('dialog')
-    const createdTitle = `Synthetic created at root ${domain}`
+    const createdTitle = `Synthetic created at root ${domain} ${fixture.agent_id}`
     await dialog.getByRole('textbox', { name: /^(Title|Titre)$/, exact: true }).fill(createdTitle)
     await dialog.getByRole('button', { name: /^(Create|Créer)$/, exact: true }).click()
     await expect(dialog).toHaveCount(0)
