@@ -69,14 +69,17 @@ test('successful avatar replacement invalidates both authorized endpoints and lo
 
 test('chat access cannot populate the management cache and removing an avatar clears existing consumers', async ({ page }) => {
   let removed = false
+  let managementReads = 0
   await page.route('**/api/chat/agents/7/avatar', route => removed ? route.fulfill({ status: 404 }) : route.fulfill({ contentType: 'image/png', body: png }))
-  await page.route('**/api/agents/7/avatar', route => {
+  await page.route(/\/api\/agents\/7\/avatar(?:\?.*)?$/, route => {
     if (route.request().method() === 'DELETE') { removed = true; return route.fulfill({ status: 204 }) }
+    managementReads++
     return route.fulfill({ status: 403 })
   })
   await mount(page, harness, { props: { showManagement: false, showChat: true } })
   await expect(page.locator('.chat-avatar img')).toHaveJSProperty('naturalWidth', 1)
   await page.evaluate(() => window.testApp.setProps({ showManagement: true }))
+  await expect.poll(() => managementReads).toBe(1)
   await expect(page.locator('.management-avatars')).toHaveText('TATA')
   await page.evaluate(async () => {
     const { agentService } = await import('/app/agent/services/agentService.ts')
