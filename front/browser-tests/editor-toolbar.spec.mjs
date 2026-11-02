@@ -32,7 +32,8 @@ for (const width of [390, 1440]) test(`select all restores document focus and re
   await expect(page.getByRole('textbox', { name: 'Find', exact: true })).toBeFocused()
   const selectAll = page.getByRole('button', { name: 'Select all', exact: true })
   if (!await selectAll.isVisible()) await page.getByRole('button', { name: 'More tools', exact: true }).click()
-  await selectAll.click()
+  if (width === 1440) { await selectAll.focus(); await page.keyboard.press('Space') }
+  else await selectAll.click()
   await expect(editor).toBeFocused()
   await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toContain('Final cell')
   await page.keyboard.insertText('Replacement document')
@@ -55,7 +56,13 @@ for (const width of [390, 1440]) test(`simple fields preserve rich content and s
   const editor = page.locator('[data-editor-surface]'), toolbar = page.locator('.editorial-toolbar')
   await page.evaluate(() => document.fonts.ready)
   await editor.locator('p').first().click()
+  await expect(editor).toBeFocused()
   await page.keyboard.press('Home')
+  await expect.poll(() => editor.evaluate(element => {
+    const selection = window.getSelection()
+    const paragraph = element.querySelector('p')
+    return selection?.isCollapsed && paragraph?.contains(selection.anchorNode) && selection.anchorOffset === 0
+  })).toBe(true)
   await page.keyboard.press('Shift+End')
   await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toBe('Editable paragraph')
   await toolbar.getByRole('button', { name: 'Bold', exact: true }).click()
@@ -80,7 +87,12 @@ for (const width of [390, 1440]) test(`simple fields preserve rich content and s
   await page.keyboard.press('Escape')
   async function selectParagraph(text) {
     await editor.getByText(text, { exact: true }).click()
+    await expect(editor).toBeFocused()
     await page.keyboard.press('Home')
+    await expect.poll(() => editor.evaluate((element, text) => {
+      const selection = window.getSelection()
+      return selection?.isCollapsed && selection.anchorNode?.parentElement?.closest('p')?.textContent === text && selection.anchorOffset === 0
+    }, text)).toBe(true)
     await page.keyboard.press('Shift+End')
     await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toBe(text)
   }

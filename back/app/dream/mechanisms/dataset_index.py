@@ -26,7 +26,10 @@ class DatasetIndexMechanism:
 
     async def count_pending(self) -> int:
         async with get_db_session():
-            model = await require_configured_embedding_model()
+            try:
+                model = await require_configured_embedding_model()
+            except EmbeddingNotConfiguredError:
+                return 0
             return await datasets.count_pending_dataset_indexes(model.key,
                 select(DreamReceipt.subject_id).where(DreamReceipt.mechanism_key == self.key))
 

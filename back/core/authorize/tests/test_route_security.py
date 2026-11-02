@@ -143,6 +143,9 @@ def test_independent_auth_route_allowlist_is_exact() -> None:
 
 def test_broad_user_route_allowlist_is_exact() -> None:
     expected = {
+        # Authenticated avatar reads enforce management scope; selection HTTP tests
+        # cover own/scoped Agents, outsiders, Team access and anonymous callers.
+        ("app.agent.router", "download_avatar"),
         # Scoped display metadata only; TEAM_ACCESS is checked for the teams catalogue.
         # HTTP tests in app/agent/tests/test_selection.py enforce the actual data scope.
         ("app.agent.router", "read_agent_selection"),

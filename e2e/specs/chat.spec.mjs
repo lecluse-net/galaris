@@ -91,9 +91,26 @@ for (const mixed of [false, true]) test(`internal image attachments ${mixed ? 'w
   expect(upload.ok(), await upload.text()).toBeTruthy()
   const resource = await upload.json()
   expect(resource.uri).toMatch(/^file:\/\//)
+  let releaseThumbnail
+  if (!mixed) await page.route('**/api/file-share/browser/thumbnail?*', async route => {
+    const response = await route.fetch()
+    await new Promise(resolve => { releaseThumbnail = resolve })
+    await route.fulfill({ response })
+  })
   await page.getByRole('button', { name: /^(Ajouter une PJ interne|Add an internal attachment)$/ }).click()
   await page.locator('.file-scheme-uri').filter({ hasText: /^file:\/\/$/ }).click()
-  await page.getByRole('button', { name: /^(Select|Sélectionner) Synthetic attachment.png$/ }).click()
+  const tile = page.getByRole('button', { name: /^(Select|Sélectionner) Synthetic attachment.png$/ })
+  if (!mixed) {
+    await expect.poll(() => Boolean(releaseThumbnail)).toBe(true)
+    const box = await tile.boundingBox()
+    expect(box).not.toBeNull()
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    releaseThumbnail()
+    await expect(tile.locator('img')).toHaveJSProperty('naturalWidth', 1)
+    await page.mouse.up()
+  } else await tile.click()
+  await expect(tile).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('dialog').getByRole('button', { name: /^(Select|Sélectionner)$/ }).click()
   if (mixed) {
     await page.locator('input[type=file]').setInputFiles({

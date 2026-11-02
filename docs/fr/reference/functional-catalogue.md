@@ -3049,6 +3049,9 @@ reçus persistés. Il ne lance pas une multitude de workers indépendants. Une a
 notamment vocale, peut interrompre son travail. Les réglages permettent de l’activer et de régler
 ses délais, leases et tentatives.
 
+Sans modèle vectoriel configuré, la supervision reste consultable ; l’indexation JSON des
+Données ne déclare aucun nouveau travail éligible.
+
 Les vingt mécanismes enregistrés couvrent :
 
 - le classement thématique des messages, tâches, documents Texte/Données et tours concernés ;

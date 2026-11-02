@@ -2403,6 +2403,9 @@ Dream uses available time with one mechanism at a time, bounded duration and per
 rather than independent parallel workers. Priority activity, especially voice, can interrupt it.
 Settings control activation, delays, leases and attempts.
 
+Monitoring remains available without a configured vector model; JSON indexing for Data
+documents reports no newly eligible work.
+
 The twenty registered mechanisms cover Topic classification for messages/Tasks/Text and Data documents/turns; knowledge
 extraction from Tasks, conversation rounds and voice turns; memory projection of Process definitions
 and results; duplicate/conflict/ageing findings; deterministic repair of documents, attachments,

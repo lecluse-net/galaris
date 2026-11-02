@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.contracts import ExecutionResult
@@ -37,7 +37,7 @@ from app.dream.mechanisms import task_memory
 from app.dream.models import DreamReceipt
 from app.dream.registry import register_mechanism, reset_registry
 from app.dream.service import receipt_correlation_ref
-from app.llm import LLMCall, profile_service
+from app.llm import LLMCall, LlmProfile, profile_service
 from app.llm.correlation import current_llm_correlation_ref
 from app.memory.models import MemoryItem
 from core.storage import (
@@ -1465,6 +1465,25 @@ async def test_monitoring_rejects_unauthenticated_requests(
 ) -> None:
     response = await client.get("/api/dream/overview")
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_monitoring_without_a_vector_model_keeps_dataset_indexing_unavailable(db: AsyncSession) -> None:
+    from app.dream.mechanisms.dataset_index import dataset_index_mechanism
+
+    await db.execute(update(LlmProfile).values(vector_llm_id=None))
+    await db.commit()
+    assert not await dataset_index_mechanism.is_available()
+    assert await dataset_index_mechanism.count_pending() == 0
+    reset_registry()
+    register_mechanism(dataset_index_mechanism)
+    try:
+        overview = await monitoring_service.get_overview()
+    finally:
+        reset_registry()
+    assert overview.pending_operations == 0
+    assert overview.mechanisms[0].mechanism_key == dataset_index_mechanism.key
+    assert overview.mechanisms[0].pending == 0
 
 
 @pytest.mark.asyncio

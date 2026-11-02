@@ -468,6 +468,8 @@ all generated catalog messages; `report-build.test.mjs` checks startup measureme
 mobile and desktop, preservation of existing references, tables and equations, and the
 creation of code, checklists, tables and separators, and checked state after reopening
 and reading. The simple toolbar does not offer attachments or equation insertion.
+Native selections after Home and Shift+End survive until formatting; mobile and desktop
+repetitions also check synchronization after key release.
 Select all restores document focus after searching, replaces the complete body including
 tables, and supports undo on mobile and desktop.
 `editor-toolbar.spec.mjs` checks contextual toolbars for tables, links, images, cards,
@@ -588,6 +590,9 @@ choices, zoom and HTML round trips without injected UI.
 mouse input, preserving selections across navigation and searches on mobile and desktop.
 It also checks fullscreen text and audio previews: closing a preview, including with
 Escape, preserves the picker and its selection.
+The attachment journey in `e2e/specs/chat.spec.mjs` completes a real thumbnail between pointer
+press and release: the file remains selected and retains its URI after sending and reloading
+in all three browsers.
 `document-folder-collections.spec.mjs` protects collection readers
 against late responses and checks access denial followed by recovery. The E2E journey
 `document-folder-sharing.spec.mjs` covers stable links, insertion and reopening in Documents

@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu" @galaris-document-object-focus="selectEmbeddedObject">
+  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @keyup="syncKeyboardSelection" @pointerdown.capture="pointerRequest++" @click.capture="editorClick" @contextmenu.capture="openContextMenu" @galaris-document-object-focus="selectEmbeddedObject">
     <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
       <template v-if="personalVoice" #voice>
         <EditorialToolButton flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="readonly || sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
@@ -188,7 +188,7 @@ const pointerMenuMaxHeight = computed(() => `min(80vh, ${Math.max(pointerMenuY.v
 const pointerMenuId = useContextMenuDismissal(pointerMenuOpen, () => pointerMenu.value)
 const pointerTextContext = ref(false)
 let pointerSelection: Selection | undefined, pointerRequest = 0
-let restoreContextOnHide = false
+let restoreContextOnHide: number | undefined
 const effectiveLayout = computed(() => fits.value ? layout.value : 'full')
 const embeddedTargets = shallowRef<EditorObject[]>([]), resourceEmbeds = shallowRef<ResourceEmbedTarget[]>([]), resourceDetail = shallowRef<ResourceDetailTarget | null>(null), pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const { targets: documentLinkIcons, mount: mountDocumentLinkIcon, decorate: decorateDocumentLink } = useDocumentLinkIcons()
@@ -664,15 +664,16 @@ function selectContextLink(target: Element | null | undefined): void {
   const current = editor.value
   if (current && target && current.view.dom.contains(target) && target.closest('a') && current.state.selection.empty && !current.isActive('link')) current.commands.extendMarkRange('link')
 }
-function queueContextFocus(): void { restoreContextOnHide = true }
+function queueContextFocus(): void { restoreContextOnHide = pointerRequest }
 async function restoreContextFocus(): Promise<void> {
-  if (!restoreContextOnHide) return
-  restoreContextOnHide = false
+  if (restoreContextOnHide === undefined) return
+  const request = restoreContextOnHide
+  restoreContextOnHide = undefined
   const current = editor.value
   await nextTick()
   // A click/keystroke may already have returned to the editor while the menu
   // was closing. Refocusing it would replace the newer native selection.
-  if (current && editor.value === current && !current.isDestroyed && !current.view.hasFocus()) current.view.focus()
+  if (request === pointerRequest && current && editor.value === current && !current.isDestroyed && !current.view.hasFocus()) current.view.focus()
 }
 async function showContextMenu(event: MouseEvent, request: number): Promise<void> {
   const current = editor.value
@@ -1144,9 +1145,10 @@ function syncCollapsedSelection(): void {
   const position = current.view.posAtDOM(selection.anchorNode, selection.anchorOffset)
   if (position !== current.state.selection.from) current.commands.setTextSelection(position)
 }
-function syncKeyboardSelection(): void {
+function syncKeyboardSelection(event?: KeyboardEvent): void {
   const current = editor.value, selection = window.getSelection()
   if (!current?.isEditable || !selection) return
+  if (event && (!(event.target instanceof Node) || !current.view.dom.contains(event.target))) return
   if (selection.isCollapsed) { syncCollapsedSelection(); return }
   if (current.state.selection instanceof NodeSelection || current.state.selection.toJSON().type === 'cell') return
   const { anchorNode, focusNode, anchorOffset, focusOffset } = selection

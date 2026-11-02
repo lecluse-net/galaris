@@ -493,6 +493,8 @@ Les tests `locale-catalogs.test.mjs` préservent tous les messages des catalogue
 simples sur mobile et bureau, la conservation des références, tableaux et équations existants,
 la création de code, listes à cocher, tableaux et séparateurs, ainsi que l'état coché après
 réouverture et lecture. Les pièces jointes et équations ne sont pas proposées dans la barre simple.
+Les sélections natives après Home et Maj+Fin sont conservées jusqu’au formatage ; les
+répétitions sur mobile et bureau vérifient aussi la synchronisation après relâchement des touches.
 La commande Tout sélectionner rend le focus au document après la recherche et permet
 de remplacer tout le contenu, tableau compris, puis d'annuler sur mobile et bureau.
 `editor-toolbar.spec.mjs` vérifie la barre contextuelle des tableaux, liens, images,
@@ -606,6 +608,9 @@ au clavier et à la souris, et leur conservation pendant la navigation et les re
 sur mobile et bureau.
 Il vérifie aussi les aperçus texte et audio en plein écran : fermer l’aperçu, y compris
 avec Échap, conserve la modale et les éléments sélectionnés.
+Le parcours de pièces jointes de `e2e/specs/chat.spec.mjs` termine une vraie miniature entre
+l’appui et le relâchement du pointeur : le fichier reste sélectionné et conserve son URI après
+envoi et rechargement sur les trois navigateurs.
 `document-folder-collections.spec.mjs` protège le lecteur de collections contre les réponses
 tardives et vérifie le refus d'accès suivi d'une reprise. Le parcours E2E
 `document-folder-sharing.spec.mjs` couvre les liens stables, l'insertion et la réouverture

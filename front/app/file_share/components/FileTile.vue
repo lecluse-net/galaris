@@ -14,8 +14,8 @@
       </div>
       <div class="file-tile-name">{{ displayName }}</div>
       <div v-if="!entry.is_collection && entry.size !== null" class="file-tile-meta text-caption">{{ formatFileSize(entry.size, locale) }}</div>
-      <q-tooltip>{{ entry.uri }}</q-tooltip>
     </div>
+    <q-tooltip>{{ entry.uri }}</q-tooltip>
   </q-btn>
   <div v-if="selectable" class="file-tile-actions">
   <q-btn v-if="!entry.is_collection && entry.capabilities.includes('read') && browserResourceKind(entry.media_type, entry.name)"
@@ -83,7 +83,7 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect(); if (thumbnail.
 .file-tile-container { position: relative; min-width: 0; }
 .file-tile-container--selectable { display: flex; flex-direction: column; gap: 1px; }
 .file-tile { --file-icon-size: 88px; --file-preview-height: 96px; width: 100%; min-width: 0; color: inherit; }
-.file-tile-content { width: 100%; min-width: 0; padding: 6px 0; text-align: center; }
+.file-tile-content { width: 100%; min-width: 0; padding: 6px 0; text-align: center; pointer-events: none; }
 .file-tile-preview { height: var(--file-preview-height); display: grid; place-items: center; margin-bottom: 2px; }
 .file-tile-preview img { width: 100%; height: var(--file-preview-height); object-fit: contain; }
 .file-tile-preview :deep(.file-tile-agent) { width: var(--file-icon-size); height: var(--file-icon-size); }
