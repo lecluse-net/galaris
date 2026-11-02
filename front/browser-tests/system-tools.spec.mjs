@@ -607,8 +607,23 @@ for (const mobile of [false, true]) {
       await jsonRoute(page, '**/api/connections/overview?*', [...connections, customConnection].map(connection => ({ ...connection, params: {}, configured_params: [] })))
       await jsonRoute(page, '**/api/connections/6/params?*', { connection_id: 6, params: {}, configured_params: [] })
       await jsonRoute(page, '**/api/connections/6/functions', { success: true, functions: [] })
+      let releaseOptions = () => {}
+      if (component === 'AuthorizationManager') {
+        const ready = new Promise(resolve => { releaseOptions = resolve })
+        await page.route('**/api/connections/permission-options?*', async route => {
+          await ready
+          await route.fulfill({ json: permissionOptions([...connections, customConnection]) })
+        })
+      }
       await mount(page, `app/connection/components/${component}.vue`, { privileges, dark: mobile })
       const filter = page.getByRole('combobox', { name: 'Filter by tool', exact: true })
+      if (component === 'AuthorizationManager') {
+        try {
+          await expect(filter).toBeDisabled()
+          await page.screenshot({ path: testInfo.outputPath('tool-filter-loading.png'), animations: 'disabled' })
+        } finally { releaseOptions() }
+      }
+      await expect(filter).toBeEnabled()
       await filter.press('ArrowDown')
       const popup = page.getByRole('listbox')
       await expect(popup.getByText('Galaris', { exact: true }).first()).toBeVisible()

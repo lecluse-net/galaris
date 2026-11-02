@@ -2,6 +2,7 @@ import { notificationPrompt } from '../notification-prompt.mjs'
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { selectOption } from '../select-option.mjs'
 
 test('Document and Dataset topic badges persist manual assignments through the real application', async ({ page, request }) => {
   const errors = collectPageErrors(page)
@@ -32,6 +33,7 @@ test('Document and Dataset topic badges persist manual assignments through the r
     await checked(await request.put(`/api/topics/resources/${kind}/${resource.id}`, { headers, data: {
       topic_id: topics[0].id, expected_topic_id: null, expected_lock_version: resource.lock_version,
     } }))
+    await errors.settle()
     await page.goto(kind === 'document' ? `/documents?document_id=${resource.id}` : `/dataset/${resource.id}`)
     await page.getByRole('button', { name: new RegExp(topics[0].title) }).click()
     const audit = page.getByRole('dialog').last()
@@ -49,6 +51,7 @@ test('Document and Dataset topic badges persist manual assignments through the r
     expect(current.revision).toBe(resource.revision)
     if (kind === 'document') expect(current.payload.text).toContain('Synthetic topic content')
     else expect(current.content).toBe(dataset.content)
+    await errors.settle()
     await page.reload()
     await expect(page.getByRole('button', { name: new RegExp(topics[1].title) })).toBeVisible()
   }
@@ -59,30 +62,36 @@ test('Document and Dataset topic badges persist manual assignments through the r
   const usage = await checked(await request.post(`/api/__test/topics/${topics[1].id}/usage`, {
     params: { agent_id: fixture.agent_id, room_id: fixture.rooms[0] },
   }))
+  await errors.settle()
   const loaded = page.waitForResponse(response => new URL(response.url()).pathname === '/api/topics')
   await page.goto('/topic')
   expect((await loaded).ok()).toBeTruthy()
   const month = page.getByRole('combobox', { name: /^(Mois|Month)$/ })
   const row = page.getByRole('row').filter({ has: page.getByRole('link', { name: topics[1].title, exact: true }) })
   const chooseMonth = async (label, value, expected) => {
-    await month.click()
+    await errors.settle()
     const response = page.waitForResponse(response => {
       const url = new URL(response.url())
       return url.pathname === '/api/topics' && url.searchParams.get('month') === value
     })
-    await page.getByRole('option', { name: label }).click()
+    await selectOption(page, month, label)
     const result = await response
     expect(result.ok(), await result.text()).toBeTruthy()
     const summary = (await result.json()).items.find(item => item.id === topics[1].id)
     expect(summary.llm_calls).toBe(expected.llm_calls)
     expect(summary.inference_cost).toBe(expected.inference_cost)
-    await row.locator('.topic-cost').hover()
-    await expect(page.getByRole('tooltip')).toContainText(String(expected.llm_calls))
+    const cost = row.locator('.topic-cost').locator('..')
+    await cost.hover()
+    await expect(cost).toHaveAttribute('aria-describedby', /\S/)
+    const tooltipId = await cost.getAttribute('aria-describedby')
+    await expect(page.locator(`[id=${JSON.stringify(tooltipId)}]`)).toContainText(String(expected.llm_calls))
     await month.focus()
   }
   await chooseMonth(/juillet 2026|July 2026/i, '2026-07', usage.july)
   await chooseMonth(/août 2026|August 2026/i, '2026-08', usage.august)
+  await errors.settle()
   await page.reload()
   await chooseMonth(/juillet 2026|July 2026/i, '2026-07', usage.july)
+  await errors.settle()
   expect(errors()).toEqual([])
 })

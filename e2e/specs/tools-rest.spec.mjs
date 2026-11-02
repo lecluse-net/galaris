@@ -64,6 +64,7 @@ test('REST Tool configuration persists with connection credentials kept write-on
   await selectOption(page, connectionEditor.getByRole('combobox', { name: 'Agent', exact: true }), `${agent.first_name} ${agent.last_name}`)
   const toolSelect = connectionEditor.getByRole('combobox', { name: 'Outil', exact: true })
   async function chooseGroupedTool(field, screenshot) {
+    await expect(field).toBeEnabled()
     await field.press('ArrowDown')
     const popup = page.getByRole('listbox')
     await expect(popup).toHaveCount(1)

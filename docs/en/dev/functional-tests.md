@@ -22,6 +22,16 @@ saved content without coordinates or rendering DOM, reading, editing, revocation
 denial and access rechecks before export. The single-card read API also verifies denied
 Contacts access and managed Agent scope in the HTTP journey.
 
+## Collect failures before a release
+
+CI component suites and assembled journeys use `--max-failures=0` to retain all failures
+from the same candidate. The three browsers remain isolated, with three repetitions per
+browser and a failing exit status whenever a case fails. For batch diagnosis, freeze the
+sources, finish collection, then group corrections and verify the affected journeys.
+An interrupted collection cannot qualify a release; resume missing cases without blindly
+replaying completed cases. Publication then requires CI for the final commit and
+`make release-check`.
+
 ## Capacity-routed document RAG and file deletion
 
 `app/llm/tests/test_document_rag.py` covers local direct/RAG admission against model

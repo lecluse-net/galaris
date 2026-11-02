@@ -32,6 +32,8 @@
           v-model="filterTool"
           :tools="tools"
           :label="$t('connection.filterTool')"
+          :loading="connectionsLoading"
+          :disable="connectionsLoading || tools.length === 0"
         />
       </div>
     </div>

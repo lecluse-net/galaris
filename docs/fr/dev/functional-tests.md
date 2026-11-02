@@ -27,6 +27,16 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+## Collecter les échecs avant une livraison
+
+Les suites de composants et les parcours assemblés en CI utilisent `--max-failures=0`
+pour conserver tous les échecs d'un même candidat. Les trois navigateurs restent isolés,
+avec trois répétitions par navigateur et un statut d'échec dès qu'un cas échoue.
+Pour diagnostiquer un lot, figer les sources, terminer la collecte, puis regrouper les
+corrections et vérifier les parcours concernés. Une collecte interrompue ne qualifie pas
+la livraison ; reprendre les cas manquants sans rejouer aveuglément les cas terminés.
+La publication exige ensuite les contrôles CI du commit final et `make release-check`.
+
 ## RAG documentaire selon la capacité et purge du fichier
 
 `app/llm/tests/test_document_rag.py` couvre le choix local direct/RAG selon le contexte,

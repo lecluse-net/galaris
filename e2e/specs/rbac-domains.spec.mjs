@@ -41,6 +41,7 @@ for (const width of [1440, 390]) test(`a Contacts-only role creates and reopens 
   const login = page.waitForResponse(response => response.url().endsWith('/api/auth/login-json'))
   await page.locator('button[type=submit]').click()
   const session = await checked(await login)
+  await expect(page.locator('input[type=password]')).toHaveCount(0)
   const failures = []
   page.on('response', response => {
     const path = new URL(response.url()).pathname
@@ -48,8 +49,16 @@ for (const width of [1440, 390]) test(`a Contacts-only role creates and reopens 
       failures.push(`${response.status()} ${path}`)
     }
   })
-  await errors.settle()
-  await page.goto('/memory/contacts')
+  const contactsLink = page.getByRole('link', { name: 'Contacts', exact: true })
+  const closedDrawer = page.locator('body:not(:has(.q-drawer__backdrop:visible)) .mobile-taskbar')
+    .getByRole('button', { name: 'Expand sidebar', exact: true })
+  await page.addLocatorHandler(closedDrawer, button => button.click())
+  try {
+    await contactsLink.click()
+  } finally {
+    await page.removeLocatorHandler(closedDrawer)
+  }
+  await expect(page).toHaveURL(/\/memory\/contacts$/)
   await withSidebarDismissal(page, () => page.getByRole('button', { name: 'Add contact', exact: true }).click())
   const dialog = page.getByRole('dialog')
   const name = `Synthetic correspondent ${width}`

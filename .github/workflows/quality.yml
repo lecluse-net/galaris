@@ -193,7 +193,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Exercise Vue components in an isolated browser
-        run: make tests-front-components ARGS='--max-failures=1'
+        run: make tests-front-components ARGS='--max-failures=0'
       - name: Preserve component traces and service logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -213,7 +213,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run isolated workflows on ${{ matrix.browser }}
-        run: make tests-e2e ARGS='--project=${{ matrix.browser }} --repeat-each=3 --max-failures=1'
+        run: make tests-e2e ARGS='--project=${{ matrix.browser }} --repeat-each=3 --max-failures=0'
       - name: Preserve browser traces and service logs
         if: always()
         uses: actions/upload-artifact@v4
