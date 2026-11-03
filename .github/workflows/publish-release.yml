@@ -23,7 +23,7 @@ jobs:
     outputs:
       commit: ${{ steps.source.outputs.commit }}
     runs-on: ubuntu-latest
-    timeout-minutes: 260
+    timeout-minutes: 60
     permissions:
       contents: read
       actions: read
@@ -34,11 +34,11 @@ jobs:
       - name: Record the source commit
         id: source
         run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - name: Require exact-commit CI and fresh source security
+      - name: Require exact-commit security CI and fresh source security
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_CHECK_TIMEOUT_SECONDS: '14400'
+          RELEASE_CHECK_TIMEOUT_SECONDS: '2400'
         run: make release-check
       - name: Preserve pre-publication evidence
         if: always()

@@ -7,12 +7,24 @@ from uuid import UUID
 
 from loguru import logger
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import settings
 from core.database import get_db_session
 
 from .contracts import DbAdminResult
-from .models import DbAdminIssueRecord, DbAdminRun
+from .models import DbAdminActionRecord, DbAdminIssueRecord, DbAdminRun
+
+
+async def action_previously_completed(session: AsyncSession, key: str) -> bool:
+    """Historical success survives staging and retries of the same obligation.
+
+    This proves an earlier import ran or was already satisfied, rather than
+    asserting that its old source still describes mutable business state.
+    """
+    return await session.scalar(select(DbAdminActionRecord.finished_at).where(
+        DbAdminActionRecord.key == key,
+    )) is not None
 
 
 def _summary(result: DbAdminResult) -> dict[str, Any]:

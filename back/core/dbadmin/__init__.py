@@ -26,6 +26,7 @@ from .dataset import (
     reconcile_dataset,
 )
 from .scope import DbAdminDdlFilters
+from .journal import action_previously_completed
 
 __all__ = [
     "DbAdminAction",
@@ -48,4 +49,5 @@ __all__ = [
     "SchemaObjectTransition",
     "registry",
     "reconcile_dataset",
+    "action_previously_completed",
 ]

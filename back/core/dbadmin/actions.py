@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from core import settings
 from core.database import get_db_session
+from core.update_diagnostics import diagnostic_text
 
 from .contracts import (
     DbAdminActionResult,
@@ -50,6 +51,15 @@ async def validate_open_actions(registry: DbAdminRegistry) -> tuple[DbAdminIssue
             for revision in await session.scalars(select(DbAdminActionRevision))
         }
     issues: list[DbAdminIssue] = []
+    # Emit every previous cause before validation can stop at the first mismatch
+    # or a retry replaces last_error. Host update journals then retain the initial
+    # failure even when the old container and its logs have already disappeared.
+    for record in open_records:
+        logger.warning(
+            "DbAdmin unfinished action: key={} phase={} status={} checksum={} attempts={} previous_error={}",
+            record.key, record.phase, record.status, record.checksum, record.attempts,
+            diagnostic_text(record.last_error) if record.last_error else "none recorded",
+        )
     for record in open_records:
         action = registered.get(record.key)
         if action is not None and (
@@ -61,11 +71,16 @@ async def validate_open_actions(registry: DbAdminRegistry) -> tuple[DbAdminIssue
             "Unfinished DbAdmin action is no longer registered"
             if action is None else "Unfinished DbAdmin action changed checksum without declared compatibility"
         )
+        expected_checksum = action.checksum if action is not None else None
+        message = (
+            f"{message}: {record.key}; status={record.status!r}; "
+            f"recorded_checksum={record.checksum!r}; expected_checksum={expected_checksum!r}"
+        )
         # Legacy journals did not retain criticality. A present declaration can
         # identify an optional obligation; a disappeared unknown one stays fatal.
         required = revisions.get((record.key, record.checksum), action.required if action else True)
         if required or (action is not None and action.required):
-            raise DbAdminFatalError(f"{message}: {record.key}")
+            raise DbAdminFatalError(message)
         issues.append(DbAdminIssue("action_validation", message, record.key, fatal=False))
         logger.error("DbAdmin optional action deferred: key={} reason={}", record.key, message)
     return tuple(issues)

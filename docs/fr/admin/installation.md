@@ -175,6 +175,21 @@ redémarrage, en développement comme en production. La version SearXNG suit cel
 dans `compose.yaml`, sans effacer la configuration existante. Un échec de récupération
 arrête la mise à jour en conservant les services actifs.
 
+Chaque tentative écrit un fichier privé `artifacts/updates/update-*.log`, dont le chemin
+est affiché au terminal. Il conserve les étapes, les codes de sortie, la sortie de la
+commande de démarrage et l'ensemble des logs du backend depuis le début de la tentative,
+sans limite aux dernières lignes. Les erreurs DbAdmin fatales et non fatales restent ainsi
+consultables dans ce fichier, même si le backend ne démarre pas ou si la tentative suivante
+recrée son conteneur. Les secrets reconnus sont masqués avant écriture et les 100 derniers
+journaux sont conservés. En cas d'échec, transmettre ce fichier suffit pour consulter ces
+erreurs ; aucune requête SQL n'est nécessaire. Une collecte incomplète est signalée et
+fait échouer une mise à jour autrement réussie, sans remplacer une erreur initiale.
+Au démarrage suivant, DbAdmin réaffiche aussi les causes enregistrées des actions
+inachevées avant de les retenter : une erreur antérieure peut donc être retrouvée
+dans le nouveau journal même si l'ancien conteneur a été recréé.
+Les anciens journaux qui ne contiennent que les étapes ne peuvent pas reconstituer les
+sorties qu'ils n'ont pas enregistrées.
+
 Sans `VERSION`, aucune récupération ni sélection Git n’est effectuée : les sources présentes
 sont utilisées, y compris avec des modifications locales, un tag détaché ou sans upstream.
 Avec `VERSION`, `.git` doit exister dans l’installation (répertoire ou fichier de worktree).

@@ -57,37 +57,10 @@ jobs:
           path: artifacts/security/
           retention-days: 30
 
-  restore:
-    name: Restore rehearsal
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Prepare isolated test configuration
-        run: |
-          cp .env.example .env
-          sed -i 's/^APP_ENV=prod$/APP_ENV=test/' .env
-          bash bin/update-secrets.sh
-      - run: make tests-restore
-      - name: Select previous semantic release tag
-        run: |
-          set -euo pipefail
-          previous=$(git tag --merged HEAD^ --sort=-version:refname |
-            awk '/^[0-9]+\.[0-9]+\.[0-9]+$/ && !found { print; found = 1 }')
-          [[ -n "$previous" ]] || { echo 'No previous semantic release tag found.' >&2; exit 1; }
-          printf 'UPGRADE_FROM=%s\n' "$previous" >> "$GITHUB_ENV"
-          echo "Upgrade baseline: $previous ($(git rev-parse "$previous^{commit}"))"
-      - name: Rehearse populated database upgrade
-        run: make tests-upgrade
-      - run: make tests-harness-manager
-      - run: make tests-executor
-
   required:
     name: Security required
     if: always()
-    needs: [source, images, restore]
+    needs: [source, images]
     runs-on: ubuntu-latest
     steps:
       - env:

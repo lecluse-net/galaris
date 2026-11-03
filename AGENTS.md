@@ -99,7 +99,7 @@ a small change does not require a separate planning document.
   change. Verify one complete user journey first, then expand by groups of consumers. Cover
   opening, reopening, existing data, errors, late responses, and context changes where relevant.
 - Keep stabilization fixes narrowly scoped: separate related refactors. A passing targeted suite
-  does not qualify a cross-cutting change for publication.
+  does not prove complete functional validation of a cross-cutting change.
 - Justify new abstractions, dependencies, and configuration by a concrete need. Prefer existing
   public contracts and the simplest implementation that preserves the required behavior.
 
@@ -362,10 +362,13 @@ immutable. Consult the `galaris-process-tools` skill.
   Never move or replace a published tag. Preserve historical `0.1` and `0.2` tags as
   compatibility aliases of `0.1.0` and `0.2.0`.
 - Before creating or pushing a release tag, run `make release-check RELEASE_REF=<commit>`
-  on the final committed source. It requires successful Quality and Security workflows
-  for that exact commit and a fresh source scan. Missing, failed, cancelled or pending
-  evidence blocks publication; report the blocking result before publishing. A passing
-  image scan that permits unfixed advisories is not source-release approval. Publish
+  on the final committed source. It requires a successful Security workflow for that
+  exact commit and a fresh source scan. Missing, failed, cancelled or pending security
+  evidence blocks publication; report the blocking result before publishing. HIGH/CRITICAL
+  vulnerabilities (including unfixed ones), detected secrets and SAST errors block release.
+  Functional Quality results are reported separately and do not gate source publication.
+  Automatic Quality runs quick checks; complete functional suites require explicit opt-in.
+  Never describe an unrun, interrupted or failing functional suite as passing. Publish
   GitHub Releases through the guarded workflow rather than bypassing it in the UI.
 - Update `CHANGELOG.md` only when the user explicitly requests it, normally before each
   publication. Do not update it incrementally during feature work, fixes, or routine

@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0263 — Security-only publication and opt-in functional qualification](0263-security-only-release-gate.md)
+
 - [0262 — Source publication requires exact-commit security evidence](0262-source-release-security-gate.md)
 
 - [0261 — Capacity-routed, source-owned document retrieval](0261-capacity-routed-source-owned-document-rag.md)

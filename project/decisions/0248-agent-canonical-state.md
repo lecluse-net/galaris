@@ -26,5 +26,17 @@ la contraction Atlas. Les lignes historisées sont incluses ; une configuration 
 existante n'est jamais écrasée. Les anciennes copies `profile_legacy_source` sont supprimées.
 Une préparation échouée conserve les colonnes sources et peut être rejouée.
 
+Si une autre préparation diffère la contraction, le défaut de l'ancienne colonne
+de format doit déjà être `text/html` : le nouveau runtime ne renseigne plus cette
+colonne et ses nouveaux profils ne doivent jamais être reconvertis comme Markdown.
+
 Les tests utilisent le véritable pipeline DbAdmin/Atlas sur PostgreSQL isolé, avec des
 données synthétiques, interruption avant commit et reprise idempotente.
+
+L'import des équipes conserve chaque référence historique dans
+`galaris_migration.agent_team_sources`, avec une preuve de transfert atomique.
+Une appartenance retirée après l'import ne doit jamais être rétablie par sa reprise.
+Pour les imports déjà terminés par un binaire publié, la réussite historique du
+journal est conservée comme preuve, même lorsque la nouvelle tentative remet
+l'obligation en attente. Les anciennes colonnes ne redeviennent pas une source
+autoritaire des droits courants.

@@ -34,6 +34,13 @@ overwriting later edits. Existing `data://` references and Dataset HTTP contract
 delegate to the common records. Personal HTML-application consents and write budgets
 remain enforced. Old tables are contracted only in a separately reviewed release.
 
+The source archive is committed in `BEFORE_EXPAND`; destination writes wait for
+`AFTER_EXPAND`, when all new source and destination columns exist. Existing foreign
+keys are redirected only during contraction after verification. Tests reconstruct
+the released source columns, including absent summary fields, and retain a nonempty
+Dataset in the full old-binary upgrade/restore canary. Unfinished 0.3.0 transfers
+remain explicitly compatible with the corrected preparation and transfer phases.
+
 Retiring the older summary-history table preserves every original row in the
 durable `galaris_migration` schema with a verified digest before contraction.
 Archived resource pointers retain their stored bytes. This is recovery evidence;

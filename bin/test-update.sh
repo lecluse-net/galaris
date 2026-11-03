@@ -7,6 +7,7 @@ trap 'status=$?; if [[ "$status" -ne 0 && -f "$case_dir/output.log" ]]; then tai
 cp "$repo_dir/Makefile" "$case_dir/Makefile"
 mkdir -p "$case_dir/bin"
 cp "$repo_dir/bin/"{start,update-source,update-runtime,update-journal,init-data-volume,uninstall,refresh-documentation,documentation}.sh "$case_dir/bin/"
+cp "$repo_dir/bin/redact-update-log.awk" "$case_dir/bin/"
 cp -R "$repo_dir/tooling" "$case_dir/tooling"
 for script in update-secrets init-search-config update-release finalize-internal-secrets; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$case_dir/bin/$script.sh"
@@ -25,6 +26,21 @@ if [[ "$*" == *project_context.py* || "$*" == *navigation-context.mjs* ]] && [[ 
     [[ " $* " == *" --user $(id -u):$(id -g) "* ]] || { echo 'Generated documentation would use the image user' >&2; exit 1; }
 fi
 case " $* " in
+    *" logs "*)
+        if [[ "${UPDATE_TEST_DIAGNOSTICS:-}" == 1 ]]; then
+            echo 'Synthetic DbAdmin first error: original conversion cause'
+            echo 'Synthetic DbAdmin stderr: chained database cause' >&2
+            echo '  File "core/dbadmin/actions.py", line 227, in run_actions'
+            for ((line=1; line<=350; line++)); do echo "Synthetic startup detail $line"; done
+            echo 'Synthetic DbAdmin final error: second independent action'
+            echo 'password="synthetic-generated-password" Authorization: Bearer synthetic-generated-bearer'
+            echo 'DSN postgresql://synthetic:encoded%40password@db.invalid/test'
+            echo 'Known host credential: synthetic-host-[secret]&value'
+            echo '{"api_key":"synthetic-escaped-\"quoted-secret", "cause":"Synthetic retained exception cause"}'
+            printf '%s\n' '-----BEGIN PRIVATE KEY-----' 'synthetic-private-material' '-----END PRIVATE KEY-----'
+        fi
+        exit "${UPDATE_TEST_LOGS_EXIT:-0}"
+        ;;
     *"project_context.py --root /repo"*|*"navigation-context.mjs --root /repo"*)
         if [[ " $* " == *" --output /output "* ]]; then
             for arg in "$@"; do
@@ -111,7 +127,12 @@ case " $* " in
     *"chown app:app /data"*) [[ "${UPDATE_TEST_FAILURE:-}" != data_permissions ]] ;;
     *" rm --stop --force backend frontend "*) [[ "${UPDATE_TEST_FAILURE:-}" != reset ]] ;;
     *" up -d --no-build "*) [[ "${UPDATE_TEST_FAILURE:-}" != readiness && "${UPDATE_TEST_FAILURE:-}" != start ]] ;;
-    *" --wait "*) [[ "${UPDATE_TEST_FAILURE:-}" != readiness ]] ;;
+    *" --wait "*)
+        if [[ "${UPDATE_TEST_FAILURE:-}" == readiness ]]; then
+            echo 'Synthetic Compose readiness failure' >&2
+            exit "${UPDATE_TEST_READINESS_EXIT:-1}"
+        fi
+        ;;
     *" core.params.internal_secrets "*) [[ "${UPDATE_TEST_FAILURE:-}" != secrets ]] ;;
 esac
 SH
@@ -220,7 +241,7 @@ for app_mode in dev prod; do
                 exit 1
             fi
         elif [[ "$failure" == readiness ]]; then
-            grep -q ' logs --tail=200$' "$UPDATE_TEST_LOG"
+            grep -Eq ' logs --no-color --timestamps --since [^ ]+ backend$' "$UPDATE_TEST_LOG"
         elif grep -q 'Update complete' "$case_dir/output.log"; then
             echo 'FAIL: update reported success with unavailable documentation' >&2
             exit 1
@@ -228,6 +249,100 @@ for app_mode in dev prod; do
     done
 done
 unset UPDATE_TEST_FAILURE
+
+# Preserve the first error, every later error and stderr, even beyond the old
+# 200-line tail. A secondary collection failure must retain the readiness exit.
+printf 'POSTGRES_PASSWORD=synthetic-host-[secret]&value\n' >> "$case_dir/.env"
+for app_mode in dev prod; do
+    for collection_exit in 0 23; do
+        if UPDATE_TEST_DIAGNOSTICS=1 UPDATE_TEST_FAILURE=readiness UPDATE_TEST_READINESS_EXIT=17 \
+            UPDATE_TEST_LOGS_EXIT="$collection_exit" run_update APP_ENV="$app_mode"; then
+            echo 'FAIL: DbAdmin startup failure was hidden' >&2
+            exit 1
+        fi
+        journal=$(sed -n 's/^Update journal: //p' "$case_dir/output.log")
+        for evidence in 'first error: original conversion cause' 'stderr: chained database cause' \
+            'final error: second independent action' 'in run_actions' 'Synthetic retained exception cause'; do
+            grep -q "$evidence" "$case_dir/$journal"
+        done
+        grep -q 'stage=readiness status=failed exit_code=17$' "$case_dir/$journal"
+        grep -q "exit_code=$collection_exit command=backend-startup-logs$" "$case_dir/$journal"
+        if grep -Eq 'synthetic-generated-password|synthetic-generated-bearer|encoded%40password|synthetic-host-|synthetic-escaped|synthetic-private-material' \
+            "$case_dir/$journal" "$case_dir/output.log"; then
+            echo 'FAIL: update diagnostic leaked a credential' >&2
+            exit 1
+        fi
+        if [[ "$collection_exit" -ne 0 ]]; then
+            grep -q 'Unable to collect complete backend startup logs' "$case_dir/output.log"
+        fi
+    done
+done
+# Nonfatal DbAdmin issues are retained even when readiness succeeds.
+UPDATE_TEST_DIAGNOSTICS=1 run_update APP_ENV=prod
+journal=$(sed -n 's/^Update journal: //p' "$case_dir/output.log")
+grep -q 'first error: original conversion cause' "$case_dir/$journal"
+grep -q 'status=completed exit_code=0$' "$case_dir/$journal"
+if UPDATE_TEST_LOGS_EXIT=23 run_update APP_ENV=prod; then
+    echo 'FAIL: update claimed success without complete startup evidence' >&2
+    exit 1
+fi
+journal=$(sed -n 's/^Update journal: //p' "$case_dir/output.log")
+grep -q 'stage=readiness status=failed exit_code=23$' "$case_dir/$journal"
+if grep -q 'app.documentation refresh' "$UPDATE_TEST_LOG"; then
+    echo 'FAIL: update continued after diagnostic collection failed' >&2
+    exit 1
+fi
+echo 'PASS: complete redacted DbAdmin startup evidence survives readiness and collection failures'
+
+# Disk/filter failures cannot expose raw output, hide the primary exit, or claim
+# a successful update. Consume stdin fully to exercise status handling, not SIGPIPE.
+export UPDATE_TEST_REAL_TEE
+UPDATE_TEST_REAL_TEE=$(command -v tee)
+export UPDATE_TEST_REAL_AWK
+UPDATE_TEST_REAL_AWK=$(command -v awk)
+cat > "$case_dir/bin/tee" <<'SH'
+#!/usr/bin/env bash
+if [[ "${UPDATE_TEST_WRITE_FAILURE:-}" == 1 ]]; then
+    cat
+    echo 'Synthetic diagnostic storage failure' >&2
+    exit 28
+fi
+exec "$UPDATE_TEST_REAL_TEE" "$@"
+SH
+cat > "$case_dir/bin/awk" <<'SH'
+#!/usr/bin/env bash
+if [[ "${UPDATE_TEST_FILTER_FAILURE:-}" == 1 && "$*" == '-f bin/redact-update-log.awk' ]]; then
+    cat >/dev/null
+    echo 'Synthetic diagnostic redaction failure' >&2
+    exit 39
+fi
+exec "$UPDATE_TEST_REAL_AWK" "$@"
+SH
+chmod +x "$case_dir/bin/tee" "$case_dir/bin/awk"
+for failure_kind in WRITE FILTER; do
+    for readiness_failure in none readiness; do
+        if env -u APP_ENV -u RELEASE_DIR -u MAKEOVERRIDES MAKEFLAGS= \
+            "UPDATE_TEST_${failure_kind}_FAILURE=1" UPDATE_TEST_DIAGNOSTICS=1 \
+            UPDATE_TEST_FAILURE="$readiness_failure" UPDATE_TEST_READINESS_EXIT=17 \
+            make --no-print-directory -C "$case_dir" update APP_ENV=prod \
+            WEBRTC_TURN_MODE=disabled POSTGRES_MODE=embedded > "$case_dir/output.log" 2>&1; then
+            echo 'FAIL: update succeeded without persisted redacted evidence' >&2
+            exit 1
+        fi
+        expected_exit=74
+        [[ "$readiness_failure" != readiness ]] || expected_exit=17
+        journal=$(sed -n 's/^Update journal: //p' "$case_dir/output.log")
+        grep -q "stage=readiness status=failed exit_code=$expected_exit" "$case_dir/$journal"
+        grep -q 'status=diagnostics-incomplete' "$case_dir/$journal"
+        grep -q 'Unable to redact or persist update diagnostics' "$case_dir/output.log"
+        if grep -Eq 'synthetic-generated-password|synthetic-generated-bearer|encoded%40password|synthetic-host-|synthetic-escaped|synthetic-private-material' \
+            "$case_dir/$journal" "$case_dir/output.log"; then
+            echo 'FAIL: diagnostic storage failure exposed raw credentials' >&2
+            exit 1
+        fi
+    done
+done
+echo 'PASS: diagnostic storage and redaction failures retain the primary failure without raw fallback'
 
 # If evidence cannot be created, stop before running any deployment command.
 mv "$case_dir/artifacts" "$case_dir/saved-artifacts"
@@ -246,18 +361,28 @@ release_case="$case_dir/release-case"
 release_fixture="$release_case/prepared"
 mkdir -p "$release_case/bin" "$release_fixture"
 cp "$repo_dir/bin/"{update-release,update-journal}.sh "$release_case/bin/"
+cp "$repo_dir/bin/redact-update-log.awk" "$release_case/bin/"
+: > "$release_case/.env"
 for script in load-release init-data-volume finalize-internal-secrets; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$release_case/bin/$script.sh"
 done
 printf 'sha256:synthetic galaris-release-back:synthetic\n' > "$release_fixture/IMAGE_IDS"
 cp "$release_fixture/IMAGE_IDS" "$release_fixture/TESTED_IMAGE_IDS"
-for failure in none editors; do
+for failure in none readiness editors; do
     : > "$UPDATE_TEST_LOG"
-    if UPDATE_TEST_FAILURE="$failure" bash "$release_case/bin/update-release.sh" "$release_fixture" -f compose.yaml \
+    if UPDATE_TEST_DIAGNOSTICS=1 UPDATE_TEST_FAILURE="$failure" bash "$release_case/bin/update-release.sh" "$release_fixture" -f compose.yaml \
         > "$case_dir/output.log" 2>&1; then
         test "$failure" = none
     else
-        test "$failure" = editors
+        test "$failure" != none
+    fi
+    journal=$(sed -n 's/^Update journal: //p' "$case_dir/output.log")
+    grep -q 'first error: original conversion cause' "$release_case/$journal"
+    grep -q 'final error: second independent action' "$release_case/$journal"
+    grep -q -- "-f $release_fixture/compose.release.yaml logs --no-color --timestamps --since " "$UPDATE_TEST_LOG"
+    if [[ "$failure" == readiness ]]; then
+        grep -q 'stage=readiness status=failed exit_code=1$' "$release_case/$journal"
+        continue
     fi
     grep -q -- "-f $release_fixture/compose.release.yaml exec -T backend python -m code_editor_update" "$UPDATE_TEST_LOG"
     awk '
@@ -339,7 +464,7 @@ for app_mode in dev prod demo; do
         else
             grep -q ' up -d --wait --wait-timeout 300$' "$UPDATE_TEST_LOG"
             if [[ "$failure" == readiness ]]; then
-                grep -q ' logs --tail=200$' "$UPDATE_TEST_LOG"
+                grep -Eq ' logs --no-color --timestamps --since [^ ]+ backend$' "$UPDATE_TEST_LOG"
             fi
         fi
     done
@@ -553,6 +678,7 @@ install_dir="$case_dir/install"
 mkdir -p "$install_dir/bin" "$install_dir/resources"
 cp "$repo_dir/Makefile" "$repo_dir/.env.example" "$repo_dir/compose.override.yaml.example" "$install_dir/"
 cp "$repo_dir/bin/"{install,start,update-source,update-runtime,update-journal,init-data-volume,update-secrets,init-search-config,finalize-internal-secrets,refresh-documentation,documentation}.sh "$install_dir/bin/"
+cp "$repo_dir/bin/redact-update-log.awk" "$install_dir/bin/"
 cp -R "$repo_dir/tooling" "$install_dir/tooling"
 cp -R "$repo_dir/resources/search" "$install_dir/resources/"
 cat > "$case_dir/bin/ip" <<'SH'

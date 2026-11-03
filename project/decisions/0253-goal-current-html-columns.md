@@ -28,6 +28,12 @@ Document is soft-deleted only after the text is copied, before Atlas removes its
 obsolete reference. Tracking content, identity, revisions and grants are untouched.
 Existing preservation archives remain intact; no description history is imported.
 
+When contraction is deferred, preparation makes the retained source reference nullable
+so the current runtime can create Goals using inline descriptions. Existing references
+remain available for transfer. Copying and retiring a source description are atomic;
+once retired, that source must not prevent later legitimate edits or overwrite them
+during synchronization replay.
+
 This supersedes automatic filing in decision 0107 and the description-as-Document
 contract. Decision 0252 still governs the tracking Document; Goal descriptions
 remain owned by their business domain.

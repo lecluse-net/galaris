@@ -11,15 +11,43 @@ from core.dbadmin.actions import validate_open_actions
 from core.dbadmin.contracts import DbAdminFatalError
 from core.dbadmin.models import DbAdminActionRevision
 from unittest.mock import AsyncMock
+from loguru import logger
+
+
+@pytest.fixture
+def action_diagnostics():
+    messages = []
+    sink = logger.add(lambda message: messages.append(str(message)), format="{message}")
+    try:
+        yield messages
+    finally:
+        logger.remove(sink)
+
+
+@pytest.mark.asyncio
+async def test_validation_reports_all_previous_causes_before_a_fatal_mismatch(db, action_diagnostics):
+    db.add_all([
+        DbAdminActionRecord(key="test.first", phase="before_expand", checksum="v1", status="failed",
+            last_error="Synthetic first cause; password=synthetic-first-secret"),
+        DbAdminActionRecord(key="test.second", phase="after_expand", checksum="v1", status="failed",
+            last_error="Synthetic second cause; token=synthetic-second-secret"),
+    ])
+    await db.commit()
+    with pytest.raises(DbAdminFatalError, match="no longer registered"):
+        await validate_open_actions(DbAdminRegistry())
+    messages = "\n".join(action_diagnostics)
+    assert "Synthetic first cause" in messages and "Synthetic second cause" in messages
+    assert "synthetic-first-secret" not in messages and "synthetic-second-secret" not in messages
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("required", [False, True])
 @pytest.mark.parametrize("compatible", [False, True])
 @pytest.mark.parametrize("satisfied", [False, True])
-async def test_changed_action_requires_explicit_compatibility(db, required, compatible, satisfied):
+async def test_changed_action_requires_explicit_compatibility(db, required, compatible, satisfied, action_diagnostics):
     key = "test.changed_action"
-    db.add(DbAdminActionRecord(key=key, phase="after_expand", checksum="v1", status="failed"))
+    db.add(DbAdminActionRecord(key=key, phase="after_expand", checksum="v1", status="failed",
+        last_error="Synthetic original conversion cause; password=synthetic-private-value"))
     await db.commit()
     condition = AsyncMock(side_effect=[satisfied, True])
     handler = AsyncMock()
@@ -30,11 +58,18 @@ async def test_changed_action_requires_explicit_compatibility(db, required, comp
         predicate=lambda _: False, handler=handler, postcondition=condition,
     ))
     if required and not compatible:
-        with pytest.raises(DbAdminFatalError, match="checksum"):
+        with pytest.raises(DbAdminFatalError, match="checksum") as failure:
             await validate_open_actions(registry)
+        assert "recorded_checksum='v1'" in str(failure.value)
+        assert "expected_checksum='v2'" in str(failure.value)
+        assert "status='failed'" in str(failure.value)
+        assert any("Synthetic original conversion cause" in message for message in action_diagnostics)
+        assert all("synthetic-private-value" not in message for message in action_diagnostics)
         condition.assert_not_awaited()
         return
     validation = await validate_open_actions(registry)
+    assert any("Synthetic original conversion cause" in message for message in action_diagnostics)
+    assert all("synthetic-private-value" not in message for message in action_diagnostics)
     results, issues = await run_actions(registry, DbAdminPhase.AFTER_EXPAND, SchemaTransitionSet())
     record = await db.get_one(DbAdminActionRecord, key)
     await db.refresh(record)

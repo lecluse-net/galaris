@@ -6171,6 +6171,13 @@
       },
       {
         "files": [
+          "back/core/dbadmin/actions.py"
+        ],
+        "source": "core.dbadmin",
+        "target": "core.update_diagnostics"
+      },
+      {
+        "files": [
           "back/core/i18n/i18n_service.py"
         ],
         "source": "core.i18n",

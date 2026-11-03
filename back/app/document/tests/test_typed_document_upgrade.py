@@ -33,8 +33,10 @@ async def text_document_snapshot(connection, identity, folder, file):
         "share_grants": "share_id IN (SELECT share_id FROM documents WHERE id=:id UNION SELECT share_id FROM document_tags WHERE id=:folder)",
     }
     excluded = {
-        "documents": ["document_type", "storage_kind", "file_id", "creation_key", "creation_fingerprint", "summary_media_type"],
+        "documents": ["document_type", "storage_kind", "file_id", "creation_key", "creation_fingerprint", "summary_media_type",
+                      "summary_generated", "summary_pending", "summary_source_text"],
         "document_revisions": ["author_user_id", "storage_kind", "file_id", "document_source_revision_id"],
+        "document_list_positions": ["at_root"],
     }
     return {table: await connection.scalar(text(f"SELECT coalesce(jsonb_agg(to_jsonb(r) - CAST(:excluded AS text[]) ORDER BY r.id),'[]'::jsonb) FROM {table} r WHERE {predicate}"),
         {"id": identity, "folder": folder, "file": file, "excluded": excluded.get(table, [])}) for table, predicate in predicates.items()}
@@ -119,8 +121,15 @@ async def test_old_dataset_schema_upgrades_and_resumes_without_losing_sources(co
         before_summaries = await connection.scalar(text("SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM document_summary_revisions r"))
         for table in ("typed_document_sources", "typed_document_transfers", "typed_document_state", "typed_document_roles"):
             await connection.execute(text(f"DROP TABLE IF EXISTS galaris_migration.{table}"))
-        for column in ("storage_kind", "file_id", "creation_key", "creation_fingerprint", "summary_media_type"):
+        # These additions were absent in the released 0.2.0 schema. Keeping them
+        # here previously hid a BEFORE_EXPAND query against nonexistent columns.
+        for column in ("storage_kind", "file_id", "creation_key", "creation_fingerprint", "summary_media_type",
+                       "summary_generated", "summary_pending", "summary_source_text"):
             await connection.execute(text(f"ALTER TABLE documents DROP COLUMN {column} CASCADE"))
+        for column in ("summary_content", "summary_generated", "summary_pending", "summary_source_text"):
+            await connection.execute(text(f"ALTER TABLE datasets DROP COLUMN {column} CASCADE"))
+        await connection.execute(text("ALTER TABLE dataset_appearances DROP COLUMN at_root"))
+        await connection.execute(text("ALTER TABLE document_list_positions DROP COLUMN at_root"))
         for column in ("author_user_id", "storage_kind", "file_id", "document_source_revision_id"):
             await connection.execute(text(f"ALTER TABLE document_revisions DROP COLUMN {column} CASCADE"))
         before_text = await text_document_snapshot(connection, text_identity, text_folder, text_file)
@@ -129,6 +138,13 @@ async def test_old_dataset_schema_upgrades_and_resumes_without_losing_sources(co
     from app.document.summary_retirement import register as register_summary_retirement
     register_summary_retirement(registry)
     if interrupted:
+        # Resume a journal written by the published 0.3.0 preparation, whose
+        # destination-column query failed before schema expansion.
+        from core.dbadmin.models import DbAdminActionRecord
+        async with get_db_session() as session:
+            await session.merge(DbAdminActionRecord(key="app.document.typed_sources", phase="before_expand",
+                checksum="preserve-and-verify-dataset-content-history-acls-v1", status="failed",
+                last_error="Synthetic published preparation failed before expansion"))
         failed_registry = DbAdminRegistry()
 
         async def fail_after_expansion(session, delta):
@@ -141,7 +157,10 @@ async def test_old_dataset_schema_upgrades_and_resumes_without_losing_sources(co
         assert failed.verdict is DbAdminVerdict.FATAL
         async with engine.connect() as connection:
             assert await connection.scalar(text("SELECT content FROM datasets WHERE id=:id"), {"id": identity}) == source
-            assert await connection.scalar(text("SELECT content FROM documents WHERE id=:id"), {"id": identity}) == source
+            # The archive is the pre-expansion durability guarantee; creating the
+            # canonical row now waits for its destination columns to exist.
+            assert await connection.scalar(text("SELECT content FROM documents WHERE id=:id"), {"id": identity}) is None
+            assert await connection.scalar(text("SELECT snapshot->>'content' FROM galaris_migration.typed_document_sources WHERE source='datasets' AND identity=:id"), {"id": identity}) == source
             assert await text_document_snapshot(connection, text_identity, text_folder, text_file) == before_text
             assert attachment_path.read_bytes() == attachment_bytes
             assert await connection.scalar(text("SELECT to_regclass('public.document_summary_revisions')")) is not None

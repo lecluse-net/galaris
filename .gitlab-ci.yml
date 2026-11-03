@@ -20,12 +20,19 @@ default:
 
 variables:
   GIT_DEPTH: "0"
+  FULL_FUNCTIONAL: "false"
+
+.full-functional:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $FULL_FUNCTIONAL == "true"'
+    - when: never
 
 static:
   stage: verify
   script: ["bash bin/check-static.sh"]
 
 providers:
+  extends: .full-functional
   stage: verify
   script: ["make tests-providers"]
   artifacts:
@@ -36,6 +43,8 @@ providers:
       junit: artifacts/provider-contracts.xml
 
 backend:
+  extends: .full-functional
+  timeout: 90m
   stage: verify
   script:
     - export COVERAGE_DIFF_BASE="${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}"
@@ -53,6 +62,8 @@ backend:
         path: artifacts/coverage.xml
 
 components:
+  extends: .full-functional
+  timeout: 90m
   stage: verify
   script: ["make tests-front-components"]
   artifacts:
@@ -63,9 +74,10 @@ components:
       junit: artifacts/front-components/*/junit.xml
 
 e2e:
+  extends: .full-functional
   stage: verify
-  timeout: 45m
-  script: ["make tests-e2e ARGS='--repeat-each=3'"]
+  timeout: 4h
+  script: ["make tests-e2e ARGS='--repeat-each=1 --max-failures=0'"]
   artifacts:
     when: always
     expire_in: 14 days
@@ -101,6 +113,7 @@ images:
     paths: [artifacts/security/]
 
 recovery:
+  extends: .full-functional
   stage: verify
   script:
     - make tests-restore

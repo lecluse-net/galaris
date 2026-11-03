@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import delete, select, text, update
 from app.agent.models import Agent, AgentGroup, Title
 from app.agent.models import AgentTeam
-from core.dbadmin.actions import run_actions
+from core.dbadmin.actions import run_actions, stage_actions
 from core.dbadmin.models import DbAdminActionRecord
 
 
@@ -58,7 +58,8 @@ async def test_later_sync_preserves_edited_deleted_and_custom_titles_even_when_a
 
 
 @pytest.mark.asyncio
-async def test_legacy_group_membership_is_preserved_and_backfill_is_idempotent(db):
+@pytest.mark.parametrize("previously_completed", [False, True])
+async def test_legacy_group_transfer_preserves_memberships_and_later_revocations(db, previously_completed):
     team = AgentGroup(name="Existing group")
     title = Title(label="Mx", gender="M")
     db.add_all([team, title])
@@ -68,17 +69,35 @@ async def test_legacy_group_membership_is_preserved_and_backfill_is_idempotent(d
     await db.flush()
     await db.execute(text("ALTER TABLE agents ADD COLUMN group_id integer REFERENCES agent_groups(id)"))
     await db.execute(text("UPDATE agents SET group_id = :team WHERE id = :agent"), {"team": team.id, "agent": agent.id})
+    if not previously_completed:
+        await db.execute(text("DELETE FROM dbadmin_actions WHERE key='app.agent.team_memberships'"))
     registry = DbAdminRegistry()
     register_dbadmin(registry)
     action = next(action for action in registry.actions if action.key == "app.agent.team_memberships")
     delta = SchemaTransitionSet(removed_columns=frozenset({"agents.group_id"}))
     assert action.predicate(delta)
+    await stage_actions(registry, delta)
     assert not await action.postcondition(db, delta)
     await action.handler(db, delta)
     await action.handler(db, delta)
     assert await action.postcondition(db, delta)
     rows = (await db.scalars(select(AgentTeam).where(AgentTeam.agent_id == agent.id))).all()
-    assert len(rows) == 1 and rows[0].team_id == team.id
+    if previously_completed:
+        # A published import already completed, followed by a legitimate removal
+        # while another action kept the legacy column alive.
+        assert rows == []
+    else:
+        assert len(rows) == 1 and rows[0].team_id == team.id
+        await db.delete(rows[0])
+        await db.flush()
+    assert await action.postcondition(db, delta)
+    await action.handler(db, delta)
+    assert list(await db.scalars(select(AgentTeam).where(AgentTeam.agent_id == agent.id))) == []
+    await db.execute(text("UPDATE galaris_migration.agent_team_sources SET team=team+1000, transferred=false WHERE identity=:id"),
+                     {"id": agent.id})
+    with pytest.raises(ValueError, match="source changed"):
+        await action.handler(db, delta)
+    assert list(await db.scalars(select(AgentTeam).where(AgentTeam.agent_id == agent.id))) == []
 
 
 def test_dbadmin_registers_required_agent_manager_backfill() -> None:

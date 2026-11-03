@@ -29,13 +29,17 @@ consultez la [méthode de test](testing.md).
 
 ## Collecter les échecs avant une livraison
 
-Les suites de composants et les parcours assemblés en CI utilisent `--max-failures=0`
-pour conserver tous les échecs d'un même candidat. Les trois navigateurs restent isolés,
-avec trois répétitions par navigateur et un statut d'échec dès qu'un cas échoue.
+La CI automatique exécute les contrôles rapides. Les suites fonctionnelles complètes
+se lancent explicitement avec **Quality → Run workflow → full** sur GitHub, ou
+`FULL_FUNCTIONAL=true` dans une pipeline GitLab manuelle. Les composants et parcours
+assemblés utilisent `--max-failures=0` pour conserver tous les échecs d'un même candidat.
+Les trois navigateurs restent isolés, avec un passage par navigateur et un statut d'échec
+dès qu'un cas échoue. Les répétitions de stabilité restent un choix explicite.
 Pour diagnostiquer un lot, figer les sources, terminer la collecte, puis regrouper les
-corrections et vérifier les parcours concernés. Une collecte interrompue ne qualifie pas
-la livraison ; reprendre les cas manquants sans rejouer aveuglément les cas terminés.
-La publication exige ensuite les contrôles CI du commit final et `make release-check`.
+corrections et vérifier les parcours concernés. Une collecte interrompue ne prouve pas
+la validation fonctionnelle ; reprendre les cas manquants sans rejouer aveuglément les cas terminés.
+La publication exige Security sur le commit final et `make release-check` ; les résultats
+Quality sont conservés séparément et ne bloquent pas la publication des sources.
 
 ## RAG documentaire selon la capacité et purge du fichier
 
@@ -473,6 +477,13 @@ Il exerce aussi l'expansion/contraction Atlas réelle, le rollback d'un lot part
 la reprise et les objectifs supprimés logiquement, en comparant le suivi, ses révisions, ses droits
 et son classement avant/après. `e2e/specs/goal-content.spec.mjs` vérifie l'enregistrement de la
 description depuis l'interface, la réouverture du suivi et son classement personnel après renommage.
+Le scénario de contraction différée crée un nouvel objectif et modifie une description
+déjà transférée, puis vérifie que la reprise conserve ces écritures. La migration Agent
+dans `app/agent/tests/test_column_retirement.py` protège de même le HTML d'un agent créé
+pendant cette période, ainsi que le diagnostic précis d'un profil historique refusé.
+Il retire aussi une appartenance après transfert et vérifie qu'elle reste révoquée
+après reprise et contraction. `app/agent/tests/test_dbadmin.py` couvre le premier import
+et celui déjà terminé par un binaire publié, même après remise en attente du journal.
 `app/document/tests/test_goal_folders.py` remplace les anciennes garanties de classement
 automatique par la présence en liste non classée, l'absence de placement dans l'arbre,
 le respect du classement manuel et la neutralisation des anciens jobs.
@@ -760,6 +771,11 @@ et rejeu. Les lignes d'un document Texte sont comparées intégralement avant et
 hors changement explicite de type et nouvelles colonnes : HTML Unicode et applicatif,
 révisions, résumé manuel, mots-clés, métadonnées, droits, classement, provenance,
 URL et pièces jointes. Les octets du fichier joint et des archives restent identiques.
+Les colonnes ajoutées après 0.2.0 sont réellement absentes avant expansion ; l'archive
+précède la copie et un journal d'échec au checksum publié en 0.3.0 reste reprenable.
+`make tests-upgrade` peuple l'ancien binaire avec un document Texte, ses droits et sa pièce
+jointe, ainsi qu'un Dataset et sa révision. Il vérifie les API et refus d'accès après
+convergence, une seconde synchronisation et la restauration avec l'ancien binaire.
 `test_independence_upgrade.py` combine aussi la séparation historique Memory avec
 l'unification des types. Le test vérifie la restauration d'une ancienne version sans
 perdre son original ni les métadonnées courantes. Il vérifie aussi la rétention des fichiers binaires encore référencés par une
@@ -1054,8 +1070,12 @@ et le motif ; un motif inconnu ou une sortie distante privée ne sont jamais ré
 Une panne ne divulgue pas de secret et n’empêche pas
 les autres cibles d’être vérifiées. `make tests-update` protège l’exécution après disponibilité
 du backend et la propagation d’un échec de maintenance à `make update`.
-Les échecs injectés imposent aussi un journal privé de l’étape et du code de sortie pour les
-déploiements depuis les sources et les releases. `core/tests/test_update_diagnostics.py`
+Les échecs injectés imposent aussi un journal privé de l’étape, de la commande, du code de
+sortie et de tous les logs de démarrage backend, pour les sources et les releases :
+première erreur suivie de plus de 350 lignes, erreurs multiples, stderr, masquage des
+secrets, erreurs non fatales et échecs de collecte, de filtre ou d'écriture. Une panne de
+diagnostic conserve le code d'échec initial et ne réaffiche jamais la sortie brute.
+`core/tests/test_update_diagnostics.py`
 vérifie la conservation des causes et des sorties utiles sans secrets, les permissions,
 la rétention bornée et le repli explicite lorsque le stockage échoue. La CLI de maintenance
 doit afficher le chemin du diagnostic et poursuivre les autres cibles.
@@ -1376,10 +1396,11 @@ aux changements de rôle, aux fins de transaction et après la réponse ;
 `core/user/tests/test_refresh_session.py` couvre le contrôle compte/session regroupé,
 les jetons historiques, l’expiration, la révocation et les UserToken.
 `make tests-release-check` exécute les scripts de publication avec Git réel et des frontières
-scanner/API synthétiques : refus des CI absentes, échouées, annulées, périmées ou issues
+scanner/API synthétiques : refus des preuves Security absentes, échouées, annulées, périmées ou issues
 d’un fork, sélection du dernier résultat, archive du commit exact et arrêt de la construction
 sur alerte. `tests/test_release_publication.py` vérifie que la publication dépend de ce contrôle
-et utilise le commit qualifié.
+et utilise le commit qualifié. Les échecs fonctionnels n'empêchent pas la publication ;
+les scans refusent aussi les vulnérabilités d'image HIGH/CRITICAL sans correctif disponible.
 `core/user/tests/test_security_unit.py` conserve un jeton entièrement synthétique émis par
 l’ancien python-jose pour vérifier la compatibilité après passage à PyJWT. Il reproduit aussi
 une signature HMAC forgée avec une clé publique DER et exige son refus, même si HS256 est

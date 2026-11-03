@@ -171,6 +171,19 @@ works before `make install` or with local changes. A Git checkout and remote acc
 development and production. SearXNG follows the version pinned in `compose.yaml`, preserving
 existing configuration. A pull failure stops the update while keeping running services.
 
+Each attempt writes a private `artifacts/updates/update-*.log` file and prints its path.
+It retains stages, exit codes, startup command output and all backend logs since the
+attempt began, without a tail limit. Fatal and nonfatal DbAdmin errors remain available
+in that file even when the backend cannot start or the next attempt recreates its
+container. Recognized secrets are redacted before writing; the latest 100 journals
+are retained. Send this file when reporting a failure; no SQL query is needed to read
+these errors. Incomplete collection is reported and fails an otherwise successful
+update, while preserving any original failure. At the next startup, DbAdmin also
+prints the recorded causes of unfinished actions before retrying them, allowing
+an earlier failure to appear in the new journal after the old container was replaced.
+Older journals containing only stage
+metadata cannot reconstruct output they did not record.
+
 Without `VERSION`, no Git fetching or selection takes place: existing sources are used,
 including local changes, detached tags or branches without an upstream.
 With `VERSION`, `.git` must exist in the installation (directory or worktree file).

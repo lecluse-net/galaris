@@ -24,13 +24,16 @@ Contacts access and managed Agent scope in the HTTP journey.
 
 ## Collect failures before a release
 
-CI component suites and assembled journeys use `--max-failures=0` to retain all failures
-from the same candidate. The three browsers remain isolated, with three repetitions per
-browser and a failing exit status whenever a case fails. For batch diagnosis, freeze the
+Automatic CI runs quick checks. Complete functional suites require **Quality → Run workflow
+→ full** on GitHub or `FULL_FUNCTIONAL=true` in a manually started GitLab pipeline.
+Component suites and assembled journeys use `--max-failures=0` to retain all failures
+from the same candidate. The three browsers remain isolated, with one pass per browser
+and a failing exit status whenever a case fails. Stability repetitions remain explicit.
+For batch diagnosis, freeze the
 sources, finish collection, then group corrections and verify the affected journeys.
-An interrupted collection cannot qualify a release; resume missing cases without blindly
-replaying completed cases. Publication then requires CI for the final commit and
-`make release-check`.
+An interrupted collection does not establish functional validation; resume missing cases
+without blindly replaying completed cases. Publication requires Security for the final
+commit and `make release-check`; Quality results remain separate and do not gate source release.
 
 ## Capacity-routed document RAG and file deletion
 
@@ -377,6 +380,13 @@ checks saving the description through the UI, reopening tracking and preserving 
 after a Goal rename. `app/document/tests/test_goal_folders.py` replaces automatic
 filing contracts with unclassified-list visibility, absence from the tree, preserved manual
 placement and neutralized historical jobs.
+The deferred-contraction scenario creates a new Goal and edits an already transferred
+description, then verifies that recovery preserves these writes. Agent migration in
+`app/agent/tests/test_column_retirement.py` similarly protects HTML written by an Agent
+created during this period and precise diagnostics for rejected historical profiles.
+It also removes a transferred membership and checks that recovery and contraction
+preserve the revocation. `app/agent/tests/test_dbadmin.py` covers the initial import
+and one completed by a published binary, including after staging its journal again.
 `app/memory/tests/test_source_projection.py` also checks that linking or removing a derived
 Goal projection preserves its edit revision and history metadata: an already open edit can
 save, while a genuinely stale edit is still rejected.
@@ -724,6 +734,11 @@ and replay. All Text document source fields are compared before and after, excep
 the explicit type change and new columns: Unicode and application HTML, revisions,
 manual summary, keywords, metadata, permissions, classification, provenance, URLs
 and attachments. Attached file and archive bytes remain identical.
+Columns added after 0.2.0 are actually absent before expansion; archival precedes copying
+and a failed journal with the published 0.3.0 checksum remains resumable.
+`make tests-upgrade` populates the previous binary with a Text document, permissions and
+an attachment, plus a Dataset and its revision. It checks APIs and access denials after
+convergence, repeated synchronization and restoration with the previous binary.
 `test_independence_upgrade.py` also combines the historical Memory separation with
 type unification. Restoration retains the original archive and current metadata.
 The test also verifies retention of binary files referenced by historical revisions.
@@ -990,8 +1005,12 @@ replacement with live sessions and preserves access parameters. Recognized remot
 their stage and reason; unknown reasons and private remote output are never echoed. Failures expose no secrets
 and do not prevent checking other targets. `make tests-update` protects execution after
 backend readiness and propagation of maintenance failures to `make update`.
-Injected failures also require a private stage/exit-status journal for source and release
-deployments. `core/tests/test_update_diagnostics.py` checks preservation of causes and useful
+Injected failures also require a private stage, command, exit-status and complete backend
+startup log journal for source and release deployments: a first error followed by more
+than 350 lines, multiple errors, stderr, redaction, nonfatal issues and collection,
+filter or write failures. Diagnostic failures preserve the original exit status and
+never fall back to raw output.
+`core/tests/test_update_diagnostics.py` checks preservation of causes and useful
 output without secrets, permissions, bounded retention and explicit fallback on storage failure.
 The maintenance CLI must print the diagnostic path and continue checking other targets.
 `code-executor/tests/test_deployment.py` checks orchestration with a simulated Docker boundary,
@@ -1308,10 +1327,11 @@ and both agents' scopes.
 transaction boundaries and after the response; `core/user/tests/test_refresh_session.py`
 covers combined account/session validation, legacy tokens, expiry, revocation and UserToken.
 `make tests-release-check` executes publication scripts with real Git and synthetic scanner/API
-boundaries: missing, failed, cancelled, stale or fork CI is rejected, the latest result is
+boundaries: missing, failed, cancelled, stale or fork Security evidence is rejected, the latest result is
 selected, the exact commit is archived and source findings stop image builds.
 `tests/test_release_publication.py` checks that publication depends on this gate and uses
-the qualified commit.
+the qualified commit. Functional failures do not prevent publication; image scans also reject
+HIGH/CRITICAL vulnerabilities without an available fix.
 `core/user/tests/test_security_unit.py` retains an entirely synthetic token issued by the old
 python-jose library to verify compatibility after moving to PyJWT. It also reproduces an HMAC
 signature forged with a DER public key and requires rejection even when HS256 is allowed.

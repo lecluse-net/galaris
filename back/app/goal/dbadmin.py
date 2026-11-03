@@ -12,6 +12,19 @@ def needs_content(delta: SchemaTransitionSet) -> bool:
     return "goals.description_document_id" in delta.removed_columns
 
 
+async def retirement_ready(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
+    nullable = await session.scalar(text("""SELECT is_nullable FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='goals' AND column_name='description_document_id'"""))
+    return nullable is None or nullable == "YES"
+
+
+async def prepare_retirement(session: AsyncSession, delta: SchemaTransitionSet) -> None:
+    if not await retirement_ready(session, delta):
+        # Keep existing source references while allowing the new runtime to
+        # create Goals when another nonfatal preparation defers contraction.
+        await session.execute(text("ALTER TABLE public.goals ALTER COLUMN description_document_id DROP NOT NULL"))
+
+
 async def content_complete(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
     if await session.scalar(text("""SELECT EXISTS(
         SELECT 1 FROM goals WHERE description IS NULL
@@ -28,10 +41,8 @@ async def content_complete(session: AsyncSession, _delta: SchemaTransitionSet) -
         WHERE d.deleted_at IS NULL
     )""")):
         return False
-    rows = (await session.execute(text("SELECT description_document_id, description FROM goals"))).mappings()
-    for goal in rows:
-        if goal["description"] != await description_source(session, goal["description_document_id"]):
-            return False
+    # Copy and source retirement commit atomically. Subsequent legitimate edits
+    # of a transferred Goal must not be compared to its retired Document forever.
     return True
 
 
@@ -56,7 +67,7 @@ async def transfer_content(session: AsyncSession, _delta: SchemaTransitionSet) -
         raise ValueError("Refusing to retire a description also used for tracking")
     rows = (await session.execute(text("""SELECT id, description_document_id,
         tracking_document_id, description FROM goals
-        ORDER BY id FOR UPDATE"""))).mappings()
+        WHERE description_document_id IS NOT NULL ORDER BY id FOR UPDATE"""))).mappings()
     for goal in rows:
         content = await description_source(session, goal["description_document_id"])
         if goal["description"] is None:
@@ -73,7 +84,13 @@ async def transfer_content(session: AsyncSession, _delta: SchemaTransitionSet) -
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_action(DbAdminAction(
+        key="app.goal.prepare_description_retirement", phase=DbAdminPhase.BEFORE_EXPAND,
+        checksum="retained-description-reference-allows-new-goals-v1",
+        predicate=needs_content, handler=prepare_retirement, postcondition=retirement_ready,
+    ))
+    registry.register_action(DbAdminAction(
         key="app.goal.current_content", phase=DbAdminPhase.AFTER_EXPAND,
-        checksum="current-description-html-into-goal-keep-tracking-document-v1",
+        checksum="current-description-html-with-staged-goal-writes-v2",
+        compatible_checksums=frozenset({"current-description-html-into-goal-keep-tracking-document-v1"}),
         predicate=needs_content, handler=transfer_content, postcondition=content_complete,
     ))
