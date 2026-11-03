@@ -1,4 +1,7 @@
-FROM python:3.14-slim-trixie@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS base
+FROM ubuntu:26.04@sha256:6a06111c3b0a8600feadb270aec771dc239bf407b25625f93f44ab00e11f4d3c AS base
+
+# Reserve the development UID for the existing app user contract.
+RUN if id ubuntu >/dev/null 2>&1; then userdel -r ubuntu; fi
 
 ARG GALARIS_BUILD_VERSION=unknown
 
@@ -13,6 +16,7 @@ RUN printf '%s\n' "$GALARIS_BUILD_VERSION" > /opt/galaris-version
 
 # Apply available security updates to the pinned base before installing packages.
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    python3.14 python3.14-venv python-is-python3 ca-certificates curl \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
@@ -25,6 +29,12 @@ COPY --from=ghcr.io/astral-sh/uv:0.11@sha256:77280f2f771df71f90786c314fe1bbc1e02
 COPY --from=arigaio/atlas@sha256:bafdd9c5921bd717626b5411fd0895e723702e638186e3f71bfb8299c043fa3a /atlas /bin/atlas
 
 # Install system dependencies
+# Keep dump/restore tools on the server's PostgreSQL major version.
+RUN install -d /usr/share/keyrings \
+    && curl --fail --silent --show-error https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/keyrings/pgdg.asc \
+    && echo '0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76  /usr/share/keyrings/pgdg.asc' | sha256sum -c - \
+    && printf '%s\n' 'deb [signed-by=/usr/share/keyrings/pgdg.asc] https://apt.postgresql.org/pub/repos/apt resolute-pgdg main' > /etc/apt/sources.list.d/pgdg.list
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     ffmpeg \
@@ -32,7 +42,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     pulseaudio \
     pulseaudio-utils \
-    postgresql-client \
+    postgresql-client-17 \
     libreoffice-writer \
     libreoffice-calc \
     libreoffice-impress \
@@ -105,12 +115,13 @@ FROM base AS prod-stage
 # Docker preserves this ownership when it initializes an empty named volume.
 RUN addgroup --system app && \
     adduser --system --ingroup app app && \
-    mkdir -p /data && \
-    chown app:app /data
+    mkdir -p /data /tmp/galaris-cache && \
+    chown app:app /data /tmp/galaris-cache
 
 # Override venv location to be outside /app (avoid volume mount overwrite)
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    XDG_CACHE_HOME=/tmp/galaris-cache
 
 # Copy the completed environment; production never installs build dependencies.
 COPY --from=prod-builder --chown=app:app /opt/venv /opt/venv
@@ -124,8 +135,8 @@ COPY --from=product_docs . /opt/galaris-documentation/docs/
 COPY --from=project_docs decisions/ /opt/galaris-documentation/project/decisions/
 COPY --from=project_docs plans/ /opt/galaris-documentation/project/plans/
 
-RUN chmod +x /app/entrypoint.sh && \
-    /usr/local/bin/python -m pip uninstall -y pip
+# The distribution interpreter has no global pip; uv owns the application venv.
+RUN chmod +x /app/entrypoint.sh
 
 USER app
 

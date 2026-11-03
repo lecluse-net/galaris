@@ -25,29 +25,40 @@ si les fragments interpolés changent.
 
 Les images backend, frontend, navigateur et SSH sont construites avec leurs paquets
 actualisés. `bash bin/security-check.sh image IMAGE` conserve l'inventaire complet
-dans `artifacts/security/` et échoue si un correctif HIGH/CRITICAL reste disponible.
-Les résultats sans correctif restent à examiner ; ils ne sont pas une certification
-de sûreté. Les rapports CI sont conservés 30 jours.
+dans `artifacts/security/` et échoue pour toute vulnérabilité HIGH/CRITICAL active,
+même sans correctif. Chaque cause est également affichée dans les logs CI.
+Les rapports CI sont conservés 30 jours.
 
-Le backend exclut le `.venv` de l'hôte de son contexte de build. Le pip système,
-inutile dans l'image de production qui utilise uv, est retiré. npm reste disponible
+Backend et SSH utilisent Ubuntu 26.04 LTS avec Python 3.14. Les clients PostgreSQL
+restent en version 17 via le dépôt officiel signé PGDG. Le backend exclut le `.venv`
+de l'hôte et ne possède pas de pip système ; uv gère son environnement. npm reste disponible
 dans l'image navigateur pour ses commandes de validation ; ses dépendances sont
 actualisées sans modifier les règles réseau du navigateur.
+Les codecs GStreamer Bad inutilisés par Chromium sont retirés.
+
+Le scan SSH conserve un inventaire brut et peut appliquer une VEX aux seules CVE
+noyau examinées pour la version exacte de `linux-libc-dev`. La vérification de l'image
+immuable prouve la présence d'en-têtes non exécutables et l'absence de noyau/modules.
+La VEX expire ; les CVE classées restent visibles dans le rapport évalué et les logs.
+Une autre version, une nouvelle CVE, une preuve absente ou une alerte perdue bloque.
+Le contrôle ne classe pas les vulnérabilités du noyau de l'hôte. Voir la
+[décision 0264](../../../project/decisions/0264-lts-runtime-security-assessment.md).
 
 Activer dans les règles de la branche principale les statuts **Quality required** et
 **Security required**. Ces deux jobs agrègent leurs dépendances et échouent aussi
 quand un job requis a été annulé ou ignoré. Le dépôt fournit les jobs ; l'activation
 de leur caractère obligatoire est un réglage GitHub distinct.
 
-Avant publication, préparer les sources avec `make docs-prepare`, puis lancer `make validate`
-sur un instantané isolé du worktree. `make validate-stability` ajoute trois répétitions E2E
+Préparer les sources avec `make docs-prepare`. Pour une qualification fonctionnelle complète,
+l'utilisateur peut lancer `make validate` sur un instantané isolé du worktree.
+`make validate-stability` ajoute trois répétitions E2E
 par navigateur. Lire le rapport `artifacts/validation/*/summary.txt` et ses échecs ; toute
 modification ultérieure invalide la validation. Les cibles `make security-check` et
 `make tests-restore` peuvent aussi être exécutées séparément pour un contrôle ciblé.
 
 ## Contrôle avant publication
 
-Après le dernier commit poussé sur `main`, attendre les workflows Quality et Security,
+Après le dernier commit poussé sur `main`, attendre le workflow Security,
 puis exécuter **avant de créer ou pousser le tag** :
 
 ```bash
@@ -57,27 +68,27 @@ make release-check RELEASE_REF=HEAD
 Cette commande requiert Docker et jq. Elle utilise GitHub CLI (`gh`) avec un accès en
 lecture aux Actions ; si `gh` est absent, curl interroge l’API publique en lecture seule.
 Un dépôt privé exige un `gh` authentifié. `GH_REPO=propriétaire/dépôt` peut préciser le dépôt. Elle vérifie
-la dernière exécution de chaque workflow pour le commit exact, puis relance Trivy et
+la dernière exécution Security pour le commit exact, puis relance Trivy et
 Semgrep sur son archive Git, indépendamment des fichiers non committés. Une CI absente,
 échouée, annulée, ignorée ou encore en cours bloque ; un succès d’un autre commit ne
 convient pas. Toute nouvelle modification doit être commitée, poussée et contrôlée.
 
 Le workflow **Publish release** exige le même contrôle avant de créer la Release GitHub.
-Il peut attendre les CI en cours jusqu’à quatre heures, puis effectue le scan frais.
+Il peut attendre Security jusqu’à quarante minutes, puis effectue le scan frais.
 Ses erreurs apparaissent dans les annotations et le résumé Actions ; les journaux et
 résultats CI sont conservés dans l’artefact `release-check`. Une erreur réseau ou une
 indisponibilité du scanner bloque aussi. `make build-release` scanne également les
 sources du commit avant de construire les images. Aucun de ces contrôles ne crée de tag.
 
 Le scan des sources bloque les alertes HIGH/CRITICAL même sans correctif. Le scan des
-images conserve sa politique pour les paquets système sans correctif et affiche leur
-nombre de critiques ; un résultat d’image réussi ne remplace jamais le contrôle des
-sources. Ce sont deux garanties différentes.
+images conserve aussi les alertes sans correctif et bloque celles qui restent actives.
+Seules les conclusions VEX précises et vérifiées ci-dessus peuvent établir qu'une
+alerte n'affecte pas l'artefact. Un résultat d'image ne remplace pas le contrôle des sources.
 
 Une création manuelle dans l’interface GitHub contourne le workflow : utiliser **Publish
 release**. Les protections de branches et de tags restent des réglages GitHub distincts.
 Le contrôle n’établit pas l’absence de vulnérabilités encore inconnues. La
-[décision de publication](../../../project/decisions/0262-source-release-security-gate.md)
+[décision de publication](../../../project/decisions/0263-security-only-release-gate.md)
 décrit la cause du défaut de séquencement et le contrat retenu.
 
 ## Restauration répétable

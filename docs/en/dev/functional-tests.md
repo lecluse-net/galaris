@@ -1332,6 +1332,10 @@ selected, the exact commit is archived and source findings stop image builds.
 `tests/test_release_publication.py` checks that publication depends on this gate and uses
 the qualified commit. Functional failures do not prevent publication; image scans also reject
 HIGH/CRITICAL vulnerabilities without an available fix.
+SSH VEX scenarios separately reject missing proof, wrong image/version/CVE, expiry
+and lost raw findings. Actual Trivy scans and header-payload verification complement
+the synthetic boundaries. `make tests-executor` now exercises the shipped SSH image,
+including its real interpreter and Unix permissions, rather than another Python distribution.
 `core/user/tests/test_security_unit.py` retains an entirely synthetic token issued by the old
 python-jose library to verify compatibility after moving to PyJWT. It also reproduces an HMAC
 signature forged with a DER public key and requires rejection even when HS256 is allowed.

@@ -23,27 +23,36 @@ SQL rule and require review when interpolated fragments change.
 
 Backend, frontend, browser and SSH images are rebuilt with security updates.
 `bash bin/security-check.sh image IMAGE` saves the complete inventory under
-`artifacts/security/` and fails if an available HIGH/CRITICAL fix remains unapplied.
-Unfixed findings still require review: a passing gate does not certify an image as
-vulnerability-free. CI retains reports for 30 days.
+`artifacts/security/` and fails on every active HIGH/CRITICAL vulnerability, even
+without a fix. Every cause is also printed in CI logs. Reports are retained for 30 days.
 
-The backend build excludes the host virtual environment and removes the unused
-system pip from production, which uses uv. Browser npm and its dependencies are
+Backend and SSH use Ubuntu 26.04 LTS with Python 3.14. PostgreSQL clients remain 17
+through the signed official PGDG repository. Backend builds exclude the host virtual
+environment and have no system pip; uv owns the application environment. Browser npm and its dependencies are
 updated without changing browser network policies.
+Unused GStreamer Bad codecs are removed from the Chromium executor.
+
+SSH scans retain a raw inventory and may apply VEX only to reviewed kernel CVEs for
+the exact `linux-libc-dev` version. Verification of the immutable image proves that
+the package contains non-executable headers and no kernel/modules are present.
+The review expires; assessed findings remain visible in reports and logs. A new
+version/CVE, missing proof or lost finding blocks. Host-kernel vulnerabilities are
+outside this artifact assessment. See
+[decision 0264](../../../project/decisions/0264-lts-runtime-security-assessment.md).
 
 Require **Quality required** and **Security required** in the main branch rules.
 These aggregate jobs also fail when required dependencies are cancelled or skipped.
 Workflow YAML defines the checks; making them mandatory is a separate GitHub setting.
 
-Before publication, prepare sources with `make docs-prepare`, then run `make validate`
-on an isolated worktree snapshot. `make validate-stability` adds three E2E repetitions per
+Prepare sources with `make docs-prepare`. For complete functional qualification, the user
+can run `make validate` on an isolated worktree snapshot. `make validate-stability` adds three E2E repetitions per
 browser. Read `artifacts/validation/*/summary.txt` and its failures; later edits invalidate
 validation. `make security-check` and `make tests-restore` can also run separately for
 targeted verification.
 
 ## Before publication
 
-After pushing the final commit to `main`, wait for Quality and Security, then run
+After pushing the final commit to `main`, wait for Security, then run
 **before creating or pushing the tag**:
 
 ```bash
@@ -53,27 +62,26 @@ make release-check RELEASE_REF=HEAD
 This requires Docker and jq. It uses GitHub CLI (`gh`) with Actions read access; when
 `gh` is absent, curl queries the public API read-only. Private repositories require
 authenticated `gh`. `GH_REPO=owner/repository` can specify the repository. It checks the latest execution of
-each workflow for the exact commit, then runs fresh Trivy and Semgrep scans on its Git
+Security for the exact commit, then runs fresh Trivy and Semgrep scans on its Git
 archive, independently of uncommitted files. Missing, failed, cancelled, skipped or
 pending CI blocks publication; success for another commit cannot qualify. New changes
 must be committed, pushed and checked again.
 
 **Publish release** requires the same check before creating the GitHub Release. It can
-wait up to four hours for running CI, then performs the fresh source scan. Errors appear
+wait up to forty minutes for Security, then performs the fresh source scan. Errors appear
 in Actions annotations and the step summary; logs and CI results are retained in the
 `release-check` artifact. Network or scanner failures also block publication.
 `make build-release` also scans committed sources before building images. None of these
 checks creates a tag.
 
-Source scans block HIGH/CRITICAL findings even without a fix. Image scans retain their
-policy for unfixed system packages and display the number of unfixed critical findings;
-a passing image scan never substitutes for source checks. These provide different
-guarantees.
+Source and image scans block active HIGH/CRITICAL findings even without a fix. Only
+the precise verified VEX conclusions above can establish that a finding does not
+affect the artifact. A passing image scan never substitutes for source checks.
 
 Creating a Release manually in GitHub bypasses the workflow: use **Publish release**.
 Branch and tag protections remain separate GitHub settings. The check cannot establish
 the absence of still-unknown vulnerabilities. The
-[publication decision](../../../project/decisions/0262-source-release-security-gate.md)
+[publication decision](../../../project/decisions/0263-security-only-release-gate.md)
 records the sequencing defect and the chosen contract.
 
 ## Repeatable restore rehearsal

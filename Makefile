@@ -419,9 +419,7 @@ tests-browser: ## Run isolated browser executor unit tests
 .PHONY: tests-browser
 
 tests-executor: ## Test SSH registry concurrency and real Unix peer permissions in isolation
-	docker run --rm --network none --user 0:0 --entrypoint python3 \
-		-v $(CURDIR)/ssh-executor:/audit:ro python:3.14-slim-trixie \
-		-m unittest discover -s /audit/tests -v
+	@bash bin/test-ssh-executor.sh
 .PHONY: tests-executor
 
 
@@ -477,7 +475,7 @@ security-check: ## Scan versioned dependencies, secrets and security-sensitive c
 	@bash bin/security-check.sh
 .PHONY: security-check
 
-release-check: ## Require exact-commit Quality/Security CI and fresh source security before publication
+release-check: ## Require exact-commit Security CI and fresh source security before publication
 	@bash bin/check-release.sh
 .PHONY: release-check
 

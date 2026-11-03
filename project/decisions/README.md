@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0264 — Supported LTS runtimes and artifact-scoped kernel-header assessment](0264-lts-runtime-security-assessment.md)
+
 - [0263 — Security-only publication and opt-in functional qualification](0263-security-only-release-gate.md)
 
 - [0262 — Source publication requires exact-commit security evidence](0262-source-release-security-gate.md)
