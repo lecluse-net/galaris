@@ -115,8 +115,10 @@ Normal validation has a two-hour deadline and stability validation four hours: e
 and reports an incomplete result. Set `VALIDATION_TIMEOUT_SECONDS` to explicitly adjust it.
 Backend coverage alone took about 45 minutes on the 0.3 corpus; the deadline also includes
 setup and the executor checks that follow the parallel suites.
-CI allows 90 minutes for the backend, 45 for components, four hours for three E2E repetitions,
-and three hours for sequential release-bundle qualification.
+Automatic CI keeps quick checks. Full suites require **Quality → Run workflow → full**
+on GitHub or `FULL_FUNCTIONAL=true` in a manually started GitLab pipeline: 90 minutes for
+backend and components, one E2E pass per browser (a four-hour ceiling), and stability
+repetitions only on request. Sequential release-bundle qualification keeps its three-hour ceiling.
 Critical coverage follows native storage moved to `core/storage/resources.py`, keeping
 the same floors. Quality controls reject patterns without an existing source or critical
 domains without a selected file; coverage diagnostics name missing domains.
@@ -146,7 +148,15 @@ restored.
 
 ### Publish sources
 
-After qualifying the final code, move prepared notes from `Unreleased` into a dated version
+Only security gates source publication: `make release-check RELEASE_REF=<commit>` requires
+successful Security for that exact commit, then a fresh scan of its committed sources.
+HIGH/CRITICAL vulnerabilities, including unfixed findings, detected secrets and SAST errors
+block publication. Security runs only source and image scans; restore and runtime tests
+remain in optional functional qualification. Failed, cancelled or pending Quality does
+not prevent source publication. Functional results remain visible without being reported
+as passing.
+
+After checking security for the final code, move prepared notes from `Unreleased` into a dated version
 section in `CHANGELOG.md`, then prepare and commit the documentation. Advance `main` and push
 the matching tag without a `v` prefix, for example `0.3.0`. The **Publish release** workflow
 checks that format, extracts notes from the section and creates the GitHub release using the

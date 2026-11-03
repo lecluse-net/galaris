@@ -254,6 +254,15 @@ The handler must therefore:
 
 An action belongs to a single phase. To bracket Atlas, register two distinct actions with their own keys and postconditions.
 
+When a transfer initializes mutable state (text, memberships or permissions), its
+postcondition must distinguish transfer evidence from current business values.
+Commit a verified copy and its marker atomically; replay must preserve later edits
+and revoked permissions. To resume a published import without per-row markers,
+`action_previously_completed(session, key)` exposes historical success retained by
+the journal, including after staging the obligation again. This information alone
+does not prove current data validity or replace transfer verification. Retirement
+of `agents.group_id` illustrates the transition to per-row source archives.
+
 ## Temporary backup and reinsertion
 
 A complex transformation may require preserving the old representation before building the new one:

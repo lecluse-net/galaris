@@ -292,6 +292,16 @@ Le handler doit donc :
 Une action appartient à une seule phase. Pour encadrer Atlas, enregistrer deux actions distinctes
 avec des clés et postconditions propres.
 
+Lorsqu'un transfert initialise un état ensuite éditable (texte, appartenance ou droit),
+sa postcondition doit distinguer la preuve du transfert de la valeur métier courante.
+Une copie vérifiée et son marqueur sont validés atomiquement ; une reprise ne doit ni
+annuler une édition ni rétablir un droit révoqué. Pour reprendre un import d'un binaire
+publié sans marqueurs par ligne, `action_previously_completed(session, key)` expose
+la réussite historique conservée dans le journal, y compris après remise en attente.
+Cette information ne prouve pas à elle seule la validité des données courantes et ne
+remplace pas la vérification du transfert. Le retrait de `agents.group_id` illustre
+cette transition vers une archive par ligne.
+
 ## Sauvegarde provisoire et réinjection
 
 Une transformation complexe peut nécessiter de préserver l’ancienne représentation avant de

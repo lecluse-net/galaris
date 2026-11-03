@@ -28,6 +28,7 @@ FIRST_DOCUMENT_CONTENT = f"<p>{CANARY} — première version synthétique.</p>"
 CURRENT_DOCUMENT_CONTENT = f"<p>{CANARY} — deuxième version synthétique.</p>"
 DOCUMENT_SUMMARY = "<p>Description manuelle synthétique — à conserver.</p>"
 ARCHIVED_SUMMARY = "<p>Ancienne description synthétique — conservée pour récupération.</p>"
+DATASET_CONTENT = ' {"synthetic": [false, "é", null]}\n'
 
 
 async def seed_application_document() -> None:
@@ -37,6 +38,7 @@ async def seed_application_document() -> None:
     from core.authorize.models import Assignment, Role
     from core.user.models import User
     from core.user.user_service import encrypt_password
+    from app.dataset.models import Dataset, DatasetRevision
 
     async with get_db_session() as db:
         owner = User(email="restore-owner@example.com", display_name="Restore owner", hashed_password=encrypt_password(PASSWORD), is_active=True)
@@ -50,6 +52,13 @@ async def seed_application_document() -> None:
         agent = Agent(user_id=owner.id, title_id=title.id, first_name="Restore", last_name="Probe", code="restore-probe", agent_driver="internal")
         db.add(agent)
         await db.flush()
+        # A text-only canary cannot detect Dataset preparation queries against
+        # columns that do not yet exist in the previous release's schema.
+        dataset = Dataset(owner_agent_id=agent.id, title="Synthetic upgrade Data", content=DATASET_CONTENT)
+        db.add(dataset)
+        await db.flush()
+        db.add(DatasetRevision(dataset_id=dataset.id, revision=1, content=DATASET_CONTENT,
+            author_agent_id=agent.id, author_user_id=owner.id))
         document = await document_service.create_document(owner_agent_id=agent.id, title="Restored document", content=FIRST_DOCUMENT_CONTENT, task_id=None)
         await resource_service.update_item(document.id, DocumentUpdate(expected_revision=1,
             payload=DocumentPayload(text=CURRENT_DOCUMENT_CONTENT)), actor_agent_id=agent.id)
@@ -81,6 +90,7 @@ async def seed_application_document() -> None:
         await db.commit()
         (ROOT / "application.json").write_text(json.dumps({
             "agent_id": agent.id, "document_id": str(document.id), "attachment_id": str(attachment.id),
+            "dataset_id": str(dataset.id),
             "summary_archive_identity": str(archive_identity),
         }))
 
@@ -99,6 +109,8 @@ async def verify_application_document() -> None:
             attachment = await client.get(attachment_url, headers=headers)
             summary = await client.get(f"{document_url}/summary?agent_id={identifiers['agent_id']}", headers=headers)
             historical = await client.get(f"{document_url}/content-revisions/1", headers=headers)
+            dataset = await client.get(f"/api/datasets/{identifiers['dataset_id']}", headers=headers)
+            dataset_history = await client.get(f"/api/datasets/{identifiers['dataset_id']}/revisions/1", headers=headers)
             if allowed:
                 assert document.status_code == 200, document.text
                 assert document.json()["item"]["payload"]["text"] == CURRENT_DOCUMENT_CONTENT
@@ -110,11 +122,17 @@ async def verify_application_document() -> None:
                 assert historical.json()["content"] == FIRST_DOCUMENT_CONTENT
                 assert attachment.status_code == 200, attachment.text
                 assert attachment.content == b"restored application attachment"
+                assert dataset.status_code == 200, dataset.text
+                assert dataset.json()["content"] == DATASET_CONTENT
+                assert dataset_history.status_code == 200, dataset_history.text
+                assert dataset_history.json()["content"] == DATASET_CONTENT
             else:
                 assert document.status_code in {403, 404}
                 assert attachment.status_code in {403, 404}
                 assert summary.status_code in {403, 404}
                 assert historical.status_code in {403, 404}
+                assert dataset.status_code in {403, 404}
+                assert dataset_history.status_code in {403, 404}
     async with get_db_session() as db:
         if await db.scalar(text("SELECT to_regclass('public.document_summary_revisions')")):
             assert await db.scalar(text("SELECT content FROM document_summary_revisions WHERE id=CAST(:id AS uuid)"),

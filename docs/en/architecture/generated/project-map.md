@@ -11,7 +11,7 @@ tests remain authoritative for behavior.
 
 - 78 declared backend modules;
 - 40 declared frontend modules;
-- 633 backend dependency edges;
+- 634 backend dependency edges;
 - 217 frontend dependency edges;
 - 303 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
@@ -751,6 +751,7 @@ tests remain authoritative for behavior.
 | `core.database` | `core.user` | `back/core/database/history.py` |
 | `core.database` | `core.util` | `back/core/database/vector.py` |
 | `core.dbadmin` | `core.database` | `back/core/dbadmin/_internal/atlas.py`, `back/core/dbadmin/_internal/target.py`, `back/core/dbadmin/actions.py`, `back/core/dbadmin/journal.py`, `back/core/dbadmin/models.py`, `back/core/dbadmin/orchestrator.py`, `back/core/dbadmin/snapshot.py` |
+| `core.dbadmin` | `core.update_diagnostics` | `back/core/dbadmin/actions.py` |
 | `core.i18n` | `core.params` | `back/core/i18n/i18n_service.py` |
 | `core.i18n` | `core.user` | `back/core/i18n/i18n_service.py` |
 | `core.logging` | `core.i18n` | `back/core/logging.py` |

@@ -12,6 +12,7 @@ from core.dbadmin import (
     DbAdminPhase,
     DbAdminRegistry,
     SchemaTransitionSet,
+    action_previously_completed,
 )
 from core.user import UserModel
 
@@ -46,20 +47,38 @@ async def _initial_titles_complete(
 async def _backfill_agent_teams(session: AsyncSession, _transitions: SchemaTransitionSet) -> None:
     if not await _has_legacy_column(session, "group_id"):
         return
+    await session.execute(text("CREATE SCHEMA IF NOT EXISTS galaris_migration"))
+    await session.execute(text("""CREATE TABLE IF NOT EXISTS galaris_migration.agent_team_sources
+        (identity integer PRIMARY KEY, team integer NOT NULL, transferred boolean NOT NULL)"""))
+    # Published migrations already imported these memberships. Their subsequent
+    # revocation is authoritative even if another action retained group_id.
+    previously_completed = await action_previously_completed(session, "app.agent.team_memberships")
+    await session.execute(text("""INSERT INTO galaris_migration.agent_team_sources
+        SELECT id, group_id, :completed FROM agents WHERE group_id IS NOT NULL
+        FOR UPDATE ON CONFLICT DO NOTHING"""), {"completed": previously_completed})
+    if await session.scalar(text("""SELECT EXISTS(
+        SELECT 1 FROM galaris_migration.agent_team_sources source
+        LEFT JOIN agents agent ON agent.id=source.identity
+        WHERE NOT source.transferred AND (agent.id IS NULL OR agent.group_id IS DISTINCT FROM source.team)
+    )""")):
+        raise ValueError("Legacy team source changed; membership transfer refused")
     await session.execute(text("""
         INSERT INTO agent_teams (agent_id, team_id)
-        SELECT id, group_id FROM agents WHERE group_id IS NOT NULL
+        SELECT identity, team FROM galaris_migration.agent_team_sources WHERE NOT transferred
         ON CONFLICT (agent_id, team_id) DO NOTHING
     """))
+    await session.execute(text("UPDATE galaris_migration.agent_team_sources SET transferred=true WHERE NOT transferred"))
 
 
 async def _teams_complete(session: AsyncSession, _transitions: SchemaTransitionSet) -> bool:
     if not await _has_legacy_column(session, "group_id"):
         return True
+    if not await session.scalar(text("SELECT to_regclass('galaris_migration.agent_team_sources') IS NOT NULL")):
+        return False
     missing = await session.scalar(text("""
         SELECT id FROM agents AS agent WHERE group_id IS NOT NULL AND NOT EXISTS (
-            SELECT 1 FROM agent_teams AS membership
-            WHERE membership.agent_id = agent.id AND membership.team_id = agent.group_id
+            SELECT 1 FROM galaris_migration.agent_team_sources AS source
+            WHERE source.identity = agent.id AND source.team = agent.group_id AND source.transferred
         ) LIMIT 1
     """))
     return missing is None
@@ -145,7 +164,8 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
     ))
     registry.register_action(DbAdminAction(
         key="app.agent.team_memberships", phase=DbAdminPhase.AFTER_EXPAND,
-        checksum="preserve-group-identities-and-agent-memberships",
+        checksum="preserve-team-sources-without-replaying-memberships-v2",
+        compatible_checksums=frozenset({"preserve-group-identities-and-agent-memberships"}),
         predicate=lambda delta: delta.table_added("agent_teams") or "agents.group_id" in delta.removed_columns,
         handler=_backfill_agent_teams, postcondition=_teams_complete,
     ))

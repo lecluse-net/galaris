@@ -31,8 +31,9 @@ if [[ ${1:-} == image ]]; then
   report="artifacts/security/$(printf '%s' "$2" | tr '/:' '--').json"
   "${trivy[@]}" image --input /src/image.tar --scanners vuln \
     --severity HIGH,CRITICAL --ignorefile /src/security/trivy-ignore.yaml --format json > "$report"
-  # Keep the complete inventory, including unfixed OS advisories. A green gate
-  # means no available HIGH/CRITICAL fix was left unapplied, not no known CVEs.
+  # An absent inventory is not evidence of a clean image.
+  jq -e 'type == "object" and (.Results | type == "array")' "$report" >/dev/null
+  # HIGH/CRITICAL findings block even when no fixed package is available.
   jq '[.Results[]?.Vulnerabilities[]?] | {
     total: length,
     fix_available: map(select(.FixedVersion != null and .FixedVersion != "")) | length,
@@ -41,10 +42,10 @@ if [[ ${1:-} == image ]]; then
   }' "$report"
   if jq -e 'any(.Results[]?.Vulnerabilities[]?;
     .Severity == "CRITICAL" and (.FixedVersion == null or .FixedVersion == ""))' "$report" >/dev/null; then
-    echo 'WARNING: unfixed CRITICAL findings remain. Image policy success is not release approval; run make release-check.' >&2
+    echo 'Image contains unfixed CRITICAL findings; publication is blocked.' >&2
   fi
-  jq -e 'all(.Results[]?.Vulnerabilities[]?;
-    .FixedVersion == null or .FixedVersion == "")' "$report" >/dev/null
+  jq -e '[.Results[]?.Vulnerabilities[]? |
+    select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length == 0' "$report" >/dev/null
 else
   "${trivy[@]}" fs --scanners vuln,secret --severity HIGH,CRITICAL \
     --ignorefile security/trivy-ignore.yaml --exit-code 1 --skip-dirs refs .

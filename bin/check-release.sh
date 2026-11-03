@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Read-only preflight: exact-commit CI first, then a fresh committed-source scan.
+# Read-only preflight: exact-commit security CI, then a fresh committed-source scan.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 release_commit=unresolved
@@ -61,7 +61,7 @@ workflow_runs() {
 deadline=$((SECONDS + wait_seconds))
 while :; do
   pending=0
-  for workflow in quality security; do
+  for workflow in security; do
     workflow_runs "$workflow" "$evidence/$workflow.json"
     latest=$(jq -c --arg sha "$release_commit" --arg repo "$repository" '
       [.[].workflow_runs[] | select(.head_sha == $sha and .head_repository.full_name == $repo)
@@ -84,7 +84,7 @@ while :; do
   done
   (( pending == 0 )) && break
   if (( SECONDS >= deadline )); then
-    echo 'Required quality/security CI is pending; wait for completion and rerun the release check.' >&2
+    echo 'Required security CI is pending; wait for completion and rerun the release check.' >&2
     exit 1
   fi
   sleep 30
@@ -93,5 +93,5 @@ stage=source-security
 bash bin/security-check.sh source "$release_commit" 2>&1 | tee "$evidence/source-security.log"
 echo "Release check passed for $release_commit: exact-commit CI and fresh source security."
 if [[ -n ${GITHUB_STEP_SUMMARY:-} ]]; then
-  printf 'Quality and Security passed for this commit; the fresh source scan passed.\n' >> "$GITHUB_STEP_SUMMARY"
+  printf 'Security passed for this commit; the fresh source scan passed. Quality is reported separately.\n' >> "$GITHUB_STEP_SUMMARY"
 fi

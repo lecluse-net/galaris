@@ -1,6 +1,6 @@
 # 0262 — Source publication requires exact-commit security evidence
 
-Status: accepted. Date: 2026-11-01.
+Status: superseded by [0263](0263-security-only-release-gate.md). Date: 2026-11-01.
 
 ## Context
 

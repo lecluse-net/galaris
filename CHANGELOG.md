@@ -8,17 +8,31 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 
 ## [Unreleased]
 
-## [0.3.1] - 2026-11-02
+## [0.3.1] - 2026-11-03
 
 ### Changed
 
-- Require successful Quality and Security checks for the exact release commit,
+- Require successful Security checks for the exact release commit,
   followed by a fresh source security scan, before publishing a GitHub Release.
   Missing or unsuccessful evidence blocks publication with retained diagnostics.
   Immutable image bundle builds also check committed sources before building.
+- Keep automatic CI checks focused; complete functional qualification remains
+  available through an explicit full Quality run, with its results reported separately.
 
 ### Fixed
 
+- Fix upgrades from 0.2.0 containing Data documents: preserve historical sources
+  before schema expansion, then copy contents, revisions and permissions after
+  destination columns exist. Resume unfinished 0.3.0 transfers safely.
+- Preserve new Agent HTML profiles and allow Goal creation and editing while
+  database cleanup is deferred. Keep transferred tracking documents and their rights.
+- Preserve revoked Agent team memberships when an interrupted upgrade resumes,
+  including transfers already completed by a previous version.
+- Retain backend startup output and fatal and nonfatal database synchronization
+  errors in private update logs, without a last-lines limit. Redact recognized
+  secrets, reprint recorded causes before retrying unfinished actions, and report
+  diagnostic collection failures without replacing the original update error.
+- Allow long Goal descriptions and tracking reports without blocking agent updates.
 - Preserve early history navigation while conversations finish loading, and apply
   editor toolbar formatting to the current text selection after dismissing a menu.
 - Preserve the reading position when late content expands a partly visible Chat message.

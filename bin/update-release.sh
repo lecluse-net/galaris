@@ -27,7 +27,9 @@ expected_docs=$(docker run --rm --network none --entrypoint python \
 update_stage data-volume
 bash bin/init-data-volume.sh "$@" -f "$release_directory/compose.release.yaml"
 update_stage readiness
-docker compose "$@" -f "$release_directory/compose.release.yaml" up -d --no-build --pull never --wait --wait-timeout 300
+update_journal_watch_backend "$@" -f "$release_directory/compose.release.yaml"
+update_journal_command compose-readiness docker compose "$@" -f "$release_directory/compose.release.yaml" up -d --no-build --pull never --wait --wait-timeout 300
+update_journal_collect_backend
 update_stage image-identities
 while read -r expected_id image_tag; do
   case "$image_tag" in

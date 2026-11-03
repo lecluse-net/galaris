@@ -178,13 +178,14 @@ provider has a durable ledger; this does not establish idempotency support in re
 
 Backend/browser JUnit, Playwright JSON, mutations and domain coverage remain CI artifacts.
 Track first attempts, skipped tests, durations and recurring Incidents. A successful second
-attempt does not erase the first failure. Browser retries remain zero, with three E2E
-repetitions in CI.
+attempt does not erase the first failure. Browser retries remain zero. Full functional CI
+is opt-in and runs one pass per browser; stability repetitions require an explicit request.
 
 ## Domain coverage
 
-`make validate` runs local pre-publication checks without a CI server or a running development
-stack. It captures tracked and non-ignored new files, including uncommitted edits and deletions,
+`make validate` remains a complete, user-requested local qualification independent of release
+eligibility, without a CI server or a running development stack. It captures tracked and
+non-ignored new files, including uncommitted edits and deletions,
 in an isolated local clone. Test configuration comes from `.env.example`, never the deployment
 `.env`. It does not commit, restart the application, contact messaging accounts or make paid AI calls.
 

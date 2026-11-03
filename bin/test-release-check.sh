@@ -2,6 +2,7 @@
 # Real Git snapshots and release scripts; only scanner/API boundaries are synthetic.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+release_test_source=$PWD
 case_root=$(mktemp -d "${TMPDIR:-/tmp}/galaris-release-check-tests.XXXXXX")
 cleanup() {
   status=$?
@@ -56,6 +57,7 @@ if [[ " $* " == *' aquasec/trivy:0.74.0 '* ]]; then
   cp "$snapshot/README.md" "$SNAPSHOT_README"
   exit "${SCANNER_EXIT:-0}"
 fi
+if [[ " $* " == *' semgrep/semgrep:1.176.0 '* ]]; then exit "${SAST_EXIT:-0}"; fi
 SH
 cat > "$case_root/commands/gh" <<'SH'
 #!/usr/bin/env bash
@@ -102,17 +104,30 @@ cmp "$case_root/expected-readme" "$SNAPSHOT_README"
 grep -q 'semgrep/semgrep:1.176.0' "$CALLS"
 echo 'PASS: exact committed snapshot, uncommitted data excluded'
 
-for workflow in quality security; do
-  for conclusion in failure cancelled skipped timed_out neutral; do
+for conclusion in failure cancelled skipped timed_out neutral; do
     green
     jq --arg conclusion "$conclusion" '.[0].workflow_runs[0].conclusion = $conclusion' \
-      "$RESPONSES/$workflow.json" > "$case_root/changed"
-    mv "$case_root/changed" "$RESPONSES/$workflow.json"
+      "$RESPONSES/security.json" > "$case_root/changed"
+    mv "$case_root/changed" "$RESPONSES/security.json"
     blocked "$conclusion"
-    grep -qi "$workflow" "$case_root/output"
-  done
+    grep -qi security "$case_root/output"
 done
-echo 'PASS: both required workflows reject every unsuccessful conclusion'
+echo 'PASS: security rejects every unsuccessful conclusion'
+
+for quality_state in failure cancelled skipped timed_out pending missing; do
+  green
+  if [[ $quality_state == missing ]]; then
+    rm "$RESPONSES/quality.json"
+  else
+    jq --arg state "$quality_state" '.[0].workflow_runs[0] |=
+      (if $state == "pending" then .status = "in_progress" | .conclusion = null
+       else .conclusion = $state end)' "$RESPONSES/quality.json" > "$case_root/changed"
+    mv "$case_root/changed" "$RESPONSES/quality.json"
+  fi
+  bash bin/check-release.sh > "$case_root/output" 2>&1
+  if grep -q 'quality.yml' "$CALLS"; then echo 'Quality must not gate publication' >&2; exit 1; fi
+done
+echo 'PASS: failed, cancelled, pending and absent functional CI does not gate publication'
 
 for problem in missing wrong-commit fork pull-request pending newer-failure rerun-failure; do
   green
@@ -137,6 +152,8 @@ grep -q 'aquasec/trivy:0.74.0' "$CALLS"
 if grep -q 'semgrep/semgrep:1.176.0' "$CALLS"; then exit 1; fi
 green
 GH_FAIL=1 blocked
+green
+SAST_EXIT=17 blocked
 echo 'PASS: scanner and API failures block publication'
 
 green
@@ -144,7 +161,33 @@ bash bin/check-release.sh > "$case_root/output" 2>&1
 grep -q "$RELEASE_REF" "$case_root/output"
 grep -q "$RELEASE_REF" "$GITHUB_STEP_SUMMARY"
 grep -q 'semgrep/semgrep:1.176.0' "$CALLS"
-echo 'PASS: exact-commit CI plus fresh scans qualify and retain a summary'
+echo 'PASS: exact-commit security CI plus fresh scans qualify and retain a summary'
+
+# Execute the actual folded Quality result gate with synthetic job outcomes.
+quality_gate=$(awk '
+  /^  required:/ { required = 1 }
+  required && /run: >-/ { script = 1; next }
+  script && /^          / { printf "%s ", substr($0, 11); next }
+  script { exit }
+' "$release_test_source/.github/workflows/quality.yml")
+test -n "$quality_gate"
+quality_results=$(jq -n '{static:{result:"success"}, "dependency-review":{result:"skipped"}} +
+  (["providers","backend-tests","frontend-components","chat-e2e","restore"] |
+    map({key:.,value:{result:"skipped"}}) | from_entries)')
+FULL=false EVENT=push RESULTS="$quality_results" bash -euc "$quality_gate" > "$case_root/output" 2>&1
+if FULL=true EVENT=workflow_dispatch RESULTS="$quality_results" bash -euc "$quality_gate" > "$case_root/output" 2>&1; then exit 1; fi
+if FULL=false EVENT=pull_request RESULTS="$quality_results" bash -euc "$quality_gate" > "$case_root/output" 2>&1; then exit 1; fi
+quality_failed=$(jq '.static.result = "failure"' <<< "$quality_results")
+if FULL=false EVENT=push RESULTS="$quality_failed" bash -euc "$quality_gate" > "$case_root/output" 2>&1; then exit 1; fi
+quality_skipped=$(jq '.static.result = "skipped"' <<< "$quality_results")
+if FULL=false EVENT=push RESULTS="$quality_skipped" bash -euc "$quality_gate" > "$case_root/output" 2>&1; then exit 1; fi
+quality_unknown=$(jq '.unexpected = {result:"skipped"}' <<< "$quality_results")
+if FULL=false EVENT=push RESULTS="$quality_unknown" bash -euc "$quality_gate" > "$case_root/output" 2>&1; then exit 1; fi
+quality_full=$(jq 'with_entries(.value.result = "success")' <<< "$quality_results")
+FULL=true EVENT=workflow_dispatch RESULTS="$quality_full" bash -euc "$quality_gate" > "$case_root/output" 2>&1
+quality_failed=$(jq '."chat-e2e".result = "failure"' <<< "$quality_full")
+if FULL=true EVENT=workflow_dispatch RESULTS="$quality_failed" bash -euc "$quality_gate" > "$case_root/output" 2>&1; then exit 1; fi
+echo 'PASS: quick Quality permits only omitted full suites; requested full suites and static failures stay honest'
 
 green
 jq '.[0].workflow_runs[0] |= (.status = "in_progress" | .conclusion = null)' \
@@ -193,14 +236,21 @@ echo 'PASS: source findings stop bundle creation before image builds'
 
 green
 export IMAGE_FINDINGS="$case_root/image-findings.json"
-printf '{"Results":[{"Vulnerabilities":[{"VulnerabilityID":"TEST-UNFIXED","Severity":"CRITICAL"}]}]}' > "$IMAGE_FINDINGS"
+for severity in HIGH CRITICAL; do
+  for fixed in false true; do
+    jq -n --arg severity "$severity" --argjson fixed "$fixed" '{Results:[{Vulnerabilities:[
+      ({VulnerabilityID:"TEST-DANGEROUS",Severity:$severity} +
+       if $fixed then {FixedVersion:"synthetic-fixed-version"} else {} end)
+    ]}]}' > "$IMAGE_FINDINGS"
+    if bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1; then exit 1; fi
+    grep -q '"total": 1' "$case_root/output"
+  done
+done
+printf '{"Results":[]}' > "$IMAGE_FINDINGS"
 bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1
-grep -q 'WARNING: unfixed CRITICAL' "$case_root/output"
-grep -q '"unfixed_critical": 1' "$case_root/output"
-jq '.Results[0].Vulnerabilities[0].FixedVersion = "synthetic-fixed-version"' "$IMAGE_FINDINGS" > "$case_root/changed"
-mv "$case_root/changed" "$IMAGE_FINDINGS"
+printf '{}' > "$IMAGE_FINDINGS"
 if bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1; then exit 1; fi
-echo 'PASS: unfixed image criticals are visible and available fixes still block'
+echo 'PASS: dangerous image findings block with or without a fix; missing inventories cannot qualify'
 
 # Historical source must use its own complete runtime, including removed dependencies.
 historical_source="$case_root/historical source"

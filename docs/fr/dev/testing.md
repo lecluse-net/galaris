@@ -194,11 +194,13 @@ Le fournisseur simulé possède un registre durable ; cette preuve n'attribue pa
 Les rapports JUnit backend/navigateur, JSON Playwright, mutations et mesures par domaine sont
 conservés en artefacts CI. Comparer les premiers passages, tests ignorés, durées et récidives
 Incident. Un second passage vert n'efface pas le premier échec. Les retries navigateur restent
-à zéro, avec trois répétitions E2E en CI.
+à zéro. La CI fonctionnelle complète est optionnelle et exécute un passage par navigateur ;
+les répétitions de stabilité se demandent explicitement.
 
 ## Couverture par domaine
 
-`make validate` est la commande locale avant publication, sans serveur CI ni stack de
+`make validate` reste une qualification locale complète à la demande de l'utilisateur,
+indépendante de l'éligibilité à la publication, sans serveur CI ni stack de
 développement démarrée. Elle capture les fichiers suivis et nouveaux non ignorés, y compris les
 modifications non committées et les suppressions, dans un clone local isolé. Elle utilise une
 configuration de test issue de `.env.example`, jamais le `.env` de déploiement. Aucun commit,

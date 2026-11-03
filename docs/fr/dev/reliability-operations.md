@@ -127,8 +127,11 @@ un dépassement arrête les tests, nettoie leurs environnements et signale un r�
 `VALIDATION_TIMEOUT_SECONDS` permet d'adapter explicitement cette limite.
 La couverture backend seule a pris environ 45 minutes sur le corpus de la version 0.3 ;
 la limite inclut aussi la préparation et les contrôles des exécuteurs après les suites parallèles.
-La CI réserve 90 minutes au backend, 45 aux composants, quatre heures aux trois répétitions
-E2E et trois heures à la qualification séquentielle du bundle de release.
+La CI automatique conserve les contrôles rapides. Les suites complètes se demandent avec
+**Quality → Run workflow → full** sur GitHub ou `FULL_FUNCTIONAL=true` dans une pipeline
+GitLab manuelle : 90 minutes au backend et aux composants, un passage E2E par navigateur
+(plafond de quatre heures), avec les répétitions de stabilité uniquement sur demande.
+La qualification séquentielle du bundle de release garde son plafond de trois heures.
 La sélection de couverture critique suit le stockage natif déplacé vers
 `core/storage/resources.py`, avec les mêmes seuils. Les contrôles de qualité refusent
 un motif qui ne correspond plus à une source ou un domaine critique sans fichier sélectionné ;
@@ -158,7 +161,15 @@ déjà autorisés continuent à être restaurés.
 
 ### Publier les sources
 
-Après qualification du code final, déplacez les notes préparées de `Unreleased` vers une
+Seule la sécurité bloque la publication : `make release-check RELEASE_REF=<commit>`
+exige Security réussie pour ce commit exact, puis un nouveau scan des sources committées.
+Les vulnérabilités HIGH/CRITICAL, même sans correctif disponible, les secrets détectés et
+les erreurs SAST bloquent. Security ne lance que les scans de sources et d'images ; les
+tests de restauration et de runtime restent dans la qualification fonctionnelle optionnelle.
+Un échec, une annulation ou une attente Quality n'interdit pas la publication des sources.
+Les résultats fonctionnels restent visibles sans être présentés comme réussis.
+
+Après vérification de sécurité du code final, déplacez les notes préparées de `Unreleased` vers une
 section de version datée dans `CHANGELOG.md`, puis préparez et committez la documentation.
 Avancez `main` et poussez le tag correspondant sans préfixe `v`, par exemple `0.3.0`.
 Le workflow **Publish release** vérifie ce format, extrait les notes de cette section et crée

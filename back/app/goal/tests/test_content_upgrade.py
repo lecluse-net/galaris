@@ -95,9 +95,9 @@ async def test_a_document_used_for_tracking_is_never_retired_as_a_description(le
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("invalid_source", [False, True])
+@pytest.mark.parametrize("invalid_source,hold_contract", [(False, False), (True, False), (False, True)])
 async def test_real_schema_upgrade_preserves_tracking_and_resumes_after_failure(
-    committed_database, monkeypatch, invalid_source,
+    committed_database, monkeypatch, invalid_source, hold_contract,
 ):
     from app.agent import Agent, Title
     from app.document import DocumentTag, DocumentTagAssignment
@@ -107,7 +107,7 @@ async def test_real_schema_upgrade_preserves_tracking_and_resumes_after_failure(
     from app.share import ShareGrant
     from core import settings as settings_module
     from core.database import get_db_session
-    from core.dbadmin import DbAdminRegistry, DbAdminVerdict, orchestrator
+    from core.dbadmin import DbAdminAction, DbAdminPhase, DbAdminRegistry, DbAdminVerdict, orchestrator
     from core.dbadmin._internal import atlas
     from core.user import UserModel
 
@@ -186,13 +186,31 @@ async def test_real_schema_upgrade_preserves_tracking_and_resumes_after_failure(
             assert await tracking_snapshot(connection) == before
             await connection.execute(text("UPDATE documents SET media_type='text/html' WHERE id=:id"),
                 {"id": descriptions[1]})
+    expected = ["<p>Objective 1 — é</p>", "<p>Objective 2 — é</p>"]
+    if hold_contract:
+        released = False
+        async def ready(*_args):
+            return released
+        async def prepare(*_args):
+            pass
+        registry.register_action(DbAdminAction(key="test.goal.defer_contract", phase=DbAdminPhase.AFTER_EXPAND,
+            checksum="synthetic", predicate=lambda _: True, handler=prepare, postcondition=ready, required=False))
+        staged = await orchestrator.synchronize_database(target_registry=registry)
+        assert staged.exit_code == 0 and staged.verdict is DbAdminVerdict.DEGRADED
+        async with get_db_session() as db:
+            tracking = await create_document(owner_agent_id=agent.id, title="Synthetic new tracking",
+                content="<p>New staged progress.</p>", task_id=None)
+            db.add(Goal(id=UUID(int=3), title="Synthetic staged creation", agent_id=agent.id,
+                description="<p>New staged objective.</p>", tracking_document_id=tracking.id))
+            await db.execute(text("UPDATE goals SET description='<p>Edited after transfer.</p>' WHERE id=:id"),
+                             {"id": UUID(int=1)})
+        expected = ["<p>Edited after transfer.</p>", expected[1], "<p>New staged objective.</p>"]
+        released = True
     for _ in range(2):
         result = await orchestrator.synchronize_database(target_registry=registry)
         assert result.verdict is DbAdminVerdict.CONVERGED, result.issues
         async with engine.connect() as connection:
-            assert list(await connection.scalars(text("SELECT description FROM goals ORDER BY id"))) == [
-                "<p>Objective 1 — é</p>", "<p>Objective 2 — é</p>",
-            ]
+            assert list(await connection.scalars(text("SELECT description FROM goals ORDER BY id"))) == expected
             assert await connection.scalar(text("SELECT count(*) FROM documents WHERE id=ANY(:ids) AND deleted_at IS NOT NULL"),
                 {"ids": descriptions}) == 2
             assert await connection.scalar(text("SELECT count(*) FROM information_schema.columns WHERE table_name='goals' AND column_name='description_document_id'")) == 0

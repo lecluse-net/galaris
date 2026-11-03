@@ -34,14 +34,9 @@ update_stage backend-reset
 docker compose "$@" rm --stop --force backend frontend
 update_stage readiness
 echo '⏳ Waiting for the backend schema/data synchronization to complete...'
-if docker compose "$@" up -d --wait --wait-timeout 300; then
-    :
-else
-    failure=$?
-    echo '❌ Update failed; latest service logs:' >&2
-    docker compose "$@" logs --tail=200 || true
-    exit "$failure"
-fi
+update_journal_watch_backend "$@"
+update_journal_command compose-readiness docker compose "$@" up -d --wait --wait-timeout 300
+update_journal_collect_backend
 update_stage finalize-secrets
 bash bin/finalize-internal-secrets.sh "$@"
 update_stage documentation

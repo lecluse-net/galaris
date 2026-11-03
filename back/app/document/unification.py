@@ -1,4 +1,4 @@
-"""Additive Dataset transfer, committed before changing its consumers' FKs."""
+"""Archive before expansion; transfer before changing consumers' foreign keys."""
 
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -52,8 +52,8 @@ async def preserve(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
             WHERE p.code IN ('DATASET_READ','DATASET_EDIT','DATASET_ADMIN') ON CONFLICT DO NOTHING"""))
     if not await exists(session, "public.datasets") or not await exists(session, "public.documents"):
         return
-    # One transaction locks the complete source set, verifies every copy and
-    # publishes its marker. A failure rolls back both rows and markers.
+    # Archive the complete source set before DDL. Destination writes wait until
+    # expansion has supplied their columns and constraints.
     for table in (*_SOURCES, *_DOCUMENT_PLACEMENTS, "documents", "document_revisions", "share_configs", "share_grants"):
         if await exists(session, f"public.{table}"):
             # SQL uses fixed migration names and closed source/placement tuples; values are bound.
@@ -71,6 +71,10 @@ async def preserve(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
         # SQL uses fixed migration names and closed source/placement tuples; values are bound.
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"INSERT INTO {_ARCHIVE} SELECT :source,id,to_jsonb(r),encode(sha256(convert_to(to_jsonb(r)::text,'UTF8')),'hex') FROM public.{table} r WHERE {condition} IN (SELECT id FROM datasets) ON CONFLICT DO NOTHING"), {"source": table})
+
+
+async def transfer(session: AsyncSession) -> None:
+    """Destination and source additions are available only after expansion."""
     cursor: UUID | None = None
     # SQL uses fixed migration names and closed source/placement tuples; values are bound.
     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
@@ -140,16 +144,21 @@ async def preserved(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     if await session.scalar(text(f"SELECT EXISTS(SELECT 1 FROM {_ARCHIVE} WHERE digest<>encode(sha256(convert_to(snapshot::text,'UTF8')),'hex'))")):
         return False
-    if not await exists(session, "public.datasets"):
-        return True
-    # SQL uses fixed migration names and closed source/placement tuples; values are bound.
-    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-    return not await session.scalar(text(f"SELECT EXISTS(SELECT 1 FROM datasets s WHERE NOT EXISTS(SELECT 1 FROM {_TRANSFERS} t WHERE t.identity=s.id))"))
+    for table in _SOURCES:
+        if await exists(session, f"public.{table}"):
+            # Identifiers belong to the fixed migration source tuple.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            if await session.scalar(text(f"""SELECT EXISTS(SELECT 1 FROM public.{table} s
+                WHERE NOT EXISTS(SELECT 1 FROM {_ARCHIVE} a
+                    WHERE a.source=:source AND a.identity=s.id))"""), {"source": table}):
+                return False
+    return True
 
 
 async def finalize(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     if not await exists(session, _TRANSFERS):
         await preserve(session, delta)
+    await transfer(session)
     await session.execute(text("UPDATE documents SET document_type='text' WHERE document_type IN ('html','form')"))
     # SQL uses fixed migration names and closed source/placement tuples; values are bound.
     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
@@ -218,6 +227,9 @@ async def complete(session: AsyncSession, delta: SchemaTransitionSet) -> bool:
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         and bool(await session.scalar(text(f"SELECT classified FROM {_STATE}")))
         and not await session.scalar(text("SELECT EXISTS(SELECT 1 FROM documents WHERE document_type IN ('html','form'))"))
+        # Every retained Dataset must have reached the canonical destination.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+        and not await session.scalar(text(f"SELECT EXISTS(SELECT 1 FROM datasets s WHERE NOT EXISTS(SELECT 1 FROM {_TRANSFERS} t WHERE t.identity=s.id))"))
         # SQL uses fixed migration names and closed source/placement tuples; values are bound.
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         and not await session.scalar(text(f"SELECT EXISTS(SELECT 1 FROM {_TRANSFERS} WHERE NOT finalized)")))
@@ -248,10 +260,12 @@ async def roles_complete(session: AsyncSession, _delta: SchemaTransitionSet) -> 
 
 def register(registry: DbAdminRegistry) -> None:
     registry.register_action(DbAdminAction(key="app.document.typed_sources", phase=DbAdminPhase.BEFORE_EXPAND,
-        checksum="preserve-and-verify-dataset-content-history-acls-v1", predicate=needed,
+        checksum="archive-dataset-sources-before-schema-expansion-v2",
+        compatible_checksums=frozenset({"preserve-and-verify-dataset-content-history-acls-v1"}), predicate=needed,
         handler=preserve, postcondition=preserved))
     registry.register_action(DbAdminAction(key="app.document.typed_documents", phase=DbAdminPhase.AFTER_EXPAND,
-        checksum="typed-documents-and-personal-classification-v1", predicate=needed,
+        checksum="transfer-expanded-typed-documents-and-personal-classification-v2",
+        compatible_checksums=frozenset({"typed-documents-and-personal-classification-v1"}), predicate=needed,
         handler=finalize, postcondition=complete))
     registry.register_action(DbAdminAction(key="app.document.typed_role_capabilities", phase=DbAdminPhase.AFTER_DATASET,
         checksum="dataset-roles-retain-equivalent-document-capabilities-v1", predicate=needed,
