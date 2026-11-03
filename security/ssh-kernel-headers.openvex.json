@@ -1,0 +1,816 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/lecluse-net/galaris/security/vex/ssh-linux-headers-2026-11-03",
+  "author": "Galaris maintainers",
+  "timestamp": "2026-11-03T21:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2022-50240"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: binder: fix UAF of alloc->vma in race with munmap(); the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2025-40190"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ext4: guard against EA inode refcount underflow in xattr update; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-68103"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: drm/amdgpu: reject mapping a reserved doorbell to a new queue; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-72198"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ntfs: reject non-resident records for resident-only attributes; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-72497"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: RDMA/bnxt_re: Add a max slot check for SQ; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-74578"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: crypto: algif_skcipher - force synchronous processing on trees without ctx->state; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-89805"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: drm/pagemap: Fix folio allocation fallback and use-after-put; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-89907"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "In the Linux kernel, the following vulnerability has been resolved:  L ...; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-90155"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ksmbd: detach blocked lock requests before freeing; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-90162"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ksmbd: defer publishing granted locks to prevent UAF/double-free race; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-90167"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ksmbd: serialize oplock close with pending break ownership; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-90317"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: bpf: Invalidate RCU pointers after final spin unlock; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-93175"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: drm/amd/display: Fix dangling pointer in CRTC reset function; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98376"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: bpf: Use array_map_meta_equal for percpu array inner map replacement; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98420"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ksmbd: follow SMB2 session expiration semantics; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98432"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ipv4: free inet_opt and ireq_opt after an RCU grace period; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98689"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: thunderbolt: Don't access a DP tunnel after its DPRX read was canceled; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98699"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: wifi: mac80211: fix mesh fast xmit path deletion UAF; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98701"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: wifi: mac80211: release mesh path quota on failed additions; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98702"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: Denial of Service via invalid channel switch frame in mac80211; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98704"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: wifi: mac80211: keep fallback association elements alive; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98706"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: wifi: mac80211: drain PS delivery work during station teardown; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98707"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: wifi: mac80211: shut down RX BA session timer on teardown; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98708"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: mac80211: Denial of Service via use-after-free in channel context replacement; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98709"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: mac80211: Denial of Service via use-after-free during channel switching; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98712"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: KVM: arm64: vgic: Take a refcount on IRQs referenced by last_lr_irq; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98719"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: KVM: SEV: Nullify \"have run CPUs\" mask pointer when freeing it; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98725"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: nvmet-auth: fix out-of-bounds write in nvmet_auth_challenge(); the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98730"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: Bluetooth: btintel_pcie: reject oversized TX packets in send_frame(); the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98733"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: Denial of Service via use-after-free in Bluetooth ISO packet queueing; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98734"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: Denial of Service via use-after-free in Bluetooth connection scheduling; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98735"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: Bluetooth: hci_core: Serialize ACL scheduling with channel deletion; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98737"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: Denial of service via Bluetooth inquiry cache use-after-free; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98738"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: denial of service via race condition in Bluetooth SMP remote OOB handling; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98739"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: Bluetooth: RFCOMM: Fix initial port reference race; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98741"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ALSA: ua101: reject mismatched capture/playback packet sizes; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98742"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: Use-after-free via race condition in ALSA sequencer compatibility ioctls; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98752"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: tty: port: fix tty_port_tty_vhangup() race; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98754"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: tty: vcc: hold port lock when clearing tty pointer in vcc_cleanup; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98763"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: usb: core: clear both ep_in and ep_out for non-ep0 control endpoints; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98776"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: Privilege escalation via binderfs use-after-free; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98788"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: Privilege escalation via use-after-free during futex hash resizing; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98792"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: netfilter: flowtable: generalize pending status bit; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98794"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ipvs: filter some flags received in the backup server; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98797"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: net: cap skb->queue_mapping when the tx queue is picked; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98799"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: bpf: Skip detached progs in trampoline images that are still in use; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98800"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: Denial of Service via use-after-free in BPF trampoline; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98803"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: net: stmmac: fix rx Scatter-Gather support; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98804"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: net: page_pool: fix use-after-free in page_pool_recycle_ring_bulk(); the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98805"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: tipc: prevent GCM nonce reuse on peer key changes; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98813"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: bpf: Hold map BTF for the memory allocator destructor record; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98823"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: wifi: cfg80211: preserve hidden-group beacon IE ownership; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98824"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: wifi: mac80211: validate TX status rate metadata; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98827"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: wifi: ath9k_htc: bound TX aggregation to MAX_TX_BUF_SIZE; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98829"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: wifi: mac80211: drop oversized fragments to avoid extra_len overflow; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98836"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ALSA: line6: reject oversized playback packets; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98837"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: ALSA: caiaq: unregister the input device when probe fails; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98846"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: sctp: check RCV_SHUTDOWN after the sendmsg connect wait; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98858"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: io_uring: fix task_work add use-after-free with SQPOLL; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98861"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: kernel: Denial of Service via fprobe use-after-free; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98862"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: audit: fix exe mark UAF in kill_rules(); the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-98863"
+      },
+      "products": [
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "kernel: KVM: x86: Re-pend GET_NESTED_STATE_PAGES if getting said pages fails; the SSH container includes UAPI headers only, no kernel image or modules. The vulnerable kernel implementation is not in this package. Host kernels require separate assessment."
+    }
+  ],
+  "x_galaris_review_expires": "2026-12-03"
+}

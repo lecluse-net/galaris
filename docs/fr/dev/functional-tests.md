@@ -1401,6 +1401,11 @@ d’un fork, sélection du dernier résultat, archive du commit exact et arrêt 
 sur alerte. `tests/test_release_publication.py` vérifie que la publication dépend de ce contrôle
 et utilise le commit qualifié. Les échecs fonctionnels n'empêchent pas la publication ;
 les scans refusent aussi les vulnérabilités d'image HIGH/CRITICAL sans correctif disponible.
+La VEX SSH est testée séparément : preuve manquante, image/version/CVE hors périmètre,
+expiration et disparition d'une alerte brute bloquent. Les scans Trivy réels et la
+vérification du contenu des en-têtes complètent les frontières synthétiques.
+`make tests-executor` utilise désormais l'image SSH livrée, avec son vrai interpréteur
+et ses permissions Unix, plutôt qu'une autre distribution Python.
 `core/user/tests/test_security_unit.py` conserve un jeton entièrement synthétique émis par
 l’ancien python-jose pour vérifier la compatibilité après passage à PyJWT. Il reproduit aussi
 une signature HMAC forgée avec une clé publique DER et exige son refus, même si HS256 est

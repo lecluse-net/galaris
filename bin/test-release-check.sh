@@ -48,14 +48,21 @@ if [[ ${UPGRADE_CAPTURE:-0} == 1 ]]; then
   fi
   exit 0
 fi
-if [[ " $* " == *' aquasec/trivy:0.74.0 '* ]]; then
-  if [[ " $* " == *' image --input '* ]]; then cat "$IMAGE_FINDINGS"; exit 0; fi
+if [[ " $* " == *' aquasec/trivy:0.76.1 '* ]]; then
+  if [[ " $* " == *' image --input '* ]]; then
+    if [[ " $* " == *' --vex '* ]]; then cat "$IMAGE_ASSESSMENT"; else cat "$IMAGE_FINDINGS"; fi
+    exit 0
+  fi
   while [[ $1 != -v ]]; do shift; done
   snapshot=${2%:/src:ro}
   test ! -e "$snapshot/.env"
   test ! -e "$snapshot/untracked-secret.txt"
   cp "$snapshot/README.md" "$SNAPSHOT_README"
   exit "${SCANNER_EXIT:-0}"
+fi
+if [[ " $* " == *' /verify.py '* ]]; then
+  printf '{"package":"linux-libc-dev","verified_headers":1,"kernel_payload_present":false}\n'
+  exit "${HEADER_PROOF_EXIT:-0}"
 fi
 if [[ " $* " == *' semgrep/semgrep:1.176.0 '* ]]; then exit "${SAST_EXIT:-0}"; fi
 SH
@@ -148,7 +155,7 @@ echo 'PASS: missing, stale, fork, PR, pending and superseded successes cannot qu
 
 green
 SCANNER_EXIT=23 blocked
-grep -q 'aquasec/trivy:0.74.0' "$CALLS"
+grep -q 'aquasec/trivy:0.76.1' "$CALLS"
 if grep -q 'semgrep/semgrep:1.176.0' "$CALLS"; then exit 1; fi
 green
 GH_FAIL=1 blocked
@@ -229,7 +236,7 @@ echo 'PASS: public API checks preserve exact-commit, pagination and failure requ
 
 green
 if SCANNER_EXIT=23 RELEASE_DIR="$case_root/candidate" bash bin/build-release.sh > "$case_root/output" 2>&1; then exit 1; fi
-grep -q 'aquasec/trivy:0.74.0' "$CALLS"
+grep -q 'aquasec/trivy:0.76.1' "$CALLS"
 if grep -q 'docker .* build' "$CALLS"; then exit 1; fi
 test ! -e "$case_root/candidate"
 echo 'PASS: source findings stop bundle creation before image builds'
@@ -251,6 +258,40 @@ bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1
 printf '{}' > "$IMAGE_FINDINGS"
 if bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1; then exit 1; fi
 echo 'PASS: dangerous image findings block with or without a fix; missing inventories cannot qualify'
+
+# VEX may classify only reviewed CVE/package/version tuples after artifact proof.
+mkdir -p security
+export IMAGE_ASSESSMENT="$case_root/image-assessment.json"
+reviewed_purl='pkg:deb/ubuntu/linux-libc-dev@0.0.synthetic?arch=amd64&distro=ubuntu-26.04'
+jq -n --arg purl "$reviewed_purl" '{x_galaris_review_expires:"2999-01-01",statements:[{
+  vulnerability:{name:"TEST-REVIEWED-HEADER"}, products:[{"@id":$purl}]}]}' > security/ssh-kernel-headers.openvex.json
+jq -n --arg purl "$reviewed_purl" '{Metadata:{OS:{Family:"ubuntu",Name:"26.04"},
+  ImageID:("sha256:" + ("a" * 64)),ImageConfig:{config:{Labels:{"org.opencontainers.image.title":"galaris-ssh-executor"}}}},
+  Results:[{Vulnerabilities:[{VulnerabilityID:"TEST-REVIEWED-HEADER",Severity:"CRITICAL",PkgName:"linux-libc-dev",
+    InstalledVersion:"0.0.synthetic",PkgIdentifier:{PURL:$purl}}]}]}' > "$IMAGE_FINDINGS"
+jq '.Results |= map(.ExperimentalModifiedFindings = [.Vulnerabilities[] | {Finding:.,Status:"not_affected",Statement:"vulnerable_code_not_present"}] | .Vulnerabilities=[])' \
+  "$IMAGE_FINDINGS" > "$IMAGE_ASSESSMENT"
+bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1
+grep -q 'TEST-REVIEWED-HEADER' "$case_root/output"
+grep -q 'vulnerable_code_not_present' "$case_root/output"
+if HEADER_PROOF_EXIT=19 bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1; then exit 1; fi
+cp "$IMAGE_ASSESSMENT" "$case_root/valid-assessment"
+printf '{"Results":[]}' > "$IMAGE_ASSESSMENT"
+if bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1; then exit 1; fi
+cp "$case_root/valid-assessment" "$IMAGE_ASSESSMENT"
+cp "$IMAGE_FINDINGS" "$case_root/reviewed-header"
+for change in '.Results[0].Vulnerabilities[0].VulnerabilityID="TEST-UNREVIEWED"' \
+  '.Results[0].Vulnerabilities[0].PkgIdentifier.PURL="pkg:deb/ubuntu/linux-libc-dev@different"' \
+  '.Metadata.ImageConfig.config.Labels["org.opencontainers.image.title"]="other-image"'; do
+  jq "$change" "$case_root/reviewed-header" > "$IMAGE_FINDINGS"
+  if bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1; then exit 1; fi
+done
+cp "$case_root/reviewed-header" "$IMAGE_FINDINGS"
+jq '.x_galaris_review_expires="2000-01-01"' security/ssh-kernel-headers.openvex.json > "$case_root/expired-vex"
+mv "$case_root/expired-vex" security/ssh-kernel-headers.openvex.json
+if bash bin/security-check.sh image synthetic-image > "$case_root/output" 2>&1; then exit 1; fi
+grep -q 'review expired' "$case_root/output"
+echo 'PASS: scoped VEX retains every raw finding; failed proof, wrong image/version/CVE, expiry and missing assessment block'
 
 # Historical source must use its own complete runtime, including removed dependencies.
 historical_source="$case_root/historical source"

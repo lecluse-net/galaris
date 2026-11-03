@@ -56,6 +56,11 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 
 ### Security
 
+- Move backend and SSH runtimes to a supported Ubuntu LTS with corrected OpenSSH
+  and libxml2, while retaining Python 3.14 and PostgreSQL 17 clients. Remove unused
+  vulnerable GStreamer codecs from the Chromium executor. Preserve raw image
+  inventories and restrict kernel-header assessments to reviewed CVE/package
+  versions after verifying that no kernel implementation is shipped.
 - Replace python-jose with PyJWT 2.15.1 to remove the dependency affected by
   CVE-2026-85394 and reject DER public keys used as HMAC secrets. Existing HS256
   access tokens remain compatible. Remove the unused ecdsa dependency and its
