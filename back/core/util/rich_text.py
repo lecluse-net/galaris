@@ -452,8 +452,10 @@ class _Parser(HTMLParser):
             raise RichTextError("Comments are not editorial content.")
 
 
-def parse_html(content: str, *, profile: ContentProfile = "rich-text") -> HtmlNode:
-    if profile != "document" and len(content.encode("utf-8")) > MAX_HTML_BYTES:
+def parse_html(
+    content: str, *, profile: ContentProfile = "rich-text", limit_length: bool = True
+) -> HtmlNode:
+    if limit_length and profile != "document" and len(content.encode("utf-8")) > MAX_HTML_BYTES:
         raise RichTextError("Serialized HTML exceeds its byte limit.")
     parser = _Parser(profile=profile)
     parser.feed(content)
@@ -519,8 +521,11 @@ def visible_text(content: str) -> str:
     return visit(root).strip()
 
 
-def normalize_html(content: str, *, profile: ContentProfile = "rich-text") -> str:
-    root = parse_html(content, profile=profile)
+def normalize_html(
+    content: str, *, profile: ContentProfile = "rich-text", limit_length: bool = True
+) -> str:
+    """Normalize editorial HTML; callers may waive length caps without widening allowed HTML."""
+    root = parse_html(content, profile=profile, limit_length=limit_length)
     def interactive(node: HtmlNode) -> bool:
         if node.tag in DOCUMENT_TAGS or any(key == "id" or key.startswith("on") or key.startswith("data-dataset") for key in node.attributes):
             return True
@@ -600,9 +605,9 @@ def normalize_html(content: str, *, profile: ContentProfile = "rich-text") -> st
         strip_comments=True,
         filter_style_properties=STYLE_PROPERTIES,
     )
-    normalized = parse_html(clean, profile=profile).html()
+    normalized = parse_html(clean, profile=profile, limit_length=limit_length).html()
     text = visible_text(normalized)
-    if profile != "document" and len(text) > MAX_TEXT_CHARS:
+    if limit_length and profile != "document" and len(text) > MAX_TEXT_CHARS:
         raise RichTextError("Visible text exceeds its character limit.")
     if (
         not text.replace("\xa0", " ").strip()
@@ -640,17 +645,20 @@ def image_references(content: str) -> set[str]:
     return result
 
 
-def convert_to_html(content: str, media_type: str, *, profile: ContentProfile = "rich-text") -> str:
+def convert_to_html(
+    content: str, media_type: str, *, profile: ContentProfile = "rich-text", limit_length: bool = True
+) -> str:
     """Explicit format conversion; legacy images fail for operator resolution."""
     if media_type == "text/html":
-        return normalize_html(content, profile=profile)
+        return normalize_html(content, profile=profile, limit_length=limit_length)
     if media_type == "text/plain":
         return normalize_html(
-            "".join(f"<p>{escape(line)}</p>" for line in content.split("\n")), profile=profile
+            "".join(f"<p>{escape(line)}</p>" for line in content.split("\n")),
+            profile=profile, limit_length=limit_length,
         )
     if media_type in {"text/markdown", "text/x-markdown"}:
         renderer = MarkdownIt("commonmark", {"html": False}).enable("table")
-        return normalize_html(renderer.render(content), profile=profile)
+        return normalize_html(renderer.render(content), profile=profile, limit_length=limit_length)
     raise RichTextError("Unsupported editorial source format.")
 
 

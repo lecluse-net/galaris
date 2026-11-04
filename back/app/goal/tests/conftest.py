@@ -15,7 +15,7 @@ from core.storage import (
 @pytest.fixture(autouse=True)
 def goal_document_storage(tmp_path: Path) -> Iterator[None]:
     reset_storage_registry()
-    register_storage(NativeFileStorage(tmp_path, max_bytes=1_000_000))
+    register_storage(NativeFileStorage(tmp_path))
     try:
         yield
     finally:

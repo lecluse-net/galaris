@@ -173,7 +173,11 @@ The `rich-text` profile limits content to 2,000,000 serialized bytes and 500,000
 characters. Text documents follow the configurable `MEMORY_RESOURCE_MAX_BYTES` quota,
 without a separate 2 MB or 500,000-visible-character document cap.
 Both profiles retain the structural limits of 50,000 elements and depth 64.
-Agentic Goal tracking allows 120,000 serialized and 30,000 visible characters. Colors accept
+Goal tracking is exempt from the `rich-text` length caps. Tracking and judgement text
+(reason, summary, evidence) have no application-level character or evidence-count cap and
+are never truncated. Concision is model guidance: synthesize the current state without
+losing useful information. The tracking document retains the shared document storage quota
+and HTML security checks. Colors accept
 hexadecimal, RGB/HSL and an explicit set of CSS names; alignment is left/center/right/justify.
 Styles are restricted to typography, colors, dimensions and table properties. CSS dimensions
 are bounded to 1,600 units or 100%; natural image dimensions to 16,000 pixels.

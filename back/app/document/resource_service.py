@@ -299,7 +299,8 @@ async def restore_document_content_revision(
                     archived_document_html(content.decode("utf-8"))
                     if entry.media_type == "text/html" and item.content_profile == "document"
                     else content.decode("utf-8"),
-                    entry.media_type, profile=item.content_profile
+                    entry.media_type, profile=item.content_profile,
+                    limit_length=not _is_goal_document(item),
                 )
             ),
             media_type=item.media_type if item.document_type not in {"text", "html"} else "text/html",
@@ -819,7 +820,8 @@ async def update_item(
             "text/plain",
         }:
             content = convert_to_html(
-                content.decode("utf-8"), future_media_type, profile=item.content_profile
+                content.decode("utf-8"), future_media_type, profile=item.content_profile,
+                limit_length=not _is_goal_document(item),
             ).encode("utf-8")
             if item.node_kind == "document":
                 apps = document_apps(content.decode("utf-8"))
@@ -1205,7 +1207,11 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
     validate_document_content(data.document_type, content)
     media_type = data.media_type
     if data.document_type in {"text", "html"} and media_type in {"text/html", "text/markdown", "text/plain"}:
-        content = convert_to_html(content.decode(), media_type, profile="rich-text" if deletion_protected else "document").encode()
+        content = convert_to_html(
+            content.decode(), media_type,
+            profile="rich-text" if deletion_protected else "document",
+            limit_length=not (deletion_protected and data.metadata.get("goal_document_kind") in {"description", "tracking"}),
+        ).encode()
         media_type = "text/html"
     permitted_images = {f"document://{prepared_clone.identity}/attachments/{attachment.id}" for attachment in prepared_clone.attachments} if prepared_clone else set[str]()
     if data.document_type in {"text", "html"} and image_references(content.decode("utf-8", errors="replace")) - permitted_images:

@@ -11,6 +11,13 @@ Tracking remains the Goal's sole associated Document, referenced by
 It is created unclassified: visible in the document list, absent from the tree
 including its root. Each user can classify or unclassify it independently.
 
+Tracking concision is generation guidance, never a length-based validation rule.
+Goal tracking is exempt from rich-text byte and visible-character caps while retaining
+the same safe HTML profile. Judgement reasons, progress summaries and evidence have
+no character or item-count caps and are never truncated. Prompt and schema descriptions
+encourage synthesis without discarding useful information. HTML security checks and
+the shared document storage quota remain applicable.
+
 Automatic Goal folder creation, renaming and task-deliverable filing are retired.
 Historical queued jobs complete without effects. Existing folders and personal
 placements are preserved as ordinary editable organization, with automatic Goal

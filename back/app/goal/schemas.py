@@ -33,7 +33,19 @@ HtmlBody = Annotated[str, AfterValidator(_required_html)]
 
 
 # Concision is a generation policy; valid tracking is preserved without a size cap.
-TrackingBody = Annotated[str, AfterValidator(normalize_html)]
+def _tracking_html(value: str) -> str:
+    return normalize_html(value, limit_length=False)
+
+
+def _required_tracking_html(value: str) -> str:
+    normalized = _tracking_html(value)
+    if not normalized:
+        raise ValueError("Editorial HTML must contain visible content.")
+    return normalized
+
+
+TrackingBody = Annotated[str, AfterValidator(_tracking_html)]
+RequiredTrackingBody = Annotated[str, AfterValidator(_required_tracking_html)]
 
 
 class GoalScheduleWindow(BaseModel):
@@ -396,13 +408,13 @@ class GoalProgress(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     changed: bool
-    summary: str = Field(min_length=1, max_length=4000)
-    evidence: list[str] = Field(default_factory=list, max_length=20)
+    summary: str = Field(min_length=1, description="Summarize concrete progress concisely, preserving useful facts.")
+    evidence: list[str] = Field(default_factory=list, description="Cite relevant observable evidence without repetition.")
 
     @field_validator("evidence")
     @classmethod
-    def compact_evidence(cls, values: list[str]) -> list[str]:
-        return [value.strip()[:1000] for value in values if value.strip()]
+    def strip_evidence(cls, values: list[str]) -> list[str]:
+        return [value.strip() for value in values if value.strip()]
 
     @field_validator("summary")
     @classmethod
@@ -417,9 +429,12 @@ class GoalJudgement(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     action: Literal["CONTINUE", "STOP"]
-    reason: str = Field(min_length=1, max_length=4000)
+    reason: str = Field(min_length=1, description="Explain the decision concisely using the Goal's completion criteria.")
     progress: GoalProgress
-    tracking_content: HtmlBody = Field(min_length=1)
+    tracking_content: RequiredTrackingBody = Field(
+        min_length=1,
+        description="Full updated HTML tracking: synthesize current state without losing useful information. No length cap.",
+    )
 
     @field_validator("progress", mode="before")
     @classmethod

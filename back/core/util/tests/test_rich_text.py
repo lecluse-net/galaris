@@ -16,6 +16,16 @@ DOCUMENT = "4e98431c-c16c-4a6e-936e-15a595723340"
 ATTACHMENT = "ae6942a7-b8c9-463f-8f08-8494d08ed186"
 
 
+@pytest.mark.parametrize(
+    "text", ["x" * 500_001, "&amp;" * 400_001], ids=["visible-length", "serialized-length"]
+)
+def test_length_policy_can_preserve_long_rich_text_without_changing_default_caps(text):
+    source = f"<p>{text}</p>"
+    with pytest.raises(RichTextError, match="exceeds its .* limit"):
+        normalize_html(source)
+    assert normalize_html(source, limit_length=False) == source
+
+
 @pytest.mark.parametrize("profile", ["document", "rich-text"])
 def test_equations_keep_their_source_and_layout_through_normalization(profile):
     source = '<p>Area <span data-math="inline">x^2 &lt; y</span>.</p><p data-math="block">\\frac{a}{b}</p>'
@@ -120,10 +130,11 @@ def test_reject_unsupported_input(source):
 
 
 @pytest.mark.parametrize('source', ['<p onclick="alert(1)">a</p>', '<svg><script>x</script></svg>', '<p style="position:fixed">x</p>'])
-def test_executable_html_is_reserved_for_documents(source):
+@pytest.mark.parametrize("limit_length", [False, True])
+def test_executable_html_is_reserved_for_documents(source, limit_length):
     assert normalize_html(source, profile='document') == source
     with pytest.raises(RichTextError):
-        normalize_html(source, profile='rich-text')
+        normalize_html(source, profile='rich-text', limit_length=limit_length)
 
 
 def test_archived_html_page_is_literal_text_but_cannot_be_written():

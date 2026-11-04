@@ -479,6 +479,11 @@ présent dans la liste Documents mais absent de l'arborescence tant que vous ne 
 Aucun dossier Objectifs n'est imposé. Les dossiers déjà créés gardent leur nom et se modifient
 comme les autres dossiers, sans traduction ou renommage automatique.
 
+Les agents sont invités à synthétiser le suivi en conservant les informations utiles.
+Cette consigne n'impose aucun plafond de caractères ni aucune troncature du suivi ou
+des justifications et preuves du jugement. Les contrôles HTML et le quota de stockage
+documentaire commun restent applicables.
+
 La page **Processus** affiche ses listes sans attendre le contrôle du moteur externe ni
 le catalogue des agents. Les détails d'une exécution et son diagramme se chargent seulement
 à l'ouverture de sa fiche ; vous pouvez fermer celle-ci pendant le chargement et la rouvrir.

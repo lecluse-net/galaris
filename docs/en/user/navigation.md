@@ -440,6 +440,10 @@ visible in the Documents list but outside the tree until you classify it. No Goa
 is imposed. Existing folders retain their names and behave as ordinary editable folders,
 without translation or automatic renaming.
 
+Agents are encouraged to synthesize tracking while preserving useful information.
+This guidance imposes no character cap or truncation on tracking, judgement reasons or
+evidence. HTML checks and the shared document storage quota still apply.
+
 The **Processes** page displays its lists without waiting for the external engine check or
 agent catalogue. Execution details and their diagram load only when you open an execution;
 you can close its dialog during loading and reopen it.

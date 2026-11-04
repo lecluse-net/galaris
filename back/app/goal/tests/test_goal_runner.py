@@ -418,7 +418,6 @@ def test_goal_judgement_rejects_unknown_fields_and_stop_without_evidence(
         '{"changed": true}',
         '{"changed": true, "summary": "   "}',
         '{"changed": true, "summary": "Milestone", "unexpected": true}',
-        json.dumps({"changed": True, "summary": "Milestone", "evidence": ["Proof"] * 21}),
     ],
 )
 def test_goal_judgement_rejects_invalid_encoded_progress(progress: str) -> None:
@@ -433,6 +432,12 @@ def test_goal_judgement_accepts_progress_without_changing_its_content(
     encoded_progress: bool,
 ) -> None:
     expected = _judgement()
+    expected.reason = ("Synthetic decision rationale. " * 200).strip()
+    expected.progress.summary = ("Synthetic progress summary. " * 200).strip()
+    expected.progress.evidence = [
+        f"Evidence {index}: " + ("Synthetic supporting fact. " * 60).strip()
+        for index in range(25)
+    ]
     payload = expected.model_dump()
     if encoded_progress:
         payload["progress"] = json.dumps(payload["progress"])
@@ -440,7 +445,7 @@ def test_goal_judgement_accepts_progress_without_changing_its_content(
 
 
 @pytest.mark.parametrize("contract", [GoalJudgement, GoalUpdate, GoalApiUpdate])
-@pytest.mark.parametrize("repetitions", [1_600, 6_500])
+@pytest.mark.parametrize("repetitions", [1_600, 6_500, 26_000, 110_000])
 def test_goal_tracking_preserves_long_content(
     contract: type[GoalJudgement] | type[GoalUpdate] | type[GoalApiUpdate],
     repetitions: int,
@@ -481,14 +486,14 @@ async def test_goal_keeps_html_description_and_only_one_tracking_document(db, mo
     assert updated is not None and updated.revision == created.revision + 1
     assert updated.description == "<p>Revised objective</p>"
     assert updated.tracking_document_id == tracking.id
-    api_tracking = "<p>" + "Synthetic API milestone. " * 6_500 + "Final API evidence.</p>"
+    api_tracking = "<p>" + "Synthetic API milestone. " * 90_000 + "Final API evidence.</p>"
     combined = await goal_service.update(created.id, GoalUpdate(
         expected_revision=updated.revision, description=updated.description,
         tracking_content=api_tracking))
     assert combined is not None and combined.revision == updated.revision + 1
     assert combined.tracking_content == api_tracking
     updated = combined
-    document_tracking = "<p>" + "Synthetic document milestone. " * 6_500 + "Final document evidence.</p>"
+    document_tracking = "<p>" + "Synthetic document milestone. " * 75_000 + "Final document evidence.</p>"
     await document_service.update_item(tracking.id, DocumentUpdate(
         expected_revision=tracking.revision, payload=DocumentPayload(text=document_tracking)),
         actor_agent_id=agent.id)
@@ -980,11 +985,21 @@ async def test_continue_schedules_from_task_finish_and_keeps_paused_goal_paused(
     goal_id, cycle_id = goal.id, cycle.id
     expected_revision = goal.revision
     monkeypatch.setattr(goal_service, "emit_updated", AsyncMock())
+    judgement = GoalJudgement.model_validate({
+        **_judgement("CONTINUE").model_dump(),
+        "reason": ("Synthetic decision rationale. " * 200).strip(),
+        "progress": {
+            "changed": True,
+            "summary": ("Synthetic progress summary. " * 200).strip(),
+            "evidence": [f"Evidence {index}: " + "x" * 1_100 for index in range(25)],
+        },
+        "tracking_content": "<p>" + "Synthetic milestone. " * 110_000 + "Final evidence.</p>",
+    })
 
     await runner._finish_judgement(  # pyright: ignore[reportPrivateUsage]
         cycle_id,
         token,
-        _judgement("CONTINUE"),
+        judgement,
         expected_goal_revision=expected_revision,
         cost=0.05,
         llm_id=None,
@@ -997,10 +1012,11 @@ async def test_continue_schedules_from_task_finish_and_keeps_paused_goal_paused(
     assert persisted_cycle is not None
     assert persisted_goal.status == GoalStatus.PAUSED
     assert persisted_goal.next_cycle_at == finished + timedelta(minutes=10)
-    assert (await goal_service.read_markdown(persisted_goal)).tracking == _judgement(
-        "CONTINUE"
-    ).tracking_content
+    assert (await goal_service.read_markdown(persisted_goal)).tracking == judgement.tracking_content
     assert persisted_cycle.verdict == GoalVerdict.CONTINUE
+    assert persisted_cycle.reason == judgement.reason
+    assert persisted_cycle.progress_summary == judgement.progress.summary
+    assert persisted_cycle.evidence == judgement.progress.evidence
     assert persisted_cycle.judge_cost == pytest.approx(0.06)
     assert persisted_cycle.task_cost == pytest.approx(1.25)
 

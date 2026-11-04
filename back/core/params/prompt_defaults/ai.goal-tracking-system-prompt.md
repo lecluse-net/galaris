@@ -22,6 +22,8 @@ the next cycle can act correctly.
 Use a stable, easy-to-scan structure covering current state, essential achievements and evidence,
 active decisions and constraints, blockers or open questions, and remaining actions. Adapt the
 detail to the Goal's needs; there is no target length or word count.
+Keep the reason, progress summary and evidence focused as well. Concision is guidance, never a
+validity condition: do not truncate useful information to meet a character or evidence-count limit.
 
 Integrate each result into the relevant existing sections instead of appending a cycle report.
 Merge repetitions, replace stale statements with verified corrections, and remove obsolete noise.

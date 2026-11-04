@@ -181,7 +181,11 @@ Le profil `rich-text` limite les contenus à 2 000 000 octets HTML et 500 000 ca
 visibles. Les documents Texte suivent le quota configurable `MEMORY_RESOURCE_MAX_BYTES`,
 sans plafond documentaire distinct de 2 Mo ni de 500 000 caractères visibles.
 Les deux profils conservent les limites structurelles de 50 000 éléments et de profondeur 64.
-Le suivi Goal limite sa sortie agentique à 120 000 caractères sérialisés et 30 000 visibles.
+Le suivi Goal est exempt des plafonds de longueur du profil `rich-text`. Le suivi et les
+textes du jugement (justification, synthèse, preuves) n'ont aucun plafond applicatif de
+caractères ou de nombre de preuves, ni troncature. La concision relève des consignes au
+modèle : synthétiser l'état courant sans perdre d'information utile. Le document de suivi
+reste soumis au quota de stockage documentaire commun et aux contrôles de sécurité HTML.
 Les couleurs acceptent les valeurs hexadécimales, RGB/HSL et une liste de noms CSS ; les
 alignements sont left/center/right/justify. Les styles sont limités à la typographie, aux
 couleurs, dimensions et propriétés de tableaux. Les dimensions CSS sont bornées à 1 600 unités
