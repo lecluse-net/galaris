@@ -22,8 +22,10 @@ triggers, explicitly prevent a full-convergence verdict. Extension members are d
 Declarative support for these objects requires a separate tooling choice; silent omission
 is not accepted as complete-schema verification.
 
-Outside exact `APP_ENV=dev`, `make update` requires a qualified immutable `RELEASE_DIR`.
-The existing bundle identity, upgrade and restoration evidence gates remain mandatory.
+`make update` builds the current checkout for every branch, tag and application mode.
+`VERSION` explicitly selects any Git tag or branch; `APP_ENV` controls application behavior
+and Compose configuration, independently of source provenance. `RELEASE_DIR` is an optional
+immutable delivery path whose bundle identity, upgrade and restoration gates remain mandatory.
 Publication of source releases retains its separate security-only policy.
 
 `make save` archives the complete database and `/data` excluding exactly the root `files`
@@ -47,4 +49,13 @@ introduced by postprocessing, explicit unrepresented-object refusal and action p
 Backup tests exercise real database replacement, data/permission preservation, rsync exclusion,
 unsafe archive rejection, restore failure, connection failure after commit and secondary cleanup
 failure. `make tests-backup` additionally exercises public Make commands with real Docker.
-`make tests-update` verifies development source deployment and production qualification gates.
+`make tests-update` verifies source deployment in every application mode and the optional
+qualified-bundle gates.
+
+## Regression prevention
+
+An earlier blanket `APP_ENV` gate incorrectly made source deployment unavailable outside
+development mode. Tests had been changed to reject that valid workflow, so they preserved
+the regression instead of detecting it. The Git update tests now exercise conventional and
+arbitrary branch names, tags and detached HEAD with production-mode labels, preserving local
+configuration. Source installation must not require enabling development behavior.

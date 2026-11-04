@@ -16,13 +16,13 @@ make install
 > Otherwise, keep the defaults: embedded PostgreSQL and port **8484**.
 
 ```bash
-make update RELEASE_DIR=/path/to/qualified-release
+make start
 ```
 
-Production installs and updates use qualified immutable images. Obtain a prepared bundle,
-or follow [image qualification](docs/en/dev/reliability-operations.md) to build and test one.
-Startup initializes the database and requires complete schema convergence.
-Development builds from sources with `APP_ENV=dev make start`.
+The first start builds the current sources, initializes the database and requires complete
+schema convergence. Any Git branch or tag can be installed, independently of `APP_ENV`.
+Qualified immutable bundles are also supported; follow
+[image qualification](docs/en/dev/reliability-operations.md) to prepare one.
 
 1. Open <http://localhost:8484> (or your configured address).
 2. Click **Log in** and create the first administrator account.
@@ -34,21 +34,22 @@ is needed after account creation.
 
 ## UPDATE
 
-Deploy the qualified bundle without rebuilding its images:
+Build and deploy the current checkout, on any branch or detached tag:
 
 ```bash
-make update RELEASE_DIR=/path/to/qualified-release
+make update
 ```
 
-In development, list available tags and branches, then deploy your chosen reference:
+List available tags and branches, then deploy your chosen reference:
 
 ```bash
 make update VERSIONS
-APP_ENV=dev make update VERSION=<reference>
+make update VERSION=<reference>
 ```
 
-After production configuration changes, redeploy with the qualified bundle. Bare `make update`
-is reserved for development source builds.
+`APP_ENV` selects application behavior and Compose configuration; it never restricts Git
+branches or source deployment. After configuration changes, run `make update`.
+To deploy a qualified bundle without rebuilding, use `make update RELEASE_DIR=<directory>`.
 
 ## BACKUP AND RESTORE
 

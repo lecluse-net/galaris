@@ -177,9 +177,9 @@ Run `make tests-release RELEASE_DIR=<directory>` to exercise the exact applicati
 without application source mounts, test the executors, and scan every image. The resulting
 `TESTED_IMAGE_IDS` binds qualification to the manifest. Promote with
 `APP_ENV=prod make update RELEASE_DIR=<directory>`: identities are verified, Compose uses
-`--no-build --pull never --wait`, and running container images are checked. Outside development,
-updates without `RELEASE_DIR` are rejected before containers change. Source builds remain
-available in development. `MANAGED_HARNESSES` records images included
+`--no-build --pull never --wait`, and running container images are checked. Without `RELEASE_DIR`,
+`make update` builds the current checkout on any branch or tag, independently of `APP_ENV`.
+`MANAGED_HARNESSES` records images included
 through `RELEASE_HARNESS_IMAGES_FILE`, or explicitly states that harnesses are external.
 Keep the previous bundle and a consistent database/files/keys backup.
 

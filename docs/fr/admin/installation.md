@@ -2,7 +2,7 @@
 
 # Installer Galaris
 
-**Cloner le dépôt → `make install` → déployer un bundle qualifié → renseigner le token OpenRouter
+**Cloner le dépôt → `make install` → `make start` → renseigner le token OpenRouter
 dans Fournisseurs → discuter avec Galaris.**
 
 Sur une installation neuve, les modèles et le profil par défaut sont préconfigurés, et
@@ -73,20 +73,20 @@ Les fournisseurs IA et leurs clés se configurent ensuite dans l’interface.
 ## 3. Démarrer Galaris
 
 ```bash
-make update RELEASE_DIR=/chemin/vers/bundle-qualifie
+make start
 ```
 
-La production exige des images immuables déjà qualifiées, sans reconstruction au déploiement.
-Voir le [parcours de qualification](../dev/reliability-operations.md)
-pour préparer ce bundle. La commande prépare le volume partagé, initialise la base et attend
-la convergence complète du schéma et la disponibilité. Les réglages locaux sont conservés.
-En développement seulement, `APP_ENV=dev make start` construit les sources.
+Le premier démarrage construit les sources du checkout courant, sur n'importe quelle branche
+ou tag et quel que soit `APP_ENV`. La commande prépare le volume partagé, initialise la base
+et attend la convergence complète du schéma et la disponibilité. Les réglages locaux sont conservés.
+Le [parcours de qualification](../dev/reliability-operations.md) permet aussi de préparer
+un bundle immuable, déployable avec `make update RELEASE_DIR=<dossier>`.
 
 Ensuite, `make start` relance les conteneurs existants sans construire. Si un service manque,
 est en échec ou ne devient pas disponible, il tente une seule mise à jour complète. Une erreur
 d’accès à Docker ou de lecture de la configuration arrête la commande.
-En production, une récupération qui exige un déploiement nécessite également `RELEASE_DIR` ;
-`start` ne reconstruit pas les sources et ne change pas de version Git.
+Cette récupération reconstruit les sources présentes si nécessaire ; `start` ne change jamais
+de version Git et n'exige pas d'activer le mode développement.
 
 ## 4. Renseigner le token OpenRouter et discuter
 
@@ -147,16 +147,16 @@ ainsi que les images locales Compose et les conteneurs orphelins du projet.
 
 `make clean` supprime aussi les volumes : cette commande est destructive.
 
-En production, déployez les images qualifiées :
+Pour construire et déployer le checkout courant :
 
 ```bash
-make update RELEASE_DIR=/chemin/vers/bundle-qualifie
+make update
 ```
 
-En développement seulement, récupérez et déployez un tag ou une branche :
+Pour récupérer et déployer un tag ou une branche, indépendamment de `APP_ENV` :
 
 ```bash
-APP_ENV=dev make update VERSION=0.3.1
+make update VERSION=<branche-ou-tag>
 ```
 
 Pour consulter les cibles disponibles avant de choisir :
@@ -170,7 +170,7 @@ plus élevées d’abord), puis toutes les branches par ordre alphabétique. Ell
 sources locales et ne lance aucun déploiement, même avant `make install` ou avec des changements
 locaux. Un checkout Git et l’accès au dépôt distant sont nécessaires.
 
-En développement, `make update` récupère les images d’infrastructure, dont SearXNG, avant le build et le
+`make update` récupère les images d’infrastructure, dont SearXNG, avant le build et le
 redémarrage. La version SearXNG suit celle épinglée
 dans `compose.yaml`, sans effacer la configuration existante. Un échec de récupération
 arrête la mise à jour en conservant les services actifs.
@@ -190,15 +190,17 @@ dans le nouveau journal même si l'ancien conteneur a été recréé.
 Les anciens journaux qui ne contiennent que les étapes ne peuvent pas reconstituer les
 sorties qu'ils n'ont pas enregistrées.
 
-En développement sans `VERSION`, aucune récupération ni sélection Git n’est effectuée : les sources présentes
+Sans `VERSION`, aucune récupération ni sélection Git n’est effectuée : les sources présentes
 sont utilisées, y compris avec des modifications locales, un tag détaché ou sans upstream.
 Avec `VERSION`, `.git` doit exister dans l’installation (répertoire ou fichier de worktree).
 Le tag exact est prioritaire sur la branche du même nom ; une référence
 inconnue provoque une erreur avant toute action sur les conteneurs.
 
 Les sources modifiées localement bloquent la récupération Git ; `.env` et les overrides
-ignorés sont conservés. Pour appliquer la configuration en production, redéployez le bundle qualifié.
-Sans `.git`, le développement conserve la construction des sources présentes et refuse `VERSION`.
+ignorés sont conservés. Pour appliquer la configuration, utilisez `make update`.
+Sans `.git`, `make update` construit les sources présentes et refuse `VERSION`.
+`APP_ENV` choisit le comportement applicatif et les images à construire, jamais les branches
+autorisées. `make update RELEASE_DIR=<dossier>` reste disponible pour un bundle qualifié.
 
 Si une mise à jour de la séparation Memory/Document a été arrêtée sur une contrainte
 `memory_items.share_id` ou `share_kind` lors de la création de contacts, récupérez le correctif

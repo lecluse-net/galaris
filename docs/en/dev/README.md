@@ -59,6 +59,9 @@ from the current branch's configured remote (falling back to `origin`). It requi
 and works with local changes, without fetching objects, switching versions, or deploying.
 
 `make update` builds and deploys existing sources without fetching Git changes.
+Every branch and tag can be installed, independently of `APP_ENV`: the Git branch `dev`
+does not require application development mode. `APP_ENV=prod` retains production protections
+even when installing that branch.
 With a `.git` entry, `VERSION=<reference>` fetches and selects an exact tag, otherwise a remote
 branch. Local modifications block only this explicit selection. Use plain `make update`
 to deploy local work or configuration. `make start` always keeps existing sources, including when

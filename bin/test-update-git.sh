@@ -92,7 +92,8 @@ git -C "$case_dir/seed" tag v2
 git -C "$case_dir/seed" tag v10
 git -C "$case_dir/seed" branch v1 HEAD~1
 git -C "$case_dir/seed" branch feature/demo
-git -C "$case_dir/seed" push --quiet origin main refs/heads/v1 feature/demo --tags
+git -C "$case_dir/seed" branch dev
+git -C "$case_dir/seed" push --quiet origin main refs/heads/v1 feature/demo dev --tags
 
 # Listing queries remote refs, even before installation and with local edits.
 # It must not fetch, checkout, deploy, or change the worktree/index.
@@ -111,6 +112,7 @@ v2
 v1
 
 Branches:
+dev
 feature/demo
 main
 v1
@@ -167,6 +169,29 @@ expect_failure VERSION=--help
 expect_failure 'VERSION=missing;touch injected'
 test ! -e "$install_dir/injected"
 expect_failure VERSION=v1 RELEASE_DIR=/unused-release
+
+# Git selection is independent of application mode. Exercise conventional and
+# arbitrary branch names, tags and a subsequent plain update on detached HEAD.
+for app_mode in prod pp test demo custom DEV ''; do
+    for selected_ref in dev main feature/demo v1; do
+        run_update APP_ENV="$app_mode" VERSION="$selected_ref"
+        if [[ "$selected_ref" == v1 ]]; then
+            expected=$(git -C "$case_dir/seed" rev-parse 'refs/tags/v1^{commit}')
+            if git -C "$install_dir" symbolic-ref --quiet HEAD; then exit 1; fi
+        else
+            expected=$(git -C "$case_dir/seed" rev-parse "refs/heads/$selected_ref")
+            test "$(git -C "$install_dir" branch --show-current)" = "$selected_ref"
+        fi
+        test "$(git -C "$install_dir" rev-parse HEAD)" = "$expected"
+        run_update APP_ENV="$app_mode"
+        test "$(git -C "$install_dir" rev-parse HEAD)" = "$expected"
+        grep -q ' build --pull$' "$GIT_UPDATE_TEST_LOG"
+        if grep -q 'compose.dev.yaml' "$GIT_UPDATE_TEST_LOG"; then exit 1; fi
+        cmp "$case_dir/env.before" "$install_dir/.env"
+        cmp "$case_dir/override.before" "$install_dir/compose.override.yaml"
+    done
+done
+run_update VERSION=main
 
 # An ignored operator file must never be replaced by a versioned incoming file.
 git -C "$case_dir/seed" checkout --quiet -b config-clash feature/demo

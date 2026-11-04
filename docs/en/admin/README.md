@@ -5,7 +5,7 @@
 This guide covers the deployment, configuration, and operation of Galaris. Commands are run from the repository root.
 
 For a first installation, follow the [installation guide](installation.md):
-**clone the repository → `make install` → `make update RELEASE_DIR=<bundle>` → OpenRouter token in Providers
+**clone the repository → `make install` → `make start` → OpenRouter token in Providers
 → Chat with Galaris**. After creating the first administrator account, the Galaris agent,
 models and default profile are ready; enter your token to start chatting.
 The following sections detail administration options.
@@ -1131,17 +1131,20 @@ volumes.
 ## 10. Update
 
 ```bash
-make update RELEASE_DIR=/path/to/qualified-bundle
+make update
 ```
 
-Outside `APP_ENV=dev`, this command requires qualified immutable images. It verifies the
-candidate and the previous image used for upgrade qualification, deploys without rebuilding,
-restarts backend/frontend and waits for complete schema convergence and readiness. `staged`,
-`degraded` and `fatal` block startup. Missing, unqualified or incompatible bundles are rejected
-before services stop. SQL objects absent from the target cannot be silently ignored.
-See the [qualification workflow](../dev/reliability-operations.md).
+This command builds the current checkout on any branch or tag, independently of `APP_ENV`,
+then waits for complete schema convergence and readiness. `staged`, `degraded` and `fatal`
+block startup. SQL objects absent from the target cannot be silently ignored. Application
+mode and Git branch are independent: the `dev` branch can run with `APP_ENV=prod`.
 
-In development, `make update` builds current sources. `make update VERSION=0.3.1` explicitly
+Optional `RELEASE_DIR=<directory>` deploys qualified immutable images without rebuilding,
+checking the candidate and previous image used for upgrade qualification. Invalid bundles
+are rejected before services stop. See the
+[qualification workflow](../dev/reliability-operations.md).
+
+`make update` builds current sources. `make update VERSION=<branch-or-tag>` explicitly
 selects a tag or remote branch from a clean checkout, preserving `.env` and overrides.
 `make update VERSIONS` lists targets without deploying. Infrastructure downloads and builds
 finish before containers stop; failures at that stage preserve running services. Unchanged
@@ -1186,7 +1189,7 @@ Keep the previous image identities too. A dump alone does not cover attachments;
 [Backup and Restore](#backup-and-restore). Do not leave an older backend writing during
 data transfers.
 
-Once the tag is published, use `APP_ENV=dev make update VERSION=0.3.0` from a clean checkout, or deploy an
+Once the tag is published, use `make update VERSION=0.3.0` from a clean checkout, or deploy an
 already-qualified immutable bundle with `RELEASE_DIR`. Startup applies DbAdmin convergence
 and resumable transfers before reporting backend readiness. On failure, retain diagnostics
 and fix the cause before retrying the same procedure; do not substitute manual SQL changes.

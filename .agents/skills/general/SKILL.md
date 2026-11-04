@@ -28,7 +28,7 @@ et PostgreSQL dans leurs conteneurs. Préférer les cibles réelles de `Makefile
 | `make architecture-check` | Vérifier frontières et documentation générée |
 | `make project-context` | Régénérer la cartographie déterministe |
 | `make sync-db` | En développement, faire converger schéma et datasets avec DbAdmin sans redémarrer |
-| `make update` | Dev : construire les sources ; hors dev : exiger `RELEASE_DIR` et promouvoir ses images qualifiées. Attendre la convergence complète et la disponibilité. |
+| `make update` | Construire les sources du checkout courant, sur toute branche ou tag et quel que soit `APP_ENV` ; `RELEASE_DIR` sélectionne facultativement des images qualifiées. Attendre la convergence complète et la disponibilité. |
 
 Ne jamais lancer `pytest` dans le backend de développement : les tests doivent passer par la
 base isolée créée par `make tests`.

@@ -33,8 +33,9 @@ En développement, `make update` reconstruit aussi les images avec cache et red�
 la commande de démarrage dev synchronise la base avant Uvicorn, puis la mise à jour attend les
 services. `make sync-db` reste adapté à une synchronisation seule sans redémarrage.
 
-En production, ne lancez pas cette commande séparément : `make update RELEASE_DIR=<bundle>`
-promeut les images immuables qualifiées sans reconstruction. L’entrypoint du nouveau backend appelle le même DbAdmin avant Uvicorn, et `make update`
+En production, ne lancez pas cette commande séparément : `make update` construit les sources
+sur toute branche ou tag ; `RELEASE_DIR=<bundle>` permet aussi de promouvoir des images qualifiées.
+La branche Git ne choisit pas le mode applicatif. L’entrypoint appelle DbAdmin avant Uvicorn, et `make update`
 attend ensuite que les services soient sains. Ces deux chemins sont idempotents.
 
 > Ne pas écrire de script de migration ni lancer `atlas ...` à la main. Toute invocation Atlas

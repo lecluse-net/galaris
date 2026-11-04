@@ -2,7 +2,7 @@
 
 # Install Galaris
 
-**Clone the repository → `make install` → deploy a qualified bundle → enter your OpenRouter token
+**Clone the repository → `make install` → `make start` → enter your OpenRouter token
 in Providers → chat with Galaris.**
 
 On a fresh installation, the models and default profile are preconfigured, and the
@@ -73,20 +73,20 @@ AI providers and their keys are configured later in the interface.
 ## 3. Start Galaris
 
 ```bash
-make update RELEASE_DIR=/path/to/qualified-release
+make start
 ```
 
-Production requires qualified immutable images and never rebuilds them during deployment.
-Follow the [image qualification workflow](../dev/reliability-operations.md)
-to prepare the bundle. Startup prepares the data volume, initializes the database and waits
-for complete schema convergence and readiness. Local configuration is preserved.
-In development only, `APP_ENV=dev make start` builds sources.
+The first start builds the current checkout on any branch or tag, independently of `APP_ENV`.
+Startup prepares the data volume, initializes the database and waits for complete schema
+convergence and readiness. Local configuration is preserved. The
+[image qualification workflow](../dev/reliability-operations.md) also supports immutable
+bundles deployed with `make update RELEASE_DIR=<directory>`.
 
 Afterwards, `make start` starts existing containers without building. If a service is missing,
 has failed or does not become ready, it attempts one full update. Docker access errors or
 configuration inspection errors stop the command.
-Production recovery requiring deployment also requires `RELEASE_DIR`; `start` never rebuilds
-sources or changes the Git version.
+Recovery rebuilds existing sources when needed; `start` never changes the Git version or
+requires enabling development behavior.
 
 ## 4. Enter the OpenRouter token and start chatting
 
@@ -146,16 +146,16 @@ project's local Compose images and orphan containers.
 
 `make clean` also removes volumes: this command is destructive.
 
-In production, deploy qualified images:
+To build and deploy the current checkout:
 
 ```bash
-make update RELEASE_DIR=/path/to/qualified-release
+make update
 ```
 
-In development only, fetch and deploy a tag or branch:
+To fetch and deploy a tag or branch, independently of `APP_ENV`:
 
 ```bash
-APP_ENV=dev make update VERSION=0.3.1
+make update VERSION=<branch-or-tag>
 ```
 
 To list available targets before choosing one:
@@ -168,7 +168,7 @@ This queries the configured Git remote and lists all tags (highest versions firs
 all branches alphabetically. It does not modify local sources or start a deployment, and
 works before `make install` or with local changes. A Git checkout and remote access are required.
 
-In development, `make update` pulls infrastructure images, including SearXNG, before build and restart.
+`make update` pulls infrastructure images, including SearXNG, before build and restart.
 SearXNG follows the version pinned in `compose.yaml`, preserving
 existing configuration. A pull failure stops the update while keeping running services.
 
@@ -185,15 +185,17 @@ an earlier failure to appear in the new journal after the old container was repl
 Older journals containing only stage
 metadata cannot reconstruct output they did not record.
 
-In development without `VERSION`, no Git fetching or selection takes place: existing sources are used,
+Without `VERSION`, no Git fetching or selection takes place: existing sources are used,
 including local changes, detached tags or branches without an upstream.
 With `VERSION`, `.git` must exist in the installation (directory or worktree file).
 An exact tag takes priority over a branch
 with the same name; an unknown reference fails before any container changes.
 
 Local source modifications block Git synchronization; ignored `.env` and override files
-are preserved. Redeploy the qualified bundle to apply production configuration changes.
-Without `.git`, development continues building existing sources and rejects `VERSION`.
+are preserved. Run `make update` to apply configuration changes.
+Without `.git`, `make update` builds existing sources and rejects `VERSION`.
+`APP_ENV` selects application behavior and image targets, never permitted branches.
+`make update RELEASE_DIR=<directory>` remains available for a qualified bundle.
 
 If an update separating Memory from Documents stopped on a `memory_items.share_id` or
 `share_kind` constraint while creating contacts, fetch the fix and run `make update` again.

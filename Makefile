@@ -240,7 +240,7 @@ build: ## Build current images with cache without changing containers
 
 # Both backend startup paths run DbAdmin before Uvicorn. Wait for readiness so
 # startup failures also fail the update command.
-update: ## Dev: build sources; production: deploy qualified images with RELEASE_DIR
+update: ## Build current sources; VERSION selects any tag/branch, RELEASE_DIR deploys qualified images
 ifneq ($(filter VERSIONS,$(MAKECMDGOALS)),)
 ifneq ($(strip $(VERSION)$(RELEASE_DIR)),)
 	@echo "VERSIONS cannot be combined with VERSION or RELEASE_DIR."; exit 2
@@ -249,16 +249,13 @@ else
 endif
 else
 	@test -f .env || { echo "Run make install, configure .env, then run make update."; exit 2; }
-ifneq ($(APP_ENV),dev)
-ifeq ($(strip $(RELEASE_DIR)),)
-	@echo "Production updates require qualified immutable images: make update RELEASE_DIR=<qualified-directory>" >&2; exit 2
-else
+ifneq ($(strip $(RELEASE_DIR)),)
 	@test -z "$${VERSION:-}" || { echo "VERSION and RELEASE_DIR cannot be combined."; exit 2; }
+ifeq ($(APP_ENV),dev)
+	@echo "RELEASE_DIR is reserved for prod-like environments."; exit 2
+else
 	@bash bin/update-release.sh "$(RELEASE_DIR)" $(COMPOSE_FILES)
 endif
-else
-ifneq ($(strip $(RELEASE_DIR)),)
-	@echo "RELEASE_DIR is reserved for prod-like environments."; exit 2
 else
 ifneq ($(if $(filter 0,$(GIT_UPDATE)),,$(strip $(VERSION))),)
 	@bash bin/update-source.sh
@@ -268,7 +265,6 @@ else
 	@bash bin/update-runtime.sh $(COMPOSE_FILES)
 	@echo "✅ Update complete ($(APP_ENV))."
 	@echo "Open $(APP_HOST) in your browser."
-endif
 endif
 endif
 endif

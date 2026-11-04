@@ -62,6 +62,9 @@ par ordre alphabétique, depuis le dépôt distant de la branche courante (`orig
 Elle fonctionne sans `.env` et avec des changements locaux, sans fetch, changement de version ni déploiement.
 
 `make update` construit et déploie les sources présentes sans récupération Git.
+Toutes les branches et tous les tags sont installables, quel que soit `APP_ENV` : la
+branche Git `dev` n'impose pas le mode applicatif `dev`. Les protections de production
+restent actives avec `APP_ENV=prod`, même pour cette branche.
 Avec un `.git`, `VERSION=<référence>` récupère et sélectionne un tag exact, sinon une branche
 distante. Les changements locaux bloquent uniquement cette sélection explicite.
 Le bas du menu affiche la référence Git de construction (tag exact, sinon branche, puis

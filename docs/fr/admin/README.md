@@ -6,7 +6,7 @@ Ce guide couvre le déploiement, la configuration et l’exploitation de Galaris
 commandes partent de la racine du dépôt.
 
 Pour une première installation, suivez le [guide d’installation](installation.md) :
-**cloner le dépôt → `make install` → `make update RELEASE_DIR=<bundle>` → token OpenRouter dans Fournisseurs
+**cloner le dépôt → `make install` → `make start` → token OpenRouter dans Fournisseurs
 → Chat avec Galaris**. Après la création du premier compte administrateur, l’agent Galaris,
 les modèles et le profil par défaut sont déjà prêts ; renseignez votre token pour discuter.
 Les sections suivantes détaillent les options d’administration.
@@ -1157,18 +1157,21 @@ volumes.
 ## 10. Mise à jour
 
 ```bash
-make update RELEASE_DIR=/chemin/vers/bundle-qualifie
+make update
 ```
 
-Hors `APP_ENV=dev`, cette commande exige un bundle d'images immuables qualifiées. Elle vérifie
-les identités du candidat et de l'ancienne image ayant servi au test d'upgrade, déploie sans
-reconstruction, relance le backend et le frontend, puis attend la convergence complète du
-schéma et la disponibilité. `staged`, `degraded` et `fatal` interdisent le démarrage.
-Un bundle absent, non qualifié ou incompatible est refusé avant l'arrêt des services.
-Les objets SQL non représentés dans la cible ne sont pas silencieusement ignorés.
-Voir le [parcours de qualification](../dev/reliability-operations.md).
+Cette commande construit le checkout courant sur toute branche ou tag, indépendamment
+de `APP_ENV`, puis attend la convergence complète du schéma et la disponibilité.
+`staged`, `degraded` et `fatal` interdisent le démarrage. Les objets SQL non représentés
+dans la cible ne sont pas silencieusement ignorés. Le mode applicatif et la branche Git
+sont indépendants : une branche `dev` peut être installée avec `APP_ENV=prod`.
 
-En développement, `make update` construit les sources présentes. `make update VERSION=0.3.1`
+L'option `RELEASE_DIR=<dossier>` déploie des images immuables qualifiées sans reconstruction.
+Elle vérifie les identités du candidat et de l'ancienne image ayant servi au test d'upgrade.
+Un bundle invalide est refusé avant l'arrêt des services. Voir le
+[parcours de qualification](../dev/reliability-operations.md).
+
+`make update` construit les sources présentes. `make update VERSION=<branche-ou-tag>`
 sélectionne explicitement un tag ou une branche distante depuis un checkout propre, en
 conservant `.env` et les overrides. `make update VERSIONS` liste les cibles sans déploiement.
 Le build et le téléchargement de l'infrastructure précèdent l'arrêt des conteneurs ; un échec
@@ -1219,7 +1222,7 @@ les clés de chiffrement. Gardez aussi l’identité des anciennes images. Un du
 pas les pièces jointes ; voir [Sauvegarde et restauration](#backup-and-restore).
 Ne laissez pas un ancien backend écrire pendant les transferts de données.
 
-Une fois le tag publié, utilisez `APP_ENV=dev make update VERSION=0.3.0` depuis un checkout propre, ou
+Une fois le tag publié, utilisez `make update VERSION=0.3.0` depuis un checkout propre, ou
 déployez le bundle immuable déjà qualifié avec `RELEASE_DIR`. Le démarrage applique les
 convergences DbAdmin et les transferts reprenables avant d’annoncer le backend prêt.
 En cas d’échec, conservez les diagnostics et corrigez leur cause avant de relancer la même

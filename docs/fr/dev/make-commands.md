@@ -5,7 +5,7 @@
 Les cibles ci-dessous proviennent des six `Makefile` du dépôt. Depuis la racine, utiliser
 `make help` pour afficher l'aide courante et `make <cible>` pour lancer une commande.
 Le `Makefile` reste la référence. Installation standard : **`make install` → configurer
-`.env` et `compose.override.yaml` → `make update RELEASE_DIR=<bundle-qualifie>`** ; voir le [guide d’installation](../admin/installation.md).
+`.env` et `compose.override.yaml` → `make start`** ; voir le [guide d’installation](../admin/installation.md).
 
 ## Stack et exploitation
 
@@ -21,7 +21,7 @@ Le `Makefile` reste la référence. Installation standard : **`make install` →
 | `restart` | Enchaîner `stop` puis `start`. |
 | `restart-service` | Redémarrer un seul service sans reconstruire ; `SERVICE` obligatoire. |
 | `status` | Afficher l'état des conteneurs ; filtrer avec `SERVICE` si nécessaire. |
-| `update` | En développement : construire les sources, avec sélection Git facultative par `VERSION`. Hors dev : exiger `RELEASE_DIR` et promouvoir ses images immuables qualifiées, sans reconstruction. Attendre la convergence complète DbAdmin et la disponibilité, puis actualiser l'index documentaire. |
+| `update` | Construire le checkout courant, sur toute branche ou tag et quel que soit `APP_ENV` ; `VERSION` sélectionne explicitement une référence Git. `RELEASE_DIR` déploie facultativement des images immuables qualifiées sans reconstruction. Attendre la convergence complète DbAdmin et la disponibilité, puis actualiser l'index documentaire. |
 | `save` | Sauvegarder PostgreSQL et `/data` sauf `/data/files` dans une archive privée ; `FILE` facultatif. Arrêter temporairement les services actifs, puis les relancer. |
 | `restore` | Vérifier puis restaurer `FILE=<archive>` ou l'archive passée comme deuxième argument ; conserver une sauvegarde de secours et laisser les services arrêtés. `/data/files` reste intact pour sa gestion rsync séparée. |
 | `update VERSIONS` | Lister tous les tags (versions les plus élevées d’abord), puis toutes les branches par ordre alphabétique, depuis le dépôt Git distant configuré, sans déploiement ni modification des sources locales. |

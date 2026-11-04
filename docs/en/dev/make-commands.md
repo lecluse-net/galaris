@@ -5,7 +5,7 @@
 The targets below come from the repository's six `Makefile` files. At the root, use
 `make help` for current help and `make <target>` to run a command.
 The `Makefile` remains authoritative. Standard installation: **`make install` → configure
-`.env` and `compose.override.yaml` → `make update RELEASE_DIR=<qualified-bundle>`**; see the [installation guide](../admin/installation.md).
+`.env` and `compose.override.yaml` → `make start`**; see the [installation guide](../admin/installation.md).
 
 ## Stack and operations
 
@@ -21,7 +21,7 @@ The `Makefile` remains authoritative. Standard installation: **`make install` �
 | `restart` | Run `stop`, then `start`. |
 | `restart-service` | Restart one service without rebuilding; `SERVICE` is required. |
 | `status` | Display container status; optionally filter with `SERVICE`. |
-| `update` | Development: build sources, optionally selecting Git `VERSION`. Outside dev: require `RELEASE_DIR` and promote its qualified immutable images without rebuilding. Wait for complete DbAdmin convergence and readiness, then refresh documentation search. |
+| `update` | Build the current checkout on any branch or tag, independently of `APP_ENV`; `VERSION` explicitly selects a Git reference. Optional `RELEASE_DIR` deploys qualified immutable images without rebuilding. Wait for complete DbAdmin convergence and readiness, then refresh documentation search. |
 | `save` | Archive PostgreSQL and `/data` except `/data/files`; optional `FILE`. Briefly stop active application services, then resume them. |
 | `restore` | Verify and restore `FILE=<archive>` or an archive supplied as the second argument; retain a recovery archive and leave services stopped. `/data/files` stays intact for separate rsync management. |
 | `update VERSIONS` | List all tags (highest versions first), then all branches alphabetically, from the configured Git remote, without deploying or modifying local sources. |
