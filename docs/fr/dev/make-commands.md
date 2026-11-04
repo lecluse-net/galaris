@@ -5,7 +5,7 @@
 Les cibles ci-dessous proviennent des six `Makefile` du dépôt. Depuis la racine, utiliser
 `make help` pour afficher l'aide courante et `make <cible>` pour lancer une commande.
 Le `Makefile` reste la référence. Installation standard : **`make install` → configurer
-`.env` et `compose.override.yaml` → `make start`** ; voir le [guide d’installation](../admin/installation.md).
+`.env` et `compose.override.yaml` → `make update RELEASE_DIR=<bundle-qualifie>`** ; voir le [guide d’installation](../admin/installation.md).
 
 ## Stack et exploitation
 
@@ -21,7 +21,9 @@ Le `Makefile` reste la référence. Installation standard : **`make install` →
 | `restart` | Enchaîner `stop` puis `start`. |
 | `restart-service` | Redémarrer un seul service sans reconstruire ; `SERVICE` obligatoire. |
 | `status` | Afficher l'état des conteneurs ; filtrer avec `SERVICE` si nécessaire. |
-| `update` | Récupérer les images d’infrastructure (dont SearXNG) en dev/prod avant le build et le redémarrage, puis déployer les sources avec leur documentation préparée et actualiser l’index ; aucune génération de cartes ni contrôle documentaire statique. Un échec de récupération préserve les services actifs. Seul `VERSION` déclenche la récupération d’un tag ou d’une branche Git. Accepte `RELEASE_DIR` hors dev, sans Git, avec la documentation embarquée du paquet. |
+| `update` | En développement : construire les sources, avec sélection Git facultative par `VERSION`. Hors dev : exiger `RELEASE_DIR` et promouvoir ses images immuables qualifiées, sans reconstruction. Attendre la convergence complète DbAdmin et la disponibilité, puis actualiser l'index documentaire. |
+| `save` | Sauvegarder PostgreSQL et `/data` sauf `/data/files` dans une archive privée ; `FILE` facultatif. Arrêter temporairement les services actifs, puis les relancer. |
+| `restore` | Vérifier puis restaurer `FILE=<archive>` ou l'archive passée comme deuxième argument ; conserver une sauvegarde de secours et laisser les services arrêtés. `/data/files` reste intact pour sa gestion rsync séparée. |
 | `update VERSIONS` | Lister tous les tags (versions les plus élevées d’abord), puis toutes les branches par ordre alphabétique, depuis le dépôt Git distant configuré, sans déploiement ni modification des sources locales. |
 | `logs` | Suivre tous les journaux. |
 | `logs-back`, `logs-front`, `logs-search` | Suivre les journaux du service désigné. |
@@ -109,6 +111,7 @@ Voir [Tester les comportements](testing.md).
 | `tests-focus-gates` | Vérifier que les configurations Playwright refusent les tests focalisés. |
 | `tests-e2e` | Parcours navigateur et mises à jour PWA dans une stack isolée. |
 | `tests-update` | Vérifier installation, configuration conservée, mises à jour et échecs avec Docker simulé. |
+| `tests-backup` | Exercer `make save/restore` avec Docker et PostgreSQL isolés, contrôle d'intégrité et exclusion rsync. |
 | `tests-documentation` | Vérifier le lanceur documentaire hors ligne, puis son confinement dans de vrais conteneurs. |
 | `tests-install` | Installer réellement une copie isolée avec volumes neufs, vérifier la disponibilité HTTP et la conservation des conteneurs après stop/start. Port de test : `INSTALL_TEST_PORT=18484` par défaut. |
 | `tests-validation-source` | Vérifier la conservation et l'empreinte des changements non committés lors de la validation. |

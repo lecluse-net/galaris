@@ -29,6 +29,8 @@ main() {
         return
     fi
     [[ -n "$version" ]] || return 0
+    source bin/update-journal.sh
+    update_maintenance_lock
     if [[ ! -e .git ]]; then
         fail 'VERSION requires a Git checkout in this installation.'
     fi

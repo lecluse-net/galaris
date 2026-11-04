@@ -266,7 +266,10 @@ def register(registry: DbAdminRegistry) -> None:
     registry.register_action(DbAdminAction(key="app.document.typed_documents", phase=DbAdminPhase.AFTER_EXPAND,
         checksum="transfer-expanded-typed-documents-and-personal-classification-v2",
         compatible_checksums=frozenset({"typed-documents-and-personal-classification-v1"}), predicate=needed,
-        handler=finalize, postcondition=complete))
+        handler=finalize, postcondition=complete,
+        requires_schema=frozenset({"documents.storage_kind", "documents.summary_generated",
+                                   "datasets.summary_content", "datasets.summary_generated",
+                                   "datasets.summary_pending", "datasets.summary_source_text"})))
     registry.register_action(DbAdminAction(key="app.document.typed_role_capabilities", phase=DbAdminPhase.AFTER_DATASET,
         checksum="dataset-roles-retain-equivalent-document-capabilities-v1", predicate=needed,
         handler=restore_roles, postcondition=roles_complete))

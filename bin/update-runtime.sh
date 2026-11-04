@@ -2,6 +2,10 @@
 # The source-build update path; preserve the order and fail at the first error.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+if [[ "${APP_ENV:-prod}" != dev ]]; then
+    echo 'Source builds are reserved for APP_ENV=dev. Production requires make update RELEASE_DIR=<qualified-directory>.' >&2
+    exit 2
+fi
 source bin/update-journal.sh
 update_journal_start
 

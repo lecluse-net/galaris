@@ -73,6 +73,11 @@ ou par le simple fait que le code s'est exécuté.
 - Ne jamais déplacer cette logique dans le lifespan FastAPI, `back/scripts/`, un appel Atlas
   direct ou du DDL applicatif au démarrage.
 
+Seul le verdict `converged` autorise le démarrage ; `staged`, `degraded` et `fatal` retournent
+un code non nul. Vérifier les prérequis `requires_schema` avant handler et postcondition, puis
+le diff Atlas final après posttraitements. Une action pré-expansion ne doit jamais dépendre
+des colonnes de destination. Qualifier les upgrades avec le véritable ancien binaire peuplé.
+
 ## Tester et livrer
 
 Tester au niveau du contrat modifié : prédicat applicable et non applicable, idempotence,

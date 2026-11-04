@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0265 — Strict schema convergence, qualified deployments and offline backups](0265-strict-updates-and-offline-backups.md)
+
 - [0264 — Supported LTS runtimes and artifact-scoped kernel-header assessment](0264-lts-runtime-security-assessment.md)
 
 - [0263 — Security-only publication and opt-in functional qualification](0263-security-only-release-gate.md)

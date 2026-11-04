@@ -21,6 +21,11 @@ if ! command -v openssl &> /dev/null; then
     exit 1
 fi
 
+if ! command -v flock &> /dev/null; then
+    echo "❌ flock is missing. Install util-linux before running make install."
+    exit 1
+fi
+
 if ! docker info &> /dev/null; then
     echo "❌ The Docker daemon does not seem to be running. Please start it."
     exit 1

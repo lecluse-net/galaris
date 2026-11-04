@@ -9,6 +9,10 @@ APP_ENV ?= prod
 export APP_ENV
 # VERSION is passed as an environment value, never interpolated into shell code.
 export VERSION
+GALARIS_BACKUP_ARCHIVE := $(if $(FILE),$(FILE),$(if $(filter restore,$(firstword $(MAKECMDGOALS))),$(word 2,$(MAKECMDGOALS))))
+export GALARIS_BACKUP_ARCHIVE
+GALARIS_BACKUP_KEEP_STOPPED := $(KEEP_STOPPED)
+export GALARIS_BACKUP_KEEP_STOPPED
 
 # Application name, overridable through .env and used for container names.
 APP_NAME ?= galaris
@@ -70,6 +74,25 @@ help: ## List available commands
 	@echo ""
 	@echo "Use 'make <command>' with one of the commands above."
 .PHONY: help
+
+save: ## Save PostgreSQL and data except data/files (optional FILE=<archive>)
+	@bash bin/backup.sh save $(COMPOSE_FILES)
+.PHONY: save
+
+restore: ## Restore an archive offline: make restore FILE=<archive> or make restore <archive>
+	@bash bin/backup.sh restore $(COMPOSE_FILES)
+.PHONY: restore
+
+ifeq ($(firstword $(MAKECMDGOALS)),restore)
+ifneq ($(word 3,$(MAKECMDGOALS)),)
+$(error restore accepts one archive; use FILE=<archive> for paths containing spaces)
+endif
+ifneq ($(word 2,$(MAKECMDGOALS)),)
+$(word 2,$(MAKECMDGOALS)):
+	@:
+.PHONY: $(word 2,$(MAKECMDGOALS))
+endif
+endif
 
 memory-benchmark: ## Generate, validate or score an entirely synthetic memory recall corpus (ARGS)
 	@bash bin/memory-benchmark.sh $(ARGS)
@@ -217,7 +240,7 @@ build: ## Build current images with cache without changing containers
 
 # Both backend startup paths run DbAdmin before Uvicorn. Wait for readiness so
 # startup failures also fail the update command.
-update: ## Build and deploy sources; VERSION selects a tag/branch, VERSIONS lists available targets
+update: ## Dev: build sources; production: deploy qualified images with RELEASE_DIR
 ifneq ($(filter VERSIONS,$(MAKECMDGOALS)),)
 ifneq ($(strip $(VERSION)$(RELEASE_DIR)),)
 	@echo "VERSIONS cannot be combined with VERSION or RELEASE_DIR."; exit 2
@@ -226,13 +249,16 @@ else
 endif
 else
 	@test -f .env || { echo "Run make install, configure .env, then run make update."; exit 2; }
-ifneq ($(strip $(RELEASE_DIR)),)
+ifneq ($(APP_ENV),dev)
+ifeq ($(strip $(RELEASE_DIR)),)
+	@echo "Production updates require qualified immutable images: make update RELEASE_DIR=<qualified-directory>" >&2; exit 2
+else
 	@test -z "$${VERSION:-}" || { echo "VERSION and RELEASE_DIR cannot be combined."; exit 2; }
-	@if [ "$(APP_ENV)" = "dev" ]; then \
-		echo "❌ RELEASE_DIR is reserved for prod-like environments."; \
-		exit 2; \
-	fi
 	@bash bin/update-release.sh "$(RELEASE_DIR)" $(COMPOSE_FILES)
+endif
+else
+ifneq ($(strip $(RELEASE_DIR)),)
+	@echo "RELEASE_DIR is reserved for prod-like environments."; exit 2
 else
 ifneq ($(if $(filter 0,$(GIT_UPDATE)),,$(strip $(VERSION))),)
 	@bash bin/update-source.sh
@@ -242,6 +268,7 @@ else
 	@bash bin/update-runtime.sh $(COMPOSE_FILES)
 	@echo "✅ Update complete ($(APP_ENV))."
 	@echo "Open $(APP_HOST) in your browser."
+endif
 endif
 endif
 endif
@@ -278,7 +305,7 @@ sync-db: ## Development only: synchronize schema and reference data without rest
 		exit 2; \
 	fi
 	@echo "Synchronizing database schema and datasets with DbAdmin..."
-	docker compose $(COMPOSE_FILES) exec backend python -m core.dbadmin synchronize --mode development
+	@bash -c 'source bin/update-journal.sh; update_maintenance_lock || exit $$?; exec docker compose "$$@" exec backend python -m core.dbadmin synchronize --mode development' bash $(COMPOSE_FILES)
 .PHONY: sync-db
 
 rebuild-source-memory: ## Rebuild Agent/Goal memory projections (ARGS='--all|--recreate --provider code')
@@ -486,6 +513,10 @@ tests-release-check: ## Prove publication blocks failed, missing or stale eviden
 tests-restore: ## Rehearse database, files and encryption-key restoration in isolation
 	@bash bin/test-restore.sh
 .PHONY: tests-restore
+
+tests-backup: ## Exercise make save/restore with synthetic data and real isolated Docker/PostgreSQL
+	@bash bin/test-backup.sh
+.PHONY: tests-backup
 
 tests-upgrade: ## Rehearse explicit UPGRADE_PREVIOUS_IMAGE or UPGRADE_FROM on isolated data
 	@bash bin/test-upgrade.sh

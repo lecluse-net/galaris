@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 source bin/update-journal.sh
 update_journal_start
 update_stage release-qualification
+[[ -z "${VERSION:-}" ]] || { echo 'VERSION and RELEASE_DIR cannot be combined.' >&2; exit 2; }
 release_directory=$(realpath "${1:?A tested release directory is required}")
 shift
 test -f "$release_directory/TESTED_IMAGE_IDS" || { echo "Release has no successful exact-image qualification" >&2; exit 2; }
@@ -26,6 +27,8 @@ expected_docs=$(docker run --rm --network none --entrypoint python \
 [[ "$expected_docs" =~ ^[0-9a-f]{64}$ ]] || { echo 'Invalid release documentation revision' >&2; exit 1; }
 update_stage data-volume
 bash bin/init-data-volume.sh "$@" -f "$release_directory/compose.release.yaml"
+update_stage backend-reset
+docker compose "$@" -f "$release_directory/compose.release.yaml" rm --stop --force backend frontend
 update_stage readiness
 update_journal_watch_backend "$@" -f "$release_directory/compose.release.yaml"
 update_journal_command compose-readiness docker compose "$@" -f "$release_directory/compose.release.yaml" up -d --no-build --pull never --wait --wait-timeout 300

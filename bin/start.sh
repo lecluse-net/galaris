@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Exit 10 requests one full update; inspection errors must stop the command.
 set -euo pipefail
+source bin/update-journal.sh
+update_maintenance_lock
 compose=(docker compose "$@")
 
 needs_update() {

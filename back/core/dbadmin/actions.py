@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from core import settings
 from core.database import get_db_session
@@ -185,6 +185,20 @@ async def run_actions(
             continue
         try:
             async with get_db_session() as session:
+                # Check before even evaluating the postcondition: that query can
+                # otherwise reference the destination before Atlas creates it.
+                for requirement in sorted(action.requires_schema):
+                    table, separator, column = requirement.partition(".")
+                    present = await session.scalar(text("""SELECT EXISTS(
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema='public' AND table_name=:table
+                        AND (CAST(:column AS text) IS NULL OR column_name=CAST(:column AS text)))"""),
+                        {"table": table, "column": column if separator else None})
+                    if not present:
+                        raise DbAdminFatalError(
+                            f"Action {action.key} in phase {phase.value} requires missing public.{requirement}; "
+                            "check its phase and schema prerequisites"
+                        )
                 satisfied = await action.postcondition(session, transitions)
             if satisfied:
                 await _record_status(action, "already_satisfied")

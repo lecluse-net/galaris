@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 # Persist startup evidence on the host, independently of the backend and database.
 
+update_maintenance_lock() {
+    if [[ -L artifacts || -L artifacts/.maintenance.lock ]]; then
+        echo 'Refusing a symlinked maintenance lock.' >&2
+        return 2
+    fi
+    mkdir -p artifacts
+    exec {update_lock_fd}>>artifacts/.maintenance.lock
+    if ! flock -n "$update_lock_fd"; then
+        echo 'Another deployment, backup or restoration is running.' >&2
+        return 2
+    fi
+}
+
 update_journal_start() {
     local previous_umask
     previous_umask=$(umask)
@@ -11,6 +24,8 @@ update_journal_start() {
     fi
     mkdir -p artifacts/updates
     chmod 700 artifacts/updates
+    # Backup, restore and deployment must not race the same database/data tree.
+    update_maintenance_lock
     update_journal=$(mktemp "artifacts/updates/update-$(date -u +%Y%m%dT%H%M%SZ).XXXXXX.log")
     local -a previous_journals
     mapfile -t previous_journals < <(find artifacts/updates -maxdepth 1 -type f -name 'update-*.log' ! -name "${update_journal##*/}" -printf '%f\n' | sort -r | tail -n +100)

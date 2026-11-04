@@ -59,6 +59,62 @@ def _copy_metadata(source: MetaData) -> MetaData:
 
 
 @pytest.mark.asyncio
+async def test_schema_modified_by_postprocessing_cannot_be_reported_converged(monkeypatch):
+    from core.dbadmin import orchestrator
+    from sqlalchemy import Index
+
+    target = _copy_metadata(load_target_metadata())
+    probe = Table("dbadmin_final_probe", target, Column("id", Integer, primary_key=True))
+    Index("ix_dbadmin_final_probe", probe.c.id)
+    monkeypatch.setattr(orchestrator, "load_target_metadata", lambda: target)
+    monkeypatch.setattr(orchestrator, "_load_contributions", lambda registry: None)
+    done = False
+
+    async def remove_index(session, delta):
+        nonlocal done
+        await session.execute(text("DROP INDEX public.ix_dbadmin_final_probe"))
+        done = True
+
+    async def complete(session, delta):
+        return done
+
+    registry = DbAdminRegistry()
+    registry.register_action(DbAdminAction(
+        key="test.final_schema", phase=DbAdminPhase.AFTER_CONTRACT, checksum="v1",
+        predicate=lambda _: True, handler=remove_index, postcondition=complete,
+    ))
+    try:
+        first = await synchronize_database(target_registry=registry)
+        assert first.exit_code == 1
+        assert any("final schema verification" in issue.message for issue in first.issues)
+        second = await synchronize_database(target_registry=registry)
+        assert second.verdict is DbAdminVerdict.CONVERGED
+        async with engine.connect() as connection:
+            assert await connection.scalar(text("SELECT to_regclass('public.ix_dbadmin_final_probe') IS NOT NULL"))
+    finally:
+        async with engine.begin() as connection:
+            await connection.execute(text("DROP TABLE IF EXISTS public.dbadmin_final_probe"))
+            await connection.execute(text("DELETE FROM dbadmin_actions WHERE key='test.final_schema'"))
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_unrepresented_function_is_explicitly_rejected(monkeypatch):
+    from core.dbadmin import orchestrator
+    monkeypatch.setattr(orchestrator, "_load_contributions", lambda registry: None)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(text("CREATE FUNCTION public.dbadmin_unmanaged_probe() RETURNS integer LANGUAGE sql AS $$ SELECT 1 $$"))
+        result = await synchronize_database(target_registry=DbAdminRegistry())
+        assert result.exit_code == 1
+        assert any("dbadmin_unmanaged_probe" in issue.message for issue in result.issues)
+    finally:
+        async with engine.begin() as connection:
+            await connection.execute(text("DROP FUNCTION IF EXISTS public.dbadmin_unmanaged_probe()"))
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("dry_run", [False, True])
 @pytest.mark.parametrize("blocker", ["enum_owner", "table_owner", "view", "default"])
 async def test_enum_preflight_failure_preserves_data_before_upgrade_actions(monkeypatch, dry_run, blocker):
@@ -486,7 +542,7 @@ async def test_complete_registered_dataset_cycle_is_idempotent() -> None:
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_keeps_nullable_column_operational_until_later_backfill(monkeypatch):
+async def test_incomplete_backfill_blocks_startup_and_can_resume(monkeypatch):
     from core.dbadmin import orchestrator
 
     canonical = load_target_metadata()
@@ -502,7 +558,7 @@ async def test_orchestrator_keeps_nullable_column_operational_until_later_backfi
     try:
         first = await synchronize_database(target_registry=DbAdminRegistry())
         assert first.verdict is DbAdminVerdict.STAGED
-        assert first.exit_code == 0
+        assert first.exit_code == 1
         assert [item.key for item in first.transitions.required_columns] == ["dbadmin_operational_probe.code"]
         async with engine.begin() as connection:
             assert await connection.scalar(text("SELECT count(*) FROM dbadmin_operational_probe WHERE code IS NULL")) == 1
@@ -568,7 +624,7 @@ async def test_unfinished_backup_preserves_source_data(monkeypatch, failure):
 
 
 @pytest.mark.asyncio
-async def test_failed_contraction_keeps_successful_expansion_operational(monkeypatch):
+async def test_failed_contraction_blocks_startup_without_discarding_expansion(monkeypatch):
     from core.dbadmin import orchestrator
     from core.dbadmin.contracts import DbAdminFatalError
 
@@ -580,17 +636,18 @@ async def test_failed_contraction_keeps_successful_expansion_operational(monkeyp
 
     async def fail_contract(*args, **kwargs):
         nonlocal calls
-        calls += 1
-        if calls == 2:
+        if not kwargs.get("dry_run"):
+            calls += 1
+        if calls == 2 and not kwargs.get("dry_run"):
             raise DbAdminFatalError("simulated constraint lock timeout")
         return await apply_target(*args, **kwargs)
 
     monkeypatch.setattr(orchestrator, "apply_target", fail_contract)
     try:
         result = await synchronize_database(target_registry=DbAdminRegistry())
-        assert result.verdict is DbAdminVerdict.DEGRADED
-        assert result.exit_code == 0
-        assert any(issue.phase == "contract" and not issue.fatal for issue in result.issues)
+        assert result.verdict is DbAdminVerdict.FATAL
+        assert result.exit_code == 1
+        assert any(issue.phase == "contract" and issue.fatal for issue in result.issues)
         async with engine.begin() as connection:
             await connection.execute(text("INSERT INTO dbadmin_contract_probe VALUES (1)"))
             assert await connection.scalar(text("SELECT id FROM dbadmin_contract_probe")) == 1
@@ -644,7 +701,7 @@ async def test_post_expansion_failure_preserves_sources_and_resumes(monkeypatch,
     try:
         first = await synchronize_database(target_registry=registry)
         assert first.verdict is (DbAdminVerdict.FATAL if failure == "required" else DbAdminVerdict.DEGRADED)
-        assert first.exit_code == (1 if failure == "required" else 0)
+        assert first.exit_code == 1
         assert not checked
         async with engine.begin() as connection:
             assert await connection.scalar(text("SELECT payload FROM dbadmin_phase_source")) == "valuable"

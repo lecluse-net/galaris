@@ -164,16 +164,20 @@ if grep -Eq ' (down|restart)( |$)' "$UPDATE_TEST_LOG"; then
 fi
 
 for app_mode in prod preprod pp test demo custom DEV ''; do
-    run_update APP_ENV="$app_mode"
-    grep -q ' pull --ignore-buildable$' "$UPDATE_TEST_LOG"
-    # Routine updates must reuse unchanged image layers while refreshing bases.
-    grep -q ' build --pull$' "$UPDATE_TEST_LOG"
-    test "$(sort -u "$UPDATE_TEST_LOG.env")" = "$app_mode"
-    if grep -q 'compose.dev.yaml' "$UPDATE_TEST_LOG"; then
-        echo 'FAIL: production update selected development configuration' >&2
+    if run_update APP_ENV="$app_mode"; then
+        echo 'FAIL: production accepted an unqualified source deployment' >&2
         exit 1
     fi
+    grep -q 'qualified immutable images' "$case_dir/output.log"
+    test ! -s "$UPDATE_TEST_LOG"
+    run_update APP_ENV="$app_mode" RELEASE_DIR=/synthetic-qualified-release
+    test ! -s "$UPDATE_TEST_LOG" # The release launcher is substituted in this fixture.
 done
+if run_update APP_ENV=prod RELEASE_DIR=/synthetic-qualified-release VERSION=synthetic-tag; then
+    echo 'FAIL: production accepted VERSION together with RELEASE_DIR' >&2
+    exit 1
+fi
+test ! -s "$UPDATE_TEST_LOG"
 
 # Updates consume prepared documentation in every environment, even if maps are stale.
 # Freshness and corpus validation belong to development and release qualification.
@@ -190,7 +194,7 @@ for locale in fr en; do
     done
 done
 sha256sum "${map_files[@]}" > "$case_dir/maps.before"
-for app_mode in dev prod demo pp test custom DEV ''; do
+for app_mode in dev; do
     UPDATE_TEST_STALE_DOCS=1 UPDATE_TEST_FAILURE=documentation_sources run_update APP_ENV="$app_mode"
     sha256sum --status --check "$case_dir/maps.before"
     if grep -Eq 'project_context.py|navigation-context.mjs|architecture_check.py|app.documentation check' "$UPDATE_TEST_LOG"; then
@@ -207,7 +211,7 @@ for app_mode in dev prod demo pp test custom DEV ''; do
     ' "$UPDATE_TEST_LOG"
 done
 
-for app_mode in dev prod; do
+for app_mode in dev; do
     for failure in pull build data_permissions reset readiness documentation documentation_revision editors; do
         export UPDATE_TEST_FAILURE="$failure"
         if run_update APP_ENV="$app_mode"; then
@@ -253,7 +257,7 @@ unset UPDATE_TEST_FAILURE
 # Preserve the first error, every later error and stderr, even beyond the old
 # 200-line tail. A secondary collection failure must retain the readiness exit.
 printf 'POSTGRES_PASSWORD=synthetic-host-[secret]&value\n' >> "$case_dir/.env"
-for app_mode in dev prod; do
+for app_mode in dev; do
     for collection_exit in 0 23; do
         if UPDATE_TEST_DIAGNOSTICS=1 UPDATE_TEST_FAILURE=readiness UPDATE_TEST_READINESS_EXIT=17 \
             UPDATE_TEST_LOGS_EXIT="$collection_exit" run_update APP_ENV="$app_mode"; then
@@ -277,12 +281,12 @@ for app_mode in dev prod; do
         fi
     done
 done
-# Nonfatal DbAdmin issues are retained even when readiness succeeds.
-UPDATE_TEST_DIAGNOSTICS=1 run_update APP_ENV=prod
+# Historical DbAdmin causes are retained even when the final readiness succeeds.
+UPDATE_TEST_DIAGNOSTICS=1 run_update APP_ENV=dev
 journal=$(sed -n 's/^Update journal: //p' "$case_dir/output.log")
 grep -q 'first error: original conversion cause' "$case_dir/$journal"
 grep -q 'status=completed exit_code=0$' "$case_dir/$journal"
-if UPDATE_TEST_LOGS_EXIT=23 run_update APP_ENV=prod; then
+if UPDATE_TEST_LOGS_EXIT=23 run_update APP_ENV=dev; then
     echo 'FAIL: update claimed success without complete startup evidence' >&2
     exit 1
 fi
@@ -324,7 +328,7 @@ for failure_kind in WRITE FILTER; do
         if env -u APP_ENV -u RELEASE_DIR -u MAKEOVERRIDES MAKEFLAGS= \
             "UPDATE_TEST_${failure_kind}_FAILURE=1" UPDATE_TEST_DIAGNOSTICS=1 \
             UPDATE_TEST_FAILURE="$readiness_failure" UPDATE_TEST_READINESS_EXIT=17 \
-            make --no-print-directory -C "$case_dir" update APP_ENV=prod \
+            make --no-print-directory -C "$case_dir" update APP_ENV=dev \
             WEBRTC_TURN_MODE=disabled POSTGRES_MODE=embedded > "$case_dir/output.log" 2>&1; then
             echo 'FAIL: update succeeded without persisted redacted evidence' >&2
             exit 1
@@ -347,7 +351,7 @@ echo 'PASS: diagnostic storage and redaction failures retain the primary failure
 # If evidence cannot be created, stop before running any deployment command.
 mv "$case_dir/artifacts" "$case_dir/saved-artifacts"
 printf 'Synthetic non-directory\n' > "$case_dir/artifacts"
-if run_update APP_ENV=prod; then
+if run_update APP_ENV=dev; then
     echo 'FAIL: update proceeded without a writable journal' >&2
     exit 1
 fi
@@ -422,9 +426,8 @@ for args in RELEASE_DIR=/unused-release; do
 done
 # Missing APP_ENV defaults to production, including in child Make invocations.
 : > "$case_dir/.env"
-run_update
-grep -q ' build --pull$' "$UPDATE_TEST_LOG"
-grep -q 'Update complete (prod)' "$case_dir/output.log"
+if run_update; then echo 'FAIL: default production update accepted source builds' >&2; exit 1; fi
+test ! -s "$UPDATE_TEST_LOG"
 
 # An explicit shell environment wins over .env and reaches Docker.
 printf 'APP_ENV=prod\n' > "$case_dir/.env"
@@ -435,14 +438,14 @@ grep -q -- '-f compose.dev.yaml build$' "$UPDATE_TEST_LOG"
 
 # An explicitly empty label also overrides .env and never enables development.
 : > "$UPDATE_TEST_LOG"
-env -u MAKEOVERRIDES MAKEFLAGS= APP_ENV= make --no-print-directory -C "$case_dir" update \
-    WEBRTC_TURN_MODE=disabled POSTGRES_MODE=embedded > "$case_dir/output.log" 2>&1
-grep -q ' build --pull$' "$UPDATE_TEST_LOG"
+if env -u MAKEOVERRIDES MAKEFLAGS= APP_ENV= make --no-print-directory -C "$case_dir" update \
+    WEBRTC_TURN_MODE=disabled POSTGRES_MODE=embedded > "$case_dir/output.log" 2>&1; then exit 1; fi
+test ! -s "$UPDATE_TEST_LOG"
 echo 'PASS: dev/prod updates, build/readiness failures and environment guards'
 
 # Starting from a prepared checkout must refresh stale images before touching
 # containers and report readiness failures instead of claiming startup succeeded.
-for app_mode in dev prod demo; do
+for app_mode in dev; do
     printf 'APP_ENV=%s\nWEBRTC_TURN_MODE=disabled\n' "$app_mode" > "$case_dir/.env"
     for failure in none build readiness; do
         : > "$UPDATE_TEST_LOG"
@@ -626,9 +629,12 @@ for app_mode in dev prod; do
             default) ;;
             *) printf 'POSTGRES_MODE=%s\n' "$postgres_mode" >> "$case_dir/.env" ;;
         esac
+        release_args=()
+        if [[ "$app_mode" != dev ]]; then release_args=(RELEASE_DIR=/synthetic-qualified-release); fi
         : > "$UPDATE_TEST_LOG"
         env -u APP_ENV -u POSTGRES_MODE -u RELEASE_DIR -u MAKEOVERRIDES MAKEFLAGS= \
-            make --no-print-directory -C "$case_dir" start stop update status uninstall clean </dev/null > "$case_dir/output.log" 2>&1
+            UPDATE_TEST_STACK=healthy make --no-print-directory -C "$case_dir" start stop update status uninstall clean \
+            "${release_args[@]}" </dev/null > "$case_dir/output.log" 2>&1
         if [[ "$postgres_mode" == external ]]; then
             if grep -q 'compose.postgres.yaml' "$UPDATE_TEST_LOG"; then
                 echo 'FAIL: external PostgreSQL loaded the embedded Compose file' >&2
@@ -643,6 +649,7 @@ for app_mode in dev prod; do
     done
 done
 # Switching to an external database removes only its old container, never volumes.
+printf 'APP_ENV=dev\nWEBRTC_TURN_MODE=disabled\n' > "$case_dir/.env"
 : > "$UPDATE_TEST_LOG"
 UPDATE_TEST_POSTGRES_CONTAINER=0123456789ab run_update POSTGRES_MODE=external
 grep -q '^ps -aq --filter label=com.docker.compose.project=galaris --filter label=com.docker.compose.service=postgres$' "$UPDATE_TEST_LOG"
@@ -748,7 +755,7 @@ if grep -Eq ' (build|pull|up|down)( |$)' "$UPDATE_TEST_LOG"; then
     exit 1
 fi
 
-for app_mode in prod dev demo; do
+for app_mode in dev; do
     for command in start update; do
         sed -i "s/^#\?APP_ENV=.*/APP_ENV=$app_mode/" "$install_dir/.env"
         cp "$install_dir/.env" "$install_dir/env.before"

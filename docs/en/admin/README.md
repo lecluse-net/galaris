@@ -5,7 +5,7 @@
 This guide covers the deployment, configuration, and operation of Galaris. Commands are run from the repository root.
 
 For a first installation, follow the [installation guide](installation.md):
-**clone the repository → `make install` → `make start` → OpenRouter token in Providers
+**clone the repository → `make install` → `make update RELEASE_DIR=<bundle>` → OpenRouter token in Providers
 → Chat with Galaris**. After creating the first administrator account, the Galaris agent,
 models and default profile are ready; enter your token to start chatting.
 The following sections detail administration options.
@@ -1077,6 +1077,14 @@ retain their identifiers and organization; other categories are preserved.
 <a id="backup-and-restore"></a>
 ## 9. Backup and Restore
 
+`make save` creates a private archive of the complete database and `/data` except `/data/files`.
+`make restore <archive>` (or `make restore FILE=<archive>`) verifies it, retains a recovery copy
+and restores offline. Services remain stopped after restoration; save resumes previously active
+services. Manage `/data/files` separately with rsync at the same logical point. Volumes and
+external services outside `/data` still need separate backups. The [detailed contract](installation.md)
+documents keys, permissions, PostgreSQL prerequisites and recovery limits. `make tests-backup`
+exercises these actual commands.
+
 A fully isolated rehearsal is available with `make tests-restore`: PostgreSQL dump and
 restore, files, encryption keys and signing keys. See
 [security validation](../dev/security-validation.md).
@@ -1123,32 +1131,21 @@ volumes.
 ## 10. Update
 
 ```bash
-make update
-# Or select an exact tag, otherwise a remote branch:
-make update VERSION=1.2.3
+make update RELEASE_DIR=/path/to/qualified-bundle
 ```
 
-Without `VERSION`, `make update` builds and deploys existing sources without fetching Git
-changes, including local modifications or a detached tag. With `VERSION` and a `.git` entry,
-it fetches remote references and gives an exact tag priority over a branch of the same name.
-Unknown references, divergent branches and local source changes stop this selection before
-any Docker action. Ignored `.env` and override files are preserved. Automatic `start` recovery
-also keeps existing sources. The `RELEASE_DIR` path skips Git and cannot be combined with `VERSION`.
+Outside `APP_ENV=dev`, this command requires qualified immutable images. It verifies the
+candidate and the previous image used for upgrade qualification, deploys without rebuilding,
+restarts backend/frontend and waits for complete schema convergence and readiness. `staged`,
+`degraded` and `fatal` block startup. Missing, unqualified or incompatible bundles are rejected
+before services stop. SQL objects absent from the target cannot be silently ignored.
+See the [qualification workflow](../dev/reliability-operations.md).
 
-To review changes before deployment, fetch them separately and use `make update`.
-`make update` completes missing secrets,
-prepares SearXNG, pulls infrastructure images (including SearXNG) in both development and
-production, and rebuilds using the Docker cache. SearXNG follows the version pinned in
-`compose.yaml`: a new version requires updating that file, then running `make update`.
-A failed pull stops the update before interrupting services; Compose recreates a container
-when its image changes. After a successful build,
-it recreates the backend and frontend, then waits for the backend entrypoint to synchronize
-Atlas and reference data and for services to become ready. The frontend and SearXNG have HTTP
-healthchecks; PostgreSQL restarts automatically with Docker unless explicitly stopped.
-Unchanged infrastructure services remain running, without taking down the whole stack.
-The command is idempotent and is the only upgrade path in production.
-It does not decide new business options for you; do not replace declarative synchronization with
-manual SQL changes.
+In development, `make update` builds current sources. `make update VERSION=0.3.1` explicitly
+selects a tag or remote branch from a clean checkout, preserving `.env` and overrides.
+`make update VERSIONS` lists targets without deploying. Infrastructure downloads and builds
+finish before containers stop; failures at that stage preserve running services. Unchanged
+infrastructure remains running. `RELEASE_DIR` and `VERSION` cannot be combined.
 
 Unchanged Docker layers are reused, including dependencies and executors. Frontend source changes
 trigger recompilation; an unchanged frontend can retain its image and PWA cache. Each frontend
@@ -1189,7 +1186,7 @@ Keep the previous image identities too. A dump alone does not cover attachments;
 [Backup and Restore](#backup-and-restore). Do not leave an older backend writing during
 data transfers.
 
-Once the tag is published, use `make update VERSION=0.3.0` from a clean checkout, or deploy an
+Once the tag is published, use `APP_ENV=dev make update VERSION=0.3.0` from a clean checkout, or deploy an
 already-qualified immutable bundle with `RELEASE_DIR`. Startup applies DbAdmin convergence
 and resumable transfers before reporting backend readiness. On failure, retain diagnostics
 and fix the cause before retrying the same procedure; do not substitute manual SQL changes.

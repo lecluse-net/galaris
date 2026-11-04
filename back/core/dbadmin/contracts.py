@@ -130,7 +130,8 @@ class DbAdminResult:
 
     @property
     def exit_code(self) -> int:
-        return 1 if self.verdict is DbAdminVerdict.FATAL else 0
+        # Partial progress is resumable evidence, never permission to serve traffic.
+        return 0 if self.verdict is DbAdminVerdict.CONVERGED else 1
 
 
 class DbAdminFatalError(RuntimeError):

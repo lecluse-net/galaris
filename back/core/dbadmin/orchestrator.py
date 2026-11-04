@@ -35,6 +35,7 @@ from .registry import DbAdminRegistry, registry
 from .scope import DbAdminDdlFilters
 from .snapshot import compute_transitions, inspect_public_schema
 from ._internal.atlas import apply_target
+from ._internal.objects import validate_supported_objects
 from ._internal.enums import (
     prepare_enum_transitions,
     validate_enum_preflight,
@@ -155,8 +156,8 @@ def _verdict(
 def _log_result(result: DbAdminResult) -> None:
     for column in result.transitions.required_columns:
         logger.error(
-            "DbAdmin non-blocking: {} remains nullable because values are missing; "
-            "populate these values, then synchronize again to enforce NOT NULL",
+            "DbAdmin incomplete: {} remains nullable because values are missing; "
+            "startup is blocked until its backfill and NOT NULL converge",
             column.key,
         )
     for issue in result.issues:
@@ -215,6 +216,7 @@ async def synchronize_database(
             live = await inspect_public_schema(connection)
             transitions = compute_transitions(live, canonical_target)
             await validate_enum_preflight(connection, transitions.enums, target_registry)
+            await validate_supported_objects(connection)
 
         if dry_run:
             expansion_target = staged_metadata(
@@ -250,6 +252,12 @@ async def synchronize_database(
             await apply_target(
                 render_target_sql(expansion_target), scope=scope, preserve_data=True
             )
+            expansion_check = await apply_target(
+                render_target_sql(expansion_target), scope=scope,
+                preserve_data=True, dry_run=True,
+            )
+            if expansion_check.changed:
+                raise DbAdminFatalError("Atlas expansion has not converged; post-expansion actions were not started")
 
             phase_results, phase_issues = await run_actions(
                 target_registry, DbAdminPhase.AFTER_EXPAND, transitions
@@ -277,9 +285,7 @@ async def synchronize_database(
                         preserve_data=bool(issues or remaining),
                     )
                 except DbAdminFatalError as exc:
-                    # Expansion already made the required objects available. A
-                    # failed tightening/cleanup must not stop the usable app.
-                    issues.append(DbAdminIssue("contract", _safe_error(exc), fatal=False))
+                    issues.append(DbAdminIssue("contract", _safe_error(exc), fatal=True))
                     remaining = await _remaining_required_columns(
                         canonical_target, transitions.required_columns
                     )
@@ -289,6 +295,14 @@ async def synchronize_database(
                     )
                     action_results.extend(phase_results)
                     issues.extend(phase_issues)
+                    # Inspect again after postprocessing, using the canonical
+                    # target without staging or preservation filters. Successful
+                    # command execution alone does not prove the desired schema.
+                    final_check = await apply_target(canonical_sql, scope=scope, dry_run=True)
+                    if final_check.changed:
+                        raise DbAdminFatalError("Atlas final schema verification found remaining changes")
+                    async with engine.connect() as connection:
+                        await validate_supported_objects(connection)
     except Exception as exc:
         message = _safe_error(exc)
         logger.error("DbAdmin fatal synchronization failure: {}", message)

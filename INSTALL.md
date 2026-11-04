@@ -1,6 +1,6 @@
 # Galaris installation and operations
 
-Requirements: Linux, Docker with Compose, Git, GNU Make, OpenSSL and `ss` (`iproute2`).
+Requirements: Linux, Docker with Compose, Git, GNU Make, OpenSSL, `flock` (`util-linux`) and `ss` (`iproute2`).
 Python, Node.js and PostgreSQL run in Docker. Run all commands from the `galaris` directory.
 
 ## INSTALL
@@ -16,10 +16,13 @@ make install
 > Otherwise, keep the defaults: embedded PostgreSQL and port **8484**.
 
 ```bash
-make start
+make update RELEASE_DIR=/path/to/qualified-release
 ```
 
-The first start builds images and initializes the database; allow a few minutes.
+Production installs and updates use qualified immutable images. Obtain a prepared bundle,
+or follow [image qualification](docs/en/dev/reliability-operations.md) to build and test one.
+Startup initializes the database and requires complete schema convergence.
+Development builds from sources with `APP_ENV=dev make start`.
 
 1. Open <http://localhost:8484> (or your configured address).
 2. Click **Log in** and create the first administrator account.
@@ -31,21 +34,38 @@ is needed after account creation.
 
 ## UPDATE
 
-Update the current branch:
+Deploy the qualified bundle without rebuilding its images:
 
 ```bash
-git pull --ff-only
-make update
+make update RELEASE_DIR=/path/to/qualified-release
 ```
 
-Or list available tags and branches, then deploy your chosen reference:
+In development, list available tags and branches, then deploy your chosen reference:
 
 ```bash
 make update VERSIONS
-make update VERSION=<reference>
+APP_ENV=dev make update VERSION=<reference>
 ```
 
-After configuration changes, run `make update` to apply them.
+After production configuration changes, redeploy with the qualified bundle. Bare `make update`
+is reserved for development source builds.
+
+## BACKUP AND RESTORE
+
+```bash
+make save
+make save FILE=/safe/location/galaris.tar.gz
+make restore /safe/location/galaris.tar.gz
+```
+
+The archive includes a full PostgreSQL dump, configuration, recovery keys and `/data` except
+`/data/files`. Save briefly stops application writers and resumes previously running services.
+Restore validates the archive, saves the current state, stages a new database and replaces
+database/data while leaving `/data/files` untouched. Services remain stopped after restoration.
+Manage `/data/files` separately with rsync and use the matching snapshot before restarting.
+Use `make save KEEP_STOPPED=1` to keep application writers stopped until that rsync finishes,
+then resume with `make start`.
+Archives contain secrets and must remain private. See the [backup contract](docs/en/admin/installation.md#backup-and-restore).
 
 ## UNINSTALL
 

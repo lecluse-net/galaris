@@ -2,7 +2,7 @@
 
 # Install Galaris
 
-**Clone the repository → `make install` → `make start` → enter your OpenRouter token
+**Clone the repository → `make install` → deploy a qualified bundle → enter your OpenRouter token
 in Providers → chat with Galaris.**
 
 On a fresh installation, the models and default profile are preconfigured, and the
@@ -11,7 +11,7 @@ On a fresh installation, the models and default profile are preconfigured, and t
 ## Prerequisites
 
 A Linux host with Docker running, the Docker Compose plugin, Git, GNU Make, OpenSSL
-and `ss` (the `iproute2` package) to check ports.
+with `flock` (`util-linux`) for maintenance locks and `ss` (`iproute2`) to check ports.
 Python, Node.js and PostgreSQL are provided in containers.
 
 Get the sources from the official repository:
@@ -73,18 +73,20 @@ AI providers and their keys are configured later in the interface.
 ## 3. Start Galaris
 
 ```bash
-make start
+make update RELEASE_DIR=/path/to/qualified-release
 ```
 
-On first start, the command builds images from existing sources, prepares permissions
-on the shared application volume, creates containers, initializes the database and waits
-for readiness. Settings in `.env` and `compose.override.yaml` are
-preserved. The first run may take several minutes.
+Production requires qualified immutable images and never rebuilds them during deployment.
+Follow the [image qualification workflow](../dev/reliability-operations.md)
+to prepare the bundle. Startup prepares the data volume, initializes the database and waits
+for complete schema convergence and readiness. Local configuration is preserved.
+In development only, `APP_ENV=dev make start` builds sources.
 
 Afterwards, `make start` starts existing containers without building. If a service is missing,
 has failed or does not become ready, it attempts one full update. Docker access errors or
 configuration inspection errors stop the command.
-Recovery uses the sources already present: `start` never changes the Git version.
+Production recovery requiring deployment also requires `RELEASE_DIR`; `start` never rebuilds
+sources or changes the Git version.
 
 ## 4. Enter the OpenRouter token and start chatting
 
@@ -144,17 +146,16 @@ project's local Compose images and orphan containers.
 
 `make clean` also removes volumes: this command is destructive.
 
-To update the current branch, fetch the sources and deploy them:
+In production, deploy qualified images:
 
 ```bash
-git pull --ff-only
-make update
+make update RELEASE_DIR=/path/to/qualified-release
 ```
 
-Or fetch and deploy a specific tag or branch in one command (replace `v1.2.3` with the desired reference):
+In development only, fetch and deploy a tag or branch:
 
 ```bash
-make update VERSION=v1.2.3
+APP_ENV=dev make update VERSION=0.3.1
 ```
 
 To list available targets before choosing one:
@@ -167,8 +168,8 @@ This queries the configured Git remote and lists all tags (highest versions firs
 all branches alphabetically. It does not modify local sources or start a deployment, and
 works before `make install` or with local changes. A Git checkout and remote access are required.
 
-`make update` pulls infrastructure images, including SearXNG, before build and restart, in
-development and production. SearXNG follows the version pinned in `compose.yaml`, preserving
+In development, `make update` pulls infrastructure images, including SearXNG, before build and restart.
+SearXNG follows the version pinned in `compose.yaml`, preserving
 existing configuration. A pull failure stops the update while keeping running services.
 
 Each attempt writes a private `artifacts/updates/update-*.log` file and prints its path.
@@ -184,21 +185,61 @@ an earlier failure to appear in the new journal after the old container was repl
 Older journals containing only stage
 metadata cannot reconstruct output they did not record.
 
-Without `VERSION`, no Git fetching or selection takes place: existing sources are used,
+In development without `VERSION`, no Git fetching or selection takes place: existing sources are used,
 including local changes, detached tags or branches without an upstream.
 With `VERSION`, `.git` must exist in the installation (directory or worktree file).
 An exact tag takes priority over a branch
 with the same name; an unknown reference fails before any container changes.
 
 Local source modifications block Git synchronization; ignored `.env` and override files
-are preserved. Use `make update` to apply configuration changes only.
-Without `.git`, `update` continues building existing sources and rejects `VERSION`.
+are preserved. Redeploy the qualified bundle to apply production configuration changes.
+Without `.git`, development continues building existing sources and rejects `VERSION`.
 
 If an update separating Memory from Documents stopped on a `memory_items.share_id` or
 `share_kind` constraint while creating contacts, fetch the fix and run `make update` again.
 DbAdmin automatically resumes the transfer and prepares the retained columns; existing
 archives and permissions remain preserved.
 Distribution through an image registry is not yet supported by this path.
+
+## Backup and restore
+
+```bash
+make save
+make save FILE=/backups/galaris.tar.gz
+make restore /backups/galaris.tar.gz
+# Equivalent, including paths with spaces:
+make restore FILE=/backups/galaris.tar.gz
+```
+
+Without `FILE`, the archive is stored under `artifacts/backups/`. It includes a complete
+PostgreSQL dump (all schemas, including migration archives), `/data` except **`/data/files`**,
+configuration, recovery keys, a manifest and SHA-256 checksums. Symlinks are preserved without
+following their targets. Sockets are transient and are not archived. Archives contain secrets,
+use mode `0600`, are not encrypted and must remain in protected storage.
+
+The command uses the installed backend image without running DbAdmin. It temporarily stops
+running application services to quiesce their writers; PostgreSQL remains available. Save
+resumes those services even if copying fails. A shared lock prevents concurrent backup,
+restore and deployment commands.
+
+To capture `/data/files` at the same logical point, run `make save KEEP_STOPPED=1`.
+Application services remain stopped after the archive; perform the separate rsync, then
+run `make start`. PostgreSQL stays active. This option also retains the stopped state on
+backup failure so recovery remains an explicit operator decision.
+
+Restore verifies integrity, archive paths, the PostgreSQL major version and encryption key
+before downtime. If the key differs, recover `ENCRYPTION_MASTER_KEY` from the archive's
+`secrets.json` member and configure it in `.env` before retrying. A `before-restore-*.tar.gz`
+archive retains the current state. The dump is restored into a temporary database before
+database/data replacement. Handled failures attempt to restore the previous state and retain
+diagnostics. The database role must be able to create and rename databases; PostgreSQL roles
+referenced by dump ACLs must already exist. Privileges are never automatically elevated.
+
+Services remain stopped after restoration. `/data/files` is neither saved nor modified:
+coordinate its **separate rsync** snapshot and select a compatible application binary before
+starting. A recovery archive on the same disk does not protect against losing that disk;
+keep an off-host copy. `make tests-backup` exercises the public commands on a fully synthetic
+Docker installation.
 
 If startup fails, check `make logs-back` or `make logs`.
 

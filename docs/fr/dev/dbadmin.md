@@ -146,11 +146,10 @@ Une nouvelle colonne `NOT NULL` sans défaut serveur est d’abord créée nulla
 `AFTER_EXPAND` remplit les lignes existantes. DbAdmin ne resserre la colonne que lorsqu’aucune
 valeur `NULL` ne subsiste.
 
-L’absence de backfill n’est pas une panne bloquante : la colonne est disponible en nullable,
-un message d’erreur explicite signale l’écart et le processus sort avec le code zéro (`STAGED`).
-L’application peut remplir les valeurs ; une prochaine synchronisation impose `NOT NULL`.
-Une contraction en échec après une expansion utilisable produit `DEGRADED`, également non
-bloquant. L’impossibilité de créer les objets indispensables reste fatale.
+Un backfill incomplet conserve la colonne nullable pour permettre la reprise, mais le verdict
+`STAGED` retourne un code non nul et interdit le démarrage. Le backfill doit être réalisé par
+l'action DbAdmin avant le service. Une contraction en échec est fatale. Aucun schéma incomplet
+ne constitue une mise à jour réussie.
 
 ```python
 from typing import cast
@@ -352,10 +351,10 @@ def _moves_legacy_payload(transitions: SchemaTransitionSet) -> bool:
 ### Barrières effectives et limites
 
 Une exception d’action `required=True` en `BEFORE_EXPAND` arrête le pipeline avant Atlas.
-Une postcondition encore fausse produit un état différé non bloquant : l’expansion peut créer
+Une postcondition encore fausse produit un état différé : l’expansion peut créer
 les nouveaux objets, mais les tables et colonnes sources restent présentes. Après expansion
 ou datasets, une erreur indispensable interdit la contraction ; un écart non fatal conserve
-les sources et laisse fonctionner le schéma utilisable. `AFTER_CONTRACT` attend la convergence.
+les sources pour la reprise, sans autoriser le démarrage. `AFTER_CONTRACT` attend la convergence.
 
 Ces protections et la reprise sont testées sur PostgreSQL. Elles ne constituent pas une
 transaction globale : une expansion déjà réussie reste appliquée si une phase ultérieure échoue.
@@ -457,6 +456,24 @@ avec Atlas.
 
 Le verdict décrit le résultat final du run. Un verdict fatal après expansion n’annule pas les
 modifications intermédiaires déjà réussies ; voir les barrières et limites ci-dessus.
+
+Seul `converged` retourne zéro. `staged`, `degraded` et `fatal` bloquent tous Uvicorn et
+font échouer la mise à jour. Atlas vérifie l'expansion avant les actions suivantes, puis
+compare à nouveau le schéma réel à la cible canonique après `AFTER_CONTRACT`, sans filtres
+de préservation. Un delta restant interdit le succès.
+
+Une action déclare les tables et colonnes indispensables à son handler **et** sa postcondition
+dans `requires_schema`, par exemple `frozenset({"documents.summary_generated"})`. DbAdmin
+contrôle leur présence avant toute invocation. Une archive historique doit rester indépendante
+des colonnes de destination : celles-ci ne sont utilisées qu'après expansion. Les tests
+d'upgrade doivent créer leurs données avec le véritable ancien binaire ; une reconstruction
+partielle conservant des colonnes récentes peut masquer un mauvais placement de phase.
+
+La cible actuelle décrit les tables SQLAlchemy, leurs colonnes, contraintes et index. Les
+fonctions, triggers et autres objets SQL utilisateur non représentés provoquent un refus
+explicite ; ils ne sont jamais ignorés dans une affirmation de convergence complète. Les
+objets appartenant aux extensions sont distingués des objets applicatifs. La gestion
+déclarative des fonctions et triggers exige une décision d'outillage distincte.
 
 ## Tests et validation
 

@@ -5,7 +5,7 @@
 The targets below come from the repository's six `Makefile` files. At the root, use
 `make help` for current help and `make <target>` to run a command.
 The `Makefile` remains authoritative. Standard installation: **`make install` → configure
-`.env` and `compose.override.yaml` → `make start`**; see the [installation guide](../admin/installation.md).
+`.env` and `compose.override.yaml` → `make update RELEASE_DIR=<qualified-bundle>`**; see the [installation guide](../admin/installation.md).
 
 ## Stack and operations
 
@@ -21,7 +21,9 @@ The `Makefile` remains authoritative. Standard installation: **`make install` �
 | `restart` | Run `stop`, then `start`. |
 | `restart-service` | Restart one service without rebuilding; `SERVICE` is required. |
 | `status` | Display container status; optionally filter with `SERVICE`. |
-| `update` | Pull infrastructure images (including SearXNG) in dev/prod before build and restart, then deploy sources with prepared documentation and refresh the index; no map generation or static documentation checks. A pull failure preserves running services. Only `VERSION` triggers fetching a Git tag or branch. Accepts `RELEASE_DIR` outside dev, without Git, using the bundle's packaged documentation. |
+| `update` | Development: build sources, optionally selecting Git `VERSION`. Outside dev: require `RELEASE_DIR` and promote its qualified immutable images without rebuilding. Wait for complete DbAdmin convergence and readiness, then refresh documentation search. |
+| `save` | Archive PostgreSQL and `/data` except `/data/files`; optional `FILE`. Briefly stop active application services, then resume them. |
+| `restore` | Verify and restore `FILE=<archive>` or an archive supplied as the second argument; retain a recovery archive and leave services stopped. `/data/files` stays intact for separate rsync management. |
 | `update VERSIONS` | List all tags (highest versions first), then all branches alphabetically, from the configured Git remote, without deploying or modifying local sources. |
 | `logs` | Follow all logs. |
 | `logs-back`, `logs-front`, `logs-search` | Follow the selected service's logs. |
@@ -108,6 +110,7 @@ See [Testing behavior](testing.md).
 | `tests-focus-gates` | Verify that Playwright configurations reject focused tests. |
 | `tests-e2e` | Browser workflows and PWA updates in an isolated stack. |
 | `tests-update` | Verify installation, preserved configuration, updates and failures with simulated Docker. |
+| `tests-backup` | Exercise `make save/restore` with isolated Docker/PostgreSQL, integrity checks and the rsync exclusion. |
 | `tests-documentation` | Verify the offline documentation runner, then its confinement in real containers. |
 | `tests-install` | Install an isolated copy with new volumes, check HTTP readiness and preserve containers across stop/start. Test port defaults to `INSTALL_TEST_PORT=18484`. |
 | `tests-validation-source` | Verify preservation and fingerprinting of uncommitted changes during validation. |

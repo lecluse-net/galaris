@@ -6,7 +6,7 @@ Ce guide couvre le déploiement, la configuration et l’exploitation de Galaris
 commandes partent de la racine du dépôt.
 
 Pour une première installation, suivez le [guide d’installation](installation.md) :
-**cloner le dépôt → `make install` → `make start` → token OpenRouter dans Fournisseurs
+**cloner le dépôt → `make install` → `make update RELEASE_DIR=<bundle>` → token OpenRouter dans Fournisseurs
 → Chat avec Galaris**. Après la création du premier compte administrateur, l’agent Galaris,
 les modèles et le profil par défaut sont déjà prêts ; renseignez votre token pour discuter.
 Les sections suivantes détaillent les options d’administration.
@@ -1102,6 +1102,14 @@ reprises avec leurs identifiants et leur répartition ; les autres catégories s
 <a id="backup-and-restore"></a>
 ## 9. Sauvegarde et restauration
 
+`make save` crée une archive privée de la base complète et de `/data` hors `/data/files`.
+`make restore <archive>` (ou `make restore FILE=<archive>`) vérifie l'archive, conserve une
+copie de secours et restaure hors ligne. Les services restent arrêtés après restauration.
+La sauvegarde reprend les services qui étaient actifs. Gérez `/data/files` par rsync séparément
+au même point logique ; les volumes et services externes à `/data` restent à sauvegarder à part.
+Le [contrat détaillé](installation.md) décrit les clés, permissions,
+préconditions PostgreSQL et limites de reprise. `make tests-backup` exerce ces commandes réelles.
+
 Un exercice entièrement isolé est disponible avec `make tests-restore` : dump et
 restauration PostgreSQL, fichiers, clés de chiffrement et de signature. Voir la
 [validation de sécurité](../dev/security-validation.md).
@@ -1149,34 +1157,23 @@ volumes.
 ## 10. Mise à jour
 
 ```bash
-make update
-# Ou sélectionner un tag exact, sinon une branche distante :
-make update VERSION=1.2.3
+make update RELEASE_DIR=/chemin/vers/bundle-qualifie
 ```
 
-Sans `VERSION`, `make update` construit et déploie les sources présentes sans récupération Git,
-même si elles sont modifiées localement ou sur un tag détaché. Avec `VERSION` et un `.git`,
-la commande récupère les références distantes et donne priorité à un tag exact sur une branche
-du même nom. Une référence inconnue, une branche divergente ou des sources modifiées localement
-arrêtent cette sélection avant toute action Docker. Les fichiers `.env` et overrides ignorés
-sont conservés. La récupération automatique de `start` conserve également les sources présentes.
-Le chemin `RELEASE_DIR` ne fait aucune opération Git et ne se combine pas avec `VERSION`.
+Hors `APP_ENV=dev`, cette commande exige un bundle d'images immuables qualifiées. Elle vérifie
+les identités du candidat et de l'ancienne image ayant servi au test d'upgrade, déploie sans
+reconstruction, relance le backend et le frontend, puis attend la convergence complète du
+schéma et la disponibilité. `staged`, `degraded` et `fatal` interdisent le démarrage.
+Un bundle absent, non qualifié ou incompatible est refusé avant l'arrêt des services.
+Les objets SQL non représentés dans la cible ne sont pas silencieusement ignorés.
+Voir le [parcours de qualification](../dev/reliability-operations.md).
 
-Pour examiner les changements avant déploiement, récupérez-les séparément puis utilisez
-`make update`. `make update` complète les secrets
-absents, prépare SearXNG, récupère les images d'infrastructure (dont SearXNG) en développement
-comme en production, et reconstruit en réutilisant le cache Docker. SearXNG suit la version
-épinglée dans `compose.yaml` : une nouvelle version nécessite d'actualiser ce fichier, puis
-de lancer `make update`. Un échec de téléchargement arrête la mise à jour avant toute
-interruption des services ; une image modifiée fait recréer son conteneur par Compose.
-Après un build réussi, elle recrée le backend et le frontend, puis attend que l’entrypoint du
-backend ait synchronisé Atlas et les données de référence et que les services soient disponibles.
-Le frontend et SearXNG disposent de sondes HTTP ; PostgreSQL redémarre automatiquement avec Docker
-sauf arrêt explicite. Les services d’infrastructure inchangés restent actifs, sans arrêt global
-de la stack. La commande est
-idempotente et constitue l’unique chemin de montée de version en production. Elle ne décide pas
-à votre place des nouvelles options métier ;
-ne remplacez pas la synchronisation déclarative par des modifications SQL manuelles.
+En développement, `make update` construit les sources présentes. `make update VERSION=0.3.1`
+sélectionne explicitement un tag ou une branche distante depuis un checkout propre, en
+conservant `.env` et les overrides. `make update VERSIONS` liste les cibles sans déploiement.
+Le build et le téléchargement de l'infrastructure précèdent l'arrêt des conteneurs ; un échec
+à ce stade conserve les services actifs. Les infrastructures inchangées restent actives.
+`RELEASE_DIR` et `VERSION` ne se combinent pas.
 
 Les couches Docker inchangées sont réutilisées, notamment pour les dépendances et les exécuteurs.
 Un changement des sources frontend déclenche leur recompilation ; un frontend inchangé peut
@@ -1222,7 +1219,7 @@ les clés de chiffrement. Gardez aussi l’identité des anciennes images. Un du
 pas les pièces jointes ; voir [Sauvegarde et restauration](#backup-and-restore).
 Ne laissez pas un ancien backend écrire pendant les transferts de données.
 
-Une fois le tag publié, utilisez `make update VERSION=0.3.0` depuis un checkout propre, ou
+Une fois le tag publié, utilisez `APP_ENV=dev make update VERSION=0.3.0` depuis un checkout propre, ou
 déployez le bundle immuable déjà qualifié avec `RELEASE_DIR`. Le démarrage applique les
 convergences DbAdmin et les transferts reprenables avant d’annoncer le backend prêt.
 En cas d’échec, conservez les diagnostics et corrigez leur cause avant de relancer la même

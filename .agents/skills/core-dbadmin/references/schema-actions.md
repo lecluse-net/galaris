@@ -82,13 +82,14 @@ Atlas préserve tables et colonnes sources ; une contribution différée empêch
 Ce garde ne garantit pas qu'un changement de type est sans perte : les conversions sensibles
 doivent toujours disposer d'une préparation adaptée.
 
-Une colonne requise sans défaut sur une table remplie est créée nullable, avec erreur visible
-non bloquante (`STAGED`, sortie zéro). L'application peut la remplir puis une synchronisation
-ultérieure impose `NOT NULL`. Une contraction en échec après expansion utilisable reste non
-bloquante. Réserver le caractère indispensable aux objets ou préparations sans lesquels
+Une colonne requise sans défaut sur une table remplie est créée nullable pendant le backfill.
+Un backfill incomplet (`STAGED`) ou une contraction en échec bloque le démarrage : seul
+`converged` retourne zéro. Atlas vérifie l'expansion et le schéma final. Réserver le caractère indispensable aux objets ou préparations sans lesquels
 l'application ne peut pas fonctionner ou les données seraient menacées.
 
-Procéder en plusieurs livraisons :
+Les phases de préparation, expansion, transfert et contraction peuvent converger dans la même
+synchronisation lorsque leurs préconditions sont prouvées. Pour un changement de type qui ne
+peut pas être converti sans perte avec cette reprise, procéder en plusieurs livraisons :
 
 1. conserver l'ancien objet dans le modèle et ajouter la nouvelle structure ;
 2. sauvegarder si nécessaire, backfiller et prouver la convergence ;

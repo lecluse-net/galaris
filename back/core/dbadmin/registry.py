@@ -34,6 +34,10 @@ class DbAdminAction:
     # Explicit assertion that this handler/postcondition safely resumes each
     # listed unfinished implementation, including its partially written data.
     compatible_checksums: frozenset[str] = frozenset()
+    # public table names or table.column names needed by both the handler and
+    # its postcondition. Historical optional sources must still be inspected by
+    # the action itself; destination columns must be listed here.
+    requires_schema: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +71,9 @@ class DbAdminRegistry:
     def register_action(self, action: DbAdminAction) -> None:
         if action.key in self._actions:
             raise ValueError(f"Duplicate DbAdmin action key: {action.key}")
+        if any(not name or len(name.split(".")) > 2 or any(not part for part in name.split("."))
+               for name in action.requires_schema):
+            raise ValueError(f"Invalid public schema requirement for DbAdmin action {action.key}")
         self._actions[action.key] = action
 
     def register_data_source(self, source: DbAdminDataSource) -> None:

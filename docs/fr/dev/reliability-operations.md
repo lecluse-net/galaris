@@ -192,7 +192,8 @@ images exactes, sans montage du code applicatif, puis les exécuteurs sont test�
 les images scannées. `TESTED_IMAGE_IDS` lie cette qualification au manifeste. Promouvoir avec
 `APP_ENV=prod make update RELEASE_DIR=<dossier>` : import et vérification des identités,
 `--no-build --pull never --wait`, puis contrôle des conteneurs démarrés. Sans `RELEASE_DIR`,
-`make update` conserve son fonctionnement historique avec reconstruction.
+`make update` ne reconstruit les sources qu'en développement ; hors dev, l'absence de
+`RELEASE_DIR` est refusée avant toute modification des conteneurs.
 `MANAGED_HARNESSES` précise les images de harnais incluses via `RELEASE_HARNESS_IMAGES_FILE`
 ou leur statut externe. Conserver le dossier précédent et une sauvegarde DB/fichiers/clés.
 

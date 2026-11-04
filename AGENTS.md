@@ -149,7 +149,10 @@ make docs-prepare           # Regenerate maps and check the FR/EN documentation 
 make docs-update            # Dev: preparation + active corpus check + text index
 make architecture-baseline  # Reduce/update coupling debt after reviewing the diff
 make sync-db                # Dev only: DbAdmin schema/datasets, without restarting
-make update                 # Dev/prod: images + restart + DB sync + readiness check
+make update                 # Dev: source build + DB convergence + readiness
+make update RELEASE_DIR=... # Production: qualified immutable images + DB convergence + readiness
+make save                   # DB and data archive, excluding data/files (separate rsync)
+make restore FILE=...       # Verified offline restore; keep services stopped afterward
 ```
 
 - Use `make` targets whenever they exist.

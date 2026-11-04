@@ -16,14 +16,14 @@ from core.dbadmin.contracts import DbAdminMode, DbAdminResult, DbAdminVerdict
     ([], None, False),
     (["synchronize", "--mode", "test", "--dry-run"], DbAdminMode.TEST, True),
 ])
-def test_command_preserves_sync_intent_and_fatal_exit_code(monkeypatch, verdict, arguments, mode, dry_run):
+def test_command_preserves_sync_intent_and_requires_convergence(monkeypatch, verdict, arguments, mode, dry_run):
     now = datetime.now(timezone.utc)
     sync = AsyncMock(return_value=DbAdminResult(
         run_id="operator-check", mode=mode or DbAdminMode.TEST, verdict=verdict,
         started_at=now, finished_at=now, scope_fingerprint="scope", target_fingerprint="target",
     ))
     monkeypatch.setattr(cli, "synchronize_database", sync)
-    assert cli.main(arguments) == (1 if verdict is DbAdminVerdict.FATAL else 0)
+    assert cli.main(arguments) == (0 if verdict is DbAdminVerdict.CONVERGED else 1)
     sync.assert_awaited_once_with(mode=mode, dry_run=dry_run)
 
 

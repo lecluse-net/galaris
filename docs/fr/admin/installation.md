@@ -2,7 +2,7 @@
 
 # Installer Galaris
 
-**Cloner le dépôt → `make install` → `make start` → renseigner le token OpenRouter
+**Cloner le dépôt → `make install` → déployer un bundle qualifié → renseigner le token OpenRouter
 dans Fournisseurs → discuter avec Galaris.**
 
 Sur une installation neuve, les modèles et le profil par défaut sont préconfigurés, et
@@ -11,7 +11,7 @@ l’agent **Galaris** est créé avec le premier compte administrateur.
 ## Prérequis
 
 Un hôte Linux avec Docker démarré, le plugin Docker Compose, Git, GNU Make, OpenSSL
-et `ss` (paquet `iproute2`) pour vérifier les ports.
+avec `flock` (`util-linux`) pour les verrous et `ss` (`iproute2`) pour vérifier les ports.
 Python, Node.js et PostgreSQL sont fournis dans les conteneurs.
 
 Récupérez les sources depuis le dépôt officiel :
@@ -73,19 +73,20 @@ Les fournisseurs IA et leurs clés se configurent ensuite dans l’interface.
 ## 3. Démarrer Galaris
 
 ```bash
-make start
+make update RELEASE_DIR=/chemin/vers/bundle-qualifie
 ```
 
-Au premier démarrage, la commande construit les images depuis les sources présentes,
-prépare les droits du volume applicatif partagé, crée les conteneurs,
-initialise la base et attend la disponibilité. Les réglages de `.env` et
-`compose.override.yaml` sont conservés.
-Le premier lancement peut prendre plusieurs minutes.
+La production exige des images immuables déjà qualifiées, sans reconstruction au déploiement.
+Voir le [parcours de qualification](../dev/reliability-operations.md)
+pour préparer ce bundle. La commande prépare le volume partagé, initialise la base et attend
+la convergence complète du schéma et la disponibilité. Les réglages locaux sont conservés.
+En développement seulement, `APP_ENV=dev make start` construit les sources.
 
 Ensuite, `make start` relance les conteneurs existants sans construire. Si un service manque,
 est en échec ou ne devient pas disponible, il tente une seule mise à jour complète. Une erreur
 d’accès à Docker ou de lecture de la configuration arrête la commande.
-Cette récupération utilise les sources déjà présentes : `start` ne change pas de version Git.
+En production, une récupération qui exige un déploiement nécessite également `RELEASE_DIR` ;
+`start` ne reconstruit pas les sources et ne change pas de version Git.
 
 ## 4. Renseigner le token OpenRouter et discuter
 
@@ -146,17 +147,16 @@ ainsi que les images locales Compose et les conteneurs orphelins du projet.
 
 `make clean` supprime aussi les volumes : cette commande est destructive.
 
-Pour mettre à jour la branche courante, récupérez les sources puis déployez-les :
+En production, déployez les images qualifiées :
 
 ```bash
-git pull --ff-only
-make update
+make update RELEASE_DIR=/chemin/vers/bundle-qualifie
 ```
 
-Ou récupérez et déployez un tag ou une branche en une commande (remplacez `v1.2.3` par la référence souhaitée) :
+En développement seulement, récupérez et déployez un tag ou une branche :
 
 ```bash
-make update VERSION=v1.2.3
+APP_ENV=dev make update VERSION=0.3.1
 ```
 
 Pour consulter les cibles disponibles avant de choisir :
@@ -170,8 +170,8 @@ plus élevées d’abord), puis toutes les branches par ordre alphabétique. Ell
 sources locales et ne lance aucun déploiement, même avant `make install` ou avec des changements
 locaux. Un checkout Git et l’accès au dépôt distant sont nécessaires.
 
-`make update` récupère les images d’infrastructure, dont SearXNG, avant le build et le
-redémarrage, en développement comme en production. La version SearXNG suit celle épinglée
+En développement, `make update` récupère les images d’infrastructure, dont SearXNG, avant le build et le
+redémarrage. La version SearXNG suit celle épinglée
 dans `compose.yaml`, sans effacer la configuration existante. Un échec de récupération
 arrête la mise à jour en conservant les services actifs.
 
@@ -190,21 +190,62 @@ dans le nouveau journal même si l'ancien conteneur a été recréé.
 Les anciens journaux qui ne contiennent que les étapes ne peuvent pas reconstituer les
 sorties qu'ils n'ont pas enregistrées.
 
-Sans `VERSION`, aucune récupération ni sélection Git n’est effectuée : les sources présentes
+En développement sans `VERSION`, aucune récupération ni sélection Git n’est effectuée : les sources présentes
 sont utilisées, y compris avec des modifications locales, un tag détaché ou sans upstream.
 Avec `VERSION`, `.git` doit exister dans l’installation (répertoire ou fichier de worktree).
 Le tag exact est prioritaire sur la branche du même nom ; une référence
 inconnue provoque une erreur avant toute action sur les conteneurs.
 
 Les sources modifiées localement bloquent la récupération Git ; `.env` et les overrides
-ignorés sont conservés. Pour appliquer seulement leur configuration, utilisez `make update`.
-Sans `.git`, `update` conserve la construction depuis les sources présentes et refuse `VERSION`.
+ignorés sont conservés. Pour appliquer la configuration en production, redéployez le bundle qualifié.
+Sans `.git`, le développement conserve la construction des sources présentes et refuse `VERSION`.
 
 Si une mise à jour de la séparation Memory/Document a été arrêtée sur une contrainte
 `memory_items.share_id` ou `share_kind` lors de la création de contacts, récupérez le correctif
 puis relancez `make update`. DbAdmin reprend le transfert et la préparation des anciennes
 colonnes automatiquement ; les archives et les droits existants restent conservés.
 La distribution par registre d’images n’est pas encore prise en charge par ce chemin.
+
+## Sauvegarde et restauration
+
+```bash
+make save
+make save FILE=/sauvegardes/galaris.tar.gz
+make restore /sauvegardes/galaris.tar.gz
+# Équivalent, notamment pour un chemin contenant des espaces :
+make restore FILE=/sauvegardes/galaris.tar.gz
+```
+
+Sans `FILE`, l'archive est créée dans `artifacts/backups/`. Elle contient un dump complet de
+la base (tous les schémas, dont les archives de migration), `/data` sauf **`/data/files`**,
+la configuration et les clés de récupération, un manifeste et des sommes SHA-256. Les liens
+symboliques sont conservés sans suivre leur cible. Les sockets ne sont pas des fichiers
+persistants et ne sont pas archivés. L'archive contient des secrets ; ses droits sont `0600`.
+Elle n'est pas chiffrée et doit être stockée dans un emplacement protégé.
+
+La commande utilise l'image du backend installé, sans lancer DbAdmin. Elle arrête temporairement
+les services applicatifs actifs pour figer leurs écritures ; PostgreSQL reste disponible.
+Après sauvegarde, ces services sont relancés, même si la copie échoue. Un verrou commun interdit
+les sauvegardes, restaurations et déploiements concurrents depuis ces commandes.
+
+Pour capturer aussi `/data/files` au même point logique, utilisez `make save KEEP_STOPPED=1` :
+les services restent arrêtés après l'archive. Effectuez alors le rsync séparé, puis `make start`.
+PostgreSQL reste actif pendant cette maintenance. L'option conserve l'arrêt même si la
+sauvegarde échoue, afin de permettre une décision de reprise explicite.
+
+La restauration vérifie l'intégrité, les chemins, la version majeure PostgreSQL et la clé de
+chiffrement avant l'arrêt. Si la clé diffère, récupérez `ENCRYPTION_MASTER_KEY` dans le membre
+`secrets.json` de l'archive et configurez-la dans `.env` avant de relancer la commande. Une archive
+`before-restore-*.tar.gz` conserve l'état courant. Le dump est restauré dans une base temporaire,
+puis la base et les données sont remplacées. Un échec traité tente de rétablir l'état précédent
+et conserve les diagnostics. Le rôle PostgreSQL doit pouvoir créer et renommer des bases ; les
+rôles référencés par les ACL du dump doivent exister. Aucun privilège n'est élevé automatiquement.
+
+Après restauration, les services restent arrêtés. `/data/files` n'est ni sauvegardé ni modifié :
+coordonnez sa copie **rsync séparée** avec la sauvegarde et sélectionnez le binaire compatible
+avant le redémarrage. La création d'une archive de secours ne protège pas d'une perte du disque
+qui la contient ; conservez une copie extérieure. `make tests-backup` exerce ces commandes sur
+une installation Docker entièrement synthétique.
 
 Si le démarrage échoue, consultez `make logs-back` ou `make logs`.
 

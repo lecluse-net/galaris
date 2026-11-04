@@ -14,6 +14,38 @@ from unittest.mock import AsyncMock
 from loguru import logger
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("phase", [DbAdminPhase.BEFORE_EXPAND, DbAdminPhase.AFTER_EXPAND])
+async def test_missing_schema_prerequisite_blocks_handler_and_postcondition(db, phase):
+    condition = AsyncMock(return_value=False)
+    handler = AsyncMock()
+    registry = DbAdminRegistry()
+    registry.register_action(DbAdminAction(
+        key="test.schema_prerequisite", phase=phase, checksum="v1",
+        predicate=lambda _: True, handler=handler, postcondition=condition,
+        requires_schema=frozenset({"users.synthetic_future_column"}),
+    ))
+    results, issues = await run_actions(registry, phase, SchemaTransitionSet())
+    assert results[0].status is DbAdminActionStatus.FAILED
+    assert issues[0].fatal and "users.synthetic_future_column" in issues[0].message
+    condition.assert_not_awaited()
+    handler.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_present_schema_prerequisite_allows_action(db):
+    condition = AsyncMock(return_value=True)
+    registry = DbAdminRegistry()
+    registry.register_action(DbAdminAction(
+        key="test.present_schema", phase=DbAdminPhase.AFTER_EXPAND, checksum="v1",
+        predicate=lambda _: True, handler=AsyncMock(), postcondition=condition,
+        requires_schema=frozenset({"users", "users.id"}),
+    ))
+    results, issues = await run_actions(registry, DbAdminPhase.AFTER_EXPAND, SchemaTransitionSet())
+    assert not issues and results[0].status is DbAdminActionStatus.ALREADY_SATISFIED
+    condition.assert_awaited_once()
+
+
 @pytest.fixture
 def action_diagnostics():
     messages = []

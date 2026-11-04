@@ -122,7 +122,9 @@ Never:
 
 ### New required column
 
-A missing backfill is non-blocking: the new column remains nullable, an explicit error is logged, and the process exits with code zero (`STAGED`). The application can populate it, then the next synchronization applies `NOT NULL`. Failed contraction after usable expansion yields `DEGRADED`, also non-blocking. Failure to create indispensable objects remains fatal.
+An incomplete backfill preserves the nullable column for recovery, but `STAGED` returns a
+nonzero exit code and blocks startup. Its DbAdmin action must finish before serving traffic.
+A failed contraction is fatal. An incomplete schema is never a successful update.
 
 A new `NOT NULL` column without a server default is initially created nullable. An `AFTER_EXPAND` action fills existing rows. DbAdmin tightens the column only when no `NULL` value remains.
 
@@ -310,10 +312,10 @@ def _moves_legacy_payload(transitions: SchemaTransitionSet) -> bool:
 ### Effective barriers and limits
 
 An exception from a `required=True` action in `BEFORE_EXPAND` stops the pipeline before Atlas.
-A postcondition that is still false produces a non-blocking deferred state: expansion can create
+A postcondition that is still false produces a deferred state: expansion can create
 new objects while preserving source tables and columns. After expansion or datasets, an
 indispensable failure prevents contraction; a non-fatal issue preserves sources and keeps the
-usable schema operational. `AFTER_CONTRACT` waits for convergence.
+schema available for recovery without permitting startup. `AFTER_CONTRACT` waits for convergence.
 
 These barriers and recovery are tested on PostgreSQL. They are not a global transaction:
 a successful expansion remains applied if a later phase fails. Type changes can also lose data;
@@ -406,6 +408,21 @@ The PostgreSQL advisory lock prevents two concurrent DbAdmin synchronizations. E
 
 The verdict describes the final result of the run. A fatal verdict after expansion does not undo
 successful intermediate changes; see the barriers and limits above.
+
+Only `converged` returns zero. All other verdicts block Uvicorn and fail the update.
+Atlas verifies expansion before subsequent actions, then compares the live schema with
+the unfiltered canonical target after `AFTER_CONTRACT`. Any remaining delta blocks success.
+
+Actions declare the tables and columns needed by both their handler and postcondition in
+`requires_schema`, for example `frozenset({"documents.summary_generated"})`. DbAdmin verifies
+their presence before invoking either callback. Historical archives must not depend on new
+destination columns. Upgrade tests must seed data with the actual old binary; a reconstructed
+schema retaining newer columns can hide incorrect action placement.
+
+The current target describes SQLAlchemy tables, columns, constraints and indexes. User-defined
+functions, triggers and other unrepresented SQL objects explicitly block synchronization;
+they cannot silently pass complete-schema verification. Extension-owned objects are treated
+separately. Declarative function and trigger management requires a separate tooling decision.
 
 ## Testing and validation
 
