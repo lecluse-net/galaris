@@ -390,7 +390,7 @@ test('document shortcuts target one row and respect read-only, protected and bus
   const entry = { item: document, agent_ids: [7], writable_agent_ids: [7] }
   await jsonRoute(page, url => url.pathname === '/api/documents/doc-a', { item: document, agent_id: 7 })
   await mount(page, 'app/document/components/DocumentLibraryDocument.vue', { props: {
-    entry, selectedDocumentId: null, busy: false, children: {}, loading: {}, errors: {}, expanded: [], dropTarget: null, dropPlacement: 'inside',
+    entry, treeRow: true, selectedDocumentId: null, busy: false, children: {}, loading: {}, errors: {}, expanded: [], dropTarget: null, dropPlacement: 'inside',
   } })
   await page.getByText('Test document', { exact: true }).hover()
   await page.keyboard.press('F3')
@@ -880,18 +880,38 @@ test('folder actions edit name and icon without toggling the branch or requiring
 for (const width of [1440, 390]) {
 test(`folder context menu keeps actions on the right folder and supports dismissal and keyboard at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   const { mutations } = await fixture(page)
   if (width < 1024) await page.evaluate(() => window.testApp.dark(true))
   const work = page.getByRole('button', { name: 'Icon for folder Work', exact: true })
   const menu = page.getByRole('menu', { name: 'Actions for folder Work', exact: true })
+  const menuButton = page.getByRole('button', { name: 'Actions for folder Work', exact: true })
+  await work.hover()
+  await page.locator('.library-navigation').screenshot({ path: testInfo.outputPath('folder-menu-button.png'), animations: 'disabled' })
+  await menuButton.click()
+  await expect(menu).toBeVisible()
+  await menuButton.click()
+  await expect(menu).toHaveCount(0)
+  await menuButton.press('Enter')
+  await menu.getByRole('menuitem', { name: 'Copy folder URL', exact: true }).click()
+  await expect(menu).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('document://folders/work/')
+  expect(await page.evaluate(() => window.testApp.events.filter(event => ['browse', 'create'].includes(event.name)))).toEqual([])
   await work.click({ button: 'right' })
-  for (const name of ['Show as a list', 'Create Text document', 'Create Data document', 'Create a subfolder',
+  for (const name of ['Show as a list', 'Create Text document', 'Create Data document', 'New document from…', 'Create a subfolder',
     'Create a folder below', 'Edit folder', 'Delete folder',
     'Sort by name (A → Z)', 'Sort by name (Z → A)', 'Expand all in this folder', 'Collapse all in this folder']) {
     await expect(menu.getByRole('menuitem', { name, exact: true })).toBeVisible()
   }
   await expect(page.getByText('Project', { exact: true })).toHaveCount(0)
+  await page.mouse.move(width - 8, 990)
+  await expect(menu).toBeVisible()
+  await page.locator('.library-navigation').screenshot({ path: testInfo.outputPath('folder-context-target.png'), animations: 'disabled' })
   await menu.screenshot({ path: testInfo.outputPath('folder-context-menu.png'), animations: 'disabled' })
+  await menu.getByRole('menuitem', { name: 'New document from…', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1)?.args[3])).toBe('import')
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1)?.args[0]?.id)).toBe('work')
+  await work.click({ button: 'right' })
   await page.keyboard.press('Escape')
   await expect(menu).toHaveCount(0)
   expect(mutations).toEqual([])

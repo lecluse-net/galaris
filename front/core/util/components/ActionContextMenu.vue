@@ -1,5 +1,6 @@
 <template>
-  <span ref="anchor" class="action-context-menu" @click.stop @dblclick.stop @keydown.enter.stop @keydown.space.stop>
+  <span ref="anchor" class="action-context-menu" :class="{ 'action-context-menu--trigger': $slots.trigger, 'action-context-menu--open': open }" @click.stop @dblclick.stop @keydown.enter.stop @keydown.space.stop>
+    <slot name="trigger" :toggle="toggle" :open="open" />
     <q-menu :id="menuId" ref="menu" v-model="open" :target="host ?? false" no-parent-event touch-position
       max-width="calc(100vw - 16px)" :transition-duration="0" @before-show="closeOthers">
       <q-list dense role="menu" :aria-label="label || t('common.actions')">
@@ -32,13 +33,17 @@ const { actions, target, label = '', preserveSelection = false } = defineProps<{
 const { t } = useI18n(), $q = useQuasar()
 const anchor = useTemplateRef('anchor'), menu = useTemplateRef<QMenu>('menu')
 const host = shallowRef<HTMLElement>(), open = ref(false)
-const menuId = useContextMenuDismissal(open, () => menu.value)
+const menuId = useContextMenuDismissal(open, () => menu.value, () => anchor.value)
 const firstEnabled = computed(() => actions.find(action => !action.disabled)?.key)
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const editing = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
-function show(event?: MouseEvent): void {
+function show(event?: Event): void {
   if (!actions.length) return
   menu.value?.show(event)
+}
+function toggle(event?: Event): void {
+  if (open.value) menu.value?.hide(event)
+  else show(event)
 }
 function context(event: MouseEvent): void {
   if (event.defaultPrevented || !actions.length || !(event.target instanceof Element) || event.target.closest(editing)) return
@@ -77,4 +82,5 @@ onBeforeUnmount(() => {
 </script>
 <style scoped>
 .action-context-menu { display: none; }
+.action-context-menu--trigger { display: inline-flex; flex-shrink: 0; }
 </style>

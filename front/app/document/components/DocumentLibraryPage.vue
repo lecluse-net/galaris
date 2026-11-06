@@ -10,10 +10,15 @@
       </template>
     </PageHeader>
 
+    <q-banner v-if="importingFileName" dense role="status" class="q-mb-sm">
+      <template #avatar><q-spinner color="primary" /></template>
+      {{ t('documents.importingFile', { name: importingFileName }) }}
+      <template #action><q-btn outline color="primary" :label="t('documents.imports.title')" @click="importDialogOpen = true" /></template>
+    </q-banner>
     <q-card flat bordered class="documents-workspace">
       <q-splitter v-model="splitterModel" :limits="[15, 55]" class="documents-splitter" :class="{ 'documents-splitter--list': listingOpen, 'documents-splitter--collapsed': !libraryOpen }">
         <template #before>
-          <DocumentLibraryNavigation ref="navigation" :selected-document-id="selectedDocumentId" @action="documentRowAction" @browse="openListing" @loaded="onLibraryLoaded" @select="selectEntry" @create="openCreateDocument" />
+          <DocumentLibraryNavigation ref="navigation" :selected-document-id="selectedDocumentId" :creation-tag-id="createMenuOpen ? createDocumentTag?.id : null" :creation-document-id="createMenuOpen ? createDocumentParent?.item.id : null" :importing-files="Boolean(importingFileName)" @files-dropped="importDroppedFiles" @action="documentRowAction" @browse="openListing" @loaded="onLibraryLoaded" @select="selectEntry" @create="openCreateDocument" />
         </template>
         <template #separator>
           <DocumentSplitterHandle />
@@ -99,7 +104,7 @@
       </q-card>
     </q-dialog>
 
-    <q-menu ref="typeMenu" :target="createMenuTarget" no-parent-event no-route-dismiss anchor="bottom left" self="top left">
+    <q-menu ref="typeMenu" v-model="createMenuOpen" :target="createMenuTarget" no-parent-event no-route-dismiss anchor="bottom left" self="top left">
       <q-list dense role="menu" :aria-label="t('documents.documentType')">
         <q-item v-for="type in documentTypes" :key="type.code" v-close-popup clickable role="menuitem" @click="chooseDocumentType(type.code)">
           <q-item-section avatar><q-icon :name="type.icon" /></q-item-section>
@@ -112,7 +117,8 @@
         </q-item>
       </q-list>
     </q-menu>
-    <ResourcePicker v-model="importPickerOpen" :agent-id="selectedAgentId" single :title="t('documents.importFrom')" @select="selectImportSource" />
+    <DocumentImportDialog v-model="importDialogOpen" :files="importFiles" :agent-id="selectedAgentId" :tag="createDocumentTag"
+      :parent="createDocumentParent" :at-root="createDocumentAtRoot" :complete="completeImportedDocument" @progress="importingFileName = $event" @files-consumed="importFiles = []" @structure-changed="navigation?.reload()" />
     <q-dialog v-model="createDocumentOpen">
       <q-card class="documents-create-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
@@ -151,13 +157,11 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import ResourcePicker from '@/resourcePicker.vue'
-import { isAxiosError } from 'axios'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar, type QMenu } from 'quasar'
-import { documentTypes, type DocumentKind } from '../documentTypes'
+import { documentTypes, type DocumentCreationMode, type DocumentKind } from '../documentTypes'
 import { useAgentChoices } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AgentConversationPanel as DocumentConversationPanel, conversationPanel, type DocumentFocus } from '@/core/util'
@@ -172,6 +176,7 @@ import type {
   DocumentOwnerKind,
   DocumentOwnerOptions,
   DocumentDetail,
+  DocumentRecord,
   DocumentNodeKind,
 } from '../types'
 import DocumentEditor from '@/app/document/components/DocumentEditor.vue'
@@ -179,6 +184,7 @@ import DocumentIcon from '@/app/document/components/DocumentIcon.vue'
 import DocumentLibraryNavigation from '@/app/document/components/DocumentLibraryNavigation.vue'
 import DocumentSplitterHandle from '@/app/document/components/DocumentSplitterHandle.vue'
 import DocumentBulkList from '@/app/document/components/DocumentBulkList.vue'
+import DocumentImportDialog from '@/app/document/components/DocumentImportDialog.vue'
 
 interface MemoryRealtimeEvent { data: { id: string; node_kind: DocumentNodeKind } }
 
@@ -234,12 +240,15 @@ const navigatingHistory = ref(false)
 const canGoBack = computed(() => !navigatingHistory.value && history.canGoBack.value)
 const canGoForward = computed(() => !navigatingHistory.value && history.canGoForward.value)
 const typeMenu = useTemplateRef<QMenu>('typeMenu')
+const createMenuOpen = ref(false)
 const createMenuTarget = shallowRef<HTMLElement | false>(false)
 const createDocumentType = ref<DocumentKind>('text')
-const importPickerOpen = ref(false)
-const importSource = ref<{ uri: string; agent_id: number } | null>(null)
+const importDialogOpen = ref(false)
+const importFiles = shallowRef<File[]>([])
+const lastImportedDocument = shallowRef<{ document: DocumentRecord; actor: number | null } | null>(null)
 const createDocumentOpen = ref(false)
 const creatingDocument = ref(false)
+const importingFileName = ref('')
 const createDocumentOwner = ref('')
 const createDocumentActorAgentId = ref<number | null>(null)
 const createDocumentTitle = ref('')
@@ -346,7 +355,7 @@ async function openMobileDocument(id: string, agentId: number | null, initialDoc
 }
 function onLibraryLoaded(loaded: DocumentLibraryEntry[]): void {
   entries.value = loaded
-  if (!listingOpen.value && !selectedDocumentId.value && !documentIdFromRouteQuery(route.query.document_id) && !$q.screen.lt.md && loaded[0]) void selectEntry(loaded[0])
+  if (!importDialogOpen.value && !importingFileName.value && !listingOpen.value && !selectedDocumentId.value && !documentIdFromRouteQuery(route.query.document_id) && !$q.screen.lt.md && loaded[0]) void selectEntry(loaded[0])
 }
 async function openListing(folder: DocumentTag | null): Promise<void> {
   const selection = ++selectionGeneration
@@ -369,11 +378,13 @@ async function documentRowAction(entry: DocumentLibraryEntry, action: DocumentRo
   const editor = $q.screen.lt.md ? mobileDocumentEditor.value : documentEditor.value
   editor?.requestRowAction(action, entry.item.id)
 }
-function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false, type?: DocumentKind, event?: Event): void {
+function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false, type?: DocumentCreationMode, event?: Event): void {
   if (!canCreateDocument.value) return
+  if (importingFileName.value) { importDialogOpen.value = true; return }
   createDocumentTag.value = tag ?? null
   createDocumentParent.value = parent ?? null
   createDocumentAtRoot.value = atRoot
+  if (type === 'import') { openDocumentImport(); return }
   if (type) { void chooseDocumentType(type); return }
   const target = event?.currentTarget ?? window.document.activeElement
   if (!(target instanceof HTMLElement)) return
@@ -381,23 +392,11 @@ function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, at
   void nextTick(() => typeMenu.value?.show())
 }
 async function chooseDocumentType(type: DocumentKind): Promise<void> {
-  importSource.value = null
   createDocumentType.value = type
   await prepareCreateDocument(createDocumentTag.value ?? undefined, createDocumentParent.value ?? undefined, createDocumentAtRoot.value)
 }
 function openDocumentImport(): void {
-  importSource.value = null
-  importPickerOpen.value = true
-}
-function selectImportSource(files: { uri: string; name: string; media_type: string; is_collection: boolean }[], agentId: number): void {
-  const file = files[0]
-  if (!file || files.length !== 1 || file.is_collection) return
-  importPickerOpen.value = false
-  const nativeDocument = /^(document|data):\/\/[^/]+$/.test(file.uri)
-  createDocumentType.value = file.media_type.split(';')[0] === 'application/json' || !nativeDocument && /\.json$/i.test(file.name) ? 'data' : 'text'
-  importSource.value = { uri: file.uri, agent_id: agentId }
-  void prepareCreateDocument(createDocumentTag.value ?? undefined, createDocumentParent.value ?? undefined, createDocumentAtRoot.value,
-    file.name.replace(/\.[^.]+$/, '') || file.name)
+  importDialogOpen.value = true
 }
 async function prepareCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false, title = ''): Promise<void> {
   createDocumentTag.value = tag ?? null
@@ -426,6 +425,47 @@ async function refreshCreateOwners(): Promise<void> {
     if (!disposed && createDocumentOpen.value) createOwnerOptions.value = owners
   } catch { if (!disposed) $q.notify({ type: 'negative', message: t('documents.ownerLoadError') }) }
 }
+function importDroppedFiles(files: File[], tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot = false): void {
+  if (!canCreateDocument.value || importingFileName.value || creatingDocument.value || createDocumentOpen.value || !files.length) return
+  createDocumentTag.value = tag ?? null
+  createDocumentParent.value = parent ?? null
+  createDocumentAtRoot.value = atRoot
+  importFiles.value = [...importFiles.value, ...files]
+  importDialogOpen.value = true
+}
+async function completeImportedDocument(document: DocumentRecord, actor: number | null, tag: DocumentTag | null, parent: DocumentLibraryEntry | null, atRoot: boolean): Promise<void> {
+  await finishDocumentCreation(document, actor, tag, parent, atRoot, () => !disposed && !leavingPage, false)
+  if (!disposed && !leavingPage) lastImportedDocument.value = { document, actor }
+}
+watch(importDialogOpen, visible => {
+  const imported = lastImportedDocument.value
+  if (visible || importingFileName.value || !imported || disposed || leavingPage) return
+  lastImportedDocument.value = null
+  if ($q.screen.lt.md) void openMobileDocument(imported.document.id, imported.actor)
+  else void selectDocument(imported.document.id, imported.actor)
+})
+async function finishDocumentCreation(document: DocumentRecord, actor: number | null, tag?: DocumentTag | null, parent?: DocumentLibraryEntry | null, atRoot = false, active = () => !disposed, openCreated = true): Promise<void> {
+  let classified = false
+  if (tag || parent || atRoot) {
+    try {
+      if (parent) await documentService.moveDocumentUnderDocument(document.id, parent.item.id)
+      else if (tag) await documentService.moveDocumentToTag(document.id, tag.id)
+      else await documentService.moveDocumentToTag(document.id, null, true)
+      classified = true
+    } catch {
+      if (active()) $q.notify({ type: 'warning', message: parent
+        ? t('documents.createdUnnested', { name: parent.item.title })
+        : t('documents.createdUnclassified', { name: tag?.name ?? t('documents.library.root') }) })
+    }
+  }
+  if (!active()) return
+  navigation.value?.refreshDocuments([document.id], classified ? tag?.id : undefined, classified ? parent?.item.id : undefined)
+  if (openCreated) {
+    if ($q.screen.lt.md) await openMobileDocument(document.id, actor)
+    else await selectDocument(document.id, actor)
+  }
+  if ((!tag && !parent && !atRoot) || classified) $q.notify({ type: 'positive', message: t('documents.created') })
+}
 async function createDocument(): Promise<void> {
   const owner = selectedCreateDocumentOwner.value
   const actorAgentId = owner?.kind === 'agent' ? owner.id : createDocumentActorAgentId.value
@@ -443,30 +483,11 @@ async function createDocument(): Promise<void> {
       actor_agent_id: actorAgentId,
       title,
       folder: '',
-      ...(importSource.value ? { import_from: importSource.value } : {}),
     })
     createDocumentOpen.value = false
-    let classified = false
-    if (tag || parent || atRoot) {
-      try {
-        if (parent) await documentService.moveDocumentUnderDocument(document.id, parent.item.id)
-        else if (tag) await documentService.moveDocumentToTag(document.id, tag.id)
-        else await documentService.moveDocumentToTag(document.id, null, true)
-        classified = true
-      } catch {
-        $q.notify({ type: 'warning', message: parent
-          ? t('documents.createdUnnested', { name: parent.item.title })
-          : t('documents.createdUnclassified', { name: tag?.name ?? t('documents.library.root') }) })
-      }
-    }
-    navigation.value?.refreshDocuments([document.id], classified ? tag?.id : undefined, classified ? parent?.item.id : undefined)
-    const documentActor = owner.kind === 'user' ? null : actorAgentId
-    if ($q.screen.lt.md) await openMobileDocument(document.id, documentActor)
-    else await selectDocument(document.id, documentActor)
-    if ((!tag && !parent && !atRoot) || classified) $q.notify({ type: 'positive', message: t('documents.created') })
-  } catch (error) {
-    const unsupported = isAxiosError(error) && error.response?.status === 415
-    $q.notify({ type: 'negative', message: t(unsupported ? 'documents.importUnsupported' : importSource.value ? 'documents.importError' : 'documents.createError') })
+    await finishDocumentCreation(document, owner.kind === 'user' ? null : actorAgentId, tag, parent, atRoot)
+  } catch {
+    $q.notify({ type: 'negative', message: t('documents.createError') })
   } finally {
     creatingDocument.value = false
   }

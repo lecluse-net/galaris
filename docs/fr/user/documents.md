@@ -25,12 +25,40 @@ les contenus déjà enregistrés restent conservés.
 
 ## Importer un fichier
 
+Glissez un ou plusieurs fichiers depuis votre ordinateur sur un dossier de l’arborescence,
+sur un document pour créer des sous-documents, ou sur la zone de création à la racine.
+Le dépôt ouvre la modale **Importer des documents**. Sa zone de téléversement permet
+d’ajouter d’autres fichiers. Le tableau indique le format, s’il est importable et son état.
+**Importer** traite les fichiers l’un après l’autre et nomme celui en cours.
+Chaque fichier devient un document personnel, nommé d’après le fichier et classé à
+l’endroit du dépôt. La fenêtre peut être fermée puis rouverte pendant le traitement ;
+chaque fichier importé avec succès disparaît de la liste, tandis que les fichiers en attente,
+incompatibles ou en erreur restent visibles. Ajouter plusieurs fois le même fichier n’ajoute
+qu’une ligne à la liste. Après les imports, fermer la fenêtre ouvre
+le dernier document créé. Un échec de classement est signalé ; le document créé reste
+accessible et peut être déplacé ensuite.
+
 Dans le menu **Nouveau document**, choisissez **Nouveau document depuis…**, puis
-sélectionnez un fichier dans la boîte de dialogue des fichiers. Renseignez ensuite
-le titre et le propriétaire et créez le document dans le classement courant.
+ajoutez les fichiers à la modale puis cliquez sur **Importer**. **Fichiers Galaris**
+permet aussi d’ajouter des sources depuis les espaces de fichiers accessibles aux agents.
+**Fichiers locaux de l’ordinateur client** ouvre la sélection de fichiers de votre ordinateur.
+**Vider la liste** retire tous les fichiers encore présents avant un nouvel import.
+L’action **Nouveau document depuis…** est également disponible dans les menus **…**
+et au clic droit de chaque dossier et document de l’arborescence. Le document importé
+est créé dans le dossier choisi ou comme sous-document du document choisi.
 Les fichiers JSON deviennent des documents **Données** ; les pages HTML (`.html`,
 `.htm`), fichiers Markdown (`.md`, `.markdown`) et textes bruts (`.txt`) deviennent
-des documents **Texte**. Les fichiers doivent être en UTF-8. L’import n’a pas de
+des documents **Texte**. Ces formats textuels doivent être en UTF-8. Les fichiers HTML
+sont nettoyés avant validation : scripts, gestionnaires d’événements et intégrations actives
+sont retirés, en conservant le texte, la structure et les styles compatibles.
+Les PDF, fichiers
+Word, Excel, PowerPoint, OpenDocument, RTF, EPUB et images prises en charge deviennent
+aussi des documents **Texte**. Word/OpenDocument et les formats compatibles sont convertis
+en HTML nettoyé avec leurs images et tableaux. Pour les PDF et les autres conversions,
+le document contient le texte modifiable et les vues des pages conservant les illustrations
+et la mise en page ; les scans utilisent l’OCR disponible. Aucun lien vers le fichier original,
+titre de page ou texte d’accompagnement n’est ajouté au contenu. Les données techniques
+de l’extraction des tableurs ne sont pas insérées dans le corps. L’import n’a pas de
 plafond spécifique de 2 Mo ; le quota de ressources configuré pour l’application
 s’applique comme pour les autres fichiers.
 
@@ -40,10 +68,27 @@ son type et une copie de son contenu. Les images et pièces jointes des document
 Texte sont copiées avec de nouvelles identités ; les droits et l’historique de
 l’original ne sont pas repris.
 
-L’import copie le contenu sans conserver de lien ni de pièce jointe vers le fichier
-source. Les modifications ou la suppression de l’un n’affectent pas l’autre.
-Un format incompatible affiche « Le format de fichier n’est pas supporté pour l’import. »
-Un contenu invalide ou un refus d’accès empêche la création du document.
+L’import crée une copie indépendante. Les fichiers convertis conservent aussi une copie
+du fichier original en pièce jointe et des images propres au nouveau document. Les images
+affichées dans le corps restent conservées pour ce rendu, sans apparaître en double dans
+la liste des pièces jointes. Les
+modifications ou la suppression du fichier source n’affectent pas le document importé.
+Un format non convertible est indiqué « Pièce jointe uniquement » dans le tableau.
+**Importer** crée alors un document **Texte** vide avec le fichier original en pièce jointe.
+Un contenu invalide dans un format pris en charge ou un refus d’accès empêche la création
+du document et reste signalé comme un échec.
+
+Pour un ZIP, la liste **Mode d’import du ZIP** propose **Importer comme fichier**,
+**Dans le répertoire courant** ou **Dans un sous-répertoire dédié**. Le sous-répertoire
+nommé d’après l’archive est sélectionné par défaut. Les deux modes d’extraction recréent
+les sous-dossiers, y compris les dossiers vides, et importent chaque fichier avec son contenu
+ou sa pièce jointe selon son format. Depuis un document, le répertoire courant correspond
+à son répertoire connu, sinon à la racine. **Importer comme fichier** conserve le ZIP
+en pièce jointe d’un document vide.
+Le suivi indique le chemin du fichier en cours. Après une erreur, les fichiers réussis ne
+sont pas réimportés et les dossiers déjà créés sont réutilisés. Les ZIP contenus dans un ZIP
+ne sont pas décompressés automatiquement. Le quota de ressources s’applique aussi au volume
+décompressé ; une archive accepte au maximum 2 000 entrées et 32 niveaux de répertoires.
 
 ## Choisir le type de document
 
@@ -214,10 +259,18 @@ Le clic droit sur chaque dossier ouvre un menu avec les icônes et les libellés
 actions : afficher en liste, créer un document ou un dossier, modifier, trier, déplier,
 replier et supprimer. Les raccourcis **Nouveau document**, **Nouveau sous-dossier**, **Modifier**
 et **Supprimer** restent visibles sur la ligne, y compris sur mobile.
+Le bouton **…** des dossiers et documents ouvre le même menu sans clic droit, y compris
+sur mobile. **Copier l’URL du dossier** et **Copier l’URL du document** placent respectivement
+`document://folders/<uuid>/` et `document://<uuid>` dans le presse-papiers, sans modifier
+le classement ou la sélection. La copie reste disponible pour un document en lecture seule.
+Tant que le menu contextuel est ouvert, le dossier ou document concerné reste surligné,
+même lorsque le pointeur quitte sa ligne.
 Au clavier, utilisez **Maj + F10** sur le dossier ; **Échap** ferme le menu.
 
 Un document peut aussi contenir des **sous-documents**. Utilisez son icône
 **Nouveau sous-document**, ou glissez un document existant au centre de sa ligne.
+La création de sous-documents est réservée aux documents de l’arborescence : elle n’est
+proposée ni dans la liste située dessous, ni dans la liste avec cases à cocher.
 La flèche permet de déplier ses enfants, sur plusieurs niveaux ; cliquer sur le titre
 continue d'ouvrir le document. Pour sortir un enfant de son parent, glissez-le dans la zone
 des documents non classés ou dans un dossier.
@@ -275,6 +328,7 @@ Dans la bibliothèque, survolez une ligne de dossier ou de document, ou placez-y
 au clavier, pour utiliser les raccourcis. **F2** renomme, **F3** crée un document dans le
 dossier ou un sous-document du document, **F4** ouvre le dossier en liste ou le document,
 et **F7** crée un sous-dossier (un sous-document sur une ligne de document).
+**F3** et **F7** sont réservés à l’arborescence ; les listes de documents ne les utilisent pas.
 **Suppr** ouvre la confirmation de suppression de la ligne ciblée ; il ne supprime pas la
 sélection en masse. Les raccourcis sont suspendus pendant la saisie, dans les menus et les
 dialogues, et respectent les droits et protections de chaque document. Le menu contextuel

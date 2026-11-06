@@ -14,7 +14,7 @@ async function findModuleCatalogs(directory) {
     const entryPath = path.join(directory, entry.name)
     if (entry.isDirectory()) {
       result.push(...await findModuleCatalogs(entryPath))
-    } else if (entry.name === 'i18n.ts') {
+    } else if (entry.name === 'i18n.ts' || path.relative(frontendRoot, entryPath) === 'app/document/importI18n.ts') {
       result.push(entryPath)
     }
   }

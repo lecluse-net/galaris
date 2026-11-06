@@ -35,6 +35,10 @@ export const test = base.extend({
     })
     // Optional document captures are unavailable unless the scenario supplies a rendered image.
     await page.route('**/api/documents/*/thumbnail*', route => route.fulfill({ status: 204 }))
+    await page.route('**/api/documents/import-formats', route => route.fulfill({ json: {
+      extensions: ['.txt', '.md', '.json', '.html', '.htm', '.pdf', '.docx', '.odt', '.xls', '.xlsx', '.png'],
+      media_types: ['text/plain', 'text/markdown', 'application/json', 'text/html', 'application/pdf', 'image/png'],
+    } }))
     await use(page)
     if (!page.isClosed()) {
       failures.push(...await page.evaluate(() => window.testApp?.errors ?? []))

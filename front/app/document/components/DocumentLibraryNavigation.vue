@@ -1,12 +1,12 @@
 <template>
   <q-splitter v-model="split" horizontal :limits="[0, 100]" class="library-navigation" :class="{ 'library-navigation--dark': $q.dark.isActive }">
     <template #before>
-      <div class="q-pa-sm" @dragover.self="dragOver($event, 'root')" @drop.prevent.self="drop(null, true)">
+      <div class="q-pa-sm" @dragover.self="dragOver($event, 'root')" @drop.prevent.self="drop(null, true, $event)">
         <q-banner v-if="tagError" dense class="library-error" role="alert">{{ t('documents.library.tagError') }}<q-btn flat :label="t('documents.retry')" @click="loadTags" /></q-banner>
         <q-tree v-model:expanded="treeExpanded" :nodes="tree" node-key="id" dense no-transition class="document-tree">
           <template #default-header="{ node }">
             <div class="tag-row row items-center no-wrap full-width"
-              :class="dropClass(node.id)"
+              :class="[dropClass(node.id), { 'document-create-menu-open': creationTagId === node.id }]"
               @dragstart.stop="startTagDrag($event, node.id)" @dragend="clearDrag"
               @dragover.stop="dragOverNode($event, { kind: 'tag', id: node.id }, node.tag.parent_id)" @dragleave="dropTarget = null" @drop.prevent.stop="dropNode">
               <DocumentTagRow :key="`${userId}:${node.id}`" :tag="node.tag" :selected="expanded.includes(node.id)" :busy="busy" :save="saveTag" :create="createTag"
@@ -16,7 +16,7 @@
             </div>
           </template>
           <template #header-document="{ node }">
-            <div class="full-width" :aria-label="node.parentDocumentId ? t('documents.library.subdocuments', { name: node.parentDocumentTitle }) : node.tag ? t('documents.library.tagDocuments', { name: node.tag.name }) : t('documents.folderRoot')">
+            <div class="full-width" :class="{ 'document-create-menu-open': creationDocumentId === node.entry.item.id }" :aria-label="node.parentDocumentId ? t('documents.library.subdocuments', { name: node.parentDocumentTitle }) : node.tag ? t('documents.library.tagDocuments', { name: node.tag.name }) : t('documents.folderRoot')">
               <DocumentLibraryDocument :entry="node.entry" compact tree-row :tag-id="node.parentDocumentId ? null : node.tag?.id" :parent-document-id="node.parentDocumentId" :selected-document-id="selectedDocumentId" :selected-document-ids="selectedDocumentIds" :busy="busy"
                 :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
                 @select="(entry, event) => selectDocument(entry, 'tree', node.id, event)" @create="(entry, type, event) => emit('create', undefined, entry, false, type, event)" @action="(entry, action) => emit('action', entry, action)"
@@ -43,10 +43,10 @@
         <q-spinner v-if="branches.loading.value.root" size="16px" />
         <q-banner v-else-if="branchErrors.root" dense role="alert">{{ t('documents.loadError') }}<q-btn outline color="primary" :label="t('documents.retry')" @click="branches.refresh('root')" /></q-banner>
         <div v-if="!tree.length && !tagError && !branchErrors.root && !branches.loading.value.root" class="text-caption q-pa-sm">{{ t('documents.empty') }}</div>
-        <div role="group" :aria-label="t('documents.library.root')" class="row items-center justify-end" :class="{ 'tag-row--drop': dropTarget === 'root' }"
-          @dragover="dragOver($event, 'root')" @dragleave="dropTarget = null" @drop.prevent="drop(null, true)">
-          <q-btn v-if="canCreateDocument" flat round dense icon="note_add" :disable="busy" :aria-label="t('documents.library.newRootDocument')" @click="emit('create', undefined, undefined, true, undefined, $event)"><q-tooltip>{{ t('documents.library.newRootDocument') }}</q-tooltip></q-btn>
-          <DocumentTagCreateButton :key="userId ?? 'session'" :parent-id="null" :busy="busy" :save="createTag" />
+        <div role="group" :aria-label="t('documents.library.root')" class="row no-wrap q-gutter-x-sm q-mt-sm" :class="{ 'tag-row--drop': dropTarget === 'root' }"
+          @dragover="dragOver($event, 'root')" @dragleave="dropTarget = null" @drop.prevent="drop(null, true, $event)">
+          <q-btn v-if="canCreateDocument" class="col" outline dense no-caps icon="note_add" :label="t('documents.library.newDocumentAction')" :disable="busy" :aria-label="t('documents.library.newRootDocument')" @click="emit('create', undefined, undefined, true, undefined, $event)"><q-tooltip>{{ t('documents.library.newRootDocument') }}</q-tooltip></q-btn>
+          <DocumentTagCreateButton :key="userId ?? 'session'" class="col" :parent-id="null" :busy="busy" :save="createTag" />
         </div>
       </div>
     </template>
@@ -56,14 +56,13 @@
     </template>
     <template #after>
       <div class="document-list-panel" :class="{ 'tag-row--drop': dropTarget === 'root' }"
-        @dragover="dragOver($event, 'root')" @dragleave="dropTarget = null" @drop.prevent="drop(null)">
+        @dragover="dragOver($event, 'root')" @dragleave="dropTarget = null" @drop.prevent="drop(null, false, $event)">
         <div class="row no-wrap items-center q-pa-sm q-gutter-xs">
           <q-input v-model="query" dense outlined clearable debounce="350" class="col" :placeholder="t('documents.search')" :aria-label="t('documents.search')">
             <template #prepend><q-icon name="search" size="18px" /></template>
           </q-input>
           <DocumentLibraryFilters v-model="filters" v-model:only-unclassified="onlyUnclassified" :owners="owners" :keywords="keywords" :current-user-id="userId ?? undefined" />
           <q-btn v-if="hasFilters" flat round dense icon="filter_alt_off" :aria-label="t('documents.library.reset')" @click="reset"><q-tooltip>{{ t('documents.library.reset') }}</q-tooltip></q-btn>
-          <q-btn v-if="canCreateDocument" flat round dense icon="add" :aria-label="t('documents.createDocument')" @click="emit('create', undefined, undefined, false, undefined, $event)"><q-tooltip>{{ t('documents.createDocument') }}</q-tooltip></q-btn>
           <q-btn flat round dense icon="view_list" :aria-label="t('documents.bulk.openUnclassified')" @click="emit('browse', null)"><q-tooltip>{{ t('documents.bulk.openUnclassified') }}</q-tooltip></q-btn>
         </div>
         <q-banner v-if="loadError" dense class="library-error" role="alert">{{ t('documents.loadError') }}<q-btn flat :label="t('documents.retry')" @click="reload" /></q-banner>
@@ -106,7 +105,7 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration as authSessionGeneration } from '@/core/api'
 import type { DocumentLibraryEntry, DocumentLibraryFilters as LibraryRequest, DocumentOwnerOption, DocumentTag, DocumentOrderNode, DocumentOrderMove, DocumentRecord } from '../types'
 import { documentService } from '../services/documentService'
-import type { DocumentKind } from '../documentTypes'
+import type { DocumentCreationMode } from '../documentTypes'
 import { defaultLibraryFilters, libraryRequestFilters } from '@/app/document/libraryFilterState'
 import DocumentLibraryFilters from '@/app/document/components/DocumentLibraryFilters.vue'
 import DocumentTagCreateButton from '@/app/document/components/DocumentTagCreateButton.vue'
@@ -119,14 +118,14 @@ import DocumentSplitterHandle from '@/app/document/components/DocumentSplitterHa
 import type { DocumentRowAction } from '@/app/document/libraryShortcuts'
 import { documentSelectionModifiers, useDocumentSelection, type DocumentSelectionItem } from '@/app/document/useDocumentSelection'
 import { documentDragSelection, setDocumentDragData } from '../documentDrag'
-const props = defineProps<{ selectedDocumentId: string | null }>()
+const props = defineProps<{ selectedDocumentId: string | null; creationTagId?: string | null; creationDocumentId?: string | null; importingFiles?: boolean }>()
 const selection = useDocumentSelection()
 const { selected: selectedDocumentIds } = selection
 watch(() => props.selectedDocumentId, id => {
   if (selectedDocumentIds.value.length === 1 && selectedDocumentIds.value[0] === id) return
   selection.clear(); selectedDocumentIds.value = id ? [id] : []
 }, { immediate: true })
-const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; browse: [folder: DocumentTag | null]; select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot?: boolean, type?: DocumentKind, event?: Event] }>()
+const emit = defineEmits<{ filesDropped: [files: File[], tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot?: boolean]; action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; browse: [folder: DocumentTag | null]; select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry, atRoot?: boolean, type?: DocumentCreationMode, event?: Event] }>()
 const { t } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
@@ -700,6 +699,7 @@ async function moveDocuments(values: DocumentLibraryEntry[], target: Omit<Docume
   }
 }
 function dragOver(event: DragEvent, target: string): void {
+  if (fileDragOver(event, target)) return
   if (!drag || busy.value || (drag.kind === 'tag' && isDescendant(target, drag.id))) return
   event.preventDefault()
   if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
@@ -708,6 +708,10 @@ function dragOver(event: DragEvent, target: string): void {
 }
 function dragOverNode(event: DragEvent, anchor: DocumentOrderNode, parentId: string | null, listOnly = false, key = anchor.id): void {
   pendingDrop = null; dropTarget.value = null
+  if (fileDragOver(event, key)) {
+    pendingDrop = { parent_id: anchor.id }
+    return
+  }
   if (!drag || busy.value || (drag.kind === anchor.kind && drag.id === anchor.id) || (listOnly && drag.kind === 'tag')) return
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
   const ratio = (event.clientY - bounds.top) / bounds.height
@@ -724,6 +728,10 @@ function dragOverNode(event: DragEvent, anchor: DocumentOrderNode, parentId: str
 }
 function dragOverDocument(event: DragEvent, entry: DocumentLibraryEntry, parentDocumentId?: string | null, tagId?: string | null, listOnly = false): void {
   pendingDrop = null; dropTarget.value = null
+  if (fileDragOver(event, `doc:${entry.item.id}`)) {
+    pendingDrop = { parent_id: null, parent_document_id: entry.item.id }
+    return
+  }
   if (!drag || busy.value || drag.kind !== 'document' || draggedDocuments.some(value => value.item.id === entry.item.id)) return
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
   const ratio = (event.clientY - bounds.top) / bounds.height
@@ -754,7 +762,30 @@ function dropClass(key: string): Record<string, boolean> {
     'node-drop-before': dropTarget.value === key && dropPlacement.value === 'before',
     'node-drop-after': dropTarget.value === key && dropPlacement.value === 'after' }
 }
-async function dropNode(): Promise<void> {
+function fileDragOver(event: DragEvent, key: string): boolean {
+  if (!event.dataTransfer?.types.includes('Files')) return false
+  event.preventDefault()
+  const allowed = canCreateDocument.value && !busy.value && !props.importingFiles
+  event.dataTransfer.dropEffect = allowed ? 'copy' : 'none'
+  dropTarget.value = allowed ? key : null
+  dropPlacement.value = 'inside'
+  pendingDrop = null
+  return true
+}
+function dropFiles(event: DragEvent, target: Omit<DocumentOrderMove, 'node'> | null): boolean {
+  if (!event.dataTransfer?.types.includes('Files')) return false
+  const files = [...event.dataTransfer.files]
+  const allowed = canCreateDocument.value && !busy.value && !props.importingFiles
+  clearDrag()
+  if (allowed && files.length && target) {
+    const tag = tags.value.find(tag => tag.id === target.parent_id)
+    const parent = [...entries.value, ...Object.values(branchSnapshots.value).flat()].find(entry => entry.item.id === target.parent_document_id)
+    emit('filesDropped', files, tag, parent, target.at_root)
+  }
+  return true
+}
+async function dropNode(event: DragEvent): Promise<void> {
+  if (dropFiles(event, pendingDrop)) return
   const node = drag; const target = pendingDrop; const documents = draggedDocuments; clearDrag()
   if (!node || !target) return
   if (node.kind === 'document') { await moveDocuments(documents, target); return }
@@ -769,7 +800,8 @@ async function dropNode(): Promise<void> {
   if (target.parent_id && !expanded.value.includes(target.parent_id)) expanded.value.push(target.parent_id)
 }
 function clearDrag(): void { drag = null; draggedDocuments = []; documentFromTree = false; dropTarget.value = null; pendingDrop = null }
-async function drop(parentId: string | null, atRoot = false): Promise<void> {
+async function drop(parentId: string | null, atRoot = false, event?: DragEvent): Promise<void> {
+  if (event && dropFiles(event, { parent_id: parentId, at_root: atRoot })) return
   const value = drag; const documents = draggedDocuments; clearDrag()
   if (!value) return
   if (value.kind === 'document') { await moveDocuments(documents, { parent_id: parentId, at_root: atRoot }); return }
@@ -834,11 +866,15 @@ defineExpose({ reload: refresh, refreshDocuments, removeDocument, updateDocument
 .node-drop-after { box-shadow: inset 0 -2px var(--solaire-blue-accent); }
 .document-tree :deep(.q-tree__arrow), .document-tree :deep(.q-tree__spinner) { color: var(--solaire-gray-accent); }
 .document-tree :deep(.q-tree__node-header) { min-height: 28px; }
-.document-tree :deep(.q-tree__node-header :is(.tag-actions, .document-actions)) { opacity: 0; pointer-events: none; }
+.document-tree :deep(.q-tree__node-header :is(.tag-actions, .document-actions)) { display: none; opacity: 0; pointer-events: none; }
 .document-tree :deep(.q-tree__node-header:hover :is(.tag-actions, .document-actions)),
-.document-tree :deep(.q-tree__node-header:has(:focus-visible) :is(.tag-actions, .document-actions)) { opacity: 1; pointer-events: auto; }
+.document-tree :deep(.q-tree__node-header:has(.document-create-menu-open) :is(.tag-actions, .document-actions)),
+.document-tree :deep(.q-tree__node-header:has(.document-tag-row--menu-open, .action-context-menu--open) :is(.tag-actions, .document-actions)),
+.document-tree :deep(.q-tree__node-header:has(:focus-visible) :is(.tag-actions, .document-actions)) { display: flex; opacity: 1; pointer-events: auto; }
+.document-tree :deep(.q-tree__node-header:has(.document-tag-row--menu-open, .action-context-menu--open)) { background: var(--solaire-blue-light); }
+.library-navigation--dark .document-tree :deep(.q-tree__node-header:has(.document-tag-row--menu-open, .action-context-menu--open)) { background: var(--solaire-blue-dark); }
 @media (hover: none) {
-  .document-tree :deep(.q-tree__node-header :is(.tag-actions, .document-actions)) { opacity: 1; pointer-events: auto; }
+  .document-tree :deep(.q-tree__node-header :is(.tag-actions, .document-actions)) { display: flex; opacity: 1; pointer-events: auto; }
 }
 .document-list-panel { height: 100%; display: flex; flex-direction: column; min-height: 0; }
 .document-list-scroll { flex: 1; min-height: 0; overflow: auto; }

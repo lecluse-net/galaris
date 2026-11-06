@@ -80,6 +80,8 @@ Les documents, fichiers, pièces jointes, objectifs, tâches et sujets proposent
 actions au clic droit. Au clavier, placez le focus sur l’élément ou l’un de ses contrôles,
 puis utilisez **Maj+F10**. Les commandes disponibles
 dépendent de vos droits et de l’état de la ressource ; les confirmations restent applicables.
+Dans Documents, le bouton **…** des dossiers et documents ouvre aussi ce menu. **Copier
+l’URL du dossier** ou **Copier l’URL du document** copie la référence de la ressource.
 Les messages et les éléments de la liste des conversations du Chat conservent le menu du navigateur.
 Le menu des tâches du Chat permet aussi de déplier ou replier la tâche sans ouvrir sa fiche.
 Dans les menus contextuels, les sous-menus s’ouvrent au survol et restent ouverts pendant le passage du pointeur vers

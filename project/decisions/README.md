@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0266 — Editable document imports retain their own media](0266-editable-document-imports-with-owned-media.md)
+
 - [0265 — Strict schema convergence, qualified deployments and offline backups](0265-strict-updates-and-offline-backups.md)
 
 - [0264 — Supported LTS runtimes and artifact-scoped kernel-header assessment](0264-lts-runtime-security-assessment.md)

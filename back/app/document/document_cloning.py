@@ -23,6 +23,7 @@ class PreparedDocumentClone:
     identity: UUID
     content: str
     attachments: tuple[DocumentAttachmentPublic, ...]
+    retained_attachment_ids: frozenset[UUID] = frozenset()
 
 
 @asynccontextmanager
@@ -32,6 +33,7 @@ async def prepare_document_clone(source: DocumentCloneSource, content: str) -> A
     identity = uuid4()
     storage = get_attachment_storage()
     copied: list[DocumentAttachmentPublic] = []
+    retained: set[UUID] = set()
     try:
         item, _access = await service.get_item_metadata(source.identity, agent_id=source.actor)
         active = {attachment.id for attachment in attachments.attachments_from_item(item)}
@@ -43,9 +45,11 @@ async def prepare_document_clone(source: DocumentCloneSource, content: str) -> A
             new_id = UUID(await storage.create(raw))
             copied.append(DocumentAttachmentPublic(id=new_id, name=current.name, media_type=current.media_type,
                 size_bytes=len(raw), created_at=datetime.now(timezone.utc)))
+            if attachment.id not in active:
+                retained.add(new_id)
             content = content.replace(source_uri,
                                       f"document://{identity}/attachments/{new_id}")
-        yield PreparedDocumentClone(identity, content, tuple(copied))
+        yield PreparedDocumentClone(identity, content, tuple(copied), frozenset(retained))
     except BaseException:
         # Registered files may already have been committed after an interrupted response;
         # this storage API removes only bytes that have never been published.

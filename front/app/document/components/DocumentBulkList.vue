@@ -35,7 +35,7 @@
       </ul>
     </q-banner>
     <q-list separator>
-      <q-item v-for="entry in entries" :key="entry.item.id" v-library-shortcuts="rowShortcuts(entry)" clickable :active="selected.includes(entry.item.id)" :aria-selected="selected.includes(entry.item.id)" :disable="busy || loading" :title="t('documents.shortcuts.document')" aria-keyshortcuts="F2 F3 F4 F7 Delete"
+      <q-item v-for="entry in entries" :key="entry.item.id" v-library-shortcuts="rowShortcuts(entry)" class="relative-position" clickable :active="selected.includes(entry.item.id)" :aria-selected="selected.includes(entry.item.id)" :disable="busy || loading" :title="entry.item.title" aria-keyshortcuts="F2 F4 Delete"
         :draggable="!busy && !loading" @dragstart.stop="startDrag($event, entry)" @dragend="emit('dragend')"
         @click="selectRow(entry, $event)" @mousedown="preventTextSelection">
         <q-item-section side>
@@ -50,7 +50,7 @@
           <q-item-label caption>{{ entry.owner_label }}</q-item-label>
           <div class="row q-gutter-xs"><q-chip v-for="keyword in entry.item.keywords" :key="keyword" dense class="bulk-keyword"><span class="ellipsis">{{ keyword }}</span></q-chip></div>
         </q-item-section>
-        <q-item-section side><DocumentRowMenu :entry="entry" :busy="busy || loading" target=".q-item" @select="emit('select', entry)" @create="type => emit('create', entry, type)" @action="emit('action', entry, $event)" /></q-item-section>
+        <div class="bulk-row-actions"><DocumentRowMenu :entry="entry" :busy="busy || loading" target=".q-item" @select="emit('select', entry)" @create="type => emit('create', entry, type)" @action="emit('action', entry, $event)" /></div>
       </q-item>
     </q-list>
     <div v-if="!loading && !loadError && !entries.length" class="q-pa-md">{{ t('documents.empty') }}</div>
@@ -74,7 +74,7 @@ import { websocket } from '@/core/websocket'
 import { documentService } from '../services/documentService'
 import { applyDocumentBulkOperation, documentEntryActor, type DocumentBulkOperation } from '@/app/document/services/documentBulkService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
-import type { DocumentKind } from '../documentTypes'
+import type { DocumentCreationMode } from '../documentTypes'
 import type { DocumentLibraryEntry, DocumentTag } from '../types'
 import DocumentBulkDialog from '@/app/document/components/DocumentBulkDialog.vue'
 import DocumentThumbnail from '@/app/document/components/DocumentThumbnail.vue'
@@ -85,13 +85,13 @@ import { documentDragSelection, setDocumentDragData } from '../documentDrag'
 
 const props = defineProps<{ folder: DocumentTag | null }>()
 const DocumentSharingPanel = defineAsyncView(() => import('./DocumentSharingPanel.vue'))
-const emit = defineEmits<{ dragstart: [event: DragEvent, entries: DocumentLibraryEntry[]]; dragend: []; action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; create: [entry: DocumentLibraryEntry, type?: DocumentKind]; select: [entry: DocumentLibraryEntry]; close: []; changed: [ids: string[]]; deleted: [id: string] }>()
+const emit = defineEmits<{ dragstart: [event: DragEvent, entries: DocumentLibraryEntry[]]; dragend: []; action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; create: [entry: DocumentLibraryEntry, type?: DocumentCreationMode]; select: [entry: DocumentLibraryEntry]; close: []; changed: [ids: string[]]; deleted: [id: string] }>()
 const { t } = useI18n()
 const privilegeStore = usePrivilegeStore()
 const mutations = useDocumentMutations()
 function rowShortcuts(entry: DocumentLibraryEntry) {
   return documentRowShortcuts(entry, busy.value || loading.value,
-    () => emit('select', entry), () => emit('create', entry), action => emit('action', entry, action))
+    () => emit('select', entry), undefined, action => emit('action', entry, action))
 }
 const heading = computed(() => props.folder?.name ?? t('documents.library.orphans'))
 const recursive = ref(false)
@@ -262,8 +262,15 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .bulk-list { min-width: 0; }
-.bulk-list .q-item[aria-selected="true"] { background: var(--solaire-blue-light); }
-body.body--dark .bulk-list .q-item[aria-selected="true"] { background: var(--solaire-blue-dark); }
+.bulk-row-actions { position: absolute; top: 4px; right: 4px; opacity: 0; pointer-events: none; }
+.q-item:hover > .bulk-row-actions,
+.q-item:has(.action-context-menu--open) > .bulk-row-actions,
+.q-item:has(:focus-visible) > .bulk-row-actions { opacity: 1; pointer-events: auto; }
+@media (hover: none) {
+  .bulk-row-actions { opacity: 1; pointer-events: auto; }
+}
+.bulk-list .q-item[aria-selected="true"], .bulk-list .q-item:has(.action-context-menu--open) { background: var(--solaire-blue-light); }
+body.body--dark .bulk-list .q-item[aria-selected="true"], body.body--dark .bulk-list .q-item:has(.action-context-menu--open) { background: var(--solaire-blue-dark); }
 .bulk-heading { overflow-wrap: anywhere; }
 .bulk-search { flex: 1 1 240px; min-width: 0; max-width: 100%; }
 .bulk-keyword { max-width: 100%; }

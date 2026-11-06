@@ -13,10 +13,11 @@
       <button
         type="button"
         class="document-folder-select__control"
+        :title="model || t('documents.folderRoot')"
         :disabled="readonly"
         @click="menuOpen = true"
       >
-        <FolderIcon :tone="appearance(model).tone" :expanded="menuOpen" :title="t(appearance(model).label)" />
+        <FolderIcon :tone="appearance(model).tone" :expanded="menuOpen" :title="model || t('documents.folderRoot')" />
         <span class="ellipsis">{{ model || t('documents.folderRoot') }}</span>
       </button>
     </template>
@@ -52,10 +53,11 @@
               <button
                 type="button"
                 class="document-folder-select__node"
+                :title="treeProps.node.path"
                 :class="{ 'text-primary': treeProps.node.path === model }"
                 @click="selectFolder(treeProps.node.path)"
               >
-                <FolderIcon :tone="appearance(treeProps.node.path).tone" :expanded="treeProps.expanded" :title="t(appearance(treeProps.node.path).label)" />
+                <FolderIcon :tone="appearance(treeProps.node.path).tone" :expanded="treeProps.expanded" :title="treeProps.node.path" />
                 <span class="ellipsis">{{ treeProps.node.label }}</span>
                 <q-space />
                 <q-btn

@@ -200,11 +200,19 @@ test('shortcuts on a paginated document row target that document and preserve th
   await selectPage(page)
   await page.getByRole('link', { name: 'Report 01', exact: true }).hover()
   await page.keyboard.press('F3')
+  await page.keyboard.press('F7')
+  await page.getByRole('link', { name: 'Report 01', exact: true }).hover()
+  await page.getByRole('button', { name: 'Actions for document Report 01', exact: true }).click()
+  for (const name of ['Create Text document', 'Create Data document', 'New document from…']) {
+    await expect(page.getByRole('menuitem', { name, exact: true })).toHaveCount(0)
+  }
+  await page.keyboard.press('Escape')
+  await page.getByRole('link', { name: 'Report 01', exact: true }).hover()
   await page.keyboard.press('F2')
   await page.keyboard.press('Delete')
   expect(await page.evaluate(() => window.testApp.events.filter(event => ['create', 'action'].includes(event.name))
     .map(event => [event.name, event.args[0].item.id, event.args[1]]))).toEqual([
-    ['create', 'doc-1', undefined], ['action', 'doc-1', 'rename'], ['action', 'doc-1', 'delete'],
+    ['action', 'doc-1', 'rename'], ['action', 'doc-1', 'delete'],
   ])
   await expect(page.getByText('2 selected', { exact: true })).toBeVisible()
   expect(writes).toEqual([])

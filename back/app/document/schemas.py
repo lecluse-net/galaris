@@ -478,6 +478,11 @@ class DocumentImportReference(BaseModel):
     agent_id: int = Field(gt=0)
 
 
+class DocumentArchiveExpand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    import_from: DocumentImportReference | None = None
+
+
 class DocumentCreate(BaseModel):
     """Create one human-managed document with an explicit owner and editor."""
 

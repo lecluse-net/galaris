@@ -45,6 +45,7 @@ function setup() {
     '@/core/api': loaded, './sessionReadCache': cacheHelpers, './previewQueue': cacheHelpers,
   })
   const dependencies = {
+    axios: { isAxiosError: axios.isAxiosError },
     '@/app/share/facade': loadTypescript(new URL('../app/share/ownerCache.ts', import.meta.url), {
       '@/core/util/facade': { ...cacheHelpers, ...resources },
     }),

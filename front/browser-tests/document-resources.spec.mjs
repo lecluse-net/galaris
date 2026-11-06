@@ -385,6 +385,8 @@ for (const legacy of [false, true]) for (const journey of [
   await jsonRoute(page, '**/api/documents/keywords?*', [])
   await jsonRoute(page, '**/api/documents/folders?*', [])
   await jsonRoute(page, `**/api/documents/${documentId}/attachments?*`, legacy ? [attachment] : [])
+  // Embedded images are absent from the list; fullscreen resolves their metadata separately.
+  await jsonRoute(page, `**/api/documents/${documentId}/attachments/${attachmentId}/info?*`, attachment)
   await page.route('**/api/documents/link-card/thumbnail*', route => {
     imageCalls++
     expect(route.request().postDataJSON()).toEqual({ url })
@@ -538,7 +540,7 @@ test('document attachments upload below the content, retry after failure and rem
   await page.screenshot({ path: testInfo.outputPath('attachments-desktop-dark.png'), fullPage: true })
 })
 
-for (const editable of [true, false]) for (const reference of ['link', 'image']) test(`attachments referenced by ${reference} remain listed and downloadable with editable=${editable}`, async ({ page }, testInfo) => {
+for (const editable of [true, false]) for (const reference of ['link', 'image', 'json']) test(`image references hide embedded files while links stay downloadable with editable=${editable}, reference=${reference}`, async ({ page }, testInfo) => {
   const secondId = '00000000-0000-0000-0000-000000000003'
   const secondUri = `document://${documentId}/attachments/${secondId}`
   const files = [
@@ -550,24 +552,28 @@ for (const editable of [true, false]) for (const reference of ['link', 'image'])
   await page.route(`**/api/documents/${documentId}/attachments/${secondId}?*`, route => route.fulfill({ status: 204 }))
   await mount(page, 'app/document/components/DocumentAttachments.vue', { props: {
     documentId, agentId: 7, editable, allowInsertion: true, attachments: files,
-    content: (reference === 'image' ? `<p><img src="${uri}"></p>` : `<p><a href="${uri}">Embedded</a></p>`)
+    contentMediaType: reference === 'json' ? 'application/json' : 'text/html',
+    content: (reference === 'json' ? JSON.stringify({ literal: `<img src="${uri}">` }) : reference === 'image' ? `<p><img src="${uri}"></p>` : `<p><a href="${uri}">Embedded</a></p>`)
       + `<pre><code>${secondUri}</code></pre>`,
   } })
   const list = page.locator('.document-attachments')
   await expect(list).toBeVisible()
   await expect(list).toContainText('remaining.bin')
-  await expect(list).toContainText('embedded.png')
+  if (reference === 'image') await expect(list).not.toContainText('embedded.png')
+  else await expect(list).toContainText('embedded.png')
   await list.locator('.document-attachments__item').first().click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: 'Insert into document', exact: true })).toHaveCount(editable ? 1 : 0)
   await page.keyboard.press('Escape')
-  await expect(list.getByRole('button', { name: /^Remove / })).toHaveCount(editable ? 2 : 0)
+  await expect(list.getByRole('button', { name: /^Remove / })).toHaveCount(editable ? reference === 'image' ? 1 : 2 : 0)
   await page.setViewportSize({ width: 390, height: 844 })
-  await list.getByRole('button', { name: 'Download embedded.png', exact: true }).focus()
-  const downloaded = page.waitForEvent('download')
-  await page.keyboard.press('Enter')
-  expect((await downloaded).suggestedFilename()).toBe('embedded.png')
+  if (reference !== 'image') {
+    await list.getByRole('button', { name: 'Download embedded.png', exact: true }).focus()
+    const downloaded = page.waitForEvent('download')
+    await page.keyboard.press('Enter')
+    expect((await downloaded).suggestedFilename()).toBe('embedded.png')
+  }
   await page.screenshot({ path: testInfo.outputPath('referenced-attachments-mobile.png'), fullPage: true })
-  await page.evaluate(() => window.testApp.setProps({ content: '<p>Removed the inline attachment</p>' }))
+  await page.evaluate(uri => window.testApp.setProps({ content: `<p>Removed the inline attachment</p><script>const synthetic = '<img src="${uri}">';</script>` }), uri)
   await expect(list).toContainText('embedded.png')
   await list.locator('.document-attachments__item').first().click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: 'Insert into document', exact: true })).toHaveCount(editable ? 1 : 0)
@@ -752,7 +758,7 @@ test('a full HTML paste becomes editable styled content with owned images', asyn
   await expect(page.locator('[data-editor-surface] td')).toHaveText('Cell content')
 })
 
-for (const format of ['HTML', 'Markdown']) test(`pasted ${format} document images are saved through the attachment API and reopen locally`, async ({ page }) => {
+for (const format of ['HTML', 'Markdown', 'file']) test(`pasted ${format} document images remain embedded without duplicate attachments and reopen locally`, async ({ page }) => {
   const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Report</p>' } }
   const attachment = { id: attachmentId, name: 'pasted-image.png', media_type: 'image/png', size_bytes: 68 }
   let imported = false
@@ -760,7 +766,10 @@ for (const format of ['HTML', 'Markdown']) test(`pasted ${format} document image
   await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
   await jsonRoute(page, '**/api/documents/keywords?*', [])
   await jsonRoute(page, '**/api/documents/folders?*', [])
-  await page.route(`**/api/documents/${documentId}/attachments?*`, route => route.fulfill({ json: imported ? [attachment] : [] }))
+  await page.route(`**/api/documents/${documentId}/attachments?*`, route => {
+    if (route.request().method() === 'POST') { imported = true; return route.fulfill({ status: 201, json: attachment }) }
+    return route.fulfill({ json: imported && !current.metadata.retained_document_attachments ? [attachment] : [] })
+  })
   await page.route(`**/api/documents/${documentId}/import-image?*`, route => {
     expect(route.request().postDataJSON()).toEqual({ url: 'https://example.org/picture.png' })
     expect(new URL(route.request().url()).searchParams.get('actor_agent_id')).toBe('7')
@@ -770,19 +779,38 @@ for (const format of ['HTML', 'Markdown']) test(`pasted ${format} document image
   await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
   await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
   await page.route(`**/api/documents/${documentId}?*`, route => {
-    if (route.request().method() !== 'GET') Object.assign(current, route.request().postDataJSON(), { revision: current.revision + 1, lock_version: current.lock_version + 1 })
+    if (route.request().method() !== 'GET') Object.assign(current, route.request().postDataJSON(), { revision: current.revision + 1, lock_version: current.lock_version + 1,
+      metadata: { ...current.metadata, document_attachments: [], retained_document_attachments: [attachment] } })
     return route.fulfill({ json: route.request().method() === 'GET' ? { item: current } : current })
   })
   const options = { props: { documentId, agentId: 7 }, privileges: ['DOCUMENT_EDIT'] }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
   await page.locator('[data-editor-surface]').click()
-  await paste(page, format === 'HTML' ? '<p>Illustration</p><p><img src="https://example.org/picture.png" alt="Diagram"></p>' : 'Illustration\n\n![Diagram](https://example.org/picture.png)')
+  if (format === 'file') {
+    await page.locator('[data-editor-surface]').evaluate((root, png) => {
+      const data = new DataTransfer()
+      data.items.add(new File([Uint8Array.from(atob(png), char => char.charCodeAt(0))], 'pasted-image.png', { type: 'image/png' }))
+      root.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+    }, png)
+  } else await paste(page, format === 'HTML' ? '<p>Illustration</p><p><img src="https://example.org/picture.png" alt="Diagram"></p>' : 'Illustration\n\n![Diagram](https://example.org/picture.png)')
   await expect(page.locator('[data-editor-surface] img:not(.ProseMirror-separator)')).toHaveJSProperty('naturalWidth', 1)
   await expect.poll(() => current.payload.text).toContain(uri)
   expect(current.payload.text).not.toMatch(/blob:|https:\/\/example.org\/picture/)
+  await expect(page.locator('.document-attachments')).not.toContainText('pasted-image.png')
+  if (format === 'file') {
+    await selectDocumentContext(page, page.locator('[data-editor-surface] img:not(.ProseMirror-separator)'))
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Backspace')
+    await expect(page.locator('[data-editor-surface] img:not(.ProseMirror-separator)')).toHaveCount(0)
+    await expect(page.locator('.document-attachments')).not.toContainText('pasted-image.png')
+    await page.keyboard.press('Control+z')
+    await expect(page.locator('[data-editor-surface] img:not(.ProseMirror-separator)')).toHaveJSProperty('naturalWidth', 1)
+    await expect.poll(() => current.payload.text).toContain(uri)
+  }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
-  await expect(page.locator('[data-editor-surface]')).toContainText('Illustration')
+  if (format !== 'file') await expect(page.locator('[data-editor-surface]')).toContainText('Illustration')
   await expect(page.locator('[data-editor-surface] img:not(.ProseMirror-separator)')).toHaveJSProperty('naturalWidth', 1)
+  await expect(page.locator('.document-attachments')).not.toContainText('pasted-image.png')
 })
 
 for (const action of ['cancel', 'switch', 'readonly']) test(`pending HTML paste discards late images after ${action}`, async ({ page }) => {

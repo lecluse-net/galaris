@@ -11,13 +11,15 @@ _slots = asyncio.Semaphore(2)
 
 async def prepare_document(
     path: Path, name: str, media_type: str, directory: Path,
-    *, preview_only: bool = False,
+    *, preview_only: bool = False, editable: bool = False,
 ) -> PreparedDocument:
-    """Prepare complete evidence, or only a first-page raster without text/OCR."""
+    """Prepare LLM evidence, a thumbnail, or editable HTML and its extracted media."""
+    if preview_only and editable:
+        raise ValueError("Preview and editable preparation are separate modes")
     async with _slots:
         process = await asyncio.create_subprocess_exec(
             sys.executable, "-m", "core.document.worker", str(path), name,
-            media_type, str(directory), *(["preview"] if preview_only else []),
+            media_type, str(directory), *(["preview"] if preview_only else ["editable"] if editable else []),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL, start_new_session=True,
         )

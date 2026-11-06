@@ -1,5 +1,5 @@
 <template>
-  <q-item clickable class="document-row" :dense="compact" :class="{ 'document-row--compact': compact }" :active="selected ?? selectedDocumentId === entry.item.id" :aria-selected="selected ?? selectedDocumentId === entry.item.id" :disable="loading" draggable="true"
+  <q-item clickable class="document-row" :title="entry.item.title" :dense="compact" :class="{ 'document-row--compact': compact }" :active="selected ?? selectedDocumentId === entry.item.id" :aria-selected="selected ?? selectedDocumentId === entry.item.id" :disable="loading" draggable="true"
     @click.stop="emit('select', entry, $event)" @mousedown="preventTextSelection" @dragstart.stop="startDrag" @dragend.stop="emit('dragend')">
     <slot name="toggle" />
     <q-item-section>

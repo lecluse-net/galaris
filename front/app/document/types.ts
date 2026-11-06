@@ -210,6 +210,11 @@ export interface DocumentCreate {
   folder?: string
 }
 
+export interface DocumentArchiveContents {
+  directories: string[]
+  files: { path: string; file: File }[]
+}
+
 export interface DocumentUpdate {
   temporal?: DocumentTemporalAnchor | null
   expected_revision?: number

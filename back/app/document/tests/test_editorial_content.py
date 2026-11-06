@@ -141,6 +141,7 @@ async def test_inline_images_history_and_current_access(agents, memory_storage, 
         actor_agent_id=owner.id,
     )
     revision = updated.revision
+    assert await attachments.list_document_attachments(document.id, actor_agent_id=owner.id) == []
     unchanged = await service.update_item(
         document.id,
         DocumentUpdate(expected_revision=revision, payload=DocumentPayload(text=body)),
@@ -153,11 +154,16 @@ async def test_inline_images_history_and_current_access(agents, memory_storage, 
         )
     )
     assert snapshot.metadata_["content_images"] == [uri]
+    assert [entry["id"] for entry in snapshot.metadata_["retained_document_attachments"]] == [str(attachment.id)]
+    without_image = await service.update_item(document.id,
+        DocumentUpdate(expected_revision=revision, payload=DocumentPayload(text="<p>Without the image</p>")),
+        actor_agent_id=owner.id)
+    await service.update_item(document.id,
+        DocumentUpdate(expected_revision=without_image.revision, payload=DocumentPayload(text=body)),
+        actor_agent_id=owner.id)
+    assert await attachments.list_document_attachments(document.id, actor_agent_id=owner.id) == []
     await service.set_item_grant(
         document.id, peer.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id
-    )
-    await attachments.delete_document_attachment(
-        document.id, attachment.id, actor_agent_id=owner.id
     )
     assert await attachments.list_document_attachments(document.id, actor_agent_id=peer.id) == []
     assert (

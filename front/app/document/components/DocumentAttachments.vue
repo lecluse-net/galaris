@@ -22,11 +22,12 @@ const props = withDefaults(defineProps<{
   editable?: boolean
   loading?: boolean
   content?: string
+  contentMediaType?: string
   allowInsertion?: boolean
   previewOnly?: boolean
   showHeading?: boolean
   resourceSource?: AttachmentSource<DocumentAttachment>
-}>(), { editable: false, loading: false, content: '', allowInsertion: false, previewOnly: false, showHeading: true })
+}>(), { editable: false, loading: false, content: '', contentMediaType: 'text/html', allowInsertion: false, previewOnly: false, showHeading: true })
 const emit = defineEmits<{
   insert: [attachment: DocumentAttachment]
   added: [attachment: DocumentAttachment]
@@ -34,7 +35,17 @@ const emit = defineEmits<{
   renamed: [attachment: DocumentAttachment]
 }>()
 const { t } = useI18n()
-const files = computed(() => props.resourceSource ? props.attachments : props.attachments.map(attachment => ({ ...attachment, uri: `file://${attachment.id}` })))
+const files = computed(() => {
+  if (props.resourceSource) return props.attachments
+  let visible = props.attachments
+  if (props.contentMediaType === 'text/html' && visible.some(attachment => attachment.media_type.startsWith('image/')) && /<img\b/i.test(props.content)) {
+    const fragment = document.createElement('template')
+    fragment.innerHTML = props.content
+    const embedded = new Set([...fragment.content.querySelectorAll('img[src]')].map(image => image.getAttribute('src')))
+    visible = visible.filter(attachment => !embedded.has(`document://${props.documentId}/attachments/${attachment.id}`))
+  }
+  return visible.map(attachment => ({ ...attachment, uri: `file://${attachment.id}` }))
+})
 function attachmentHtml(attachment: DocumentAttachment): string {
   return documentResourceHtml({ uri: `document://${props.documentId}/attachments/${attachment.id}`, name: attachment.name, size: attachment.size_bytes, mediaType: attachment.media_type })
 }

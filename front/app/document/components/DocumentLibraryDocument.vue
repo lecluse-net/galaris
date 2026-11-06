@@ -1,8 +1,8 @@
 <template>
   <div>
-    <div v-library-shortcuts="shortcuts" class="document-branch-row row no-wrap items-center" :title="t('documents.shortcuts.document')" aria-keyshortcuts="F2 F3 F4 F7 Delete" :class="[dropClass, { 'document-branch-row--compact': compact }]"
+    <div v-library-shortcuts="shortcuts" class="document-branch-row row no-wrap items-center" :title="entry.item.title" :aria-keyshortcuts="treeRow ? 'F2 F3 F4 F7 Delete' : 'F2 F4 Delete'" :class="[dropClass, { 'document-branch-row--compact': compact }]"
       @dragover.stop="emit('dragover', $event, entry, parentDocumentId, tagId, listOnly)"
-      @dragleave.stop="emit('dragleave')" @drop.prevent.stop="emit('drop')">
+      @dragleave.stop="emit('dragleave')" @drop.prevent.stop="emit('drop', $event)">
       <DocumentLibraryEntryRow class="col" :entry="entry" :loading="false" :compact="compact" :selected-document-id="selectedDocumentId" :selected="selectedDocumentIds?.includes(entry.item.id)"
         @select="(entry, event) => emit('select', entry, event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')">
         <template #toggle>
@@ -17,13 +17,13 @@
           </span>
         </template>
       </DocumentLibraryEntryRow>
-      <div v-if="treeRow" class="document-actions row no-wrap items-center">
-        <q-btn flat round dense size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newSubdocument', { name: entry.item.title })"
+      <div class="document-actions row no-wrap items-center" :class="{ 'document-actions--overlay': !treeRow }">
+        <q-btn v-if="treeRow" flat round dense size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newSubdocument', { name: entry.item.title })"
           @click.stop="emit('create', entry, undefined, $event)">
           <q-tooltip>{{ t('documents.library.newSubdocument', { name: entry.item.title }) }}</q-tooltip>
         </q-btn>
+        <DocumentRowMenu :entry="entry" :busy="busy" :allow-create="!!treeRow" target=".document-branch-row" @select="emit('select', entry)" @create="type => emit('create', entry, type)" @action="emit('action', entry, $event)" />
       </div>
-      <DocumentRowMenu :entry="entry" :busy="busy" target=".document-branch-row" @select="emit('select', entry)" @create="type => emit('create', entry, type)" @action="emit('action', entry, $event)" />
     </div>
     <div v-if="open && !treeRow" class="document-children" :aria-label="t('documents.library.subdocuments', { name: entry.item.title })" @click.stop>
       <q-banner v-if="errors[branchKey]" dense role="alert">{{ t('documents.loadError') }}
@@ -34,13 +34,13 @@
         :expanded="expanded" :drop-target="dropTarget" :drop-placement="dropPlacement"
         @select="(entry, event) => emit('select', entry, event)" @create="(entry, type, event) => emit('create', entry, type, event)" @action="(entry, action) => emit('action', entry, action)"
         @toggle="emit('toggle', $event)" @retry="emit('retry', $event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')"
-        @dragover="(event, value, parent, tag, list) => emit('dragover', event, value, parent, tag, list)" @dragleave="emit('dragleave')" @drop="emit('drop')" />
+        @dragover="(event, value, parent, tag, list) => emit('dragover', event, value, parent, tag, list)" @dragleave="emit('dragleave')" @drop="emit('drop', $event)" />
       <span v-if="!loading[branchKey] && !errors[branchKey] && !(children[branchKey]?.length)" class="text-caption q-pa-sm">{{ t('documents.library.noSubdocuments') }}</span>
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import type { DocumentKind } from '../documentTypes'
+import type { DocumentCreationMode } from '../documentTypes'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DocumentLibraryEntry } from '../types'
@@ -68,14 +68,14 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   action: [entry: DocumentLibraryEntry, action: DocumentRowAction]
-  select: [entry: DocumentLibraryEntry, event?: Event]; create: [entry: DocumentLibraryEntry, type?: DocumentKind, event?: Event]
+  select: [entry: DocumentLibraryEntry, event?: Event]; create: [entry: DocumentLibraryEntry, type?: DocumentCreationMode, event?: Event]
   toggle: [id: string]; retry: [id: string]; dragstart: [event: DragEvent, id: string]; dragend: []
   dragover: [event: DragEvent, entry: DocumentLibraryEntry, parent?: string | null, tag?: string | null, listOnly?: boolean]
-  dragleave: []; drop: []
+  dragleave: []; drop: [event: DragEvent]
 }>()
 const { t } = useI18n()
 const shortcuts = computed(() => documentRowShortcuts(props.entry, props.busy,
-  () => emit('select', props.entry), () => emit('create', props.entry), action => emit('action', props.entry, action)))
+  () => emit('select', props.entry), props.treeRow ? () => emit('create', props.entry) : undefined, action => emit('action', props.entry, action)))
 const branchKey = computed(() => `doc:${props.entry.item.id}`)
 const visibleChildren = computed(() => (props.children[branchKey.value] ?? []).filter(child =>
   child.item.id !== props.entry.item.id && !props.ancestors?.includes(child.item.id)))
@@ -86,11 +86,20 @@ const dropClass = computed(() => props.dropTarget === `doc:${props.entry.item.id
 } : {})
 </script>
 <style scoped>
-.document-branch-row { min-width: 0; }
+.document-branch-row { position: relative; min-width: 0; }
 .document-branch-toggle-slot { display: inline-flex; align-items: center; flex: 0 0 17px; align-self: flex-start; height: 28px; }
 .document-branch-row--compact .document-branch-toggle-slot { height: 26px; }
 .document-branch-row--compact :deep(> .q-item) { padding-inline: 0; }
-.document-actions { flex: 0 0 24px; }
+.document-actions { flex: 0 0 auto; opacity: 0; pointer-events: none; }
+.document-actions--overlay { position: absolute; top: 4px; right: 4px; }
+.document-branch-row:hover > .document-actions,
+.document-branch-row:has(.action-context-menu--open) > .document-actions,
+.document-branch-row:has(:focus-visible) > .document-actions { opacity: 1; pointer-events: auto; }
+.document-branch-row:has(.action-context-menu--open) { background: var(--solaire-blue-light); }
+:global(body.body--dark) .document-branch-row:has(.action-context-menu--open) { background: var(--solaire-blue-dark); }
+@media (hover: none) {
+  .document-actions { opacity: 1; pointer-events: auto; }
+}
 .document-actions > :deep(.q-btn) { flex: 0 0 24px; width: 24px; min-width: 24px; }
 .document-branch-toggle { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 16px; height: 16px; margin: 0 1px 0 0; padding: 0; border: 0; background: transparent; color: var(--solaire-gray-accent); cursor: pointer; }
 .document-branch-toggle :deep(.q-tree__arrow) { font-size: 16px; margin: 0; }

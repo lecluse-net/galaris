@@ -242,6 +242,7 @@ documents: {
       shortcuts: {
         folder: 'F2 : renommer · F3 : nouveau document · F4 : afficher en liste · F7 : nouveau sous-dossier · Suppr : supprimer',
         document: 'F2 : renommer · F3 / F7 : nouveau sous-document · F4 : ouvrir · Suppr : supprimer',
+        documentList: 'F2 : renommer · F4 : ouvrir · Suppr : supprimer',
         deleteKey: 'Suppr',
       },
       bulk: {
@@ -283,6 +284,8 @@ documents: {
         renameTag: "Renommer",
         renameHint: "Utilisez Modifier pour changer le nom et l’icône",
         tagActions: "Actions du dossier {name}",
+        documentActions: 'Actions du document {name}',
+        copyFolderUrl: 'Copier l’URL du dossier',
         changeIcon: "Icône du dossier {name}",
         iconHint: "Changer l’icône",
         searchIcons: "Rechercher une icône",
@@ -331,8 +334,9 @@ documents: {
       perPage: 'Par page',
       createDocument: 'Créer un document',
       importFrom: 'Nouveau document depuis…',
+      importingFile: 'Import de « {name} »…',
       importUnsupported: 'Le format de fichier n’est pas supporté pour l’import.',
-      importError: 'Le contenu n’a pas pu être importé. Vérifiez son encodage UTF-8 et vos droits d’accès.',
+      importError: 'Le contenu n’a pas pu être importé. Vérifiez le fichier et vos droits d’accès.',
       create: 'Créer',
       created: 'Document créé',
       deleteDocument: 'Supprimer le document',
@@ -727,6 +731,7 @@ documents: {
       shortcuts: {
         folder: 'F2: rename · F3: new document · F4: show as list · F7: new subfolder · Delete: delete',
         document: 'F2: rename · F3 / F7: new sub-document · F4: open · Delete: delete',
+        documentList: 'F2: rename · F4: open · Delete: delete',
         deleteKey: 'Delete',
       },
       bulk: {
@@ -768,6 +773,8 @@ documents: {
         renameTag: "Rename",
         renameHint: "Use Edit to change the name and icon",
         tagActions: "Actions for folder {name}",
+        documentActions: 'Actions for document {name}',
+        copyFolderUrl: 'Copy folder URL',
         changeIcon: "Icon for folder {name}",
         iconHint: "Change icon",
         searchIcons: "Search icons",
@@ -816,8 +823,9 @@ documents: {
       perPage: 'Per page',
       createDocument: 'Create document',
       importFrom: 'New document from…',
+      importingFile: 'Importing “{name}”…',
       importUnsupported: 'The file format is not supported for import.',
-      importError: 'The content could not be imported. Check its UTF-8 encoding and your access rights.',
+      importError: 'The content could not be imported. Check the file and your access rights.',
       create: 'Create',
       created: 'Document created',
       deleteDocument: 'Delete document',
@@ -1060,6 +1068,7 @@ documents: {
       shortcuts: {
         folder: 'F2：重命名 · F3：新建文档 · F4：显示列表 · F7：新建子文件夹 · Delete：删除',
         document: 'F2：重命名 · F3 / F7：新建子文档 · F4：打开 · Delete：删除',
+        documentList: 'F2：重命名 · F4：打开 · Delete：删除',
         deleteKey: 'Delete',
       },
       bulk: {
@@ -1101,6 +1110,8 @@ documents: {
         renameTag: "重命名",
         renameHint: "使用编辑按钮修改名称和图标",
         tagActions: "文件夹 {name} 的操作",
+        documentActions: '文档 {name} 的操作',
+        copyFolderUrl: '复制文件夹 URL',
         changeIcon: "文件夹 {name} 的图标",
         iconHint: "更改图标",
         searchIcons: "搜索图标",
@@ -1141,8 +1152,9 @@ documents: {
 
       agent: '智能体', keywordFilter: '关键词', keywordFilterEmpty: '没有可用关键词。', search: '搜索文档标题和内容', count: '{count} 个文档', perPage: '每页',
       importFrom: '从文件新建文档…',
+      importingFile: '正在导入“{name}”…',
       importUnsupported: '不支持导入此文件格式。',
-      importError: '无法导入内容。请检查 UTF-8 编码和访问权限。',
+      importError: '无法导入内容。请检查文件和访问权限。',
       createDocument: '创建文档', create: '创建', created: '文档已创建', createError: '无法创建文档。', createdUnclassified: '文档已创建，但无法放入 {name}。您可以将其移动到该文件夹。', createdUnnested: '文档已创建，但无法放在 {name} 下。您可以将其移动到那里。', limited: '目录树显示 {total} 个结果中的前 500 个。请细化搜索以查看其他文档。',
       deleteDocument: '删除文档', deleteConfirm: '永久删除“{title}”及其内容？此操作无法撤销。', deleted: '文档已删除', deleteError: '无法删除文档。',
       noManagedAgents: '没有可显示的受管智能体。', expandAll: '全部展开', collapseAll: '全部折叠', selectAgent: '选择智能体以浏览其文档。', empty: '没有文档符合此搜索。',

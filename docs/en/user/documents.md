@@ -22,11 +22,37 @@ previously saved content is preserved.
 
 ## Import a file
 
+Drag one or more files from your computer onto a folder in the tree, onto a document
+to create sub-documents, or onto the root creation area. The **Import documents** dialog
+opens with an upload area for adding more files. Its table shows each format, whether
+it is importable, and its processing status. **Import** processes files one
+at a time and identifies the current file. Each file becomes a personal document named
+after the file and placed at the drop location. You can close and reopen the dialog
+while processing; each successful import disappears from the list, while pending,
+unsupported or failed files remain visible. Adding the same file repeatedly adds only
+one row to the list. Closing it after completion
+opens the last created document. A placement failure is reported; the created document
+remains accessible and can be moved later.
+
 In the **New document** menu, choose **New document from…**, then select a file in
-the file picker. Set its title and owner and create it in the current classification.
+the import dialog. Add files there and click **Import**. **Galaris files** also adds
+sources from the file spaces accessible to agents.
+**Local files from the client computer** opens your computer's file chooser.
+**Clear list** removes all remaining files before another import.
+**New document from…** is also available in the **…** and right-click menus of every
+folder and document in the tree. The imported document is created in the selected
+folder or as a sub-document of the selected document.
 JSON files become **Data** documents; HTML pages (`.html`, `.htm`), Markdown files
 (`.md`, `.markdown`) and plain text (`.txt`) become **Text** documents.
-Files must use UTF-8. Import has no separate 2 MB cap; the application's configured
+These text formats must use UTF-8. HTML files are cleaned before validation: scripts,
+event handlers and active embeds are removed while compatible text, structure and styles
+are retained. PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB
+and supported image files also become **Text** documents. Word/OpenDocument and compatible
+formats are converted to cleaned HTML with images and tables. PDFs and other conversions
+include editable text and page images retaining illustrations and layout; scans use
+available OCR. No original-file link, page heading or explanatory text is added to the content.
+Technical spreadsheet extraction records are not inserted into the body.
+Import has no separate 2 MB cap; the application's configured
 resource quota applies as it does to other files.
 
 You can also select an existing **Text** or **Data** document in the same picker,
@@ -34,10 +60,23 @@ including a personal document. The new document retains its type and a copy of
 its content. Text document images and attachments are copied with new identities;
 the original permissions and history are not copied.
 
-Import copies the content without retaining a link or attachment to the source file.
-Editing or deleting either resource does not affect the other.
-An incompatible format displays “The file format is not supported for import.”
-Invalid content or denied access prevents document creation.
+Import creates an independent copy. Converted files retain the original file as an
+attachment and images owned by the new document. Images displayed in the body remain
+stored for rendering without also appearing in the attachment list. Editing or deleting the source does
+not affect the imported document.
+A non-convertible format is marked “Attachment only” in the table. **Import** creates
+an empty **Text** document with the original file attached. Invalid content in a supported
+format or denied access prevents document creation and remains visible as a failure.
+
+For ZIP files, **ZIP import mode** offers **Import as file**, **Into the current folder**
+or **Into a dedicated subfolder**. The subfolder named after the archive is selected by
+default. Both extraction modes recreate subfolders including empty ones, then import each
+file as content or an attachment according to its format. From a document, the current
+folder means its known containing folder, or the root otherwise. **Import as file** keeps
+the ZIP attached to an empty document. Progress identifies the
+current file's path. After an error, successful files are not imported again and previously
+created folders are reused. Nested ZIP files are not automatically decompressed. The resource
+quota also applies to expanded bytes; an archive accepts at most 2,000 entries and 32 folder levels.
 
 ## Choose a document type
 
@@ -193,9 +232,17 @@ labels for all its actions: show as a list, create a document or folder, edit, s
 collapse, and delete. **New document**, **New subfolder**, **Edit**, and **Delete** remain
 available directly on the row, including on mobile. Press **Shift + F10** on the folder
 from the keyboard; **Escape** closes the menu.
+The **…** button on folders and documents opens the same menu without right-clicking,
+including on mobile. **Copy folder URL** and **Copy document URL** place
+`document://folders/<uuid>/` and `document://<uuid>` respectively on the clipboard without
+changing classification or selection. Copying remains available for read-only documents.
+While a context menu is open, its folder or document stays highlighted even when the
+pointer leaves the row.
 
 A document can also contain **sub-documents**. Use its **New sub-document** icon,
-or drag an existing document onto the middle of its row. The arrow expands its children
+or drag an existing document onto the middle of its row. Sub-document creation is available
+only for documents in the tree, through neither the list below it nor the list with checkboxes.
+The arrow expands its children
 across multiple levels; clicking the title still opens the document. To move a child out of
 its parent, drag it into the unclassified documents area or a folder.
 This hierarchy is personal, like folders: each document retains its own sharing rights,
@@ -247,7 +294,8 @@ selected for another attempt. Concurrent changes are rejected instead of overwri
 Hover a folder or document row, or focus it with the keyboard, to use its shortcuts.
 **F2** renames, **F3** creates a document in the folder or a sub-document under the document,
 **F4** opens the folder as a list or opens the document, and **F7** creates a subfolder
-(a sub-document on document rows). **Delete** opens confirmation for the targeted row;
+(a sub-document on document rows). **F3** and **F7** are available only in the tree;
+document lists do not use them. **Delete** opens confirmation for the targeted row;
 it does not delete the bulk selection. Shortcuts are suspended while typing, in menus and
 dialogs, and respect each document's permissions and protections. Folder context menus
 also show the available keys.

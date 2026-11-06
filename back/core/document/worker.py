@@ -22,15 +22,15 @@ MAX_PAGES = 2000
 MAX_TEXT = 10_000_000
 
 
-def _run(command: list[str], *, timeout: int = 180) -> bytes:
-    result = subprocess.run(command, capture_output=True, timeout=timeout, check=False)
+def _run(command: list[str], *, timeout: int = 180, cwd: Path | None = None) -> bytes:
+    result = subprocess.run(command, capture_output=True, timeout=timeout, check=False, cwd=cwd)
     if result.returncode:
         raise ValueError("Document converter failed")
     return result.stdout
 
 
 def prepare(
-    path: Path, name: str, media_type: str, directory: Path, *, preview_only: bool = False,
+    path: Path, name: str, media_type: str, directory: Path, *, preview_only: bool = False, editable: bool = False,
 ) -> dict[str, Any]:
     if path.stat().st_size > (64 * 1024 * 1024 if preview_only else MAX_BYTES):
         raise ValueError("Source exceeds document preparation limit")
@@ -43,12 +43,16 @@ def prepare(
     if preview_only:
         # A thumbnail checkpoint must never be reused as complete document evidence.
         identity["preview_only"] = True
+    if editable:
+        identity["editable"] = True
     previous: dict[str, Any] = {}
     if manifest.is_file():
         previous = json.loads(manifest.read_text(encoding="utf-8"))
         if previous.get("identity") != identity:
             raise ValueError("Document checkpoint belongs to another source or converter version")
-        if previous.get("complete") and all(not p.get("image") or (directory / p["image"]).is_file() for p in previous["result"]["pages"]):
+        if (previous.get("complete")
+            and all(not p.get("image") or (directory / p["image"]).is_file() for p in previous["result"]["pages"])
+            and all((directory / asset).is_file() for asset in previous["result"].get("assets", []))):
             return previous["result"]
 
     def checkpoint(result: dict[str, Any], *, complete: bool = False) -> None:
@@ -82,6 +86,24 @@ def prepare(
         media_type = "image/unknown"
     result: dict[str, Any] = {"name": name, "sha256": digest, "media_type": media_type,
                               "converted": False, "pages": [], "warnings": []}
+    if editable and suffix in {".docx", ".odt", ".rtf", ".epub"}:
+        _run(["pandoc", "--sandbox", "--from=" + suffix[1:], "--to=html5",
+              "--extract-media=assets", "--wrap=none", "--output=editable.html", str(path.absolute())],
+             cwd=directory)
+        exported = directory / "editable.html"
+        if exported.stat().st_size > MAX_TEXT:
+            raise ValueError("Converted HTML exceeds preparation budget")
+        assets = sorted(p for p in (directory / "assets").rglob("*") if p.is_file())
+        # Browser-unsupported embedded graphics retain their rendered appearance
+        # through the existing PDF preparation path and the original attachment.
+        if all(p.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"} for p in assets):
+            result.update(html=exported.read_text(encoding="utf-8"),
+                          assets=[p.relative_to(directory).as_posix() for p in assets], converted=True)
+            checkpoint(result, complete=True)
+            return result
+        result["warnings"].append("Embedded graphics require rendered page preservation")
+        if suffix == ".epub":
+            raise ValueError("EPUB contains unsupported embedded graphics")
     source = path
     if preview_only and suffix not in OFFICE_EXTENSIONS | {".pdf"}:
         raise ValueError("Unsupported document preview format")
@@ -161,7 +183,7 @@ def prepare(
                     recognized = _run(["tesseract", str(directory / image_name), "stdout",
                                        "-l", "fra+eng", "--psm", "3"], timeout=90).decode("utf-8").strip()
                     if recognized:
-                        text = text + "\n[OCR; verify against page image]\n" + recognized
+                        text = recognized if editable else text + "\n[OCR; verify against page image]\n" + recognized
                         ocr = True
                 if not preview_only and not text.strip():
                     warnings.append("no_text; image requires visual interpretation")
@@ -217,10 +239,11 @@ def prepare(
 if __name__ == "__main__":
     resource.setrlimit(resource.RLIMIT_AS, (2 * 1024**3, 2 * 1024**3))
     preview_only = len(sys.argv) > 5 and sys.argv[5] == "preview"
+    editable = len(sys.argv) > 5 and sys.argv[5] == "editable"
     cpu_budget = 120 if preview_only else 1200
     resource.setrlimit(resource.RLIMIT_CPU, (cpu_budget, cpu_budget))
     try:
         print(json.dumps(prepare(Path(sys.argv[1]), sys.argv[2], sys.argv[3], Path(sys.argv[4]),
-                                 preview_only=preview_only), ensure_ascii=False))
+                                 preview_only=preview_only, editable=editable), ensure_ascii=False))
     except Exception:
         raise SystemExit(2)

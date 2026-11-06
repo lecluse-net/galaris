@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from .models import Document
-from .document_cloning import DocumentCloneSource
+from .document_cloning import DocumentCloneSource, PreparedDocumentClone
 
 import re
 from typing import Literal
@@ -156,6 +156,7 @@ async def create_document(
     document_type: DocumentType = "text",
     workflow_metadata: bool = False,
     clone_source: DocumentCloneSource | None = None,
+    prepared_clone: PreparedDocumentClone | None = None,
 ) -> Document:
     """Create a private, mutable, non-deduplicated working document."""
     if document_type in {"data", "dataset"}:
@@ -218,6 +219,7 @@ async def create_document(
         deduplicate=False,
         workflow_metadata=workflow_metadata,
         clone_source=clone_source,
+        prepared_clone=prepared_clone,
     )
     return item
 
@@ -231,6 +233,7 @@ async def create_user_document(
     folder: str = "",
     document_type: DocumentType = "text",
     clone_source: DocumentCloneSource | None = None,
+    prepared_clone: PreparedDocumentClone | None = None,
 ) -> Document:
     """Create a private User-owned document without an implicit Agent grant."""
     if document_type == "data":
@@ -268,6 +271,7 @@ async def create_user_document(
         deduplicate=False,
         owner_user_id=owner_user_id,
         clone_source=clone_source,
+        prepared_clone=prepared_clone,
     )
     return item
 

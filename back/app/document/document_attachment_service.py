@@ -71,9 +71,9 @@ def validate_attachment_content(declared: str | None, name: str, content: bytes)
     if media_type.startswith("image/"):
         try:
             with Image.open(BytesIO(content)) as image:
-                if image.format not in {"PNG", "JPEG", "WEBP", "GIF"} or image.width * image.height > 40_000_000 or max(image.size) > 16_000:
+                if image.format not in {"PNG", "JPEG", "WEBP", "GIF", "TIFF"} or image.width * image.height > 40_000_000 or max(image.size) > 16_000:
                     raise ValueError("Unsupported image format or dimensions.")
-                detected = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp", "GIF": "image/gif"}[image.format]
+                detected = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp", "GIF": "image/gif", "TIFF": "image/tiff"}[image.format]
                 image.verify()
                 if detected != media_type:
                     raise ValueError("Image MIME does not match decoded content.")

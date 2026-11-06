@@ -29,3 +29,18 @@ async def test_cached_editor_is_rejected_before_any_editorial_mutation():
     assert failure.value.status_code == 409
     await require_editorial_client(request({"objective": "<p>HTML</p>"}, "1"))
     await require_editorial_client(request({"title": "A metadata-only rename"}))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("version", [None, "0", "1"])
+async def test_upload_negotiation_preserves_consumed_multipart_streams(version):
+    upload = request({}, version)
+    upload.scope["headers"].append((b"content-type", b"multipart/form-data; boundary=synthetic"))
+    async for _chunk in upload.stream():
+        pass
+    if version == "1":
+        await require_editorial_client(upload)
+    else:
+        with pytest.raises(HTTPException) as failure:
+            await require_editorial_client(upload)
+        assert failure.value.status_code == 409

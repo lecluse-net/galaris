@@ -16,6 +16,7 @@ const data = {
 } as const
 export const documentTypes = [text, data]
 export type DocumentKind = typeof documentTypes[number]['code']
+export type DocumentCreationMode = DocumentKind | 'import'
 export function documentType(type?: DocumentType): typeof text | typeof data {
   return type === 'data' || type === 'dataset' ? data : text
 }

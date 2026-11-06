@@ -241,9 +241,9 @@ in the attachment’s context menu to insert them into the text. You can also dr
 attachment to the desired position in the text. Insertion remains available to show the same
 file several times without uploading it again. Images appear in the text; audio, video and PDF files have inline
 players. Other files become clickable cards opening their viewer.
-All attachments remain listed below the text, including files referenced by images or links
-in the content, with actions to open, download and remove them. Removing an insertion from
-the text preserves its file.
+Embedded images are not duplicated in the attachment list. Other files, including those
+referenced by links, keep their open, download and remove actions below the text. Removing
+an insertion preserves the file for content history.
 Each upload shows progress and can be cancelled. Pasting a complete HTML page into the text
 imports editable rich content with owned images, without executing its scripts.
 Custom HTML with CSS and JavaScript stays preserved in existing documents or content supplied
@@ -333,10 +333,12 @@ HTML and SVG files keep their usual isolated previews.
 
 Ordinary working documents accept local images through the editor’s selection, paste or
 drop controls. The context menu provides alternative text, captions and width settings.
-Uploads show progress. Images remain document attachments and appear in the content when embedded.
+Uploads show progress. Embedded images appear in the content without also being listed as
+attachments. Their files are retained for rendering, content history and undo.
 
 Images are unavailable in other memories, agent profiles, tasks and Goal descriptions/tracking,
-including the tracking Document in the library. Remote image URLs and SVG are unsupported.
+including the tracking Document in the library. Images pasted from external HTML are copied
+into the document before insertion; the saved image belongs to the document.
 
 An agent can also generate an image, copy its URI to the document's attachment collection,
 then embed it in the text. The filename follows the model's native output format: a PNG uses

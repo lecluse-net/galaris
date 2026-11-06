@@ -31,6 +31,8 @@ class PreparedDocument(BaseModel):
     pages: list[DocumentPage] = Field(default_factory=list[DocumentPage])
     warnings: list[str] = Field(default_factory=list)
     structured_text: str = ""
+    html: str = ""
+    assets: list[str] = Field(default_factory=list)
 
     def coverage(self) -> dict[str, object]:
         return {

@@ -1,7 +1,9 @@
 import { api } from '@/core/api'
+import { isAxiosError } from 'axios'
 import { createOwnerOptionsCache } from '@/app/share/facade'
 import { thumbnailReady } from '@/core/util/facade'
 import type { AppDatasetRequest, AppDatasetResult } from '../documentApps'
+import type { DocumentArchiveContents } from '../types'
 import type { DocumentSharing, DocumentSharingUpdate, DocumentAttachment, DocumentCreate, DocumentContentDiff, DocumentContentRevisionDetail, DocumentContentRevisionPage, DocumentGlobalAccess, DocumentFolderOption, DocumentLibraryPage, DocumentLibraryFilters, DocumentTag, DocumentTagIcon, DocumentTagDeletionResult, DocumentOrderMove, DocumentOwnerKind, DocumentOwnerOptions, ManagedDocumentDetail, DocumentResourceRedirect, DocumentDatasetAttachments, DocumentProcessAttachments, DocumentRecord, DocumentDetail, DocumentUpdate } from '../types'
 
 export class DatasetDocumentRedirect extends Error {
@@ -277,6 +279,43 @@ async listDocumentOwnerOptions(search = ''): Promise<DocumentOwnerOptions> {
 async createDocument(data: DocumentCreate): Promise<DocumentRecord> {
     const response = await api.post<DocumentRecord>('/documents', data, { headers: { 'X-Editorial-Profile-Version': '1' } })
     return response.data
+  },
+
+async importFormats(): Promise<{ extensions: string[]; media_types: string[] }> {
+    return (await api.get<{ extensions: string[]; media_types: string[] }>('/documents/import-formats')).data
+  },
+
+async expandArchive(file?: File, source?: { uri: string; agent_id: number }): Promise<DocumentArchiveContents> {
+    const body = new FormData()
+    body.append('data', JSON.stringify({ import_from: source }))
+    if (file) body.append('file', file)
+    const response = await api.post<Blob>('/documents/import-archive', body, {
+      responseType: 'blob', headers: { 'X-Editorial-Profile-Version': '1' },
+    }).catch(async (error: unknown) => {
+      if (isAxiosError<unknown>(error) && error.response?.data instanceof Blob) {
+        try { error.response.data = JSON.parse(await error.response.data.text()) as unknown }
+        catch { /* Preserve the original HTTP error if its body is not JSON. */ }
+      }
+      throw error
+    })
+    const form = await new Response(response.data, { headers: { 'Content-Type': String(response.headers['content-type']) } }).formData()
+    const raw = form.get('manifest')
+    if (typeof raw !== 'string') throw new Error('Invalid archive manifest')
+    const manifest = JSON.parse(raw) as { directories: string[]; files: { key: string; path: string; media_type: string }[] }
+    return { directories: manifest.directories, files: manifest.files.map(entry => {
+      const content = form.get(entry.key)
+      if (!(content instanceof Blob)) throw new Error('Missing archive entry')
+      return { path: entry.path, file: new File([content], entry.path.split('/').at(-1)!, { type: entry.media_type }) }
+    }) }
+  },
+
+async importDocument(data: DocumentCreate, file: File, signal?: AbortSignal): Promise<DocumentRecord> {
+    const form = new FormData()
+    form.append('data', JSON.stringify(data))
+    form.append('file', file)
+    return (await api.post<DocumentRecord>('/documents/import', form, {
+      signal, headers: { 'X-Editorial-Profile-Version': '1' },
+    })).data
   },
 
 async changeDocumentOwner(

@@ -854,10 +854,21 @@ async def update_item(
             fields.add("media_type")
             item.content_profile_version = 1
             if item.node_kind == "document":
-                item.metadata_ = {
+                from .document_attachment_service import attachments_from_item
+                references = image_references(content.decode("utf-8"))
+                active = attachments_from_item(item)
+                visible = [attachment for attachment in active
+                    if f"document://{item.id}/attachments/{attachment.id}" not in references]
+                metadata = {
                     **item.metadata_,
-                    "content_images": sorted(image_references(content.decode("utf-8"))),
+                    "content_images": sorted(references),
                 }
+                if len(visible) != len(active):
+                    visible_ids = {attachment.id for attachment in visible}
+                    metadata["document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"}) for attachment in visible]
+                    metadata["retained_document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"})
+                        for attachment in attachments_from_item(item, include_retained=True) if attachment.id not in visible_ids]
+                item.metadata_ = metadata
         if future_content_type == "text" or future_media_type.startswith("text/"):
             assert_safe_text(content.decode("utf-8", errors="replace"))
         digest = _content_hash(content)
@@ -1225,7 +1236,12 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
     model = Dataset if data.document_type == "data" else Document
     initial_metadata = dict(data.metadata)
     if prepared_clone and prepared_clone.attachments:
-        initial_metadata["document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"}) for attachment in prepared_clone.attachments]
+        initial_metadata["document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"})
+            for attachment in prepared_clone.attachments if attachment.id not in prepared_clone.retained_attachment_ids]
+        retained = [attachment.model_dump(mode="json", exclude={"memory_item_id"})
+            for attachment in prepared_clone.attachments if attachment.id in prepared_clone.retained_attachment_ids]
+        if retained:
+            initial_metadata["retained_document_attachments"] = retained
     item = model(id=prepared_clone.identity if prepared_clone else uuid4(), owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, title=data.title.strip(), provider_code=data.provider_code, resource_id=pointer, content=inline, revision=1, content_hash=_content_hash(content), size_bytes=len(content), content_type=data.content_type, media_type=media_type, content_profile_version=1 if media_type == "text/html" else None, filename=data.filename, document_type=data.document_type, keywords=_keywords(data.keywords), metadata_=initial_metadata, deletion_protected=deletion_protected, valid_from=data.valid_from, valid_until=data.valid_until, temporal=data.temporal.model_dump(mode="json") if data.temporal else None, search_text=_search_text(content, content_type=data.content_type, media_type=media_type))
     db=get_db()
     try:

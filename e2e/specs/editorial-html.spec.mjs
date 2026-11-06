@@ -121,22 +121,31 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await page.reload()
   await expect(editor.locator('figcaption')).toHaveText('Context menu table')
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
-  const upload = await request.post(`/api/documents/${item.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
-    headers, multipart: { file: { name: 'synthetic-resize.png', mimeType: 'image/png',
-      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64') } },
-  })
+  await editor.click()
+  await page.keyboard.press('Control+End')
+  const uploading = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === `/api/documents/${item.id}/attachments`)
+  await page.locator('.rich-editor > input[type=file]').setInputFiles({ name: 'synthetic-resize.png', mimeType: 'image/png',
+    buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64') })
+  const upload = await uploading
   expect(upload.ok(), await upload.text()).toBeTruthy()
   const attachment = await upload.json()
   const imageUri = `document://${item.id}/attachments/${attachment.id}`
+  await expect(editor.getByAltText('synthetic-resize.png')).toHaveJSProperty('naturalWidth', 2)
+  await expect(page.locator('.document-editor-attachments')).not.toContainText('synthetic-resize.png')
+  await expect.poll(async () => (await (await request.get(`/api/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item.payload.text).toContain(imageUri)
+  const inlineFiles = await request.get(`/api/documents/${item.id}/attachments?agent_id=${fixture.agent_id}`, { headers })
+  expect(inlineFiles.ok()).toBeTruthy()
+  expect((await inlineFiles.json()).some(file => file.id === attachment.id)).toBe(false)
   const latest = (await (await request.get(`/api/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   const imageSaved = await request.patch(`/api/documents/${item.id}?actor_agent_id=${fixture.agent_id}`, { headers, data: {
-    expected_revision: latest.revision, payload: { text: latest.payload.text
-      + `<figure class="image"><img width="200" alt="Synthetic resize image" src="${imageUri}"></figure><p>After image</p>` },
+    expected_revision: latest.revision, payload: { text: latest.payload.text.replace(/<img\b[^>]*>/,
+      `<img width="200" alt="Synthetic resize image" src="${imageUri}">`) },
   } })
   expect(imageSaved.ok(), await imageSaved.text()).toBeTruthy()
   await page.reload()
   const picture = editor.getByAltText('Synthetic resize image')
   await expect(picture).toHaveJSProperty('naturalWidth', 2)
+  await expect(page.locator('.document-editor-attachments')).not.toContainText('synthetic-resize.png')
   await picture.click()
   const handle = await editor.locator('.galaris-image-resize').boundingBox()
   await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2)

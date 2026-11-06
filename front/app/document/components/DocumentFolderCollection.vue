@@ -11,7 +11,7 @@
     <q-linear-progress v-if="loading" indeterminate />
     <q-banner v-if="error" role="alert">{{ t('documents.loadError') }} <q-btn outline color="primary" :label="t('common.retry')" @click="load" /></q-banner>
     <q-list v-else separator>
-      <q-item v-for="entry in entries" :key="entry.uri" clickable @click="open(entry)">
+      <q-item v-for="entry in entries" :key="entry.uri" :title="entry.name" clickable @click="open(entry)">
         <q-item-section avatar><LibraryIcon v-if="entry.is_collection" :icon="entry.metadata.icon" size="36px" /><q-icon v-else name="description" size="32px" color="primary" /></q-item-section>
         <q-item-section><q-item-label>{{ entry.name }}</q-item-label></q-item-section>
         <q-item-section side><q-icon :name="selection ? 'add_circle_outline' : 'chevron_right'" /></q-item-section>

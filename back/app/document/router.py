@@ -1,14 +1,16 @@
 """RBAC-protected administration API for editorial Documents."""
 
 from __future__ import annotations
+from contextlib import AsyncExitStack
 from core.util import require_editorial_client, source_code_response_headers
 from fastapi import Depends
 
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
+from pydantic import Json
+from fastapi.responses import FileResponse, StreamingResponse
 from loguru import logger
 
 from core.authorize import Privileges, authorize, check_privilege
@@ -79,6 +81,8 @@ from .schemas import (
 from .document_apps import AppDatasetRequest, AppDatasetResult, AppGrantUpdate, AppPermissions
 from .document_app_service import app_dataset, app_permissions, set_app_permission
 from .document_app_security import AppConsentRequired, AppWriteLimitError
+from .file_import import DocumentImportSource, PreparedDocumentImport, import_document_content, prepare_document_import, read_document_import_source
+from .schemas import DocumentArchiveExpand
 
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -239,51 +243,123 @@ def _http_error(exc: Exception) -> HTTPException:
 async def create_managed_document(data: DocumentCreate) -> DocumentPublic:
     """Create a document owned by the caller or by one managed Agent."""
 
+    return await _create_managed_document(data)
+
+
+@router.get("/import-formats", response_model=dict[str, list[str]])
+@authorize(privileges=Privileges.DOCUMENT_EDIT)
+async def read_import_formats() -> dict[str, list[str]]:
+    from .file_import import supported_import_formats
+    return supported_import_formats()
+
+
+@router.post(
+    "/import",
+    dependencies=[Depends(require_editorial_client)],
+    response_model=DocumentPublic,
+    status_code=status.HTTP_201_CREATED,
+)
+@authorize(privileges=Privileges.DOCUMENT_EDIT)
+async def import_uploaded_document(data: Annotated[Json[DocumentCreate], Form()], file: Annotated[UploadFile, File()]) -> DocumentPublic:
+    """Import a local file without retaining an intermediate resource or attachment."""
+    from core.params import runtime_settings
+    from .content_limits import validate_document_size
+
+    try:
+        if data.import_from is not None:
+            raise ValueError("Choose either an uploaded file or a source resource")
+        limit = runtime_settings.MEMORY_RESOURCE_MAX_BYTES
+        if file.size is not None and file.size > limit:
+            raise ValueError(f"Document exceeds the configured {limit}-byte resource quota")
+        content = await file.read(limit + 1)
+        validate_document_size(content)
+        return await _create_managed_document(data, DocumentImportSource(
+            file.filename or "", file.content_type or "application/octet-stream", content,
+        ))
+    except Exception as exc:
+        raise _http_error(exc) from exc
+    finally:
+        await file.close()
+
+
+@router.post("/import-archive", dependencies=[Depends(require_editorial_client)])
+@authorize(privileges=Privileges.DOCUMENT_EDIT)
+async def expand_document_archive(
+    data: Annotated[Json[DocumentArchiveExpand], Form()], file: Annotated[UploadFile | None, File()] = None,
+) -> StreamingResponse:
+    from core.params import runtime_settings
+    from core.util import complete_io
+    from .archive_import import prepare_archive, archive_parts
+    try:
+        if (file is None) == (data.import_from is None):
+            raise ValueError("Choose either an uploaded archive or a source resource")
+        if data.import_from is not None:
+            source = await read_document_import_source(data.import_from.uri, data.import_from.agent_id, await current_management_scope())
+            content = source.content
+        else:
+            assert file is not None
+            limit = runtime_settings.MEMORY_RESOURCE_MAX_BYTES
+            if file.size is not None and file.size > limit:
+                raise ValueError("ZIP archive exceeds the configured resource quota")
+            content = await file.read(limit + 1)
+        prepared = await complete_io(prepare_archive, content)
+        return StreamingResponse(archive_parts(prepared), media_type=f"multipart/form-data; boundary={prepared.boundary}")
+    except Exception as exc:
+        raise _http_error(exc) from exc
+    finally:
+        if file is not None:
+            await file.close()
+
+
+async def _create_managed_document(data: DocumentCreate, upload: DocumentImportSource | None = None) -> DocumentPublic:
+
     try:
         scope = await _require_agent_scope(data.actor_agent_id) if data.actor_agent_id is not None else await current_management_scope()
-        content = ""
-        document_type = data.document_type
-        clone_source = None
-        if data.import_from is not None:
-            from .file_import import import_document_content
-            document_type, content, clone_source = await import_document_content(data.import_from.uri, data.import_from.agent_id, scope)
-        if data.owner_kind == "agent":
-            await _require_agent_scope(data.owner_id)
-            item = await document_service.create_document(
-                owner_agent_id=data.owner_id,
-                title=data.title,
-                document_type=document_type,
-                content=content,
-                task_id=None,
-                folder=data.folder,
-                clone_source=clone_source,
+        async with AsyncExitStack() as imports:
+            imported = PreparedDocumentImport("text" if data.document_type == "html" else data.document_type, "")
+            if upload is not None:
+                imported = await imports.enter_async_context(prepare_document_import(upload))
+            elif data.import_from is not None:
+                imported = await imports.enter_async_context(import_document_content(data.import_from.uri, data.import_from.agent_id, scope))
+            if data.owner_kind == "agent":
+                await _require_agent_scope(data.owner_id)
+                item = await document_service.create_document(
+                    owner_agent_id=data.owner_id,
+                    title=data.title,
+                    document_type=imported.kind,
+                    content=imported.content,
+                    task_id=None,
+                    folder=data.folder,
+                    clone_source=imported.clone_source,
+                    prepared_clone=imported.prepared_clone,
+                )
+            else:
+                current_user = await get_user_record(scope.user_id)
+                if current_user is None:
+                    raise HTTPException(status_code=401, detail="Authentication required")
+                owner_user = await get_user_record(data.owner_id)
+                if owner_user is None or not owner_user.is_active:
+                    raise HTTPException(status_code=404, detail="User not found")
+                if data.owner_id != scope.user_id and not await check_privilege(
+                    current_user,
+                    Privileges.DOCUMENT_ASSIGN_ALL_USERS,
+                    get_db(),
+                ):
+                    raise HTTPException(status_code=403, detail="User owner denied")
+                item = await document_service.create_user_document(
+                    owner_user_id=data.owner_id,
+                    editor_agent_id=data.actor_agent_id,
+                    title=data.title,
+                    document_type=imported.kind,
+                    content=imported.content,
+                    folder=data.folder,
+                    clone_source=imported.clone_source,
+                    prepared_clone=imported.prepared_clone,
+                )
+            return service.item_to_public(
+                item,
+                await service.effective_access(item, HumanActor(scope.user_id) if data.owner_kind == "user" else data.owner_id),
             )
-        else:
-            current_user = await get_user_record(scope.user_id)
-            if current_user is None:
-                raise HTTPException(status_code=401, detail="Authentication required")
-            owner_user = await get_user_record(data.owner_id)
-            if owner_user is None or not owner_user.is_active:
-                raise HTTPException(status_code=404, detail="User not found")
-            if data.owner_id != scope.user_id and not await check_privilege(
-                current_user,
-                Privileges.DOCUMENT_ASSIGN_ALL_USERS,
-                get_db(),
-            ):
-                raise HTTPException(status_code=403, detail="User owner denied")
-            item = await document_service.create_user_document(
-                owner_user_id=data.owner_id,
-                editor_agent_id=data.actor_agent_id,
-                title=data.title,
-                document_type=document_type,
-                content=content,
-                folder=data.folder,
-                clone_source=clone_source,
-            )
-        return service.item_to_public(
-            item,
-            await service.effective_access(item, HumanActor(scope.user_id) if data.owner_kind == "user" else data.owner_id),
-        )
     except Exception as exc:
         raise _http_error(exc) from exc
 

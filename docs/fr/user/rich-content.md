@@ -262,9 +262,10 @@ Vous pouvez également glisser une PJ déjà téléversée vers l'endroit voulu 
 L'action d'insertion reste disponible pour afficher plusieurs fois le même fichier, sans nouvel envoi.
 Les images s’affichent dans le texte ; les vidéos, sons et PDF disposent d’un lecteur intégré,
 en édition comme en lecture. Les autres fichiers deviennent des cartouches cliquables ouvrant
-leur visionneuse. Toutes les pièces jointes restent listées sous le texte, même lorsqu’une image
-ou un lien les référence dans le contenu, avec leurs actions d’ouverture, de téléchargement
-et de suppression. Retirer une insertion du texte ne supprime pas le fichier. Chaque envoi
+leur visionneuse. Les images intégrées ne sont pas affichées en double dans la liste des
+pièces jointes. Les autres fichiers, y compris ceux référencés par un lien, gardent leurs
+actions d’ouverture, de téléchargement et de suppression sous le texte. Retirer une insertion
+du texte ne supprime pas le fichier conservé pour l’historique. Chaque envoi
 affiche sa progression et peut être annulé. Une page HTML complète collée dans le texte
 est importée comme contenu enrichi éditable, avec ses images jointes et sans exécuter ses scripts.
 Le HTML personnalisé avec CSS et JavaScript reste conservé dans les documents existants
@@ -362,7 +363,8 @@ Les fichiers HTML et SVG conservent leurs aperçus isolés habituels.
 Les documents de travail ordinaires permettent de choisir une image locale, de la coller ou
 de la déposer avec les commandes de l’éditeur. Son menu contextuel permet de renseigner
 le texte alternatif, la légende et la largeur. Le téléversement affiche sa progression.
-Les images restent des pièces jointes du document et s’affichent dans le contenu lorsqu’elles y sont intégrées.
+Les images intégrées s’affichent dans le contenu sans être listées aussi comme pièces jointes.
+Leurs fichiers restent conservés pour le rendu, l’historique et les annulations.
 
 Un agent peut aussi générer une image, copier son URI vers la collection des pièces jointes du
 document, puis l'intégrer au texte. Le nom du fichier suit le format natif renvoyé par le modèle :

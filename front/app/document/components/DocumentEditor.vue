@@ -203,9 +203,10 @@
             :allow-insertion="currentDocument.document_type !== 'data'"
             ref="attachmentPanel"
             :content="editorContent"
+            :content-media-type="currentDocument.media_type"
             :document-id="currentDocument.id"
             :agent-id="requestAgentId"
-            :attachments="attachments"
+            :attachments="listedAttachments"
             :editable="canEditDocument && !isGoalDocument(currentDocument)"
             :loading="attachmentsLoading"
             @added="onAttachmentAdded"
@@ -394,6 +395,12 @@ const keywordOptions = ref<string[]>([])
 const filteredKeywordOptions = ref<string[]>([])
 const ownerOptions = ref<DocumentOwnerOptions>({ agents: [], users: [] })
 const attachments = ref<DocumentAttachment[]>([])
+const listedAttachments = computed(() => {
+  const retained: unknown = currentDocument.value?.metadata.retained_document_attachments
+  const identifiers = new Set(Array.isArray(retained) ? retained.flatMap((entry: unknown) =>
+    entry && typeof entry === 'object' && 'id' in entry && typeof entry.id === 'string' ? [entry.id] : []) : [])
+  return attachments.value.filter(attachment => !identifiers.has(attachment.id))
+})
 const route = useRoute(), router = useRouter()
 const richEditor = ref<InstanceType<typeof RichTextEditor>>()
 function insertAttachment(attachment: DocumentAttachment): void {
@@ -409,7 +416,7 @@ function pickInternalResources(): Promise<string> {
 }
 onBeforeUnmount(() => finishInternalPick(''))
 watch(() => [props.documentId, props.agentId], () => { internalPickerOpen.value = false; finishInternalPick('') })
-const documentResources = computed(() => attachments.value.map(value => ({ uri: 'document://' + props.documentId + '/attachments/' + value.id, name: value.name, size: value.size_bytes, mediaType: value.media_type })))
+const documentResources = computed(() => listedAttachments.value.map(value => ({ uri: 'document://' + props.documentId + '/attachments/' + value.id, name: value.name, size: value.size_bytes, mediaType: value.media_type })))
 async function openAttachment(documentId: string, attachmentId: string): Promise<void> {
   if (documentId === props.documentId) await attachmentPanel.value?.openById(attachmentId)
   else { const href = richLinkHref('document://' + documentId + '/attachments/' + attachmentId); if (href) await router.push(href) }

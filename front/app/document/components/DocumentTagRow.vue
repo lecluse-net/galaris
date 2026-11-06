@@ -1,9 +1,9 @@
 <template>
-  <div v-library-shortcuts="shortcuts" class="document-tag-row row items-center no-wrap full-width" :title="t('documents.shortcuts.folder')" aria-keyshortcuts="F2 F3 F4 F7 Delete" :draggable="!renaming && !busy" @contextmenu.stop="openPointerMenu" @keydown="openKeyboardMenu">
+  <div v-library-shortcuts="shortcuts" class="document-tag-row row items-center no-wrap full-width" :class="{ 'document-tag-row--menu-open': menuOpen }" :title="tag.name" aria-keyshortcuts="F2 F3 F4 F7 Delete" :draggable="!renaming && !busy" @contextmenu.stop="openPointerMenu" @keydown="openKeyboardMenu">
     <q-btn flat dense round size="sm" class="folder-icon-button q-mr-xs" :aria-label="t('documents.library.changeIcon', { name: tag.name })" :disable="busy"
       @click="clickIcon">
       <DocumentTagIcon :icon="tag.icon" :expanded="selected" size="26px" />
-      <q-tooltip>{{ t(renaming ? 'documents.library.iconHint' : 'documents.library.renameHint') }}</q-tooltip>
+      <q-tooltip>{{ renaming ? t('documents.library.iconHint') : tag.name }}</q-tooltip>
       <DocumentTagIconPicker v-model="iconOpen" :busy="busy" :save="saveIcon" />
     </q-btn>
     <q-input v-if="renaming" ref="nameInput" v-model="name" autofocus dense outlined class="col" maxlength="100" :disable="busy"
@@ -26,6 +26,10 @@
       <q-btn flat dense round size="sm" icon="delete_outline" class="tag-delete" :disable="busy" :aria-label="t('documents.library.deleteNamedTag', { name: tag.name })" @click="emit('delete')">
         <q-tooltip>{{ t('documents.library.deleteTag') }}</q-tooltip>
       </q-btn>
+      <q-btn ref="menuButton" flat dense round size="sm" color="primary" icon="more_horiz" :aria-label="t('documents.library.tagActions', { name: tag.name })"
+        aria-haspopup="menu" :aria-expanded="menuOpen" :aria-controls="menuOpen ? menuId : undefined" @click.stop="toggleMenu" @dblclick.stop @dragstart.prevent.stop>
+        <q-tooltip>{{ t('documents.library.tagActions', { name: tag.name }) }}</q-tooltip>
+      </q-btn>
     </div>
     <q-menu :id="menuId" ref="contextMenu" v-model="menuOpen" no-parent-event touch-position no-refocus class="tag-context-menu" role="menu" :aria-label="t('documents.library.tagActions', { name: tag.name })"
       @before-show="rememberMenuFocus" @escape-key="restoreFocusAfterEscape" @hide="afterMenuHide">
@@ -43,12 +47,12 @@
   </div>
 </template>
 <script setup lang="ts">
-import { documentTypes, type DocumentKind } from '../documentTypes'
+import { documentTypes, type DocumentCreationMode } from '../documentTypes'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import type { QInput, QMenu } from 'quasar'
-import { useContextMenuDismissal } from '@/core/util'
+import type { QBtn, QInput, QMenu } from 'quasar'
+import { useContextMenuDismissal, useResourceCopy } from '@/core/util'
 import type { DocumentTag } from '../types'
 import { vLibraryShortcuts, type LibraryShortcuts } from '@/app/document/libraryShortcuts'
 import DocumentTagIconPicker from '@/app/document/components/DocumentTagIconPicker.vue'
@@ -61,8 +65,9 @@ const props = defineProps<{
   save: (tag: DocumentTag) => Promise<boolean>
   create: (name: string, parentId: string | null, afterTagId?: string) => Promise<boolean>
 }>()
-const emit = defineEmits<{ browse: []; createDocument: [type?: DocumentKind, event?: Event]; delete: []; confirmDelete: []; renamed: []; sort: [descending: boolean]; expand: []; collapse: [] }>()
+const emit = defineEmits<{ browse: []; createDocument: [type?: DocumentCreationMode, event?: Event]; delete: []; confirmDelete: []; renamed: []; sort: [descending: boolean]; expand: []; collapse: [] }>()
 const { t } = useI18n()
+const { copy } = useResourceCopy()
 const privilegeStore = usePrivilegeStore()
 const canCreateDocument = computed(() => privilegeStore.hasAnyPrivilege([privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN]))
 const renaming = ref(false)
@@ -70,6 +75,7 @@ const name = ref('')
 const iconOpen = ref(false)
 const menuOpen = ref(false)
 const contextMenu = useTemplateRef<QMenu>('contextMenu')
+const menuButton = useTemplateRef<QBtn>('menuButton')
 const nameInput = useTemplateRef<QInput>('nameInput')
 let menuFocus: HTMLElement | null = null
 let restoreMenuFocus = false
@@ -89,7 +95,12 @@ function runMenuAction(action: () => void | Promise<void>): void {
   pendingMenuAction = action
   contextMenu.value?.hide()
 }
-const menuId = useContextMenuDismissal(menuOpen, () => contextMenu.value)
+const menuId = useContextMenuDismissal(menuOpen, () => contextMenu.value, () => menuButton.value?.$el)
+function toggleMenu(event: Event): void {
+  if (renaming.value) return
+  if (menuOpen.value) contextMenu.value?.hide(event)
+  else contextMenu.value?.show(event)
+}
 function openPointerMenu(event: MouseEvent): void {
   if (renaming.value) return
   event.preventDefault()
@@ -100,7 +111,9 @@ const shortcuts = computed<LibraryShortcuts>(() => props.busy || renaming.value 
 })
 const contextActions = computed(() => [
   { key: 'browse', icon: 'view_list', label: t('documents.library.openFolderAction'), shortcut: 'F4', run: () => emit('browse') },
+  { key: 'copy-url', icon: 'link', label: t('documents.library.copyFolderUrl'), run: () => copy(`document://folders/${props.tag.id}/`) },
   ...documentTypes.filter(() => canCreateDocument.value).map(type => ({ key: 'document-' + type.code, icon: type.icon, label: t('documents.createTypedDocument', { type: t(type.label) }), disabled: props.busy, run: () => emit('createDocument', type.code) })),
+  ...(canCreateDocument.value ? [{ key: 'import', icon: 'file_open', label: t('documents.importFrom'), disabled: props.busy, run: () => emit('createDocument', 'import') }] : []),
   { key: 'child', icon: 'create_new_folder', label: t('documents.library.newSubtagAction'), shortcut: 'F7', disabled: props.busy, run: createChild },
   { key: 'sibling', icon: 'playlist_add', label: t('documents.library.newSiblingAction'), disabled: props.busy, run: createSibling },
   { key: 'edit', icon: 'edit', label: t('documents.library.editTag'), shortcut: 'F2', disabled: props.busy, run: startRename },

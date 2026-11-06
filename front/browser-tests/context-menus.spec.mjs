@@ -144,14 +144,45 @@ test('selected message text keeps its native context menu', async ({ page }) => 
   await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toContain('selectable text')
 })
 
-test('document menus reuse row actions and respect read-only and deletion protection', async ({ page }) => {
+for (const treeRow of [false, true]) for (const width of [1440, 390]) test(`document menus reuse row actions and respect read-only and deletion protection (${treeRow ? 'tree' : 'list'}, ${width}px)`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   const entry = { item: { ...document, read_only: false, source_managed: false, deletion_protected: true, access: { can_read: true, can_write: true } }, owner_label: 'Synthetic owner', children_count: 0 }
   await jsonRoute(page, '**/api/documents/doc-a', { ...document, media_type: 'text/html', payload: { text: '<p>Synthetic document</p>' } })
-  await mount(page, 'app/document/components/DocumentLibraryDocument.vue', { props: {
-    entry, selectedDocumentId: null, busy: false, children: {}, loading: {}, errors: {}, expanded: [], dropTarget: null, dropPlacement: '',
+  await mount(page, 'app/document/components/DocumentLibraryDocument.vue', { privileges: ['DOCUMENT_EDIT'], props: {
+    entry, treeRow, selectedDocumentId: null, busy: false, children: {}, loading: {}, errors: {}, expanded: [], dropTarget: null, dropPlacement: '',
   } })
   const row = page.locator('.document-branch-row')
+  if (width < 1024) await page.evaluate(() => window.testApp.dark(true))
+  const menuButton = page.getByRole('button', { name: `Actions for document ${document.title}`, exact: true })
+  await row.hover()
+  await page.keyboard.press('F3')
+  await page.keyboard.press('F7')
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').length)).toBe(treeRow ? 2 : 0)
+  await page.evaluate(() => { window.testApp.events.length = 0 })
+  await row.screenshot({ path: testInfo.outputPath('document-menu-button.png'), animations: 'disabled' })
+  await menuButton.click()
+  await expect(page.getByRole('menu')).toBeVisible()
+  for (const name of ['Create Text document', 'Create Data document', 'New document from…']) {
+    await expect(page.getByRole('menuitem', { name, exact: true })).toHaveCount(treeRow ? 1 : 0)
+  }
+  if (treeRow) {
+    await page.getByRole('menuitem', { name: 'New document from…', exact: true }).click()
+    expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1)?.args.map(value => value?.item?.id ?? value))).toEqual(['doc-a', 'import'])
+    await page.evaluate(() => { window.testApp.events.length = 0 })
+    await row.hover()
+    await menuButton.click()
+  }
+  await menuButton.click()
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await menuButton.press('Enter')
+  await page.getByRole('menuitem', { name: 'Copy document URL', exact: true }).press('Enter')
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`document://${document.id}`)
+  expect(await page.evaluate(() => window.testApp.events.filter(event => ['select', 'action'].includes(event.name)))).toEqual([])
   await row.click({ button: 'right' })
+  await page.mouse.move(width - 4, 880)
+  await expect(page.getByRole('menu')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('document-context-target.png'), animations: 'disabled' })
   await expect(page.getByRole('menuitem', { name: 'Delete', exact: true })).toHaveCount(0)
   await page.getByRole('menuitem', { name: 'Rename', exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'action').map(event => event.args[1]))).toEqual(['rename'])
@@ -159,6 +190,15 @@ test('document menus reuse row actions and respect read-only and deletion protec
   await page.evaluate(entry => window.testApp.setProps({ entry }), { ...entry, item: { ...entry.item, read_only: true } })
   await row.click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: 'Rename', exact: true })).toHaveCount(0)
+  await page.getByRole('menuitem', { name: 'Copy document URL', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`document://${document.id}`)
+  await row.hover()
+  await menuButton.click()
+  await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error('Clipboard unavailable') } })
+  await page.getByRole('menuitem', { name: 'Copy document URL', exact: true }).click()
+  await expect(page.getByText('Could not copy the reference.', { exact: true })).toBeVisible()
+  await row.hover()
+  await menuButton.click()
   await page.getByRole('menuitem', { name: 'Open', exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').length)).toBe(1)
 })

@@ -72,6 +72,8 @@ theme preferences are separate from the instance's administrative **Preferences*
 Documents, files, attachments, goals, tasks and topics also offer actions through right-click.
 With the keyboard, focus the item or one of its controls and press **Shift+F10**. Available
 commands follow your permissions and the resource state; confirmations still apply.
+In Documents, the **…** button on folders and documents also opens this menu. **Copy
+folder URL** or **Copy document URL** copies the resource reference.
 Chat messages and conversation list items keep the browser menu.
 The Chat task menu also expands or collapses a task without opening its details.
 Contextual submenus open on hover and stay open while the pointer moves toward their commands.
