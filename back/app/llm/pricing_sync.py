@@ -42,6 +42,7 @@ class _Provider:
     connection: ProviderConnection
     revision: datetime | None
     models: tuple[_Model, ...]
+    subscription_acknowledged: bool
 
 
 def nightly_boundary(now: datetime) -> datetime:
@@ -91,6 +92,7 @@ async def _claim(now: datetime) -> list[_Provider]:
     snapshots = [_Provider(
         provider_connection(provider, decrypt_api_key(provider.api_key)),
         provider.updated_at, tuple(grouped[identifier]),
+        subscription_acknowledged=provider.subscription_acknowledged,
     ) for identifier, provider in providers.items()]
     # No row lock or transaction is kept across external HTTP calls.
     await db.commit()
@@ -112,11 +114,14 @@ async def _fetch(provider: _Provider) -> tuple[dict[str, dict[str, float]], dict
             logger.warning("LLM pricing catalog unavailable for provider {}", provider.connection.id)
 
     # Discover from detached configuration after committing the database claim.
+    # This may initialize the global subscription guard before the first inference:
+    # preserve the persisted confirmation instead of seeding it from an unset default.
     connection = provider.connection
     detached = LLMProvider(
         id=connection.id, name=connection.name, catalog_code=connection.catalog_code,
         provider_type=connection.provider_type, base_url=connection.base_url,
         configuration=connection.configuration, is_active=True,
+        subscription_acknowledged=provider.subscription_acknowledged,
     )
     capabilities: set[AICapability] = {model.capability for model in provider.models}
     for capability in sorted(capabilities):

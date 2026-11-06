@@ -1,17 +1,27 @@
 """Synthetic HTTP/DB journeys for nightly prices and immutable historical costs."""
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
+import pytest_asyncio
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.llm import llm_call_service, llm_service, pricing_sync
+from app.llm import llm_call_service, llm_provider_service, llm_service, pricing_sync
 from app.llm.models import LLMCall
 from app.llm.provider_models import LLM, LLMProvider
-from app.llm.provider_schemas import LLMCreate, LLMResponse, LLMUpdate
+from app.llm.provider_schemas import LLMCreate, LLMProviderUpdate, LLMResponse, LLMUpdate
+from app.llm.subscription_policy import (
+    SubscriptionAccessError,
+    enforce_subscription_access,
+    ensure_subscription_confirmation,
+    llm_execution_scope,
+)
 from bridge.models_dev import service as models_dev
+from bridge.openai import codex_oauth
+from core.user.models import User
 
 
 async def seed(db: AsyncSession, **values) -> LLM:
@@ -47,6 +57,8 @@ def upstream(monkeypatch):
                 "vendor/synthetic": {"cost": state["catalog"]},
                 "synthetic": {"cost": {"input": 999, "output": 999}},
             }}})
+        if request.url.host == "chatgpt.com":
+            return httpx.Response(200, json={"models": [{"slug": "vendor/synthetic"}]})
         return httpx.Response(200, json={"data": [{"id": "vendor/synthetic", "pricing": state["live"]}]})
 
     client = httpx.AsyncClient
@@ -56,6 +68,68 @@ def upstream(monkeypatch):
     models_dev.clear_cache()
     yield state, requests
     models_dev.clear_cache()
+
+
+@pytest_asyncio.fixture
+async def chatgpt_pricing(db, upstream, monkeypatch):
+    llm = await seed(db)
+    owner = User(email="pricing-owner@example.test", hashed_password="not-used",
+                 display_name="Synthetic pricing owner", is_active=True)
+    db.add(owner)
+    await db.flush()
+    provider = await db.get(LLMProvider, llm.llm_provider_id)
+    provider.catalog_code = "openai-codex"
+    provider.provider_type = "openai_codex"
+    provider.base_url = "https://chatgpt.com/backend-api/codex"
+    provider.user_id = owner.id
+    provider.subscription_acknowledged = True
+    await db.commit()
+    monkeypatch.setattr(codex_oauth, "get_access_token", AsyncMock(return_value="synthetic-token"))
+    return provider, owner.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("warm_confirmation", [False, True])
+@pytest.mark.parametrize("discovery_fails", [False, True])
+async def test_pricing_before_first_inference_preserves_subscription_confirmation(
+    db, upstream, chatgpt_pricing, warm_confirmation, discovery_fails,
+):
+    provider, owner_id = chatgpt_pricing
+    if warm_confirmation:
+        await ensure_subscription_confirmation(provider)
+    upstream[0]["fail_live"] = discovery_fails
+
+    # Maintenance can be the first subscription consumer after a backend restart.
+    # Exercise the real detached discovery path before any conversation initializes it.
+    await pricing_sync.refresh_pricing()
+    await db.refresh(provider)
+    assert provider.subscription_acknowledged is True
+    with llm_execution_scope(requester_user_id=owner_id):
+        assert await enforce_subscription_access(provider, task_id=None) == owner_id
+    assert any(request.url.host == "chatgpt.com" for request in upstream[1])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("revoke_after_claim", [False, True])
+async def test_pricing_snapshot_cannot_restore_revoked_subscription_confirmation(
+    upstream, chatgpt_pricing, revoke_after_claim,
+):
+    provider, owner_id = chatgpt_pricing
+    # In particular, the global confirmation may still be unloaded at claim time.
+    if revoke_after_claim:
+        claimed = await pricing_sync._claim(datetime.now(timezone.utc))
+    await llm_provider_service.update_provider(
+        provider.id, LLMProviderUpdate(subscription_acknowledged=False),
+    )
+    if revoke_after_claim:
+        await pricing_sync._fetch(claimed[0])
+    else:
+        await pricing_sync.refresh_pricing()
+
+    with llm_execution_scope(requester_user_id=owner_id):
+        with pytest.raises(SubscriptionAccessError, match="confirmation"):
+            await enforce_subscription_access(provider, task_id=None)
+    assert not any(request.url.host == "chatgpt.com" for request in upstream[1])
 
 
 @pytest.mark.asyncio
