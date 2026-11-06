@@ -8,8 +8,15 @@ RTF and EPUB to semantic HTML with extracted images, in sandbox mode. The import
 Office styling, scripts and external embeds. Image references must resolve to extracted
 media; an inaccessible image fails the import instead of silently disappearing.
 
-PDFs and other supported Office conversions retain editable extracted text, OCR when
-available, and full-page rasters for graphics and layout. Importer annotations, page headings,
+PDFs and other supported Office conversions retain editable extracted text and cropped
+illustrations instead of inserting full-page rasters alongside the same text. PDFium locates
+raster and vector graphics, including nested and rotated objects; overlapping graphics are
+grouped. Native text inside a figure remains in that crop rather than being duplicated as
+editable paragraphs. Tesseract hOCR separates recognized text from detected pictures on scans
+and tiled page images. Segmentation is heuristic and does not promise complete recovery of
+every figure; a text-free picture can remain an image. The original attachment remains the
+reference for complex layouts. Full-page evidence for LLM analysis and thumbnails is unchanged,
+and editable checkpoints carry a separate converter version. Importer annotations, page headings,
 structured extraction records and links to the original file are never inserted into the body.
 The original binary file is retained as an independent immutable attachment. This preserves
 source bytes without promising a lossless reconstruction of editable PDF layout or OCR.

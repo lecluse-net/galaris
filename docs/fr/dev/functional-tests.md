@@ -27,6 +27,15 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+`tests/test_pdf_illustrations.py` vérifie sur des PDF synthétiques la séparation du texte
+modifiable et des illustrations raster/vectorielles, les objets imbriqués, la rotation,
+les scans avec et sans illustration, les libellés internes aux schémas et la reprise des
+conversions interrompues ou privées d'un dérivé. Les images complètes restent disponibles
+pour l'analyse documentaire. `app/document/tests/test_file_import.py` vérifie la publication
+avec images propres au document, original immuable et droits conservés, ainsi que l'absence
+du paragraphe éditable dans les illustrations importées. L'obligation historique d'une
+capture pour le tableur synthétique sans illustration est retirée.
+
 ## Collecter les échecs avant une livraison
 
 La CI automatique exécute les contrôles rapides. Les suites fonctionnelles complètes

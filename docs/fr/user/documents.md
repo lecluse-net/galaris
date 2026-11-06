@@ -55,8 +55,10 @@ Les PDF, fichiers
 Word, Excel, PowerPoint, OpenDocument, RTF, EPUB et images prises en charge deviennent
 aussi des documents **Texte**. Word/OpenDocument et les formats compatibles sont convertis
 en HTML nettoyé avec leurs images et tableaux. Pour les PDF et les autres conversions,
-le document contient le texte modifiable et les vues des pages conservant les illustrations
-et la mise en page ; les scans utilisent l’OCR disponible. Aucun lien vers le fichier original,
+le document contient le texte modifiable et les illustrations découpées, sans ajouter une
+image de chaque page reprenant le même texte. Les scans utilisent l’OCR disponible pour
+séparer le texte et les illustrations détectées. Ce découpage peut être incomplet sur des
+mises en page complexes ; le fichier original joint reste la référence. Aucun lien vers le fichier original,
 titre de page ou texte d’accompagnement n’est ajouté au contenu. Les données techniques
 de l’extraction des tableurs ne sont pas insérées dans le corps. L’import n’a pas de
 plafond spécifique de 2 Mo ; le quota de ressources configuré pour l’application

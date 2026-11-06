@@ -22,6 +22,14 @@ saved content without coordinates or rendering DOM, reading, editing, revocation
 denial and access rechecks before export. The single-card read API also verifies denied
 Contacts access and managed Agent scope in the HTTP journey.
 
+`tests/test_pdf_illustrations.py` uses synthetic PDFs to verify separation of editable text
+and raster/vector illustrations, nested objects, rotation, scans with and without pictures,
+diagram labels, and recovery after interrupted conversion or a missing derivative.
+Full-page images remain available for document analysis. `app/document/tests/test_file_import.py`
+checks publication with document-owned images, immutable original bytes and preserved access,
+including absence of the editable paragraph from imported illustrations. The historical
+requirement for a screenshot of the synthetic spreadsheet without illustrations is retired.
+
 ## Collect failures before a release
 
 Automatic CI runs quick checks. Complete functional suites require **Quality → Run workflow

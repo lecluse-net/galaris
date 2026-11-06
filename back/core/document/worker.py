@@ -45,6 +45,7 @@ def prepare(
         identity["preview_only"] = True
     if editable:
         identity["editable"] = True
+        identity["editable_version"] = 2
     previous: dict[str, Any] = {}
     if manifest.is_file():
         previous = json.loads(manifest.read_text(encoding="utf-8"))
@@ -156,7 +157,8 @@ def prepare(
             if previous and not previous.get("complete"):
                 saved = [json.loads((directory / f"unit-{number}.json").read_text(encoding="utf-8"))
                          for number in range(1, int(previous.get("completed_pages", 0)) + 1)]
-            result["pages"] = [p for p in saved if not p.get("image") or (directory / p["image"]).is_file()]
+            result["pages"] = [p for p in saved if (not p.get("image") or (directory / p["image"]).is_file())
+                               and all((directory / asset).is_file() for asset in p.get("assets", []))]
             if [p["number"] for p in result["pages"]] != list(range(1, len(result["pages"]) + 1)):
                 result["pages"] = []
             text_size = sum(len(p["text"]) for p in result["pages"])
@@ -174,12 +176,19 @@ def prepare(
                 scale = min(1.0, 640 / max(width, height)) if preview_only else min(2.0, 2400 / max(width, height))
                 bitmap = page.render(scale=scale)
                 image_name = f"page-{index + 1}.png"
-                bitmap.to_pil().save(directory / image_name, format="PNG")
-                bitmap.close()
-                page.close()
-                ocr = False
+                try:
+                    bitmap.to_pil().save(directory / image_name, format="PNG")
+                    page_html, page_assets = "", []
+                    ocr = False
+                    if editable:
+                        from .pdf_illustrations import page_content
+
+                        page_html, page_assets, text, ocr = page_content(page, bitmap, text, directory, index + 1)
+                finally:
+                    bitmap.close()
+                    page.close()
                 warnings: list[str] = []
-                if not preview_only and len(text.strip()) < 40 and shutil.which("tesseract"):
+                if not preview_only and not editable and len(text.strip()) < 40 and shutil.which("tesseract"):
                     recognized = _run(["tesseract", str(directory / image_name), "stdout",
                                        "-l", "fra+eng", "--psm", "3"], timeout=90).decode("utf-8").strip()
                     if recognized:
@@ -191,8 +200,12 @@ def prepare(
                 if text_size > MAX_TEXT:
                     raise ValueError("Document text exceeds preparation budget")
                 result["pages"].append({"number": index + 1, "text": text, "image": image_name,
-                                         "ocr": ocr, "warnings": warnings})
+                                         "ocr": ocr, "warnings": warnings,
+                                         **({"html": page_html, "assets": page_assets} if editable else {})})
                 checkpoint(result)
+            if editable:
+                result["html"] = "".join(p["html"] for p in result["pages"]) or "<p></p>"
+                result["assets"] = [asset for p in result["pages"] for asset in p["assets"]]
         finally:
             doc.close()
     elif media_type.startswith("image/"):

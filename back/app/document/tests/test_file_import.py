@@ -337,7 +337,10 @@ async def test_converted_import_preserves_editable_text_owned_images_and_origina
     assert "[OCR;" not in html and "Page images preserve" not in html and "Le texte extrait" not in html
     assert "formula_tokens" not in html and "number_format" not in html
     references = image_references(html)
-    assert references and all(uri.startswith(f"document://{created.id}/attachments/") for uri in references)
+    # This synthetic spreadsheet has no illustrations; its former mandatory page
+    # screenshot is intentionally retired. Text, original bytes and ACLs stay covered.
+    assert bool(references) == (suffix != ".xls")
+    assert all(uri.startswith(f"document://{created.id}/attachments/") for uri in references)
     assert not references.intersection(f"document://{created.id}/attachments/{file.id}" for file in visible)
     for file in files:
         if f"document://{created.id}/attachments/{file.id}" not in references:
@@ -347,6 +350,10 @@ async def test_converted_import_preserves_editable_text_owned_images_and_origina
             assert image.width > 0 and image.height > 0
             if suffix != ".xls":
                 assert any(r > 180 and g < 80 and b < 80 for r, g, b in image.convert("RGB").getdata())
+            if suffix == ".pdf":
+                assert not any(max(pixel) < 80 for pixel in image.convert("RGB").get_flattened_data()), (
+                    "Imported illustrations must not contain the page's editable black paragraph"
+                )
     if suffix in {".docx", ".odt"}:
         assert "<h1>" in html and "<table>" in html and "<strong>editable emphasis</strong>" in html
     with pytest.raises((resource_service.DocumentPermissionError, resource_service.DocumentNotFoundError)):

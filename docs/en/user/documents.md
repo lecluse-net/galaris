@@ -49,8 +49,10 @@ event handlers and active embeds are removed while compatible text, structure an
 are retained. PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB
 and supported image files also become **Text** documents. Word/OpenDocument and compatible
 formats are converted to cleaned HTML with images and tables. PDFs and other conversions
-include editable text and page images retaining illustrations and layout; scans use
-available OCR. No original-file link, page heading or explanatory text is added to the content.
+include editable text and cropped illustrations, without adding a full-page image repeating
+the same text. Scans use available OCR to separate text from detected illustrations.
+Segmentation can be incomplete for complex layouts; the attached original remains the
+reference. No original-file link, page heading or explanatory text is added to the content.
 Technical spreadsheet extraction records are not inserted into the body.
 Import has no separate 2 MB cap; the application's configured
 resource quota applies as it does to other files.
