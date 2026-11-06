@@ -7,6 +7,7 @@ export const editorialShortcuts = [
   ['print', 'Mod-p', 'print'], ['help', 'F1', 'help'],
   ['shortcuts.toolbarFocus', 'F10', 'shortcuts.toolbarFocus'], ['shortcuts.contextFocus', 'Shift-F10', 'shortcuts.contextFocus'],
   ['shortcuts.clearDirectFormat', 'Mod-m', 'shortcuts.clearDirectFormat'],
+  ['shortcuts.paragraph', 'Mod-Alt-0', 'shortcuts.heading', '0'],
   ['shortcuts.paragraph', 'Mod-0', 'shortcuts.heading', '0'],
   ...[1, 2, 3, 4, 5, 6].map(level => ['headingLevel', 'Mod-Alt-' + level, 'shortcuts.heading', String(level)] as const),
   ['left', 'Mod-l', 'alignment', 'left'], ['center', 'Mod-e', 'alignment', 'center'],
@@ -37,8 +38,12 @@ export function documentShortcut(event: KeyboardEvent, altGraphPressed = false):
   if (event.isComposing || isAltGraphInput(event, altGraphPressed)) return
   return editorialShortcuts.find(([, binding]) => {
     const parts = binding.split('-'), key = parts.at(-1)!
-    if (parts.includes('Mod') !== (event.ctrlKey || event.metaKey) || parts.includes('Alt') !== event.altKey || parts.includes('Shift') !== event.shiftKey) return false
-    if (/^\d$/.test(key)) return event.code === 'Digit' + key
+    const digit = /^\d$/.test(key)
+    // AZERTY needs Shift to produce a number on the top row. Keep explicit
+    // Shift shortcuts distinct, and leave keypad navigation keys untouched.
+    const layoutShift = digit && event.altKey && !parts.includes('Shift') && event.shiftKey && event.key === key && event.code === 'Digit' + key
+    if (parts.includes('Mod') !== (event.ctrlKey || event.metaKey) || parts.includes('Alt') !== event.altKey || parts.includes('Shift') !== event.shiftKey && !layoutShift) return false
+    if (digit) return event.code === 'Digit' + key || event.code === 'Numpad' + key && event.key === key
     if (key === 'Space') return event.code === 'Space'
     if (key === 'Minus') return event.code === 'Minus' || event.key === '-'
     return event.key.toLowerCase() === key.toLowerCase()

@@ -11,11 +11,16 @@ async function documentEditor(page, html = '<p>Keyboard document</p>', options =
   return editor
 }
 
-test('number-row shortcuts format existing text, undo and survive reopening', async ({ page }) => {
+for (const zero of ['number-row', 'numeric keypad', 'AZERTY shifted zero']) test(`${zero} shortcuts format existing text, undo and survive reopening`, async ({ page }) => {
   const editor = await documentEditor(page)
   for (let level = 1; level <= 6; level++) {
-    await page.keyboard.press(`Control+Alt+Digit${level}`)
-    await page.keyboard.press(`Control+Alt+Digit${level}`)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (zero === 'AZERTY shifted zero') await editor.dispatchEvent('keydown', { code: `Digit${level}`, key: String(level), ctrlKey: true, altKey: true, shiftKey: true })
+      // Playwright's Numpad bindings emit navigation keys with Num Lock off.
+      // A numeric keypad with Num Lock on reports the digit and location 3.
+      else if (zero === 'numeric keypad') await editor.dispatchEvent('keydown', { code: `Numpad${level}`, key: String(level), location: 3, ctrlKey: true, altKey: true })
+      else await page.keyboard.press(`Control+Alt+Digit${level}`)
+    }
     await expect(editor.locator(`h${level}`)).toHaveText('Keyboard document')
   }
   await page.keyboard.press('Control+z')
@@ -28,7 +33,19 @@ test('number-row shortcuts format existing text, undo and survive reopening', as
   // A French number-row key still selects its heading regardless of key/keyCode.
   await editor.dispatchEvent('keydown', { code: 'Digit2', key: 'é', keyCode: 0, ctrlKey: true, altKey: true })
   await expect(editor.locator('h2')).toHaveText('Keyboard document')
-  await page.keyboard.press('Control+Digit0')
+  if (zero === 'numeric keypad') {
+    await editor.dispatchEvent('keydown', { code: 'Numpad0', key: 'Insert', location: 3, ctrlKey: true, altKey: true })
+    await expect(editor.locator('h2')).toHaveText('Keyboard document')
+    await editor.dispatchEvent('keydown', { code: 'Numpad0', key: '0', location: 3, ctrlKey: true, altKey: true })
+  } else if (zero === 'AZERTY shifted zero') await editor.dispatchEvent('keydown', { code: 'Digit0', key: '0', ctrlKey: true, altKey: true, shiftKey: true })
+  else await page.keyboard.press('Control+Alt+Digit0')
+  await expect(editor.locator('p')).toHaveText('Keyboard document')
+  await page.keyboard.press('Control+z')
+  await expect(editor.locator('h2')).toHaveText('Keyboard document')
+  await editor.dispatchEvent('keydown', { code: 'Digit0', key: 'à', keyCode: 0, ctrlKey: true, altKey: true })
+  await expect(editor.locator('p')).toHaveText('Keyboard document')
+  const paragraph = await lastValue(page)
+  await documentEditor(page, paragraph)
   await expect(editor.locator('p')).toHaveText('Keyboard document')
   await page.keyboard.press('Control+Shift+Digit9')
   await expect(editor.locator('blockquote')).toHaveText('Keyboard document')
@@ -291,6 +308,7 @@ test('shortcut help opens from the desktop toolbar or keyboard and restores edit
     await expect(help).toBeVisible()
     await expect(help).toContainText('Heading 6')
     await expect(help).toContainText('Normal text')
+    await expect(help.getByRole('row').filter({ hasText: 'Normal text' }).filter({ hasText: (browserName === 'webkit' ? 'Cmd' : 'Ctrl') + '+Alt+0' })).toBeVisible()
     await expect(help.getByRole('row').filter({ hasText: 'Heading 2' }).getByRole('cell').last()).toHaveText((browserName === 'webkit' ? 'Cmd' : 'Ctrl') + '+Alt+2')
     await help.getByRole('row').last().scrollIntoViewIfNeeded()
     await expect(help.getByRole('row').last()).toBeInViewport()
@@ -323,6 +341,10 @@ for (const browser of [
     await page.keyboard.press('Meta+z')
     await expect(editor.locator('h2 code')).toHaveCount(0)
     await page.keyboard.press('Meta+Shift+z')
+    await expect(editor.locator('h2 code')).toHaveText('Exemple clavier')
+    await page.keyboard.press('Meta+Alt+Digit0')
+    await expect(editor.locator('p code')).toHaveText('Exemple clavier')
+    await page.keyboard.press('Meta+z')
     await expect(editor.locator('h2 code')).toHaveText('Exemple clavier')
     await page.keyboard.press('Meta+Alt+f')
     await expect(page.getByRole('search', { name: 'Rechercher', exact: true })).toBeVisible()
