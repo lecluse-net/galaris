@@ -528,13 +528,16 @@ async def run(task: Any, save_change: bool = True) -> ExecutionResult:
     # Active-run context lets stateless MCP tools find their current task.
     from app.agent import active_run
 
-    active_run.push(task.agent_id, task.id)
+    # A driver rollback expires ORM attributes, including identifiers. Cleanup
+    # must use the admitted identity without issuing an implicit database read.
+    agent_id, task_id = task.agent_id, task.id
+    active_run.push(agent_id, task_id)
     try:
         execution_result = await _run_delivery_recovery(task)
         if execution_result is None:
             execution_result = await run_task(task)
     finally:
-        active_run.pop(task.agent_id, task.id)
+        active_run.pop(agent_id, task_id)
 
     # Persist results when requested by the caller.
     if save_change:
@@ -667,12 +670,13 @@ async def stream(task: Any) -> AsyncIterator[AIMessage]:
 
     from app.agent import active_run
 
-    active_run.push(task.agent_id, task.id)
+    agent_id, task_id = task.agent_id, task.id
+    active_run.push(agent_id, task_id)
     try:
         async for message in stream_task(task):
             yield message
     finally:
-        active_run.pop(task.agent_id, task.id)
+        active_run.pop(agent_id, task_id)
 
     # Finalize from the result stored by the driver.
     final = task.get_execution_result()

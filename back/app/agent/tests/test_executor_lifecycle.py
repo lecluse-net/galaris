@@ -14,6 +14,48 @@ from app.agent.contracts import (
 from app.task.models import Task, TaskStatus
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("entrypoint", ["run", "stream"])
+async def test_driver_rollback_preserves_failure_and_clears_active_run(db, monkeypatch, entrypoint):
+    from app.agent import active_run
+    from app.agent.models import Agent, Title
+
+    title = Title(label="Mx", gender="N")
+    db.add(title)
+    await db.flush()
+    agent = Agent(code=f"synthetic-rollback-{uuid4().hex[:8]}", first_name="Synthetic", last_name="Agent", title_id=title.id)
+    db.add(agent)
+    await db.flush()
+    agent_id = agent.id
+    task = Task(id=uuid4(), label="Synthetic preparation failure", agent_id=agent_id,
+        status=TaskStatus.DISPATCH, ai=True, cost=0.0)
+    db.add(task)
+    await db.commit()
+    task_id = task.id
+    failure = RuntimeError("Synthetic skill preparation failed")
+
+    async def fail_after_rollback(_task):
+        assert active_run.get_current_task(agent_id) == task_id
+        await db.rollback()
+        raise failure
+
+    async def fail_stream(_task):
+        await fail_after_rollback(_task)
+        yield AIMessage(type="text", content="Unreachable")
+
+    monkeypatch.setattr(executor_service, "_run_delivery_recovery", AsyncMock(return_value=None))
+    monkeypatch.setattr(executor_service, "run_task", fail_after_rollback)
+    monkeypatch.setattr(executor_service, "stream_task", fail_stream)
+    with pytest.raises(RuntimeError, match="Synthetic skill preparation failed") as caught:
+        if entrypoint == "run":
+            await executor_service.run(task)
+        else:
+            async for _message in executor_service.stream(task):
+                pass
+    assert caught.value is failure
+    assert active_run.get_current_task(agent_id) is None
+
+
 def test_last_sent_response_prefers_the_terminal_result_over_progress() -> None:
     result = ExecutionResult(
         prompt="Implement the fix.",
