@@ -2239,7 +2239,7 @@ tests restent l’autorité sur le comportement.
 | `agent_title_update` | `agent_admin` | `app.agent` | `agent_title_update` | `back/app/agent/mcp.py:147` |
 | `agent_tool_list` | `agent_admin` | `app.connection` | `agent_tool_list` | `back/app/connection/agent_admin_mcp.py:11` |
 | `agent_update` | `agent_admin` | `app.agent` | `agent_update` | `back/app/agent/mcp.py:74` |
-| `audio_transcribe` | `audio` | `app.audio` | `transcribe_audio_file` | `back/app/audio/mcp.py:289` |
+| `audio_transcribe` | `audio` | `app.audio` | `transcribe_audio_file` | `back/app/audio/mcp.py:303` |
 | `browser_back` | `browser` | `app.browser` | `browser_back` | `back/app/browser/mcp.py:478` |
 | `browser_click` | `browser` | `app.browser` | `browser_click` | `back/app/browser/mcp.py:408` |
 | `browser_close` | `browser` | `app.browser` | `browser_close` | `back/app/browser/mcp.py:491` |

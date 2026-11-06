@@ -3206,6 +3206,12 @@ subtitles, not video download or fabricated transcription when subtitles are abs
 synthesis can use that text. Separate meeting/video prompts cover segment, reduction and final
 summary. Verbatim/summary URIs support rereading, report preparation and delivery.
 
+The optional `minutes` argument selects the beginning: `2` for two minutes, `0.5` for thirty
+seconds. Omit it or pass `None` for the entire source. Values must be finite and strictly
+positive. Audio/video files are cropped before upload to the transcription model without
+changing the original. For YouTube, selection follows caption start times; a caption spanning
+the cutoff remains complete. Any summary covers only the retained portion.
+
 ### Sound and video understanding
 
 Multimedia's `audio_read` analyses sound, music, instruments, ambience or audible events from an URI

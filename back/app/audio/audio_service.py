@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -41,15 +42,21 @@ async def normalize_for_transcription_chunks(
     destination_dir: Path,
     *,
     chunk_seconds: int = TRANSCRIPTION_CHUNK_SECONDS,
+    max_duration_seconds: float | None = None,
 ) -> list[AudioChunk]:
-    """Convert media to mono MP3 segments without loading full audio into memory."""
+    """Convert only the requested prefix to MP3, stopping decoding at the limit."""
     if chunk_seconds <= 0:
         raise ValueError("chunk_seconds must be positive")
+    if max_duration_seconds is not None and (
+        not math.isfinite(max_duration_seconds) or max_duration_seconds <= 0
+    ):
+        raise ValueError("max_duration_seconds must be finite and positive")
     return await asyncio.to_thread(
         _normalize_for_transcription_chunks_sync,
         source,
         destination_dir,
         chunk_seconds,
+        max_duration_seconds,
     )
 
 
@@ -95,6 +102,7 @@ def _normalize_for_transcription_chunks_sync(
     source: Path,
     destination_dir: Path,
     chunk_seconds: int,
+    max_duration_seconds: float | None,
 ) -> list[AudioChunk]:
     """Decode once and rotate MP3 encoders at approximately fixed durations."""
     import av
@@ -103,6 +111,12 @@ def _normalize_for_transcription_chunks_sync(
         raise AudioConversionFailed("the source media file is empty or missing")
     destination_dir.mkdir(parents=True, exist_ok=True)
     target_samples = chunk_seconds * _TRANSCRIPTION_SAMPLE_RATE
+    # Split the multiplication to support any finite duration without float overflow.
+    max_samples = (
+        max(1, int(max_duration_seconds) * _TRANSCRIPTION_SAMPLE_RATE
+            + int((max_duration_seconds % 1) * _TRANSCRIPTION_SAMPLE_RATE))
+        if max_duration_seconds is not None else None
+    )
     input_container: Any = None
     output_container: Any = None
     output_stream: Any = None
@@ -156,13 +170,15 @@ def _normalize_for_transcription_chunks_sync(
             frame_samples = int(frame.samples)
             raw_plane = bytes(frame.planes[0])
             offset = 0
-            while offset < frame_samples:
+            while offset < frame_samples and (max_samples is None or total_samples < max_samples):
                 if chunk_samples >= target_samples:
                     assert current_path is not None
                     finish_chunk(current_path)
                     chunk_index += 1
                     current_path, output_container, output_stream = open_chunk(chunk_index)
                 take = min(target_samples - chunk_samples, frame_samples - offset)
+                if max_samples is not None:
+                    take = min(take, max_samples - total_samples)
                 if offset == 0 and take == frame_samples:
                     encoded_frame = frame
                 else:
@@ -187,8 +203,11 @@ def _normalize_for_transcription_chunks_sync(
         for decoded in input_container.decode(audio=0):
             for resampled in resampler.resample(decoded):
                 encode_frame(resampled)
-        for resampled in resampler.resample(None):
-            encode_frame(resampled)
+            if max_samples is not None and total_samples >= max_samples:
+                break
+        if max_samples is None or total_samples < max_samples:
+            for resampled in resampler.resample(None):
+                encode_frame(resampled)
 
         if total_samples == 0:
             raise AudioConversionFailed("the source media file contains no decodable audio")

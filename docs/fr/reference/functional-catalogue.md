@@ -4028,6 +4028,13 @@ l’outil, même si l’analyse visuelle a déjà été produite.
 
 `audio_transcribe` accepte une ressource audio, une ressource vidéo ou une URL YouTube publique.
 
+L’argument facultatif `minutes` sélectionne les premières minutes : `2` pour deux minutes,
+`0.5` pour trente secondes. Absent ou `None`, il traite toute la source. Une valeur doit être
+finie et strictement positive. Les fichiers audio/vidéo sont découpés avant l’envoi au moteur
+de transcription, sans modifier l’original. Pour YouTube, la sélection suit le début des
+sous-titres ; une phrase chevauchant la limite reste entière. La synthèse éventuelle porte
+uniquement sur la portion retenue.
+
 Pour un fichier audio/vidéo, Galaris extrait la piste audio utile, la normalise avec FFmpeg, contrôle
 ses limites et appelle le modèle de transcription dédié. Les contenus longs sont segmentés ; le
 verbatim est conservé comme ressource et une synthèse hiérarchique évite de charger l’ensemble dans

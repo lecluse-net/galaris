@@ -1339,6 +1339,16 @@ lien. Pour un fichier, le transport est résolu par `app.file_share`, ce qui con
 contrat pour les drivers interne et Hermès. Pour une URL, `app.audio` délègue toute la logique
 spécifique à `bridge.youtube`.
 
+L’argument facultatif `minutes: float | None = None` limite le traitement au début de la source.
+Il accepte les décimales strictement positives et finies (`2` = deux minutes, `0.5` = trente
+secondes) ; absent ou `None`, il conserve le traitement intégral. `app.audio` convertit cette
+limite en secondes pour `normalize_for_transcription_chunks(max_duration_seconds=...)`.
+L’encodeur borne les échantillons resamplés et arrête le décodage à cette limite, avant tout
+appel STT, sans modifier la ressource d’origine ni contourner la matérialisation bornée.
+La notification et le choix de synthèse dépendent de la portion retenue. Pour YouTube,
+`app.audio` filtre les sous-titres selon leur début, conserve les phrases qui chevauchent la
+limite et borne leur durée déclarée avant segmentation.
+
 La préparation de l’exécuteur applique une règle absolue : les catégories et MIME `audio/*` ou
 `video/*`, ainsi que les extensions reconnues comme telles, restent chez leur provider même si le
 LLM principal annonce une capacité audio/vidéo. `runtime.Agent._build_file_input_part` répète cette

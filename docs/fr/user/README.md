@@ -655,6 +655,13 @@ livrable attendu, par exemple :
 > Transcris `reunion-projet.mp4`, puis résume les sujets discutés, les décisions, les responsables
 > et les actions avec leurs échéances. Conserve aussi la transcription complète.
 
+Pour traiter seulement le début, précisez par exemple « Transcris uniquement les deux premières
+minutes ». L’agent utilise `audio_transcribe(..., minutes=2)` ; `minutes=0.5` correspond à trente
+secondes. Sans limite, toute la source est traitée. L’audio est découpé avant son envoi au moteur
+de transcription et l’original reste intact. Une limite supérieure à la durée de l’enregistrement
+traite simplement tout le contenu disponible. Pour YouTube, la sélection suit les horodatages
+des sous-titres ; une phrase chevauchant la limite reste entière.
+
 Le même outil accepte directement une URL publique YouTube. Il suffit donc de demander, par
 exemple :
 

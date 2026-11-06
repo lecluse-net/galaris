@@ -1,5 +1,7 @@
 from pathlib import Path
+import wave
 
+import av
 import pytest
 from fastmcp import FastMCP
 
@@ -106,12 +108,36 @@ async def test_audio_tool_schema_uses_resource_uri() -> None:
     assert schema["properties"]["file"]["type"] == "string"
     assert schema["properties"]["destination"]["default"] == ""
     assert schema["properties"]["language"]["default"] == ""
+    assert schema["properties"]["minutes"]["default"] is None
+    assert {"type": "number", "exclusiveMinimum": 0} in schema["properties"]["minutes"]["anyOf"]
     assert "YouTube" in tools["audio_transcribe"].description
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("minutes", [0, -1, float("nan"), float("inf"), 1e308])
+@pytest.mark.parametrize("source", ["nextcloud://Recordings/meeting.wav", "https://youtu.be/dQw4w9WgXcQ"])
+async def test_invalid_minutes_do_not_read_or_transcribe_media(monkeypatch, minutes, source):
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr(audio_mcp, "context_language", AsyncMock(return_value="en"))
+    materialize = AsyncMock(side_effect=AssertionError("must not read media"))
+    captions = AsyncMock(side_effect=AssertionError("must not fetch captions"))
+    monkeypatch.setattr(audio_mcp, "materialize_resource", materialize)
+    monkeypatch.setattr(audio_mcp.youtube_service, "fetch_youtube_transcript", captions)
+
+    result = await audio_mcp.transcribe_audio_file(
+        McpToolContext(agent_id=7, runtime="internal"), source, minutes=minutes,
+    )
+    assert "greater than zero" in result
+    materialize.assert_not_awaited()
+    captions.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("minutes", [None, 0.02])
 async def test_audio_transcribe_retrieves_short_youtube_captions_without_stt(
     monkeypatch: pytest.MonkeyPatch,
+    minutes: float | None,
 ) -> None:
     uploaded: dict[str, str] = {}
     transcript = audio_mcp.youtube_service.YouTubeTranscript(
@@ -120,7 +146,10 @@ async def test_audio_transcribe_retrieves_short_youtube_captions_without_stt(
         language="Français",
         language_code="fr",
         is_generated=False,
-        captions=(audio_mcp.youtube_service.YouTubeCaption("Bonjour", 2.0, 3.0),),
+        captions=(
+            audio_mcp.youtube_service.YouTubeCaption("Bonjour", 0.5, 3.0),
+            audio_mcp.youtube_service.YouTubeCaption("Plus tard", 900.0, 3.0),
+        ) if minutes is not None else (audio_mcp.youtube_service.YouTubeCaption("Bonjour", 0.5, 3.0),),
     )
 
     async def fake_language(_ctx: McpToolContext) -> str:
@@ -143,10 +172,12 @@ async def test_audio_transcribe_retrieves_short_youtube_captions_without_stt(
     result = await audio_mcp.transcribe_audio_file(
         McpToolContext(agent_id=7, runtime="internal"),
         "https://youtu.be/dQw4w9WgXcQ",
+        minutes=minutes,
     )
 
     assert "youtube-dQw4w9WgXcQ.txt" in result
-    assert "[00:00:02] Bonjour" in uploaded["youtube-dQw4w9WgXcQ.txt"]
+    assert "Bonjour" in uploaded["youtube-dQw4w9WgXcQ.txt"]
+    assert "Plus tard" not in uploaded["youtube-dQw4w9WgXcQ.txt"]
 
 
 @pytest.mark.asyncio
@@ -222,27 +253,24 @@ async def test_audio_transcribe_summarizes_long_youtube_captions_as_video(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("minutes", [None, 0.02, 0.1])
 async def test_audio_transcribe_materializes_only_bounded_temporary_files(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
+    minutes: float | None,
 ) -> None:
-    source = tmp_path / "meeting.ogg"
-    source.write_bytes(b"audio")
+    source = tmp_path / "meeting.wav"
+    with wave.open(str(source), "wb") as recording:
+        recording.setnchannels(1)
+        recording.setsampwidth(2)
+        recording.setframerate(16_000)
+        recording.writeframes(bytes(3 * 16_000 * 2))
+    original = source.read_bytes()
     uploaded: dict[str, object] = {}
+    transcribed_paths: list[Path] = []
 
     async def fake_language(_ctx: McpToolContext) -> str:
         return "en"
-
-    async def fake_duration(path: Path) -> float:
-        assert path.read_bytes() == b"audio"
-        return 42.0
-
-    async def fake_chunks(path: Path, destination: Path) -> list[audio_mcp.audio_service.AudioChunk]:
-        assert path.read_bytes() == b"audio"
-        chunk = destination / "chunk-0001.mp3"
-        destination.mkdir(parents=True)
-        chunk.write_bytes(b"normalized-mp3")
-        return [audio_mcp.audio_service.AudioChunk(chunk, 1, 0.0, 42.0)]
 
     async def fake_transcribe(
         path: Path,
@@ -251,7 +279,11 @@ async def test_audio_transcribe_materializes_only_bounded_temporary_files(
         mime_type: str,
         language: str,
     ) -> str:
-        assert path.read_bytes() == b"normalized-mp3"
+        transcribed_paths.append(path)
+        with av.open(str(path)) as container:
+            duration = sum(frame.samples / frame.sample_rate for frame in container.decode(audio=0))
+        expected = min(3.0, minutes * 60) if minutes is not None else 3.0
+        assert duration == pytest.approx(expected, abs=0.06)
         assert filename == "meeting-part-0001.mp3"
         assert mime_type == "audio/mpeg"
         assert language == "fr"
@@ -274,16 +306,10 @@ async def test_audio_transcribe_materializes_only_bounded_temporary_files(
     monkeypatch.setattr(
         audio_mcp,
         "materialize_resource",
-        _materializer(source.read_bytes(), "meeting.ogg"),
+        _materializer(source.read_bytes(), "meeting.wav"),
     )
     monkeypatch.setattr(audio_mcp, "_store_text_resource", store)
     monkeypatch.setattr(audio_mcp, "context_language", fake_language)
-    monkeypatch.setattr(audio_mcp.audio_service, "media_audio_duration", fake_duration)
-    monkeypatch.setattr(
-        audio_mcp.audio_service,
-        "normalize_for_transcription_chunks",
-        fake_chunks,
-    )
     monkeypatch.setattr(
         audio_mcp.transcription_service,
         "transcribe_audio_file",
@@ -292,8 +318,9 @@ async def test_audio_transcribe_materializes_only_bounded_temporary_files(
 
     result = await audio_mcp.transcribe_audio_file(
         McpToolContext(agent_id=7, runtime="hermes"),
-        "nextcloud://Recordings/meeting.ogg",
+        "nextcloud://Recordings/meeting.wav",
         language="fr",
+        minutes=minutes,
     )
 
     assert "console://meeting.txt" in result
@@ -301,6 +328,8 @@ async def test_audio_transcribe_materializes_only_bounded_temporary_files(
         "destination": "meeting.txt",
         "content": "Compte rendu de réunion",
     }
+    assert transcribed_paths and all(not path.exists() for path in transcribed_paths)
+    assert source.read_bytes() == original
 
 
 @pytest.mark.asyncio
@@ -314,7 +343,7 @@ async def test_audio_transcribe_reports_missing_transcription_model(
         return 42.0
 
     async def fake_chunks(
-        _path: Path, destination: Path
+        _path: Path, destination: Path, *, max_duration_seconds: float | None = None,
     ) -> list[audio_mcp.audio_service.AudioChunk]:
         chunk = destination / "chunk-0001.mp3"
         destination.mkdir(parents=True)
@@ -355,8 +384,10 @@ async def test_audio_transcribe_reports_missing_transcription_model(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("minutes", [None, 2.0])
 async def test_long_audio_is_chunked_notified_and_hierarchically_summarized(
     monkeypatch: pytest.MonkeyPatch,
+    minutes: float | None,
 ) -> None:
     uploaded: dict[str, str] = {}
     notifications: list[tuple[float | None, int]] = []
@@ -368,12 +399,13 @@ async def test_long_audio_is_chunked_notified_and_hierarchically_summarized(
         return 1_201.0
 
     async def fake_chunks(
-        _path: Path, destination: Path
+        _path: Path, destination: Path, *, max_duration_seconds: float | None = None,
     ) -> list[audio_mcp.audio_service.AudioChunk]:
         destination.mkdir(parents=True)
         result: list[audio_mcp.audio_service.AudioChunk] = []
+        assert max_duration_seconds == (minutes * 60 if minutes is not None else None)
         for index, (start, end) in enumerate(
-            ((0.0, 600.0), (600.0, 1_200.0), (1_200.0, 1_201.0)),
+            ((0.0, 120.0),) if minutes is not None else ((0.0, 600.0), (600.0, 1_200.0), (1_200.0, 1_201.0)),
             start=1,
         ):
             path = destination / f"chunk-{index:04d}.mp3"
@@ -394,6 +426,7 @@ async def test_long_audio_is_chunked_notified_and_hierarchically_summarized(
         return f"Transcript for {path.read_text()}"
 
     async def fake_resolve(_agent_id: int, _task_id: object) -> object:
+        assert minutes is None
         return object()
 
     async def fake_summarize(segment: object, **_kwargs: object) -> str:
@@ -431,8 +464,14 @@ async def test_long_audio_is_chunked_notified_and_hierarchically_summarized(
         McpToolContext(agent_id=7, runtime="internal"),
         "nextcloud://Recordings/long.mkv",
         language="fr",
+        minutes=minutes,
     )
 
+    if minutes is not None:
+        assert notifications == []
+        assert uploaded == {"long.txt": "Transcript for chunk-1"}
+        assert "console://long.txt" in result
+        return
     assert notifications == [(1_201.0, 3)]
     assert "long.txt" in uploaded
     assert "Transcript for chunk-1" in uploaded["long.txt"]

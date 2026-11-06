@@ -555,6 +555,13 @@ If the Agent has the Audio Tool, attach the recording and then directly request 
 
 > Transcribe `reunion-projet.mp4`, then summarize the topics discussed, decisions, owners, and actions with their deadlines. Also retain the complete transcription.
 
+To process only the beginning, ask for example “Transcribe only the first two minutes”. The Agent
+uses `audio_transcribe(..., minutes=2)`; `minutes=0.5` means thirty seconds. Without a limit, the
+entire source is processed. Audio is cropped before upload to the transcription model and the
+original remains unchanged. A limit longer than the recording simply processes all available
+content. For YouTube, selection follows caption timestamps; a caption spanning the cutoff
+remains complete.
+
 The same Tool accepts a public YouTube URL directly. You therefore only need to ask, for example:
 
 > Summarize this video in French, identify its main ideas, and retain the useful timestamps:

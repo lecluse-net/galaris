@@ -1756,7 +1756,7 @@ Do not report the media as available until the generation has successfully produ
 
 ## Audio transcription
 
-- `audio_transcribe(file: str, destination: str = "", language: str = "") -> str` is the single
+- `audio_transcribe(file: str, destination: str = "", language: str = "", minutes: float | None = None) -> str` is the single
   entry point for three source types: an audio file, a video file, or a public HTTPS YouTube video
   URL. Use it whenever the user asks to read, transcribe, summarize, or analyze spoken content
   from any of those sources.
@@ -1764,6 +1764,14 @@ Do not report the media as available until the generation has successfully produ
   Nextcloud, Messenger, Mail, HTTPS, local and other readable sources before it
   converts the first audio stream to mono MP3 at 96 kbit/s and sends it to the dedicated
   speech-to-text model.
+- Set `minutes` when the user requests only the beginning: `minutes=2` transcribes the first
+  two minutes and `minutes=0.5` the first thirty seconds. Use a finite positive number; omit it
+  or pass `None` for the entire source. Galaris crops audio/video during normalization and stops
+  decoding at that limit before sending MP3 segments to STT. The original resource is unchanged;
+  do not create a cropped copy with console tools or transcribe the whole file and truncate text.
+  A limit longer than the recording processes only the available audio. For YouTube, the limit
+  selects captions starting before the cutoff; a caption spanning it remains complete, so the
+  text boundary follows caption snippets rather than individual words.
 - For a YouTube URL, pass the complete URL directly in `file`; do not download it into the
   local storage first. Galaris accepts `watch`, `youtu.be`, `shorts`, `live`, and `embed` video URLs,
   prefers a manual caption track in the requested language, and otherwise accepts an automatic
@@ -1774,7 +1782,7 @@ Do not report the media as available until the generation has successfully produ
   `youtube-<video-id>.txt`; another provider file keeps the existing `<source-stem>.txt` convention.
   Use a BCP-47 language hint such as `fr` or `en-US`, or leave it empty to use the task language.
   The hint selects the preferred YouTube caption language and the requested synthesis language.
-- Sources longer than about 10 minutes are split into bounded segments. Galaris sends one progress
+- Requested portions longer than about 10 minutes are split into bounded segments. Galaris sends one progress
   message, summarizes each segment, then writes a hierarchical synthesis as
   `<transcript-stem>.summary.md` while retaining the timestamped complete transcript.
 

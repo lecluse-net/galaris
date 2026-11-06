@@ -1302,6 +1302,15 @@ a link. For a file, transport is resolved by `app.file_share`, preserving the sa
 the internal and Hermes drivers. For a URL, `app.audio` delegates all source-specific logic to
 `bridge.youtube`.
 
+The optional `minutes: float | None = None` argument limits processing to the beginning of the
+source. It accepts finite, strictly positive decimals (`2` = two minutes, `0.5` = thirty seconds);
+omission or `None` retains full processing. `app.audio` converts the limit to seconds for
+`normalize_for_transcription_chunks(max_duration_seconds=...)`. The encoder caps resampled audio
+samples and stops decoding at the limit before any STT call, without changing the original
+resource or bypassing bounded materialization. Notifications and summary selection depend on the
+retained portion. For YouTube, `app.audio` filters captions by their start time, keeps phrases
+spanning the cutoff and caps their declared duration before segmentation.
+
 Executor preparation applies an absolute rule: `audio/*` or `video/*` categories and MIME types,
 as well as extensions recognized as such, remain with their provider even if the primary LLM
 announces audio/video capability. `runtime.Agent._build_file_input_part` repeats this

@@ -997,12 +997,22 @@ centrale ; il n’expose aucun autre fichier du package.
 Le tool intégré `audio` expose la fonction MCP suivante :
 
 ```text
-audio_transcribe(file: str, destination: str = "", language: str = "") -> str
+audio_transcribe(file: str, destination: str = "", language: str = "", minutes: float | None = None) -> str
 ```
 
 `file` accepte une URI canonique lisible annoncée par `file_schemes`, ou une URL HTTPS de vidéo YouTube. Il
 n’existe pas de fonction YouTube distincte : ce contrat unique permet aux agents de traiter de la
 même façon une pièce jointe audio, une pièce jointe vidéo ou un lien reçu dans une conversation.
+
+`minutes` est facultatif : sans cet argument, ou avec `None`, toute la source est traitée.
+Avec `minutes=2`, seules les deux premières minutes sont transcrites ; `minutes=0.5` couvre
+trente secondes. La valeur doit être finie et strictement positive. Une durée supérieure à la
+source traite tout le contenu disponible. Pour un fichier audio/vidéo, la découpe se fait pendant
+la normalisation, avant l’envoi au STT, et le décodage s’arrête à la limite. La source originale
+reste intacte ; sa matérialisation temporaire conserve les limites de transfert habituelles.
+Pour YouTube, seuls les sous-titres commençant avant la limite sont retenus ; une phrase qui
+chevauche cette limite reste entière. Les notifications et synthèses longues portent uniquement
+sur la portion retenue.
 
 Après la mise à jour qui introduit la fonction :
 

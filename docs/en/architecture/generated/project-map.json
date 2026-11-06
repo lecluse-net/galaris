@@ -8160,7 +8160,7 @@
       {
         "file": "back/app/audio/mcp.py",
         "handler": "transcribe_audio_file",
-        "line": 289,
+        "line": 303,
         "module": "app.audio",
         "name": "audio_transcribe",
         "namespace": "audio"

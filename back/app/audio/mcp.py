@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from tempfile import TemporaryDirectory
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from loguru import logger
+from pydantic import Field
 
 from app.file_share import (
     ResourceContext,
@@ -152,6 +154,7 @@ async def _transcribe_youtube_url(
     destination: str,
     language: str,
     tool_language: str,
+    max_duration_seconds: float | None = None,
 ) -> str:
     """Retrieve public captions and store them through the resource facade."""
     try:
@@ -161,6 +164,14 @@ async def _transcribe_youtube_url(
             url,
             language=language or tool_language,
         )
+        if max_duration_seconds is not None:
+            transcript = replace(transcript, captions=tuple(
+                replace(caption, duration_seconds=min(
+                    caption.duration_seconds, max_duration_seconds - caption.start_seconds,
+                ))
+                for caption in transcript.captions
+                if caption.start_seconds < max_duration_seconds
+            ))
         segments = youtube_service.segment_youtube_transcript(transcript)
         transcript_characters = sum(len(segment.transcript) for segment in segments)
         is_long = (
@@ -280,7 +291,10 @@ async def _transcribe_youtube_url(
         "analyze spoken content from an audio file, video file, or YouTube link. Galaris "
         "materializes provider media into a bounded temporary file and sends it to the dedicated "
         "speech-to-text model; YouTube manual or automatic "
-        "captions are retrieved without downloading the video. Sources over about 10 minutes are "
+        "captions are retrieved without downloading the video. Sources are processed in full "
+        "unless minutes is provided: a positive number (decimals allowed) "
+        "limits processing to the first N minutes. Media is cropped before speech-to-text; "
+        "YouTube captions are limited by snippet start timestamps. Portions over about 10 minutes are "
         "split into bounded text segments and hierarchically summarized without placing the full "
         "transcript in executor context. destination accepts any writable resource URI; it may "
         "be omitted only when console:// is advertised."
@@ -291,9 +305,18 @@ async def transcribe_audio_file(
     file: str,
     destination: str = "",
     language: str = "",
+    minutes: Annotated[float | None, Field(
+        gt=0, allow_inf_nan=False,
+        description="Transcribe only the first N minutes; decimals allowed. Omit for the entire source.",
+    )] = None,
 ) -> str:
     """Transcribe resource media or retrieve captions from a public YouTube URL."""
     tool_language = await context_language(ctx)
+    if minutes is not None and (
+        not math.isfinite(minutes) or minutes <= 0 or not math.isfinite(minutes * 60)
+    ):
+        return _message(tool_language, "invalid_minutes")
+    max_duration_seconds = minutes * 60 if minutes is not None else None
     if _is_youtube_source(file):
         return await _transcribe_youtube_url(
             ctx,
@@ -301,6 +324,7 @@ async def transcribe_audio_file(
             destination,
             language,
             tool_language,
+            max_duration_seconds,
         )
 
     with TemporaryDirectory(prefix="galaris_audio_") as temporary_dir:
@@ -319,6 +343,8 @@ async def transcribe_audio_file(
             )
             default_name = _default_destination(materialized.name)
             duration = await audio_service.media_audio_duration(input_path)
+            if max_duration_seconds is not None:
+                duration = min(duration, max_duration_seconds) if duration is not None else max_duration_seconds
             notified = False
             if (
                 duration is not None
@@ -338,6 +364,7 @@ async def transcribe_audio_file(
             chunks = await audio_service.normalize_for_transcription_chunks(
                 input_path,
                 chunks_dir,
+                max_duration_seconds=max_duration_seconds,
             )
             is_long = len(chunks) > 1
             if is_long and not notified:

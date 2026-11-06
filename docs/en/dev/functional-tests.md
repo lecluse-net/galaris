@@ -804,6 +804,14 @@ mobile return navigation and creation from the list.
 
 ## Audio and provider catalogues
 
+`app/audio/tests/test_audio_mcp.py` checks the optional `minutes` schema, rejection of invalid
+durations before reading, and the actual MP3 sent to STT: full source without a limit, fractional
+prefix, source shorter than the limit, cleanup and original preservation. Existing long-content
+coverage also checks that a short prefix does not trigger a summary of the rest.
+`test_audio_service.py` decodes generated MP3s to check duration, segment boundaries and early
+decoding termination. YouTube caption selection follows snippet timestamps and retains captions
+spanning the cutoff.
+
 `tests/test_transcription_service.py` and `core/util/tests/test_http_multipart.py` protect
 audio uploads from bytes or disk and handle cleanup after errors or cancellation.
 `tests/test_audio_resource_discovery.py` covers public voice catalogues, cache isolation

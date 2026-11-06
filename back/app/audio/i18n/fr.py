@@ -2,6 +2,7 @@
 
 default: dict[str, object] = {
     "audio": {
+        "invalid_minutes": "minutes doit être un nombre fini strictement positif ; omettez cet argument pour transcrire toute la source.",
         "transcribed": "Transcription écrite (${size} caractères) : ${location}",
         "long_processing": (
             "⏳ Enregistrement long détecté (${duration}). Je le traite en ${chunks} segments "

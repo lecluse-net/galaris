@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import struct
+from fractions import Fraction
 from pathlib import Path
 
 import av
@@ -35,11 +36,15 @@ def _video_with_audio(path: Path, *, duration_seconds: int = 1) -> None:
             int(8_000 * math.sin(2 * math.pi * 440 * index / sample_rate))
             for index in range(sample_rate * duration_seconds)
         ]
-        audio_frame = av.AudioFrame(format="s16", layout="mono", samples=len(samples))
-        audio_frame.sample_rate = sample_rate
-        audio_frame.planes[0].update(struct.pack(f"<{len(samples)}h", *samples))
-        for packet in audio.encode(audio_frame):
-            container.mux(packet)
+        for start in range(0, len(samples), sample_rate // 10):
+            block = samples[start : start + sample_rate // 10]
+            audio_frame = av.AudioFrame(format="s16", layout="mono", samples=len(block))
+            audio_frame.sample_rate = sample_rate
+            audio_frame.pts = start
+            audio_frame.time_base = Fraction(1, sample_rate)
+            audio_frame.planes[0].update(struct.pack(f"<{len(block)}h", *block))
+            for packet in audio.encode(audio_frame):
+                container.mux(packet)
         for packet in audio.encode(None):
             container.mux(packet)
     finally:
@@ -151,6 +156,68 @@ async def test_long_media_is_split_into_bounded_mp3_chunks(tmp_path: Path, isola
             assert container.streams.audio[0].codec_context.bit_rate == 96_000
         finally:
             container.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("max_duration", [None, 0.5, 1.0, 1.25, 2.0, 10.0])
+async def test_transcription_prefix_is_cropped_before_upload(tmp_path: Path, max_duration: float | None) -> None:
+    source = tmp_path / "synthetic-recording.mkv"
+    _video_with_audio(source, duration_seconds=3)
+    original = source.read_bytes()
+    chunks = await audio_service.normalize_for_transcription_chunks(
+        source, tmp_path / "chunks", chunk_seconds=1, max_duration_seconds=max_duration,
+    )
+
+    expected = min(3.0, max_duration) if max_duration is not None else 3.0
+    assert chunks[-1].end_seconds == pytest.approx(expected, abs=1 / 32_000)
+    assert len(chunks) == math.ceil(expected)
+    decoded_duration = 0.0
+    for chunk in chunks:
+        with av.open(str(chunk.path)) as container:
+            decoded_duration += sum(frame.samples / frame.sample_rate for frame in container.decode(audio=0))
+    assert decoded_duration == pytest.approx(expected, abs=0.06)
+    assert source.read_bytes() == original
+
+
+@pytest.mark.asyncio
+async def test_cropping_stops_decoding_the_source_early(tmp_path, monkeypatch):
+    source = tmp_path / "synthetic-recording.mkv"
+    _video_with_audio(source, duration_seconds=3)
+    real_open = av.open
+    decoded_seconds = 0.0
+
+    class CountedInput:
+        def __init__(self):
+            self.container = real_open(str(source))
+            self.streams = self.container.streams
+
+        def decode(self, **kwargs):
+            nonlocal decoded_seconds
+            for frame in self.container.decode(**kwargs):
+                decoded_seconds += frame.samples / frame.sample_rate
+                yield frame
+
+        def close(self):
+            self.container.close()
+
+    def counted_open(path, *args, **kwargs):
+        return CountedInput() if path == str(source) else real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(av, "open", counted_open)
+    await audio_service.normalize_for_transcription_chunks(
+        source, tmp_path / "chunks", max_duration_seconds=0.5,
+    )
+    assert 0.5 <= decoded_seconds < 1.0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("duration", [0, -1, float("nan"), float("inf")])
+async def test_invalid_crop_duration_is_rejected_before_creating_files(tmp_path, duration):
+    with pytest.raises(ValueError, match="finite and positive"):
+        await audio_service.normalize_for_transcription_chunks(
+            tmp_path / "missing", tmp_path / "chunks", max_duration_seconds=duration,
+        )
+    assert not (tmp_path / "chunks").exists()
 
 
 @pytest.mark.asyncio

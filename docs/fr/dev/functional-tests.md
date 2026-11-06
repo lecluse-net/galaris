@@ -851,6 +851,14 @@ est une décision à part entière : aucun quota de tests nouveaux par module.
 
 ## Audio et catalogues fournisseurs
 
+`app/audio/tests/test_audio_mcp.py` vérifie le schéma facultatif `minutes`, le refus des durées
+invalides avant lecture, et le fichier MP3 réellement transmis au STT : source complète sans
+limite, préfixe avec décimales, source plus courte que la limite, nettoyage et original intact.
+La couverture existante des contenus longs vérifie aussi qu’un préfixe court n’entraîne aucune
+synthèse du reste. `test_audio_service.py` décode les MP3 produits pour contrôler leur durée,
+les limites entre segments et l’arrêt anticipé de la lecture. La sélection des sous-titres
+YouTube reste bornée à leurs horodatages, avec conservation des phrases chevauchant la limite.
+
 Les suites `tests/test_transcription_service.py` et `core/util/tests/test_http_multipart.py`
 protègent l'envoi audio depuis des octets ou un fichier et la fermeture des handles après
 erreur ou annulation. `tests/test_audio_resource_discovery.py` couvre les catalogues vocaux
