@@ -166,6 +166,14 @@ def _on_voice_activity(active: bool) -> None:
         current = _current_work
         if current is not None and not current.done():
             current.cancel()
+    elif _runtime_status == "paused_voice":
+        # The loop may still be unwinding an interrupted operation. Do not keep
+        # claiming Voice is active until its next successful cycle.
+        _set_runtime_state(
+            status="idle",
+            phase="waiting",
+            reason="checking_activity",
+        )
     event = _wake_event
     if event is not None:
         event.set()
@@ -240,16 +248,36 @@ async def run_cycle() -> int:
                 phase="checking",
                 reason="checking_mechanism",
             )
-            if not await mechanism.is_available():
+            try:
+                # Selection can await services before a receipt exists, outside
+                # _run_claim's prepare/apply watchdog. Bound it as well.
+                async with asyncio.timeout(_claim_timeout()):
+                    if not await mechanism.is_available():
+                        _current_mechanism = None
+                        continue
+                    available_mechanisms += 1
+                    _set_runtime_state(
+                        status="idle",
+                        phase="claiming",
+                        reason="claiming_subject",
+                    )
+                    claim = await mechanism.claim_one()
+            except TimeoutError:
+                logger.error(
+                    "Dream selection timed out after {:.0f}s mechanism={} phase={}",
+                    _claim_timeout(), mechanism.key, _runtime_phase,
+                )
                 _current_mechanism = None
-                continue
-            available_mechanisms += 1
-            _set_runtime_state(
-                status="idle",
-                phase="claiming",
-                reason="claiming_subject",
-            )
-            claim = await mechanism.claim_one()
+                _next_mechanism_index = (
+                    registered_mechanisms.index(mechanism) + 1
+                ) % mechanism_count
+                _set_runtime_state(
+                    status="faulted",
+                    phase="faulted",
+                    reason="worker_error",
+                    last_error_type="ClaimTimeout",
+                )
+                break
             if claim is None:
                 _current_mechanism = None
                 continue

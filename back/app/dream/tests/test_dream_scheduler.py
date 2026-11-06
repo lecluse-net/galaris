@@ -711,6 +711,29 @@ async def test_voice_activity_cancels_current_dream_work() -> None:
 
 
 @pytest.mark.asyncio
+async def test_voice_end_removes_stale_pause_before_next_cycle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    wake = asyncio.Event()
+    monkeypatch.setattr(scheduler, "_wake_event", wake)
+    monkeypatch.setattr(scheduler, "_current_work", None)
+    monkeypatch.setattr(scheduler, "_schedule_runtime_update", lambda: None)
+    monkeypatch.setattr(scheduler, "_runtime_status", "idle")
+    monkeypatch.setattr(scheduler, "_runtime_phase", "waiting")
+    monkeypatch.setattr(scheduler, "_runtime_reason", "no_eligible_subject")
+    scheduler._on_voice_activity(True)
+    assert (await scheduler.runtime_snapshot()).status == "paused_voice"
+    wake.clear()
+
+    # No scheduler cycle is needed to acknowledge that the last call has ended.
+    scheduler._on_voice_activity(False)
+    snapshot = await scheduler.runtime_snapshot()
+    assert snapshot.status == "idle"
+    assert snapshot.reason == "checking_activity"
+    assert wake.is_set()
+
+
+@pytest.mark.asyncio
 async def test_start_confirms_worker_has_entered_its_loop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

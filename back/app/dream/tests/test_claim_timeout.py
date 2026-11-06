@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -131,6 +132,65 @@ def test_claim_timeout_clamps_below_lease(monkeypatch: pytest.MonkeyPatch) -> No
     # Never below the minimum so a healthy claim keeps a fair chance.
     monkeypatch.setattr(rt, "DREAM_LEASE_SECONDS", 60)
     assert scheduler._claim_timeout() == 5.0  # pyright: ignore[reportPrivateUsage]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hang_phase", ["availability", "claim"])
+async def test_hanging_selection_times_out_without_stopping_future_cycles(
+    monkeypatch: pytest.MonkeyPatch, hang_phase: str,
+) -> None:
+    entered = asyncio.Event()
+    cancelled = asyncio.Event()
+    hang = True
+
+    async def block() -> None:
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    class Selection:
+        key = "test.hanging_selection"
+
+        async def is_available(self) -> bool:
+            if hang and hang_phase == "availability":
+                await block()
+            return True
+
+        async def count_pending(self) -> int:
+            return 0
+
+        async def claim_one(self) -> DreamClaim | None:
+            if hang and hang_phase == "claim":
+                await block()
+            return None
+
+        async def prepare(self, claim: DreamClaim) -> DreamPrepared:
+            raise AssertionError("No subject was claimed")
+
+        async def apply(self, claim: DreamClaim, payload: dict[str, Any]) -> int:
+            raise AssertionError("No subject was claimed")
+
+    mechanism = Selection()
+    register_mechanism(mechanism)
+    monkeypatch.setattr(scheduler.runtime_settings, "DREAM_ENABLED", True)
+    monkeypatch.setattr(scheduler, "_claim_timeout", lambda: 0.01)
+    monkeypatch.setattr(scheduler, "has_active_voice_calls", lambda: False)
+    monkeypatch.setattr(scheduler, "has_active_task_work", AsyncMock(return_value=False))
+    try:
+        assert await asyncio.wait_for(scheduler.run_cycle(), timeout=0.5) == 0
+        assert entered.is_set() and cancelled.is_set()
+        snapshot = await scheduler.runtime_snapshot()
+        assert snapshot.status == "faulted"
+        assert snapshot.last_error_type == "ClaimTimeout"
+        assert snapshot.current_mechanism is None
+
+        hang = False
+        assert await asyncio.wait_for(scheduler.run_cycle(), timeout=0.5) == 0
+        assert (await scheduler.runtime_snapshot()).status == "idle"
+    finally:
+        reset_registry()
 
 
 @pytest.mark.asyncio
