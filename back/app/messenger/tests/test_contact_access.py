@@ -119,8 +119,9 @@ async def test_peer_scope_protects_transport_boundaries_and_rechecks_revocation(
 @pytest.mark.parametrize("left_scope", ["none", "team", "all"])
 @pytest.mark.parametrize("right_scope", ["none", "team", "all"])
 @pytest.mark.parametrize("shared_team", [False, True], ids=["other-team", "same-team"])
+@pytest.mark.parametrize("galaris_side", [None, 0, 1], ids=["ordinary", "galaris-left", "galaris-right"])
 async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_types(
-    db, left_scope, right_scope, shared_team,
+    db, left_scope, right_scope, shared_team, galaris_side,
 ):
     """Each external side enforces its own live scope before send or admission."""
     class TransportReached(RuntimeError):
@@ -136,6 +137,10 @@ async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_typ
                     title_id=title.id) for label in ("A", "B")]
     db.add_all(agents)
     await db.flush()
+    if galaris_side is not None:
+        from core.params import Param, Params
+        marker = await db.get(Param, Params.GALARIS_AGENT_ID)
+        marker.value = str(agents[galaris_side].id)
     db.add(AgentTeam(agent_id=agents[0].id, team_id=team.id))
     if shared_team:
         db.add(AgentTeam(agent_id=agents[1].id, team_id=team.id))
@@ -156,8 +161,8 @@ async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_typ
     await db.flush()
 
     for source, target in ((0, 1), (1, 0)):
-        outgoing_allowed = scopes[source] == "all" or scopes[source] == "team" and shared_team
-        incoming_allowed = scopes[target] == "all" or scopes[target] == "team" and shared_team
+        outgoing_allowed = galaris_side is None and (scopes[source] == "all" or scopes[source] == "team" and shared_team)
+        incoming_allowed = galaris_side is None and (scopes[target] == "all" or scopes[target] == "team" and shared_team)
         transports = {name: AsyncMock(side_effect=TransportReached) for name in (
             "send_to_user", "send_to_room", "upload_file", "upload_file_path", "send_voice_note",
             "ensure_direct_room", "create_room", "add_user",

@@ -63,71 +63,65 @@ def test_task_outcome_distinguishes_a_skipped_plan_leaf_from_its_error_phase() -
 
 
 @pytest.mark.asyncio
-async def test_create_task_never_auto_approves(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_create_task_never_auto_approves(db) -> None:
     """An agent-created MCP task never carries auto_approve, preventing privilege escalation."""
-    added: list[Task] = []
-
-    class _DB:
-        def add(self, task: Task) -> None:
-            added.append(task)
-
-    monkeypatch.setattr(task_mcp, "get_db", lambda: _DB())
-
-    await task_mcp.create_task(
-        requester_agent_id=1,
-        agent_id=2,
+    sender, recipient = await _delegating_agents(db)
+    task_id = await task_mcp.create_task(
+        requester_agent_id=sender.id,
+        agent_id=recipient.id,
         label="Do something",
         objective="Delegated objective",
     )
 
-    assert len(added) == 1
-    assert added[0].auto_approve is False
+    await db.flush()
+    created = await db.get(Task, task_id)
+    assert created.auto_approve is False
+
+
+async def _delegating_agents(db):
+    from sqlalchemy import select
+    from app.agent.models import Agent, Title
+
+    title_id = await db.scalar(select(Title.id).limit(1))
+    agents = [Agent(code=f"delegate-{uuid4().hex[:12]}", first_name="Synthetic", last_name=name,
+                    title_id=title_id) for name in ("Sender", "Recipient")]
+    db.add_all(agents)
+    await db.flush()
+    return agents
 
 
 @pytest.mark.asyncio
-async def test_create_task_nests_under_source(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A delegated task is a direct child marked delegated so its creator waits for it."""
-    added: list[Task] = []
-    topic_id = uuid4()
-    contact_memory_item_id = uuid4()
+async def test_create_task_nests_under_source(db) -> None:
+    """A delegated task preserves its creator and causal Topic/contact scope in PostgreSQL."""
+    from app.memory.models import MemoryItem
+    from app.topic import Topic
 
-    class _DB:
-        def add(self, task: Task) -> None:
-            added.append(task)
-
-        async def scalar(self, _query: object) -> Task:
-            return source
-
-        async def get(self, _model: object, _id: object) -> Task:
-            return source
-
-    grandparent_id = uuid4()
-    source = _task(
-        parent_id=grandparent_id,
-        topic_id=topic_id,
-        contact_memory_item_id=contact_memory_item_id,
-    )  # Task owned by the calling agent.
-
-    monkeypatch.setattr(task_mcp, "get_db", lambda: _DB())
-    from app.task import task_service
-
-    monkeypatch.setattr(task_service, "get_db", lambda: _DB())
-    monkeypatch.setattr(task_service, "get_by_id", AsyncMock(return_value=source))
-
-    await task_mcp.create_task(
-        requester_agent_id=1,
-        agent_id=2,
+    sender, recipient = await _delegating_agents(db)
+    topic = Topic(title="Synthetic delegation topic")
+    contact = MemoryItem(owner_agent_id=sender.id, memory_resource_id="synthetic-contact",
+                         memory_content_hash="0" * 64)
+    grandparent = _task(agent_id=sender.id)
+    db.add_all([topic, contact, grandparent])
+    await db.flush()
+    source = _task(agent_id=sender.id, parent_id=grandparent.id,
+                   topic_id=topic.id, contact_memory_item_id=contact.id)
+    db.add(source)
+    await db.flush()
+    task_id = await task_mcp.create_task(
+        requester_agent_id=sender.id,
+        agent_id=recipient.id,
         label="Delegation",
         objective="Delegated objective",
         source_task_id=source.id,
     )
 
-    assert len(added) == 1
-    assert added[0].source_task_id == source.id
-    assert added[0].parent_id == source.id  # Direct child of its creator.
-    assert (added[0].data or {}).get("delegated") is True
-    assert added[0].topic_id == topic_id
-    assert added[0].contact_memory_item_id == contact_memory_item_id
+    await db.flush()
+    child = await db.get(Task, task_id)
+    assert child.source_task_id == source.id
+    assert child.parent_id == source.id
+    assert (child.data or {}).get("delegated") is True
+    assert child.topic_id == topic.id
+    assert child.contact_memory_item_id == contact.id
 
 
 @pytest.mark.asyncio

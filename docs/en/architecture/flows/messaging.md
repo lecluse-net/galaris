@@ -41,6 +41,13 @@ and the exact connection. Internal request admission also checks the recipient's
 Human contacts and document ACLs remain independent; already admitted Tasks continue their
 lifecycle. Only a global human manager can change this parameter.
 
+The installed assistant identified by `galaris.agent_id` is a permanent exception: other agents
+cannot send or receive messages, files or delegated Tasks involving it. The explicit refusal
+applies even with a shared team, `all` scope or administrative rights, and survives renaming.
+Task agent origins are checked at admission and before each scheduler phase; an inherited human
+administrator is not treated as the direct author. Human contacts keep their existing rules.
+See [decision 0268](../../../../project/decisions/0268-galaris-assistant-peer-isolation.md).
+
 Chat can embed the full document component beside or below the conversation, with the
 same permissions and saves as its dialog. Before sending a message, the client waits for
 document saves and includes `displayed_document_id` only when that document has loaded

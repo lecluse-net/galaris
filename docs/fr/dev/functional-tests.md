@@ -1258,6 +1258,14 @@ souvenir manuel ou un document préexistant dépendant de cette preuve conversat
 
 ## Administration des agents
 
+`app/task/tests/test_galaris_isolation.py` vérifie le refus des délégations vers et depuis
+l'assistant identifié, même renommé et sous droits administratifs, ainsi que les origines
+héritées et les tâches déjà en file avant inférence. Les requêtes humaines et étapes du même
+agent restent admises. `app/messenger/tests/test_contact_access.py` applique la même interdiction
+aux deux sens des transports, salons, fichiers et invitations, sous les portées none/team/all.
+`app/agent/tests/test_default_agent.py` vérifie les droits maximaux à l'installation et la
+conservation des restrictions humaines lors des synchronisations suivantes.
+
 AgentAdmin est documenté dans [agent-admin.md](agent-admin.md).
 `back/app/agent/tests/test_tools.py` parcourt des annuaires synthétiques de 16 et 63 agents,
 avec de petites pages et un annuaire vide, après compactage réel de l’historique du harnais.

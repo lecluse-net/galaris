@@ -1193,6 +1193,13 @@ document depend on that conversation evidence.
 
 ## Agent administration
 
+`app/task/tests/test_galaris_isolation.py` verifies refused delegation to and from the identified
+assistant, including renaming, administrative callers, inherited origins and already queued
+Tasks before inference. Human requests and same-agent steps remain admitted.
+`app/messenger/tests/test_contact_access.py` covers both transport directions, rooms, files and
+invitations under none/team/all scopes. `app/agent/tests/test_default_agent.py` verifies maximum
+installation permissions and preservation of later human restrictions during synchronization.
+
 AgentAdmin is documented in [agent-admin.md](agent-admin.md).
 `back/app/agent/tests/test_tools.py` traverses synthetic directories of 16 and 63 agents,
 including small pages and an empty directory, after actual Harness history compaction.

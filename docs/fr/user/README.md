@@ -382,8 +382,14 @@ nécessaires. Les retraits d'équipe prennent effet dès l'appel suivant.
 À sa création, l'assistant **Galaris** reçoit le périmètre global (`all`) sur toutes
 ses connexions intégrées proposant une portée : Galaris Admin, ToolAdmin, AgentAdmin,
 Administration des processus, Gestion des objectifs, Compétences et Chat. Ces connexions
-sont actives. Les synchronisations suivantes conservent vos restrictions et désactivations ;
+sont actives. Les autres tools internes sans compte externe à configurer, dont Sujets,
+sont aussi actifs, et les fonctions natives sont autorisées. Les prérequis de modèle et les
+droits propres aux ressources restent applicables. Les synchronisations suivantes conservent vos restrictions et désactivations ;
 un assistant déjà initialisé se configure dans le formulaire de chaque connexion.
+
+Les autres agents ne peuvent pas échanger de messages, fichiers ou tâches avec cet assistant,
+même avec une portée globale ou une équipe commune : ils reçoivent une interdiction explicite.
+Son identité interne persiste après renommage ; nommer un autre agent « Galaris » ne le protège pas.
 
 ToolAdmin limite les niveaux personnel et équipe aux connexions ; les définitions et
 réglages partagés exigent `all`. Les définitions de processus suivent l'agent affecté,

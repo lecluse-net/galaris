@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0268 — Isolate the identified Galaris assistant from peer requests](0268-galaris-assistant-peer-isolation.md)
+
 - [0266 — Editable document imports retain their own media](0266-editable-document-imports-with-owned-media.md)
 
 - [0265 — Strict schema convergence, qualified deployments and offline backups](0265-strict-updates-and-offline-backups.md)

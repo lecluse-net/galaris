@@ -1,6 +1,9 @@
 """French i18n catalog for agent executor prompt sections."""
 
 default = {
+    "agent_dialogue": {
+        "galaris_peer_forbidden": "Interdit : les autres agents ne peuvent pas échanger de messages ou de tâches avec l’assistant Galaris.",
+    },
     "executor": {
         # Prompt section tags use pseudo-HTML slugs without spaces or accents.
         # They are structural and must remain identical in French and English.

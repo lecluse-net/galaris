@@ -269,9 +269,26 @@ def build(task_data: TaskCreate) -> Task:
     return new_task
 
 
-async def apply_requester_lineage(task: Task) -> None:
-    """Freeze the human requester from trusted creation context or Task ancestry."""
+async def require_peer_task_access(task: Task) -> None:
+    """Check agent origins even when a delegated Task inherits a human requester."""
+    if task.agent_id is None:
+        return
+    from app.agent import require_peer_interaction
 
+    if task.requester_agent_id is not None:
+        await require_peer_interaction(task.agent_id, task.requester_agent_id)
+    origins = {identity for identity in (task.parent_id, task.source_task_id) if identity is not None}
+    if origins:
+        for agent_id in await get_db().scalars(select(Task.agent_id).where(Task.id.in_(origins))
+            .execution_options(include_historized=True)):
+            if agent_id is not None:
+                await require_peer_interaction(task.agent_id, agent_id)
+
+
+async def apply_requester_lineage(task: Task) -> None:
+    """Authorize the peer origin, then freeze the trusted human requester."""
+
+    await require_peer_task_access(task)
     if task.requester_user_id is not None:
         return
     from core.user import get_current_user_id
@@ -323,6 +340,7 @@ async def create(task_data: TaskCreate, *, idempotency_key: str | None = None,
             .execution_options(include_historized=True)
         )
         if existing is not None:
+            await require_peer_task_access(existing)
             await db.commit()
             return existing
     await apply_goal_lineage(task_data)

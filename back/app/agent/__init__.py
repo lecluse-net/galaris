@@ -114,7 +114,7 @@ from .facade import (
 from .registry import register_driver_spec
 from .models import Agent, AgentGroup, Title
 from .authorization import AgentAuthorizationPolicy as AgentAuthorizationPolicy, authorization_policy as authorization_policy
-from .dialogue_service import current_dialogue_scope, dialogue_scope_for, require_agent_contact
+from .dialogue_service import current_dialogue_scope, dialogue_scope_for, require_agent_contact, require_peer_interaction
 from .assertions import AgentDialogueAssertion
 from .realtime import (
     build_realtime_agent_context,
@@ -260,6 +260,7 @@ __all__ = [
     "current_dialogue_scope",
     "dialogue_scope_for",
     "require_agent_contact",
+    "require_peer_interaction",
     "AgentDialogueAssertion",
     "Title",
     "AgentCreate",

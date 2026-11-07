@@ -1,6 +1,9 @@
 """English i18n catalog for the ``agent`` module (executor prompt sections)."""
 
 default = {
+    "agent_dialogue": {
+        "galaris_peer_forbidden": "Forbidden: other agents cannot exchange messages or tasks with the Galaris assistant.",
+    },
     "executor": {
         # Prompt section tags (pseudo-HTML): slugs **without spaces or accents** (otherwise
         # the pseudo-HTML render breaks and swallows the content). Structural → same fr/en.

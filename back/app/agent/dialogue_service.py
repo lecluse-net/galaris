@@ -5,12 +5,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.authorize import check_privilege, role_id_ctx
 from core.database import get_db
+from core.i18n import tr
+from core.params import Param, Params
 from core.team import TeamModel, audit, human_memberships, require_team
 from core.user import UserModel, user_service
 
 from .models import Agent, AgentTeam
 from .dialogue_contracts import DialogueAgent, DialogueDecision, DialoguePolicy
 from .management_scope import AgentManagementScope, AgentScopeDeniedError
+
+
+class GalarisPeerContactDeniedError(AgentScopeDeniedError):
+    """Model-safe explanation of the installed assistant's permanent peer isolation."""
 
 
 async def policy_snapshot(db: AsyncSession | None = None) -> DialoguePolicy:
@@ -51,10 +57,21 @@ async def current_dialogue_scope() -> AgentManagementScope:
     return await dialogue_scope_for(user, get_db())
 
 
+async def require_peer_interaction(agent_id: int, peer_agent_id: int) -> None:
+    """The identified Galaris assistant never participates in inter-agent exchanges."""
+    if agent_id == peer_agent_id:
+        return
+    identity = await get_db().scalar(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID))
+    if identity is not None and identity in {str(agent_id), str(peer_agent_id)}:
+        raise GalarisPeerContactDeniedError(await tr("agent_dialogue.galaris_peer_forbidden"))
+
+
 async def require_agent_contact(
     agent_id: int, *, peer_agent_id: int | None = None,
     human_user_id: int | None = None, peer_scope: str = "team",
 ) -> None:
+    if peer_agent_id is not None:
+        await require_peer_interaction(agent_id, peer_agent_id)
     policy = await policy_snapshot()
     decision = DialogueDecision(allowed=False, source="default")
     if peer_agent_id is not None:

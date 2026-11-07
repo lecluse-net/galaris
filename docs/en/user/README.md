@@ -319,8 +319,15 @@ remains an agent action. Personal packages cannot be shared.
 When first created, the **Galaris** assistant receives global scope (`all`) on all its
 built-in connections offering a scope: Galaris Admin, ToolAdmin, AgentAdmin, Process
 administration, Goal management, Skills and Chat. These connections start active.
+Other internal tools without a separately configured external account, including Topics,
+also start active, with native functions enabled. Model prerequisites and resource permissions
+still apply.
 Later synchronizations preserve your restrictions and deactivations; configure an
 already initialized assistant through each connection's form.
+
+Other agents cannot exchange messages, files or Tasks with this assistant, even with global
+scope or a shared team: they receive an explicit permission refusal. Its internal identity
+survives renaming; naming another agent “Galaris” does not protect that agent.
 
 In **Tools → Connections → edit a connection → Management scope**,
 `tools.management_scope` also configures Process administration, ToolAdmin,

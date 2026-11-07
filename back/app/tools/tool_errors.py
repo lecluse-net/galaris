@@ -190,6 +190,8 @@ def classify_tool_failure(exc: Exception) -> ToolFailure:
         "RichTextError",
     }
     for cause in chain:
+        if type(cause).__name__ == "GalarisPeerContactDeniedError":
+            return ToolFailure("permission_denied", error_type, _public_error_detail(cause))
         if type(cause).__name__ in safe_domain_errors:
             return ToolFailure("actionable", error_type, _public_error_detail(cause))
     if _has_exception_name(chain, "MemoryPermissionError"):

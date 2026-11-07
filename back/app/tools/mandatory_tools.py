@@ -771,23 +771,33 @@ async def sync_mandatory_tools() -> list[ToolModel]:
 
 
 async def initialize_admin_agent_connections(agent_id: int) -> None:
-    """Initialize global scopes on the newly seeded Galaris agent's built-in connections."""
+    """Grant maximum native permissions once, when the Galaris assistant is created."""
     from app.connection import Connection
-    from app.connection.facade import set_params_bulk
+    from app.connection.facade import get_or_create_connection, set_params_bulk, set_connection_function_state
     from .contracts import MANAGEMENT_SCOPE_PARAM
+    from .mcp_loader import load_mcp_tools, native_tool_codes_for_tool
 
     await sync_integrated_tool_connections(agent_id)
+    # Topics are native but opt-in for ordinary agents. Console, Mail and Calendar
+    # require an explicitly configured external connection and remain separate.
+    topic = await get_db().scalar(select(ToolModel).where(ToolModel.code == "topic"))
+    if topic is not None:
+        await get_or_create_connection(topic.id, agent_id, commit=False)
+    definitions = load_mcp_tools()
     for connection, tool in await get_db().execute(
         select(Connection, ToolModel).join(ToolModel, ToolModel.id == Connection.tool_id).where(
             Connection.agent_id == agent_id,
-            ToolModel.code.in_(AUTO_CONNECTED_INTEGRATED_TOOL_CODES),
+            ToolModel.code.in_(AUTO_CONNECTED_INTEGRATED_TOOL_CODES | {"topic"}),
         )
     ):
-        if MANAGEMENT_SCOPE_PARAM not in tool.connection_schema.get("params", {}):
-            continue
         connection.active = True
-        await set_params_bulk(connection.id, {MANAGEMENT_SCOPE_PARAM: "all"},
-                              commit=False, scope_edit_authorized=True)
+        if MANAGEMENT_SCOPE_PARAM in tool.connection_schema.get("params", {}):
+            await set_params_bulk(connection.id, {MANAGEMENT_SCOPE_PARAM: "all"},
+                                  commit=False, scope_edit_authorized=True)
+        codes = native_tool_codes_for_tool(tool)
+        for definition in definitions:
+            if definition.tool_code in codes:
+                await set_connection_function_state(connection.id, definition.name, "enabled", commit=False)
 
 
 async def sync_integrated_tool_connections(agent_id: int | None = None) -> int:

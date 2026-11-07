@@ -1363,43 +1363,52 @@ def running_task_ids_for_agent(
     ]
 
 
-async def _dispatch(task_id: UUID) -> None:
-    from app.agent import run_workflow_step
+async def _run_authorized_workflow(task: Task) -> None:
+    from app.agent import AgentScopeDeniedError, HarnessExecutionError, run_workflow_step
+    from app.agent.contracts import HarnessFailure
     from app.task import task_service
     from app.task.agent_adapter import as_agent_task
+
+    try:
+        await task_service.require_peer_task_access(task)
+    except AgentScopeDeniedError as exc:
+        raise HarnessExecutionError(HarnessFailure(
+            code="configuration", message=str(exc), retry="never", effects="none",
+        )) from exc
+    await run_workflow_step(as_agent_task(task))
+
+
+async def _dispatch(task_id: UUID) -> None:
+    from app.task import task_service
 
     logger.info("Task scheduler — dispatch {}", task_id)
     async with get_db_session():
         task = await task_service.get_by_id(task_id)
         if task is None or task.status != TaskStatus.CREATE or task.paused:
             return
-        await run_workflow_step(as_agent_task(task))
+        await _run_authorized_workflow(task)
 
 
 async def _execute(task_id: UUID) -> None:
-    from app.agent import run_workflow_step
     from app.task import task_service
-    from app.task.agent_adapter import as_agent_task
 
     logger.info("Task scheduler — execute {}", task_id)
     async with get_db_session():
         task = await task_service.get_by_id(task_id)
         if task is None or task.status not in {TaskStatus.DISPATCH} or task.paused:
             return
-        await run_workflow_step(as_agent_task(task))
+        await _run_authorized_workflow(task)
 
 
 async def _plan(task_id: UUID) -> None:
-    from app.agent import run_workflow_step
     from app.task import task_service
-    from app.task.agent_adapter import as_agent_task
 
     logger.info("Task scheduler — plan {}", task_id)
     async with get_db_session():
         task = await task_service.get_by_id(task_id)
         if task is None or task.status != TaskStatus.PLAN or task.paused:
             return
-        await run_workflow_step(as_agent_task(task))
+        await _run_authorized_workflow(task)
 
 
 async def _reconcile_paused_parents() -> None:

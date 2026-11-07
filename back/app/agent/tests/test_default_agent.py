@@ -36,6 +36,48 @@ async def _proposal(db):
 
 
 @pytest.mark.asyncio
+async def test_new_galaris_has_all_internal_tools_and_function_permissions(db):
+    from app.connection.facade import resolve_function, set_connection_function_state
+    from app.tools import load_mcp_tools, native_tool_codes_for_tool
+    from app.tools.mandatory_tools import AUTO_CONNECTED_INTEGRATED_TOOL_CODES
+
+    await _admin(db)
+    await reconcile_dataset(db, default_agent_dataset())
+    agent = await _proposal(db)
+    connections = (await db.execute(select(Connection, ToolModel).join(ToolModel).where(
+        Connection.agent_id == agent.id,
+        ToolModel.code.in_(AUTO_CONNECTED_INTEGRATED_TOOL_CODES),
+    ))).all()
+    # The assistant also gets Topics, an internal opt-in tool for ordinary agents.
+    topic = await db.scalar(select(ToolModel).where(ToolModel.code == "topic"))
+    topic_connection = await db.scalar(select(Connection).where(
+        Connection.agent_id == agent.id, Connection.tool_id == topic.id))
+    assert topic_connection is not None and topic_connection.active
+    assert {tool.code for _, tool in connections} == AUTO_CONNECTED_INTEGRATED_TOOL_CODES
+    for connection, tool in connections:
+        assert connection.active, tool.code
+        for definition in load_mcp_tools():
+            if definition.tool_code in native_tool_codes_for_tool(tool):
+                policy = await resolve_function(connection, definition.name)
+                assert policy["effective_state"] == "enabled", definition.name
+    assert await has_active_tool_function(agent.id, "topic", "topic_create")
+    # Initial maximum permissions remain ordinary administrator-owned settings afterward.
+    admin_connection = next(connection for connection, tool in connections if tool.code == "agent_admin")
+    await set_connection_function_state(admin_connection.id, "agent_create", "disabled", commit=False)
+    await set_params_bulk(admin_connection.id, {"tools.management_scope": "team"},
+                          commit=False, scope_edit_authorized=True)
+    admin_connection.active = False
+    await db.commit()
+    for definition in tool_datasets():
+        await reconcile_dataset(db, definition)
+    await reconcile_dataset(db, default_agent_dataset())
+    await db.refresh(admin_connection)
+    assert not admin_connection.active
+    assert await get_management_scope(agent.id, "agent_admin") == "usage"
+    assert (await resolve_function(admin_connection, "agent_create"))["effective_state"] == "disabled"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("skill_code", ["galaris-lab", "galaris-knowledge"])
 @pytest.mark.parametrize("custom_avatar", [b"synthetic-custom-avatar", None])
 async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_deletion(db, skill_code, custom_avatar):

@@ -45,6 +45,14 @@ L'admission d'une demande interne vérifie aussi la connexion Chat du destinatai
 humains et les ACL documentaires restent indépendants ; les tâches déjà admises poursuivent
 leur cycle. Seul un gestionnaire humain global peut modifier ce paramètre.
 
+L'assistant installé désigné par `galaris.agent_id` est une exception permanente : les autres
+agents ne peuvent ni lui envoyer ni recevoir de lui des messages, fichiers ou demandes de tâche.
+Le refus explicite s'applique même avec une équipe commune, une portée `all` ou des droits
+d'administration, et reste effectif après renommage. Les origines agentiques des tâches sont
+vérifiées à l'admission et avant chaque phase du scheduler, sans considérer un administrateur
+humain hérité comme l'auteur direct. Les contacts humains conservent leurs règles existantes.
+Voir la [décision 0268](../../../../project/decisions/0268-galaris-assistant-peer-isolation.md).
+
 Le chat peut intégrer le composant documentaire complet dans sa page, à côté de la
 conversation ou au-dessous, avec les mêmes droits et sauvegardes que dans sa modale.
 Lors de l'envoi, le client attend les sauvegardes puis transmet `displayed_document_id`

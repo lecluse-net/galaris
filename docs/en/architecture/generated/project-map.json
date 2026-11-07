@@ -148,6 +148,7 @@
         "files": [
           "back/app/agent/agent_service.py",
           "back/app/agent/contracts.py",
+          "back/app/agent/dialogue_service.py",
           "back/app/agent/dispatcher.py",
           "back/app/agent/dispatcher_service.py",
           "back/app/agent/executor_service.py",
@@ -166,6 +167,7 @@
       {
         "files": [
           "back/app/agent/defaults.py",
+          "back/app/agent/dialogue_service.py",
           "back/app/agent/dispatcher.py",
           "back/app/agent/executor_service.py",
           "back/app/agent/facade.py",
