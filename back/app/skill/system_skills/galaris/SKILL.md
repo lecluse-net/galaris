@@ -677,7 +677,12 @@ available. Preserve the intended recipient and requested contribution in the obj
 the Task can resolve remaining identity details. An unavailable foreground action does not
 mean the colleague is unknown or unreachable. Contact permissions still apply.
 
-- `agent_list(limit: int = 50) -> str` lists agents with a short preview of their text fields.
+- `agent_list(limit: int = 50, offset: int = 0) -> str` returns compact JSON with
+  `items` (ID, profile URI, code, name and job-title preview), `count`, `offset`, `limit`,
+  `has_more` and `next_offset`. Follow `next_offset` until null for an exhaustive inventory;
+  the character budget can make a page shorter than `limit` (1–500). Detailed profiles
+  and assigned models are available through `agent_get`. Restart an inventory if agents
+  are created, deleted or renamed during traversal.
 - `agent_get(agent_id: int) -> str` returns the complete job, mission, and personality of an
   agent selected from `agent_list`.
   Both tools include the stable `galaris://agent/<id>` URI. `file_read` reads the current

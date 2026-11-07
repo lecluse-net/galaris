@@ -191,6 +191,11 @@ provider configuration.
 
 ### Create an agent
 
+To check existing profiles before assisted creation, the agent can use `agent_list`:
+it must follow every page of this compact directory, then use `agent_get` to read
+relevant profiles. A short page does not mean the list is complete; its continuation
+cursor identifies the next page.
+
 The **Galaris** assistant proposed at installation uses a dedicated avatar: a blue and green G
 over a starry network background.
 Its [product knowledge guide](../admin/product-knowledge.md) loads automatically for text

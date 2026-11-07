@@ -1194,6 +1194,12 @@ document depend on that conversation evidence.
 ## Agent administration
 
 AgentAdmin is documented in [agent-admin.md](agent-admin.md).
+`back/app/agent/tests/test_tools.py` traverses synthetic directories of 16 and 63 agents,
+including small pages and an empty directory, after actual Harness history compaction.
+It verifies every identity and URI, continuation to the end without omissions or duplicates,
+and rejection of invalid parameters before data access. This replaces the sequential LLM
+resolution check: the compact directory no longer resolves each profile's model;
+that detailed read remains in `agent_get`.
 `back/app/agent/tests/test_avatars.py` checks JPEG storage within 500 × 500 pixels,
 proportions, no enlargement, EXIF orientation and transparency.
 Its HTTP journey replaces a synthetic PNG over 8 MiB with a compact JPEG,

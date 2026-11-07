@@ -9,6 +9,15 @@ réactive jamais une connexion désactivée et ne modifie pas les agents déjà 
 Un humain peut l’activer dans **Configurer → Outils & connexions → Connexions**.
 `agent_list` et `agent_get` restent dans le service système Galaris.
 
+L’annuaire `agent_list(offset=0, limit=50)` retourne du JSON compact : `items`
+(identifiant, URI du profil, code, nom et aperçu du poste), `count`, `offset`, `limit`,
+`has_more` et `next_offset`. Chaque page reste sous 4 000 caractères pour conserver
+toutes ses entrées lors du compactage ordinaire de l’historique. Le budget peut réduire
+le nombre d’entrées sous `limit` (1 à 500) : poursuivre avec `next_offset` jusqu’à sa
+valeur nulle, plutôt que déduire la fin depuis `count`. Les profils détaillés et leurs
+modèles se lisent avec `agent_get`. L’ordre suit les noms puis l’identifiant ; après une
+création, suppression ou modification de nom concurrente, recommencer l’inventaire.
+
 ## Délégation et droits
 
 Chaque appel vérifie la connexion et l’autorisation effective de la fonction, puis les

@@ -209,6 +209,11 @@ ne donnent pas le droit de modifier les fournisseurs.
 
 ### Créer un agent
 
+Pour vérifier les profils existants avant une création assistée, l’agent dispose de
+`agent_list` : il doit suivre toutes les pages de cet annuaire compact, puis utiliser
+`agent_get` pour lire les fiches pertinentes. Une page courte ne signifie pas que la
+liste est terminée ; le curseur de continuation indique la suite.
+
 L'assistant **Galaris** proposé à l'installation porte un avatar dédié : un G bleu et vert
 sur un fond de réseau étoilé.
 Son [guide de connaissance produit](../admin/product-knowledge.md) est chargé automatiquement

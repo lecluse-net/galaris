@@ -9,6 +9,14 @@ disabled connections or changes previously initialized agents. A human can enabl
 **Configure → Tools & connections → Connections**.
 `agent_list` and `agent_get` remain in the mandatory Galaris system service.
 
+The `agent_list(offset=0, limit=50)` directory returns compact JSON: `items`
+(ID, profile URI, code, name and job-title preview), `count`, `offset`, `limit`,
+`has_more` and `next_offset`. Each page stays within 4,000 characters so every entry
+survives ordinary history compaction. This budget can reduce the entry count below
+`limit` (1 to 500): follow `next_offset` until it is null instead of inferring completion
+from `count`. Read detailed profiles and their models with `agent_get`. Ordering follows
+names then IDs; restart the inventory after concurrent creation, deletion or renaming.
+
 ## Delegation and privileges
 
 Every invocation checks the active connection and effective function permission, then the

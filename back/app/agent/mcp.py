@@ -3,25 +3,26 @@
 from __future__ import annotations
 
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from .admin_schemas import PageLimit, PageOffset
 
 
 @mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
 
     name="agent_list",
     description=(
-        "List Galaris agents with profile text truncated to 100 characters. "
-        "Includes each profile's galaris://agent/<id> URI for file_read under existing access rights. "
-        "Use agent_get for a complete profile."
+        "List Galaris agents in compact JSON pages with ID, profile URI, code, name and job title. "
+        "Follow next_offset until null; a page may contain fewer than limit entries to stay bounded. "
+        "Use agent_get for full profiles and assigned models."
     ),
     effect_policy="read",
     concurrency_policy="safe",
 )
-async def list_agents(ctx: McpToolContext, limit: int = 50) -> str:
-    """List every available Galaris agent with truncated profile text."""
+async def list_agents(ctx: McpToolContext, limit: PageLimit = 50, offset: PageOffset = 0) -> str:
+    """List a bounded directory page with an explicit continuation offset."""
     from app.agent import tools as agent_tools
 
     language = await context_language(ctx)
-    return await agent_tools.list_agents(limit=limit, language=language)
+    return await agent_tools.list_agents(limit=limit, offset=offset, language=language)
 
 
 @mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
@@ -49,7 +50,7 @@ from sqlalchemy import select
 from core.database import get_db
 from core.team import notify_team_access_changed
 from .admin_authorization import delegated_admin
-from .admin_schemas import AdminAgentCreate, AdminAgentUpdate, PageLimit, PageOffset
+from .admin_schemas import AdminAgentCreate, AdminAgentUpdate
 from .registry import INTERNAL_HARNESS
 from . import admin_service, agent_service, title_service, agent_group_service
 from .schemas import Title as TitleRead, TitleCreate, TitleUpdate, AgentGroup as GroupRead, AgentGroupCreate, AgentGroupUpdate

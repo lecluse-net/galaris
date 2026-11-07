@@ -1259,6 +1259,12 @@ souvenir manuel ou un document préexistant dépendant de cette preuve conversat
 ## Administration des agents
 
 AgentAdmin est documenté dans [agent-admin.md](agent-admin.md).
+`back/app/agent/tests/test_tools.py` parcourt des annuaires synthétiques de 16 et 63 agents,
+avec de petites pages et un annuaire vide, après compactage réel de l’historique du harnais.
+Il vérifie chaque identité et URI, la continuation jusqu’à la fin sans doublon ni omission,
+et le rejet des paramètres invalides avant accès aux données. Cette couverture remplace
+le contrôle des résolutions LLM séquentielles : l’annuaire compact ne résout plus les
+modèles de chaque profil ; cette lecture détaillée reste dans `agent_get`.
 `back/app/agent/tests/test_avatars.py` vérifie le stockage JPEG dans une limite de 500 × 500,
 les proportions, l’absence d’agrandissement, l’orientation EXIF et la transparence.
 Son parcours HTTP remplace un PNG synthétique de plus de 8 Mio par un JPEG compact,

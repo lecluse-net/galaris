@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from core.i18n import default_language, is_supported, render_prompt, t
@@ -7,6 +8,8 @@ from . import agent_service
 
 
 _PROFILE_PREVIEW_MAX_CHARS = 100
+# Keep a directory page intact through ordinary Harness history compaction.
+_DIRECTORY_PAGE_MAX_CHARS = 4_000
 
 
 def _language(language: str | None) -> str:
@@ -32,67 +35,55 @@ def _preview(value: str, max_chars: int = _PROFILE_PREVIEW_MAX_CHARS) -> str:
     return f"{single_line[:max_chars - 3].rstrip()}..."
 
 
-async def list_agents(limit: int = 50, *, language: str | None = None) -> str:
-    """List virtual-company agents and their characteristics.
+def _directory_page(
+    items: list[dict[str, object]], *, offset: int, limit: int, has_more: bool,
+) -> str:
+    return json.dumps(
+        {
+            "items": items,
+            "count": len(items),
+            "offset": offset,
+            "limit": limit,
+            "has_more": has_more,
+            "next_offset": offset + len(items) if has_more else None,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
 
-    Use this tool to identify, describe, or compare colleagues, roles, expertise, and
-    collaboration options. Profile text is limited to 100 characters; call
-    ``get_agent_details`` with an ID for the complete profile.
-    """
+
+async def list_agents(
+    limit: int = 50, *, offset: int = 0, language: str | None = None,
+) -> str:
+    """Return a compact JSON directory page; read full profiles with agent_get."""
+    if offset < 0 or not 1 <= limit <= 500:
+        raise ValueError("offset must be nonnegative and limit must be between 1 and 500")
     lang = _language(language)
     try:
-        agents = await agent_service.get_all(limit=limit)
+        # One lookahead row distinguishes a complete page from an unfinished list.
+        agents = await agent_service.get_all(skip=offset, limit=limit + 1)
     except RuntimeError as e:
         return _message(lang, "database_error", error=e)
     except Exception as e:
         return _message(lang, "list_failed", error=e)
 
-    if not agents:
-        return _message(lang, "none")
+    items: list[dict[str, object]] = []
+    for agent in agents[:limit]:
+        item: dict[str, object] = {
+            "id": agent.id,
+            "resource_uri": f"galaris://agent/{agent.id}",
+            "code": _preview(agent.code),
+            "name": _preview(f"{agent.first_name} {agent.last_name}".strip(), 200),
+            "job_title": _preview(agent.job_title or ""),
+        }
+        candidate = _directory_page(
+            [*items, item], offset=offset, limit=limit, has_more=len(agents) > len(items) + 1,
+        )
+        if len(candidate) > _DIRECTORY_PAGE_MAX_CHARS:
+            break
+        items.append(item)
 
-    lines: list[str] = [_message(lang, "list_heading", count=len(agents)) + "\n"]
-
-    # Every service below uses the context-bound SQLAlchemy AsyncSession. An
-    # AsyncSession cannot execute concurrent statements safely, so resolving all
-    # profiles through ``asyncio.gather`` can close the shared transaction while
-    # ``agent_list`` is still running. The directory is bounded to 50 rows; keep
-    # these reads sequential within the tool transaction.
-    resolved_llms = [
-        await llm_service.get_llm_for_agent(agent) for agent in agents
-    ]
-    for agent, resolved_llm in zip(agents, resolved_llms):
-        lines.append(_message(lang, "id", value=agent.id))
-        lines.append("  " + _message(lang, "profile_uri", value=f"galaris://agent/{agent.id}"))
-        lines.append("  " + _message(
-            lang, "name", value=f"{agent.first_name} {agent.last_name}"
-        ))
-        if agent.title:
-            gender = _message(
-                lang, "male" if agent.title.gender == "M" else "female"
-            )
-            lines.append("  " + _message(
-                lang, "title", value=agent.title.label, gender=gender
-            ))
-        if agent.job_title:
-            lines.append("  " + _message(
-                lang, "job_title", value=_preview(agent.job_title)
-            ))
-        if agent.job_description:
-            desc = _preview(agent.job_description)
-            lines.append("  " + _message(lang, "description", value=desc))
-        if agent.personality:
-            pers = _preview(agent.personality)
-            lines.append("  " + _message(lang, "personality", value=pers))
-        if resolved_llm:
-            lines.append("  " + _message(
-                lang,
-                "assigned_llm",
-                label=resolved_llm.label,
-                model=resolved_llm.llm_name,
-            ))
-        lines.append("")
-
-    return "\n".join(lines)
+    return _directory_page(items, offset=offset, limit=limit, has_more=len(agents) > len(items))
 
 
 async def get_agent_details(
