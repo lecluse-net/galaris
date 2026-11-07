@@ -460,7 +460,7 @@
                       :label="$t('agent.generateAvatar')"
                       :loading="generatingCurrentAvatar"
                       :disable="uploadingAvatar || avatarProfileUnsaved || generatingCurrentAvatar"
-                      @click="generateAvatar"
+                      @click="openAvatarGenerationDialog"
                     >
                       <q-tooltip>{{ $t(avatarProfileUnsaved ? 'agent.avatarSaveFirst' : 'agent.generateAvatarHelp') }}</q-tooltip>
                     </q-btn>
@@ -696,6 +696,13 @@
       </q-card>
     </q-dialog>
 
+    <AvatarGenerationDialog
+      v-model="showAvatarGenerationDialog"
+      :loading="generatingCurrentAvatar"
+      :error="avatarGenerationError"
+      @generate="generateAvatar"
+    />
+
     <q-dialog
       v-model="showHarnessChangeConfirm"
       @hide="settleHarnessChangeConfirmation(false)"
@@ -923,6 +930,7 @@ import { RichTextEditor, richTextExcerpt, PageHeader, startVisiblePolling } from
 import { invalidateSessionReads } from '@/core/util/facade'
 import { useHarnessLogs } from '../composables/useHarnessLogs'
 import AgentAuxiliaryDialogs from '../components/AgentAuxiliaryDialogs.vue'
+import AvatarGenerationDialog from '../components/AvatarGenerationDialog.vue'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { TeamManager } from '@/core/team'
 
@@ -1096,6 +1104,8 @@ const deleteType = ref<'agent' | 'title' | 'group'>('agent') // 'agent', 'title'
 const avatarFile = ref<File | null>(null)
 const uploadingAvatar = ref(false)
 const avatarGenerationAvailable = ref(false)
+const showAvatarGenerationDialog = ref(false)
+const avatarGenerationError = ref('')
 const generatingAvatarIds = reactive(new Set<number>())
 const generatingCurrentAvatar = computed(() => agentForm.id !== null && generatingAvatarIds.has(agentForm.id))
 const avatarProfileUnsaved = computed(() => {
@@ -2035,21 +2045,30 @@ const loadAvatarGenerationAvailability = async (generation: number) => {
   }
 }
 
-const generateAvatar = async () => {
+const openAvatarGenerationDialog = () => {
+  avatarGenerationError.value = ''
+  showAvatarGenerationDialog.value = true
+}
+
+const generateAvatar = async (instructions: string) => {
   const id = agentForm.id
   if (id === null || !canManageCurrentAgent.value || !avatarGenerationAvailable.value
     || generatingAvatarIds.has(id) || uploadingAvatar.value || avatarProfileUnsaved.value) return
   const generation = agentDialogGeneration
+  avatarGenerationError.value = ''
   generatingAvatarIds.add(id)
   try {
-    await agentService.generateAvatar(id)
+    await agentService.generateAvatar(id, instructions)
     if (pageDisposed) return
     if (showAgentDialog.value && agentForm.id === id) agentForm.has_avatar = true
+    if (generation === agentDialogGeneration) showAvatarGenerationDialog.value = false
     await agentStore.fetchAgents()
     $q.notify({ type: 'positive', message: t('agent.notify.avatarGenerated') })
   } catch (error) {
     if (pageDisposed) return
-    $q.notify({ type: 'negative', message: apiErrorDetail(error) || t('agent.notify.avatarGenerationError') })
+    const message = apiErrorDetail(error) || t('agent.notify.avatarGenerationError')
+    if (generation === agentDialogGeneration && showAvatarGenerationDialog.value) avatarGenerationError.value = message
+    else $q.notify({ type: 'negative', message })
     if (generation === agentDialogGeneration) void loadAvatarGenerationAvailability(generation)
   } finally {
     generatingAvatarIds.delete(id)
@@ -2145,6 +2164,7 @@ watch(agentDialogTab, (tab) => {
 
 watch(showAgentDialog, open => {
   if (!open) {
+    showAvatarGenerationDialog.value = false
     agentDialogGeneration++
     managersLoading.value = false
     harnessSelectionLoading.value = false

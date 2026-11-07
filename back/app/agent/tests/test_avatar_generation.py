@@ -81,18 +81,21 @@ async def portrait_configuration(client, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_http_generation_uses_default_profile_and_registers_compact_portrait(client, portrait_configuration, monkeypatch):
+@pytest.mark.parametrize("instructions", [None, "Realistic human portrait, brown hair, natural light."])
+async def test_http_generation_uses_default_profile_and_registers_compact_portrait(client, portrait_configuration, monkeypatch, instructions):
     config = portrait_configuration
     provider = AsyncMock(return_value=(image_bytes(), "image/png"))
     monkeypatch.setattr(image_service, "generate_image_native", provider)
     availability = await client.get("/api/agents/avatar-generation", headers=config["headers"])
     assert availability.status_code == 200 and availability.json() == {"available": True}
-    response = await client.post(f"/api/agents/{config['agent_id']}/avatar/generate", headers=config["headers"])
+    payload = {} if instructions is None else {"json": {"instructions": instructions}}
+    response = await client.post(f"/api/agents/{config['agent_id']}/avatar/generate", headers=config["headers"], **payload)
     assert response.status_code == 200, response.text
     assert response.json()["registered"] is True
     args, options = provider.call_args
     assert args[0] == config["model_code"]
     assert options["width"] == options["height"] == 1024
+    assert args[1].endswith("Appearance, framing and atmosphere: " + (instructions or ""))
     profile = json.loads(args[1].split("\n")[1])
     assert profile == {"first_name": "Lyra", "last_name": "Synthetic", "gender": "F", "personality": "Patient observer.",
                        "job_title": "Astronomer", "job_description": "Study distant galaxies."}
@@ -100,6 +103,16 @@ async def test_http_generation_uses_default_profile_and_registers_compact_portra
     with Image.open(io.BytesIO(avatar.content)) as stored:
         assert stored.format == "JPEG" and stored.size == (500, 500)
     provider.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_http_generation_rejects_oversized_instructions_before_provider(client, portrait_configuration, monkeypatch):
+    provider = AsyncMock()
+    monkeypatch.setattr(image_service, "generate_image_native", provider)
+    response = await client.post(f"/api/agents/{portrait_configuration['agent_id']}/avatar/generate",
+                                 headers=portrait_configuration["headers"], json={"instructions": "x" * 4001})
+    assert response.status_code == 422
+    provider.assert_not_awaited()
 
 
 @pytest.mark.asyncio

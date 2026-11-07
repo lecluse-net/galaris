@@ -14,7 +14,7 @@ from .schemas import (
     Title as TitleSchema, TitleCreate, TitleUpdate,
     Agent as AgentSchema, AgentCreate, AgentUpdate,
     AgentGroup as AgentGroupSchema, AgentGroupCreate, AgentGroupUpdate,
-    AgentManagerInfo, ExecutorDriverInfo,
+    AgentManagerInfo, ExecutorDriverInfo, AvatarGenerationRequest,
 )
 from . import title_service, agent_service, agent_group_service
 from core.user import user_service
@@ -327,13 +327,13 @@ async def delete_agent(
 
 @crud_router.post("/{id}/avatar/generate", dependencies=[Depends(require_web_session)])
 @authorize(privileges=Privileges.AGENT_EDIT, assertion=AgentOwnerAssertion)
-async def generate_agent_avatar(id: int) -> dict[str, object]:
+async def generate_agent_avatar(id: int, request: AvatarGenerationRequest | None = None) -> dict[str, object]:
     from app.llm import ImageGenerationProviderError
     from .avatar_generation import AvatarGenerationUnavailable, generate_managed_avatar
     from .avatars import AvatarConflictError
 
     try:
-        return await generate_managed_avatar(id)
+        return await generate_managed_avatar(id, instructions=request.instructions if request else "")
     except AvatarGenerationUnavailable as exc:
         raise HTTPException(409, await _detail("avatar_generation_unavailable")) from exc
     except AvatarConflictError as exc:

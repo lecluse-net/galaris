@@ -318,6 +318,10 @@ no Process. All paths store an optimised JPEG within **500 × 500 pixels**, pres
 and orientation without enlargement or EXIF metadata. Failure, revocation or a concurrent edit
 preserves the current avatar; late reads cannot replace it. Generation requires a configured
 image resource and never silently falls back to a text model.
+In the agent profile, **Generate avatar** opens a dialog for instructions before starting
+generation with the default LLM profile. Instructions specify the style, including realistic
+human portraits, and remain available after a failure. An agent uses `agent_avatar_generate`
+to regenerate and replace an authorised target's portrait without a separate Image connection.
 
 Any change to the agent while generation runs prevents replacement, including an avatar replaced
 and then restored; the current state is preserved.

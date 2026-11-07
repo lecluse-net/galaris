@@ -85,6 +85,15 @@ a retained session.
 Portraits use the target’s first/last name, title gender and personality. HTML is read
 as descriptive text and remains unchanged in storage. Optional instructions, limited to
 4,000 characters, specify appearance, framing or atmosphere.
+They also determine the style, including realistic human portraits; a non-human appearance
+is never imposed. Regeneration replaces the existing avatar on success and does not require
+the separate Image connection. Before concluding that generation is unavailable, the agent
+checks `tools_list` and distinguishes the authorised catalogue from the current context.
+
+In the agent profile, **Generate avatar** opens a dialog for optional instructions.
+Generation starts only after submission in this dialog and uses the installation's default
+LLM profile. Instructions remain after an error so they can be retried; cancelling before
+submission does not call the provider.
 
 `agent_avatar_generate` directly calls the service used by `image_generate`, waits for the
 image and registers it. The result contains `status="success"`, `registered=true`, the

@@ -58,6 +58,10 @@ class AgentGroup(AgentGroupBase):
     model_config = ConfigDict(from_attributes=True)
 
 # Agent schemas
+class AvatarGenerationRequest(BaseModel):
+    instructions: str = Field(default="", max_length=4000)
+
+
 class AgentBase(BaseModel):
     title_id: int
     code: str

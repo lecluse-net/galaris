@@ -183,8 +183,8 @@ export const agentService = {
     getAvatarGenerationAvailability(): Promise<AxiosResponse<{ available: boolean }>> {
         return api.get('/agents/avatar-generation')
     },
-    async generateAvatar(id: number): Promise<AxiosResponse<{ status: string; registered: boolean }>> {
-        const response = await api.post<{ status: string; registered: boolean }>(`/agents/${id}/avatar/generate`)
+    async generateAvatar(id: number, instructions = ''): Promise<AxiosResponse<{ status: string; registered: boolean }>> {
+        const response = await api.post<{ status: string; registered: boolean }>(`/agents/${id}/avatar/generate`, { instructions })
         invalidateSessionReads('agent-avatar')
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')

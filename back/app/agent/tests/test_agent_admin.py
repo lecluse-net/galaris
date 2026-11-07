@@ -276,6 +276,8 @@ def test_portrait_data_and_decoding_guarantees():
     prompt = portrait_prompt({"first_name": "Lyra", "last_name": "Synthetic", "gender": "F", "personality": "<p>Careful <b>observer</b></p>", "job_title": "Astronomer", "job_description": "<p>Study distant galaxies.</p>"}, "neutral background")
     assert "Careful observer" in prompt and "<p>" not in prompt
     assert "neutral background" in prompt
+    assert "including a realistic human portrait when requested" in prompt
+    assert "non-human nature" not in prompt
     assert "background extending to all four corners" in prompt
     assert "Do not apply a circular crop" in prompt
     profile = json.loads(prompt.split("\n")[1])
@@ -472,6 +474,8 @@ async def test_direct_generation_preserves_old_avatar_on_failure(db, admin_fixtu
     async def provider(prompt, **kwargs):
         nonlocal late
         assert "Admin" in prompt and "gender" in prompt and "personality" in prompt
+        if outcome == "success":
+            assert prompt.endswith("Appearance, framing and atmosphere: neutral studio background")
         assert kwargs["agent_id"] == caller.id and kwargs["model_id"] == model_id
         assert kwargs["task_id"] is None
         if outcome == "provider_error":

@@ -135,8 +135,14 @@ Sensitive actions use the common authorization policy; discoverability never gra
 `agent_options`, `agent_create`, `agent_update` and `agent_delete` manage profiles within the
 manager's scope. Creation uses the internal Harness; code and Harness changes use their
 dedicated contracts. `agent_avatar_set`, `agent_avatar_delete` and `agent_avatar_generate`
-manage portraits. Generation runs directly and returns a registration receipt with the
-target profile URI and avatar revision; it does not create a business Process.
+manage portraits. To regenerate another agent's avatar, call `agent_avatar_generate`
+with its `agent_id` and the user's appearance/style request in `instructions` (up to 4,000
+characters), including realistic human portraits when requested. This function generates
+and replaces the avatar directly; it does not require the separate Image Tool or a Process.
+Wait for `registered=true` before reporting success. If the function is absent, inspect
+`tools_list` before stating that generation is unavailable: AgentAdmin delegation and a
+configured effective image model are required, and the catalogue distinguishes functions
+present in this run from those requiring a new execution context.
 
 Use `agent_team_list` and `agent_team_set` for membership. Titles use `agent_title_list`,
 `agent_title_create`, `agent_title_update` and `agent_title_delete`; groups use `agent_group_list`,

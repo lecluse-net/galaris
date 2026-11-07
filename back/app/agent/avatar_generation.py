@@ -35,9 +35,9 @@ def portrait_prompt(description: dict[str, object], instructions: str) -> str:
     for field in ("personality", "job_description"):
         profile[field] = visible_text(str(profile[field] or ""))[:4000]
     return ("Create a distinctive avatar for this fictional AI agent. "
-            "Use creative freedom to choose its visual form and artistic style, inspired by its profile. "
-            "Any visual form or artistic style is welcome. "
-            "The character's non-human nature as an AI agent must be visually identifiable. "
+            "Follow the supplied appearance instructions for visual form and artistic style, "
+            "including a realistic human portrait when requested. "
+            "Where the instructions leave details unspecified, draw inspiration from the profile. "
             "If the chosen form expresses gender, use the supplied gender; do not infer it from the name. "
             "Convey the personality and professional role through the chosen form, colors and atmosphere. "
             "Compose a clear focal subject that remains legible at small avatar size. "
@@ -79,8 +79,10 @@ async def _managed_target(target_id: int) -> Agent:
     return target
 
 
-async def generate_managed_avatar(target_id: int) -> dict[str, object]:
+async def generate_managed_avatar(target_id: int, instructions: str = "") -> dict[str, object]:
     """Generate from saved profile data, using only the default LLM profile."""
+    if len(instructions) > 4000:
+        raise ValueError("Avatar instructions exceed 4000 characters")
     target = await _managed_target(target_id)
     if not await avatar_generation_available():
         raise AvatarGenerationUnavailable("A usable default image generation model is required")
@@ -89,7 +91,7 @@ async def generate_managed_avatar(target_id: int) -> dict[str, object]:
     model_id = model.id
     snapshot = await portrait_snapshot(target)
     await get_db().commit()
-    content = await _generate_portrait(snapshot, model_id, agent_id=target_id)
+    content = await _generate_portrait(snapshot, model_id, agent_id=target_id, instructions=instructions)
     await _managed_target(target_id)
     result = await apply_generated_avatar(target_id, content, snapshot)
     await get_db().commit()

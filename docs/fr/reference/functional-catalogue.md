@@ -390,6 +390,11 @@ optimisé d’au plus **500 × 500 pixels**, proportions et orientation préserv
 ni métadonnées EXIF. Une erreur, une révocation ou une modification concurrente conserve l’avatar
 courant ; les lectures tardives ne le remplacent pas. La disponibilité de la génération exige
 une ressource image configurée, sans repli implicite vers le modèle texte.
+Dans la fiche agent, **Générer un avatar** ouvre une modale où saisir les consignes avant
+de lancer la génération avec le profil LLM par défaut. Les consignes précisent notamment
+le style, y compris un portrait humain réaliste, et restent disponibles après un échec.
+L’agent utilise `agent_avatar_generate` pour régénérer et remplacer le portrait d’une cible
+autorisée, sans connexion Image distincte.
 
 Toute modification de la fiche agent pendant une génération empêche son remplacement, y compris
 un avatar remplacé puis restauré ; l’état courant reste conservé.

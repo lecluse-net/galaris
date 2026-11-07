@@ -89,6 +89,15 @@ La disponibilité est réévaluée à la découverte et à l’appel, même dans
 Le portrait utilise le prénom, le nom, le genre de la civilité et la personnalité
 de la cible. Le HTML est lu comme texte descriptif et reste inchangé en base. Les instructions
 facultatives, au plus 4 000 caractères, précisent apparence, cadrage ou ambiance.
+Elles déterminent aussi le style, y compris un portrait humain réaliste ; aucune apparence
+non humaine n’est imposée. La régénération remplace l’avatar existant après succès et ne
+nécessite pas la connexion Image distincte. Avant de conclure à une fonction indisponible,
+l’agent consulte `tools_list` et distingue le catalogue autorisé du contexte courant.
+
+Dans la fiche agent, **Générer un avatar** ouvre une modale de consignes facultatives.
+La génération commence uniquement après validation dans cette modale et utilise le profil
+LLM par défaut de l’installation. Les consignes restent saisies après une erreur pour permettre
+une nouvelle tentative ; annuler avant validation ne déclenche aucun appel fournisseur.
 
 `agent_avatar_generate` appelle directement le service utilisé par `image_generate`,
 attend l'image et l'enregistre. La réponse contient `status="success"`, `registered=true`,

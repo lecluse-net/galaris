@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
+from pydantic import Field
+
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 from .admin_schemas import PageLimit, PageOffset
 
@@ -224,7 +228,7 @@ async def _avatar_available(ctx: McpToolContext) -> bool:
     return await avatar_generation_available(ctx.agent_id)
 
 
-@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_avatar_generate", description="Generate and register a photographic avatar from the target's personality, title gender, first and last name using your image model. Waits for completion and stores a JPEG within 500x500 pixels.", available_when=_avatar_available)
-async def agent_avatar_generate(ctx: McpToolContext, agent_id: int, instructions: str = "") -> dict[str, Any]:
+@mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_avatar_generate", description="Generate or regenerate and replace another agent's avatar using your image model. Pass the user's appearance and style instructions, including realistic human portraits. Uses the target's saved identity, personality and job as context. Waits for registration and returns registered=true on success; no separate image Tool is required. Stores a JPEG within 500x500 pixels.", available_when=_avatar_available)
+async def agent_avatar_generate(ctx: McpToolContext, agent_id: int, instructions: Annotated[str, Field(max_length=4000)] = "") -> dict[str, Any]:
     from .avatar_generation import generate_avatar
     return await generate_avatar(ctx.agent_id, agent_id, instructions, task_id=ctx.task_id)
