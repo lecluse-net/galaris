@@ -2,6 +2,7 @@ export default {
   fr: { team: {
     intro: 'Les humains et les agents de vos équipes.',
     title: 'Équipes', create: 'Nouvelle équipe', edit: 'Modifier l’équipe', details: 'Équipe',
+    addMembers: 'Ajouter des membres', membersOf: 'Membres de {name}',
     name: 'Nom', description: 'Description', humans: 'Humains', agents: 'Agents IA',
     moveNamed: 'Déplacer {name}', moveHint: 'Glisser pour déplacer, ou utiliser les flèches haut et bas.',
     addHuman: 'Ajouter un humain', addAgent: 'Ajouter un agent', add: 'Ajouter', inactive: 'Inactif',
@@ -14,6 +15,7 @@ export default {
   en: { team: {
     intro: 'The humans and agents in your teams.',
     title: 'Teams', create: 'New team', edit: 'Edit team', details: 'Team',
+    addMembers: 'Add members', membersOf: 'Members of {name}',
     name: 'Name', description: 'Description', humans: 'Humans', agents: 'AI agents',
     moveNamed: 'Move {name}', moveHint: 'Drag to move, or use the up and down arrow keys.',
     addHuman: 'Add a human', addAgent: 'Add an agent', add: 'Add', inactive: 'Inactive',
@@ -26,6 +28,7 @@ export default {
   zh: { team: {
     intro: '团队中的人类用户和智能体。',
     title: '团队', create: '新建团队', edit: '编辑团队', details: '团队',
+    addMembers: '添加成员', membersOf: '{name}的成员',
     name: '名称', description: '描述', humans: '人类用户', agents: 'AI 智能体',
     moveNamed: '移动 {name}', moveHint: '拖动以移动，或使用上下方向键。',
     addHuman: '添加用户', addAgent: '添加智能体', add: '添加', inactive: '未激活',

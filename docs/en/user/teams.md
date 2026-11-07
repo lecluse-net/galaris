@@ -12,6 +12,13 @@ Agent selectors use the scope of the action: managed agents in administration sc
 allowed contacts in Chat, and the membership catalogue when composing a team. Their
 choices are checked again whenever the selector opens.
 
+Agents can find colleagues by team with `agent_list(team_name="Research")`, or with
+`team_id` when they know its identifier. Names match exactly, ignoring case and surrounding
+spaces. If multiple teams share that name, their members are combined without duplicates;
+use the identifier to select a single team. Keep the same filter when following `next_offset`.
+An unknown or deleted team returns no agents. This lookup grants no additional communication
+or administration rights.
+
 A **team** contains humans and agents. Each member can belong to several teams. Members
 sharing a team can engage in human–agent dialogue under channel privileges. Agent-to-agent
 exchanges also follow their messaging connection's local scope.
@@ -23,6 +30,12 @@ member counts, with names and avatars for small teams. Click a name or the edit 
 to open the large dialog. Humans appear on the left and agents on the right, with avatar
 selectors for adding members. The columns stack on mobile. Additions and removals take
 effect when you **Save**; **Cancel** discards unsaved changes.
+
+In the **Agents** tab, **Add members**, between **Restart all** and **New Agent**, opens
+the same editor for the current team's members, without a team selector. Select multiple
+humans or agents, click **Add** in their column, then **Save**. Other team memberships
+are preserved. The button requires team viewing and membership editing privileges and is
+disabled in the **No team** tab.
 
 Drag rows by their handle to reorder teams; dropping a row saves its position immediately.
 The handle also supports touch and the up/down arrow keys. New teams are appended to the list.

@@ -54,14 +54,23 @@ def _directory_page(
 
 async def list_agents(
     limit: int = 50, *, offset: int = 0, language: str | None = None,
+    team_id: int | None = None, team_name: str | None = None,
 ) -> str:
     """Return a compact JSON directory page; read full profiles with agent_get."""
     if offset < 0 or not 1 <= limit <= 500:
         raise ValueError("offset must be nonnegative and limit must be between 1 and 500")
+    if team_id is not None and team_id <= 0:
+        raise ValueError("team_id must be positive")
+    if team_name is not None:
+        if not team_name.strip() or len(team_name) > 255:
+            raise ValueError("team_name must contain between 1 and 255 characters")
+        team_name = team_name.strip()
     lang = _language(language)
     try:
         # One lookahead row distinguishes a complete page from an unfinished list.
-        agents = await agent_service.get_all(skip=offset, limit=limit + 1)
+        agents = await agent_service.get_all(
+            skip=offset, limit=limit + 1, team_id=team_id, team_name=team_name,
+        )
     except RuntimeError as e:
         return _message(lang, "database_error", error=e)
     except Exception as e:

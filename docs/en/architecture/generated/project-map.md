@@ -998,7 +998,7 @@ tests remain authoritative for behavior.
 | `core/params` | `core/navigation` | `front/core/params/components/PreferencesMenuGrid.vue`, `front/core/params/components/PreferencesSectionPage.vue`, `front/core/params/navigation.ts`, `front/core/params/pages/index.vue` |
 | `core/params` | `core/util` | `front/core/params/components/MessagingSettingsPanel.vue`, `front/core/params/components/PreferencesMenuGrid.vue`, `front/core/params/components/PreferencesSectionPage.vue`, `front/core/params/components/PromptSettingEditor.vue`, `front/core/params/components/SettingFieldControl.vue`, `front/core/params/pages/harnesses/[provider].vue`, `front/core/params/pages/index.vue`, `front/core/params/services/paramsService.ts`, `front/core/params/settingsTypes.ts` |
 | `core/team` | `core/api` | `front/core/team/components/TeamEditor.vue`, `front/core/team/services/teamService.ts` |
-| `core/team` | `core/authorize` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue` |
+| `core/team` | `core/authorize` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue` |
 | `core/team` | `core/navigation` | `front/core/team/navigation.ts` |
 | `core/team` | `core/user` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamHumanSummary.vue` |
 | `core/team` | `core/util` | `front/core/team/pages/index.vue` |
@@ -2205,9 +2205,9 @@ tests remain authoritative for behavior.
 | `topic_merge` | `` | `app.topic` | `mcp_topic_merge` | `back/app/topic/mcp.py:227` |
 | `topic_split` | `` | `app.topic` | `mcp_topic_split` | `back/app/topic/mcp.py:248` |
 | `topic_update` | `` | `app.topic` | `mcp_topic_update` | `back/app/topic/mcp.py:168` |
-| `agent_avatar_delete` | `agent_admin` | `app.agent` | `agent_avatar_delete` | `back/app/agent/mcp.py:117` |
-| `agent_avatar_generate` | `agent_admin` | `app.agent` | `agent_avatar_generate` | `back/app/agent/mcp.py:232` |
-| `agent_avatar_set` | `agent_admin` | `app.agent` | `agent_avatar_set` | `back/app/agent/mcp.py:207` |
+| `agent_avatar_delete` | `agent_admin` | `app.agent` | `agent_avatar_delete` | `back/app/agent/mcp.py:125` |
+| `agent_avatar_generate` | `agent_admin` | `app.agent` | `agent_avatar_generate` | `back/app/agent/mcp.py:240` |
+| `agent_avatar_set` | `agent_admin` | `app.agent` | `agent_avatar_set` | `back/app/agent/mcp.py:215` |
 | `agent_connection_create` | `agent_admin` | `app.connection` | `agent_connection_create` | `back/app/connection/agent_admin_mcp.py:33` |
 | `agent_connection_delete` | `agent_admin` | `app.connection` | `agent_connection_delete` | `back/app/connection/agent_admin_mcp.py:48` |
 | `agent_connection_function_list` | `agent_admin` | `app.connection` | `agent_connection_function_list` | `back/app/connection/agent_admin_mcp.py:72` |
@@ -2217,12 +2217,12 @@ tests remain authoritative for behavior.
 | `agent_connection_param_delete` | `agent_admin` | `app.connection` | `agent_connection_param_delete` | `back/app/connection/agent_admin_mcp.py:64` |
 | `agent_connection_params_set` | `agent_admin` | `app.connection` | `agent_connection_params_set` | `back/app/connection/agent_admin_mcp.py:56` |
 | `agent_connection_update` | `agent_admin` | `app.connection` | `agent_connection_update` | `back/app/connection/agent_admin_mcp.py:40` |
-| `agent_create` | `agent_admin` | `app.agent` | `agent_create` | `back/app/agent/mcp.py:64` |
-| `agent_delete` | `agent_admin` | `app.agent` | `agent_delete` | `back/app/agent/mcp.py:100` |
-| `agent_group_create` | `agent_admin` | `app.agent` | `agent_group_create` | `back/app/agent/mcp.py:179` |
-| `agent_group_delete` | `agent_admin` | `app.agent` | `agent_group_delete` | `back/app/agent/mcp.py:197` |
-| `agent_group_list` | `agent_admin` | `app.agent` | `agent_group_list` | `back/app/agent/mcp.py:173` |
-| `agent_group_update` | `agent_admin` | `app.agent` | `agent_group_update` | `back/app/agent/mcp.py:185` |
+| `agent_create` | `agent_admin` | `app.agent` | `agent_create` | `back/app/agent/mcp.py:72` |
+| `agent_delete` | `agent_admin` | `app.agent` | `agent_delete` | `back/app/agent/mcp.py:108` |
+| `agent_group_create` | `agent_admin` | `app.agent` | `agent_group_create` | `back/app/agent/mcp.py:187` |
+| `agent_group_delete` | `agent_admin` | `app.agent` | `agent_group_delete` | `back/app/agent/mcp.py:205` |
+| `agent_group_list` | `agent_admin` | `app.agent` | `agent_group_list` | `back/app/agent/mcp.py:181` |
+| `agent_group_update` | `agent_admin` | `app.agent` | `agent_group_update` | `back/app/agent/mcp.py:193` |
 | `agent_harness_action` | `agent_admin` | `app.harnesses` | `agent_harness_action` | `back/app/harnesses/mcp.py:62` |
 | `agent_harness_blockers` | `agent_admin` | `app.harnesses` | `agent_harness_blockers` | `back/app/harnesses/mcp.py:81` |
 | `agent_harness_get` | `agent_admin` | `app.harnesses` | `agent_harness_get` | `back/app/harnesses/mcp.py:17` |
@@ -2230,15 +2230,15 @@ tests remain authoritative for behavior.
 | `agent_harness_reset` | `agent_admin` | `app.harnesses` | `agent_harness_reset` | `back/app/harnesses/mcp.py:38` |
 | `agent_harness_set` | `agent_admin` | `app.harnesses` | `agent_harness_set` | `back/app/harnesses/mcp.py:24` |
 | `agent_harness_status` | `agent_admin` | `app.harnesses` | `agent_harness_status` | `back/app/harnesses/mcp.py:51` |
-| `agent_options` | `agent_admin` | `app.agent` | `agent_options` | `back/app/agent/mcp.py:111` |
-| `agent_team_list` | `agent_admin` | `app.agent` | `agent_team_list` | `back/app/agent/mcp.py:125` |
-| `agent_team_set` | `agent_admin` | `app.agent` | `agent_team_set` | `back/app/agent/mcp.py:132` |
-| `agent_title_create` | `agent_admin` | `app.agent` | `agent_title_create` | `back/app/agent/mcp.py:146` |
-| `agent_title_delete` | `agent_admin` | `app.agent` | `agent_title_delete` | `back/app/agent/mcp.py:164` |
-| `agent_title_list` | `agent_admin` | `app.agent` | `agent_title_list` | `back/app/agent/mcp.py:140` |
-| `agent_title_update` | `agent_admin` | `app.agent` | `agent_title_update` | `back/app/agent/mcp.py:152` |
+| `agent_options` | `agent_admin` | `app.agent` | `agent_options` | `back/app/agent/mcp.py:119` |
+| `agent_team_list` | `agent_admin` | `app.agent` | `agent_team_list` | `back/app/agent/mcp.py:133` |
+| `agent_team_set` | `agent_admin` | `app.agent` | `agent_team_set` | `back/app/agent/mcp.py:140` |
+| `agent_title_create` | `agent_admin` | `app.agent` | `agent_title_create` | `back/app/agent/mcp.py:154` |
+| `agent_title_delete` | `agent_admin` | `app.agent` | `agent_title_delete` | `back/app/agent/mcp.py:172` |
+| `agent_title_list` | `agent_admin` | `app.agent` | `agent_title_list` | `back/app/agent/mcp.py:148` |
+| `agent_title_update` | `agent_admin` | `app.agent` | `agent_title_update` | `back/app/agent/mcp.py:160` |
 | `agent_tool_list` | `agent_admin` | `app.connection` | `agent_tool_list` | `back/app/connection/agent_admin_mcp.py:11` |
-| `agent_update` | `agent_admin` | `app.agent` | `agent_update` | `back/app/agent/mcp.py:79` |
+| `agent_update` | `agent_admin` | `app.agent` | `agent_update` | `back/app/agent/mcp.py:87` |
 | `audio_transcribe` | `audio` | `app.audio` | `transcribe_audio_file` | `back/app/audio/mcp.py:303` |
 | `browser_back` | `browser` | `app.browser` | `browser_back` | `back/app/browser/mcp.py:478` |
 | `browser_click` | `browser` | `app.browser` | `browser_click` | `back/app/browser/mcp.py:408` |
@@ -2292,8 +2292,8 @@ tests remain authoritative for behavior.
 | `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:121` |
 | `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:211` |
 | `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:369` |
-| `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:43` |
-| `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:24` |
+| `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:51` |
+| `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:26` |
 | `contact_create` | `galaris` | `app.contact` | `mcp_contact_create` | `back/app/contact/mcp.py:48` |
 | `contact_get` | `galaris` | `app.contact` | `mcp_contact_get` | `back/app/contact/mcp.py:38` |
 | `contact_list` | `galaris` | `app.contact` | `mcp_contact_list` | `back/app/contact/mcp.py:23` |

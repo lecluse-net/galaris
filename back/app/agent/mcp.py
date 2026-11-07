@@ -15,18 +15,26 @@ from .admin_schemas import PageLimit, PageOffset
     name="agent_list",
     description=(
         "List Galaris agents in compact JSON pages with ID, profile URI, code, name and job title. "
+        "Optionally filter by team_id or exact team_name (case-insensitive); both filters intersect. "
         "Follow next_offset until null; a page may contain fewer than limit entries to stay bounded. "
+        "Keep the same team filters on subsequent pages. "
         "Use agent_get for full profiles and assigned models."
     ),
     effect_policy="read",
     concurrency_policy="safe",
 )
-async def list_agents(ctx: McpToolContext, limit: PageLimit = 50, offset: PageOffset = 0) -> str:
+async def list_agents(
+    ctx: McpToolContext, limit: PageLimit = 50, offset: PageOffset = 0,
+    team_id: Annotated[int, Field(gt=0)] | None = None,
+    team_name: Annotated[str, Field(min_length=1, max_length=255)] | None = None,
+) -> str:
     """List a bounded directory page with an explicit continuation offset."""
     from app.agent import tools as agent_tools
 
     language = await context_language(ctx)
-    return await agent_tools.list_agents(limit=limit, offset=offset, language=language)
+    return await agent_tools.list_agents(
+        limit=limit, offset=offset, language=language, team_id=team_id, team_name=team_name,
+    )
 
 
 @mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",

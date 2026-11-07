@@ -7888,7 +7888,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_avatar_delete",
-        "line": 117,
+        "line": 125,
         "module": "app.agent",
         "name": "agent_avatar_delete",
         "namespace": "agent_admin"
@@ -7896,7 +7896,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_avatar_generate",
-        "line": 232,
+        "line": 240,
         "module": "app.agent",
         "name": "agent_avatar_generate",
         "namespace": "agent_admin"
@@ -7904,7 +7904,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_avatar_set",
-        "line": 207,
+        "line": 215,
         "module": "app.agent",
         "name": "agent_avatar_set",
         "namespace": "agent_admin"
@@ -7984,7 +7984,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_create",
-        "line": 64,
+        "line": 72,
         "module": "app.agent",
         "name": "agent_create",
         "namespace": "agent_admin"
@@ -7992,7 +7992,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_delete",
-        "line": 100,
+        "line": 108,
         "module": "app.agent",
         "name": "agent_delete",
         "namespace": "agent_admin"
@@ -8000,7 +8000,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_create",
-        "line": 179,
+        "line": 187,
         "module": "app.agent",
         "name": "agent_group_create",
         "namespace": "agent_admin"
@@ -8008,7 +8008,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_delete",
-        "line": 197,
+        "line": 205,
         "module": "app.agent",
         "name": "agent_group_delete",
         "namespace": "agent_admin"
@@ -8016,7 +8016,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_list",
-        "line": 173,
+        "line": 181,
         "module": "app.agent",
         "name": "agent_group_list",
         "namespace": "agent_admin"
@@ -8024,7 +8024,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_group_update",
-        "line": 185,
+        "line": 193,
         "module": "app.agent",
         "name": "agent_group_update",
         "namespace": "agent_admin"
@@ -8088,7 +8088,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_options",
-        "line": 111,
+        "line": 119,
         "module": "app.agent",
         "name": "agent_options",
         "namespace": "agent_admin"
@@ -8096,7 +8096,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_team_list",
-        "line": 125,
+        "line": 133,
         "module": "app.agent",
         "name": "agent_team_list",
         "namespace": "agent_admin"
@@ -8104,7 +8104,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_team_set",
-        "line": 132,
+        "line": 140,
         "module": "app.agent",
         "name": "agent_team_set",
         "namespace": "agent_admin"
@@ -8112,7 +8112,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_create",
-        "line": 146,
+        "line": 154,
         "module": "app.agent",
         "name": "agent_title_create",
         "namespace": "agent_admin"
@@ -8120,7 +8120,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_delete",
-        "line": 164,
+        "line": 172,
         "module": "app.agent",
         "name": "agent_title_delete",
         "namespace": "agent_admin"
@@ -8128,7 +8128,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_list",
-        "line": 140,
+        "line": 148,
         "module": "app.agent",
         "name": "agent_title_list",
         "namespace": "agent_admin"
@@ -8136,7 +8136,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_title_update",
-        "line": 152,
+        "line": 160,
         "module": "app.agent",
         "name": "agent_title_update",
         "namespace": "agent_admin"
@@ -8152,7 +8152,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_update",
-        "line": 79,
+        "line": 87,
         "module": "app.agent",
         "name": "agent_update",
         "namespace": "agent_admin"
@@ -8584,7 +8584,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "get_agent",
-        "line": 43,
+        "line": 51,
         "module": "app.agent",
         "name": "agent_get",
         "namespace": "galaris"
@@ -8592,7 +8592,7 @@
       {
         "file": "back/app/agent/mcp.py",
         "handler": "list_agents",
-        "line": 24,
+        "line": 26,
         "module": "app.agent",
         "name": "agent_list",
         "namespace": "galaris"
@@ -23208,7 +23208,8 @@
       {
         "files": [
           "front/core/team/components/TeamEditor.vue",
-          "front/core/team/components/TeamManager.vue"
+          "front/core/team/components/TeamManager.vue",
+          "front/core/team/components/TeamMembersDialog.vue"
         ],
         "source": "core/team",
         "target": "core/authorize"

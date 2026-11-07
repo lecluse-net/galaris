@@ -683,12 +683,18 @@ available. Preserve the intended recipient and requested contribution in the obj
 the Task can resolve remaining identity details. An unavailable foreground action does not
 mean the colleague is unknown or unreachable. Contact permissions still apply.
 
-- `agent_list(limit: int = 50, offset: int = 0) -> str` returns compact JSON with
+- `agent_list(limit: int = 50, offset: int = 0, team_id: int | None = None,
+  team_name: str | None = None) -> str` returns compact JSON with
   `items` (ID, profile URI, code, name and job-title preview), `count`, `offset`, `limit`,
   `has_more` and `next_offset`. Follow `next_offset` until null for an exhaustive inventory;
   the character budget can make a page shorter than `limit` (1–500). Detailed profiles
-  and assigned models are available through `agent_get`. Restart an inventory if agents
-  are created, deleted or renamed during traversal.
+  and assigned models are available through `agent_get`. To find colleagues in an intended
+  team, pass `team_name="Research"` (exact name, case-insensitive, surrounding spaces ignored)
+  or its positive `team_id`. If both are supplied, both must match the same active team.
+  Teams with the same name are all matched; use `team_id` to select one. Keep the same
+  filters on each page. An unknown or deleted team returns an empty page. Restart an inventory
+  if agents or team memberships change during traversal. Finding an agent does not grant
+  communication or administration rights.
 - `agent_get(agent_id: int) -> str` returns the complete job, mission, and personality of an
   agent selected from `agent_list`.
   Both tools include the stable `galaris://agent/<id>` URI. `file_read` reads the current

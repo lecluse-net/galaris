@@ -1,14 +1,14 @@
 <template>
   <q-card class="team-editor galaris-dialog-card">
     <q-card-section class="galaris-dialog-title row items-center">
-      <div class="text-h6">{{ t(team ? (canEdit || canMembers ? 'team.edit' : 'team.details') : 'team.create') }}</div>
+      <div class="text-h6">{{ membersOnly ? t('team.membersOf', { name: team?.name }) : t(team ? (canEdit || canMembers ? 'team.edit' : 'team.details') : 'team.create') }}</div>
       <q-space />
       <q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="emit('close')" />
     </q-card-section>
     <q-form class="galaris-dialog-form" @submit="save">
       <div class="galaris-dialog-body">
         <div class="team-editor-body">
-          <q-card-section>
+          <q-card-section v-if="!membersOnly">
             <div class="row q-col-gutter-md">
               <q-input v-model="form.name" class="col-12" outlined dense :readonly="!canEdit" :disable="saving"
                 :label="t('team.name')" :rules="[v => !!String(v).trim() || t('team.required')]" maxlength="255" />
@@ -16,7 +16,7 @@
                 :readonly="!canEdit" :disable="saving" :label="t('team.description')" maxlength="4000" />
             </div>
           </q-card-section>
-          <q-separator />
+          <q-separator v-if="!membersOnly" />
           <q-card-section>
             <q-banner v-if="loadError" class="q-mb-md" role="alert">
               {{ t('team.error') }}
@@ -28,11 +28,24 @@
                 <div class="text-subtitle1 q-mb-md">{{ t('team.humans') }} <q-badge color="primary" :label="humans.length" /></div>
                 <q-banner v-if="searchError" class="q-mb-sm" role="alert">{{ t('team.error') }}</q-banner>
                 <div v-if="canMembers" class="row items-start no-wrap q-gutter-sm q-mb-md">
-                  <UserSelect v-model="selectedHuman" class="col" outlined dense use-input clearable
+                  <q-select v-if="membersOnly" v-model="selectedHumans" class="col" outlined dense use-input clearable
+                    multiple use-chips emit-value map-options :options="humanOptions" :label="t('team.addHuman')"
+                    :disable="saving || loading || loadError" input-debounce="200"
+                    @filter="filterHumans" @filter-abort="invalidateSearch" @popup-hide="invalidateSearch">
+                    <template #no-option><q-item><q-item-section>{{ t('common.noResults') }}</q-item-section></q-item></template>
+                    <template #option="scope">
+                      <q-item v-bind="scope.itemProps" :aria-label="scope.opt.label">
+                        <q-item-section avatar><UserAvatar :name="scope.opt.label" :avatar-url="scope.opt.avatarUrl" /></q-item-section>
+                        <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label></q-item-section>
+                        <q-item-section side><q-icon v-if="scope.selected" name="check" color="primary" /></q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                  <UserSelect v-else v-model="selectedHuman" class="col" outlined dense use-input clearable
                     :options="humanOptions" :label="t('team.addHuman')" :disable="saving || loading || loadError"
                     input-debounce="200" @filter="filterHumans" @filter-abort="invalidateSearch" @popup-hide="invalidateSearch" />
                   <q-btn color="primary" icon="add" :label="t('team.add')"
-                    :disable="selectedHuman === null || saving || loading || loadError" @click="addHuman" />
+                    :disable="(membersOnly ? !selectedHumans?.length : selectedHuman === null) || saving || loading || loadError" @click="addHuman" />
                 </div>
                 <q-list bordered separator class="rounded-borders">
                   <q-item v-for="member in humans" :key="member.id">
@@ -48,7 +61,7 @@
               </section>
               <div v-for="entry in contributions" :key="entry.definition.key" class="col-12 col-md-6">
                 <component :is="entry.definition.component" v-model="drafts[entry.definition.key]" :members="entry.members"
-                  :readonly="!canMembers" :disabled="saving || loading || loadError" />
+                  :readonly="!canMembers" :disabled="saving || loading || loadError" :multiple="membersOnly" />
               </div>
             </div>
           </q-card-section>
@@ -57,7 +70,7 @@
         <q-card-section v-if="saveError" class="q-pb-none" role="alert">{{ t('team.saveError') }}</q-card-section>
       </div>
       <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-        <q-btn flat :label="t(canEdit || canMembers ? 'common.cancel' : 'common.close')" @click="emit('close')" />
+        <q-btn outline color="primary" :label="t(canEdit || canMembers ? 'common.cancel' : 'common.close')" @click="emit('close')" />
         <q-btn v-if="canEdit || canMembers" color="primary" type="submit" :label="t('common.save')"
           :loading="saving" :disable="loading || loadError" />
       </q-card-actions>
@@ -74,17 +87,19 @@ import { UserAvatar, UserSelect } from '@/core/user'
 import { teamService, type Human, type Team } from '../services/teamService'
 import type { LoadedTeamContribution } from '../contributions'
 
-const { team, contributions } = defineProps<{ team?: Team; contributions: LoadedTeamContribution[] }>()
+const { team, contributions, membersOnly = false } = defineProps<{ team?: Team; contributions: LoadedTeamContribution[]; membersOnly?: boolean }>()
 const emit = defineEmits<{ close: []; saved: []; changed: [] }>()
 const { t } = useI18n()
 const privileges = usePrivilegeStore()
-const canEdit = computed(() => privileges.hasPrivilege('TEAM_ACCESS') && privileges.hasPrivilege('TEAM_EDIT'))
+const canEdit = computed(() => !membersOnly && privileges.hasPrivilege('TEAM_ACCESS') && privileges.hasPrivilege('TEAM_EDIT'))
 const canMembers = computed(() => privileges.hasPrivilege('TEAM_ACCESS') && privileges.hasPrivilege('TEAM_MEMBERS_EDIT'))
 const form = ref({ name: team?.name ?? '', description: team?.description ?? '' })
 let savedId = team?.id
 const humans = ref<Human[]>([])
 const originalHumans = new Set<number>()
 const selectedHuman = ref<number | null>(null)
+const selectedHumans = ref<number[] | null>([])
+const selectedHumanRows = new Map<number, Human>()
 const humanResults = ref<Human[]>([])
 const loading = ref(true)
 const loadError = ref(false)
@@ -119,7 +134,10 @@ async function filterHumans(value: string, update: (callback: () => void) => voi
   try {
     const rows = await teamService.humans(value)
     if (version !== searchVersion) return
-    update(() => { humanResults.value = rows })
+    update(() => {
+      humanResults.value = rows
+      for (const human of rows) selectedHumanRows.set(human.id, human)
+    })
   } catch (error) {
     if (version !== searchVersion) return
     searchError.value = !isCancelledRequest(error)
@@ -128,9 +146,13 @@ async function filterHumans(value: string, update: (callback: () => void) => voi
 }
 function addHuman(): void {
   if (!canMembers.value || saving.value) return
-  const human = humanResults.value.find(member => member.id === selectedHuman.value)
-  if (human && !humans.value.some(member => member.id === human.id)) humans.value = [...humans.value, human]
+  const selected = membersOnly ? selectedHumans.value ?? [] : selectedHuman.value === null ? [] : [selectedHuman.value]
+  for (const id of selected) {
+    const human = selectedHumanRows.get(id)
+    if (human && !humans.value.some(member => member.id === human.id)) humans.value = [...humans.value, human]
+  }
   selectedHuman.value = null
+  selectedHumans.value = []
 }
 async function saveMemberships(id: number, desired: number[], original: Set<number>, write: (teamId: number, memberId: number, present: boolean) => Promise<void>): Promise<void> {
   for (const memberId of new Set([...original, ...desired])) {

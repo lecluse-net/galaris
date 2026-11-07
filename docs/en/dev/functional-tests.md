@@ -2371,6 +2371,11 @@ their meaning without disclosing private diagnostics.
 
 ### Dialog scrolling
 
+`teams.spec.mjs` also covers adding multiple humans and agents to the current team from
+the Agents page on desktop and mobile: cancellation without writes, recovery from partial
+failure without replaying successful additions, preserved memberships in other teams, and
+a button restricted to membership administrators. The shared editor keeps team metadata unchanged.
+
 Long content scrolls without moving the title or hiding its close button, on desktop and
 mobile. Footer actions remain reachable and forms preserve drafts, validation and saving
 after scrolling. Coverage: `front/browser-tests/dialogs.spec.mjs`, `teams.spec.mjs`,

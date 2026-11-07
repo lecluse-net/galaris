@@ -1,4 +1,5 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
+import { agent as agentProfile } from './data.mjs'
 
 const catalogue = {
   teams: [{id:10,name:'Sales',description:'',order:0},{id:20,name:'Direction',description:'',order:1}],
@@ -10,6 +11,7 @@ const imageData = Buffer.from(avatarSvg).toString('base64')
 const people = [
   { id: 7, label: 'Sophie', active: true, avatar_url: `data:image/svg+xml;base64,${imageData}` },
   { id: 8, label: 'Nicolas', active: true, avatar_url: `data:image/svg+xml;base64,${imageData}` },
+  { id: 9, label: 'Noor', active: true, avatar_url: `data:image/svg+xml;base64,${imageData}` },
 ]
 
 async function teamFixtures(page, { failFirstAgentSave = false, many = false } = {}) {
@@ -202,4 +204,78 @@ test('touch dragging moves teams in the mobile list', async ({ page }) => {
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
   await expect.poll(() => writes.filter(write => write[0] === 'move')).toEqual([['move', 20, 10, false]])
   await expect(page.locator('[data-team-id]').first()).toHaveAttribute('data-team-id', '20')
+})
+
+for (const width of [1440, 390]) test(`the Agents page adds multiple existing members to its current team (${width}px)`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const writes = await teamFixtures(page, { many: true, failFirstAgentSave: true })
+  const profiles = [
+    { ...agentProfile, id: 1, first_name: 'Atlas', last_name: '', team_ids: [10], agent_driver: 'internal' },
+    { ...agentProfile, id: 2, first_name: 'Ada', last_name: '', team_ids: [20], agent_driver: 'internal' },
+    { ...agentProfile, id: 3, first_name: 'Worker 3', last_name: '', team_ids: [20], agent_driver: 'internal' },
+  ]
+  await page.route('**/api/agents?*', route => route.fulfill({ json: profiles.map(agent => ({ ...agent,
+    team_ids: [...new Set([...agent.team_ids, ...writes.filter(write => write[0] === 'agent' && write[2] === agent.id && write[3]).map(write => write[1])])],
+  })) }))
+  await jsonRoute(page, '**/api/agents/titles?*', [])
+  await jsonRoute(page, '**/api/agents/groups?*', catalogue.teams)
+  await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
+  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_ACCESS', 'TEAM_ACCESS', 'TEAM_MEMBERS_EDIT', 'TEAM_EDIT'] })
+  const addMembers = page.getByRole('button', { name: 'Add members', exact: true })
+  await expect(page.getByRole('tab', { name: 'Sales', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await addMembers.click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Members of Sales', { exact: true })).toBeVisible()
+  // Membership administration never submits team metadata, even with TEAM_EDIT.
+  await expect(dialog.getByLabel('Name', { exact: true })).toHaveCount(0)
+  const agents = dialog.getByRole('region', { name: 'AI agents', exact: true })
+  const humans = dialog.getByRole('region', { name: 'Humans', exact: true })
+  await agents.getByRole('combobox').click()
+  await expect(page.getByRole('option', { name: 'Atlas', exact: true })).toHaveCount(0)
+  await page.getByRole('option', { name: 'Ada', exact: true }).click()
+  await page.getByRole('option', { name: 'Worker 3', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await agents.getByRole('button', { name: 'Add', exact: true }).click()
+  await humans.getByRole('combobox').click()
+  await page.getByRole('option', { name: 'Nicolas', exact: true }).click()
+  await page.getByRole('option', { name: 'Noor', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await humans.getByRole('button', { name: 'Add', exact: true }).click()
+  expect(writes).toEqual([])
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes).toEqual([])
+
+  await addMembers.click()
+  await expect(dialog.getByText('Members of Sales', { exact: true })).toBeVisible()
+  await expect(agents.getByText('Ada', { exact: true })).toHaveCount(0)
+  await agents.getByRole('combobox').click()
+  await page.getByRole('option', { name: 'Ada', exact: true }).click()
+  await page.getByRole('option', { name: 'Worker 3', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await agents.getByRole('button', { name: 'Add', exact: true }).click()
+  await humans.getByRole('combobox').click()
+  await page.getByRole('option', { name: 'Nicolas', exact: true }).click()
+  await page.getByRole('option', { name: 'Noor', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await humans.getByRole('button', { name: 'Add', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('Could not save all changes')
+  await expect(agents.getByText('Ada', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes).toEqual([['human', 10, 8, true], ['human', 10, 9, true], ['agent', 10, 2, true], ['agent', 10, 3, true]])
+  await expect(page.locator('.agent-card').getByText('Ada', { exact: true })).toBeVisible()
+  await expect(page.locator('.agent-card').getByText('Worker 3', { exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Direction', exact: true }).click()
+  await expect(page.locator('.agent-card').getByText('Ada', { exact: true })).toBeVisible()
+  await addMembers.click()
+  await expect(dialog.getByText('Members of Direction', { exact: true })).toBeVisible()
+  await dialog.evaluate(element => Promise.all(element.getAnimations({ subtree: true }).map(animation => animation.finished)))
+  await testInfo.attach('team-members-light', { body: await dialog.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
+  await page.evaluate(() => window.testApp.dark(true))
+  await testInfo.attach('team-members-dark', { body: await dialog.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await setPrivileges(page, ['AGENT_ACCESS', 'TEAM_ACCESS'])
+  await expect(addMembers).toHaveCount(0)
 })

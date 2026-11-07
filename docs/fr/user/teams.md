@@ -18,6 +18,13 @@ présente les humains à gauche et les agents à droite, avec des sélecteurs à
 ajouter un membre. Sur mobile, les deux colonnes s’empilent. Les ajouts et retraits prennent
 effet avec **Enregistrer** ; **Annuler** abandonne les changements non enregistrés.
 
+Dans l’onglet **Agents**, le bouton **Ajouter des membres**, entre **Tout redémarrer**
+et **Nouvel Agent**, ouvre cette même fiche pour les membres de l’équipe courante, sans
+sélecteur d’équipe. Sélectionnez plusieurs humains ou agents, cliquez sur **Ajouter** dans
+la colonne concernée, puis sur **Enregistrer**. Leurs autres appartenances sont conservées.
+Ce bouton exige les droits de consultation des équipes et de modification de leurs membres ;
+il est désactivé dans l’onglet **Sans équipe**.
+
 Le manager conserve son accès à ses agents, et l’administrateur peut contacter tous les agents.
 Partager une équipe ne permet pas d’administrer
 un agent, de se faire passer pour lui ni de lire les conversations d’autres humains.
@@ -30,6 +37,14 @@ la gestion des autres tâches du destinataire.
 Les sélecteurs proposent les agents autorisés pour l’action : agents administrables dans
 les écrans de gestion, interlocuteurs autorisés dans le chat, catalogue des membres dans
 la composition d’équipe. Leurs choix sont revérifiés à l’ouverture.
+
+Les agents peuvent rechercher des collègues par équipe avec
+`agent_list(team_name="Recherche")`, ou avec `team_id` s’ils connaissent son identifiant.
+Le nom doit correspondre exactement, sans tenir compte des majuscules ni des espaces autour.
+Si plusieurs équipes portent ce nom, leurs membres sont réunis sans doublons ; l’identifiant
+permet de cibler une seule équipe. Le même filtre doit être conservé en suivant `next_offset`.
+Une équipe inconnue ou supprimée ne renvoie aucun agent. Cette recherche ne donne aucun droit
+supplémentaire de communication ou d’administration.
 
 ## Qui peut communiquer ?
 

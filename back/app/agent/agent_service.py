@@ -171,6 +171,9 @@ async def get_all(
     limit: int = 50,
     agent_driver: str | None = None,
     agent_ids: Collection[int] | None = None,
+    *,
+    team_id: int | None = None,
+    team_name: str | None = None,
 ) -> Sequence[Agent]:
     """Get all agents with pagination."""
     logger.info("Listing agents")
@@ -183,6 +186,17 @@ async def get_all(
         query = query.where(Agent.agent_driver == agent_driver)
     if agent_ids is not None:
         query = query.where(Agent.id.in_(agent_ids))
+    if team_id is not None or team_name is not None:
+        membership = (
+            select(AgentTeam.id)
+            .join(AgentGroup, AgentGroup.id == AgentTeam.team_id)
+            .where(AgentTeam.agent_id == Agent.id, AgentGroup.deleted_at.is_(None))
+        )
+        if team_id is not None:
+            membership = membership.where(AgentTeam.team_id == team_id)
+        if team_name is not None:
+            membership = membership.where(func.lower(AgentGroup.name) == team_name.strip().lower())
+        query = query.where(membership.exists())
     query = query.order_by(
         func.lower(Agent.first_name).collate("und-x-icu"),
         func.lower(Agent.last_name).collate("und-x-icu"),
@@ -200,8 +214,8 @@ async def get_all(
         .where(AgentTeam.agent_id.in_([agent.id for agent in agents]))
     )
     teams_by_agent: dict[int, set[int]] = {}
-    for agent_id, team_id in memberships:
-        teams_by_agent.setdefault(agent_id, set()).add(team_id)
+    for agent_id, member_team_id in memberships:
+        teams_by_agent.setdefault(agent_id, set()).add(member_team_id)
     current_user_id = user_service.get_current_user_id()
     for agent, has_avatar in rows:
         teams = teams_by_agent.get(agent.id, set())

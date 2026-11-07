@@ -2472,6 +2472,11 @@ réel : authentification, délai et statuts serveur gardent leur sens sans divul
 
 ### Défilement des modales
 
+`teams.spec.mjs` couvre aussi l’ajout de plusieurs humains et agents à l’équipe courante
+depuis la page Agents, sur ordinateur et mobile : annulation sans écriture, reprise après
+échec partiel sans rejouer les ajouts réussis, autres appartenances conservées et bouton
+réservé aux droits de gestion des membres. La fiche commune s’ouvre sans modifier l’équipe.
+
 Le contenu long défile sans déplacer le titre ni masquer sa fermeture, sur ordinateur et
 mobile. Les actions de pied restent accessibles et les formulaires conservent leurs
 brouillons, leur validation et leur sauvegarde après défilement. Garanties :

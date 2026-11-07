@@ -11,10 +11,22 @@
   <section v-else :aria-label="t('team.agents')">
     <div class="text-subtitle1 q-mb-md">{{ t('team.agents') }} <q-badge color="primary" :label="model.length" /></div>
     <div v-if="!readonly" class="row items-start no-wrap q-gutter-sm q-mb-md">
-      <AgentSelect v-model="selected" class="col" outlined dense clearable use-input
+      <q-select v-if="multiple" v-model="selectedMany" class="col" outlined dense clearable use-input
+        multiple use-chips emit-value map-options :options="options" :label="t('team.addAgent')" :disable="disabled"
+        input-debounce="0" @filter="filter">
+        <template #no-option><q-item><q-item-section>{{ t('common.noResults') }}</q-item-section></q-item></template>
+        <template #option="scope">
+          <q-item v-bind="scope.itemProps" :aria-label="scope.opt.label">
+            <q-item-section avatar><AgentAvatar :agent-id="scope.opt.value" :name="scope.opt.label" :has-avatar="scope.opt.hasAvatar" /></q-item-section>
+            <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label></q-item-section>
+            <q-item-section side><q-icon v-if="scope.selected" name="check" color="primary" /></q-item-section>
+          </q-item>
+        </template>
+      </q-select>
+      <AgentSelect v-else v-model="selected" class="col" outlined dense clearable use-input
         :options="options" scope="teams" :load-agents="false" :label="t('team.addAgent')" :disable="disabled"
         input-debounce="0" @filter="filter" />
-      <q-btn color="primary" icon="add" :label="t('team.add')" :disable="selected === null || disabled" @click="add" />
+      <q-btn color="primary" icon="add" :label="t('team.add')" :disable="(multiple ? !selectedMany?.length : selected === null) || disabled" @click="add" />
     </div>
     <q-list bordered separator class="rounded-borders">
       <q-item v-for="member in selectedMembers" :key="member.id">
@@ -37,15 +49,17 @@ import type { TeamMember } from '@/core/team'
 import AgentAvatar from './AgentAvatar.vue'
 import AgentSelect from './AgentSelect.vue'
 
-const { members, readonly = false, disabled = false, compact = false } = defineProps<{
+const { members, readonly = false, disabled = false, compact = false, multiple = false } = defineProps<{
   members: TeamMember[]
   readonly?: boolean
   disabled?: boolean
   compact?: boolean
+  multiple?: boolean
 }>()
 const model = defineModel<number[]>({ required: true })
 const { t } = useI18n()
 const selected = ref<number | null>(null)
+const selectedMany = ref<number[] | null>([])
 const query = ref('')
 const selectedMembers = computed(() => members.filter(member => model.value.includes(member.id)))
 const options = computed(() => members
@@ -55,9 +69,12 @@ function filter(value: string, update: (callback: () => void) => void): void {
   update(() => { query.value = value.toLocaleLowerCase() })
 }
 function add(): void {
-  if (readonly || disabled || selected.value === null || model.value.includes(selected.value)) return
-  model.value = [...model.value, selected.value]
+  if (readonly || disabled) return
+  const requested = multiple ? selectedMany.value ?? [] : selected.value === null ? [] : [selected.value]
+  const eligible = new Set(members.map(member => member.id))
+  model.value = [...new Set([...model.value, ...requested.filter(id => eligible.has(id))])]
   selected.value = null
+  selectedMany.value = []
   query.value = ''
 }
 </script>

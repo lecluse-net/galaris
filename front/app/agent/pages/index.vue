@@ -56,6 +56,8 @@
             :loading="fleetRestarting"
             @click="restartFleet"
           />
+          <q-btn v-if="canEditTeamMembers" outline color="primary" icon="group_add"
+            :label="$t('team.addMembers')" :disable="currentTeamId === null" @click="showAddToTeamDialog = true" />
           <q-btn v-if="canEdit" color="primary" icon="add" :label="$t('agent.newAgent')" @click="openAgentDialog()" />
         </div>
 
@@ -308,6 +310,9 @@
     </q-tab-panels>
 
     <!-- AGENT DIALOG -->
+    <TeamMembersDialog v-if="!previewAgentId" v-model="showAddToTeamDialog" :team-id="currentTeamId"
+      @changed="agentStore.fetchAgents()" />
+
     <q-dialog v-model="showAgentDialog">
       <q-card class="agent-dialog-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center">
@@ -932,7 +937,7 @@ import { useHarnessLogs } from '../composables/useHarnessLogs'
 import AgentAuxiliaryDialogs from '../components/AgentAuxiliaryDialogs.vue'
 import AvatarGenerationDialog from '../components/AvatarGenerationDialog.vue'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { TeamManager } from '@/core/team'
+import { TeamManager, TeamMembersDialog } from '@/core/team'
 
 const { previewAgentId } = defineProps<{ previewAgentId?: number }>()
 const emit = defineEmits<{ deleted: [] }>()
@@ -945,6 +950,8 @@ const llmProfileStore = useLLMProfileStore()
 const privilegeStore = usePrivilegeStore()
 const canViewAgents = computed(() => privilegeStore.hasPrivilege('AGENT_ACCESS') || privilegeStore.hasPrivilege('AGENT_EDIT'))
 const canViewTeams = computed(() => privilegeStore.hasPrivilege('TEAM_ACCESS'))
+const canEditTeamMembers = computed(() => canViewTeams.value && privilegeStore.hasPrivilege('TEAM_MEMBERS_EDIT'))
+const showAddToTeamDialog = ref(false)
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.AGENT_EDIT))
 const canManageAllAgents = computed(() => (
   privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL)
@@ -967,6 +974,7 @@ watch([canViewAgents, canViewTeams], () => {
   if (!allowed.includes(activeTab.value)) activeTab.value = allowed[0] ?? ''
 }, { immediate: true })
 const activeGroupTab = ref('')
+const currentTeamId = computed(() => agentStore.groups.find(group => String(group.id) === activeGroupTab.value)?.id ?? null)
 const agentDialogTab = ref('general')
 const showAgentDialog = ref(false)
 let agentDialogGeneration = 0
