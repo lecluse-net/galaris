@@ -102,6 +102,8 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
     specs = {spec.code: spec for spec in mandatory_tools.INTEGRATED_TOOL_SPECS}
 
     assert {
+        "team_list",
+        "team_members",
         "task_get",
         "goal_update_suivi",
         "goal_run_now",

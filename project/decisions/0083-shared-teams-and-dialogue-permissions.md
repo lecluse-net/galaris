@@ -71,6 +71,24 @@ entre agents passent par la façade Task, sans inventer de salon humain.
 
 ## Administration et revue des dépendances
 
+### Annuaire agentique en lecture seule — 7 novembre 2026
+
+Le service système Galaris expose `team_list` et `team_members`, en conversation comme en
+tâche, sans délégation AgentAdmin ni document intermédiaire. Cette découverte couvre les
+équipes de l'instance, comme le catalogue des agents et les destinataires de partage existants.
+`app.agent` compose les contrats publics `core.team` et `core.user` avec ses appartenances IA ;
+`core.team` ne dépend pas de l'application. Les fonctions publiques `list_team_directory` et
+`list_team_members` possèdent la lecture, MCP ne fait que valider et projeter leur résultat.
+
+Les listes sont paginées et bornées en caractères, recherchent des sous-chaînes littérales,
+préservent les équipes homonymes et distinguent chaque membre par `(kind, id)`. Elles
+excluent les humains inactifs et les agents/équipes supprimés. Les humains sans nom affiché
+reçoivent un libellé neutre fondé sur leur identifiant, sans révéler leur email de connexion.
+Les appartenances sont relues sans cache. L'activation des fonctions reste gouvernée par
+Tools ; cette découverte ne change ni les droits de contact, ni les ACL, ni l'administration.
+
+### Gestion des équipes
+
 `TEAM_ACCESS`, `TEAM_EDIT` et `TEAM_MEMBERS_EDIT` séparent lecture du catalogue, édition
 et composition. Les anciens privilèges `AGENT_AUTHORIZATION_ACCESS` et
 `AGENT_AUTHORIZATION_EDIT` sont retirés. Toute mutation exige aussi le privilège de lecture.

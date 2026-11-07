@@ -1267,6 +1267,13 @@ aux deux sens des transports, salons, fichiers et invitations, sous les portées
 conservation des restrictions humaines lors des synchronisations suivantes.
 
 AgentAdmin est documenté dans [agent-admin.md](agent-admin.md).
+`back/app/agent/tests/test_team_directory.py` protège l'annuaire partagé en lecture seule :
+équipes vides ou homonymes, effectifs courants, identités humaines/IA de même numéro,
+recherches littérales et filtres, exclusion des comptes inactifs et suppressions logiques,
+relecture après retrait et pagination sans omission après compactage réel du harnais.
+Les appels sur serveur MCP réel, pour les runtimes interne et Hermès, vérifient l'accès sans
+délégation administrative, l'exposition conversationnelle, la validation des arguments et
+la révocation/réactivation d'une fonction sur le même serveur.
 `back/app/agent/tests/test_tools.py` parcourt des annuaires synthétiques de 16 et 63 agents,
 avec de petites pages et un annuaire vide, après compactage réel de l’historique du harnais.
 Il vérifie chaque identité et URI, la continuation jusqu’à la fin sans doublon ni omission,

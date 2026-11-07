@@ -12,7 +12,23 @@ Agent selectors use the scope of the action: managed agents in administration sc
 allowed contacts in Chat, and the membership catalogue when composing a team. Their
 choices are checked again whenever the selector opens.
 
-Agents can find colleagues by team with `agent_list(team_name="Research")`, or with
+Agents have a read-only directory without AgentAdmin delegation:
+`team_list(search="Research")` finds teams by part of their name and returns their IDs,
+description previews and human/AI counts, including empty teams.
+`team_members(team_id=…)` then lists the selected team's active humans and non-deleted agents.
+Filter with `kind="user"` or `kind="agent"` to select a member type; `search` matches part
+of the member name. Human and agent IDs can overlap, so each identity includes its kind and ID.
+Login email addresses and private account data are not exposed.
+
+Both functions are available in conversations and Tasks according to their Galaris function
+activation. Follow `next_offset` until `null` while preserving filters: pages can be shorter
+than the requested limit (50 by default, from 1 to 500). Searches ignore case and surrounding
+spaces; `%` and `_` are literal characters. Teams with identical names remain distinct by ID.
+Unknown or deleted teams produce an error; an empty team returns an empty list. Memberships
+are read afresh on each call; restart an inventory if they change during traversal.
+Discovery grants no additional contact, sharing, document access or administration rights.
+
+Agents can also find only AI colleagues by team with `agent_list(team_name="Research")`, or with
 `team_id` when they know its identifier. Names match exactly, ignoring case and surrounding
 spaces. If multiple teams share that name, their members are combined without duplicates;
 use the identifier to select a single team. Keep the same filter when following `next_offset`.

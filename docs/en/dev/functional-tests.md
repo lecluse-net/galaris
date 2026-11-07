@@ -1201,6 +1201,12 @@ invitations under none/team/all scopes. `app/agent/tests/test_default_agent.py` 
 installation permissions and preservation of later human restrictions during synchronization.
 
 AgentAdmin is documented in [agent-admin.md](agent-admin.md).
+`back/app/agent/tests/test_team_directory.py` protects the shared read-only directory:
+empty and homonymous teams, current counts, overlapping human/agent IDs, literal searches
+and filters, inactive accounts and soft deletions, fresh reads after removal, and pagination
+without omissions after actual Harness history compaction. Real MCP server calls for the
+internal and Hermes runtimes verify access without administrative delegation, conversation
+exposure, argument validation and function revocation/reactivation on the same server.
 `back/app/agent/tests/test_tools.py` traverses synthetic directories of 16 and 63 agents,
 including small pages and an empty directory, after actual Harness history compaction.
 It verifies every identity and URI, continuation to the end without omissions or duplicates,

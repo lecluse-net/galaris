@@ -161,7 +161,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         label="Galaris",
         description=DESCRIPTIONS["galaris"],
         mcp_tools=(
-            "agent_list", "agent_get",
+            "agent_list", "agent_get", "team_list", "team_members",
             "contact_list", "contact_get", "contact_create", "contact_update",
             "task_run", "task_get", "task_stop",
             "goal_update_suivi",

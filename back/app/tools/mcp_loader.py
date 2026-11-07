@@ -178,6 +178,8 @@ _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
     # Read-only colleague discovery does not require a background Task.
     "agent_list": "short",
     "agent_get": "short",
+    "team_list": "short",
+    "team_members": "short",
     # Bounded web search is the direct fast path for current factual information.
     "search_web": "short",
     # Governed resource reads and bounded document updates remain available in conversation mode.
@@ -917,7 +919,8 @@ class _MediaFilteredFastMCP(FastMCP):
         from core.database import get_db_session
 
         dynamic = {definition.name for definition in load_mcp_tools()
-                   if definition.tool_code in {"multimedia", "agent_admin", "tool_admin"}}
+                   if definition.tool_code in {"multimedia", "agent_admin", "tool_admin"}
+                   or definition.name in {"team_list", "team_members"}}
         if not any(tool.name in dynamic for tool in tools):
             return tools
 

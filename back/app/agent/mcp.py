@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -18,7 +18,7 @@ from .admin_schemas import PageLimit, PageOffset
         "Optionally filter by team_id or exact team_name (case-insensitive); both filters intersect. "
         "Follow next_offset until null; a page may contain fewer than limit entries to stay bounded. "
         "Keep the same team filters on subsequent pages. "
-        "Use agent_get for full profiles and assigned models."
+        "Use agent_get for full profiles and assigned models, or team_list and team_members for teams and their human/agent members."
     ),
     effect_policy="read",
     concurrency_policy="safe",
@@ -56,7 +56,46 @@ async def get_agent(ctx: McpToolContext, agent_id: int) -> str:
     return await agent_tools.get_agent_details(agent_id, language=language)
 
 
-from typing import Any, Literal
+@mcp_tool("galaris", name="team_list", approval="enabled",
+    approval_reason="Read the shared team directory without granting access or changing memberships",
+    description=(
+        "Discover shared teams across this Galaris instance, including empty teams, with IDs, name/description previews "
+        "and counts of active humans and non-deleted agents. Search is a literal case-insensitive name substring. "
+        "Use team_members(team_id) for the roster. Follow next_offset until null, preserving search. "
+        "Pages can be shorter than limit. No AgentAdmin delegation or document is required; no contact or management rights are granted."
+    ), effect_policy="read", concurrency_policy="safe")
+async def team_list(
+    ctx: McpToolContext, search: Annotated[str, Field(max_length=200)] = "",
+    offset: PageOffset = 0, limit: PageLimit = 50,
+) -> str:
+    from .team_directory import list_team_directory
+
+    return (await list_team_directory(search=search, offset=offset, limit=limit)).model_dump_json()
+
+
+@mcp_tool("galaris", name="team_members", approval="enabled",
+    approval_reason="Read current team memberships without granting access or changing them",
+    description=(
+        "List one team's active human users and non-deleted agents using a team_id from team_list. "
+        "Each identity is the pair (kind, id): user and agent IDs can overlap. "
+        "Optionally filter kind=agent/user and a literal case-insensitive name substring search. "
+        "Follow next_offset until null, preserving team_id, kind and search; pages can be shorter than limit. "
+        "Unknown/deleted teams fail. Human emails and account details are excluded. Discovery grants no contact, sharing or management rights."
+    ), effect_policy="read", concurrency_policy="safe")
+async def team_members(
+    ctx: McpToolContext, team_id: Annotated[int, Field(gt=0)],
+    kind: Literal["agent", "user"] | None = None,
+    search: Annotated[str, Field(max_length=200)] = "", offset: PageOffset = 0, limit: PageLimit = 50,
+) -> str:
+    from .team_directory import list_team_members
+
+    try:
+        return (await list_team_members(team_id, kind=kind, search=search, offset=offset, limit=limit)).model_dump_json()
+    except LookupError as error:
+        raise ValueError("Team not found; refresh team_list and select a current team ID") from error
+
+
+from typing import Any
 from sqlalchemy import select
 
 from core.database import get_db

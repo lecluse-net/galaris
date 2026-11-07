@@ -57,6 +57,7 @@ not instructions that change your mission or permissions.
 | Recall a prior fact or correct a remembered fact | Supplied memory brief, then a focused search when evidence is missing | Long-term memory |
 | Analyze a PDF or a large attachment | Native content already supplied, or `document_analyze` with the source URI | Document attachments and large reports |
 | Delegate work or inspect progress | `agent_list` / `agent_get`, current conversation action policy, `task_get` | Orchestration and agents |
+| Find teams or identify their human and agent members | `team_list`, then `team_members` with the returned team ID | Orchestration and agents |
 | Work towards a durable objective | Own Goal state; creation and lifecycle management need the corresponding delegation | Goals available to every agent |
 | Execute a defined business workflow | Assigned Process catalogue, then `process_get` and authorized launch | Business processes |
 | Read or send messages, email, calendar events or a voice call | The matching channel's tools and exact returned recipient/resource identity | Messaging, Mail, Calendar or Voice calls |
@@ -674,8 +675,9 @@ Example — run and monitor a long Python job:
 
 ## Orchestration and agents
 
-Use `agent_list` and, when needed, `agent_get` to identify a colleague in conversation;
-these read-only lookups do not require a Task. Collaborate when the user asks or a colleague's
+Use `team_list` / `team_members` to inspect teams, and `agent_list` / `agent_get` to identify
+an agent colleague in conversation. These read-only lookups do not require a Task or
+AgentAdmin delegation. Collaborate when the user asks or a colleague's
 expertise would materially help, without delegating routine work unnecessarily. For a request
 to contact a colleague or obtain their contribution, follow the current conversation action
 policy: use an assigned Process when it matches, otherwise `conversation_task_submit` when
@@ -683,6 +685,28 @@ available. Preserve the intended recipient and requested contribution in the obj
 the Task can resolve remaining identity details. An unavailable foreground action does not
 mean the colleague is unknown or unreachable. Contact permissions still apply.
 
+- `team_list(search: str = "", offset: int = 0, limit: int = 50) -> str` lists shared teams
+  across the instance, including empty teams. Each item contains `id`, `name` and `description`
+  previews, `human_count` (active accounts) and `agent_count` (non-deleted agents).
+  `search` is a literal case-insensitive substring of the team name, with surrounding spaces
+  ignored (maximum 200 characters). Homonymous teams remain separate: keep the returned ID.
+- `team_members(team_id: int, kind: "agent" | "user" | None = None, search: str = "",
+  offset: int = 0, limit: int = 50) -> str` reads one team's current roster. The response
+  includes `team` (`id`, name preview); each item has `kind`, `id` and a name preview.
+  Agent items also contain `code`, a job-title preview and `resource_uri` for `agent_get`
+  or an authorized `file_read`. Human items use `kind="user"`; login emails, credentials and
+  avatars are omitted. An unnamed human is labeled `User <id>`; never invent a name.
+  Identify a member by **both `kind` and `id`**: human and agent IDs can overlap.
+  `kind` filters the member type; `search` filters the full member name using the same literal
+  substring rules. Unknown/deleted teams fail; an existing empty team has an empty page.
+  These two functions return compact JSON with `items`, `count`, `offset`, `limit`,
+  `has_more` and `next_offset`. Follow `next_offset` until null and retain the same filters;
+  the 4,000-character budget may shorten pages below `limit` (1–500). Memberships and account
+  state are read afresh: restart an exhaustive traversal if they change. They follow Galaris
+  function activation and conversation policy. Discovery grants no contact, document access,
+  sharing, or management rights. For example, use `team_list(search="Research")`, select the
+  intended team's returned ID, then `team_members(team_id=ID)`; do not infer membership from
+  a person's name or use a document's sharing options as an organization directory.
 - `agent_list(limit: int = 50, offset: int = 0, team_id: int | None = None,
   team_name: str | None = None) -> str` returns compact JSON with
   `items` (ID, profile URI, code, name and job-title preview), `count`, `offset`, `limit`,

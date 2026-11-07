@@ -163,6 +163,7 @@ from .management_scope import (
 )
 from .live import AgentLiveEvent, register_live_listener
 from .harness_port import register_harness_selection_port
+from .team_directory import list_team_directory, list_team_members
 
 
 async def configured_harness_selection(agent: Agent) -> ConfiguredHarnessSelection | None:
@@ -243,6 +244,7 @@ async def terminate_paused_agent_tasks(agent_id: int) -> AgentTaskBlockers:
 
 
 __all__ = [
+    "list_team_directory", "list_team_members",
     "WorkPlan", "WorkMilestone", "work_plan_progress",
     "ExecutionScopeV1", "EffectDescriptorV1", "ScopePreflightV1", "SCOPE_KEY", "PREFLIGHT_KEY",
     "admitted_scope", "amend_scope", "parse_scope", "preflight",

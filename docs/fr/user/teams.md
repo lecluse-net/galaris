@@ -38,7 +38,25 @@ Les sélecteurs proposent les agents autorisés pour l’action : agents adminis
 les écrans de gestion, interlocuteurs autorisés dans le chat, catalogue des membres dans
 la composition d’équipe. Leurs choix sont revérifiés à l’ouverture.
 
-Les agents peuvent rechercher des collègues par équipe avec
+Les agents disposent d'un annuaire en lecture seule, sans délégation AgentAdmin :
+`team_list(search="Recherche")` recherche les équipes par partie de leur nom et renvoie
+leurs identifiants, une description abrégée et les effectifs humains et IA, y compris pour
+les équipes vides. `team_members(team_id=…)` liste ensuite les humains actifs et les agents
+non supprimés de l'équipe choisie. Le filtre `kind="user"` ou `kind="agent"` sélectionne
+un type de membre ; `search` recherche une partie du nom. Un humain et un agent pouvant
+avoir le même numéro, chaque identité comprend son type et son identifiant.
+Les adresses de connexion et les données privées des comptes ne sont pas exposées.
+
+Les deux fonctions sont disponibles en conversation et en tâche selon leur activation dans
+Galaris. Suivez `next_offset` jusqu'à `null`, en conservant les filtres : une page peut être
+plus courte que la limite demandée (50 par défaut, de 1 à 500). Les recherches ignorent la casse
+et les espaces autour ; `%` et `_` restent des caractères ordinaires. Les équipes homonymes
+restent distinctes par leur identifiant. Une équipe inconnue ou supprimée produit une erreur ;
+une équipe vide renvoie une liste vide. Les appartenances sont relues à chaque appel ;
+recommencez un inventaire si elles changent pendant sa lecture. La consultation ne donne aucun
+droit supplémentaire de dialogue, de partage, d'accès aux documents ou d'administration.
+
+Les agents peuvent aussi rechercher uniquement des collègues IA par équipe avec
 `agent_list(team_name="Recherche")`, ou avec `team_id` s’ils connaissent son identifiant.
 Le nom doit correspondre exactement, sans tenir compte des majuscules ni des espaces autour.
 Si plusieurs équipes portent ce nom, leurs membres sont réunis sans doublons ; l’identifiant

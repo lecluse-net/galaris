@@ -404,6 +404,8 @@ def test_tool_execution_policy_is_explicit_and_conservative() -> None:
     assert execution_policy_for_tool("search_web") == ("read", "safe")
     assert execution_policy_for_tool("agent_list") == ("read", "safe")
     assert execution_policy_for_tool("agent_get") == ("read", "safe")
+    assert execution_policy_for_tool("team_list") == ("read", "safe")
+    assert execution_policy_for_tool("team_members") == ("read", "safe")
     for name in (
         "file_schemes",
         "file_list",
