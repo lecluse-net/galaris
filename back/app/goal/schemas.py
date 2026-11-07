@@ -410,8 +410,14 @@ class GoalSummary(BaseModel):
     total_cost: float = 0.0
 
 
+class GoalListRead(GoalRead):
+    """List classification comes from the visible branch root, independently of own data."""
+
+    effective_category_id: int | None = None
+
+
 class GoalPage(BaseModel):
-    items: list[GoalRead]
+    items: list[GoalListRead]
     total: int
     summary: GoalSummary
     tracking_llm_configured: bool

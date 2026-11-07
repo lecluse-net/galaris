@@ -53,11 +53,14 @@ test('column sorting keeps categories first and orders agents inside each catego
   await goals(page)
   const categories = [{ id: 11, label: 'Zeta' }, { id: 12, label: 'Alpha' }]
   const rows = [
-    { ...goal, id: 'alpha-zora', title: 'Alpha Zora objective', agent_name: 'Zora Example', category_id: 12 },
-    { ...goal, id: 'alpha-alice', title: 'Alpha Alice objective', agent_name: 'Alice Example', category_id: 12 },
-    { ...goal, id: 'zeta-zora', title: 'Zeta Zora objective', agent_name: 'Zora Example', category_id: 11 },
-    { ...goal, id: 'zeta-alice', title: 'Zeta Alice objective', agent_name: 'Alice Example', category_id: 11 },
-    { ...goal, id: 'none-alice', title: 'Uncategorized objective', category_id: null },
+    { ...goal, id: 'alpha-zora', title: 'Alpha Zora objective', agent_name: 'Zora Example', category_id: 12, effective_category_id: 12 },
+    { ...goal, id: 'alpha-alice', title: 'Alpha Alice objective', agent_name: 'Alice Example', category_id: 12, effective_category_id: 12 },
+    { ...goal, id: 'child', parent_goal_id: 'alpha-zora', title: 'Child with own Zeta category', agent_name: 'Aaron Example', category_id: 11, effective_category_id: 12 },
+    { ...goal, id: 'leaf', parent_goal_id: 'child', title: 'Leaf without own category', category_id: null, effective_category_id: 12 },
+    { ...goal, id: 'zeta-zora', title: 'Zeta Zora objective', agent_name: 'Zora Example', category_id: 11, effective_category_id: 11 },
+    { ...goal, id: 'zeta-alice', title: 'Zeta Alice objective', agent_name: 'Alice Example', category_id: 11, effective_category_id: 11 },
+    { ...goal, id: 'none-alice', title: 'Uncategorized objective', category_id: null, effective_category_id: null },
+    { ...goal, id: 'none-child', parent_goal_id: 'none-alice', title: 'Child with own Alpha category', category_id: 12, effective_category_id: null },
   ]
   await jsonRoute(page, '**/api/goals/categories', categories)
   await jsonRoute(page, '**/api/goals/tree', { items: [...rows].reverse(), total: rows.length })
@@ -65,21 +68,23 @@ test('column sorting keeps categories first and orders agents inside each catego
   await page.route('**/api/goals?*', route => {
     const params = new URL(route.request().url()).searchParams
     requests.push(Object.fromEntries(params))
-    const direction = params.get('descending') === 'true' ? -1 : 1
-    const rank = row => row.category_id === 12 ? 0 : row.category_id === 11 ? 1 : 2
-    const items = [...rows].sort((a, b) => rank(a) - rank(b)
-      || (params.get('sort_by') === 'agent' ? direction * a.agent_name.localeCompare(b.agent_name) : 0))
+    const ids = params.get('descending') === 'true'
+      ? ['alpha-zora', 'child', 'leaf', 'alpha-alice', 'zeta-zora', 'zeta-alice', 'none-alice', 'none-child']
+      : ['alpha-alice', 'alpha-zora', 'child', 'leaf', 'zeta-alice', 'zeta-zora', 'none-alice', 'none-child']
+    const items = ids.map(id => rows.find(row => row.id === id))
     return route.fulfill({ json: { items, total: items.length, summary: { active: items.length }, tracking_llm_configured: true } })
   })
   await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_ACCESS'] })
   const dataRows = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Goal details', exact: true }) })
-  const titles = () => dataRows.evaluateAll((elements, titles) => elements.map(row => titles.find(title => row.textContent.includes(title))), rows.map(row => row.title))
+  const titleColumn = await page.getByRole('columnheader', { name: /^Title/ }).evaluate(header => header.cellIndex)
+  const titles = () => dataRows.evaluateAll((elements, data) => elements.map(row => data.titles.find(title => row.cells[data.column].textContent.includes(title))), { titles: rows.map(row => row.title), column: titleColumn })
   await page.getByRole('columnheader', { name: /^Agent/ }).click()
   await expect.poll(() => requests.at(-1)?.sort_by).toBe('agent')
-  await expect.poll(titles).toEqual(['Alpha Alice objective', 'Alpha Zora objective', 'Zeta Alice objective', 'Zeta Zora objective', 'Uncategorized objective'])
+  await expect.poll(titles).toEqual(['Alpha Alice objective', 'Alpha Zora objective', 'Child with own Zeta category', 'Leaf without own category', 'Zeta Alice objective', 'Zeta Zora objective', 'Uncategorized objective', 'Child with own Alpha category'])
   await page.getByRole('columnheader', { name: /^Agent/ }).click()
   await expect.poll(() => requests.at(-1)?.descending).toBe('true')
-  await expect.poll(titles).toEqual(['Alpha Zora objective', 'Alpha Alice objective', 'Zeta Zora objective', 'Zeta Alice objective', 'Uncategorized objective'])
+  await expect.poll(titles).toEqual(['Alpha Zora objective', 'Child with own Zeta category', 'Leaf without own category', 'Alpha Alice objective', 'Zeta Zora objective', 'Zeta Alice objective', 'Uncategorized objective', 'Child with own Alpha category'])
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Alpha', 'Zeta', 'Uncategorized'])
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 950 })
     for (const dark of [false, true]) {

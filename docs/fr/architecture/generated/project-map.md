@@ -338,7 +338,7 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `core.storage` | `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/document_facade.py`, `back/app/file_share/document_rag_cache.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
 | `app.file_share` | `core.user` | `back/app/file_share/browser_router.py`, `back/app/file_share/document_folders.py`, `back/app/file_share/document_import.py`, `back/app/file_share/media_access.py` |
 | `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/document_facade.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
-| `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
+| `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/hierarchy.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/models.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.messenger` | `back/app/goal/goal_service.py`, `back/app/goal/referrer_wait.py` |
@@ -351,7 +351,7 @@ tests restent l’autorité sur le comportement.
 | `app.goal` | `core.params` | `back/app/goal/facade.py`, `back/app/goal/settings_service.py` |
 | `app.goal` | `core.scheduling` | `back/app/goal/__init__.py` |
 | `app.goal` | `core.storage` | `back/app/goal/dbadmin.py` |
-| `app.goal` | `core.user` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/goal_service.py` |
+| `app.goal` | `core.user` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/hierarchy.py` |
 | `app.goal` | `core.util` | `back/app/goal/router.py`, `back/app/goal/schemas.py` |
 | `app.harness` | `app.agent` | `back/app/harness/__init__.py`, `back/app/harness/checkpoint.py`, `back/app/harness/checkpoint_policy.py`, `back/app/harness/contracts.py`, `back/app/harness/conversation.py`, `back/app/harness/conversation_protocol.py`, `back/app/harness/driver.py`, `back/app/harness/executor.py`, `back/app/harness/facade.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/media.py`, `back/app/harness/prompt.py`, `back/app/harness/router.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `app.console` | `back/app/harness/executor.py` |

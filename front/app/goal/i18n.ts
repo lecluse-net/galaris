@@ -1,7 +1,7 @@
 export default {
   fr: {
     contextHelpPages: {
-      "goals": "Définissez un résultat durable, ses critères de réussite et l’agent responsable. Chaque cycle réalise une tâche et actualise le suivi. Consultez les résultats, suspendez, reprenez ou terminez l’objectif."
+      "goals": "Définissez le résultat attendu, ses critères de réussite et l’agent responsable. Chaque cycle actualise le suivi. Consultez, suspendez, reprenez ou terminez l’objectif."
     },
     nav: {
       goal: 'Objectifs',
@@ -13,6 +13,7 @@ export default {
         label: 'Catégorie', manage: 'Gérer mes catégories', new: 'Nouvelle catégorie',
         add: 'Ajouter', none: 'Sans catégorie', empty: 'Vous n’avez pas encore de catégorie.',
         private: 'Catégories privées, visibles uniquement par vous.',
+        inherited: 'La catégorie du parent s’applique à toute la branche.',
         error: 'Impossible de charger ou d’enregistrer les catégories.',
         deleteTitle: 'Supprimer la catégorie',
         deleteConfirm: 'Supprimer « {label} » ? Les objectifs seront conservés, sans catégorie.',
@@ -231,6 +232,7 @@ export default {
         label: 'Category', manage: 'Manage my categories', new: 'New category',
         add: 'Add', none: 'Uncategorized', empty: 'You have no categories yet.',
         private: 'Your categories are private and visible only to you.',
+        inherited: 'The parent’s category applies to the entire branch.',
         error: 'Unable to load or save categories.',
         deleteTitle: 'Delete category',
         deleteConfirm: 'Delete “{label}”? Goals will be retained and removed from this category.',
@@ -443,6 +445,7 @@ export default {
     goal: {
       new: '新建目标', edit: '编辑目标', details: '目标详情', tabs: { overview: '目标', tracking: '跟踪', cycles: '周期', edit: '编辑' },
       categories: {
+        inherited: '父目标的分类适用于整个分支。',
         label: '分类', manage: '管理我的分类', new: '新建分类', add: '添加', none: '未分类', empty: '您还没有分类。',
         private: '您的分类为私有，仅您可见。', error: '无法加载或保存分类。', deleteTitle: '删除分类',
         deleteConfirm: '删除“{label}”？目标将被保留并移出此分类。',

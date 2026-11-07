@@ -29,6 +29,12 @@ test('Goal descriptions and private categories persist while tracking stays inde
       user_id: referrer.user_id, display_name: referrer.display_name }, active: false,
   } }))
   expect(goal).not.toHaveProperty('description_document_id')
+  const child = await checked(await request.post('/api/goals', { headers, data: {
+    agent_id: fixture.agent_id, title: `Synthetic sub-goal ${fixture.agent_id}`, description: '<p>Child objective</p>',
+    referrer: { type: 'MESSENGER', connection_id: referrer.connection_id,
+      user_id: referrer.user_id, display_name: referrer.display_name }, active: false,
+    parent_goal_id: goal.id, cycle_delay_seconds: null,
+  } }))
   const trackingId = goal.tracking_document_id
   const tracking = (await checked(await request.get(`/api/documents/${trackingId}`, { headers }))).item
   const library = await checked(await request.post('/api/documents/library', {
@@ -73,6 +79,11 @@ test('Goal descriptions and private categories persist while tracking stays inde
   await page.getByRole('combobox', { name: /^(Catégorie|Category)$/ }).click()
   await page.getByRole('option', { name: category.label, exact: true }).click()
   await expect(page.getByText(goal.title, { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('row').filter({ hasText: child.title })).toBeVisible()
+  const classified = await checked(await request.get(`/api/goals?category_id=${category.id}`, { headers }))
+  expect(classified.items.map(item => item.id)).toEqual([goal.id, child.id])
+  expect(classified.items[1].category_id).toBeNull()
+  expect(classified.items[1].effective_category_id).toBe(category.id)
   await page.getByRole('button', { name: /^(Gérer mes catégories|Manage my categories)$/ }).click()
   await expect(dialog.getByRole('textbox', { name: /^(Catégorie|Category)$/ })).toHaveValue(category.label)
   await dialog.getByRole('button', { name: /^(Supprimer|Delete)$/, exact: true }).click()

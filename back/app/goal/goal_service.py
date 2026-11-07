@@ -15,6 +15,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import aliased, joinedload, load_only, raiseload, selectinload
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.sql.selectable import ScalarSelect
+from sqlalchemy.sql.elements import ColumnElement
 from pydantic import ValidationError
 
 from app.agent.models import Agent
@@ -27,6 +28,7 @@ from .document_store import GoalMarkdown, get_goal_document_store
 from . import category_service
 from .contact_port import contact_directory_port
 from .lifecycle import notify_goal
+from .hierarchy import goal_hierarchy
 from .models import (
     Goal,
     GoalCategory,
@@ -46,6 +48,7 @@ from .schemas import (
     GoalDetail,
     GoalMessengerReferrerInput,
     GoalPage,
+    GoalListRead,
     GoalRead,
     GoalReferrerInput,
     GoalReferrerRead,
@@ -142,15 +145,17 @@ def _apply_filters(
     document_matches: dict[str, frozenset[UUID]] | None = None,
     category_id: int | None = None,
     uncategorized: bool = False,
+    category_column: ColumnElement[int] | None = None,
 ) -> Select[Any]:
+    classification = category_column if category_column is not None else Goal.category_id
     visible_categories = select(GoalCategory.id).where(
         GoalCategory.created_by == (get_current_user_id() or -1),
         GoalCategory.deleted_at.is_(None),
     )
     if category_id is not None:
-        query = query.where(Goal.category_id == category_id, Goal.category_id.in_(visible_categories))
+        query = query.where(classification == category_id, classification.in_(visible_categories))
     elif uncategorized:
-        query = query.where(or_(Goal.category_id.is_(None), Goal.category_id.not_in(visible_categories)))
+        query = query.where(or_(classification.is_(None), classification.not_in(visible_categories)))
     if agent_id is not None:
         query = query.where(Goal.agent_id == agent_id)
     if agent_ids is not None:
@@ -508,8 +513,9 @@ async def list_page(
     db = get_db()
     terms = tuple(term.strip() for term in (search or "").split() if term.strip())
     document_matches = await get_goal_document_store().search(terms)
+    hierarchy = goal_hierarchy(agent_ids=agent_ids, sort_by=sort_by, descending=descending)
     filtered_ids = _apply_filters(
-        select(Goal.id),
+        select(Goal.id).outerjoin(hierarchy, hierarchy.c.goal_id == Goal.id),
         agent_id=agent_id,
         status=status,
         search=search,
@@ -517,26 +523,21 @@ async def list_page(
         document_matches=document_matches,
         category_id=category_id,
         uncategorized=uncategorized,
+        category_column=hierarchy.c.effective_category_id,
     )
     # Personal categories remain the primary order, before pagination and in either
     # direction of the secondary sort. Hidden categories behave like no category.
     category_label = select(GoalCategory.label).where(
-        GoalCategory.id == Goal.category_id,
+        GoalCategory.id == hierarchy.c.effective_category_id,
         GoalCategory.created_by == (get_current_user_id() or -1),
         GoalCategory.deleted_at.is_(None),
-    ).correlate(Goal).scalar_subquery()
-    secondary = (
-        select(func.lower(func.concat_ws(" ", Agent.first_name, Agent.last_name))).where(
-            Agent.id == Goal.agent_id,
-        ).correlate(Goal).scalar_subquery()
-        if sort_by == "agent" else func.lower(Goal.title)
-    )
-    secondary_order = (secondary.desc() if descending else secondary.asc(),) if sort_by else ()
+    ).correlate(hierarchy).scalar_subquery()
     rows = list(
         (
             await db.execute(
                 _apply_filters(
-                    select(Goal, _children_count())
+                    select(Goal, _children_count(), hierarchy.c.effective_category_id)
+                    .outerjoin(hierarchy, hierarchy.c.goal_id == Goal.id)
                     .options(
                         joinedload(Goal.category),
                         joinedload(Goal.agent).load_only(*_AGENT_SUMMARY_FIELDS, raiseload=True).joinedload(Agent.title),
@@ -548,9 +549,8 @@ async def list_page(
                         category_label.is_(None),
                         func.lower(category_label),
                         category_label,
-                        case((category_label.is_not(None), Goal.category_id), else_=None),
-                        *secondary_order,
-                        Goal.updated_at.desc().nullslast(), Goal.created_at.desc(), Goal.id,
+                        hierarchy.c.effective_category_id,
+                        hierarchy.c.sort_path.nullslast(), Goal.id,
                     )
                     .offset(skip)
                     .limit(limit),
@@ -561,11 +561,12 @@ async def list_page(
                     document_matches=document_matches,
                     category_id=category_id,
                     uncategorized=uncategorized,
+                    category_column=hierarchy.c.effective_category_id,
                 )
             )
         ).all()
     )
-    goals = [goal for goal, _count in rows]
+    goals = [goal for goal, _count, _category in rows]
     metrics = await _metrics_for([goal.id for goal in goals])
     markdown_by_goal = await _read_markdown_batch(goals)
 
@@ -597,13 +598,16 @@ async def list_page(
     )
     return GoalPage(
         items=[
-            _serialize_goal(
-                goal,
-                metrics.get(goal.id, GoalMetrics()),
-                markdown_by_goal[goal.id],
-                children_count=int(children_count),
+            GoalListRead(
+                **_serialize_goal(
+                    goal,
+                    metrics.get(goal.id, GoalMetrics()),
+                    markdown_by_goal[goal.id],
+                    children_count=int(children_count),
+                ).model_dump(),
+                effective_category_id=effective_category_id,
             )
-            for goal, children_count in rows
+            for goal, children_count, effective_category_id in rows
         ],
         total=total,
         summary=summary,
@@ -749,6 +753,17 @@ async def _resolve_referrer(
         "referrer_platform": messenger.kind or "messenger",
         "requester_user_id": requester_user_id,
     }
+
+
+def _matches_referrer_identity(goal: Goal, referrer: GoalReferrerInput) -> bool:
+    """Compare durable routing identity without requiring a live messaging transport."""
+    if isinstance(referrer, GoalAgentReferrerInput):
+        return goal.referrer_type == GoalReferrerType.AGENT and goal.referrer_agent_id == referrer.agent_id
+    return (
+        goal.referrer_type == GoalReferrerType.MESSENGER
+        and goal.referrer_connection_id == referrer.connection_id
+        and goal.referrer_user_id == referrer.user_id
+    )
 
 
 def _assign_referrer(goal: Goal, values: dict[str, Any]) -> None:
@@ -1028,7 +1043,10 @@ async def update(
     referrer_values: dict[str, Any] | None = None
     if "referrer" in data.model_fields_set:
         assert data.referrer is not None
-        referrer_values = await _resolve_referrer(owner_agent_id, data.referrer)
+        # Editors resend unchanged fields. Offline referrers must not block metadata
+        # edits; resolve only a new routing identity or a change of Goal owner.
+        if owner_agent_id != goal.agent_id or not _matches_referrer_identity(goal, data.referrer):
+            referrer_values = await _resolve_referrer(owner_agent_id, data.referrer)
     elif owner_agent_id != goal.agent_id and goal.referrer_type == GoalReferrerType.MESSENGER:
         if goal.referrer_connection_id is None:
             raise GoalConflictError(

@@ -253,6 +253,12 @@ Only its creator can see and edit a category, including between administrators;
 classification does not change access to the Goal. Category deletion is audited and retains
 the Goals while removing their classification.
 
+All sub-goals inherit their root Goal’s classification, even when they have their own category
+or the root is uncategorized. Filtering and sorting use this inherited classification and keep
+each parent before its descendants. A sub-goal retains its own category, which applies again
+when detached from its parent. Changing the root’s category therefore reclassifies its entire
+branch without overwriting individual categories.
+
 Galaris updates Goal tracking automatically at the end of the cycle, using the evidence
 returned by the Agent. A requested delivery still needs to be performed with the required
 permissions; automatic tracking does not replace it.

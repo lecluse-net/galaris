@@ -299,6 +299,12 @@ entre les pages de résultats. Une catégorie n’est visible et modifiable que 
 administrateurs ; elle ne change pas les droits d’accès à l’objectif. Sa suppression est
 historisée et conserve les objectifs en retirant leur classement.
 
+Tous les sous-objectifs héritent du classement de leur objectif racine, même s’ils ont leur
+propre catégorie ou si la racine est sans catégorie. Le filtre et le tri utilisent ce classement
+hérité et conservent chaque parent avant ses descendants. La catégorie propre est conservée :
+elle s’applique de nouveau si le sous-objectif est détaché de son parent. Un changement de
+catégorie de la racine reclasse donc toute sa branche, sans modifier les catégories propres.
+
 Galaris actualise automatiquement le suivi de l'objectif à la fin du cycle, à partir des
 preuves remontées par l'agent. Une livraison demandée reste une action à réaliser avec
 les autorisations nécessaires ; le suivi automatique ne la remplace pas.

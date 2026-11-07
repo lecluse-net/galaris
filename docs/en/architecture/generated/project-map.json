@@ -2126,6 +2126,7 @@
         "files": [
           "back/app/goal/events.py",
           "back/app/goal/goal_service.py",
+          "back/app/goal/hierarchy.py",
           "back/app/goal/models.py",
           "back/app/goal/router.py",
           "back/app/goal/runner.py"
@@ -2237,7 +2238,8 @@
         "files": [
           "back/app/goal/category_service.py",
           "back/app/goal/events.py",
-          "back/app/goal/goal_service.py"
+          "back/app/goal/goal_service.py",
+          "back/app/goal/hierarchy.py"
         ],
         "source": "app.goal",
         "target": "core.user"

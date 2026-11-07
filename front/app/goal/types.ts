@@ -57,6 +57,7 @@ export interface MessengerReferrerOption {
 export interface Goal {
   id: string
   category_id: number | null
+  effective_category_id?: number | null
   memory_item_id: string | null
   revision: number
   title: string

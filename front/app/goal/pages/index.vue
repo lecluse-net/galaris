@@ -1065,7 +1065,7 @@
                     :label="t('goal.title')"
                     :rules="[requiredRule]"
                   />
-                  <q-select v-model="form.categoryId" :options="categoryOptions" outlined dense clearable emit-value map-options :label="t('goal.categories.label')" :hint="t('goal.categories.private')" :loading="categoriesLoading" />
+                  <q-select v-model="form.categoryId" :options="categoryOptions" outlined dense clearable emit-value map-options :label="t('goal.categories.label')" :hint="t(form.parentGoalId ? 'goal.categories.inherited' : 'goal.categories.private')" :loading="categoriesLoading" />
                   <div>
                     <div class="text-subtitle2 q-mb-xs">
                       {{ t('goal.description') }} <span class="text-negative">*</span>
@@ -1407,7 +1407,10 @@ function hasAgentAvatar(id: number): boolean {
   return selectableAgents.value.find(agent => agent.id === id)?.has_avatar ?? false
 }
 function categoryLabel(goal: Goal): string {
-  return categories.value.find(category => category.id === goal.category_id)?.label ?? ''
+  return categories.value.find(category => category.id === effectiveCategoryId(goal))?.label ?? ''
+}
+function effectiveCategoryId(goal: Goal): number | null {
+  return goal.effective_category_id !== undefined ? goal.effective_category_id : goal.category_id ?? null
 }
 async function loadCategories(): Promise<void> {
   const request = ++categoryRequest, session = sessionGeneration()
@@ -1632,32 +1635,16 @@ function flattenGoalHierarchy(
   return result
 }
 
-const hierarchyItems = computed(() => flattenGoalHierarchy(store.treeGoals))
-
-const hierarchicalGoals = computed(() => {
-  const order = new Map(hierarchyItems.value.map((goal, index) => [goal.id, index]))
-  const ordered = store.sortBy ? store.goals : store.goals
-    .map((goal, index) => ({ goal, index }))
-    .sort((left, right) => (
-      (order.get(left.goal.id) ?? Number.MAX_SAFE_INTEGER)
-      - (order.get(right.goal.id) ?? Number.MAX_SAFE_INTEGER)
-      || left.index - right.index
-    ))
-    .map(item => item.goal)
-  // The API orders categories before pagination. Keep that category order while
-  // preserving the existing hierarchy inside a section unless a column is sorted.
-  const groups = new Map<number | null, Goal[]>()
-  for (const goal of store.goals) groups.set(goal.category_id ?? null, [])
-  for (const goal of ordered) groups.get(goal.category_id ?? null)?.push(goal)
-  return [...groups.values()].flat()
-})
+// The server returns parent-first branches, with category and sibling sorting
+// applied before pagination. Re-sorting individual children would break the tree.
+const hierarchicalGoals = computed(() => store.goals)
 
 const categoryTitles = computed(() => {
   const titles = new Map<string, string>()
-  if (!hierarchicalGoals.value.some(goal => goal.category_id != null)) return titles
+  if (!hierarchicalGoals.value.some(goal => effectiveCategoryId(goal) !== null)) return titles
   let previous: number | null | undefined
   for (const goal of hierarchicalGoals.value) {
-    const category = goal.category_id ?? null
+    const category = effectiveCategoryId(goal)
     if (category !== previous) titles.set(goal.id, categoryLabel(goal) || t('goal.categories.none'))
     previous = category
   }
