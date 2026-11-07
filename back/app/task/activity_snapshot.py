@@ -7,7 +7,7 @@ from typing import Any, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import defer
 
 from app.agent import AIResult
@@ -39,7 +39,7 @@ class TaskActivitySnapshot(BaseModel):
     phase: str
     operational: TaskOperationalSnapshot
     pause_pending: bool = False
-    attempt_number: int = 0
+    attempt_number: int = Field(default=0, description="Attempt ordinal within the latest scheduler phase.")
     attempt_status: str | None = None
     latest_attempt: dict[str, str | int | None] | None = None
     last_activity_at: datetime | None = None
@@ -89,10 +89,17 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
     ids = [task.id for task in tasks]
     timings = {item.task_id: item for item in await task_startup_timings(ids)}
     db = get_db()
-    latest = select(TaskAttempt).where(TaskAttempt.task_id.in_(ids)).distinct(
+    # Routing (CREATE) and execution (DISPATCH) each claim a durable attempt.
+    # Number the displayed attempts by phase without changing their audit identity.
+    phase_attempt_number = func.count().over(partition_by=(TaskAttempt.task_id, TaskAttempt.phase))
+    latest = select(TaskAttempt, phase_attempt_number).where(TaskAttempt.task_id.in_(ids)).distinct(
         TaskAttempt.task_id
     ).order_by(TaskAttempt.task_id, TaskAttempt.attempt_number.desc())
-    attempts = {attempt.task_id: attempt for attempt in (await db.scalars(latest)).all()}
+    attempts: dict[UUID, TaskAttempt] = {}
+    attempt_numbers: dict[UUID, int] = {}
+    for attempt, number in (await db.execute(latest)).tuples():
+        attempts[attempt.task_id] = attempt
+        attempt_numbers[attempt.task_id] = int(number)
     # Operational state ignores finished children and never consumes their
     # execution payloads. Keep repeated monitoring independent of that history.
     children = (await db.scalars(select(Task).where(
@@ -140,7 +147,7 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
             startup_timing=timings.get(task.id),
             operational=operational,
             pause_pending=operational["operational_state"] == "PAUSED" and task.lease_token is not None,
-            attempt_number=attempt.attempt_number if attempt else 0,
+            attempt_number=attempt_numbers.get(task.id, 0),
             attempt_status=attempt.status if attempt else None,
             latest_attempt={
                 "id": str(attempt.id), "attempt_number": attempt.attempt_number,

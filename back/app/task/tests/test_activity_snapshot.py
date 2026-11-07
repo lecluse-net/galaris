@@ -13,6 +13,54 @@ from app.task.startup_timing import startup_timing, task_startup_timings
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(("phases", "expected"), [
+    ([], 0),
+    (["CREATE"], 1),
+    (["CREATE", "CREATE"], 2),
+    (["DISPATCH"], 1),
+    (["CREATE", "DISPATCH"], 1),
+    (["CREATE", "CREATE", "DISPATCH"], 1),
+    (["CREATE", "DISPATCH", "DISPATCH"], 2),
+    (["CREATE", "DISPATCH", "CREATE", "DISPATCH"], 2),
+    (["CREATE", "PLAN"], 1),
+])
+async def test_activity_numbers_attempts_within_their_phase(db, phases, expected):
+    phase = TaskStatus(phases[-1]) if phases else TaskStatus.CREATE
+    status = TaskStatus.EXEC if phase == TaskStatus.DISPATCH else phase
+    task = Task(label="Synthetic work", status=status, attempt_count=len(phases))
+    unrelated = Task(label="Synthetic unrelated work", status=TaskStatus.EXEC)
+    db.add_all([task, unrelated])
+    await db.flush()
+    attempts = [TaskAttempt(task_id=task.id, attempt_number=index, phase=phase,
+        status="CLAIMED" if index == len(phases) else "SUCCESS",
+        worker_id="synthetic-worker", lease_token=uuid4())
+        for index, phase in enumerate(phases, start=1)]
+    db.add_all([*attempts, TaskAttempt(task_id=unrelated.id, attempt_number=1,
+        phase="DISPATCH", status="CLAIMED", worker_id="synthetic-worker", lease_token=uuid4())])
+    await db.flush()
+
+    snapshot, other = await activity_snapshots([task, unrelated])
+    assert snapshot.attempt_number == expected
+    assert other.attempt_number == 1
+    # The displayed ordinal must not renumber or replace the durable audit identity.
+    assert task.attempt_count == len(phases)
+    if attempts:
+        assert snapshot.latest_attempt["id"] == str(attempts[-1].id)
+        assert snapshot.latest_attempt["attempt_number"] == len(phases)
+        assert snapshot.latest_attempt["phase"] == phases[-1]
+    else:
+        assert snapshot.latest_attempt is None
+
+    task.status = TaskStatus.SUCCESS
+    await db.flush()
+    task_id = task.id
+    db.expunge_all()
+    reopened = (await activity_snapshots([await db.get(Task, task_id)]))[0]
+    assert reopened.attempt_number == expected
+    assert reopened.latest_attempt == snapshot.latest_attempt
+
+
+@pytest.mark.asyncio
 async def test_reconnect_recovers_current_attempt_without_leaking_payloads_or_replaying_effects(db):
     run_id, lease = uuid4(), uuid4()
     identity = {"request_run_id": str(run_id), "execution_target": {"metadata": {"streams_ai_messages": False}}}
