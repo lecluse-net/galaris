@@ -1176,6 +1176,7 @@
                             type="number"
                             min="0"
                             step="1"
+                            :aria-label="t('goal.frequency')"
                             :rules="[nonNegativeRule]"
                           />
                         </div>
@@ -1183,6 +1184,7 @@
                           <q-select
                             v-model="form.delayUnit"
                             :options="durationUnitOptions"
+                            :aria-label="t('goal.frequencyUnit')"
                             dense
                             outlined
                             emit-value
@@ -1315,7 +1317,7 @@ import type {
   MessengerReferrerOption,
 } from '../types'
 
-type DurationUnit = 'seconds' | 'minutes' | 'hours' | 'days'
+type DurationUnit = 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years'
 type GoalCommandName = 'pause' | 'resume' | 'complete' | 'runNow'
 type GoalTriggerMode = 'TEMPORAL_DEFAULT' | 'TEMPORAL_CUSTOM' | 'RELATIONAL'
 type GoalDialogTab = 'overview' | 'tracking' | 'cycles' | 'edit'
@@ -1357,6 +1359,9 @@ const UNIT_SECONDS: Record<DurationUnit, number> = {
   minutes: 60,
   hours: 3600,
   days: 86400,
+  weeks: 604800,
+  months: 2592000,
+  years: 31536000,
 }
 
 const { t, locale } = useI18n()
@@ -1503,7 +1508,7 @@ const globalAllowedSlots = computed<GoalScheduleSlots | undefined>(() => {
 })
 
 const durationUnitOptions = computed(() => (
-  (['seconds', 'minutes', 'hours', 'days'] as DurationUnit[]).map(value => ({
+  (Object.keys(UNIT_SECONDS) as DurationUnit[]).map(value => ({
     label: t(`goal.units.${value}`),
     value,
   }))
@@ -1698,7 +1703,7 @@ function formatDate(value: string | null): string {
 function formatDuration(seconds: number | null): string {
   if (seconds === null) return t('goal.disabled')
   if (seconds === 0) return `0 ${t('goal.units.seconds')}`
-  for (const unit of ['days', 'hours', 'minutes'] as DurationUnit[]) {
+  for (const unit of ['years', 'months', 'weeks', 'days', 'hours', 'minutes'] as DurationUnit[]) {
     const factor = UNIT_SECONDS[unit]
     if (seconds % factor === 0) return `${seconds / factor} ${t(`goal.units.${unit}`)}`
   }
@@ -1707,7 +1712,7 @@ function formatDuration(seconds: number | null): string {
 
 function splitDuration(seconds: number | null): { value: number; unit: DurationUnit } {
   if (seconds === null) return { value: 1, unit: 'hours' }
-  for (const unit of ['days', 'hours', 'minutes'] as DurationUnit[]) {
+  for (const unit of ['years', 'months', 'weeks', 'days', 'hours', 'minutes'] as DurationUnit[]) {
     const factor = UNIT_SECONDS[unit]
     if (seconds > 0 && seconds % factor === 0) return { value: seconds / factor, unit }
   }

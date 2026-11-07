@@ -446,6 +446,10 @@ large-report analyses remain available through the request made to the agent and
 not create entries in this workflow catalogue. The
 [user guide](README.md) explains when to choose a conversation, Task or Goal.
 
+In a Goal form, **Frequency** can be set in seconds, minutes, hours, days, weeks, months
+or years. These units represent fixed durations: a week is 7 days, a month 30 days and
+a year 365 days. They do not select a calendar date; allowed time windows still apply.
+
 A Goal description is a simple HTML field. Its tracking is an unclassified Document,
 visible in the Documents list but outside the tree until you classify it. No Goal folder
 is imposed. Existing folders retain their names and behave as ordinary editable folders,

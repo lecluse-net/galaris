@@ -50,6 +50,56 @@ for (const mode of ['read', 'edit']) test(`a Goal citation opens its original mo
 })
 
 for (const width of [390, 1440]) {
+  test(`Goal frequencies save and reopen without changing their duration at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 950 })
+    await goals(page)
+    let current = { ...goal, referrer: { type: 'MESSENGER', connection_id: 1,
+      user_id: 'user:1', display_name: 'Synthetic supervisor', platform: 'internal' } }
+    const writes = []
+    await page.route('**/api/goals/goal-a', route => {
+      if (route.request().method() === 'PUT') {
+        const change = route.request().postDataJSON()
+        writes.push(change)
+        current = { ...current, ...change, revision: current.revision + 1 }
+      }
+      return route.fulfill({ json: current })
+    })
+    await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+    const view = page.locator('button').filter({ has: page.locator('.q-icon', { hasText: 'visibility' }) }).first()
+    const dialog = page.getByRole('dialog')
+    const edit = async () => {
+      await view.click()
+      await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+    }
+    for (const [unit, value, seconds] of [
+      ['seconds', 90, 90], ['days', 3, 259200], ['weeks', 2, 1209600],
+      ['months', 2, 5184000], ['years', 2, 63072000],
+    ]) {
+      await edit()
+      await dialog.getByRole('combobox', { name: 'Frequency unit', exact: true }).click()
+      await page.getByRole('option', { name: unit, exact: true }).click()
+      await dialog.getByRole('spinbutton', { name: 'Frequency', exact: true }).fill(String(value))
+      const count = writes.length
+      await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+      await expect.poll(() => writes.length).toBe(count + 1)
+      expect(writes.at(-1).cycle_delay_seconds).toBe(seconds)
+      await expect(dialog.getByRole('tab', { name: 'Goal', exact: true })).toHaveAttribute('aria-selected', 'true')
+      await expect(dialog).toContainText(`${value} ${unit}`)
+      await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+      await expect(dialog).toHaveCount(0)
+      await edit()
+      await expect(dialog.getByRole('combobox', { name: 'Frequency unit', exact: true })).toHaveValue(unit)
+      await expect(dialog.getByRole('spinbutton', { name: 'Frequency', exact: true })).toHaveValue(String(value))
+      if (unit === 'years') for (const dark of [false, true]) {
+        await page.evaluate(dark => window.testApp.dark(dark), dark)
+        await dialog.getByRole('spinbutton', { name: 'Frequency', exact: true }).scrollIntoViewIfNeeded()
+        await page.screenshot({ path: testInfo.outputPath(`frequency-${dark ? 'dark' : 'light'}.png`) })
+      }
+      await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+      await expect(dialog).toHaveCount(0)
+    }
+  })
+
   test(`goal details expose lifecycle actions and editable tabs at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 })
     const commands = await goals(page)
