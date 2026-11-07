@@ -408,6 +408,13 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
             "belong in the existing collection workflow. Update tracking after meaningful "
             "progress or a blocker, not after every tool call. Mark done only after performing "
             "the acceptance check and record what you actually observed with canonical URIs. "
+            "Separate required deliverables (required=true, the default) from explicitly "
+            "optional additions (required=false); never combine them in one milestone. "
+            "If an optional addition is unavailable, mark it skipped with the observed reason, "
+            "retain the main result and disclose the omission in the final reply. A rejected "
+            "optional document write must not prevent delivering the requested answer. "
+            "Do not downgrade a required deliverable to conceal a failure. Work tracking "
+            "never authorizes an effect or bypasses a rejected operation. "
             "On resume, inspect existing outputs and reconcile uncertain effects before "
             "repeating work. Reopen a milestone with an explicit revision reason when new "
             "findings require changes. Tracking alone never proves that the request is fulfilled. "
@@ -731,7 +738,8 @@ async def _update_task_after_execution(
                 plan = WorkPlan.model_validate(raw_plan)
             except ValidationError:
                 plan = None  # Optional historical tracking must remain readable.
-            blocked = [item.key for item in plan.milestones if item.state == "blocked"] if plan else []
+            blocked = [item.key for item in plan.milestones
+                       if item.required and item.state == "blocked"] if plan else []
             if blocked:
                 execution_result.success = False
                 execution_result.failure = HarnessFailure(code="runtime", retry="never",

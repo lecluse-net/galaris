@@ -1336,8 +1336,11 @@ l'inférence existante, l'attente sans exécution, l'expiration et la réponse t
 `back/app/task/tests/test_work_tracking.py` vérifie avec PostgreSQL la reprise des jalons,
 les écritures concurrentes, la révision, les droits, les pauses, l'idempotence et la
 préservation des checkpoints, y compris une sauvegarde d’exécution entre lecture et écriture du suivi.
-`back/app/agent/tests/test_executor_lifecycle.py` vérifie qu'un jalon explicitement bloqué
-interdit le succès et le retry automatique, tout en conservant bilan et coûts.
+Ces tests vérifient aussi la persistance et la réouverture motivée des omissions facultatives,
+le refus d'omettre un jalon obligatoire et la progression des seuls jalons applicables.
+`back/app/agent/tests/test_executor_lifecycle.py` vérifie qu'un jalon obligatoire explicitement
+bloqué interdit le succès et le retry automatique, tout en conservant bilan et coûts ;
+une note facultative refusée ou omise ne fait pas échouer la réponse principale.
 `back/app/file_share/tests/test_resource_service.py` vérifie l'export complet d'un snapshot
 contenant des marqueurs historiques, en création et remplacement ; les écritures de contenu
 abrégé fourni par le modèle restent refusées.

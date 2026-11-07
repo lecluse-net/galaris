@@ -100,9 +100,16 @@ ne demandent pas de clarification humaine. `task_get` expose révision et suivi 
 contrôlent propriétaire, phase et révision, et préservent les checkpoints. La progression
 des jalons reste déclarative : elle ne remplace pas la vérification des ressources ni le
 résultat terminal. Voir [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
-À la clôture, un jalon persisté explicitement `blocked` empêche un succès contradictoire :
+Les jalons obligatoires (`required=true`, défaut historique) restent séparés des compléments
+facultatifs (`required=false`). Un complément impossible peut être `skipped` avec une observation ;
+son omission reste visible, sans compter comme travail obligatoire inachevé dans la progression.
+Un complément facultatif `blocked` a le même effet sur la progression et la clôture.
+À la clôture, un jalon obligatoire persisté explicitement `blocked` empêche un succès contradictoire :
 hors attente durable existante, la tâche termine en erreur sans retry automatique, en conservant
 son bilan et les effets acquis. Cette garde ne crée ni attente ni autorisation.
+Une note documentaire conditionnelle refusée ne bloque donc pas la réponse principale ;
+l'exécuteur signale cette omission dans sa réponse. Le suivi n'accorde aucun droit d'écriture.
+Modifier le caractère obligatoire ou rouvrir un jalon `done`/`skipped` exige une raison de révision.
 
 Le harnais interne applique la politique `runtime.yaml` des compétences effectivement
 attribuées : `loading: eager` les charge dès la première requête en tâche, conversation texte

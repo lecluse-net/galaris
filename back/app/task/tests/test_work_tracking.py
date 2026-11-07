@@ -78,13 +78,20 @@ async def test_tracking_can_update_after_runtime_checkpoints(committed_database,
 
 
 @pytest.mark.asyncio
-async def test_work_tracking_survives_reload_and_preserves_completed_work(committed_database):
+@pytest.mark.parametrize("completed_state", ["done", "skipped"])
+async def test_work_tracking_survives_reload_and_preserves_completed_work(committed_database, completed_state):
+    def tracked(state="doing", observation="", next_action="Inspect the remaining inputs"):
+        raw = plan().model_dump(mode="json")
+        raw["next_action"] = next_action
+        raw["milestones"][0].update(required=completed_state != "skipped", state=state, observation=observation)
+        return WorkPlan.model_validate(raw)
+
     async with get_db_session() as db:
         current = await seed(db)
         task_id, agent_id, revision = current.id, current.agent_id, 0
     ctx = McpToolContext(agent_id=agent_id, runtime="internal", task_id=task_id)
     async with get_db_session():
-        started = await mcp_work_update(ctx, plan(), revision)
+        started = await mcp_work_update(ctx, tracked(), revision)
     async with get_db_session() as db:
         current = await db.get(Task, task_id)
         assert current.data["existing"] == {"keep": True}
@@ -92,14 +99,22 @@ async def test_work_tracking_survives_reload_and_preserves_completed_work(commit
         assert current.data["work_plan"]["next_action"] == "Inspect the remaining inputs"
         # A stale write must not replace newer progress.
         with pytest.raises(ValueError, match="revision changed"):
-            await mcp_work_update(ctx, plan("done", "Reread output matches the sample", ""), revision)
-        done = await mcp_work_update(ctx, plan("done", "Reread output matches the sample", ""), started["work_plan_revision"])
-        duplicate = await mcp_work_update(ctx, plan("done", "Reread output matches the sample", ""), started["work_plan_revision"])
+            await mcp_work_update(ctx, tracked(completed_state, "Observed completion or unavailable optional output", ""), revision)
+        done = await mcp_work_update(ctx, tracked(completed_state, "Observed completion or unavailable optional output", ""), started["work_plan_revision"])
+        duplicate = await mcp_work_update(ctx, tracked(completed_state, "Observed completion or unavailable optional output", ""), started["work_plan_revision"])
         assert duplicate == done
         with pytest.raises(ValueError, match="revision reason"):
-            await mcp_work_update(ctx, plan(), done["work_plan_revision"])
-        reopened = await mcp_work_update(ctx, plan(), done["work_plan_revision"], "A new input invalidates the initial assumption")
+            await mcp_work_update(ctx, tracked(), done["work_plan_revision"])
+        reopened = await mcp_work_update(ctx, tracked(), done["work_plan_revision"], "A new input invalidates the initial assumption")
         assert reopened["work_plan"]["milestones"][0]["state"] == "doing"
+        reclassified = tracked().model_dump(mode="json")
+        reclassified["milestones"][0]["required"] = completed_state == "skipped"
+        reclassified_plan = WorkPlan.model_validate(reclassified)
+        with pytest.raises(ValueError, match="required status"):
+            await mcp_work_update(ctx, reclassified_plan, reopened["work_plan_revision"])
+        changed = await mcp_work_update(ctx, reclassified_plan, reopened["work_plan_revision"],
+                                        "The request clarifies which outputs are necessary")
+        assert changed["work_plan"]["milestones"][0]["required"] == (completed_state == "skipped")
         from app.tools.tool_errors import classify_tool_failure
         from app.tools.contracts import ToolCallRejectedError
         with pytest.raises(ToolCallRejectedError) as conflict:
@@ -168,7 +183,8 @@ async def test_retry_cannot_execute_an_unanswered_organization_question(committe
         assert retried.data["organization"] == "clarify"
 
 
-@pytest.mark.parametrize("defect", ["unchecked", "no_next_action", "duplicate", "multiple_current"])
+@pytest.mark.parametrize("defect", ["unchecked", "no_next_action", "duplicate", "multiple_current",
+                                  "skip_required", "skip_without_reason"])
 def test_tracking_requires_bounded_useful_progress(defect):
     raw = plan().model_dump()
     if defect == "unchecked":
@@ -177,17 +193,34 @@ def test_tracking_requires_bounded_useful_progress(defect):
         raw["next_action"] = ""
     elif defect == "duplicate":
         raw["milestones"].append(raw["milestones"][0].copy())
+    elif defect == "skip_required":
+        raw["milestones"][0].update(state="skipped", observation="Unavailable")
+    elif defect == "skip_without_reason":
+        raw["milestones"][0].update(state="skipped", required=False)
     else:
         raw["milestones"].append(raw["milestones"][0] | {"key": "another"})
     with pytest.raises(ValidationError):
         WorkPlan.model_validate(raw)
 
 
-def test_progress_reports_milestones_without_fabricating_a_task_outcome():
+@pytest.mark.parametrize("optional_state", [None, "skipped", "blocked"])
+def test_progress_reports_milestones_without_fabricating_a_task_outcome(optional_state):
     current = plan("done", "The output was reread and matched", "").model_dump(mode="json")
+    if optional_state:
+        current["milestones"].append({
+            "key": "note", "label": "Optional archive note", "acceptance": "Saved if authorized",
+            "required": False, "state": optional_state, "observation": "Write rejected before effect",
+        })
     assert work_plan_progress({"work_plan": current}) == {
         "done": 1, "total": 1, "percent": 100,
         "current": None, "next_action": "", "kind": "milestones",
+        **({"skipped": 1} if optional_state else {}),
     }
     assert work_plan_progress({"work_plan": current | {"schema_version": "future/v2"}}) is None
     assert work_plan_progress({"work_plan": {}}) is None
+    if optional_state:
+        current["milestones"].pop(0)
+        assert work_plan_progress({"work_plan": current}) == {
+            "done": 0, "total": 0, "percent": 100, "current": None,
+            "next_action": "", "kind": "milestones", "skipped": 1,
+        }

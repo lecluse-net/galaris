@@ -109,7 +109,11 @@ async def mcp_get_task(
         "task_get first and pass its work_plan_revision (initially 0) as expected_revision. "
         "Task revision is separate. Keep preparation, acceptance checks, verified "
         "observations and canonical resource references. Preserve completed milestones; "
-        "changing them requires revision_reason. This records progress without completing "
+        "changing them requires revision_reason. Separate required milestones (default true) "
+        "from optional additions (required=false). Mark an unavailable optional addition "
+        "skipped with its observed reason, then deliver the main result and disclose the "
+        "omission. Changing required status also requires revision_reason. "
+        "This records progress without completing "
         "the Task or executing any business action. Simple tasks need no work plan."
     ), effect_policy="idempotent", concurrency_policy="exclusive")
 async def mcp_work_update(

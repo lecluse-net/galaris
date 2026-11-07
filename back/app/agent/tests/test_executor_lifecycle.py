@@ -248,20 +248,29 @@ async def test_final_cost_uses_attempt_base_cost(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("milestone_state,wait", [
-    ("done", None), ("blocked", None), ("pending", None),
-    ("blocked", "input"), ("blocked", "children"), ("blocked", "authorization"),
+@pytest.mark.parametrize("milestone_state,required,wait", [
+    ("done", True, None), ("blocked", True, None), ("pending", True, None),
+    ("blocked", False, None), ("skipped", False, None),
+    ("blocked", True, "input"), ("blocked", True, "children"), ("blocked", True, "authorization"),
 ])
-async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, milestone_state, wait):
-    """A model's successful response cannot override its current declared blocker."""
+async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, milestone_state, required, wait):
+    """Required blockers prevent success; an unavailable optional note does not."""
     from app.agent import WorkPlan, planner_service
     from app.task import collab
 
     task = Task(id=uuid4(), label="Synthetic archive maintenance", status=TaskStatus.EXEC, cost=0.0)
-    plan = WorkPlan.model_validate({"milestones": [{
+    milestone = {
         "key": "archives", "label": "Update selected archives", "acceptance": "Changes saved",
         "state": milestone_state, "observation": "Missing target authorization" if milestone_state == "blocked" else "Checked",
-    }], "next_action": "Request authorization" if milestone_state == "blocked" else "Check remaining work"})
+    }
+    if not required:
+        milestone["required"] = False
+    # Required cases deliberately use the legacy payload without the new field.
+    plan = WorkPlan.model_validate({"milestones": [
+        {"key": "answer", "label": "Prepare the reply", "acceptance": "Sources checked",
+         "state": "done", "observation": "The answer is retained in the final result"},
+        milestone,
+    ], "next_action": "Request authorization" if milestone_state == "blocked" else "Check remaining work"})
 
     async def refresh_progress(_task):
         # Native tools save progress in another transaction during execution.
@@ -276,6 +285,8 @@ async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, miles
     monkeypatch.setattr(planner_service, "resume_parent", AsyncMock())
     result = ExecutionResult(prompt="Update archives", result="Partial work retained",
         success=wait != "authorization", cost=0.25,
+        messages=[AIMessage(type="tool", tool_name="file_edit", success=False,
+            content="Optional note rejected before effect: exact target requires authorization")],
         **({"schema_version": "galaris.execution-result/v2", "disposition": "waiting_for_authorization",
             "authorization_requests": [uuid4()]} if wait == "authorization" else {}))
 
@@ -289,7 +300,7 @@ async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, miles
         assert task.status not in {TaskStatus.ERROR, TaskStatus.SUCCESS}
         assert stored.failure is None
         assert "blocked_milestones" not in stored.metadata
-    elif milestone_state == "blocked":
+    elif milestone_state == "blocked" and required:
         assert task.status == TaskStatus.ERROR
         assert stored.success is False
         assert stored.failure is not None and stored.failure.retry == "never"
@@ -299,6 +310,8 @@ async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, miles
     else:
         assert task.status == TaskStatus.SUCCESS
         assert stored.success is True
+        assert stored.failure is None
+        assert "blocked_milestones" not in stored.metadata
 
 
 @pytest.mark.asyncio

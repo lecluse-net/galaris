@@ -1282,8 +1282,11 @@ existing inference, waiting without execution, expiry and late answers.
 `back/app/task/tests/test_work_tracking.py` checks PostgreSQL milestone recovery,
 concurrent writes, revisions, ownership, pauses, idempotency and checkpoint preservation,
 including an execution checkpoint between reading and updating progress.
-`back/app/agent/tests/test_executor_lifecycle.py` checks that an explicitly blocked milestone
-prevents success and automatic retry while preserving the report and costs.
+These tests also check persistence and justified reopening of optional omissions, rejection
+of skipped required milestones, and progress over applicable milestones only.
+`back/app/agent/tests/test_executor_lifecycle.py` checks that an explicitly blocked required
+milestone prevents success and automatic retry while preserving the report and costs;
+a rejected or omitted optional note does not fail the main reply.
 `back/app/file_share/tests/test_resource_service.py` checks complete snapshot exports containing
 historical markers, both creation and replacement; abbreviated content supplied by the model
 is still rejected on writes.

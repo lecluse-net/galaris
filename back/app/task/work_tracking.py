@@ -46,9 +46,12 @@ async def update_work_plan(
     if isinstance(data.get("work_plan"), dict):
         previous = WorkPlan.model_validate(data["work_plan"])
         updated = {item.key: item for item in plan.milestones}
-        if any(item.state == "done" and updated.get(item.key) != item for item in previous.milestones):
+        if any(item.state in {"done", "skipped"} and updated.get(item.key) != item for item in previous.milestones):
             if not revision_reason.strip():
                 raise WorkTrackingRejected("Changing completed work requires an explicit revision reason")
+        if any(item.key in updated and item.required != updated[item.key].required
+               for item in previous.milestones) and not revision_reason.strip():
+            raise WorkTrackingRejected("Changing required status requires an explicit revision reason")
     data["work_plan"] = payload
     data["work_plan_revision"] = work_plan_revision + 1
     data["organization"] = "tracked"

@@ -63,6 +63,22 @@ un blocage déclaré. Les tâches déjà terminales ne sont pas réécrites.
 
 ## Validation et limites
 
+Précision du 7 novembre 2026 : chaque jalon distingue `required=true` (défaut conservateur
+pour les suivis existants) et `required=false`. Les compléments facultatifs restent séparés
+du livrable demandé. Un état `skipped` exige un jalon facultatif et une observation ;
+un complément facultatif `blocked` reste lui aussi une omission non bloquante à la clôture.
+La progression exclut ces omissions des jalons applicables et expose leur nombre `skipped`,
+sans les compter comme des réalisations. Les critères de succès du résultat restent inchangés.
+Un jalon obligatoire `blocked` conserve la garde d'échec ; changer le caractère obligatoire
+ou rouvrir un jalon `done`/`skipped` exige une raison explicite. Aucun de ces champs ne modifie
+le périmètre d'exécution ou les ACL, et aucun terminal historique n'est réécrit.
+
+Le défaut initial venait de la fusion d'une réponse obligatoire et d'une note conditionnelle
+dans un même jalon bloqué après refus d'écriture. Le contrat et les tests ne représentaient
+que la présence d'un blocage, sans son caractère obligatoire. La couverture existante est
+étendue avec une réponse conservée malgré une note facultative refusée, les suivis historiques,
+les attentes prioritaires et la persistance des omissions motivées, sur données synthétiques.
+
 Les scénarios synthétiques couvrent le choix, l'attente, l'expiration, la réponse tardive,
 la persistance PostgreSQL, les écritures concurrentes, les droits de l'exécutant et la
 préservation des checkpoints. Le corpus Lab `task-organization` complète les frontières

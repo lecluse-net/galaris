@@ -94,9 +94,16 @@ starting work. Inspectable technical unknowns do not require human clarification
 exposes revision and tracking; writes check ownership, phase and revision while preserving
 checkpoints. Milestone progress is declarative: it does not replace resource verification or
 the terminal result. See [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
-At completion, an explicitly persisted `blocked` milestone prevents contradictory success:
+Required milestones (`required=true`, the historical default) remain separate from optional
+additions (`required=false`). An unavailable addition may be `skipped` with an observation;
+its omission remains visible without counting as unfinished required work in progress.
+An optional `blocked` milestone has the same effect on progress and completion.
+At completion, an explicitly persisted required `blocked` milestone prevents contradictory success:
 without an existing durable wait, the Task ends in error without automatic retry, retaining
 its report and completed effects. This guard creates neither a wait nor an authorization.
+A rejected conditional document note therefore does not block the main reply; the executor
+discloses the omission in its response. Tracking grants no write permission.
+Changing required status or reopening a `done`/`skipped` milestone requires a revision reason.
 
 The internal harness applies `runtime.yaml` from effectively assigned skills: `loading: eager`
 loads them on the first request in Tasks, text conversations and turn-based voice; the default

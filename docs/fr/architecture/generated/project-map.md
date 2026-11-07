@@ -2329,9 +2329,9 @@ tests restent l’autorité sur le comportement.
 | `process_validate` | `galaris` | `app.process` | `process_validate` | `back/app/process/mcp.py:204` |
 | `processus_get` | `galaris` | `app.process` | `processus_get` | `back/app/process/mcp.py:31` |
 | `task_get` | `galaris` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:91` |
-| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:199` |
-| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:175` |
-| `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:115` |
+| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:203` |
+| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:179` |
+| `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:119` |
 | `tools_list` | `galaris` | `app.tools` | `list_mcp_tools` | `back/app/tools/mcp.py:89` |
 | `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:246` |
 | `documentation_catalog` | `galaris_admin` | `app.tools` | `documentation_catalog` | `back/app/tools/mcp.py:37` |
