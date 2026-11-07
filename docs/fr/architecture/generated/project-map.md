@@ -17,8 +17,8 @@ tests restent l’autorité sur le comportement.
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 771 handlers HTTP/WebSocket détectés ;
-- 182 tables SQLAlchemy détectées ;
+- 775 handlers HTTP/WebSocket détectés ;
+- 183 tables SQLAlchemy détectées ;
 - 286 outils MCP natifs détectés ;
 - 55 pages Vue détectées.
 
@@ -345,13 +345,13 @@ tests restent l’autorité sur le comportement.
 | `app.goal` | `app.task` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.tools` | `back/app/goal/access.py`, `back/app/goal/mcp.py` |
 | `app.goal` | `core.authorize` | `back/app/goal/router.py` |
-| `app.goal` | `core.database` | `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
+| `app.goal` | `core.database` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.dbadmin` | `back/app/goal/dbadmin.py` |
 | `app.goal` | `core.i18n` | `back/app/goal/referrer_wait.py` |
 | `app.goal` | `core.params` | `back/app/goal/facade.py`, `back/app/goal/settings_service.py` |
 | `app.goal` | `core.scheduling` | `back/app/goal/__init__.py` |
 | `app.goal` | `core.storage` | `back/app/goal/dbadmin.py` |
-| `app.goal` | `core.user` | `back/app/goal/events.py`, `back/app/goal/goal_service.py` |
+| `app.goal` | `core.user` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/goal_service.py` |
 | `app.goal` | `core.util` | `back/app/goal/router.py`, `back/app/goal/schemas.py` |
 | `app.harness` | `app.agent` | `back/app/harness/__init__.py`, `back/app/harness/checkpoint.py`, `back/app/harness/checkpoint_policy.py`, `back/app/harness/contracts.py`, `back/app/harness/conversation.py`, `back/app/harness/conversation_protocol.py`, `back/app/harness/driver.py`, `back/app/harness/executor.py`, `back/app/harness/facade.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/media.py`, `back/app/harness/prompt.py`, `back/app/harness/router.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `app.console` | `back/app/harness/executor.py` |
@@ -862,11 +862,11 @@ tests restent l’autorité sur le comportement.
 | `app/file_share` | `core/navigation` | `front/app/file_share/navigation.ts` |
 | `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/components/MailMessageDialog.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/presentation.ts` |
 | `app/goal` | `app/agent` | `front/app/goal/pages/index.vue` |
-| `app/goal` | `core/api` | `front/app/goal/pages/index.vue`, `front/app/goal/services/goalService.ts`, `front/app/goal/stores/goalStore.ts` |
+| `app/goal` | `core/api` | `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/services/categoryService.ts`, `front/app/goal/services/goalService.ts`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/authorize` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/navigation` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/user` | `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
-| `app/goal` | `core/util` | `front/app/goal/pages/index.vue`, `front/app/goal/richContent.ts` |
+| `app/goal` | `core/util` | `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/richContent.ts` |
 | `app/goal` | `core/websocket` | `front/app/goal/stores/goalStore.ts` |
 | `app/harnesses` | `core/api` | `front/app/harnesses/services/harnessService.ts`, `front/app/harnesses/services/managerService.ts` |
 | `app/harnesses` | `core/authorize` | `front/app/harnesses/components/HarnessCatalogGrid.vue`, `front/app/harnesses/components/HarnessEditor.vue`, `front/app/harnesses/components/HarnessExecutionSettings.vue`, `front/app/harnesses/components/HarnessManagedProviders.vue`, `front/app/harnesses/components/HarnessManagerConfiguration.vue` |
@@ -1656,21 +1656,25 @@ tests restent l’autorité sur le comportement.
 | WEBSOCKET | `/gateway/{identifier}/editor/{path:path}` | `app.code` | `editor_ws` | non | `back/app/code/gateway.py:188` |
 | GET | `/gateway/{identifier}/launch` | `app.code` | `launch_page` | non | `back/app/code/gateway.py:47` |
 | POST | `/gateway/{identifier}/launch` | `app.code` | `launch` | non | `back/app/code/gateway.py:71` |
-| GET | `/goals` | `app.goal` | `read_goals` | oui | `back/app/goal/router.py:84` |
-| POST | `/goals` | `app.goal` | `create_goal` | oui | `back/app/goal/router.py:188` |
-| GET | `/goals/referrers/messenger` | `app.goal` | `search_messenger_referrers` | oui | `back/app/goal/router.py:104` |
-| GET | `/goals/runtime-status` | `app.goal` | `read_goal_runtime` | oui | `back/app/goal/router.py:119` |
-| GET | `/goals/settings` | `app.goal` | `read_goal_settings` | oui | `back/app/goal/router.py:125` |
-| PATCH | `/goals/settings` | `app.goal` | `update_goal_settings` | oui | `back/app/goal/router.py:131` |
-| GET | `/goals/tree` | `app.goal` | `read_goal_tree` | oui | `back/app/goal/router.py:148` |
-| DELETE | `/goals/{goal_id}` | `app.goal` | `delete_goal` | oui | `back/app/goal/router.py:275` |
-| GET | `/goals/{goal_id}` | `app.goal` | `read_goal` | oui | `back/app/goal/router.py:155` |
-| PUT | `/goals/{goal_id}` | `app.goal` | `update_goal` | oui | `back/app/goal/router.py:202` |
-| POST | `/goals/{goal_id}/complete` | `app.goal` | `complete_goal` | oui | `back/app/goal/router.py:249` |
-| GET | `/goals/{goal_id}/cycles` | `app.goal` | `read_goal_cycles` | oui | `back/app/goal/router.py:169` |
-| POST | `/goals/{goal_id}/pause` | `app.goal` | `pause_goal` | oui | `back/app/goal/router.py:223` |
-| POST | `/goals/{goal_id}/resume` | `app.goal` | `resume_goal` | oui | `back/app/goal/router.py:236` |
-| POST | `/goals/{goal_id}/run-now` | `app.goal` | `run_goal_now` | oui | `back/app/goal/router.py:262` |
+| GET | `/goals` | `app.goal` | `read_goals` | oui | `back/app/goal/router.py:88` |
+| POST | `/goals` | `app.goal` | `create_goal` | oui | `back/app/goal/router.py:230` |
+| GET | `/goals/categories` | `app.goal` | `read_categories` | oui | `back/app/goal/router.py:116` |
+| POST | `/goals/categories` | `app.goal` | `create_category` | oui | `back/app/goal/router.py:122` |
+| DELETE | `/goals/categories/{category_id}` | `app.goal` | `delete_category` | oui | `back/app/goal/router.py:137` |
+| PUT | `/goals/categories/{category_id}` | `app.goal` | `update_category` | oui | `back/app/goal/router.py:128` |
+| GET | `/goals/referrers/messenger` | `app.goal` | `search_messenger_referrers` | oui | `back/app/goal/router.py:146` |
+| GET | `/goals/runtime-status` | `app.goal` | `read_goal_runtime` | oui | `back/app/goal/router.py:161` |
+| GET | `/goals/settings` | `app.goal` | `read_goal_settings` | oui | `back/app/goal/router.py:167` |
+| PATCH | `/goals/settings` | `app.goal` | `update_goal_settings` | oui | `back/app/goal/router.py:173` |
+| GET | `/goals/tree` | `app.goal` | `read_goal_tree` | oui | `back/app/goal/router.py:190` |
+| DELETE | `/goals/{goal_id}` | `app.goal` | `delete_goal` | oui | `back/app/goal/router.py:317` |
+| GET | `/goals/{goal_id}` | `app.goal` | `read_goal` | oui | `back/app/goal/router.py:197` |
+| PUT | `/goals/{goal_id}` | `app.goal` | `update_goal` | oui | `back/app/goal/router.py:244` |
+| POST | `/goals/{goal_id}/complete` | `app.goal` | `complete_goal` | oui | `back/app/goal/router.py:291` |
+| GET | `/goals/{goal_id}/cycles` | `app.goal` | `read_goal_cycles` | oui | `back/app/goal/router.py:211` |
+| POST | `/goals/{goal_id}/pause` | `app.goal` | `pause_goal` | oui | `back/app/goal/router.py:265` |
+| POST | `/goals/{goal_id}/resume` | `app.goal` | `resume_goal` | oui | `back/app/goal/router.py:278` |
+| POST | `/goals/{goal_id}/run-now` | `app.goal` | `run_goal_now` | oui | `back/app/goal/router.py:304` |
 | GET | `/harness-manager/configuration` | `bridge.harness` | `read_configuration` | oui | `back/bridge/harness/router.py:27` |
 | PUT | `/harness-manager/configuration` | `bridge.harness` | `update_configuration` | oui | `back/bridge/harness/router.py:33` |
 | GET | `/harness-manager/diagnostics` | `bridge.harness` | `manager_diagnostics` | oui | `back/bridge/harness/router.py:21` |
@@ -2085,9 +2089,10 @@ tests restent l’autorité sur le comportement.
 | `file_owners` | `ManagedFileOwner` | `app.file_share` | non | `agents.id`, `files.id` | `back/app/file_share/models.py:18` |
 | `file_stores` | `FileStore` | `core.storage` | non | — | `back/core/storage/models.py:59` |
 | `files` | `StoredFile` | `core.storage` | oui | — | `back/core/storage/models.py:14` |
-| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | non | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:343` |
-| `goal_cycles` | `GoalCycle` | `app.goal` | non | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:219` |
-| `goals` | `Goal` | `app.goal` | oui | `agents.id`, `connections.id`, `documents.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:75` |
+| `goal_categories` | `GoalCategory` | `app.goal` | oui | — | `back/app/goal/models.py:76` |
+| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | non | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:358` |
+| `goal_cycles` | `GoalCycle` | `app.goal` | non | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:234` |
+| `goals` | `Goal` | `app.goal` | oui | `agents.id`, `connections.id`, `documents.id`, `goal_categories.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:86` |
 | `harness_execution_configurations` | `HarnessExecutionConfiguration` | `app.harnesses` | oui | — | `back/app/harnesses/models.py:18` |
 | `harnesses` | `Harness` | `app.harnesses` | oui | — | `back/app/harnesses/models.py:29` |
 | `hermes_agent_configs` | `HermesAgentConfig` | `bridge.hermes` | non | `agents.id` | `back/bridge/hermes/models.py:14` |

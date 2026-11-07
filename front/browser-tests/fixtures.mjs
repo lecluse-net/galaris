@@ -13,6 +13,8 @@ export const test = base.extend({
     // Documents have no sharing in ordinary editor fixtures. Dedicated sharing tests override this route.
     // Help starts unread; persistence/error scenarios override this read-only fixture.
     await page.route('**/api/auth/me/help-dismissals', route => route.fulfill({ json: [] }))
+    // Personal Goal classifications start empty; classification journeys override this.
+    await page.route('**/api/goals/categories', route => route.fulfill({ json: [] }))
     // Ordinary component fixtures use Alice (7) as the managed agent. Scope tests override this catalogue.
     await page.route('**/api/agents/selection?scope=management', route => route.fulfill({ json: [{ id: 7, label: 'Alice Example', has_avatar: false }] }))
     await page.route('**/api/documents/*/sharing', route => route.fulfill({ json: { lock_version: 1, can_manage: true, grants: [], options: [], level: 'private', can_write: false, owner: { kind: 'agent', id: 7, label: 'Alice', can_write: true }, owner_groups: [] } }))

@@ -7,7 +7,7 @@ from app.llm import model_usages
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from collections.abc import Collection
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 from uuid import UUID, uuid4
 
 from sqlalchemy import Select, case, func, or_, select
@@ -24,10 +24,12 @@ from core.database import get_db
 from core.user import get_current_user_id
 
 from .document_store import GoalMarkdown, get_goal_document_store
+from . import category_service
 from .contact_port import contact_directory_port
 from .lifecycle import notify_goal
 from .models import (
     Goal,
+    GoalCategory,
     GoalCycle,
     GoalCycleTrigger,
     GoalCycleStatus,
@@ -138,7 +140,17 @@ def _apply_filters(
     search: str | None,
     agent_ids: Collection[int] | None = None,
     document_matches: dict[str, frozenset[UUID]] | None = None,
+    category_id: int | None = None,
+    uncategorized: bool = False,
 ) -> Select[Any]:
+    visible_categories = select(GoalCategory.id).where(
+        GoalCategory.created_by == (get_current_user_id() or -1),
+        GoalCategory.deleted_at.is_(None),
+    )
+    if category_id is not None:
+        query = query.where(Goal.category_id == category_id, Goal.category_id.in_(visible_categories))
+    elif uncategorized:
+        query = query.where(or_(Goal.category_id.is_(None), Goal.category_id.not_in(visible_categories)))
     if agent_id is not None:
         query = query.where(Goal.agent_id == agent_id)
     if agent_ids is not None:
@@ -279,6 +291,11 @@ def _serialize_goal(
     return GoalRead.model_validate(
         {
             **goal.__dict__,
+            "category_id": (
+                goal.category_id if goal.category is not None
+                and get_current_user_id() is not None
+                and goal.category.created_by == get_current_user_id() else None
+            ),
             "description": markdown.description,
             "tracking_content": markdown.tracking,
             "agent_name": _agent_name(goal.agent, goal.agent_id),
@@ -335,6 +352,7 @@ async def get_by_id(
     query = (
         select(Goal)
         .options(
+            selectinload(Goal.category),
             selectinload(Goal.agent).selectinload(Agent.title),
             selectinload(Goal.referrer_agent).selectinload(Agent.title),
             selectinload(Goal.parent),
@@ -482,6 +500,10 @@ async def list_page(
     status: GoalStatus | None = None,
     search: str | None = None,
     agent_ids: Collection[int] | None = None,
+    category_id: int | None = None,
+    uncategorized: bool = False,
+    sort_by: Literal["agent", "title"] | None = None,
+    descending: bool = False,
 ) -> GoalPage:
     db = get_db()
     terms = tuple(term.strip() for term in (search or "").split() if term.strip())
@@ -493,19 +515,43 @@ async def list_page(
         search=search,
         agent_ids=agent_ids,
         document_matches=document_matches,
+        category_id=category_id,
+        uncategorized=uncategorized,
     )
+    # Personal categories remain the primary order, before pagination and in either
+    # direction of the secondary sort. Hidden categories behave like no category.
+    category_label = select(GoalCategory.label).where(
+        GoalCategory.id == Goal.category_id,
+        GoalCategory.created_by == (get_current_user_id() or -1),
+        GoalCategory.deleted_at.is_(None),
+    ).correlate(Goal).scalar_subquery()
+    secondary = (
+        select(func.lower(func.concat_ws(" ", Agent.first_name, Agent.last_name))).where(
+            Agent.id == Goal.agent_id,
+        ).correlate(Goal).scalar_subquery()
+        if sort_by == "agent" else func.lower(Goal.title)
+    )
+    secondary_order = (secondary.desc() if descending else secondary.asc(),) if sort_by else ()
     rows = list(
         (
             await db.execute(
                 _apply_filters(
                     select(Goal, _children_count())
                     .options(
+                        joinedload(Goal.category),
                         joinedload(Goal.agent).load_only(*_AGENT_SUMMARY_FIELDS, raiseload=True).joinedload(Agent.title),
                         joinedload(Goal.referrer_agent).load_only(*_AGENT_SUMMARY_FIELDS, raiseload=True).joinedload(Agent.title),
                         joinedload(Goal.parent).load_only(Goal.id, Goal.title, raiseload=True),
                         raiseload(Goal.children),
                     )
-                    .order_by(Goal.updated_at.desc().nullslast(), Goal.created_at.desc())
+                    .order_by(
+                        category_label.is_(None),
+                        func.lower(category_label),
+                        category_label,
+                        case((category_label.is_not(None), Goal.category_id), else_=None),
+                        *secondary_order,
+                        Goal.updated_at.desc().nullslast(), Goal.created_at.desc(), Goal.id,
+                    )
                     .offset(skip)
                     .limit(limit),
                     agent_id=agent_id,
@@ -513,6 +559,8 @@ async def list_page(
                     search=search,
                     agent_ids=agent_ids,
                     document_matches=document_matches,
+                    category_id=category_id,
+                    uncategorized=uncategorized,
                 )
             )
         ).all()
@@ -800,10 +848,13 @@ async def _emit(goal_id: UUID, action: str = "update") -> None:
     goal = await get_read(goal_id)
     if goal is not None:
         await notify_goal(goal_id, action)
-        await websocket.emit("goal", action, goal.model_dump(mode="json"), None)
+        # This event is shared by all managers; personal classifications are HTTP-only.
+        await websocket.emit("goal", action, goal.model_dump(mode="json", exclude={"category_id"}), None)
 
 
 async def create(data: GoalCreate) -> GoalRead:
+    if data.category_id is not None:
+        await category_service.require_owned(data.category_id, lock=True)
     _assert_automatic_trigger_configuration(
         cycle_delay_seconds=data.cycle_delay_seconds,
         parent_goal_id=data.parent_goal_id,
@@ -828,6 +879,7 @@ async def create(data: GoalCreate) -> GoalRead:
         description=data.description,
         tracking_document_id=tracking_document_id,
         agent_id=data.agent_id,
+        category_id=data.category_id,
         parent_goal_id=data.parent_goal_id,
         cycle_delay_seconds=data.cycle_delay_seconds,
         schedule_enabled=data.schedule_enabled,
@@ -906,6 +958,8 @@ async def update(
     *,
     owner_agent_id: int | None = None,
 ) -> GoalRead | None:
+    if data.category_id is not None:
+        await category_service.require_owned(data.category_id, lock=True)
     goal = await get_by_id(
         goal_id,
         for_update=True,
@@ -914,6 +968,9 @@ async def update(
     if goal is None:
         return None
     _assert_revision(goal, data)
+    if "category_id" in data.model_fields_set and goal.category is not None:
+        if goal.category.created_by != get_current_user_id():
+            raise GoalConflictError("This Goal's category belongs to another user.")
     changes = data.model_dump(
         exclude_unset=True,
         exclude={

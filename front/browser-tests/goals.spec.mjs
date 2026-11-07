@@ -49,7 +49,134 @@ for (const mode of ['read', 'edit']) test(`a Goal citation opens its original mo
   expect(await page.evaluate(async () => (await import('/app/goal/stores/goalStore.ts')).useGoalStore().currentGoal.id)).toBe('other-goal')
 })
 
+test('column sorting keeps categories first and orders agents inside each category', async ({ page }, testInfo) => {
+  await goals(page)
+  const categories = [{ id: 11, label: 'Zeta' }, { id: 12, label: 'Alpha' }]
+  const rows = [
+    { ...goal, id: 'alpha-zora', title: 'Alpha Zora objective', agent_name: 'Zora Example', category_id: 12 },
+    { ...goal, id: 'alpha-alice', title: 'Alpha Alice objective', agent_name: 'Alice Example', category_id: 12 },
+    { ...goal, id: 'zeta-zora', title: 'Zeta Zora objective', agent_name: 'Zora Example', category_id: 11 },
+    { ...goal, id: 'zeta-alice', title: 'Zeta Alice objective', agent_name: 'Alice Example', category_id: 11 },
+    { ...goal, id: 'none-alice', title: 'Uncategorized objective', category_id: null },
+  ]
+  await jsonRoute(page, '**/api/goals/categories', categories)
+  await jsonRoute(page, '**/api/goals/tree', { items: [...rows].reverse(), total: rows.length })
+  const requests = []
+  await page.route('**/api/goals?*', route => {
+    const params = new URL(route.request().url()).searchParams
+    requests.push(Object.fromEntries(params))
+    const direction = params.get('descending') === 'true' ? -1 : 1
+    const rank = row => row.category_id === 12 ? 0 : row.category_id === 11 ? 1 : 2
+    const items = [...rows].sort((a, b) => rank(a) - rank(b)
+      || (params.get('sort_by') === 'agent' ? direction * a.agent_name.localeCompare(b.agent_name) : 0))
+    return route.fulfill({ json: { items, total: items.length, summary: { active: items.length }, tracking_llm_configured: true } })
+  })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_ACCESS'] })
+  const dataRows = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Goal details', exact: true }) })
+  const titles = () => dataRows.evaluateAll((elements, titles) => elements.map(row => titles.find(title => row.textContent.includes(title))), rows.map(row => row.title))
+  await page.getByRole('columnheader', { name: /^Agent/ }).click()
+  await expect.poll(() => requests.at(-1)?.sort_by).toBe('agent')
+  await expect.poll(titles).toEqual(['Alpha Alice objective', 'Alpha Zora objective', 'Zeta Alice objective', 'Zeta Zora objective', 'Uncategorized objective'])
+  await page.getByRole('columnheader', { name: /^Agent/ }).click()
+  await expect.poll(() => requests.at(-1)?.descending).toBe('true')
+  await expect.poll(titles).toEqual(['Alpha Zora objective', 'Alpha Alice objective', 'Zeta Zora objective', 'Zeta Alice objective', 'Uncategorized objective'])
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 950 })
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => window.testApp.dark(dark), dark)
+      await page.screenshot({ path: testInfo.outputPath(`category-titles-${width}-${dark ? 'dark' : 'light'}.png`), fullPage: true })
+    }
+  }
+})
+
 for (const width of [390, 1440]) {
+  test(`personal Goal categories can be managed, assigned, reopened and filtered at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 950 })
+    await goals(page)
+    await jsonRoute(page, '**/api/agents/selection?scope=management', [{ id: 7, label: 'Alice Example', has_avatar: true }])
+    await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#087FF5"/><text x="20" y="27" text-anchor="middle" fill="white" font-size="20">A</text></svg>' }))
+    let categories = [], failCreate = true
+    let current = { ...goal, category_id: null, referrer: { type: 'MESSENGER', connection_id: 1, user_id: 'user:1', display_name: 'Synthetic supervisor', platform: 'internal' } }
+    const writes = [], filters = []
+    await page.route('**/api/goals/categories', route => {
+      if (route.request().method() === 'POST') {
+        if (failCreate) { failCreate = false; return route.fulfill({ status: 503, json: { detail: 'Synthetic temporary category failure' } }) }
+        const category = { id: 11, label: route.request().postDataJSON().label }
+        categories.push(category)
+        return route.fulfill({ status: 201, json: category })
+      }
+      return route.fulfill({ json: categories })
+    })
+    await page.route('**/api/goals/categories/11', route => {
+      if (route.request().method() === 'DELETE') { categories = []; current = { ...current, category_id: null, revision: current.revision + 1 }; return route.fulfill({ status: 204 }) }
+      categories[0] = { ...categories[0], ...route.request().postDataJSON() }
+      return route.fulfill({ json: categories[0] })
+    })
+    await page.route('**/api/goals/goal-a', route => {
+      if (route.request().method() === 'PUT') { const change = route.request().postDataJSON(); writes.push(change); current = { ...current, ...change, revision: current.revision + 1 } }
+      return route.fulfill({ json: current })
+    })
+    await page.route('**/api/goals?*', route => {
+      filters.push(Object.fromEntries(new URL(route.request().url()).searchParams))
+      return route.fulfill({ json: { items: [current], total: 1, summary: { active: 1 }, tracking_llm_configured: true } })
+    })
+    await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+    await expect(page.getByRole('img', { name: goal.agent_name, exact: true }).first()).toBeVisible()
+    await page.getByRole('button', { name: 'Manage my categories', exact: true }).click()
+    const manager = page.getByRole('dialog')
+    await expect(manager).toContainText('You have no categories yet.')
+    await manager.getByRole('textbox', { name: 'New category', exact: true }).fill('Research')
+    await manager.getByRole('button', { name: 'Add', exact: true }).click()
+    await expect(manager.getByRole('alert')).toContainText('Synthetic temporary category failure')
+    await expect(manager.getByRole('textbox', { name: 'New category', exact: true })).toHaveValue('Research')
+    await manager.getByRole('button', { name: 'Add', exact: true }).click()
+    await expect(manager.getByRole('textbox', { name: 'Category', exact: true })).toHaveValue('Research')
+    await manager.getByRole('textbox', { name: 'Category', exact: true }).fill('Research projects')
+    await manager.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect.poll(() => categories[0]?.label).toBe('Research projects')
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => window.testApp.dark(dark), dark)
+      await page.screenshot({ path: testInfo.outputPath(`category-manager-${dark ? 'dark' : 'light'}.png`) })
+    }
+    await manager.getByRole('button', { name: 'Close', exact: true }).first().click()
+    await expect(manager).toHaveCount(0)
+    const view = page.locator('button').filter({ has: page.locator('.q-icon', { hasText: 'visibility' }) }).first()
+    await view.click()
+    const detail = page.getByRole('dialog')
+    await detail.getByRole('tab', { name: 'Edit', exact: true }).click()
+    await detail.getByRole('combobox', { name: 'Category', exact: true }).click()
+    await page.getByRole('option', { name: 'Research projects', exact: true }).click()
+    await detail.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect.poll(() => writes.at(-1)?.category_id).toBe(11)
+    await detail.getByRole('button', { name: 'Close', exact: true }).click()
+    await view.click()
+    await detail.getByRole('tab', { name: 'Edit', exact: true }).click()
+    await expect(detail.getByRole('combobox', { name: 'Category', exact: true })).toHaveValue('Research projects')
+    await detail.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(detail).toHaveCount(0)
+    await page.getByRole('combobox', { name: 'Category', exact: true }).click()
+    await page.getByRole('option', { name: 'Research projects', exact: true }).click()
+    await expect.poll(() => filters.at(-1)?.category_id).toBe('11')
+    await expect(page.getByRole('option', { name: 'Research projects', exact: true })).toHaveCount(0)
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => window.testApp.dark(dark), dark)
+      await page.screenshot({ path: testInfo.outputPath(`goal-categories-${dark ? 'dark' : 'light'}.png`), fullPage: true })
+    }
+    await page.getByRole('button', { name: 'Manage my categories', exact: true }).click()
+    await manager.getByRole('button', { name: 'Delete', exact: true }).click()
+    const confirmation = page.getByRole('dialog').filter({ hasText: 'Delete category' })
+    await expect(confirmation).toContainText('Goals will be retained')
+    await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(confirmation).toHaveCount(0)
+    await expect(manager).toContainText('You have no categories yet.')
+    await expect.poll(() => filters.at(-1)?.category_id).toBeUndefined()
+    await manager.getByRole('button', { name: 'Close', exact: true }).first().click()
+    await expect(manager).toHaveCount(0)
+    await page.getByRole('combobox', { name: 'Category', exact: true }).click()
+    await page.getByRole('option', { name: 'Uncategorized', exact: true }).click()
+    await expect.poll(() => filters.at(-1)?.uncategorized).toBe('true')
+  })
+
   test(`Goal frequencies save and reopen without changing their duration at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 950 })
     await goals(page)

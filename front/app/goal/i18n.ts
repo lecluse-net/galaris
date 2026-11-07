@@ -1,7 +1,7 @@
 export default {
   fr: {
     contextHelpPages: {
-      "goals": "Un objectif confie à un agent un résultat à poursuivre dans la durée, par exemple structurer une base de connaissances ou assurer une veille. Galaris avance par cycles de travail : l’agent agit, évalue les progrès et conserve un suivi pour préparer la suite. Un objectif peut donc mobiliser plusieurs tâches, alors qu’une tâche correspond à un travail fini. Décrivez le résultat souhaité et les critères qui permettront de juger sa réussite, puis choisissez l’agent responsable. Cette page permet de consulter les cycles, les résultats et les décisions de suivi, ainsi que de mettre l’objectif en pause, de le reprendre ou de le clôturer."
+      "goals": "Définissez un résultat durable, ses critères de réussite et l’agent responsable. Chaque cycle réalise une tâche et actualise le suivi. Consultez les résultats, suspendez, reprenez ou terminez l’objectif."
     },
     nav: {
       goal: 'Objectifs',
@@ -9,6 +9,14 @@ export default {
     },
     goal: {
       new: 'Nouvel objectif',
+      categories: {
+        label: 'Catégorie', manage: 'Gérer mes catégories', new: 'Nouvelle catégorie',
+        add: 'Ajouter', none: 'Sans catégorie', empty: 'Vous n’avez pas encore de catégorie.',
+        private: 'Catégories privées, visibles uniquement par vous.',
+        error: 'Impossible de charger ou d’enregistrer les catégories.',
+        deleteTitle: 'Supprimer la catégorie',
+        deleteConfirm: 'Supprimer « {label} » ? Les objectifs seront conservés, sans catégorie.',
+      },
       edit: 'Modifier l’objectif',
       details: 'Détail de l’objectif',
       tabs: {
@@ -211,7 +219,7 @@ export default {
   },
   en: {
     contextHelpPages: {
-      "goals": "A goal gives an agent an outcome to pursue over time, such as organizing a knowledge base or monitoring a subject. Galaris proceeds in work cycles: the agent acts, evaluates progress and keeps a record to prepare what comes next. A goal may therefore involve several tasks, while a task is a finite piece of work. Describe the desired outcome and success criteria, then choose the responsible agent. This page lets you review cycles, results and follow-up decisions, and pause, resume or close the goal."
+      "goals": "Set a lasting outcome, success criteria and responsible agent. Each cycle runs a Task and updates tracking. Review results, pause, resume or complete the Goal."
     },
     nav: {
       goal: 'Goals',
@@ -219,6 +227,14 @@ export default {
     },
     goal: {
       new: 'New Goal',
+      categories: {
+        label: 'Category', manage: 'Manage my categories', new: 'New category',
+        add: 'Add', none: 'Uncategorized', empty: 'You have no categories yet.',
+        private: 'Your categories are private and visible only to you.',
+        error: 'Unable to load or save categories.',
+        deleteTitle: 'Delete category',
+        deleteConfirm: 'Delete “{label}”? Goals will be retained and removed from this category.',
+      },
       edit: 'Edit Goal',
       details: 'Goal details',
       tabs: {
@@ -421,11 +437,16 @@ export default {
   },
   zh: {
     contextHelpPages: {
-      "goals": "目标为智能体设定需要长期追求的成果，例如整理知识库或持续关注某个主题。Galaris 按工作周期推进：智能体执行操作、评估进展，并保留记录以准备后续工作。因此，一个目标可能涉及多个任务，而任务对应一项有限的工作。请说明预期成果及判断成功的标准，再选择负责的智能体。在此页面可查看周期、结果和后续决策，也可以暂停、恢复或结束目标。"
+      "goals": "为智能体设定长期成果及成功标准。智能体按周期执行工作、评估进展并更新跟踪记录。一个目标可以涉及多个任务。在此查看周期和结果，或暂停、恢复、结束目标。"
     },
     nav: { goal: '目标', goal_desc: '监控分配给智能体的长期目标' },
     goal: {
       new: '新建目标', edit: '编辑目标', details: '目标详情', tabs: { overview: '目标', tracking: '跟踪', cycles: '周期', edit: '编辑' },
+      categories: {
+        label: '分类', manage: '管理我的分类', new: '新建分类', add: '添加', none: '未分类', empty: '您还没有分类。',
+        private: '您的分类为私有，仅您可见。', error: '无法加载或保存分类。', deleteTitle: '删除分类',
+        deleteConfirm: '删除“{label}”？目标将被保留并移出此分类。',
+      },
       subtitle: '每个周期都会创建一个任务、更新共享的 HTML 跟踪记录，然后决定“继续”或“停止”。', title: '标题', description: '目标描述',
       descriptionHtmlHint: '使用富文本编辑器；内容以 HTML 保存并在目标详情中呈现。', openDocument: '打开文档', agent: '智能体', workerLegend: '由谁执行？',
       referrer: '委托人', supervisorLegend: '由谁监督？', referrerMe: '我', referrerMeUnavailable: '所选智能体无法联系到您。', referrerContact: '其他联系人',

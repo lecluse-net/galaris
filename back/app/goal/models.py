@@ -14,6 +14,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Index,
     String,
     Text,
     UniqueConstraint,
@@ -72,6 +73,16 @@ class GoalReferrerType(str, enum.Enum):
     MESSENGER = "MESSENGER"
 
 
+class GoalCategory(HistoryMixin, Base):
+    """A personal, audited classification owned exclusively by its creator."""
+
+    __tablename__ = "goal_categories"
+    __table_args__ = (Index("ix_goal_categories_created_by", "created_by"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+
+
 class Goal(HistoryMixin, Base):
     """A durable objective repeatedly advanced by ordinary agent tasks."""
 
@@ -114,6 +125,10 @@ class Goal(HistoryMixin, Base):
     revision: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1, server_default="1"
     )
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("goal_categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    category: Mapped[GoalCategory | None] = relationship(GoalCategory)
     agent_id: Mapped[int] = mapped_column(
         ForeignKey("agents.id", ondelete="RESTRICT"), nullable=False, index=True
     )

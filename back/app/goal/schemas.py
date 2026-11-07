@@ -161,6 +161,7 @@ class GoalReferrerRead(BaseModel):
 
 
 class GoalCreate(GoalScheduleConfig):
+    category_id: int | None = Field(default=None, gt=0)
     title: str = Field(min_length=1, max_length=400)
     description: HtmlBody = Field(min_length=1)
     agent_id: int = Field(gt=0)
@@ -194,6 +195,7 @@ class GoalCreate(GoalScheduleConfig):
 class GoalApiCreate(GoalScheduleConfig):
     """Public HTTP contract: every newly assigned Goal has a human referrer."""
 
+    category_id: int | None = Field(default=None, gt=0)
     title: str = Field(min_length=1, max_length=400)
     description: HtmlBody = Field(min_length=1)
     agent_id: int = Field(gt=0)
@@ -212,6 +214,7 @@ class GoalApiCreate(GoalScheduleConfig):
 class GoalUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    category_id: int | None = Field(default=None, gt=0)
     expected_revision: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=400)
     description: HtmlBody | None = Field(default=None, min_length=1)
@@ -256,6 +259,7 @@ class GoalApiUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    category_id: int | None = Field(default=None, gt=0)
     expected_revision: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=400)
     description: HtmlBody | None = Field(default=None, min_length=1)
@@ -280,8 +284,26 @@ class GoalCommand(BaseModel):
     expected_revision: int = Field(ge=1)
 
 
+class GoalCategoryWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    label: str = Field(min_length=1, max_length=200)
+
+
+class GoalCategoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    label: str
+    created_at: datetime
+    created_by: int
+    updated_at: datetime | None = None
+    updated_by: int | None = None
+
+
 class GoalRead(GoalScheduleConfig):
     id: UUID
+    category_id: int | None = None
     memory_item_id: UUID | None = None
     revision: int
     title: str

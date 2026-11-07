@@ -2185,6 +2185,7 @@
       },
       {
         "files": [
+          "back/app/goal/category_service.py",
           "back/app/goal/events.py",
           "back/app/goal/facade.py",
           "back/app/goal/goal_service.py",
@@ -2234,6 +2235,7 @@
       },
       {
         "files": [
+          "back/app/goal/category_service.py",
           "back/app/goal/events.py",
           "back/app/goal/goal_service.py"
         ],
@@ -11011,6 +11013,15 @@
         "table": "files"
       },
       {
+        "class_name": "GoalCategory",
+        "file": "back/app/goal/models.py",
+        "foreign_keys": [],
+        "history_mixin": true,
+        "line": 76,
+        "module": "app.goal",
+        "table": "goal_categories"
+      },
+      {
         "class_name": "GoalCycleTrigger",
         "file": "back/app/goal/models.py",
         "foreign_keys": [
@@ -11018,7 +11029,7 @@
           "goals.id"
         ],
         "history_mixin": false,
-        "line": 343,
+        "line": 358,
         "module": "app.goal",
         "table": "goal_cycle_triggers"
       },
@@ -11033,7 +11044,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 219,
+        "line": 234,
         "module": "app.goal",
         "table": "goal_cycles"
       },
@@ -11044,12 +11055,13 @@
           "agents.id",
           "connections.id",
           "documents.id",
+          "goal_categories.id",
           "goals.id",
           "memory_items.id",
           "users.id"
         ],
         "history_mixin": true,
-        "line": 75,
+        "line": 86,
         "module": "app.goal",
         "table": "goals"
       },
@@ -18066,7 +18078,7 @@
         "declared_path": "/goals",
         "file": "back/app/goal/router.py",
         "handler": "read_goals",
-        "line": 84,
+        "line": 88,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18075,8 +18087,44 @@
         "declared_path": "/goals",
         "file": "back/app/goal/router.py",
         "handler": "create_goal",
-        "line": 188,
+        "line": 230,
         "method": "POST",
+        "module": "app.goal"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/goals/categories",
+        "file": "back/app/goal/router.py",
+        "handler": "read_categories",
+        "line": 116,
+        "method": "GET",
+        "module": "app.goal"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/goals/categories",
+        "file": "back/app/goal/router.py",
+        "handler": "create_category",
+        "line": 122,
+        "method": "POST",
+        "module": "app.goal"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/goals/categories/{category_id}",
+        "file": "back/app/goal/router.py",
+        "handler": "delete_category",
+        "line": 137,
+        "method": "DELETE",
+        "module": "app.goal"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/goals/categories/{category_id}",
+        "file": "back/app/goal/router.py",
+        "handler": "update_category",
+        "line": 128,
+        "method": "PUT",
         "module": "app.goal"
       },
       {
@@ -18084,7 +18132,7 @@
         "declared_path": "/goals/referrers/messenger",
         "file": "back/app/goal/router.py",
         "handler": "search_messenger_referrers",
-        "line": 104,
+        "line": 146,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18093,7 +18141,7 @@
         "declared_path": "/goals/runtime-status",
         "file": "back/app/goal/router.py",
         "handler": "read_goal_runtime",
-        "line": 119,
+        "line": 161,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18102,7 +18150,7 @@
         "declared_path": "/goals/settings",
         "file": "back/app/goal/router.py",
         "handler": "read_goal_settings",
-        "line": 125,
+        "line": 167,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18111,7 +18159,7 @@
         "declared_path": "/goals/settings",
         "file": "back/app/goal/router.py",
         "handler": "update_goal_settings",
-        "line": 131,
+        "line": 173,
         "method": "PATCH",
         "module": "app.goal"
       },
@@ -18120,7 +18168,7 @@
         "declared_path": "/goals/tree",
         "file": "back/app/goal/router.py",
         "handler": "read_goal_tree",
-        "line": 148,
+        "line": 190,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18129,7 +18177,7 @@
         "declared_path": "/goals/{goal_id}",
         "file": "back/app/goal/router.py",
         "handler": "delete_goal",
-        "line": 275,
+        "line": 317,
         "method": "DELETE",
         "module": "app.goal"
       },
@@ -18138,7 +18186,7 @@
         "declared_path": "/goals/{goal_id}",
         "file": "back/app/goal/router.py",
         "handler": "read_goal",
-        "line": 155,
+        "line": 197,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18147,7 +18195,7 @@
         "declared_path": "/goals/{goal_id}",
         "file": "back/app/goal/router.py",
         "handler": "update_goal",
-        "line": 202,
+        "line": 244,
         "method": "PUT",
         "module": "app.goal"
       },
@@ -18156,7 +18204,7 @@
         "declared_path": "/goals/{goal_id}/complete",
         "file": "back/app/goal/router.py",
         "handler": "complete_goal",
-        "line": 249,
+        "line": 291,
         "method": "POST",
         "module": "app.goal"
       },
@@ -18165,7 +18213,7 @@
         "declared_path": "/goals/{goal_id}/cycles",
         "file": "back/app/goal/router.py",
         "handler": "read_goal_cycles",
-        "line": 169,
+        "line": 211,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18174,7 +18222,7 @@
         "declared_path": "/goals/{goal_id}/pause",
         "file": "back/app/goal/router.py",
         "handler": "pause_goal",
-        "line": 223,
+        "line": 265,
         "method": "POST",
         "module": "app.goal"
       },
@@ -18183,7 +18231,7 @@
         "declared_path": "/goals/{goal_id}/resume",
         "file": "back/app/goal/router.py",
         "handler": "resume_goal",
-        "line": 236,
+        "line": 278,
         "method": "POST",
         "module": "app.goal"
       },
@@ -18192,7 +18240,7 @@
         "declared_path": "/goals/{goal_id}/run-now",
         "file": "back/app/goal/router.py",
         "handler": "run_goal_now",
-        "line": 262,
+        "line": 304,
         "method": "POST",
         "module": "app.goal"
       },
@@ -21940,7 +21988,9 @@
       },
       {
         "files": [
+          "front/app/goal/components/GoalCategoryManager.vue",
           "front/app/goal/pages/index.vue",
+          "front/app/goal/services/categoryService.ts",
           "front/app/goal/services/goalService.ts",
           "front/app/goal/stores/goalStore.ts"
         ],
@@ -21974,6 +22024,7 @@
       },
       {
         "files": [
+          "front/app/goal/components/GoalCategoryManager.vue",
           "front/app/goal/pages/index.vue",
           "front/app/goal/richContent.ts"
         ],

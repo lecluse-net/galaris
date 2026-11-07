@@ -5,13 +5,16 @@
 
     <div class="goal-page-heading row items-start justify-between q-mb-lg">
       <div class="text-body2 text-grey-7">{{ t('goal.subtitle') }}</div>
-      <q-btn
-        v-if="canEdit"
-        color="primary"
-        icon="add"
-        :label="t('goal.new')"
-        @click="openCreateDialog"
-      />
+      <div class="row q-gutter-sm">
+        <q-btn v-if="canEdit" outline color="primary" icon="category" :label="t('goal.categories.manage')" @click="categoryManagerOpen = true" />
+        <q-btn
+          v-if="canEdit"
+          color="primary"
+          icon="add"
+          :label="t('goal.new')"
+          @click="openCreateDialog"
+        />
+      </div>
     </div>
 
     <q-card
@@ -110,7 +113,7 @@
 
     <q-card flat bordered class="q-mb-md">
       <q-card-section class="row q-col-gutter-md items-center">
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-4">
           <q-input
             :model-value="store.search"
             outlined
@@ -123,7 +126,7 @@
             <template #prepend><q-icon name="search" /></template>
           </q-input>
         </div>
-        <div class="col-12 col-sm-6 col-md-4">
+        <div class="col-12 col-sm-6 col-md-3">
           <AgentSelect
             :model-value="store.agentFilter"
             :options="agentOptions"
@@ -136,7 +139,7 @@
             @update:model-value="setAgentFilter"
           />
         </div>
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col-12 col-sm-6 col-md-2">
           <q-select
             :model-value="store.statusFilter"
             :options="statusOptions"
@@ -149,24 +152,33 @@
             @update:model-value="setStatusFilter"
           />
         </div>
+        <div class="col-12 col-md-3">
+          <q-select :model-value="store.categoryFilter" :options="categoryFilterOptions" outlined dense clearable emit-value map-options :label="t('goal.categories.label')" :loading="categoriesLoading" @update:model-value="setCategoryFilter" />
+        </div>
+        <div v-if="categoriesError" class="col-12" role="alert">
+          {{ t('goal.categories.error') }}
+          <q-btn outline color="primary" :label="t('common.retry')" @click="loadCategories" />
+        </div>
       </q-card-section>
     </q-card>
 
     <q-table
       flat
-      bordered
       row-key="id"
       :rows="hierarchicalGoals"
       :columns="columns"
       :loading="store.loading"
-      :pagination="{ rowsPerPage: 0 }"
+      v-model:pagination="goalTablePagination"
       :grid="$q.screen.lt.md"
       hide-pagination
       class="goal-table"
-      @row-click="(_, row) => openDetails(row)"
+      @request="sortGoalTable"
     >
       <template #item="props">
         <div class="q-table__grid-item col-12 goal-grid-item">
+          <h2 v-if="categoryTitles.has(props.row.id)" class="goal-category-title">
+            {{ categoryTitles.get(props.row.id) }}
+          </h2>
           <q-card
             flat
             bordered
@@ -210,7 +222,10 @@
               <div class="goal-mobile-metadata q-mt-md">
                 <div>
                   <div class="goal-metadata-label">{{ t('goal.agent') }}</div>
-                  <div class="ellipsis">{{ props.row.agent_name || props.row.agent_code }}</div>
+                  <div class="row items-center no-wrap q-gutter-xs">
+                    <AgentAvatar :agent-id="props.row.agent_id" :name="props.row.agent_name" :has-avatar="hasAgentAvatar(props.row.agent_id)" size="32px" />
+                    <span class="ellipsis">{{ props.row.agent_name || props.row.agent_code }}</span>
+                  </div>
                 </div>
                 <div>
                   <div class="goal-metadata-label">{{ t('goal.automaticTriggers') }}</div>
@@ -356,194 +371,196 @@
         </div>
       </template>
 
-      <template #body-cell-title="props">
-        <q-td :props="props">
-          <div :style="goalIndentStyle(props.row.id)">
-            <div class="text-weight-medium">
-              <q-icon
-                v-if="goalDepth(props.row.id) > 0"
-                name="subdirectory_arrow_right"
-                color="secondary"
-                class="q-mr-xs"
-              />
-              {{ props.row.title }}
-            </div>
-            <div class="text-caption text-grey-7 ellipsis-2-lines goal-description-cell">
-              {{ props.row.description }}
-            </div>
-          </div>
-        </q-td>
-      </template>
-
-      <template #body-cell-agent="props">
-        <q-td :props="props">
-          <div>{{ props.row.agent_name || props.row.agent_code }}</div>
-          <div class="text-caption text-grey-7">@{{ props.row.agent_code }}</div>
-        </q-td>
-      </template>
-
-      <template #body-cell-status="props">
-        <q-td :props="props">
-          <q-chip
-            dense
-            :color="statusColor(props.row.status)"
-            text-color="white"
-            :icon="statusIcon(props.row.status)"
+      <template #body="props">
+        <q-tr v-if="categoryTitles.has(props.row.id)" class="goal-category-row" no-hover>
+          <q-td :colspan="props.cols.length">
+            <h2 class="goal-category-title">{{ categoryTitles.get(props.row.id) }}</h2>
+          </q-td>
+        </q-tr>
+        <q-tr :props="props" @click="openDetails(props.row)">
+          <q-td v-for="col in props.cols" :key="col.name" :props="props"
+            :class="{ 'goal-list-actions-cell': col.name === 'actions', 'goal-trigger-cell': col.name === 'trigger' }"
+            @click="col.name === 'actions' && $event.stopPropagation()"
           >
-            {{ statusLabel(props.row.status) }}
-          </q-chip>
-          <div v-if="props.row.last_error" class="text-caption text-negative ellipsis goal-error-cell">
-            {{ props.row.last_error }}
-            <q-tooltip max-width="500px">{{ props.row.last_error }}</q-tooltip>
-          </div>
-        </q-td>
-      </template>
+            <template v-if="col.name === 'title'">
+              <div :style="goalIndentStyle(props.row.id)">
+                <div class="text-weight-medium">
+                  <q-icon
+                    v-if="goalDepth(props.row.id) > 0"
+                    name="subdirectory_arrow_right"
+                    color="secondary"
+                    class="q-mr-xs"
+                  />
+                  {{ props.row.title }}
+                </div>
+                <div class="text-caption text-grey-7 ellipsis-2-lines goal-description-cell">
+                  {{ props.row.description }}
+                </div>
+              </div>
+            </template>
 
-      <template #body-cell-trigger="props">
-        <q-td :props="props" class="goal-trigger-cell">
-          <div v-if="props.row.cycle_delay_seconds !== null" class="ellipsis">
-            <q-icon name="schedule" color="primary" class="q-mr-xs" />
-            {{ formatDuration(props.row.cycle_delay_seconds) }}
-          </div>
-          <div v-if="parentGoalTitle(props.row)" class="ellipsis">
-            <q-icon name="account_tree" color="secondary" class="q-mr-xs" />
-            {{ t('goal.afterGoal', { title: parentGoalTitle(props.row) }) }}
-          </div>
-          <span
-            v-if="props.row.cycle_delay_seconds === null && !props.row.parent_goal_id"
-            class="text-caption text-grey-7"
-          >
-            {{ t('goal.manualOnly') }}
-          </span>
-        </q-td>
-      </template>
+            <template v-else-if="col.name === 'agent'">
+              <div class="row items-center no-wrap q-gutter-sm">
+                <AgentAvatar :agent-id="props.row.agent_id" :name="props.row.agent_name" :has-avatar="hasAgentAvatar(props.row.agent_id)" />
+                <span class="col goal-agent-name">{{ props.row.agent_name || props.row.agent_code }}</span>
+              </div>
+            </template>
 
-      <template #body-cell-next_cycle_at="props">
-        <q-td :props="props">
-          <div>{{ formatDate(props.row.next_cycle_at) }}</div>
-          <q-badge v-if="props.row.current_task_id" color="primary" outline>
-            {{ t('goal.currentTask') }}
-          </q-badge>
-        </q-td>
-      </template>
-
-      <template #body-cell-cycles="props">
-        <q-td :props="props">
-          <div class="text-weight-medium">{{ props.row.cycle_count }}</div>
-          <div class="text-caption text-grey-7">{{ formatCost(props.row.total_cost) }}</div>
-        </q-td>
-      </template>
-
-      <template #body-cell-actions="props">
-        <q-td :props="props" class="goal-list-actions-cell" @click.stop>
-          <div class="goal-list-actions">
-            <ActionContextMenu target="tr" :actions="goalActions(props.row)" />
-            <q-btn
-              flat
-              round
-              dense
-              icon="visibility"
-              color="primary"
-              :aria-label="t('goal.details')"
-              @click="openDetails(props.row)"
-            >
-              <q-tooltip>{{ t('goal.details') }}</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canEdit"
-              flat
-              round
-              dense
-              icon="edit"
-              color="primary"
-              :aria-label="t('goal.editAction')"
-              @click="openEdit(props.row)"
-            >
-              <q-tooltip>{{ t('goal.editAction') }}</q-tooltip>
-            </q-btn>
-            <span
-              v-if="canEdit && props.row.status !== 'COMPLETED'"
-              class="inline-block"
-            >
-              <q-btn
-                flat
-                round
+            <template v-else-if="col.name === 'status'">
+              <q-chip
                 dense
-                icon="rocket_launch"
-                color="positive"
-                :loading="commandGoalIds.has(props.row.id)"
-                :disable="Boolean(props.row.current_task_id)"
-                :aria-label="t('goal.runNow')"
-                @click="runCommand('runNow', props.row)"
-              />
-              <q-tooltip>
-                {{ props.row.current_task_id
-                  ? t('goal.runNowUnavailable')
-                  : t('goal.runNowHint') }}
-              </q-tooltip>
-            </span>
-            <q-btn
-              v-if="canEdit && props.row.status === 'ACTIVE'"
-              flat
-              round
-              dense
-              icon="pause"
-              color="warning"
-              :loading="commandGoalIds.has(props.row.id)"
-              :aria-label="t('goal.pause')"
-              @click="runCommand('pause', props.row)"
-            >
-              <q-tooltip>{{ t('goal.pause') }}</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canEdit && props.row.status !== 'ACTIVE'"
-              flat
-              round
-              dense
-              :icon="props.row.status === 'COMPLETED' ? 'replay' : 'play_arrow'"
-              color="positive"
-              :loading="commandGoalIds.has(props.row.id)"
-              :aria-label="props.row.status === 'COMPLETED'
-                ? t('goal.restart')
-                : props.row.status === 'ERROR'
-                  ? t('goal.retry')
-                  : t('goal.resume')"
-              @click="runCommand('resume', props.row)"
-            >
-              <q-tooltip>
-                {{ props.row.status === 'COMPLETED'
-                  ? t('goal.restart')
-                  : props.row.status === 'ERROR'
-                    ? t('goal.retry')
-                    : t('goal.resume') }}
-              </q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canEdit && props.row.status !== 'COMPLETED'"
-              flat
-              round
-              dense
-              icon="stop_circle"
-              color="warning"
-              :aria-label="t('goal.complete')"
-              @click="confirmComplete(props.row)"
-            >
-              <q-tooltip>{{ t('goal.complete') }}</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canEdit"
-              flat
-              round
-              dense
-              icon="delete"
-              color="negative"
-              :aria-label="t('goal.delete')"
-              @click="confirmDelete(props.row)"
-            >
-              <q-tooltip>{{ t('goal.delete') }}</q-tooltip>
-            </q-btn>
-          </div>
-        </q-td>
+                :color="statusColor(props.row.status)"
+                text-color="white"
+                :icon="statusIcon(props.row.status)"
+              >
+                {{ statusLabel(props.row.status) }}
+              </q-chip>
+              <div v-if="props.row.last_error" class="text-caption text-negative ellipsis goal-error-cell">
+                {{ props.row.last_error }}
+                <q-tooltip max-width="500px">{{ props.row.last_error }}</q-tooltip>
+              </div>
+            </template>
+
+            <template v-else-if="col.name === 'trigger'">
+              <div v-if="props.row.cycle_delay_seconds !== null" class="ellipsis">
+                <q-icon name="schedule" color="primary" class="q-mr-xs" />
+                {{ formatDuration(props.row.cycle_delay_seconds) }}
+              </div>
+              <div v-if="parentGoalTitle(props.row)" class="ellipsis">
+                <q-icon name="account_tree" color="secondary" class="q-mr-xs" />
+                {{ t('goal.afterGoal', { title: parentGoalTitle(props.row) }) }}
+              </div>
+              <span
+                v-if="props.row.cycle_delay_seconds === null && !props.row.parent_goal_id"
+                class="text-caption text-grey-7"
+              >
+                {{ t('goal.manualOnly') }}
+              </span>
+            </template>
+
+            <template v-else-if="col.name === 'next_cycle_at'">
+              <div>{{ formatDate(props.row.next_cycle_at) }}</div>
+              <q-badge v-if="props.row.current_task_id" color="primary" outline>
+                {{ t('goal.currentTask') }}
+              </q-badge>
+            </template>
+
+            <template v-else-if="col.name === 'cycles'">
+              <div class="text-weight-medium">{{ props.row.cycle_count }}</div>
+              <div class="text-caption text-grey-7">{{ formatCost(props.row.total_cost) }}</div>
+            </template>
+
+            <template v-else-if="col.name === 'actions'">
+              <div class="goal-list-actions">
+                <ActionContextMenu target="tr" :actions="goalActions(props.row)" />
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="visibility"
+                  color="primary"
+                  :aria-label="t('goal.details')"
+                  @click="openDetails(props.row)"
+                >
+                  <q-tooltip>{{ t('goal.details') }}</q-tooltip>
+                </q-btn>
+                <q-btn
+                  v-if="canEdit"
+                  flat
+                  round
+                  dense
+                  icon="edit"
+                  color="primary"
+                  :aria-label="t('goal.editAction')"
+                  @click="openEdit(props.row)"
+                >
+                  <q-tooltip>{{ t('goal.editAction') }}</q-tooltip>
+                </q-btn>
+                <span
+                  v-if="canEdit && props.row.status !== 'COMPLETED'"
+                  class="inline-block"
+                >
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="rocket_launch"
+                    color="positive"
+                    :loading="commandGoalIds.has(props.row.id)"
+                    :disable="Boolean(props.row.current_task_id)"
+                    :aria-label="t('goal.runNow')"
+                    @click="runCommand('runNow', props.row)"
+                  />
+                  <q-tooltip>
+                    {{ props.row.current_task_id
+                      ? t('goal.runNowUnavailable')
+                      : t('goal.runNowHint') }}
+                  </q-tooltip>
+                </span>
+                <q-btn
+                  v-if="canEdit && props.row.status === 'ACTIVE'"
+                  flat
+                  round
+                  dense
+                  icon="pause"
+                  color="warning"
+                  :loading="commandGoalIds.has(props.row.id)"
+                  :aria-label="t('goal.pause')"
+                  @click="runCommand('pause', props.row)"
+                >
+                  <q-tooltip>{{ t('goal.pause') }}</q-tooltip>
+                </q-btn>
+                <q-btn
+                  v-if="canEdit && props.row.status !== 'ACTIVE'"
+                  flat
+                  round
+                  dense
+                  :icon="props.row.status === 'COMPLETED' ? 'replay' : 'play_arrow'"
+                  color="positive"
+                  :loading="commandGoalIds.has(props.row.id)"
+                  :aria-label="props.row.status === 'COMPLETED'
+                    ? t('goal.restart')
+                    : props.row.status === 'ERROR'
+                      ? t('goal.retry')
+                      : t('goal.resume')"
+                  @click="runCommand('resume', props.row)"
+                >
+                  <q-tooltip>
+                    {{ props.row.status === 'COMPLETED'
+                      ? t('goal.restart')
+                      : props.row.status === 'ERROR'
+                        ? t('goal.retry')
+                        : t('goal.resume') }}
+                  </q-tooltip>
+                </q-btn>
+                <q-btn
+                  v-if="canEdit && props.row.status !== 'COMPLETED'"
+                  flat
+                  round
+                  dense
+                  icon="stop_circle"
+                  color="warning"
+                  :aria-label="t('goal.complete')"
+                  @click="confirmComplete(props.row)"
+                >
+                  <q-tooltip>{{ t('goal.complete') }}</q-tooltip>
+                </q-btn>
+                <q-btn
+                  v-if="canEdit"
+                  flat
+                  round
+                  dense
+                  icon="delete"
+                  color="negative"
+                  :aria-label="t('goal.delete')"
+                  @click="confirmDelete(props.row)"
+                >
+                  <q-tooltip>{{ t('goal.delete') }}</q-tooltip>
+                </q-btn>
+              </div>
+            </template>
+          </q-td>
+        </q-tr>
       </template>
 
       <template #no-data>
@@ -688,13 +705,12 @@
           <div class="goal-overview-toolbar">
             <div class="goal-overview-identities">
               <div class="goal-overview-identity">
-                <q-avatar icon="smart_toy" color="primary" text-color="white" size="38px" />
+                <AgentAvatar :agent-id="store.currentGoal.agent_id" :name="store.currentGoal.agent_name" :has-avatar="hasAgentAvatar(store.currentGoal.agent_id)" size="38px" />
                 <div>
                   <div class="text-caption text-grey-7">{{ t('goal.agent') }}</div>
                   <div class="text-weight-medium">
                     {{ store.currentGoal.agent_name || store.currentGoal.agent_code }}
                   </div>
-                  <div class="text-caption text-grey-7">@{{ store.currentGoal.agent_code }}</div>
                 </div>
               </div>
               <q-separator vertical class="gt-xs" />
@@ -1049,6 +1065,7 @@
                     :label="t('goal.title')"
                     :rules="[requiredRule]"
                   />
+                  <q-select v-model="form.categoryId" :options="categoryOptions" outlined dense clearable emit-value map-options :label="t('goal.categories.label')" :hint="t('goal.categories.private')" :loading="categoriesLoading" />
                   <div>
                     <div class="text-subtitle2 q-mb-xs">
                       {{ t('goal.description') }} <span class="text-negative">*</span>
@@ -1278,6 +1295,7 @@
         </q-tab-panels>
       </q-card>
     </q-dialog>
+    <GoalCategoryManager v-if="categoryManagerOpen" v-model="categoryManagerOpen" @changed="categoriesChanged" />
   </component>
 </template>
 
@@ -1285,9 +1303,9 @@
 import { CopyResourceReference, ResourceReferenceMenu, ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { QPage, useInterval, useQuasar, type QTableColumn } from 'quasar'
+import { QPage, useInterval, useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import {
   RichText,
@@ -1295,11 +1313,12 @@ import {
   PageHeader,
   WorkingDocumentEditor,
 } from '@/core/util'
-import { apiErrorDetail, isCancelledRequest } from '@/core/api'
+import { apiErrorDetail, isCancelledRequest, sessionGeneration } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useAuthStore } from '@/core/user'
-import { AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
+import { AgentAvatar, AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
 import GoalScheduleEditor from '../components/GoalScheduleEditor.vue'
+import { categoryService } from '../services/categoryService'
 import { goalService } from '../services/goalService'
 import {
   goalScheduleDefaultSlots,
@@ -1310,6 +1329,7 @@ import {
 import { createGoalState, useGoalStore } from '../stores/goalStore'
 import type {
   Goal,
+  GoalCategory,
   GoalCycle,
   GoalReferrerInput,
   GoalStatus,
@@ -1321,8 +1341,10 @@ type DurationUnit = 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months
 type GoalCommandName = 'pause' | 'resume' | 'complete' | 'runNow'
 type GoalTriggerMode = 'TEMPORAL_DEFAULT' | 'TEMPORAL_CUSTOM' | 'RELATIONAL'
 type GoalDialogTab = 'overview' | 'tracking' | 'cycles' | 'edit'
+const GoalCategoryManager = defineAsyncComponent(() => import('../components/GoalCategoryManager.vue'))
 
 interface GoalFormState {
+  categoryId: number | null
   title: string
   description: string
   agentId: number | null
@@ -1374,6 +1396,40 @@ const { previewGoalId } = defineProps<{ previewGoalId?: string }>()
 const emit = defineEmits<{ close: [] }>()
 const store = previewGoalId ? reactive(createGoalState()) : useGoalStore()
 const selectableAgents = ref<AgentSelectionOption[]>([])
+const categories = ref<GoalCategory[]>([])
+const categoriesLoading = ref(false)
+const categoriesError = ref(false)
+const categoryManagerOpen = ref(false)
+let categoryRequest = 0
+const categoryOptions = computed(() => categories.value.map(category => ({ label: category.label, value: category.id })))
+const categoryFilterOptions = computed(() => [{ label: t('goal.categories.none'), value: 'none' }, ...categoryOptions.value])
+function hasAgentAvatar(id: number): boolean {
+  return selectableAgents.value.find(agent => agent.id === id)?.has_avatar ?? false
+}
+function categoryLabel(goal: Goal): string {
+  return categories.value.find(category => category.id === goal.category_id)?.label ?? ''
+}
+async function loadCategories(): Promise<void> {
+  const request = ++categoryRequest, session = sessionGeneration()
+  categoriesLoading.value = true
+  categoriesError.value = false
+  try {
+    const result = await categoryService.list()
+    if (disposed || request !== categoryRequest || session !== sessionGeneration()) return
+    categories.value = result
+  } catch {
+    if (!disposed && request === categoryRequest && session === sessionGeneration()) categoriesError.value = true
+  } finally {
+    if (request === categoryRequest) categoriesLoading.value = false
+  }
+}
+async function categoriesChanged(): Promise<void> {
+  await loadCategories()
+  if (typeof store.categoryFilter === 'number' && !categories.value.some(category => category.id === store.categoryFilter)) store.categoryFilter = null
+  if (form.categoryId !== null && !categories.value.some(category => category.id === form.categoryId)) form.categoryId = null
+  await store.fetchGoals(0)
+  if (store.currentGoal) await store.fetchGoal(store.currentGoal.id)
+}
 const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
 const authStore = useAuthStore()
@@ -1414,6 +1470,7 @@ const messengerReferrerOptions = ref<MessengerReferrerOption[]>([])
 const messengerSearching = ref(false)
 let messengerSearchSequence = 0
 const form = reactive<GoalFormState>({
+  categoryId: null,
   title: '',
   description: '',
   agentId: null,
@@ -1432,6 +1489,14 @@ function invalidateMessengerSearch(): void {
 }
 watch(() => form.agentId, invalidateMessengerSearch, { flush: 'sync' })
 watch(goalDialogOpen, open => { if (!open) invalidateMessengerSearch() }, { flush: 'sync' })
+watch(() => authStore.user?.id, () => {
+  categoryRequest++
+  categories.value = []
+  form.categoryId = null
+  categoryManagerOpen.value = false
+  store.categoryFilter = null
+  if (canReadGoals.value) void loadCategories()
+})
 
 const agentOptions = computed(() => selectableAgents.value.map(agent => ({
   label: agent.label,
@@ -1546,7 +1611,7 @@ const parentGoalOptions = computed(() => {
   return store.treeGoals
     .filter(goal => !excluded.has(goal.id))
     .map(goal => ({
-      label: `${goal.title} · ${goal.agent_name} (@${goal.agent_code})`,
+      label: `${goal.title} · ${goal.agent_name}`,
       value: goal.id,
     }))
 })
@@ -1571,7 +1636,7 @@ const hierarchyItems = computed(() => flattenGoalHierarchy(store.treeGoals))
 
 const hierarchicalGoals = computed(() => {
   const order = new Map(hierarchyItems.value.map((goal, index) => [goal.id, index]))
-  return store.goals
+  const ordered = store.sortBy ? store.goals : store.goals
     .map((goal, index) => ({ goal, index }))
     .sort((left, right) => (
       (order.get(left.goal.id) ?? Number.MAX_SAFE_INTEGER)
@@ -1579,7 +1644,38 @@ const hierarchicalGoals = computed(() => {
       || left.index - right.index
     ))
     .map(item => item.goal)
+  // The API orders categories before pagination. Keep that category order while
+  // preserving the existing hierarchy inside a section unless a column is sorted.
+  const groups = new Map<number | null, Goal[]>()
+  for (const goal of store.goals) groups.set(goal.category_id ?? null, [])
+  for (const goal of ordered) groups.get(goal.category_id ?? null)?.push(goal)
+  return [...groups.values()].flat()
 })
+
+const categoryTitles = computed(() => {
+  const titles = new Map<string, string>()
+  if (!hierarchicalGoals.value.some(goal => goal.category_id != null)) return titles
+  let previous: number | null | undefined
+  for (const goal of hierarchicalGoals.value) {
+    const category = goal.category_id ?? null
+    if (category !== previous) titles.set(goal.id, categoryLabel(goal) || t('goal.categories.none'))
+    previous = category
+  }
+  return titles
+})
+
+const goalTablePagination = computed<NonNullable<QTableProps['pagination']>>({
+  get: () => ({ page: store.page + 1, rowsPerPage: store.pageSize, rowsNumber: store.total, sortBy: store.sortBy, descending: store.sortDescending }),
+  set: ({ sortBy, descending }) => {
+    store.sortBy = sortBy === 'agent' || sortBy === 'title' ? sortBy : null
+    store.sortDescending = descending ?? false
+  },
+})
+
+function sortGoalTable(request: { pagination: NonNullable<QTableProps['pagination']> }): void {
+  goalTablePagination.value = request.pagination
+  void store.fetchGoals(0)
+}
 
 function goalDepth(goalId: string): number {
   let depth = 0
@@ -1614,8 +1710,8 @@ const currentSubGoalRows = computed(() => (
 ))
 
 const columns = computed<QTableColumn<Goal>[]>(() => [
-  { name: 'title', label: t('goal.title'), field: 'title', align: 'left' },
-  { name: 'agent', label: t('goal.agent'), field: 'agent_name', align: 'left' },
+  { name: 'title', label: t('goal.title'), field: 'title', align: 'left', sortable: true },
+  { name: 'agent', label: t('goal.agent'), field: 'agent_name', align: 'left', sortable: true },
   { name: 'trigger', label: t('goal.automaticTriggers'), field: 'parent_goal_id', align: 'left' },
   { name: 'status', label: t('goal.status'), field: 'status', align: 'left' },
   { name: 'cycles', label: t('goal.cycles'), field: 'cycle_count', align: 'right' },
@@ -1740,6 +1836,7 @@ function resetForm(): void {
   scheduleEnabledDraft.value = false
   scheduleDraft.value = goalScheduleDefaultSlots()
   Object.assign(form, {
+    categoryId: null,
     title: '',
     description: '',
     agentId: agentSelectionStore.defaultAgentId(selectableAgents.value),
@@ -1804,6 +1901,7 @@ function prepareGoalForm(goal: Goal): void {
   scheduleEnabledDraft.value = goal.schedule_enabled
   scheduleDraft.value = scheduleDraftFromWindows(goal.schedule)
   Object.assign(form, {
+    categoryId: goal.category_id ?? null,
     title: goal.title,
     description: goal.description,
     agentId: goal.agent_id,
@@ -1878,6 +1976,7 @@ async function submitForm(): Promise<void> {
       const updated = await store.updateGoal(editingGoal.value.id, {
         expected_revision: editingGoal.value.revision,
         title: form.title.trim(),
+        ...(form.categoryId !== (editingGoal.value.category_id ?? null) ? { category_id: form.categoryId } : {}),
         description: form.description.trim(),
         agent_id: form.agentId,
         referrer,
@@ -1893,6 +1992,7 @@ async function submitForm(): Promise<void> {
     } else {
       const created = await store.createGoal({
         title: form.title.trim(),
+        category_id: form.categoryId,
         description: form.description.trim(),
         agent_id: form.agentId,
         referrer,
@@ -2120,6 +2220,11 @@ function setStatusFilter(value: GoalStatus | null): void {
   void store.fetchGoals(0)
 }
 
+function setCategoryFilter(value: number | 'none' | null): void {
+  store.categoryFilter = value
+  void store.fetchGoals(0)
+}
+
 function setPageSize(value: number | null): void {
   if (!value) return
   store.pageSize = value
@@ -2151,6 +2256,7 @@ onMounted(() => {
       await Promise.all([
         ...(canReadGoals.value && !previewGoalId ? [store.fetchGoals(0)] : []),
         ...(canReadGoals.value ? [store.fetchTree()] : []),
+        ...(canReadGoals.value ? [loadCategories()] : []),
         store.fetchSettings(),
         ...(canReadGoals.value ? [getAgentSelection('management').then(options => { selectableAgents.value = options })] : []),
       ])
@@ -2365,6 +2471,42 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
   cursor: pointer;
 }
 
+.goal-category-title {
+  margin: 16px 0 8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.goal-table :deep(.goal-category-row) {
+  cursor: default;
+}
+
+.goal-table :deep(.goal-category-row > td) {
+  width: auto;
+  border-inline: 0;
+  background: var(--galaris-page-background);
+}
+
+.goal-table :deep(thead th:first-child),
+.goal-table :deep(tbody tr:not(.goal-category-row) > td:first-child) {
+  border-inline-start-width: 1px;
+}
+
+.goal-table :deep(thead th:last-child),
+.goal-table :deep(tbody tr:not(.goal-category-row) > td:last-child) {
+  border-inline-end-width: 1px;
+}
+
+.goal-table :deep(thead th) {
+  border-top-width: 1px;
+}
+
+.goal-table :deep(tbody tr:last-child:not(.goal-category-row) > td) {
+  border-bottom-width: 1px;
+}
+
 .goal-table :deep(th:nth-child(1)),
 .goal-table :deep(td:nth-child(1)) {
   width: 22%;
@@ -2416,6 +2558,12 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
   justify-content: flex-end;
   flex-wrap: nowrap;
   gap: 0;
+}
+
+.goal-agent-name {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .goal-list-actions > * {

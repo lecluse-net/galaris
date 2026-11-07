@@ -63,6 +63,9 @@ export function createGoalState() {
   const summary = ref<GoalSummary>({ ...EMPTY_SUMMARY })
   const agentFilter = ref<number | null>(null)
   const statusFilter = ref<GoalStatus | null>(null)
+  const categoryFilter = ref<number | 'none' | null>(null)
+  const sortBy = ref<'agent' | 'title' | null>(null)
+  const sortDescending = ref(false)
   const search = ref('')
   const isSubscribed = ref(false)
   const unwatchAuth = ref<(() => void) | null>(null)
@@ -129,6 +132,9 @@ export function createGoalState() {
         agentId: agentFilter.value,
         status: statusFilter.value,
         search: search.value,
+        categoryId: categoryFilter.value,
+        sortBy: sortBy.value,
+        descending: sortDescending.value,
       })
       if (!current()) return
       if (!result.items.length && page.value > 0) {
@@ -369,6 +375,9 @@ export function createGoalState() {
     summary,
     agentFilter,
     statusFilter,
+    categoryFilter,
+    sortBy,
+    sortDescending,
     search,
     fetchSettings,
     updateSettings,

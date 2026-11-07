@@ -32,6 +32,9 @@ export const goalService = {
     agentId?: number | null
     status?: GoalStatus | null
     search?: string
+    categoryId?: number | 'none' | null
+    sortBy?: 'agent' | 'title' | null
+    descending?: boolean
   } = {}): Promise<GoalPage> {
     const response = await api.get<GoalPage>('/goals', {
       params: {
@@ -40,6 +43,10 @@ export const goalService = {
         agent_id: params.agentId ?? undefined,
         status: params.status ?? undefined,
         q: params.search?.trim() || undefined,
+        category_id: typeof params.categoryId === 'number' ? params.categoryId : undefined,
+        uncategorized: params.categoryId === 'none' ? true : undefined,
+        sort_by: params.sortBy ?? undefined,
+        descending: params.sortBy ? params.descending ?? false : undefined,
       },
     })
     return response.data

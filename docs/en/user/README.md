@@ -242,6 +242,17 @@ When a cycle depends on an unmade human choice, the Agent can ask the referrer a
 for the reply. An already recorded decision should be read from its source; a fact needed
 to make the choice should be checked before asking. Waiting does not mean the Goal is achieved.
 
+In **Goals**, the list shows the responsible Agent’s avatar and name.
+With Goal editing privileges, **Manage my categories** lets you create, rename and delete
+personal categories. Choose an optional category when creating or editing a Goal, then use
+the **Category** filter to find classified Goals or **Uncategorized**. Each Goal has at most
+one category. The list groups Goals under category headings, always in alphabetical order,
+with **Uncategorized** last. Clicking the **Agent** column sorts Agents within each category
+without changing the category order, including across result pages.
+Only its creator can see and edit a category, including between administrators;
+classification does not change access to the Goal. Category deletion is audited and retains
+the Goals while removing their classification.
+
 Galaris updates Goal tracking automatically at the end of the cycle, using the evidence
 returned by the Agent. A requested delivery still needs to be performed with the required
 permissions; automatic tracking does not replace it.

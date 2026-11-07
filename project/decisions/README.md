@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0269 — Private Goal categories](0269-private-goal-categories.md)
+
 - [0268 — Isolate the identified Galaris assistant from peer requests](0268-galaris-assistant-peer-isolation.md)
 
 - [0266 — Editable document imports retain their own media](0266-editable-document-imports-with-owned-media.md)

@@ -287,6 +287,18 @@ référent puis attendre sa réponse. Une décision déjà enregistrée doit êt
 source ; un fait nécessaire au choix doit être vérifié avant de poser la question.
 L'attente ne signifie pas que l'objectif est atteint.
 
+Dans **Objectifs**, la liste affiche l’avatar et le nom de l’agent responsable.
+Avec le droit de modification des objectifs, **Gérer mes catégories** permet de créer,
+renommer et supprimer vos catégories personnelles. Choisissez une catégorie facultative
+dans le formulaire de création ou de modification, puis utilisez le filtre **Catégorie**
+pour retrouver les objectifs classés ou **Sans catégorie**. Chaque objectif a au plus une
+catégorie. La liste est regroupée sous les titres des catégories, toujours classées par ordre
+alphabétique ; **Sans catégorie** apparaît à la fin. Cliquer sur la colonne **Agent** trie les
+agents à l’intérieur de chaque catégorie, sans changer l’ordre des catégories, y compris
+entre les pages de résultats. Une catégorie n’est visible et modifiable que par son créateur, même entre
+administrateurs ; elle ne change pas les droits d’accès à l’objectif. Sa suppression est
+historisée et conserve les objectifs en retirant leur classement.
+
 Galaris actualise automatiquement le suivi de l'objectif à la fin du cycle, à partir des
 preuves remontées par l'agent. Une livraison demandée reste une action à réaliser avec
 les autorisations nécessaires ; le suivi automatique ne la remplace pas.

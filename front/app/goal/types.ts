@@ -56,6 +56,7 @@ export interface MessengerReferrerOption {
 
 export interface Goal {
   id: string
+  category_id: number | null
   memory_item_id: string | null
   revision: number
   title: string
@@ -162,6 +163,7 @@ export interface GoalTreePage {
 }
 
 export interface GoalCreate {
+  category_id?: number | null
   title: string
   description: string
   agent_id: number
@@ -175,6 +177,7 @@ export interface GoalCreate {
 }
 
 export interface GoalUpdate {
+  category_id?: number | null
   expected_revision: number
   title?: string
   description?: string
@@ -190,4 +193,13 @@ export interface GoalUpdate {
 
 export interface GoalCommand {
   expected_revision: number
+}
+
+export interface GoalCategory {
+  id: number
+  label: string
+  created_at: string
+  created_by: number
+  updated_at: string | null
+  updated_by: number | null
 }

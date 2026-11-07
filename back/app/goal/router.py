@@ -5,6 +5,7 @@ from core.util import require_editorial_client
 from fastapi import Depends
 
 from uuid import UUID
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -15,6 +16,8 @@ from . import goal_service
 from .models import GoalStatus
 from .schemas import (
     GoalCommand,
+    GoalCategoryRead,
+    GoalCategoryWrite,
     GoalApiCreate,
     GoalApiUpdate,
     GoalCyclePage,
@@ -30,6 +33,7 @@ from .schemas import (
     MessengerReferrerOption,
 )
 from . import settings_service
+from . import category_service
 
 
 router = APIRouter(prefix="/goals", tags=["goals"])
@@ -87,6 +91,10 @@ async def read_goals(
     agent_id: int | None = None,
     goal_status: GoalStatus | None = Query(default=None, alias="status"),
     q: str | None = None,
+    category_id: int | None = Query(default=None, gt=0),
+    uncategorized: bool = False,
+    sort_by: Literal["agent", "title"] | None = None,
+    descending: bool = False,
 ) -> GoalPage:
     scope = await current_management_scope()
     return await goal_service.list_page(
@@ -96,7 +104,41 @@ async def read_goals(
         status=goal_status,
         search=q,
         agent_ids=scope.agent_ids,
+        category_id=category_id,
+        uncategorized=uncategorized,
+        sort_by=sort_by,
+        descending=descending,
     )
+
+
+@router.get("/categories", response_model=list[GoalCategoryRead])
+@authorize(privileges=[Privileges.GOAL_ACCESS, Privileges.GOAL_EDIT])
+async def read_categories() -> list[GoalCategoryRead]:
+    return await category_service.list_categories()
+
+
+@router.post("/categories", response_model=GoalCategoryRead, status_code=201)
+@authorize(privileges=Privileges.GOAL_EDIT)
+async def create_category(data: GoalCategoryWrite) -> GoalCategoryRead:
+    return await category_service.create(data)
+
+
+@router.put("/categories/{category_id}", response_model=GoalCategoryRead)
+@authorize(privileges=Privileges.GOAL_EDIT)
+async def update_category(category_id: int, data: GoalCategoryWrite) -> GoalCategoryRead:
+    try:
+        return await category_service.update(category_id, data)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+@authorize(privileges=Privileges.GOAL_EDIT)
+async def delete_category(category_id: int) -> None:
+    try:
+        await category_service.delete(category_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/referrers/messenger", response_model=list[MessengerReferrerOption])
