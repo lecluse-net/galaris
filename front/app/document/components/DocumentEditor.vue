@@ -161,7 +161,7 @@
             </template>
           </q-select>
         </div>
-        <div class="col-12">
+        <div class="col-12 document-editor-content">
           <q-banner v-if="currentDocument.content_type !== 'text'" dense>{{ t('document.binaryContent') }}</q-banner>
           <q-input v-else-if="!['text', 'html', 'data'].includes(currentDocument.document_type)"
             :model-value="editorContent" type="textarea" outlined readonly autogrow :label="t('documents.content')" />
@@ -1370,9 +1370,8 @@ function restoreDraft(document: DocumentDetail): void {
 </script>
 
 <style scoped>
-.document-editor { min-width: 0; }
-.document-editor--summary { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-.document-editor--summary > .document-editor-toolbar { flex-shrink: 0; }
+.document-editor { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; }
+.document-editor > :not(.document-editor-fields) { flex-shrink: 0; }
 .document-editor--summary :deep(> .document-summary-panel) { flex: 1 1 auto; min-height: 0; }
 .document-editor-state { min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .document-editor-error { color: var(--solaire-red-accent); background: var(--solaire-red-light); }
@@ -1384,9 +1383,20 @@ function restoreDraft(document: DocumentDetail): void {
 .document-editor-reference { min-width: 0; max-width: 100%; gap: 4px; }
 .document-editor-detail-control { height: 24px; min-height: 24px; }
 .document-editor-live-status { flex: 0 0 auto; padding-left: 12px; }
-.document-editor-fields { min-width: 0; }
-.document-editor-owner-cell { display: flex; width: 40%; min-width: 0; }
-.document-editor-sharing-cell { width: 60%; min-width: 0; }
+.document-editor-fields { display: grid; grid-template-columns: 40% 60%; grid-template-rows: auto auto minmax(0, 1fr) auto; flex: 1; min-width: 0; min-height: 0; }
+.document-editor-fields > .col-12 { grid-column: 1 / -1; width: auto; }
+.document-editor-content { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.document-editor-attachments { max-height: 30dvh; overflow: auto; }
+.document-editor-content :deep(> .tiptap-galaris-editor:not(.editorial-fullscreen)) { display: flex; flex-direction: column; flex: 1; height: 100%; min-height: 0; }
+.document-editor-content :deep(.tiptap-galaris-editor:not(.editorial-fullscreen) > :not(.editorial-workspace)) { flex-shrink: 0; }
+/* Short Chat panes must retain a usable body even when toolbar groups wrap. */
+.document-editor-content :deep(.tiptap-galaris-editor:not(.editorial-fullscreen) > .editorial-toolbar) { flex-shrink: 1; min-height: 0; overflow: auto; }
+.document-editor-content :deep(.tiptap-galaris-editor:not(.editorial-fullscreen) > .editorial-workspace) { flex: 1 0 min(120px, 100%); min-height: 0; align-items: stretch; }
+.document-editor-content :deep(.tiptap-galaris-editor:not(.editorial-fullscreen) .editorial-body) { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.document-editor-content :deep(.tiptap-galaris-editor:not(.editorial-fullscreen) .editorial-body > div) { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.document-editor-content :deep(.tiptap-galaris-editor:not(.editorial-fullscreen) [data-editor-surface]) { flex: 1; min-height: 100%; max-height: none; }
+.document-editor-owner-cell { display: flex; min-width: 0; }
+.document-editor-sharing-cell { min-width: 0; }
 .document-editor-owner-field { flex: 1; min-width: 0; }
 .document-editor-owner-field :deep(.q-field__inner),
 .document-editor-owner-field :deep(.q-field__control) { height: 100%; }

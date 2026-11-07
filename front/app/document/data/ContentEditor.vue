@@ -1,5 +1,5 @@
 <template>
-  <CodeEditor v-model="model" language="json" :readonly="readonly" :label="label || t('documents.content')" :show-error="true" :visible-lines="24" />
+  <CodeEditor v-model="model" language="json" fill-height :readonly="readonly" :label="label || t('documents.content')" :show-error="true" />
 </template>
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
