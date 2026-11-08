@@ -66,6 +66,10 @@
           />
         </div>
       </q-card-section>
+      <q-card-section v-else-if="store.settingsError" role="alert">
+        {{ t('goal.loadErrors.settings') }}
+        <q-btn outline color="primary" :label="t('common.retry')" @click="refreshSettings" />
+      </q-card-section>
       <q-card-section v-else class="row justify-center q-pa-lg">
         <q-spinner color="primary" size="32px" />
       </q-card-section>
@@ -162,6 +166,14 @@
       </q-card-section>
     </q-card>
 
+    <q-banner v-if="store.error" class="q-mb-md" role="alert">
+      {{ t('goal.loadErrors.list') }}
+      <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="refreshGoals()" /></template>
+    </q-banner>
+    <q-banner v-if="store.treeError" class="q-mb-md" role="alert">
+      {{ t('goal.loadErrors.hierarchy') }}
+      <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="refreshTree" /></template>
+    </q-banner>
     <q-table
       flat
       row-key="id"
@@ -205,7 +217,7 @@
                     {{ props.row.title }}
                   </div>
                   <div class="text-caption text-grey-7 goal-mobile-description">
-                    {{ props.row.description }}
+                    {{ descriptionPreviews.get(props.row.id)?.text }}
                   </div>
                 </div>
                 <q-chip
@@ -394,7 +406,7 @@
                   {{ props.row.title }}
                 </div>
                 <div class="text-caption text-grey-7 ellipsis-2-lines goal-description-cell">
-                  {{ props.row.description }}
+                  {{ descriptionPreviews.get(props.row.id)?.text }}
                 </div>
               </div>
             </template>
@@ -566,7 +578,7 @@
       <template #no-data>
         <div class="full-width row flex-center text-grey-7 q-pa-xl">
           <q-icon name="flag_circle" size="32px" class="q-mr-sm" />
-          {{ t('goal.noGoals') }}
+          {{ t(store.error ? 'goal.loadErrors.list' : 'goal.noGoals') }}
         </div>
       </template>
     </q-table>
@@ -614,7 +626,7 @@
           </q-card-section>
           <q-separator />
           <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-            <q-btn flat :label="t('common.cancel')" v-close-popup />
+            <q-btn outline color="primary" :label="t('common.cancel')" v-close-popup />
             <q-btn
               color="primary"
               type="submit"
@@ -662,6 +674,10 @@
           />
         </q-card-section>
         <q-linear-progress v-if="store.detailLoading" indeterminate color="primary" />
+        <q-banner v-if="store.detailError" role="alert">
+          {{ t('goal.loadErrors.detail') }}
+          <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="retryGoalDetails" /></template>
+        </q-banner>
         <q-tabs
           v-model="goalDialogTab"
           inline-label
@@ -696,7 +712,7 @@
           />
         </q-tabs>
         <q-separator />
-        <q-tab-panels v-model="goalDialogTab" animated class="goal-dialog-panels galaris-dialog-body">
+        <q-tab-panels v-model="goalDialogTab" class="goal-dialog-panels galaris-dialog-body">
         <q-tab-panel
           v-if="store.currentGoal && editingGoal && store.currentGoal.id === editingGoal.id"
           name="overview"
@@ -959,7 +975,11 @@
           class="goal-detail-content"
         >
           <q-linear-progress v-if="store.cyclesLoading" indeterminate color="primary" class="q-mb-md" />
-          <div v-if="!store.cyclesLoading && !store.cycles.length" class="text-grey-7 q-pa-lg text-center">
+          <q-banner v-if="store.cyclesError" role="alert" class="q-mb-md">
+            {{ t('goal.loadErrors.cycles') }}
+            <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="retryCycles" /></template>
+          </q-banner>
+          <div v-if="!store.cyclesLoading && !store.cyclesError && !store.cycles.length" class="text-grey-7 q-pa-lg text-center">
             {{ t('goal.noCycles') }}
           </div>
           <q-timeline
@@ -1052,7 +1072,7 @@
             />
           </div>
         </q-tab-panel>
-        <q-tab-panel v-if="canEdit" name="edit" class="goal-edit-tab q-pa-none">
+        <q-tab-panel v-if="canEdit && (!openingGoalId || store.currentGoal?.id === openingGoalId)" name="edit" class="goal-edit-tab q-pa-none">
           <q-form class="goal-form" @submit="submitForm">
             <q-card-section class="goal-form-content goal-edit-grid q-pa-sm scroll">
               <q-card flat class="goal-edit-primary-card">
@@ -1281,13 +1301,13 @@
             </q-card-section>
             <q-separator />
             <q-card-actions align="right" class="q-pa-sm galaris-dialog-actions">
-              <q-btn flat :label="t('common.cancel')" @click="cancelGoalEdit" />
+              <q-btn outline color="primary" :label="t('common.cancel')" @click="cancelGoalEdit" />
               <q-btn
                 color="primary"
                 type="submit"
                 :label="editingGoal ? t('common.save') : t('common.create')"
                 :loading="formSaving"
-                :disable="!form.description.trim() || !canSaveGoalTrigger"
+                :disable="store.detailLoading || Boolean(store.detailError) || !form.description.trim() || !canSaveGoalTrigger"
               />
             </q-card-actions>
           </q-form>
@@ -1312,6 +1332,7 @@ import {
   RichTextEditor,
   PageHeader,
   WorkingDocumentEditor,
+  richTextExcerpt,
 } from '@/core/util'
 import { apiErrorDetail, isCancelledRequest, sessionGeneration } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -1395,6 +1416,7 @@ const route = useRoute()
 const { previewGoalId } = defineProps<{ previewGoalId?: string }>()
 const emit = defineEmits<{ close: [] }>()
 const store = previewGoalId ? reactive(createGoalState()) : useGoalStore()
+store.listActive = !previewGoalId
 const selectableAgents = ref<AgentSelectionOption[]>([])
 const categories = ref<GoalCategory[]>([])
 const categoriesLoading = ref(false)
@@ -1454,12 +1476,16 @@ const canViewTasks = computed(() => (
   privilegeStore.hasPrivilege(privileges.TASK_ACCESS)
   || privilegeStore.hasPrivilege(privileges.TASK_EDIT)
 ))
-const { registerInterval: registerSettingsRefresh } = useInterval()
+const { registerInterval: registerSettingsRefresh, removeInterval: removeSettingsRefresh } = useInterval()
 let disposed = false
+let initializationSequence = 0
+let formGeneration = 0
 
 const goalDialogOpen = ref(false)
-watch(goalDialogOpen, open => { if (!open) { store.clearSelection(); if (previewGoalId) emit('close') } })
+const openingGoalId = ref<string | null>(null)
+watch(goalDialogOpen, open => { if (!open) { formGeneration++; formSaving.value = false; openingGoalId.value = null; store.clearSelection(); if (previewGoalId) emit('close') } })
 const goalDialogTab = ref<GoalDialogTab>('overview')
+watch(goalDialogTab, tab => { void store.setCyclesActive(tab === 'cycles').catch(() => undefined) })
 const goalDialogTitle = ref('')
 const globalScheduleDialogOpen = ref(false)
 const scheduleEnabledDraft = ref(false)
@@ -1661,7 +1687,7 @@ const goalTablePagination = computed<NonNullable<QTableProps['pagination']>>({
 
 function sortGoalTable(request: { pagination: NonNullable<QTableProps['pagination']> }): void {
   goalTablePagination.value = request.pagination
-  void store.fetchGoals(0)
+  refreshGoals(0)
 }
 
 function goalDepth(goalId: string): number {
@@ -1716,13 +1742,13 @@ const metrics = computed(() => [
 
 const displayPage = computed({
   get: () => store.page + 1,
-  set: (value: number) => { void store.fetchGoals(value - 1) },
+  set: (value: number) => { refreshGoals(value - 1) },
 })
 
 const displayCyclePage = computed({
   get: () => store.cyclePage,
   set: (value: number) => {
-    if (store.currentGoal) void store.fetchCycles(store.currentGoal.id, value)
+    if (store.currentGoal) void store.fetchCycles(store.currentGoal.id, value).catch(() => undefined)
   },
 })
 
@@ -1857,6 +1883,9 @@ function setGoalTriggerMode(value: unknown): void {
 }
 
 function openCreateDialog(): void {
+  formGeneration++
+  formSaving.value = false
+  openingGoalId.value = null
   editingGoal.value = null
   goalDialogTitle.value = ''
   resetForm()
@@ -1866,7 +1895,9 @@ function openCreateDialog(): void {
 }
 
 function prepareGoalForm(goal: Goal): void {
-  editingGoal.value = goal
+  // Keep the revision read for this draft. Live snapshots may update the view,
+  // but cannot silently authorize saving an old draft over someone else's edit.
+  editingGoal.value = { ...goal }
   goalDialogTitle.value = goal.title
   const delay = splitDuration(goal.cycle_delay_seconds)
   const messengerReferrer = goal.referrer?.type === 'MESSENGER'
@@ -1949,6 +1980,9 @@ async function submitForm(): Promise<void> {
     display_name: form.messengerReferrer.display_name,
   }
   formSaving.value = true
+  const generation = formGeneration, session = sessionGeneration()
+  const current = () => generation === formGeneration && session === sessionGeneration()
+    && !disposed && goalDialogOpen.value
   try {
     const temporalTrigger = form.triggerMode !== 'RELATIONAL'
     const cycleDelay = temporalTrigger
@@ -1973,7 +2007,9 @@ async function submitForm(): Promise<void> {
         schedule,
         referrer_max_reminders: Math.max(0, Math.trunc(form.referrerMaxReminders)),
       })
+      if (!current()) return
       await store.fetchGoal(updated.id)
+      if (!current()) return
       if (store.currentGoal) prepareGoalForm(store.currentGoal)
       $q.notify({ type: 'positive', message: t('goal.updated') })
     } else {
@@ -1990,19 +2026,24 @@ async function submitForm(): Promise<void> {
         referrer_max_reminders: Math.max(0, Math.trunc(form.referrerMaxReminders)),
         active: form.active,
       })
+      if (!current()) return
       await store.fetchGoal(created.id, 1)
+      if (!current()) return
       if (store.currentGoal) prepareGoalForm(store.currentGoal)
       $q.notify({ type: 'positive', message: t('goal.created') })
     }
     goalDialogTab.value = 'overview'
   } catch (error) {
-    notifyError(error)
+    if (current()) notifyError(error)
   } finally {
-    formSaving.value = false
+    if (current()) formSaving.value = false
   }
 }
 
 async function openDetails(goal: Goal): Promise<void> {
+  formGeneration++
+  formSaving.value = false
+  openingGoalId.value = goal.id
   prepareGoalForm(goal)
   goalDialogTab.value = 'overview'
   goalDialogOpen.value = true
@@ -2015,6 +2056,9 @@ async function openDetails(goal: Goal): Promise<void> {
 }
 
 async function openEdit(goal: Goal): Promise<void> {
+  formGeneration++
+  formSaving.value = false
+  openingGoalId.value = goal.id
   prepareGoalForm(goal)
   goalDialogTab.value = 'edit'
   goalDialogOpen.value = true
@@ -2027,6 +2071,9 @@ async function openEdit(goal: Goal): Promise<void> {
 }
 
 async function openGoalDetailsById(goalId: string): Promise<void> {
+  formGeneration++
+  formSaving.value = false
+  openingGoalId.value = goalId
   const listedGoal = store.goals.find(goal => goal.id === goalId)
   if (listedGoal) {
     prepareGoalForm(listedGoal)
@@ -2049,7 +2096,6 @@ async function runCommand(action: GoalCommandName, goal: Goal): Promise<void> {
   commandGoalIds.add(goal.id)
   try {
     await store.command(action, goal)
-    if (store.currentGoal?.id === goal.id) await store.fetchGoal(goal.id)
     $q.notify({
       type: 'positive',
       message: t(action === 'runNow' ? 'goal.runNowQueued' : 'goal.commandDone'),
@@ -2103,6 +2149,38 @@ function confirmDelete(goal: Goal): void {
 
 function notifyError(error: unknown): void {
   $q.notify({ type: 'negative', message: apiErrorDetail(error) || t('goal.error') })
+}
+
+const descriptionPreviews = computed<Map<string, { source: string; text: string }>>((previous) => (
+  new Map(store.goals.map(goal => {
+    const cached = previous?.get(goal.id)
+    return [goal.id, cached?.source === goal.description ? cached
+      : { source: goal.description, text: richTextExcerpt(goal.description).slice(0, 240) }]
+  }))
+))
+
+function refreshGoals(page?: number): void {
+  void store.fetchGoals(page).catch(() => undefined)
+}
+
+function refreshTree(): void {
+  void store.fetchTree().catch(() => undefined)
+}
+
+function refreshSettings(): void {
+  void store.fetchSettings().catch(() => undefined)
+}
+
+async function retryGoalDetails(): Promise<void> {
+  if (!openingGoalId.value) return
+  try {
+    const goal = await store.fetchGoal(openingGoalId.value)
+    if (goal && goalDialogOpen.value) prepareGoalForm(goal)
+  } catch { /* The dialog retains its retryable error. */ }
+}
+
+function retryCycles(): void {
+  if (store.currentGoal) void store.fetchCycles(store.currentGoal.id).catch(() => undefined)
 }
 
 function setOwnerAgent(value: number | null): void {
@@ -2194,34 +2272,34 @@ async function filterMessengerReferrers(
 
 function setSearch(value: string | number | null): void {
   store.search = String(value || '')
-  void store.fetchGoals(0)
+  refreshGoals(0)
 }
 
 function setAgentFilter(value: number | null): void {
   store.agentFilter = value
-  void store.fetchGoals(0)
+  refreshGoals(0)
 }
 
 function setStatusFilter(value: GoalStatus | null): void {
   store.statusFilter = value
-  void store.fetchGoals(0)
+  refreshGoals(0)
 }
 
 function setCategoryFilter(value: number | 'none' | null): void {
   store.categoryFilter = value
-  void store.fetchGoals(0)
+  refreshGoals(0)
 }
 
 function setPageSize(value: number | null): void {
   if (!value) return
   store.pageSize = value
-  void store.fetchGoals(0)
+  refreshGoals(0)
 }
 
 function setCyclePageSize(value: number | null): void {
   if (!value || !store.currentGoal) return
   store.cyclePageSize = value
-  void store.fetchCycles(store.currentGoal.id, 1)
+  void store.fetchCycles(store.currentGoal.id, 1).catch(() => undefined)
 }
 
 function openTask(taskId: string): void {
@@ -2231,7 +2309,10 @@ function openTask(taskId: string): void {
 onMounted(() => {
   watch([() => privilegeStore.loaded, canReadGoals, canReadGoalConfiguration], async ([loaded, goals, configuration]) => {
     if (!loaded || disposed) return
+    const sequence = ++initializationSequence, session = sessionGeneration()
+    const current = () => !disposed && sequence === initializationSequence && session === sessionGeneration()
     if (!goals && !configuration) {
+      removeSettingsRefresh()
       store.unsubscribe()
       store.goals = []
       store.treeGoals = []
@@ -2239,20 +2320,19 @@ onMounted(() => {
       return
     }
     store.subscribe()
+    registerSettingsRefresh(() => {
+      if (privilegeStore.loaded && (canReadGoals.value || canReadGoalConfiguration.value)) refreshSettings()
+    }, 60_000)
     try {
       await Promise.all([
         ...(canReadGoals.value && !previewGoalId ? [store.fetchGoals(0)] : []),
         ...(canReadGoals.value ? [store.fetchTree()] : []),
         ...(canReadGoals.value ? [loadCategories()] : []),
         store.fetchSettings(),
-        ...(canReadGoals.value ? [getAgentSelection('management').then(options => { selectableAgents.value = options })] : []),
+        ...(canReadGoals.value ? [getAgentSelection('management').then(options => { if (current()) selectableAgents.value = options })] : []),
       ])
-      if (disposed) return
-      registerSettingsRefresh(() => {
-        if (privilegeStore.loaded && (canReadGoals.value || canReadGoalConfiguration.value)) void store.fetchSettings().catch(() => undefined)
-      }, 60_000)
     } catch (error) {
-      notifyError(error)
+      if (current()) notifyError(error)
     }
   }, { immediate: true })
 })

@@ -9,6 +9,13 @@ export default {
     },
     goal: {
       new: 'Nouvel objectif',
+      loadErrors: {
+        list: 'Impossible de charger les objectifs. Les données déjà affichées sont conservées.',
+        detail: 'Impossible de charger cet objectif.',
+        cycles: 'Impossible de charger les cycles.',
+        settings: 'Impossible de charger le fonctionnement des objectifs.',
+        hierarchy: 'Impossible de charger les relations entre objectifs.',
+      },
       categories: {
         label: 'Catégorie', manage: 'Gérer mes catégories', new: 'Nouvelle catégorie',
         add: 'Ajouter', none: 'Sans catégorie', empty: 'Vous n’avez pas encore de catégorie.',
@@ -228,6 +235,13 @@ export default {
     },
     goal: {
       new: 'New Goal',
+      loadErrors: {
+        list: 'Could not load Goals. Previously displayed data has been kept.',
+        detail: 'Could not load this Goal.',
+        cycles: 'Could not load cycles.',
+        settings: 'Could not load Goal runtime settings.',
+        hierarchy: 'Could not load Goal relationships.',
+      },
       categories: {
         label: 'Category', manage: 'Manage my categories', new: 'New category',
         add: 'Add', none: 'Uncategorized', empty: 'You have no categories yet.',
@@ -444,6 +458,10 @@ export default {
     nav: { goal: '目标', goal_desc: '监控分配给智能体的长期目标' },
     goal: {
       new: '新建目标', edit: '编辑目标', details: '目标详情', tabs: { overview: '目标', tracking: '跟踪', cycles: '周期', edit: '编辑' },
+      loadErrors: {
+        list: '无法加载目标。已保留当前显示的数据。', detail: '无法加载此目标。',
+        cycles: '无法加载周期。', settings: '无法加载目标运行设置。', hierarchy: '无法加载目标关系。',
+      },
       categories: {
         inherited: '父目标的分类适用于整个分支。',
         label: '分类', manage: '管理我的分类', new: '新建分类', add: '添加', none: '未分类', empty: '您还没有分类。',

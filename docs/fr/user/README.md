@@ -288,6 +288,11 @@ source ; un fait nécessaire au choix doit être vérifié avant de poser la que
 L'attente ne signifie pas que l'objectif est atteint.
 
 Dans **Objectifs**, la liste affiche l’avatar et le nom de l’agent responsable.
+Le détail s’ouvre sans charger tout l’historique : l’onglet **Cycles** récupère sa page lors
+de son ouverture. Les mises à jour en direct conservent la sélection et les informations déjà
+affichées. Si un chargement échoue, un message et **Réessayer** permettent de le reprendre.
+Une modification concurrente ne remplace pas votre brouillon : l’enregistrement signale le
+conflit de révision pour éviter d’écraser une version plus récente.
 Avec le droit de modification des objectifs, **Gérer mes catégories** permet de créer,
 renommer et supprimer vos catégories personnelles. Choisissez une catégorie facultative
 dans le formulaire de création ou de modification, puis utilisez le filtre **Catégorie**

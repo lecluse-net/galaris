@@ -2,6 +2,16 @@
 
 # Functional guarantees catalogue
 
+Goal store tests cover deferred cycle loading, non-overlapping event batches, error recovery,
+late responses, closing and jumping directly to the last remaining page. `goals.spec.mjs`
+exercises real components on mobile and desktop: opening/reopening, errors and retries,
+permissions, and retaining a draft and its revision during concurrent updates. Captures
+include light and dark themes. Runner tests compare SQL reads for 1 and 25 Goals assigned
+to a busy agent, while retaining the locked check before cycle creation and the journey for
+another available agent. Tracking remains in the cycle prompt without an additional read
+to reconstruct the original demand. The deferred migration scenario expects DbAdmin's
+existing blocking exit code and still verifies recovery without losing content, rights or filing.
+
 `app/memory/tests/test_messenger_contact.py` verifies that contacts store no content
 in Memory or its revisions, that every read returns current canonical JSON, and that
 DbAdmin cleanup is idempotent without restoring old copies when text migration is

@@ -13,7 +13,7 @@ from app.agent.models import Agent, Title
 from app.connection.models import Connection
 from app.connection import connection_service
 from app.tools.facade import AdministrationScope
-from app.tools.mcp_loader import McpToolContext, build_galaris_fastmcp
+from app.tools.mcp_loader import McpToolContext, add_galaris_tools
 from app.tools.models import Tool
 
 from .. import mcp
@@ -69,8 +69,13 @@ async def _new_agent(db: Any, prefix: str) -> Agent:
 
 @pytest.mark.asyncio
 async def test_goal_self_service_tool_schemas_are_exposed_by_galaris() -> None:
-    server = build_galaris_fastmcp(
-        90,
+    from fastmcp import FastMCP
+
+    # Schema discovery mounts real wrappers; dynamic agent authorization belongs
+    # to the database-backed MCP integration scenarios below.
+    server = FastMCP("Synthetic Goal schemas")
+    add_galaris_tools(
+        server, 90,
         runtime="internal",
         enabled_tool_codes={"galaris", "file_sharing"},
     )

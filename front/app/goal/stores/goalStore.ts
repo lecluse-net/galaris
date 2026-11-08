@@ -49,6 +49,12 @@ export function createGoalState() {
   const loading = ref(false)
   const detailLoading = ref(false)
   const cyclesLoading = ref(false)
+  const cyclesActive = ref(false)
+  const listActive = ref(true)
+  const detailError = ref<unknown>(null)
+  const cyclesError = ref<unknown>(null)
+  const treeError = ref<unknown>(null)
+  const settingsError = ref<unknown>(null)
   const error = ref<unknown>(null)
   const page = ref(0)
   const pageSize = ref(50)
@@ -70,6 +76,10 @@ export function createGoalState() {
   const isSubscribed = ref(false)
   const unwatchAuth = ref<(() => void) | null>(null)
   let refreshTimer: ReturnType<typeof setTimeout> | null = null
+  let refreshRunning = false
+  let refreshGeneration = 0
+  type Refresh = { list: boolean; tree: boolean; detail: boolean; cycles: boolean }
+  let pendingRefresh: Refresh = { list: false, tree: false, detail: false, cycles: false }
   const requests = { list: 0, tree: 0, detail: 0, cycles: 0, settings: 0 }
   function beginRequest(kind: keyof typeof requests): () => boolean {
     const request = ++requests[kind]
@@ -85,6 +95,10 @@ export function createGoalState() {
     cycleTotal.value = 0
     detailLoading.value = false
     cyclesLoading.value = false
+    cyclesActive.value = false
+    detailError.value = null
+    cyclesError.value = null
+    cyclePage.value = 1
   }
 
   const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
@@ -95,11 +109,13 @@ export function createGoalState() {
   async function fetchSettings(): Promise<GoalSettings> {
     const current = beginRequest('settings')
     if (settings.value === null) settingsLoading.value = true
+    settingsError.value = null
     try {
       const result = await goalService.getSettings(usePrivilegeStore().hasAnyPrivilege([privileges.GOAL_CONFIG_ACCESS, privileges.GOAL_CONFIG_EDIT]))
       if (current()) settings.value = result
       return result
     } catch (caught) {
+      if (current()) settingsError.value = caught
       console.error('Error fetching Goal settings:', caught)
       throw caught
     } finally {
@@ -108,15 +124,18 @@ export function createGoalState() {
   }
 
   async function updateSettings(data: GoalSettingsUpdate): Promise<GoalSettings> {
+    const generation = refreshGeneration, session = sessionGeneration()
+    const current = () => generation === refreshGeneration && session === sessionGeneration()
     settingsSaving.value = true
     try {
-      settings.value = await goalService.updateSettings(data)
-      return settings.value
+      const result = await goalService.updateSettings(data)
+      if (current()) settings.value = result
+      return result
     } catch (caught) {
       console.error('Error updating Goal settings:', caught)
       throw caught
     } finally {
-      settingsSaving.value = false
+      if (current()) settingsSaving.value = false
     }
   }
 
@@ -138,7 +157,7 @@ export function createGoalState() {
       })
       if (!current()) return
       if (!result.items.length && page.value > 0) {
-        page.value -= 1
+        page.value = Math.min(page.value - 1, Math.max(0, Math.ceil(result.total / pageSize.value) - 1))
         await fetchGoals(page.value)
         return
       }
@@ -158,22 +177,30 @@ export function createGoalState() {
 
   async function fetchTree(): Promise<void> {
     const current = beginRequest('tree')
-    const result = await goalService.tree()
-    if (current()) treeGoals.value = result.items
+    treeError.value = null
+    try {
+      const result = await goalService.tree()
+      if (current()) treeGoals.value = result.items
+    } catch (caught) {
+      if (!current()) return
+      treeError.value = caught
+      throw caught
+    }
   }
 
   async function fetchCycles(id: string, targetPage?: number): Promise<void> {
     const current = beginRequest('cycles')
     if (targetPage !== undefined) cyclePage.value = targetPage
     cyclesLoading.value = true
+    cyclesError.value = null
     try {
       const result = await goalService.listCycles(id, {
         page: cyclePage.value,
         pageSize: cyclePageSize.value,
       })
       if (!current()) return
-      if (!result.items.length && result.total > 0 && cyclePage.value > 1) {
-        cyclePage.value -= 1
+      if (!result.items.length && cyclePage.value > 1) {
+        cyclePage.value = Math.min(cyclePage.value - 1, Math.max(1, Math.ceil(result.total / cyclePageSize.value)))
         await fetchCycles(id, cyclePage.value)
         return
       }
@@ -181,6 +208,10 @@ export function createGoalState() {
       cycleTotal.value = result.total
       cyclePage.value = result.page
       cyclePageSize.value = result.page_size
+    } catch (caught) {
+      if (!current()) return
+      cyclesError.value = caught
+      throw caught
     } finally {
       if (current()) cyclesLoading.value = false
     }
@@ -189,7 +220,15 @@ export function createGoalState() {
   async function fetchGoal(id: string, targetCyclePage?: number): Promise<GoalDetail | null> {
     const current = beginRequest('detail')
     requests.cycles++
+    cyclesLoading.value = false
     detailLoading.value = true
+    detailError.value = null
+    if (currentGoal.value?.id !== id) {
+      currentGoal.value = null
+      cycles.value = []
+      cycleTotal.value = 0
+      cyclePage.value = 1
+    }
     try {
       const previousGoal = currentGoal.value
       const fetchedGoal = await goalService.get(id)
@@ -197,38 +236,63 @@ export function createGoalState() {
       currentGoal.value = previousGoal?.id === id
         ? mergeGoalSnapshot(previousGoal, fetchedGoal)
         : fetchedGoal
-      await fetchCycles(
-        id,
-        targetCyclePage ?? (previousGoal?.id === id ? cyclePage.value : 1),
-      )
+      if (cyclesActive.value) await fetchCycles(
+        id, targetCyclePage ?? (previousGoal?.id === id ? cyclePage.value : 1),
+      ).catch(() => undefined)
       return current() ? currentGoal.value : null
     } catch (caught) {
       if (!current()) return null
+      detailError.value = caught
       throw caught
     } finally {
       if (current()) detailLoading.value = false
     }
   }
 
-  function replaceGoal(goal: Goal): void {
+  async function setCyclesActive(active: boolean): Promise<void> {
+    cyclesActive.value = active
+    if (active && currentGoal.value) await fetchCycles(currentGoal.value.id)
+    if (!active) {
+      requests.cycles++
+      cyclesLoading.value = false
+    }
+  }
+
+  function replaceGoal(goal: Goal): boolean {
+    const known = currentGoal.value?.id === goal.id ? currentGoal.value
+      : goals.value.find(item => item.id === goal.id)
+    if (known && goal.revision < known.revision) return false
     const index = goals.value.findIndex(item => item.id === goal.id)
     if (index >= 0) mergeGoalSnapshot(goals.value[index], goal)
     if (currentGoal.value?.id === goal.id) {
       mergeGoalSnapshot(currentGoal.value, goal)
     }
+    const node = treeGoals.value.find(item => item.id === goal.id)
+    const structureChanged = !node || node.parent_goal_id !== goal.parent_goal_id
+      || node.agent_id !== goal.agent_id || node.title !== goal.title
+    if (node) {
+      for (const key of ['title', 'agent_id', 'agent_name', 'agent_code', 'status',
+        'parent_goal_id', 'next_cycle_at', 'cycle_delay_seconds', 'children_count'] as const) {
+        Object.assign(node, { [key]: goal[key] })
+      }
+    }
+    return structureChanged
   }
 
   async function createGoal(data: GoalCreate): Promise<Goal> {
+    const generation = refreshGeneration, session = sessionGeneration()
     const goal = await goalService.create(data)
+    if (generation !== refreshGeneration || session !== sessionGeneration()) return goal
     await Promise.all([fetchGoals(0), fetchTree()])
     return goal
   }
 
   async function updateGoal(id: string, data: GoalUpdate): Promise<Goal> {
+    const generation = refreshGeneration, session = sessionGeneration()
     const goal = await goalService.update(id, data)
-    replaceGoal(goal)
-    scheduleRefresh()
-    await fetchTree()
+    if (generation !== refreshGeneration || session !== sessionGeneration()) return goal
+    const tree = replaceGoal(goal)
+    scheduleRefresh({ list: true, tree, cycles: currentGoal.value?.id === id })
     return goal
   }
 
@@ -236,32 +300,50 @@ export function createGoalState() {
     action: 'pause' | 'resume' | 'complete' | 'runNow',
     goal: Goal,
   ): Promise<Goal> {
+    const generation = refreshGeneration, session = sessionGeneration()
     const updated = await goalService[action](goal.id, { expected_revision: goal.revision })
-    replaceGoal(updated)
-    scheduleRefresh()
-    await fetchTree()
+    if (generation !== refreshGeneration || session !== sessionGeneration()) return updated
+    const tree = replaceGoal(updated)
+    scheduleRefresh({ list: true, tree, cycles: currentGoal.value?.id === goal.id })
     return updated
   }
 
   async function deleteGoal(id: string): Promise<void> {
+    const generation = refreshGeneration, session = sessionGeneration()
     await goalService.delete(id)
+    if (generation !== refreshGeneration || session !== sessionGeneration()) return
     goals.value = goals.value.filter(goal => goal.id !== id)
     if (currentGoal.value?.id === id) {
-      currentGoal.value = null
-      cycles.value = []
-      cycleTotal.value = 0
-      cyclePage.value = 1
+      clearSelection()
     }
-    await fetchTree()
     scheduleRefresh()
   }
 
-  function scheduleRefresh(): void {
-    if (refreshTimer) clearTimeout(refreshTimer)
+  function scheduleRefresh(changes: Partial<Refresh> = { list: true, tree: true }): void {
+    for (const key of Object.keys(changes) as (keyof Refresh)[]) {
+      pendingRefresh[key] ||= Boolean(changes[key])
+    }
+    if (refreshTimer || refreshRunning) return
+    const generation = refreshGeneration
     refreshTimer = setTimeout(() => {
-      void fetchGoals()
-      void fetchTree()
-      if (currentGoal.value) void fetchGoal(currentGoal.value.id)
+      refreshTimer = null
+      refreshRunning = true
+      const refresh = pendingRefresh
+      pendingRefresh = { list: false, tree: false, detail: false, cycles: false }
+      const selectedId = currentGoal.value?.id
+      // Settled reads retain each view's error and keep one failed endpoint from
+      // preventing updates elsewhere. Events arriving in flight form one next batch.
+      void Promise.allSettled([
+        ...(refresh.list && listActive.value ? [fetchGoals()] : []),
+        ...(refresh.tree ? [fetchTree()] : []),
+        ...(refresh.detail && selectedId ? [fetchGoal(selectedId)] : []),
+        ...(refresh.cycles && !refresh.detail && cyclesActive.value && selectedId
+          ? [fetchCycles(selectedId)] : []),
+      ]).finally(() => {
+        if (generation !== refreshGeneration) return
+        refreshRunning = false
+        if (Object.values(pendingRefresh).some(Boolean)) scheduleRefresh({})
+      })
     }, 300)
   }
 
@@ -270,23 +352,22 @@ export function createGoalState() {
   }
 
   function onGoalUpdate(response: { data: Goal }): void {
-    replaceGoal(response.data)
-    scheduleRefresh()
+    const tree = replaceGoal(response.data)
+    scheduleRefresh({ list: true, tree, cycles: currentGoal.value?.id === response.data.id,
+      detail: currentGoal.value?.parent_goal_id === response.data.id })
   }
 
   function onGoalDelete(response: { data: { id: string } }): void {
     goals.value = goals.value.filter(goal => goal.id !== response.data.id)
     if (currentGoal.value?.id === response.data.id) {
-      currentGoal.value = null
-      cycles.value = []
-      cycleTotal.value = 0
-      cyclePage.value = 1
+      clearSelection()
     }
     scheduleRefresh()
   }
 
   function onTaskUpdate(response: { data: { goal_id?: string | null } }): void {
-    if (response.data.goal_id) scheduleRefresh()
+    const id = response.data.goal_id
+    if (id) scheduleRefresh({ list: true, detail: currentGoal.value?.id === id })
   }
 
   function onRuntimeUpdate(response: { data: Omit<GoalSettings, 'schedule'> }): void {
@@ -327,11 +408,16 @@ export function createGoalState() {
   }
 
   function unsubscribe(): void {
+    refreshGeneration++
+    refreshRunning = false
+    pendingRefresh = { list: false, tree: false, detail: false, cycles: false }
     requests.settings++
     requests.list++
     requests.tree++
     clearSelection()
     loading.value = false
+    settingsLoading.value = false
+    settingsSaving.value = false
     if (refreshTimer) clearTimeout(refreshTimer)
     refreshTimer = null
     if (unwatchAuth.value) {
@@ -359,6 +445,13 @@ export function createGoalState() {
     loading,
     detailLoading,
     cyclesLoading,
+    cyclesActive,
+    listActive,
+    setCyclesActive,
+    detailError,
+    cyclesError,
+    treeError,
+    settingsError,
     error,
     page,
     pageSize,

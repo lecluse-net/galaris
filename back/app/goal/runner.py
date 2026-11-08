@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from loguru import logger
 from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import selectinload
 
 from app.agent.models import Agent
@@ -519,24 +520,21 @@ async def process_terminal_cycle(tracking_llm: LLM | None = None) -> bool:
     return True
 
 
-async def _agent_has_pending_work(agent_id: int, now: datetime) -> bool:
-    pending = await get_db().scalar(
-        select(
-            exists().where(
-                Task.agent_id == agent_id,
-                Task.status.in_(_RUNNABLE_TASK_STATUSES),
-                Task.deleted_at.is_(None),
-                or_(
-                    Task.paused.is_(False),
-                    (
-                        Task.lease_token.is_not(None)
-                        & (Task.lease_expires_at > now)
-                    ),
-                ),
-            )
-        )
+def _agent_pending_work(agent_id: int | ColumnElement[int], now: datetime) -> ColumnElement[bool]:
+    """Use the same eligibility predicate for discovery and the locked recheck."""
+    return exists().where(
+        Task.agent_id == agent_id,
+        Task.status.in_(_RUNNABLE_TASK_STATUSES),
+        Task.deleted_at.is_(None),
+        or_(
+            Task.paused.is_(False),
+            Task.lease_token.is_not(None) & (Task.lease_expires_at > now),
+        ),
     )
-    return bool(pending)
+
+
+async def _agent_has_pending_work(agent_id: int, now: datetime) -> bool:
+    return bool(await get_db().scalar(select(_agent_pending_work(agent_id, now))))
 
 
 async def _cycle_task_objective(goal: Goal, sequence: int) -> str:
@@ -583,6 +581,7 @@ async def start_due_cycle(
     candidate_query = select(Goal.id).where(
         Goal.status == GoalStatus.ACTIVE,
         ~open_cycle,
+        ~_agent_pending_work(Goal.agent_id.expression, now),
         or_(
             Goal.manual_run_requested_at.is_not(None),
             temporal_due,
@@ -750,8 +749,7 @@ async def start_due_cycle(
             else None
         )
         # Tracking and previous results are context, never new target authority.
-        source_goal = await goal_service.read_markdown(goal)
-        task.data = {**(task.data or {}), "_original_demand": source_goal.description or goal.title}
+        task.data = {**(task.data or {}), "_original_demand": goal.description or goal.title}
         await initialize_scope(task, source_reference=f"galaris://goal/{goal.id}")
         task_service.retain(task, _GOAL_JUDGEMENT_RETENTION)
         cycle = GoalCycle(

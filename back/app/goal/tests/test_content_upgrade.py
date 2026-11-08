@@ -196,7 +196,8 @@ async def test_real_schema_upgrade_preserves_tracking_and_resumes_after_failure(
         registry.register_action(DbAdminAction(key="test.goal.defer_contract", phase=DbAdminPhase.AFTER_EXPAND,
             checksum="synthetic", predicate=lambda _: True, handler=prepare, postcondition=ready, required=False))
         staged = await orchestrator.synchronize_database(target_registry=registry)
-        assert staged.exit_code == 0 and staged.verdict is DbAdminVerdict.DEGRADED
+        # A resumable, incomplete upgrade must still block application readiness.
+        assert staged.exit_code == 1 and staged.verdict is DbAdminVerdict.DEGRADED
         async with get_db_session() as db:
             tracking = await create_document(owner_agent_id=agent.id, title="Synthetic new tracking",
                 content="<p>New staged progress.</p>", task_id=None)

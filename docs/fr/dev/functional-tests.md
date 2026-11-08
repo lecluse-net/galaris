@@ -2,6 +2,18 @@
 
 # Catalogue des garanties fonctionnelles
 
+Les tests du store Goals vérifient le chargement différé des cycles, le regroupement des
+événements en lots sans chevauchement, la récupération après erreur, les réponses tardives,
+la fermeture et le retour direct à la dernière page disponible. `goals.spec.mjs` exerce les
+composants réels sur mobile et bureau : ouverture/réouverture, erreurs et réessais, droits,
+conservation du brouillon et de sa révision face à une mise à jour concurrente. Les captures
+incluent les thèmes clair et sombre. Les tests du runner comparent les lectures SQL avec
+1 et 25 Goals affectés à un agent occupé, puis conservent la vérification sous verrou avant
+création d’un cycle et le parcours d’un autre agent disponible. Le suivi reste présent dans
+le prompt du cycle, sans lecture supplémentaire pour reconstruire la demande d’origine.
+Le scénario de migration différée attend le code de sortie bloquant déjà imposé par DbAdmin ;
+il continue à vérifier la reprise sans perte des contenus, droits et classements.
+
 `app/memory/tests/test_messenger_contact.py` vérifie que les contacts ne stockent aucun
 contenu dans Memory ni ses révisions, que chaque lecture restitue le JSON canonique
 actuel, et que le nettoyage DbAdmin est idempotent sans restaurer les anciennes copies

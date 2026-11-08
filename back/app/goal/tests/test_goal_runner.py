@@ -617,8 +617,13 @@ async def test_due_goal_creates_an_ordinary_dispatcher_owned_task(
 
     await goal_service.update(created.id, GoalUpdate(expected_revision=created.revision,
         tracking_content="<p>A previous result suggests synthetic://tracking-only-target</p>"))
+    store = goal_service.get_goal_document_store()
+    read_tracking = AsyncMock(wraps=store.read_many)
+    monkeypatch.setattr(store, "read_many", read_tracking)
     assert await runner.start_due_cycle() is True
     assert await runner.start_due_cycle() is False
+    # One prompt read plus the fresh committed snapshot sent to subscribers.
+    assert read_tracking.await_count <= 2
 
     task = await db.scalar(select(Task).where(Task.goal_id == created.id))
     cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == created.id))
@@ -737,8 +742,9 @@ async def test_messenger_goal_cycles_keep_the_linked_galaris_requester(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("goal_count", [1, 25])
 async def test_due_goal_waits_while_agent_has_pending_work(
-    db, monkeypatch: pytest.MonkeyPatch
+    db, monkeypatch: pytest.MonkeyPatch, goal_count: int,
 ) -> None:
     agent = await _new_agent(db)
     user = User(
@@ -759,6 +765,10 @@ async def test_due_goal_waits_while_agent_has_pending_work(
             cycle_delay_seconds=0,
         )
     )
+    for number in range(goal_count - 1):
+        db.add(await make_goal(title=f"Synthetic waiting Goal {number}", description="Wait for the busy agent.",
+            agent_id=agent.id, referrer_type=GoalReferrerType.AGENT, referrer_agent_id=referrer.id,
+            cycle_delay_seconds=0, next_cycle_at=datetime.now(timezone.utc), status=GoalStatus.ACTIVE))
     db.add(
         Task(
             label="Interactive work already queued",
@@ -771,7 +781,10 @@ async def test_due_goal_waits_while_agent_has_pending_work(
     )
     await db.commit()
 
-    assert await runner.start_due_cycle() is False
+    from tests.sql_reads import measured_reads
+    async with measured_reads(db, f"busy-goals-{goal_count}") as reads:
+        assert await runner.start_due_cycle() is False
+    assert len(reads) <= 2, "Busy agents must be filtered before per-Goal preparation"
     assert await db.scalar(
         select(GoalCycle.id).where(GoalCycle.goal_id == created.id)
     ) is None

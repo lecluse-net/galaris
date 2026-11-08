@@ -243,6 +243,10 @@ for the reply. An already recorded decision should be read from its source; a fa
 to make the choice should be checked before asking. Waiting does not mean the Goal is achieved.
 
 In **Goals**, the list shows the responsible Agent’s avatar and name.
+Opening details does not load the full history: the **Cycles** tab retrieves its page when
+opened. Live updates preserve the selection and previously displayed information. If loading
+fails, an error message and **Retry** let you recover. A concurrent edit does not replace your
+draft: saving reports the revision conflict to prevent overwriting a newer version.
 With Goal editing privileges, **Manage my categories** lets you create, rename and delete
 personal categories. Choose an optional category when creating or editing a Goal, then use
 the **Category** filter to find classified Goals or **Uncategorized**. Each Goal has at most

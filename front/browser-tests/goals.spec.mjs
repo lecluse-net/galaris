@@ -291,3 +291,137 @@ test('closing a goal form makes its pending referrer lookup obsolete', async ({ 
     await expect(page.getByText('Obsolete referrer failure', { exact: false })).toHaveCount(0)
   } finally { release() }
 })
+
+test('Goal history loads on demand, recovers from an error and stays lazy after reopening', async ({ page }, testInfo) => {
+  await goals(page)
+  let reads = 0
+  await page.route('**/api/goals/goal-a/cycles?*', route => {
+    reads++
+    return reads === 1
+      ? route.fulfill({ status: 503, json: { detail: 'Synthetic unavailable history' } })
+      : route.fulfill({ json: { items: [], total: 0, page: 1, page_size: 50 } })
+  })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_ACCESS'] })
+  const open = () => page.getByRole('button', { name: 'Goal details', exact: true }).first().click()
+  await open()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Prepare the report')
+  expect(reads).toBe(0)
+  await dialog.getByRole('tab', { name: 'Cycles', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('Could not load cycles.')
+  await expect(dialog).not.toContainText('No cycles yet')
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 950 })
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => window.testApp.dark(dark), dark)
+      await page.screenshot({ path: testInfo.outputPath(`history-retry-${width}-${dark ? 'dark' : 'light'}.png`), fullPage: true, animations: 'disabled' })
+    }
+  }
+  await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toHaveCount(0)
+  expect(reads).toBe(2)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await open()
+  await expect(dialog).toContainText('Prepare the report')
+  expect(reads).toBe(2)
+  await dialog.getByRole('tab', { name: 'Cycles', exact: true }).click()
+  await expect.poll(() => reads).toBe(3)
+})
+
+test('a failed Goal list can retry without hiding existing data', async ({ page }) => {
+  await goals(page)
+  let fail = true
+  await page.route('**/api/goals?*', route => fail
+    ? route.fulfill({ status: 503, json: { detail: 'Synthetic list failure' } })
+    : route.fulfill({ json: { items: [goal], total: 1, summary: {}, tracking_llm_configured: true } }))
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_ACCESS'] })
+  const error = page.getByRole('alert').filter({ hasText: 'Could not load Goals.' })
+  await expect(error).toBeVisible()
+  fail = false
+  await error.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Goal details', exact: true })).toBeVisible()
+  fail = true
+  await page.getByPlaceholder('Search a Goal, agent, or referrer').fill('Synthetic filter')
+  await expect(error).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Goal details', exact: true })).toBeVisible()
+  fail = false
+  await error.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(error).toHaveCount(0)
+})
+
+test('live Goal updates preserve the editing revision and a conflict preserves the draft', async ({ page }) => {
+  await goals(page)
+  const current = { ...goal, cycle_delay_seconds: 3600, referrer: {
+    type: 'MESSENGER', connection_id: 1, user_id: 'user:1', display_name: 'Synthetic supervisor', platform: 'internal',
+  } }
+  const writes = []
+  await page.route('**/api/goals/goal-a', route => {
+    if (route.request().method() === 'PUT') {
+      writes.push(route.request().postDataJSON())
+      return route.fulfill({ status: 409, json: { detail: 'Synthetic concurrent Goal change' } })
+    }
+    return route.fulfill({ json: current })
+  })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+  await page.getByRole('button', { name: 'Goal details', exact: true }).first().click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+  await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Synthetic local draft')
+  await page.evaluate(updated => window.testApp.emitSocket('goal.update', { data: updated }), {
+    ...current, revision: current.revision + 1, title: 'Synthetic concurrent title',
+  })
+  const refresh = page.waitForResponse(response => response.url().endsWith('/api/goals/goal-a') && response.request().method() === 'GET')
+  await page.evaluate(() => window.testApp.emitSocket('task.update', { data: { goal_id: 'goal-a' } }))
+  await (await refresh).finished()
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+  await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeFocused()
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0].expected_revision).toBe(4)
+  await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Synthetic local draft')
+  await expect(page.getByText('Synthetic concurrent Goal change', { exact: false })).toBeVisible()
+})
+
+test('closing a saving Goal keeps the next Goal selected when the save completes', async ({ page }) => {
+  await goals(page)
+  const first = { ...goal, cycle_delay_seconds: 3600, referrer: {
+    type: 'MESSENGER', connection_id: 1, user_id: 'user:1', display_name: 'Synthetic supervisor', platform: 'internal',
+  } }
+  const second = { ...first, id: 'goal-b', title: 'Synthetic second Goal' }
+  await jsonRoute(page, '**/api/goals?*', { items: [first, second], total: 2, summary: {}, tracking_llm_configured: true })
+  await jsonRoute(page, '**/api/goals/tree', { items: [first, second], total: 2 })
+  await jsonRoute(page, '**/api/goals/goal-b', second)
+  let release
+  const saved = new Promise(resolve => { release = resolve })
+  await page.route('**/api/goals/goal-a', async route => {
+    if (route.request().method() === 'PUT') {
+      await saved
+      return route.fulfill({ json: { ...first, revision: 5 } })
+    }
+    return route.fulfill({ json: first })
+  })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+  const details = page.getByRole('button', { name: 'Goal details', exact: true })
+  await details.first().click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+  const request = page.waitForRequest(request => request.url().endsWith('/api/goals/goal-a') && request.method() === 'PUT')
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  try {
+    await request
+    await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
+    await expect(dialog).toHaveCount(0)
+    await details.nth(1).click()
+    await expect(dialog).toContainText('Synthetic second Goal')
+    const response = page.waitForResponse(response => response.url().endsWith('/api/goals/goal-a') && response.request().method() === 'PUT')
+    release()
+    await (await response).finished()
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    await expect.poll(() => page.evaluate(async () => {
+      const { useGoalStore } = await import('/app/goal/stores/goalStore.ts')
+      return useGoalStore(window.testApp.pinia).currentGoal?.id
+    })).toBe('goal-b')
+    await expect(dialog).toContainText('Synthetic second Goal')
+  } finally { release() }
+})
