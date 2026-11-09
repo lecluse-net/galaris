@@ -40,13 +40,17 @@ async def setup_activity(db, native, monkeypatch, *, delegated=False, human_mana
     if human_manager:
         owner.user_id = user.id
     age = Variable(name="age", type="int", nullable=False)
-    graph = Workflow(schema_version="galaris.bpmn/v2", inputs=[], outputs=[], nodes=[
+    graph = Workflow(schema_version="galaris.bpmn/v2", variables=[age, Variable(name="occupation", type="string", nullable=False)], nodes=[
         Node(id="start", kind="start"), Node(id="collect", kind="task", title="Collect synthetic age",
-            config={"prompt": "Ask the human for their age."}, inputs=[], outputs=[age]),
+            config={"prompt": "Ask the human for their age."}),
         Node(id="describe", kind="task", title="Describe synthetic age",
-            config={"prompt": "Read age from the Dataset and describe it."}, inputs=[], outputs=[]),
+            config={"prompt": "Read age from the Dataset and describe it."}),
         Node(id="end", kind="end")], flows=[Flow(id="a", source="start", target="collect"),
             Flow(id="b", source="collect", target="describe"), Flow(id="c", source="describe", target="end")])
+    graph.outputs = ["age", "occupation"]
+    for node in graph.nodes[1:3]:
+        node.inputs = ["age", "occupation"]
+        node.outputs = ["age", "occupation"]
     if delegated:
         other.user_id = user.id
         graph.actors = [Actor(id="performer", name="Synthetic performer", kind="agent", agent_id=other.id)]
@@ -109,8 +113,8 @@ async def test_ai_activity_asks_in_origin_room_resumes_and_passes_data_to_next_t
         assert task.status == TaskStatus.EXEC
         return
     ctx = McpToolContext(agent_id=owner.id, runtime="openai_messages", task_id=task.id)
-    assert (await process_activity_question(ctx, "What is your age?"))["waiting_for_human"]
-    assert (await process_activity_question(ctx, "What is your age?"))["waiting_for_human"]
+    assert (await process_activity_question(ctx, "What is your age?", ["age"]))["waiting_for_human"]
+    assert (await process_activity_question(ctx, "What is your age?", ["age"]))["waiting_for_human"]
     assert await task_service.get_children(task.id) == []
     if legacy:
         wait = await task_service.create(TaskCreate(label="Synthetic historical wait", agent_id=owner.id,
@@ -165,11 +169,11 @@ async def test_ai_activity_asks_in_origin_room_resumes_and_passes_data_to_next_t
     assert "37" in task.data["input_context"]
     transition(task, TaskEvent.START_EXECUTION)
     await task_service.save(task)
-    assert (await process_activity_question(ctx, "What is your age?"))["response"] == output
+    assert (await process_activity_question(ctx, "What is your age?", ["age"]))["response"] == output
     # A resumed model may rephrase its question. Its received answer must survive
     # that retry instead of opening a second human wait.
     question = (await db.get(ProcessNodeRun, attempt.node_run_id)).context["activity_question"]
-    repeated = await process_activity_question(ctx, "Please tell me your age in years.")
+    repeated = await process_activity_question(ctx, "Please tell me your age in years.", ["age"])
     assert repeated["answered"] and repeated["response"] == output
     assert (await db.get(ProcessNodeRun, attempt.node_run_id)).context["activity_question"] == question
     assert not task.paused
@@ -190,13 +194,14 @@ async def test_ai_activity_asks_in_origin_room_resumes_and_passes_data_to_next_t
     second_task = await task_service.get_by_id(second.task_id)
     transition(second_task, TaskEvent.START_EXECUTION)
     await task_service.save(second_task)
-    # An activity with no data outputs may finish with natural prose.
+    # An activity can submit an empty patch and retain its natural completion summary.
+    await process_activity_complete(McpToolContext(agent_id=owner.id, runtime="internal", task_id=second_task.id), {})
     await _update_task_after_execution(second_task, ExecutionResult(prompt="Synthetic driver", result="The synthetic person is 37."), base_cost=0)
     for _ in range(8): await process_service.refresh_run(run_id)
     run = await db.get(ProcessRun, run_id)
     assert run.status == "success", run.error_message
-    assert run.output == {}
-    assert run.engine_metadata["native"]["summary"] == "The synthetic person is 37."
+    assert run.output == {"age": {"type": "int", "value": 37}}
+    assert run.output == {"age": {"type": "int", "value": 37}}
     assert (await read_run_data(run.id, owner.id))["data"] == output
     assert await db.scalar(select(func.count()).select_from(ProcessNodeAttempt).where(ProcessNodeAttempt.node_run_id == attempt.node_run_id)) == 1
 
@@ -213,7 +218,7 @@ async def test_delegated_activity_asks_and_receives_input_in_the_launch_conversa
     owner, performer, user, run_id, room, task, _ = await setup_activity(db, native, monkeypatch, delegated=True)
     assert task.agent_id == performer.id
     ctx = McpToolContext(agent_id=performer.id, runtime="openai_messages", task_id=task.id)
-    await process_activity_question(ctx, "What is your age?")
+    await process_activity_question(ctx, "What is your age?", ["age"])
     await _update_task_after_execution(task, ExecutionResult(prompt="Synthetic", result="Waiting"), base_cost=0)
     await deliver_human_requests()
     choice = await db.scalar(select(Interaction).where(Interaction.kind == "process_human_activity"))
@@ -235,17 +240,17 @@ async def test_question_keys_keep_their_answer_when_later_questions_are_pending(
 
     owner, _, user, run_id, _, task, attempt = await setup_activity(db, native, monkeypatch)
     ctx = McpToolContext(agent_id=owner.id, runtime="openai_messages", task_id=task.id)
-    await process_activity_question(ctx, "What is your age?", question_key="age-request")
+    await process_activity_question(ctx, "What is your age?", ["age"], question_key="age-request")
     occurrence = await db.get(ProcessNodeRun, attempt.node_run_id)
     first_id = UUID(occurrence.context["activity_question"]["id"])
     answer = {"age": {"type": "int", "value": 37}}
     run = await db.get(ProcessRun, run_id)
     await answer_input(run, occurrence, question_id=first_id, user_id=user.id, output=answer)
     await db.commit()
-    occupation = [Variable(name="occupation", type="string", nullable=False)]
+    occupation = ["occupation"]
     await process_activity_question(ctx, "What is your occupation?", occupation, question_key="occupation-request")
     next_id = occurrence.context["activity_question"]["id"]
-    assert (await process_activity_question(ctx, "An old age request retry", question_key="age-request"))["response"] == answer
+    assert (await process_activity_question(ctx, "An old age request retry", ["age"], question_key="age-request"))["response"] == answer
     await answer_input(run, occurrence, question_id=first_id, user_id=user.id, output=answer)
     await db.commit()
     assert occurrence.context["activity_question"]["id"] == next_id
@@ -263,7 +268,7 @@ async def test_old_question_snapshot_is_not_offered_after_a_followup_opens(db, n
 
     owner, _, user, run_id, _, task, attempt = await setup_activity(db, native, monkeypatch)
     ctx = McpToolContext(agent_id=owner.id, runtime="openai_messages", task_id=task.id)
-    await process_activity_question(ctx, "What is your age?")
+    await process_activity_question(ctx, "What is your age?", ["age"])
     await deliver_human_requests()
     choice = await db.scalar(select(Interaction).where(Interaction.kind == "process_human_activity"))
     captured = await list_pending_choices(agent_id=owner.id, connection_id=choice.connection_id,
@@ -273,7 +278,7 @@ async def test_old_question_snapshot_is_not_offered_after_a_followup_opens(db, n
         question_id=UUID(occurrence.context["activity_question"]["id"]), user_id=user.id,
         output={"age": {"type": "int", "value": 37}})
     await db.commit()
-    await process_activity_question(ctx, "What is your occupation?", [Variable(name="occupation", type="string", nullable=False)])
+    await process_activity_question(ctx, "What is your occupation?", ["occupation"])
     assert await live_process_choices(captured, requester_user_id=user.id) == []
 
 
@@ -285,7 +290,7 @@ async def test_withdrawal_of_an_old_question_cannot_close_a_new_question(db, nat
 
     owner, _, user, run_id, _, task, attempt = await setup_activity(db, native, monkeypatch)
     ctx = McpToolContext(agent_id=owner.id, runtime="openai_messages", task_id=task.id)
-    await process_activity_question(ctx, "What is your age?")
+    await process_activity_question(ctx, "What is your age?", ["age"])
     await deliver_human_requests()
     occurrence = await db.get(ProcessNodeRun, attempt.node_run_id)
     old_id = UUID(occurrence.context["activity_question"]["id"])
@@ -295,7 +300,7 @@ async def test_withdrawal_of_an_old_question_cannot_close_a_new_question(db, nat
 
     async def withdraw(**kwargs):
         assert kwargs["question_id"] == old_id
-        await process_activity_question(ctx, "What is your occupation?", [Variable(name="occupation", type="string", nullable=False)])
+        await process_activity_question(ctx, "What is your occupation?", ["occupation"])
         if transport_fails:
             raise OSError("Synthetic failed withdrawal")
 
@@ -328,13 +333,13 @@ async def test_activity_can_request_new_information_without_losing_received_answ
 
     owner, _, user, run_id, _, task, attempt = await setup_activity(db, native, monkeypatch)
     ctx = McpToolContext(agent_id=owner.id, runtime="openai_messages", task_id=task.id)
-    await process_activity_question(ctx, "What is your age?")
+    await process_activity_question(ctx, "What is your age?", ["age"])
     occurrence = await db.get(ProcessNodeRun, attempt.node_run_id)
     first_id = UUID(occurrence.context["activity_question"]["id"])
     await answer_input(await db.get(ProcessRun, run_id), occurrence, question_id=first_id,
         user_id=user.id, output={"age": {"type": "int", "value": 37}})
     await db.commit()
-    variables = None if ask_again else [Variable(name="occupation", type="string", nullable=False)]
+    variables = ["age"] if ask_again else ["occupation"]
     question = "Please confirm your age." if ask_again else "What is your occupation?"
     key = "confirm-age" if ask_again else None
     assert (await process_activity_question(ctx, question, variables, question_key=key))["waiting_for_human"]
@@ -359,7 +364,10 @@ async def test_activity_controls_reject_foreign_tasks_and_cancelled_questions(db
     with pytest.raises(PermissionError):
         await process_activity_question(McpToolContext(agent_id=owner.id, runtime="internal"), "What is your age?")
     ctx = McpToolContext(agent_id=owner.id, runtime="internal", task_id=task.id)
-    await process_activity_question(ctx, "What is your age?")
+    for names in (["unknown"], ["age", "age"]):
+        with pytest.raises(ValueError, match="declared process variables"):
+            await process_activity_question(ctx, "Synthetic invalid question", names)
+    await process_activity_question(ctx, "What is your age?", ["age"])
     occurrence = await db.get(ProcessNodeRun, attempt.node_run_id)
     question_id = UUID(occurrence.context["activity_question"]["id"])
     if stop == "process":
@@ -390,7 +398,7 @@ async def test_activity_tools_are_available_and_callable_through_the_real_mcp_bo
         assert {"process_activity_complete", "process_activity_question"} <= names
         invalid = await client.call_tool("process_activity_complete", {"output": {"age": "invalid"}}, raise_on_error=False)
         assert invalid.is_error and "int" in str(invalid.content)
-        result = await client.call_tool("process_activity_question", {"question": "What is your age?"})
+        result = await client.call_tool("process_activity_question", {"question": "What is your age?", "variables": ["age"]})
         assert not result.is_error
     assert await task_service.get_children(task.id, refresh=True) == []
     await _update_task_after_execution(task, ExecutionResult(prompt="Synthetic MCP driver", result="Waiting for the reply."), base_cost=0)
@@ -447,7 +455,7 @@ async def test_managed_deepseek_http_mcp_uses_its_driver_and_keeps_activity_task
         catalog = await invoke("tools/list")
         assert {"process_activity_complete", "process_activity_question"} <= {tool["name"] for tool in catalog["tools"]}
         asked = await invoke("tools/call", {"name": "process_activity_question",
-            "arguments": {"question": "What is your age?"}})
+            "arguments": {"question": "What is your age?", "variables": ["age"]}})
         assert not asked.get("isError"), asked
     await db.refresh(task)
     assert not task.paused and await scheduler._renew_lease(task.id, lease)
@@ -509,7 +517,7 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
             started.append(identifier)
             if len(started) <= 2:
                 name = "process_activity_question" if len(started) == 1 else "process_activity_complete"
-                arguments = {"question": "What is your age?"} if len(started) == 1 else {"output": {"age": 37}}
+                arguments = {"question": "What is your age?", "variables": ["age"]} if len(started) == 1 else {"output": {"age": 37}}
                 if len(started) == 2:
                     context = json.loads(request.content)["messages"][0]["content"]
                     assert "What is your age?" in context
@@ -520,7 +528,7 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
                             "Authorization": f"Bearer {bearer}", "X-Galaris-Run-Context": request.headers["X-Galaris-Run-Context"],
                             "Accept": "application/json, text/event-stream"},
                             json={"jsonrpc": "2.0", "id": "retry", "method": "tools/call", "params": {
-                                "name": "process_activity_question", "arguments": {"question": "Please tell me your age in years."}}})
+                                "name": "process_activity_question", "arguments": {"question": "Please tell me your age in years.", "variables": ["age"]}}})
                         repeated_payload = next(json.loads(line[5:].strip()) for line in repeated.text.splitlines() if line.startswith("data:"))
                         assert not repeated_payload["result"].get("isError"), repeated_payload
                         answer = repeated_payload["result"]["structuredContent"]
@@ -543,13 +551,21 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
                             "Accept": "application/json, text/event-stream"},
                             json={"jsonrpc": "2.0", "id": "followup", "method": "tools/call", "params": {
                                 "name": "process_activity_question", "arguments": {"question": "What is your occupation?",
-                                    "variables": [{"name": "occupation", "type": "string", "nullable": False}]}}})
+                                    "variables": ["occupation"]}}})
                         payload = next(json.loads(line[5:].strip()) for line in response.text.splitlines() if line.startswith("data:"))
                         assert not payload["result"].get("isError"), payload
                     results[identifier] = "Waiting for the occupation."
                 else:
                     if followup:
                         assert "Synthetic occupation" in request.content.decode()
+                    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://localhost") as mcp:
+                        response = await mcp.post(f"/api/mcp/{owner.code}", headers={
+                            "Authorization": f"Bearer {bearer}", "X-Galaris-Run-Context": request.headers["X-Galaris-Run-Context"],
+                            "Accept": "application/json, text/event-stream"},
+                            json={"jsonrpc": "2.0", "id": "complete", "method": "tools/call", "params": {
+                                "name": "process_activity_complete", "arguments": {"output": {}}}})
+                        payload = next(json.loads(line[5:].strip()) for line in response.text.splitlines() if line.startswith("data:"))
+                        assert not payload["result"].get("isError"), payload
                     results[identifier] = "The synthetic person is 37."
             return httpx.Response(200, json={"runtime_run_id": identifier})
         identifier = request.url.path.rsplit("/", 1)[-1]
@@ -622,6 +638,7 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
     run = await db.get(ProcessRun, run_id)
     assert run.status == "success", run.error_message
     assert run.engine_metadata["native"]["summary"] == "The synthetic person is 37."
+    assert run.output == {"age": {"type": "int", "value": 37}}
     assert (await read_run_data(run.id, owner.id))["data"] == {"age": {"type": "int", "value": 37}}
     assert len(set(started)) == len(started) == (4 if followup else 3)
     assert "_agent_run_checkpoint" not in task.data

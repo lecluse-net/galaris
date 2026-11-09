@@ -39,23 +39,26 @@ async def setup_wait(db, native, monkeypatch, *, typed=True, file_output=False, 
     owner.user_id = user.id
     outputs = [Variable(name="attachment" if file_output else "approved", type="File" if file_output else "bool", nullable=False)] if typed else None
     graph = Workflow(schema_version="galaris.bpmn/v2" if typed else "galaris.bpmn/v1",
-        inputs=[] if typed else None, outputs=outputs,
+        variables=outputs or [],
         actors=[Actor(id="reviewer", name="Reviewer", kind="human", user_id=user.id)],
         nodes=[Node(id="start", kind="start"), Node(id="review", kind="human_task", title="Invented approval",
-            config={"actor": "reviewer", "prompt": "Review this invented request."},
-            inputs=[] if typed else None, outputs=outputs), Node(id="end", kind="end")],
+            config={"actor": "reviewer", "prompt": "Review this invented request."}), Node(id="end", kind="end")],
         flows=[Flow(id="a", source="start", target="review"), Flow(id="b", source="review", target="end")])
     if decision:
-        graph.outputs = []
+        graph.variables = []
         graph.nodes[1] = Node(id="review", kind="if", title="Invented decision", config={"actor": "reviewer", "mode": "human", "prompt": "Is this the requested project?"})
         graph.nodes.append(Node(id="declined", kind="end"))
         graph.flows[1].condition = "decision"
         graph.flows.append(Flow(id="no", source="review", target="declined"))
     if sequential:
         graph.nodes.insert(2, Node(id="confirm", kind="human_task", title="Second synthetic approval",
-            config={"actor": "reviewer", "prompt": "Confirm this second invented step."}, inputs=[], outputs=outputs))
+            config={"actor": "reviewer", "prompt": "Confirm this second invented step."}))
         graph.flows = [Flow(id="a", source="start", target="review"), Flow(id="b", source="review", target="confirm"),
             Flow(id="c", source="confirm", target="end")]
+    graph.outputs = [variable.name for variable in graph.variables]
+    for node in graph.nodes:
+        if node.kind not in {"start", "if"}:
+            node.outputs = list(graph.outputs)
     definition = await create(actor_agent_id=owner.id, title="Synthetic human workflow", graph=graph)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
@@ -119,8 +122,8 @@ async def test_internal_request_is_durable_scoped_and_does_not_consume_unrelated
             "participant_id": choice.user_id, "requester_user_id": user.id})
     ctx = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
     from app.tools import RecoverableToolError
-    with pytest.raises(RecoverableToolError, match="missing"):
-        await conversation_process_respond(ctx, reference=choice.reference, output={})
+    with pytest.raises(RecoverableToolError, match="null is not allowed"):
+        await conversation_process_respond(ctx, reference=choice.reference, output={"approved": None})
     assert choice.status == "PENDING"
     unlinked = replace(turn, messaging_context={**turn.messaging_context, "requester_user_id": None})
     with pytest.raises(PermissionError, match="authenticated"):

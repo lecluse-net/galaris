@@ -25,10 +25,6 @@
     <q-banner v-if="run.error_message" class="bg-red-1 text-negative">{{ run.error_code }} — {{ run.error_message }}</q-banner>
     <div v-if="run.engine_metadata.failed_node" class="text-caption text-negative">{{ t('processes.failedNode') }} : {{ run.engine_metadata.failed_node }}</div>
     <q-banner v-if="run.engine_metadata.remote_may_continue" class="bg-orange-1 text-warning">{{ t('processes.remoteMayContinue') }}</q-banner>
-    <div class="run-data-grid">
-      <CodeEditor :model-value="pretty(run.input)" language="json" :label="t('processes.input')" readonly :show-error="false" :visible-lines="10" :min-lines="5" />
-      <CodeEditor :model-value="pretty(run.output)" language="json" :label="t('processes.output')" readonly :show-error="false" :visible-lines="10" :min-lines="5" />
-    </div>
     <template v-if="analysis">
       <q-separator />
       <div class="text-subtitle2">{{ t('processes.summary') }}</div>

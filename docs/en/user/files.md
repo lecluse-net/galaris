@@ -2,6 +2,20 @@
 
 # Browse an agent’s files
 
+## Convert a file to PDF
+
+Ask the agent to convert a readable file to PDF. Its `file_to_pdf` tool accepts PNG/JPEG/WebP/
+GIF/TIFF/BMP images, Word/Excel/PowerPoint, OpenDocument, RTF, HTML, SVG, Markdown and text
+content, including CSV, JSON and XML. It works in conversations and Tasks without a generation
+model or console, creating a new file with its own URI. The original stays intact and existing
+destinations are never overwritten.
+
+Multipage images retain all frames, up to 100. Office files follow printable layout; hidden
+or non-printing cells may therefore be absent. HTML is rendered without scripts or external
+resources. The agent receives conversion warnings. Source/output are limited to 64 MB, text to
+8 MB and PDF output to 2000 pages; renderer limits still apply. Archives, audio, video,
+unsupported formats and corrupt files are rejected explicitly.
+
 ## Large documents supplied to an agent
 
 In automatic mode, Galaris locally estimates whether the complete document fits the

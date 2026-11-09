@@ -60,6 +60,37 @@ d'interface ne remplace pas les droits API et MCP.
 
 ## Construire et enregistrer
 
+Quand vous demandez à l'agent de lancer un processus, il doit d'abord réunir toutes les
+entrées sélectionnées dans l'étape Début. Il réutilise les informations connues, recherche
+les documents accessibles et vous demande les renseignements ou pièces encore manquants.
+Vous pouvez répondre en plusieurs messages et joindre les fichiers ensuite : le dossier
+conserve les réponses déjà obtenues. L'exécution commence seulement quand les entrées sont
+complètes et valides. Une correction conserve les autres réponses : l'agent redemande
+uniquement les éléments encore manquants ou incorrects. Vous pouvez retirer votre accord
+de lancement tout en conservant le dossier en attente. Le run apparaît entre-temps
+**En attente**, avec les informations encore
+nécessaires, et conserve le même identifiant au démarrage. Dans sa modale, les variables
+apparaissent sous forme de cartes indiquant nom, type et valeur. Les fichiers et documents
+s'ouvrent en cliquant sur leur aperçu ; les sections de pièces jointes séparées et les blocs
+JSON d'entrée/sortie ne sont plus affichés. Un champ nullable ne signifie pas « ignorer la question » ; si la pièce
+ou l'information est indisponible, dites-le explicitement. Vous pouvez annuler la préparation.
+Une demande comme « relance-le » reprend le contexte de l'exécution précédente lorsqu'il
+permet d'identifier le processus sans ambiguïté.
+
+Si vous avez les droits de lancement et de contrôle ainsi que la gestion de l'agent lanceur,
+les cartes des entrées attendues proposent **Compléter** : saisissez une valeur ou déposez
+un fichier directement. **Enregistrer la donnée** conserve le run en attente, sans appel IA.
+Une fois toutes les entrées valides, **Démarrer ce processus** lance ce même run explicitement.
+Une modification concurrente refuse l'enregistrement ; fermez puis rouvrez le champ pour
+retrouver les données actuelles. Les libellés et descriptions métier des variables aident
+à identifier la personne ou le document demandé ; leur nom technique reste visible.
+
+Les nouvelles entrées gardent une trace séparée de leur origine : défaut déclaré, saisie
+humaine, proposition de l'agent ou contexte conversationnel. Cette trace se consulte à la
+demande, notamment pour retrouver la page d'un PDF converti. Elle n'encombre pas le contexte
+habituel de l'agent. Les corrections restent historisées et une référence ne donne aucun
+droit supplémentaire sur sa source ; une source révoquée ou indisponible reste masquée.
+
 Créer un processus et saisir son titre dans la barre compacte. Le champ **Description**
 permet d'ajouter un texte facultatif, modifiable puis conservé avec **Enregistrer**.
 En lecture seule, la description reste consultable. Le champ **Propriétaire** reste visible
@@ -130,17 +161,57 @@ même invalides, sont conservés à la réouverture jusqu'à la sauvegarde ou au
 Le bouton **Enregistrer** se trouve dans la barre du diagramme, à côté de **Valider**,
 et reste disponible en plein écran.
 
-Chaque tâche possède ses **Variables d'entrée** et **Variables de sortie** : nom, type,
-nullable/notnull et valeur par défaut facultative. Début et Fin règlent les variables du
-processus complet. Les noms doivent être uniques ; les défauts sont vérifiés à la sauvegarde.
-Les types proposés sont int, float, string, bool, Agent, File, User, Document, array et object.
+Juste sous le diagramme, **Entrées et sorties du processus** récapitule les variables acceptées
+au lancement et celles rendues au demandeur. Ce récapitulatif est en lecture seule : ses entrées
+proviennent de **Début**, ses sorties des nœuds **Fin**. Configurez les liens sur ces nœuds ou
+depuis les variables. Il n'existe aucune sélection globale indépendante ni utilisation générique
+« Processus ». Le lancement et les agents utilisent uniquement la liste de Début ; un run
+retourne les sorties des Fin réellement atteintes.
+
+Pour chaque étape — début, tâche, IF, boucle ou fin — ouvrir ses paramètres permet de choisir
+les directions autorisées : **Début** et **IF** ont uniquement des **Variables d'entrée**,
+**Fin** uniquement des **Variables de sortie**, les tâches peuvent avoir les deux.
+La colonne **Utilisée par** du registre
+présente les mêmes liens dans l'autre sens : ajouter ou retirer un élément dans **En entrée de**
+ou **En sortie de** met immédiatement à jour cette étape. Les étapes des boucles sont incluses.
+Une variable peut avoir les deux rôles. Renommer ou supprimer une variable actualise ces liens ;
+la réordonner les conserve. Une sélection vide ne transmet aucune variable.
+
+La section **Variables du processus**, juste sous le diagramme, définit la liste commune : nom, type,
+nullable/notnull et valeur par défaut facultative. Toutes les activités, y compris les boucles,
+utilisent ces variables. Les noms doivent être uniques ; les défauts sont vérifiés à la sauvegarde.
+Les types sont affichés dans la langue courante : **Nombre entier**, **Nombre décimal**,
+**Chaîne de caractères**, **Booléen**, **Liste**, **Objet**, ainsi que les références aux agents,
+utilisateurs, équipes, documents, fichiers, tâches, objectifs, processus, contacts, compétences,
+conversations, thèmes, espaces de code, outils, connexions et modèles IA.
+**Date** convient à une date de naissance : saisissez une chaîne JSON comme `"2000-02-29"`,
+sans heure ni fuseau. **Date et heure** utilise par exemple `"2026-11-08T14:30:00+01:00"` :
+les secondes et le fuseau (`Z` ou décalage horaire) sont obligatoires. Ces types sont utilisables
+en entrée, en sortie et dans les réponses humaines ; une date impossible est refusée.
+Pour **Document**, le type **Texte** ou **Données** est facultatif. Pour **Fichier**, une liste
+recherchable permet de choisir le format attendu, par exemple PDF ou Images ; un type MIME
+personnalisé peut aussi être saisi. Laissez ce champ vide pour accepter tout format.
+Le format est vérifié via les métadonnées et les droits de la ressource avant son intégration.
+Si vous fournissez un PDF pour un champ qui exige une image, l’agent peut utiliser le Tool
+**Image** (`image_from_pdf`) pour rendre la page concernée en PNG avant de la transmettre.
+Il réutilise l’URI de cette image pour le lancement ou la réponse humaine ; le PDF original
+reste intact. Cette conversion n’exige aucun modèle génératif ni console. Le Tool doit être
+actif et autorisé dans le contexte utilisé ; une sélection de page ambiguë nécessite une précision.
+Dans l’autre sens, `file_to_pdf` permet à l’agent de fournir un PDF depuis une image, un document
+Word/Excel/PowerPoint ou OpenDocument, du RTF, du HTML/SVG/Markdown ou un contenu textuel.
+Le service **Fichiers** fournit cette conversion sans modèle IA ni console. L’original est conservé
+et le PDF reçoit sa propre URI. La conversion suit la mise en page imprimable ; le HTML est statique,
+sans exécution des scripts ni chargement de ressources externes. Les formats non pris en charge
+et les fichiers corrompus sont signalés explicitement.
 Les tableaux et tables de hachage peuvent être imbriqués et tous les types peuvent être nullables.
-Une variable omise utilise son défaut, sinon null si nullable ; une variable notnull sans
-défaut doit être fournie. Un null explicite n'est pas remplacé par le défaut. False et zéro
+Les défauts s'appliquent au lancement de chaque run. Sans valeur, une variable reste
+**Non renseignée** jusqu'à sa première écriture. Une activité peut modifier seulement une
+partie des variables ; les autres gardent leur valeur. Un null explicite exige nullable
+et n'est pas remplacé par le défaut. False et zéro
 restent des valeurs. Une erreur de contrat indique la tâche et la variable concernées.
 Les corps FOR et WHILE utilisent le même éditeur et un fil d'Ariane.
-Une ancienne définition conserve son pool partagé ; **Configurer les entrées et sorties
-typées** prépare une conversion explicite à compléter avant sauvegarde. Les runs déjà
+Une ancienne définition conserve son pool partagé ; **Configurer les variables du processus**
+prépare une conversion explicite à compléter avant sauvegarde. Les runs déjà
 lancés conservent leur profil d'origine.
 Une erreur d'exécution arrête le processus et ses branches actives. Le suivi renvoie
 le code d'erreur, avec son message ; les données du run et les fichiers sont conservés.
@@ -201,14 +272,20 @@ Chaque run conserve son graphe de départ et ses variables dans son champ `data`
 Une table de pièces jointes relie les fichiers à ce run. Aucun Dataset n'est créé.
 Les données et fichiers suivent les droits de lecture et d'écriture du processus,
 sans partage supplémentaire. Une révocation s'applique aussi aux runs existants.
-Le suivi affiche **Données du run** et **Pièces jointes** ; les fichiers gérés peuvent
+Le suivi affiche **Variables du processus**, avec le type et la valeur de chaque variable
+pour ce run, y compris celles encore non renseignées, ainsi que **Pièces jointes** ; les fichiers gérés peuvent
 être téléchargés. Le moteur intègre les sorties validées et conserve les reçus techniques
 séparément des variables métier.
 Une sortie invalide n'est pas intégrée. Les changements disjoints sont conservés et un
 conflit de variable est signalé. Les références de fichiers circulent sans téléchargement
 ni copie automatique ; les droits sont contrôlés lors des opérations sur leur contenu.
-La sortie du run correspond aux variables déclarées sur Fin. Le partage du processus
+La sortie du run contient les variables sélectionnées en sortie du processus qui ont une valeur. Le partage du processus
 s’applique aussi à ses runs. Deux runs possèdent des données distinctes.
+Lorsqu'un processus lancé depuis une conversation réussit, sa réponse dans le Chat conserve
+le résumé et cite chaque valeur de sortie avec son nom. Les fichiers et documents de sortie
+apparaissent en pièces jointes de cette réponse, y compris lorsqu'ils sont imbriqués dans une
+liste ou un objet. Une même ressource n'est jointe qu'une fois. Les droits restent contrôlés ;
+une pièce jointe indisponible est signalée sans masquer les autres résultats.
 Dans l'ancien profil uniquement, les participants continuent à éditer le JSON partagé et
 les fichiers initiaux sont copiés dans ses pièces jointes, selon le contrat historique.
 
@@ -220,9 +297,11 @@ run fait défiler la liste vers le bas ; une simple mise à jour d'état conserv
 Le code du diagramme est préparé en arrière-plan dès qu'un run interne est présent,
 et la modale ne charge les autres écrans de ressources que lorsqu'ils sont ouverts.
 Les activités en cours sont mises en évidence, y compris les branches parallèles.
-Cliquer un nœud ouvre sa fiche d'exécution en lecture seule : données de sortie,
-retour de tâche ou d'opération, données d'entrée, tentatives, instructions réellement
-exécutées et erreurs disponibles. Le sélecteur de la fiche permet de consulter les
+Cliquer un nœud ouvre sa fiche d'exécution en lecture seule : statut, dates,
+tentatives, instructions réellement exécutées, erreurs et liens vers les tâches ou
+sous-processus disponibles. Les valeurs se consultent dans les cartes des variables du
+processus ; la fiche n'affiche plus les anciens blocs JSON d'entrée, de sortie ou de
+retour d'opération. Le sélecteur de la fiche permet de consulter les
 différentes exécutions d'une activité, avec pagination si nécessaire.
 Une activité non exécutée l'indique explicitement. Fermer la modale arrête son rafraîchissement.
 Le diagramme et la fiche d'activité ouverte suivent les événements du run en temps réel,
@@ -264,6 +343,8 @@ Une réponse à la question d'une activité concerne l'exécution existante : el
 pas un nouveau lancement. L'agent répond brièvement par défaut ; demandez les détails utiles.
 Dans le Chat, les nouveaux lancements sont bornés à la demande reçue : un réessai technique
 retrouve le même run. Un changement de processus ou de paramètres exige une demande qui le prévoit.
+Si le lancement a été refusé avant toute création d'exécution, vous pouvez demander à l'agent
+de réessayer avec les informations et fichiers déjà fournis. Les formats et droits restent vérifiés.
 
 Toutes les interactions humaines passent par la messagerie : Chat interne ou messagerie
 externe. Une activité IA peut aussi poser une question en cours de travail : elle attend

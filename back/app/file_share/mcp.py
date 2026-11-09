@@ -5,11 +5,15 @@ from app.agent import EffectDescriptorV1
 
 import base64
 import binascii
+from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
 from typing import Any, Literal
 
 from app.tools import RecoverableToolError
 from app.tools.contracts import ToolCallRejectedError
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from core.document import MAX_PDF_EXPORT_BYTES, convert_to_pdf
+from core.util import complete_io
 
 from .resource_contracts import ResourceContext
 from .resource_uri import parse_resource_uri
@@ -28,7 +32,6 @@ from .resource_service import (
     resource_move,
     resource_read,
     resource_rename,
-    resource_search,
     resource_write,
     materialize_resource,
 )
@@ -201,6 +204,8 @@ async def file_info(
         "semantic recall. On document://, mode='name' matches titles and filenames only and "
         "returns compact metadata without body excerpts; use mode='text' or 'semantic' to "
         "search document content. memory:// retains hybrid recall in every mode. "
+        "During Process input collection, identical searches can replay for 30 seconds within the same human message. "
+        "Use refresh=true after a known source change; change the query or ask the human instead of repeating empty searches. "
         "On data://, text searches JSON keys and values; semantic uses the configured vector "
         "index with explicit lexical fallback. Dataset passages include JSON pointers and "
         "revisions. Use dataset_query for exact filters, projections and numeric aggregates."
@@ -216,6 +221,7 @@ async def search_files(
     recursive: bool = True,
     max_results: int | None = None,
     cursor: str = "",
+    refresh: bool = False,
 ) -> str:
     """Search one virtual resource tree."""
 
@@ -225,7 +231,8 @@ async def search_files(
             "or use memory:// for semantic recall."
         )
 
-    result = await resource_search(
+    from .operation_memos import search_with_replay
+    result = await search_with_replay(
         await _resource_context(ctx),
         uri,
         query,
@@ -233,6 +240,7 @@ async def search_files(
         recursive=recursive,
         max_results=max_results,
         cursor=cursor or None,
+        refresh=refresh,
     )
     return _json_model(result)
 
@@ -273,6 +281,55 @@ async def read_file(
             await _resource_context(ctx), uri, offset=offset, max_chars=max_chars
         )
     )
+
+
+@mcp_tool("file_sharing", approval="ask", approval_reason="Creates a PDF in the selected authorized resource destination",
+    name="file_to_pdf", conversation_policy="deferred", timeout_seconds=300,
+    authorization_preflight=_file_preflight,
+    description=(
+        "Convert a readable resource to a real PDF without an AI model or console. "
+        "source is its exact canonical URI; destination is a writable collection such as file:// "
+        "or an unused exact .pdf URI. Supports PNG/JPEG/WebP/GIF/TIFF/BMP images (all frames, up to 100), "
+        "Word/Excel/PowerPoint and OpenDocument files, RTF, HTML, SVG, Markdown, UTF-8/UTF-16 text, "
+        "CSV/TSV, JSON/XML/YAML, and existing PDFs. Preserves the original and never overwrites an existing destination. "
+        "HTML rendering is static: no scripts or external resources. Spreadsheet exports follow printable layout. "
+        "Unsupported binary formats, archives, audio and video are rejected explicitly. "
+        "Returns the created application/pdf URI, source URI, page count and conversion warnings. "
+        "An unchanged source and identical destination may reuse a verified earlier conversion. "
+        "Use that URI for a Process requiring PDF instead of asking the human to convert it. "
+        "Limits: 64 MB source/output, 8 MB text/HTML input and 2000 PDF pages; renderer limits also apply."
+    ),
+)
+async def file_to_pdf(ctx: McpToolContext, source: str, destination: str) -> str:
+    """Publish a complete validated PDF through the same authorized resource facade."""
+    try:
+        if not destination.strip():
+            raise ValueError("Provide a writable PDF destination, such as file://")
+        reference = parse_resource_uri(destination, allow_empty=True)
+        if not reference.is_collection and PurePosixPath(reference.decoded_locator).suffix.lower() != ".pdf":
+            raise ValueError("The destination must be a collection or an unused .pdf URI")
+        context = await _resource_context(ctx)
+        with TemporaryDirectory(prefix="galaris_pdf_export_") as temporary:
+            root = Path(temporary)
+            original, output_dir = root / "original", root / "output"
+            materialized = await materialize_resource(context, source, original, max_bytes=MAX_PDF_EXPORT_BYTES)
+            from .operation_memos import conversion_key, converted_resource, remember_conversion
+            key = await conversion_key(context, original, uri=materialized.uri, name=materialized.name,
+                media_type=materialized.media_type, destination=str(reference), operation="pdf-export/v1")
+            cached = await converted_resource(context, key)
+            if cached is not None:
+                return _json_model(cached)
+            result = await convert_to_pdf(original, materialized.name, materialized.media_type, output_dir)
+            data = await complete_io((output_dir / "export.pdf").read_bytes)
+            mutation = await resource_create(context, reference, data,
+                name=(PurePosixPath(materialized.name).stem or "export") + ".pdf" if reference.is_collection else "",
+                max_bytes=MAX_PDF_EXPORT_BYTES)
+        receipt = {"uri": mutation.uri, "source_uri": materialized.uri, "media_type": "application/pdf",
+            "size": len(data), **result.model_dump()}
+        await remember_conversion(context, key, receipt, data)
+        return _json_model(receipt)
+    except (ValueError, PermissionError, FileExistsError, FileNotFoundError) as error:
+        raise RecoverableToolError(str(error)) from error
 
 
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",

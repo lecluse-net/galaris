@@ -23,6 +23,7 @@ from app.process.models import ProcessRun
 from app.process.native_definitions import create
 from app.process.tests.test_native_bpmn import graph, native as native, committed_native as committed_native
 from app.tools import McpToolContext, RecoverableToolError
+from app.tools.contracts import ToolCallRejectedError
 from app.tools.models import Tool
 from core.database import get_db_session
 
@@ -99,6 +100,9 @@ async def test_frozen_admission_replays_one_run_and_rejects_changed_inputs_or_an
     for workflow, values in [(definition.code, {"city": "Paris"}), (other.code, {})]:
         with pytest.raises(RecoverableToolError):
             await conversation_process_start(context(turn), workflow_id=workflow, input=values)
+    with pytest.raises(RecoverableToolError):
+        await conversation_process_start(context(turn), workflow_id=definition.code,
+            input={"city": "Oslo"}, typed_values=True)
     assert len(requests) == 1
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 1
     assert await db.scalar(select(func.count()).select_from(ConversationProcessLink)) == 1
@@ -115,6 +119,34 @@ async def test_frozen_admission_replays_one_run_and_rejects_changed_inputs_or_an
         await conversation_process_start(context(replace(turn, source_request="Launch something else")),
             workflow_id=definition.code, input={"city": "Oslo"})
     assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("parent_effort", [None, "high"])
+async def test_launch_permission_does_not_spend_the_controller_reasoning_budget(db, native, monkeypatch, parent_effort):
+    from app.conversation import process_admission
+    from app.llm import reasoning_effort_scope
+
+    owner, _ = native
+    definition = await create(actor_agent_id=owner.id, title="Synthetic bounded admission", graph=graph())
+    turn, _ = await conversation(db, owner, "Launch the synthetic workflow.")
+    requests = provider(monkeypatch, [{"workflow_id": definition.code, "input": {}}])
+    build = structured_service.build_model_for_llm
+
+    async def reasoning_provider(*args, **kwargs):
+        # A reasoning-enabled provider can stream deliberation until the admission
+        # deadline without returning a plan, as observed in the escaped failure.
+        if kwargs.get("reasoning_effort") != "none":
+            await asyncio.Event().wait()
+        return await build(*args, **kwargs)
+
+    monkeypatch.setattr(structured_service, "build_model_for_llm", reasoning_provider)
+    monkeypatch.setattr(process_admission, "_ADMISSION_TIMEOUT_SECONDS", 0.5)
+    with reasoning_effort_scope(parent_effort):
+        result = await conversation_process_start(context(turn), workflow_id=definition.code)
+        assert await structured_service.resolve_reasoning_effort(None, None) == parent_effort
+    assert result["created"] and len(requests) == 1
+    assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 1
 
 
 @pytest.mark.asyncio
@@ -180,8 +212,9 @@ async def test_late_permission_and_unavailable_provider_never_start_work(inferen
 
     monkeypatch.setattr(process_admission, "_ADMISSION_TIMEOUT_SECONDS", 0.000001 if deadline_phase == "preparation" else 0.5)
     monkeypatch.setattr(structured_service, "build_model_for_llm", silent_provider)
-    with pytest.raises(RecoverableToolError, match="could not be verified"):
+    with pytest.raises(RecoverableToolError, match="could not be verified") as failure:
         await asyncio.wait_for(conversation_process_start(context(turn), workflow_id=workflow_id), 2)
+    assert isinstance(failure.value, ToolCallRejectedError)
     if deadline_phase == "provider":
         assert cancelled.is_set()
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 0

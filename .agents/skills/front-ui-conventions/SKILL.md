@@ -135,3 +135,5 @@ valeur déclarée ne suffit donc pas à vérifier l'épaisseur réellement dessi
 Pour une correction d'alignement seule, comparer aussi la hauteur, les marges et les adaptations
 au contenu avant/après : les conserver sauf demande contraire, en tenant compte des voisins
 qui étirent le composant. Vérifier les transitions entre contenu court et long dans les deux sens.
+Pour les sélecteurs multiples, inclure plusieurs tags et un libellé dépassant la largeur
+disponible ; les styles compacts du parent doivent préserver leur hauteur automatique.

@@ -231,8 +231,6 @@ async def test_unused_actor_does_not_block_launch_or_grant_execution_access(db, 
     owner, _ = native
     value = graph()
     value.schema_version = "galaris.bpmn/v2"
-    value.inputs = []; value.outputs = []
-    value.nodes[1].inputs = []; value.nodes[1].outputs = []
     value.nodes[1].title = "Prepare synthetic result"
     value.actors = [Actor(id="unused", name="Unused lane", kind=actor_kind,
         agent_id=2147483647 if actor_kind == "agent" else None)]
@@ -247,8 +245,9 @@ async def test_unused_actor_does_not_block_launch_or_grant_execution_access(db, 
     assert task.agent_id == owner.id
     assert (await db.get(ProcessRun, response.run_id)).status == "running"
     summary = await mcp.process_get(McpToolContext(agent_id=owner.id, runtime="internal"), definition.code)
-    assert summary["inputs"] == [] and summary["outputs"] == []
-    assert summary["activities"] == [{"id": "work", "kind": "task", "title": "Prepare synthetic result"}]
+    assert summary["variables"] == []
+    assert summary["inputs"] == summary["outputs"] == []
+    assert summary["activities"] == [{"id": "work", "kind": "task", "title": "Prepare synthetic result", "inputs": [], "outputs": []}]
 
 
 @pytest.mark.asyncio
@@ -767,36 +766,240 @@ def typed_graph():
     from app.process.values import Variable
     value = graph()
     value.schema_version = "galaris.bpmn/v2"
-    value.inputs = [Variable(name="amount", type="int", nullable=False,
-        default={"type": "int", "value": 7})]
-    value.outputs = [Variable(name="accepted", type="bool", nullable=False)]
-    value.nodes[1].inputs = [Variable(name="amount", type="int", nullable=False),
-        Variable(name="reviewer", type="User", nullable=True)]
-    value.nodes[1].outputs = [Variable(name="accepted", type="bool", nullable=False,
-        default={"type": "bool", "value": False}), Variable(name="note", type="string", nullable=True)]
+    value.variables = [Variable(name="amount", type="int", nullable=False,
+        default={"type": "int", "value": 7}), Variable(name="reviewer", type="User", nullable=True),
+        Variable(name="accepted", type="bool", nullable=False, default={"type": "bool", "value": False}),
+        Variable(name="note", type="string", nullable=True)]
+    value.outputs = [variable.name for variable in value.variables]
+    # Optional runtime-only variables are not mandatory launch inputs.
+    value.inputs = ["amount", "accepted"]
+    value.nodes[1].inputs = value.nodes[1].outputs = list(value.outputs)
     return value
 
 
 @pytest.mark.asyncio
-async def test_typed_task_local_values_defaults_and_engine_only_global_integration(db, native):
+async def test_selected_process_boundaries_and_activity_variables_are_frozen_per_run(db, native):
+    from app.process.values import ValueContractError
     owner, _ = native
-    definition = await create(actor_agent_id=owner.id, title="Synthetic typed activity", graph=typed_graph())
+    value = typed_graph()
+    value.inputs = ["amount"]
+    value.outputs = ["accepted"]
+    value.nodes[1].inputs = ["amount"]
+    value.nodes[1].outputs = ["accepted"]
+    definition = await create(actor_agent_id=owner.id, title="Synthetic selected variables", graph=value)
+    from app.process import mcp
+    from app.tools import McpToolContext
+    expected = await mcp.process_get(McpToolContext(agent_id=owner.id, runtime="internal"), definition.code)
+    assert expected["inputs"] == ["amount"]
+    assert len(expected["variables"]) == 4
+    with pytest.raises(ValueContractError, match="undeclared"):
+        await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
+            input_data={"accepted": {"type": "bool", "value": True}})
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
+        input_data={"amount": {"type": "int", "value": 21}})
+    value.inputs = []
+    value.outputs = ["amount"]
+    value.nodes[1].inputs = []
+    value.nodes[1].outputs = ["note"]
+    await update(definition.code, owner.id, expected_revision=definition.revision, graph=value)
+    await process_service.process_start_jobs(engine_code="galaris")
+    run = await finish_run(db, launched.run_id, result={"accepted": {"type": "bool", "value": True}})
+    assert run.status == "success", run.error_message
+    assert run.output == {"accepted": {"type": "bool", "value": True}}
+    assert run.data["amount"] == {"type": "int", "value": 21}
+    attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id))
+    assert attempt.input == {"amount": {"type": "int", "value": 21}}
+    assert '"reviewer"' not in attempt.prompt and '"note"' not in attempt.prompt
+    assert run.launch_snapshot["definition"]["graph"]["nodes"][1]["outputs"] == ["accepted"]
+
+
+@pytest.mark.asyncio
+async def test_activity_cannot_write_an_unselected_global_variable(db, native):
+    owner, _ = native
+    value = typed_graph()
+    value.nodes[1].outputs = ["accepted"]
+    definition = await create(actor_agent_id=owner.id, title="Synthetic output selection", graph=value)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
+    await process_service.process_start_jobs(engine_code="galaris")
+    run = await finish_run(db, launched.run_id, result={"amount": {"type": "int", "value": 99}})
+    assert run.status == "error" and "undeclared variable amount" in run.error_message
+    assert run.data["amount"] == {"type": "int", "value": 7}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("surface", ["service", "mcp"])
+async def test_retry_does_not_submit_internal_defaults_as_process_inputs(db, native, surface):
+    from app.tools import McpToolContext
+    from app.process import mcp
+    owner, _ = native
+    value = typed_graph()
+    value.inputs = ["amount"]
+    definition = await create(actor_agent_id=owner.id, title="Synthetic retry inputs", graph=value)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
+        input_data={"amount": {"type": "int", "value": 21}})
+    await process_service.cancel_run(launched.run_id)
+    if surface == "service":
+        restarted = await process_service.retry_run(launched.run_id)
+        identity = restarted.run_id
+    else:
+        restarted = await mcp.process_run_retry(McpToolContext(agent_id=owner.id, runtime="internal"), str(launched.run_id), "synthetic-input-retry")
+        identity = UUID(restarted["run_id"])
+    run = await db.get(ProcessRun, identity)
+    assert run.input == {"amount": {"type": "int", "value": 21}, "accepted": {"type": "bool", "value": False}}
+
+
+@pytest.mark.asyncio
+async def test_file_mime_expectations_use_live_metadata_before_admission_and_atomic_updates(db, native, monkeypatch):
+    from unittest.mock import AsyncMock
+    import app.file_share as resources
+    from app.process.run_data import integrate_workflow_values
+    from app.process.values import Variable, ValueContractError
+    owner, _ = native
+    graph = typed_graph()
+    graph.variables.append(Variable(name="attachment", type="File", nullable=True, mime_type="application/pdf"))
+    graph.inputs = [*graph.inputs, "attachment"]
+    definition = await create(actor_agent_id=owner.id, title="Synthetic expected file type", graph=graph)
+    uri = "nextcloud://Synthetic/report.pdf"
+    metadata = AsyncMock(return_value=resources.ResourceDescriptor(uri=uri, media_type="image/png"))
+    monkeypatch.setattr(resources, "resource_info", metadata)
+    values = {"attachment": {"type": "File", "value": uri}}
+    with pytest.raises(ValueContractError, match="expected media type application/pdf"):
+        await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data=values)
+    assert await db.scalar(select(func.count()).select_from(ProcessRun).where(ProcessRun.process_id == definition.id)) == 0
+    metadata.return_value = resources.ResourceDescriptor(uri=uri, media_type="application/pdf; charset=binary")
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data=values)
+    await process_service.process_start_jobs(engine_code="galaris")
+    run = await db.get(ProcessRun, launched.run_id)
+    initial, revision = dict(run.data), run.data_revision
+    metadata.return_value = resources.ResourceDescriptor(uri=uri, media_type="image/png")
+    with pytest.raises(ValueContractError, match="expected media type application/pdf"):
+        await integrate_workflow_values(run.id, command="invalid-mime", baseline=initial,
+            changes={"attachment": {"type": "File", "value": "nextcloud://Synthetic/image.png"}}, files=[])
+    assert run.data == initial and run.data_revision == revision
+    assert "invalid-mime" not in run.execution_state.get("integrations", {})
+    metadata.reset_mock()
+    await integrate_workflow_values(run.id, command="no-changes", baseline=initial, changes={}, files=[])
+    metadata.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_variables_are_isolated_by_run_and_keep_their_frozen_contract(db, native):
+    from app.process.native_runs import inspect_run
+    from app.process.run_data import integrate_workflow_values
+    from app.process.values import Variable, ValueContractError
+    owner, _ = native
+    value = typed_graph()
+    definition = await create(actor_agent_id=owner.id, title="Synthetic process variables", graph=value)
+    first = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
+    second = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
+        input_data={"amount": {"type": "int", "value": 0}})
+    await process_service.process_start_jobs(engine_code="galaris")
+    snapshot = await inspect_run(first.run_id, owner.id)
+    assert {item["name"] for item in snapshot["graph"]["variables"]} == {"amount", "accepted", "reviewer", "note"}
+    assert "note" not in snapshot["data"]
+    changed = {"amount": {"type": "int", "value": 42}, "note": {"type": "string", "value": None}}
+    receipt = await integrate_workflow_values(first.run_id, command="synthetic-update", baseline=snapshot["data"], changes=changed, files=[])
+    await integrate_workflow_values(first.run_id, command="synthetic-no-change", baseline=receipt["data"], changes={}, files=[])
+    assert (await inspect_run(first.run_id, owner.id))["data"]["amount"]["value"] == 42
+    assert (await inspect_run(second.run_id, owner.id))["data"]["amount"]["value"] == 0
+    value.variables[0] = Variable(name="amount", type="string", nullable=False)
+    await update(definition.code, owner.id, expected_revision=1, graph=value)
+    # Existing runs retain the registry and defaults admitted at launch.
+    replay = await integrate_workflow_values(first.run_id, command="synthetic-update", baseline={}, changes=changed, files=[])
+    assert replay["data"] == receipt["data"]
+    assert (await inspect_run(first.run_id, owner.id))["graph"] == snapshot["graph"]
+    for changes in ({"unknown": {"type": "int", "value": 1}}, {"amount": {"type": "string", "value": "wrong"}}):
+        with pytest.raises(ValueContractError):
+            await integrate_workflow_values(first.run_id, command="invalid", baseline=replay["data"], changes=changes, files=[])
+    assert (await inspect_run(first.run_id, owner.id))["data"] == receipt["data"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("temporal", [None, ("date", "2000-02-29"), ("datetime", "2026-11-08T14:30:00+01:00")])
+async def test_typed_task_local_values_defaults_and_engine_only_global_integration(db, native, temporal):
+    from app.process.values import Variable
+    owner, _ = native
+    graph = typed_graph()
+    expected = {"amount": {"type": "int", "value": 7}, "accepted": {"type": "bool", "value": False}}
+    if temporal:
+        kind, value = temporal
+        expected["when"] = {"type": kind, "value": value}
+        graph.variables.append(Variable(name="when", type=kind, nullable=False, default=expected["when"]))
+        graph.nodes[1].inputs = [*graph.nodes[1].inputs, "when"]
+        graph.nodes[1].outputs = [*graph.nodes[1].outputs, "when"]
+        graph.nodes[-1].outputs = [*graph.nodes[-1].outputs, "when"]
+    definition = await create(actor_agent_id=owner.id, title="Synthetic typed activity", graph=graph)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id, result={})
     assert run.status == "success", run.error_message
-    assert run.output == {"accepted": {"type": "bool", "value": False}}
+    assert run.output == expected
     assert not {"integrations", "integration_results", "attachments", "execution_state"}.intersection(run.data)
     assert run.execution_state["integrations"]
     attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id))
-    assert attempt.input == {"amount": {"type": "int", "value": 7}, "reviewer": {"type": "User", "value": None}}
+    assert attempt.input == expected
     assert "Shared run Dataset (read/write)" not in attempt.prompt
     content = await read_run_data(run.id, owner.id)
-    assert {"data": content["data"], "files": content["files"]} == {"data": {
-        "amount": {"type": "int", "value": 7}, "accepted": {"type": "bool", "value": False},
-        "note": {"type": "string", "value": None}}, "files": []}
+    assert {"data": content["data"], "files": content["files"]} == {"data": expected, "files": []}
     with pytest.raises(RunDataConflictError, match="stopped run"):
         await write_run_json(run.id, owner.id, '{}', expected_revision=content["revision"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mapped", [False, True])
+async def test_ai_task_receives_selected_input_values_resource_uris_and_output_expectations(db, native, mapped):
+    from html import unescape
+    from app.process.activity_prompts import CONTRACT_SEPARATOR
+    from app.process.values import Variable
+    owner, _ = native
+    graph = typed_graph()
+    file_uri = "nextcloud://Synthetic/invoice.pdf"
+    document_uri = "document://00000000-0000-4000-8000-000000000001"
+    graph.variables.extend([
+        Variable(name="invoice", type="File", nullable=False, default={"type": "File", "value": file_uri}),
+        Variable(name="source_doc", type="Document", nullable=False, default={"type": "Document", "value": document_uri}),
+        Variable(name="optional_value", type="string", nullable=True, default={"type": "string", "value": None}),
+        Variable(name="missing", type="string", nullable=True),
+        Variable(name="nested", type="object", nullable=False, default={"type": "object", "value": {
+            "file": {"type": "File", "value": file_uri}, "items": {"type": "array", "value": []}}}),
+        Variable(name="private_note", type="string", nullable=False, default={"type": "string", "value": "Synthetic excluded context"}),
+        Variable(name="report", type="File", nullable=False, mime_type="application/pdf"),
+        Variable(name="summary", type="Document", nullable=False, document_type="text"),
+    ])
+    graph.nodes[1].inputs = ["amount", "accepted", "invoice", "source_doc", "optional_value", "missing", "nested"]
+    graph.nodes[1].outputs = ["accepted", "report", "summary"]
+    if mapped:
+        graph.nodes[1].config["input_mapping"] = {"source_document": {"$expr": "data.source_doc"}}
+    definition = await create(actor_agent_id=owner.id, title="Synthetic activity prompt contract", graph=graph)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
+        input_data={"amount": {"type": "int", "value": 0}})
+    await process_service.process_start_jobs(engine_code="galaris")
+    for _ in range(4):
+        await process_service.refresh_run(launched.run_id)
+    attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == launched.run_id))
+    task = await task_service.get_by_id(attempt.task_id)
+    contract = json.loads(attempt.prompt.rsplit(CONTRACT_SEPARATOR, 1)[1])
+    inputs = {item["name"]: item for item in contract["input_variables"]}
+    assert set(inputs) == set(graph.nodes[1].inputs)
+    for name, expected in {"amount": {"type": "int", "value": 0}, "accepted": {"type": "bool", "value": False},
+        "invoice": {"type": "File", "value": file_uri}, "source_doc": {"type": "Document", "value": document_uri},
+        "optional_value": {"type": "string", "value": None}}.items():
+        assert inputs[name]["initialized"] is True and inputs[name]["typed_value"] == expected
+    assert inputs["nested"]["typed_value"]["value"]["file"]["value"] == file_uri
+    assert inputs["nested"]["typed_value"]["value"]["items"]["value"] == []
+    assert inputs["missing"]["initialized"] is False and "typed_value" not in inputs["missing"]
+    assert contract["output_variables"] == [
+        {"name": "accepted", "type": "bool", "nullable": False},
+        {"name": "report", "type": "File", "nullable": False, "mime_type": "application/pdf"},
+        {"name": "summary", "type": "Document", "nullable": False, "document_type": "text"},
+    ]
+    assert "private_note" not in attempt.prompt and "Synthetic excluded context" not in attempt.prompt
+    assert "control_result" not in contract
+    if mapped:
+        assert contract["prepared_inputs"] == attempt.input == {"source_document": {"type": "Document", "value": document_uri}}
+    else:
+        assert "prepared_inputs" not in contract
+    assert attempt.prompt in unescape(task.objective)
 
 
 @pytest.mark.asyncio
@@ -809,15 +1012,15 @@ async def test_typed_invalid_input_never_admits_an_activity_or_partial_output(db
         await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
             input_data={"amount": {"type": "string", "value": "7"}})
     assert await db.scalar(select(func.count()).select_from(ProcessRun).where(ProcessRun.process_id == definition.id)) == 0
-    value.nodes[1].inputs.append(Variable(name="missing", type="File", nullable=False))
+    value.variables.append(Variable(name="missing", type="File", nullable=False))
     await update(definition.code, owner.id, expected_revision=(await read(definition.code, owner.id))["revision"], graph=value)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id, result={})
-    assert run.status == "error" and "work.input.missing" in run.error_message
+    assert run.status == "success", run.error_message
     assert await db.scalar(select(func.count()).select_from(ProcessNodeAttempt).join(ProcessNodeRun)
-        .where(ProcessNodeRun.run_id == run.id)) == 0
-    assert (await read_run_data(run.id, owner.id))["data"] == {"amount": {"type": "int", "value": 7}}
+        .where(ProcessNodeRun.run_id == run.id)) == 1
+    assert "missing" not in (await read_run_data(run.id, owner.id))["data"]
 
 
 @pytest.mark.asyncio
@@ -831,7 +1034,7 @@ async def test_typed_invalid_output_is_not_integrated_and_does_not_launch_succes
     assert run.status == "error" and "work.output" in run.error_message
     assert "process_activity_complete" in run.error_message
     assert not await db.scalar(select(ProcessNodeRun.id).where(ProcessNodeRun.run_id == run.id, ProcessNodeRun.node_key == "end"))
-    assert (await read_run_data(run.id, owner.id))["data"] == {"amount": {"type": "int", "value": 7}}
+    assert (await read_run_data(run.id, owner.id))["data"] == {"amount": {"type": "int", "value": 7}, "accepted": {"type": "bool", "value": False}}
 
 
 @pytest.mark.asyncio
@@ -857,8 +1060,11 @@ async def test_typed_file_manifests_keep_source_uris_without_transferring_bytes(
 @pytest.mark.asyncio
 async def test_typed_integrations_preserve_disjoint_writes_and_deduplicate_receipts(db, native):
     from app.process.run_data import integrate_workflow_values
+    from app.process.values import Variable
     owner, _ = native
-    definition = await create(actor_agent_id=owner.id, title="Synthetic merge", graph=typed_graph())
+    value = typed_graph()
+    value.variables.extend([Variable(name="a", type="int", nullable=False), Variable(name="b", type="int", nullable=False)])
+    definition = await create(actor_agent_id=owner.id, title="Synthetic merge", graph=value)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
     run = await db.get(ProcessRun, launched.run_id)
@@ -868,7 +1074,7 @@ async def test_typed_integrations_preserve_disjoint_writes_and_deduplicate_recei
     assert replay["revision"] == result["revision"]
     second = {"b": {"type": "int", "value": 2}}
     merged = await integrate_workflow_values(run.id, command="second", baseline={}, changes=second, files=[])
-    assert merged["data"] == {"amount": {"type": "int", "value": 7}, **first, **second}
+    assert merged["data"] == {"amount": {"type": "int", "value": 7}, "accepted": {"type": "bool", "value": False}, **first, **second}
     with pytest.raises(RunDataConflictError, match="variable a"):
         await integrate_workflow_values(run.id, command="conflict", baseline={},
             changes={"a": {"type": "int", "value": 3}}, files=[])
@@ -886,17 +1092,18 @@ async def test_typed_calls_map_local_names_and_preserve_legacy_child_json(db, na
         flows=[Flow(id="done", source="begin", target="finish")])
     if child_typed:
         child_graph.schema_version = "galaris.bpmn/v2"
-        child_graph.inputs = [Variable(name="child_amount", type="int", nullable=False)]
-        child_graph.outputs = [Variable(name="answer", type="int", nullable=False, default={"type": "int", "value": 9})]
+        child_graph.variables = [Variable(name="child_amount", type="int", nullable=False),
+            Variable(name="answer", type="int", nullable=False, default={"type": "int", "value": 9})]
+        child_graph.inputs = ["child_amount"]
+        child_graph.outputs = ["child_amount", "answer"]
     child_definition = await create(actor_agent_id=owner.id, title="Synthetic child contract", graph=child_graph)
     output = Variable(name="answer", type="int", nullable=False)
     config = {"process_code": child_definition.code, "input_mapping": {"child_amount": {"$expr": "data.amount"}}}
-    if not child_typed:
-        config["external_output"] = {"answer": {"$expr": "result.child_amount"}}
+    config["external_output"] = {"answer": {"$expr": "result.answer" if child_typed else "result.child_amount"}}
     parent = await create(actor_agent_id=owner.id, title="Synthetic local call", graph=Workflow(
-        schema_version="galaris.bpmn/v2", inputs=[Variable(name="amount", type="int", nullable=False, default={"type": "int", "value": 7})],
-        outputs=[output], nodes=[Node(id="start", kind="start"), Node(id="child", kind="call", config=config,
-            inputs=[Variable(name="child_amount", type="int", nullable=False)], outputs=[output]), Node(id="end", kind="end")],
+        schema_version="galaris.bpmn/v2", variables=[Variable(name="amount", type="int", nullable=False,
+            default={"type": "int", "value": 7}), output],
+        nodes=[Node(id="start", kind="start"), Node(id="child", kind="call", inputs=["amount"], outputs=["answer"], config=config), Node(id="end", kind="end", outputs=["amount", "answer"])],
         flows=[Flow(id="a", source="start", target="child"), Flow(id="b", source="child", target="end")]))
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=parent.code, input_data={})
     nested = None
@@ -910,8 +1117,8 @@ async def test_typed_calls_map_local_names_and_preserve_legacy_child_json(db, na
             break
     child_nodes = list((await db.execute(select(ProcessNodeRun.node_key, ProcessNodeRun.status).where(ProcessNodeRun.run_id == nested.id))).all())
     assert run.status == "success", (run.error_message, nested.status, nested.engine_metadata.get("native"), child_nodes)
-    assert run.output == {"answer": {"type": "int", "value": 9 if child_typed else 7}}
-    assert nested.input == {"child_amount": {"type": "int", "value": 7}} if child_typed else nested.input == {"child_amount": 7}
+    assert run.output == {"amount": {"type": "int", "value": 7}, "answer": {"type": "int", "value": 9 if child_typed else 7}}
+    assert nested.input == {"child_amount": {"type": "int", "value": 7}, "answer": {"type": "int", "value": 9}} if child_typed else nested.input == {"child_amount": 7}
 
 
 @pytest.mark.asyncio
@@ -937,20 +1144,19 @@ async def test_typed_human_branches_converge_once_after_all_predecessors(db, nat
     user = UserModel(email=f"synthetic-join-{uuid4().hex}@example.invalid", hashed_password="unused", is_active=True)
     db.add(user); await db.flush()
     scope = AgentManagementScope(user.id, frozenset())
-    nodes = [Node(id="start", kind="start"), Node(id="end", kind="end")]
+    nodes = [Node(id="start", kind="start"), Node(id="end", kind="end", outputs=["accepted", "a", "b", "c"])]
     for index, name in enumerate(("a", "b", "c")):
-        nodes.append(Node(id=name, kind="human_task", config={"prompt": "Synthetic branch", "actor": "reviewer"}, inputs=[],
-            outputs=[Variable(name=name, type="int", nullable=False, default={"type": "int", "value": index})]))
+        nodes.append(Node(id=name, kind="human_task", outputs=[name], config={"prompt": "Synthetic branch", "actor": "reviewer"}))
     accepted = Variable(name="accepted", type="bool", nullable=False, default={"type": "bool", "value": False})
-    nodes.append(Node(id="converge", kind="human_task", config={"prompt": "Review all three values", "actor": "reviewer"},
-        inputs=[Variable(name=name, type="int", nullable=False) for name in ("a", "b", "c")], outputs=[accepted]))
-    value = Workflow(schema_version="galaris.bpmn/v2", inputs=[], outputs=[accepted], nodes=nodes,
+    nodes.append(Node(id="converge", kind="human_task", inputs=["accepted", "a", "b", "c"], outputs=["accepted"], config={"prompt": "Review all three values", "actor": "reviewer"}))
+    value = Workflow(schema_version="galaris.bpmn/v2", variables=[accepted,
+        *[Variable(name=name, type="int", nullable=False) for name in ("a", "b", "c")]], nodes=nodes,
         actors=[Actor(id="reviewer", name="Reviewer", kind="human", user_id=user.id)],
         flows=[*[Flow(id="start_" + name, source="start", target=name) for name in ("a", "b", "c")],
             *[Flow(id=name + "_join", source=name, target="converge") for name in ("a", "b", "c")],
             Flow(id="done", source="converge", target="end")])
     if nested != "direct":
-        value.nodes.append(Node(id="split", kind="human_task", config={"prompt": "Start both branches", "actor": "reviewer"}, inputs=[], outputs=[])
+        value.nodes.append(Node(id="split", kind="human_task", config={"prompt": "Start both branches", "actor": "reviewer"})
             if nested == "activity" else Node(id="split", kind="parallel"))
         value.flows = [flow for flow in value.flows if flow.id not in {"start_a", "start_b"}]
         value.flows.extend([Flow(id="start_split", source="start", target="split"),
@@ -977,19 +1183,20 @@ async def test_typed_human_branches_converge_once_after_all_predecessors(db, nat
         attempt_id = UUID(by_name[name]["attempt_id"])
         with pytest.raises(ValueContractError, match="null is not allowed"):
             await complete_human_work(attempt_id, scope, {name: {"type": "int", "value": None}})
-        await complete_human_work(attempt_id, scope, {})
-        # The same omitted result reuses its normalized completion receipt.
-        assert (await complete_human_work(attempt_id, scope, {}))["completed"]
+        output = {name: {"type": "int", "value": ("a", "b", "c").index(name)}}
+        await complete_human_work(attempt_id, scope, output)
+        assert (await complete_human_work(attempt_id, scope, output))["completed"]
         for _ in range(3):
             await process_service.refresh_run(launched.run_id)
         joins = list(await db.scalars(select(ProcessNodeAttempt).join(ProcessNodeRun).where(
             ProcessNodeRun.run_id == launched.run_id, ProcessNodeRun.node_key == "converge")))
         assert len(joins) == (1 if index == 2 else 0)
-    assert joins[0].input == {name: {"type": "int", "value": index} for index, name in enumerate(("a", "b", "c"))}
+    assert joins[0].input == {"accepted": {"type": "bool", "value": False},
+        **{name: {"type": "int", "value": index} for index, name in enumerate(("a", "b", "c"))}}
     await complete_human_work(joins[0].id, scope, {})
     run = await finish_run(db, launched.run_id)
     assert run.status == "success", run.error_message
-    assert run.output == {"accepted": {"type": "bool", "value": False}}
+    assert run.output == {"accepted": {"type": "bool", "value": False}, **{name: {"type": "int", "value": index} for index, name in enumerate(("a", "b", "c"))}}
 
 
 @pytest.mark.asyncio
@@ -1003,12 +1210,12 @@ async def test_typed_parallel_end_events_validate_output_only_after_all_branches
     db.add(user); await db.flush()
     scope = AgentManagementScope(user.id, frozenset())
     outputs = [Variable(name=name, type="int", nullable=False) for name in ("a", "b")]
-    value = Workflow(schema_version="galaris.bpmn/v2", inputs=[], outputs=outputs,
+    value = Workflow(schema_version="galaris.bpmn/v2", variables=outputs,
         actors=[Actor(id="reviewer", name="Reviewer", kind="human", user_id=user.id)],
         nodes=[Node(id="start", kind="start"), *[
             node for output in outputs for node in (
-                Node(id=output.name, kind="human_task", inputs=[], outputs=[output], config={"actor": "reviewer", "prompt": "Return the synthetic branch value."}),
-                Node(id="end_" + output.name, kind="end"))]],
+                Node(id=output.name, kind="human_task", outputs=[output.name], config={"actor": "reviewer", "prompt": "Return the synthetic branch value."}),
+                Node(id="end_" + output.name, kind="end", outputs=[output.name]))]],
         flows=[flow for name in ("a", "b") for flow in (
             Flow(id="start_" + name, source="start", target=name), Flow(id="done_" + name, source=name, target="end_" + name))])
     definition = await create(actor_agent_id=owner.id, title="Synthetic parallel ends", graph=value)
@@ -1017,7 +1224,7 @@ async def test_typed_parallel_end_events_validate_output_only_after_all_branches
     for _ in range(3):
         await process_service.refresh_run(launched.run_id)
     work = (await human_work(scope, page=1, page_size=50))["items"]
-    by_name = {item["outputs"][0]["name"]: UUID(item["attempt_id"]) for item in work}
+    by_name = {(await db.get(ProcessNodeRun, (await db.get(ProcessNodeAttempt, UUID(item["attempt_id"]))).node_run_id)).node_key: UUID(item["attempt_id"]) for item in work}
     await complete_human_work(by_name["a"], scope, {"a": {"type": "int", "value": 1}})
     for _ in range(4):
         run = await process_service.refresh_run(launched.run_id)
@@ -1041,10 +1248,10 @@ async def test_typed_rest_activity_uses_the_live_connection_and_retains_remote_d
         rest_config={"base_url": base, "auth": {"type": "none"}}))
     await connection_service.get_or_create_connection(tool.id, owner.id)
     output = Variable(name="method", type="string", nullable=False)
-    value = Workflow(schema_version="galaris.bpmn/v2", inputs=[], outputs=[output],
-        nodes=[Node(id="start", kind="start"), Node(id="api", kind="rest", inputs=[], outputs=[output],
+    value = Workflow(schema_version="galaris.bpmn/v2", variables=[output],
+        nodes=[Node(id="start", kind="start"), Node(id="api", kind="rest", outputs=["method"],
             config={"tool_code": tool.code, "request": {"method": "POST", "path": "denied" if denied else "synthetic"},
-                "external_output": {"method": {"$expr": "result.body.method"}}}), Node(id="end", kind="end")],
+                "external_output": {"method": {"$expr": "result.body.method"}}}), Node(id="end", kind="end", outputs=["method"])],
         flows=[Flow(id="a", source="start", target="api"), Flow(id="b", source="api", target="end")])
     definition = await create(actor_agent_id=owner.id, title="Synthetic REST activity", graph=value)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
@@ -1105,7 +1312,7 @@ async def test_inline_code_has_no_backend_fallback_without_a_qualified_runner(db
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id)
     assert run.status == "error" and run.error_code == "isolated_runner_unavailable"
-    assert (await read_run_data(run.id, owner.id))["data"] == {"amount": {"type": "int", "value": 7}}
+    assert (await read_run_data(run.id, owner.id))["data"] == {"amount": {"type": "int", "value": 7}, "accepted": {"type": "bool", "value": False}}
 
 
 @pytest.mark.asyncio
@@ -1140,7 +1347,6 @@ async def test_isolated_phases_freeze_requests_and_wait_for_confirmed_stop_befor
     monkeypatch.setattr(isolated_code, "_runner", Runner())
     value = typed_graph()
     value.nodes[1].kind = "code"
-    value.nodes[1].inputs = [Variable(name="local", type="int", nullable=False)]
     value.nodes[1].config = {"code": "output['accepted'] = {'type': 'bool', 'value': True}",
         "preprocess": "input['local'] = data['amount']", "postprocess": "data.update(output)"}
     definition = await create(actor_agent_id=owner.id, title="Synthetic remote phases", graph=value)
@@ -1148,7 +1354,7 @@ async def test_isolated_phases_freeze_requests_and_wait_for_confirmed_stop_befor
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id)
     assert run.status == "success", run.error_message
-    assert run.output == {"accepted": {"type": "bool", "value": True}}
+    assert run.output == {"amount": {"type": "int", "value": 7}, "accepted": {"type": "bool", "value": True}}
     assert [invocation.phase for invocation in invocations.values()] == ["preprocess", "activity", "postprocess"]
     assert all(invocation.agent_id == owner.id and invocation.run_id == run.id for invocation in invocations.values())
     assert all(count == 2 for count in observations.values())
@@ -1224,10 +1430,10 @@ async def test_slow_rest_activity_does_not_block_its_human_branch_or_allow_doubl
         scope = AgentManagementScope(user.id, frozenset())
         output = Variable(name="fast", type="bool", nullable=False, default={"type": "bool", "value": True})
         definition = await create(actor_agent_id=owner.id, title="Synthetic independent branches", graph=Workflow(
-            schema_version="galaris.bpmn/v2", inputs=[], outputs=[output],
+            schema_version="galaris.bpmn/v2", variables=[output],
             actors=[Actor(id="reviewer", name="Reviewer", kind="human", user_id=user.id)],
-            nodes=[Node(id="start", kind="start"), Node(id="slow", kind="rest", inputs=[], outputs=[], config={"tool_code": tool.code}),
-                Node(id="fast", kind="human_task", inputs=[], outputs=[output], config={"prompt": "Synthetic fast branch", "actor": "reviewer"}),
+            nodes=[Node(id="start", kind="start"), Node(id="slow", kind="rest", config={"tool_code": tool.code, "external_output": {}}),
+                Node(id="fast", kind="human_task", config={"prompt": "Synthetic fast branch", "actor": "reviewer"}),
                 Node(id="end", kind="end")], flows=[Flow(id="a", source="start", target="slow"), Flow(id="b", source="start", target="fast"),
                     Flow(id="c", source="slow", target="end"), Flow(id="d", source="fast", target="end")]))
         launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
@@ -1273,7 +1479,7 @@ async def test_wide_frontier_admits_all_humans_even_when_earlier_activities_wait
     user = UserModel(email=f"synthetic-frontier-{uuid4().hex}@example.invalid", hashed_password="unused", is_active=True)
     db.add(user); await db.flush()
     scope = AgentManagementScope(user.id, frozenset())
-    declarations = {"inputs": [], "outputs": []} if typed else {}
+    declarations = {}
     nodes = [Node(id="start", kind="start"), Node(id="end", kind="end")]
     nodes.extend(Node(id=f"work_{index}", kind="human_task", config={"prompt": "Synthetic wide frontier", "actor": "reviewer"}, **declarations) for index in range(55))
     value = Workflow(schema_version="galaris.bpmn/v2" if typed else "galaris.bpmn/v1", **declarations, nodes=nodes,
@@ -1371,12 +1577,15 @@ async def test_if_admits_only_the_selected_branch(db, native, amount, branch, ty
     if typed:
         from app.process.values import Variable
         value.schema_version = "galaris.bpmn/v2"
-        value.inputs = [Variable(name="amount", type="int", nullable=False)]
-        value.outputs = [Variable(name="branch", type="string", nullable=False)]
+        value.variables = [Variable(name="amount", type="int", nullable=False),
+            Variable(name="branch", type="string", nullable=False)]
+        value.inputs = ["amount"]
+        value.outputs = ["amount", "branch"]
         for node in value.nodes:
-            if node.kind == "task":
-                node.inputs = []
-                node.outputs = [Variable(name="amount", type="int", nullable=False)] if node.id == "prepare" else value.outputs
+            if node.kind != "end":
+                node.inputs = ["amount"]
+            if node.kind not in {"start", "if", "end"}:
+                node.outputs = ["amount"] if node.id == "prepare" else ["branch"]
         value.flows[2].condition = "data.amount.value >= 10"
     definition = await create(actor_agent_id=owner.id, title="Synthetic conditional workflow", graph=value)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
@@ -1386,7 +1595,7 @@ async def test_if_admits_only_the_selected_branch(db, native, amount, branch, ty
         run = await finish_run(db, launched.run_id, result=lambda attempt:
             {"amount": {"type": "int", "value": amount}} if attempt.prompt.startswith("Set decision amount") else {"branch": {"type": "string", "value": branch}})
         assert run.status == "success", run.error_message
-        assert run.output == {"branch": {"type": "string", "value": branch}}
+        assert run.output == {"amount": {"type": "int", "value": amount}, "branch": {"type": "string", "value": branch}}
     else:
         run = await finish_run(db, launched.run_id, workspace_update=lambda attempt, data:
             {"amount": amount} if attempt.prompt.startswith("Set decision amount") else {**data, "branch": branch})
@@ -1742,12 +1951,13 @@ async def test_tool_activity_uses_live_mcp_rights_and_finishes_its_context(infer
     if typed:
         from app.process.values import Variable
         value.schema_version = "galaris.bpmn/v2"
-        value.inputs = []
-        value.outputs = [Variable(name="code", type="string", nullable=False)]
-        value.nodes[1].inputs = [Variable(name="process_code", type="string", nullable=False,
-            default={"type": "string", "value": target.code})]
-        value.nodes[1].outputs = value.outputs
-        value.nodes[1].config = {"tool": "process_definition_read"}
+        value.variables = [Variable(name="code", type="string", nullable=False),
+            Variable(name="process_code", type="string", nullable=False, default={"type": "string", "value": target.code})]
+        value.outputs = ["code", "process_code"]
+        value.nodes[1].inputs = ["process_code"]
+        value.nodes[1].outputs = ["code"]
+        value.nodes[1].config = {"tool": "process_definition_read", "input_mapping": {"process_code": {"$expr": "data.process_code"}},
+            "external_output": {"code": {"$expr": "result.code"}}}
     definition = await create(actor_agent_id=owner.id, title="Synthetic declared Tool workflow", graph=value)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
@@ -1785,8 +1995,8 @@ async def test_tool_activity_uses_live_mcp_rights_and_finishes_its_context(infer
     attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id))
     if function_state in {"enabled", "ask_allow"}:
         if typed:
-            assert run.output == {"code": {"type": "string", "value": target.code}}
-            assert attempt.receipt == run.output
+            assert run.output == {"code": {"type": "string", "value": target.code}, "process_code": {"type": "string", "value": target.code}}
+            assert attempt.receipt == {"code": {"type": "string", "value": target.code}}
         else:
             assert run.output == {} and attempt.receipt["code"] == target.code
     task = await task_service.get_by_id(attempt.task_id)
@@ -1844,7 +2054,8 @@ async def test_ambiguous_tool_effect_blocks_retries_handlers_and_new_admissions(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["for", "while"])
-async def test_loops_are_durable_sequential_and_preserve_each_result(db, native, kind):
+@pytest.mark.parametrize("typed", [False, True])
+async def test_loops_are_durable_sequential_and_preserve_each_result(db, native, kind, typed):
     owner, _ = native
     body = Workflow(nodes=[Node(id="body_start", kind="start"), Node(id="increment", kind="task", config={
         "prompt": "Synthetic iteration"}), Node(id="body_end", kind="end")],
@@ -1853,11 +2064,30 @@ async def test_loops_are_durable_sequential_and_preserve_each_result(db, native,
     definition_graph = Workflow(nodes=[Node(id="start", kind="start"), Node(id="loop", kind=kind, body=body, config=config),
         Node(id="end", kind="end", config={"output": {"$expr": "results.loop"}})],
         flows=[Flow(id="f1", source="start", target="loop"), Flow(id="f2", source="loop", target="end")])
+    if typed:
+        from app.process.values import Variable
+        definition_graph.schema_version = body.schema_version = "galaris.bpmn/v2"
+        definition_graph.variables = [Variable(name="values", type="array", nullable=False),
+            Variable(name="count", type="int", nullable=False, default={"type": "int", "value": 0})]
+        definition_graph.inputs = ["values"]
+        definition_graph.outputs = ["values", "count"]
+        definition_graph.nodes[1].inputs = ["values", "count"]
+        definition_graph.nodes[1].outputs = ["count"]
+        body.nodes[1].inputs = body.nodes[1].outputs = ["count"]
+        if kind == "for":
+            definition_graph.nodes[1].config["items"] = "input.values.value"
+        assert not body.variables
     definition = await create(actor_agent_id=owner.id, title="Synthetic loop", graph=definition_graph)
-    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={"values": [1, 2]})
+    initial = {"values": {"type": "array", "value": [{"type": "int", "value": value} for value in (1, 2)]}} if typed else {"values": [1, 2]}
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data=initial)
     await process_service.process_start_jobs(engine_code="galaris")
-    run = await finish_run(db, launched.run_id, workspace_update=lambda attempt, data: {**data, "count": data.get("count", 0) + 1})
-    assert run.status == "success" and run.output == {"values": [1, 2], "count": 2}, run.error_message
+    if typed:
+        run = await finish_run(db, launched.run_id, result=lambda attempt: {"count": {"type": "int", "value": attempt.input["count"]["value"] + 1}})
+        expected = {**initial, "count": {"type": "int", "value": 2}}
+    else:
+        run = await finish_run(db, launched.run_id, workspace_update=lambda attempt, data: {**data, "count": data.get("count", 0) + 1})
+        expected = {"values": [1, 2], "count": 2}
+    assert run.status == "success" and run.output == expected, run.error_message
     assert await db.scalar(select(func.count()).select_from(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id)) == 2
 
 

@@ -12,7 +12,7 @@ from .human_directory import ProcessHumanRequest, deliver_process_human_request,
 from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 from .native_engine import local_graph
 from .process_service import TERMINAL_STATUSES
-from .bpmn import decision_activity
+from .bpmn import decision_activity, activity_variables
 
 
 async def deliver_human_requests() -> int:
@@ -43,8 +43,9 @@ async def deliver_human_requests() -> int:
             agent_id=run.launcher_agent_id,
             user_id=occurrence.context["human_user_id"], title=occurrence.context["human_title"],
             instructions=question["question"] if question.get("status") == "pending" else str(node.config.get("prompt", "")), input=attempt.input,
-            outputs=question["outputs"] if question.get("status") == "pending" else [item.model_dump(mode="json") for item in node.outputs or []] if graph.typed else None,
+            outputs=question["outputs"] if question.get("status") == "pending" else [item.model_dump(mode="json") for item in activity_variables(graph, node)] if graph.typed else None,
             files=occurrence.context.get("input_files", []), decision=original.kind == "if" and not question,
+            partial=graph.typed and question.get("status") != "pending",
             question_id=UUID(question["id"]) if question.get("status") == "pending" else None))
         occurrence.context = {**occurrence.context,
             "human_request_retry_at": (now + timedelta(minutes=1)).isoformat()}

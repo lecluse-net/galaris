@@ -14,6 +14,54 @@ cas synthétiques sur le modèle Goal configuré. Les attentes restent hors du p
 coût et durée ; échec ou budget dépassé rendent le code de sortie non nul. Cette qualification
 porte sur le jugement réel, pas sur la résolution autonome complète avec outils.
 
+`app/conversation/tests/test_process_input_provenance.py` vérifie la séparation entre audit
+et contexte IA : rejet des chargements ORM implicites, absence dans les réponses ordinaires
+et prompts identiques même avec un gros audit en base. Les corrections/historiques restent
+atomiques et sans doublon ; les droits HTTP, les accès révoqués et la filiation PDF/image sont
+exercés avec des ressources réelles synthétiques. Le parcours de performance conserve deux
+appels IA auxiliaires ; la journalisation ajoute cinq lectures SQL au scénario de référence
+(99 → 104). Ce chiffre ne qualifie pas la latence d'un fournisseur réel.
+
+`app/conversation/tests/test_process_outputs.py` couvre la restitution des sorties typées
+et historiques : résumé conservé, valeurs nommées, fichiers imbriqués dédupliqués, refus
+d'accès et timeout sans perte des autres résultats ni renvoi de la notification. Le parcours
+`app/chat/tests/test_attachment_http.py` vérifie avec de vraies ressources la réponse Process,
+sa réouverture, les cartes de pièces jointes, le téléchargement et le refus d'un fichier privé.
+`chat-internal-attachments.spec.mjs` vérifie que les valeurs et les cartes fichier/document
+de la réponse restent visibles ensemble sur mobile et bureau.
+
+`app/conversation/tests/test_direct_process_inputs.py` couvre les contributions structurées,
+droits HTTP, révisions dépassées, dépôts réels, conservation des autres données après disparition
+d'un fichier, confirmation d'une valeur inchangée après erreur, reprise par l'agent et lancement unique sans
+extraction IA. Les parcours `native-processes.spec.mjs` exercent saisie, dépôt, conservation
+du brouillon face à une révision concurrente et démarrage du même run sur mobile/bureau.
+`app/file_share/tests/test_operation_memos.py` vérifie la réutilisation réelle des conversions,
+les clés liées au contenu/paramètres, les droits vivants, l'expiration, le rafraîchissement
+des recherches et la limite de 200 reçus par agent.
+
+En développement, `python -m scripts.qualify_process_inputs --output /tmp/trial.json`
+dans le conteneur backend effectue au plus huit appels sur le modèle conversationnel configuré
+(`--llm-id` permet un autre candidat). Le corpus est entièrement synthétique et les attentes
+restent hors du prompt : bénéficiaire distinct du demandeur, absence, annulation, changement de
+sujet, date ambiguë, lancements multiples, absence de consentement et sources contradictoires.
+Le rapport conserve résultats, coût, durée et empreintes du prompt/corpus ; tout échec produit
+un code non nul. L'essai ne crée aucun run métier et qualifie le mécanisme d'analyse, pas le
+parcours complet du contrôleur ni tous les modèles. Ne pas le lancer dans la suite automatisée.
+
+`app/conversation/tests/test_process_input_reliability.py` et
+`app/process/tests/test_input_preparation_contract.py` couvrent les valeurs limites et les
+refus de coercition, l'absence de perte lors des mises à jour concurrentes, l'attente de verrou
+interrompue, les défauts devenus indisponibles, les null imbriqués et les reçus rejoués après
+suppression d'une source. Une nouvelle contribution, un retrait d'accord ou un changement
+de périmètre ne peut pas reprendre une ancienne autorisation. Les valeurs ajoutées après
+analyse conservent le contrôle final de leurs paramètres. Les URI doivent provenir de
+références exactes et autorisées ; les questions de l'assistant ne font pas preuve.
+Le test `test_process_input_performance.py` mesure un parcours complet avec base réelle et
+fournisseur synthétique : une demande, deux relectures, un complément de valeurs, démarrage
+et rejeu. Il borne les lectures SQL et les appels auxiliaires IA. Les ressources partagées
+par 1, 10, 50 et 200 champs ne nécessitent qu'une lecture de métadonnées par lot ; l'appel
+suivant revérifie les droits. Ces mesures ne qualifient pas la latence d'un fournisseur réel.
+
 Les tests du store Goals vérifient le chargement différé des cycles, le regroupement des
 événements en lots sans chevauchement, la récupération après erreur, les réponses tardives,
 la fermeture et le retour direct à la dernière page disponible. `goals.spec.mjs` exerce les
@@ -25,6 +73,40 @@ création d’un cycle et le parcours d’un autre agent disponible. Le suivi re
 le prompt du cycle, sans lecture supplémentaire pour reconstruire la demande d’origine.
 Le scénario de migration différée attend le code de sortie bloquant déjà imposé par DbAdmin ;
 il continue à vérifier la reprise sans perte des contenus, droits et classements.
+
+`app/conversation/tests/test_process_inputs.py` exerce la collecte d'entrées natives v2
+dans un run en attente : reprise sur plusieurs messages puis démarrage du même identifiant,
+absence d'activités et de job avant complétude, état d'attente visible à l'agent, valeurs connues, faux/zéro/défauts,
+pièces jointes et date de naissance, null explicitement confirmé, refus des mauvais
+formats/dates, isolation des participants, annulation et changement de sujet. Les scénarios
+couvrent aussi les résultats IA périmés, une panne fournisseur, la relance pronominale
+avec l'historique réel et le rejeu sans deuxième exécution. Seul le fournisseur IA externe
+est simulé ; persistance, contraintes et admission Process sont réelles.
+Les scénarios de suivi des runs couvrent les cartes de variables, les valeurs absentes/nulles
+et l'ouverture/téléchargement des fichiers. Les anciennes assertions sur le tableau de variables
+et le JSON global sont retirées ; la conservation des valeurs et l'inspection technique des
+activités restent couvertes. Les tests backend vérifient les droits parent et leur révocation
+pour les aperçus de variables, avec des fichiers réels synthétiques.
+
+Les suites `app/process/tests` vérifient le registre unique des variables du processus,
+sa conservation en BPMN, les valeurs indépendantes par run, le contrat figé après une
+modification de définition et les mises à jour partielles sans réapplication des défauts.
+Elles couvrent les types, les réponses humaines, les boucles, les sous-processus, les conflits,
+les reçus et les refus d'accès. Le parcours `native-processes.spec.mjs` vérifie l'enregistrement,
+les brouillons invalides et le réordonnancement du registre, ainsi que les valeurs absentes,
+nulles, simples et imbriquées dans le suivi d'un run.
+Les sélections d'entrée/sortie référencent ce registre, y compris dans les boucles : les tests
+vérifient les frontières de lancement et de résultat, le refus d'une écriture non sélectionnée,
+la décision technique d'un IF sans écriture métier et la conservation des sélections par run.
+Ils refusent les sorties de Début/IF et les entrées de Fin, et vérifient que seules les entrées
+de Début sont exposées aux agents et acceptées au lancement. Le parcours navigateur
+vérifie l'édition depuis l'étape ou la variable, l'enregistrement et le renommage sans perte de liens.
+Les sorties du processus proviennent uniquement des Fin : les branches non parcourues
+ne publient pas leurs variables, et aucun usage générique « Processus » n'est ajouté.
+Les scénarios de tâches IA et d'IF simples vérifient le contrat réellement transmis : valeurs
+sélectionnées, URI de fichiers/documents, absence distincte de null, sorties et contraintes,
+paramètres préparés et exclusion des variables non sélectionnées. Les variantes LLM texte
+et décisionnel conservent ce contexte jusqu'au fournisseur sans tâche agentique auxiliaire.
 
 `app/memory/tests/test_messenger_contact.py` vérifie que les contacts ne stockent aucun
 contenu dans Memory ni ses révisions, que chaque lecture restitue le JSON canonique
@@ -1038,8 +1120,11 @@ sauvegarde, tâche réellement admise, suivi de fin, données persistantes et gr
 préservé après modification de la définition. API et PostgreSQL restent réels ; seul
 le harnais est synthétique. Les paramètres de pagination encodés dans l'URL sont aussi
 vérifiés par HTTP avec les droits réels sur les routes Process et Lab.
-Les données JSON sont vérifiées dans le champ accessible de l’exécution ; l’ancienne
-assertion d’ouverture par clic sur le libellé « Données du run » est retirée.
+Les valeurs du run sont vérifiées dans les cartes des variables. Les anciennes assertions
+sur les champs JSON d'entrée, de sortie et de retour d'opération sont retirées : la fiche
+d'activité vérifie désormais les statuts, les instructions en lecture seule et l'absence
+de ces champs. Le scénario d'événements concurrents vérifie le statut final de la fiche
+ouverte après une réponse tardive.
 
 Le parcours de `test_activity_controls.py` utilise le vrai scheduler, ses leases,
 la façade Agent, le client du harnais, MCP HTTP et PostgreSQL ; seul le harnais distant est
@@ -2126,7 +2211,8 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | `llm` | Résoudre fournisseur/modèle, préserver paramètres fonctionnels, budgets et droits, conserver trace et coûts ; pause/reprise, relecture et protection contre les écritures tardives | `test_subscription_policy.py`, `test_structured_service.py`, `test_call_lineage.py`, `back/tests/test_provider_catalog.py`, `back/tests/test_provider_parameters.py`, `back/tests/test_inference_lifecycle.py`, `back/tests/test_protocol_inference.py`, `back/tests/test_structured_inference.py`, `back/tests/test_dispatcher_inference.py`, `execution.spec.mjs` |
 | Consommation et crédits fournisseurs | Lire fenêtres, budgets et soldes avec les droits fournisseur, sans exposer les identifiants ; afficher les crédits supplémentaires ChatGPT à côté des fenêtres sans jauge de solde ; préserver unités, portée compte/clé, zéro et dépassement ; ne pas fabriquer de jauge sans plafond ; ne pas afficher de panneau de solde ou de consommation Fireworks ; actualiser et ignorer les réponses obsolètes ; masquer les clés enregistrées, conserver une clé omise et supprimer explicitement chaque clé après confirmation ; désactiver le fournisseur si la clé supprimée est obligatoire ; préserver les saisies après une erreur ; chiffrer, remplacer et supprimer la clé de gestion OpenRouter sans changer la clé d’inférence | `back/bridge/openai/tests/test_quota.py`, `back/app/llm/tests/test_provider_quotas.py`, `front/browser-tests/provider-quota.spec.mjs`, `front/browser-tests/provider-autosave.spec.mjs`, `e2e/specs/provider-usage.spec.mjs` |
 | `audio` | Lire/transcrire un média canonique et livrer son résultat sans perte ni fuite de fichier | `test_audio_mcp.py`, `test_audio_service.py`, `test_summary_service.py` |
-| `image` | Générer/lire des images et conserver ressources et traçabilité de l’appel | `test_image_mcp.py`, `test_image_service_trace.py` |
+| `image` | Générer/lire des images et conserver ressources et traçabilité de l’appel ; rendre une page PDF en PNG fidèle, préserver source et droits, puis lancer un processus exigeant une image ; refus des PDF invalides, pages inexistantes, accès refusés et destinations existantes, limites de taille/rendu et annulation drainée | `test_image_mcp.py`, `test_image_service_trace.py`, `test_pdf_conversion.py` |
+| Export PDF | Convertir les images et leurs frames, les documents Office/OpenDocument et les textes/HTML via le renderer statique ; valider les PDF existants, préserver source et droits, exposer la fonction en conversation et alimenter un processus exigeant un PDF ; refuser les formats non pris en charge et drainer l’annulation du groupe de conversion | `app/file_share/tests/test_pdf_export.py`, `tests/test_document_pipeline.py`, `app/document/tests/test_document_thumbnails.py` |
 | Entrées multimodales natives | Fournir images, audio, vidéo et PDF uploadés ou joints par référence interne au modèle compatible ; sinon fournir une analyse/transcription textuelle spécialisée, y compris les pages visuelles des PDF ; conserver provenance, droits, budget et médias à la reprise ; valider la source vidéo avec FFprobe réel | `app/harness/tests/test_native_media.py`, `test_media_resource_policy.py`, `app/llm/tests/test_input_video.py`, `tests/test_pydantic_ai_internal_model.py`, `app/messenger/tests/test_ingest.py` |
 | `multimedia` | Lancer et suivre les générations par les tools MCP, suivre les générations longues, authentifier les callbacks et publier les médias | `test_multimedia.py`, `test_callback_security.py`, `test_providers.py` |
 | `lab` | Isoler les jeux/items, conserver les paramètres, appliquer droits et deux passes ; reprendre les répétitions sans doublon, arrêter au budget et conserver les revues indépendantes avant révélation du juge ; générer des jeux synthétiques complets, propres à chaque contrat et à relire, sans écraser un jeu ni une saisie en cours ; afficher les aperçus sans HTML en conservant les entrées originales, les pourcentages par résultat et la moyenne indépendante du filtre, en excluant les notes absentes et en comptant les zéros | `test_authorization.py`, `test_contracts_and_passes.py`, `test_run_publication.py`, `test_stability_and_review.py`, `test_synthetic_datasets.py`, `lab.spec.mjs`, `lab-access.spec.mjs`, `lab-insights.spec.mjs`, `lab-synthetic.spec.mjs` |

@@ -11,15 +11,16 @@ def test_every_type_accepts_explicit_null_only_when_declared_nullable(kind):
         normalize([Variable(name="answer", type=kind, nullable=False)], {"answer": value}, path="values")
 
 
-def test_dataset_reference_is_distinct_from_document_and_transport_file():
+def test_data_documents_keep_their_uri_and_can_be_selected_as_a_document_subtype():
     uri = "data://00000000-0000-4000-8000-000000000001"
     assert validate_value({"type": "Dataset", "value": uri})["value"] == uri
-    with pytest.raises(ValueContractError):
-        validate_value({"type": "Document", "value": uri})
+    assert validate_value({"type": "Document", "value": uri})["value"] == uri
     with pytest.raises(ValueContractError):
         validate_value({"type": "Dataset", "value": "document://00000000-0000-4000-8000-000000000001"})
-    from app.process.values import validate_value as legacy_value, validate_declarations, Variable
-    with pytest.raises(ValueContractError, match="newer Process profile"):
-        legacy_value({"type": "object", "value": {"dataset": {"type": "Dataset", "value": uri}}})
-    with pytest.raises(ValueContractError, match="Process v2"):
-        validate_declarations([Variable(name="dataset", type="Dataset", nullable=True)], path="inputs")
+    from app.process.values import validate_value as process_value
+    nested = {"type": "object", "value": {"data": {"type": "Document", "value": uri}}}
+    assert process_value(nested) == nested
+    value = {"answer": {"type": "Document", "value": uri}}
+    assert normalize([Variable(name="answer", type="Document", nullable=True, document_type="data")], value, path="values") == value
+    with pytest.raises(ValueContractError, match="expected a text document"):
+        normalize([Variable(name="answer", type="Document", nullable=True, document_type="text")], value, path="values")

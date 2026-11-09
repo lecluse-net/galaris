@@ -32,6 +32,10 @@ A reply to existing work must not cause a duplicate launch. A message can BOTH a
 work and explicitly request a different new process. Select that process in that case.
 Choose none only when the supplied context supports that conclusion; otherwise uncertain.
 The executor will interpret values, collect missing parameters and perform authorized actions.
+A process_input_preparation is an input dossier for a WAITING run with no business activity started. Contributions to
+it continue collection; when complete they can finish its original launch request. They are
+not answers to activities of an already running process. 'Relaunch it' may refer to recent
+actual context and does not require the human to repeat the full workflow title.
 """
 
 

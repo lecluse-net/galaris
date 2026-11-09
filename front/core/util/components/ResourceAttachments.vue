@@ -1,5 +1,5 @@
 <template>
-  <section v-if="!previewOnly" class="document-attachments" :class="{ 'document-attachments--drag': dragging }" @dragover.prevent="dragging = editable && !uploading" @dragleave="leaveDropZone" @drop.prevent="dropFiles" :aria-label="attachmentsTitle">
+  <section v-if="!previewOnly" class="document-attachments" :class="{ 'document-attachments--drag': dragging, 'document-attachments--compact': compact }" @dragover.prevent="dragging = editable && !uploading" @dragleave="leaveDropZone" @drop.prevent="dropFiles" :aria-label="attachmentsTitle">
     <div v-if="showHeading || editable" class="row items-center q-mb-sm">
       <div v-if="showHeading" class="text-subtitle2 text-weight-bold">{{ attachmentsTitle }}</div>
       <q-space />
@@ -54,6 +54,8 @@
         :open-label="t(canPreview(attachment) ? 'documents.openAttachment' : 'documents.downloadAttachment', { name: attachment.name })"
         @open="attachmentAction(attachment)"
       >
+        <template v-if="$slots['item-title']" #title><slot name="item-title" :attachment="attachment" /></template>
+        <template v-if="$slots['item-description']" #description><slot name="item-description" :attachment="attachment" /></template>
         <template v-if="attachmentKind(attachment) === 'model3d' || thumbnailLoading.has(attachment.id)" #preview>
           <Model3dThumbnail v-if="attachmentKind(attachment) === 'model3d'" :source="modelSource(attachment)" />
           <q-spinner v-else color="primary" size="30px" />
@@ -220,7 +222,8 @@ import type { ContextAction } from '../contextActions'
 import RenameFileButton from './RenameFileButton.vue'
 import FileContextMenu from './FileContextMenu.vue'
 
-const { resourceId, agentId = null, attachments, editable = false, loading = false, content = '', allowInsertion = false, previewOnly = false, showHeading = true, resourceSource, emptyLabel, heading, dragHtml } = defineProps<{
+const { resourceId, agentId = null, attachments, editable = false, loading = false, content = '', allowInsertion = false, previewOnly = false, showHeading = true, compact = false, resourceSource, emptyLabel, heading, dragHtml } = defineProps<{
+  compact?: boolean
   dragHtml?: (attachment: T) => string
   emptyLabel?: string
   heading?: string
@@ -654,6 +657,7 @@ onBeforeUnmount(() => {
   background: var(--solaire-blue-light);
 }
 .body--dark .document-attachments { background: var(--solaire-gray-dark); }
+.document-attachments.document-attachments--compact { padding: 0; border: 0; background: transparent; }
 .body--dark .document-attachments--drag { background: var(--solaire-blue-dark); }
 .document-attachments__input { display: none; }
 .document-attachments__fullscreen-media { display: block; width: auto; max-width: none; max-height: none; margin: 0 auto; object-fit: contain; background: #000; }

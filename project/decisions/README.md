@@ -1,8 +1,12 @@
 # Décisions d'architecture
 
+- [0270 — Collect complete Process inputs before conversation launch](0270-conversation-process-input-dossiers.md)
+
 - [0269 — Private Goal categories](0269-private-goal-categories.md)
 
 - [0268 — Isolate the identified Galaris assistant from peer requests](0268-galaris-assistant-peer-isolation.md)
+
+- [0267 — Process-owned variables with isolated run values](0267-process-owned-variables.md)
 
 - [0266 — Editable document imports retain their own media](0266-editable-document-imports-with-owned-media.md)
 

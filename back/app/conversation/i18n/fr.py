@@ -1,5 +1,9 @@
 default: dict[str, object] = {
     "conversation": {
+        "process_inputs": {
+            "missing": "Merci de fournir les informations ou documents manquants : ${fields}.",
+            "confirm": "Les informations sont complètes. Souhaitez-vous démarrer le processus ?",
+        },
         "control": {
             "unavailable": "Cette commande n’est plus disponible pour cette réponse. Actualisez la conversation.",
             "attempt_changed": "L’agent a démarré une nouvelle tentative. Actualisez la conversation avant de la contrôler.",
@@ -43,6 +47,7 @@ default: dict[str, object] = {
                 "pas pu la terminer.\n\nCause : ${detail}"
             ),
         },
+        "process_output_unavailable": "Pièce jointe indisponible",
         "task_success_notification": {
             "missing_detail": "✅ La tâche est terminée, sans résultat textuel.",
         },

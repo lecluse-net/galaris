@@ -32,7 +32,6 @@ export function createActivity(kind: NodeKind, graph: BpmnGraph, actorKey?: stri
   const body = kind === 'for' || kind === 'while' ? emptyGraph() : null
   if (body) {
     body.schema_version = graph.schema_version
-    if (graph.schema_version === 'galaris.bpmn/v1') { delete body.inputs; delete body.outputs }
     body.nodes = body.nodes.map(node => ({ ...node, id: id + '_' + node.id }))
     body.flows = body.flows.map(flow => ({ ...flow, id: id + '_' + flow.id, source: id + '_' + flow.source, target: id + '_' + flow.target }))
     body.actors = (graph.actors ?? []).map(actor => ({ ...actor }))
@@ -42,8 +41,7 @@ export function createActivity(kind: NodeKind, graph: BpmnGraph, actorKey?: stri
   if (kind === 'if' && graph.schema_version === 'galaris.bpmn/v2') Object.assign(config, { mode: actor?.kind === 'human' ? 'human' : 'ai', prompt: '', code: defaultDecisionCode })
   if (kind === 'code') Object.assign(config, { code: defaultTaskCode, dataset_code: true })
   if (actor && ['task', 'human_task', 'code', 'if'].includes(kind)) config.actor = actor.id
-  const declarations = graph.schema_version === 'galaris.bpmn/v2' && ['task', 'human_task', 'tool_call', 'rest', 'code', 'program', 'call'].includes(kind) ? { inputs: [], outputs: [] } : {}
-  return { id, kind, title: '', config, body, x: 0, y: 0, ...declarations }
+  return { id, kind, title: '', config, body, x: 0, y: 0 }
 }
 
 export function insertActivity(graph: BpmnGraph, anchor: string, side: 'input' | 'output', kind: NodeKind, branch = false, outcome?: boolean): { graph: BpmnGraph; id: string } {

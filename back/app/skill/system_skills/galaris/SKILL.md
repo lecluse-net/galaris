@@ -316,8 +316,11 @@ an authorized provider URI; never inline file bytes in a typed value. `Document`
 `document://` and `Dataset` uses `data://`. A type tag does not grant resource access.
 
 Datasets store free JSON without a schema or association step. Processes declare their own
-expected variables. Ask the user for missing information, then supply the typed values
-required by the Process; preserve false, zero, nullability and defaults.
+expected variables. Collect only the root Start node's selected inputs, never the complete
+variable registry. Every selected Start input must be supplied or have a declared default,
+including nullable inputs. Search authorized Memory and files for known facts and documents
+before asking the human. Preserve false, zero and actual defaults; unknown is never null.
+Use the conversation input dossier below to collect missing values across messages.
 
 **HTML/JavaScript document applications:** keep the type `html` and write ordinary HTML
 directly: `<form>`, `<style>` and `<script>`. No JSON application manifest is required.
@@ -475,6 +478,18 @@ for authored HTML and Datasets for editable JSON when those are the requested re
 - `file_edit(uri: str, start_line: int, end_line: int, content: str,
   expected_revision: int | None = None, expected_etag: str | None = None) -> str`
 - `file_copy(source: str, destination: str, overwrite: bool = False) -> str`
+- `file_to_pdf(source: str, destination: str) -> str` exports a readable canonical resource to
+  a new PDF at a writable collection (`file://` for a private managed result) or unused `.pdf` URI.
+  Supports PNG/JPEG/WebP/GIF/TIFF/BMP images, Word/Excel/PowerPoint and OpenDocument files, RTF,
+  HTML, SVG, Markdown, UTF-8/UTF-16 text, CSV/TSV, JSON/XML/YAML, and existing PDFs. All image
+  frames are exported (up to 100); Office files use their printable layout. HTML/Markdown/SVG
+  rendering is static, without scripts or external resources. Source/output are limited to
+  64 MB, text/HTML input to 8 MB, and output to 2000 pages; renderer limits also apply.
+  The result provides `uri`, `source_uri`, `page_count`, MIME, size and warnings. Use the
+  returned PDF URI for Process fields requiring `application/pdf` or a requested delivery.
+  No console or AI model is needed. Originals stay intact and existing destinations are never
+  overwritten. Unsupported binaries, archives, audio/video and corrupt files fail explicitly;
+  do not rename another format to `.pdf` or claim a failed conversion succeeded.
 - `file_move(source: str, destination: str, overwrite: bool = False) -> str`
 - `file_rename(uri: str, name: str, expected_lock_version: int | None = None) -> str`
 - `file_delete(uri: str) -> str`
@@ -979,8 +994,32 @@ repeating them. A failure notification alone does not request another attempt.
   interaction after interpreting the user's free-form reply. Use only a reference and option ID
   shown in the current Pending interactions block. Never infer ambiguous consent; ask a concise
   clarification instead.
-- `conversation_process_start(workflow_id: str, input: dict | None = None) -> dict` launches an
-  assigned Process without waiting and links its terminal event to the current mailbox.
+- `conversation_process_prepare(workflow_id: str, input: dict | None = None, typed_values: bool = False) -> dict`
+  creates or updates this participant's durable input dossier. Once execution is requested,
+  one native run is recorded as `waiting`, with no activities or start job. Read
+  `process_get`, search authorized Memory/files, and pass verified ordinary JSON values with
+  exact declared names and canonical resource URIs. The AI assessment extracts facts from the
+  human's messages, retains known values and returns `missing`, `issues`, `searches` and a
+  question. Search before asking again; convert documents to the required format when possible.
+  Continue the same dossier when answers or attachments arrive. Explicit null requires the
+  human's actual acknowledgement of absence; never fill unknown inputs with placeholders.
+  Respect cancellation and unrelated messages. Tell the human that the run is waiting and what
+  it needs. `ready` means complete and requested by the human; release the same `run_id`.
+  Send only verified additions/corrections; omitted fields retain their values. Repeating a read
+  for the same admitted message reuses its assessment. Type checking and missing-field questions
+  are deterministic; a new human contribution is interpreted again when intent is ambiguous.
+- `conversation_process_start(workflow_id: str, input: dict | None = None, occurrence: int = 1, typed_values: bool = False) -> dict`
+  launches an assigned Process without waiting and links its terminal event to the current
+  mailbox. An incomplete v2 call returns a dossier with its `run_id` and `run_status=waiting`.
+  If inputs are already complete/defaulted, call this tool directly without a separate preparation.
+  For a ready dossier, omit `input` to reuse its stored typed values, including nested nulls,
+  and start this same run. `started=true`
+  confirms release; a retry has `started=false` and reuses that invocation. Ordinary JSON is the default; use
+  `typed_values=true` for explicit typed envelopes. A single "relaunch it" in a new human
+  message uses `occurrence=1`, resolving the workflow and values from actual recent runs.
+  `occurrence=2` means two identical launches requested within THIS SAME message, never a
+  historical run count. Correct that technical argument without asking the human to repeat
+  known business information. A retry reuses its admitted invocation.
 - `conversation_process_pending(page: int = 1) -> dict` reads complete human-activity requests
   for the current conversation participant, including expected typed outputs and input files.
 - `conversation_process_respond(reference: str, output: dict) -> dict` records the assigned
@@ -1101,34 +1140,59 @@ retains its admitted graph after subsequent edits. Reuse an idempotency key afte
 policy. Its runs, data and files inherit that policy without additional grants.
 
 
-For v2, declare `inputs` and `outputs` on the graph and on every task, human task, Code,
-MCP, REST or call activity. Each declaration has `name`, `type`, `nullable` and optional
+For v2, declare one `variables` registry on the root graph. Activities and inline loop
+bodies share that registry and have no local variable declarations. Each node selects permitted
+`inputs` and `outputs` as lists of registry names, for example
+`inputs=["age"]`, `outputs=["accepted"]`. Empty lists transmit no variables. Launch values
+must belong exclusively to the root Start node's `inputs`; there is no independent process
+input list. Start and IF nodes never have output variables, and End nodes never have input
+variables. An IF's Boolean decision is only control flow, never a business variable update.
+Process outputs derive only from root End nodes, with no independent output list. Final
+results contain initialized outputs selected by End nodes actually reached. Inline body selections reference the root registry. Each variable has `name`, `type`, `nullable` and optional
 typed `default`. Each transmitted value is `{"type":"int","value":7}` (including nested
-array/object elements). Types are int, float, string, bool, Agent, File, User, Document,
-Dataset, array and object. File values are file_share URIs; Document values are `document://<uuid>`
-and Dataset values are `data://<uuid>`.
+array/object elements). Scalars use int, float, string, bool, array and object.
+Agent, User, Team, Tool, Connection, Model and Skill references use positive integer IDs.
+Topic, Conversation and VoiceSession references use UUID strings. Task, Goal, GoalCycle,
+Contact, ConversationRound, VoiceConversation and CodeWorkspace use their canonical
+`galaris://` references (`task`, `goal`, `goal_cycle`, `contact`, `text`, `voice`, `code`).
+Process uses `galaris://process/<code>`; ProcessRun uses `galaris://processes/runs/<uuid>`;
+Memory uses `memory://<uuid>`. File values are file_share URIs. Document values are
+`document://<uuid>` or `data://<uuid>`, with optional `document_type: "text" | "data"`.
+File declarations may set `mime_type`, such as `application/pdf` or `image/*`. The engine
+checks constrained resource metadata and live permissions before admitting their values.
 They do not grant access or change execution identity. Every type can hold null; a notnull
-declaration rejects it. Omission uses the declared default, else typed null if nullable,
-else fails. Explicit null never uses a default. False, zero and empty containers are values.
+declaration rejects it. Defaults apply once at launch. Every selected Start input must be
+supplied or defaulted before launch, even when nullable. Other variables without a supplied
+value or default remain uninitialized (absent), distinct from null. Updates contain only changed
+variables; omission preserves the current value. Explicit null never uses a default. False,
+zero and empty containers are values.
 Default values are validated when saving. `process_get` exposes process-level declarations.
 
-Tasks receive local immutable inputs and read-only run data context. In a native activity
+Tasks receive their selected immutable inputs and selected read-only run data context.
+The prepared prompt contains a JSON activity contract: input declarations with initialized
+flags and typed values/URIs, transformed parameters when applicable, and exact expected
+output names/types/nullability/document or MIME constraints. Defaults are not output
+placeholders. Use authorized resource tools to inspect a File or Document URI when needed;
+the URI itself is not evidence of its contents. Simple LLM IFs receive the same frozen
+context with no tools and only a Boolean control result, never business output variables.
+Only selected output variables may be changed. In a native activity
 Task, submit ordinary JSON values with `process_activity_complete(output={"age": 42}, message="...")`.
 The engine applies and validates their types; final prose is not the data receipt. If human
-information is needed, call `process_activity_question(question="...", variables=[{"name":"age",
-"type":"int","nullable":false}])` and stop the turn. Omitted variables use the activity outputs.
+information is needed, call `process_activity_question(question="...", variables=["age"])`
+and stop the turn. Names must be selected as inputs or outputs of this step; omitted variables
+select all of those business variables.
 The authenticated requester receives the question through messaging and the Task waits durably.
 Resume with the typed answer, continue the activity, then submit its result. Never invent an
-answer or merely return a question as final text. Activities without data outputs can finish
-with a natural message; historical typed JSON results remain accepted. Human assignees reply
+answer or merely return a question as final text. Submit `output={}` when no variable changes
+are needed; historical typed JSON results remain accepted. Human assignees reply
 through messaging. The engine validates
 and merges results into the run data; never write typed run data directly. Input mappings
 use `config.input_mapping` with explicit `$expr` leaves, such as `{"local":{"$expr":"data.source"}}`.
 MCP arguments are unwrapped for the external API; `config.external_output` maps its result
-to declared output names before the adapter applies their types. REST activities use `tool_code`
+to process variable names before the adapter applies their types. REST activities use `tool_code`
 and `request` (method, relative path, params, headers, json_body/text_body) through a live
-Connection. HTTP errors stop the activity. Calls forward local inputs and return declared
-outputs; all ordinary incoming predecessors must finish before one successor admission.
+Connection. HTTP errors stop the activity. Calls forward prepared inputs and map their independent
+child data back to parent variables; all ordinary incoming predecessors must finish before one successor admission.
 File references travel without downloading or copying their contents.
 
 Inline Code uses kind `code` and `config.code`; optional `preprocess`/`postprocess` are Python
@@ -1739,8 +1803,21 @@ memory is already known:
 
 ## Images
 
-Both image tools accept canonical URIs from every readable file_schemes provider. Galaris
-materializes provider images in bounded temporary storage and removes it after the model call.
+Image tools accept canonical URIs from every readable file_schemes provider. Galaris
+materializes sources in bounded temporary storage and removes it after processing.
+
+- `image_from_pdf(file: str, destination: str, page: int = 1) -> object` renders a selected physical
+  PDF page to a faithful PNG, without a generation model or changes to its content. Use it when
+  an uploaded PDF must satisfy an image requirement, including a Process `File` variable with
+  `mime_type="image/*"`. Choose the relevant 1-based page; clarify an ambiguous page selection.
+  `destination="file://"` creates a private managed image without a console; another writable
+  collection or an unused exact `.png` URI is also supported. The result provides `uri`,
+  `source_uri`, `page`, `page_count`, dimensions and MIME. Reuse the returned `uri` as the
+  Process input or human reply before launch/submission; never relabel the PDF or ask the human
+  to make a screenshot when the tool can supply the required image. The source is unchanged,
+  existing destinations are not overwritten, and only the selected page is exported.
+  Limits: 64 MB source, 144 dpi and a 3000-pixel longest side. Rendering is a format conversion,
+  not image generation, and does not synthesize or repair document content.
 
 - `image_generate(prompt: str, attachments: str | list[str] | None = None, destination: str = "", width: int | None = None, height: int | None = None) -> str`
   generates an image without attachments, edits one source image, or composes several source

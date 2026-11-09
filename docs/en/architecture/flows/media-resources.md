@@ -207,6 +207,28 @@ A collection destination of `file_copy` or `file_move` preserves the source name
 The preserved name is that of the source `ResourceDescriptor`, not necessarily the last segment of the locator: an attachment addressed by UUID thus retains its actual name. Specialized image, audio, and Messenger tools also receive canonical URIs. If they require a local path, they call `materialize_resource` into a bounded temporary file that they delete after the call. A `nextcloud://`, `console://`, HTTPS, Mail, or Messenger URI is therefore consumed directly. Outputs are written by `resource_create`/`resource_write`
 and expose the canonical URI that was created or delivered.
 
+`image_from_pdf` renders one physical PDF page as a faithful PNG without inference or OCR.
+It materializes at most 64 MB of an authorized source, runs PDFium in a child process bounded
+by time, memory and output size, then creates the image through `resource_create` at an explicit
+destination. The whole page is retained at up to 144 dpi, with a 3000-pixel longest side.
+The result includes source and derivative URIs, page, page count, dimensions and MIME.
+The source is unchanged and existing destinations are never overwritten. Cancellation kills
+and drains the worker before removing temporaries. The Image Tool and both resources' permissions
+remain applicable, including in conversations. A Process requiring `image/*` receives the PNG URI,
+never a renamed PDF.
+
+File sharing also exposes `file_to_pdf` in Tasks and conversations: raster images (all frames,
+up to 100), Office/OpenDocument and RTF, HTML/SVG/Markdown or UTF-8/UTF-16 text, CSV/TSV and
+JSON/XML/YAML. Existing PDFs are validated and copied without reencoding. Native conversions
+run in a bounded child-process group; Office exports reuse document preparation's converter
+with macros disabled. HTML uses the isolated static Chromium renderer without scripts or
+external resources. Output is validated as PDF before publication through `resource_create`,
+returning source and derivative URIs, page count, size and warnings. Limits are 64 MB source/output,
+8 MB text and 2000 pages; renderer limits still apply. Office PDFs reflect printable layout,
+particularly for spreadsheets. Archives, audio/video, corrupt sources and unsupported formats
+are rejected explicitly. Source and access rights remain intact; existing destinations are
+never overwritten and cancellation drains converters before cleanup.
+
 Descriptors distinguish `name`, the displayed source filename or title, from `entry_name`,
 the navigation key within the canonical parent. `entry_name` is the final decoded URI segment:
 the actual filename for a path provider, or the identifier for a document or attachment.

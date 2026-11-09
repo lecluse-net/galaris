@@ -6,19 +6,33 @@ This codec never dereferences a resource or grants authority to an identity.
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import date, datetime
 import json
 import math
-from typing import Any, Literal, cast
+import re
+from typing import Any, Literal, cast, get_args
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-ValueType = Literal["int", "float", "string", "bool", "Agent", "File", "User", "Document", "Dataset", "array", "object"]
-VALUE_TYPES = frozenset({"int", "float", "string", "bool", "Agent", "File", "User", "Document", "Dataset", "array", "object"})
-LEGACY_VALUE_TYPES = VALUE_TYPES - {"Dataset"}
+ValueType = Literal["int", "float", "string", "bool", "date", "datetime", "array", "object", "File", "Document", "Dataset",
+    "Agent", "User", "Team", "Tool", "Connection", "Model", "Task", "Goal", "GoalCycle", "Process", "ProcessRun",
+    "Contact", "Memory", "Skill", "Conversation", "ConversationRound", "VoiceConversation", "VoiceSession", "CodeWorkspace", "Topic"]
+VALUE_TYPES: frozenset[str] = frozenset(get_args(ValueType))
+LEGACY_VALUE_TYPES = frozenset({"int", "float", "string", "bool", "Agent", "File", "User", "Document", "array", "object"})
+INTEGER_REFERENCES = frozenset({"Agent", "User", "Team", "Tool", "Connection", "Model", "Skill"})
+UUID_REFERENCES = frozenset({"Conversation", "VoiceSession", "Topic"})
+URI_REFERENCES = {"Task": "task", "Goal": "goal", "GoalCycle": "goal_cycle", "Contact": "contact",
+    "ConversationRound": "text", "VoiceConversation": "voice", "CodeWorkspace": "code"}
 MAX_INTEGER = 2**53 - 1
 MAX_VALUE_BYTES = 2_000_000
 MAX_DEPTH = 32
 MAX_NODES = 20_000
+DATE_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+DATETIME_PATTERN = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]"
+    r"(?:\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])"
+)
 
 
 class ValueContractError(ValueError):
@@ -44,10 +58,10 @@ def _validate(value: object, path: str, depth: int, remaining: list[int]) -> Non
     raw: object = envelope["value"]
     if raw is None:
         return
-    if kind in {"int", "Agent", "User"}:
+    if kind == "int" or kind in INTEGER_REFERENCES:
         if type(raw) is not int or abs(raw) > MAX_INTEGER:
             raise _error(path, f"{kind} requires an exact safe integer")
-        if kind in {"Agent", "User"} and raw <= 0:
+        if kind in INTEGER_REFERENCES and raw <= 0:
             raise _error(path, f"{kind} requires a positive identifier")
     elif kind == "float":
         if type(raw) is int and abs(raw) > MAX_INTEGER:
@@ -60,7 +74,28 @@ def _validate(value: object, path: str, depth: int, remaining: list[int]) -> Non
     elif kind == "string":
         if not isinstance(raw, str):
             raise _error(path, "string requires text")
-    elif kind in {"File", "Document", "Dataset"}:
+    elif kind in {"date", "datetime"}:
+        pattern = DATE_PATTERN if kind == "date" else DATETIME_PATTERN
+        expected = "YYYY-MM-DD" if kind == "date" else "YYYY-MM-DDTHH:mm:ss[.ffffff] with Z or an explicit ±HH:mm offset"
+        if not isinstance(raw, str) or not pattern.fullmatch(raw):
+            raise _error(path, f"{kind} requires {expected}")
+        try:
+            if kind == "date":
+                date.fromisoformat(raw)
+            else:
+                datetime.fromisoformat(raw)
+        except ValueError:
+            raise _error(path, f"{kind} requires a valid calendar date and time") from None
+    elif kind in UUID_REFERENCES:
+        if not isinstance(raw, str):
+            raise _error(path, f"{kind} requires a UUID")
+        try:
+            identifier = UUID(raw)
+        except ValueError:
+            raise _error(path, f"{kind} requires a UUID") from None
+        if str(identifier) != raw:
+            raise _error(path, f"{kind} requires a canonical UUID")
+    elif kind in {"File", "Document", "Dataset", "Memory", "Process", "ProcessRun"} or kind in URI_REFERENCES:
         from app.file_share import parse_resource_uri
         if not isinstance(raw, str):
             raise _error(path, "a resource reference requires a canonical URI")
@@ -70,10 +105,30 @@ def _validate(value: object, path: str, depth: int, remaining: list[int]) -> Non
             raise _error(path, "invalid resource URI") from None
         if str(uri) != raw or uri.is_collection:
             raise _error(path, "a resource reference requires an exact canonical resource URI")
-        if kind == "Document" and (uri.scheme != "document" or len(uri.segments) != 1):
-            raise _error(path, "Document requires document://<uuid>")
+        if kind == "Document" and (uri.scheme not in {"document", "data"} or len(uri.segments) != 1):
+            raise _error(path, "Document requires document://<uuid> or data://<uuid>")
         if kind == "Dataset" and (uri.scheme != "data" or len(uri.segments) != 1):
             raise _error(path, "Dataset requires data://<uuid>")
+        if kind == "Memory" and uri.scheme != "memory":
+            raise _error(path, "Memory requires memory://<uuid>")
+        if kind in URI_REFERENCES:
+            if uri.scheme != "galaris" or len(uri.segments) != 2 or uri.segments[0] != URI_REFERENCES[kind]:
+                raise _error(path, f"{kind} requires galaris://{URI_REFERENCES[kind]}/<uuid>")
+            try:
+                if str(UUID(uri.segments[1])) != uri.segments[1]:
+                    raise ValueError
+            except ValueError:
+                raise _error(path, f"{kind} requires a canonical UUID") from None
+        if kind == "Process" and (uri.scheme != "galaris" or len(uri.segments) != 2 or uri.segments[0] not in {"process", "processes"}):
+            raise _error(path, "Process requires galaris://process/<code>")
+        if kind == "ProcessRun":
+            if uri.scheme != "galaris" or len(uri.segments) != 3 or uri.segments[:2] != ("processes", "runs"):
+                raise _error(path, "ProcessRun requires galaris://processes/runs/<uuid>")
+            try:
+                if str(UUID(uri.segments[2])) != uri.segments[2]:
+                    raise ValueError
+            except ValueError:
+                raise _error(path, "ProcessRun requires a canonical UUID") from None
     elif kind == "array":
         if not isinstance(raw, list):
             raise _error(path, "array requires a JSON array")
@@ -117,14 +172,23 @@ class TypedValue(BaseModel):
 class Variable(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     name: str = Field(min_length=1, max_length=200)
+    label: str | None = Field(default=None, max_length=200, exclude_if=lambda value: value is None)
+    description: str | None = Field(default=None, max_length=4000, exclude_if=lambda value: value is None)
     type: ValueType
     nullable: bool
     default: TypedValue | None = Field(default=None, exclude_if=lambda value: value is None)
+    document_type: Literal["text", "data"] | None = Field(default=None, exclude_if=lambda value: value is None)
+    mime_type: str | None = Field(default=None, max_length=255,
+        pattern=r"^[a-z0-9!#$&^_.+-]+/(?:[a-z0-9!#$&^_.+-]+|\*)$", exclude_if=lambda value: value is None)
 
     @model_validator(mode="after")
     def check_default(self) -> Variable:
         if self.name != self.name.strip():
             raise _error(self.name, "variable names cannot start or end with whitespace")
+        if self.document_type is not None and self.type != "Document":
+            raise _error(self.name, "document_type applies only to Document variables")
+        if self.mime_type is not None and self.type != "File":
+            raise _error(self.name, "mime_type applies only to File variables")
         if "default" in self.model_fields_set:
             if self.default is None:
                 raise _error(self.name, "a default must be a typed envelope, including for null")
@@ -132,6 +196,10 @@ class Variable(BaseModel):
                 raise _error(self.name, "default type differs from the variable type")
             if self.default.value is None and not self.nullable:
                 raise _error(self.name, "a notnull variable cannot have a null default")
+            if self.default.value is not None and self.document_type is not None:
+                scheme = "data://" if self.document_type == "data" else "document://"
+                if not str(self.default.value).startswith(scheme):
+                    raise _error(self.name, f"expected a {self.document_type} document default")
         return self
 
 
@@ -190,6 +258,10 @@ def normalize(variables: list[Variable], values: object, *, path: str,
             raise _error(location, f"expected type {variable.type}")
         if value["value"] is None and not variable.nullable:
             raise _error(location, "null is not allowed")
+        if value["value"] is not None and variable.document_type is not None:
+            scheme = "data://" if variable.document_type == "data" else "document://"
+            if not str(value["value"]).startswith(scheme):
+                raise _error(location, f"expected a {variable.document_type} document")
         result[variable.name] = value
     return validate_values(result, path=path)
 

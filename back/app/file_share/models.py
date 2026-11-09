@@ -25,6 +25,18 @@ class ManagedFileOwner(Base):
     agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), index=True)
 
 
+class FileOperationMemo(Base):
+    """Bounded disposable receipts; never a resource or an authorization grant."""
+
+    __tablename__ = "file_operation_memos"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
+    key: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    result: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    __table_args__ = (UniqueConstraint("agent_id", "key", name="uq_file_operation_memo"),)
+
+
 class FileCatalogEntry(Base):
     __tablename__ = "file_catalog_entries"
 

@@ -1,9 +1,11 @@
 import type { Collaborator, SharingState } from '@/app/share'
-export const valueTypes = ['int', 'float', 'string', 'bool', 'Agent', 'File', 'User', 'Document', 'Dataset', 'array', 'object'] as const
+export const valueTypes = ['int', 'float', 'string', 'bool', 'date', 'datetime', 'array', 'object', 'File', 'Document', 'Dataset',
+  'Agent', 'User', 'Team', 'Tool', 'Connection', 'Model', 'Task', 'Goal', 'GoalCycle', 'Process', 'ProcessRun',
+  'Contact', 'Memory', 'Skill', 'Conversation', 'ConversationRound', 'VoiceConversation', 'VoiceSession', 'CodeWorkspace', 'Topic'] as const
 export type ValueType = typeof valueTypes[number]
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 export type TypedValue = { type: ValueType; value: JsonValue }
-export interface Variable { name: string; type: ValueType; nullable: boolean; default?: TypedValue }
+export interface Variable { name: string; label?: string; description?: string; type: ValueType; nullable: boolean; default?: TypedValue; document_type?: 'text' | 'data'; mime_type?: string }
 export interface Dataset {
   topic_id?: string | null
   tag_ids?: string[]; icon?: string | null; at_root?: boolean

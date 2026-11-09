@@ -536,6 +536,25 @@ Autorité : `back/app/multimedia/generation_contracts.py`, `generation_store.py`
 
 ## Processus
 
+Avant admission d'un run natif v2, Conversation peut conserver un dossier d'entrées :
+
+| Événement | Source | Cible |
+|---|---|---|
+| Entrées manquantes ou accord de lancement absent | absent / `collecting` / `ready` | `collecting` |
+| Toutes les entrées fournies ou par défaut, lancement demandé | absent / `collecting` | `ready` |
+| Annulation humaine | `collecting` / `ready` | `cancelled` |
+| Lancement admis et lien conversationnel enregistré | `ready` | `launched` |
+
+Un message sans rapport ne modifie pas le dossier. La portée inclut le participant ;
+les résultats périmés sont rejetés par révision et garde de fraîcheur. `cancelled` et
+`launched` ne rouvrent pas la collecte. Les reprises d'un même lancement retrouvent son
+invocation ; un nouveau message peut demander une nouvelle exécution. Le lancement demandé
+crée un run `waiting` sans activité ni job. Sa complétude autorisée le fait passer à `queued`
+en créant son unique job ; seule cette attente d'entrées permet la transition `waiting → queued`.
+Refresh et commandes de débogage ne peuvent pas contourner la collecte ; l'annulation reste
+possible sans appel au moteur. Autorité : `back/app/conversation/process_inputs.py`,
+`back/app/process/input_preparation.py` et décision 0270.
+
 Le profil natif v2 normalise les entrées avant l'intention d'activité. Les appels
 MCP/REST sont préparées en `tool_ready`/`rest_ready`, réclamées en `claiming`, puis
 marquées `started` juste avant effet, sous une garde contre annulation et worker périmé.

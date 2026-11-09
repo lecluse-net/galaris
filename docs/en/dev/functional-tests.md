@@ -13,6 +13,51 @@ stay outside the prompt; `--prompt-file` permits an earlier reference. Reports r
 decisions, cost and duration; failures or exceeded budgets return nonzero. This qualifies real
 judgement, not complete autonomous problem solving with tools.
 
+`app/conversation/tests/test_process_input_provenance.py` checks separation of audit data
+from AI context: rejected implicit ORM loads, absence from ordinary responses and identical
+prompts even with a large stored audit. Corrections/history remain atomic and duplicate-free;
+HTTP permissions, revoked access and PDF/image lineage use real synthetic resources. The
+performance journey retains two auxiliary model calls; journaling adds five SQL reads to
+the reference scenario (99 → 104). This does not qualify real provider latency.
+
+`app/conversation/tests/test_process_outputs.py` covers typed and historical output delivery:
+preserved summaries, named values, deduplicated nested files, access denials and timeouts
+without losing other results or resending the notification. The
+`app/chat/tests/test_attachment_http.py` journey uses real resources to verify the Process
+reply, reopening, attachment cards, downloads and denial of a private file.
+`chat-internal-attachments.spec.mjs` verifies that the reply's values and file/document
+cards remain visible together on mobile and desktop.
+
+`app/conversation/tests/test_direct_process_inputs.py` covers structured contributions,
+HTTP permissions, stale revisions, real uploads, progress despite a vanished file, confirming
+an unchanged value after a validation issue, agent reuse and one launch without AI
+extraction. `native-processes.spec.mjs` exercises entry, upload, draft retention during a
+concurrent revision change and releasing the same run on mobile/desktop.
+`app/file_share/tests/test_operation_memos.py` checks actual conversion reuse, content/parameter
+keys, live access, expiry, search refresh and the 200-receipt per-agent cap.
+
+In development, `python -m scripts.qualify_process_inputs --output /tmp/trial.json` inside
+the backend container performs at most eight calls with the configured conversation model
+(`--llm-id` selects another candidate). Cases are entirely synthetic and expectations stay
+out of the prompt: beneficiary versus requester, missing facts, cancellation, unrelated input,
+ambiguous date, multiple launches, absent consent and conflicting sources. Reports retain
+results, cost, duration and prompt/corpus digests; failures return a nonzero exit code.
+The trial creates no business run and qualifies input assessment, not the entire controller
+journey or every model. Do not run it as part of the automated suite.
+
+`app/conversation/tests/test_process_input_reliability.py` and
+`app/process/tests/test_input_preparation_contract.py` cover boundary values and coercion
+denials, concurrent updates without lost fields, interrupted lock waits, unavailable defaults,
+nested nulls and receipt replay after source deletion. New contributions, withdrawn consent
+and changed scope cannot reuse an old permission. Values added after assessment retain
+their final parameter-scope check. Resource evidence uses exact authorized references;
+assistant questions are not evidence.
+`test_process_input_performance.py` measures a complete journey with a real DB and synthetic
+provider: one request, two reads, added values, start and replay. It bounds SQL reads and
+auxiliary model calls. Resources shared by 1, 10, 50 and 200 fields require one metadata
+lookup per batch; the next call rechecks access. These measurements do not qualify real
+provider latency.
+
 Goal store tests cover deferred cycle loading, non-overlapping event batches, error recovery,
 late responses, closing and jumping directly to the last remaining page. `goals.spec.mjs`
 exercises real components on mobile and desktop: opening/reopening, errors and retries,
@@ -22,6 +67,36 @@ to a busy agent, while retaining the locked check before cycle creation and the 
 another available agent. Tracking remains in the cycle prompt without an additional read
 to reconstruct the original demand. The deferred migration scenario expects DbAdmin's
 existing blocking exit code and still verifies recovery without losing content, rights or filing.
+
+`app/conversation/tests/test_process_inputs.py` exercises native v2 input collection before
+business execution: a waiting run continues across messages and starts with the same identity,
+without activities or a start job before completion, and its input wait is visible to the agent.
+Other guarantees include known values, false/zero/defaults, attachments and
+birth dates, explicitly confirmed null, invalid formats/dates, participant isolation,
+cancellation and unrelated messages. Scenarios also cover stale AI results, provider failure,
+pronoun relaunches using actual history and replay without duplicate execution. Only the
+external model provider is replaced; persistence, constraints and Process admission are real.
+Run inspection scenarios cover variable cards, absent/null values and file preview/download.
+Previous variable-table and global JSON assertions are retired; value preservation and technical
+activity inspection remain covered. Backend tests verify inherited access and revocation for
+variable previews using real synthetic files.
+
+The `app/process/tests` suites verify the single process variable registry, BPMN persistence,
+independent run values, frozen contracts after definition edits and partial updates without
+reapplying defaults. They cover typing, human replies, loops, child processes, conflicts,
+receipts and access denials. The `native-processes.spec.mjs` journey checks registry saving,
+invalid drafts and ordering, plus absent, null, scalar and nested values in run inspection.
+Input/output selections reference this registry, including inside loops: tests verify launch
+and result boundaries, rejection of unselected writes, technical IF decisions without business
+writes and frozen run selections. They reject Start/IF outputs and End inputs, and verify
+that only Start inputs are exposed to agents and accepted at launch. The browser journey verifies editing from either the step or the variable,
+saving and renaming without losing bindings.
+Process outputs come only from End nodes: unvisited branches do not publish their variables,
+and no generic Process usage is added.
+AI Task and simple IF scenarios verify the actual transmitted contract: selected values,
+file/document URIs, absence distinct from null, output expectations and constraints,
+prepared parameters and exclusion of unselected variables. Text and decision LLM variants
+retain this context through the provider without creating an auxiliary agentic Task.
 
 `app/memory/tests/test_messenger_contact.py` verifies that contacts store no content
 in Memory or its revisions, that every read returns current canonical JSON, and that
@@ -969,8 +1044,10 @@ saving, actual Task admission, live completion, persistent Dataset and a Run gra
 survives later definition changes. APIs and PostgreSQL remain real; only the harness is
 synthetic. URL-encoded pagination parameters are also exercised over HTTP with actual
 authorization on Process and Lab routes.
-Run JSON is checked through its accessible field; the former assertion requiring a
-click on the “Run data” label to open its content has been retired.
+Run values are checked in the variable cards. Former assertions on input, output and
+operation-result JSON fields are retired: activity details now check statuses, read-only
+instructions and the absence of those fields. The concurrent-event scenario checks the
+open activity's final status after a late response.
 The journey in `test_activity_controls.py` uses the actual scheduler, leases, Agent facade,
 Harness client, MCP HTTP and PostgreSQL; only the remote Harness is synthetic. It covers losing
 the remote result before the human reply, reconciling without another effect, a fresh turn
@@ -2031,7 +2108,8 @@ are in `front/browser-tests/`.
 | `browser` | Navigation and resource retrieval with session isolation, limits and explicit failures; bounded public codes, expiry without automatic action replay and explicit reopening | `test_service.py`, `test_mcp.py`, `make tests-browser` |
 | `llm` | Provider/model resolution, functional parameter preservation, budgets and access policy, traces and costs; pause/resume, readback and rejection of late writes | `test_subscription_policy.py`, `test_structured_service.py`, `test_call_lineage.py`, `back/tests/test_provider_catalog.py`, `back/tests/test_provider_parameters.py`, `back/tests/test_inference_lifecycle.py`, `back/tests/test_protocol_inference.py`, `back/tests/test_structured_inference.py`, `back/tests/test_dispatcher_inference.py`, `execution.spec.mjs` |
 | `audio` | Canonical media transcription and result delivery | `test_audio_mcp.py`, `test_audio_service.py`, `test_summary_service.py` |
-| `image` | Image generation/reading, resource identity and call trace | `test_image_mcp.py`, `test_image_service_trace.py` |
+| `image` | Image generation/reading, resource identity and call trace; render a PDF page as a faithful PNG, preserve source and permissions, then launch an image-constrained Process; reject invalid PDFs, missing pages, access denials and existing destinations, enforce source/render budgets and drain cancellation | `test_image_mcp.py`, `test_image_service_trace.py`, `test_pdf_conversion.py` |
+| PDF export | Convert images and all frames, Office/OpenDocument files and text/HTML through the static renderer; validate existing PDFs, preserve source and permissions, expose conversion in conversations and feed a PDF-constrained Process; reject unsupported formats and drain converter process groups on cancellation | `app/file_share/tests/test_pdf_export.py`, `tests/test_document_pipeline.py`, `app/document/tests/test_document_thumbnails.py` |
 | Native multimodal inputs | Supply uploaded and internally referenced images, audio, video and PDFs to compatible models; otherwise supply specialist text analysis/transcription, including visual PDF pages; retain provenance, access checks, byte budgets and media on resume; validate video sources with real FFprobe | `app/harness/tests/test_native_media.py`, `test_media_resource_policy.py`, `app/llm/tests/test_input_video.py`, `tests/test_pydantic_ai_internal_model.py`, `app/messenger/tests/test_ingest.py` |
 | `multimedia` | MCP tool launch and domain-owned tracking, long-running generations, authenticated callbacks and publication | `test_multimedia.py`, `test_callback_security.py`, `test_providers.py` |
 | `lab` | Dataset/item isolation, parameters, rights and two passes; resume repetitions without duplicates, stop at budget and preserve independent reviews before judge disclosure; generate complete synthetic datasets for each contract without overwriting saved data or drafts; retain original inputs while showing plain previews, per-result percentages and a filter-independent mean that excludes absent scores and counts zero | `test_authorization.py`, `test_contracts_and_passes.py`, `test_run_publication.py`, `test_stability_and_review.py`, `test_synthetic_datasets.py`, `lab.spec.mjs`, `lab-access.spec.mjs`, `lab-insights.spec.mjs`, `lab-synthetic.spec.mjs` |

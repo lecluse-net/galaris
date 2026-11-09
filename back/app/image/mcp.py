@@ -18,7 +18,7 @@ from loguru import logger
 from PIL import Image
 
 from . import image_service
-from .schemas import ImageDimension, ImageGenerationOptions
+from .schemas import ImageDimension, ImageGenerationOptions, PdfPageNumber
 from app.llm import ImageDimensionsError
 from app.tools import RecoverableToolError
 from app.file_share import (
@@ -35,9 +35,11 @@ from app.file_share import (
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.i18n import render_prompt, t
 from core.util import complete_io
+from core.document import render_pdf_page
 
 _DEFAULT_MIME = "image/png"
 _MAX_IMAGE_RESOURCE_BYTES = 32_000_000
+_MAX_PDF_RESOURCE_BYTES = 64_000_000
 
 
 async def _context_language(ctx: McpToolContext) -> str:
@@ -118,6 +120,58 @@ async def _store_image(
             raise
         mutation = await resource_write(resource_ctx, reference, data)
     return mutation.uri
+
+
+@mcp_tool("image", approval="ask", approval_reason="Creates an image in the selected authorized file destination",
+    name="image_from_pdf", effect_policy="non_idempotent", conversation_policy="deferred", timeout_seconds=180,
+    description=(
+        "Convert one physical PDF page to a faithful PNG image, without an AI model or content changes. "
+        "Use this when a user supplies a PDF but a Process File variable requires image/*. "
+        "file is the exact readable canonical PDF URI; destination is a writable collection such as file:// "
+        "or an unused .png URI. page is 1-based, default 1; inspect the source to choose the relevant page "
+        "and clarify ambiguous multi-page selections. Returns the created image URI, dimensions and page count. "
+        "Use that URI for the Process input or human reply, never relabel the PDF as an image. "
+        "The original remains intact; existing destinations are never overwritten. "
+        "An unchanged source, page and destination may reuse a verified earlier conversion. "
+        "Limited to a 64 MB source, 144 dpi and a 3000-pixel longest side."
+    ),
+)
+async def image_from_pdf(ctx: McpToolContext, file: str, destination: str, page: PdfPageNumber = 1) -> dict[str, object]:
+    """Materialize an authorized source and publish only a completed PNG derivative."""
+    language = await _context_language(ctx)
+    try:
+        if type(page) is not int or page < 1:
+            raise ValueError("page must be a positive physical page number")
+        if not destination.strip():
+            raise ValueError("Provide a writable destination, such as file://")
+        resource_ctx = await _resource_context(ctx, language)
+        reference, name = _destination(resource_ctx, destination, f"pdf-page-{page}.png")
+        if not reference.is_collection and PurePosixPath(reference.decoded_locator).suffix.lower() != ".png":
+            raise ValueError("The destination must be a collection or an unused .png URI")
+        with TemporaryDirectory(prefix="galaris_pdf_image_") as directory:
+            root = Path(directory)
+            source, output = root / "source.pdf", root / "page.png"
+            materialized = await materialize_resource(resource_ctx, file, source, max_bytes=_MAX_PDF_RESOURCE_BYTES)
+            from app.file_share.facade import conversion_key, converted_resource, remember_conversion
+            key = await conversion_key(resource_ctx, source, uri=materialized.uri, name=materialized.name,
+                media_type=materialized.media_type, destination=str(reference), operation="pdf-page/v1", parameters={"page": page})
+            cached = await converted_resource(resource_ctx, key)
+            if cached is not None:
+                return cached
+            rendered = await render_pdf_page(source, output, page=page)
+            data = await complete_io(output.read_bytes)
+            if len(data) > _MAX_IMAGE_RESOURCE_BYTES:
+                raise ValueError("Rendered image exceeds the 32 MB limit")
+            mutation = await resource_create(resource_ctx, reference, data, name=name)
+        receipt: dict[str, object] = {"uri": mutation.uri, "source_uri": materialized.uri, "media_type": "image/png",
+            "size": len(data), **rendered.model_dump()}
+        await remember_conversion(resource_ctx, key, receipt, data)
+        return receipt
+    except (ValueError, PermissionError, FileExistsError) as exc:
+        raise RecoverableToolError(str(exc)) from exc
+    except Exception as exc:
+        logger.exception("MCP image_from_pdf failed")
+        raise RecoverableToolError(_message(language, "pdf_conversion_failed")) from exc
 
 
 @mcp_tool("image", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",

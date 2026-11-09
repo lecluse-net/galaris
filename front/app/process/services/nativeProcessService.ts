@@ -4,22 +4,23 @@ import type { OwnerOption } from '@/app/share'
 import { createOwnerOptionsCache } from '@/app/share/facade'
 
 export type NodeKind = 'start' | 'end' | 'task' | 'human_task' | 'tool_call' | 'rest' | 'code' | 'program' | 'call' | 'if' | 'parallel' | 'for' | 'while'
-export const valueTypes = ['int', 'float', 'string', 'bool', 'Agent', 'File', 'User', 'Document', 'array', 'object'] as const
+import { valueTypes as sharedValueTypes } from '@/app/dataset/contracts'
+export const valueTypes = sharedValueTypes.filter(type => type !== 'Dataset')
 export type ValueType = typeof valueTypes[number]
 export type { JsonValue, TypedValue } from '@/app/dataset'
 import type { TypedValue } from '@/app/dataset'
-export interface ProcessVariable { name: string; type: ValueType; nullable: boolean; default?: TypedValue }
+export interface ProcessVariable { name: string; label?: string; description?: string; type: ValueType; nullable: boolean; default?: TypedValue; document_type?: 'text' | 'data'; mime_type?: string }
 export interface ProcessActor { id: string; name: string; kind: 'agent' | 'human'; agent_id: number | null; user_id: number | null }
 export interface ProcessAgentOption { id: number; label: string; has_avatar?: boolean }
 export interface ProcessDecisionModel { id: number; label: string; provider: string; decision: boolean }
 export interface BpmnNode {
   id: string; kind: NodeKind; title: string; config: Record<string, unknown>; x: number; y: number; body: BpmnGraph | null
-  inputs?: ProcessVariable[]; outputs?: ProcessVariable[]
+  inputs?: string[]; outputs?: string[]
 }
 export interface BpmnFlow { id: string; source: string; target: string; condition: string | null }
 export interface BpmnGraph {
   schema_version: 'galaris.bpmn/v1' | 'galaris.bpmn/v2'; nodes: BpmnNode[]; flows: BpmnFlow[]
-  inputs?: ProcessVariable[]; outputs?: ProcessVariable[]
+  variables?: ProcessVariable[]
   actors?: ProcessActor[]
   execution_agent_id?: number | null
 }
@@ -46,6 +47,7 @@ export interface RunActivity {
   task?: { last_error: string | null; pause_reasons: string[]; waits: { kind: string; question?: string }[] }
 }
 export interface RunObservation {
+  input_preparation?: { status: string; missing: string[]; names?: string[]; question: string; issues: Record<string, string> } | null
   phase: string; last_activity_at: string; activities: RunActivity[]; activities_truncated: boolean
   progress: { occurrences: number; completed: number; failed: number; ready: number; active: number; cancelled: number }
   blocker: { code: string; requires_reconciliation: boolean } | null
@@ -69,7 +71,7 @@ export interface NativeRunSummary { id: string; status: string; process_label: s
 export interface NativeChildren { items: NativeRunSummary[]; total: number; page: number; page_size: number }
 export interface ProcessHistory { items: { revision: number; created_at: string; author_agent_id: number | null }[]; total: number; has_more: boolean }
 
-export const emptyGraph = (): BpmnGraph => ({ schema_version: 'galaris.bpmn/v2', inputs: [], outputs: [],
+export const emptyGraph = (): BpmnGraph => ({ schema_version: 'galaris.bpmn/v2', variables: [],
   actors: [], execution_agent_id: null,
   nodes: ['start', 'end'].map(id => ({ id, kind: id as 'start' | 'end', title: '', config: {}, x: 0, y: 0, body: null })),
   flows: [{ id: 'start_end', source: 'start', target: 'end', condition: null }] })
@@ -77,6 +79,13 @@ export const emptyGraph = (): BpmnGraph => ({ schema_version: 'galaris.bpmn/v2',
 const base = '/processes/internal'
 const ownerOptionsCache = createOwnerOptionsCache<OwnerOption[]>()
 export const nativeProcessService = {
+  async contributeInputs(id: string, values: Record<string, unknown>, revision: number, start = false, signal?: AbortSignal): Promise<void> {
+    await api.patch(`${base}/runs/${id}/inputs`, { values, expected_revision: revision, start }, { signal })
+  },
+  async uploadInput(id: string, name: string, file: File, revision: number, signal?: AbortSignal): Promise<void> {
+    const form = new FormData(); form.append('upload', file)
+    await api.post(`${base}/runs/${id}/inputs/${encodeURIComponent(name)}/file`, form, { params: { expected_revision: revision }, signal })
+  },
   async decisionModels(signal: AbortSignal): Promise<ProcessDecisionModel[]> {
     return (await api.get(`${base}/decision-models`, { signal })).data
   },
@@ -130,6 +139,16 @@ export const nativeProcessService = {
   },
   async file(id: string, fileId: string, agentId?: number | null): Promise<Blob> {
     return (await api.get<Blob>(`${base}/runs/${id}/files/${fileId}`, { responseType: 'blob', params: { agent_id: agentId ?? undefined } })).data
+  },
+  async variableResource(id: string, name: string, agentId?: number | null, signal?: AbortSignal): Promise<{ uri: string; name: string; media_type: string; size_bytes: number }> {
+    const { data } = await api.get<{ uri: string; name: string; media_type: string; size: number | null }>(`${base}/runs/${id}/variables/resource`, { params: { name, agent_id: agentId ?? undefined }, signal })
+    return { uri: data.uri, name: data.name, media_type: data.media_type, size_bytes: data.size ?? 0 }
+  },
+  async variableContent(id: string, name: string, preview: boolean, agentId?: number | null, signal?: AbortSignal): Promise<Blob> {
+    return (await api.get<Blob>(`${base}/runs/${id}/variables/content`, { params: { name, preview, agent_id: agentId ?? undefined }, responseType: 'blob', signal })).data
+  },
+  async variableThumbnail(id: string, name: string, agentId?: number | null, signal?: AbortSignal): Promise<Blob> {
+    return (await api.get<Blob>(`${base}/runs/${id}/variables/thumbnail`, { params: { name, agent_id: agentId ?? undefined }, responseType: 'blob', signal })).data
   },
   async runs(code?: string, page = 1, pageSize = 50): Promise<NativeChildren> {
     return (await api.get(`${base}/runs`, { params: { code, page, page_size: pageSize } })).data

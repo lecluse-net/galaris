@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Never, cast
 from uuid import UUID
+from urllib.parse import unquote
 
 from core.util import complete_io
 
@@ -22,7 +23,11 @@ class ProcessRunProvider:
             raise ResourceUriError("Expected galaris://processes/runs/<uuid>[/data|/attachments/]")
         identity = UUID(uri.segments[2])
         suffix = "/".join(uri.segments[3:])
-        if suffix not in {"", "data", "attachments"} and not (len(uri.segments) == 5 and uri.segments[3] == "attachments"):
+        raw = uri.locator.split("/", 4)
+        provenance = len(raw) == 5 and raw[3] == "input-provenance"
+        if provenance:
+            suffix = "input-provenance/" + unquote(raw[4])
+        if suffix not in {"", "data", "attachments"} and not provenance and not (len(uri.segments) == 5 and uri.segments[3] == "attachments"):
             raise ResourceUriError("Invalid process resource")
         if uri.is_collection != (suffix == "attachments"):
             raise ResourceUriError("Only the run attachments path is a collection")
@@ -50,6 +55,11 @@ class ProcessRunProvider:
         if self._root(uri):
             return ResourceDescriptor(uri=str(uri), name="Runs", label_code="collection_runs", is_collection=True, capabilities=["info", "list"])
         identity, suffix = self._target(uri)
+        if suffix.startswith("input-provenance/"):
+            from app.process.facade import read_input_provenance
+            await read_input_provenance(identity, ctx.management_scope or ctx.agent_id, suffix.removeprefix("input-provenance/"), metadata_only=True)
+            return ResourceDescriptor(uri=str(uri), name="input-provenance.json", media_type="application/json",
+                capabilities=["info", "read"])
         if suffix == "attachments":
             payload = await self._data(ctx, uri)
             return ResourceDescriptor(uri=str(uri), name="attachments", label_code="collection_attachments", is_collection=True,
@@ -74,7 +84,11 @@ class ProcessRunProvider:
         revision: int | None = None
         media_type = "application/json"
         encoding = "utf-8"
-        if suffix.startswith("attachments/"):
+        if suffix.startswith("input-provenance/"):
+            from app.process.facade import read_input_provenance
+            payload = await read_input_provenance(identity, ctx.management_scope or ctx.agent_id, suffix.removeprefix("input-provenance/"))
+            canonical, content = str(uri), json.dumps(payload, ensure_ascii=False, indent=2)
+        elif suffix.startswith("attachments/"):
             from app.process import run_file_path
             metadata, path = await run_file_path(identity, UUID(uri.segments[4]), ctx.agent_id)
             if metadata["size"] > 1_048_576:

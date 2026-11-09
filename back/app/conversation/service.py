@@ -864,6 +864,9 @@ async def build_turn(
         force_response=round_.response_only,
     )
 
+    from .process_inputs import pending_process_preparations
+    turn = replace(turn, pending_interactions=(*turn.pending_interactions, *await pending_process_preparations(turn)))
+
     async def admit_explicit_task(
         objective: str,
         *,
@@ -1914,19 +1917,38 @@ async def deliver_process_notification(link_id: UUID) -> None:
         or run.launch_snapshot.get("workflow_id")
         or run.id
     )
+    from .process_outputs import process_outputs, present_process_outputs
+
+    graph = run.launch_snapshot.get("definition", {}).get("graph", {})
+    rows = process_outputs(
+        run.output,
+        typed=run.engine_code == "galaris" and graph.get("schema_version") == "galaris.bpmn/v2",
+    ) if run.status == "success" else ()
+    agent_id, language = run.launcher_agent_id, round_.language
     text = _process_notification_text(
         language=round_.language,
         label=label,
         status=run.status,
-        result=run.engine_metadata.get("native", {}).get("summary") or run.output or {},
+        result=run.engine_metadata.get("native", {}).get("summary") or "",
         error=str(run.error_message or "")[:2_000],
     )
     await get_db().commit()
     try:
         from app.messenger import get_messenger
+        from app.file_share import ResourceContext
 
         messenger = await get_messenger(connection_id)
-        sent = await messenger.send_to_room(room_id, text)
+        output_text, attachments = await present_process_outputs(
+            rows, context=ResourceContext(agent_id=agent_id, runtime="internal", language=language),
+            messenger=messenger, room_id=room_id,
+        )
+        if output_text:
+            text = f"{text}\n\n{output_text}"
+        await get_db().commit()
+        if attachments:
+            sent = await messenger.send_to_room(room_id, text, journal_metadata={"resource_uris": attachments})
+        else:
+            sent = await messenger.send_to_room(room_id, text)
     except Exception as exc:
         await get_db().rollback()
         current = await get_db().scalar(

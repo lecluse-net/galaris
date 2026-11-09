@@ -15,6 +15,55 @@ from app.process.run_data import integrate_workflow_values, create_workflow_atta
 from app.process.tests.test_native_bpmn import committed_native, native, typed_graph
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["File", "Document"])
+async def test_variable_resource_preview_uses_the_run_grant_and_only_declared_resource_values(db, native, monkeypatch, kind):
+    from io import BytesIO
+    from pathlib import Path
+    from unittest.mock import AsyncMock
+    from PIL import Image
+    from app.file_share import ResourceContext, resource_create
+    from app.process.bpmn import Flow, Node, Workflow
+    from app.process.values import Variable
+    from app.process.run_resources import run_variable_resource
+    from app.process import native_router
+
+    owner, reader = native
+    image = BytesIO(); Image.new("RGB", (10, 10), "white").save(image, format="PNG")
+    original = image.getvalue() if kind == "File" else b'{"synthetic": true}'
+    name = "Synthetic portrait.png" if kind == "File" else "Synthetic values.json"
+    file = await resource_create(ResourceContext(agent_id=owner.id, runtime="internal"), "file://" if kind == "File" else "data://", original, name=name)
+    graph = Workflow(schema_version="galaris.bpmn/v2", variables=[Variable(name="portrait", type=kind, nullable=False), Variable(name="age", type="int", nullable=False)],
+        nodes=[Node(id="start", kind="start", inputs=["portrait", "age"]), Node(id="end", kind="end")],
+        flows=[Flow(id="done", source="start", target="end")])
+    definition = await create(actor_agent_id=owner.id, title="Synthetic resource variables", graph=graph)
+    launch = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
+        input_data={"portrait": {"type": kind, "value": file.uri}, "age": {"type": "int", "value": 42}})
+    await process_service.process_start_jobs(engine_code="galaris")
+    with pytest.raises(PermissionError):
+        await run_variable_resource(launch.run_id, "portrait", reader.id)
+    await set_grant(definition.share_id, "agent", reader.id, False)
+    await db.commit()
+    assert await run_variable_resource(launch.run_id, "portrait", reader.id) == (owner.id, file.uri)
+    with pytest.raises(LookupError):
+        await run_variable_resource(launch.run_id, "age", reader.id)
+    with pytest.raises(LookupError):
+        await run_variable_resource(launch.run_id, "invented", reader.id)
+    monkeypatch.setattr(native_router, "_preview_actor", AsyncMock(return_value=reader.id))
+    descriptor = await native_router.native_variable_resource(launch.run_id, name="portrait")
+    assert descriptor["name"] == name and descriptor["media_type"] == ("image/png" if kind == "File" else "application/json")
+    response = await native_router.native_variable_content(launch.run_id, name="portrait", preview=False)
+    assert Path(response.path).read_bytes() == original
+    assert response.background is not None
+    await response.background()
+    await set_grant(definition.share_id, "agent", reader.id, None)
+    await db.commit()
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as denied:
+        await native_router.native_variable_resource(launch.run_id, name="portrait")
+    assert denied.value.status_code == 403
+
+
 async def start_run(session, owner):
     definition = await create(actor_agent_id=owner.id, title="Synthetic run data", graph=typed_graph())
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
@@ -97,14 +146,14 @@ async def test_failed_integration_commit_rolls_back_business_data_and_run_receip
     try:
         with pytest.raises(SQLAlchemyError, match="Synthetic"):
             await integrate_workflow_values(run_id, command="once", baseline={},
-                changes={"approved": {"type": "bool", "value": True}}, files=[])
+                changes={"reviewer": {"type": "User", "value": 101}}, files=[])
     finally:
         event.remove(session.sync_session, "before_commit", fail_commit)
         await session.rollback()
     current_run = await session.get(ProcessRun, run_id)
     assert (current_run.data, current_run.data_revision, current_run.execution_state) == before
     result = await integrate_workflow_values(run_id, command="once", baseline={},
-        changes={"approved": {"type": "bool", "value": True}}, files=[])
+        changes={"reviewer": {"type": "User", "value": 101}}, files=[])
     assert result["revision"] == before[1] + 1
 
 
@@ -146,7 +195,7 @@ async def test_input_copy_and_receipt_commit_together_and_replay_without_source(
 async def test_late_integration_reuses_receipt_but_cannot_change_terminal_run(db, native):
     from app.process.run_data import RunDataConflictError
     run = await start_run(db, native[0])
-    changes = {"approved": {"type": "bool", "value": True}}
+    changes = {"reviewer": {"type": "User", "value": 101}}
     result = await integrate_workflow_values(run.id, command="once", baseline={}, changes=changes, files=[])
     run.status = "cancelled"
     await db.commit()

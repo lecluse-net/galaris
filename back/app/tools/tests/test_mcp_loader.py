@@ -256,13 +256,16 @@ async def test_parallel_native_tools_receive_distinct_database_sessions(
 
 
 @pytest.mark.asyncio
-async def test_recoverable_native_tool_error_keeps_its_actionable_message(monkeypatch: pytest.MonkeyPatch) -> None:
-    from fastmcp.exceptions import ToolError
-
+@pytest.mark.parametrize("before_launch", [False, True])
+async def test_recoverable_native_tool_error_keeps_its_actionable_message(monkeypatch: pytest.MonkeyPatch, before_launch) -> None:
     from app.tools import mcp_loader, tool_errors
+    from app.tools.contracts import ToolExecutionContext, tool_execution
+    from app.conversation.process_admission import ProcessLaunchRejected
+
+    error = ProcessLaunchRejected if before_launch else tool_errors.RecoverableToolError
 
     async def native(_ctx: object) -> str:
-        raise tool_errors.RecoverableToolError(
+        raise error(
             "No recent room was found for Alice; ask her to send a message first."
         )
 
@@ -274,13 +277,18 @@ async def test_recoverable_native_tool_error_keeps_its_actionable_message(monkey
         function=native,
     )
     monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
+    monkeypatch.setattr("core.failure_journal.record_failure_event", AsyncMock())
     wrapper = mcp_loader._wrap_tool(  # pyright: ignore[reportPrivateUsage]
         definition,
         mcp_loader.McpToolContext(agent_id=7, runtime="internal"),
     )
 
-    with pytest.raises(ToolError, match="No recent room was found for Alice"):
-        await wrapper()
+    execution = ToolExecutionContext(uuid4(), definition.name)
+    with tool_execution(execution):
+        result = await wrapper()
+    assert result.is_error
+    assert any("No recent room was found for Alice" in part.text for part in result.content)
+    assert execution.outcome == ("rejected" if before_launch else "unknown")
 
 
 def test_mcp_loader_discovers_decorated_tools_by_tool_code() -> None:
@@ -311,6 +319,7 @@ def test_mcp_loader_discovers_decorated_tools_by_tool_code() -> None:
         "file_search",
         "file_read",
         "file_create",
+        "file_to_pdf",
         "file_write",
         "file_append",
         "file_edit",
@@ -353,7 +362,7 @@ def test_mcp_loader_discovers_decorated_tools_by_tool_code() -> None:
         "document_append",
     }.isdisjoint(names["memory"])
     assert all(name.startswith("messenger_") for name in names["messenger"])
-    assert {"image_generate", "image_read"} <= set(names["image"])
+    assert {"image_generate", "image_read", "image_from_pdf"} <= set(names["image"])
     assert names["audio"] == ("audio_transcribe",)
     assert {
         "goal_create",

@@ -23,7 +23,10 @@ function setup() {
   const shared = loadTypescript(new URL('./ownerCache.ts', import.meta.url), {
     '@/core/util/facade': { ...helpers, ...resources },
   })
-  const dependencies = { axios: { isAxiosError }, '@/core/api': apiModule, '@/app/share/facade': shared,
+  const valueContracts = loadTypescript(new URL('../dataset/contracts.ts', import.meta.url), {
+    './types': loadTypescript(new URL('../dataset/types.ts', import.meta.url), {}),
+  })
+  const dependencies = { axios: { isAxiosError }, '@/core/api': apiModule, '@/app/share/facade': shared, '@/app/dataset/contracts': valueContracts,
     '@/core/util/facade': { thumbnailReady: () => assert.fail('An owner catalogue must not load thumbnails') } }
   const documents = loadTypescript(new URL('../document/services/documentService.ts', import.meta.url), dependencies).documentService
   const process = loadTypescript(new URL('../process/services/nativeProcessService.ts', import.meta.url), dependencies).nativeProcessService

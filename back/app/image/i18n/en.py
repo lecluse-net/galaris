@@ -11,6 +11,7 @@ default: dict[str, object] = {
         ),
         "generation_unavailable": "The image could not be generated or saved.",
         "description_failed": "Image description failed: ${error}",
+        "pdf_conversion_failed": "The PDF page could not be converted or the image could not be saved. No image URI is available.",
         "default_description": (
             "Describe this image in detail, including its content, visible text, and notable elements."
         ),

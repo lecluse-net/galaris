@@ -67,12 +67,21 @@
         <q-chip v-if="metrics?.partial" icon="info">{{ t('nativeProcesses.partial') }}</q-chip>
         <q-chip v-if="metrics?.inclusive.estimated_calls" icon="info">{{ t('nativeProcesses.estimated', { count: metrics.inclusive.estimated_calls }) }}</q-chip>
       </div>
-      <CodeEditor :model-value="JSON.stringify(run.data ?? {}, null, 2)" language="json" readonly :label="t('nativeProcesses.runData')" />
-      <section :aria-label="t('nativeProcesses.runFiles')">
-        <div class="text-subtitle2 text-weight-bold q-mb-sm">{{ t('nativeProcesses.runFiles') }}</div>
-        <ResourceAttachments :key="runId" :resource-id="runId" :attachments="attachments"
-          :resource-source="attachmentSource" :show-heading="false" :editable="false" :empty-label="t('documents.noAttachments')" />
-      </section>
+      <q-banner v-if="run.operational?.input_preparation" icon="hourglass_empty">
+        <div>{{ t('nativeProcesses.inputWaiting') }}</div>
+        <div>{{ run.operational.input_preparation.question }}</div>
+        <div v-if="run.operational.input_preparation.missing.length">{{ run.operational.input_preparation.missing.join(' · ') }}</div>
+        <div v-for="(issue, name) in run.operational.input_preparation.issues" :key="name">
+          {{ t('nativeProcesses.inputs.issue', { name, error: issue }) }}
+        </div>
+        <q-btn v-if="canControl && run.operational.input_preparation.status === 'ready'" color="primary" :loading="mutating"
+          :label="t('nativeProcesses.inputs.start')" @click="startPrepared" />
+      </q-banner>
+      <ProcessRunVariables :key="runId" :class="{ 'q-px-md q-pb-md': summaryInHeader }" :run-id="runId" :agent-id="agentId" :variables="run.graph?.variables ?? []" :data="run.data"
+        :editable-names="canControl && run.operational?.input_preparation ? run.graph?.nodes.find(node => node.kind === 'start')?.inputs ?? [] : []"
+        @edit="editingInput = $event" />
+      <ProcessInputEditor v-if="editingVariable" :key="`${runId}:${editingVariable.name}`" :run-id="runId" :variable="editingVariable"
+        :value="run.data[editingVariable.name]" :revision="run.data_revision" @close="editingInput = null" @saved="inputSaved" />
       <q-banner v-if="run.error || run.error_code" role="alert"><strong v-if="run.error_code">{{ run.error_code }}</strong><div v-if="run.error">{{ run.error }}</div></q-banner>
       <q-expansion-item v-if="!summaryInHeader" :label="t('nativeProcesses.children')" icon="account_tree" @show="loadChildren">
         <q-list bordered><q-item v-for="child in childPage?.items" :key="child.id" clickable :to="child.engine_code === 'galaris' ? `/process/internal/run/${child.id}` : undefined">
@@ -96,10 +105,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTem
 import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import { copyToClipboard, useQuasar, type QTableColumn } from 'quasar'
-import { CodeEditor, ResourceAttachments, showConfirmationDialog } from '@/core/util'
+import { showConfirmationDialog } from '@/core/util'
 import { usePrivilegeStore } from '@/core/authorize'
 import { websocket } from '@/core/websocket'
 import BpmnCanvas from './BpmnCanvas.vue'
+import ProcessRunVariables from './ProcessRunVariables.vue'
+import ProcessInputEditor from './ProcessInputEditor.vue'
 import NativeActivityDetails from './NativeActivityDetails.vue'
 import ProcessRunReference from './ProcessRunReference.vue'
 import { nativeProcessService as service, type NativeRun, type NativeMetrics, type NativeChildren, type NodeOccurrence, type NodeExecutionDetail, type NodeOccurrencePage, type RunActivity } from '../services/nativeProcessService'
@@ -110,27 +121,6 @@ const $q = useQuasar()
 const runUrl = computed(() => service.runUrl(props.runId))
 const privileges = usePrivilegeStore()
 const run = shallowRef<NativeRun | null>(null), metrics = ref<NativeMetrics | null>(null), childPage = ref<NativeChildren | null>(null)
-const attachments = computed(() => (run.value?.files ?? []).map(file => ({
-  id: file.uri, uri: file.uri, name: file.filename || file.uri,
-  media_type: file.content_type || 'application/octet-stream', size_bytes: file.size ?? 0,
-})))
-const attachmentSource = computed(() => {
-  const id = props.runId, prefix = run.value?.attachments_uri
-  return {
-    content: (attachment: { id: string }) => {
-      if (!prefix || !attachment.id.startsWith(prefix)) return Promise.reject(new Error(t('documents.attachmentError')))
-      return service.file(id, attachment.id.slice(prefix.length), props.agentId)
-    },
-    canRename: (attachment: { id: string }) => Boolean(prefix && attachment.id.startsWith(prefix)),
-    rename: canControl.value ? async (attachment: typeof attachments.value[number], name: string) => {
-      if (!prefix || !attachment.id.startsWith(prefix)) throw new Error(t('fileRename.error'))
-      const agent = props.agentId
-      await service.renameFile(id, attachment.id.slice(prefix.length), name, agent)
-      if (id === props.runId && agent === props.agentId) await refresh()
-      return { ...attachment, name }
-    } : undefined,
-  }
-})
 const loading = ref(false), mutating = ref(false), error = ref(''), selectedNode = ref<string | null>(null), selectedOccurrence = ref<string | null>(null)
 const metricsError = ref('')
 const nodeDetail = shallowRef<NodeExecutionDetail | null>(null), childNumber = ref(1)
@@ -144,6 +134,18 @@ let eventTimer: ReturnType<typeof setTimeout> | undefined, refreshPending = fals
 let metricsLoading = false, metricsPending = false
 const pendingCommands = new Map<string, { key: string; revision: number }>()
 const canControl = computed(() => Boolean(run.value?.can_control) && (privileges.hasPrivilege('PROCESS_LAUNCH') || privileges.hasPrivilege('PROCESS_ADMIN')))
+const editingInput = ref<string | null>(null)
+const editingVariable = computed(() => canControl.value && run.value?.operational?.input_preparation
+  ? run.value.graph?.variables?.find(variable => variable.name === editingInput.value) : undefined)
+async function inputSaved(): Promise<void> { editingInput.value = null; await refresh() }
+async function startPrepared(): Promise<void> {
+  if (!run.value || mutating.value) return
+  const token = generation, id = props.runId, revision = run.value.data_revision
+  mutating.value = true
+  try { await service.contributeInputs(id, {}, revision, true); if (token === generation) await refresh() }
+  catch (cause) { if (token === generation) error.value = message(cause) }
+  finally { if (token === generation) mutating.value = false }
+}
 const terminal = computed(() => ['success', 'error', 'cancelled'].includes(run.value?.status ?? ''))
 const statuses = computed(() => Object.fromEntries(Object.entries(run.value?.node_statuses ?? {}).map(([key, value]) => [key, value === 'ready' ? 'queued' : value])))
 const displayGraph = computed(() => { let graph = run.value?.graph; for (const key of bodyPath.value) { const body = graph?.nodes.find(node => node.id === key)?.body; if (!body) break; graph = body }; return graph })

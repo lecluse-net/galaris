@@ -8,6 +8,7 @@ ImageDimension = Annotated[
     int,
     Field(strict=True, ge=1, description="Preferred output dimension in pixels; native size is chosen best effort. Supply both width and height."),
 ]
+PdfPageNumber = Annotated[int, Field(strict=True, ge=1, description="Physical PDF page number, starting at 1.")]
 
 
 class ImageGenerationOptions(BaseModel):

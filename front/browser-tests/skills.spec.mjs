@@ -6,6 +6,37 @@ async function skillFixtures(page) {
   await jsonRoute(page, '**/api/skills/categories', [])
 }
 
+test('skill import explains validation and HTTP failures and preserves the file for retry', async ({ page }, testInfo) => {
+  await skillFixtures(page)
+  let attempts = 0
+  await page.route('**/api/skills/import', route => {
+    attempts++
+    expect(route.request().headers()['content-type']).toContain('multipart/form-data; boundary=')
+    expect(route.request().postDataBuffer().toString()).toContain('synthetic-guide.md')
+    if (attempts === 1) return route.fulfill({ status: 422, json: { detail: 'Invalid YAML frontmatter: mapping values are not allowed here, line 3' } })
+    if (attempts === 2) return route.fulfill({ status: 503, body: 'Service unavailable' })
+    return route.fulfill({ json: { created: true, skill: { id: 2, code: 'synthetic-guide', label: 'Synthetic imported guide', revision: 1, enabled: true, available: true, valid: true } } })
+  })
+  await mount(page, 'app/skill/pages/index.vue', { privileges: ['SKILL_EDIT', 'AGENT_MANAGE_ALL'] })
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.locator('input[type=file]').setInputFiles({
+    name: 'synthetic-guide.md', mimeType: 'text/markdown',
+    buffer: Buffer.from('---\nname: synthetic-guide\ndescription: Invalid description: example\n---\n# Synthetic guide\n'),
+  })
+  await dialog.getByRole('button', { name: 'Import', exact: true }).click()
+  await expect(page.locator('.q-notification')).toContainText('Invalid YAML frontmatter')
+  await expect(dialog).toContainText('synthetic-guide.md')
+  await dialog.getByRole('button', { name: 'Import', exact: true }).click()
+  await expect(page.locator('.q-notification').filter({ hasText: 'HTTP 503' })).toContainText('POST /api/skills/import')
+  await expect(dialog).toContainText('synthetic-guide.md')
+  await page.screenshot({ path: testInfo.outputPath('import-diagnostic.png') })
+  await dialog.getByRole('button', { name: 'Import', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByText('Synthetic imported guide', { exact: true })).toBeVisible()
+  expect(attempts).toBe(3)
+})
+
 test('making a library skill personal chooses one owner and retains the operation on retry', async ({ page }) => {
   await skillFixtures(page)
   await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic owner', has_avatar: false }])

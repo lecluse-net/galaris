@@ -88,6 +88,8 @@ async def test_process_start_forwards_calling_agent_and_task_context(
         idempotency_key=None,
         task_id=task_id,
         runtime="hermes",
+        external_input=True,
+        typed_input=False,
     )
 
 

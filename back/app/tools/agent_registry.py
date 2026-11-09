@@ -249,6 +249,8 @@ _TOOL_CONTEXT_TEMPLATE = """
 file_schemes, file_list, file_info, file_search, file_read, file_create, file_write,
 file_append, file_edit, file_copy, file_move, file_rename and file_delete operate on canonical resource URIs.
 file_rename changes Document and Dataset titles while preserving their canonical URI and body.
+Use file_to_pdf(source='<canonical URI>', destination='file://') to export supported images, Office/OpenDocument,
+HTML, Markdown or text as PDF without a model. Use the returned URI when a Process expects application/pdf.
 Text reads are bounded; use next_offset to continue. file_create creates a new URI and file_write
 replaces an existing complete UTF-8 or base64-encoded resource, while file_copy streams bytes across providers,
 including the advertised local scheme, document:// and connected Tool-code schemes.
@@ -259,6 +261,7 @@ After a successful write, append or edit only the changed content when practical
 
 ## Images
 
+- When a supplied PDF must satisfy an image file requirement, use image_from_pdf(file='<PDF URI>', destination='file://', page=1). It renders a faithful PNG without a generation model. Select the relevant physical page and use the returned URI for the Process input or human reply. Do not ask for another upload when this conversion can supply the required format.
 - Generate or edit an image: image_generate(prompt=..., attachments=['<canonical resource URI>', ...], destination='<writable resource URI>').
 - Analyze an image: image_read(file='<canonical resource URI>', prompt=...).
 - Pass received images from Nextcloud, Messenger, HTTPS, console:// or any other file_schemes provider directly. The image tool creates and removes a bounded temporary copy transparently.

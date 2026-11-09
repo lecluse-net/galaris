@@ -73,7 +73,7 @@ async def observe_run(run: ProcessRun, *, can_control: bool, visible_children: s
     last_node_time = await db.scalar(select(func.max(func.coalesce(ProcessNodeRun.finished_at, ProcessNodeRun.started_at)))
         .where(ProcessNodeRun.run_id == run.id))
     last_event = (await db.execute(select(ProcessRunEvent.created_at, ProcessRunEvent.event_type)
-        .where(ProcessRunEvent.run_id == run.id).order_by(ProcessRunEvent.id.desc()).limit(1))).first()
+        .where(ProcessRunEvent.run_id == run.id, ProcessRunEvent.event_type != "run.inputs.provenance").order_by(ProcessRunEvent.id.desc()).limit(1))).first()
     last_activity = max(value for value in (run.created_at, run.started_at, run.finished_at, last_node_time,
         last_event.created_at if last_event else None) if value is not None)
     for task in task_states.values():
@@ -96,6 +96,10 @@ async def observe_run(run: ProcessRun, *, can_control: bool, visible_children: s
         actions = ["cancel"] if stopping else ["cancel", "pause"]
         if not stopping and state.get("paused") and not uncertain:
             actions = ["resume", "step", "cancel"]
+    from .input_preparation import waiting_for_inputs
+    preparation = run.engine_metadata.get("input_preparation") if waiting_for_inputs(run) else None
+    if preparation:
+        actions = ["cancel"] if can_control else []
     startup = await db.scalar(select(ProcessStartJob).where(ProcessStartJob.run_id == run.id)) if run.status == "queued" else None
     return {"phase": phase, "observed_at": observed_at.isoformat(), "last_activity_at": last_activity.isoformat(),
         "last_event": {"at": last_event.created_at.isoformat(), "type": last_event.event_type} if last_event else None,
@@ -105,7 +109,9 @@ async def observe_run(run: ProcessRun, *, can_control: bool, visible_children: s
             "active": counts.get("waiting", 0) if run.status not in TERMINAL_STATUSES else 0,
             "cancelled": counts.get("cancelled", 0), "by_status": counts},
         "activities": signals, "activities_truncated": run.status not in TERMINAL_STATUSES and sum(counts.get(key, 0) for key in ("ready", "waiting")) > len(active),
-        "blocker": {"code": "effect_outcome_unknown", "requires_reconciliation": True} if uncertain else None,
+        "blocker": ({"code": "process_inputs", "requires_reconciliation": False, **preparation} if preparation else
+            {"code": "effect_outcome_unknown", "requires_reconciliation": True} if uncertain else None),
+        "input_preparation": preparation,
         "startup": {"status": startup.status, "attempts": startup.attempts, "available_at": startup.available_at.isoformat()} if startup else None,
         "available_actions": actions,
         "pause_policy": "finish_admitted_activities_then_wait"}

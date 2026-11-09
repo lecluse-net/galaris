@@ -30,6 +30,7 @@ class ProcessHumanRequest:
     files: list[dict[str, Any]]
     decision: bool = False
     question_id: UUID | None = None
+    partial: bool = False
 
 
 class ProcessHumanMessenger(Protocol):

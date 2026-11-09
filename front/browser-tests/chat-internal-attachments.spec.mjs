@@ -3,6 +3,36 @@ import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 const uri = 'file://00000000-0000-4000-8000-000000000001'
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
 
+for (const width of [1440, 390]) test(`process reply presents named values and attached file and document at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  const documentUri = 'document://00000000-0000-4000-8000-000000000002'
+  await jsonRoute(page, '**/api/chat/rooms/room-a/speech/status*', { available_agent_ids: [] })
+  await jsonRoute(page, '**/api/chat/rooms/room-a/messages/process-result/previews', [
+    { uri, kind: 'file', title: 'Process chart.png', media_type: 'image/png', content_format: 'none',
+      image_available: false, download_available: true, open_mode: 'inline', metadata: {} },
+    { uri: documentUri, kind: 'document', title: 'Process report', media_type: 'text/html',
+      content_format: 'html', image_available: false, download_available: false, open_mode: 'dialog', metadata: {} },
+  ])
+  await page.route('**/api/chat/rooms/room-a/messages/process-result/previews/content?*', route => {
+    expect(new URL(route.request().url()).searchParams.get('uri')).toBe(uri)
+    return route.fulfill({ contentType: 'image/png', body: png })
+  })
+  await mount(page, 'app/chat/components/MessageTimeline.vue', { props: {
+    roomId: 'room-a', agentId: 7, agentName: 'Synthetic agent', activity: [], liveRound: null,
+    messages: [{ id: 'process-result', external_id: 'process-result', room_id: 'room-a', direction: 'outbound',
+      text: 'Synthetic report — completed.\n\nReport ready.\n\ncount : 0\nstatus : No discrepancy\nvalid : false\nchart : Process chart.png\nreport : Process report',
+      resource_uris: [uri, documentUri], files: [], sender: null, status: 'sent', is_mine: false, created_at: '2026-10-01T12:00:00Z' }],
+  } })
+  await expect(page.getByText(/count : 0/)).toBeVisible()
+  await expect(page.getByText(/status : No discrepancy/)).toBeVisible()
+  await expect(page.getByText(/valid : false/)).toBeVisible()
+  const image = page.getByRole('img', { name: 'Process chart.png', exact: true })
+  await expect(image).toBeVisible()
+  await expect(image).toHaveJSProperty('naturalWidth', 1)
+  await expect(page.getByText('Process report', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('process-result.png') })
+})
+
 for (const width of [1440, 390]) test(`conversation internal files stay outside text and survive send failure at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })

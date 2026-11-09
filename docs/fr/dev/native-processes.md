@@ -31,29 +31,146 @@ Les nouvelles définitions de l'éditeur utilisent `galaris.bpmn/v2`. Les profil
 dans les snapshots : enregistrer ou convertir une définition ne modifie pas un run admis.
 La conversion d'une définition v1 est explicite et initialise des listes à configurer.
 
-Le graphe et chaque activité (`task`, `human_task`, `tool_call`, `rest`, `code`, `program`,
-`call`) déclarent `inputs` et `outputs`, éventuellement vides. Chaque variable contient
+Le graphe racine déclare un registre unique `variables`. Les activités et les corps
+FOR/WHILE utilisent ce registre et ne déclarent aucune variable locale. Chaque variable contient
 `name`, `type`, `nullable` et un `default` typé facultatif. Noms dupliqués, défauts mal typés
 et défauts nuls notnull sont refusés à la sauvegarde. Les valeurs suivent l'enveloppe
-`{"type":"int","value":7}` ; types : int, float, string, bool, Agent, File, User, Document,
-array et object. Les conteneurs sont récursifs et chaque élément reste typé.
-Tous les types représentent `null`. Une omission utilise d'abord le défaut, sinon un null
-typé si nullable, sinon produit une erreur. Un null explicite n'utilise jamais le défaut.
+`{"type":"int","value":7}`. Le codec commun prend en charge les scalaires, `array`, `object`
+et les références métier. `Agent`, `User`, `Team`, `Tool`, `Connection`, `Model` et `Skill`
+portent un identifiant entier positif ; `Topic`, `Conversation` et `VoiceSession` un UUID.
+`Task`, `Goal`, `GoalCycle`, `Contact`, `ConversationRound`, `VoiceConversation` et `CodeWorkspace`
+emploient leurs URI `galaris://` existantes (`task`, `goal`, `goal_cycle`, `contact`, `text`, `voice`, `code`).
+`Process` utilise `galaris://process/<code>`, `ProcessRun` utilise
+`galaris://processes/runs/<uuid>` et `Memory` utilise `memory://<uuid>`.
+Les conteneurs sont récursifs et chaque élément reste typé. Le sélecteur humain masque
+les types techniques demandés ; cette présentation ne change pas le format des références.
+
+`date` contient une date civile valide sous forme de chaîne `AAAA-MM-JJ`, sans heure ni fuseau
+(par exemple `{"type":"date","value":"2000-02-29"}` pour une naissance). `datetime` contient
+une chaîne `AAAA-MM-JJTHH:mm:ss` avec un suffixe `Z` ou un décalage `±HH:mm` obligatoire ;
+les fractions de seconde sont facultatives (1 à 6 chiffres). Les valeurs conservent leur fuseau
+et leur représentation, sans conversion implicite. Les dates impossibles et les heures sans
+fuseau sont refusées aux mêmes frontières que les autres valeurs typées, y compris les réponses humaines.
+
+Chaque déclaration peut ajouter `label` (200 caractères) et `description` (4 000 caractères)
+en texte brut. Ces métadonnées expliquent le sens métier au contrôleur et apparaissent sur
+les cartes du run ; `name` reste la clé technique stable. Elles ne modifient pas le codec des valeurs.
+
+Les listes `inputs` et `outputs` des nœuds autorisés référencent des noms de ce registre,
+jamais des déclarations. Début et IF n'ont aucune sortie variable ; Fin n'a aucune entrée variable.
+Les entrées du processus sont exactement les `inputs` du Début racine, sans liste indépendante
+sur le graphe. Les sorties sont déduites des sélections des nœuds Fin racines, sans liste
+indépendante. Le run retourne seulement les sorties des Fin effectivement atteintes.
+Une liste vide ne transmet aucune variable. Les références inconnues
+ou dupliquées sont refusées à la sauvegarde, y compris dans les corps de boucle. Le lancement
+accepte uniquement les entrées sélectionnées du processus ; sa sortie expose uniquement ses
+sorties sélectionnées et renseignées. Les autres valeurs restent visibles dans les données du run.
+Chaque activité reçoit ses entrées sélectionnées et peut modifier uniquement ses sorties
+sélectionnées, y compris après post-traitement. Les mappages adaptent les paramètres externes
+sans créer de variable locale. Le résultat `decision` d'un IF reste exclusivement technique ;
+il ne modifie aucune variable métier, même une variable du registre portant ce nom.
+Les sélections du processus et de ses étapes sont figées dans le snapshot de lancement.
+
+Une déclaration `Document` accepte `document://<uuid>` ou `data://<uuid>` et peut préciser
+`document_type: "text" | "data"`. Une déclaration `File` peut préciser `mime_type`, exact
+ou par famille (`image/*`). Les contraintes ne conviennent qu'à leur type respectif.
+La validation syntaxique et des défauts intervient à la sauvegarde. Au lancement et avant
+les écritures, Process vérifie les métadonnées via File Sharing avec l'identité de l'exécutant,
+sans télécharger le contenu. Les références ordinaires ne donnent jamais de droits supplémentaires.
+Les défauts s'appliquent une seule fois au lancement. Toutes les entrées sélectionnées par
+le Début racine doivent être fournies ou avoir un défaut déclaré, même si elles sont nullables.
+Le serveur refuse un lancement incomplet avant de créer un run. Les autres variables sans
+valeur restent absentes et pourront être renseignées par une activité. Un null explicite
+exige `nullable` et n'utilise jamais le défaut. Une mise à jour omise conserve la valeur courante.
 False, zéro et vides sont conservés ; les entiers restent dans la plage exacte ±(2^53−1).
 Le codec borne taille/profondeur et refuse les clés JSON dupliquées et les conversions implicites.
+
+En conversation, `conversation_process_prepare` conserve un dossier par processus et participant,
+avec un run `waiting` dès que le lancement est demandé, sans activité ni job de démarrage.
+Le contrat est figé sur ce run ; la collecte complète puis autorisée démarre ce même identifiant.
+L'état opérationnel et les travaux en cours de l'agent indiquent les entrées encore attendues.
+Une inférence structurée extrait les réponses et pièces jointes,
+réutilise les valeurs acquises et propose les recherches puis les questions manquantes.
+Le contrôleur recherche dans Memory et les fichiers autorisés et convertit les formats si nécessaire.
+Un null ne remplace pas une information inconnue : hors défaut explicite, l'absence doit être
+confirmée par les mots du participant. Annulation et changement de sujet ne lancent rien.
+Le dossier complet rejoint l'autorisation de lancement existante ; les relances utilisent
+l'historique réel et comptent les occurrences dans le message courant seulement.
+Les entrées déjà complètes ou couvertes par défaut peuvent passer directement au lanceur.
+Pour un dossier prêt, omettre `input` au lancement réutilise les valeurs typées persistées,
+y compris les null imbriqués. Les validations de types et les relectures du même message ne
+demandent pas d'inférence supplémentaire ; seuls les cas d'intention ou de périmètre à
+réévaluer conservent le contrôle IA. Le service Process calcule lui-même les entrées manquantes
+et interdit d'initialiser les variables non sélectionnées par Début depuis cette collecte.
+
+Dans le run en attente, un utilisateur ayant le droit de lancement, le contrôle du processus
+et la gestion de son agent lanceur peut compléter chaque entrée sélectionnée directement.
+`PATCH /api/processes/internal/runs/{id}/inputs` reçoit `values`, `expected_revision` et
+`start` (faux par défaut). Le dépôt d'un fichier utilise
+`POST /api/processes/internal/runs/{id}/inputs/{name}/file` avec `upload` et la révision en query.
+Les types, MIME et droits des ressources sont validés sans IA ; les fichiers déposés appartiennent
+au run. L'enregistrement n'exécute rien. Une action Démarrer explicite libère ce même run complet ;
+son rejeu identique ne crée pas de second job. Une révision dépassée renvoie 409 sans écraser
+le brouillon. L'agent relit les contributions depuis le run ; une ancienne autorisation IA ne
+couvre jamais ces nouvelles valeurs. Ces entrées initiales sont distinctes des activités humaines
+en cours d'exécution, dont les réponses restent exclusivement dans Messenger.
+
+Pendant une collecte, `file_search` peut rejouer une recherche identique pendant 30 secondes
+dans le même message canonique. Les droits et versions des résultats sont revérifiés ;
+`refresh=true` force une nouvelle recherche après un changement connu. Un nouveau message
+invalide ce contexte. Les conversions PDF/image réutilisent un résultat seulement pour les mêmes
+octets source, nom, format, page et destination, avec contrôle vivant de la source et du résultat.
+File Sharing garde au plus 200 reçus par agent ; les conversions expirent après 30 jours.
+
+La provenance d'entrée est conservée séparément dans `ProcessRun.input_provenance` et son
+journal. Le champ est différé au niveau ORM ; les vues ordinaires des runs, leurs événements,
+les dossiers conversationnels et les prompts n'embarquent pas cet audit. Il contient des
+références/versions et des empreintes, sans copie des valeurs ou des documents, ni appel IA
+supplémentaire. Les métadonnées de fichiers déjà validées et les reçus de conversion sont réutilisés.
+Les propositions scalaires gardent leur origine agent/conversation ; aucune source Memory précise
+n'est inventée lorsque cette filiation n'est pas établie.
+
+`GET /api/processes/internal/runs/{id}/inputs/provenance?name=...` lit une seule variable.
+`history=true` ajoute une page d'historique (`page_size=50`, maximum 500 ; curseur `before`).
+L'agent peut aussi utiliser `file_read` sur
+`galaris://processes/runs/<uuid>/input-provenance/<nom-encodé>`, sans nouvel outil MCP.
+Les lectures exigent les droits du parent et le périmètre de l'agent lanceur. Les sources
+indisponibles ou révoquées sont masquées ; l'historique borne les vérifications à 16 références
+distinctes par réponse, avec deux secondes maximum par vérification. Les anciens runs ne
+reçoivent aucune provenance reconstituée arbitrairement.
+
+Les lancements MCP `process_start` et `conversation_process_start` acceptent des entrées JSON
+ordinaires, par exemple `input={"age": 27, "scan": "file://<uuid>"}`. Process les convertit
+selon les variables sélectionnées par Début, avant les défauts et les contrôles de fichiers.
+Les enveloppes historiques scalaires restent acceptées ; `typed_values: true` sélectionne
+explicitement le transport typé, y compris pour les objets. Sans cet indicateur, un objet
+contenant `type` et `value` reste un objet métier. L'autorisation conversationnelle fige aussi
+cet indicateur. Un refus avant création d'un run peut être suivi d'une demande explicite de
+réessai ; la reprise d'un run déjà créé n'autorise pas un nouveau lancement.
 
 Le moteur prépare et fige les entrées locales, contrôle les sorties avant intégration,
 puis écrit atomiquement le delta fonctionnel dans `process_runs.data`, les liens dans
 `process_run_files` et son reçu dans `process_runs.execution_state`.
 Les tâches IA remettent leurs résultats
 avec `process_activity_complete(output={...}, message="...")` : les valeurs JSON ordinaires
-sont converties et validées selon les sorties déclarées, indépendamment du texte final du driver.
-Une activité sans sortie peut terminer avec un message naturel. Les anciennes réponses JSON
+sont converties et validées selon les variables du processus, indépendamment du texte final du driver.
+Un objet vide n'apporte aucune modification. Les anciennes réponses JSON
 typées restent acceptées. Les humains répondent par la messagerie. Les écritures
 directes des données typées du run sont refusées. Un reçu d'intégration permet la reprise sans réexécution ;
 les changements disjoints sont préservés et les conflits d'une variable sont explicites.
 
-`process_activity_question` ouvre une demande au lanceur humain authentifié, dans la
+Les prompts IA portent un contrat JSON figé avec les noms, types, contraintes et valeurs
+typées des seules entrées sélectionnées, ainsi qu'un indicateur explicite pour les valeurs
+non initialisées. Les fichiers et documents gardent leurs URI canoniques, y compris dans
+les conteneurs ; les paramètres préparés sont ajoutés séparément si un mappage les transforme.
+Les sorties attendues indiquent leurs noms exacts, types, nullabilité, sous-type documentaire
+et MIME éventuels, sans présenter les défauts comme résultats à produire. Ce contrat est
+conservé dans le prompt de la tentative et dans l'objectif de la tâche agentique. Les IF en
+LLM simple réutilisent le même prompt préparé, avec seulement un résultat de contrôle booléen
+et aucune sortie métier. Sans outils, une URI reste une référence et ne vaut pas lecture du contenu.
+
+`process_activity_question(variables=["age"])` sélectionne des noms du registre du processus,
+sans créer de nouvelles déclarations, et ouvre une demande au lanceur humain authentifié, dans la
 conversation d'origine. L'attente appartient à l'activité ; aucune tâche auxiliaire n'est
 créée. La tâche IA existante est suspendue pour raison `input`, puis reprend avec la réponse.
 Le contexte de reprise associe explicitement la question et sa réponse typée. Une nouvelle
@@ -74,8 +191,8 @@ JSON ordinaire contenant `type` et `value` reste sinon un objet métier.
 La réponse et le reçu Messenger sont atomiques, y compris pour les doublons et les réponses
 arrivées avant la fin du tour IA. Une pause utilisateur reste prioritaire. Chaque
 question est corrélée et idempotente. L'activité termine après la reprise et la remise
-des résultats. Le contexte en lecture seule contient aussi les données du run, même sans
-entrées locales déclarées. Les couloirs d'acteurs inutilisés ne bloquent pas le lancement.
+des résultats. Le contexte en lecture seule contient aussi les données du run.
+Les couloirs d'acteurs inutilisés ne bloquent pas le lancement.
 Les anciennes tâches d'attente inertes sont retirées lors de l'observation du run ou de la
 réponse ; la question et sa référence restent conservées, sans nouvelle exécution.
 

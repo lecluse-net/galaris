@@ -114,3 +114,59 @@ async def test_invalid_internal_references_publish_nothing_and_store_no_upload(a
     assert not ctx["root"].exists() or not list(ctx["root"].rglob("*"))
     async with get_db_session() as db:
         assert await db.scalar(select(Message).where(Message.remote_message_id == identifier)) is None
+
+
+@pytest.mark.asyncio
+async def test_process_completion_attaches_real_resources_to_the_chat_reply(attachment_context):
+    from app.connection import Connection
+    from app.conversation.models import ConversationRound, ConversationProcessLink
+    from app.conversation.service import claim_next_process_notification, deliver_process_notification
+    from app.process import ProcessDefinition, ProcessRun
+
+    ctx = attachment_context
+    async with get_db_session() as db:
+        document = await resource_create(ResourceContext(ctx["agent_id"], "internal"),
+            "document://", "<p>Synthetic process report</p>".encode(), name="Process report")
+        connection = await db.get(Connection, ctx["connection_id"])
+        definition = ProcessDefinition(agent_id=ctx["agent_id"], tool_id=connection.tool_id,
+            engine_process_id=uuid4().hex, label="Synthetic report")
+        round_ = ConversationRound(room_id=ctx["room_id"], status="SUCCEEDED", delivery_state="DELIVERED", language="en")
+        db.add_all([definition, round_])
+        await db.flush()
+        run = ProcessRun(process_id=definition.id, launcher_agent_id=ctx["agent_id"],
+            engine_code="galaris", correlation_id=uuid4().hex, callback_token=uuid4().hex,
+            status="success", input={}, engine_metadata={"native": {"summary": "Report ready."}},
+            launch_snapshot={"process_label": definition.label, "definition": {"graph": {"schema_version": "galaris.bpmn/v2"}}},
+            output={"count": {"type": "int", "value": 0},
+                "file": {"type": "File", "value": ctx["uri"]},
+                "report": {"type": "Document", "value": document.uri},
+                "private": {"type": "File", "value": ctx["denied_uri"]}})
+        db.add(run)
+        await db.flush()
+        link = ConversationProcessLink(round_id=round_.id, process_run_id=run.id, action_key="completed")
+        db.add(link)
+        await db.commit()
+        assert await claim_next_process_notification() == link.id
+        await deliver_process_notification(link.id)
+        await db.refresh(link)
+        message_id = str(link.notification_message_id)
+        assert link.notification_state == "DELIVERED"
+        assert await claim_next_process_notification() is None
+
+    base = f'/api/chat/rooms/{ctx["room_id"]}/messages'
+    reopened = await ctx["client"].get(base, headers=ctx["headers"])
+    assert reopened.status_code == 200, reopened.text
+    message = next(item for item in reopened.json()["items"] if item["id"] == message_id)
+    assert message["resource_uris"] == [ctx["uri"], document.uri]
+    assert "Report ready." in message["text"] and "count : 0" in message["text"]
+    assert "private : Attachment unavailable" in message["text"]
+    previews = await ctx["client"].get(f"{base}/{message_id}/previews", headers=ctx["headers"])
+    assert previews.status_code == 200, previews.text
+    assert {item["uri"] for item in previews.json()} == {ctx["uri"], document.uri}
+    download = await ctx["client"].get(f"{base}/{message_id}/previews/content",
+        headers=ctx["headers"], params={"uri": ctx["uri"]})
+    assert download.status_code == 200, download.text
+    assert download.content == b"Synthetic internal attachment"
+    denied = await ctx["client"].get(f"{base}/{message_id}/previews/content",
+        headers=ctx["headers"], params={"uri": ctx["denied_uri"]})
+    assert denied.status_code == 404

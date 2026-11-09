@@ -63,7 +63,7 @@ class ProcessHumanMessenger:
             timeout_seconds=10 * 365 * 24 * 3600, language=language,
             metadata={"attempt_id": str(request.attempt_id), "run_id": str(request.run_id),
                 "assigned_user_id": request.user_id, "input": request.input,
-                "outputs": request.outputs, "files": request.files, "decision": request.decision,
+                "outputs": request.outputs, "files": request.files, "decision": request.decision, "partial": request.partial,
                 "question_id": str(request.question_id) if request.question_id is not None else None})
         key = f"process-human:{request.question_id or request.attempt_id}"
         origin = (await get_db().execute(select(Room, MessengerUser.external_id)
@@ -108,7 +108,7 @@ async def respond_to_process_activity(turn: ConversationTurn, reference: str,
     def normalize_response(choice: PendingChoice, response: dict[str, Any]) -> dict[str, Any]:
         try:
             normalized.update(normalize_human_reply(choice.metadata.get("outputs"), response,
-                typed_values=typed_values))
+                typed_values=typed_values, partial=choice.metadata.get("partial", False)))
         except ValueContractError as exc:
             raise RecoverableToolError(str(exc)) from exc
         return normalized

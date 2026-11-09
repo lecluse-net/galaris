@@ -21,13 +21,13 @@ from .test_native_bpmn import native as native, finish_run, typed_graph
 
 
 def decision_graph(mode, expected=True):
-    return Workflow(schema_version="galaris.bpmn/v2", inputs=[
+    return Workflow(schema_version="galaris.bpmn/v2", variables=[
         Variable(name="variable_1", type="int", nullable=False, default={"type": "int", "value": 123}),
         Variable(name="variable_2", type="string", nullable=False,
             default={"type": "string", "value": "mon projet" if expected else "pas mon projet"}),
-    ], outputs=[], nodes=[Node(id="start", kind="start"), Node(id="check", kind="if", config={
+    ], nodes=[Node(id="start", kind="start", inputs=["variable_1", "variable_2"]), Node(id="check", kind="if", inputs=["variable_1", "variable_2"], config={
         "mode": mode, "prompt": "Is this the requested project?", "code": 'return variable_2 != "pas mon projet"'}),
-        Node(id="yes", kind="end"), Node(id="no", kind="end")], flows=[
+        Node(id="yes", kind="end", outputs=["variable_1", "variable_2"]), Node(id="no", kind="end", outputs=["variable_1", "variable_2"])], flows=[
             Flow(id="a", source="start", target="check"),
             Flow(id="yes_flow", source="check", target="yes", condition="decision"),
             Flow(id="no_flow", source="check", target="no")])
@@ -50,6 +50,50 @@ async def test_binary_decision_executes_exactly_the_selected_branch(db, native, 
         assert attempt.input["variable_2"]["value"] == ("mon projet" if expected else "pas mon projet")
     nodes = list(await db.scalars(select(ProcessNodeRun.node_key).where(ProcessNodeRun.run_id == run.id)))
     assert sorted(nodes) == sorted(["start", "check", "yes" if expected else "no"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("immediate", [False, True])
+async def test_if_routes_without_writing_business_variables_even_when_it_returns_immediately(db, native, monkeypatch, immediate):
+    if immediate:
+        from app.process import isolated_code
+        from app.process.isolated_code import CodeObservation
+        class ImmediateRunner:
+            async def submit(self, invocation):
+                return CodeObservation(status="success", stopped=True, result={"output": True})
+        monkeypatch.setattr(isolated_code, "_runner", ImmediateRunner())
+    owner, _ = native
+    graph = decision_graph("code")
+    graph.variables.append(Variable(name="decision", type="bool", nullable=False, default={"type": "bool", "value": False}))
+    graph.outputs = ["decision"]
+    graph.nodes[1].config["code"] = 'return variable_1 > 100'
+    definition = await create(actor_agent_id=owner.id, title="Synthetic decision and output", graph=graph)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
+    await process_service.process_start_jobs(engine_code="galaris")
+    run = await finish_run(db, launched.run_id)
+    assert run.status == "success", run.error_message
+    assert run.output == {"decision": {"type": "bool", "value": False}}
+    assert run.data["decision"] == {"type": "bool", "value": False}
+    nodes = list(await db.scalars(select(ProcessNodeRun.node_key).where(ProcessNodeRun.run_id == run.id)))
+    assert "yes" in nodes and "no" not in nodes
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("expected", [True, False])
+async def test_only_outputs_of_the_reached_end_are_returned(db, native, expected):
+    owner, _ = native
+    graph = decision_graph("code", expected)
+    graph.nodes[2].outputs = ["variable_1"]
+    graph.nodes[3].outputs = ["variable_2"]
+    assert graph.outputs == ["variable_1", "variable_2"]
+    definition = await create(actor_agent_id=owner.id, title="Synthetic end output selection", graph=graph)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
+    await process_service.process_start_jobs(engine_code="galaris")
+    run = await finish_run(db, launched.run_id)
+    assert run.status == "success", run.error_message
+    selected = "variable_1" if expected else "variable_2"
+    assert run.output == {selected: run.data[selected]}
+    assert set(run.data) == {"variable_1", "variable_2"}
 
 
 @pytest.mark.parametrize("expected", [True, False])
@@ -86,10 +130,8 @@ async def test_code_task_integrates_plain_returned_variables_into_run_dataset(db
     from app.process.run_resources import read_run_data
     owner, _ = native
     graph = decision_graph("code")
-    graph.nodes = [graph.nodes[0], Node(id="work", kind="code", config={"dataset_code": True,
-        "code": 'return {"variable_1": variable_1 + 1, "variable_2": variable_2.upper()}'}, inputs=[], outputs=[
-            Variable(name="variable_1", type="int", nullable=False), Variable(name="variable_2", type="string", nullable=False)]), graph.nodes[2]]
-    graph.outputs = graph.nodes[1].outputs
+    graph.nodes = [graph.nodes[0], Node(id="work", kind="code", inputs=["variable_1", "variable_2"], outputs=["variable_1", "variable_2"], config={"dataset_code": True,
+        "code": 'return {"variable_1": variable_1 + 1, "variable_2": variable_2.upper()}'}), graph.nodes[2]]
     graph.flows = [Flow(id="a", source="start", target="work"), Flow(id="b", source="work", target="yes")]
     definition = await create(actor_agent_id=owner.id, title="Synthetic Dataset computation", graph=graph)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
@@ -166,4 +208,4 @@ async def test_real_sandbox_preserves_existing_preprocess_activity_and_postproce
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id)
     assert run.status == "success", run.error_message
-    assert run.output == {"accepted": {"type": "bool", "value": True}}
+    assert run.output == {"amount": {"type": "int", "value": 7}, "accepted": {"type": "bool", "value": True}}

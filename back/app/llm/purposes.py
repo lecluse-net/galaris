@@ -18,6 +18,7 @@ class LLMCallPurpose(StrEnum):
     CONVERSATION_AUDIO = "conversation.audio"
     CONVERSATION_TASK_OBJECTIVE = "conversation.task_objective"
     CONVERSATION_PROCESS_ADMISSION = "conversation.process_admission"
+    CONVERSATION_PROCESS_INPUTS = "conversation.process_inputs"
 
     DREAM_TOPIC_CONTINUITY = "dream.topic_continuity"
     DREAM_TOPIC_REUSE = "dream.topic_reuse"

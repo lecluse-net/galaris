@@ -110,6 +110,11 @@ class ProcessRun(HistoryMixin, Base):
         JSONB, nullable=False, default=dict, server_default=sql_text("'{}'::jsonb")
     )
     data_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    # Audit data is opt-in even at the ORM boundary: ordinary run reads never fetch it.
+    input_provenance: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=sql_text("'{}'::jsonb"),
+        deferred=True, deferred_raiseload=True,
+    )
     parent_run_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("process_runs.id", ondelete="RESTRICT"), nullable=True, index=True
     )

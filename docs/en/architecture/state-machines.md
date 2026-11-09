@@ -530,6 +530,24 @@ Authority: `back/app/multimedia/generation_contracts.py`, `generation_store.py`,
 
 ## Processes
 
+Before native v2 run admission, Conversation may retain an input dossier:
+
+| Event | Source | Target |
+|---|---|---|
+| Missing inputs or launch consent | absent / `collecting` / `ready` | `collecting` |
+| Every input supplied or defaulted, launch requested | absent / `collecting` | `ready` |
+| Human cancellation | `collecting` / `ready` | `cancelled` |
+| Admitted launch and recorded conversation link | `ready` | `launched` |
+
+Unrelated messages leave the dossier unchanged. Scope includes the participant; revisions
+and freshness guards reject stale results. `cancelled` and `launched` do not reopen collection.
+Retries recover the same invocation; a new human message may request a fresh execution.
+Requested execution records a `waiting` run without activities or a start job. Authorized
+completion moves the same run to `queued` and creates its single job; only input preparation
+permits this `waiting → queued` transition. Refresh and debugger controls cannot bypass
+collection; cancellation requires no engine call. Authority:
+`back/app/conversation/process_inputs.py`, `back/app/process/input_preparation.py` and decision 0270.
+
 Native v2 normalizes inputs before activity intent.
 MCP/REST effects are prepared as `tool_ready`/`rest_ready`, claimed as `claiming`, then
 marked `started` immediately before dispatch, fenced against cancellation and stale workers.

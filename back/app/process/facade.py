@@ -1,6 +1,6 @@
 """Public current-definition and durable-run port for the Lab and other domains."""
 
-from typing import Any, cast
+from typing import Any
 from collections.abc import Collection
 from uuid import UUID
 
@@ -14,6 +14,9 @@ from .schemas import ProcessFileInput
 from .dataset_usage import find_dataset_run_usages as find_dataset_run_usages
 from .dataset_usage import find_dataset_definition_usages as find_dataset_definition_usages
 from .values import ValueContractError as ValueContractError
+from .input_provenance import read_input_provenance as read_input_provenance
+from .input_preparation import (input_run as input_run, sync_input_run as sync_input_run,
+    start_input_run as start_input_run, validate_input_run_replay as validate_input_run_replay)
 
 
 async def active_work_for_agent(agent_id: int, *, reader: AgentManagementScope | None = None) -> tuple[dict[str, object], ...]:
@@ -48,6 +51,8 @@ async def active_work_for_agent(agent_id: int, *, reader: AgentManagementScope |
         observation = await observe_run(run, can_control=False, visible_children=visible) if run.engine_code == "galaris" else {}
         phase = observation.get("phase", run.status)
         waits: list[dict[str, object]] = []
+        if observation.get("input_preparation"):
+            waits.append({"kind": "process_inputs", **observation["input_preparation"]})
         for activity in observation.get("activities", []):
             wait: dict[str, object] = {key: activity[key] for key in
                 ("kind", "node_key", "question", "task_uri", "run_id", "since") if key in activity}
@@ -65,28 +70,16 @@ async def active_work_for_agent(agent_id: int, *, reader: AgentManagementScope |
 
 
 def normalize_human_reply(declarations: list[dict[str, Any]] | None,
-                          response: dict[str, Any], *, typed_values: bool = False) -> dict[str, Any]:
+                          response: dict[str, Any], *, typed_values: bool = False,
+                          partial: bool = False) -> dict[str, Any]:
     """Adapt a conversational JSON reply to the frozen Process value contract."""
     if declarations is None:
         return response
-    from .values import Variable, external_outputs, normalize
+    from .values import Variable, conversational_patch, normalize_reply, normalize_patch
     variables = [Variable.model_validate(item) for item in declarations]
-    if typed_values:
-        return normalize(variables, response, path="output")
-    if set(response) - {variable.name for variable in variables}:
-        raise ValueContractError("output: undeclared variable")
-    selected: dict[str, Any] = {}
-    for variable in variables:
-        if variable.name not in response:
-            continue
-        value = response[variable.name]
-        # Historical scalar/File envelopes remain supported. Object values stay
-        # ordinary JSON; explicit typed_values removes ambiguity for that type.
-        is_typed = (isinstance(value, dict) and set(cast(dict[str, Any], value)) == {"type", "value"}
-            and variable.type != "object")
-        selected.update(external_outputs([variable], {variable.name: cast(Any, value)},
-            path="output", typed_values=is_typed))
-    return normalize(variables, selected, path="output")
+    validator = normalize_patch if partial else normalize_reply
+    selected = conversational_patch(variables, response, path="output", typed_values=typed_values)
+    return validator(variables, selected, path="output")
 
 
 async def complete_human_activity(identity: UUID, *, user_id: int, output: dict[str, Any],
@@ -116,6 +109,99 @@ async def human_activity_pending(identity: UUID, *, question_id: UUID | None = N
 
 async def current_definition(code: str, actor: int | AgentManagementScope) -> dict[str, Any]:
     return await native_definitions.read(code, actor)
+
+
+async def prepare_launch_inputs(agent_id: int, workflow_id: str, values: dict[str, Any], *,
+                                typed_values: bool = False, run_id: UUID | None = None,
+                                validate_defaults: bool = True) -> dict[str, Any] | None:
+    """Read the live assigned input contract and validate a partial preparation, without a run."""
+    from .bpmn import Workflow, selected_variables
+    if run_id is not None:
+        run = await input_run(agent_id, run_id)
+        if run.launch_snapshot.get("workflow_id") != workflow_id:
+            raise PermissionError("Input run belongs to a different workflow")
+        current = run.launch_snapshot["definition"]
+        label = str(run.launch_snapshot["process_label"])
+    else:
+        definition = await process_service.get_for_agent(agent_id, workflow_id)
+        if definition is None:
+            raise PermissionError("This process is not assigned or readable")
+        if definition.code is None:
+            return None
+        current = await native_definitions.read(workflow_id, agent_id)
+        label = definition.label
+    graph = Workflow.model_validate(current["graph"])
+    if not graph.typed:
+        return None
+    variables = selected_variables(graph, graph.inputs)
+    prepared = {variable.name: variable.default.model_dump(mode="json") for variable in variables if variable.default is not None}
+    declarations = [variable.model_dump(mode="json") for variable in variables]
+    if values:
+        prepared.update(await validate_launch_input_patch(agent_id, declarations, values, typed_values=typed_values))
+    if validate_defaults:
+        await validate_launch_input_patch(agent_id, declarations, prepared, typed_values=True)
+    return {"workflow_id": workflow_id, "label": label,
+        "declarations": declarations, "values": prepared,
+        "missing": [variable.name for variable in variables if variable.name not in prepared]}
+
+
+async def validate_launch_input_patch(agent_id: int, declarations: list[dict[str, Any]], values: dict[str, Any], *,
+                                      typed_values: bool = False) -> dict[str, Any]:
+    result, _ = await validate_launch_input_fields(agent_id, declarations, values, typed_values=typed_values, fail_fast=True)
+    return result
+
+
+async def validate_launch_input_fields(agent_id: int, declarations: list[dict[str, Any]], values: dict[str, Any], *,
+                                       typed_values: bool = False, fail_fast: bool = False,
+                                       resource_metadata: dict[str, dict[str, Any]] | None = None) -> tuple[dict[str, Any], dict[str, str]]:
+    """Validate independent fields in linear work; metadata is shared only within this call."""
+    from .values import Variable, conversational_patch, validate_declarations
+    from app.file_share import ResourceContext, resource_info, ResourceDescriptor
+    parsed = [Variable.model_validate(raw) for raw in declarations]
+    validate_declarations(parsed, path="process.input")
+    variables = {item.name: item for item in parsed}
+    result: dict[str, Any] = {}
+    issues: dict[str, str] = {}
+    metadata: dict[str, ResourceDescriptor | Exception] = {}
+    context = ResourceContext(agent_id=agent_id, runtime="internal")
+    for name, value in values.items():
+        try:
+            variable = variables.get(name)
+            if variable is None:
+                raise ValueContractError(f"process.input: undeclared variable {name}")
+            checked = conversational_patch([variable], {name: value}, path="process.input", typed_values=typed_values)[name]
+            if variable.type in {"File", "Document"} and checked["value"] is not None:
+                uri = str(checked["value"])
+                if uri not in metadata:
+                    try:
+                        metadata[uri] = await resource_info(context, uri)
+                    except (ValueError, PermissionError, FileNotFoundError) as error:
+                        metadata[uri] = error
+                descriptor = metadata[uri]
+                if isinstance(descriptor, Exception):
+                    raise descriptor
+                if descriptor.is_collection:
+                    raise ValueContractError(f"process.input.{name}: expected a resource, not a directory")
+                expected = variable.mime_type or ("application/json" if variable.document_type == "data" else
+                    "text/html" if variable.document_type == "text" else None)
+                actual = descriptor.media_type.split(";", 1)[0].strip().lower()
+                if expected and actual != expected and not (expected.endswith("/*") and actual.startswith(expected[:-1])):
+                    raise ValueContractError(f"process.input.{name}: expected media type {expected}, received {actual}")
+                if resource_metadata is not None:
+                    resource_metadata[uri] = {key: entry for key, entry in {
+                        "revision": descriptor.revision, "checksum": descriptor.checksum, "etag": descriptor.etag,
+                    }.items() if entry is not None and (not isinstance(entry, str) or len(entry) <= 256)}
+            result[name] = checked
+        except (ValueError, PermissionError, FileNotFoundError) as error:
+            if fail_fast:
+                raise
+            issues[name] = str(error)
+    return result, issues
+
+
+def plain_launch_inputs(values: dict[str, Any]) -> dict[str, Any]:
+    from .values import unwrap
+    return {name: unwrap(value) for name, value in values.items()}
 
 
 async def launch_current(code: str, actor: int | AgentManagementScope, *, agent_id: int,

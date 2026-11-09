@@ -247,6 +247,29 @@ URI `nextcloud://`, `console://`, HTTPS, Mail ou Messenger est donc consommée d
 sorties sont écrites par `resource_create`/`resource_write`
 et exposent l'URI canonique créée ou livrée.
 
+`image_from_pdf` rend une seule page physique de PDF en PNG fidèle, sans inférence ni OCR.
+Il matérialise au plus 64 Mo de source autorisée, exécute le rendu PDFium dans un sous-processus
+borné (temps, mémoire, taille de sortie), puis crée l’image via `resource_create` dans une
+destination explicite. Le rendu conserve la page entière à 144 dpi au plus, avec 3000 pixels
+sur le plus grand côté. Le résultat expose URI source et dérivée, page, nombre de pages,
+dimensions et MIME. L’original reste inchangé et aucune destination existante n’est remplacée.
+L’annulation tue et attend le worker avant de supprimer les temporaires. Le Tool Image et
+les droits des deux ressources restent applicables, y compris en conversation. Un processus
+exigeant `image/*` reçoit l’URI PNG, jamais le PDF renommé.
+
+Le service Fichiers expose aussi `file_to_pdf` en tâche et en conversation : images matricielles
+(toutes les frames, au plus 100), Office/OpenDocument et RTF, HTML/SVG/Markdown ou texte UTF-8/UTF-16,
+CSV/TSV, JSON/XML/YAML. Un PDF existant est validé puis copié sans réencodage. Les conversions
+natives s’exécutent dans un groupe de sous-processus borné ; les exports Office réutilisent le
+convertisseur de préparation documentaire, avec macros désactivées. Le HTML utilise le moteur
+Chromium statique isolé, sans scripts ni ressources externes. Le résultat est vérifié comme PDF
+avant création via `resource_create` : URI source et dérivée, pages, taille et avertissements.
+Les limites sont de 64 Mo en entrée/sortie, 8 Mo de texte et 2000 pages ; les limites du renderer
+restent applicables. Le PDF bureautique représente la mise en page imprimable, notamment pour
+les feuilles de calcul. Archives, audio/vidéo, sources corrompues ou formats non pris en charge
+sont refusés explicitement. Source et droits restent inchangés ; une destination existante
+n’est jamais écrasée et l’annulation attend l’arrêt des convertisseurs avant nettoyage.
+
 Les descripteurs distinguent `name`, le nom source ou titre affiché, et `entry_name`, la clé de
 navigation dans le parent canonique. `entry_name` est le dernier segment décodé de l'URI :
 le nom réel pour un provider à chemins, l'identifiant pour un document ou une pièce jointe.

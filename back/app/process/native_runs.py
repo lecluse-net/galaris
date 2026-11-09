@@ -63,6 +63,9 @@ async def control_run(identity: UUID, actor: int | AgentManagementScope,
             return dict(previous.payload["receipt"])
     if run.status in TERMINAL_STATUSES:
         raise ValueError("A terminal run cannot be controlled")
+    from .input_preparation import waiting_for_inputs
+    if waiting_for_inputs(run):
+        raise ValueError("This run awaits its selected inputs; complete collection or cancel it")
     state = deepcopy(run.engine_metadata.get("native", {}))
     if (state.get("status") == "unknown" or state.get("error", {}).get("code") == "effect_outcome_unknown") and action in {"resume", "step"}:
         raise ValueError("An uncertain Tool effect requires reconciliation before another admission")
@@ -117,7 +120,7 @@ async def inspect_run(identity: UUID, actor: int | AgentManagementScope, *, page
         .order_by(ProcessNodeRun.admission_order, ProcessNodeRun.id).offset((page - 1) * page_size).limit(page_size)))
     total = await get_db().scalar(select(func.count()).select_from(ProcessNodeRun).where(ProcessNodeRun.run_id == identity))
     events = list(await get_db().scalars(select(ProcessRunEvent).where(ProcessRunEvent.run_id == identity,
-        ProcessRunEvent.id > after_event).order_by(ProcessRunEvent.id).limit(page_size)))
+        ProcessRunEvent.id > after_event, ProcessRunEvent.event_type != "run.inputs.provenance").order_by(ProcessRunEvent.id).limit(page_size)))
     state: dict[str, Any] = run.engine_metadata.get("native", {})
     from .native_access import accessible_clause
     can_control = bool(await get_db().scalar(select(ProcessDefinition.id).where(

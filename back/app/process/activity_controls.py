@@ -12,12 +12,12 @@ from app.task.facade import request_task_input, answer_task_input, consume_task_
 from core.database import get_db
 from core.user import get_user_record
 
-from .bpmn import Node, decision_activity
+from .bpmn import Node, decision_activity, activity_variables, normalize_activity_result
 from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 from .native_engine import local_graph
 from .native_actors import execution_agent
 from .process_service import TERMINAL_STATUSES
-from .values import Variable, external_outputs, normalize, validate_declarations
+from .values import Variable, external_patch, normalize_reply, validate_declarations, validate_resource_constraints
 
 
 async def owned_activity(task_id: UUID | None, agent_id: int) -> tuple[ProcessRun, ProcessNodeRun, ProcessNodeAttempt, Node]:
@@ -48,11 +48,14 @@ async def owned_activity(task_id: UUID | None, agent_id: int) -> tuple[ProcessRu
 
 
 async def submit_result(task_id: UUID | None, agent_id: int, output: dict[str, Any], message: str) -> dict[str, Any]:
-    _, occurrence, _, node = await owned_activity(task_id, agent_id)
+    run, occurrence, _, node = await owned_activity(task_id, agent_id)
     if occurrence.context.get("activity_question", {}).get("status") == "pending":
         raise ValueError("Wait for the human answer before completing this activity")
-    assert node.outputs is not None
-    result = external_outputs(node.outputs, output, path=f"{node.id}.output")
+    graph = local_graph(run, occurrence)
+    declarations = activity_variables(graph, node)
+    result = external_patch(declarations, output, path=f"{node.id}.output")
+    result = normalize_activity_result(graph, node, result)
+    await validate_resource_constraints(declarations, result, agent_id=agent_id)
     receipt = {"output": result, "message": message}
     previous = occurrence.context.get("activity_result")
     if previous is not None and previous != receipt:
@@ -67,7 +70,7 @@ async def submit_result(task_id: UUID | None, agent_id: int, output: dict[str, A
 
 
 async def ask_input(task_id: UUID | None, agent_id: int, question: str,
-                    variables: list[Variable] | None, *, question_key: str | None = None) -> dict[str, Any]:
+                    variables: list[str] | None, *, question_key: str | None = None) -> dict[str, Any]:
     run, occurrence, _, node = await owned_activity(task_id, agent_id)
     assert task_id is not None
     if occurrence.context.get("activity_result") is not None:
@@ -77,10 +80,14 @@ async def ask_input(task_id: UUID | None, agent_id: int, question: str,
         raise ValueError("Provide a nonempty question of at most 12000 characters")
     if question_key is not None and (not question_key.strip() or len(question_key) > 128):
         raise ValueError("Provide a nonempty question_key of at most 128 characters")
-    declarations = variables if variables is not None else node.outputs or []
+    graph = local_graph(run, occurrence)
+    registry = {item.name: item for item in graph.variables if item.name in {*node.inputs, *node.outputs}}
+    if variables is not None and (len(set(variables)) != len(variables) or set(variables) - registry.keys()):
+        raise ValueError("Human questions must reference unique declared process variables")
+    declarations = [registry[name] for name in variables] if variables is not None else list(registry.values())
     validate_declarations(declarations, path="question.variables")
     if not declarations:
-        raise ValueError("Declare the variables expected from the human answer")
+        raise ValueError("Select the process variables expected from the human answer")
     outputs = [item.model_dump(mode="json") for item in declarations]
     previous = occurrence.context.get("activity_question", {})
     history: list[dict[str, Any]] = occurrence.context.get("activity_question_history", [])
@@ -134,7 +141,7 @@ async def answer_input(run: ProcessRun, occurrence: ProcessNodeRun, *, question_
     if user is None or not user.is_active:
         raise PermissionError("The human requester is inactive")
     declarations = [Variable.model_validate(item) for item in pending["outputs"]]
-    result = normalize(declarations, output, path="question.output")
+    result = normalize_reply(declarations, output, path="question.output")
     if pending["status"] == "answered":
         if pending["response"] != result:
             raise ValueError("This question already has a different answer")
@@ -143,6 +150,7 @@ async def answer_input(run: ProcessRun, occurrence: ProcessNodeRun, *, question_
         raise ValueError("This process is no longer awaiting human input")
     graph = local_graph(run, occurrence)
     agent_id = execution_agent(graph, decision_activity(graph.node(occurrence.node_key)), run.launcher_agent_id)
+    await validate_resource_constraints(declarations, result, agent_id=agent_id)
     attempt = await get_db().scalar(select(ProcessNodeAttempt).where(
         ProcessNodeAttempt.node_run_id == occurrence.id, ProcessNodeAttempt.status == "accepted"))
     if attempt is None or attempt.task_id is None:

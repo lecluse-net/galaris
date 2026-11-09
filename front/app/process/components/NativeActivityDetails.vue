@@ -26,9 +26,6 @@
           <span v-if="detail.started_at" class="text-caption">{{ t('nativeProcesses.execution.started', { date: date(detail.started_at) }) }}</span>
           <span v-if="detail.finished_at" class="text-caption">{{ t('nativeProcesses.execution.finished', { date: date(detail.finished_at) }) }}</span>
         </div>
-        <CodeEditor v-if="detail.output !== null" :model-value="pretty(detail.output)" language="json" readonly
-          :label="t('nativeProcesses.execution.output')" :min-lines="3" :visible-lines="8" />
-        <div v-else class="text-body2">{{ t('nativeProcesses.execution.noResult') }}</div>
         <q-expansion-item v-for="(attempt, index) in detail.attempts" :key="attempt.id" icon="history"
           :label="t('nativeProcesses.execution.attempt', { number: attempt.number })" :caption="status(attempt.status)"
           :default-opened="index === detail.attempts.length - 1">
@@ -36,9 +33,6 @@
             <q-banner v-if="attempt.error" role="alert">{{ attempt.error }}</q-banner>
             <q-btn v-if="attempt.task_uri && canReadTasks" outline icon="task_alt" :label="t('nativeProcesses.execution.task')" :to="richLinkHref(attempt.task_uri) ?? ''" />
             <q-btn v-if="attempt.child_run_id" outline icon="account_tree" :label="t('nativeProcesses.execution.childRun')" :to="`/process/internal/run/${attempt.child_run_id}`" />
-            <CodeEditor v-if="attempt.receipt !== null" :model-value="pretty(attempt.receipt)" language="json" readonly
-              :label="t('nativeProcesses.execution.result')" :min-lines="3" :visible-lines="8" />
-            <CodeEditor :model-value="pretty(attempt.input)" language="json" readonly :label="t('nativeProcesses.execution.input')" :min-lines="3" :visible-lines="8" />
             <q-expansion-item v-if="attempt.prompt" icon="description" :label="t('nativeProcesses.execution.prompt')">
               <CodeEditor :model-value="attempt.prompt" language="plaintext" readonly :label="t('nativeProcesses.execution.prompt')" :min-lines="3" :visible-lines="8" />
             </q-expansion-item>
@@ -70,7 +64,6 @@ function status(value: string): string {
   return te(key) ? t(key) : t('nativeProcesses.unknown')
 }
 function date(value: string): string { return new Date(value).toLocaleString(locale.value, { dateStyle: 'medium', timeStyle: 'medium' }) }
-function pretty(value: unknown): string { return JSON.stringify(value, null, 2) }
 const options = computed(() => {
   const items = [...(props.occurrences?.items ?? [])]
   if (props.detail && !items.some(item => item.id === props.detail?.id)) items.unshift(props.detail)

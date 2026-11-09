@@ -20,6 +20,7 @@ from app.agent import (
 from app.task import STARTUP_TIMING_DATA_KEY, TaskAdmissionTiming, Task, TaskCreate, TaskStatus, amendment_basis
 from app.tools import (
     McpToolContext,
+    RecoverableToolError,
     mcp_tool,
 )
 from core.database import get_db
@@ -31,7 +32,8 @@ from .inspection_service import inspect_round
 from .models import ConversationProcessLink, ConversationRound, ConversationTaskLink
 from .task_objective import compose_task_objective, generate_task_fields, source_request_html
 from .preparation import ConversationSuperseded, run_preparation
-from .process_admission import admit_process_launch
+from .process_admission import ProcessLaunchRejected, admit_process_launch
+from .process_inputs import prepare_process_inputs, mark_preparation_launched
 
 
 _TASK_RESOURCE_PREFIX = "galaris://task/"
@@ -1015,6 +1017,22 @@ async def conversation_task_stop(ctx: McpToolContext, *, task_id: str) -> dict[s
     return await _mutate_task(ctx, task_id, "stop")
 
 
+@mcp_tool("conversation", approval="enabled", approval_reason="Prepare the current participant's inputs without launching a Process",
+    name="conversation_process_prepare", conversation_policy="deferred", task_enabled=False, timeout_seconds=60,
+    description=("Prepare or update an assigned Process input dossier before launch. Read process_get; search authorized "
+        "Memory/files for existing information, pass verified ordinary JSON values in input, and reuse exact file URIs. "
+        "An AI assesses the actual human message and known values, proposes searches and asks only for missing fields/files. "
+        "The dossier persists across messages for this participant. A requested Process gets one WAITING run without starting activities. Every selected Start input is required "
+        "even if nullable; explicit null must be real, never a placeholder. Convert files to the required MIME when possible. "
+        "At status=ready call conversation_process_start with workflow_id and omit input to reuse the validated dossier. "
+        "Cancellation and unrelated messages never launch."))
+async def conversation_process_prepare(ctx: McpToolContext, workflow_id: str,
+                                       input: dict[str, Any] | None = None, typed_values: bool = False) -> dict[str, Any]:
+    turn = await _fresh(ctx, before_effect=False)
+    result = await prepare_process_inputs(turn, workflow_id.strip(), input or {}, typed_values=typed_values, assess_complete=True)
+    return result or {"status": "legacy", "instruction": "Inspect this historical/external workflow's own input contract."}
+
+
 @mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="conversation_process_start",
@@ -1026,7 +1044,14 @@ async def conversation_task_stop(ctx: McpToolContext, *, task_id: str) -> dict[s
         "or expose that ID to the user unless explicitly asked. The server freezes the workflows "
         "and exact inputs requested by the actual current message before the first new launch. "
         "A reply to an activity does not authorize a new run. Retries reuse the same invocation. "
-        "Use occurrence=2 only for the second identical execution explicitly requested by the human."
+        "input uses ordinary JSON values, including a canonical URI string for a File. "
+        "Use typed_values=true only when every value uses an explicit {type, value} envelope. "
+        "Use conversation_process_prepare to collect every selected input, searching known facts/files first and asking only "
+        "for missing ones. An incomplete call returns a preparation dossier and its WAITING run. Complete inputs release that same run. "
+        "When all inputs are already known or defaulted, call this tool directly; no separate preparation call is needed. "
+        "For a ready dossier, omit input: the server reuses its typed values without loss or resubmission. "
+        "Use occurrence=2 only when THIS SAME human message requests two identical executions; a single 'relaunch it' "
+        "in a new message uses occurrence=1 and resolves its workflow/values from actual history."
     ),
 )
 async def conversation_process_start(
@@ -1035,13 +1060,16 @@ async def conversation_process_start(
     workflow_id: str,
     input: dict[str, Any] | None = None,
     occurrence: int = 1,
+    typed_values: bool = False,
 ) -> dict[str, Any]:
     turn = await _fresh(ctx, before_effect=False)
     clean_workflow = workflow_id.strip()
     if not clean_workflow:
         raise ValueError("workflow_id is required")
+    if isinstance(occurrence, bool) or not 1 <= occurrence <= 20:
+        raise ProcessLaunchRejected("occurrence must identify an explicitly requested execution from 1 to 20")
     legacy_key = _action_key("process", clean_workflow, repr(sorted((input or {}).items())))
-    if turn.origin == "text" and occurrence == 1:
+    if turn.origin == "text" and occurrence == 1 and not typed_values:
         existing = await get_db().scalar(
             select(ConversationProcessLink).where(
                 ConversationProcessLink.round_id == turn.round_id,
@@ -1055,7 +1083,18 @@ async def conversation_process_start(
                 "status": "already_linked",
             }
 
-    action_key = await admit_process_launch(turn, clean_workflow, input or {}, occurrence=occurrence)
+    prepared = await prepare_process_inputs(turn, clean_workflow, input or {}, typed_values=typed_values)
+    if prepared is not None:
+        if prepared["status"] != "ready":
+            return prepared
+        from app.process.facade import plain_launch_inputs
+        input = prepared["input"] if typed_values else plain_launch_inputs(prepared["input"])
+    draft_scope = prepared.get("origin_round_id") if prepared and prepared.get("prepared") else None
+    try:
+        action_key = await admit_process_launch(turn, clean_workflow, input or {}, occurrence=occurrence,
+            typed_values=typed_values)
+    except RecoverableToolError as exc:
+        raise ProcessLaunchRejected(str(exc)) from exc
     if turn.origin == "text":
         existing = await get_db().scalar(select(ConversationProcessLink).where(
             ConversationProcessLink.round_id == turn.round_id, ConversationProcessLink.action_key == action_key))
@@ -1080,16 +1119,49 @@ async def conversation_process_start(
             if scope.allows(turn.agent_id):
                 requester_user_id = user.id
     await _fresh(ctx)
+    if prepared and prepared.get("run_id") and occurrence == 1:
+        # Match the collector's lock order: dossier, then run. Recheck the
+        # accepted values after the model's launch permission has returned.
+        origin = await get_db().scalar(select(ConversationRound).where(
+            ConversationRound.id == UUID(prepared["origin_round_id"]), ConversationRound.room_id == turn.room_id)
+            .with_for_update().execution_options(populate_existing=True))
+        dossier = (origin.process_preparations or {}).get(clean_workflow) if origin else None
+        if not isinstance(dossier, dict):
+            raise ProcessLaunchRejected("Process input preparation no longer exists")
+        from .process_inputs import launch_preparation_context
+        current_dossier = await launch_preparation_context(turn, clean_workflow) or {}
+        if (current_dossier.get("status") not in {"ready", "launched"}
+                or current_dossier.get("values") != prepared["input"]):
+            raise ProcessLaunchRejected("Process input preparation changed; read it again before releasing its waiting run")
+        from app.process.facade import start_input_run
+        # The dossier already holds canonical typed data, including nested nulls
+        # that ordinary JSON cannot type again without losing information.
+        try:
+            response = await start_input_run(turn.agent_id, UUID(prepared["run_id"]), prepared["input"],
+                typed_values=True, requester_user_id=requester_user_id, expected_revision=prepared.get("run_revision"))
+        except ValueError as exc:
+            raise ProcessLaunchRejected(str(exc)) from exc
+        await mark_preparation_launched(turn, clean_workflow, response.run_id)
+        await get_db().commit()
+        from core import websocket
+        await websocket.emit("process_run", "update", {"id": str(response.run_id), "status": response.status}, None)
+        return {"created": False, "started": not response.deduplicated, **response.model_dump(mode="json")}
     response = await process_service.start_process(
         agent_id=turn.agent_id,
         workflow_id=clean_workflow,
         input_data=input or {},
         wait_for_completion=False,
-        idempotency_key=f"conversation:{_effect_scope(turn)}:{action_key}"[:255],
+        idempotency_key=(f"conversation-preparation:{draft_scope}:{clean_workflow}:{occurrence}"
+            if draft_scope else f"conversation:{_effect_scope(turn)}:{action_key}")[:255],
         task_id=None,
         runtime="internal",
         requester_user_id=requester_user_id,
+        external_input=True,
+        input_origins=({name: {"kind": "agent", "reference": f"galaris://text/{turn.round_id}"}
+            for name in prepared.get("provided_names", [])} if prepared and not prepared.get("prepared") else None),
+        typed_input=typed_values,
     )
+    await mark_preparation_launched(turn, clean_workflow, response.run_id)
     if turn.origin == "text":
         get_db().add(
             ConversationProcessLink(
@@ -1105,9 +1177,11 @@ async def conversation_process_start(
         # Concurrent identical callers can share the admitted Process run. The
         # canonical engine already deduplicates its invocation before this link.
         existing = await get_db().scalar(select(ConversationProcessLink).where(
-            ConversationProcessLink.round_id == turn.round_id, ConversationProcessLink.action_key == action_key))
+            ConversationProcessLink.process_run_id == response.run_id))
         if existing is None or existing.process_run_id != response.run_id:
             raise
+        await mark_preparation_launched(turn, clean_workflow, response.run_id)
+        await get_db().commit()
         return {"created": False, "run_id": str(existing.process_run_id), "status": "already_linked"}
     return {"created": not response.deduplicated, **response.model_dump(mode="json")}
 
@@ -1123,6 +1197,7 @@ __all__ = [
     "conversation_task_stop",
     "conversation_task_submit",
     "conversation_process_start",
+    "conversation_process_prepare",
     "conversation_process_respond",
     "conversation_process_pending",
 ]

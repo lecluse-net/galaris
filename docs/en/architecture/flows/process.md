@@ -21,9 +21,10 @@ the participant's pending requests, and interprets messages and files. The valid
 and response receipt are atomic; no Process form accepts human replies. See
 [decision 0192](../../../../project/decisions/0192-process-human-interactions-through-messaging.md).
 
-The native engine adds the [v2 data profile](../../dev/native-processes.md): per-activity
-input/output declarations, omission/default normalization, validation before effects and
-integration, business variables in `process_runs.data` and links in `process_run_files`,
+The native engine adds the [v2 data profile](../../dev/native-processes.md): one process-owned
+`variables` registry shared by activities and loops, name-based `inputs`/`outputs` selections
+where permitted on each step, process inputs derived from its root Start node, defaults at launch and validated partial updates. Only selected
+inputs are transmitted and selected outputs can be integrated. Business values stay in `process_runs.data` and links in `process_run_files`,
 without a Dataset. File references travel between
 activities without transfers; bytes are requested only for explicit File Sharing
 operations. Historical v1 remains interpreted under its original contract. Python phases
@@ -57,10 +58,28 @@ Agent runtime
 
 ## Agent Discovery
 
+For native v2 workflows, `conversation_process_prepare` keeps collected inputs in
+`ConversationRound.process_preparations`, scoped to room/agent/participant. A
+`conversation.process_inputs` inference proposes values, searches and questions; the controller
+consults authorized Memory/files before asking for missing information. Types, dates, access
+and MIME constraints are checked against the current definition. Every selected Start input
+must be supplied or defaulted, regardless of `nullable`. Once execution is requested, a
+`waiting` ProcessRun freezes the contract, without a start job or business activity. Its
+operational state and the agent's active work expose the missing inputs. A complete dossier
+releases this same run to `queued` after launch permission.
+Assessment is bound to the canonical message and participant: reads, type checks and verified
+patches in that context are deterministic. URI metadata is shared within a batch and checked
+again on the next call. An unambiguous single launch assessed with all final values freezes
+permission without a second inference; later parameter changes retain the final scope check.
+Later messages receive the pending dossier; cancellation, unrelated messages and late results
+do not launch it. See [decision 0270](../../../../project/decisions/0270-conversation-process-input-dossiers.md).
+
 Before a new launch through `conversation_process_start`, Conversation freezes the requested
 invocations in a permission bound to the actual admitted message. The server checks workflows,
 parameters and execution counts; recovery reuses the same run. This check is not invoked for
-an activity reply or a conversation without a launch. See
+an activity reply or a conversation without a launch. It receives the dossier's original
+human request and the participant's recent actual runs to resolve "relaunch it". Occurrences
+count identical launches requested within the current message, never historical executions. See
 [decision 0195](../../../../project/decisions/0195-conversation-process-launch-permissions.md)
 for the limits of model-assisted interpretation and the covered tool surface.
 

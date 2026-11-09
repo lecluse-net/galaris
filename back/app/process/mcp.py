@@ -14,7 +14,6 @@ from core.database import get_db
 from . import process_service
 from . import native_definitions, native_runs
 from .bpmn import Workflow, compile_bpmn, validate_graph
-from .values import Variable
 from .schemas import (
     ProcessDefinitionCreate,
     ProcessDefinitionRead,
@@ -136,25 +135,27 @@ async def process_get(ctx: McpToolContext, workflow_id: str) -> dict[str, Any]:
         result["schema_version"] = graph.schema_version
         # Global inputs/outputs alone say nothing about the executable content.
         # Supply a compact inventory without copying prompts or script bodies.
-        activities: list[dict[str, str]] = []
+        activities: list[dict[str, Any]] = []
         def collect(body: Workflow) -> None:
             for node in body.nodes:
                 if node.kind not in {"start", "end"}:
-                    activities.append({"id": node.id, "kind": node.kind, "title": node.title})
+                    activities.append({"id": node.id, "kind": node.kind, "title": node.title,
+                        "inputs": node.inputs, "outputs": node.outputs})
                 if node.body is not None:
                     collect(node.body)
         collect(graph)
         result["activities"] = activities
         result["diagnostics"] = definition["diagnostics"]
         if graph.typed:
-            result["inputs"] = [variable.model_dump(mode="json") for variable in graph.inputs or []]
-            result["outputs"] = [variable.model_dump(mode="json") for variable in graph.outputs or []]
+            result["variables"] = [variable.model_dump(mode="json") for variable in graph.variables]
+            result["inputs"] = graph.inputs
+            result["outputs"] = graph.outputs
     return result
 
 
 @mcp_tool("galaris", approval="enabled", approval_reason="Submit the current activity's validated output",
     conversation_policy="forbidden", effect_policy="idempotent", name="process_activity_complete",
-    description="For your current native Process activity Task only: submit its declared output variables as ordinary JSON (for example output={\"age\": 42}). Optionally provide a concise user-facing message. The engine validates and stores typed data; your final prose is not parsed as JSON. Stop after acceptance.")
+    description="For your current native Process activity Task only: submit changes to its process variables as ordinary JSON (for example output={\"age\": 42}). Optionally provide a concise user-facing message. The engine validates and stores typed data; your final prose is not parsed as JSON. Stop after acceptance.")
 async def process_activity_complete(ctx: McpToolContext, output: dict[str, Any], message: str = "") -> dict[str, Any]:
     if len(message) > 12_000:
         raise ValueError("The activity message exceeds 12000 characters")
@@ -169,9 +170,9 @@ async def process_activity_complete(ctx: McpToolContext, output: dict[str, Any],
 
 @mcp_tool("galaris", approval="enabled", approval_reason="Ask the authenticated requester for activity input",
     conversation_policy="forbidden", effect_policy="idempotent", name="process_activity_question",
-    description="For your current native Process activity Task only: ask its authenticated human requester a question and wait durably for the answer in messaging. Supply expected variables (name, type, nullable); omitted variables use the activity's outputs. Stop this turn after waiting_for_human. If answered=true, use the returned response and continue to process_activity_complete. Rephrasing a question for the same variables reuses its answer. Only to intentionally request a new answer, supply a new stable question_key (max 128 characters); reuse that key on retries and resumption. Never invent the answer or return the question as data.")
+    description="For your current native Process activity Task only: ask its authenticated human requester a question and wait durably for the answer in messaging. Supply names from the process variable registry; omitted variables select the whole registry. Stop this turn after waiting_for_human. If answered=true, use the returned response and continue to process_activity_complete. Rephrasing a question for the same variables reuses its answer. Only to intentionally request a new answer, supply a new stable question_key (max 128 characters); reuse that key on retries and resumption. Never invent the answer or return the question as data.")
 async def process_activity_question(ctx: McpToolContext, question: str,
-                                    variables: list[Variable] | None = None, question_key: str | None = None) -> dict[str, Any]:
+                                    variables: list[str] | None = None, question_key: str | None = None) -> dict[str, Any]:
     from .activity_controls import ask_input
     return await ask_input(ctx.task_id, ctx.agent_id, question, variables, question_key=question_key)
 
@@ -287,7 +288,7 @@ async def process_run_retry(ctx: McpToolContext, run_id: str, idempotency_key: s
     if run.status not in process_service.TERMINAL_STATUSES:
         raise ValueError("Only a terminal run can be retried")
     response = await process_service.start_process(agent_id=ctx.agent_id,
-        workflow_id=str(run.launch_snapshot["workflow_id"]), input_data=run.input,
+        workflow_id=str(run.launch_snapshot["workflow_id"]), input_data=process_service.retry_input(run),
         files=[ProcessFileInput(uri=str(item["uri"]), slot=item.get("slot"), description=str(item.get("description") or ""))
             for item in run.launch_snapshot.get("files", [])], idempotency_key=idempotency_key, task_id=ctx.task_id)
     return response.model_dump(mode="json")
@@ -302,6 +303,8 @@ async def process_run_retry(ctx: McpToolContext, run_id: str, idempotency_key: s
         "Start a business process assigned to the current agent and return its tracking ID. "
         "Each files item uses {uri, description}; uri accepts any authorized canonical "
         "file_schemes resource and is transferred transparently when the process downloads it."
+        " input uses ordinary JSON values, including a canonical URI string for a File. "
+        "Set typed_values=true only for explicit {type, value} envelopes."
     ),
 )
 async def process_start(
@@ -311,6 +314,7 @@ async def process_start(
     files: Optional[list[dict[str, str]]] = None,
     wait_for_completion: bool = False,
     idempotency_key: Optional[str] = None,
+    typed_values: bool = False,
 ) -> dict[str, Any]:
     refs = [ProcessFileInput.model_validate(item) for item in (files or [])]
     try:
@@ -323,6 +327,8 @@ async def process_start(
             idempotency_key=idempotency_key,
             task_id=ctx.task_id,
             runtime=ctx.runtime,
+            external_input=True,
+            typed_input=typed_values,
         )
     except Exception as exc:
         language = await context_language(ctx)

@@ -2570,6 +2570,7 @@ async def test_terminal_process_notification_uses_link_directly(
         input={},
         engine_metadata={},
         error_message="La génération du fichier a échoué.",
+        output={"partial_file": f"file://{uuid4()}"},
     )
     db.add(run)
     await db.flush()

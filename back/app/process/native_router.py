@@ -5,8 +5,9 @@ from contextlib import contextmanager
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent import AgentManagementScope, current_management_scope
@@ -94,6 +95,13 @@ class DebuggerRequest(BaseModel):
     nodes: list[str] = Field(default_factory=list)
     command_key: UUID | None = None
     expected_revision: int | None = Field(default=None, ge=0)
+
+
+class InputContribution(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    values: dict[str, Any] = Field(default_factory=dict)
+    expected_revision: int = Field(ge=1)
+    start: bool = False
 
 
 @routes.get("/humans")
@@ -305,6 +313,24 @@ async def native_inspect_node(identity: UUID, node_identity: UUID, agent_id: int
         return await runs.inspect_occurrence(identity, node_identity, await _preview_actor(agent_id))
 
 
+@routes.patch("/runs/{identity}/inputs")
+@authorize(privileges=[Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN])
+async def native_contribute_inputs(identity: UUID, data: InputContribution) -> dict[str, Any]:
+    from .input_editing import update_inputs
+    with domain_errors():
+        return await update_inputs(identity, await current_management_scope(), data.values,
+            expected_revision=data.expected_revision, start=data.start)
+
+
+@routes.post("/runs/{identity}/inputs/{name}/file")
+@authorize(privileges=[Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN])
+async def native_upload_input(identity: UUID, name: str, upload: UploadFile,
+                              expected_revision: int = Query(..., ge=1)) -> dict[str, Any]:
+    from .input_editing import upload_input
+    with domain_errors():
+        return await upload_input(identity, await current_management_scope(), name, upload, expected_revision=expected_revision)
+
+
 @routes.patch("/runs/{identity}/files/{file_id}")
 @authorize(privileges=[Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN])
 async def native_rename_run_file(identity: UUID, file_id: UUID, data: FileRename, agent_id: int | None = None) -> None:
@@ -324,6 +350,66 @@ async def native_run_file(identity: UUID, file_id: UUID, agent_id: int | None = 
         return FileResponse(path, filename=metadata["name"], media_type=metadata["media_type"],
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
                 **source_code_response_headers(metadata["name"], metadata["media_type"])})
+
+
+@routes.get("/runs/{identity}/variables/resource")
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
+async def native_variable_resource(identity: UUID, name: str = Query(max_length=1024), agent_id: int | None = None) -> dict[str, Any]:
+    from .run_resources import run_variable_resource
+    from app.file_share import resource_info
+    from app.file_share.facade import browser_context
+    with domain_errors():
+        owner, uri = await run_variable_resource(identity, name, await _preview_actor(agent_id))
+        async with browser_context(owner) as ctx:
+            return (await resource_info(ctx, uri)).model_dump(mode="json")
+
+
+@routes.get("/runs/{identity}/inputs/provenance")
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
+async def native_input_provenance(identity: UUID, name: str = Query(max_length=200), history: bool = False,
+    before: int | None = Query(default=None, ge=1), page_size: int = Query(default=50, ge=1, le=500)) -> dict[str, Any]:
+    from .input_provenance import read_input_provenance, ProvenanceUnavailable
+    with domain_errors():
+        try:
+            return await read_input_provenance(identity, await current_management_scope(), name,
+                history=history, before=before, page_size=page_size)
+        except ProvenanceUnavailable as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+@routes.get("/runs/{identity}/variables/thumbnail")
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
+async def native_variable_thumbnail(identity: UUID, name: str = Query(max_length=1024), agent_id: int | None = None) -> Response:
+    from .run_resources import run_variable_resource
+    from app.file_share.facade import browser_context, browser_thumbnail
+    with domain_errors():
+        owner, uri = await run_variable_resource(identity, name, await _preview_actor(agent_id))
+        async with browser_context(owner) as ctx:
+            thumbnail = await browser_thumbnail(ctx, uri)
+        if thumbnail is None:
+            raise HTTPException(404, "Thumbnail unavailable")
+        return Response(thumbnail, media_type="image/webp", headers={"Cache-Control": "private, no-store"})
+
+
+@routes.get("/runs/{identity}/variables/content", response_class=FileResponse)
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
+async def native_variable_content(identity: UUID, name: str = Query(max_length=1024), preview: bool = True,
+                                  agent_id: int | None = None) -> FileResponse:
+    from .run_resources import run_variable_resource
+    from app.file_share.facade import browser_context, browser_content
+    with domain_errors():
+        owner, uri = await run_variable_resource(identity, name, await _preview_actor(agent_id))
+        async with browser_context(owner) as ctx:
+            manager = browser_content(ctx, uri, preview=preview)
+            source = await manager.__aenter__()
+            try:
+                return FileResponse(source.path, filename=source.name, media_type=source.media_type,
+                    background=BackgroundTask(manager.__aexit__, None, None, None),
+                    headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                        **source_code_response_headers(source.name, source.media_type)})
+            except BaseException:
+                await manager.__aexit__(None, None, None)
+                raise
 
 
 @routes.get("/runs/{identity}/activities/{node_key}")
@@ -373,7 +459,7 @@ async def native_retry(identity: UUID) -> dict[str, Any]:
         if run.status not in TERMINAL_STATUSES:
             raise ValueError("Only a terminal run can be retried")
         return (await process_service.start_process(agent_id=run.launcher_agent_id,
-            workflow_id=str(run.launch_snapshot["workflow_id"]), input_data=run.input,
+            workflow_id=str(run.launch_snapshot["workflow_id"]), input_data=process_service.retry_input(run),
             files=[ProcessFileInput(uri=str(item["uri"]), slot=item.get("slot"), description=str(item.get("description") or ""))
                 for item in run.launch_snapshot.get("files", [])],
             requester_user_id=(await current_management_scope()).user_id)).model_dump(mode="json")

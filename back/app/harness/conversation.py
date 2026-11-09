@@ -447,6 +447,14 @@ def _system_prompt(
             "or several requests could match, ask one concise clarification and leave them "
             "pending. Unrelated questions and attachments remain ordinary conversation. "
             "Never launch a new Task or Process just to record this response.\n"
+            "For kind=process_input_preparation, the linked run is WAITING for its selected inputs; no business activity has started. "
+            "Use conversation_process_prepare with its workflow_id and verified new values; do not use choice_resolve "
+            "or process_respond for it. Search authorized Memory and files for facts already available before asking "
+            "the human, reuse existing file URIs and convert formats with image_from_pdf/file_to_pdf when needed. "
+            "Keep collecting across messages until EVERY selected Start input is supplied or defaulted, even nullable "
+            "inputs. Never invent null/empty placeholders. Tell the human that the run is waiting and what it needs. "
+            "Once the dossier is ready, release this SAME run using conversation_process_start; never create a replacement run. "
+            "Respect cancellation and unrelated messages.\n"
             + "\n".join(pending_lines)
         )
     omitted = (

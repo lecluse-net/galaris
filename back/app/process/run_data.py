@@ -119,7 +119,7 @@ async def initialize_run_data(run_id: UUID, files: list[dict[str, Any]]) -> None
 async def integrate_workflow_values(run_id: UUID, *, command: str,
     baseline: dict[str, Any], changes: dict[str, Any], files: list[dict[str, Any]],
     remove: list[str] | None = None, files_mode: Literal["append", "replace"] = "append",
-    baseline_files: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    baseline_files: list[dict[str, Any]] | None = None, actor_agent_id: int | None = None) -> dict[str, Any]:
     run = await lock_run(run_id)
     deletions = sorted(set(remove or []))
     if set(deletions).intersection(changes) or files_mode not in {"append", "replace"}:
@@ -153,8 +153,11 @@ async def integrate_workflow_values(run_id: UUID, *, command: str,
     updated = {**data, **deepcopy(changes)}
     for name in deletions:
         updated.pop(name, None)
-    from .values import validate_values
-    updated = validate_values(updated, path="process.data")
+    from .bpmn import Workflow
+    from .values import normalize_patch, validate_resource_constraints
+    graph = Workflow.model_validate(run.launch_snapshot["definition"]["graph"])
+    updated = normalize_patch(graph.variables, updated, path="process.data")
+    await validate_resource_constraints(graph.variables, changes, agent_id=actor_agent_id or run.launcher_agent_id)
     await _replace_files(run, merged_files)
     run.data = updated
     run.data_revision += 1

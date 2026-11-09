@@ -7,8 +7,8 @@
       </slot>
     </div>
     <div class="resource-preview-copy">
-      <div class="resource-preview-title"><span v-if="$slots['title-icon']" class="resource-preview-title-icon"><slot name="title-icon" /></span>{{ title }}</div>
-      <div v-if="plainDescription" class="resource-preview-description">{{ plainDescription }}</div>
+      <div class="resource-preview-title"><span v-if="$slots['title-icon']" class="resource-preview-title-icon"><slot name="title-icon" /></span><slot name="title">{{ title }}</slot></div>
+      <div v-if="$slots.description || plainDescription" class="resource-preview-description"><slot name="description">{{ plainDescription }}</slot></div>
       <div v-if="subtitle" class="resource-preview-subtitle">{{ subtitle }}</div>
       <div v-if="uri" class="resource-preview-uri">{{ uri }}</div>
     </div>

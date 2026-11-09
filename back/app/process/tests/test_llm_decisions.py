@@ -14,6 +14,8 @@ from app.llm import LLMCall
 from app.llm.facade import read_inference, run_decision
 from app.process import process_service, registry
 from app.process.bpmn import Actor, compile_bpmn, to_bpmn, validate_graph
+from app.process.activity_prompts import CONTRACT_SEPARATOR
+from app.process.values import Variable
 from app.process.models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 from app.process.native_definitions import create
 from app.process.native_engine import NativeProcessEngine
@@ -40,9 +42,9 @@ async def workflow(decisions):
     return db, agent, request.llm_id, calls, text_calls, mode
 
 
-async def launch(workflow, model_id, assigned_agent=None):
+async def launch(workflow, model_id, assigned_agent=None, *, graph=None):
     db, agent, *_ = workflow
-    graph = decision_graph("ai")
+    graph = graph or decision_graph("ai")
     graph.nodes[1].config.update(ai_mode="llm", llm_id=model_id)
     if assigned_agent is not None:
         graph.actors = [Actor(id="reviewer", name="Reviewer", kind="agent", agent_id=assigned_agent)]
@@ -76,7 +78,17 @@ async def test_simple_if_uses_selected_model_without_task_and_reuses_completed_i
     if delegated:
         executor = Agent(user_id=agent.user_id, title_id=agent.title_id, code=f"delegate-{uuid4().hex}", first_name="Synthetic", last_name="Delegate")
         db.add(executor); await db.commit()
-    run_id = await launch(workflow, decision_model if specialized else text_model.id, executor.id if delegated else None)
+    graph = decision_graph("ai")
+    file_uri = "nextcloud://Synthetic/invoice.pdf"
+    document_uri = "document://00000000-0000-4000-8000-000000000001"
+    graph.variables.extend([
+        Variable(name="invoice", type="File", nullable=False, default={"type": "File", "value": file_uri}),
+        Variable(name="document", type="Document", nullable=False, default={"type": "Document", "value": document_uri}),
+        Variable(name="unused", type="string", nullable=False, default={"type": "string", "value": "Synthetic excluded LLM context"}),
+        Variable(name="missing", type="string", nullable=True),
+    ])
+    graph.nodes[1].inputs.extend(["invoice", "document", "missing"])
+    run_id = await launch(workflow, decision_model if specialized else text_model.id, executor.id if delegated else None, graph=graph)
     await drive(db, run_id, until=lambda: bool(calls or text_calls))
     occurrence = await db.scalar(select(ProcessNodeRun).where(ProcessNodeRun.run_id == run_id, ProcessNodeRun.node_key == "check"))
     inference_id = UUID(occurrence.context["llm_inference_id"])
@@ -91,8 +103,23 @@ async def test_simple_if_uses_selected_model_without_task_and_reuses_completed_i
     assert await db.scalar(select(func.count()).select_from(Task)) == 0
     assert completed.request.llm_id == (decision_model if specialized else text_model.id)
     assert completed.request.agent_id == executor.id
+    contract = json.loads(completed.request.prompt.rsplit(CONTRACT_SEPARATOR, 1)[1])
+    inputs = {item["name"]: item for item in contract["input_variables"]}
+    assert inputs["invoice"]["typed_value"] == {"type": "File", "value": file_uri}
+    assert inputs["document"]["typed_value"] == {"type": "Document", "value": document_uri}
+    assert inputs["variable_1"]["typed_value"] == {"type": "int", "value": 123}
+    assert inputs["missing"]["initialized"] is False and "typed_value" not in inputs["missing"]
+    assert contract["output_variables"] == []
+    assert contract["control_result"] == {"name": "decision", "type": "bool"}
+    assert "unused" not in completed.request.prompt and "Synthetic excluded LLM context" not in completed.request.prompt
+    assert "process_activity_complete" not in completed.request.prompt
+    attempt = await db.scalar(select(ProcessNodeAttempt).where(ProcessNodeAttempt.node_run_id == occurrence.id))
+    assert attempt.prompt == completed.request.prompt
     assert not completed.request.allow_profile_fallback
     assert len(calls) == int(specialized) and len(text_calls) == int(not specialized)
+    transmitted = json.dumps(calls[0] if specialized else text_calls[0], ensure_ascii=False)
+    assert file_uri in transmitted and document_uri in transmitted
+    assert "Synthetic excluded LLM context" not in transmitted
     if specialized:
         assert set(calls[0]["questions"]["decision"]["criteria"]) == {"true", "false"}
     metrics = await run_metrics(run_id, agent.id)

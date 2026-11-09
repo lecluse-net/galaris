@@ -23,8 +23,12 @@ Le résultat validé et le reçu de réponse sont atomiques ; aucun formulaire P
 de réponse humaine. Voir la [décision 0192](../../../../project/decisions/0192-process-human-interactions-through-messaging.md).
 
 Le moteur natif ajoute le [profil de données v2](../../dev/native-processes.md) :
-entrées/sorties déclarées par tâche, normalisation des omissions et défauts, validation
-avant effet/intégration et variables dans `process_runs.data`, liées aux fichiers par
+registre `variables` déclaré sur le processus, partagé par les activités et boucles,
+sélections `inputs`/`outputs` autorisées par type d'étape, entrées du processus dérivées du
+Début racine, défauts au lancement
+et validation des mises à jour partielles avant intégration. Seules les entrées sélectionnées
+sont transmises et seules les sorties sélectionnées peuvent être intégrées. Les valeurs
+restent dans `process_runs.data`, liées aux fichiers par
 `process_run_files`, sans Dataset. Les références de
 fichiers passent entre activités sans transfert ; les octets ne sont demandés que pour
 une opération explicite via File Sharing. Le profil historique v1 reste interprété tel quel.
@@ -59,11 +63,32 @@ Agent runtime
 
 ## Découverte par l’agent
 
+Pour un processus natif v2, `conversation_process_prepare` conserve les entrées collectées
+dans `ConversationRound.process_preparations`, sous le périmètre room/agent/participant.
+Une inférence `conversation.process_inputs` propose les valeurs, recherches et questions ;
+le contrôleur consulte Memory et les fichiers autorisés avant de demander ce qui manque.
+Les types, dates, droits et MIME sont revérifiés sur le contrat courant. Toute entrée
+sélectionnée par Début doit être fournie ou avoir un défaut, indépendamment de `nullable`.
+Un ProcessRun `waiting` est créé dès que le lancement est demandé, sans job de démarrage ni
+activité ; son contrat est figé à cet instant. Il expose les entrées manquantes dans l'état
+opérationnel et les travaux en cours de l'agent. Le dossier complet libère ce même run vers
+`queued`, après l'autorisation de lancement. La reprise expose le dossier aux messages
+suivants ; annulation, changement de sujet et résultat tardif ne le lancent pas.
+L'analyse est liée au message canonique et au participant : relecture, contrôle des types et
+complément de valeurs dans ce même contexte restent déterministes. Les métadonnées d'une URI
+sont mutualisées dans un lot, puis revérifiées à l'appel suivant. Une intention simple déjà
+évaluée avec toutes ses valeurs fige l'autorisation sans seconde inférence ; un ajout ou un
+changement de paramètres après cette analyse conserve le contrôle final de périmètre.
+Voir la [décision 0270](../../../../project/decisions/0270-conversation-process-input-dossiers.md).
+
 Avant un nouveau lancement via `conversation_process_start`, Conversation fige les
 invocations demandées dans une autorisation liée au message réellement admis. Le serveur
 contrôle processus, paramètres et nombre d'exécutions ; une reprise retrouve le même run.
 Cette vérification n'est appelée ni pour une réponse à une activité ni pour une conversation
-sans lancement. Voir la [décision 0195](../../../../project/decisions/0195-conversation-process-launch-permissions.md)
+sans lancement. Elle reçoit la demande originale du dossier et les derniers runs réels
+du participant pour résoudre « relance-le ». Une occurrence compte seulement les lancements
+identiques demandés dans le message courant, jamais les exécutions historiques.
+Voir la [décision 0195](../../../../project/decisions/0195-conversation-process-launch-permissions.md)
 pour les limites de l'interprétation assistée et le périmètre des outils concernés.
 
 Les six fonctions personnelles de découverte, lancement et suivi externe appartiennent au

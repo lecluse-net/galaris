@@ -248,7 +248,7 @@ test('handle menus insert into an existing flow without losing its condition or 
 
 test('ordinary activities can branch and converge directly without a dedicated gateway', async ({ page }) => {
   const value = graph()
-  value.schema_version = 'galaris.bpmn/v2'; value.inputs = []; value.outputs = []
+  value.schema_version = 'galaris.bpmn/v2'; value.variables = []
   await mount(page, 'app/process/components/BpmnCanvas.vue', { props: { modelValue: value } })
   const lastGraph = () => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)
   await page.getByRole('button', { name: 'Output of Task', exact: true }).click()
@@ -325,8 +325,7 @@ async function definitionFixtures(page, writable, kind = 'task', typed = false, 
   definition.graph.nodes[1].kind = kind
   if (typed) {
     definition.graph.schema_version = 'galaris.bpmn/v2'
-    definition.graph.inputs = []; definition.graph.outputs = []
-    definition.graph.nodes[1].inputs = declarations.inputs ?? []; definition.graph.nodes[1].outputs = declarations.outputs ?? []
+    definition.graph.variables = declarations.variables ?? []
   }
   if (kind === 'tool_call') definition.graph.nodes[1].config = { tool: 'synthetic_tool' }
   await jsonRoute(page, '**/api/processes/internal/agents', [{ id: 7, label: 'Synthetic agent' }])
@@ -349,7 +348,7 @@ async function definitionFixtures(page, writable, kind = 'task', typed = false, 
 test('AI IF preserves agentic and simple LLM modes, selected model and instructions after saving and reopening', async ({ page }) => {
   const writes = await definitionFixtures(page, true, 'if', true)
   const value = graph()
-  value.schema_version = 'galaris.bpmn/v2'; value.inputs = []; value.outputs = []
+  value.schema_version = 'galaris.bpmn/v2'; value.variables = []
   value.nodes[1].kind = 'if'
   value.nodes[1].config = { mode: 'ai', prompt: 'Does the synthetic request match this project?' }
   value.flows[1].condition = 'decision'
@@ -642,7 +641,7 @@ test(`binary IF exposes two branches and processing follows its actor (${initial
   await page.setViewportSize({ width: 1440, height: 1400 })
   const writes = await definitionFixtures(page, true)
   const value = graph()
-  value.schema_version = 'galaris.bpmn/v2'; value.inputs = []; value.outputs = []
+  value.schema_version = 'galaris.bpmn/v2'; value.variables = []
   value.actors = [{ id: 'executor', name: 'Executor', kind: 'agent', agent_id: 7, user_id: null },
     { id: 'reviewer', name: 'Reviewer', kind: 'human', agent_id: null, user_id: 11 }]
   value.nodes[1] = { ...value.nodes[1], kind: 'if', title: 'Check project', config: { actor: 'executor', ...(initialMode ? { mode: initialMode } : {}), prompt: 'Check the project name.' } }
@@ -660,7 +659,8 @@ test(`binary IF exposes two branches and processing follows its actor (${initial
   await page.screenshot({ path: test.info().outputPath('binary-if-diagram.png'), fullPage: true, animations: 'disabled' })
   for (const [branch, destination] of [['True', 'End · declined'], ['False', 'End · end']]) {
     await page.getByRole('button', { name: `${branch} output of Check project`, exact: true }).click()
-    await page.getByText('Connect to an activity', { exact: true }).click()
+    await page.getByRole('button', { name: 'Connect to an activity', exact: true }).click()
+    await expect(page.getByText('Connect to an activity', { exact: true })).toHaveCount(0)
     await page.getByRole('button', { name: destination, exact: true }).click()
     await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   }
@@ -716,54 +716,334 @@ test('typed tasks switch between AI and Dataset code without losing instructions
   expect(writes[0].graph.nodes.find(node => node.id === 'work')).toMatchObject({ kind: 'code', config: { dataset_code: true, prompt: 'Prepare an invented result', code: 'return {"variable_1": variable_1 + 1}' } })
 })
 
-test('typed activity declarations preserve defaults and invalid drafts through reopening', async ({ page }) => {
+test('process variables preserve defaults and invalid drafts through activity reopening', async ({ page }) => {
   const writes = await definitionFixtures(page, true, 'task', true)
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
-  await page.getByRole('button', { name: 'Task · work', exact: true }).click()
-  const outputs = page.getByRole('region', { name: 'Output variables', exact: true })
+  const outputs = page.getByRole('region', { name: 'Process variables', exact: true })
   await outputs.getByRole('button', { name: 'Add a variable', exact: true }).click()
   await outputs.getByRole('textbox', { name: 'Name', exact: true }).fill('accepted')
   await outputs.getByRole('combobox', { name: 'Type', exact: true }).click()
-  await page.getByRole('option', { name: 'bool', exact: true }).click()
+  await page.getByRole('option', { name: 'Boolean', exact: true }).click()
   await outputs.getByRole('switch', { name: 'Nullable', exact: true }).uncheck()
   const value = outputs.getByRole('textbox', { name: 'Default value', exact: true })
   await value.fill('{')
+  await page.getByRole('button', { name: 'Task · work', exact: true }).click()
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Task · work', exact: true }).click()
-  await expect(value).toHaveValue('{')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
+  await expect(value).toHaveValue('{')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect(page.getByRole('alert')).toBeVisible()
+  await expect(page.getByRole('alert').filter({ has: page.getByRole('button', { name: 'Retry', exact: true }) })).toBeVisible()
   expect(writes).toHaveLength(0)
   await page.getByRole('button', { name: 'Task · work', exact: true }).click()
-  await value.fill('false')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
+  await value.fill('false')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => writes.length).toBe(1)
-  expect(writes[0].graph.nodes.find(node => node.id === 'work').outputs).toEqual([
+  expect(writes[0].graph.variables).toEqual([
     { name: 'accepted', type: 'bool', nullable: false, default: { type: 'bool', value: false } },
   ])
   await page.getByRole('button', { name: 'Task · work', exact: true }).click()
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await expect(value).toHaveValue('false')
   await expect(outputs.getByRole('switch', { name: 'Nullable', exact: true })).not.toBeChecked()
-  await page.getByRole('dialog').screenshot({ path: test.info().outputPath('typed-activity-declarations.png'), animations: 'disabled' })
+  await outputs.screenshot({ path: test.info().outputPath('process-variables.png'), animations: 'disabled' })
   await value.fill('')
-  await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Task · work', exact: true }).click()
-  await expect(value).toHaveValue('')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
+  await expect(value).toHaveValue('')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => writes.length).toBe(2)
-  expect(writes[1].graph.nodes.find(node => node.id === 'work').outputs).toEqual([
+  expect(writes[1].graph.variables).toEqual([
     { name: 'accepted', type: 'bool', nullable: false },
   ])
 })
+
+test('process and step variable bindings can be edited from either side and survive saving and renaming', async ({ page }) => {
+  const variables = [{ name: 'source', type: 'string', nullable: true }, { name: 'accepted', type: 'bool', nullable: true }]
+  const writes = await definitionFixtures(page, true, 'task', true, { variables })
+  await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
+  const registry = page.getByRole('region', { name: 'Process variables', exact: true })
+  async function closeOptions() { await page.keyboard.press('Escape'); await expect(page.getByRole('listbox')).toHaveCount(0) }
+  await registry.getByRole('combobox', { name: 'Input uses of source', exact: true }).click()
+  await expect(page.getByRole('option', { name: 'End · end', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Process', exact: true })).toHaveCount(0)
+  await page.getByRole('option', { name: 'Start · start', exact: true }).click()
+  await closeOptions()
+  await page.getByRole('button', { name: 'Task · work', exact: true }).click()
+  const inspector = page.getByRole('dialog')
+  await inspector.getByRole('combobox', { name: 'Input variables', exact: true }).click()
+  await page.getByRole('option', { name: 'source', exact: true }).click()
+  await closeOptions()
+  await inspector.getByRole('combobox', { name: 'Output variables', exact: true }).click()
+  await page.getByRole('option', { name: 'accepted', exact: true }).click()
+  await closeOptions()
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click()
+  await expect(registry.getByRole('combobox', { name: 'Input uses of source', exact: true }).locator('..')).toContainText('Task · work')
+  await registry.getByRole('combobox', { name: 'Output uses of accepted', exact: true }).click()
+  await expect(page.getByRole('option', { name: 'Start · start', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Process', exact: true })).toHaveCount(0)
+  await page.getByRole('option', { name: 'End · end', exact: true }).click()
+  await closeOptions()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0].graph.outputs).toBeUndefined()
+  expect(writes[0].graph.nodes.find(node => node.id === 'end').outputs).toEqual(['accepted'])
+  expect(writes[0].graph.inputs).toBeUndefined()
+  expect(writes[0].graph.nodes.find(node => node.id === 'start').inputs).toEqual(['source'])
+  expect(writes[0].graph.nodes.find(node => node.id === 'work')).toMatchObject({ inputs: ['source'], outputs: ['accepted'] })
+  await registry.getByRole('textbox', { name: 'Name', exact: true }).first().fill('accepted')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ has: page.getByRole('button', { name: 'Retry', exact: true }) })).toBeVisible()
+  expect(writes).toHaveLength(1)
+  await registry.getByRole('textbox', { name: 'Name', exact: true }).first().fill('renamed')
+  await page.getByRole('button', { name: 'Start · start', exact: true }).click()
+  await expect(inspector.getByRole('combobox', { name: 'Output variables', exact: true })).toHaveCount(0)
+  await inspector.getByRole('combobox', { name: 'Input variables', exact: true }).click()
+  await page.getByRole('option', { name: 'renamed', exact: true }).click()
+  await closeOptions()
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(2)
+  expect(writes[1].graph.inputs).toBeUndefined()
+  expect(writes[1].graph.nodes.find(node => node.id === 'work').inputs).toEqual(['renamed'])
+  expect(writes[1].graph.nodes.find(node => node.id === 'work').outputs).toEqual(['accepted'])
+  expect(writes[1].graph.nodes.find(node => node.id === 'start').inputs).toEqual([])
+  expect(writes[1].graph.nodes.find(node => node.id === 'start').outputs ?? []).toEqual([])
+  expect(writes[1].graph.variables).toEqual([{ ...variables[0], name: 'renamed' }, variables[1]])
+  await page.screenshot({ path: test.info().outputPath('process-variable-bindings-light.png'), fullPage: true, animations: 'disabled' })
+  await page.evaluate(() => window.testApp.dark(true))
+  await registry.screenshot({ path: test.info().outputPath('process-variable-bindings-dark.png'), animations: 'disabled' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await registry.screenshot({ path: test.info().outputPath('process-variable-bindings-mobile.png'), animations: 'disabled' })
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await registry.getByRole('button', { name: 'Remove variable renamed', exact: true }).click()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(3)
+  expect(writes[2].graph.inputs).toBeUndefined()
+  expect(writes[2].graph.nodes.find(node => node.id === 'work').inputs).toEqual([])
+  expect(writes[2].graph.nodes.find(node => node.id === 'start').outputs ?? []).toEqual([])
+  expect(writes[2].graph.outputs).toBeUndefined()
+  expect(writes[2].graph.nodes.find(node => node.id === 'end').outputs).toEqual(['accepted'])
+})
+
+test('control nodes only expose their permitted variable directions in both editors', async ({ page }) => {
+  const variables = [{ name: 'source', type: 'string', nullable: true }]
+  await mount(page, 'app/process/components/ProcessVariableBindings.vue', { props: { variables, kind: 'start' } })
+  for (const kind of ['start', 'if', 'end']) {
+    await page.evaluate(kind => window.testApp.setProps({ kind }), kind)
+    const allowed = kind === 'end' ? 'Output variables' : 'Input variables'
+    const forbidden = kind === 'end' ? 'Input variables' : 'Output variables'
+    await expect(page.getByRole('combobox', { name: forbidden, exact: true })).toHaveCount(0)
+    await page.getByRole('combobox', { name: allowed, exact: true }).click()
+    await page.getByRole('option', { name: 'source', exact: true }).click()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+  }
+  const value = graph()
+  value.variables = variables
+  value.nodes.push({ ...value.nodes[1], id: 'check', kind: 'if' })
+  await mount(page, 'app/process/components/ProcessVariableUsage.vue', { props: { graph: value, name: 'source' } })
+  await page.getByRole('combobox', { name: 'Input uses of source', exact: true }).click()
+  await expect(page.getByRole('option', { name: 'End · end', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Process', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Conditional choice · check', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('listbox')).toHaveCount(0)
+  await page.getByRole('combobox', { name: 'Output uses of source', exact: true }).click()
+  await expect(page.getByRole('option', { name: 'Start · start', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Conditional choice · check', exact: true })).toHaveCount(0)
+  await page.getByRole('option', { name: 'End · end', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:graph').at(-1)?.value.nodes.find(node => node.id === 'end').outputs)).toEqual(['source'])
+})
+
+test('run variables distinguish missing and null values and refresh from the selected run data', async ({ page }) => {
+  const variables = [
+    { name: 'count', type: 'int', nullable: false },
+    { name: 'accepted', type: 'bool', nullable: false },
+    { name: 'note', type: 'string', nullable: true },
+    { name: 'details', type: 'object', nullable: false },
+    { name: 'description', type: 'string', nullable: false },
+    { name: 'later', type: 'object', nullable: false },
+  ]
+  const data = { count: { type: 'int', value: 0 }, accepted: { type: 'bool', value: false }, note: { type: 'string', value: null },
+    description: { type: 'string', value: '' }, details: { type: 'object', value: {
+      status: { type: 'string', value: 'ready' }, flags: { type: 'array', value: [{ type: 'bool', value: false }, { type: 'int', value: 0 }] },
+    } } }
+  await mount(page, 'app/process/components/ProcessRunVariables.vue', { props: { variables, data } })
+  const card = name => page.locator('.run-variable').filter({ has: page.getByText(name, { exact: true }) })
+  await expect(card('later')).toContainText('Not set')
+  await expect(card('count')).toContainText('0')
+  await expect(card('accepted')).toContainText('false')
+  await expect(card('note')).toContainText('null')
+  await expect(card('description')).toContainText('""')
+  await page.getByRole('button', { name: 'details', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText(JSON.stringify({ status: 'ready', flags: [false, 0] }, null, 2))
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.screenshot({ path: test.info().outputPath('run-variables-light.png'), fullPage: true })
+  await page.evaluate(({ variables }) => window.testApp.setProps({ variables, data: { count: { type: 'int', value: 42 } } }), { variables })
+  await expect(card('count')).toContainText('42')
+  await expect(card('note')).toContainText('Not set')
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: test.info().outputPath('run-variables-dark.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.screenshot({ path: test.info().outputPath('run-variables-mobile.png'), fullPage: true })
+})
+
+test('direct input editing preserves a draft and its original revision after a concurrent refresh', async ({ page }) => {
+  const requests = []
+  await page.route('**/api/processes/internal/runs/synthetic-input-run/inputs', route => {
+    requests.push(route.request().postDataJSON())
+    return route.fulfill({ status: 409, json: { detail: 'Synthetic concurrent update' } })
+  })
+  await mount(page, 'app/process/components/ProcessInputEditor.vue', { props: {
+    runId: 'synthetic-input-run', variable: { name: 'birth', label: 'Beneficiary birth date', type: 'date', nullable: false },
+    value: undefined, revision: 1,
+  } })
+  await page.getByLabel('Beneficiary birth date', { exact: true }).fill('2000-02-29')
+  await page.screenshot({ path: test.info().outputPath('input-editor-light.png'), fullPage: true, animations: 'disabled' })
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: test.info().outputPath('input-editor-dark.png'), fullPage: true, animations: 'disabled' })
+  await page.evaluate(() => window.testApp.setProps({ revision: 2, value: { type: 'date', value: '2001-03-01' } }))
+  await page.getByRole('button', { name: 'Save input', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Unable to save')
+  await expect(page.getByLabel('Beneficiary birth date', { exact: true })).toHaveValue('2000-02-29')
+  expect(requests).toEqual([{ values: { birth: '2000-02-29' }, expected_revision: 1, start: false }])
+})
+
+test('direct input editing uploads the selected file without inventing a resource URI', async ({ page }) => {
+  let uploaded = ''
+  await page.route('**/api/processes/internal/runs/synthetic-input-run/inputs/scan/file?**', route => {
+    uploaded = route.request().postDataBuffer().toString()
+    expect(new URL(route.request().url()).searchParams.get('expected_revision')).toBe('3')
+    return route.fulfill({ json: {} })
+  })
+  await mount(page, 'app/process/components/ProcessInputEditor.vue', { props: {
+    runId: 'synthetic-input-run', variable: { name: 'scan', type: 'File', nullable: false, mime_type: 'application/pdf' }, revision: 3,
+  } })
+  await page.locator('input[type=file]').setInputFiles({ name: 'Synthetic.pdf', mimeType: 'application/pdf', buffer: Buffer.from('Synthetic upload bytes') })
+  await page.getByRole('button', { name: 'Save input', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.some(event => event.name === 'saved'))).toBe(true)
+  expect(uploaded).toContain('Synthetic.pdf')
+  expect(uploaded).toContain('Synthetic upload bytes')
+})
+
+for (const width of [390, 1440]) {
+test(`waiting run accepts a direct date then starts the same run (${width}px)`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const value = { schema_version: 'galaris.bpmn/v2', variables: [{ name: 'birth', label: 'Beneficiary birth date', description: 'The beneficiary’s date, not the requester’s.', type: 'date', nullable: false }],
+    nodes: [{ id: 'start', kind: 'start', title: '', config: {}, inputs: ['birth'], x: 0, y: 0, body: null },
+      { id: 'end', kind: 'end', title: '', config: {}, x: 250, y: 0, body: null }], flows: [{ id: 'done', source: 'start', target: 'end', condition: null }] }
+  const run = { id: 'synthetic-input-run', status: 'waiting', graph: value, definition_revision: 1, can_control: true,
+    node_statuses: {}, data: {}, files: [], data_revision: 1, paused: false, breakpoints: [],
+    output: null, error: null, parent_run_id: null, nodes: [], total: 0, event_cursor: 0, events: [], duration_seconds: null,
+    operational: { phase: 'waiting', last_activity_at: '2026-01-01T12:00:00Z', progress: { occurrences: 0, completed: 0, active: 0, ready: 0, failed: 0, cancelled: 0 },
+      activities: [], activities_truncated: false, blocker: null, available_actions: ['cancel'],
+      input_preparation: { status: 'collecting', missing: ['birth'], names: ['birth'], issues: {}, question: 'Provide the beneficiary birth date.' } } }
+  await page.route('**/api/processes/internal/runs/synthetic-input-run?**', route => route.fulfill({ json: run }))
+  const accounting = { calls: 0, cost: 0, inference_cost: 0, tokens: 0, estimated_calls: 0 }
+  await jsonRoute(page, '**/api/processes/internal/runs/synthetic-input-run/metrics', { direct: accounting, inclusive: accounting, nodes: {}, tasks: {}, partial: false })
+  const writes = []
+  await page.route('**/api/processes/internal/runs/synthetic-input-run/inputs', route => {
+    const body = route.request().postDataJSON(); writes.push(body)
+    if (body.start) { run.status = 'queued'; run.operational.input_preparation = null }
+    else {
+      run.data = { birth: { type: 'date', value: body.values.birth } }; run.data_revision++
+      run.operational.input_preparation = { ...run.operational.input_preparation, status: 'ready', missing: [], question: '' }
+    }
+    return route.fulfill({ json: { id: run.id, status: run.status } })
+  })
+  await mount(page, 'app/process/components/NativeRunPanel.vue', { props: { runId: run.id }, privileges: ['PROCESS_READ', 'PROCESS_LAUNCH'] })
+  await page.getByRole('button', { name: 'Complete Beneficiary birth date', exact: true }).click()
+  await page.getByLabel('Beneficiary birth date', { exact: true }).fill('2000-02-29')
+  await page.getByRole('button', { name: 'Save input', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Start this process', exact: true })).toBeVisible()
+  await page.screenshot({ path: test.info().outputPath(`waiting-input-ready-${width}.png`), fullPage: true })
+  await page.getByRole('button', { name: 'Start this process', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Complete Beneficiary birth date', exact: true })).toHaveCount(0)
+  expect(writes).toEqual([{ values: { birth: '2000-02-29' }, expected_revision: 1, start: false }, { values: {}, expected_revision: 2, start: true }])
+})
+}
+
+for (const locale of ['en', 'fr']) {
+test(`variable resource constraints save and reopen with localized selectors (${locale})`, async ({ page }) => {
+  const variables = [
+    { name: 'attachment', type: 'File', nullable: true },
+    { name: 'report', type: 'Document', nullable: true },
+    { name: 'participant', type: 'User', nullable: true },
+    { name: 'birth_date', type: 'string', nullable: true },
+    { name: 'appointment', type: 'string', nullable: true },
+  ]
+  const writes = await definitionFixtures(page, true, 'task', true, { variables })
+  await mount(page, 'app/process/components/NativeProcessEditor.vue', {
+    props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'], locale,
+  })
+  const region = page.getByRole('region', { name: locale === 'fr' ? 'Variables du processus' : 'Process variables', exact: true })
+  const rows = region.locator('tbody tr')
+  const mime = rows.nth(0).getByRole('combobox', { name: locale === 'fr' ? 'Format de fichier attendu (facultatif)' : 'Expected file format (optional)', exact: true })
+  await rows.nth(0).getByRole('textbox', { name: locale === 'fr' ? 'Libellé' : 'Display label', exact: true }).fill('Beneficiary portrait')
+  await rows.nth(0).getByRole('textbox', { name: locale === 'fr' ? 'Description métier' : 'Business description', exact: true }).fill('The beneficiary’s portrait, not the requester’s.')
+  await mime.fill('application/pdf')
+  await page.getByRole('option', { name: 'PDF (application/pdf)', exact: true }).click()
+  await rows.nth(1).getByRole('combobox', { name: locale === 'fr' ? 'Type de document (facultatif)' : 'Document type (optional)', exact: true }).click()
+  await page.getByRole('option', { name: locale === 'fr' ? 'Données' : 'Data', exact: true }).click()
+  await rows.nth(2).getByRole('combobox', { name: 'Type', exact: true }).fill('Agent')
+  await page.getByRole('option', { name: 'Agent', exact: true }).click()
+  for (const [index, label] of [[3, 'Date'], [4, locale === 'fr' ? 'Date et heure' : 'Date and time']]) {
+    await rows.nth(index).getByRole('combobox', { name: 'Type', exact: true }).fill(label)
+    await page.getByRole('option', { name: label, exact: true }).click()
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+  }
+  await page.getByRole('button', { name: locale === 'fr' ? 'Enregistrer' : 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0].graph.variables).toEqual([
+    { ...variables[0], label: 'Beneficiary portrait', description: 'The beneficiary’s portrait, not the requester’s.', mime_type: 'application/pdf' }, { ...variables[1], document_type: 'data' }, { ...variables[2], type: 'Agent' },
+    { ...variables[3], type: 'date' }, { ...variables[4], type: 'datetime' },
+  ])
+  await expect(rows.nth(0)).toContainText('PDF')
+  await expect(rows.nth(1)).toContainText(locale === 'fr' ? 'Données' : 'Data')
+  await expect(page.locator('.q-notification')).toHaveCount(0)
+  await page.screenshot({ path: test.info().outputPath(`process-variable-layout-${locale}.png`), fullPage: true, animations: 'disabled' })
+  await region.screenshot({ path: test.info().outputPath(`variable-resource-types-${locale}-light.png`), animations: 'disabled' })
+  await page.evaluate(() => window.testApp.dark(true))
+  await region.screenshot({ path: test.info().outputPath(`variable-resource-types-${locale}-dark.png`), animations: 'disabled' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await region.screenshot({ path: test.info().outputPath(`variable-resource-types-${locale}-mobile.png`), animations: 'disabled' })
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  const stringLabel = locale === 'fr' ? 'Chaîne de caractères' : 'Text string'
+  await rows.nth(1).getByRole('combobox', { name: 'Type', exact: true }).fill(stringLabel)
+  await page.getByRole('option', { name: stringLabel, exact: true }).click()
+  await mime.fill('image/*')
+  await page.getByRole('option', { name: 'Images (image/*)', exact: true }).click()
+  await page.getByRole('button', { name: locale === 'fr' ? 'Enregistrer' : 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(2)
+  expect(writes[1].graph.variables[0].mime_type).toBe('image/*')
+  expect(writes[1].graph.variables[0].label).toBe('Beneficiary portrait')
+  expect(writes[1].graph.variables[0].description).toBe('The beneficiary’s portrait, not the requester’s.')
+  expect(writes[1].graph.variables[1]).toEqual({ ...variables[1], type: 'string' })
+  await mime.fill('invalid-format')
+  await mime.press('Enter')
+  await page.getByRole('button', { name: locale === 'fr' ? 'Enregistrer' : 'Save', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ has: page.getByRole('button', { name: locale === 'fr' ? 'Réessayer' : 'Retry', exact: true }) })).toBeVisible()
+  expect(writes).toHaveLength(2)
+  await mime.fill('application/vnd.synthetic+json')
+  await mime.press('Enter')
+  await page.getByRole('button', { name: locale === 'fr' ? 'Enregistrer' : 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(3)
+  expect(writes[2].graph.variables[0].mime_type).toBe('application/vnd.synthetic+json')
+})
+}
 
 test('variable defaults preserve explicit JSON values and clear to omission', async ({ page }) => {
   const values = [
     { name: 'count', type: 'int', value: 0 }, { name: 'accepted', type: 'bool', value: false },
     { name: 'title', type: 'string', value: '' }, { name: 'items', type: 'array', value: [] },
     { name: 'details', type: 'object', value: {} }, { name: 'optional', type: 'string', value: null },
+    { name: 'birth_date', type: 'date', value: '2000-02-29' },
+    { name: 'appointment', type: 'datetime', value: '2026-11-08T14:30:00+01:00' },
   ]
   const variables = values.map(({ name, type }) => ({ name, type, nullable: true }))
   await mount(page, 'app/process/components/ProcessVariableDeclarations.vue', {
@@ -788,7 +1068,7 @@ test('variable defaults preserve explicit JSON values and clear to omission', as
   await expect(page.getByRole('switch', { name: 'Nullable', exact: true }).first()).toBeDisabled()
 })
 
-for (const [side, label] of [['inputs', 'Input variables'], ['outputs', 'Output variables']]) {
+for (const [side, label] of [['variables', 'Process variables']]) {
   test(`${label} can be reordered without losing drafts, defaults or saved order`, async ({ page }) => {
     const variables = [
       { name: 'count', type: 'int', nullable: false, default: { type: 'int', value: 0 } },
@@ -797,7 +1077,7 @@ for (const [side, label] of [['inputs', 'Input variables'], ['outputs', 'Output 
     ]
     const writes = await definitionFixtures(page, true, 'task', true, { [side]: variables })
     await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
-    const open = () => page.getByRole('button', { name: 'Task · work', exact: true }).click()
+    const open = async () => { await page.getByRole('button', { name: 'Task · work', exact: true }).click(); await page.getByRole('button', { name: 'Close settings', exact: true }).click() }
     await open()
     const region = page.getByRole('region', { name: label, exact: true })
     const names = region.getByRole('textbox', { name: 'Name', exact: true })
@@ -821,28 +1101,24 @@ for (const [side, label] of [['inputs', 'Input variables'], ['outputs', 'Output 
     await dragCount()
     await expectNames(['accepted', 'title', 'count'])
     await expect.poll(() => defaults.evaluateAll(inputs => inputs.map(input => input.value))).toEqual(['false', '""', '{'])
-    await page.getByRole('button', { name: 'Close settings', exact: true }).click()
     await open()
     await expect(defaults.last()).toHaveValue('{')
-    await page.getByRole('button', { name: 'Close settings', exact: true }).click()
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     expect(writes).toHaveLength(0)
     await open()
     await defaults.last().fill('0')
-    await page.getByRole('dialog').screenshot({ path: test.info().outputPath(`reordered-${side}.png`), animations: 'disabled' })
-    await page.getByRole('button', { name: 'Close settings', exact: true }).click()
+    await region.screenshot({ path: test.info().outputPath(`reordered-${side}.png`), animations: 'disabled' })
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => writes.length).toBe(1)
-    expect(writes[0].graph.nodes.find(node => node.id === 'work')[side]).toEqual([variables[1], variables[2], variables[0]])
+    expect(writes[0].graph[side]).toEqual([variables[1], variables[2], variables[0]])
     await open()
     const handle = region.getByRole('button', { name: 'Reorder variable count', exact: true })
     await handle.focus(); await page.keyboard.press('ArrowUp')
     await expectNames(['accepted', 'count', 'title'])
     await expect(handle).toBeFocused()
-    await page.getByRole('button', { name: 'Close settings', exact: true }).click()
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => writes.length).toBe(2)
-    expect(writes[1].graph.nodes.find(node => node.id === 'work')[side]).toEqual([variables[1], variables[0], variables[2]])
+    expect(writes[1].graph[side]).toEqual([variables[1], variables[0], variables[2]])
   })
 }
 
@@ -937,7 +1213,7 @@ test('a process read-only grant keeps the definition visible without mutation co
 })
 
 for (const [host, width] of [['definition', 1440], ['definition', 390], ['tracking', 390], ['shared', 1440], ['chat', 1440], ['chat', 390]]) {
-test(`internal run ${host} ${width}px view highlights active work and opens execution data without edits`, async ({ page }) => {
+test(`internal run ${host} ${width}px view highlights active work and opens activity details without edits`, async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', {
     value: { writeText: async value => { window.copiedRunUrl = value } }, configurable: true,
   }))
@@ -958,6 +1234,13 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
     operational: { phase: 'running', last_activity_at: '2026-01-01T12:00:04Z',
       progress: { occurrences: 55, completed: 53, active: 1, ready: 1, failed: 0, cancelled: 0 },
       activities: [], activities_truncated: false, blocker: null, available_actions: [] } }
+  {
+    value.schema_version = 'galaris.bpmn/v2'
+    value.variables = [{ name: 'kept', type: 'bool', nullable: false }, { name: 'result', type: 'string', nullable: false },
+      { name: 'reviewer', type: 'User', nullable: true }, { name: 'report', type: 'File', nullable: false }]
+    run.data = { kept: { type: 'bool', value: false }, result: { type: 'string', value: 'Synthetic business value' },
+      report: { type: 'File', value: 'file://11111111-1111-4111-8111-111111111111' } }
+  }
   const summary = { id: run.id, status: run.status, tool_code: 'galaris', process_id: 1, workflow_id: 'synthetic_flow',
     process_label: 'Synthetic inspection workflow', summary: 'Synthetic inspection workflow', input: {}, output: null,
     engine_metadata: {}, launcher_agent_id: 7, launcher_agent_code: 'synthetic_agent', created_at: '2026-01-01T12:00:00Z',
@@ -970,6 +1253,12 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
   await jsonRoute(page, '**/api/processes/internal/runs/synthetic-live-run?**', run)
   await page.route('**/api/processes/internal/runs/synthetic-live-run/files/*', route =>
     route.fulfill({ contentType: 'text/plain', body: 'Entirely synthetic report' }))
+  await jsonRoute(page, '**/api/processes/internal/runs/synthetic-live-run/variables/resource?**', {
+    uri: run.data.report.value, name: 'report.txt', media_type: 'text/plain', size: 25,
+  })
+  await page.route('**/api/processes/internal/runs/synthetic-live-run/variables/content?**', route =>
+    route.fulfill({ contentType: 'text/plain', body: 'Entirely synthetic report' }))
+  await page.route('**/api/processes/internal/runs/synthetic-live-run/variables/thumbnail?**', route => route.fulfill({ status: 404 }))
   await jsonRoute(page, '**/api/processes/internal/runs/synthetic-live-run/metrics', { direct: accounting, inclusive: { ...accounting, cost: 0.375 }, tasks: {}, nodes: {}, partial: true })
   let delayedMetrics
   if (host === 'shared') {
@@ -1023,6 +1312,12 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
   const work = page.getByRole('button', { name: 'Synthetic running task · work', exact: true })
   const openedAt = performance.now()
   await expect(work).toHaveAttribute('aria-current', 'step')
+  if (host === 'tracking') {
+    const variables = page.getByRole('region', { name: 'Process variables', exact: true })
+    await expect(variables.locator('.run-variable').filter({ hasText: 'kept' })).toContainText('false')
+    await expect(variables.locator('.run-variable').filter({ hasText: 'result' })).toContainText('Synthetic business value')
+    await expect(variables.locator('.run-variable').filter({ hasText: 'reviewer' })).toContainText('Not set')
+  }
   if (host === 'chat') {
     await expect(page.getByRole('dialog').getByLabel('Elapsed time: 4 s', { exact: true })).toBeVisible()
     await expect(page.getByRole('dialog').getByLabel('Billed cost including children: $0.375', { exact: true })).toBeVisible()
@@ -1046,9 +1341,7 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
     await expect(error).toBeVisible()
     await error.getByRole('button', { name: 'Retry', exact: true }).click()
     await expect(error).toHaveCount(0)
-    const data = page.getByRole('textbox', { name: 'Run data', exact: true })
-    await expect(data).toHaveValue(JSON.stringify(run.data, null, 2))
-    await expect(data).toHaveAttribute('readonly', '')
+    await expect(page.getByRole('region', { name: 'Process variables', exact: true })).toContainText('Synthetic business value')
     await expect(page.getByText('report.txt', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add attachments', exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Remove report.txt', exact: true })).toHaveCount(0)
@@ -1065,10 +1358,12 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
   }
   await work.click()
   const inspector = page.getByRole('dialog', { name: 'Activity execution', exact: true })
-  await expect(inspector.getByRole('textbox', { name: 'Input data', exact: true })).toHaveValue(/42/)
-  await expect(inspector.getByRole('textbox', { name: 'Output data', exact: true })).toHaveValue(/synthetic data/)
-  await expect(inspector.getByRole('textbox', { name: 'Task or operation result', exact: true })).toHaveValue(/synthetic task result/)
-  expect(await inspector.locator('textarea').evaluateAll(fields => fields.every(field => field.readOnly))).toBe(true)
+  await expect(inspector.locator('.q-badge').filter({ hasText: /^Running$/ })).toBeVisible()
+  await expect(inspector.getByRole('textbox', { name: /^(Input data|Output data|Task or operation result)$/ })).toHaveCount(0)
+  await inspector.getByText('Executed instructions', { exact: true }).click()
+  const instructions = inspector.getByRole('textbox', { name: 'Executed instructions', exact: true })
+  await expect(instructions).toHaveValue('Synthetic executed prompt')
+  await expect(instructions).not.toBeEditable()
   await page.screenshot({ path: test.info().outputPath('run-diagram-execution-details.png'), animations: 'disabled' })
   await page.getByRole('button', { name: 'Start · start', exact: true }).click()
   await expect.poll(() => Boolean(late)).toBe(true)
@@ -1077,7 +1372,6 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
   const delivered = page.waitForResponse(response => response.url().includes('/nodes/previous-step'))
   await late.fulfill({ json: { ...previous, output: { obsolete: 'Discard this late activity result' }, attempts: [] } })
   await delivered
-  await expect(inspector).not.toContainText('Discard this late activity result')
   await expect(inspector).toContainText('This activity has not run yet.')
   await inspector.getByRole('button', { name: 'Close execution details', exact: true }).click()
   if (host === 'shared') {
@@ -1105,7 +1399,7 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
 })
 }
 
-test('live run events refresh the diagram and open results without losing in-flight updates', async ({ page }) => {
+test('live run events refresh the diagram and open activity details without losing in-flight updates', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-01-01T12:00:00Z') })
   await page.clock.pauseAt(new Date('2026-01-01T12:01:00Z'))
   const active = { id: 'live-step', node_key: 'work', status: 'running', body_path: [], iteration: null,
@@ -1161,7 +1455,7 @@ test('live run events refresh the diagram and open results without losing in-fli
   await expect(work).not.toHaveAttribute('aria-current', 'step')
   await pendingNode.fulfill({ json: staleNode })
   const inspector = page.getByRole('dialog', { name: 'Activity execution', exact: true })
-  await expect(inspector.getByRole('textbox', { name: 'Output data', exact: true })).toHaveValue(/Final synthetic result/)
+  await expect(inspector.locator('.q-badge').filter({ hasText: /^Succeeded$/ })).toBeVisible()
   expect(metricsReads).toBe(1)
   await pendingMetrics.fulfill({ json: { direct: accounting, inclusive: accounting, tasks: {}, nodes: {}, partial: true } })
   await expect.poll(() => metricsReads).toBe(2)

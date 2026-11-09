@@ -16,9 +16,10 @@ from app.task import TaskCreate, TaskStatus, task_service, get_task_outcome_obse
 from core.database import get_db
 
 from . import process_service
-from .bpmn import Node, Workflow, decision_activity
+from .bpmn import Node, Workflow, decision_activity, activity_variables, selected_variables, normalize_activity_result
+from .activity_prompts import build_activity_prompt
 from .llm_decisions import simple_llm, observe_decision, stop_decision
-from .values import normalize, validate_values, loads_values, unwrap, external_outputs, ValueContractError
+from .values import normalize_patch, validate_values, loads_values, unwrap, external_patch, ValueContractError
 from .expressions import evaluate, resolve
 from .engine import ProcessEngineError
 from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
@@ -51,6 +52,7 @@ def local_graph(run: ProcessRun, occurrence: ProcessNodeRun) -> Workflow:
             raise ValueError("Subprocess graph is missing")
         if body.execution_agent_id is None:
             body.execution_agent_id = graph.execution_agent_id
+        body.variables = graph.variables
         graph = body
     return graph
 
@@ -69,6 +71,12 @@ def enqueue(run: ProcessRun, node_key: str, context: dict[str, Any], *, occurren
 
 def expression_context(occurrence: ProcessNodeRun) -> dict[str, Any]:
     return occurrence.context.get("values", {})
+
+
+def input_workspace(node: Node, workspace: dict[str, Any]) -> dict[str, Any]:
+    """Pass references to the selected run values, without a second local registry."""
+    return {**workspace, "data": {name: workspace["data"][name] for name in node.inputs if name in workspace["data"]},
+        "input": {name: workspace["input"][name] for name in node.inputs if name in workspace["input"]}}
 
 
 def snapshot(run: ProcessRun) -> EngineRunSnapshot:
@@ -110,6 +118,9 @@ class NativeProcessEngine:
         record = await get_db().get(ProcessRun, run.id)
         if record is None:
             raise ValueError("Process run not found")
+        from .input_preparation import waiting_for_inputs
+        if waiting_for_inputs(record):
+            raise ValueError("Process inputs are still being collected")
         if record.status in process_service.TERMINAL_STATUSES or record.engine_metadata.get("native", {}).get("initialized"):
             return EngineStartResult(accepted=True, engine_run_id=str(run.id))
         graph = Workflow.model_validate(record.launch_snapshot["definition"]["graph"])
@@ -337,6 +348,7 @@ class NativeProcessEngine:
                 if not await self._join(run, occurrence, graph, claim, admit_activity=True):
                     return
             values = await self._workspace_values(run, occurrence)
+            result: dict[str, Any] | None = None
             if node.kind == "if" and node.config.get("mode") is not None:
                 result = await self._effect(run, occurrence, decision_activity(node), claim)
                 if result is None:
@@ -362,27 +374,33 @@ class NativeProcessEngine:
                         changes = {}
                         output_files = []
                         if node.config["postprocess"].strip():
+                            baseline: dict[str, Any] = occurrence.context["integration_baseline"]
+                            phase_baseline = {name: baseline[name] for name in node.inputs if name in baseline}
                             transformed = await self._code_phase(run, occurrence, node, claim, "postprocess", node.config["postprocess"], {
-                                "data": deepcopy(occurrence.context["integration_baseline"]), "files": deepcopy(occurrence.context.get("input_files", [])),
+                                "data": deepcopy(phase_baseline), "files": deepcopy(occurrence.context.get("input_files", [])),
                                 "output": result, "output_files": occurrence.context.get("output_files", [])})
                             if transformed is None:
                                 return
                             new_data = validate_values(transformed.get("data", {}), path=f"{node.id}.postprocess.data")
-                            baseline: dict[str, Any] = occurrence.context["integration_baseline"]
-                            changes = {key: value for key, value in new_data.items() if key not in baseline or baseline[key] != value}
-                            remove = list(set(baseline) - set(new_data))
+                            changes = {key: value for key, value in new_data.items() if key not in phase_baseline or phase_baseline[key] != value}
+                            remove = list(set(phase_baseline) - set(new_data))
                             output_files = self._file_references(transformed.get("files", []))
                             files_mode = "replace"
                     # Result and intent are already durable. Repeating this port
                     # after a lost acknowledgement never runs the activity again.
+                    changes = normalize_patch(selected_variables(graph, node.outputs), changes, path=f"{node.id}.integration")
+                    if set(remove) - set(node.outputs):
+                        raise ValueError(f"{node.id}: only selected output variables can be removed")
                     candidate = {**values["data"], **changes}
                     for name in remove:
                         candidate.pop(name, None)
                     validate_values(candidate, path=f"{node.id}.data")
+                    from .native_actors import execution_agent
                     await integrate_workflow_values(run.id,
                         command=f"activity:{occurrence.id}", baseline=occurrence.context["integration_baseline"],
                         changes=changes, files=output_files, remove=remove, files_mode=files_mode,
-                        baseline_files=occurrence.context.get("input_files", []))
+                        baseline_files=occurrence.context.get("input_files", []),
+                        actor_agent_id=execution_agent(graph, node, run.launcher_agent_id))
                 values["output"] = result
                 values.setdefault("results", {})[node.id] = result
                 values = {**await self._workspace_values(run, occurrence), "output": result,
@@ -396,6 +414,10 @@ class NativeProcessEngine:
             if node.kind == "end":
                 await self._end(run, occurrence, graph, values, claim)
                 return
+            if graph.typed and node.kind in {"start", "if", "parallel"} and not node.config.get("mode"):
+                values["output"] = {name: values["data"][name] for name in node.outputs if name in values["data"]}
+                if node.kind == "if":
+                    values = input_workspace(node, values)
             await self._complete(run, occurrence, graph, values, claim)
         except Exception as error:
             if isinstance(error, SQLAlchemyError) or not get_db().is_active:
@@ -460,23 +482,22 @@ class NativeProcessEngine:
                     await get_db().commit()
             inputs: Any = resolve(node.config.get("input", {"$expr": "data"}), workspace) if node.kind in {"tool_call", "program"} else workspace["data"]
             typed = local_graph(run, occurrence).typed
+            selected_workspace = workspace
             if typed:
-                assert node.inputs is not None
-                inputs = resolve(node.config.get("input_mapping", {"$expr": "data"}), workspace)
+                selected_workspace = input_workspace(node, workspace)
+                inputs = resolve(node.config.get("input_mapping", {"$expr": "data"}), selected_workspace)
                 input_files = workspace["files"]
                 if "preprocess" in node.config:
                     inputs = {}
                     input_files = []
                     if node.config["preprocess"].strip():
                         transformed = await self._code_phase(run, occurrence, node, claim, "preprocess", node.config["preprocess"],
-                            {"data": workspace["data"], "files": workspace["files"], "input": {}, "input_files": []})
+                            {"data": selected_workspace["data"], "files": workspace["files"], "input": {}, "input_files": []})
                         if transformed is None:
                             return None
                         inputs = transformed.get("input", {})
                         input_files = self._file_references(transformed.get("input_files", []))
-                inputs = normalize(node.inputs, inputs, path=f"{node.id}.input", allow_extra=True)
-                if local_graph(run, occurrence).node(node.id).kind == "if" and node.config.get("mode") is not None:
-                    inputs = validate_values(workspace["data"], path=f"{node.id}.dataset")
+                inputs = validate_values(inputs, path=f"{node.id}.input")
                 occurrence.context = {**occurrence.context, "integration_baseline": deepcopy(workspace["data"]),
                     "input_files": deepcopy(input_files)}
             if not isinstance(inputs, dict):
@@ -485,22 +506,17 @@ class NativeProcessEngine:
                 input=inputs, status="intent")
             if node.kind in {"task", "human_task"}:
                 prompt = str(node.config["prompt"])
-                if typed:
+                if typed and node.kind == "task":
+                    prompt = build_activity_prompt(local_graph(run, occurrence), node,
+                        inputs=cast(dict[str, Any], inputs), data=occurrence.context["integration_baseline"],
+                        files=occurrence.context["input_files"], mode="llm" if simple_llm(node) else "agent")
+                elif typed:
                     prompt += "\n\nActivity inputs (typed JSON, immutable):\n" + json.dumps(inputs, ensure_ascii=False)
-                    prompt += "\nExpected output variables (type, nullable, optional default):\n" + json.dumps(
-                        [item.model_dump(mode="json") for item in node.outputs or []], ensure_ascii=False)
+                    prompt += "\nSelected process output variables (submit only changes; omitted values are preserved):\n" + json.dumps(
+                        [item.model_dump(mode="json") for item in activity_variables(local_graph(run, occurrence), node)], ensure_ascii=False)
                     prompt += "\nFile values are canonical file_share URIs, never bytes or local paths."
                     if node.kind != "task":
-                        prompt += "\nWork only on these local inputs. Return only the typed JSON object of output variables, without prose or Markdown fences."
-                    if node.kind == "task":
-                        prompt += "\nRun data context (typed JSON, read-only):\n" + json.dumps(workspace["data"], ensure_ascii=False)
-                        prompt += ("\nUse process_activity_complete(output={...}, message='...') to submit ordinary JSON values "
-                            "matching the declared outputs; the engine applies their types. Do not encode the result in final prose. "
-                            "If human information is needed, call process_activity_question(question='...', variables=[...]) "
-                            "and stop this turn. That call sends the question and durably waits for the authenticated requester. "
-                            "On resumption use the supplied answer, continue work, and call process_activity_complete. "
-                            "A nullable output is not permission to skip requested information. "
-                            "Never merely write a question as your final answer. A final message alone does not contact the human.")
+                        prompt += "\nReturn only changes to process variables as a typed JSON object, without prose or Markdown fences. Omitted variables keep their current values."
                     prompt += "\nLocal input files (canonical URIs):\n" + json.dumps(occurrence.context["input_files"], ensure_ascii=False)
                 else:
                     prompt = self._legacy_prompt(prompt, run, node, cast(dict[str, Any], inputs), workspace)
@@ -544,13 +560,12 @@ class NativeProcessEngine:
             await get_db().commit()
             return None
         if graph.typed and attempt.status == "returned":
-            assert node.outputs is not None
             raw_output = (attempt.receipt or {})["output"]
             if node.kind == "rest" and raw_output["status_code"] >= 400:
                 raise ProcessEngineError("rest_http_error", f"REST API returned HTTP {raw_output['status_code']}")
             mapped = resolve(node.config.get("external_output", {"$expr": "result"}),
                 {"result": raw_output})
-            result = external_outputs(node.outputs, mapped, path=f"{node.id}.output", typed_values=node.config.get("external_output_typed", False))
+            result = external_patch(activity_variables(graph, node), mapped, path=f"{node.id}.output", typed_values=node.config.get("external_output_typed", False))
             attempt.status = "completed"
             attempt.receipt = result
             attempt.finished_at = now()
@@ -644,14 +659,14 @@ class NativeProcessEngine:
                 if submitted is not None:
                     result: Any = submitted["output"]
                     summary = submitted["message"] or observation.result
-                elif not node.outputs:
+                elif not activity_variables(graph, node):
                     result = {}
                     summary = observation.result
                 else:
                     try:
                         result = loads_values(observation.result or "{}", path=f"{node.id}.output")
                     except ValueContractError as error:
-                        raise ValueError(f"{error}. The activity must submit its declared outputs with process_activity_complete(output={{...}}).") from error
+                        raise ValueError(f"{error}. The activity must submit changes to process variables with process_activity_complete(output={{...}}).") from error
                     summary = ""
                 if summary:
                     occurrence.context = {**occurrence.context, "activity_summary": summary[:12_000]}
@@ -703,10 +718,9 @@ class NativeProcessEngine:
                 if child_typed:
                     _, child_files = await read_run_workspace(child.id)
                     occurrence.context = {**occurrence.context, "output_files": deepcopy(child_files)}
-                else:
-                    assert node.outputs is not None
-                    mapped = resolve(node.config.get("external_output", {"$expr": "result"}), {"result": result})
-                    result = external_outputs(node.outputs, mapped, path=f"{node.id}.output", typed_values=node.config.get("external_output_typed", False))
+                mapped = resolve(node.config.get("external_output", {"$expr": "result"}), {"result": result})
+                result = external_patch(activity_variables(graph, node), mapped, path=f"{node.id}.output",
+                    typed_values=child_typed or node.config.get("external_output_typed", False))
         elif node.kind == "tool_call":
             if attempt.status == "started":
                 raise ValueError("Tool effect outcome is unknown; reconcile it before retrying")
@@ -765,16 +779,14 @@ class NativeProcessEngine:
                 attempt.status = "returned"
                 attempt.receipt = {"output": result}
                 await get_db().commit()
-                assert node.outputs is not None
                 mapped = resolve(node.config.get("external_output", {"$expr": "result"}), {"result": result})
-                result = external_outputs(node.outputs, mapped, path=f"{node.id}.output", typed_values=node.config.get("external_output_typed", False))
+                result = external_patch(activity_variables(graph, node), mapped, path=f"{node.id}.output", typed_values=node.config.get("external_output_typed", False))
         elif node.kind == "code":
             source = str(node.config["code"])
             code_values: dict[str, Any] = {"input": attempt.input, "input_files": occurrence.context.get("input_files", []), "output": {}, "output_files": []}
             if node.config.get("dataset_code") is True:
                 from .isolated_code import dataset_program
-                baseline = occurrence.context["integration_baseline"]
-                dataset = {name: unwrap(value) for name, value in baseline.items()}
+                dataset = {name: unwrap(value) for name, value in attempt.input.items()}
                 source = dataset_program(source, dataset)
                 code_values = {"dataset": dataset}
             code_result = await self._code_phase(run, occurrence, node, claim, "activity", source, code_values)
@@ -783,12 +795,9 @@ class NativeProcessEngine:
             result = code_result.get("output", {})
             if node.config.get("dataset_code") is True:
                 if node.config.get("mode") == "code" and local_graph(run, occurrence).node(node.id).kind == "if":
-                    if type(result) is not bool:
-                        raise ValueError("An IF code result must be a boolean")
-                    result = {"decision": {"type": "bool", "value": result}}
+                    result = {"decision": {"type": "bool", "value": result}} if type(result) is bool else external_patch(activity_variables(graph, node), result, path=f"{node.id}.output")
                 else:
-                    assert node.outputs is not None
-                    result = external_outputs(node.outputs, result, path=f"{node.id}.output")
+                    result = external_patch(activity_variables(graph, node), result, path=f"{node.id}.output")
             occurrence.context = {**occurrence.context, "output_files": self._file_references(code_result.get("output_files", []))}
         elif node.kind == "rest":
             if attempt.status in {"started", "claiming"}:
@@ -816,12 +825,11 @@ class NativeProcessEngine:
         if await self._fenced(run.id, claim) is None:
             return None
         if graph.typed:
-            assert node.outputs is not None
             try:
-                result = normalize(node.outputs, result, path=f"{node.id}.output")
+                result = normalize_activity_result(graph, node, result)
             except ValueContractError as error:
                 if node.kind == "task":
-                    raise ValueError(f"{error}. The activity must submit its declared outputs with process_activity_complete(output={{...}}).") from error
+                    raise ValueError(f"{error}. The activity must submit changes to process variables with process_activity_complete(output={{...}}).") from error
                 raise
         attempt.status = "completed"
         attempt.receipt = result
@@ -1034,10 +1042,11 @@ class NativeProcessEngine:
         assert node.body is not None
         context = deepcopy(occurrence.context)
         values = context.get("values", {})
+        condition_values = input_workspace(node, values) if local_graph(run, occurrence).typed else values
         loop: dict[str, Any] = context.get("loop", {"index": 0, "results": []})
         if node.kind == "for":
             if "items" not in loop:
-                items: Any = evaluate(str(node.config["items"]), values)
+                items: Any = evaluate(str(node.config["items"]), condition_values)
                 if not isinstance(items, list):
                     raise ValueError("FOR requires an array")
                 loop["items"] = cast(list[Any], items)
@@ -1046,7 +1055,8 @@ class NativeProcessEngine:
                 values.update(item=loop["items"][loop["index"]], index=loop["index"])
         else:
             values["index"] = loop["index"]
-            proceed = bool(evaluate(str(node.config["condition"]), values))
+            condition_values["index"] = loop["index"]
+            proceed = bool(evaluate(str(node.config["condition"]), condition_values))
         context["loop"] = loop
         occurrence.context = context
         if not proceed:
@@ -1107,12 +1117,19 @@ class NativeProcessEngine:
             pending = await get_db().scalar(select(func.count()).select_from(ProcessNodeRun).where(
                 ProcessNodeRun.run_id == run.id, ProcessNodeRun.id != occurrence.id,
                 ProcessNodeRun.status.in_(("ready", "waiting"))))
-            if graph.typed and not pending:
-                assert graph.outputs is not None
-                output = normalize(graph.outputs, cast(dict[str, Any], output), path="process.output", allow_extra=True)
-                values["output"] = output
             state = deepcopy(run.engine_metadata["native"])
-            ends: dict[str, Any] = {**state.get("end_results", {}), str(occurrence.id): output}
+            if graph.typed:
+                data = cast(dict[str, Any], output)
+                names = graph.node(occurrence.node_key).outputs
+                output = normalize_patch(selected_variables(graph, names),
+                    {name: data[name] for name in names if name in data}, path="end.output")
+                values["output"] = output
+                reached: list[str] = list(dict.fromkeys([*state.get("end_output_names", []), *names]))
+                state["end_output_names"] = reached
+                if not pending:
+                    output = normalize_patch(selected_variables(graph, reached),
+                        {name: data[name] for name in reached if name in data}, path="process.output")
+            ends: dict[str, Any] = {**state.get("end_results", {}), str(occurrence.id): values["output"] if graph.typed else output}
             state["end_results"] = ends
             if not pending:
                 state.update(status="success", output=output)

@@ -567,6 +567,7 @@
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue'
+import { apiErrorDetail } from '@/core/api'
 import { isAxiosError } from 'axios'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
@@ -1030,7 +1031,7 @@ async function submitImport(): Promise<void> {
           imported: imported.length,
           failed: failures.length,
         }),
-        caption: failures.map(({ file, error }) => `${file.name}: ${errorText(error)}`).join('\n'),
+        caption: failures.map(({ file, error }) => `${file.name}: ${apiErrorDetail(error) || errorText(error)}`).join('\n'),
         multiLine: true,
       })
     } else {

@@ -85,6 +85,7 @@ def admission_context(
         LLMCallPurpose.CONVERSATION_TEXT,
         LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE,
         LLMCallPurpose.CONVERSATION_PROCESS_ADMISSION,
+        LLMCallPurpose.CONVERSATION_PROCESS_INPUTS,
     }:
         return AdmissionContext(AdmissionSource.TEXT_DIALOGUE, AdmissionClass.TEXT, owner)
     return AdmissionContext(AdmissionSource.BACKGROUND, AdmissionClass.BACKGROUND, owner)

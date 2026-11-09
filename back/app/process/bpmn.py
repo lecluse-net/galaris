@@ -10,7 +10,7 @@ from xml.etree import ElementTree as ET
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .expressions import parse_expression
-from .values import Variable, validate_declarations
+from .values import Variable, validate_declarations, normalize_patch, normalize_reply
 
 BPMN = "http://www.omg.org/spec/BPMN/20100524/MODEL"
 GALARIS = "https://galaris.ai/bpmn/v1"
@@ -47,12 +47,12 @@ class Node(BaseModel):
     id: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_.-]*$", max_length=255)
     kind: NodeKind
     title: str = ""
+    inputs: list[str] = Field(default_factory=list[str])
+    outputs: list[str] = Field(default_factory=list[str])
     config: dict[str, Any] = Field(default_factory=dict)
     x: float = Field(default=0, allow_inf_nan=False)
     y: float = Field(default=0, allow_inf_nan=False)
     body: Workflow | None = None
-    inputs: list[Variable] | None = Field(default=None, exclude_if=lambda value: value is None)
-    outputs: list[Variable] | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @model_validator(mode="before")
     @classmethod
@@ -78,8 +78,25 @@ class Workflow(BaseModel):
     flows: list[Flow]
     actors: list[Actor] = Field(default_factory=lambda: list[Actor]())
     execution_agent_id: int | None = Field(default=None, gt=0)
-    inputs: list[Variable] | None = Field(default=None, exclude_if=lambda value: value is None)
-    outputs: list[Variable] | None = Field(default=None, exclude_if=lambda value: value is None)
+    variables: list[Variable] = Field(default_factory=lambda: list[Variable]())
+
+    @property
+    def inputs(self) -> list[str]:
+        return next((node.inputs for node in self.nodes if node.kind == "start"), list[str]())
+
+    @inputs.setter
+    def inputs(self, names: list[str]) -> None:
+        next(node for node in self.nodes if node.kind == "start").inputs = names
+
+    @property
+    def outputs(self) -> list[str]:
+        return list(dict.fromkeys(name for node in self.nodes if node.kind == "end" for name in node.outputs))
+
+    @outputs.setter
+    def outputs(self, names: list[str]) -> None:
+        for node in self.nodes:
+            if node.kind == "end":
+                node.outputs = list(names)
 
     @property
     def typed(self) -> bool:
@@ -144,19 +161,51 @@ def decision_activity(node: Node) -> Node:
     if mode not in ("ai", "code", "human"):
         return node
     kind: NodeKind = "human_task" if mode == "human" else "code" if mode == "code" else "task"
-    return node.model_copy(update={"kind": kind, "inputs": [],
-        "outputs": [Variable(name="decision", type="bool", nullable=False)],
+    return node.model_copy(update={"kind": kind,
         "config": {**node.config, **({"dataset_code": True} if mode == "code" else {})}})
 
 
-def validate_graph(graph: Workflow, _identities: set[str] | None = None) -> Workflow:
+def selected_variables(graph: Workflow, names: list[str]) -> list[Variable]:
+    registry = {variable.name: variable for variable in graph.variables}
+    return [registry[name] for name in names]
+
+
+def activity_variables(graph: Workflow, node: Node, *, direction: Literal["inputs", "outputs"] = "outputs") -> list[Variable]:
+    """A decision is control flow; business variables always belong to the process."""
+    if direction == "outputs" and node.config.get("mode") in {"ai", "code", "human"} and graph.node(node.id).kind == "if":
+        return [Variable(name="decision", type="bool", nullable=False)]
+    return selected_variables(graph, getattr(node, direction))
+
+
+def normalize_activity_result(graph: Workflow, node: Node, result: object) -> dict[str, Any]:
+    declarations = activity_variables(graph, node)
+    output = normalize_patch(declarations, result, path=f"{node.id}.output")
+    if graph.node(node.id).kind == "if" and node.config.get("mode"):
+        normalize_reply(declarations[:1], {key: value for key, value in output.items() if key == "decision"}, path=f"{node.id}.decision")
+    return output
+
+
+def validate_graph(graph: Workflow, _identities: set[str] | None = None,
+                   _variables: list[Variable] | None = None) -> Workflow:
     if graph.typed:
-        if graph.inputs is None or graph.outputs is None:
-            raise ValueError("The typed profile requires explicit process inputs and outputs")
-        validate_declarations(graph.inputs, path="process.inputs")
-        validate_declarations(graph.outputs, path="process.outputs")
-    elif graph.inputs is not None or graph.outputs is not None:
+        validate_declarations(graph.variables, path="process.variables")
+        if _variables is not None and graph.variables:
+            raise ValueError("Inline bodies share the process variables and cannot declare their own")
+    elif graph.variables:
         raise ValueError("Data declarations require the galaris.bpmn/v2 profile")
+    registry = {variable.name for variable in (_variables if _variables is not None else graph.variables)}
+    for owner in [graph, *graph.nodes]:
+        for direction in ("inputs", "outputs"):
+            names: list[str] = getattr(owner, direction)
+            if len(set(names)) != len(names) or set(names) - registry:
+                raise ValueError(f"{getattr(owner, 'id', 'process')}.{direction}: select unique declared process variables")
+            if names and not graph.typed:
+                raise ValueError("Variable selections require the galaris.bpmn/v2 profile")
+        if isinstance(owner, Node):
+            if owner.kind in {"if", "start"} and owner.outputs:
+                raise ValueError(f"{owner.id}: {owner.kind} nodes cannot have output variables")
+            if owner.kind == "end" and owner.inputs:
+                raise ValueError(f"{owner.id}: end nodes cannot have input variables")
     identities = [node.id for node in graph.nodes] + [flow.id for flow in graph.flows]
     if len(set(identities)) != len(identities):
         raise ValueError("Node and flow identifiers must be unique")
@@ -201,13 +250,6 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None) -> Work
                 raise ValueError(f"{node.id}: scripts require bounded Python source and the typed profile")
         if node.kind == "code" and (not graph.typed or not str(node.config.get("code", "")).strip()):
             raise ValueError(f"{node.id}: a Code activity requires Python source and the typed profile")
-        if graph.typed and node.kind in ACTIVITY_KINDS:
-            if node.inputs is None or node.outputs is None:
-                raise ValueError(f"{node.id}: each activity requires explicit inputs and outputs")
-            validate_declarations(node.inputs, path=f"{node.id}.inputs")
-            validate_declarations(node.outputs, path=f"{node.id}.outputs")
-        elif node.inputs is not None or node.outputs is not None:
-            raise ValueError(f"{node.id}: declarations belong to typed activities")
         actor_key = node.config.get("actor")
         if actor_key is not None:
             if not isinstance(actor_key, str) or actor_key not in actors:
@@ -259,7 +301,7 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None) -> Work
         if node.kind in {"for", "while"}:
             if node.body is None:
                 raise ValueError("A loop requires a subprocess body")
-            validate_graph(node.body, global_ids)
+            validate_graph(node.body, global_ids, graph.variables if _variables is None else _variables)
             if node.body.schema_version != graph.schema_version:
                 raise ValueError("Inline subprocesses must use the same data profile")
             if not isinstance(node.config.get("items" if node.kind == "for" else "condition"), str):
@@ -319,7 +361,6 @@ def compile_bpmn(xml: str) -> Workflow:
                 raise ValueError(f"Unsupported BPMN element: {tag}")
             config = child.find(f"{{{BPMN}}}extensionElements/{{{GALARIS}}}config")
             properties: dict[str, Any] = json.loads(config.text or "{}") if config is not None else {}
-            declaration = {key: properties.pop(key) for key in ("inputs", "outputs") if key in properties}
             service_kind = properties.pop("activity_kind", None)
             kind = properties.pop("loop_kind", "for") if tag == "subProcess" else _TAGS[tag]
             if service_kind is not None:
@@ -327,11 +368,13 @@ def compile_bpmn(xml: str) -> Workflow:
                     raise ValueError("Unsupported service activity kind")
                 kind = service_kind
             x, y = positions.get(child.get("id", ""), (0, 0))
-            nodes.append({"id": child.get("id", ""), "kind": kind, "title": child.get("name", ""),
-                "config": properties, **declaration, "x": x, "y": y, "body": parse(child) if tag == "subProcess" else None})
-        return validate_graph(Workflow.model_validate({**props, "nodes": nodes, "flows": flows}))
+            selection = child.find(f"{{{BPMN}}}extensionElements/{{{GALARIS}}}variables")
+            references: dict[str, Any] = json.loads(selection.text or "{}") if selection is not None else {}
+            nodes.append({**references, "id": child.get("id", ""), "kind": kind, "title": child.get("name", ""),
+                "config": properties, "x": x, "y": y, "body": parse(child) if tag == "subProcess" else None})
+        return Workflow.model_validate({**props, "nodes": nodes, "flows": flows})
 
-    return parse(processes[0])
+    return validate_graph(parse(processes[0]))
 
 
 def to_bpmn(graph: Workflow, code: str = "workflow") -> str:
@@ -373,13 +416,10 @@ def to_bpmn(graph: Workflow, code: str = "workflow") -> str:
             tag = "subProcess" if node.body else "serviceTask" if node.kind == "rest" else "scriptTask" if node.kind == "code" else _TAGS_BACK[node.kind]
             element = ET.SubElement(parent, f"{{{BPMN}}}{tag}", {"id": node.id, "name": node.title})
             extension = ET.SubElement(element, f"{{{BPMN}}}extensionElements")
+            ET.SubElement(extension, f"{{{GALARIS}}}variables").text = json.dumps({"inputs": node.inputs, "outputs": node.outputs})
             config = {**node.config, **({"loop_kind": node.kind} if node.body else {})}
             if node.kind in {"rest", "code"}:
                 config["activity_kind"] = node.kind
-            if node.inputs is not None:
-                config["inputs"] = [variable.model_dump(mode="json") for variable in node.inputs]
-            if node.outputs is not None:
-                config["outputs"] = [variable.model_dump(mode="json") for variable in node.outputs]
             ET.SubElement(extension, f"{{{GALARIS}}}config").text = json.dumps(config, ensure_ascii=False, allow_nan=False)
             if node.body:
                 write(element, node.body)

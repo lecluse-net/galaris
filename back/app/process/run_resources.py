@@ -18,6 +18,22 @@ from .models import ProcessRunFile
 from .run_data import lock_run, require_active, run_files, stage_run_file, validate_run_data
 
 
+async def run_variable_resource(identity: UUID, name: str, actor: int | AgentManagementScope) -> tuple[int, str]:
+    """Resolve only a resource actually held by this authorized run's frozen registry."""
+    from .native_runs import require_run
+    from .bpmn import Workflow
+    from .values import validate_value
+    run = await require_run(identity, actor)
+    graph = Workflow.model_validate(run.launch_snapshot["definition"]["graph"])
+    variable = next((item for item in graph.variables if item.name == name), None)
+    if variable is None or variable.type not in {"File", "Document"}:
+        raise LookupError("Resource variable not found")
+    envelope = validate_value(run.data.get(name))
+    if envelope["type"] != variable.type or not isinstance(envelope["value"], str):
+        raise LookupError("Resource variable has no value")
+    return run.launcher_agent_id, envelope["value"]
+
+
 async def prepare_tool_deletion(selection: ToolDeletionSelection) -> AfterToolDeletion | None:
     """Retire owned file aliases; settle collaboration waits after the purge commits."""
     from .models import ProcessRun

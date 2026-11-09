@@ -16,6 +16,12 @@ from app.agent import AgentManagementScope
 from .contracts import ConversationRuntimeEvent, ConversationTurn
 
 
+def process_input_evaluation_spec() -> tuple[type[object], str]:
+    """Same production output/prompt for isolated, side-effect-free qualification."""
+    from .process_inputs import ProcessInputAssessment, PROCESS_INPUT_ASSESSMENT_PROMPT
+    return ProcessInputAssessment, PROCESS_INPUT_ASSESSMENT_PROMPT
+
+
 ConversationActivityListener = Callable[[UUID, UUID], Awaitable[None]]
 ConversationRuntimeListener = Callable[
     [UUID, ConversationRuntimeEvent], Awaitable[None]

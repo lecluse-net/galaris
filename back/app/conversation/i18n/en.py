@@ -1,5 +1,9 @@
 default: dict[str, object] = {
     "conversation": {
+        "process_inputs": {
+            "missing": "Please provide the missing information or documents: ${fields}.",
+            "confirm": "The information is complete. Would you like to start the process?",
+        },
         "control": {
             "unavailable": "This command is no longer available for this response. Refresh the conversation.",
             "attempt_changed": "The agent has started another attempt. Refresh the conversation before controlling it.",
@@ -43,6 +47,7 @@ default: dict[str, object] = {
                 "complete it.\n\nCause: ${detail}"
             ),
         },
+        "process_output_unavailable": "Attachment unavailable",
         "task_success_notification": {
             "missing_detail": "✅ The Task completed without a textual result.",
         },

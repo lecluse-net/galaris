@@ -10,7 +10,7 @@ from app.agent import AgentManagementScope, get_agent_record
 from core.database import get_db
 from core.user import get_user_record
 
-from .bpmn import Workflow, Node, decision_activity
+from .bpmn import Workflow, Node, decision_activity, activity_variables, normalize_activity_result
 from .models import ProcessRun, ProcessNodeRun, ProcessNodeAttempt
 from .process_service import TERMINAL_STATUSES
 from .human_directory import list_process_humans
@@ -77,9 +77,9 @@ async def human_work(scope: AgentManagementScope, *, page: int, page_size: int) 
         "instructions": str(local_graph(run, occurrence).node(occurrence.node_key).config.get("prompt", ""))
             if local_graph(run, occurrence).typed else attempt.prompt,
         "input": attempt.input,
-        "inputs": [variable.model_dump(mode="json") for variable in local_graph(run, occurrence).node(occurrence.node_key).inputs or []]
+        "inputs": [variable.model_dump(mode="json") for variable in activity_variables(local_graph(run, occurrence), local_graph(run, occurrence).node(occurrence.node_key), direction="inputs")]
             if local_graph(run, occurrence).typed else None,
-        "outputs": [variable.model_dump(mode="json") for variable in local_graph(run, occurrence).node(occurrence.node_key).outputs or []]
+        "outputs": [variable.model_dump(mode="json") for variable in activity_variables(local_graph(run, occurrence), decision_activity(local_graph(run, occurrence).node(occurrence.node_key)))]
             if local_graph(run, occurrence).typed else None,
         "data_uri": f"galaris://processes/runs/{run.id}/data",
         "attachments_uri": f"galaris://processes/runs/{run.id}/attachments/"}
@@ -113,9 +113,7 @@ async def complete_human_work(identity: UUID, scope: AgentManagementScope, outpu
     graph = local_graph(run, occurrence)
     node = decision_activity(graph.node(occurrence.node_key))
     if graph.typed:
-        from .values import normalize
-        assert node.outputs is not None
-        output = normalize(node.outputs, output, path=f"{node.id}.output")
+        output = normalize_activity_result(graph, node, output)
     if attempt.status == "completed":
         if attempt.receipt != output:
             from app.memory import MemoryConflictError
@@ -127,6 +125,9 @@ async def complete_human_work(identity: UUID, scope: AgentManagementScope, outpu
     node = decision_activity(local_graph(run, occurrence).node(occurrence.node_key))
     if node.kind != "human_task":
         raise PermissionError("This is not a human activity")
+    from .values import validate_resource_constraints
+    await validate_resource_constraints(activity_variables(graph, node), output,
+        agent_id=execution_agent(graph, node, run.launcher_agent_id))
     attempt.receipt = output
     attempt.status = "completed"
     attempt.finished_at = datetime.now(timezone.utc)

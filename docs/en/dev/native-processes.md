@@ -31,27 +31,135 @@ New definitions in the editor use `galaris.bpmn/v2`. Snapshots freeze their prof
 saving or converting a definition never changes an admitted run. Converting a v1
 definition is explicit and initializes declaration lists for configuration.
 
-The graph and each activity (`task`, `human_task`, `tool_call`, `rest`, `code`, `program`,
-`call`) declare `inputs` and `outputs`, including empty lists. Each variable has `name`,
+The root graph declares one `variables` registry. Activities and inline FOR/WHILE bodies
+share that registry and declare no local variables. Each variable has `name`,
 `type`, `nullable` and an optional typed `default`. Duplicate names, invalid default types
 and null defaults for notnull variables fail at save time. Values use the envelope
-`{"type":"int","value":7}`. Types are int, float, string, bool, Agent, File, User,
-Document, array and object. Containers recursively retain each element's type.
-Every type can represent null. An omitted value uses its default, else typed null if
-nullable, else fails. Explicit null never uses a default. False, zero and empty values
+`{"type":"int","value":7}`. The shared codec supports scalars, `array`, `object` and business
+references. `Agent`, `User`, `Team`, `Tool`, `Connection`, `Model` and `Skill` carry positive
+integer identities; `Topic`, `Conversation` and `VoiceSession` use UUIDs.
+`Task`, `Goal`, `GoalCycle`, `Contact`, `ConversationRound`, `VoiceConversation` and `CodeWorkspace`
+use their existing `galaris://` URIs (`task`, `goal`, `goal_cycle`, `contact`, `text`, `voice`, `code`).
+`Process` uses `galaris://process/<code>`, `ProcessRun` uses `galaris://processes/runs/<uuid>`
+and `Memory` uses `memory://<uuid>`. Containers recursively retain each element's type.
+The human selector hides the requested technical types without changing reference transport.
+
+`date` contains a valid calendar date as a `YYYY-MM-DD` string, without a time or time zone
+(for example `{"type":"date","value":"2000-02-29"}` for a birth date). `datetime` contains
+a `YYYY-MM-DDTHH:mm:ss` string with a mandatory `Z` suffix or `±HH:mm` offset;
+fractional seconds are optional (1 to 6 digits). Values retain their time zone and representation
+without implicit conversion. Invalid dates and times without a time zone are rejected at
+the same boundaries as other typed values, including human replies.
+
+Declarations may add plain-text `label` (200 characters) and `description` (4,000 characters).
+These metadata explain business meaning to the controller and appear on run cards;
+`name` remains the stable technical key. They do not change the value codec.
+
+Permitted node `inputs` and `outputs` lists contain registry names, never declarations.
+Start and IF nodes have no output variables; End nodes have no input variables. Process
+inputs are exactly the root Start node's `inputs`, with no independent list on the graph.
+Process outputs derive from root End nodes without an independent list. A run returns only
+outputs selected by End nodes actually reached. Empty lists transmit no variables. Unknown or duplicate references fail
+at save time, including in inline loop bodies. Launch accepts only selected process inputs;
+the final result exposes only initialized selected process outputs. Other values remain
+visible in run data. Each activity receives its selected inputs and can update only its
+selected outputs, including after postprocessing. Mappings adapt external parameters without
+creating local variables. An IF's `decision` result is exclusively technical and never
+updates a business variable, including a registry variable with that name.
+Process and step selections are frozen in the launch snapshot.
+
+A `Document` declaration accepts `document://<uuid>` or `data://<uuid>` and may specify
+`document_type: "text" | "data"`. A `File` declaration may specify an exact `mime_type`
+or a family (`image/*`). Constraints apply only to their corresponding types.
+Syntax and defaults are validated when saving. At launch and before updates, Process checks
+metadata through File Sharing with the executing identity, without downloading content.
+Ordinary references never grant additional permissions.
+Defaults apply once at launch. Every input selected by the root Start must be supplied or
+have a declared default, including nullable inputs. The server rejects incomplete launches
+before creating a run. Other variables without values remain absent until an activity
+supplies them. Explicit null requires `nullable` and never uses a
+default. Omitted updates preserve the current value. False, zero and empty values
 are preserved; integers stay in the exact ±(2^53−1) range. The codec bounds size/depth,
 rejects duplicate JSON keys and performs no implicit conversions.
+
+In conversation, `conversation_process_prepare` persists a dossier per workflow and participant,
+with a `waiting` run once launch is requested, without activities or a start job. The contract
+is frozen on this run; complete, authorized collection starts the same identity. Operational
+inspection and agent active work expose its missing inputs. A structured inference extracts replies and attachments, reuses
+known values and suggests searches followed by questions for missing inputs. The controller
+searches authorized Memory/files and converts formats when needed. Null cannot replace unknown
+information: except for declared defaults, absence requires the participant's actual words.
+Cancellation and unrelated messages launch nothing. A complete dossier goes through the existing
+launch permission. Relaunches use actual history and count occurrences within the current message.
+Complete/defaulted inputs can go straight to the launcher. For a ready dossier, omitting
+`input` reuses persisted typed values, including nested nulls. Type checking and reads of
+the same admitted message require no additional inference; intent and parameter scope are
+reassessed when necessary. Process derives missing inputs itself and prevents collection
+from initializing variables not selected by Start.
+
+In a waiting run, a user with launch permission, Process control and management of its
+launching agent may complete selected inputs directly.
+`PATCH /api/processes/internal/runs/{id}/inputs` receives `values`, `expected_revision` and
+`start` (false by default). File uploads use
+`POST /api/processes/internal/runs/{id}/inputs/{name}/file` with `upload` and a revision query.
+Types, MIME and resource access are checked without AI; uploaded files belong to the run.
+Saving executes nothing. An explicit Start action releases this same complete run;
+identical retries create no second job. A stale revision returns 409 without overwriting
+the draft. The agent rereads contributions from the run; an old AI permission never covers
+new values. These initial inputs differ from executing human activities, whose replies
+remain exclusively in Messenger.
+
+During collection, `file_search` may replay an identical search for 30 seconds within the
+same canonical human message. Result access and versions are rechecked; `refresh=true`
+forces a new search after a known source change. A new message invalidates this context.
+PDF/image conversions reuse results only for identical source bytes, name, format, page
+and destination, with live source/result access checks. File Sharing keeps at most 200
+receipts per agent; conversion reuse expires after 30 days.
+
+Input provenance is kept separately in `ProcessRun.input_provenance` and its journal.
+The column is deferred at the ORM boundary; ordinary run views/events, conversation dossiers
+and prompts do not carry this audit. It contains references/versions and digests, without
+copying values or documents or adding a model call. Existing validated file metadata and
+conversion receipts are reused. Scalar proposals retain their agent/conversation origin;
+no precise Memory source is invented when that lineage was not established.
+
+`GET /api/processes/internal/runs/{id}/inputs/provenance?name=...` reads one variable.
+`history=true` adds a history page (`page_size=50`, maximum 500; `before` cursor).
+Agents may also use `file_read` with
+`galaris://processes/runs/<uuid>/input-provenance/<encoded-name>`, without another MCP tool.
+Readers need parent access and the launching agent's own management scope. Unavailable or
+revoked sources are hidden; history checks at most 16 distinct references per response,
+with a two-second deadline per check. Historical runs receive no invented retrospective origin.
+
+MCP launches through `process_start` and `conversation_process_start` accept ordinary JSON
+inputs, for example `input={"age": 27, "scan": "file://<uuid>"}`. Process converts them
+against the variables selected by Start, before applying defaults and checking files.
+Historical scalar envelopes remain accepted; `typed_values: true` explicitly selects typed
+transport, including objects. Without this flag, an object containing `type` and `value`
+remains business JSON. Conversation admission freezes this flag as well. A rejection before
+run creation may be followed by an explicit retry request; resuming an existing run does
+not authorize a new launch.
 
 The engine freezes local inputs, validates output before integration, and commits a
 functional delta in `process_runs.data`, file links in `process_run_files` and its receipt
 in `process_runs.execution_state` atomically. AI tasks submit ordinary JSON values with
 `process_activity_complete(output={...}, message="...")`. The engine converts and validates
-them against declared outputs, independently of the driver's final prose. Activities without
-data outputs may finish with a natural message; historical typed JSON responses remain accepted.
+them against the process variable registry, independently of the driver's final prose. An
+empty object makes no changes; historical typed JSON responses remain accepted.
 Humans reply through messaging. Direct typed run data writes are rejected. Integration receipts support recovery without
 reexecution, preserve disjoint updates and report conflicting writes to a variable.
 
-`process_activity_question` asks the authenticated human launcher in the originating
+AI prompts include a frozen JSON contract with names, types, constraints and typed values
+for selected inputs only, explicitly identifying uninitialized values. Files and documents
+retain canonical URIs, including nested references; prepared parameters are included separately
+when mappings transform them. Expected outputs specify exact names, types, nullability and
+optional document/MIME constraints, without presenting defaults as results to generate. The
+contract is persisted in the attempt prompt and agentic Task objective. Simple LLM IFs reuse
+that prepared prompt with only a Boolean control result and no business outputs. Without
+tools, a URI remains a reference and does not provide its contents.
+
+`process_activity_question(variables=["age"])` selects names from the process registry without
+creating declarations, then asks the authenticated human launcher in the originating
 conversation. The activity owns the wait; no auxiliary Task is created. The existing AI
 Task is suspended for reason `input`, then resumes with the answer.
 Resume context explicitly associates the question with its typed answer. Rephrasing a
@@ -71,8 +179,7 @@ containing `type` and `value` otherwise remains a business object.
 The answer and Messenger receipt commit atomically, including duplicates and answers arriving
 before the AI turn finishes. User holds remain effective. Questions are
 correlated and idempotent; the activity completes after resumption and result submission.
-Read-only context includes run data even without declared local inputs. Unused
-actor lanes do not block admission.
+Read-only context includes run data. Unused actor lanes do not block admission.
 Historical inert wait Tasks are retired when observing the run or recording a reply;
 the question and its reference are preserved without a new execution.
 

@@ -55,6 +55,32 @@ and monitoring of existing processes. This UI restriction does not replace API o
 
 ## Build and save
 
+When you ask the agent to launch a process, it first gathers all inputs selected by Start.
+It reuses known information, searches accessible documents and asks for missing details or
+files. You can answer across several messages and attach files later: the dossier retains
+previous answers. Corrections retain the other answers; the agent asks only for missing
+or invalid information. You can withdraw launch consent while keeping the dossier waiting.
+The run appears as **Waiting**, identifies its missing inputs and retains
+the same identity when execution starts after inputs are complete and valid. Its modal shows
+variables as cards with names, types and values. Click file/document previews to open them;
+separate attachment sections and raw input/output JSON blocks are no longer displayed. Nullable does
+not mean "skip the question"; explicitly say when a document or detail is unavailable.
+You can cancel preparation. A request such as "relaunch it" uses the preceding actual
+execution when that context identifies the process unambiguously.
+
+With launch/control rights and management of the launching agent, selected input cards offer
+**Complete**: enter a value or upload a file directly. **Save input** keeps the run waiting,
+without an AI call. Once every input is valid, **Start this process** explicitly launches
+the same run. Concurrent changes reject the save; close and reopen the field to retrieve
+current data. Variable labels and business descriptions identify the requested person or
+document; the technical name remains visible.
+
+New inputs retain a separate origin record: a declared default, human entry, agent proposal
+or conversation context. This record is consulted on demand, including the page of a
+converted PDF. It does not clutter the agent's ordinary context. Corrections retain their
+history, and a reference grants no additional source access; revoked or unavailable sources
+remain hidden.
+
 Create a process and enter its title in the compact toolbar. The **Description** field
 accepts optional plain text, which can be edited and saved with **Save**.
 The description remains visible with read-only access. **Owner** stays visible during
@@ -116,14 +142,47 @@ reopening until saving or reloading.
 The **Save** button is in the diagram toolbar, next to **Validate**, and remains
 available in full screen.
 
-Each task has **Input variables** and **Output variables**: name, type, nullable/notnull
-and an optional default. Start and End configure process-level variables. Names must be
-unique and defaults are checked when saving. Types are int, float, string, bool, Agent,
-File, User, Document, array and object. Containers may be nested; every type can be nullable.
-Omission uses the default, else null if nullable; a notnull variable without a default must
-be supplied. Explicit null never uses the default. False and zero remain values.
+Directly below the diagram, **Process inputs and outputs** is a read-only summary. Inputs
+come from **Start** and outputs from **End** nodes. Configure these bindings on the nodes or
+from the variable list. There is no independent global selection or generic Process usage.
+Launch and agents use only Start inputs; a run returns outputs from End nodes actually reached.
+
+Open any step's settings — start, task, IF, loop or end — to select its **Input variables**
+and **Output variables** where permitted. **Start** and **IF** only accept input variables;
+**End** only accepts output variables; tasks may have both. The registry's **Used by** column exposes the same links in reverse:
+adding or removing an element under **Input of** or **Output of** immediately updates that
+step. Nested loop steps are included. A variable may have both roles. Renaming or deleting
+a variable updates these bindings; reordering preserves them. Empty selections transmit no variables.
+
+**Process variables**, directly below the diagram, defines one shared list: name, type, nullable/notnull
+and an optional default. All activities, including loops, use this registry. Names must be
+unique and defaults are checked when saving. Types use localized labels: **Integer**, **Decimal number**,
+**Text string**, **Boolean**, **List**, **Object**, and references to agents, users, teams,
+documents, files, tasks, goals, processes, contacts, skills, conversations, topics, code workspaces,
+tools, connections and AI models. Containers may be nested; every type can be nullable.
+**Date** suits a birth date: enter a JSON string such as `"2000-02-29"`, without a time or
+time zone. **Date and time** uses a value such as `"2026-11-08T14:30:00+01:00"`:
+seconds and a time zone (`Z` or an offset) are required. These types work as inputs,
+outputs and human replies; invalid calendar dates are rejected.
+**Document** offers an optional **Text** or **Data** subtype. **File** has a searchable dropdown
+for expected formats such as PDF or Images; a custom MIME type can also be entered.
+Leave the field empty to accept any format. Resource metadata and permissions are checked
+before integrating a constrained value.
+If you supply a PDF for a field requiring an image, the agent can use the **Image** Tool
+(`image_from_pdf`) to render the relevant page as a PNG before submitting it. It uses the
+new image URI for launch or a human reply; the original PDF remains intact. Conversion needs
+neither a generation model nor a console. The Tool must be active and permitted in the current
+context; an ambiguous page selection requires clarification.
+Conversely, `file_to_pdf` lets the agent supply a PDF from an image, Word/Excel/PowerPoint or
+OpenDocument file, RTF, HTML/SVG/Markdown or text content. **File sharing** provides this conversion
+without an AI model or console. The original is retained and the PDF receives its own URI.
+Conversion follows printable layout; HTML is static, without scripts or external resources.
+Unsupported formats and corrupt files produce explicit errors.
+Defaults apply at each run's launch. A variable without a value remains **Not set** until
+its first write. Activities may update a subset; omitted variables retain their current
+values. Explicit null requires nullable and never uses the default. False and zero remain values.
 Contract errors identify the task and variable. FOR/WHILE use the same editor and breadcrumbs.
-Old definitions retain their shared pool; **Configure typed inputs and outputs** starts
+Old definitions retain their shared pool; **Configure process variables** starts
 an explicit conversion to complete before saving. Existing runs retain their original profile.
 For an IF using **AI** processing, **AI mode** distinguishes **Agentic (Task)** from
 **Simple LLM call**. Agentic delegates work to the agent through a Task, with its tools
@@ -169,20 +228,25 @@ revisions appear. The footer shows the displayed range, total and page navigatio
 ## Launch and observe
 
 Ask the agent to launch the process from Chat. The agent gathers the required information
-and files, prepares the declared inputs and launches the latest saved version.
+and files, prepares the initial process variables and launches the latest saved version.
 The process page provides editing and observation without a manual launch form.
 Calls forward their local inputs and
 integrate validated outputs. Children own independent data and have no fixed business depth.
 
 Each run retains its admitted graph and stores business variables in its `data` field.
+When a process launched from a conversation succeeds, its Chat reply keeps the summary and
+names each output value. Output files and documents appear as attachments to that reply,
+including resources nested in arrays or objects. Each resource is attached only once.
+Access controls still apply; an unavailable attachment is reported without hiding the other results.
 A run file table holds attachment links. No Dataset is created. Data and files inherit
 the parent Process's read/edit rights, including immediate revocation for existing runs.
-Tracking exposes **Run data** and **Attachments**, with downloads for managed files.
+Tracking exposes **Process variables**, showing each variable's type and value for this run,
+including variables that are not set, and **Attachments**, with downloads for managed files.
 The engine integrates validated outputs and keeps technical receipts separate from variables.
 Invalid output is never integrated. Disjoint changes
 are preserved and conflicting variable updates are reported. File references travel without
 automatic downloads or copies; operations on contents enforce resource access.
-Run output follows the variables declared on End. Sharing a Process also shares its runs. Different runs own independent data. Only historical profiles retain
+Run output contains initialized variables selected as process outputs. Sharing a Process also shares its runs. Different runs own independent data. Only historical profiles retain
 direct shared-pool editing and copy initial files into their attachments.
 
 Opening a run from Chat's **Processes** panel, a process's execution list or process tracking in Tasks shows
@@ -192,8 +256,9 @@ while preserving the reading position. A new run scrolls the list to the bottom;
 update preserves the position. Diagram code is prepared in the background when an internal
 run is present, and other resource screens load only when opened.
 Active activities are highlighted, including parallel branches. Clicking a node opens its read-only execution details:
-output data, task or operation result, input data, attempts, executed instructions and
-available errors. Its execution selector reaches an activity's executions, with pagination
+status, dates, attempts, executed instructions, errors and available task or child-process
+links. Values are shown in the process variable cards; the details no longer display the
+old input, output or operation-result JSON blocks. Its execution selector reaches an activity's executions, with pagination
 when needed. Activities that have not run show an explicit message. Closing the
 dialog stops its refresh loop.
 The diagram and open activity details follow run events in real time while preserving
@@ -233,6 +298,8 @@ A reply to an activity's question belongs to the existing run; it does not reque
 launch. The agent replies briefly by default; ask for any details you need.
 In Chat, new launches are bounded to the received request: a technical retry reuses the same
 run. A different workflow or changed parameters require a request that includes them.
+If a launch was rejected before any run was created, you can ask the agent to retry with
+the information and files already supplied. File formats and access rights are still checked.
 
 All human interactions take place through messaging: internal Chat or an external messenger
 channel. An AI activity may also ask a question while working: it waits for your reply in

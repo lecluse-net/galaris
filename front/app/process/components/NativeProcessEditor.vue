@@ -69,20 +69,11 @@
                     <q-select v-if="contractActivity && !['task', 'human_task', 'code'].includes(selected.kind)" :model-value="configString('actor') || null" :options="actorOptions"
                       emit-value map-options outlined clearable :readonly="!editable" :label="t('nativeProcesses.taskActor')" @update:model-value="setActor" />
                     <q-input :model-value="selected.title" outlined :readonly="!editable" :label="t('nativeProcesses.nodeTitle')" @update:model-value="setTitle" />
+                    <ProcessVariableBindings v-if="graph.schema_version === 'galaris.bpmn/v2'" :key="`${selected.id}-bindings`"
+                      :kind="selected.kind" :inputs="selected.inputs" :outputs="selected.outputs" :variables="graph.variables ?? []" :readonly="!editable"
+                      @update:inputs="setNodeVariables('inputs', $event)" @update:outputs="setNodeVariables('outputs', $event)" />
                     <ProcessAiDecision v-if="selected.kind === 'if' && selected.config.mode === 'ai'" :key="selected.id"
                       :config="selected.config" :readonly="!editable" @change="setConfig" />
-                    <template v-if="localGraph.schema_version === 'galaris.bpmn/v2'">
-                      <ProcessVariableDeclarations v-if="contractActivity || selected.kind === 'start'" :key="`${selected.id}-inputs`"
-                        :model-value="selected.kind === 'start' ? localGraph.inputs ?? [] : selected.inputs ?? []" :readonly="!editable"
-                        :draft-values="declarationDrafts[`${selected.id}:inputs`]" @update:draft-values="declarationDrafts[`${selected.id}:inputs`] = $event"
-                        :label="t('nativeProcesses.variables.inputs')" @update:model-value="setDeclarations('inputs', $event)"
-                        @validity="invalidDrafts[`${selected.id}:inputs`] = !$event" />
-                      <ProcessVariableDeclarations v-if="contractActivity || selected.kind === 'end'" :key="`${selected.id}-outputs`"
-                        :model-value="selected.kind === 'end' ? localGraph.outputs ?? [] : selected.outputs ?? []" :readonly="!editable"
-                        :draft-values="declarationDrafts[`${selected.id}:outputs`]" @update:draft-values="declarationDrafts[`${selected.id}:outputs`] = $event"
-                        :label="t('nativeProcesses.variables.outputs')" @update:model-value="setDeclarations('outputs', $event)"
-                        @validity="invalidDrafts[`${selected.id}:outputs`] = !$event" />
-                    </template>
                     <q-input v-if="selected.kind === 'task' || selected.kind === 'human_task' || selected.kind === 'if' && selected.config.mode && currentMode !== 'code'" :model-value="configString('prompt')" outlined type="textarea" autogrow :readonly="!editable" :label="t('nativeProcesses.instructions')" @update:model-value="setConfig('prompt', String($event ?? ''))" />
                     <q-input v-if="selected.kind === 'for'" :model-value="configString('items')" outlined :readonly="!editable" :label="t('nativeProcesses.items')" @update:model-value="setConfig('items', String($event ?? ''))" />
                     <q-input v-if="selected.kind === 'while'" :model-value="configString('condition')" outlined :readonly="!editable" :label="t('nativeProcesses.whileCondition')" @update:model-value="setConfig('condition', String($event ?? ''))" />
@@ -122,6 +113,22 @@
             </BpmnCanvas>
           </div>
         </div>
+        <q-card v-if="graph.schema_version === 'galaris.bpmn/v2'" flat bordered>
+          <q-card-section>
+            <div class="text-subtitle2 q-mb-sm">{{ t('nativeProcesses.variables.processBoundary') }}</div>
+            <ProcessVariableBindings :inputs="processInputs(graph)" :outputs="processOutputs(graph)" :variables="graph.variables ?? []" readonly />
+            <q-separator class="q-my-md" />
+            <ProcessVariableDeclarations :key="`${definition?.code ?? 'new'}:${definition?.revision ?? 0}`" :model-value="graph.variables ?? []" :readonly="!editable"
+              :draft-values="declarationDrafts.process" @update:draft-values="declarationDrafts.process = $event"
+              :label="t('nativeProcesses.variables.title')" @update:model-value="setVariables"
+              @validity="invalidDrafts.process = !$event">
+              <template #usage="{ variable }">
+                <ProcessVariableUsage :graph="graph" :name="variable.name" :readonly="!editable" @update:graph="setBindingsGraph" />
+              </template>
+            </ProcessVariableDeclarations>
+            <p class="text-caption q-mb-none">{{ t('nativeProcesses.variables.sharedHint') }}</p>
+          </q-card-section>
+        </q-card>
         <template v-if="definition">
           <q-expansion-item :label="t('nativeProcesses.history')" icon="history" @show="loadHistory()">
             <q-banner v-if="historyError" role="alert">
@@ -188,6 +195,9 @@ import BpmnCanvas from './BpmnCanvas.vue'
 import NativeRunsTable from './NativeRunsTable.vue'
 import ProcessSharingDraft from './ProcessSharingDraft.vue'
 import ProcessVariableDeclarations from './ProcessVariableDeclarations.vue'
+import ProcessVariableBindings from './ProcessVariableBindings.vue'
+import ProcessVariableUsage from './ProcessVariableUsage.vue'
+import { allowsVariableDirection, processInputs, processOutputs, updateProcessVariables, type VariableDirection } from '../variableBindings'
 import ProcessAiDecision from './ProcessAiDecision.vue'
 import { persistLayout, processingMode, defaultDecisionCode, defaultTaskCode } from '../graphEditing'
 import { emptyGraph, nativeProcessService as service, type BpmnGraph, type BpmnNode, type NativeDefinition, type ProcessHistory, type ProcessAgentOption, type ProcessVariable } from '../services/nativeProcessService'
@@ -281,15 +291,15 @@ function setProcessingMode(value: unknown): void {
 }
 const contractActivity = computed(() => Boolean(selected.value && ['task', 'human_task', 'tool_call', 'rest', 'code', 'program', 'call'].includes(selected.value.kind)))
 function toggleScript(phase: 'preprocess' | 'postprocess', enabled: boolean): void { editNode(node => { const config = { ...node.config }; if (enabled) config[phase] = ''; else delete config[phase]; return { ...node, config } }) }
-function setDeclarations(side: 'inputs' | 'outputs', values: ProcessVariable[]): void {
-  if (!editable.value || !selected.value) return
-  if (selected.value.kind === 'start' || selected.value.kind === 'end') localGraph.value = { ...localGraph.value, [side]: values }
-  else editNode(node => ({ ...node, [side]: values }))
+function setVariables(values: ProcessVariable[]): void {
+  if (editable.value) graph.value = updateProcessVariables(graph.value, values)
 }
+function setNodeVariables(direction: VariableDirection, values: string[]): void { editNode(node => allowsVariableDirection(node.kind, direction) ? { ...node, [direction]: values } : node) }
+function setBindingsGraph(value: BpmnGraph): void { if (editable.value) graph.value = value }
 function upgradeProfile(): void {
   if (!editable.value) return
-  function upgrade(value: BpmnGraph): BpmnGraph { return { ...value, schema_version: 'galaris.bpmn/v2', inputs: [], outputs: [], nodes: value.nodes.map(node => ({ ...node,
-    ...(['task', 'human_task', 'tool_call', 'rest', 'code', 'program', 'call'].includes(node.kind) ? { inputs: [], outputs: [] } : {}), body: node.body ? upgrade(node.body) : null })) } }
+  function upgrade(value: BpmnGraph): BpmnGraph { return { ...value, schema_version: 'galaris.bpmn/v2', variables: [], nodes: value.nodes.map(node => ({ ...node,
+    body: node.body ? upgrade(node.body) : null })) } }
   graph.value = upgrade(graph.value)
 }
 const actorOptions = computed(() => (localGraph.value.actors ?? []).filter(actor => actor.kind === (selected.value?.kind === 'human_task' ? 'human' : 'agent')).map(actor => ({ value: actor.id, label: actor.name })))
@@ -380,7 +390,10 @@ function configJson(key: string): string { return drafts.value[selectedNode.valu
 function setTitle(value: unknown): void { editNode(node => ({ ...node, title: String(value ?? '') })) }
 function setConfig(key: string, value: unknown): void { editNode(node => ({ ...node, config: { ...node.config, [key]: value } })) }
 function setConfigJson(key: string, value: string): void { if (!editable.value) return; const id = selectedNode.value + ':' + key; drafts.value[id] = value; try { setConfig(key, JSON.parse(value)); invalidDrafts.value[id] = false } catch { invalidDrafts.value[id] = true } }
-function assertDrafts(): void { if (Object.values(invalidDrafts.value).some(Boolean)) throw new Error(t('processes.invalidJson')) }
+function assertDrafts(): void {
+  if (invalidDrafts.value.process) throw new Error(t('nativeProcesses.variables.invalid'))
+  if (Object.values(invalidDrafts.value).some(Boolean)) throw new Error(t('processes.invalidJson'))
+}
 function setFlowCondition(id: string, value: unknown): void { if (editable.value) localGraph.value = { ...localGraph.value, flows: localGraph.value.flows.map(flow => flow.id === id ? { ...flow, condition: String(value ?? '').trim() || null } : flow) } }
 function removeFlow(): void { if (editable.value) localGraph.value = { ...localGraph.value, flows: localGraph.value.flows.filter(flow => flow.id !== selectedFlow.value) }; selectedFlow.value = null }
 function removeNode(id: string): void {

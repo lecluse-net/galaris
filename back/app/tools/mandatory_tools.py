@@ -185,7 +185,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
             "document_show", "repository_show", "conversation_task_submit", "conversation_task_list",
             "conversation_task_status", "conversation_task_pause", "conversation_task_resume",
             "conversation_task_retry", "conversation_task_stop", "conversation_choice_resolve",
-            "conversation_process_start",
+            "conversation_process_start", "conversation_process_prepare",
             "conversation_process_pending", "conversation_process_respond",
         ),
         default_active=True,
@@ -213,7 +213,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         mcp_tools=(
             "file_schemes", "file_list", "file_info", "file_search",
             "file_read", "file_create", "file_write", "file_append", "file_edit",
-            "file_copy", "file_move", "file_rename", "file_delete",
+            "file_copy", "file_move", "file_rename", "file_delete", "file_to_pdf",
         ),
         default_active=True,
     ),
@@ -367,7 +367,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         code="image",
         label="Image",
         description=DESCRIPTIONS["image"],
-        mcp_tools=("image_generate", "image_read"),
+        mcp_tools=("image_generate", "image_read", "image_from_pdf"),
         default_active=True,
     ),
     IntegratedToolSpec(

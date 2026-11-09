@@ -63,7 +63,7 @@ PROCESS_FILE_MAX_BYTES = 512 * 1024 * 1024
 TRANSITIONS: dict[str, frozenset[str]] = {
     "queued": frozenset({"running", "waiting", "success", "error", "cancelled", "unknown"}),
     "running": frozenset({"waiting", "success", "error", "cancelling", "cancelled", "unknown"}),
-    "waiting": frozenset({"running", "success", "error", "cancelling", "cancelled", "unknown"}),
+    "waiting": frozenset({"queued", "running", "success", "error", "cancelling", "cancelled", "unknown"}),
     "unknown": frozenset({"running", "waiting", "success", "error", "cancelling", "cancelled"}),
     "cancelling": frozenset({"cancelled", "success", "error"}),
     "success": frozenset(),
@@ -127,6 +127,9 @@ async def _transition(
     payload: dict[str, Any] | None = None,
 ) -> bool:
     accepted = run.status not in TERMINAL_STATUSES and can_transition(run.status, target)
+    if target == "queued" and run.status == "waiting":
+        from .input_preparation import waiting_for_inputs
+        accepted = accepted and waiting_for_inputs(run)
     await _append_event(
         run,
         event_type,
@@ -716,7 +719,10 @@ async def start_process(
     root_run_id: UUID | None = None,
     caller_node_attempt_id: UUID | None = None,
     typed_input: bool = False,
+    external_input: bool = False,
+    input_origins: dict[str, dict[str, Any]] | None = None,
 ) -> ProcessStartResponse:
+    provided_input_names = set(input_data)
     if idempotency_key and idempotency_key.strip():
         # Reattach an admitted native operation even when its definition has
         # since been archived. This path never admits an additional effect.
@@ -811,9 +817,12 @@ async def start_process(
         await validate_assignments(native_graph, human_scope or agent_id)
         typed_native = native_graph.typed
         if typed_native:
-            from .values import normalize
-            assert native_graph.inputs is not None
-            input_data = normalize(native_graph.inputs, input_data, path="process.input")
+            from .values import conversational_patch, initialize_variables, validate_resource_constraints
+            if external_input:
+                input_data = conversational_patch([variable for variable in native_graph.variables
+                    if variable.name in native_graph.inputs], input_data, path="process.input", typed_values=typed_input)
+            input_data = initialize_variables(native_graph.variables, input_data, inputs=native_graph.inputs)
+            await validate_resource_constraints(native_graph.variables, input_data, agent_id=agent_id)
     if typed_input and not typed_native:
         from .values import unwrap, validate_values
         input_data = {key: unwrap(value) for key, value in validate_values(input_data).items()}
@@ -889,6 +898,15 @@ async def start_process(
     await _append_event(run, "engine.start.requested", payload={"tool_code": tool.code})
     process_id = process.id
     try:
+        if native_definition is not None:
+            from .input_provenance import record_inputs
+            from .bpmn import Workflow
+            graph = Workflow.model_validate(native_definition["graph"])
+            await db.flush()
+            selected = {name: value for name, value in input_data.items() if name in graph.inputs}
+            origins = input_origins if input_origins is not None else {name: ({"kind": "human", "actor_user_id": requester_user_id}
+                if requester_user_id is not None else {"kind": "agent"}) for name in selected if name in provided_input_names}
+            await record_inputs(run, selected, origins=origins)
         await db.commit()
     except IntegrityError:
         await db.rollback()
@@ -1148,7 +1166,8 @@ async def get_run_detail(run_id: UUID, *, refresh_if_stale: bool = False) -> Opt
     event_rows = (
         await get_db().execute(
             select(ProcessRunEvent)
-            .where(ProcessRunEvent.run_id == run.id)
+            .where(ProcessRunEvent.run_id == run.id,
+                true() if run.engine_code != "galaris" else ProcessRunEvent.event_type != "run.inputs.provenance")
             .order_by(ProcessRunEvent.created_at)
         )
     ).scalars().all()
@@ -1301,6 +1320,10 @@ async def list_run_summaries_page_for_scope(
 
 
 async def _apply_snapshot(run: ProcessRun, snapshot: EngineRunSnapshot, event_type: str) -> None:
+    from .input_preparation import waiting_for_inputs
+    if waiting_for_inputs(run):
+        await _append_event(run, "engine.snapshot.ignored", payload={"reason": "process_inputs", "event_type": event_type})
+        return
     if not await _transition(
         run, snapshot.status, event_type=event_type, payload=snapshot.model_dump(mode="json")
     ):
@@ -1347,6 +1370,9 @@ async def refresh_run(run_id: UUID, *, confirm_terminal_stop: bool = False) -> P
     run = await get_run(run_id)
     if run is None:
         raise LookupError(await tr("process.errors.run_not_found"))
+    from .input_preparation import waiting_for_inputs
+    if waiting_for_inputs(run):
+        return run
     uncertain_terminal = (run.status in TERMINAL_STATUSES and confirm_terminal_stop
         and (run.engine_metadata or {}).get("remote_may_continue") is True)
     if run.status in TERMINAL_STATUSES and not uncertain_terminal:
@@ -1620,6 +1646,12 @@ async def cancel_run(run_id: UUID) -> ProcessRun:
     if run.status in TERMINAL_STATUSES:
         await _resolve_await_if_terminal(run)
         return run
+    from .input_preparation import waiting_for_inputs
+    if waiting_for_inputs(run):
+        await _transition(run, "cancelled", event_type="run.inputs.cancelled")
+        await get_db().commit()
+        await _resolve_await_if_terminal(run)
+        return run
     metrics.increment("process_cancel_requests_total", engine=run.engine_code)
     if run.status == "queued":
         job = (
@@ -1667,6 +1699,16 @@ async def cancel_run(run_id: UUID) -> ProcessRun:
     return locked
 
 
+def retry_input(run: ProcessRun) -> dict[str, Any]:
+    """Re-submit process inputs without turning internal defaults into caller inputs."""
+    graph = run.launch_snapshot.get("definition", {}).get("graph", {})
+    if graph.get("schema_version") == "galaris.bpmn/v2":
+        from .bpmn import Workflow
+        inputs = Workflow.model_validate(graph).inputs
+        return {name: run.input[name] for name in inputs if name in run.input}
+    return run.input
+
+
 async def retry_run(run_id: UUID) -> ProcessStartResponse:
     run = await get_run(run_id)
     if run is None:
@@ -1697,7 +1739,7 @@ async def retry_run(run_id: UUID) -> ProcessStartResponse:
     response = await start_process(
         agent_id=run.launcher_agent_id,
         workflow_id=process.engine_process_id,
-        input_data=run.input,
+        input_data=retry_input(run),
         files=files,
         idempotency_key=f"retry:{run.id}:{uuid4().hex}",
         task_id=run.task_id,
