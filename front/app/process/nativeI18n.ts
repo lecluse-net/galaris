@@ -241,4 +241,4 @@ const zh: typeof en = {
   waitKinds: { ...en.waitKinds, task_queue: '任务排队中', task_paused: '任务已暂停', task_wait: '任务等待回复' },
   kinds: { ...en.kinds, task: '任务', human_task: '人工任务' },
 }
-export const nativeProcessMessages = { en, fr, zh }
+export { en as nativeProcessEnglishMessages, fr as nativeProcessFrenchMessages, zh as nativeProcessChineseMessages }

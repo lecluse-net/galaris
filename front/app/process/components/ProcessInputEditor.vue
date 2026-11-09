@@ -53,7 +53,7 @@ const inputType = computed(() => props.variable.type === 'date' ? 'date' : ['arr
 const hint = computed(() => props.variable.type === 'datetime' ? t('nativeProcesses.variables.datetimeHint')
   : ['File', 'Document'].includes(props.variable.type) ? t('nativeProcesses.inputs.uri')
   : ['array', 'object'].includes(props.variable.type) ? t('nativeProcesses.inputs.json') : '')
-function value(): unknown {
+function inputValue(): unknown {
   if (explicitNull.value) return null
   if (props.variable.type === 'bool') { if (booleanValue.value === null) throw new Error(); return booleanValue.value }
   if (['array', 'object'].includes(props.variable.type)) return JSON.parse(text.value)
@@ -72,7 +72,7 @@ async function save(): Promise<void> {
     if (file.value && !explicitNull.value) await service.uploadInput(props.runId, props.variable.name, file.value, expectedRevision, controller.signal)
     else {
       let selected: unknown
-      try { selected = value() } catch { error.value = t('nativeProcesses.inputs.invalid'); return }
+      try { selected = inputValue() } catch { error.value = t('nativeProcesses.inputs.invalid'); return }
       await service.contributeInputs(props.runId, { [props.variable.name]: selected }, expectedRevision, false, controller.signal)
     }
     if (!controller.signal.aborted) emit('saved')
