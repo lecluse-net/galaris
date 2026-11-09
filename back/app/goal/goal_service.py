@@ -1207,6 +1207,10 @@ async def complete(goal_id: UUID, command: GoalCommand) -> GoalRead | None:
         return None
     _assert_revision(goal, command)
     last_cycle = await _last_cycle(goal.id)
+    if last_cycle is not None:
+        from .reviews import cancel_review
+
+        await cancel_review(last_cycle)
     if (
         last_cycle is not None
         and last_cycle.status == GoalCycleStatus.ERROR

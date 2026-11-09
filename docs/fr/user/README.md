@@ -282,6 +282,15 @@ Une tâche planifiée reste un travail fini : elle se termine après la livraiso
 **objectif durable** est différent : Galaris lance des cycles successifs, évalue les progrès après
 chaque cycle et continue jusqu’à réussite ou arrêt explicite.
 
+Vous pouvez donner le résultat recherché sans connaître la méthode. L'agent peut rechercher,
+expérimenter, améliorer l'existant sans information nouvelle et solliciter ses collègues.
+Il organise librement sa stratégie et ses pistes dans le suivi documentaire, en conservant
+les raisons des choix et des abandons. Une Task de revue en contexte neuf examine le travail
+avant une clôture automatique et lors d'une stagnation persistante. Un blocage durable ou
+une revue en échec peut mettre l'objectif en pause ; le suivi précise les conditions de reprise.
+Reprendre conserve travaux et historique. La réussite dépend des critères d'origine et des
+preuves disponibles ; ce mécanisme ne garantit pas de résoudre tout objectif.
+
 Si un cycle dépend d'un choix humain encore indécidé, l'agent peut poser la question au
 référent puis attendre sa réponse. Une décision déjà enregistrée doit être lue dans sa
 source ; un fait nécessaire au choix doit être vérifié avant de poser la question.

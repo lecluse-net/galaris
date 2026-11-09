@@ -284,6 +284,10 @@ class GoalCycle(Base):
         unique=True,
         index=True,
     )
+    review_task_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("tasks.id", ondelete="SET NULL"),
+        nullable=True, unique=True, index=True,
+    )
     status: Mapped[GoalCycleStatus] = mapped_column(
         SQLEnum(GoalCycleStatus),
         nullable=False,
@@ -345,6 +349,7 @@ class GoalCycle(Base):
 
     goal: Mapped[Goal] = relationship("Goal", back_populates="cycles")
     task: Mapped["Task | None"] = relationship("Task", foreign_keys=[task_id])
+    review_task: Mapped["Task | None"] = relationship("Task", foreign_keys=[review_task_id])
     judge_llm: Mapped["LLM | None"] = relationship("LLM", foreign_keys=[judge_llm_id])
 
     def clear_lease(self) -> None:

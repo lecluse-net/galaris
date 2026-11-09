@@ -2,6 +2,18 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/goal/tests/test_autonomous_goal.py` vérifie avec PostgreSQL la revue durable avant clôture,
+la réorientation après critique, les blocages distincts de la réussite, l'invalidation des avis
+par les révisions du Goal/suivi, les coûts des revues périmées, la reprise après expiration du
+bail et la clôture humaine pendant une revue. Seuls le modèle et le réveil du scheduler sont
+remplacés. `test_goal_runner.py` conserve les scénarios de récupération de suivi en exigeant
+désormais la revue avant clôture automatique. Dans le backend de développement,
+`python -m scripts.qualify_goal_autonomy --output /tmp/goal-trial.json --max-cost 1` exerce six
+cas synthétiques sur le modèle Goal configuré. Les attentes restent hors du prompt ;
+`--prompt-file` permet une référence antérieure. Le rapport conserve empreintes, décisions,
+coût et durée ; échec ou budget dépassé rendent le code de sortie non nul. Cette qualification
+porte sur le jugement réel, pas sur la résolution autonome complète avec outils.
+
 Les tests du store Goals vérifient le chargement différé des cycles, le regroupement des
 événements en lots sans chevauchement, la récupération après erreur, les réponses tardives,
 la fermeture et le retour direct à la dernière page disponible. `goals.spec.mjs` exerce les

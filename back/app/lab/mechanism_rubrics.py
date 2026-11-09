@@ -289,7 +289,7 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
     ),
     "goal_tracking": MechanismRubric(
         mechanism="goal_tracking",
-        version="goal_tracking-score:v3",
+        version="goal_tracking-score:v4",
         dimensions=(
             _dimension(
                 "objective_alignment",
@@ -309,7 +309,9 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
                 "continuation_decision",
                 "Continuation decision",
                 20,
-                "Chooses CONTINUE or STOP consistently with remaining work, evidence, blockers and completion criteria.",
+                "Chooses CONTINUE, REVIEW, PAUSE or STOP consistently with remaining work, evidence, "
+                "blockers and the original completion criteria. Unknown methods call for discovery; "
+                "improvement does not require external news. Blocking is never achievement.",
             ),
             _dimension(
                 "tracking_continuity",

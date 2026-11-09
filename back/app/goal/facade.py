@@ -167,7 +167,11 @@ async def enqueue_children_for_forced_task(context: ForcedTaskCycle) -> None:
     """Fan out the relational trigger of a force-terminated Goal cycle."""
 
     from .goal_service import enqueue_child_triggers
+    from .reviews import cancel_review, release_review, review_cost
 
+    await cancel_review(context.cycle)
+    await release_review(context.cycle)
+    context.cycle.task_cost += await review_cost(context.cycle)
     await enqueue_child_triggers(context.cycle)
 
 

@@ -2,6 +2,17 @@
 
 # Functional guarantees catalogue
 
+`app/goal/tests/test_autonomous_goal.py` exercises durable review before completion with
+PostgreSQL: critical redirection, blockers distinct from success, Goal/tracking revision
+invalidation, superseded review costs, expired lease recovery and human completion during
+review. Only the model and scheduler wake boundary are replaced. `test_goal_runner.py`
+retains tracking recovery scenarios while requiring review before automatic completion.
+In the development backend, `python -m scripts.qualify_goal_autonomy --output /tmp/goal-trial.json
+--max-cost 1` runs six synthetic cases against the configured Goal model. Expected decisions
+stay outside the prompt; `--prompt-file` permits an earlier reference. Reports retain fingerprints,
+decisions, cost and duration; failures or exceeded budgets return nonzero. This qualifies real
+judgement, not complete autonomous problem solving with tools.
+
 Goal store tests cover deferred cycle loading, non-overlapping event batches, error recovery,
 late responses, closing and jumping directly to the last remaining page. `goals.spec.mjs`
 exercises real components on mobile and desktop: opening/reopening, errors and retries,

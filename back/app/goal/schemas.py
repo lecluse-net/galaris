@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 from .models import (
     GoalCycleTriggerKind,
@@ -351,6 +351,7 @@ class GoalCycleRead(BaseModel):
     trigger_kind: GoalCycleTriggerKind
     source_cycle_id: UUID | None
     task_id: UUID | None
+    review_task_id: UUID | None = None
     task_label: str | None = None
     task_status: str | None = None
     task_cost: float = 0.0
@@ -371,6 +372,11 @@ class GoalCycleRead(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def review_task_uri(self) -> str | None:
+        return f"galaris://task/{self.review_task_id}" if self.review_task_id is not None else None
 
 
 class GoalDetail(GoalRead):
@@ -456,7 +462,7 @@ class GoalProgress(BaseModel):
 class GoalJudgement(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    action: Literal["CONTINUE", "STOP"]
+    action: Literal["CONTINUE", "STOP", "PAUSE", "REVIEW"]
     reason: str = Field(min_length=1, description="Explain the decision concisely using the Goal's completion criteria.")
     progress: GoalProgress
     tracking_content: RequiredTrackingBody = Field(

@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from sqlalchemy import select, update
 
 from app.agent.models import Agent, Title
+from app.agent import AIMessage, ExecutionResult
 from app.connection.models import Connection
 from app.goal import goal_service, runner, settings_service
 from app.goal.models import (
@@ -1093,6 +1094,17 @@ async def test_terminal_cycle_is_judged_once_and_stop_completes_goal(
     monkeypatch.setattr(goal_service, "emit_updated", AsyncMock())
 
     assert await runner.process_terminal_cycle() is True
+    await db.refresh(cycle)
+    assert cycle.review_task_id is not None
+    assert goal.status == GoalStatus.ACTIVE
+    assert await runner.process_terminal_cycle() is False
+    review_task = await db.get(Task, cycle.review_task_id)
+    review_task.status = TaskStatus.SUCCESS
+    review_task.feedback = "The original deliverable was independently checked."
+    review_task.set_execution_result(ExecutionResult(prompt="Review", result=review_task.feedback,
+        success=True, messages=[AIMessage(type="tool", tool_name="file_read", content="Verified synthetic artifact", success=True)]))
+    await db.commit()
+    assert await runner.process_terminal_cycle() is True
     assert await runner.process_terminal_cycle() is False
 
     db.expire_all()
@@ -1104,13 +1116,13 @@ async def test_terminal_cycle_is_judged_once_and_stop_completes_goal(
     assert persisted_goal.next_cycle_at is None
     assert persisted_cycle.status == GoalCycleStatus.DECIDED
     assert persisted_cycle.verdict == GoalVerdict.STOP
-    assert persisted_cycle.judge_attempt_count == 1
+    assert persisted_cycle.judge_attempt_count == 2
     assert persisted_cycle.task_cost == pytest.approx(0.75)
-    assert persisted_cycle.judge_cost == pytest.approx(0.02)
+    assert persisted_cycle.judge_cost == pytest.approx(0.04)
     assert (await goal_service.read_markdown(persisted_goal)).tracking == _judgement(
         "STOP"
     ).tracking_content
-    structured.assert_awaited_once()
+    assert structured.await_count == 2
     tracking_call = structured.await_args.kwargs
     assert tracking_call["task_id"] == task_id
     assert tracking_call["agent_id"] == agent_id
@@ -1607,12 +1619,24 @@ async def test_manual_cycle_request_survives_failed_tracking_recovery(
     assert await runner.start_due_cycle(manual_only=True) is False
     assert await runner.process_terminal_cycle() is True
 
+    if verdict == "STOP":
+        # The recovered evaluation must now verify its completion claim first.
+        await db.refresh(cycle)
+        review = await db.get(Task, cycle.review_task_id)
+        assert review is not None
+        review.status = TaskStatus.SUCCESS
+        review.feedback = "The original outcome was independently verified."
+        review.set_execution_result(ExecutionResult(prompt="Review", result=review.feedback,
+            success=True, messages=[AIMessage(type="tool", tool_name="file_read", content="Verified synthetic artifact", success=True)]))
+        await db.commit()
+        assert await runner.process_terminal_cycle() is True
+
     should_start = command_name == "run_now" and verdict == "CONTINUE"
     assert await runner.start_due_cycle(manual_only=True) is should_start
     assert await runner.start_due_cycle(manual_only=True) is False
     db.expire_all()
     tasks = list((await db.scalars(select(Task).where(Task.goal_id == goal_id))).all())
-    assert len(tasks) == (2 if should_start else 1)
+    assert len(tasks) == (2 if should_start or verdict == "STOP" else 1)
     previous_task = next(item for item in tasks if item.id == task_id)
     assert previous_task.status == task_status
     assert previous_task.feedback == "Previous work result"

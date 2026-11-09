@@ -238,6 +238,14 @@ Example: “Compare these three offers, produce a reasoned table, verify the tot
 
 A planned Task remains finite work: it ends after the requested delivery. A **durable Goal** is different: Galaris launches successive cycles, evaluates progress after each cycle, and continues until success or explicit termination.
 
+You may provide the desired outcome without knowing the method. The Agent can research,
+experiment, improve existing work without external news and consult colleagues. It freely
+organizes strategy and approaches in tracking, preserving reasons for decisions and rejected
+approaches. A fresh-context review Task examines work before automatic completion and after
+persistent stagnation. A concrete blocker or failed review can pause the Goal; tracking explains
+the resumption conditions. Resuming preserves work and history. Success depends on the original
+criteria and available evidence; this mechanism does not guarantee solving every objective.
+
 When a cycle depends on an unmade human choice, the Agent can ask the referrer and wait
 for the reply. An already recorded decision should be read from its source; a fact needed
 to make the choice should be checked before asking. Waiting does not mean the Goal is achieved.

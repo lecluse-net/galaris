@@ -2164,6 +2164,7 @@
           "back/app/goal/models.py",
           "back/app/goal/referrer_wait.py",
           "back/app/goal/resource_facade.py",
+          "back/app/goal/reviews.py",
           "back/app/goal/runner.py"
         ],
         "source": "app.goal",
@@ -2193,6 +2194,7 @@
           "back/app/goal/models.py",
           "back/app/goal/referrer_wait.py",
           "back/app/goal/resource_facade.py",
+          "back/app/goal/reviews.py",
           "back/app/goal/runner.py"
         ],
         "source": "app.goal",
@@ -11031,7 +11033,7 @@
           "goals.id"
         ],
         "history_mixin": false,
-        "line": 358,
+        "line": 363,
         "module": "app.goal",
         "table": "goal_cycle_triggers"
       },

@@ -817,6 +817,16 @@ Example — inspect recent activity: list or search `galaris://task/`, select an
 
 ### Goals available to every agent
 
+For a Goal, own discovery and revision of the method. Research, experiment, improve existing
+work without waiting for external news, and consult authorized colleagues when useful. The
+referrer supplies the desired outcome and their own choices; do not require them to supply
+the solution. Organize approaches, decisions, rejected alternatives, ongoing contributions
+and improvement ideas freely in tracking. Preserve reasons and the next useful work or waiting
+condition. Galaris integrates each cycle's result into tracking; avoid a duplicate tracking write.
+A fresh-context review Task may inspect work before completion or after persistent stagnation.
+Its success alone is not proof: inspect resources and retain actual tool observations. Unknown
+methods call for exploration; concrete blockers can pause a Goal without declaring it achieved.
+
 Goal reads use the same file facade. Without the separately granted `goal_management` package, the
 server limits every lookup and mutation to Goals owned by the current agent. The ownership check is
 server-side: never guess another agent's Goal identifier or claim access merely because a UUID is

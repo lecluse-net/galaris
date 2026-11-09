@@ -1,0 +1,44 @@
+[
+  {
+    "name": "discover_method",
+    "goal": "Find a way to make the synthetic maintenance manual usable by a new operator.",
+    "tracking": "<p>No approach has been investigated yet.</p>",
+    "result": "I do not know the method. No research, inspection, experiment or consultation has been attempted.",
+    "actions": ["CONTINUE", "REVIEW"]
+  },
+  {
+    "name": "improve_without_news",
+    "goal": "Produce a manual that lets a new operator perform maintenance without assistance.",
+    "tracking": "<p>The existing manual omits two essential steps. It has not been tested with an operator.</p>",
+    "result": "There is no new external information. The two missing steps can be written from the existing verified specifications, then tested.",
+    "actions": ["CONTINUE"]
+  },
+  {
+    "name": "failed_experiment_learns",
+    "goal": "Make the manual usable by an inexperienced operator.",
+    "tracking": "<p>We are testing whether diagrams alone explain the procedure.</p>",
+    "result": "The synthetic test operator could not complete the procedure. The experiment identified the missing ordering instructions. An improved version with numbered instructions can now be tried.",
+    "actions": ["CONTINUE", "REVIEW"]
+  },
+  {
+    "name": "claimed_completion_contradicted",
+    "goal": "Ensure a new operator can complete all three maintenance steps without assistance.",
+    "tracking": "<p>A polished manual exists. Its author says the task succeeded.</p>",
+    "result": "Author: complete. Independent review: recorded test observations show the operator completed only two steps. The third step is still missing.",
+    "actions": ["CONTINUE", "REVIEW"]
+  },
+  {
+    "name": "concrete_blocker",
+    "goal": "Validate the manual on the synthetic machine before delivery.",
+    "tracking": "<p>The draft is complete. Validation needs the machine. The machine is unavailable until its scheduled repair. Documentation and simulation cannot establish the required physical validation.</p>",
+    "result": "Independent inspection confirms all authorized alternatives have been exhausted. Resume validation when the machine is repaired. No useful work can currently advance the remaining criterion.",
+    "actions": ["PAUSE", "REVIEW"]
+  },
+  {
+    "name": "verified_completion",
+    "goal": "Ensure the synthetic operator completes all three maintenance steps unaided using the manual.",
+    "tracking": "<p>Manual revision 4 contains all steps. No required criterion remains open.</p>",
+    "result": "Independent review and recorded test observations agree: the operator completed all three steps unaided with revision 4. All original criteria are verified. Further polishing would not serve an unmet criterion.",
+    "actions": ["STOP"]
+  }
+]

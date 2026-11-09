@@ -129,6 +129,13 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
             value = {"route": "EXEC", "effort": "standard", "language": language,
                      "organization": "direct", "clarification_questions": []}
             tool_name = output["name"]
+        elif "Independently review this Goal" in str(body["messages"]):
+            if any(message.get("role") == "tool" for message in body["messages"]):
+                stages.append("review_done")
+                text = "Inspected the original Task and its authenticated referrer answer: express."
+            else:
+                stages.append("review_read")
+                tool_name, value = "file_read", {"uri": f"galaris://task/{task_id}"}
         elif "SYNTHETIC-ANSWER: express" in str(body["messages"]):
             confirmed = any(call["function"]["name"] == approval_tool
                             for message in body["messages"] for call in message.get("tool_calls", []))
@@ -288,6 +295,22 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     assert "express" in task.get_execution_result().result
     assert await runner.process_terminal_cycle()
     db.expire_all()
+    cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == goal_id))
+    assert cycle.review_task_id is not None
+    review_task_id = cycle.review_task_id
+    await db.commit()
+    for _ in range(6):
+        await asyncio.wait_for(scheduler.run_once(), timeout=40)
+        db.expire_all()
+        review = await db.get(Task, review_task_id)
+        if task_service.has_terminal_outcome(review):
+            break
+        await db.commit()
+    assert review.status == TaskStatus.SUCCESS, review.last_error
+    assert any(message.type == "tool" and message.tool_name == "file_read" and message.success
+               for message in review.get_execution_result().messages)
+    assert await runner.process_terminal_cycle()
+    db.expire_all()
     persisted_goal = await db.get(Goal, goal_id)
     assert persisted_goal.status == GoalStatus.COMPLETED
     assert "express" in (await goal_service.read_markdown(persisted_goal)).tracking
@@ -296,12 +319,14 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     assert not await runner.process_terminal_cycle()
     assert not await runner.start_due_cycle()
     assert await db.scalar(select(func.count()).select_from(Document)) == initial_documents + 1
-    assert await db.scalar(select(func.count()).select_from(Task).where(Task.goal_id == goal_id)) == 2
+    assert await db.scalar(select(func.count()).select_from(Task).where(Task.goal_id == goal_id)) == 3
     assert await db.scalar(select(func.count()).select_from(Message).where(
         Message.connection_id == connection_id, Message.direction == "outbound")) == (2 if late_answer else 1) + int(approval_tool == "messenger_send_message_to_user")
     assert approvals == int(approval_tool is not None)
     calls = list(await db.scalars(select(LLMCall).where(LLMCall.agent_id == agent_id)))
     assert {"agent.dispatch", "agent.exec", "goal.tracking"} <= {call.purpose for call in calls}
     assert calls and all(call.status == "completed" and call.error is None for call in calls)
-    assert stages.count("ask") == stages.count("resume") == stages.count("judge") == 1
+    assert stages.count("ask") == stages.count("resume") == 1
+    assert stages.count("judge") == 2
+    assert stages.count("review_read") == stages.count("review_done") == 1
     assert "dispatch" in stages

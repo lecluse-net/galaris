@@ -390,6 +390,26 @@ The schema adds the request table and `voice_sessions.teardown_error`: run the D
 | GoalCycle | `RUNNING`, `JUDGING`, `DECIDED`, `ERROR` |
 | Verdict | `CONTINUE`, `STOP` |
 
+The judgement proposes `CONTINUE`, `STOP`, `PAUSE` or `REVIEW`. `STOP` means the original
+completion criteria are satisfied; an unknown method or blocker is never achievement.
+Before automatic completion, a proposed pause or a requested review, the cycle creates an
+ordinary review Task in a fresh context, with the same owner and no additional permissions.
+Three consecutive cycles without progress since the last review also trigger this examination.
+Useful improvement counts as progress without external news. The cycle stays `JUDGING`
+without repeatedly calling the model while the review runs. The nullable `review_task_id`,
+lease and transactions make creation recoverable and prevent duplicates. Goal and tracking
+revisions bind the review to its context; changed context invalidates its findings. An active
+review is never replaced. Recorded tool observations accompany its result in the next judgement.
+A failed review or one with no recorded successful tool observation cannot authorize automatic
+completion. `PAUSE` persists a `CONTINUE` cycle
+verdict and a `PAUSED` Goal with reason `BLOCKED`; its resumption condition stays in tracking.
+An unavailable review uses `REVIEW_UNAVAILABLE`. Human pauses remain authoritative.
+Human completion also requests cancellation of the now unnecessary review; late findings
+never reopen the Goal.
+Reviews continue the admitted cycle through ordinary scheduling, scope and budget rules.
+Their costs, including superseded findings, join the cycle's work cost. Strategy and approaches
+remain freely organized document content.
+
 A cycle creates an ordinary Task, waits for its terminal state, moves to judgment, and then
 persists a verdict. `CONTINUE` schedules the next time-based cycle when a frequency exists; `STOP`
 closes the objective. A pause prevents the creation of new cycles without erasing history.

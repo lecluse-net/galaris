@@ -3,6 +3,20 @@
 from typing import Literal
 
 
+def goal_judgement_runtime_instructions() -> str:
+    """Output/lifecycle semantics shared by runtime and real-model qualification."""
+    return (
+        "GOAL RUNTIME CONTRACT (also applies with a customized system prompt):\n"
+        "CONTINUE includes improvement without new external information and discovering an "
+        "unknown method. REVIEW requests a fresh examination. PAUSE records a concrete "
+        "blocker and resumption condition, never success. STOP means only that the original "
+        "completion criteria are satisfied. Do not redefine the objective or invent evidence. "
+        "Use actual observations; distinguish author and reviewer claims from verified effects. "
+        "Preserve strategy, decision reasons, rejected approaches and useful next work in "
+        "tracking_content, with whatever organization suits the Goal."
+    )
+
+
 def goal_cycle_work_instructions(
     referrer_type: Literal["AGENT", "MESSENGER"] | None,
 ) -> str:
@@ -21,6 +35,30 @@ def goal_cycle_work_instructions(
         "report that limit without inventing an answer or a recipient."
     )
     return (
+        "AUTONOMOUS GOAL CONDUCT:\n"
+        "You own finding and revising the method, not just following supplied steps. "
+        "Start from the original outcome and constraints. When the method is unknown, "
+        "research, inspect precedents, try a bounded experiment, or consult an authorized "
+        "colleague instead of asking the referrer to supply the solution. Human preferences "
+        "and decisions still belong to the human. Do not expand the original outcome.\n"
+        "Choose useful work: build, improve existing work, investigate uncertainty, verify, "
+        "or revise an approach. Improvement needs no new external information. Explain the "
+        "expected contribution, then inspect its actual effects; a failed experiment can "
+        "still teach something useful. Avoid repeating ineffective work without a reason "
+        "to expect a different result, and avoid polishing beyond the Goal's criteria.\n"
+        "Use the tracking as your continuity memory, with whatever organization suits this "
+        "Goal: approaches, decisions, experiments, ongoing contributions, improvement ideas "
+        "and next opportunities. Preserve why an approach was rejected and when to revisit "
+        "it. Reuse canonical deliverables and their revisions. Do not rebuild the plan at "
+        "each wake-up or create sub-Goals just to represent individual actions.\n"
+        "Cooperate when expertise, an independent investigation or a critical review would "
+        "help. Use task_run for colleagues' bounded contributions and share documents "
+        "explicitly first. Compare their findings with the original outcome and real "
+        "evidence; agreement between agents is not verification. Preserve work already "
+        "under way and its expected result instead of launching duplicates.\n"
+        "Before ending, report verified effects, useful learning or improvements, failed "
+        "approaches and reasons, remaining criteria, and the next useful work or waiting "
+        "condition. Not knowing a method is not evidence that the Goal is impossible.\n\n"
         "GOAL CYCLE DECISION CHECKPOINT:\n"
         "Use the current request and supplied tracking to identify what remains. When they "
         "already identify the target, inspect that target rather than reconstructing the "

@@ -342,10 +342,10 @@ tests remain authoritative for behavior.
 | `app.goal` | `app.connection` | `back/app/goal/models.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.messenger` | `back/app/goal/goal_service.py`, `back/app/goal/referrer_wait.py` |
-| `app.goal` | `app.task` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
+| `app.goal` | `app.task` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.tools` | `back/app/goal/access.py`, `back/app/goal/mcp.py` |
 | `app.goal` | `core.authorize` | `back/app/goal/router.py` |
-| `app.goal` | `core.database` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
+| `app.goal` | `core.database` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.dbadmin` | `back/app/goal/dbadmin.py` |
 | `app.goal` | `core.i18n` | `back/app/goal/referrer_wait.py` |
 | `app.goal` | `core.params` | `back/app/goal/facade.py`, `back/app/goal/settings_service.py` |
@@ -2090,7 +2090,7 @@ tests remain authoritative for behavior.
 | `file_stores` | `FileStore` | `core.storage` | no | — | `back/core/storage/models.py:59` |
 | `files` | `StoredFile` | `core.storage` | yes | — | `back/core/storage/models.py:14` |
 | `goal_categories` | `GoalCategory` | `app.goal` | yes | — | `back/app/goal/models.py:76` |
-| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:358` |
+| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:363` |
 | `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:234` |
 | `goals` | `Goal` | `app.goal` | yes | `agents.id`, `connections.id`, `documents.id`, `goal_categories.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:86` |
 | `harness_execution_configurations` | `HarnessExecutionConfiguration` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:18` |
