@@ -2,6 +2,46 @@
 
 # Corpus de validation éditoriale du Lab
 
+## Mesurer la connaissance opérationnelle avant/après
+
+`operating_knowledge_corpus_fr.json` et `_en.json` ajoutent chacun 16 cas synthétiques :
+gestion native des Goals (création, pause, reprise, cycle immédiat, clôture, réglages et suivi),
+concurrence, refus d'accès, injection, mémoire personnelle, tâches et documents. Les schémas
+sont ceux des fonctions MCP réelles ; les effets restent simulés. Importer avec
+`import_lab_reference.py --corpus operating-fr --install` ou `--corpus operating-en --install`.
+
+La version 2 conserve dans le reçu de pause le titre de la modification concurrente. Le
+scénario antérieur contenait une contradiction qui justifiait une vérification supplémentaire ;
+ses observations doivent être exclues puis remplacées par une comparaison appariée corrigée.
+Les reçus sont comparés après application des seules valeurs par défaut déclarées : omettre
+un argument optionnel ne devient pas un faux échec, mais une valeur différente reste rejetée.
+
+En développement, `make benchmark-operating-knowledge ARGS='--max-cost 5'` fige les entrées,
+schémas, réponses simulées, prompts, modèle et effort sans appeler le modèle. Ajouter `--run`
+exécute la comparaison : même constructeur de production et mêmes instructions spécifiques,
+avec le guide commun comme seule différence entre les bras. Le modèle est celui du profil
+d'exécution, y compris pour les cas de conversation et de voix ; ce benchmark ne teste ni STT
+ni TTS. Les 32 nouveaux cas, les 40 cas de capacités/décisions/transfert et les 16 cas de
+conversation/voix donnent 88 scénarios, trois répétitions et 528 évaluations par défaut.
+
+Les preuves restent dans `artifacts/operating-benchmark.*` : manifeste, prompts complets,
+entrées figées, sorties, contrôles, coûts et durées. Les oracles restent hors du contexte
+candidat. Le rapport apparie les bras et calcule l'incertitude en rééchantillonnant les
+scénarios, en regroupant leurs répétitions, traductions et variantes conversationnelles.
+Les paires affectées par une erreur d'infrastructure sont exclues de l'estimation causale.
+Il distingue les
+mesures d'appels manquantes, les coûts inconnus et les échecs. Le seuil de coût est contrôlé
+entre évaluations ; les appels en cours peuvent le dépasser. Une erreur d'infrastructure
+arrête les admissions, conserve les observations et n'autorise aucune conclusion complète.
+
+Pour reprendre les seules évaluations manquantes avec les mêmes limites :
+`BENCHMARK_EVIDENCE_DIR=artifacts/operating-benchmark.<identifiant> make benchmark-operating-knowledge ARGS='--max-cost 5 --resume --run'`.
+Une observation déjà publiée, même échouée, n'est pas rejouée. Le recalcul local des contrôles
+(`benchmark_operating_knowledge.py --output <répertoire> --max-cost 5 --rescore`) ne rappelle
+aucun modèle et conserve les scores originaux ainsi que le motif d'une correction d'oracle.
+Ces corpus publics mesurent un comportement sur données synthétiques ; ils ne sont pas un
+jeu de réserve de production ni une preuve d'effets métier réels.
+
 Le fichier `back/app/lab/reference_corpus.json` contient six cas synthétiques versionnés :
 édition HTML concurrente, URI de pièce jointe sans console, injection dans un document,
 livraison non confirmée, distinction HTML/Markdown et consommation sans budget imposé.

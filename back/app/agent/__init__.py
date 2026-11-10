@@ -145,6 +145,7 @@ from .conversation_context import (
     message_prompt,
 )
 from .executor_prompts import ExecutorPromptContext, build_executor_prompt_tree
+from .instructions import executor_instructions as executor_instructions
 from .prompt_tree import (
     ExecutorKind,
     PromptTree,
@@ -394,6 +395,7 @@ __all__ = [
     "ExecutorPromptContext",
     "PromptTree",
     "build_executor_prompt_tree",
+    "executor_instructions",
     "render_prompt_tree",
     "insert_before_suffix",
     "section",

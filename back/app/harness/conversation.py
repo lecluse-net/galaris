@@ -35,6 +35,7 @@ from app.agent import (
     analyze_conversation_work,
     conversation_work_analysis_context,
     memory_context_trace,
+    executor_instructions,
 )
 from app.agent.executor_prompts import ExecutorPromptContext, build_executor_prompt_tree
 from app.agent.prompt_tree import ExecutorKind, render_prompt_tree
@@ -855,9 +856,7 @@ class HarnessConversationController:
             if not turn.force_response:
                 dispatch_trace["work_analysis"] = work_analysis.model_dump(mode="json")
             dispatch_cost += work_analysis.cost
-            prompt_suffix = await params_service.get(
-                Params.AI_CONVERSATION_EXECUTOR_SYSTEM_PROMPT
-            )
+            prompt_suffix = await executor_instructions("conversation")
             action_policy = (
                 await params_service.get_or_default(
                     Params.AI_CONVERSATION_ACTION_POLICY
@@ -1203,7 +1202,7 @@ async def stream_voice_conversation(
         relevance_query=request.objective,
         include_execution_guidance=False,
     )
-    prompt_suffix = await params_service.get(Params.AI_VOICE_EXECUTOR_SYSTEM_PROMPT)
+    prompt_suffix = await executor_instructions("voice")
     action_policy = (
         await params_service.get_or_default(Params.AI_CONVERSATION_ACTION_POLICY)
         or ""

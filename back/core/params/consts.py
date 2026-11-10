@@ -80,6 +80,7 @@ class Params:
     AI_TASK_OBJECTIVE_SYSTEM_PROMPT = "ai.task-objective-system-prompt"
     AI_PLANNER_SYSTEM_PROMPT = "ai.planner-system-prompt"
     AI_EXECUTOR_SYSTEM_PROMPT = "ai.executor-system-prompt"
+    AI_GALARIS_OPERATING_PROMPT = "ai.galaris-operating-prompt"
     AI_CONVERSATION_EXECUTOR_SYSTEM_PROMPT = "ai.conversation-executor-system-prompt"
     AI_VOICE_EXECUTOR_SYSTEM_PROMPT = "ai.voice-executor-system-prompt"
     AI_CONVERSATION_ACTION_POLICY = "ai.conversation-action-policy"
@@ -364,7 +365,10 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
         "empty_uses_default": True,
     },
 
-    # Prompt additions. Empty means no instance-specific instructions.
+    # Shared operating knowledge and executor-specific additions.
+    Params.AI_GALARIS_OPERATING_PROMPT: {
+        "value": None, "kind": "prompt", "display_default": True,
+    },
     Params.AI_EXECUTOR_SYSTEM_PROMPT: {
         "value": None, "kind": "prompt", "display_default": True,
         "empty_uses_default": True,

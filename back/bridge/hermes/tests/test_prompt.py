@@ -75,8 +75,8 @@ async def test_context_instructions_advertise_only_effectively_available_tools(
     monkeypatch.setattr(prompt, "build_agent_process_advertisement", process_builder)
     monkeypatch.setattr(prompt, "_has_galaris_skill", AsyncMock(return_value=True))
     monkeypatch.setattr(
-        prompt.params_service,
-        "get",
+        prompt,
+        "executor_instructions",
         AsyncMock(return_value="FINAL EXECUTOR SUFFIX"),
     )
 

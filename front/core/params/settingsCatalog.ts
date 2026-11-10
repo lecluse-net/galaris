@@ -41,6 +41,12 @@ export const goalFields: SettingField[] = [
 
 export const executorInstructionFields: SettingField[] = [
     {
+        name: 'ai.galaris-operating-prompt',
+        labelKey: 'params.def.ai_galaris_operating_prompt.label',
+        descriptionKey: 'params.def.ai_galaris_operating_prompt.description',
+        input: 'prompt',
+    },
+    {
         name: 'ai.executor-system-prompt',
         labelKey: 'params.def.ai_executor_system_prompt.label',
         descriptionKey: 'params.def.ai_executor_system_prompt.description',

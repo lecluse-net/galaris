@@ -2,6 +2,17 @@
 
 # Functional guarantees catalogue
 
+`app/agent/tests/test_operating_instructions.py` checks editing, disabling and resetting the
+common Task/text/voice guide, preservation of executor-specific additions and frozen Lab
+prompts. `app/lab/tests/test_operating_benchmark.py` checks real reference contracts, detection
+of missing effects, equivalent clock notation and clustered repetitions/translations with
+infrastructure failures excluded. `test_reference_corpus.py` covers authenticated import and
+persistence. The [paired campaign](lab-reference-corpus.md)
+uses real models with simulated tools; its scores do not prove business effects.
+`test_executor_outcomes.py` also reproduces raw argument equality rejecting defaults bound
+by the framework. Earlier references supplied arguments explicitly; new cases exercise
+omission and genuinely different values.
+
 `app/goal/tests/test_autonomous_goal.py` exercises durable review before completion with
 PostgreSQL: critical redirection, blockers distinct from success, Goal/tracking revision
 invalidation, superseded review costs, expired lease recovery and human completion during

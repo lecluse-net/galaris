@@ -8,6 +8,23 @@ from app.lab.mechanism_registry import recording_tools
 from app.lab.objective_checks import check_output
 
 
+@pytest.mark.parametrize("mechanism", ["conversation_executor", "voice_executor"])
+@pytest.mark.parametrize("supplied,recorded,passed", [
+    ({"query": "synthetic"}, {"query": "synthetic", "limit": 5}, True),
+    ({"query": "synthetic", "limit": 5.0}, {"query": "synthetic", "limit": 5}, True),
+    ({"query": "synthetic", "limit": 6}, {"query": "synthetic", "limit": 5}, False),
+    ({"query": "synthetic"}, {"query": "synthetic", "limit": 6}, False),
+    ({"query": "synthetic"}, {"query": "synthetic", "limit": 5, "unknown": True}, False),
+])
+def test_tool_receipts_match_bound_defaults_without_accepting_changed_arguments(mechanism, supplied, recorded, passed):
+    checks = check_output(mechanism, {"available_tools": ["memory_search"]}, {
+        "response": "Synthetic result",
+        "tool_calls": [{"name": "memory_search", "arguments": supplied}],
+        "tool_results": [{"name": "memory_search", "arguments": recorded, "result": {"items": []}}],
+    })
+    assert next(row["passed"] for row in checks if row["code"] == "tool_evidence") == passed
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("available", [["conversation_task_status"], []])
 async def test_foreground_benchmark_exposes_only_the_declared_capabilities(monkeypatch, available):

@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0277 — Configurable operating knowledge shared by executors](0277-configurable-operating-knowledge.md)
+
 - [0273 — Agent portrait resources](0273-agent-portrait-resources.md)
 
 - [0270 — Collect complete Process inputs before conversation launch](0270-conversation-process-input-dossiers.md)

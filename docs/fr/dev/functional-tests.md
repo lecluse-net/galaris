@@ -2,6 +2,18 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/agent/tests/test_operating_instructions.py` vérifie l'édition, la désactivation et la
+réinitialisation du guide commun aux tâches, conversations et voix, la conservation des
+instructions spécifiques et le gel des prompts du Lab. `app/lab/tests/test_operating_benchmark.py`
+vérifie les contrats réels des références, la détection des effets manquants, l'équivalence
+des heures et le regroupement statistique des répétitions/traductions avec exclusion des
+pannes. `test_reference_corpus.py` couvre leur import authentifié et leur persistance.
+La [campagne avant/après](lab-reference-corpus.md)
+utilise de vrais modèles avec des outils simulés ; ses scores ne prouvent pas les effets métier.
+`test_executor_outcomes.py` reproduit aussi le défaut d'égalité brute entre arguments soumis
+et valeurs par défaut liées par le framework. Les anciennes références fournissaient les
+arguments explicitement ; les nouveaux cas couvrent leur omission et les vraies divergences.
+
 `app/goal/tests/test_autonomous_goal.py` vérifie avec PostgreSQL la revue durable avant clôture,
 la réorientation après critique, les blocages distincts de la réussite, l'invalidation des avis
 par les révisions du Goal/suivi, les coûts des revues périmées, la reprise après expiration du

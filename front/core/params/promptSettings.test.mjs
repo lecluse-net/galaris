@@ -4,6 +4,7 @@ import * as catalog from './settingsCatalog.ts'
 import * as harnessCatalog from '../../app/harnesses/runtimeSettings.ts'
 
 const promptNames = [
+  'ai.galaris-operating-prompt',
   'ai.task-objective-system-prompt',
   'ai.planner-system-prompt',
   'ai.executor-system-prompt',

@@ -2,6 +2,17 @@
 
 # User and Discovery Guide
 
+## Agent operating knowledge
+
+With instruction-configuration privileges, open **Administer → Preferences → Instructions** and
+**Galaris operating knowledge**. This common prompt explains tools, native Goal management,
+Tasks, Processes, Documents, data, Memory, files and collaboration. Task, text-conversation
+and voice executors, including realtime, receive it before their executor-specific additions.
+Changing this guide grants no additional permissions.
+
+Edit the text and save. Saving an empty value disables the common guide; **Reset** restores
+the packaged default. Lab benchmark datasets retain their frozen prompt after these changes.
+
 This guide introduces Galaris without requiring knowledge of models, APIs or Docker.
 Visible screens depend on your account's permissions. For an overview, start with the
 [feature tour](../features.md).

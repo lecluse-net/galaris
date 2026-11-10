@@ -2,7 +2,7 @@
 
 from typing import Any, cast
 from dataclasses import replace
-from .mechanism_registry import get_mechanism
+from .mechanism_registry import get_mechanism, recording_tool_defaults
 from app.agent import resolve_pipeline_policy
 from .executor_outcomes import outcome_checks, selected_call
 
@@ -120,8 +120,21 @@ def check_output(mechanism: str, native: Any, output: Any, *, expected: object =
     elif mechanism.endswith("_executor"):
         results = output.get("tool_results", [])
         calls = output.get("tool_calls", [])
+        executor = get_mechanism(mechanism).executor
+        assert executor is not None
+        defaults = recording_tool_defaults(executor, native.get("tool_catalog"))
+
+        def matching_evidence(call: dict[str, Any], result: dict[str, Any]) -> bool:
+            name = str(call.get("name") or "")
+            submitted, executed = call.get("arguments"), result.get("arguments")
+            if name != result.get("name") or not isinstance(submitted, dict) or not isinstance(executed, dict):
+                return False
+            left = {**defaults.get(name, {}), **cast(dict[str, Any], submitted)}
+            right = {**defaults.get(name, {}), **cast(dict[str, Any], executed)}
+            return left == right
+
         check("tool_evidence", len(calls) == len(results) and all(
-            call.get("name") == result.get("name") and call.get("arguments") == result.get("arguments")
+            matching_evidence(call, result)
             for call, result in zip(calls, results)), "Every tool call has its own matching recorded result")
         if mechanism == "task_executor":
             allowed = set(native.get("available_tools", []))

@@ -15,6 +15,8 @@ import httpx
 
 CORPUS = Path(__file__).parents[1] / "app/lab/reference_corpus.json"
 CORPORA = {
+    "operating-fr": CORPUS.with_name("operating_knowledge_corpus_fr.json"),
+    "operating-en": CORPUS.with_name("operating_knowledge_corpus_en.json"),
     "reference": CORPUS,
     "latency-fr": CORPUS.with_name("latency_corpus_fr.json"),
     "latency-en": CORPUS.with_name("latency_corpus_en.json"),

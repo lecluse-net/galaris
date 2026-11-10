@@ -539,6 +539,18 @@ def _executor_tools(executor: ExecutorKind) -> list[Any]:
     ]
 
 
+def recording_tool_defaults(executor: ExecutorKind, catalog: list[dict[str, Any]] | None) -> dict[str, dict[str, Any]]:
+    """Defaults actually bound by the same tool contracts used by the recorder."""
+    if executor == "task" and catalog:
+        return {str(spec["name"]): {name: definition["default"]
+                    for name, definition in spec["parameters"].get("properties", {}).items()
+                    if "default" in definition} for spec in catalog}
+    return {tool.__name__: {name: parameter.default
+                for name, parameter in inspect.signature(tool).parameters.items()
+                if parameter.default is not inspect.Parameter.empty}
+            for tool in _executor_tools(executor)}
+
+
 def recording_tools(
     executor: ExecutorKind, responses: dict[str, list[Any]], transcript: list[dict[str, Any]],
     *, available_tools: list[str] | None = None,

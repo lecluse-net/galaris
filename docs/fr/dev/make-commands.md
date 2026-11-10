@@ -75,6 +75,7 @@ Ces commandes utilisent les fichiers Compose sélectionnés pour l'environnement
 | `test-hermes-management` | Diagnostiquer la configuration et la connectivité de l'adaptateur Hermès. |
 | `test-harness-management` | Diagnostiquer le gestionnaire générique de harnais. |
 | `qualify-lab` | Lancer un exercice Lab explicitement budgété ou comparer des runs ; `ARGS`, `LAB_ACCESS_TOKEN`. |
+| `benchmark-operating-knowledge` | En développement, figer ou exécuter une comparaison appariée du guide opérationnel ; `ARGS='--max-cost 5 [--run]'`. Preuves sous `artifacts/`. |
 | `file-share-navigation` | Comparer MCP et répertoire avec le vrai SDK Hermes ; [pilote puis campagne synthétique](file-share-navigation.md), `ARGS='pilot\|decision <code-modèle> <endpoint>'`. |
 | `qualify-matrix` | Envoyer un texte/fichier synthétique dans un salon Matrix de test explicitement autorisé. |
 

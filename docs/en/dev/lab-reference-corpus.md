@@ -2,6 +2,43 @@
 
 # Editorial validation corpus for the Lab
 
+## Measure operating knowledge before and after
+
+`operating_knowledge_corpus_fr.json` and `_en.json` each add 16 synthetic cases: native Goal
+management (creation, pause, resume, immediate cycle, completion, settings and tracking),
+concurrency, access denial, injection, personal Memory, Tasks and Documents. Tool schemas
+come from actual MCP functions; effects remain simulated. Import using
+`import_lab_reference.py --corpus operating-fr --install` or `--corpus operating-en --install`.
+
+Version 2 preserves the concurrently edited title in the pause receipt. The earlier scenario
+contained a contradiction that justified additional verification; exclude those observations
+and replace them with a corrected paired comparison. Receipt arguments are compared after
+binding only declared defaults: omitting an optional argument is not a false failure, while
+a genuinely different value remains rejected.
+
+In development, `make benchmark-operating-knowledge ARGS='--max-cost 5'` freezes inputs,
+schemas, simulated responses, prompts, model and reasoning without model calls. Add `--run`
+to compare the same production prompt builder and executor-specific instructions, changing
+only the common operating guide between arms. The executor-profile model is used throughout,
+including text and voice cases; neither STT nor TTS is tested. The 32 new cases, 40 existing
+capability/decision/transfer cases and 16 text/voice cases provide 88 scenarios, three
+repetitions and 528 evaluations by default.
+
+Evidence stays under `artifacts/operating-benchmark.*`: manifest, complete prompts, frozen
+inputs, outputs, checks, costs and durations. Oracles never enter candidate context. Reports
+pair the arms and bootstrap scenario clusters, grouping repetitions, translations and foreground
+variants. Pairs with infrastructure failures are excluded from the causal estimate.
+Missing call measurements, unknown costs and failures stay explicit. The cost threshold
+is checked between evaluations; in-flight calls may exceed it. Infrastructure failures stop
+admission and preserve evidence; an incomplete run cannot establish a complete comparison.
+
+Resume missing evaluations with identical limits:
+`BENCHMARK_EVIDENCE_DIR=artifacts/operating-benchmark.<identifier> make benchmark-operating-knowledge ARGS='--max-cost 5 --resume --run'`.
+Published observations, including failures, are never replayed. Local rescoring
+(`benchmark_operating_knowledge.py --output <directory> --max-cost 5 --rescore`) makes no model
+calls and retains original scores and the reason for an oracle correction. Public synthetic
+corpora are neither a private production holdout nor evidence of real business effects.
+
 `back/app/lab/reference_corpus.json` contains six versioned synthetic cases: concurrent HTML
 editing, attachment URIs without a console, document prompt injection, unconfirmed delivery,
 HTML versus Markdown, and usage without an imposed budget. They exercise executor responses and review

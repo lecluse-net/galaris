@@ -172,6 +172,7 @@
           "back/app/agent/dispatcher.py",
           "back/app/agent/executor_service.py",
           "back/app/agent/facade.py",
+          "back/app/agent/instructions.py",
           "back/app/agent/janus.py",
           "back/app/agent/planner_collection.py",
           "back/app/agent/planner_contracts.py",
@@ -5415,7 +5416,6 @@
           "back/bridge/hermes/executor.py",
           "back/bridge/hermes/harness_provider.py",
           "back/bridge/hermes/manager.py",
-          "back/bridge/hermes/prompt.py",
           "back/bridge/hermes/session_binding.py"
         ],
         "source": "bridge.hermes",

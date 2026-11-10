@@ -21,6 +21,19 @@ par le [tour des fonctionnalités](../features.md).
 Dans les fenêtres de détail, de formulaire ou de benchmark du Lab, le contenu défile
 en conservant le titre et la fermeture accessibles.
 
+## Connaissance opérationnelle des agents
+
+Avec les droits de configuration des instructions, ouvrez **Administrer → Préférences →
+Instructions** et le champ **Connaissance opérationnelle de Galaris**. Ce prompt commun explique
+les outils, la gestion des Goals natifs, les tâches, processus, documents, données, mémoire,
+fichiers et collaborations. Il est fourni aux tâches, conversations textuelles et sessions
+vocales, y compris realtime. Les instructions spécifiques de chaque exécuteur sont ajoutées
+ensuite. Modifier ce guide n'accorde aucun droit supplémentaire.
+
+Modifiez le texte puis enregistrez. Enregistrer une valeur vide désactive le guide commun ;
+**Réinitialiser** restaure le défaut fourni avec le logiciel. Les jeux de benchmark du Lab
+conservent leur prompt figé et ne changent pas après cette modification.
+
 ## Galaris, simplement
 
 Un agent Galaris est un collaborateur logiciel avec :

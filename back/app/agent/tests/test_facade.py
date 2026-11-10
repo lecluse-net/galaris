@@ -43,7 +43,7 @@ def _detached_unit_harness_port(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(harness_selection_port, "configuration", AsyncMock(return_value=(HarnessExecutionPolicy(), 0)))
 
-    monkeypatch.setattr(executor_service.params_service, "get", AsyncMock(return_value=""))
+    monkeypatch.setattr(executor_service, "executor_instructions", AsyncMock(return_value=""))
 
 
 def test_stream_metadata_filter_removes_split_cartouche() -> None:

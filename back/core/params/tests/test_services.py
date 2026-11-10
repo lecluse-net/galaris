@@ -479,7 +479,10 @@ class TestSet:
         assert all(
             DEFAULT_PARAMS[name].get("empty_uses_default")
             for name in params_service.prompt_names()
+            if name != Params.AI_GALARIS_OPERATING_PROMPT
         )
+        # The optional common guide can be disabled while executor additions remain active.
+        assert params_service.normalize(Params.AI_GALARIS_OPERATING_PROMPT, "") == ""
 
     def test_prompt_default_digest_covers_canonical_source(self, monkeypatch) -> None:
         baseline = params_service.prompt_default_digest(

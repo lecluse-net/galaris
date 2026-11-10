@@ -19,6 +19,7 @@ from .contracts import (
 from .task_port import TaskAmendmentUnavailableError, TaskAmendmentRevisionConflict, task_port
 from .conversation_context import message_line
 from .conversation_context import linked_work_context
+from .instructions import executor_instructions
 
 
 def _conversation_history_context(messages: Sequence[Mapping[str, Any]]) -> str:
@@ -116,7 +117,7 @@ async def build_realtime_agent_context(
         include_execution_guidance=False,
     )
     now = datetime.now().astimezone()
-    prompt_suffix = await params_service.get(Params.AI_VOICE_EXECUTOR_SYSTEM_PROMPT)
+    prompt_suffix = await executor_instructions("voice")
     action_policy = (
         await params_service.get_or_default(Params.AI_CONVERSATION_ACTION_POLICY)
         or ""

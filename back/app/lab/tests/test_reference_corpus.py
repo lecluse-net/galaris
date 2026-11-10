@@ -18,6 +18,7 @@ from app.lab.objective_checks import check_output
     ("outcomes-fr", 12), ("outcomes-en", 12),
     ("outcome-decisions-fr", 3), ("outcome-decisions-en", 3),
     ("outcome-transfer-fr", 5), ("outcome-transfer-en", 5),
+    ("operating-fr", 16), ("operating-en", 16),
 ])
 async def test_reference_import_uses_http_authorization_and_never_overwrites(client, corpus_name, count):
     import httpx
@@ -45,6 +46,7 @@ async def test_reference_import_uses_http_authorization_and_never_overwrites(cli
     "outcome_capabilities_corpus_fr.json", "outcome_capabilities_corpus_en.json",
     "outcome_decisions_corpus_fr.json", "outcome_decisions_corpus_en.json",
     "outcome_transfer_corpus_fr.json", "outcome_transfer_corpus_en.json",
+    "operating_knowledge_corpus_fr.json", "operating_knowledge_corpus_en.json",
 ])
 async def test_reference_corpus_can_be_saved_resolved_and_checked(db, filename):
     corpus = json.loads((Path(__file__).parents[1] / filename).read_text())

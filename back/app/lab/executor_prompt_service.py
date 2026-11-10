@@ -9,6 +9,7 @@ from uuid import UUID
 from core.params import Params, params_service
 
 from app.agent.prompt_tree import PROMPT_TREE_SCHEMA
+from app.agent import executor_instructions
 
 from .schemas import ExecutorPromptDefaultsRead, ExecutorPromptKind
 
@@ -23,7 +24,7 @@ _PARAM_BY_EXECUTOR: dict[ExecutorPromptKind, str] = {
 async def default_suffix(executor: ExecutorPromptKind) -> str:
     """Read the current production Param used to initialize or reset a dataset."""
 
-    return (await params_service.get(_PARAM_BY_EXECUTOR[executor]) or "").strip()
+    return await executor_instructions(executor)
 
 
 async def default_conversation_action_policy(executor: ExecutorPromptKind) -> str:

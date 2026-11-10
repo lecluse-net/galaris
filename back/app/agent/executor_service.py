@@ -13,7 +13,6 @@ from datetime import datetime
 from typing import AsyncIterator, Any, Optional, cast
 from loguru import logger
 from pydantic import ValidationError
-from core.params import params_service, Params
 from core.i18n import current_language, t
 from app.agent.contracts import (
     AIMessage,
@@ -36,6 +35,7 @@ from app.agent.prompt_tree import (
 from app.agent.task_port import task_port
 from .delivery_evidence import receipt_matches_artifact
 from .work_contracts import WorkPlan
+from .instructions import executor_instructions
 
 
 # Tool calls that constitute a response delivered to the user. ``messenger_reply`` is no
@@ -205,7 +205,7 @@ def common_system_prompt_sections(
 async def build_system_prompt_tree(agent: Any) -> PromptTree:
     """Build the shared Task-executor tree with its configured final suffix."""
 
-    executor_rules = await params_service.get(Params.AI_EXECUTOR_SYSTEM_PROMPT)
+    executor_rules = await executor_instructions("task")
     return common_system_prompt_tree(agent, executor_rules)
 
 

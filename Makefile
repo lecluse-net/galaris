@@ -557,6 +557,10 @@ regression-check: ## Verify regression test links against successful test and mu
 qualify-lab: ## Start an explicitly budgeted Lab run or compare completed runs (ARGS, LAB_ACCESS_TOKEN)
 	docker compose -f compose.test.yaml run --rm --no-deps -e LAB_ACCESS_TOKEN backend python scripts/qualify_lab.py $(ARGS)
 
+benchmark-operating-knowledge: ## Freeze or run paired operating-prompt benchmarks in dev (ARGS='--max-cost 5 [--run]')
+	@bash bin/benchmark-operating-knowledge.sh $(COMPOSE_FILES) -- $(ARGS)
+.PHONY: benchmark-operating-knowledge
+
 qualify-documents: ## Inventory private documents, run bounded profile trials, or check reviewed answers (ARGS)
 	@mkdir -p artifacts/document-qualification
 	docker compose $(COMPOSE_FILES) run --rm --no-deps -T --entrypoint python \

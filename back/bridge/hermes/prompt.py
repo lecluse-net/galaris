@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from core.params import Params, params_service
 from app.agent.contracts import AgentRunRequest, AgentSnapshot
 from app.agent import (
     ExecutorPromptContext,
+    executor_instructions,
     build_executor_prompt_tree,
     conversation_context_block,
     insert_before_suffix,
@@ -74,7 +74,7 @@ async def build_context_instructions(
             "The rights-filtered inventory above remains authoritative."
         )
     runtime_rules.append(_HERMES_TURN_RULES)
-    executor_rules = await params_service.get(Params.AI_EXECUTOR_SYSTEM_PROMPT)
+    executor_rules = await executor_instructions("task")
     context = ExecutorPromptContext(
         agent_name=f"{agent.first_name} {agent.last_name}".strip() or agent.code,
         gender="female" if agent.gender == "F" else "male",

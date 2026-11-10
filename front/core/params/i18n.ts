@@ -75,6 +75,10 @@ export default {
       updateError: 'Erreur lors de la mise à jour de « {name} »',
       // Libellés/descriptions des paramètres (clé = nom du paramètre, « . » et « - » → « _ »).
       def: {
+        ai_galaris_operating_prompt: {
+          label: 'Connaissance opérationnelle de Galaris',
+          description: 'Guide commun aux tâches, conversations et voix : outils, Goals, tâches, processus, documents, données, mémoire et collaboration. Les instructions propres à chaque exécuteur restent prioritaires. Une valeur vide désactive ce guide ; Réinitialiser restaure le défaut.',
+        },
         ai_executor_system_prompt: {
           label: 'Exécuteur de tâches',
           description: 'Instructions ajoutées à la fin du prompt des tâches pour tous les runtimes. Vide = aucune instruction supplémentaire.',
@@ -495,6 +499,10 @@ export default {
       updateError: 'Error while updating "{name}"',
       // Param labels/descriptions (key = param name, "." and "-" → "_").
       def: {
+        ai_galaris_operating_prompt: {
+          label: 'Galaris operating knowledge',
+          description: 'Shared Task, text and voice guide: tools, Goals, Tasks, Processes, Documents, data, Memory and collaboration. Executor-specific additions remain last. An empty value disables this guide; Reset restores the default.',
+        },
         ai_executor_system_prompt: {
           label: 'Task executor',
           description: 'Instructions appended to Task prompts for every runtime. Empty means no additional instructions.',
@@ -871,6 +879,7 @@ export default {
       agentInstructions: '智能体指令', executorInstructions: '执行器指令', executorInstructionsHelp: '执行器指令补充任务、文字和语音提示词。对话策略和目标跟踪提示词分别替换各自的默认规则。',
       updated: '参数“{name}”已更新', updateError: '更新“{name}”时出错',
       def: {
+        ai_galaris_operating_prompt: { label: 'Galaris 操作知识', description: '任务、文字和语音共用的指南：工具、目标、任务、流程、文档、数据、记忆与协作。执行器专用指令保留在最后。空值禁用指南；重置恢复默认值。' },
         ai_executor_system_prompt: { label: '任务执行器', description: '添加到所有运行时任务提示词末尾的指令。留空 = 不添加额外指令。' },
         ai_conversation_executor_system_prompt: { label: '文字对话执行器', description: '添加到短对话轮次提示词末尾的指令。' },
         ai_voice_executor_system_prompt: { label: '语音执行器', description: '添加到语音提示词末尾的指令。' },

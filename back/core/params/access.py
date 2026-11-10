@@ -48,7 +48,7 @@ def parameter_domain(name: str) -> str:
         "LLM_CALL_TIMEOUT_MINUTES", "ai.task-objective-system-prompt", "ai.planner-system-prompt",
     }:
         return "tasks"
-    if name in {"ai.executor-system-prompt", "ai.conversation-executor-system-prompt",
+    if name in {"ai.galaris-operating-prompt", "ai.executor-system-prompt", "ai.conversation-executor-system-prompt",
                 "ai.voice-executor-system-prompt", "ai.conversation-action-policy"}:
         return "instructions"
     if name.startswith("SEARCH_"):
