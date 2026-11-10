@@ -11,7 +11,7 @@
         :title="preview.title || (preview.deleted ? t('chat.resourcePreview.kinds.document') : '')"
         :disabled="preview.deleted || resourceKind(preview) === 'audio' || (isDirectory(preview) && !canOpenDirectory(preview))"
         :description="preview.kind === 'document' ? '' : preview.description"
-        :subtitle="preview.deleted ? t('chat.resourcePreview.documentDeleted') : [kindLabel(preview.kind), preview.subtitle].filter(Boolean).join(' · ')"
+        :subtitle="preview.deleted ? t('chat.resourcePreview.documentDeleted') : [kindLabel(preview), preview.subtitle].filter(Boolean).join(' · ')"
         :uri="preview.uri"
         :image="imageUrls[preview.uri]"
         :icon="documentFolderId(preview.uri) || isDirectory(preview) ? 'folder' : kindIcon(preview.kind)"
@@ -404,7 +404,16 @@ function canOpenDirectory(preview: MessageResourcePreview): boolean {
     && !preview.deleted && props.viewerAgentId === null && privilegeStore.hasPrivilege('CODE_ACCESS')
 }
 
-function kindLabel(kind: MessageResourcePreviewKind): string {
+function kindLabel(preview: MessageResourcePreview): string {
+  const targetKind = richLinkTarget(preview.uri)?.kind
+  const aliases: Record<string, string> = {
+    document_folder: 'folder',
+    round: 'text',
+    room: 'text',
+    voice_session: 'voice',
+    external_process_run: 'process_run',
+  }
+  const kind = isDirectory(preview) ? 'folder' : targetKind ? aliases[targetKind] ?? targetKind : preview.kind
   if (kind === 'code') return t('code.title')
   return t(`chat.resourcePreview.kinds.${kind}`)
 }

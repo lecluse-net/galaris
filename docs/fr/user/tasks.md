@@ -186,6 +186,10 @@ Les autorisations d'écriture restent nécessaires.
 Une tâche terminée ne peut plus être amendée : pour autoriser les cibles encore hors périmètre,
 formulez une nouvelle demande explicite en référençant le travail déjà réalisé.
 
+Pour actualiser les documents d’un dossier déjà identifié dans l’échange, vous pouvez désigner
+ce dossier sans répéter chaque document. Galaris vérifie l’appartenance au dossier et les droits
+à chaque édition ; cette demande n’autorise pas leur suppression ni leur envoi ailleurs.
+
 Dans les étapes de réflexion, ouvrir un appel d’outil affiche son nom, ses arguments et son
 retour, avec son état de réussite ou d’échec. Ces détails restent disponibles pendant le suivi
 en direct et après reconnexion. Les aperçus volumineux sont tronqués explicitement et les clés

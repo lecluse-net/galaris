@@ -163,6 +163,10 @@ in progress without being declared completed. Write permissions are still requir
 A terminal Task cannot be amended: to authorize remaining targets outside its scope,
 submit a new explicit request referencing the work already completed.
 
+To update documents in a folder already identified in the conversation, you can refer to that
+folder without listing every document. Galaris checks membership and permissions for each edit;
+this request does not authorize deleting documents or sending them elsewhere.
+
 In reasoning steps, expanding a tool call shows its name, arguments and returned content,
 with its success or failure state. These details remain available during live monitoring and
 after reconnection. Large previews are explicitly truncated and secret keys are redacted;

@@ -243,6 +243,12 @@ documents to continue without authorizing extra work: the current human request,
 resource ACLs and writing approval remain separate checks.
 See [0250](../../../../project/decisions/0250-current-document-receipts-for-task-admission.md).
 
+For document updates within a folder identified by context, preparation selects the folder URI;
+each edit then checks live membership and permissions. If a context quote is paraphrased but
+retains an independently verified target, the server replaces the paraphrase with that source URI.
+The human-request quote must remain exact; submission hints alone cannot supply a target.
+See [0206](../../../../project/decisions/0206-contextual-task-write-targets.md).
+
 The common MCP boundary removes unknown top-level keys from a closed schema before validation
 and authorization. Results add a `galaris.tool-arguments/v1` warning without ignored values;
 the Pydantic AI projection delivers it to the model and retains it in the checkpoint.

@@ -20,6 +20,15 @@ presence in context independently of submission hints, and its presence in the o
 The complete source request remains the `demand` requirement. Evidence is persisted with
 the Task; grants reference the canonical conversation round.
 
+When a model paraphrases the surrounding context but retains the exact selected URI,
+admission replaces that paraphrase with the URI already verified in the frozen context
+(with HTML entities decoded). The paraphrased assertion is discarded, never used as
+evidence. The current-request quote, contextual URI, and objective selection remain
+mandatory; invented targets, request quotes and hint-only references still fail. This
+avoids a retry dropping required writes merely to repair a contextual quotation.
+For requests to update documents in a contextual folder, preparation selects that folder
+URI as the bounded write target instead of enumerating documents before inspection.
+
 Only `file.write` is granted by this resolution. Context does not independently authorize
 work, and mentioning a resource in the objective does not select it. No grants are derived
 automatically from all history, memory or objective references. Native resource permissions,
@@ -50,3 +59,7 @@ child inheritance, and rejection of deletion and transport. Existing scope tests
 to cover unknown versions, stale revisions and persistence before an effect.
 Folder coverage exercises a native title rename with preserved content, nested membership,
 removal and access revocation, unrelated targets, attachments, deletion and transport.
+Conversation coverage also retains a selected target despite paraphrased context, and follows
+text/voice folder admission through child inheritance to a native `file_edit` and reopening.
+Earlier fixtures supplied only exact context quotes; they missed the retry that removed
+all write targets after an otherwise grounded selection was rejected.

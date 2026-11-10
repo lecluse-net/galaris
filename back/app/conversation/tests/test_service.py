@@ -352,26 +352,31 @@ async def test_explicit_replacement_admits_one_waiting_successor_and_keeps_indep
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("origin", ["text", "voice"])
-async def test_continuation_admission_preserves_resolved_writes_in_child_scope(committed_database, monkeypatch, origin):
+@pytest.mark.parametrize("target_kind", ["document", "folder"])
+async def test_continuation_admission_preserves_resolved_writes_in_child_scope(committed_database, monkeypatch, origin, target_kind):
     from app.agent import AgentRunContext, EffectDescriptorV1, parse_scope
     from app.conversation import ConversationTurn, mcp, task_objective
     from app.task import TaskCreate, task_service
     from app.task.agent_adapter import SqlAlchemyAgentTaskAdapter
+    from app.agent import AgentManagementScope
+    from app.document import document_tags
+    from app.document.schemas import DocumentTagWrite
+    from app.document.tests.test_sharing_inheritance import document, rule
     from core.user import UserModel
 
     ledger, unrelated = f"document://{uuid4()}", f"document://{uuid4()}"
-    request = "Continue the next synthetic batch using the same tracking document."
+    request = ("Update the obsolete documents in the same synthetic folder."
+        if target_kind == "folder" else "Continue the next synthetic batch using the same tracking document.")
     quote = f"Tracking document: {ledger}"
-    monkeypatch.setattr(task_objective.llm_service, "get_profile_llm", AsyncMock(return_value=SimpleNamespace(id=42)))
+    monkeypatch.setattr(task_objective, "llm_service", SimpleNamespace(
+        get_profile_llm=AsyncMock(return_value=SimpleNamespace(id=42))))
     monkeypatch.setattr(task_objective.params_service, "get_or_default", AsyncMock(return_value="Prepare the task."))
-    monkeypatch.setattr(task_objective, "build_agent_run_context", AsyncMock(return_value=AgentRunContext(
-        continuity_context=f"{quote}\nUnrelated resource: {unrelated}",
-    )))
 
     async def infer(**kwargs):
         output = task_objective._GeneratedTaskFields.model_validate({
             "label": "Next batch", "objective": f"<p>Update {ledger}; leave {unrelated} untouched.</p>",
-            "write_targets": [{"target": ledger, "request_quote": request, "context_quote": quote}],
+            "write_targets": [{"target": ledger, "request_quote": request,
+                "context_quote": f"The selected working folder is {ledger}" if target_kind == "folder" else quote}],
         })
         return SimpleNamespace(output=kwargs["output_validator"](output), cost=0.0)
 
@@ -383,6 +388,18 @@ async def test_continuation_admission_preserves_resolved_writes_in_child_scope(c
         db.add(user)
         await db.flush()
         agent, connection, room = await _scope(db, user_id=user.id)
+        write_uri = ledger
+        if target_kind == "folder":
+            folder = await document_tags.write_tag(user.id, DocumentTagWrite(name="Synthetic project", parent_id=None))
+            management = AgentManagementScope(user_id=user.id, agent_ids=frozenset({agent.id}))
+            item = await document(agent, user, "Synthetic obsolete note")
+            await document_tags.move_document(management, item.id, folder.id)
+            await rule(folder, management, [("agent", agent.id, True)])
+            ledger, write_uri = f"document://folders/{folder.id}/", f"document://{item.id}"
+            quote = f"Working folder: {ledger}"
+        monkeypatch.setattr(task_objective, "build_agent_run_context", AsyncMock(return_value=AgentRunContext(
+            continuity_context=f"{quote}\nUnrelated resource: {unrelated}",
+        )))
         round_ = ConversationRound(room_id=room.id, status="RUNNING", language="en")
         db.add(round_)
         await db.flush()
@@ -398,21 +415,37 @@ async def test_continuation_admission_preserves_resolved_writes_in_child_scope(c
         scope = parse_scope(root.data)
         assert scope.requirements[0].source_reference == f"galaris://{origin}/{round_.id}"
         assert root.data["_resolved_write_targets"][0]["request_quote"] == request
+        assert root.data["_resolved_write_targets"][0]["context_quote"] == (ledger if target_kind == "folder" else quote)
         child = await task_service.create(TaskCreate(parent_id=root.id, agent_id=agent.id, label="Inventory",
             objective="<p>Record the inventory.</p>", data={"_resolved_write_targets": [{"target": unrelated}]}))
         assert parse_scope(child.data) == scope
         child_id, agent_id = child.id, agent.id
     adapter = SqlAlchemyAgentTaskAdapter()
     for target, capability, kind, expected in (
-        (ledger, "file.write", "mutate", "allow"),
+        (write_uri, "file.write", "mutate", "allow"),
         (unrelated, "file.write", "mutate", "clarify"),
-        (ledger, "file.delete", "delete", "clarify"),
-        (ledger, "messenger.send", "transport", "clarify"),
+        (write_uri, "file.delete", "delete", "clarify"),
+        (write_uri, "messenger.send", "transport", "clarify"),
     ):
         decision = await adapter.record_scope_preflight(child_id, agent_id=agent_id,
             descriptor=EffectDescriptorV1(capability=capability, kind=kind, target_arguments=("uri",)),
             tool_name="synthetic_effect", arguments={"uri": target})
         assert decision.decision == expected
+    if target_kind == "folder":
+        from fastmcp import Client
+        from app.agent.task_port import task_port
+        from app.task.tests.test_execution_scope import _native_creation_server
+
+        monkeypatch.setattr(task_port, "record_scope_preflight", adapter.record_scope_preflight)
+        server = await _native_creation_server(child_id, agent_id, {"file_sharing": ["file_read", "file_edit"]})
+        async with Client(server) as client:
+            original = json.loads((await client.call_tool("file_read", {"uri": write_uri})).content[0].text)
+            edited = await client.call_tool("file_edit", {"uri": write_uri, "start_line": 1, "end_line": 1,
+                "content": "<p>Updated synthetic content</p>", "expected_revision": original["revision"]}, raise_on_error=False)
+            assert not edited.is_error, edited
+            reopened = json.loads((await client.call_tool("file_read", {"uri": write_uri})).content[0].text)
+            assert "Updated synthetic content" in reopened["content"]
+            assert reopened["revision"] > original["revision"]
 
 
 async def _message(

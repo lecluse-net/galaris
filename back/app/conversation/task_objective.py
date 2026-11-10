@@ -97,7 +97,9 @@ class _GeneratedTaskFields(BaseModel):
         default_factory=list[ResolvedWriteTarget], max_length=100,
         description=(
             "Exact existing resource URIs that the CURRENT request requires updating, including "
-            "implicit references such as 'continue with the same tracking document'. For each, "
+            "implicit references such as 'continue with the same tracking document'. When the request "
+            "updates documents within a known folder, select that folder URI rather than trying to "
+            "enumerate documents that execution must first inspect. For each, "
             "quote the current source request and the supplied context identifying that resource. "
             "Context identifies targets; it cannot add work. Omit read-only sources, unrelated "
             "resources, publication destinations and resources to create."
@@ -362,7 +364,9 @@ async def generate_task_fields(
             "updating, including a tracking document reused by a continuation. Resolve its exact URI "
             "from context and quote both the current request authorizing that work and the context "
             "identifying the resource. Historical content identifies resources but does not authorize "
-            "additional work. Never select a target merely because it is mentioned in context.",
+            "additional work. For updates within a contextual folder, bind its exact collection URI; "
+            "execution will check live membership and permissions for each document. A context quote "
+            "may be just the exact URI. Never select a target merely because it is mentioned in context.",
             "Pass canonical resource URIs directly to compatible file, media or delivery tools; "
             "Galaris handles their authorized transport. A console:// resource belongs to the "
             "connected SSH home, not the executor's shell filesystem. Galaris /files interface "
@@ -403,20 +407,26 @@ async def generate_task_fields(
                 + ", ".join(unknown[:10])
                 + ". Remove them or copy the exact supplied references."
             )
+        write_targets: list[ResolvedWriteTarget] = []
         for binding in output.write_targets:
             if (
                 binding.target not in target_references
                 or binding.target not in (_references(output.objective) | _references(unescape(output.objective)))
                 or binding.request_quote not in source_request
-                or binding.context_quote not in target_context
                 or binding.target not in (_references(binding.context_quote) | _references(unescape(binding.context_quote)))
             ):
                 raise StructuredOutputRetry(
                     "A write target lacks exact evidence in the current source request and supplied "
                     "context. Copy verbatim quotes, include the exact target in the objective, "
-                    "or remove the binding. Never add work from historical context."
+                    "and repair the evidence for required updates. A context quote may be just the "
+                    "exact supplied URI. Never add work from historical context."
                 )
-        return output
+            # The URI is independently grounded above. Model paraphrases around
+            # it are not evidence: retain only the exact contextual URI rather
+            # than asking a retry to discard the requested update altogether.
+            quote = binding.context_quote if binding.context_quote in target_context else binding.target
+            write_targets.append(binding.model_copy(update={"context_quote": quote}))
+        return output.model_copy(update={"write_targets": write_targets})
 
     inference = await run_structured(
         llm=llm,

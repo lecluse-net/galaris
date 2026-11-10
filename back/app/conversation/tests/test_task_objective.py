@@ -398,17 +398,21 @@ async def test_empty_task_objective_prompt_uses_repository_default(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("evidence", ["history", "current_execution"])
-@pytest.mark.parametrize("defect", [None, "target", "request_quote", "context_quote", "objective", "hint_only"])
+@pytest.mark.parametrize("evidence", ["history", "escaped_history", "current_execution"])
+@pytest.mark.parametrize("defect", [None, "context_paraphrase", "target", "request_quote", "context_quote", "objective", "hint_only"])
 async def test_continued_work_binds_only_selected_contextual_write_targets(monkeypatch, defect, evidence):
     """Continuing a batch can update its existing ledger without granting all context."""
     from app.agent import admitted_scope, preflight, EffectDescriptorV1
 
     ledger = f"document://{uuid4()}"
+    if evidence == "escaped_history":
+        ledger = "synthetic://tracking?first=one&second=two"
     unrelated = f"document://{uuid4()}"
     request = "Continue the next batch with the same tracking document."
     turn = replace(_turn(), objective=request, source_request=request)
     context_quote = f"Batch tracking document: {ledger}"
+    if evidence == "escaped_history":
+        context_quote = escape(context_quote)
     if evidence == "current_execution":
         context_quote = ledger
         if defect != "hint_only":
@@ -430,6 +434,8 @@ async def test_continued_work_binds_only_selected_contextual_write_targets(monke
         binding = {"target": ledger, "request_quote": request, "context_quote": context_quote}
         if defect in {"target", "request_quote", "context_quote"}:
             binding[defect] = "synthetic://invented"
+        elif defect == "context_paraphrase":
+            binding["context_quote"] = f"The earlier batch used {ledger} as its tracking document."
         output = task_objective._GeneratedTaskFields.model_validate({
             "label": "Next batch", "objective": "<p>Prepare the batch.</p>" if defect == "objective"
                 else f"<p>Update {ledger}; leave {unrelated} untouched.</p>",
@@ -438,11 +444,12 @@ async def test_continued_work_binds_only_selected_contextual_write_targets(monke
         return SimpleNamespace(output=kwargs["output_validator"](output), cost=0.0)
 
     monkeypatch.setattr(task_objective, "run_structured", prepare)
-    if defect is not None:
+    if defect not in {None, "context_paraphrase"}:
         with pytest.raises(StructuredOutputRetry):
             await task_objective.generate_task_fields(turn, label_hint="Batch", objective_hint=context_quote)
         return
     prepared = await task_objective.generate_task_fields(turn, label_hint="Batch", objective_hint=request)
+    assert prepared.write_targets[0].context_quote == (ledger if defect == "context_paraphrase" else context_quote)
     scope = admitted_scope(uuid4(), request, resolved_write_targets=tuple(item.target for item in prepared.write_targets))
     write = EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",))
     assert preflight(scope, write, "file_edit", {"uri": ledger}).decision == "allow"

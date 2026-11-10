@@ -277,6 +277,12 @@ Ils identifient les documents à reprendre sans autoriser de travail supplément
 humaine courante, le périmètre, les ACL et l’accord d’écriture restent contrôlés séparément.
 Voir [0250](../../../../project/decisions/0250-current-document-receipts-for-task-admission.md).
 
+Pour les mises à jour de documents dans un dossier identifié par le contexte, la préparation
+retient l’URI du dossier ; chaque édition vérifie ensuite l’appartenance actuelle et les droits.
+Si une citation de contexte est reformulée mais conserve la cible exacte déjà vérifiée, le serveur
+remplace la reformulation par cette URI source. La citation de la demande humaine reste exacte ;
+aucune cible ne provient des seules suggestions de soumission. Voir [0206](../../../../project/decisions/0206-contextual-task-write-targets.md).
+
 La frontière MCP commune retire les clés inconnues de premier niveau d’un schéma fermé
 avant validation et autorisation. Le résultat ajoute un avis `galaris.tool-arguments/v1`
 sans les valeurs ignorées ; la projection Pydantic AI le transmet au modèle et le checkpoint
