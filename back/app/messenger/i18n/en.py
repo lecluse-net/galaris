@@ -52,7 +52,11 @@ default: dict[str, object] = {
             "Message sent to the peer. Your task is waiting for their response and will resume "
             "automatically. Briefly acknowledge the original requester."
         ),
-        "peer_task_required": "Contact an internal colleague from a Task. No peer request was created.",
+        "peer_task_required": (
+            "Contact an internal colleague from a Task. No message was sent and no peer request was created. "
+            "From a conversation, use conversation_task_submit to amend the relevant ongoing Task "
+            "or admit new work under the conversation policy, preserving the recipient and requested contribution."
+        ),
         "peer_request_waiting": (
             "Peer request accepted: ${uri}. Your task is waiting for its result and will resume automatically."
         ),

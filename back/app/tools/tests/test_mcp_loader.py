@@ -291,6 +291,44 @@ async def test_recoverable_native_tool_error_keeps_its_actionable_message(monkey
     assert execution.outcome == ("rejected" if before_launch else "unknown")
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("language", ["en", "fr", "zh"])
+async def test_internal_peer_message_without_task_reports_rejection_before_effect(monkeypatch, language):
+    from app.messenger import mcp
+    from app.tools import mcp_loader
+    from app.tools.contracts import ToolExecutionContext, tool_execution
+
+    messenger = SimpleNamespace(kind="internal", send_to_user=AsyncMock(), send_to_room=AsyncMock())
+    monkeypatch.setattr(mcp, "_resolve_user_delivery", AsyncMock(return_value=(messenger, "agent:8")))
+    monkeypatch.setattr(mcp, "_recipient_agent_id", AsyncMock(return_value=8))
+    monkeypatch.setattr(mcp_loader, "context_language", AsyncMock(return_value=language))
+    monkeypatch.setattr(mcp, "_context_language", AsyncMock(return_value=language))
+    peer_request = AsyncMock()
+    monkeypatch.setattr("app.task.facade.request_peer_message", peer_request)
+    journal = AsyncMock()
+    monkeypatch.setattr("core.failure_journal.record_failure_event", journal)
+    definition = mcp_loader.McpToolDefinition(
+        tool_code="messenger", name="messenger_send_message_to_user",
+        description="Send a message.", required_capabilities=frozenset(),
+        function=mcp.mcp_send_message_to_user,
+    )
+    monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
+    wrapper = mcp_loader._wrap_tool(definition, mcp_loader.McpToolContext(agent_id=7, runtime="internal"))
+    execution = ToolExecutionContext(uuid4(), definition.name)
+    with tool_execution(execution):
+        result = await wrapper(user="agent:8", message="Synthetic peer question", wait_for_reply=False)
+
+    assert result.is_error
+    assert execution.outcome == "rejected"
+    message = " ".join(part.text for part in result.content)
+    assert mcp._message(language, "peer_task_required") in message
+    assert "conversation_task_submit" in message
+    assert journal.await_args.args[0].error_code == "actionable"
+    peer_request.assert_not_awaited()
+    messenger.send_to_user.assert_not_awaited()
+    messenger.send_to_room.assert_not_awaited()
+
+
 def test_mcp_loader_discovers_decorated_tools_by_tool_code() -> None:
     from app.tools.mcp_loader import mcp_tool_names_by_tool_code
 

@@ -20,12 +20,18 @@ from uuid import UUID
 from loguru import logger
 
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.tools import RecoverableToolError
+from app.tools.contracts import ToolCallRejectedError
 from core.database import release_db_transaction
 from core.i18n import default_language, is_supported, render_prompt, t
 from .facade import MessengerFacade, normalize_kind
 from .interface import NotSupported
 from .models import Capability, File, Message
 from .resource_reference import attachment_resource_uri
+
+
+class PeerTaskRequired(RecoverableToolError, ToolCallRejectedError):
+    """An internal peer request was rejected before creating a Task or sending."""
 
 
 @dataclass
@@ -369,6 +375,9 @@ async def mcp_room_send_message(ctx: McpToolContext, room_id: str, message: str)
         "and relaying its answer. This yields after engaged tools finish. Leave it false (the default) "
         "to continue independent work or contact more colleagues; the Task still awaits peer results before finishing. "
         "Human recipients never suspend the run."
+        " Internal colleague requests require a current Task. From a conversation, use "
+        "conversation_task_submit to amend the relevant ongoing Task or admit new work "
+        "under the conversation policy, preserving the recipient and requested contribution."
     ),
 )
 async def mcp_send_message_to_user(
@@ -405,7 +414,7 @@ async def mcp_send_message_to_user(
             from app.task.facade import request_peer_message
 
             if ctx.task_id is None:
-                raise ValueError(_message(language, "peer_task_required"))
+                raise PeerTaskRequired(_message(language, "peer_task_required"))
             request_id = await request_peer_message(
                 requester_agent_id=ctx.agent_id,
                 peer_agent_id=peer_agent_id,
@@ -456,6 +465,8 @@ async def mcp_send_message_to_user(
         await release_db_transaction()
         await messenger.send_to_user(user_id, message)
         return _message(language, "message_sent")
+    except PeerTaskRequired:
+        raise
     except NotSupported as exc:
         raise RuntimeError(_message(language, "unavailable", error=exc)) from exc
     except Exception as exc:
