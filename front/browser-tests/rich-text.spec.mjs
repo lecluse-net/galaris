@@ -399,16 +399,16 @@ for (const profile of ['rich-text', 'document']) test(`fullscreen and read-only 
   expect(await lastValue(page)).toBe(saved)
 })
 
-test('pasted active HTML and external images cannot execute or fetch before saving', async ({page}) => {
+for (const editorSlice of [false, true]) test(`pasted active HTML and external images cannot execute or fetch before saving (editor slice: ${editorSlice})`, async ({page}) => {
   let fetched = false
   await page.route('https://example.invalid/**', route => { fetched=true; return route.abort() })
   await mount(page,'core/util/components/RichTextEditor.vue',{props:{modelValue:'<p>Before</p>',profile:'document',ariaLabel:'Editorial content'}})
   await page.locator('[data-editor-surface]').click()
-  await page.locator('[data-editor-surface]').evaluate(root=>{
+  await page.locator('[data-editor-surface]').evaluate((root, editorSlice)=>{
     const transfer = new DataTransfer()
-    transfer.setData('text/html','<style>@import url("https://example.invalid/tracker.css"); p{background-image:url("https://example.invalid/bg.png")}</style><p onclick="window.xss=true">Pasted</p><img src="https://example.invalid/tracker.png" alt="Missing illustration"><script>window.xss=true</script>')
+    transfer.setData('text/html',`<style>@import url("https://example.invalid/tracker.css"); p{background-image:url("https://example.invalid/bg.png")}</style><p ${editorSlice ? 'data-pm-slice="1 1 []"' : ''} onclick="window.xss=true">Pasted</p><img src="https://example.invalid/tracker.png" alt="Missing illustration"><script>window.xss=true</script>`)
     root.dispatchEvent(new ClipboardEvent('paste',{clipboardData:transfer,bubbles:true,cancelable:true}))
-  })
+  }, editorSlice)
   await expect(page.locator('[data-editor-surface]')).toContainText('Pasted')
   await expect(page.locator('[data-editor-surface]')).toContainText('Missing illustration')
   await expect(page.getByRole('dialog')).toHaveCount(0)

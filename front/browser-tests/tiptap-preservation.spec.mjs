@@ -90,6 +90,42 @@ test('canonical internal links retain identity through formatting and reopening'
   expect(await lastValue(page)).not.toContain('data-rich-reference')
 })
 
+for (const [width, dark] of [[1440, false], [390, true]]) test(`copying tables between documents preserves layout and authored styles (${width}px)`, async ({ page, context }, testInfo) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.setViewportSize({ width, height: 1000 })
+  const table = '<tbody><tr><th colspan="2" colwidth="120,180"><p>Synthetic header</p></th></tr><tr><td colwidth="120" style="background-color: #EBF5FE; vertical-align: middle"><p><span style="font-family: Georgia; font-size: 20px">First cell</span></p></td><td colwidth="180"><p>Second cell</p></td></tr></tbody>'
+  const source = `<table>${table}</table><table class="galaris-table-blue galaris-table-striped">${table}</table><table style="border-collapse: separate; width: 80%">${table}</table>`
+  await mount(page, component, { dark, props: { profile: 'document', modelValue: source } })
+  const editor = page.locator('[data-editor-surface]')
+  const appearance = () => editor.locator('table').evaluateAll(tables => tables.map(table => {
+    const style = getComputedStyle(table), cell = getComputedStyle(table.querySelector('td'))
+    return { collapse: style.borderCollapse, spacing: style.borderSpacing, font: style.fontFamily,
+      border: cell.border, background: cell.backgroundColor, alignment: cell.verticalAlign }
+  }))
+  const before = await appearance()
+  await page.screenshot({ path: testInfo.outputPath('original-tables.png'), fullPage: true })
+  await editor.click(); await page.keyboard.press('Control+a'); await page.keyboard.press('Control+c')
+  await expect.poll(() => page.evaluate(async () => {
+    const items = await navigator.clipboard.read()
+    return (await (await items.find(item => item.types.includes('text/html')).getType('text/html')).text()).includes('data-pm-slice')
+  })).toBe(true)
+  const original = await editorHtml(page)
+  await page.evaluate(() => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: { profile: 'document', modelValue: '<p>Destination</p>' } }))
+  await editor.click(); await page.keyboard.press('Control+End'); await page.keyboard.press('Enter')
+  await page.keyboard.press('Control+v')
+  await expect(editor.locator('table')).toHaveCount(3)
+  await page.screenshot({ path: testInfo.outputPath('pasted-tables.png'), fullPage: true })
+  expect(await appearance()).toEqual(before)
+  const saved = await editorHtml(page)
+  const tablesOnly = html => html.slice(html.indexOf('<table'), html.lastIndexOf('</table>') + '</table>'.length)
+  expect(tablesOnly(saved)).toBe(tablesOnly(original))
+  await page.keyboard.press('Control+z')
+  await expect(editor.locator('table')).toHaveCount(0)
+  await page.evaluate(modelValue => window.testApp.setProps({ modelValue }), saved)
+  await expect(editor.locator('table')).toHaveCount(3)
+  expect(await appearance()).toEqual(before)
+})
+
 test('table insertion, cell editing, undo and read-only retain content', async ({ page }) => {
   await mount(page, component, { props: { profile: 'document', modelValue: '<p>Table</p>' } })
   await page.locator('[data-editor-surface] p').click(); await page.keyboard.press('End')

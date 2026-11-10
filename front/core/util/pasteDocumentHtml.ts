@@ -17,6 +17,7 @@ export async function pasteDocumentHtml(html: string, options: {
   // Allow embedded image bytes before replacing them with attachment references.
   if (html.length > 20_000_000) throw new Error('Pasted HTML exceeds the import limit')
   const parsed = new DOMParser().parseFromString(html, 'text/html')
+  const editorSlice = Boolean(parsed.querySelector('[data-pm-slice]'))
   const base = parsed.querySelector('base[href]')?.getAttribute('href')
   const images = new Map<string, string>()
   for (const [index, image] of [...parsed.querySelectorAll('img')].entries()) {
@@ -33,8 +34,8 @@ export async function pasteDocumentHtml(html: string, options: {
   // resources or active markup are ever loaded into this temporary document.
   const safe = DOMPurify.sanitize(markup, {
     WHOLE_DOCUMENT: true, ALLOWED_TAGS: ['html', 'head', 'body', 'style', ...tags],
-    ALLOWED_ATTR: ['style', 'class', 'id', 'href', 'title', 'alt', 'width', 'height', 'colspan', 'rowspan', 'start', 'reversed', 'data-paste-image'],
-    ALLOW_DATA_ATTR: false, ADD_ATTR: ['data-paste-image'],
+    ALLOWED_ATTR: ['style', 'class', 'id', 'href', 'title', 'alt', 'width', 'height', 'colspan', 'rowspan', 'colwidth', 'start', 'reversed', 'value'],
+    ALLOW_DATA_ATTR: false, ADD_ATTR: ['data-paste-image', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked'],
   })
   const frame = document.createElement('iframe')
   frame.setAttribute('sandbox', 'allow-same-origin')
@@ -55,10 +56,15 @@ export async function pasteDocumentHtml(html: string, options: {
     const doc = frame.contentDocument!, view = frame.contentWindow!
     const elements = [...doc.body.querySelectorAll<HTMLElement>('*')]
     if (elements.length > 20_000) throw new Error('Pasted HTML is too complex')
+    // Editor slices already carry portable formatting and inherit our shared CSS.
+    // Resolving them in this unstyled frame invents browser defaults (separate
+    // table borders, Times New Roman, etc.). Keep filtering and importing images,
+    // but only resolve page CSS for content copied from outside an editor.
+    const styledElements = editorSlice ? [] : elements
     // Snapshot first: removing a class or wrapping text must not change the
     // computed styles of later descendants while they are being imported.
     const backgrounds = new Map<Element, string>([[doc.body, view.getComputedStyle(doc.body).backgroundColor]])
-    const styles = elements.map(element => {
+    const styles = styledElements.map(element => {
       const computed = view.getComputedStyle(element)
       const background = ['rgba(0, 0, 0, 0)', 'transparent'].includes(computed.backgroundColor)
         ? backgrounds.get(element.parentElement!) ?? 'transparent' : computed.backgroundColor
@@ -70,7 +76,7 @@ export async function pasteDocumentHtml(html: string, options: {
       }
     })
     doc.querySelectorAll('style').forEach(node => node.remove())
-    for (const [index, element] of elements.entries()) {
+    for (const [index, element] of styledElements.entries()) {
       const style = styles[index]!
       element.removeAttribute('id'); element.removeAttribute('style')
       element.className = [...element.classList].filter(value => editorialClasses.has(value)
