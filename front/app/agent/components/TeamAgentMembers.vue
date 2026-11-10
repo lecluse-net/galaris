@@ -11,7 +11,7 @@
   <section v-else :aria-label="t('team.agents')">
     <div class="text-subtitle1 q-mb-md">{{ t('team.agents') }} <q-badge color="primary" :label="model.length" /></div>
     <div v-if="!readonly" class="row items-start no-wrap q-gutter-sm q-mb-md">
-      <q-select v-if="multiple" v-model="selectedMany" class="col" outlined dense clearable use-input
+      <AgentTeamSelect v-if="multiple" v-model="selectedMany" class="col" outlined dense clearable use-input scope="teams"
         multiple use-chips emit-value map-options :options="options" :label="t('team.addAgent')" :disable="disabled"
         input-debounce="0" @filter="filter">
         <template #no-option><q-item><q-item-section>{{ t('common.noResults') }}</q-item-section></q-item></template>
@@ -22,7 +22,7 @@
             <q-item-section side><q-icon v-if="scope.selected" name="check" color="primary" /></q-item-section>
           </q-item>
         </template>
-      </q-select>
+      </AgentTeamSelect>
       <AgentSelect v-else v-model="selected" class="col" outlined dense clearable use-input
         :options="options" scope="teams" :load-agents="false" :label="t('team.addAgent')" :disable="disabled"
         input-debounce="0" @filter="filter" />
@@ -48,6 +48,7 @@ import { useI18n } from 'vue-i18n'
 import type { TeamMember } from '@/core/team'
 import AgentAvatar from './AgentAvatar.vue'
 import AgentSelect from './AgentSelect.vue'
+import AgentTeamSelect from './AgentTeamSelect.vue'
 
 const { members, readonly = false, disabled = false, compact = false, multiple = false } = defineProps<{
   members: TeamMember[]

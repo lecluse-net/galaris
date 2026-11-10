@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Query
 from core.authorize import RequireAllPrivilegesAssertion, authorize
 from core.database import get_db
 from . import service
-from .contracts import HumanInfo, MembershipUpdate, TeamInfo, TeamMove, TeamWrite
+from .contracts import HumanInfo, HumanSelection, MembershipUpdate, TeamInfo, TeamMove, TeamWrite
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
@@ -18,6 +18,12 @@ async def list_teams() -> list[TeamInfo]:
 @authorize(privileges="TEAM_ACCESS")
 async def search_humans(search: str = Query(default="", max_length=200), limit: int = Query(default=500, ge=1, le=500)) -> list[HumanInfo]:
     return await service.search_humans(search, limit)
+
+
+@router.get("/human-selection", response_model=list[HumanSelection])
+@authorize()
+async def human_selection() -> list[HumanSelection]:
+    return await service.human_selection()
 
 
 @router.post("", response_model=TeamInfo, status_code=201)

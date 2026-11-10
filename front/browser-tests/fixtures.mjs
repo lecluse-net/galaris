@@ -17,6 +17,7 @@ export const test = base.extend({
     await page.route('**/api/goals/categories', route => route.fulfill({ json: [] }))
     // Ordinary component fixtures use Alice (7) as the managed agent. Scope tests override this catalogue.
     await page.route('**/api/agents/selection?scope=management', route => route.fulfill({ json: [{ id: 7, label: 'Alice Example', has_avatar: false }] }))
+    await page.route('**/api/teams/human-selection', route => route.fulfill({ json: [{ id: 1, teams: [] }] }))
     await page.route('**/api/documents/*/sharing', route => route.fulfill({ json: { lock_version: 1, can_manage: true, grants: [], options: [], level: 'private', can_write: false, owner: { kind: 'agent', id: 7, label: 'Alice', can_write: true }, owner_groups: [] } }))
     await page.route('**/api/documents/*/dataset-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))
     await page.route('**/api/documents/*/process-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))

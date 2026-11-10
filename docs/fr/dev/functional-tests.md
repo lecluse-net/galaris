@@ -814,12 +814,18 @@ existantes sans nouvel envoi ; l'ancienne contrainte masquant l'insertion est su
 `app/share/tests` vérifie l’exclusivité des configurations, l’isolation entre ressources et propriétaires, les droits de lecture/écriture et l’interdiction de repartager comme simple éditeur. La migration PostgreSQL couvre Documents, Dataset et Process, les trois types de destinataires, les accès généraux et de groupes, les suppressions logiques, le rejeu après révocation et le rollback d’une copie interrompue. Les scénarios de partage frontend communs incluent aussi Dataset.
 
 `front/browser-tests/owner-select.spec.mjs` protège la sélection commune : accès aux propriétaires
-par recherche et pages indépendantes par type, listes courtes sans pagination, identité humaine
+par recherche et pages indépendantes par équipe et type, sections courtes sans pagination, identité humaine
 courante, fermeture au clavier et lecture seule, sur mobile et bureau. Les filtres Documents
 conservent le couple type/identifiant sans demander deux champs. Les scénarios Process vérifient
 le transfert, les conflits et les brouillons conservés ; les tests HTTP refusent un transfert
 hors périmètre ou par un simple éditeur et préservent l’ancien propriétaire comme éditeur.
 Le parcours E2E des processus internes transfère puis rouvre une définition dans l’application.
+Chaque équipe présente les Agents puis les Utilisateurs, avec des identités distinctes même
+lorsque les identifiants se recoupent et des membres répétés dans leurs différentes équipes.
+Les tests HTTP de `core/team/tests/test_authorization.py` limitent les appartenances humaines
+à l’annuaire autorisé ou à soi-même, excluent les équipes supprimées et conservent leur ordre.
+La recherche d’agent sans distinction de casse ni d’accents conserve le choix courant et les
+sections d’équipe dans `agent-selection.spec.mjs`.
 La sélection commune vérifie aussi les images réelles des utilisateurs et agents et la
 réutilisation des avatars entre ouvertures. `front/app/share/ownerCache.test.mjs` exerce les
 services Documents, Dataset et Process : requêtes simultanées mutualisées, expiration à cinq

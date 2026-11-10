@@ -22,28 +22,27 @@
             <template #prepend><q-icon name="search" /></template>
           </q-input>
           <q-list role="listbox" :aria-label="label || t('resourceOwner.title')">
-            <q-item v-if="me" clickable role="option" :aria-label="t('resourceOwner.me')" :aria-selected="model === ownerKey(me)" @click="select(ownerKey(me))">
-              <q-item-section avatar><OwnerAvatar :owner="me" size="28px" /></q-item-section>
-              <q-item-section><q-item-label>{{ t('resourceOwner.me') }}</q-item-label><q-item-label caption>{{ me.label }}</q-item-label></q-item-section>
-            </q-item>
-            <template v-for="group in groups" :key="group.kind">
-              <q-separator v-if="group.items.length" />
-              <q-item-label v-if="group.items.length" header>{{ t('resourceOwner.' + group.kind) }}</q-item-label>
-              <q-item v-for="option in group.visible" :key="ownerKey(option)" clickable role="option" :aria-label="option.label"
-                :aria-selected="model === ownerKey(option)" @click="select(ownerKey(option))">
-                <q-item-section avatar>
-                  <slot name="avatar" :owner="option" size="28px">
-                    <OwnerAvatar :owner="option" size="28px" />
-                  </slot>
-                </q-item-section>
-                <q-item-section><q-item-label>{{ option.label }}</q-item-label><q-item-label v-if="option.subtitle" caption>{{ option.subtitle }}</q-item-label></q-item-section>
-              </q-item>
-              <div v-if="group.items.length > 50" class="row items-center justify-between q-px-sm q-pb-sm" role="group" :aria-label="t('resourceOwner.pages', { type: t('resourceOwner.' + group.kind) })">
-                <q-select v-model="sizes[group.kind]" :options="[10, 20, 50, 100, 500]" dense borderless :aria-label="t('resourceOwner.perPage')" @update:model-value="pages[group.kind] = 1" />
-                <q-pagination v-model="pages[group.kind]" :max="group.pageCount" :max-pages="3" direction-links boundary-numbers size="sm" />
+            <section v-for="team in teams" :key="team.key" role="group" :aria-label="team.label">
+              <q-separator />
+              <q-item-label header class="text-weight-bold">{{ team.label }}</q-item-label>
+              <div v-for="group in team.groups" :key="group.key" role="group" :aria-label="t('resourceOwner.' + group.kind)">
+                <q-item-label header class="q-pl-lg">{{ t('resourceOwner.' + group.kind) }}</q-item-label>
+                <q-item v-for="option in group.visible" :key="ownerKey(option)" clickable role="option" :aria-label="displayName(option)"
+                  :aria-selected="model === ownerKey(option)" class="q-pl-lg" @click="select(ownerKey(option))">
+                  <q-item-section avatar>
+                    <slot name="avatar" :owner="option" size="28px">
+                      <OwnerAvatar :owner="option" size="28px" />
+                    </slot>
+                  </q-item-section>
+                  <q-item-section><q-item-label>{{ displayName(option) }}</q-item-label><q-item-label v-if="option.subtitle || isMe(option)" caption>{{ option.subtitle || option.label }}</q-item-label></q-item-section>
+                </q-item>
+                <div v-if="group.items.length > 50" class="row items-center justify-between q-px-sm q-pb-sm" role="group" :aria-label="t('resourceOwner.teamPages', { team: team.label, type: t('resourceOwner.' + group.kind) })">
+                  <q-select :model-value="sizes[group.key] ?? 50" :options="[10, 20, 50, 100, 500]" dense borderless :aria-label="t('resourceOwner.perPage')" @update:model-value="value => { sizes[group.key] = value; pages[group.key] = 1 }" />
+                  <q-pagination :model-value="group.page" :max="group.pageCount" :max-pages="3" direction-links boundary-numbers size="sm" @update:model-value="value => { pages[group.key] = value }" />
+                </div>
               </div>
-            </template>
-            <q-item v-if="!me && !groups.some(group => group.items.length)"><q-item-section>{{ t('resourceOwner.empty') }}</q-item-section></q-item>
+            </section>
+            <q-item v-if="!teams.length"><q-item-section>{{ t('resourceOwner.empty') }}</q-item-section></q-item>
           </q-list>
         </div>
       </q-menu>
@@ -56,6 +55,8 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import OwnerAvatar from './OwnerAvatar.vue'
 import { ownerKey, type OwnerOption } from '../owners'
+import { usePersonMemberships } from '@/core/util/facade'
+import { groupOwnersByTeam } from '../ownerGroups'
 
 const { options, current, currentUserId, label, readonly = false, disable = false, loading = false, clearable = false } = defineProps<{
   options: readonly OwnerOption[]; current?: OwnerOption | null; label?: string
@@ -66,26 +67,30 @@ const model = defineModel<string>({ required: true })
 const emit = defineEmits<{ open: [] }>()
 const { t, locale } = useI18n()
 const open = ref(false), query = ref<string | null>('')
-const pages = ref({ user: 1, agent: 1 }), sizes = ref({ user: 50, agent: 50 })
+const agentTeams = usePersonMemberships('agent'), userTeams = usePersonMemberships('user')
+const pages = ref<Record<string, number>>({}), sizes = ref<Record<string, number>>({})
 const isMe = (option: OwnerOption): boolean => option.kind === 'user' && (option.is_current_user === true || option.id === currentUserId)
 const displayName = (option: OwnerOption): string => isMe(option) ? t('resourceOwner.me') : option.label
 const normalize = (value: string): string => value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase(locale.value)
 const matches = (option: OwnerOption): boolean => normalize(`${displayName(option)} ${option.label} ${option.subtitle ?? ''}`).includes(normalize(query.value ?? ''))
 const selected = computed(() => options.find(option => ownerKey(option) === model.value) ?? (current && ownerKey(current) === model.value ? current : null))
-const me = computed(() => options.find(option => isMe(option) && matches(option)))
-const groups = computed(() => (['user', 'agent'] as const).map(kind => {
-  const items = options.filter(option => option.kind === kind && !isMe(option) && matches(option))
-    .sort((a, b) => a.label.localeCompare(b.label, locale.value, { sensitivity: 'base' }) || a.id - b.id)
-  const pageCount = Math.max(1, Math.ceil(items.length / sizes.value[kind]))
-  const page = Math.min(pages.value[kind], pageCount)
-  return { kind, items, pageCount, visible: items.length > 50 ? items.slice((page - 1) * sizes.value[kind], page * sizes.value[kind]) : items }
-}))
-function reset(): void { query.value = ''; pages.value = { user: 1, agent: 1 }; emit('open') }
+const teams = computed(() => groupOwnersByTeam(
+  options.filter(matches).sort((a, b) => Number(isMe(b)) - Number(isMe(a))
+    || a.label.localeCompare(b.label, locale.value, { sensitivity: 'base' }) || a.id - b.id),
+  { agent: agentTeams.members.value, user: userTeams.members.value }, t('agent.noGroup'),
+).map(team => ({ ...team, groups: team.groups.map(group => {
+  const size = sizes.value[group.key] ?? 50
+  const pageCount = Math.max(1, Math.ceil(group.items.length / size))
+  const page = Math.min(pages.value[group.key] ?? 1, pageCount)
+  return { ...group, pageCount, page, visible: group.items.length > 50 ? group.items.slice((page - 1) * size, page * size) : group.items }
+}) })))
+function reset(): void { query.value = ''; pages.value = {}; void agentTeams.open(); void userTeams.open(); emit('open') }
 function show(): void { if (!readonly && !disable && !loading) open.value = true }
 function select(key: string): void { model.value = key; open.value = false }
-watch(query, () => { pages.value = { user: 1, agent: 1 } })
-watch(() => options, () => { pages.value = { user: 1, agent: 1 } })
+watch(query, () => { pages.value = {} })
+watch(() => options, () => { pages.value = {} })
 watch(() => [readonly, disable], () => { if (readonly || disable) open.value = false })
+watch(open, value => { if (!value) { agentTeams.close(); userTeams.close() } })
 </script>
 
 <style scoped>

@@ -10,7 +10,16 @@
         </q-banner>
         <template v-if="!job">
           <q-select v-model="agentId" outlined emit-value map-options :options="agents" option-label="display_name" option-value="agent_id"
-            :loading="agentsLoading" :label="t('onboarding.mission.agent')" class="q-mb-md" :disable="busy" />
+            :loading="agentsLoading" :label="t('onboarding.mission.agent')" class="q-mb-md" :disable="busy">
+            <template #option="scope">
+              <q-item-label v-if="scope.opt.team_heading || scope.opt.without_team" header class="text-weight-bold">
+                {{ scope.opt.without_team ? t('agent.noGroup') : scope.opt.team_heading }}
+              </q-item-label>
+              <q-item v-bind="scope.itemProps" :class="{ 'q-virtual-scroll--with-prev': scope.opt.team_heading || scope.opt.without_team }">
+                <q-item-section>{{ scope.opt.display_name }}</q-item-section>
+              </q-item>
+            </template>
+          </q-select>
           <p v-if="!agentsLoading && !agents.length">{{ t('onboarding.mission.noAgent') }}</p>
           <q-select v-model="kind" outlined emit-value map-options :options="choices" :label="t('onboarding.mission.kind')" class="q-mb-md" :disable="busy" />
           <q-input v-model="text" type="textarea" outlined :label="t('onboarding.mission.request')" :disable="busy" maxlength="8000" />

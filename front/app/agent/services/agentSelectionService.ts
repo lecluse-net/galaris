@@ -3,11 +3,14 @@ import { createSessionReadCache } from '@/core/util/facade'
 
 export type AgentSelectionScope = 'management' | 'dialogue' | 'teams'
 
+export interface AgentSelectionTeam { id: number; name: string; order: number }
+
 export interface AgentSelectionOption {
   id: number
   label: string
   has_avatar: boolean
   driver?: string | null
+  teams?: AgentSelectionTeam[]
 }
 
 const selections = createSessionReadCache<AgentSelectionOption[]>({ sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration, group: 'agent-selection', maxAgeMs: 0, maxEntries: 0 })

@@ -192,6 +192,7 @@
           "back/app/agent/management_scope.py",
           "back/app/agent/mcp.py",
           "back/app/agent/models.py",
+          "back/app/agent/selection.py",
           "back/app/agent/share_directory.py",
           "back/app/agent/team_directory.py",
           "back/app/agent/team_router.py"
@@ -6455,7 +6456,8 @@
       },
       {
         "files": [
-          "back/core/team/router.py"
+          "back/core/team/router.py",
+          "back/core/team/service.py"
         ],
         "source": "core.team",
         "target": "core.authorize"
@@ -20890,8 +20892,17 @@
         "declared_path": "/teams",
         "file": "back/core/team/router.py",
         "handler": "create_team",
-        "line": 25,
+        "line": 31,
         "method": "POST",
+        "module": "core.team"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/teams/human-selection",
+        "file": "back/core/team/router.py",
+        "handler": "human_selection",
+        "line": 25,
+        "method": "GET",
         "module": "core.team"
       },
       {
@@ -20908,7 +20919,7 @@
         "declared_path": "/teams/{team_id}",
         "file": "back/core/team/router.py",
         "handler": "delete_team",
-        "line": 49,
+        "line": 55,
         "method": "DELETE",
         "module": "core.team"
       },
@@ -20917,7 +20928,7 @@
         "declared_path": "/teams/{team_id}",
         "file": "back/core/team/router.py",
         "handler": "update_team",
-        "line": 36,
+        "line": 42,
         "method": "PUT",
         "module": "core.team"
       },
@@ -20926,7 +20937,7 @@
         "declared_path": "/teams/{team_id}/humans",
         "file": "back/core/team/router.py",
         "handler": "team_humans",
-        "line": 70,
+        "line": 76,
         "method": "GET",
         "module": "core.team"
       },
@@ -20935,7 +20946,7 @@
         "declared_path": "/teams/{team_id}/humans/{user_id}",
         "file": "back/core/team/router.py",
         "handler": "set_human_membership",
-        "line": 79,
+        "line": 85,
         "method": "PUT",
         "module": "core.team"
       },
@@ -20944,7 +20955,7 @@
         "declared_path": "/teams/{team_id}/position",
         "file": "back/core/team/router.py",
         "handler": "move_team",
-        "line": 60,
+        "line": 66,
         "method": "PUT",
         "module": "core.team"
       },
@@ -21421,6 +21432,7 @@
           "front/app/agent/components/AgentAvatar.vue",
           "front/app/agent/components/AgentSelect.vue",
           "front/app/agent/composables/useAgentChoices.ts",
+          "front/app/agent/composables/useAgentTeamMetadata.ts",
           "front/app/agent/composables/useHarnessLogs.ts",
           "front/app/agent/pages/index.vue",
           "front/app/agent/richContent.ts",
@@ -21474,6 +21486,7 @@
           "front/app/agent/composables/useHarnessLogs.ts",
           "front/app/agent/pages/index.vue",
           "front/app/agent/richContent.ts",
+          "front/app/agent/services/agentOptionGroups.ts",
           "front/app/agent/services/agentSelectionService.ts",
           "front/app/agent/services/agentService.ts",
           "front/app/agent/services/teamService.ts"
@@ -21535,7 +21548,8 @@
       },
       {
         "files": [
-          "front/app/chat/components/RoomCreateDialog.vue"
+          "front/app/chat/components/RoomCreateDialog.vue",
+          "front/app/chat/components/RoomList.vue"
         ],
         "source": "app/chat",
         "target": "app/agent"
@@ -22420,6 +22434,7 @@
           "front/app/lab/components/LabValueEditor.vue",
           "front/app/lab/components/LabWorkbench.vue",
           "front/app/lab/components/MemoryExtractionCaseEditor.vue",
+          "front/app/lab/components/TopicMessageRangeImportDialog.vue",
           "front/app/lab/pages/ai-evaluations.vue",
           "front/app/lab/pages/index.vue",
           "front/app/lab/pages/processes.vue",
@@ -22762,10 +22777,12 @@
       {
         "files": [
           "front/app/share/components/OwnerAvatar.vue",
+          "front/app/share/components/OwnerSelect.vue",
           "front/app/share/components/ResourceSharingPanel.vue",
           "front/app/share/components/SharingPanel.vue",
           "front/app/share/components/SharingRecipients.vue",
           "front/app/share/ownerCache.ts",
+          "front/app/share/ownerGroups.ts",
           "front/app/share/panel.ts"
         ],
         "source": "app/share",

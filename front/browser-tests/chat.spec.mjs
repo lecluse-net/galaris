@@ -351,6 +351,7 @@ test('conversation documents hide UUID labels and respect read and edit permissi
 })
 
 test('conversation viewer always keeps a person selected and can return to myself', async ({ page }) => {
+  await jsonRoute(page, '**/api/agents/selection?scope=dialogue', [{ id: 7, label: 'Alice', has_avatar: false, teams: [] }])
   await page.route('**/api/chat/agents/7/avatar', route => route.fulfill({ status: 404, body: '' }))
   await mount(page, 'app/chat/components/RoomList.vue', { props: {
     rooms: [], showFilters: true, canCreate: false, canImpersonate: true, viewerAgentId: null,

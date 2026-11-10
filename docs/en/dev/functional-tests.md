@@ -234,7 +234,8 @@ HTTP workflow checks denial with Contacts alone and the effect with both privile
 `domain-access.spec.mjs` checks allowed tabs and requests, role changes, permissions without
 Connection administration and independent indexing without Dream/Files on desktop/mobile.
 It also preserves the Models tab requested in the URL while permissions are refreshed.
-`agent-selection.spec.mjs` retains selection, reopening and session changes.
+`agent-selection.spec.mjs` retains selection, reopening and session changes, and checks
+name search without case or accent sensitivity while preserving the current choice and team sections.
 `e2e/specs/rbac-domains.spec.mjs` signs a Contacts-only role into the assembled application,
 creates a contact, finds it after reloading and checks denial of Memory, the Agent catalogue
 and a foreign agent on desktop/mobile. All fixture data is synthetic.
@@ -768,12 +769,16 @@ attachments without another upload; the former insertion-hiding constraint is re
 `app/share/tests` verifies exclusive configurations, isolation between resources and owners, read/write access and denial of resharing by ordinary editors. PostgreSQL migration tests cover Documents, Dataset and Process, all three principal types, global and team access, tombstones, replay after revocation and rollback of interrupted copies. Common frontend sharing scenarios also include Dataset.
 
 `front/browser-tests/owner-select.spec.mjs` protects the common selector: owners remain reachable
-through search and independent pages per type, short lists have no pagination, and current-user
+through search and independent pages per team and type, short sections have no pagination, and current-user
 identity, keyboard dismissal and read-only access work on mobile and desktop. Document filters
 retain the type/identifier pair through one field. Process scenarios cover transfers, conflicts
 and preserved drafts; HTTP tests reject out-of-scope transfers and ordinary editors while
 keeping the former owner as an editor. The internal process E2E journey transfers ownership
 and reopens the definition in the assembled application.
+Team sections contain Agents then Users, preserving separate identities even when IDs overlap,
+and repeating members belonging to several teams. Human membership HTTP tests in
+`core/team/tests/test_authorization.py` restrict metadata to the authorized directory or self,
+exclude deleted teams and retain team order.
 The common selector also checks actual user and agent images and avatar reuse across
 openings. `front/app/share/ownerCache.test.mjs` exercises the Documents, Dataset and Process
 services: coalesced concurrent requests, five-minute expiry, independent copies, resource

@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 781 handlers HTTP/WebSocket détectés ;
+- 782 handlers HTTP/WebSocket détectés ;
 - 184 tables SQLAlchemy détectées ;
 - 289 outils MCP natifs détectés ;
 - 55 pages Vue détectées.
@@ -168,7 +168,7 @@ tests restent l’autorité sur le comportement.
 | `app.agent` | `core.failure_journal` | `back/app/agent/facade.py` |
 | `app.agent` | `core.i18n` | `back/app/agent/agent_service.py`, `back/app/agent/contracts.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/dispatcher.py`, `back/app/agent/dispatcher_service.py`, `back/app/agent/executor_service.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_schemas.py`, `back/app/agent/openai_service.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
 | `app.agent` | `core.params` | `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/dispatcher.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/planner_collection.py`, `back/app/agent/planner_contracts.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/registry.py` |
-| `app.agent` | `core.team` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/mcp.py`, `back/app/agent/models.py`, `back/app/agent/share_directory.py`, `back/app/agent/team_directory.py`, `back/app/agent/team_router.py` |
+| `app.agent` | `core.team` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/mcp.py`, `back/app/agent/models.py`, `back/app/agent/selection.py`, `back/app/agent/share_directory.py`, `back/app/agent/team_directory.py`, `back/app/agent/team_router.py` |
 | `app.agent` | `core.user` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/share_directory.py`, `back/app/agent/team_directory.py` |
 | `app.agent` | `core.util` | `back/app/agent/avatar_generation.py`, `back/app/agent/contact_discovery.py`, `back/app/agent/contracts.py`, `back/app/agent/dispatcher.py`, `back/app/agent/html_migration.py`, `back/app/agent/models.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/schemas.py` |
 | `app.audio` | `app.file_share` | `back/app/audio/mcp.py` |
@@ -781,7 +781,7 @@ tests restent l’autorité sur le comportement.
 | `core.storage` | `core.settings` | `back/core/storage/disk.py`, `back/core/storage/identity.py`, `back/core/storage/migration.py` |
 | `core.storage` | `core.user` | `back/core/storage/registry.py` |
 | `core.storage` | `core.util` | `back/core/storage/derivatives.py`, `back/core/storage/identity.py`, `back/core/storage/lifecycle.py`, `back/core/storage/migration.py`, `back/core/storage/registry.py`, `back/core/storage/resources.py` |
-| `core.team` | `core.authorize` | `back/core/team/router.py` |
+| `core.team` | `core.authorize` | `back/core/team/router.py`, `back/core/team/service.py` |
 | `core.team` | `core.database` | `back/core/team/models.py`, `back/core/team/router.py`, `back/core/team/service.py` |
 | `core.team` | `core.user` | `back/core/team/service.py` |
 | `core.user` | `core.authorize` | `back/core/user/authContextMiddleware.py`, `back/core/user/auth_service.py`, `back/core/user/router.py`, `back/core/user/user_service.py` |
@@ -798,12 +798,12 @@ tests restent l’autorité sur le comportement.
 |---|---|---|
 | `app/agent` | `app/harnesses` | `front/app/agent/pages/index.vue` |
 | `app/agent` | `app/llm` | `front/app/agent/pages/index.vue` |
-| `app/agent` | `core/api` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentSelect.vue`, `front/app/agent/composables/useAgentChoices.ts`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/pages/index.vue`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/mcpTokenService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentSelectionStore.ts`, `front/app/agent/stores/agentStore.ts` |
+| `app/agent` | `core/api` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentSelect.vue`, `front/app/agent/composables/useAgentChoices.ts`, `front/app/agent/composables/useAgentTeamMetadata.ts`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/pages/index.vue`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/mcpTokenService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentSelectionStore.ts`, `front/app/agent/stores/agentStore.ts` |
 | `app/agent` | `core/authorize` | `front/app/agent/components/AgentSelect.vue`, `front/app/agent/navigation.ts`, `front/app/agent/pages/index.vue` |
 | `app/agent` | `core/navigation` | `front/app/agent/navigation.ts`, `front/app/agent/pages/index.vue` |
 | `app/agent` | `core/params` | `front/app/agent/pages/index.vue` |
 | `app/agent` | `core/team` | `front/app/agent/components/TeamAgentMembers.vue`, `front/app/agent/pages/index.vue`, `front/app/agent/team.ts` |
-| `app/agent` | `core/util` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentPreview.vue`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/pages/index.vue`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/teamService.ts` |
+| `app/agent` | `core/util` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentPreview.vue`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/pages/index.vue`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentOptionGroups.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/teamService.ts` |
 | `app/browser` | `app/connection` | `front/app/browser/stores/browserSettingsStore.ts` |
 | `app/browser` | `core/api` | `front/app/browser/services/browserService.ts` |
 | `app/browser` | `core/authorize` | `front/app/browser/navigation.ts`, `front/app/browser/stores/browserSettingsStore.ts` |
@@ -811,7 +811,7 @@ tests restent l’autorité sur le comportement.
 | `app/browser` | `core/params` | `front/app/browser/pages/settings.vue`, `front/app/browser/settingsFields.ts` |
 | `app/browser` | `core/user` | `front/app/browser/stores/browserSettingsStore.ts` |
 | `app/browser` | `core/util` | `front/app/browser/pages/settings.vue` |
-| `app/chat` | `app/agent` | `front/app/chat/components/RoomCreateDialog.vue` |
+| `app/chat` | `app/agent` | `front/app/chat/components/RoomCreateDialog.vue`, `front/app/chat/components/RoomList.vue` |
 | `app/chat` | `app/conversation` | `front/app/chat/components/AgentExecutionTrace.vue` |
 | `app/chat` | `app/task` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/CompactTaskOperations.vue`, `front/app/chat/liveState.ts`, `front/app/chat/runtimeState.ts`, `front/app/chat/types.ts` |
 | `app/chat` | `app/topic` | `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/Composer.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/components/RoomCreateDialog.vue`, `front/app/chat/components/RoomPreferencesDialog.vue` |
@@ -894,7 +894,7 @@ tests restent l’autorité sur le comportement.
 | `app/lab` | `core/api` | `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabHumanReviewDialog.vue`, `front/app/lab/components/LabSyntheticDatasetDialog.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/services/dispatcherEvaluationService.ts`, `front/app/lab/services/evaluationService.ts`, `front/app/lab/services/labWorkbenchService.ts`, `front/app/lab/services/mechanismEvaluationService.ts`, `front/app/lab/services/processCampaignService.ts` |
 | `app/lab` | `core/authorize` | `front/app/lab/access.ts`, `front/app/lab/components/TaskLabCaptureMenu.vue`, `front/app/lab/pages/[section].vue`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue`, `front/app/lab/pages/processes.vue` |
 | `app/lab` | `core/navigation` | `front/app/lab/navigation.ts`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue` |
-| `app/lab` | `core/util` | `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabResultsPanel.vue`, `front/app/lab/components/LabValueEditor.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/components/MemoryExtractionCaseEditor.vue`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue`, `front/app/lab/pages/processes.vue`, `front/app/lab/textPresentation.ts` |
+| `app/lab` | `core/util` | `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabResultsPanel.vue`, `front/app/lab/components/LabValueEditor.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/components/MemoryExtractionCaseEditor.vue`, `front/app/lab/components/TopicMessageRangeImportDialog.vue`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue`, `front/app/lab/pages/processes.vue`, `front/app/lab/textPresentation.ts` |
 | `app/llm` | `app/agent` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue` |
 | `app/llm` | `app/task` | `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/presentation.ts` |
 | `app/llm` | `core/api` | `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/services/llmCallService.ts`, `front/app/llm/services/llmProfileService.ts`, `front/app/llm/services/llmProviderService.ts`, `front/app/llm/services/personalLlmService.ts`, `front/app/llm/services/profileCatalogService.ts`, `front/app/llm/useLlmCallProgress.ts` |
@@ -924,7 +924,7 @@ tests restent l’autorité sur le comportement.
 | `app/process` | `core/navigation` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/navigation.ts`, `front/app/process/pages/index.vue` |
 | `app/process` | `core/util` | `front/app/process/components/BpmnCanvas.vue`, `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/ExternalProcessRuns.vue`, `front/app/process/components/ExternalRunDialog.vue`, `front/app/process/components/NativeActivityDetails.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/NativeRunDialog.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/NativeRunsTable.vue`, `front/app/process/components/ProcessPreview.vue`, `front/app/process/components/ProcessRunDetailContent.vue`, `front/app/process/components/ProcessRunStatusBadge.vue`, `front/app/process/components/ProcessRunVariables.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/components/ProcessThumbnail.vue`, `front/app/process/contracts.ts`, `front/app/process/pages/index.vue`, `front/app/process/richContent.ts` |
 | `app/process` | `core/websocket` | `front/app/process/components/ExternalRunDialog.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/composables/useProcessRunRefresh.ts` |
-| `app/share` | `core/util` | `front/app/share/components/OwnerAvatar.vue`, `front/app/share/components/ResourceSharingPanel.vue`, `front/app/share/components/SharingPanel.vue`, `front/app/share/components/SharingRecipients.vue`, `front/app/share/ownerCache.ts`, `front/app/share/panel.ts` |
+| `app/share` | `core/util` | `front/app/share/components/OwnerAvatar.vue`, `front/app/share/components/OwnerSelect.vue`, `front/app/share/components/ResourceSharingPanel.vue`, `front/app/share/components/SharingPanel.vue`, `front/app/share/components/SharingRecipients.vue`, `front/app/share/ownerCache.ts`, `front/app/share/ownerGroups.ts`, `front/app/share/panel.ts` |
 | `app/skill` | `app/agent` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillAuthorizationManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue` |
 | `app/skill` | `core/api` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue`, `front/app/skill/pages/index.vue`, `front/app/skill/services/skillService.ts` |
 | `app/skill` | `core/authorize` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillAuthorizationManager.vue`, `front/app/skill/navigation.ts`, `front/app/skill/pages/index.vue` |
@@ -1961,13 +1961,14 @@ tests restent l’autorité sur le comportement.
 | POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | oui | `back/app/task/router.py:229` |
 | POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | oui | `back/app/task/router.py:395` |
 | GET | `/teams` | `core.team` | `list_teams` | oui | `back/core/team/router.py:13` |
-| POST | `/teams` | `core.team` | `create_team` | oui | `back/core/team/router.py:25` |
+| POST | `/teams` | `core.team` | `create_team` | oui | `back/core/team/router.py:31` |
+| GET | `/teams/human-selection` | `core.team` | `human_selection` | oui | `back/core/team/router.py:25` |
 | GET | `/teams/humans` | `core.team` | `search_humans` | oui | `back/core/team/router.py:19` |
-| DELETE | `/teams/{team_id}` | `core.team` | `delete_team` | oui | `back/core/team/router.py:49` |
-| PUT | `/teams/{team_id}` | `core.team` | `update_team` | oui | `back/core/team/router.py:36` |
-| GET | `/teams/{team_id}/humans` | `core.team` | `team_humans` | oui | `back/core/team/router.py:70` |
-| PUT | `/teams/{team_id}/humans/{user_id}` | `core.team` | `set_human_membership` | oui | `back/core/team/router.py:79` |
-| PUT | `/teams/{team_id}/position` | `core.team` | `move_team` | oui | `back/core/team/router.py:60` |
+| DELETE | `/teams/{team_id}` | `core.team` | `delete_team` | oui | `back/core/team/router.py:55` |
+| PUT | `/teams/{team_id}` | `core.team` | `update_team` | oui | `back/core/team/router.py:42` |
+| GET | `/teams/{team_id}/humans` | `core.team` | `team_humans` | oui | `back/core/team/router.py:76` |
+| PUT | `/teams/{team_id}/humans/{user_id}` | `core.team` | `set_human_membership` | oui | `back/core/team/router.py:85` |
+| PUT | `/teams/{team_id}/position` | `core.team` | `move_team` | oui | `back/core/team/router.py:66` |
 | GET | `/tools` | `app.process` | `read_process_tools` | oui | `back/app/process/router.py:130` |
 | GET | `/tools` | `app.tools` | `list_tools` | oui | `back/app/tools/router.py:77` |
 | POST | `/tools` | `app.tools` | `create_tool` | oui | `back/app/tools/router.py:181` |

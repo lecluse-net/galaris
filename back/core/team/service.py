@@ -7,9 +7,10 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import load_only
 
 from core.database import get_db
-from core.user import UserModel
+from core.authorize import check_privilege
+from core.user import UserModel, get_current_user
 
-from .contracts import HumanInfo, TeamInfo, TeamWrite
+from .contracts import HumanInfo, HumanSelection, SelectionTeam, TeamInfo, TeamWrite
 from .models import Team, TeamAudit, TeamUser
 
 
@@ -137,6 +138,29 @@ async def human_memberships() -> dict[int, set[int]]:
     for user_id, team_id in rows:
         result.setdefault(user_id, set()).add(team_id)
     return result
+
+
+async def human_selection() -> list[HumanSelection]:
+    """Display memberships within the user's existing directory access, or only self."""
+    user = await get_current_user()
+    if user is None:
+        return []
+    can_read_all = False
+    for privilege in ("TEAM_ACCESS", "READ_USER", "CREATE_USER", "UPDATE_USER", "DELETE_USER"):
+        if await check_privilege(user, privilege, get_db()):
+            can_read_all = True
+            break
+    statement = select(UserModel.id).where(UserModel.is_active.is_(True)).order_by(UserModel.id)
+    if not can_read_all:
+        statement = statement.where(UserModel.id == user.id)
+    people = {identity: HumanSelection(id=identity) for identity in await get_db().scalars(statement)}
+    rows = await get_db().execute(
+        select(TeamUser.user_id, Team.id, Team.name, Team.order).join(Team, Team.id == TeamUser.team_id)
+        .where(TeamUser.user_id.in_(people)).order_by(Team.order, Team.id)
+    )
+    for identity, team_id, name, order in rows:
+        people[identity].teams.append(SelectionTeam(id=team_id, name=name, order=order))
+    return list(people.values())
 
 
 async def team_humans(team_id: int) -> list[HumanInfo]:

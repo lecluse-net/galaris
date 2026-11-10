@@ -1,7 +1,8 @@
 <template>
-  <q-select
+  <AgentTeamSelect
     :model-value="selectedOption?.value ?? null"
     :options="allowedOptions"
+    :agents="authorized"
     :label="label"
     :stack-label="Boolean(label)"
     emit-value
@@ -16,11 +17,11 @@
     @popup-hide="close"
     :aria-label="typeof $attrs['aria-label'] === 'string' ? $attrs['aria-label'] : label"
   >
-    <template #no-option>
+    <template #no-option="scope">
       <q-item>
         <q-item-section>
           <q-btn v-if="failed" flat :label="t('common.retry')" @click="refresh" />
-          <span v-else>{{ t('agent.noAgent') }}</span>
+          <span v-else>{{ t(scope.search ? 'agent.noSearchResults' : 'agent.noAgent') }}</span>
         </q-item-section>
       </q-item>
     </template>
@@ -63,7 +64,7 @@
         </q-item-section>
       </q-item>
     </template>
-  </q-select>
+  </AgentTeamSelect>
 </template>
 
 <script setup lang="ts">
@@ -71,6 +72,7 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import AgentAvatar from './AgentAvatar.vue'
+import AgentTeamSelect from './AgentTeamSelect.vue'
 import { useAgentStore } from '../stores/agentStore'
 import { useAgentSelectionStore } from '../stores/agentSelectionStore'
 import { AUTH_TOKEN_CHANGED_EVENT, apiErrorDetail, isCancelledRequest } from '@/core/api'

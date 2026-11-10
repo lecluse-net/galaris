@@ -20,6 +20,8 @@
             outlined
             :loading="agentsLoading"
             :aria-label="t('evaluation.topicImport.ai')"
+            @popup-show="teamMetadata.open"
+            @popup-hide="teamMetadata.close"
           >
             <template #prepend>
               <q-avatar v-if="selectedAgent" color="deep-purple" text-color="white" size="28px">
@@ -27,7 +29,8 @@
               </q-avatar>
             </template>
             <template #option="scope">
-              <q-item v-bind="scope.itemProps">
+              <q-item-label v-if="scope.opt.teamHeading" header class="text-weight-bold">{{ scope.opt.teamHeading }}</q-item-label>
+              <q-item v-bind="scope.itemProps" :class="{ 'q-virtual-scroll--with-prev': scope.opt.teamHeading }">
                 <q-item-section avatar>
                   <q-avatar color="deep-purple" text-color="white" size="32px">
                     {{ agentInitials(scope.opt.label) }}
@@ -127,6 +130,7 @@
 </template>
 
 <script setup lang="ts">
+import { groupMemberOptions, usePersonMemberships } from '@/core/util/facade'
 import LabCaptureConfirmation from './LabCaptureConfirmation.vue'
 import { useCaptureConfirmation } from '../services/useCaptureConfirmation'
 import { computed, ref, watch } from 'vue'
@@ -160,12 +164,13 @@ const peopleLoading = ref(false)
 const previewLoading = ref(false)
 const importing = ref(false)
 
-const agentOptions = computed(() => [...agents.value]
+const teamMetadata = usePersonMemberships('agent')
+const agentOptions = computed(() => groupMemberOptions([...agents.value]
   .sort((left, right) => left.label.localeCompare(right.label, locale.value, { sensitivity: 'base' }) || left.id - right.id)
   .map((agent) => ({
     label: `${agent.label} · ${t('evaluation.topicImport.messageCount', { count: agent.message_count })}`,
     value: agent.id,
-  })))
+  })), teamMetadata.members.value, t('agent.noGroup')))
 const selectedAgent = computed(() => (
   agents.value.find(agent => agent.id === agentId.value) ?? null
 ))

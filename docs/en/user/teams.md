@@ -12,6 +12,17 @@ Agent selectors use the scope of the action: managed agents in administration sc
 allowed contacts in Chat, and the membership catalogue when composing a team. Their
 choices are checked again whenever the selector opens.
 
+Agent dropdowns display a section for each team, in team order. An agent belonging to
+several teams appears in each section; agents without membership appear under **No team**.
+The sections preserve the eligible agents for the action.
+
+The **Agent** selector displays its search field at the top of the dropdown. Type a name
+to filter its sections, ignoring case and accents. The closed field displays the chosen agent.
+The **Owner** selector lists teams, then **Agents** and **Users** within each team.
+**Me** appears among the users of the current person's teams. Search filters the available
+owners; each type within each team has independent pagination. Members without a team have
+their own section.
+
 Agents have a read-only directory without AgentAdmin delegation:
 `team_list(search="Research")` finds teams by part of their name and returns their IDs,
 description previews and human/AI counts, including empty teams.

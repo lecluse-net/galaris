@@ -1,12 +1,13 @@
 <template>
   <MemoryPage v-if="page === 'memory'" />
   <ContactsPage v-else-if="page === 'contacts'" />
+  <AgentTeamSelect v-else-if="page === 'multiple'" v-model="many" :options="options" scope="teams" multiple use-chips label="Agent choice" />
   <AgentSelect v-else :key="page" v-model="model" :options="options" :scope="scope"
     :load-agents="false" label="Agent choice" />
 </template>
 
 <script setup lang="ts">
-import { AgentSelect } from '@/app/agent'
+import { AgentSelect, AgentTeamSelect } from '@/app/agent'
 import type { AgentSelectionScope } from '@/app/agent/services/agentSelectionService'
 import MemoryPage from '@/app/memory/pages/index.vue'
 import ContactsPage from '@/app/memory/pages/contacts.vue'
@@ -17,4 +18,5 @@ const { page, options = [], scope = 'management' } = defineProps<{
   scope?: AgentSelectionScope
 }>()
 const model = defineModel<number | null>({ default: null })
+const many = defineModel<number[] | null>('many', { default: () => [] })
 </script>

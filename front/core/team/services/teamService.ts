@@ -3,7 +3,11 @@ import api from '@/core/api'
 export interface TeamWrite { name: string; description: string }
 export interface Team extends TeamWrite { id: number; order: number; human_count: number; human_members: Human[] }
 export interface Human { id: number; label: string; active: boolean; avatar_url: string | null }
+export interface HumanSelection { id: number; teams: { id: number; name: string; order: number }[] }
 export const teamService = {
+  async humanSelection(signal?: AbortSignal): Promise<HumanSelection[]> {
+    return (await api.get<HumanSelection[]>('/teams/human-selection', { signal })).data
+  },
   async list(): Promise<Team[]> { return (await api.get<Team[]>('/teams')).data },
   async save(data: TeamWrite, id?: number): Promise<Team> {
     return (id ? await api.put<Team>(`/teams/${id}`, data) : await api.post<Team>('/teams', data)).data

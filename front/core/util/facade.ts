@@ -1,4 +1,7 @@
 // Bootstrap consumers share the public primitives without importing the component catalogue.
+export { groupMemberOptions } from './groupMemberOptions'
+export type { MemberChoice, MemberTeam, MemberTeams } from './groupMemberOptions'
+export { usePersonMemberships } from './personMemberships'
 export { createSessionReadCache, createSessionResponseCache, invalidateSessionReads, onSessionReadInvalidation } from './sessionReadCache'
 export { createSessionCatalogueCache, createSessionImageCache, onReadSessionChanged } from './sessionResources'
 export { queuePreview } from './previewQueue'

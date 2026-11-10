@@ -10,6 +10,13 @@ const options = [{ value: null, label: 'All agents' }, ...agents.map(agent => ({
   value: agent.id, label: `${agent.first_name} ${agent.last_name}`,
 }))]
 const selections = agents.map(agent => ({ id: agent.id, label: `${agent.first_name} ${agent.last_name}`, has_avatar: false }))
+const research = { id: 20, name: 'Research', order: 1 }, support = { id: 10, name: 'Support', order: 2 }
+const groupedAgents = [
+  { ...selections[0], teams: [support, research] },
+  { ...selections[1], teams: [support] },
+  { id: 9, label: 'Charlie Libre', has_avatar: false, teams: [] },
+]
+const groupedChoices = [...options, { value: 9, label: 'Charlie Libre' }, { value: 10, label: 'Unauthorized' }]
 
 async function fixtures(page) {
   await jsonRoute(page, '**/api/agents?*', agents)
@@ -20,6 +27,98 @@ async function choose(page, label) {
   await page.getByRole('combobox').first().click()
   await page.getByRole('option', { name: label, exact: true }).click()
   await expect(page.getByRole('listbox')).toHaveCount(0)
+}
+
+for (const width of [390, 1440]) {
+  for (const dark of [false, true]) {
+    test(`team sections keep duplicate memberships selectable and refresh on reopening (${width}px, dark=${dark})`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 })
+      await jsonRoute(page, '**/api/agents/selection?*', groupedAgents)
+      await mount(page, harness, { dark, props: { page: 'grouped', options: groupedChoices, modelValue: 8 } })
+      const input = page.getByRole('combobox').first()
+      await input.click()
+      await expect.poll(() => page.getByRole('option').evaluateAll(elements => elements.map(element => element.getAttribute('aria-label'))))
+        .toEqual(['All agents', 'Alice Arbre', 'Alice Arbre', 'Bob Exemple', 'Charlie Libre'])
+      await expect(page.getByText('Research', { exact: true })).toBeVisible()
+      await expect(page.getByText('Support', { exact: true })).toBeVisible()
+      await expect(page.getByText('No team', { exact: true })).toBeVisible()
+      await expect(page.getByRole('option', { name: 'Unauthorized', exact: true })).toHaveCount(0)
+      await testInfo.attach('team-sections', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
+      await page.getByRole('option', { name: 'Alice Arbre', exact: true }).nth(1).click()
+      await expect(page.getByRole('listbox')).toHaveCount(0)
+      await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toBe(7)
+      await choose(page, 'All agents')
+      // Keyboard selection now starts in the popup search and is covered below.
+      await jsonRoute(page, '**/api/agents/selection?*', groupedAgents.map(agent => ({ ...agent, teams: [] })))
+      await input.click()
+      await expect(page.getByText('Research', { exact: true })).toHaveCount(0)
+      await expect(page.getByRole('option', { name: 'Alice Arbre', exact: true })).toHaveCount(1)
+      await page.keyboard.press('Escape')
+    })
+  }
+}
+
+test('selecting the same agent through two team sections toggles one membership without duplicate chips', async ({ page }) => {
+  await jsonRoute(page, '**/api/agents/selection?scope=teams', groupedAgents)
+  await mount(page, harness, { props: { page: 'multiple', options: groupedChoices.filter(option => option.value !== null) } })
+  await page.getByRole('combobox').click()
+  const alice = page.getByRole('option', { name: 'Alice Arbre', exact: true })
+  await expect(alice).toHaveCount(2)
+  await alice.first().click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toEqual([7])
+  await expect(alice.nth(1)).toHaveAttribute('aria-selected', 'true')
+  await alice.nth(1).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toEqual([])
+  await page.keyboard.press('Escape')
+})
+
+test('process agent choices retain their domain options and default choice when grouped', async ({ page }) => {
+  await jsonRoute(page, '**/api/agents/selection?scope=management', groupedAgents)
+  await mount(page, 'app/process/components/ProcessAgentSelect.vue', { props: {
+    modelValue: null, options: [{ id: null, label: 'Launching agent' },
+      ...groupedAgents.map(agent => ({ id: agent.id, label: agent.label }))],
+  } })
+  await page.getByRole('combobox').click()
+  await expect(page.getByRole('option', { name: 'Alice Arbre', exact: true })).toHaveCount(2)
+  await page.getByRole('option', { name: 'Alice Arbre', exact: true }).last().click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toBe(7)
+  await page.getByRole('combobox').click()
+  await page.getByRole('option', { name: 'Launching agent', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toBeNull()
+})
+
+for (const width of [390, 1440]) {
+test(`agent names can be searched from the popup without case or accents or changing the selection (${width}px)`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  await jsonRoute(page, '**/api/agents/selection?*', groupedAgents)
+  const choices = groupedChoices.map(option => option.value === 9 ? { ...option, label: 'Élodie Exemple' } : option)
+  await mount(page, harness, { props: { page: 'search', options: choices, modelValue: 8 } })
+  const selector = page.getByRole('combobox').first()
+  await expect(page.getByRole('textbox', { name: 'Search agents by name', exact: true })).toHaveCount(0)
+  await selector.click()
+  const input = page.getByRole('textbox', { name: 'Search agents by name', exact: true })
+  await expect(input).toBeFocused()
+  await input.dispatchEvent('keydown', { key: 'Enter', isComposing: true })
+  expect(await page.evaluate(() => window.testApp.events)).toEqual([])
+  await input.fill('aRbRe')
+  await expect(page.getByRole('option', { name: 'Alice Arbre', exact: true })).toHaveCount(2)
+  await expect(page.getByRole('option', { name: 'Bob Exemple', exact: true })).toHaveCount(0)
+  await testInfo.attach('agent-popup-search', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
+  await input.fill('unmatched name')
+  await expect(page.getByRole('option')).toHaveCount(0)
+  await expect(page.getByText('No agents match this search.', { exact: true })).toBeVisible()
+  await expect(input).toBeFocused()
+  expect(await page.evaluate(() => window.testApp.events)).toEqual([])
+  await input.fill('elodie')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toBe(9)
+  await expect(input).toHaveCount(0)
+  await selector.click()
+  await expect(input).toHaveValue('')
+  await expect(page.getByRole('option', { name: 'Bob Exemple', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+})
 }
 
 test('Memory and Contacts reuse the last chosen agent when navigating between pages', async ({ page }) => {

@@ -7,7 +7,7 @@
     <PageHeader icon="verified_user" :title="t('permissions.title')" :description="t('permissions.dashboard.description')" />
     <div class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-md-4">
-        <q-select v-model="agentId" :options="filteredAgents" option-label="label" option-value="id" emit-value map-options
+        <AgentTeamSelect v-model="agentId" :options="filteredAgents.map(agent => ({ value: agent.id, label: agent.label, hasAvatar: agent.has_avatar }))" :agents="agents"
           use-input fill-input hide-selected outlined dense :label="t('permissions.agent')" :loading="initializing" @filter="filterAgents" />
       </div>
       <div class="col-12 col-md">
@@ -68,7 +68,7 @@ import { useI18n } from 'vue-i18n'
 import { PageHeader, solaireCss } from '@/core/util'
 import { permissionStates } from '../permissionPresentation'
 import { AUTH_TOKEN_CHANGED_EVENT, getStoredAccessToken, sessionGeneration } from '@/core/api'
-import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
+import { AgentTeamSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import PermissionDashboardPanel from '../components/PermissionDashboardPanel.vue'
 import { createPermissionDashboard } from '../services/permissionDashboardSources'
 import type { PermissionCounts, PermissionState } from '../services/permissionDashboard'

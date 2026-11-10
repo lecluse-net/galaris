@@ -61,8 +61,10 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         privileges = list((await db.scalars(select(Privilege).where(Privilege.code.in_(['TASK_ACCESS', 'TASK_EDIT', 'TEAM_ACCESS', 'CHAT_ACCESS'])))).all())
         role = Role(code=f"selection-{uuid4().hex}", display_name="Local manager", privileges=privileges)
         title = Title(label="Mx", gender="M")
-        team = TeamModel(name="Shared team")
-        db.add_all([role, title, team])
+        team = TeamModel(name="Shared team", order=20)
+        other_team = TeamModel(name="Another team", order=10)
+        private_team = TeamModel(name="Outside team", order=30)
+        db.add_all([role, title, team, other_team, private_team])
         await db.flush()
         db.add(Assignment(user_id=user_id, role_id=role.id, is_default=True))
         own = Agent(user_id=user_id, title_id=title.id, code='selection-a', first_name='Zoé', last_name='Exemple')
@@ -72,6 +74,10 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         await db.flush()
         await set_human_membership(team.id, user_id, True)
         await set_agent_membership(team.id, peer.id, True)
+        await set_agent_membership(other_team.id, peer.id, True)
+        await set_agent_membership(private_team.id, outside.id, True)
+        peer_teams = [{'id': other_team.id, 'name': other_team.name, 'order': 10},
+                      {'id': team.id, 'name': team.name, 'order': 20}]
         tasks = [Task(agent_id=agent.id, label='Managed task') for agent in (own, peer, outside)]
         db.add_all(tasks)
         await db.flush()
@@ -91,7 +97,13 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         assert {item['id'] for item in response.json()} == set(expected)
         ordered_ids = [item['id'] for item in response.json() if item['id'] in ids]
         assert ordered_ids == [agent_id for agent_id in reversed(ids) if agent_id in expected]
-        assert all(set(item) == {'id', 'label', 'has_avatar', 'driver'} for item in response.json())
+        assert all(set(item) == {'id', 'label', 'has_avatar', 'driver', 'teams'} for item in response.json())
+        by_id = {item['id']: item for item in response.json()}
+        assert by_id[ids[0]]['teams'] == []
+        if ids[1] in expected:
+            assert by_id[ids[1]]['teams'] == peer_teams
+        if scope != 'teams':
+            assert all(team['name'] != 'Outside team' for item in response.json() for team in item['teams'])
     assert (await client.get('/api/agents/selection', headers=admin)).status_code == 200
     for task_id in task_ids[1:]:
         assert (await client.get(f'/api/tasks/{task_id}', headers=human)).status_code == 404

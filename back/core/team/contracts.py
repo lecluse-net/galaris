@@ -28,3 +28,14 @@ class MembershipUpdate(BaseModel):
 class TeamMove(BaseModel):
     target_team_id: int = Field(gt=0)
     after: bool = False
+
+
+class SelectionTeam(BaseModel):
+    id: int
+    name: str
+    order: int
+
+
+class HumanSelection(BaseModel):
+    id: int
+    teams: list[SelectionTeam] = Field(default_factory=list[SelectionTeam])

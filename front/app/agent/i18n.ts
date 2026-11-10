@@ -25,6 +25,8 @@ export default {
       deleteTooltip: 'Supprimer l\'agent',
       noAgentInGroup: 'Aucun agent dans cette équipe',
       noAgent: 'Aucun agent enregistré',
+      noSearchResults: 'Aucun agent ne correspond à cette recherche.',
+      searchByName: 'Rechercher un agent par nom',
       newGroup: 'Nouveau Groupe',
       noGroupRegistered: 'Aucun groupe enregistré',
       newTitle: 'Nouvelle Civilité',
@@ -255,6 +257,8 @@ export default {
       deleteTooltip: 'Delete agent',
       noAgentInGroup: 'No agent in this team',
       noAgent: 'No agent registered',
+      noSearchResults: 'No agents match this search.',
+      searchByName: 'Search agents by name',
       newGroup: 'New Group',
       noGroupRegistered: 'No group registered',
       newTitle: 'New Title',
@@ -468,7 +472,7 @@ export default {
     agent: {
       title: '智能体管理', selectPlaceholder: '智能体', selectionLoadError: '无法检查可用智能体。请重新打开列表重试。', tabAgents: '智能体', tabGroups: '分组', tabTitles: '称谓', noGroup: '无分组', newAgent: '新建智能体',
       noJobTitle: '未定义职位', personality: '个性', jobDescription: '职位描述', notDefinedF: '未定义', editTooltip: '编辑智能体', deleteTooltip: '删除智能体',
-      noAgentInGroup: '此分组中没有智能体', noAgent: '尚未登记智能体', newGroup: '新建分组', noGroupRegistered: '尚未登记分组', newTitle: '新建称谓',
+      noAgentInGroup: '此分组中没有智能体', noAgent: '尚未登记智能体', noSearchResults: '没有符合此搜索的智能体。', searchByName: '按名称搜索智能体', newGroup: '新建分组', noGroupRegistered: '尚未登记分组', newTitle: '新建称谓',
       genderM: '男', genderF: '女', noTitleRegistered: '尚未登记称谓', editAgent: '编辑智能体', addAgent: '添加智能体', general: '常规',
       harness: {
         lifecycle: { absent: '待创建', provisioning: '正在安装', ready: '就绪', deprovisioning: '正在移除', error: '错误' },

@@ -1,10 +1,39 @@
-import { test, expect, mount } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
 const people = (kind, count) => Array.from({ length: count }, (_, index) => ({
   kind, id: index + 10, label: `${kind} ${String(index + 1).padStart(3, '0')}`, has_avatar: false,
 }))
 const me = { kind: 'user', id: 1, label: 'Synthetic current user', is_current_user: true }
 const picker = page => page.getByRole('combobox', { name: 'Owner', exact: true })
+
+for (const width of [390, 1440]) for (const dark of [false, true]) {
+test(`owner choices group teams then agents and users (${width}px, dark=${dark})`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const teams = [{ id: 2, name: 'Research', order: 1 }, { id: 1, name: 'Support', order: 2 }]
+  await jsonRoute(page, '**/api/agents/selection?scope=management', [{ id: 7, label: 'Alice', has_avatar: false, teams }])
+  await jsonRoute(page, '**/api/teams/human-selection', [{ id: 1, teams: [teams[0]] }, { id: 7, teams }])
+  await mount(page, 'app/share/components/OwnerSelect.vue', { dark, props: {
+    modelValue: 'user:1', options: [me, { kind: 'user', id: 7, label: 'Human Alice' }, { kind: 'agent', id: 7, label: 'Alice' }, { kind: 'user', id: 9, label: 'No team human' }],
+  } })
+  await picker(page).click()
+  await expect(page.getByText('Research', { exact: true })).toBeVisible()
+  await expect(page.getByText('Support', { exact: true })).toBeVisible()
+  await expect(page.getByRole('option', { name: 'Alice', exact: true })).toHaveCount(2)
+  const research = page.getByRole('group', { name: 'Research', exact: true })
+  await expect(research.getByRole('group', { name: 'Agents', exact: true }).getByRole('option', { name: 'Alice', exact: true })).toBeVisible()
+  await expect(research.getByRole('group', { name: 'Users', exact: true }).getByRole('option', { name: 'Human Alice', exact: true })).toBeVisible()
+  await expect(research.getByRole('option', { name: 'Me', exact: true })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'No team', exact: true }).getByRole('option', { name: 'No team human', exact: true })).toBeVisible()
+  await testInfo.attach('owner-team-hierarchy', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
+  await page.getByRole('option', { name: 'Alice', exact: true }).last().click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toBe('agent:7')
+  await picker(page).click()
+  await page.getByRole('textbox', { name: 'Search owners', exact: true }).fill('Human Alice')
+  await expect(page.getByRole('option', { name: 'Alice', exact: true })).toHaveCount(0)
+  await page.getByRole('option', { name: 'Human Alice', exact: true }).last().click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toBe('user:7')
+})
+}
 
 for (const width of [1440, 390]) {
 test(`owners remain reachable across independent pages and searches at ${width}px`, async ({ page }) => {
@@ -13,11 +42,9 @@ test(`owners remain reachable across independent pages and searches at ${width}p
     modelValue: 'user:1', options: [...people('agent', 51), ...people('user', 51), me], clearable: true,
   } })
   await picker(page).focus(); await page.keyboard.press('Enter')
-  const options = page.getByRole('option')
-  await expect(options.first()).toHaveAccessibleName('Me')
-  await expect(options.nth(1)).toHaveAccessibleName('user 001')
-  const users = page.getByRole('group', { name: 'Pagination: Users', exact: true })
-  const agents = page.getByRole('group', { name: 'Pagination: Agents', exact: true })
+  await expect(page.getByRole('option', { name: 'Me', exact: true })).toBeVisible()
+  const users = page.getByRole('group', { name: 'Pagination: No team / Users', exact: true })
+  const agents = page.getByRole('group', { name: 'Pagination: No team / Agents', exact: true })
   await users.getByRole('button', { name: '2', exact: true }).click()
   await expect(page.getByRole('option', { name: 'user 051', exact: true })).toBeVisible()
   await expect(page.getByRole('option', { name: 'agent 001', exact: true })).toBeVisible()
@@ -40,15 +67,16 @@ test(`owners remain reachable across independent pages and searches at ${width}p
 })
 }
 
-test('small catalogues show every owner without pagination and retain a saved owner outside the catalogue', async ({ page }) => {
+test('owner pagination includes the current user and retains a saved owner outside the catalogue', async ({ page }) => {
   const current = { kind: 'user', id: 1000, label: 'Synthetic saved owner' }
   await mount(page, 'app/share/components/OwnerSelect.vue', { props: {
     modelValue: 'user:1000', current, currentUserId: 1, options: [...people('agent', 50), ...people('user', 50), { ...me, is_current_user: false }],
   } })
   await expect(picker(page)).toContainText(current.label)
   await picker(page).click()
-  await expect(page.getByRole('group', { name: /Pagination:/ })).toHaveCount(0)
-  await expect(page.getByRole('option')).toHaveCount(101)
+  await expect(page.getByRole('group', { name: /Pagination:/ })).toHaveCount(1)
+  // Me is now included in the Users section's 50-person page.
+  await expect(page.getByRole('option')).toHaveCount(100)
   await page.getByRole('textbox', { name: 'Search owners', exact: true }).fill('no matching synthetic owner')
   await expect(page.getByText('No owners available.', { exact: true })).toBeVisible()
   await page.getByRole('textbox', { name: 'Search owners', exact: true }).fill('')

@@ -1,11 +1,12 @@
 <template>
   <div class="column room-list-shell" :class="cards ? 'room-list-shell--cards' : 'full-height'">
     <div id="chat-room-filters" v-show="showFilters || cards" class="room-filters">
-      <q-select
+      <AgentTeamSelect
         ref="viewerSelect"
         v-if="canImpersonate && showFilters"
         :model-value="viewerAgentId"
         :options="viewerOptions"
+        scope="dialogue"
         emit-value
         map-options
         dense
@@ -43,7 +44,7 @@
             <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label></q-item-section>
           </q-item>
         </template>
-      </q-select>
+      </AgentTeamSelect>
       <div class="q-px-sm q-py-xs">
         <q-input v-model="search" dense outlined clearable debounce="250" :placeholder="t('chat.search')" :aria-label="t('chat.search')" @update:model-value="emit('search', search ?? '')" />
       </div>
@@ -112,6 +113,7 @@ import { sourceTranslationKey } from '../sourcePresentation'
 import { displayMessageText } from '../messagePresentation'
 import type { ChatViewerAgent, MessengerRoom } from '../types'
 import InternalAgentAvatar from './InternalAgentAvatar.vue'
+import { AgentTeamSelect } from '@/app/agent'
 
 const props = defineProps<{ cards?: boolean; error?: boolean; searchValue?: string; showFilters?: boolean; rooms: MessengerRoom[]; selectedId?: string; canCreate: boolean; canImpersonate: boolean; viewerAgentId: number | null; viewerAgents: ChatViewerAgent[]; includeExternal: boolean; includeArchived: boolean; hasMore: boolean; loadingMore: boolean }>()
 const emit = defineEmits<{ changed: [room: MessengerRoom]; select: [room: MessengerRoom]; search: [value: string]; create: []; 'load-more': []; 'view-agent': [value: number | null]; 'toggle-external': [value: boolean]; 'toggle-archived': [value: boolean] }>()

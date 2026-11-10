@@ -11,6 +11,32 @@ from core.user import UserModel
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("privilege", [None, "TEAM_ACCESS", "READ_USER"])
+async def test_human_selection_exposes_only_directory_scope_and_orders_live_memberships(client, privilege):
+    from core.authorize.tests.test_guard_policy_parameters import actor
+    from core.team.models import Team, TeamUser
+
+    headers, own = await actor([privilege] if privilege else [])
+    _, outside = await actor([])
+    async with get_db_session() as db:
+        first, second, deleted = Team(name="Research", order=1), Team(name="Support", order=2), Team(name="Removed", order=0)
+        db.add_all([first, second, deleted])
+        await db.flush()
+        db.add_all([TeamUser(user_id=own, team_id=team.id) for team in (second, first, deleted)])
+        deleted.soft_delete()
+        expected = [{'id': first.id, 'name': first.name, 'order': 1}, {'id': second.id, 'name': second.name, 'order': 2}]
+    url = '/api/teams/human-selection'
+    assert (await client.get(url)).status_code == 401
+    response = await client.get(url, headers=headers)
+    assert response.status_code == 200
+    people = {item['id']: item for item in response.json()}
+    assert people[own] == {'id': own, 'teams': expected}
+    assert (outside in people) is (privilege is not None)
+    if privilege is None:
+        assert set(people) == {own}
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("public_origin", ["http://localhost", "https://galaris.example"])
 async def test_team_membership_controls_chat_without_granting_management_over_http(client, monkeypatch, public_origin):
     from core import settings

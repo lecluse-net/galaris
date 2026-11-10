@@ -82,9 +82,16 @@ async function teamFixtures(page, { failFirstAgentSave = false, many = false } =
 async function addMember(page, kind, name) {
   const section = page.getByRole('region', { name: kind, exact: true })
   await section.getByRole('combobox').click()
+  if (kind === 'AI agents') await page.getByRole('textbox', { name: 'Search agents by name', exact: true }).fill(name)
   const option = page.getByRole('option', { name, exact: true })
   await expect(option.getByRole('img', { name })).toBeVisible()
   await option.click()
+  if (kind === 'AI agents') {
+    await section.getByRole('combobox').click()
+    await page.getByRole('textbox', { name: 'Search agents by name', exact: true }).fill('No matching agent')
+    await page.keyboard.press('Escape')
+    await expect(section.getByRole('combobox')).toHaveValue(name)
+  }
   await section.getByRole('button', { name: 'Add', exact: true }).click()
 }
 

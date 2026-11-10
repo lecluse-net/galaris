@@ -8,6 +8,17 @@ canal. Les échanges entre agents suivent aussi la portée locale de leur connex
 
 ## Composer une équipe
 
+Les listes déroulantes d’agents présentent une section par équipe, dans l’ordre des équipes.
+Un agent membre de plusieurs équipes apparaît dans chacune ; les agents sans appartenance
+figurent dans **Sans équipe**. Ces sections conservent les agents autorisés pour l’action.
+
+Le sélecteur **Agent** affiche sa recherche en haut de la liste déroulante. Saisissez un nom
+pour filtrer les sections, sans tenir compte de la casse ni des accents. Le champ fermé
+affiche l’agent choisi. Le sélecteur **Propriétaire** présente les équipes, puis les
+sections **Agents** et **Utilisateurs** dans chacune. **Moi** figure parmi les utilisateurs
+de ses équipes. La recherche porte sur les propriétaires disponibles ; la pagination est
+indépendante pour chaque type dans chaque équipe. Les membres sans équipe ont leur section.
+
 Ouvrez **Équipes**, ou l’onglet **Équipes** de la page **Agents**. La liste affiche les
 effectifs humains et IA ; les petites équipes présentent aussi leurs membres avec avatars.
 Déplacez les lignes par leur poignée pour réordonner les équipes : la position est

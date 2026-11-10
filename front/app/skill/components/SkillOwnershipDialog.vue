@@ -9,7 +9,7 @@
         <p>{{ t('skills.personal.assignConfirm', { label: skill?.label ?? '' }) }}</p>
         <q-spinner v-if="loading" color="primary" />
         <q-banner v-if="error" rounded role="alert" class="bg-negative text-white">{{ error }}</q-banner>
-        <q-select v-model="owner" :options="owners" option-value="id" option-label="label" emit-value map-options
+        <AgentTeamSelect v-model="owner" :options="owners.map(agent => ({ value: agent.id, label: agent.label, hasAvatar: agent.has_avatar }))" :agents="owners"
           outlined :label="t('skills.personal.owner')" :disable="loading || saving || cleanupPending" />
         <q-input v-model="code" outlined :label="t('skills.code')" :disable="loading || saving || cleanupPending" />
       </q-card-section>
@@ -27,7 +27,7 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
-import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
+import { AgentTeamSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import { skillService, type Skill } from '../services/skillService'
 
 const skill = defineModel<Skill | null>({ required: true })
