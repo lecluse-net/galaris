@@ -191,12 +191,12 @@ its state in the document, including autosave and revisions. **Enter** adds a li
 **Tab** and **Shift+Tab** nest or unnest lines. States survive reopening and remain visible
 in read-only views and exports. These lists require no Dataset.
 
-On desktop and mobile, a floating toolbar appears just above the selected element in editable documents.
+On desktop and mobile, a contextual toolbar appears below the main toolbar in editable documents.
 Its commands follow the cursor or selection: table and cell, image, link or code block.
 Icon menus provide properties specific to the selection. Text, paragraph and insertion
 commands stay in the main toolbar, with **More tools** for its additional commands.
 Swipe the icon row horizontally to reach all its commands.
-This toolbar is centered on the element and appears only when the selection offers actions, without leaving a gap
+This toolbar stays below the main toolbar while scrolling and appears only when the selection offers actions, without leaving a gap
 when it disappears. Right-click, **Shift+F10** and long press remain native: spelling,
 dictionary and clipboard commands depend on the browser's capabilities.
 While editing, a left click selects a link or card without opening it. Use **Open** in the

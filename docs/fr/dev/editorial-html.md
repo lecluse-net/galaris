@@ -51,7 +51,7 @@ utilisent `simple` : commandes textuelles essentielles, code en ligne et en bloc
 à cocher, tableaux, séparateurs et liens Galaris, une rangée par groupe et retour à la ligne.
 Le plein écran, les pièces jointes et l'insertion d'équations restent réservés au mode complet.
 Les commandes communes restent dans la barre d'outils. Dans les documents, une seconde
-barre flottante, centrée au-dessus de l'élément, propose seulement les actions propres à la sélection ; elle disparaît sans
+barre sous la barre principale propose seulement les actions propres à la sélection ; elle disparaît sans
 espace réservé lorsqu'il n'y a aucune action. Le clic droit et l'appui long restent natifs.
 Le contenu existant est conservé ;
 ce choix d'interface ne change ni le format stocké ni les règles d'assainissement du HTML.

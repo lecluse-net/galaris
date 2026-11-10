@@ -1,26 +1,26 @@
 <template>
   <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @keyup="syncKeyboardSelection" @pointerdown.capture="pointerRequest++" @click.capture="editorClick" @contextmenu.capture="openContextMenu" @galaris-document-object-focus="selectEmbeddedObject">
-    <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
-      <template v-if="personalVoice" #voice>
-        <EditorialToolButton flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="readonly || sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
-        <EditorialToolButton flat dense color="primary" :icon="voice?.reading && !voice.paused ? 'pause' : 'play_arrow'" :label="voice?.reading ? voice.paused ? voice.labels.paused : voice.labels.reading : voice?.labels.read ?? ''" :disable="voice?.dictating || voice?.dictationPending" @click="action('read')" />
-        <EditorialToolButton flat dense icon="expand_more" :label="voice?.labels.readingControls ?? ''">
-          <q-menu><q-list dense role="menu" :aria-label="voice?.labels.readingControls">
-            <q-item v-close-popup clickable role="menuitem" :aria-label="voice?.paused ? voice.labels.resume : voice?.labels.pause" :disable="!voice?.reading" @click="voice?.togglePause()">
-              <q-item-section avatar><q-icon :name="voice?.paused ? 'play_arrow' : 'pause'" /></q-item-section><q-item-section>{{ voice?.paused ? voice.labels.resume : voice?.labels.pause }}</q-item-section>
-            </q-item>
-            <q-item v-close-popup clickable role="menuitem" :aria-label="voice?.labels.stop" :disable="!voice?.reading" @click="voice?.stop()">
-              <q-item-section avatar><q-icon name="stop" /></q-item-section><q-item-section>{{ voice?.labels.stop }}</q-item-section>
-            </q-item>
-          </q-list></q-menu>
-        </EditorialToolButton>
-      </template>
-    </EditorialToolbar>
-    <Teleport to="body">
-      <div v-if="profile === 'document' && activeContext && contextFocused && !readonly && !sourceMode && !resourceDetail && !dialogOpen && !mathOpen" ref="contextToolbar" class="rich-editor editorial-context-toolbar" role="toolbar" :aria-label="t('richEditor.contextActions')" :style="contextToolbarStyle" @mousedown.prevent>
+    <div class="editorial-toolbars">
+      <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
+        <template v-if="personalVoice" #voice>
+          <EditorialToolButton flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="readonly || sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
+          <EditorialToolButton flat dense color="primary" :icon="voice?.reading && !voice.paused ? 'pause' : 'play_arrow'" :label="voice?.reading ? voice.paused ? voice.labels.paused : voice.labels.reading : voice?.labels.read ?? ''" :disable="voice?.dictating || voice?.dictationPending" @click="action('read')" />
+          <EditorialToolButton flat dense icon="expand_more" :label="voice?.labels.readingControls ?? ''">
+            <q-menu><q-list dense role="menu" :aria-label="voice?.labels.readingControls">
+              <q-item v-close-popup clickable role="menuitem" :aria-label="voice?.paused ? voice.labels.resume : voice?.labels.pause" :disable="!voice?.reading" @click="voice?.togglePause()">
+                <q-item-section avatar><q-icon :name="voice?.paused ? 'play_arrow' : 'pause'" /></q-item-section><q-item-section>{{ voice?.paused ? voice.labels.resume : voice?.labels.pause }}</q-item-section>
+              </q-item>
+              <q-item v-close-popup clickable role="menuitem" :aria-label="voice?.labels.stop" :disable="!voice?.reading" @click="voice?.stop()">
+                <q-item-section avatar><q-icon name="stop" /></q-item-section><q-item-section>{{ voice?.labels.stop }}</q-item-section>
+              </q-item>
+            </q-list></q-menu>
+          </EditorialToolButton>
+        </template>
+      </EditorialToolbar>
+      <div v-if="contextToolbarVisible && activeContext && !readonly && !sourceMode && !resourceDetail && !dialogOpen && !mathOpen" class="editorial-context-toolbar" role="toolbar" :aria-label="t('richEditor.contextActions')" @mousedown.prevent>
         <EditorialContextActions toolbar :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" @focus-editor="editor?.view.focus()" />
       </div>
-    </Teleport>
+    </div>
     <div v-if="findOpen" class="editorial-search-bar" role="search" :aria-label="t('richEditor.find')">
       <q-input ref="searchInput" v-model="fields.search" class="editorial-search-input" dense outlined :label="t('richEditor.find')" @keydown.enter.prevent="findNext" />
       <q-input v-model="fields.replace" class="editorial-search-input" dense outlined :label="t('richEditor.replace')" :disable="readonly" @keydown.enter.prevent="replaceMatch" />
@@ -417,63 +417,26 @@ const activeContext = computed(() => {
   return { kind }
 })
 const mobileDocument = computed(() => profile === 'document' && toolbarMode === 'full' && $q.screen.lt.md)
-const contextToolbar = useTemplateRef<HTMLElement>('contextToolbar')
 const contextFocused = ref(false)
-const contextToolbarStyle = ref<Record<string, string>>({ visibility: 'hidden' })
-let contextFrame: number | undefined
+const contextToolbarVisible = ref(false)
+watch(() => profile === 'document' && Boolean(activeContext.value) && contextFocused.value, (visible, _, cleanup) => {
+  // Let native mousedown selection finish before this row moves the content.
+  const frame = requestAnimationFrame(() => { contextToolbarVisible.value = visible })
+  cleanup(() => cancelAnimationFrame(frame))
+})
 function updateContextFocus(event: Event): void {
   const target = event.target
   if (!(target instanceof Node)) return
   if (target instanceof Element && target.closest('.q-menu')) return
-  contextFocused.value = Boolean(root.value?.contains(target) || contextToolbar.value?.contains(target))
+  contextFocused.value = Boolean(root.value?.contains(target))
 }
-function positionContextToolbar(): void {
-  contextFrame = undefined
-  const current = editor.value, toolbar = contextToolbar.value
-  if (!current || current.isDestroyed || !toolbar) return
-  const selection = current.state.selection
-  const dom = selection instanceof NodeSelection ? current.view.nodeDOM(selection.from) : current.view.domAtPos(selection.from).node
-  const element = dom instanceof Element ? dom : dom?.parentElement
-  const target = element?.closest('.galaris-image-object, blockquote.galaris-link-card, .embedded-code-widget, [data-math], a, pre, td, th') ?? element
-  if (!target || !current.view.dom.contains(target)) { contextToolbarStyle.value = { visibility: 'hidden' }; return }
-  const bounds = target.getBoundingClientRect(), size = toolbar.getBoundingClientRect()
-  const viewport = window.visualViewport
-  const topEdge = viewport?.offsetTop ?? 0, leftEdge = viewport?.offsetLeft ?? 0
-  const rightEdge = leftEdge + (viewport?.width ?? window.innerWidth), bottomEdge = topEdge + (viewport?.height ?? window.innerHeight)
-  const editorBounds = current.view.dom.getBoundingClientRect()
-  if (bounds.bottom <= Math.max(topEdge, editorBounds.top) || bounds.top >= Math.min(bottomEdge, editorBounds.bottom) || bounds.right <= leftEdge || bounds.left >= rightEdge) {
-    contextToolbarStyle.value = { visibility: 'hidden' }; return
-  }
-  const left = Math.max(leftEdge + 8, Math.min(bounds.left + (bounds.width - size.width) / 2, rightEdge - size.width - 8))
-  const top = bounds.top >= topEdge + size.height + 8 ? bounds.top - size.height - 6 : Math.min(bounds.bottom + 6, bottomEdge - size.height - 8)
-  contextToolbarStyle.value = { left: `${left}px`, top: `${Math.max(topEdge + 8, top)}px` }
-}
-function scheduleContextToolbar(): void {
-  if (contextFrame === undefined) contextFrame = requestAnimationFrame(positionContextToolbar)
-}
-watch([contextToolbar, revision], scheduleContextToolbar, { flush: 'post' })
-watch(contextToolbar, (toolbar, _, cleanup) => {
-  if (!toolbar) return
-  const resize = new ResizeObserver(scheduleContextToolbar)
-  resize.observe(toolbar)
-  cleanup(() => resize.disconnect())
-})
 onMounted(() => {
   document.addEventListener('focusin', updateContextFocus)
   document.addEventListener('pointerdown', updateContextFocus, true)
-  window.addEventListener('scroll', scheduleContextToolbar, true)
-  window.addEventListener('resize', scheduleContextToolbar)
-  window.visualViewport?.addEventListener('resize', scheduleContextToolbar)
-  window.visualViewport?.addEventListener('scroll', scheduleContextToolbar)
 })
 onBeforeUnmount(() => {
   document.removeEventListener('focusin', updateContextFocus)
   document.removeEventListener('pointerdown', updateContextFocus, true)
-  window.removeEventListener('scroll', scheduleContextToolbar, true)
-  window.removeEventListener('resize', scheduleContextToolbar)
-  window.visualViewport?.removeEventListener('resize', scheduleContextToolbar)
-  window.visualViewport?.removeEventListener('scroll', scheduleContextToolbar)
-  if (contextFrame !== undefined) cancelAnimationFrame(contextFrame)
 })
 watch(mobileDocument, () => pointerMenu.value?.hide())
 const canInsertBeside = computed(() => {
@@ -1190,7 +1153,7 @@ onMounted(() => {
     layoutFrame = requestAnimationFrame(() => {
       layoutFrame = undefined; fits.value = (root.value?.clientWidth ?? 0) >= 210 * 96 / 25.4
       scrollPadding?.update()
-      const toolbar = root.value?.querySelector('.editorial-toolbar')
+      const toolbar = root.value?.querySelector('.editorial-toolbars')
       if (toolbar) {
         root.value?.style.setProperty('--editorial-toolbar-height', toolbar.getBoundingClientRect().height + 'px')
         observer?.observe(toolbar)

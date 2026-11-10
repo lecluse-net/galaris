@@ -57,7 +57,7 @@ the resource retains its own rights and content profile. Memories, Goal descript
 Agent profiles, Task objectives and summaries use `simple`: essential text commands,
 inline and block code, checklists, tables, separators and Galaris links, with one wrapping
 row per group. Fullscreen, attachments and equation insertion remain in full mode.
-Common commands stay in the toolbar. Documents use a floating toolbar centered above the element for actions
+Common commands stay in the toolbar. Documents use a second toolbar below the main toolbar for actions
 specific to the selection; it disappears without reserved space when there are no actions.
 Right-click and long press remain native. Existing content
 is preserved; this UI choice changes neither storage format nor HTML sanitization.

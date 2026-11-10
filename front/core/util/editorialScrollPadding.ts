@@ -27,7 +27,7 @@ export function reserveEditorialToolbarSpace(root: HTMLElement): { update: () =>
     container = undefined
   }
   function update(): void {
-    const toolbar = root.querySelector<HTMLElement>('.editorial-toolbar')
+    const toolbar = root.querySelector<HTMLElement>('.editorial-toolbars')
     if (!root.isConnected || !toolbar) { release(); return }
     let target: HTMLElement | null = root
     while (target && !['auto', 'scroll', 'hidden', 'overlay'].includes(getComputedStyle(target).overflowY)) target = target.parentElement

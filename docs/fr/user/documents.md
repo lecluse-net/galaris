@@ -215,13 +215,13 @@ une ligne enregistre son état dans le document, avec sa sauvegarde et ses révi
 Les états restent visibles après réouverture, en lecture seule et dans les exports.
 Ces listes ne nécessitent aucun jeu de données.
 
-Sur ordinateur comme sur mobile, une barre d'icônes flottante apparaît juste au-dessus
-de l'élément sélectionné dans les documents modifiables. Ses commandes suivent la sélection :
+Sur ordinateur comme sur mobile, une barre d'icônes contextuelle apparaît sous la barre
+d'outils principale dans les documents modifiables. Ses commandes suivent la sélection :
 tableau et cellule, image, lien ou bloc de code. Les menus d'icônes donnent accès aux
 propriétés de l'objet sélectionné. Les commandes de texte, de paragraphe et d'insertion
 restent dans la barre principale, avec **Plus d'outils** pour ses commandes supplémentaires.
 Faites glisser la sous-barre horizontalement pour atteindre toutes ses commandes.
-Cette barre est centrée sur l'élément et n'apparaît que si la sélection propose des actions, sans laisser
+Cette barre reste sous la barre principale pendant le défilement et n'apparaît que si la sélection propose des actions, sans laisser
 de blanc lorsqu'elle disparaît. Le clic droit, **Maj+F10** et l'appui long restent ceux du
 navigateur : correction orthographique, dictionnaire et presse-papiers selon ses capacités.
 En édition, un clic gauche sur un lien ou une carte les sélectionne sans les ouvrir.
