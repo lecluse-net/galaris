@@ -255,9 +255,8 @@ async def _metrics_for(goal_ids: Sequence[UUID]) -> dict[UUID, GoalMetrics]:
 def _agent_name(agent: Agent | None, agent_id: int) -> str:
     if agent is None:
         return f"Agent #{agent_id}"
-    title = agent.title.label
     return " ".join(
-        part for part in (title, agent.first_name, agent.last_name) if part
+        part for part in (agent.first_name, agent.last_name) if part
     ).strip()
 
 
