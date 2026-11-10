@@ -61,6 +61,7 @@ from .web_transport import PublicHttpsFileTransport
 from .resource_observation import observe_operation
 from .native_providers import NativeResourceProvider, NativeResourceRenamer, native_provider, native_descriptions, resolve_native_alias
 from .process_provider import ProcessRunProvider
+from .galaris_provider import galaris_avatar_file, is_agent_avatar_resource
 
 
 def _resource_provider(reference: ResourceUri) -> NativeResourceProvider | ProcessRunProvider | None:
@@ -1088,6 +1089,12 @@ async def _materialize_resource(
                         yield chunk
 
             size = await copy_download(chunks(), destination, max_bytes=max_bytes)
+        elif is_agent_avatar_resource(reference):
+            descriptor, content = await galaris_avatar_file(ctx, reference)
+            if len(content) > max_bytes:
+                raise ValueError(f"Resource exceeds the {max_bytes}-byte materialization limit")
+            destination.write_bytes(content)
+            size = len(content)
         elif reference.scheme == "galaris" and reference.decoded_locator.startswith("skill/"):
             from .galaris_provider import galaris_skill_file_bytes
 
@@ -1194,6 +1201,9 @@ async def resource_read(
     if reference.scheme == "galaris":
         from .galaris_provider import galaris_resource_read
 
+        if is_agent_avatar_resource(reference):
+            descriptor, content = await galaris_avatar_file(ctx, reference)
+            return _resource_read_from_bytes(reference, content, media_type=descriptor.media_type, start=start, limit=limit)
         result = await galaris_resource_read(
             ctx,
             reference,
@@ -1945,6 +1955,11 @@ async def _read_complete_bytes(
             raise ValueError(
                 f"Resource exceeds the {_FILE_WRITE_LIMIT}-byte generic copy limit."
             )
+        return content
+    if is_agent_avatar_resource(reference):
+        _descriptor, content = await galaris_avatar_file(ctx, reference)
+        if len(content) > _FILE_WRITE_LIMIT:
+            raise ValueError(f"Resource exceeds the {_FILE_WRITE_LIMIT}-byte generic copy limit.")
         return content
     if reference.scheme == "galaris" and reference.decoded_locator.startswith("skill/"):
         from .galaris_provider import galaris_skill_file_bytes

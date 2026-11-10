@@ -522,6 +522,8 @@ async def test_agent_list_orders_names_batches_teams_and_reopens_avatar_flags(db
         serialized = [AgentRead.model_validate(agent) for agent in listed]
         assert all(agent.team_ids == expected_teams and agent.is_owner for agent in serialized)
         assert [agent.has_avatar for agent in serialized] == [True, *([False] * 7)]
+        assert [agent.model_dump()["avatar_uri"] for agent in serialized] == [
+            f"galaris://agent/{ids[0]}/avatar", *([None] * 7)]
     finally:
         event.remove(engine, "before_cursor_execute", count)
     assert await agent_service.get_avatar(ids[0]) == b"synthetic-avatar"

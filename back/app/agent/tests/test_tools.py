@@ -40,6 +40,7 @@ async def test_directory_can_be_enumerated_after_history_compaction(monkeypatch,
             job_description="<p>Synthetic description</p>" * 100,
             personality="<p>Synthetic personality</p>" * 100,
             title=None,
+            has_avatar=False,
         )
         for index in range(size)
     ]

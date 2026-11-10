@@ -135,6 +135,7 @@ default = {
         "description": "Description: ${value}",
         "personality": "Personality: ${value}",
         "profile_uri": "Profile URI: ${value}",
+        "avatar_uri": "Photo URI (read with image_read): ${value}",
         "assigned_llm": "Assigned LLM: ${label} (${model})",
         "driver": "Agent driver: ${value}",
         "planner_enabled": "Planner enabled: ${value}",

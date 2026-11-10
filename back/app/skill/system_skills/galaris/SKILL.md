@@ -739,6 +739,13 @@ mean the colleague is unknown or unreachable. Contact permissions still apply.
   Both tools include the stable `galaris://agent/<id>` URI. `file_read` reads the current
   personality and job description directly from the Agent, under existing access rights.
   This is a virtual read-only resource; no document or folder is created.
+  When a photo exists, `agent_list`, `agent_get` and the profile resource expose
+  `avatar_uri`, such as `galaris://agent/42/avatar`. Pass it directly to
+  `image_read(file=...)` for visual analysis, or to another image tool as a reference.
+  `file_info` returns its image MIME type; `file_read` returns small photos as base64.
+  Photos follow the same shared-directory read access as profiles, independently of
+  dialogue and AgentAdmin rights. The URI serves the current photo; replacement keeps
+  it stable, and deleting the photo or Agent makes it unavailable.
 - `file_list("galaris://task/")` lists recent Tasks visible to you as owner or requester.
 - `file_search("galaris://task/", query)` finds Tasks by URI, UUID, label, objective, or feedback.
 - `file_read("galaris://task/<uuid>")` returns the complete authorized Task snapshot as

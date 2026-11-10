@@ -254,7 +254,7 @@ __all__ = [
     "HarnessCapability", "HarnessCapabilityDescriptor", "HarnessExecutionPolicy",
     "driver_capabilities", "negotiate_capabilities", "normalize_capabilities",
     "effective_capabilities", "effective_tool_profile",
-    "read_agent_resource", "list_agent_resources",
+    "read_agent_resource", "list_agent_resources", "read_agent_avatar_resource",
     "require_delegated_resource_access",
     "Agent",
     "AgentTeamModel",
@@ -407,7 +407,7 @@ __all__ = [
     "sharing_owner_teams",
 ]
 
-from .resource_facade import read_agent_resource, list_agent_resources, require_delegated_resource_access
+from .resource_facade import read_agent_resource, list_agent_resources, read_agent_avatar_resource, require_delegated_resource_access
 from .contact_discovery import ContactDiscoverySource, register_contact_discovery
 
 from .models import AgentTeam as AgentTeamModel

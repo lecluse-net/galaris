@@ -14,7 +14,7 @@ from .admin_schemas import PageLimit, PageOffset
 
     name="agent_list",
     description=(
-        "List Galaris agents in compact JSON pages with ID, profile URI, code, name and job title. "
+        "List Galaris agents in compact JSON pages with ID, profile URI, photo avatar_uri (null if absent), code, name and job title. "
         "Optionally filter by team_id or exact team_name (case-insensitive); both filters intersect. "
         "Follow next_offset until null; a page may contain fewer than limit entries to stay bounded. "
         "Keep the same team filters on subsequent pages. "
@@ -43,7 +43,8 @@ async def list_agents(
     description=(
         "Return a complete agent profile, including full job and personality text, "
         "using an ID obtained from agent_list. Includes its live galaris://agent/<id> URI "
-        "for file_read under existing access rights; no document is created."
+        "for file_read under existing access rights, and galaris://agent/<id>/avatar when a photo exists. "
+        "Pass the photo URI directly to image_read for visual analysis; file_read returns its binary bytes as base64. No document is created."
     ),
     effect_policy="read",
     concurrency_policy="safe",

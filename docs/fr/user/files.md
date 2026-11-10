@@ -2,6 +2,19 @@
 
 # Explorer les fichiers d’un agent
 
+## Photos des agents
+
+Un agent peut consulter la photo d'un autre agent accessible dans l'annuaire partagé.
+`agent_list` et `agent_get` indiquent son `avatar_uri` lorsqu'une photo existe :
+`galaris://agent/<id>/avatar`. Cette ressource suit les mêmes droits de lecture que la fiche,
+sans accorder de droit de dialogue ni d'administration.
+
+Pour voir ou analyser la photo, l'agent passe directement cette URI à `image_read(file=…)`.
+`file_info` fournit le type d'image et la taille ; `file_read` rend les petites images en
+base64 et `file_copy` permet une copie vers une destination autorisée. L'URI reste stable
+quand la photo est remplacée et rend toujours la photo actuelle. Sans photo, ou après la
+suppression de l'agent, la ressource est indisponible. Ces lectures ne créent aucun Document.
+
 ## Convertir un fichier en PDF
 
 Demandez à l’agent de convertir un fichier lisible en PDF. Son outil `file_to_pdf` accepte

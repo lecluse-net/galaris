@@ -84,6 +84,7 @@ async def list_agents(
             "code": _preview(agent.code),
             "name": _preview(f"{agent.first_name} {agent.last_name}".strip(), 200),
             "job_title": _preview(agent.job_title or ""),
+            "avatar_uri": f"galaris://agent/{agent.id}/avatar" if agent.has_avatar else None,
         }
         candidate = _directory_page(
             [*items, item], offset=offset, limit=limit, has_more=len(agents) > len(items) + 1,
@@ -119,6 +120,8 @@ async def get_agent_details(
     if agent.code:
         lines.append(_message(lang, "code", value=agent.code))
     lines.append(_message(lang, "profile_uri", value=f"galaris://agent/{agent.id}"))
+    if agent.has_avatar:
+        lines.append(_message(lang, "avatar_uri", value=f"galaris://agent/{agent.id}/avatar"))
     lines.append(_message(
         lang, "name", value=f"{agent.first_name} {agent.last_name}"
     ))

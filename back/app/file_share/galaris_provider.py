@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from dataclasses import dataclass
 from collections.abc import Awaitable, Callable
 from typing import Any, Literal, cast
@@ -81,6 +82,7 @@ class _Route:
     kind: GalarisResourceKind | None
     identifier: UUID | str | None = None
     goal_cycles_for: UUID | None = None
+    avatar: bool = False
 
     @property
     def is_collection(self) -> bool:
@@ -112,14 +114,15 @@ def _route(reference: ResourceUri) -> _Route:
             return _Route(kind="goal_cycle", goal_cycles_for=UUID(segments[1]))
         except ValueError as exc:
             raise ResourceUriError("A Goal cycles folder requires a Goal UUID.") from exc
-    if len(segments) != 2 or reference.is_collection:
+    avatar = kind == "agent" and len(segments) == 3 and segments[2] == "avatar"
+    if len(segments) < 2 or (len(segments) != 2 and not avatar) or reference.is_collection:
         raise ResourceUriError(
             f"galaris://{kind}/ requires a collection or one exact identifier."
         )
     if kind == "agent":
         if not segments[1].isdecimal() or int(segments[1]) < 1:
             raise ResourceUriError("galaris://agent/ requires a positive integer.")
-        return _Route(kind=kind, identifier=segments[1])
+        return _Route(kind=kind, identifier=segments[1], avatar=avatar)
     if kind == "process":
         workflow_id = segments[1].strip()
         if not workflow_id or len(workflow_id) > 255:
@@ -133,9 +136,9 @@ def _route(reference: ResourceUri) -> _Route:
         raise ResourceUriError(f"galaris://{kind}/ requires a valid UUID.") from exc
 
 
-def _json(payload: object) -> str:
+def _json(payload: object, *, exclude_none: bool = True) -> str:
     return json.dumps(
-        jsonable_encoder(payload, exclude_none=True),
+        jsonable_encoder(payload, exclude_none=exclude_none),
         ensure_ascii=False,
         indent=2,
         default=str,
@@ -227,7 +230,7 @@ def _descriptor(
             "A process workflow ID containing '/' cannot be represented as galaris://."
         )
     encoded_identifier = quote(identifier, safe="!$&'()*+,-.;=@_~:")
-    content = _json(payload) if include_size else ""
+    content = _json(payload, exclude_none=kind != "agent") if include_size else ""
     label = _item_name(kind, payload)
     metadata = {
         key: payload[key]
@@ -475,6 +478,9 @@ async def galaris_resource_info(
         from . import documentation_provider
         return await documentation_provider.info(ctx, reference)
     route = _route(reference)
+    if route.avatar:
+        descriptor, _content = await galaris_avatar_file(ctx, reference)
+        return descriptor
     if route.kind is None:
         capabilities = list(_COLLECTION_CAPABILITIES)
         from app.skill import can_manage_skill_resources
@@ -504,6 +510,28 @@ async def galaris_resource_info(
     if payload is None:
         raise FileNotFoundError(str(reference))
     return _descriptor(route.kind, payload, include_size=True)
+
+
+def is_agent_avatar_resource(reference: ResourceUri) -> bool:
+    return (reference.scheme == "galaris" and len(reference.segments) == 3
+            and reference.segments[0] == "agent" and reference.segments[2] == "avatar")
+
+
+async def galaris_avatar_file(ctx: ResourceContext, reference: ResourceUri) -> tuple[ResourceDescriptor, bytes]:
+    """Keep Agent's read policy in its domain, and binary transfers in file-share."""
+    from app.agent import read_agent_avatar_resource
+
+    route = _route(reference)
+    if not route.avatar or route.identifier is None:
+        raise ResourceUriError("Expected galaris://agent/<id>/avatar.")
+    avatar = await read_agent_avatar_resource(int(str(route.identifier)), actor_agent_id=ctx.agent_id)
+    if avatar is None:
+        raise FileNotFoundError(str(reference))
+    content, media_type = avatar
+    extension = {"image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp"}[media_type]
+    return ResourceDescriptor(uri=str(reference), name=f"agent-{route.identifier}-avatar.{extension}",
+        media_type=media_type, size=len(content), checksum=hashlib.sha256(content).hexdigest(),
+        capabilities=list(_ITEM_CAPABILITIES)), content
 
 
 async def galaris_resource_list(
@@ -593,7 +621,7 @@ async def galaris_resource_read(
     payload = await _read_payload(ctx, route.kind, route.identifier, native_process=reference.segments[:1] == ("processes",))
     if payload is None:
         raise FileNotFoundError(str(reference))
-    content = _json(payload)
+    content = _json(payload, exclude_none=route.kind != "agent")
     start = max(0, min(offset, len(content)))
     end = min(len(content), start + max_chars)
     return ResourceRead(

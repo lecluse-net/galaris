@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0273 — Agent portrait resources](0273-agent-portrait-resources.md)
+
 - [0270 — Collect complete Process inputs before conversation launch](0270-conversation-process-input-dossiers.md)
 
 - [0269 — Private Goal categories](0269-private-goal-categories.md)

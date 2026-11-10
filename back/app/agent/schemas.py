@@ -213,4 +213,9 @@ class Agent(AgentBase):
     def resource_uri(self) -> str:
         return f"galaris://agent/{self.id}"
 
+    @computed_field
+    @property
+    def avatar_uri(self) -> str | None:
+        return f"galaris://agent/{self.id}/avatar" if self.has_avatar else None
+
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
