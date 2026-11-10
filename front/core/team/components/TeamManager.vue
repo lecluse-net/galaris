@@ -124,7 +124,7 @@ function dragHandle(team: Team) {
     onDragstart: (event: DragEvent) => ordering.start(event, team.id),
     onDragend: ordering.clear,
     onPointerdown: (event: PointerEvent) => ordering.pointerStart(event, team.id),
-    onPointermove: ordering.pointerMove, onPointerup: ordering.pointerEnd, onPointercancel: ordering.clear,
+    onPointermove: ordering.pointerMove, onPointerup: ordering.pointerEnd, onPointercancel: ordering.pointerCancel,
     onKeydown: (event: KeyboardEvent) => {
       if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
       event.preventDefault()

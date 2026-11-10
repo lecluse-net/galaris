@@ -175,9 +175,21 @@ test('dragging a team persists its position and later editing preserves the orde
   const writes = await teamFixtures(page)
   await mount(page, 'core/team/components/TeamManager.vue', { privileges: ['TEAM_ACCESS', 'TEAM_EDIT'] })
   const rows = page.locator('tbody tr')
-  await page.getByRole('button', { name: 'Move Direction', exact: true }).dragTo(
-    rows.filter({ hasText: 'Sales' }), { targetPosition: { x: 60, y: 2 } },
-  )
+  const handle = page.getByRole('button', { name: 'Move Direction', exact: true })
+  await expect(handle).toBeEnabled()
+  await page.evaluate(() => document.fonts.ready)
+  const source = await handle.boundingBox()
+  const target = await rows.filter({ hasText: 'Sales' }).boundingBox()
+  expect(source).not.toBeNull()
+  expect(target).not.toBeNull()
+  const x = source.x + source.width / 2, y = source.y + source.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  // Start the native drag while the pointer is still over the handle.
+  await page.mouse.move(x + 6, y, { steps: 6 })
+  await expect(page.locator('[data-team-id="20"]')).toHaveClass(/team-dragging/)
+  await page.mouse.move(target.x + 60, target.y + 2, { steps: 12 })
+  await page.mouse.up()
   await expect.poll(() => writes.filter(write => write[0] === 'move')).toEqual([['move', 20, 10, false]])
   await expect(rows.first()).toContainText('Direction')
   await page.getByRole('button', { name: 'Direction', exact: true }).click()
@@ -190,7 +202,7 @@ test('dragging a team persists its position and later editing preserves the orde
   await expect(rows.first()).toContainText('Sales')
 })
 
-test('touch dragging moves teams in the mobile list', async ({ page }) => {
+test('touch dragging supports cancellation and moves teams in the mobile list', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 850 })
   const writes = await teamFixtures(page)
   await mount(page, 'core/team/components/TeamManager.vue', { privileges: ['TEAM_ACCESS', 'TEAM_EDIT'] })
@@ -206,6 +218,13 @@ test('touch dragging moves teams in the mobile list', async ({ page }) => {
   const x = source.x + source.width / 2, y = source.y + source.height / 2
   await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
   await expect(page.locator('[data-team-id="20"]')).toHaveClass(/team-dragging/)
+  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: target.x + 30, y: target.y + 8 }] })
+  await expect(page.locator('[data-team-id="10"]')).toHaveClass(/team-drop-before/)
+  await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] })
+  await expect(page.locator('[data-team-id="20"]')).not.toHaveClass(/team-dragging/)
+  await expect(page.locator('[data-team-id="10"]')).not.toHaveClass(/team-drop-before/)
+  expect(writes).toEqual([])
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
   await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: target.x + 30, y: target.y + 8 }] })
   await expect(page.locator('[data-team-id="10"]')).toHaveClass(/team-drop-before/)
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })

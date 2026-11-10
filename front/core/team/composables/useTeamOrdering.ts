@@ -65,6 +65,10 @@ export function useTeamOrdering(
     clear()
     if (enabled.value && source !== null && destination) void move(source, destination.id, destination.after)
   }
+  function pointerCancel(event: PointerEvent): void {
+    // Native mouse dragging cancels pointer events; dragend owns its cleanup.
+    if (event.pointerId === touchPointer) clear()
+  }
   function keyboardMove(id: number, direction: -1 | 1): void {
     if (!enabled.value) return
     const next = teams.value[teams.value.findIndex(team => team.id === id) + direction]
@@ -78,5 +82,5 @@ export function useTeamOrdering(
     }
   }
   onScopeDispose(clear)
-  return { start, over, drop, clear, pointerStart, pointerMove, pointerEnd, keyboardMove, rowClass }
+  return { start, over, drop, clear, pointerStart, pointerMove, pointerEnd, pointerCancel, keyboardMove, rowClass }
 }
