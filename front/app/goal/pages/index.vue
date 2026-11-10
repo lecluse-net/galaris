@@ -1085,7 +1085,21 @@
                     :label="t('goal.title')"
                     :rules="[requiredRule]"
                   />
-                  <q-select v-model="form.categoryId" :options="categoryOptions" outlined dense clearable emit-value map-options :label="t('goal.categories.label')" :hint="t(form.parentGoalId ? 'goal.categories.inherited' : 'goal.categories.private')" :loading="categoriesLoading" />
+                  <q-select v-model="form.categoryId" :options="categoryOptions" outlined dense clearable emit-value map-options :label="t('goal.categories.label')" :hint="t(form.parentGoalId ? 'goal.categories.inherited' : 'goal.categories.private')" :loading="categoriesLoading" :disable="categoryCreating || formSaving">
+                    <template #append>
+                      <q-btn flat round dense color="primary" icon="add" :aria-label="t('goal.categories.new')" :disable="categoriesLoading || categoryCreating || formSaving" @click.stop="categoryDraftOpen = !categoryDraftOpen">
+                        <q-tooltip>{{ t('goal.categories.new') }}</q-tooltip>
+                      </q-btn>
+                    </template>
+                  </q-select>
+                  <div v-if="categoryDraftOpen">
+                    <q-input v-model="categoryDraftLabel" outlined dense autofocus maxlength="200" :label="t('goal.categories.new')" :disable="categoryCreating || formSaving" @keydown.enter.stop.prevent="createFormCategory" />
+                    <div v-if="categoryDraftError" role="alert" class="text-negative q-mt-sm">{{ categoryDraftError }}</div>
+                    <div class="row q-gutter-x-sm q-mt-sm">
+                      <q-btn outline dense color="primary" :label="t('common.cancel')" :disable="categoryCreating || formSaving" @click="resetCategoryDraft" />
+                      <q-btn dense color="primary" icon="add" :label="t('goal.categories.add')" :loading="categoryCreating" :disable="!categoryDraftLabel.trim() || formSaving" @click="createFormCategory" />
+                    </div>
+                  </div>
                   <div>
                     <div class="text-subtitle2 q-mb-xs">
                       {{ t('goal.description') }} <span class="text-negative">*</span>
@@ -1307,7 +1321,7 @@
                 type="submit"
                 :label="editingGoal ? t('common.save') : t('common.create')"
                 :loading="formSaving"
-                :disable="store.detailLoading || Boolean(store.detailError) || !form.description.trim() || !canSaveGoalTrigger"
+                :disable="categoryCreating || store.detailLoading || Boolean(store.detailError) || !form.description.trim() || !canSaveGoalTrigger"
               />
             </q-card-actions>
           </q-form>
@@ -1422,6 +1436,10 @@ const categories = ref<GoalCategory[]>([])
 const categoriesLoading = ref(false)
 const categoriesError = ref(false)
 const categoryManagerOpen = ref(false)
+const categoryDraftOpen = ref(false)
+const categoryDraftLabel = ref('')
+const categoryDraftError = ref('')
+const categoryCreating = ref(false)
 let categoryRequest = 0
 const categoryOptions = computed(() => categories.value.map(category => ({ label: category.label, value: category.id })))
 const categoryFilterOptions = computed(() => [{ label: t('goal.categories.none'), value: 'none' }, ...categoryOptions.value])
@@ -1455,6 +1473,37 @@ async function categoriesChanged(): Promise<void> {
   await store.fetchGoals(0)
   if (store.currentGoal) await store.fetchGoal(store.currentGoal.id)
 }
+function resetCategoryDraft(): void {
+  categoryDraftOpen.value = false
+  categoryDraftLabel.value = ''
+  categoryDraftError.value = ''
+  categoryCreating.value = false
+}
+async function createFormCategory(): Promise<void> {
+  const label = categoryDraftLabel.value.trim()
+  if (!label || categoryCreating.value || formSaving.value || !canEdit.value) return
+  categoryCreating.value = true
+  categoryDraftError.value = ''
+  const generation = formGeneration, session = sessionGeneration()
+  const current = () => !disposed && session === sessionGeneration()
+    && generation === formGeneration && goalDialogOpen.value
+  try {
+    const category = await categoryService.create(label)
+    if (disposed || session !== sessionGeneration()) return
+    // A list started before this write must not discard the new option.
+    categoryRequest++
+    categoriesLoading.value = false
+    categories.value = [...categories.value.filter(item => item.id !== category.id), category]
+      .sort((left, right) => left.label.localeCompare(right.label, locale.value))
+    if (!current()) return
+    form.categoryId = category.id
+    resetCategoryDraft()
+  } catch (error) {
+    if (current()) categoryDraftError.value = apiErrorDetail(error) || t('goal.categories.error')
+  } finally {
+    if (current()) categoryCreating.value = false
+  }
+}
 const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
 const authStore = useAuthStore()
@@ -1483,7 +1532,7 @@ let formGeneration = 0
 
 const goalDialogOpen = ref(false)
 const openingGoalId = ref<string | null>(null)
-watch(goalDialogOpen, open => { if (!open) { formGeneration++; formSaving.value = false; openingGoalId.value = null; store.clearSelection(); if (previewGoalId) emit('close') } })
+watch(goalDialogOpen, open => { if (!open) { formGeneration++; formSaving.value = false; resetCategoryDraft(); openingGoalId.value = null; store.clearSelection(); if (previewGoalId) emit('close') } })
 const goalDialogTab = ref<GoalDialogTab>('overview')
 watch(goalDialogTab, tab => { void store.setCyclesActive(tab === 'cycles').catch(() => undefined) })
 const goalDialogTitle = ref('')
@@ -1523,6 +1572,7 @@ watch(() => authStore.user?.id, () => {
   categories.value = []
   form.categoryId = null
   categoryManagerOpen.value = false
+  resetCategoryDraft()
   store.categoryFilter = null
   if (canReadGoals.value) void loadCategories()
 })
@@ -1845,6 +1895,7 @@ function nonNegativeIntegerRule(value: number | null): true | string {
 }
 
 function resetForm(): void {
+  resetCategoryDraft()
   messengerReferrerOptions.value = []
   scheduleEnabledDraft.value = false
   scheduleDraft.value = goalScheduleDefaultSlots()
@@ -1895,6 +1946,7 @@ function openCreateDialog(): void {
 }
 
 function prepareGoalForm(goal: Goal): void {
+  resetCategoryDraft()
   // Keep the revision read for this draft. Live snapshots may update the view,
   // but cannot silently authorize saving an old draft over someone else's edit.
   editingGoal.value = { ...goal }
@@ -1936,6 +1988,8 @@ function prepareGoalForm(goal: Goal): void {
 }
 
 function cancelGoalEdit(): void {
+  formGeneration++
+  formSaving.value = false
   if (!editingGoal.value) {
     goalDialogOpen.value = false
     return
@@ -1968,7 +2022,9 @@ async function submitGlobalScheduleDialog(): Promise<void> {
 
 async function submitForm(): Promise<void> {
   if (
-    form.agentId === null
+    categoryCreating.value
+    || formSaving.value
+    || form.agentId === null
     || !form.description.trim()
     || !canSaveGoalTrigger.value
   ) return

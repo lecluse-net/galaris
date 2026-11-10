@@ -95,6 +95,53 @@ test('column sorting keeps categories first and orders agents inside each catego
 })
 
 for (const width of [390, 1440]) {
+  test(`a new Goal can create and select a category without losing its draft at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 950 })
+    await goals(page)
+    await jsonRoute(page, '**/api/goals/referrers/messenger?*', [])
+    let attempts = 0
+    const categories = []
+    await page.route('**/api/goals/categories', route => {
+      if (route.request().method() === 'POST') {
+        attempts++
+        if (attempts === 1) return route.fulfill({ status: 503, json: { detail: 'Synthetic category creation failure' } })
+        const category = { id: 21, label: route.request().postDataJSON().label }
+        categories.push(category)
+        return route.fulfill({ status: 201, json: category })
+      }
+      return route.fulfill({ json: categories })
+    })
+    await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+    await page.getByRole('button', { name: 'New Goal', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Synthetic Goal draft')
+    await dialog.locator('[data-editor-surface]').fill('Preserve this objective')
+    await dialog.getByRole('button', { name: 'New category', exact: true }).click()
+    const label = dialog.getByRole('textbox', { name: 'New category', exact: true })
+    await label.fill('  Research  ')
+    await label.press('Enter')
+    await expect(dialog.getByRole('alert').filter({ hasText: 'Synthetic category creation failure' })).toBeVisible()
+    await expect(label).toHaveValue('  Research  ')
+    await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Synthetic Goal draft')
+    await expect(dialog.locator('[data-editor-surface]')).toHaveText('Preserve this objective')
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => window.testApp.dark(dark), dark)
+      await label.scrollIntoViewIfNeeded()
+      await page.screenshot({ path: testInfo.outputPath(`inline-category-${dark ? 'dark' : 'light'}.png`) })
+    }
+    await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+    await expect(dialog.getByRole('combobox', { name: 'Category', exact: true })).toHaveValue('Research')
+    await expect(label).toHaveCount(0)
+    await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Synthetic Goal draft')
+    expect(categories).toEqual([{ id: 21, label: 'Research' }])
+    await dialog.getByRole('button', { name: 'New category', exact: true }).click()
+    await label.fill('Discard this category draft')
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).first().click()
+    await expect(label).toHaveCount(0)
+    await expect(dialog.getByRole('combobox', { name: 'Category', exact: true })).toHaveValue('Research')
+    expect(attempts).toBe(2)
+  })
+
   test(`personal Goal categories can be managed, assigned, reopened and filtered at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 950 })
     await goals(page)
@@ -289,6 +336,50 @@ test('closing a goal form makes its pending referrer lookup obsolete', async ({ 
     await response
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     await expect(page.getByText('Obsolete referrer failure', { exact: false })).toHaveCount(0)
+  } finally { release() }
+})
+
+for (const mode of ['create', 'edit']) test(`a late category creation cannot select a category after cancelling the ${mode} draft`, async ({ page }) => {
+  await goals(page)
+  await jsonRoute(page, '**/api/goals/referrers/messenger?*', [])
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/goals/categories', async route => {
+    if (route.request().method() !== 'POST') return route.fulfill({ json: [] })
+    await pending
+    return route.fulfill({ status: 201, json: { id: 21, label: 'Research' } })
+  })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+  const dialog = page.getByRole('dialog')
+  if (mode === 'create') {
+    await page.getByRole('button', { name: 'New Goal', exact: true }).click()
+  } else {
+    await page.getByRole('button', { name: 'Goal details', exact: true }).first().click()
+    await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+  }
+  await dialog.getByRole('button', { name: 'New category', exact: true }).click()
+  await dialog.getByRole('textbox', { name: 'New category', exact: true }).fill('Research')
+  const request = page.waitForRequest(request => request.url().endsWith('/api/goals/categories') && request.method() === 'POST')
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+  try {
+    await request
+    if (mode === 'create') {
+      await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+      await expect(dialog).toHaveCount(0)
+      await page.getByRole('button', { name: 'New Goal', exact: true }).click()
+    } else {
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).last().click()
+      await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+    }
+    await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Next synthetic Goal')
+    const response = page.waitForResponse(response => response.url().endsWith('/api/goals/categories') && response.request().method() === 'POST')
+    release()
+    await (await response).finished()
+    await dialog.getByRole('combobox', { name: 'Category', exact: true }).click()
+    await expect(page.getByRole('option', { name: 'Research', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(dialog.getByRole('combobox', { name: 'Category', exact: true })).toHaveValue('')
+    await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Next synthetic Goal')
   } finally { release() }
 })
 

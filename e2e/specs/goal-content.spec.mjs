@@ -20,14 +20,30 @@ test('Goal descriptions and private categories persist while tracking stays inde
   const referrers = await checked(await request.get(`/api/goals/referrers/messenger?agent_id=${fixture.agent_id}`, { headers }))
   const referrer = referrers.find(item => item.is_current_user)
   expect(referrer).toBeTruthy()
-  const category = await checked(await request.post('/api/goals/categories', { headers, data: {
-    label: `Synthetic Goal projects ${fixture.agent_id}`,
-  } }))
-  let goal = await checked(await request.post('/api/goals', { headers, data: {
-    agent_id: fixture.agent_id, title: `Synthetic editorial Goal ${fixture.agent_id}`, description: '<p>Initial objective</p>',
-    referrer: { type: 'MESSENGER', connection_id: referrer.connection_id,
-      user_id: referrer.user_id, display_name: referrer.display_name }, active: false,
-  } }))
+  const agents = await checked(await request.get('/api/agents/selection?scope=management', { headers }))
+  const selectedAgent = agents.find(item => item.id === fixture.agent_id)
+  expect(selectedAgent).toBeTruthy()
+  await page.goto('/goal')
+  await page.getByRole('button', { name: /^(Nouvel objectif|New Goal)$/ }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Agent', exact: true }).click()
+  await page.getByRole('option', { name: selectedAgent.label, exact: true }).click()
+  await dialog.getByRole('textbox', { name: /^(Titre|Title)$/ }).fill(`Synthetic editorial Goal ${fixture.agent_id}`)
+  await dialog.locator('[data-editor-surface]').fill('Initial objective')
+  await dialog.getByRole('button', { name: /^(Nouvelle catégorie|New category)$/ }).click()
+  await dialog.getByRole('textbox', { name: /^(Nouvelle catégorie|New category)$/ }).fill(`Synthetic Goal projects ${fixture.agent_id}`)
+  const categoryCreated = page.waitForResponse(response => new URL(response.url()).pathname === '/api/goals/categories'
+    && response.request().method() === 'POST')
+  await dialog.getByRole('button', { name: /^(Ajouter|Add)$/ }).click()
+  const category = await checked(await categoryCreated)
+  await expect(dialog.getByRole('combobox', { name: /^(Catégorie|Category)$/ })).toHaveValue(category.label)
+  await expect(dialog.getByRole('textbox', { name: /^(Titre|Title)$/ })).toHaveValue(`Synthetic editorial Goal ${fixture.agent_id}`)
+  await dialog.getByRole('switch', { name: /^(Activer immédiatement|Activate immediately)$/ }).uncheck()
+  const goalCreated = page.waitForResponse(response => new URL(response.url()).pathname === '/api/goals'
+    && response.request().method() === 'POST')
+  await dialog.getByRole('button', { name: /^(Créer|Create)$/ }).click()
+  let goal = await checked(await goalCreated)
+  expect(goal.category_id).toBe(category.id)
   expect(goal).not.toHaveProperty('description_document_id')
   const child = await checked(await request.post('/api/goals', { headers, data: {
     agent_id: fixture.agent_id, title: `Synthetic sub-goal ${fixture.agent_id}`, description: '<p>Child objective</p>',
@@ -44,7 +60,6 @@ test('Goal descriptions and private categories persist while tracking stays inde
   expect(library.entries.filter(entry => entry.item.metadata.goal_id === goal.id).map(entry => entry.item.id)).toEqual([trackingId])
 
   await page.goto(`/goal?goal_id=${goal.id}`)
-  const dialog = page.getByRole('dialog')
   await expect(dialog.locator('.goal-description')).toContainText('Initial objective')
   await dialog.getByRole('tab', { name: /^(Modification|Edit)$/ }).click()
   await dialog.getByRole('combobox', { name: /^(Catégorie|Category)$/ }).click()
