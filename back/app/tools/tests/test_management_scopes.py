@@ -209,3 +209,115 @@ async def test_galaris_scope_protects_tasks_and_llm_ids_before_pagination(db, sc
     await db.commit()
     with pytest.raises(PermissionError):
         await require_agent_task_access(tasks[1], caller.id, manage=True)
+
+
+@pytest.mark.asyncio
+async def test_incident_inspection_scopes_pagination_traces_and_live_revocation(db, scope_agents):
+    from app.incident import mcp as incidents, service
+    from app.incident.contracts import FailureEvent
+    from app.incident.models import FailurePattern
+    from app.incident.schemas import FailurePatternUpdate
+
+    (caller, peer, outsider), team = scope_agents
+    now = datetime.now(timezone.utc)
+    records = [await service.record_failure(db, FailureEvent(
+        idempotency_key=f"synthetic-scoped-incident:{uuid4()}", kind="tool", phase="execute",
+        agent_id=agent.id if agent else None, tool_name="synthetic_read",
+        error_type="SyntheticError", error_message="Synthetic shared failure",
+        occurred_at=now + timedelta(seconds=index),
+        trace={"diagnostic": f"Synthetic trace {index}", "password": "synthetic-hidden-secret"},
+    )) for index, agent in enumerate((caller, peer, outsider, None))]
+    await db.commit()
+    assert len({record.pattern_id for record in records}) == 1
+    await service.update_pattern(records[0].pattern_id, FailurePatternUpdate(
+        status="triaged", diagnosis="Synthetic global diagnostic from outside the delegated scope",
+    ))
+    ctx = McpToolContext(caller.id, "internal")
+    for operation in (lambda: incidents.incidents_list(ctx),
+                      lambda: incidents.incident_get(ctx, records[0].id)):
+        with pytest.raises(PermissionError):
+            await operation()
+    grant = await delegate(db, caller, "galaris_admin", "personal")
+    page = await incidents.incidents_list(ctx)
+    assert page["page_size"] == 50 and page["total"] == 1
+    assert [item["id"] for item in page["items"]] == [str(records[0].id)]
+    assert "trace" not in page["items"][0]
+    assert "pattern_occurrence_count" not in page["items"][0]
+    await delegate(db, caller, "galaris_admin", "team")
+    page = await incidents.incidents_list(ctx, page_size=1)
+    assert page["total"] == 2
+    assert page["items"][0]["id"] == str(records[1].id)
+    assert (await incidents.incidents_list(ctx, page=2, page_size=1))["items"][0]["id"] == str(records[0].id)
+    detail = await incidents.incident_get(ctx, records[1].id)
+    assert detail["trace"]["diagnostic"] == "Synthetic trace 1"
+    assert detail["trace"]["password"] == "[REDACTED]"
+    assert detail["redacted_fields"] and detail["trace_content_hash"]
+    assert {"pattern", "pattern_status", "pattern_occurrence_count"}.isdisjoint(detail)
+    for missing in (records[2].id, records[3].id, uuid4()):
+        with pytest.raises(ValueError, match="not found"):
+            await incidents.incident_get(ctx, missing)
+    await db.execute(delete(AgentTeam).where(AgentTeam.agent_id == peer.id, AgentTeam.team_id == team.id))
+    await db.commit()
+    with pytest.raises(ValueError, match="not found"):
+        await incidents.incident_get(ctx, records[1].id)
+    assert (await incidents.incidents_list(ctx))["total"] == 1
+    await delegate(db, caller, "galaris_admin", "all")
+    page = await incidents.incidents_list(ctx, page_size=500)
+    assert page["total"] == 4 and page["items"][0]["id"] == str(records[3].id)
+    detail = await incidents.incident_get(ctx, records[2].id)
+    pattern = await db.get(FailurePattern, records[2].pattern_id)
+    assert detail["pattern"]["diagnosis"] == pattern.diagnosis
+    assert detail["pattern_occurrence_count"] == 4
+    # The same filters bound rows and totals before pagination, including inclusive dates.
+    filtered = await incidents.incidents_list(ctx, occurred_from=now, occurred_until=now,
+        kind="tool", category=records[0].category, search="shared failure", recovered=False)
+    assert filtered["total"] == 1 and filtered["items"][0]["id"] == str(records[0].id)
+    assert (await incidents.incidents_list(ctx, recovered=True))["total"] == 0
+    assert (await incidents.incidents_list(ctx, kind="llm"))["total"] == 0
+    assert (await incidents.incidents_list(ctx, search="synthetic-absent"))["total"] == 0
+    for arguments in ({"page": 0}, {"page_size": 0}, {"page_size": 501},
+                      {"occurred_from": now.replace(tzinfo=None)},
+                      {"occurred_until": now.replace(tzinfo=None)},
+                      {"occurred_from": now + timedelta(seconds=1), "occurred_until": now}):
+        with pytest.raises(ValueError):
+            await incidents.incidents_list(ctx, **arguments)
+    await connections.set_connection_active(grant.id, False)
+    for operation in (lambda: incidents.incidents_list(ctx),
+                      lambda: incidents.incident_get(ctx, records[2].id)):
+        with pytest.raises(PermissionError):
+            await operation()
+
+
+@pytest.mark.asyncio
+async def test_incident_tools_work_over_mcp_and_recheck_function_permissions(db, scope_agents):
+    from fastmcp import Client
+    from app.incident import service
+    from app.incident.contracts import FailureEvent
+    from app.tools import build_galaris_fastmcp
+
+    (caller, _, _), _ = scope_agents
+    record = await service.record_failure(db, FailureEvent(
+        idempotency_key=f"synthetic-mcp-incident:{uuid4()}", kind="llm", agent_id=caller.id,
+        error_type="SyntheticProviderError", error_message="Synthetic provider unavailable",
+        trace={"diagnostic": "Synthetic transport trace"},
+    ))
+    await db.commit()
+    grant = await delegate(db, caller, "galaris_admin", "personal")
+    for name in ("incidents_list", "incident_get"):
+        await connections.set_connection_function_state(grant.id, name, "enabled")
+    server = build_galaris_fastmcp(caller.id, runtime="internal", enabled_tool_codes={"galaris_admin"})
+    async with Client(server) as client:
+        tools = {tool.name: tool for tool in await client.list_tools()}
+        assert {"incidents_list", "incident_get"} <= tools.keys()
+        assert tools["incidents_list"].input_schema["properties"]["page_size"]["maximum"] == 500
+        listing = await client.call_tool("incidents_list", {"page_size": 500})
+        assert listing.structured_content["items"][0]["id"] == str(record.id)
+        detail = await client.call_tool("incident_get", {"incident_id": str(record.id)})
+        assert detail.structured_content["trace"]["diagnostic"] == "Synthetic transport trace"
+        invalid = await client.call_tool("incidents_list", {"page_size": 501}, raise_on_error=False)
+        assert invalid.is_error
+        invalid = await client.call_tool("incident_get", {"incident_id": "not-a-uuid"}, raise_on_error=False)
+        assert invalid.is_error
+        await connections.set_connection_function_state(grant.id, "incident_get", "disabled")
+        denied = await client.call_tool("incident_get", {"incident_id": str(record.id)}, raise_on_error=False)
+        assert denied.is_error

@@ -11,15 +11,15 @@ tests remain authoritative for behavior.
 
 - 78 declared backend modules;
 - 40 declared frontend modules;
-- 637 backend dependency edges;
+- 638 backend dependency edges;
 - 217 frontend dependency edges;
-- 303 edges between `app`/`bridge` domains;
+- 304 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
 - 782 detected HTTP/WebSocket handlers;
 - 184 detected SQLAlchemy tables;
-- 289 detected native MCP tools;
+- 291 detected native MCP tools;
 - 55 detected Vue pages.
 
 ## Backend Modules
@@ -32,7 +32,7 @@ tests remain authoritative for behavior.
 | `core.params` | core | no | yes | `i18n/`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `core.dbadmin` | core | no | yes | `contracts.py`, `models.py`, `tests/` |
 | `core.storage` | core | no | yes | `models.py`, `tests/` |
-| `app.incident` | app | no | yes | `contracts.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
+| `app.incident` | app | no | yes | `contracts.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.tools` | app | no | yes | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.documentation` | app | no | yes | `contracts.py`, `facade.py`, `models.py`, `tests/` |
 | `app.agent` | app | no | yes | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
@@ -381,6 +381,7 @@ tests remain authoritative for behavior.
 | `app.image` | `core.document` | `back/app/image/mcp.py` |
 | `app.image` | `core.i18n` | `back/app/image/image_service.py`, `back/app/image/mcp.py`, `back/app/image/transport.py` |
 | `app.image` | `core.util` | `back/app/image/image_service.py`, `back/app/image/mcp.py`, `back/app/image/transport.py` |
+| `app.incident` | `app.tools` | `back/app/incident/mcp.py` |
 | `app.incident` | `core.authorize` | `back/app/incident/router.py` |
 | `app.incident` | `core.database` | `back/app/incident/models.py`, `back/app/incident/retention.py`, `back/app/incident/service.py` |
 | `app.incident` | `core.failure_journal` | `back/app/incident/__init__.py`, `back/app/incident/contracts.py` |
@@ -1065,6 +1066,7 @@ tests remain authoritative for behavior.
 | `app.mcp` | 2 | `app.agent`, `app.tools` |
 | `bridge.one_bot` | 2 | `app.connection`, `app.messenger` |
 | `app.dataset` | 1 | `app.document` |
+| `app.incident` | 1 | `app.tools` |
 | `bridge.anthropic` | 1 | `app.llm` |
 | `bridge.azure_speech` | 1 | `app.llm` |
 | `bridge.byteplus` | 1 | `app.llm` |
@@ -1097,7 +1099,7 @@ tests remain authoritative for behavior.
 |---|---:|---|
 | `app.llm` | 45 | `app.agent`, `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
 | `app.agent` | 35 | `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
-| `app.tools` | 32 | `app.agent`, `app.audio`, `app.browser`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
+| `app.tools` | 33 | `app.agent`, `app.audio`, `app.browser`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
 | `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
 | `app.connection` | 22 | `app.browser`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
 | `app.file_share` | 19 | `app.agent`, `app.audio`, `app.browser`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
@@ -1713,12 +1715,12 @@ tests remain authoritative for behavior.
 | GET | `/healthz` | `bridge.codex` | `health` | no | `back/bridge/codex/default-agent/server.py:189` |
 | GET | `/hermes/configurations` | `bridge.hermes` | `list_hermes_configurations` | yes | `back/bridge/hermes/router.py:66` |
 | PUT | `/hermes/configurations/{id}` | `bridge.hermes` | `update_hermes_configuration` | yes | `back/bridge/hermes/router.py:84` |
-| GET | `/incidents` | `app.incident` | `read_incidents` | yes | `back/app/incident/router.py:77` |
-| DELETE | `/incidents/cleanup` | `app.incident` | `cleanup_incidents` | yes | `back/app/incident/router.py:143` |
-| GET | `/incidents/patterns` | `app.incident` | `read_patterns` | yes | `back/app/incident/router.py:103` |
-| PATCH | `/incidents/patterns/{pattern_id}` | `app.incident` | `patch_pattern` | yes | `back/app/incident/router.py:171` |
-| GET | `/incidents/recent` | `app.incident` | `read_recent_incidents` | yes | `back/app/incident/router.py:127` |
-| GET | `/incidents/{incident_id}` | `app.incident` | `read_incident` | yes | `back/app/incident/router.py:152` |
+| GET | `/incidents` | `app.incident` | `read_incidents` | yes | `back/app/incident/router.py:40` |
+| DELETE | `/incidents/cleanup` | `app.incident` | `cleanup_incidents` | yes | `back/app/incident/router.py:106` |
+| GET | `/incidents/patterns` | `app.incident` | `read_patterns` | yes | `back/app/incident/router.py:66` |
+| PATCH | `/incidents/patterns/{pattern_id}` | `app.incident` | `patch_pattern` | yes | `back/app/incident/router.py:124` |
+| GET | `/incidents/recent` | `app.incident` | `read_recent_incidents` | yes | `back/app/incident/router.py:90` |
+| GET | `/incidents/{incident_id}` | `app.incident` | `read_incident` | yes | `back/app/incident/router.py:115` |
 | GET | `/internal/agents` | `app.process` | `native_execution_agents` | yes | `back/app/process/native_router.py:153` |
 | GET | `/internal/decision-models` | `app.process` | `native_decision_models` | yes | `back/app/process/native_router.py:118` |
 | GET | `/internal/definitions` | `app.process` | `native_list_definitions` | yes | `back/app/process/native_router.py:160` |
@@ -2356,6 +2358,8 @@ tests remain authoritative for behavior.
 | `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:248` |
 | `documentation_catalog` | `galaris_admin` | `app.tools` | `documentation_catalog` | `back/app/tools/mcp.py:37` |
 | `documentation_search` | `galaris_admin` | `app.tools` | `documentation_search` | `back/app/tools/mcp.py:50` |
+| `incident_get` | `galaris_admin` | `app.incident` | `incident_get` | `back/app/incident/mcp.py:76` |
+| `incidents_list` | `galaris_admin` | `app.incident` | `incidents_list` | `back/app/incident/mcp.py:31` |
 | `llm_call` | `galaris_admin` | `app.llm` | `mcp_llm_call` | `back/app/llm/mcp.py:70` |
 | `llm_calls` | `galaris_admin` | `app.llm` | `mcp_llm_calls` | `back/app/llm/mcp.py:88` |
 | `voice_turn_get` | `galaris_admin` | `app.voice` | `voice_turn_get` | `back/app/voice/mcp.py:52` |

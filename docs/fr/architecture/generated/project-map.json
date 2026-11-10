@@ -2531,6 +2531,13 @@
       },
       {
         "files": [
+          "back/app/incident/mcp.py"
+        ],
+        "source": "app.incident",
+        "target": "app.tools"
+      },
+      {
+        "files": [
           "back/app/incident/router.py"
         ],
         "source": "app.incident",
@@ -6670,7 +6677,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 303,
+      "domain_edges": 304,
       "fan_in": [
         {
           "count": 45,
@@ -6765,7 +6772,7 @@
           ]
         },
         {
-          "count": 32,
+          "count": 33,
           "module": "app.tools",
           "modules": [
             "app.agent",
@@ -6781,6 +6788,7 @@
             "app.harness",
             "app.harnesses",
             "app.image",
+            "app.incident",
             "app.lab",
             "app.llm",
             "app.mcp",
@@ -7685,6 +7693,13 @@
           "module": "app.dataset",
           "modules": [
             "app.document"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app.incident",
+          "modules": [
+            "app.tools"
           ]
         },
         {
@@ -9030,6 +9045,22 @@
         "line": 50,
         "module": "app.tools",
         "name": "documentation_search",
+        "namespace": "galaris_admin"
+      },
+      {
+        "file": "back/app/incident/mcp.py",
+        "handler": "incident_get",
+        "line": 76,
+        "module": "app.incident",
+        "name": "incident_get",
+        "namespace": "galaris_admin"
+      },
+      {
+        "file": "back/app/incident/mcp.py",
+        "handler": "incidents_list",
+        "line": 31,
+        "module": "app.incident",
+        "name": "incidents_list",
         "namespace": "galaris_admin"
       },
       {
@@ -12476,6 +12507,7 @@
       {
         "capabilities": [
           "contracts.py",
+          "mcp.py",
           "models.py",
           "privileges.py",
           "router.py",
@@ -18660,7 +18692,7 @@
         "declared_path": "/incidents",
         "file": "back/app/incident/router.py",
         "handler": "read_incidents",
-        "line": 77,
+        "line": 40,
         "method": "GET",
         "module": "app.incident"
       },
@@ -18669,7 +18701,7 @@
         "declared_path": "/incidents/cleanup",
         "file": "back/app/incident/router.py",
         "handler": "cleanup_incidents",
-        "line": 143,
+        "line": 106,
         "method": "DELETE",
         "module": "app.incident"
       },
@@ -18678,7 +18710,7 @@
         "declared_path": "/incidents/patterns",
         "file": "back/app/incident/router.py",
         "handler": "read_patterns",
-        "line": 103,
+        "line": 66,
         "method": "GET",
         "module": "app.incident"
       },
@@ -18687,7 +18719,7 @@
         "declared_path": "/incidents/patterns/{pattern_id}",
         "file": "back/app/incident/router.py",
         "handler": "patch_pattern",
-        "line": 171,
+        "line": 124,
         "method": "PATCH",
         "module": "app.incident"
       },
@@ -18696,7 +18728,7 @@
         "declared_path": "/incidents/recent",
         "file": "back/app/incident/router.py",
         "handler": "read_recent_incidents",
-        "line": 127,
+        "line": 90,
         "method": "GET",
         "module": "app.incident"
       },
@@ -18705,7 +18737,7 @@
         "declared_path": "/incidents/{incident_id}",
         "file": "back/app/incident/router.py",
         "handler": "read_incident",
-        "line": 152,
+        "line": 115,
         "method": "GET",
         "module": "app.incident"
       },

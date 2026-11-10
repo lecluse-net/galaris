@@ -818,6 +818,10 @@ Quelques distinctions utiles :
   parcours, lancer une indexation, l'annuler ou relancer les réparations.
 - **Superviser → Journal des échecs** (`/incident`) sert au diagnostic ;
   **Préférences → Journaux** (`/params/logs`) configure la conservation et les purges.
+  Un agent autorisé peut consulter ce journal via **Galaris Admin** : `incidents_list`
+  filtre et pagine les erreurs, puis `incident_get` ouvre la trace d'une occurrence.
+  Activez la connexion et déléguez le périmètre personnel, équipe ou tous selon le besoin.
+  Seul « tous » donne accès aux incidents sans agent et aux diagnostics globaux des motifs.
 - **Administrer → Laboratoire** (`/lab`) regroupe l’analyse de tâches et les évaluations
   par mécanisme, filtrées selon les droits. Voir le [guide du Lab](lab-ai.md).
 - Le menu du compte ouvre le profil (`/authorize/profile`) et **Mes Tokens API**

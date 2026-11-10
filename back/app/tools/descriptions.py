@@ -90,9 +90,15 @@ _DETAILS["galaris_admin"] = (
     "is available to authorized agents under their skill assignment policy. Documentation includes current guides, "
     "architecture decisions and explicitly prospective plans for the shipped version. Semantic search falls back "
     "to text search when the vector model or its index is unavailable.\n\n"
-    "For documentation-only access, disable conversation_round_get, voice_turn_get, llm_call and llm_calls "
+    "For documentation-only access, disable conversation_round_get, voice_turn_get, llm_call, llm_calls, "
+    "incidents_list and incident_get "
     "in the connection's function permissions. Keep documentation_catalog enabled: it also controls direct "
     "source URI access. Enable conversation availability when this capability should be usable in Chat.\n\n"
+    "Failure journal: use incidents_list to filter and paginate LLM/tool failures, then incident_get "
+    "for one sanitized trace. Date filters are inclusive and require timezone offsets. Personal/team "
+    "scopes restrict incidents to their agents; all scope additionally exposes unowned incidents "
+    "and shared pattern diagnoses, remediation, fix references and counts. These tools never resolve "
+    "or purge incidents.\n\n"
     + _DETAILS["galaris_admin"]
 )
 

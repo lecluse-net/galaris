@@ -155,6 +155,8 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
         "voice_turn_get",
         "llm_call",
         "llm_calls",
+        "incidents_list",
+        "incident_get",
         "documentation_catalog",
         "documentation_search",
     }

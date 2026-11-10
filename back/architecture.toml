@@ -29,8 +29,9 @@ allowed_dependencies = []
 max_domain_fan_out = 0
 
 [module."app.incident"]
-allowed_dependencies = []
-max_domain_fan_out = 0
+# The read-only MCP adapter consumes the public Tools decorator and live administration scope.
+allowed_dependencies = ["app.tools"]
+max_domain_fan_out = 1
 
 [module."app.tools"]
 allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.documentation", "app.file_share", "app.llm", "app.messenger", "app.task", "app.util"]

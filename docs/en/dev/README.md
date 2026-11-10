@@ -1264,6 +1264,13 @@ model-call inspection. They include execution traces and
 all correlated `LLMCall`s. Each wrapper rechecks the active `galaris_admin` connection at call
 time; prior function discovery alone is not durable authorization.
 
+The failure journal is also exposed through `incidents_list` (paginated list with inclusive
+timezone-aware date, kind, category, recovery and search filters), then `incident_get`
+(exact UUID, sanitized trace and metadata). Personal/team scope filters SQL before counting
+and pagination; incidents without an agent and shared pattern diagnostics/counters require
+`all` scope. The `usage` scope grants no journal access. These tools are read-only and recheck
+activation and delegation on every call.
+
 `app.goal.mcp` adapts the existing business service without duplicating its persistence:
 
 - creation with explicit and distinct owner and agent referrer;

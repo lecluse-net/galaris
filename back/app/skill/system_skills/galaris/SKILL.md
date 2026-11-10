@@ -808,6 +808,18 @@ Galaris interface or another trusted result, and never guess one. The server rec
   array containing only the IDs of the most recent calls whose `started_at` is in the inclusive
   range, newest first. Use ISO 8601 datetimes with a timezone offset; `limit` must be between 1
   and 100.
+- `incidents_list(page=1, page_size=50, occurred_from=None, occurred_until=None, kind=None,
+  category=None, recovered=None, search=None) -> dict` reads the failure journal shown at
+  `/incident`. It returns `items`, `total`, `page` and `page_size`, newest first, without traces.
+  Use inclusive ISO 8601 dates with timezone offsets to bound an audit, then follow pages until
+  all matching incidents have been read; the maximum page size is 500.
+- `incident_get(incident_id: UUID) -> dict` reads one exact incident UUID returned by the list:
+  error, correlations, sanitized trace, redacted/truncated fields and content hash. With `all`
+  administration scope it also includes the grouped pattern's status, count, diagnosis, cause,
+  remediation, fix reference and regression test. Personal/team scopes expose only incidents
+  owned by their agents and omit shared pattern diagnostics and counters. Incidents without an
+  agent require `all` scope. Connection activity and scope are rechecked on both tools at each
+  call; `usage` grants no incident access. These tools do not resolve, purge or replay failures.
 
 - `conversation_round_get(round_id: str) -> dict` returns the complete stored dataset for one
   text conversation round: round and mailbox state, agent identity, aggregated inputs, attempts,

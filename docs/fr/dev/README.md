@@ -1299,6 +1299,13 @@ d’exécution et tous les `LLMCall` corrélés. Chaque wrapper revérifie la co
 `galaris_admin` active au moment de l’appel ; la seule découverte préalable de la fonction ne
 constitue pas une autorisation durable.
 
+Le journal des échecs est aussi exposé par `incidents_list` (liste paginée, filtres de dates
+inclusives avec fuseau, type, catégorie, récupération et recherche) puis `incident_get`
+(UUID exact, trace assainie et métadonnées). Le périmètre personnel/équipe est appliqué en SQL
+avant comptage et pagination ; les incidents sans agent et les diagnostics/compteurs des motifs
+partagés nécessitent le périmètre `all`. Le périmètre `usage` n'accorde aucun accès au journal.
+Ces outils sont en lecture seule et revérifient l'activation et la délégation à chaque appel.
+
 `app.goal.mcp` adapte le service métier existant sans dupliquer sa persistance :
 
 - création avec propriétaire et référent agent explicites et distincts ;

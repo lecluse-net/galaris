@@ -266,7 +266,13 @@ def _incident_filters(
     recovered: bool | None,
     search: str | None,
     agent_ids: Collection[int] | None,
+    occurred_from: datetime | None = None,
+    occurred_until: datetime | None = None,
 ) -> Select[Any]:
+    if occurred_from is not None:
+        query = query.where(FailureIncident.occurred_at >= occurred_from)
+    if occurred_until is not None:
+        query = query.where(FailureIncident.occurred_at <= occurred_until)
     if kind:
         query = query.where(FailureIncident.kind == kind)
     if category:
@@ -300,6 +306,8 @@ async def list_incidents(
     recovered: bool | None = None,
     search: str | None = None,
     agent_ids: Collection[int] | None = None,
+    occurred_from: datetime | None = None,
+    occurred_until: datetime | None = None,
 ) -> tuple[list[tuple[FailureIncident, FailurePattern]], int]:
     count_query = _incident_filters(
         select(func.count(FailureIncident.id)),
@@ -308,6 +316,8 @@ async def list_incidents(
         recovered=recovered,
         search=search,
         agent_ids=agent_ids,
+        occurred_from=occurred_from,
+        occurred_until=occurred_until,
     )
     total = int((await get_db().scalar(count_query)) or 0)
     query = _incident_filters(
@@ -322,6 +332,8 @@ async def list_incidents(
         recovered=recovered,
         search=search,
         agent_ids=agent_ids,
+        occurred_from=occurred_from,
+        occurred_until=occurred_until,
     )
     rows = (
         await get_db().execute(
