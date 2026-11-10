@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -13,15 +13,19 @@ test('production build rejects missing native PWA colour hints', async t => {
   await mkdir(join(directory, '.vite'))
   await writeFile(join(directory, '.vite/manifest.json'), '{}')
   const pwa = { theme_color: '#202020', background_color: '#202020' }
-  const report = () => execFileSync(process.execPath, [
-    fileURLToPath(new URL('./report-build.mjs', import.meta.url)), directory,
+  const report = (...args) => execFileSync(process.execPath, [
+    fileURLToPath(new URL('./report-build.mjs', import.meta.url)), directory, ...args,
   ], { encoding: 'utf8', stdio: 'pipe' })
   await writeFile(join(directory, 'manifest.webmanifest'), JSON.stringify(pwa))
   assert.equal(JSON.parse(report()).metric, 'frontend_build_bytes')
+  assert.equal(JSON.parse(report('--check-budgets')).metric, 'frontend_build_bytes')
+  assert.throws(() => report('--check-budget'), /Unknown option/)
   for (const field of Object.keys(pwa)) {
     for (const value of [undefined, '']) {
       await writeFile(join(directory, 'manifest.webmanifest'), JSON.stringify({ ...pwa, [field]: value }))
-      assert.throws(report, new RegExp(`Installed PWA requires.*${field}`))
+      for (const args of [[], ['--check-budgets']]) {
+        assert.throws(() => report(...args), new RegExp(`Installed PWA requires.*${field}`))
+      }
     }
   }
 })
@@ -54,7 +58,7 @@ test('startup measurement includes the selected JSON catalog and counts shared a
   }
 })
 
-test('build budgets reject eager code, secondary languages and chat dependencies independently', async t => {
+test('budget overruns warn during packaging and fail the explicit quality gate for every measured graph', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'startup-budget-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   await mkdir(join(directory, '.vite'))
@@ -66,7 +70,7 @@ test('build budgets reject eager code, secondary languages and chat dependencies
     return 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'[state >>> 0 & 63]
   }).join('')
   const report = () => execFileSync(process.execPath, [
-    fileURLToPath(new URL('./report-build.mjs', import.meta.url)), directory,
+    fileURLToPath(new URL('./report-build.mjs', import.meta.url)), directory, '--check-budgets',
   ], { encoding: 'utf8', stdio: 'pipe' })
   for (const locale of ['en', 'fr', 'zh', 'chat']) {
     await t.test(locale, async () => {
@@ -80,6 +84,16 @@ test('build budgets reject eager code, secondary languages and chat dependencies
         await writeFile(join(directory, `${locale}.json`), JSON.stringify({ text: noise }))
       }
       await writeFile(join(directory, '.vite/manifest.json'), JSON.stringify(manifest))
+      const packaging = spawnSync(process.execPath, [
+        fileURLToPath(new URL('./report-build.mjs', import.meta.url)), directory,
+      ], { encoding: 'utf8' })
+      assert.equal(packaging.status, 0, packaging.stderr)
+      const measurements = JSON.parse(packaging.stdout)
+      const measured = locale === 'chat' ? measurements.route_additional.chat : measurements.startup_by_locale[locale]
+      const limit = locale === 'chat' ? measurements.route_gzip_limits.chat : measurements.startup_gzip_limits[locale]
+      assert.ok(measured.gzip_bytes > limit)
+      assert.match(packaging.stderr, new RegExp(`${locale} ${locale === 'chat' ? 'route' : 'startup'} exceeds gzip budget`))
+      assert.match(packaging.stderr, /npm run check:build-budgets/)
       assert.throws(report, new RegExp(`${locale} ${locale === 'chat' ? 'route' : 'startup'} exceeds gzip budget`))
     })
   }

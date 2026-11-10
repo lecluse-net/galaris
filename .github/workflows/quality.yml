@@ -99,6 +99,9 @@ jobs:
       - name: Frontend production build and strict typing
         run: docker build --target build-stage --tag galaris-front-quality front
 
+      - name: Frontend transfer budgets
+        run: docker run --rm galaris-front-quality npm run check:build-budgets
+
       - name: Frontend unit tests
         run: docker run --rm galaris-front-quality npm test
 

@@ -20,7 +20,7 @@ bash bin/documentation.sh check
 # A real container run, so it belongs to the static gate rather than the mocked contract test.
 bash bin/test-documentation-confinement.sh
 docker build --target build-stage -t "$tag-front" front
-for script in test test:tooling lint i18n-check; do
+for script in check:build-budgets test test:tooling lint i18n-check; do
   docker run --rm "$tag-front" npm run "$script"
 done
 docker run --rm "$tag-front" npm audit --omit=dev --audit-level=high

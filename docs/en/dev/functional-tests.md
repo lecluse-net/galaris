@@ -346,9 +346,12 @@ reopening and editing without permission to reshare.
 
 ## Frontend startup and deferred readers
 
-`scripts/report-build.mjs` bounds the initial gzip graph to 460,000 bytes in English
-and 600,000 in French or Chinese, including the selected catalogue. Its test covers
-shared-asset counting and each language exceeding its budget independently.
+`scripts/report-build.mjs` measures the initial gzip graph with budgets of 460,000 bytes
+in English and 600,000 in French or Chinese, including the selected catalogue.
+The installation build warns without failing on overruns; CI runs
+`npm run check:build-budgets` to reject them. Its test covers shared-asset counting
+and both behaviors for each language and chat dependencies.
+Invalid PWA artifacts remain rejected in both modes.
 The PWA precache volume remains separate from startup.
 
 `presentation.spec.mjs`, `context-help.spec.mjs` and `business-references.spec.mjs` cover

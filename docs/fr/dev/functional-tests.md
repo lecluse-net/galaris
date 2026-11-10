@@ -372,9 +372,12 @@ réouverture mobile et les droits de modification sans droit de repartage.
 
 ## Démarrage frontend et lecteurs différés
 
-`scripts/report-build.mjs` borne le graphe initial gzip à 460 000 octets en anglais
-et 600 000 en français ou chinois, catalogue sélectionné inclus. Son test vérifie le
-comptage des assets partagés et le refus indépendant des trois dépassements.
+`scripts/report-build.mjs` mesure le graphe initial gzip avec des budgets de 460 000 octets
+en anglais et 600 000 en français ou chinois, catalogue sélectionné inclus.
+Le build d'installation avertit sans échouer sur un dépassement ; la CI exécute
+`npm run check:build-budgets` pour le refuser. Son test vérifie le comptage des assets
+partagés et les deux comportements pour chaque langue et les dépendances du chat.
+Les artefacts PWA invalides restent refusés dans les deux modes.
 Le volume du précache PWA reste distinct du démarrage.
 
 `presentation.spec.mjs`, `context-help.spec.mjs` et `business-references.spec.mjs` couvrent

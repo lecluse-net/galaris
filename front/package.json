@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run type-check && npm run lint && vite build && node scripts/report-build.mjs",
+    "check:build-budgets": "node scripts/report-build.mjs --check-budgets",
     "preview": "vite preview",
     "test": "node --test",
     "test:tooling": "node --test scripts/typecheck-gate.check.mjs",

@@ -330,9 +330,15 @@ et produit les ressources JSON des autres langues, également précachées pour 
 qui dépend de la langue. Un téléchargement échoué préserve l’interface courante et peut être
 réessayé ; une réponse tardive ne remplace ni une sélection plus récente ni une autre session.
 
-Le build refuse un graphe initial supérieur à 460 000 octets gzip en anglais ou
-600 000 en français/chinois. Ces budgets incluent le catalogue sélectionné et sont
-contrôlés après émission du rapport ; les polices, API et téléchargements du précache
+Les budgets du graphe initial sont de 460 000 octets gzip en anglais et
+600 000 en français/chinois. `npm run build` émet les mesures et un avertissement
+pour chaque dépassement, sans bloquer la fabrication de l'image ni `make update`.
+La CI Quality et le contrôle statique local exécutent ensuite `npm run check:build-budgets` sur les mêmes assets :
+ce contrôle strict échoue en cas de dépassement. Pour le reproduire localement,
+construire l'image avec `docker build --target build-stage --tag galaris-front-quality front`,
+puis exécuter `docker run --rm galaris-front-quality npm run check:build-budgets`.
+Les erreurs de compilation, de typage, de lint et les artefacts invalides restent bloquants.
+Ces budgets incluent le catalogue sélectionné ; les polices, API et téléchargements du précache
 restent hors de cette mesure. La façade `core/util/facade` expose les primitives utiles
 au bootstrap sans charger le catalogue de composants ; les mêmes instances restent
 disponibles via l'interface racine.

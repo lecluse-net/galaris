@@ -295,9 +295,14 @@ are asynchronous: await them before actions that depend on the language. Failed 
 preserve the current interface and can be retried; late responses cannot replace a newer
 selection or another session.
 
-Builds reject initial graphs above 460,000 gzip bytes in English or 600,000 in
-French/Chinese. These budgets include the selected catalogue and are checked after the
-report is emitted; fonts, APIs and precache downloads remain outside this measurement.
+Initial graph budgets are 460,000 gzip bytes in English and 600,000 in French/Chinese.
+`npm run build` prints measurements and a warning for each overrun without blocking
+image packaging or `make update`. Quality CI and the local static gate run `npm run check:build-budgets`
+against the same assets: this strict check fails on overruns. To reproduce locally,
+build with `docker build --target build-stage --tag galaris-front-quality front`, then run
+`docker run --rm galaris-front-quality npm run check:build-budgets`.
+Compilation, typing, lint and invalid artifact errors remain blocking.
+These budgets include the selected catalogue; fonts, APIs and precache downloads remain outside this measurement.
 The `core/util/facade` surface exposes bootstrap primitives without loading the component
 catalogue; the same instances remain available through the root interface.
 
