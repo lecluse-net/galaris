@@ -62,6 +62,7 @@
           </template>
         </q-list>
       </q-menu>
+    <LibraryIconPicker v-model="emojiOpen" :target="emojiTarget ?? false" emoji-only :busy="readonly" :save="insertEmoji" anchor="bottom middle" self="top middle" no-refocus @hide="closeEmoji()" />
     <ResourceDetailDialog v-if="resourceDetail" :target="resourceDetail" @close="resourceDetail = null" />
     <EquationDialog v-if="mathOpen" :kind="mathKind" :latex="mathLatex" @apply="applyMath" @close="closeMath" />
     <RenderedObjectPreview v-if="objectPreview" :key="objectPreview.key" :source="objectPreview.source" :language="objectPreview.language" :capture="capturePreview" :title="t('richEditor.interactivePreview')" @close="objectPreview = null" />
@@ -109,6 +110,8 @@ import { closeHistory } from '@tiptap/pm/history'
 import { marked } from 'marked'
 import EditorialToolButton from './EditorialToolButton.vue'
 import EditorialToolbar from './EditorialToolbar.vue'
+import LibraryIconPicker from './LibraryIconPicker.vue'
+import { unicodeIcon } from '../tagIcon'
 import type { MathKind } from '../mathRendering'
 import DocumentOutline from './DocumentOutline.vue'
 import EditorialSource from './EditorialSource.vue'
@@ -242,7 +245,7 @@ function applyMath(latex: string): void {
   closeMath()
 }
 function request(): AbortController { const value = new AbortController(); requests.add(value); return value }
-function stop(): void { closeMath(false); pointerRequest++; pointerMenu.value?.hide(); pointerTextContext.value = false; pointerSelection = undefined; generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; findOpen.value = false; linkOpen.value = false; objectPreview.value = null }
+function stop(): void { emojiOpen.value = false; closeEmoji(false); closeMath(false); pointerRequest++; pointerMenu.value?.hide(); pointerTextContext.value = false; pointerSelection = undefined; generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; findOpen.value = false; linkOpen.value = false; objectPreview.value = null }
 function inputHtml(value: string): string {
   if (mediaType === 'text/markdown') value = marked.parse(value, { async: false })
   if (mediaType === 'text/plain') { const paragraph = document.createElement('p'); paragraph.textContent = value; value = paragraph.outerHTML }
@@ -774,6 +777,21 @@ async function convertCard(): Promise<void> {
   } catch { $q.notify({ type: 'warning', message: t('richEditor.resources.cardUnavailable') }) } finally { release(at); busyCard.value = false }
 }
 const dialogOpen = ref(false), dialog = ref('link'); let dialogAnchor: Anchor | undefined
+const emojiOpen = ref(false), emojiTarget = shallowRef<HTMLElement>()
+let emojiAnchor: Anchor | undefined
+function closeEmoji(restoreFocus = true): void {
+  const at = emojiAnchor
+  if (restoreFocus && at && valid(at)) editor.value?.view.focus()
+  release(at); emojiAnchor = undefined
+}
+async function insertEmoji(value: string | null): Promise<boolean> {
+  const current = editor.value, at = emojiAnchor
+  const text = unicodeIcon(value ?? '')
+  if (!current || !at || !valid(at) || !text) return false
+  current.view.dispatch(closeHistory(current.state.tr))
+  return current.chain().focus().setTextSelection({ from: at.from, to: at.to })
+    .insertContent({ type: 'text', text }).run()
+}
 const imageStyles = computed(() => ['inline', 'wrapText', 'breakText'].map(value => ({ value, label: t('richEditor.imageStyles.' + value) })))
 const listStyles = computed(() => (editor.value?.isActive('orderedList') ? ['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 'upper-alpha'] : ['disc', 'circle', 'square']).map(value => ({ value, label: t('richEditor.listStyles.' + value) })))
 const fields = ref({ url: '', text: '', search: '', replace: '', matchCase: false, wholeWords: false, alt: '', caption: '', width: '', height: '', background: '', border: '', color: '#087FF5', imageStyle: 'breakText', imageLink: '', start: '1', reversed: false, listStyle: 'decimal' })
@@ -1048,6 +1066,11 @@ function action(key: string, value?: string): void {
   const chain = current.chain()
   if (!current.view.hasFocus()) chain.focus()
   switch (key) {
+    case 'insertEmoji':
+      release(emojiAnchor); emojiAnchor = anchor()
+      emojiTarget.value = root.value?.querySelector<HTMLElement>('[data-editorial-command="insertEmoji"]') ?? undefined
+      emojiOpen.value = true
+      break
     case 'equation.inline': openMath('inline'); break
     case 'equation.block': openMath('block'); break
     case 'bold': chain.toggleBold().run(); break; case 'italic': chain.toggleItalic().run(); break; case 'underline': chain.toggleUnderline().run(); break; case 'strike': chain.toggleStrike().run(); break; case 'subscript': chain.toggleSubscript().run(); break; case 'superscript': chain.toggleSuperscript().run(); break; case 'shortcuts.inlineCode': chain.toggleCode().run(); break

@@ -69,7 +69,7 @@ function navigateToolbar(event: KeyboardEvent): void {
 }
 const coloredIcon = (svg: string, color: string) => 'img:data:image/svg+xml,' + encodeURIComponent(svg.replaceAll('<path ', `<path fill="${color}" `))
 const simpleKeys = ['undo', 'redo', 'removeFormat', 'bold', 'italic', 'underline', 'shortcuts.inlineCode', 'heading', 'bulletList', 'orderedList', 'checklist', ...alignments, 'code', 'link', 'galarisLink', 'insertTable', 'separator']
-const mobileKeys = ['undo', 'redo', 'find', 'bold', 'italic', 'removeFormat', 'heading', 'callout', 'bulletList', 'orderedList', 'checklist', 'outline', ...alignments, 'galarisLink', 'share.action', 'help']
+const mobileKeys = ['undo', 'redo', 'find', 'bold', 'italic', 'removeFormat', 'heading', 'callout', 'bulletList', 'orderedList', 'checklist', 'outline', ...alignments, 'galarisLink', 'insertEmoji', 'share.action', 'help']
 const mobileItems = computed(() => {
   const items = groups.value.flatMap(group => group.rows.flat())
   return mobileKeys.flatMap(key => items.find(item => item.key === key) ?? [])
@@ -131,7 +131,7 @@ const groups = computed(() => {
       button('equation.block', 'calculate', editor.isActive('blockMath')),
     ]] },
     { name: 'insert' as const, rows: [[button('link', 'link'), button('galarisLink', 'folder_open'), ...(document ? [button('resources.uploadFile', 'upload_file')] : [])],
-      ...(document || mode === 'simple' ? [[button('insertTable', 'table_chart'), button('separator', 'horizontal_rule')]] : [])] },
+      ...(document || mode === 'simple' ? [[button('insertTable', 'table_chart'), ...(document ? [button('insertEmoji', 'sentiment_satisfied_alt')] : []), button('separator', 'horizontal_rule')]] : [])] },
   ].map(group => mode === 'simple' ? { ...group, rows: [group.rows.flat().filter(item => simpleKeys.includes(item.key))] } : group)
     .filter(group => group.rows.some(row => row.length) || group.name === 'reading' && Boolean(slots.voice))
 })

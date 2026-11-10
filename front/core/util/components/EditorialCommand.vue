@@ -12,7 +12,7 @@
       </q-list>
     </ContextSubmenu>
   </q-item>
-  <EditorialToolButton v-else-if="!item.options" flat dense :icon="item.icon" :label="t('richEditor.' + item.key)" :aria-pressed="item.active" :disable="item.disabled" :color="item.active ? 'primary' : undefined" :class="{ 'editorial-alignment-active': item.active && ['left', 'center', 'right', 'justify'].includes(item.key) }" @click="emit('action', item.key)" />
+  <EditorialToolButton v-else-if="!item.options" flat dense :icon="item.icon" :label="t('richEditor.' + item.key)" :data-editorial-command="item.key" :aria-pressed="item.active" :disable="item.disabled" :color="item.active ? 'primary' : undefined" :class="{ 'editorial-alignment-active': item.active && ['left', 'center', 'right', 'justify'].includes(item.key) }" @click="emit('action', item.key)" />
   <span v-else class="inline-flex">
     <q-btn-dropdown no-caps :flat="!isStyleMenu && (compact || !item.value)" :outline="isStyleMenu || !compact && Boolean(item.value)" dense :icon="!isStyleMenu && (compact || !item.value || item.key === 'fontFamily') ? item.icon : undefined" :label="isStyleMenu || !compact ? item.value : undefined" :aria-label="commandLabel" :disable="item.disabled"
       :class="{ 'editorial-style-selector': isStyleMenu, 'editorial-style-selector--compact': isStyleMenu && compact }"

@@ -1,16 +1,16 @@
 <template>
-  <q-menu v-model="open" no-parent-event @before-show="load">
+  <q-menu v-model="open" :target="target" no-parent-event @before-show="load">
     <div class="tag-icon-picker q-pa-sm" :class="{ 'tag-icon-picker--dark': $q.dark.isActive }">
       <div class="row items-center no-wrap q-gutter-sm">
-        <q-select v-model="family" :options="familyOptions" emit-value map-options dense outlined class="tag-icon-family" :aria-label="t('libraryIcons.iconCollection')" />
-        <q-input v-model="search" autofocus dense outlined clearable class="col" :label="t('libraryIcons.searchIcons')" @keydown.down.prevent="focusIcon(0)">
+        <q-select v-if="!emojiOnly" v-model="family" :options="familyOptions" emit-value map-options dense outlined class="tag-icon-family" :aria-label="t('libraryIcons.iconCollection')" />
+        <q-input v-model="search" autofocus dense outlined clearable class="col" :label="t(emojiOnly ? 'richEditor.searchEmojis' : 'libraryIcons.searchIcons')" @keydown.down.prevent="focusIcon(0)">
           <template #prepend><q-icon name="search" /></template>
         </q-input>
-        <q-btn flat round dense :disable="busy" :aria-label="t('libraryIcons.defaultIcon')" @click="choose(null)">
+        <q-btn v-if="!emojiOnly" flat round dense :disable="busy" :aria-label="t('libraryIcons.defaultIcon')" @click="choose(null)">
           <DocumentTagIcon size="24px" :default-icon="defaultIcon" />
           <q-tooltip>{{ t('libraryIcons.defaultIcon') }}</q-tooltip>
         </q-btn>
-        <q-btn flat round dense icon="add" :loading="uploading" :disable="busy" :aria-label="t('libraryIcons.uploadIcon')" @click="fileInput?.click()">
+        <q-btn v-if="!emojiOnly" flat round dense icon="add" :loading="uploading" :disable="busy" :aria-label="t('libraryIcons.uploadIcon')" @click="fileInput?.click()">
           <q-tooltip>{{ t('libraryIcons.uploadIcon') }}</q-tooltip>
         </q-btn>
         <input ref="fileInput" type="file" accept="image/*,.svg" hidden :aria-label="t('libraryIcons.uploadIcon')" @change="upload" />
@@ -47,11 +47,11 @@ import { loadTagEmojiIcons, type TagEmojiIcon } from '../tagEmojiCatalog'
 import { solaireColors } from '@/core/util'
 import DocumentTagIcon from './LibraryIcon.vue'
 const open = defineModel<boolean>({ required: true })
-const props = defineProps<{ busy: boolean; save: (icon: string | null) => Promise<boolean>; currentIcon?: string | null; defaultIcon?: string; document?: boolean; loadIcons?: () => Promise<UploadedTagIcon[]>; uploadIcon?: (name: string, data: string) => Promise<UploadedTagIcon> }>()
+const props = withDefaults(defineProps<{ busy: boolean; save: (icon: string | null) => Promise<boolean>; currentIcon?: string | null; defaultIcon?: string; document?: boolean; emojiOnly?: boolean; target?: boolean | string | Element; loadIcons?: () => Promise<UploadedTagIcon[]>; uploadIcon?: (name: string, data: string) => Promise<UploadedTagIcon> }>(), { target: true })
 const { t, locale, mergeLocaleMessage } = useI18n()
 const $q = useQuasar()
 const search = ref<string | null>('')
-const family = ref(props.document ? 'emoji' : 'folders')
+const family = ref(props.document || props.emojiOnly ? 'emoji' : 'folders')
 const familyOptions = computed(() => (props.document ? ['emoji', 'mdi', 'awesome', 'uploaded'] : ['folders', 'emoji', 'mdi', 'awesome', 'uploaded'])
   .map(value => ({ value, label: t(`libraryIcons.iconFamilies.${value}`) })))
 const category = ref('all')
