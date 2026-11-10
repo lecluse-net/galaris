@@ -520,6 +520,11 @@ revérifiée lors de la création, et un suffixe est ajouté si nécessaire. Les
 apparaissent en cartes avec l’agent, les non-lus et la date du dernier message. L’aperçu respecte
 votre préférence de confidentialité. Sur cet accueil, la recherche et les filtres restent
 visibles : conversations externes, archives et, selon vos droits, vue d’un agent.
+Le bouton **Conversations non lues** reprend le compteur du menu et permet de retrouver
+uniquement les conversations du chat interne ayant des messages non lus, y compris les
+archives masquées dans la liste habituelle. Les messageries externes sont exclues de ce
+compteur et de cette vue. Il efface la recherche en cours ; cliquez
+à nouveau pour revenir aux filtres précédents. Chaque carte affiche son propre badge de non-lus.
 Les cartes s’adaptent à la largeur de l’écran et s’affichent sur une colonne sur téléphone.
 Les agents et les conversations se chargent par pages de 50. Chaque liste affiche
 sa pagination uniquement au-delà de 50 résultats, avec un choix de 10, 20, 50, 100 ou 500

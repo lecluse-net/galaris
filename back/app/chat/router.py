@@ -484,6 +484,7 @@ async def read_rooms(
     include_external: bool = Query(default=True),
     include_archived: bool = Query(default=False),
     recent_days: int | None = Query(default=None, ge=1, le=365),
+    unread_only: bool = False,
     document_id: UUID | None = None,
 ) -> NativeMessengerRoomPage:
     scope = await current_management_scope() if agent_id is not None else await current_dialogue_scope()
@@ -499,6 +500,7 @@ async def read_rooms(
         include_external=include_external,
         include_archived=include_archived,
         recent_days=recent_days,
+        unread_only=unread_only,
         agent_ids=agent_ids,
     )
     return result.model_copy(update={"items": [_room_for_scope(room, scope) for room in result.items]})

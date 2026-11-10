@@ -701,6 +701,107 @@ async def test_archived_chat_rooms_are_hidden_by_default_and_can_be_restored(
 
 
 @pytest.mark.asyncio
+async def test_unread_chat_rooms_count_only_internal_conversations_including_archives(
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    agent, owner, other = await _scope(db)
+    internal = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
+    assert internal is not None
+    internal_room = await db.get(Room, internal.id)
+    assert internal_room is not None
+    internal_connection = await db.get(Connection, internal_room.connection_id)
+    assert internal_connection is not None
+    external_tool = Tool(code=f"unread-{uuid4().hex[:10]}", label="Synthetic messenger",
+                         description="", connection_schema={}, messenger_config={"service": "nextcloud_talk"})
+    db.add(external_tool)
+    await db.flush()
+    connection = Connection(tool_id=external_tool.id, agent_id=agent.id, active=True)
+    db.add(connection)
+    await db.flush()
+    identity = MessengerUser(tool_id=external_tool.id, external_id="synthetic-human",
+                             galaris_user_id=owner.id, is_ai=False)
+    other_identity = MessengerUser(tool_id=external_tool.id, external_id="other-human",
+                                   galaris_user_id=other.id, is_ai=False)
+    db.add_all([identity, other_identity])
+    await db.flush()
+    rooms: dict[str, Room] = {"internal": internal_room}
+    messages: dict[str, Message] = {}
+    memberships: dict[str, RoomUser] = {}
+    for name in ("internal", "external", "archived", "read", "passive", "own", "audio", "other"):
+        room = internal_room if name == "internal" else Room(
+            connection_id=connection.id, external_id=name, label=f"Synthetic {name}",
+            kind="direct", conversation_type="audio" if name == "audio" else "text",
+        )
+        if name != "internal":
+            db.add(room)
+            await db.flush()
+        rooms[name] = room
+        member_identity = other_identity if name == "other" else identity
+        if name != "internal":
+            memberships[name] = RoomUser(room_id=room.id, user_id=member_identity.id,
+                                         archived=name == "archived")
+            db.add(memberships[name])
+        message = Message(
+            connection_id=room.connection_id,
+            tool_id=internal_connection.tool_id if name == "internal" else external_tool.id,
+            platform="internal" if name == "internal" else "nextcloud_talk",
+            remote_message_id=f"unread-{name}", direction="outbound",
+            messenger_room_id=room.id, room_id=room.external_id, text="Synthetic message",
+            sender_messenger_user_id=member_identity.id if name == "own" else None,
+            counts_as_unread=name != "passive",
+        )
+        db.add(message)
+        await db.flush()
+        messages[name] = message
+        if name == "read":
+            memberships[name].read_through_position = message.journal_position
+    await db.flush()
+    monkeypatch.setattr(native_facade, "get_messenger", AsyncMock(return_value=SimpleNamespace(
+        supports=lambda capability: capability == Capability.UNREAD,
+        unread_counts=AsyncMock(return_value={str(rooms["external"].id): 99}), close=AsyncMock(),
+    )))
+
+    archived_internal = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
+    assert archived_internal is not None
+    await native_facade.set_chat_room_archived(owner.id, archived_internal.id, True)
+    archived_message = Message(
+        connection_id=internal_connection.id, tool_id=internal_connection.tool_id,
+        platform="internal", remote_message_id="internal-archived-unread", direction="outbound",
+        messenger_room_id=archived_internal.id, room_id=archived_internal.external_id,
+        text="Synthetic archived reply",
+    )
+    db.add(archived_message)
+    await db.flush()
+
+    # External unread messages never contribute to the internal Chat menu.
+    ordinary = await native_facade.list_chat_rooms(owner.id, include_external=False)
+    assert [item.id for item in ordinary.items] == [internal.id]
+    assert await native_facade.count_chat_unread(owner.id) == 2
+    unread = await native_facade.list_chat_rooms(
+        owner.id, include_external=True, include_archived=True, unread_only=True,
+    )
+    assert {item.id for item in unread.items} == {internal.id, archived_internal.id}
+    assert sum(item.unread_count for item in unread.items) == 2
+    second_page = await native_facade.list_chat_rooms(
+        owner.id, include_external=True, include_archived=True, unread_only=True, page=2, page_size=1,
+    )
+    assert second_page.total == 2
+    assert len(second_page.items) == 1
+
+    assert await native_facade.mark_chat_room_read(owner.id, internal.id, messages["internal"].id)
+    remaining = await native_facade.list_chat_rooms(
+        owner.id, include_external=True, include_archived=True, unread_only=True,
+    )
+    assert {item.id for item in remaining.items} == {archived_internal.id}
+    assert await native_facade.count_chat_unread(owner.id) == 1
+    assert await native_facade.mark_chat_room_read(owner.id, archived_internal.id, archived_message.id)
+    assert await native_facade.count_chat_unread(owner.id) == 0
+    assert (await native_facade.list_chat_rooms(
+        owner.id, include_external=True, include_archived=True, unread_only=True,
+    )).total == 0
+
+
+@pytest.mark.asyncio
 async def test_room_creation_refuses_an_inactive_agent_connection(
     db: AsyncSession,
 ) -> None:

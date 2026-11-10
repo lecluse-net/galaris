@@ -431,6 +431,11 @@ You can edit the name; availability is checked again on creation and a suffix is
 the date of the last message. Previews respect your privacy preference. On this home screen,
 search and filters remain visible: external conversations, archives and, with the appropriate
 permissions, an agent’s view. Cards adapt to the available width and use one column on phones.
+The **Unread conversations** button shows the menu count and lists only internal chat
+conversations with unread messages, including archives hidden by the ordinary filters.
+External messaging is excluded from this count and view.
+It clears the current search; click it again to return to the previous filters.
+Each card displays its own unread badge.
 Agents and conversations load in pages of 50. Each list shows pagination only above
 50 results, with a choice of 10, 20, 50, 100 or 500 items per page. Changing a filter returns
 conversations to the first page.

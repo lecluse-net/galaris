@@ -973,7 +973,7 @@ async def _room_dto(
 
 
 async def count_chat_unread(user_id: int) -> int:
-    """Return the authoritative unread total across every mapped Chat room."""
+    """Return the unread total for internal text Chat rooms only."""
 
     return int(
         await get_db().scalar(
@@ -981,8 +981,13 @@ async def count_chat_unread(user_id: int) -> int:
             .select_from(RoomUser)
             .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
             .join(Message, Message.messenger_room_id == RoomUser.room_id)
+            .join(Room, Room.id == RoomUser.room_id)
+            .join(Connection, Connection.id == Room.connection_id)
+            .join(Tool, Tool.id == Connection.tool_id)
             .where(
                 MessengerUser.galaris_user_id == user_id,
+                Room.conversation_type == "text",
+                Tool.code == CHAT_TOOL_CODE,
                 Message.counts_as_unread.is_(True),
                 Message.journal_position
                 > func.coalesce(RoomUser.read_through_position, 0),
@@ -1073,6 +1078,7 @@ async def list_chat_rooms(
     include_external: bool = True,
     include_archived: bool = False,
     recent_days: int | None = None,
+    unread_only: bool = False,
 ) -> NativeMessengerRoomPage:
     """List canonical rooms belonging to one linked Galaris identity."""
 
@@ -1119,6 +1125,16 @@ async def list_chat_rooms(
         base = base.where(Tool.code == CHAT_TOOL_CODE)
     if not include_archived:
         base = base.where(RoomUser.archived.is_(False))
+    if unread_only:
+        base = base.where(
+            Tool.code == CHAT_TOOL_CODE,
+            select(Message.id).where(
+                Message.messenger_room_id == Room.id,
+                Message.counts_as_unread.is_(True),
+                Message.journal_position > func.coalesce(RoomUser.read_through_position, 0),
+                or_(Message.sender_messenger_user_id.is_(None), Message.sender_messenger_user_id != RoomUser.user_id),
+            ).correlate(Room, RoomUser).exists()
+        )
     last_message_at = (
         select(func.max(Message.created_at))
         .where(Message.messenger_room_id == Room.id)

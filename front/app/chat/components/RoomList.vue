@@ -91,10 +91,7 @@
         </q-item-section>
         <q-item-section v-if="room.unread_count > 0" side>
           <q-badge
-            rounded
-            color="primary"
-            text-color="white"
-            class="room-unread-badge"
+            color="secondary"
             :label="unreadBadgeLabel(room.unread_count)"
             :aria-label="unreadMessageLabel(room.unread_count)"
           >
@@ -187,7 +184,6 @@ function onScroll(event: Event): void {
 .archived-room-icon { flex: 0 0 auto; color: var(--chat-text-muted, #7c8798); }
 .source-badge { flex: 0 0 auto; font-size: .58rem; font-weight: 500; }
 .room-message-preview { margin-top: 3px; color: var(--chat-text, #252b36); font-size: .88rem; }
-.room-unread-badge { min-width: 23px; min-height: 20px; justify-content: center; padding: 3px 6px; font-weight: 700; }
 .room-list-shell--cards { overflow: visible; background: transparent; }
 .room-list-shell--cards .room-filters { margin-bottom: 20px; border: 0; }
 .room-list-shell--cards .room-filters > div { padding-left: 0; padding-right: 0; }

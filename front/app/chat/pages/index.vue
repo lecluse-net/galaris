@@ -13,8 +13,13 @@
           <section :aria-label="t('chat.conversations')">
             <div class="chat-home-list-header">
               <h2>{{ t('chat.conversations') }}</h2>
+              <q-btn v-if="store.viewerAgentId === null" :outline="!homeUnreadOnly" color="primary" no-caps :aria-label="t('chat.home.unreadConversations')" :aria-pressed="homeUnreadOnly" @click="toggleUnreadConversations">
+                <span>{{ t('chat.home.unreadConversations') }}</span>
+                <q-badge v-if="inboxStore.unreadCount > 0" color="secondary" class="q-ml-sm" :label="inboxStore.unreadCount > 99 ? '99+' : String(inboxStore.unreadCount)" />
+                <q-tooltip>{{ t('chat.home.unreadHint') }}</q-tooltip>
+              </q-btn>
             </div>
-            <RoomList :search-value="roomSearch" cards show-filters :rooms="homeRooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="false" :loading-more="loadingHomeRooms" :error="homeRoomsError" @select="selectRoom" @changed="roomUpdated" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @view-agent="changeViewerAgent" />
+            <RoomList :search-value="roomSearch" cards :show-filters="!homeUnreadOnly" :rooms="homeRooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="false" :loading-more="loadingHomeRooms" :error="homeRoomsError" @select="selectRoom" @changed="roomUpdated" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @view-agent="changeViewerAgent" />
             <div v-if="homeRoomsError" role="alert" class="q-mt-md">
               {{ t('chat.error') }} <q-btn flat :label="t('chat.home.retry')" @click="homeRoomsRevision++" />
             </div>
@@ -218,6 +223,7 @@ const agentsPage = ref(1)
 const agentsPageSize = ref(50)
 const agentsTotal = ref(0)
 const homeRooms = ref<MessengerRoom[]>([])
+const homeUnreadOnly = ref(false)
 const homeRoomsPage = ref(1)
 const homeRoomsPageSize = ref(50)
 const homeRoomsTotal = ref(0)
@@ -225,7 +231,12 @@ const loadingHomeRooms = ref(false)
 const homeRoomsError = ref(false)
 const homeRoomsRevision = ref(0)
 watch(agentsPageSize, () => { agentsPage.value = 1 }, { flush: 'sync' })
-watch([homeRoomsPageSize, roomSearch, () => store.viewerAgentId, () => store.includeExternalRooms, () => store.includeArchivedRooms], () => { homeRoomsPage.value = 1 }, { flush: 'sync' })
+watch([homeRoomsPageSize, homeUnreadOnly, roomSearch, () => store.viewerAgentId, () => store.includeExternalRooms, () => store.includeArchivedRooms], () => { homeRoomsPage.value = 1 }, { flush: 'sync' })
+watch(() => store.viewerAgentId, () => { homeUnreadOnly.value = false }, { flush: 'sync' })
+function toggleUnreadConversations(): void {
+  roomSearch.value = ''
+  homeUnreadOnly.value = !homeUnreadOnly.value
+}
 function toggleRoomFilters(): void {
   roomFiltersVisible.value = !roomFiltersVisible.value
   if (roomFiltersVisible.value) conversationsExpanded.value = true
@@ -553,7 +564,7 @@ watch([canCreateRoom, homeVisible, recipientsRevision, agentsPage, agentsPageSiz
 }, { immediate: true })
 watch([() => store.enabled, homeVisible, () => store.rooms, roomSearch,
   () => store.viewerAgentId, () => store.includeExternalRooms, () => store.includeArchivedRooms,
-  homeRoomsPage, homeRoomsPageSize, homeRoomsRevision], (_, __, onCleanup) => {
+  homeRoomsPage, homeRoomsPageSize, homeRoomsRevision, homeUnreadOnly], (_, __, onCleanup) => {
   let cancelled = false
   onCleanup(() => { cancelled = true })
   loadingHomeRooms.value = false
@@ -562,7 +573,8 @@ watch([() => store.enabled, homeVisible, () => store.rooms, roomSearch,
   homeRoomsError.value = false
   homeRooms.value = []
   void service.rooms(homeRoomsPage.value, homeRoomsPageSize.value, roomSearch.value,
-    store.viewerAgentId, store.includeExternalRooms, store.includeArchivedRooms).then(result => {
+    store.viewerAgentId, homeUnreadOnly.value ? false : store.includeExternalRooms,
+    homeUnreadOnly.value || store.includeArchivedRooms, null, null, homeUnreadOnly.value).then(result => {
     if (cancelled) return
     homeRoomsTotal.value = result.total
     if (result.total <= 50) homeRoomsPageSize.value = 50
@@ -771,7 +783,7 @@ onBeforeUnmount(() => {
 .messenger-page--home { background: var(--galaris-page-background); }
 .chat-home { height: 100%; overflow-y: auto; }
 .chat-home-content { min-width: 0; }
-.chat-home-list-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.chat-home-list-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .chat-home-list-header h2 { margin: 0; font-size: 1.15rem; font-weight: 600; line-height: 1.4; }
 .messenger-grid--resizing { cursor: col-resize; user-select: none; }
 .messenger-grid--document { grid-template-columns: minmax(0, var(--conversation-width)) 8px minmax(240px, 1fr); }
