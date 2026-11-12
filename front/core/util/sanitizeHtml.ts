@@ -1,3 +1,5 @@
+import { documentIdFromResourceUri } from './documentResource'
+
 /** Remove active HTML before rendering user-controlled rich text. */
 export function sanitizeHtml(html: string): string {
   return sanitizeDocument(html, false)
@@ -36,6 +38,8 @@ const previewAttributes: Record<string, Set<string>> = {
 
 function safePreviewUrl(tag: string, name: string, rawValue: string, preview: boolean): boolean {
   if (!preview && (name === 'src' || name === 'href')) {
+    // Preserve canonical document anchors until the renderer maps them to app URLs.
+    if (tag === 'a' && name === 'href' && documentIdFromResourceUri(rawValue)) return true
     if (tag === 'img' && /^data:image\/(?:png|jpeg|gif|webp);base64,/i.test(rawValue.trim())) return true
     try {
       // The URL parser follows browser normalization, including control characters.

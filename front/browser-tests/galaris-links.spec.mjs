@@ -1,6 +1,47 @@
 import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 import { result, document as documentFixture } from './data.mjs'
 
+for (const format of ['markdown', 'html']) test(`a ${format} document link in an agent reply opens the referenced document`, async ({ page, context }, testInfo) => {
+  const id = '00000000-0000-4000-8000-000000000245'
+  const uri = `document://${id}`
+  const content = format === 'markdown'
+    ? `**[Open the launch plan](${uri})**`
+    : `<p><a href="${uri}"><strong>Open the launch plan</strong></a></p>`
+  await page.setViewportSize({ width: format === 'html' ? 390 : 1440, height: 900 })
+  await mount(page, 'app/chat/components/SafeMessageContent.vue', { dark: format === 'html', props: { content } })
+  const link = page.getByRole('link', { name: 'Open the launch plan', exact: true })
+  await expect(link).toHaveAttribute('href', `/documents?document_id=${id}`)
+  await expect(page.locator('strong')).toHaveText('Open the launch plan')
+  await page.screenshot({ path: testInfo.outputPath('agent-document-link.png'), animations: 'disabled' })
+  // Keep this component scenario on the actual browser navigation boundary.
+  await context.route(`**/documents?document_id=${id}`, route => route.fulfill({
+    contentType: 'text/html', body: '<h1>Synthetic launch plan</h1>',
+  }))
+  for (const keyboard of [false, true]) {
+    const opened = page.waitForEvent('popup')
+    if (keyboard) { await link.focus(); await page.keyboard.press('Enter') }
+    else await link.click()
+    const documentPage = await opened
+    await expect(documentPage).toHaveURL(new RegExp(`/documents\\?document_id=${id}$`))
+    await expect(documentPage.getByRole('heading')).toHaveText('Synthetic launch plan')
+    await documentPage.close()
+  }
+})
+
+test('agent reply links reject active URLs and malformed document references', async ({ page }) => {
+  await mount(page, 'core/util/components/Markdown.vue', { props: { content:
+    '<a href="javascript:alert(1)">Active URL</a> '
+    + '<a href="document://invalid">Invalid document</a> '
+    + '<a href="https://example.org/guide">Web reference</a> '
+    + '<a href="mailto:reader@example.org">Email reference</a>',
+  } })
+  for (const label of ['Active URL', 'Invalid document']) {
+    await expect(page.getByText(label, { exact: true })).not.toHaveAttribute('href')
+  }
+  await expect(page.getByRole('link', { name: 'Web reference' })).toHaveAttribute('href', 'https://example.org/guide')
+  await expect(page.getByRole('link', { name: 'Email reference' })).toHaveAttribute('href', 'mailto:reader@example.org')
+})
+
 for (const mode of ['read', 'edit', 'readonly']) test(`web links expose their destination as a tooltip in ${mode} mode`, async ({ page }) => {
   const html = '<p><a href="http://example.com/path?x=1&amp;y=2">HTTP reference</a> <a href="https://example.org/page#section" title="null">HTTPS reference</a> <a href="mailto:reader@example.com">Email reference</a></p>'
   await mount(page, `core/util/components/${mode === 'read' ? 'RichText' : 'RichTextEditor'}.vue`, {
