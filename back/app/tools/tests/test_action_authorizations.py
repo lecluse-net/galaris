@@ -50,6 +50,43 @@ async def pending(action):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("runtime", ["internal", "hermes"])
+@pytest.mark.parametrize("state", ["default", "ask", "disabled"])
+async def test_goal_question_needs_no_approval_by_default_but_preserves_explicit_policy(action, runtime, state):
+    from app.connection import facade as connections
+    from app.tools.contracts import ToolCallRejectedError
+    from app.tools.mcp_authorization import bind_native_action
+    from app.tools.mcp_loader import McpToolContext, load_mcp_tools
+    from app.tools.models import Tool
+
+    async with get_db_session() as db:
+        tool = await db.scalar(select(Tool).where(Tool.code == "galaris"))
+        connection = await connections.get_or_create_connection(tool.id, action.agent_id)
+        await connections.set_connection_function_state(connection.id, "goal_ask_referrer", state)
+        policy = await connections.resolve_function(connection, "goal_ask_referrer")
+        assert policy["default_state"] == "enabled"
+        assert policy["effective_state"] == ("enabled" if state == "default" else state)
+        definition = next(item for item in load_mcp_tools() if item.name == "goal_ask_referrer")
+        question = await bind_native_action(
+            McpToolContext(agent_id=action.agent_id, runtime=runtime),
+            definition, {"question": "Which delivery option should I use?"},
+        )
+
+    if state == "ask":
+        await pending(question)
+    elif state == "disabled":
+        with pytest.raises(ToolCallRejectedError, match="disabled"):
+            await claim_action(question)
+    else:
+        assert await claim_action(question) is None
+        async with get_db_session() as db:
+            assert await db.scalar(select(ActionAuthorization.id).where(
+                ActionAuthorization.agent_id == action.agent_id,
+                ActionAuthorization.capability_name == "goal_ask_referrer",
+            )) is None
+
+
+@pytest.mark.asyncio
 async def test_permission_catalog_keeps_saved_rules_and_reports_offline_sources_without_secrets(action, monkeypatch):
     from app.connection import Connection, facade as connections
     from app.tools.models import Tool

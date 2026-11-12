@@ -113,7 +113,7 @@ async def _goal_management_command(
     return _goal_payload(result)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("galaris", approval="enabled", approval_reason="Ask the current Goal's configured human referrer for clarification without prior approval",
 
     name="goal_ask_referrer",
     description=(
