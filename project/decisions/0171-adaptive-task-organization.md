@@ -28,9 +28,23 @@ les réponses humaines pour appliquer le périmètre précisé. L'exécution en 
 cette suspension. Sans canal permettant de poser la question, ou à expiration sans réponse,
 la Task échoue explicitement avec `ORGANIZATION_CLARIFICATION_REQUIRED` ; le silence ne
 déclenche pas les actions. Une relance explicite d'une clarification échouée repasse par
-`RETRY_ROUTING`, sans invoquer directement l'exécuteur. La limite existante d'un tour de
-clarification est conservée : préciser l'objectif ou créer une nouvelle demande permet
-de lever une ambiguïté qui persiste.
+`RETRY_ROUTING`, sans invoquer directement l'exécuteur.
+
+Précision du 12 novembre 2026 : après une réponse, si le Dispatcher conserve `clarify`,
+la même Task pose une nouvelle question et se suspend à nouveau. Chaque nouvelle série
+exige une réponse non vide aux séries précédentes ; une question en attente ou expirée
+ne déclenche pas de question supplémentaire. Les réponses restent cumulées et chaque
+interaction est corrélée à sa série pour refuser les anciens retours, même pendant
+l'envoi suivant. Une réponse reçue pendant l'envoi clôt l'attente sans la recréer.
+La limite d'une série reste propre au cadrage d'un plan déjà choisi. Une clarification
+d'organisation impossible ou expirée porte un échec sans retry automatique ; le scheduler
+respecte cette politique dès `CREATE`, avant les gardes propres à l'exécution.
+
+Le défaut provenait du partage de la garde d'une seule série entre organisation et plan :
+une réponse humaine pouvait être suivie d'un échec de clarification, puis de retries
+sans information nouvelle. Les tests validaient la réponse mais pas le routage suivant.
+Le scénario PostgreSQL couvre désormais deux séries, les retours tardifs et la reprise,
+et les tests du scheduler vérifient la clôture sans retry dans chaque phase concernée.
 
 Le suivi d'un exécutant est un objet `galaris.work-plan/v1` dans les données de sa Task :
 au plus vingt jalons, critères d'acceptation, résultats observés, URI et prochaine action,

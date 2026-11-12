@@ -94,8 +94,11 @@ exécutant garde la responsabilité du livrable. Les résultats indépendants re
 par le Planner ; les étapes transmettent leur organisation à leurs feuilles.
 
 Une intention ambiguë entraîne une question durable et une suspension. La réponse relance
-le choix avec les précisions reçues. Une question impossible à transmettre ou expirée sans
-réponse termine en erreur, sans lancer le travail. Les inconnues techniques inspectables
+le choix avec les précisions reçues. Si le Dispatcher demande encore une clarification,
+une nouvelle question suspend la même tâche ; les réponses précédentes restent conservées.
+Les retours d'une ancienne série ne résolvent pas la suivante. Une question impossible à
+transmettre ou expirée sans réponse termine en erreur, sans travail ni retry automatique.
+Les inconnues techniques inspectables
 ne demandent pas de clarification humaine. `task_get` expose révision et suivi ; les écritures
 contrôlent propriétaire, phase et révision, et préservent les checkpoints. La progression
 des jalons reste déclarative : elle ne remplace pas la vérification des ressources ni le

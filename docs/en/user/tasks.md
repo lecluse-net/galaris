@@ -311,8 +311,10 @@ authorizing the agent to process their messages.
 Essential information may be missing: recipient, file, period, authorization, or an irreversible choice. The Agent must then ask a short question and wait rather than guess. A question is a valid result of the current turn; reply in the same conversation to continue.
 
 Two waits have different outcomes. When choosing the organization of an ambiguous mission,
-a question that cannot be delivered or expires unanswered ends the Task in error without
-starting work. An explicit retry goes through routing again. When clarifying an already
+the agent may ask another question if your answer leaves an essential ambiguity. The same Task
+retains earlier answers and waits without starting work. An old reply cannot resolve the new
+question. A question that cannot be delivered or expires unanswered ends the Task in error
+without work or automatic retry. An explicit retry goes through routing again. When clarifying an already
 selected plan, the Planner may ask one series of questions and resume at expiry with
 explicit assumptions. Expiration never grants approval for a sensitive action.
 

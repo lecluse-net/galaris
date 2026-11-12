@@ -124,8 +124,11 @@ loss does not complete the Task if a reply received since then has not been used
 a fresh `DISPATCH` turn handles the reply without sending the question again.
 
 An organization question suspends in `PLAN`. Its answer retains the clarification and
-applies `REASSESS_ORGANIZATION`; routing selects again with that answer. An unanswered
-deadline or unavailable question channel applies `FAIL`, ending the Task in `ERROR`.
+applies `REASSESS_ORGANIZATION`; routing selects again with that answer. Another `clarify`
+choice opens a new `PLAN` wait on the same Task only after earlier rounds were answered.
+Replies to older interactions are ignored. An unanswered deadline or unavailable question
+channel applies `FAIL`, ending the Task in `ERROR` without automatic retry, including when
+the failure is recorded during `CREATE`.
 
 Collections use existing phases: the group stays in `PLAN`, while discovery and item Tasks
 follow `DISPATCH → EXEC → SUCCESS/ERROR`. Each new wave is persisted before activation.

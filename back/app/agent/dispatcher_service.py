@@ -10,7 +10,7 @@ Usage:
 
 from core.i18n import current_language, t
 
-from .contracts import AgentTask, DispatchResult, ExecutionResult, TaskPhase, TaskTransition
+from .contracts import AgentTask, DispatchResult, ExecutionResult, HarnessFailure, TaskPhase, TaskTransition
 from .dispatcher import get_dispatcher
 from .task_port import task_port
 
@@ -83,6 +83,7 @@ async def fail_organization_clarification(task: AgentTask) -> None:
     task.feedback = message
     task.set_execution_result(ExecutionResult(
         prompt=task.objective or "", result=message, success=False,
+        failure=HarnessFailure(code="runtime", message=message, retry="never", effects="none"),
         metadata={"failure_code": "ORGANIZATION_CLARIFICATION_REQUIRED"},
     ))
     await task_port.save(task)

@@ -1120,6 +1120,38 @@ async def test_reasoning_degeneration_fails_without_retry(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("phase", [TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.PLAN])
+async def test_organization_failure_finishes_claim_without_retry(db, monkeypatch, phase):
+    from app.agent import dispatcher_service
+    from app.task.agent_adapter import as_agent_task
+
+    token = uuid4()
+    task = Task(label="Synthetic clarification failure", status=phase, cost=0.0,
+                lease_token=token, data={"language": "en"})
+    db.add(task)
+    await db.flush()
+    task_id = task.id
+    attempt = TaskAttempt(task_id=task_id, attempt_number=1, phase=phase.value,
+                          status="CLAIMED", worker_id="synthetic", lease_token=token)
+    db.add(attempt)
+    await db.commit()
+    terminal = AsyncMock()
+    monkeypatch.setattr(scheduler, "_resume_after_terminal_failure", terminal)
+
+    await dispatcher_service.fail_organization_clarification(as_agent_task(task))
+    feedback = task.feedback
+    await scheduler._complete_claim(task_id, phase, token)
+    await db.refresh(task)
+    await db.refresh(attempt)
+    assert task.status == TaskStatus.ERROR
+    assert task.next_attempt_at is None and task.lease_token is None
+    assert task.feedback == feedback and task.last_error == feedback
+    assert attempt.status == TaskAttemptStatus.ERROR.value
+    assert attempt.retryable is False and attempt.error == feedback
+    terminal.assert_awaited_once_with(task_id)
+
+
+@pytest.mark.asyncio
 async def test_complete_claim_surfaces_failed_execution_result_error(db) -> None:
     task_id, lease_token = uuid4(), uuid4()
     task = Task(

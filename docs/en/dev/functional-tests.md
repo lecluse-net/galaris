@@ -1406,6 +1406,10 @@ name discovery without semantic recall or body passages, including pagination an
 
 `back/app/agent/tests/test_task_organization.py` protects organization selection in the
 existing inference, waiting without execution, expiry and late answers.
+Its PostgreSQL scenario covers two organization clarification rounds followed by resumption,
+rejecting older replies; another case protects answers received during delivery.
+`back/app/task/tests/test_scheduler.py` checks that these failures finish without automatic
+retry from routing onward, retaining diagnostics and releasing the lease.
 `back/app/task/tests/test_work_tracking.py` checks PostgreSQL milestone recovery,
 concurrent writes, revisions, ownership, pauses, idempotency and checkpoint preservation,
 including an execution checkpoint between reading and updating progress.

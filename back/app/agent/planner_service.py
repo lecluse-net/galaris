@@ -692,27 +692,37 @@ async def _notify_room(task: Task, text: str) -> None:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-def _can_request_clarification(task: Task) -> bool:
-    """Return whether the planner may ask its single clarification round."""
+def _can_request_clarification(task: Task, *, allow_followup: bool = False) -> bool:
+    """Keep planning single-round; organization may follow an answered question."""
     if not _has_messenger_origin(task):
         return False
     data = task.data if isinstance(task.data, dict) else {}
-    return "clarifications" not in data and "clarification_questions" not in data
+    if "clarification_questions" in data:
+        return False
+    if "clarifications" not in data:
+        return True
+    rounds = as_list(data.get("clarifications"))
+    return allow_followup and bool(rounds) and all(
+        isinstance(item, dict) and bool(str(as_dict(item).get("answer") or "").strip())
+        for item in rounds
+    )
 
 
 async def request_organization_clarification(task: Task, questions: list[str]) -> bool:
     """Use the durable question workflow before committing to an organization choice."""
-    return await _request_clarification(task, questions)
+    return await _request_clarification(task, questions, allow_followup=True)
 
 
-async def _request_clarification(task: Task, questions: list[str]) -> bool:
+async def _request_clarification(
+    task: Task, questions: list[str], *, allow_followup: bool = False,
+) -> bool:
     """Ask clarification questions in the room and pause until an answer arrives.
 
-    Return false when asking is unavailable; the caller then plans with explicit
-    assumptions instead.
+    Return false when asking is unavailable. Planning may use explicit assumptions;
+    unresolved organization must fail without execution or automatic retry.
     """
     cleaned = [q.strip() for q in questions if q.strip()]
-    if not cleaned or not _can_request_clarification(task):
+    if not cleaned or not _can_request_clarification(task, allow_followup=allow_followup):
         return False
 
     from app.messenger import resolve_task_messaging
@@ -737,6 +747,7 @@ async def _request_clarification(task: Task, questions: list[str]) -> bool:
 
     # Persist the wait before sending so a fast reply or restart cannot race the handler.
     data = dict(task.data) if isinstance(task.data, dict) else {}
+    round_index = len(as_list(data.get("clarifications")))
     data["clarification_questions"] = cleaned
     deadline = datetime.now(timezone.utc) + timedelta(seconds=_CLARIFICATION_TIMEOUT_SECONDS)
     data["clarification_deadline"] = deadline.isoformat()
@@ -747,7 +758,7 @@ async def _request_clarification(task: Task, questions: list[str]) -> bool:
 
     register_choice_handler(PLANNER_CLARIFICATION_INTERACTION, _handle_clarification_answer)
     try:
-        interaction = await create_choice(
+        await create_choice(
             messenger,
             agent_id=task.agent_id,
             room_id=room_id,
@@ -756,7 +767,7 @@ async def _request_clarification(task: Task, questions: list[str]) -> bool:
                 title=title,
                 body=body,
                 free_text=True,
-                metadata={"task_id": str(task.id)},
+                metadata={"task_id": str(task.id), "clarification_round": round_index},
                 timeout_seconds=_CLARIFICATION_TIMEOUT_SECONDS,
                 language=_task_language(task),
             ),
@@ -768,10 +779,8 @@ async def _request_clarification(task: Task, questions: list[str]) -> bool:
         await task_service.save(task)
         return False
 
-    clarification_data = dict(task.data or {})
-    clarification_data["clarification_interaction_id"] = str(interaction.id)
-    task.data = clarification_data
-    await task_service.save(task)
+    # The interaction already links to the task and round. Do not write the task
+    # after delivery: another worker may have answered and closed this wait meanwhile.
     logger.info(
         "Planner: task {} is waiting for clarification ({} question(s))",
         task.id,
@@ -793,6 +802,15 @@ async def _handle_clarification_answer(
     task = await task_service.get_by_id(UUID(raw_task_id))
     if task is None or not task_service.is_paused_for(task, task_service.PAUSE_CLARIFY):
         logger.warning("Planner: clarification received for unavailable task {}", raw_task_id)
+        return
+
+    data = task.data or {}
+    pending_id = data.get("clarification_interaction_id")
+    # Historical interactions predate followups and therefore belong to round zero.
+    round_index = interaction.metadata.get("clarification_round", 0)
+    if ((pending_id is not None and str(pending_id) != str(interaction.id))
+            or round_index != len(as_list(data.get("clarifications")))):
+        logger.warning("Planner: stale clarification interaction {}", interaction.id)
         return
 
     _record_clarification_round(task, answer)

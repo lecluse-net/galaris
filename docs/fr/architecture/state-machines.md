@@ -126,8 +126,11 @@ perte réseau ne termine pas la tâche si la réponse arrivée depuis n'a pas en
 un nouveau tour `DISPATCH` traite cette réponse, sans renvoyer la question.
 
 Une question d'organisation suspend en `PLAN`. Sa réponse conserve les précisions puis
-applique `REASSESS_ORGANIZATION` ; le routage choisit de nouveau avec cette réponse. Sans
-réponse à l'échéance, ou sans canal de question, `FAIL` termine la tâche en `ERROR`.
+applique `REASSESS_ORGANIZATION` ; le routage choisit de nouveau avec cette réponse.
+Un nouveau choix `clarify` ouvre une autre attente en `PLAN` sur la même tâche, uniquement
+après réponse aux séries précédentes. Les retours des anciennes interactions sont ignorés.
+Sans réponse à l'échéance, ou sans canal de question, `FAIL` termine la tâche en `ERROR`,
+sans retry automatique, y compris lorsque l'échec est enregistré pendant `CREATE`.
 
 Les collections utilisent les phases existantes : le groupe reste en `PLAN`, sa découverte
 puis ses éléments traversent `DISPATCH → EXEC → SUCCESS/ERROR`. Une nouvelle vague est

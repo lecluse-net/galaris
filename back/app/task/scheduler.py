@@ -1068,6 +1068,10 @@ def _retry_is_safe(task: Task, phase: TaskStatus) -> bool:
     # context through the Harness or replay an ambiguous Tool effect.
     if (task.data or {}).get("workflow_operation"):
         return False
+    result = task.get_execution_result()
+    if result is not None and result.failure is not None and result.failure.retry == "never":
+        # Domain failures can be final before entering the execution phase, too.
+        return False
     if phase == TaskStatus.PLAN and task.get_execution_result() is not None:
         # The planner already aggregated a terminal outcome, such as a failed child. Replaying
         # ``advance`` would only repeat the same abort.
@@ -1081,8 +1085,6 @@ def _retry_is_safe(task: Task, phase: TaskStatus) -> bool:
 
     result = task.get_execution_result()
     if result is not None and result.failure is not None:
-        if result.failure.retry == "never":
-            return False
         if result.failure.retry == "reconcile" and not has_resumable_run_checkpoint(task):
             return False
 

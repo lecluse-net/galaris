@@ -1474,6 +1474,10 @@ documentaire par nom sans rappel sémantique ni passages du corps, avec paginati
 
 `back/app/agent/tests/test_task_organization.py` protège le choix d'organisation dans
 l'inférence existante, l'attente sans exécution, l'expiration et la réponse tardive.
+Son scénario PostgreSQL couvre deux séries de clarification d'organisation puis la reprise,
+sans accepter un ancien retour ; un autre cas protège la réponse reçue pendant l'envoi.
+`back/app/task/tests/test_scheduler.py` vérifie la clôture de ces échecs sans retry automatique
+dès le routage, en conservant le diagnostic et en libérant le bail.
 `back/app/task/tests/test_work_tracking.py` vérifie avec PostgreSQL la reprise des jalons,
 les écritures concurrentes, la révision, les droits, les pauses, l'idempotence et la
 préservation des checkpoints, y compris une sauvegarde d’exécution entre lecture et écriture du suivi.

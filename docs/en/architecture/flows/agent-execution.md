@@ -89,8 +89,10 @@ milestones through `task_work_update`, including when one executor owns a cohere
 Independent outputs remain coordinated by the Planner; steps pass their organization to leaves.
 
 Ambiguous intent triggers a durable question and suspension. The answer restarts routing with
-the clarification. A question that cannot be delivered, or expires unanswered, fails without
-starting work. Inspectable technical unknowns do not require human clarification. `task_get`
+the clarification. If the Dispatcher still requires clarification, another question suspends
+the same Task while retaining earlier answers. Replies to an earlier round cannot resolve
+the next one. A question that cannot be delivered, or expires unanswered, fails without work
+or automatic retry. Inspectable technical unknowns do not require human clarification. `task_get`
 exposes revision and tracking; writes check ownership, phase and revision while preserving
 checkpoints. Milestone progress is declarative: it does not replace resource verification or
 the terminal result. See [0171](../../../../project/decisions/0171-adaptive-task-organization.md).

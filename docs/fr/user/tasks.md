@@ -349,8 +349,11 @@ deviner. Une question est un résultat valide du tour en cours ; répondez dans 
 conversation pour continuer.
 
 Deux attentes doivent être distinguées. Pour choisir l’organisation d’une mission ambiguë,
-une question impossible à transmettre ou expirée sans réponse termine la tâche en erreur,
-sans démarrer le travail. Un réessai explicite repasse par le routage. Pour le cadrage d’un
+l’agent peut poser une nouvelle question si votre réponse laisse une ambiguïté essentielle.
+La même tâche conserve vos précisions précédentes et attend sans démarrer le travail.
+Une ancienne réponse ne résout pas la nouvelle question. Une question impossible à transmettre
+ou expirée sans réponse termine la tâche en erreur, sans travail ni réessai automatique.
+Un réessai explicite repasse par le routage. Pour le cadrage d’un
 plan déjà choisi, le Planner peut demander une unique série de précisions et reprendre à
 l’expiration avec des hypothèses explicites. Aucune expiration ne donne une autorisation
 d’action sensible.
