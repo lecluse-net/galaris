@@ -1,6 +1,8 @@
 <template>
   <RenameFileButton v-if="rename" ref="renameButton" :class="renameClass" :name="name" :rename="rename" />
-  <ActionContextMenu :class="menuClass" :target="target" :actions="actions" />
+  <ActionContextMenu :class="menuClass" :target="target" :actions="actions">
+    <template v-if="$slots.trigger" #trigger="scope"><slot name="trigger" v-bind="scope" /></template>
+  </ActionContextMenu>
 </template>
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'

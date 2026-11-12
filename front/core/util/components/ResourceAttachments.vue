@@ -68,7 +68,14 @@
               :open="() => attachmentAction(attachment)" :download="() => download(attachment)"
               rename-class="hidden"
               :rename="canRename(attachment) ? name => renameAttachment(attachment, name) : undefined"
-              :extra-actions="attachmentActions(attachment)" />
+              :extra-actions="attachmentActions(attachment)">
+              <template #trigger="{ toggle, open }">
+                <q-btn flat round dense color="primary" icon="more_horiz" :aria-label="t('common.actions')"
+                  aria-haspopup="menu" :aria-expanded="open" @click="toggle">
+                  <q-tooltip>{{ t('common.actions') }}</q-tooltip>
+                </q-btn>
+              </template>
+            </FileContextMenu>
             <q-btn
               flat
               round
