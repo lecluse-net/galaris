@@ -350,9 +350,9 @@ async def create_connection(data: ConnectionCreate, request: Request):
     scope = await current_management_scope()
     await _require_agent(scope, data.agent_id)
     await _editable_tool(data.tool_id)
-    existing = await connection_service.get_connection_by_agent_tool(
-        data.tool_id, data.agent_id
-    )
+    tool = await tool_service.get_tool_by_id(data.tool_id)
+    existing = (await connection_service.get_connection_by_agent_tool(data.tool_id, data.agent_id)
+        if tool is None or tool.mail is None else None)
     if existing:
         raise HTTPException(
             status_code=409,
@@ -362,7 +362,7 @@ async def create_connection(data: ConnectionCreate, request: Request):
                 tool_id=data.tool_id,
             ),
         )
-    connection = await connection_service.get_or_create_connection(
+    connection = await connection_service.create_connection(
         data.tool_id, data.agent_id, active=data.active, commit=data.params is None
     )
     if data.params is not None:
@@ -408,9 +408,9 @@ async def update_connection(connection_id: int, update: ConnectionUpdate, reques
             ConnectionParam.connection_id == connection_id, ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM))
         if scoped is not None:
             await _authorize_scope_parameter(request, [MANAGEMENT_SCOPE_PARAM])
-        existing = await connection_service.get_connection_by_agent_tool(
-            new_tool_id, new_agent_id
-        )
+        target_tool = await tool_service.get_tool_by_id(new_tool_id)
+        existing = (await connection_service.get_connection_by_agent_tool(new_tool_id, new_agent_id)
+            if target_tool is None or target_tool.mail is None else None)
         if existing and existing.id != connection_id:
             raise HTTPException(
                 status_code=409,
@@ -421,6 +421,8 @@ async def update_connection(connection_id: int, update: ConnectionUpdate, reques
                 ),
             )
 
+    target_tool = await tool_service.get_tool_by_id(new_tool_id)
+    connection.singleton_key = None if target_tool is not None and target_tool.mail is not None else 0
     if update.tool_id is not None:
         connection.tool_id = update.tool_id
     if update.agent_id is not None:

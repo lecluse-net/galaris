@@ -123,6 +123,7 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
         "file_move",
         "file_rename",
         "file_delete",
+        "file_to_pdf",
     } == set(specs["file_sharing"].mcp_tools)
     assert specs["file_sharing"].default_active is True
     assert set(specs["file_sharing"].mcp_tools).isdisjoint(
@@ -171,7 +172,7 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("tool_code", "default_enabled"), [
-    ("console", False), ("image", False), ("mail", False), ("multimedia", False),
+    ("console", False), ("image", False), ("multimedia", False),
     ("chat", True),
 ])
 async def test_conversation_defaults_preserve_admin_choice(
@@ -245,11 +246,8 @@ def test_console_host_key_is_a_write_only_connection_parameter() -> None:
 
 
 def test_mail_connection_parameters_keep_transport_and_reviewer_configuration() -> None:
-    row = next(
-        row for row in mandatory_tools.mandatory_tool_rows()
-        if row["code"] == "mail"
-    )
-    params = row["connection_schema"]["params"]
+    from app.tools.protocols import protocol_parameters
+    params = protocol_parameters("mail")
 
     assert set(params) == {
         "email_address",
@@ -257,6 +255,7 @@ def test_mail_connection_parameters_keep_transport_and_reviewer_configuration() 
         "imap_host",
         "imap_port",
         "imap_security",
+        "allowed_mailboxes",
         "smtp_host",
         "smtp_port",
         "smtp_security",
@@ -266,7 +265,6 @@ def test_mail_connection_parameters_keep_transport_and_reviewer_configuration() 
         "max_attachment_mb",
         "max_total_attachment_mb",
         "approver_user_id",
-        "tools.management_scope",
     }
 
 
@@ -326,6 +324,11 @@ def test_calendar_requires_an_administrator_connection() -> None:
         "workday_end",
         "slot_step_minutes",
     ]
+
+
+def test_mail_is_a_protocol_without_a_seeded_tool() -> None:
+    codes = {row["code"] for row in mandatory_tools.mandatory_tool_rows()}
+    assert "mail" not in codes and "mail" not in mandatory_tools.INTEGRATED_TOOL_CODES
 
 
 def test_topic_tool_is_seeded_without_agent_connections() -> None:

@@ -27,12 +27,7 @@ EXPECTED_FUNCTIONS = {
 
 
 def test_mail_tool_is_explicit_and_discovers_all_mcp_functions() -> None:
-    spec = next(item for item in INTEGRATED_TOOL_SPECS if item.code == "mail")
-
-    assert spec.auto_connect_agents is False
-    assert spec.default_active is False
-    assert spec.file_share_service == "mail"
-    assert spec.messenger_service == "mail"
+    assert not any(item.code == "mail" for item in INTEGRATED_TOOL_SPECS)
     assert set(mcp_tool_names_by_tool_code()["mail"]) == EXPECTED_FUNCTIONS
     assert SPEC.inbound_modes == ["polling"]
     assert SPEC.availability == "tool"
@@ -41,13 +36,15 @@ def test_mail_tool_is_explicit_and_discovers_all_mcp_functions() -> None:
 
 
 def test_mail_connection_schema_uses_one_account_password_and_safe_defaults() -> None:
-    row = next(item for item in mandatory_tool_rows() if item["code"] == "mail")
-    params = row["connection_schema"]["params"]
+    from app.tools.protocols import protocol_parameters
+    params = protocol_parameters("mail")
 
     assert params["password"]["type"] == "password"
     assert "imap_username" not in params
     assert "smtp_username" not in params
     assert params["imap_security"]["default"] == "tls"
+    assert params["allowed_mailboxes"]["required"] is False
+    assert params["allowed_mailboxes"]["default"] == ""
     assert params["smtp_security"]["default"] == "tls"
     assert params["poll_interval_s"]["default"] == "60"
     assert params["max_attachment_mb"]["default"] == "10"
@@ -57,12 +54,6 @@ def test_mail_connection_schema_uses_one_account_password_and_safe_defaults() ->
     assert params["approver_user_id"]["required"] is False
     assert "max_attachment_bytes" not in params
     assert "max_total_attachment_bytes" not in params
-    assert row["file_share_config"]["service"] == "mail"
-    assert row["messenger_config"] == {
-        "service": "mail",
-        "settings": {},
-        "param_map": {},
-    }
 
 
 def test_approver_directory_is_available_to_connection_readers() -> None:

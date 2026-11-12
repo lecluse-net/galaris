@@ -22,7 +22,6 @@ from .mandatory_tools import (
 from .models import Tool
 from .descriptions import bridge_description
 from .contracts import FILE_INDEXING_PARAM
-from .parameter_definitions import with_standard_params
 
 
 def _legacy_indexing_defaults(record: Tool, schema: dict[str, object]) -> dict[str, object]:
@@ -36,8 +35,8 @@ def _legacy_indexing_defaults(record: Tool, schema: dict[str, object]) -> dict[s
 
 async def _reconcile_standard_params(session: AsyncSession) -> None:
     for record in await session.scalars(select(Tool)):
-        schema = with_standard_params(record.connection_schema or {}, code=record.code,
-            file_share_config=record.file_share_config, messenger_config=record.messenger_config)
+        from .tool_service import connection_schema_for_tool
+        schema = connection_schema_for_tool(record)
         if schema != record.connection_schema:
             record.connection_schema = schema
         defaults = _legacy_indexing_defaults(record, schema)
@@ -159,6 +158,7 @@ def datasets(*, agent_id: int | None = None) -> tuple[DbAdminDataset, ...]:
             update_columns=(
                 "label",
                 "description",
+                "capabilities",
                 "can_disable",
                 "conversation_enabled",
                 "mcp_config",
@@ -196,6 +196,10 @@ DATA_SOURCE = DbAdminDataSource(key="app.tools", factory=datasets)
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .capability_migration import register_capability_migration
+    register_capability_migration(registry)
+    from .protocol_migration import register_protocol_migration
+    register_protocol_migration(registry)
     registry.register_data_source(DATA_SOURCE)
     registry.register_reconciler(DbAdminReconciler(
         key="app.tools.standard_params", handler=_reconcile_standard_params,

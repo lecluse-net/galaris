@@ -107,6 +107,7 @@ async def messaging_tool_records(kind: str) -> list[Any]:
             preferred_kind=runtime_settings.MESSENGER_DRIVER,
         )
         == normalized_kind
+        or (normalized_kind == "mail" and record.mail_config is not None)
     ]
 
 
@@ -360,6 +361,8 @@ async def _process_incoming(message: Message) -> None:
 
     connection_kind = _bridge_kind_for_tool(tool)
     declared_kind = _normalize_bridge_kind(message.platform) if message.platform else None
+    if declared_kind == "mail" and getattr(tool, "mail", None) is not None:
+        connection_kind = "mail"
     if connection_kind and declared_kind and declared_kind != connection_kind:
         logger.warning(
             "Incoming message platform {} disagrees with connection {} ({})",
@@ -1415,6 +1418,23 @@ async def _run_listener(connection_id: int) -> None:
     try:
         async with get_db_session():
             messenger = await facade.get_messenger(connection_id)
+            if _listeners_stopping:
+                return
+            primary_spec = facade.get_spec(messenger.kind)
+            listeners: list[Messenger | facade.MessengerFacade] = (
+                [messenger] if primary_spec is None or set(primary_spec.inbound_modes).intersection({"polling", "sync", "signaling"}) else []
+            )
+            from app.connection import connection_service
+            from app.tools import tool_service
+            connection = await connection_service.get_connection(connection_id)
+            tool = await tool_service.get_tool_by_id(connection.tool_id) if connection else None
+            if tool is not None and tool.mail is not None and messenger.kind != "mail":
+                factory = facade.get_factory("mail")
+                if factory is not None:
+                    try:
+                        listeners.append(await factory.from_connection_id(connection_id))
+                    except ValueError:
+                        logger.warning("Mail protocol listener configuration is incomplete connection={}", connection_id)
     except ValueError as exc:
         # Configuration errors need a clear warning rather than a traceback.
         _listener_retry_after[connection_id] = time.monotonic() + _LISTENER_RETRY_DELAY
@@ -1429,20 +1449,21 @@ async def _run_listener(connection_id: int) -> None:
     # cancellation alone is not a sufficient barrier against a late listen task.
     if _listeners_stopping:
         return
-    listen_task = asyncio.create_task(
-        messenger.listen(), name=f"messenger_bridge_listen_{connection_id}"
-    )
+    listen_tasks = [asyncio.create_task(
+        listener.listen(), name=f"messenger_bridge_listen_{connection_id}_{listener.kind}"
+    ) for listener in listeners]
     try:
-        await listen_task
+        await asyncio.gather(*listen_tasks)
     except asyncio.CancelledError:
         raise
     except Exception:
         logger.exception("Connection listener {} stopped after an error", connection_id)
     finally:
         _listener_retry_after[connection_id] = time.monotonic() + _LISTENER_RETRY_DELAY
-        if not listen_task.done():
-            listen_task.cancel()
-        await asyncio.gather(listen_task, return_exceptions=True)
+        for listen_task in listen_tasks:
+            if not listen_task.done():
+                listen_task.cancel()
+        await asyncio.gather(*listen_tasks, return_exceptions=True)
 
 
 async def stop_listeners() -> None:

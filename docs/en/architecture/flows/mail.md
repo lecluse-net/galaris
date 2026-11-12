@@ -1,11 +1,35 @@
 <p align="right"><a href="../../../fr/architecture/flows/mail.md">Français</a> · <strong>English</strong></p>
 
-# Mail IMAP/SMTP Tool Flow
+# Mail IMAP/SMTP Protocol Flow
 
 The `bridge.mail` adapts an external mailbox to Galaris's Tool and Messenger contracts.
-The agent invokes MCP functions scoped to its single active `mail` connection; the
+A custom provider Tool selects `imap_smtp.mail` in `capabilities`, enables `mail_config`,
+and can combine different capabilities, each using a single protocol. Mail is no
+longer a built-in Tool. The agent invokes MCP functions scoped to an active provider connection;
+`connection_id` explicitly selects the connection when several providers are active.
+Authorization and execution use that same connection; ambiguous or foreign selections are rejected. The
 canonical listener also polls INBOX, journals headers and admits authorized emails as
 dedicated Tasks after the `mail_process` gate.
+
+The single **IMAP & SMTP** entry has two sections. `mail_config.settings` stores servers and
+fixed settings; `mail_config.param_map` references standard connection parameters for the
+email address, usernames, passwords, folders and approver. Both authentications may share
+`login` and `password` or use different parameters. Enabling the protocol creates no parameters.
+Empty legacy configurations retain existing global and local values.
+
+An agent may create several connections to the same Mail Tool, for example two mailboxes
+at one provider. Each connection retains its own parameters, secrets, folder restrictions,
+permissions and polling cursors. MCP calls select `connection_id`; an ambiguous selection
+is rejected with the available connections. Other Tools retain one connection per agent.
+Removing the Mail protocol requires removing additional connections for the same agent first.
+The MCP `tools_list` catalogue presents each account's address, `connection_id` and authorized
+functions. The Galaris system skill and MCP parameter descriptions explain account selection
+and keeping message references with their source account.
+
+New attachment URIs include `account/<connection_id>/` after the provider scheme (and after
+`mail/` when file sharing also exists). The browser lists accounts separately when several
+mailboxes are active. Legacy URIs without an account remain usable when a single connection
+can be selected; they never choose an arbitrary mailbox among multiple accounts.
 
 ```text
 Agent / Task
@@ -16,7 +40,7 @@ Agent / Task
    ├── SMTP TLS/STARTTLS: send, reply, forward
    ├── mail_outbound_deliveries: MIME content + envelope + validation + durable outcome
    ├── app.messenger → Memory: one private contact per observed account
-   └── app.file_share: read-only mail:// attachments
+   └── app.file_share: read-only <tool.code>:// resources
 
 Active Mail connection
    → IMAP polling every poll_interval_s
@@ -158,6 +182,23 @@ never guesses an address: zero or multiple matches trigger a request for clarifi
 read functions remain within the scope of a scheduled Task that exposes `mail_send`.
 
 ## Configuration and security
+
+`allowed_mailboxes` restricts IMAP access to exact names. The connection editor loads folders
+through `GET /mail/connections/{id}/mailboxes` and presents checkboxes. This administrative
+discovery requires a web session, `CONNECTION_EDIT` and the agent's management scope; it includes
+excluded folders for selection without reading any messages. Labels decode IMAP UTF-7 while
+stored values retain exact server names. The editor saves a JSON array to preserve commas in
+names; legacy comma-separated lists remain supported. Missing, empty or `[]` allows all folders.
+The editor rejects a restricted selection with no checked folders. List each subfolder
+explicitly; only `INBOX` is case-insensitive. This setting follows global/local overrides
+and forced values. Excluded folders are hidden from discovery; searches, reads, MIME exports,
+attachments, flags and moves (both source and destination) are denied, including old references.
+Navigation can retain a structural parent to reach an allowed subfolder without granting access
+to the parent's messages. Excluding `INBOX` suspends polling and receipt resumption; historical
+receipts cannot bypass the restriction, even after consent. This list does not extend inbound
+processing beyond `INBOX`. SMTP sending remains available, but IMAP verification and archiving
+in Sent require that folder to be allowed; failures remain explicit in the receipt without
+replaying SMTP.
 
 The connection accepts only the mailbox address and a password shared by IMAP and SMTP.
 The address also serves as the identifier with both servers. Hosts, ports, security, timeouts,

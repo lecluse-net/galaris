@@ -2,6 +2,10 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/connection/tests/test_mail_accounts.py` protège plusieurs boîtes sur un même Tool, la sélection MCP par connexion et les droits propres à chaque compte.
+`bridge/mail/tests/test_browser.py` couvre les URI de comptes, les pièces jointes et les restrictions de dossiers.
+`system-tools.spec.mjs` et `connections-loading.spec.mjs` vérifient le formulaire de protocoles, la sauvegarde atomique Mail, la sélection des dossiers, les erreurs et les réponses tardives.
+
 `app/agent/tests/test_operating_instructions.py` vérifie l'édition, la désactivation et la
 réinitialisation du guide commun aux tâches, conversations et voix, la conservation des
 instructions spécifiques et le gel des prompts du Lab. `app/lab/tests/test_operating_benchmark.py`

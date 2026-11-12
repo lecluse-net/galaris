@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm.attributes import set_committed_value
 
@@ -866,13 +866,17 @@ async def update_inbound_admission_status(
         return True
 
 
-async def listener_cursor(connection_id: int) -> str | None:
+async def listener_cursor(connection_id: int, *, platform: str | None = None) -> str | None:
     async with get_db_session():
-        return await get_db().scalar(
-            select(ListenerState.cursor).where(
+        state = await get_db().scalar(
+            select(ListenerState).where(
                 ListenerState.connection_id == connection_id
             )
         )
+        if state is None:
+            return None
+        selected = platform or state.platform
+        return state.protocol_cursors.get(selected) or (state.cursor if selected == state.platform else None)
 
 
 async def update_listener_state(
@@ -890,6 +894,7 @@ async def update_listener_state(
         "connection_id": connection_id,
         "platform": platform,
         "cursor": cursor,
+        "protocol_cursors": {platform: cursor} if cursor is not None else {},
         "available": available,
         "last_error": _bounded(error) or None,
         "last_event_at": func.now() if event_received else None,
@@ -902,7 +907,12 @@ async def update_listener_state(
         "updated_at": func.now(),
     }
     if cursor is not None:
-        updates["cursor"] = cursor
+        updates["protocol_cursors"] = ListenerState.protocol_cursors.op("||")({platform: cursor})
+        updates["cursor"] = (case((ListenerState.platform == "mail", cursor), else_=ListenerState.cursor)
+                             if platform == "mail" else cursor)
+    if platform == "mail":
+        # Mail may poll alongside a messaging protocol on this same connection.
+        updates["platform"] = ListenerState.platform
     if event_received:
         updates["last_event_at"] = func.now()
     if reconnect:

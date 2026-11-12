@@ -2,7 +2,6 @@
 
 from typing import Any
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert
 from loguru import logger
 
 from core.database import get_db
@@ -51,13 +50,9 @@ async def create(agent_id: int, tool_id: int, active: bool) -> dict[str, Any]:
     await service.require_editable_tool(tool_id)
     if tool.code in HUMAN_ONLY_TOOL_CODES:
         raise PermissionError("Only humans can grant administrative capabilities")
-    identifier = await get_db().scalar(insert(Connection).values(agent_id=agent_id, tool_id=tool_id, active=active)
-                                      .on_conflict_do_nothing().returning(Connection.id))
-    if identifier is None:
-        raise ValueError("A connection already exists for this agent and Tool")
-    await get_db().commit()
+    connection = await service.create_connection(tool_id, agent_id, active=active)
     await refresh_after_mutation(agent_id)
-    return await projection(identifier)
+    return await projection(connection.id)
 
 
 async def set_active(connection_id: int, active: bool) -> dict[str, Any]:

@@ -34,6 +34,7 @@ from .connection_service import (
     get_connection_by_agent_tool,
     get_agent_ids_by_tool,
     get_or_create_connection,
+    create_connection,
     set_connection_active,
     delete_connection,
     get_params_for_api,
@@ -75,7 +76,7 @@ from .agent_admin_service import (
 
 __all__ += [
     "administration", "validate_param_value", "validate_params", "get_connection_by_agent_tool",
-    "get_agent_ids_by_tool", "get_or_create_connection", "set_connection_active", "delete_connection",
+    "get_agent_ids_by_tool", "get_or_create_connection", "create_connection", "set_connection_active", "delete_connection",
     "get_params_for_api", "set_params_bulk", "delete_param", "set_connection_function_state",
     "set_tool_function_state", "resolve_function",
 ]

@@ -394,3 +394,5 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0253 — Inline Goal descriptions and freely classified tracking Documents](0253-goal-current-html-columns.md)
 - [0254 — Private contact phone numbers and postal addresses](0254-private-contact-coordinates.md)
 - [0271 — Autonomous Goal conduct with durable review Tasks](0271-autonomous-goal-conduct.md)
+
+- [0274 — Provider protocols and multiple Mail accounts](0274-provider-tool-protocols.md)

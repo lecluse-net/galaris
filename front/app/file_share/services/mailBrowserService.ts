@@ -19,9 +19,9 @@ export interface MailMessage {
 }
 
 export const mailBrowserService = {
-  async message(agentId: number, reference: string, bodyOffset = 0, signal?: AbortSignal): Promise<MailMessage> {
+  async message(agentId: number, reference: string, bodyOffset = 0, signal?: AbortSignal, connectionId?: number): Promise<MailMessage> {
     return (await api.get<MailMessage>('/mail/browser/message', {
-      params: { agent_id: agentId, message_ref: reference, body_offset: bodyOffset }, signal,
+      params: { agent_id: agentId, message_ref: reference, body_offset: bodyOffset, connection_id: connectionId }, signal,
     })).data
   },
 }

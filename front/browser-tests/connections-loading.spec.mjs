@@ -1,5 +1,107 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
+for (const width of [390, 1440]) test(`One Mail provider retains multiple accounts for the same agent (${width})`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const tool = { id: 8, code: 'synthetic_mail', label: 'Synthetic Mail', can_disable: true, has_mail: true,
+    mail_config: { param_map: { email_address: 'email' }, settings: {} }, global_params: {},
+    connection_schema: { params: { email: { type: 'string', label: 'Mailbox address', required: true } } } }
+  const accounts = [{ id: 42, tool_id: 8, agent_id: 7, active: true, params: { email: 'first@example.org' }, configured_params: [] }]
+  await jsonRoute(page, '**/api/connections/tool-options', [tool])
+  await jsonRoute(page, '**/api/mail/approvers', [])
+  await jsonRoute(page, '**/api/mail/status', { enabled: true })
+  await page.route('**/api/connections/overview?*', route => route.fulfill({ json: accounts }))
+  const writes = []
+  await page.route('**/api/connections', async route => {
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    const account = { ...body, id: 43, configured_params: [] }
+    accounts.push(account)
+    await route.fulfill({ status: 201, json: account })
+  })
+  await mount(page, 'app/connection/components/ConnectionList.vue', { privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'] })
+  await expect(page.getByText('first@example.org', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'New Connection', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Agent', exact: true }).click()
+  await page.getByRole('option', { name: 'Alice Example', exact: true }).click()
+  await dialog.getByRole('combobox', { name: 'Tool', exact: true }).click()
+  await page.getByRole('option', { name: 'Synthetic Mail', exact: true }).click()
+  await dialog.getByLabel('Mailbox address *', { exact: true }).fill('second@example.org')
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes).toHaveLength(1)
+  expect(writes[0]).toMatchObject({ tool_id: 8, agent_id: 7, params: { email: 'second@example.org' } })
+  await expect(page.getByText('first@example.org', { exact: true })).toBeVisible()
+  await expect(page.getByText('second@example.org', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('same-provider-mail-accounts.png'), fullPage: true })
+})
+
+for (const width of [390, 1440]) test(`Mail folders can be listed, checked and saved with retry (${width})`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const folderParam = width === 390 ? 'visible_folders' : 'allowed_mailboxes'
+  await jsonRoute(page, '**/api/mail/approvers', [])
+  let fail = true
+  await page.route('**/api/mail/connections/42/mailboxes', route => {
+    if (fail) { fail = false; return route.fulfill({ status: 502 }) }
+    return route.fulfill({ json: [
+      { name: 'INBOX', label: 'INBOX', delimiter: '/', selectable: true },
+      { name: 'Projects', label: 'Projects', delimiter: '/', selectable: false },
+      { name: 'Projects/Active, Shared', label: 'Projects/Active, Shared', delimiter: '/', selectable: true },
+      { name: 'Sent', label: 'Sent', delimiter: '/', selectable: true },
+    ] })
+  })
+  const tool = { id: 8, code: 'mail', label: 'Mail', can_edit: false, global_params: {},
+    connection_schema: { params: { [folderParam]: { type: 'string', widget: 'mail_folder_tree', required: false, default: '',
+      description: 'Allowed IMAP folders' } } } }
+  await mount(page, 'app/connection/components/ConnectionForm.vue', {
+    privileges: ['CONNECTION_EDIT'],
+    props: { connection: { id: 42, agent_id: 7, tool_id: 8, active: true, name: '' },
+      connectionParams: { [folderParam]: 'INBOX' }, tools: [tool],
+      agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }],
+      toolOptions: [{ id: 8, label: 'Mail' }] },
+  })
+  await expect(page.locator('.mail-folder-access').getByRole('alert')).toContainText('Unable to load folders')
+  await expect(page.getByRole('checkbox', { name: 'INBOX', exact: true })).toBeChecked()
+  await page.getByRole('button', { name: 'Reload folders', exact: true }).click()
+  await expect(page.getByRole('checkbox', { name: 'Projects', exact: true })).toBeDisabled()
+  await page.getByRole('checkbox', { name: 'Projects/Active, Shared', exact: true }).check()
+  await page.getByRole('checkbox', { name: 'Sent', exact: true }).check()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect.poll(() => page.evaluate(name => window.testApp.events.filter(event => event.name === 'submit').at(-1)?.value.params[name], folderParam))
+    .toBe('["INBOX","Projects/Active, Shared","Sent"]')
+  await page.screenshot({ path: testInfo.outputPath('mail-folders-light.png'), fullPage: true, animations: 'disabled' })
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.screenshot({ path: testInfo.outputPath('mail-folders-dark.png'), fullPage: true, animations: 'disabled' })
+  await page.getByRole('checkbox', { name: 'Access to all folders', exact: true }).check()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect.poll(() => page.evaluate(name => window.testApp.events.filter(event => event.name === 'submit').at(-1)?.value.params[name], folderParam))
+    .toBe('[]')
+  for (const name of ['INBOX', 'Projects/Active, Shared', 'Sent']) {
+    await page.getByRole('checkbox', { name, exact: true }).uncheck()
+  }
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(page.locator('.mail-folder-access').getByRole('alert')).toContainText('Select at least one folder')
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'submit').length)).toBe(2)
+})
+
+test('Mail folder discovery follows the selected account and ignores late responses', async ({ page }) => {
+  let release
+  let started = false
+  await page.route('**/api/mail/connections/42/mailboxes', async route => {
+    started = true
+    await new Promise(resolve => { release = resolve })
+    await route.fulfill({ json: [{ name: 'Other account', label: 'Other account', selectable: true }] }).catch(() => {})
+  })
+  await jsonRoute(page, '**/api/mail/connections/43/mailboxes', [{ name: 'Selected account', label: 'Selected account', selectable: true }])
+  await mount(page, 'app/connection/components/MailFolderAccess.vue', { props: { connectionId: 42, modelValue: 'INBOX' } })
+  await expect.poll(() => started).toBe(true)
+  await page.evaluate(() => window.testApp.setProps({ connectionId: 43, modelValue: '["Selected account"]' }))
+  await expect(page.getByRole('checkbox', { name: 'Selected account', exact: true })).toBeChecked()
+  release()
+  await expect(page.getByRole('checkbox', { name: 'Other account', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})
+
 for (const width of [390, 1440]) {
   test(`Connections load together, refresh on reopening and recover from errors (${width})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
@@ -8,6 +110,7 @@ for (const width of [390, 1440]) {
     const tool = { id: 8, code: 'synthetic_connector', label: 'Synthetic connector', can_disable: true, can_edit: true,
       connection_schema: { params: { host: { type: 'string', label: 'Service host', required: false }, token: { type: 'password', label: 'Token', required: false } } }, global_params: {} }
     await jsonRoute(page, '**/api/tools', [tool])
+    await jsonRoute(page, '**/api/tools/capabilities', [])
     await jsonRoute(page, '**/api/connections/tool-options', [tool])
     await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
     for (const endpoint of ['mail/approvers', 'file-share/bridges', 'messenger/bridges']) {

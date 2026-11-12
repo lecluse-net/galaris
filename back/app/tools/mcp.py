@@ -83,7 +83,8 @@ async def search_web(ctx: McpToolContext, query: str) -> str:
     name="tools_list",
     description=(
         "List authorized MCP functions and distinguish those present in this run from "
-        "those requiring a new execution context, grouped by application tool."
+        "those requiring a new execution context, grouped by application tool and connection. "
+        "Mail accounts include their connection_id and mailbox address; use that exact ID in mail_* calls."
     ),
 )
 async def list_mcp_tools(ctx: McpToolContext) -> str:
@@ -112,6 +113,10 @@ async def list_mcp_tools(ctx: McpToolContext) -> str:
             continue
 
         header = f"## {group['tool_label']} (`{group['tool_code']}`)"
+        if group.get("connection_id") is not None:
+            header += f" (connection_id={group['connection_id']})"
+        if group.get("mail_address"):
+            header += f" — {group['mail_address']}"
         lines.append(header)
 
         for tool in tools:
@@ -318,7 +323,7 @@ def build_mcp_server(
 
 # ToolAdmin's identity is injected by the native loader. All entry points also
 # check the live exact function grant inside the shared administration service.
-@mcp_tool("tool_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="List the global administrative Tool catalogue. Filter kind integrated/custom/system and capability mcp/file_share/messenger/listener/task.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
+@mcp_tool("tool_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="List the global administrative Tool catalogue. Filter kind integrated/custom/system and protocol capability api/mcp/file_share/messenger/listener/mail/calendar/task.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
 async def tool_admin_list(ctx: McpToolContext, search: str = "", kind: str = "", capability: str = "", offset: int = 0, limit: int = 50) -> str:
     from . import admin_service as admin
     return await admin.invoke(ctx, "tool_admin_list", admin.list_tools, search=search, kind=kind, capability=capability, offset=offset, limit=limit)

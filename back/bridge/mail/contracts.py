@@ -40,6 +40,8 @@ class MailConnectionConfig(BaseModel):
 
     connection_id: int = Field(gt=0)
     agent_id: int = Field(gt=0)
+    resource_scheme: str = "mail"
+    resource_prefix: str = ""
     email_address: EmailStr
     display_name: str = Field(default="", max_length=200)
     agent_label: str = Field(default="", max_length=255)
@@ -47,6 +49,7 @@ class MailConnectionConfig(BaseModel):
     smtp: MailEndpointConfig
     sent_mailbox: str | None = Field(default=None, max_length=512)
     trash_mailbox: str | None = Field(default=None, max_length=512)
+    allowed_mailboxes: tuple[str, ...] = ()
     connect_timeout_s: float = Field(ge=1, le=60)
     operation_timeout_s: float = Field(ge=1, le=120)
     poll_interval_s: float = Field(default=60, ge=5, le=86_400)
@@ -54,6 +57,16 @@ class MailConnectionConfig(BaseModel):
     max_total_attachment_bytes: int = Field(ge=1, le=50 * 1024 * 1024)
     approval_required: bool = False
     approver_user_id: int | None = Field(default=None, gt=0)
+
+    def allows_mailbox(self, mailbox: str) -> bool:
+        return not self.allowed_mailboxes or any(
+            mailbox == allowed or mailbox.upper() == allowed.upper() == "INBOX"
+            for allowed in self.allowed_mailboxes
+        )
+
+    def require_mailbox(self, mailbox: str) -> None:
+        if not self.allows_mailbox(mailbox):
+            raise PermissionError("IMAP mailbox is not allowed by the Mail connection")
 
 
 class MailMessageRef(BaseModel):

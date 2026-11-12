@@ -21,9 +21,171 @@ async function connectionRoutes(page, rows) {
   await jsonRoute(page, '**/api/connections?*', rows)
   await jsonRoute(page, '**/api/connections/permission-options?*', permissionOptions(rows))
 }
+
+const protocolParameters = {
+  'imap_smtp.mail': Object.fromEntries([
+    ['imap_host', 'string', '', true], ['imap_port', 'integer', '993', true], ['imap_security', 'string', 'tls', true],
+    ['smtp_host', 'string', '', true], ['smtp_port', 'integer', '465', true], ['smtp_security', 'string', 'tls', true],
+  ].map(([name, type, value, required], order) => [name, { type, default: value, required, builtin: true, order,
+    label: 'tools.connectionParamLabels.' + name, section: 'tools.protocolSections.' + (name.startsWith('smtp_') ? 'smtp' : 'imap'),
+    options: name.endsWith('_security') ? [{ value: 'tls' }, { value: 'starttls' }] : [] }])),
+  'ical.calendar': Object.fromEntries([
+    ['timezone', 'string', 'Europe/Paris'], ['workday_start', 'string', '09:00'],
+    ['workday_end', 'string', '18:00'], ['slot_step_minutes', 'integer', '15'],
+  ].map(([name, type, value], order) => [name, { type, default: value, required: false, builtin: true, order,
+    label: 'tools.connectionParamLabels.' + name }])),
+}
+const mailConnectionDefinitions = Object.fromEntries([
+  ['email_address', 'string', true], ['password', 'password', true],
+  ['allowed_mailboxes', 'string', false], ['approver_user_id', 'user', false],
+].map(([name, type, required]) => [name, { type, required, builtin: true, default: '', label: 'tools.connectionParamLabels.' + name,
+  widget: name === 'allowed_mailboxes' ? 'mail_folder_tree' : '' }]))
+const mailBindings = Object.fromEntries(Object.entries({ email_address: ['email_address', 'email'], imap_username: ['email_address', 'login'], imap_password: ['password', 'password'],
+  smtp_username: ['email_address', 'login'], smtp_password: ['password', 'password'], allowed_mailboxes: ['allowed_mailboxes', 'folders'], approver_user_id: ['approver_user_id', 'user_id'],
+}).map(([role, [legacy_parameter, parameter]]) => [role, { parameter, legacy_parameter, label: 'tools.connectionParamLabels.' + role,
+  section: 'tools.protocolSections.' + (role.startsWith('smtp_') || ['email_address', 'approver_user_id'].includes(role) ? 'smtp' : 'imap'),
+  definition: { ...mailConnectionDefinitions[legacy_parameter], ...(parameter === 'login' ? { label: 'tools.connectionParamLabels.login' } : {}) } }]))
+const capabilityCatalogue = Object.entries({ mcp: ['http', 'sse', 'stdio'], api: ['rest'],
+  file_share: ['nextcloud', 'synthetic_share'], messenger: ['matrix', 'synthetic_messenger'],
+  listener: ['webhook'], mail: ['imap_smtp'], calendar: ['ical'],
+}).map(([code, protocols]) => ({ code, label: 'tools.capabilityLabels.' + code, builtin: true,
+  protocols: protocols.map(protocol => ({ value: protocol + '.' + code, capability: code,
+    label: protocol.startsWith('synthetic_') ? 'Synthetic ' + (code === 'file_share' ? 'share' : 'messenger') : 'tools.protocolLabels.' + protocol,
+    builtin: !protocol.startsWith('synthetic_'), parameters: protocolParameters[protocol + '.' + code] ?? {}, connection_parameters: code === 'mail' ? mailBindings : {} })),
+}))
+async function addCapability(page, label) {
+  await page.getByRole('dialog').getByRole('button', { name: 'Add protocol', exact: true }).click()
+  const picker = page.getByRole('menu', { name: 'Add protocol', exact: true })
+  await picker.getByRole('menuitem', { name: label.split(' · ').at(-1), exact: true }).click()
+  await expect(picker).toHaveCount(0)
+}
+async function removeCapability(page, name) {
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('tab', { name, exact: true }).click()
+  await dialog.getByRole('button', { name: 'Delete protocol', exact: true }).click()
+  const confirmation = page.getByRole('dialog').filter({ has: page.getByText(`Delete protocol ${name} from this Tool?`, { exact: false }) })
+  await expect(dialog.getByRole('tab', { name, exact: true })).toBeVisible()
+  await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(confirmation).toHaveCount(0)
+  await expect(dialog.getByRole('tab', { name, exact: true })).toHaveCount(0)
+}
+
 const privileges = ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'PERMISSION_DECIDE', 'AGENT_MANAGE_ALL']
 
 for (const width of [390, 1400]) {
+  test(`A provider Tool combines Mail and Calendar, preserves them on reopening and configures shared servers (${width})`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await routes(page)
+    let saved
+    let rejectCreate = true
+    const writes = []
+    function publicRow(body) {
+      return { ...saved, ...body, id: 92, has_mail: body.mail_config !== null, has_calendar: body.calendar_config !== null,
+        can_edit: true, can_disable: true, global_params: {} }
+    }
+    await page.route('**/api/tools', async route => {
+      if (route.request().method() === 'GET') return route.fulfill({ json: saved ? [saved] : [] })
+      const body = route.request().postDataJSON()
+      writes.push(body)
+      if (rejectCreate) { rejectCreate = false; return route.fulfill({ status: 422, json: { detail: 'Synthetic settings failure' } }) }
+      saved = publicRow(body)
+      return route.fulfill({ status: 201, json: saved })
+    })
+    await page.route('**/api/tools/92', async route => {
+      const body = route.request().postDataJSON()
+      writes.push(body)
+      saved = publicRow(body)
+      return route.fulfill({ json: saved })
+    })
+    await mount(page, 'app/tools/components/ToolsList.vue', { privileges, dark: width === 390 })
+    await page.getByRole('button', { name: 'New tool', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Technical name', { exact: false }).fill('synthetic-provider')
+    await dialog.getByLabel('Label *', { exact: true }).fill('Synthetic provider')
+    await addCapability(page, 'Mail · IMAP & SMTP')
+    const binding = name => dialog.getByRole('group', { name, exact: true }).getByRole('combobox', { name: 'Connection parameter', exact: true })
+    const mapParameter = async (role, option) => {
+      await binding(role).click()
+      await page.getByRole('option', { name: option, exact: true }).click()
+      await expect(page.getByRole('option')).toHaveCount(0)
+    }
+    await expect(binding('IMAP password')).toHaveValue('')
+    await mapParameter('IMAP username', 'New parameter…')
+    await expect(binding('IMAP username')).toHaveValue('login')
+    await mapParameter('IMAP password', 'New parameter…')
+    await mapParameter('SMTP username', 'login')
+    await mapParameter('Email address', 'login')
+    await mapParameter('SMTP password', 'password')
+    await expect(binding('SMTP password')).toHaveValue('password')
+    await mapParameter('Allowed mail folders', 'New parameter…')
+    await expect(dialog.getByLabel('IMAP server *', { exact: true })).toBeVisible()
+    await dialog.getByLabel('IMAP server *', { exact: true }).fill('imap.example.test')
+    await dialog.getByLabel('SMTP server *', { exact: true }).fill('smtp.example.test')
+    await dialog.getByLabel('SMTP port *', { exact: true }).fill('587')
+    await expect(dialog.getByRole('textbox', { name: 'Password *', exact: true })).toHaveCount(0)
+    await mapParameter('SMTP password', 'New parameter…')
+    await expect(binding('SMTP password')).toHaveValue('password_2')
+    await addCapability(page, 'Calendar · iCal')
+    await dialog.getByLabel('Time zone', { exact: true }).fill('Europe/London')
+    await dialog.getByLabel('Workday start', { exact: true }).fill('08:30')
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect(page.locator('.q-notification__message')).toContainText('Synthetic settings failure')
+    await expect(dialog.getByLabel('Time zone', { exact: true })).toHaveValue('Europe/London')
+    await page.screenshot({ path: testInfo.outputPath('calendar-settings.png'), animations: 'disabled' })
+    await dialog.getByRole('tab', { name: 'IMAP & SMTP', exact: true }).click()
+    await expect(dialog.getByLabel('IMAP server *', { exact: true })).toHaveValue('imap.example.test')
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(writes[1]).toMatchObject({ code: 'synthetic-provider', capabilities: ['imap_smtp.mail', 'ical.calendar'],
+      mail_config: { settings: { imap_host: 'imap.example.test', smtp_host: 'smtp.example.test', smtp_port: '587' },
+        param_map: { email_address: 'login', imap_username: 'login', imap_password: 'password', smtp_username: 'login', smtp_password: 'password_2', allowed_mailboxes: 'folders' } },
+      calendar_config: { settings: { timezone: 'Europe/London', workday_start: '08:30' } } })
+    expect(writes[1]).not.toHaveProperty('global_params')
+    expect(Object.keys(writes[1].connection_schema.params)).toEqual(['login', 'password', 'folders', 'password_2'])
+    const row = page.locator(width === 390 ? '.tool-mobile-card' : 'tbody tr').filter({ hasText: 'Synthetic provider' })
+    await expect(row).toContainText('Mail')
+    await expect(row).toContainText('Calendar')
+    await page.screenshot({ path: testInfo.outputPath('provider-list.png'), animations: 'disabled' })
+    await row.getByRole('button', { name: 'Edit tool', exact: true }).click()
+    await expect(dialog.getByRole('tab', { name: 'IMAP & SMTP', exact: true })).toBeVisible()
+    await expect(dialog.getByRole('tab', { name: 'iCal', exact: true })).toBeVisible()
+    await expect(dialog.getByLabel('IMAP server *', { exact: true })).toHaveValue('imap.example.test')
+    await expect(dialog.getByLabel('SMTP port *', { exact: true })).toHaveValue('587')
+    await expect(binding('SMTP password')).toHaveValue('password_2')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(writes[2]).not.toHaveProperty('global_params')
+    expect(writes[2].mail_config.param_map).toMatchObject({ imap_password: 'password', smtp_password: 'password_2' })
+    expect(writes[2].connection_schema.params.password_2.type).toBe('password')
+    expect(writes[2].connection_schema.params.folders.widget).toBe('mail_folder_tree')
+    await row.getByRole('button', { name: 'Edit tool', exact: true }).click()
+    await dialog.getByRole('tab', { name: 'iCal', exact: true }).click()
+    await expect(dialog.getByLabel('Time zone', { exact: true })).toHaveValue('Europe/London')
+    await dialog.getByRole('tab', { name: 'IMAP & SMTP', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Add protocol', exact: true }).click()
+    const picker = page.getByRole('menu', { name: 'Add protocol', exact: true })
+    await expect(picker.getByRole('menuitem', { name: 'IMAP & SMTP', exact: true })).toBeDisabled()
+    await picker.getByRole('menuitem', { name: 'HTTP', exact: true }).hover()
+    await page.screenshot({ path: testInfo.outputPath('protocol-options.png'), animations: 'disabled' })
+    await page.keyboard.press('Escape')
+    await expect(picker).toHaveCount(0)
+    await page.screenshot({ path: testInfo.outputPath('provider-protocols.png'), animations: 'disabled' })
+    await dialog.getByRole('button', { name: 'Delete protocol', exact: true }).click()
+    const confirmation = page.getByRole('dialog').filter({ hasText: 'Delete protocol IMAP & SMTP from this Tool?' })
+    await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(confirmation).toHaveCount(0)
+    await expect(dialog.getByRole('tab', { name: 'IMAP & SMTP', exact: true })).toBeVisible()
+    await removeCapability(page, 'IMAP & SMTP')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(4)
+    expect(writes[3]).toMatchObject({ capabilities: ['ical.calendar'], mail_config: null,
+      calendar_config: { settings: { timezone: 'Europe/London' } } })
+    expect(writes[3]).not.toHaveProperty('global_params')
+    await expect(dialog).toHaveCount(0)
+    await expect(row).not.toContainText('Mail')
+    await expect(row).toContainText('Calendar')
+  })
+
   test(`Connection Tool selection groups the allowed built-in and custom choices (${width})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
     await routes(page)
@@ -133,18 +295,18 @@ for (const width of [390, 1400]) {
     await dialog.getByLabel('Label *', { exact: true }).fill('Synthetic REST service')
     const createButton = dialog.getByRole('button', { name: 'Create', exact: true })
     await expect(createButton).toBeDisabled()
+    await page.screenshot({ path: testInfo.outputPath('empty-protocol-tabs.png'), animations: 'disabled' })
     await dialog.locator('form').evaluate(form => form.requestSubmit())
-    await expect(page.locator('.q-notification__message')).toContainText('Enable at least one capability to create the tool.')
+    await expect(page.locator('.q-notification__message')).toContainText('Add at least one protocol to create the tool.')
     expect(writes).toEqual([])
-    for (const name of ['Enable MCP', 'Enable API', 'Enable file sharing', 'Enable messaging', 'Enable listener']) {
-      const toggle = dialog.getByRole('switch', { name, exact: true })
-      await toggle.check()
+    for (const [name, protocol] of [['MCP', 'HTTP'], ['API', 'REST'], ['File sharing', 'Nextcloud'], ['Messaging', 'Matrix'], ['Listener', 'Webhook'], ['Mail', 'IMAP & SMTP'], ['Calendar', 'iCal']]) {
+      await addCapability(page, name + ' · ' + protocol)
       await expect(createButton).toBeEnabled()
-      await toggle.uncheck()
+      await removeCapability(page, protocol)
       await expect(createButton).toBeDisabled()
     }
-    await dialog.getByRole('switch', { name: 'Enable API', exact: true }).click()
-    await expect(dialog.getByRole('tab', { name: 'REST API', exact: true })).toBeVisible()
+    await addCapability(page, 'API · REST')
+    await expect(dialog.getByRole('tab', { name: 'REST', exact: true })).toBeVisible()
     await expect(dialog.getByLabel('API base URL', { exact: true })).toHaveValue('')
     await dialog.getByLabel('API base URL', { exact: true }).fill('https://api.example.test/v1')
     for (const name of ['api_token_2', 'api_token_3']) {
@@ -197,7 +359,7 @@ for (const width of [390, 1400]) {
     expect(writes[0].connection_schema.params).not.toHaveProperty('api_token_3')
     expect(writes[0].connection_schema.params.x_synthetic.type).toBe('string')
     await page.getByRole('button', { name: 'Edit tool', exact: true }).click()
-    await dialog.getByRole('tab', { name: 'REST API', exact: true }).click()
+    await dialog.getByRole('tab', { name: 'REST', exact: true }).click()
     await expect(dialog.getByLabel('API base URL', { exact: true })).toHaveValue('https://api.example.test/v1')
     await expect(dialog.getByText('api_token_2', { exact: true })).toBeVisible()
     await expect(dialog.getByText('x_synthetic', { exact: true })).toBeVisible()
@@ -205,7 +367,7 @@ for (const width of [390, 1400]) {
     await expect(dialog).toHaveCount(0)
     expect(writes[1].rest_config).toEqual(writes[0].rest_config)
     await page.getByRole('button', { name: 'Edit tool', exact: true }).click()
-    await dialog.getByRole('switch', { name: 'Enable API', exact: true }).click()
+    await removeCapability(page, 'REST')
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     expect(writes[2].rest_config).toBeNull()
@@ -232,7 +394,7 @@ for (const width of [390, 1400]) {
     const dialog = page.getByRole('dialog')
     await dialog.getByLabel('Technical name', { exact: false }).fill('synthetic_drivers')
     await dialog.getByLabel('Label *', { exact: true }).fill('Synthetic drivers')
-    await dialog.getByRole('switch', { name: 'Enable MCP', exact: true }).click()
+    await addCapability(page, 'MCP · HTTP')
     await dialog.getByLabel('URL *', { exact: true }).fill('https://mcp.example.test')
     await dialog.getByLabel('Auth type', { exact: true }).click()
     await page.getByRole('option', { name: 'basic — Authorization: Basic', exact: true }).click()
@@ -248,8 +410,8 @@ for (const width of [390, 1400]) {
     await page.getByRole('option', { name: 'New parameter…', exact: true }).click()
     await expect(page.getByRole('option', { name: 'New parameter…', exact: true })).toHaveCount(0)
     await expect(dialog.getByLabel('Name *', { exact: true }).nth(1)).toHaveValue('password')
-    for (const capability of ['Enable file sharing', 'Enable messaging']) {
-      await dialog.getByRole('switch', { name: capability, exact: true }).click()
+    for (const capability of ['File sharing · Synthetic share', 'Messaging · Synthetic messenger']) {
+      await addCapability(page, capability)
       await expect(dialog.getByLabel('Connection parameter', { exact: true })).toHaveCount(1)
       await dialog.getByLabel('Connection parameter', { exact: true }).click()
       await page.getByRole('option', { name: 'New parameter…', exact: true }).click()
@@ -573,8 +735,65 @@ for (const [locale, description, publicLabel, askChoice, allowChoice, saveLabel]
   })
 }
 
+test('Protocol catalogue retries and plugin entries survive saving and reopening', async ({ page }) => {
+  await routes(page)
+  const plugin = { code: 'sensors', label: 'Vendor sensors', builtin: false,
+    protocols: [{ value: 'vendor.sensors', capability: 'sensors', label: 'VendorLink', builtin: false }] }
+  let attempts = 0
+  await page.route('**/api/tools/capabilities', route => {
+    attempts++
+    return route.fulfill(attempts === 1 ? { status: 503, json: { detail: 'Temporary catalogue outage' } } : { json: [...capabilityCatalogue, plugin] })
+  })
+  let saved
+  const writes = []
+  await page.route('**/api/tools', route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: saved ? [saved] : [] })
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    saved = { ...body, id: 94, can_edit: true, can_disable: true, global_params: {} }
+    return route.fulfill({ status: 201, json: saved })
+  })
+  await page.route('**/api/tools/94', route => {
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    saved = { ...saved, ...body }
+    return route.fulfill({ json: saved })
+  })
+  await mount(page, 'app/tools/components/ToolsList.vue', { privileges })
+  await page.getByRole('button', { name: 'New tool', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('tab')).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Add protocol', exact: true }).click()
+  const picker = page.getByRole('menu', { name: 'Add protocol', exact: true })
+  await expect(picker.getByRole('alert')).toContainText('Unable to load the available protocols.')
+  await expect(picker.getByRole('menuitem')).toHaveCount(0)
+  await picker.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(picker.getByRole('alert')).toHaveCount(0)
+  // Escape closes the menu and preserves the empty editor.
+  await page.keyboard.press('Escape')
+  await expect(picker).toHaveCount(0)
+  await expect(dialog.getByRole('tab')).toHaveCount(0)
+  await dialog.getByLabel('Technical name', { exact: false }).fill('synthetic_sensors')
+  await dialog.getByLabel('Label *', { exact: true }).fill('Synthetic sensors')
+  await dialog.getByRole('button', { name: 'Add protocol', exact: true }).click()
+  const custom = 'vendor.sensors'
+  await picker.getByRole('menuitem', { name: 'VendorLink', exact: true }).click()
+  await expect(picker).toHaveCount(0)
+  await expect(dialog.getByRole('tab', { name: 'VendorLink', exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes[0].capabilities).toEqual([custom])
+  await page.getByRole('button', { name: 'Edit tool', exact: true }).click()
+  await expect(dialog.getByRole('tab', { name: 'VendorLink', exact: true })).toBeVisible()
+  await dialog.getByLabel('Label *', { exact: true }).fill('Renamed synthetic sensors')
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes[1].capabilities).toEqual([custom])
+})
+
 async function routes(page) {
   await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Alice Example', agent_driver: 'internal' }])
+  await jsonRoute(page, '**/api/tools/capabilities', capabilityCatalogue)
   await jsonRoute(page, '**/api/tools', tools)
   await jsonRoute(page, '**/api/connections/tool-options', tools)
   await jsonRoute(page, '**/api/file-share/bridges', [])

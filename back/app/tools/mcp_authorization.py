@@ -37,10 +37,10 @@ async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition,
     # Administrative connection_id arguments describe the target being edited,
     # not the Tool connection that grants the administrative capability.
     requested_connection = ctx.resource("source_connection_id")
-    if requested_connection is None and definition.tool_code == "messenger":
+    if requested_connection is None and definition.tool_code in {"messenger", "mail", "calendar"}:
         requested_connection = arguments.get("connection_id") or ctx.resource("connection_id")
     turn = ctx.resource("conversation_turn")
-    if requested_connection is None and turn is not None and definition.tool_code == "messenger":
+    if requested_connection is None and turn is not None and definition.tool_code in {"messenger", "mail", "calendar"}:
         requested_connection = turn.messaging_context.get("connection_id")
     for connection in await connections.get_connections_by_agent(ctx.agent_id):
         if not connection.active:
@@ -53,6 +53,8 @@ async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition,
     if len(candidates) != 1:
         raise ToolCallRejectedError("The exact Tool connection for this action must be resolved before authorization")
     connection, tool = candidates[0]
+    if ctx.conversation_only and not tool.conversation_enabled:
+        raise ToolCallRejectedError("This Tool connection is not enabled for conversations")
     _, params = await connections.get_params_as_dict(connection.id)
     preflight: dict[str, Any] = {}
     resolved = await connections.resolve_function(connection, definition.name)

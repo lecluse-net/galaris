@@ -29,7 +29,7 @@ import { ConversationTurnDialog, ResourceAttachments, type AttachmentSource } fr
 import { mailBrowserService, type MailMessage } from '../services/mailBrowserService'
 import { fileBrowserService } from '../services/fileBrowserService'
 
-const { agentId, reference, title = '' } = defineProps<{ agentId: number; reference: string; title?: string }>()
+const { agentId, reference, connectionId, title = '' } = defineProps<{ agentId: number; reference: string; connectionId?: number; title?: string }>()
 const emit = defineEmits<{ close: [] }>()
 const { t, locale } = useI18n()
 const message = ref<MailMessage | null>(null)
@@ -52,7 +52,7 @@ async function load(more = false): Promise<void> {
   loading.value = true; error.value = false
   try {
     const offset = more ? message.value?.next_body_offset ?? 0 : 0
-    const result = await mailBrowserService.message(agentId, reference, offset, current.signal)
+    const result = await mailBrowserService.message(agentId, reference, offset, current.signal, connectionId)
     if (current.signal.aborted) return
     if (result.ref !== reference || result.body_start !== offset || (result.next_body_offset !== null && result.next_body_offset <= offset)) throw new Error('Invalid Mail body page')
     body.value = more ? body.value + result.body : result.body
@@ -60,7 +60,7 @@ async function load(more = false): Promise<void> {
   } catch { if (!current.signal.aborted) error.value = true }
   finally { if (!current.signal.aborted) loading.value = false }
 }
-watch([() => agentId, () => reference], () => { message.value = null; body.value = ''; void load() }, { immediate: true })
+watch([() => agentId, () => reference, () => connectionId], () => { message.value = null; body.value = ''; void load() }, { immediate: true })
 onBeforeUnmount(() => request?.abort())
 </script>
 

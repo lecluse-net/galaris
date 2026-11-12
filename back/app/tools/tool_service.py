@@ -16,6 +16,8 @@ from .rest_contracts import RestConfig
 from .administration_lock import lock_tools, finish_write
 from .deletion import DeletionConflict, ToolDeletionImpact
 from .parameter_definitions import with_standard_params
+from .protocols import ProtocolConfig, referenced_protocol_params, with_protocol_params
+from .capabilities import CONFIG_FIELDS, configuration_values, effective_capabilities, resolve_selections
 from .secrets import (
     SecretPlaceholderWithoutValue,
     export_listener_config,
@@ -58,7 +60,12 @@ async def get_tool_codes(tool_ids: set[int]) -> dict[int, str]:
 
 
 def connection_schema_for_tool(record: ToolModel) -> Dict[str, Any]:
-    return with_standard_params(record.connection_schema or {}, code=record.code,
+    schema = with_protocol_params(record.connection_schema or {},
+        mail=ProtocolConfig.model_validate(record.mail_config) if record.mail_config is not None else None,
+        calendar=ProtocolConfig.model_validate(record.calendar_config) if record.calendar_config is not None else None,
+        preserve=referenced_protocol_params(record.mcp_config, record.rest_config, record.messenger_config,
+            record.file_share_config, record.listener_config))
+    return with_standard_params(schema, code=record.code,
                                 file_share_config=record.file_share_config,
                                 messenger_config=record.messenger_config)
 
@@ -363,16 +370,20 @@ def _validate_rest_config(config: RestConfig | None, schema: dict[str, Any]) -> 
 def _to_internal(record: ToolModel) -> Tool:
     return Tool(
         code=record.code,
+        capabilities=effective_capabilities(record),
         can_disable=record.can_disable,
         label=record.label,
         rest_config=RestConfig.model_validate(record.rest_config) if record.rest_config else None,
+        mail_config=ProtocolConfig.model_validate(record.mail_config) if record.mail_config is not None else None,
+        calendar_config=ProtocolConfig.model_validate(record.calendar_config) if record.calendar_config is not None else None,
         description=record.description or "",
         mcp_config=(
             McpConfig(**runtime_mcp_config(record.mcp_config))
             if record.mcp_config
             else None
         ),
-        file_share_config=FileShareConfig(**record.file_share_config) if record.file_share_config else None,
+        file_share_config=(FileShareConfig(**record.file_share_config) if record.file_share_config else
+            FileShareConfig(service="mail", base_url="") if record.mail_config is not None else None),
         messenger_config=(
             MessengerConfig(
                 **runtime_messenger_config(
@@ -383,7 +394,7 @@ def _to_internal(record: ToolModel) -> Tool:
                 )
             )
             if record.messenger_config
-            else None
+            else MessengerConfig(service="mail") if record.mail_config is not None else None
         ),
         listener_config=(
             ListenerConfig(**runtime_listener_config(record.listener_config))
@@ -401,11 +412,14 @@ def _to_internal(record: ToolModel) -> Tool:
 # =============================================================================
 
 async def create_tool(data: ToolCreate, *, commit: bool = True) -> ToolModel:
+    normalized = data.model_dump()
+    selected = resolve_selections(normalized, data.capabilities)
+    data = ToolCreate.model_validate({**normalized, "capabilities": selected})
     from app.file_share import validate_external_tool_code
 
     validate_external_tool_code(
         data.code,
-        file_share=data.file_share_config is not None,
+        file_share=data.file_share_config is not None or data.mail_config is not None,
         messenger=data.messenger_config is not None,
     )
     from .assertions import tool_can_edit
@@ -413,7 +427,8 @@ async def create_tool(data: ToolCreate, *, commit: bool = True) -> ToolModel:
     if not tool_can_edit(data.code):
         raise ValueError("Integrated Tool definitions are software-owned")
     db = get_db()
-    connection_schema = with_standard_params(data.connection_schema.model_dump(), code=data.code,
+    connection_schema = with_standard_params(with_protocol_params(data.connection_schema.model_dump(),
+        mail=data.mail_config, calendar=data.calendar_config), code=data.code,
         file_share_config=data.file_share_config.model_dump() if data.file_share_config else None,
         messenger_config=data.messenger_config.model_dump() if data.messenger_config else None)
     await _validate_connection_schema(connection_schema)
@@ -427,7 +442,10 @@ async def create_tool(data: ToolCreate, *, commit: bool = True) -> ToolModel:
         code=data.code,
         label=data.label,
         description=data.description,
+        capabilities=selected,
         rest_config=data.rest_config.model_dump() if data.rest_config else None,
+        mail_config=data.mail_config.model_dump(exclude_defaults=True) if data.mail_config is not None else None,
+        calendar_config=data.calendar_config.model_dump(exclude_defaults=True) if data.calendar_config is not None else None,
         mcp_config=(
             await _protect_mcp(data.mcp_config.model_dump())
             if data.mcp_config
@@ -482,6 +500,19 @@ async def update_tool(tool_id: int, data: ToolUpdate, *, commit: bool = True) ->
 
     # ``model_fields_set`` distinguishes omitted fields from explicit null values so overwrite
     # imports can remove old optional configuration.
+    updates = data.model_dump(exclude_unset=True)
+    original = configuration_values(record)
+    target = {field: updates.get(field, original[field]) for field in CONFIG_FIELDS.values()}
+    selected = resolve_selections(target, data.capabilities if "capabilities" in data.model_fields_set else None,
+        previous=record.capabilities or [], previous_values=original)
+    for field in CONFIG_FIELDS.values():
+        if target[field] != updates.get(field, original[field]):
+            updates[field] = target[field]
+    data = ToolUpdate.model_validate({**updates, "capabilities": selected})
+    if "mail_config" in data.model_fields_set and data.mail_config is None and record.mail_config is not None:
+        from app.connection.facade import administration
+
+        await administration.require_singleton_connections(tool_id)
     values = data.model_dump()
     target_connection_schema = cast(
         Dict[str, Any],
@@ -501,16 +532,29 @@ async def update_tool(tool_id: int, data: ToolUpdate, *, commit: bool = True) ->
         if "file_share_config" in data.model_fields_set
         else record.file_share_config
     )
-    if (
+    if record.code == "mail" and (
+        target_file_share_config is not None and target_file_share_config.get("service") != "mail"
+        or target_messenger_config is not None and target_messenger_config.get("service") != "mail"
+    ):
+        raise ValueError(await tr("tools.errors.legacy_mail_namespace"))
+    if record.code not in {"mail", "calendar"} and (
         record.code not in INTEGRATED_TOOL_CODES
         or target_file_share_config is not None
         or target_messenger_config is not None
     ):
         validate_external_tool_code(
             record.code,
-            file_share=target_file_share_config is not None,
+            file_share=target_file_share_config is not None or (
+                values.get("mail_config") if "mail_config" in data.model_fields_set else record.mail_config) is not None,
             messenger=target_messenger_config is not None,
         )
+    target_connection_schema = with_protocol_params(target_connection_schema,
+        mail=(data.mail_config if "mail_config" in data.model_fields_set else
+            ProtocolConfig.model_validate(record.mail_config) if record.mail_config is not None else None),
+        calendar=(data.calendar_config if "calendar_config" in data.model_fields_set else
+            ProtocolConfig.model_validate(record.calendar_config) if record.calendar_config is not None else None),
+        preserve=referenced_protocol_params(*(values.get(name) if name in data.model_fields_set else getattr(record, name)
+            for name in ("mcp_config", "rest_config", "messenger_config", "file_share_config", "listener_config"))))
     if target_messenger_config is not None:
         await _validate_messenger_config(
             target_messenger_config,
@@ -520,6 +564,8 @@ async def update_tool(tool_id: int, data: ToolUpdate, *, commit: bool = True) ->
     _validate_rest_config(RestConfig.model_validate(rest_config) if rest_config else None, target_connection_schema)
     for field in data.model_fields_set:
         value = values[field]
+        if field in {"mail_config", "calendar_config"} and value is not None:
+            value = ProtocolConfig.model_validate(value).model_dump(exclude_defaults=True)
         # Preserve non-nullable text fields when a client explicitly sends null.
         if field in {"label", "description"} and value is None:
             continue
@@ -542,7 +588,7 @@ async def update_tool(tool_id: int, data: ToolUpdate, *, commit: bool = True) ->
             connection_schema = cast(Dict[str, Any], value)
             await _validate_connection_schema(connection_schema)
         setattr(record, field, value)
-    if {"connection_schema", "file_share_config", "messenger_config"} & data.model_fields_set:
+    if {"connection_schema", "file_share_config", "messenger_config", "mail_config", "calendar_config"} & data.model_fields_set:
         record.connection_schema = connection_schema_for_tool(record)
         record.global_params = merge_default_global_params(
             record.global_params,
@@ -714,13 +760,17 @@ async def get_tools_by_ids(tool_ids: Collection[int]) -> dict[int, Tool]:
 
 def _record_to_export_dict(record: ToolModel) -> Dict[str, object]:
     """Serialize a tool record without exporting any write-only value."""
-    d: Dict[str, object] = {"code": record.code, "label": record.label}
+    d: Dict[str, object] = {"code": record.code, "label": record.label, "capabilities": effective_capabilities(record)}
     if record.description:
         d["description"] = record.description
     if record.mcp_config:
         d["mcp_config"] = export_mcp_config(record.mcp_config)
     if record.rest_config:
         d["rest_config"] = RestConfig.model_validate(record.rest_config).model_dump()
+    if record.mail_config is not None:
+        d["mail_config"] = record.mail_config
+    if record.calendar_config is not None:
+        d["calendar_config"] = record.calendar_config
     if record.file_share_config:
         d["file_share_config"] = record.file_share_config
     if record.messenger_config:
@@ -788,7 +838,7 @@ async def import_from_yaml_string(
     from app.file_share import validate_external_tool_code
     from .mandatory_tools import INTEGRATED_TOOL_CODES
 
-    if (
+    if (existing is None or existing.code not in {"mail", "calendar"}) and (
         existing is None
         or tool_data.code not in INTEGRATED_TOOL_CODES
         or tool_data.file_share_config is not None

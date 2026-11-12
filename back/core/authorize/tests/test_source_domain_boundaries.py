@@ -1,3 +1,4 @@
+from tests.protocol_tools import protocol_tool
 """Cross-domain HTTP regressions with persisted, entirely synthetic data."""
 from uuid import uuid4
 
@@ -82,7 +83,7 @@ async def test_mail_decision_does_not_use_connection_read_only(client):
     headers, user_id = await actor(["CONNECTION_ACCESS"])
     agent_id = await owned_agent(user_id)
     async with get_db_session() as db:
-        tool = await db.scalar(select(Tool).where(Tool.code == "mail"))
+        tool = await protocol_tool(db, "mail")
         assert tool is not None
         connection = Connection(agent_id=agent_id, tool_id=tool.id, active=True)
         db.add(connection)

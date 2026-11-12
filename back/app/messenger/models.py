@@ -502,6 +502,9 @@ class ListenerState(Base):
     )
     platform: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     cursor: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    protocol_cursors: Mapped[dict[str, str]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     available: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )

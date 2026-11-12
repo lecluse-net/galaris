@@ -1,11 +1,39 @@
 <p align="right"><strong>Français</strong> · <a href="../../../en/architecture/flows/mail.md">English</a></p>
 
-# Flux du Tool Mail IMAP/SMTP
+# Flux du protocole Mail IMAP/SMTP
 
 Le bridge `bridge.mail` adapte une boîte externe aux contrats Tool et Messenger de Galaris.
-L’agent invoque des fonctions MCP bornées sur son unique connexion `mail` active ; le listener
+Un Tool fournisseur personnalisé sélectionne `imap_smtp.mail` dans `capabilities`, active
+`mail_config` et peut cumuler plusieurs capacités différentes, chacune avec un seul protocole.
+Mail ne fait plus partie des Tools internes. L’agent invoque des fonctions MCP bornées sur une
+connexion active de ce fournisseur ; `connection_id` sélectionne explicitement la connexion
+lorsque plusieurs fournisseurs sont actifs. L'autorisation et l'exécution utilisent cette même
+connexion ; une sélection ambiguë ou étrangère est refusée. Le listener
 canonique interroge aussi l’INBOX, journalise les en-têtes et admet les courriels autorisés
 comme tâches dédiées après contrôle de `mail_process`.
+
+L'entrée unique **IMAP & SMTP** présente deux sections. `mail_config.settings` contient les
+serveurs et réglages fixes ; `mail_config.param_map` référence les paramètres standards de
+connexion pour l'adresse, les identifiants, les secrets, les dossiers et le responsable des
+approbations. Les deux authentifications peuvent partager `login` et `password` ou utiliser
+des paramètres distincts. Aucun paramètre n'est créé à l'activation du protocole.
+Les configurations historiques vides conservent les valeurs globales et locales existantes.
+
+Un même agent peut créer plusieurs connexions au même Tool Mail : par exemple deux boîtes
+chez un seul fournisseur. Chaque connexion conserve ses paramètres, secrets, restrictions de
+dossiers, autorisations et curseurs propres. Les appels MCP utilisent `connection_id` ; sans
+sélection non ambiguë, ils refusent l'opération et indiquent les connexions disponibles.
+Les autres Tools conservent une seule connexion par agent. Retirer le protocole Mail exige
+de supprimer d'abord les connexions supplémentaires du même agent.
+Le catalogue MCP `tools_list` présente chaque compte avec son adresse, son `connection_id`
+et les fonctions autorisées sur cette connexion. Le skill système Galaris et les descriptions
+des paramètres MCP expliquent comment choisir le compte et conserver ses références.
+
+Les nouvelles URI de pièces jointes incluent `account/<connection_id>/` après le schéma
+du fournisseur (et après `mail/` si un partage de fichiers coexiste). Le navigateur affiche
+les comptes séparément lorsque plusieurs boîtes sont actives. Les anciennes URI sans compte
+restent utilisables lorsqu'une seule connexion est possible ; elles ne sélectionnent jamais
+arbitrairement une boîte parmi plusieurs.
 
 ```text
 Agent / Tâche
@@ -16,7 +44,7 @@ Agent / Tâche
    ├── SMTP TLS/STARTTLS : send, reply, forward
    ├── mail_outbound_deliveries : contenu MIME + enveloppe + validation + issue durable
    ├── app.messenger → Memory : un contact privé par compte observé
-   └── app.file_share : pièces jointes mail:// en lecture seule
+   └── app.file_share : ressources <tool.code>:// en lecture seule
 
 Connexion Mail active
    → polling IMAP toutes les poll_interval_s
@@ -36,7 +64,7 @@ et des pièces jointes vérifient cette limite avant tout accès au contenu. Ell
 aux reçus historiques et à leur reprise après accord ; un ancien reçu hors INBOX ne peut pas
 déclencher de tâche, même s'il avait déjà été autorisé.
 
-`poll_interval_s` est un paramètre du Tool Mail, configurable globalement et surchargeable par
+`poll_interval_s` est un paramètre du protocole Mail, configurable globalement et surchargeable par
 connexion sauf lorsqu’une valeur globale est imposée. Il vaut 60 secondes par défaut et est borné
 entre 5 secondes et 24 heures. La première activation établit une baseline sur `UIDNEXT` sans
 transformer l’historique déjà présent en tâches. Les UID ultérieurs sont traités dans l’ordre
@@ -165,6 +193,25 @@ de précision. Les deux fonctions de lecture restent dans le scope d’une tâch
 `mail_send`.
 
 ## Configuration et sécurité
+
+`allowed_mailboxes` limite l'accès IMAP aux noms exacts. Le formulaire de connexion charge
+les dossiers par `GET /mail/connections/{id}/mailboxes` et les présente avec des cases à cocher.
+Cette découverte administrative exige une session web, `CONNECTION_EDIT` et le périmètre de
+l'agent ; elle inclut les dossiers exclus pour permettre leur sélection, sans lire de message.
+Les noms affichés décodent UTF-7 IMAP ; les valeurs conservées restent les noms exacts du serveur.
+Le formulaire enregistre un tableau JSON pour conserver les virgules dans les noms ; les anciennes
+listes séparées par des virgules restent acceptées. Absent, vide ou `[]`, le paramètre autorise
+tous les dossiers. Le formulaire refuse une sélection restrictive sans case cochée. Chaque sous-dossier
+doit être listé explicitement ; seul `INBOX` est comparé sans distinction de casse. Ce paramètre
+suit la cascade globale/surcharge locale et les valeurs imposées. Les dossiers exclus ne sont
+pas exposés par la découverte ; recherche, lectures, exports MIME, pièces jointes, flags et
+déplacements (source et destination) sont refusés, y compris avec une ancienne référence.
+La navigation peut conserver un parent structurel pour atteindre un sous-dossier autorisé,
+sans donner accès aux messages du parent. Sans `INBOX`, le polling et la reprise des réceptions
+sont suspendus ; les reçus historiques ne peuvent pas contourner la restriction, même après accord.
+Cette liste ne modifie pas la limite du traitement entrant à `INBOX`. L'envoi SMTP reste possible,
+mais la vérification et l'archivage IMAP dans Envoyés exigent que ce dossier soit autorisé ; leur
+échec reste signalé dans le reçu sans rejouer SMTP.
 
 La connexion saisit uniquement l'adresse de la boîte et un mot de passe commun à IMAP et SMTP.
 L'adresse sert aussi d'identifiant auprès des deux serveurs. Hôtes, ports, sécurité, timeouts et

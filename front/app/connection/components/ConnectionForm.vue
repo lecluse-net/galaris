@@ -90,7 +90,15 @@
             />
           </div>
           <div class="col-value">
+            <MailFolderAccess
+              v-if="param.widget === 'mail_folder_tree'"
+              :model-value="paramValues[param.name] ?? ''"
+              :connection-id="form.id"
+              :disable="!canEdit"
+              @update:model-value="paramValues[param.name] = $event"
+            />
             <ConnectionParamInput
+              v-else
               :model-value="paramValues[param.name]"
               :name="param.name"
               :definition="param"
@@ -198,7 +206,7 @@
       </q-card-section>
     </q-card>
 
-    <q-card v-if="selectedTool?.code === 'mail'" flat bordered>
+    <q-card v-if="selectedTool?.has_mail" flat bordered>
       <q-card-section>
         <div class="text-subtitle2 q-mb-sm">{{ t('connection.mail.title') }}</div>
         <q-banner dense rounded class="bg-blue-1 text-blue-9 q-mb-md">
@@ -387,6 +395,7 @@ import { consoleService, type ConsoleConnectionStatus } from '@/app/console/serv
 import { mailService, type MailApproverOption } from '@/app/connection/services/mailService'
 import connectionService, { type ConnectionActionResult } from '../services/connectionService'
 import CalendarConnectionEditor from './CalendarConnectionEditor.vue'
+import MailFolderAccess from './MailFolderAccess.vue'
 import McpOAuthConnection from './McpOAuthConnection.vue'
 import { authorizedKeysDeploymentCommands } from '@/app/console/sshKeyDeployment'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -414,6 +423,8 @@ interface ToolOption {
 
 interface Tool {
   id: number
+  has_mail?: boolean
+  has_calendar?: boolean
   code: string
   label: string
   can_edit?: boolean
@@ -574,6 +585,7 @@ const schemaParameters = computed((): SchemaParam[] => {
       builtin: config.builtin,
       options: config.options,
       type: config.type || 'string',
+      widget: config.widget,
       description: config.description,
       default: config.default,
       required: config.required ?? true,
@@ -671,7 +683,7 @@ function effectiveParamValue(name: string): string {
 const isValidForm = computed(() => {
   if (form.value.agent_id === null || form.value.tool_id === null) return false
   if (
-    selectedTool.value?.code === 'mail'
+    selectedTool.value?.has_mail
     && effectiveParamValue('approval_required') === 'true'
     && !effectiveParamValue('approver_user_id')
   ) return false
@@ -1035,7 +1047,7 @@ watch(() => [props.connection, props.connectionParams] as const, ([newConnection
 
 watch(() => selectedTool.value, () => {
   if (!props.connection) initParamsFromSchema()
-  if (selectedTool.value?.code === 'mail') void loadApprovers()
+  if (selectedTool.value?.has_mail) void loadApprovers()
 }, { immediate: true })
 
 defineExpose({ initForm, resetForm })

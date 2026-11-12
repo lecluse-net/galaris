@@ -2,6 +2,8 @@
 
 from .assertions import tool_can_edit
 from .rest_contracts import RestConfig
+from .protocols import ProtocolConfig
+from .capabilities import effective_capabilities
 from . import tool_service
 from .models import Tool as ToolModel
 from .schemas import (
@@ -29,10 +31,15 @@ def to_public(record: ToolModel) -> ToolPublic:
         code=record.code,
         label=record.label,
         description=record.description or "",
+        capabilities=effective_capabilities(record),
         # Legacy native packages may still contain ``{}`` until the upgrade
         # backfill runs. An empty object is not a configurable MCP server.
         has_mcp=bool(mcp_config),
         has_api=record.rest_config is not None,
+        has_mail=record.mail_config is not None,
+        has_calendar=record.calendar_config is not None,
+        mail_config=ProtocolConfig.model_validate(record.mail_config) if record.mail_config is not None else None,
+        calendar_config=ProtocolConfig.model_validate(record.calendar_config) if record.calendar_config is not None else None,
         rest_config=RestConfig.model_validate(record.rest_config) if record.rest_config else None,
         has_file_share=record.file_share_config is not None,
         has_messenger=messenger_config is not None,

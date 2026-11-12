@@ -956,6 +956,12 @@ async def test_journal_updates_delivery_status_and_listener_cursor(
         event_received=True,
     )
     assert await journal.listener_cursor(connection.id) == "123"
+    await journal.update_listener_state(connection.id, "mail", cursor='{"uid":17}', available=True)
+    assert await journal.listener_cursor(connection.id) == "123"
+    assert await journal.listener_cursor(connection.id, platform="mail") == '{"uid":17}'
+    await journal.update_listener_state(connection.id, "telegram", cursor="124", available=True)
+    assert await journal.listener_cursor(connection.id) == "124"
+    assert await journal.listener_cursor(connection.id, platform="mail") == '{"uid":17}'
 
     record = await db.scalar(
         select(MessageModel).where(

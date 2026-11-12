@@ -15,6 +15,46 @@ async def _stable_signatures(connection_ids: set[int]) -> dict[int, str]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("mode,mail_configured", [("sync", True), ("push", True), ("sync", False)])
+async def test_mail_polling_composes_with_messaging_without_starting_a_push_listener(monkeypatch, mode, mail_configured):
+    from app.connection import connection_service
+    from app.tools import tool_service
+    primary_started, mail_started = asyncio.Event(), asyncio.Event()
+    blocked = asyncio.Event()
+    async def primary_listen():
+        primary_started.set()
+        await blocked.wait()
+    async def mail_listen():
+        mail_started.set()
+        await blocked.wait()
+    primary = SimpleNamespace(kind="matrix", listen=AsyncMock(side_effect=primary_listen))
+    secondary = SimpleNamespace(kind="mail", listen=AsyncMock(side_effect=mail_listen))
+    factory = SimpleNamespace(from_connection_id=AsyncMock(
+        return_value=secondary, side_effect=None if mail_configured else ValueError("Synthetic missing parameters")))
+    @asynccontextmanager
+    async def session():
+        yield
+    monkeypatch.setattr(service, "get_db_session", session)
+    monkeypatch.setattr(service, "_listeners_stopping", False)
+    monkeypatch.setattr(service.facade, "get_messenger", AsyncMock(return_value=primary))
+    monkeypatch.setattr(service.facade, "get_spec", lambda _kind: BridgeSpec(kind="matrix", inbound_modes=[mode]))
+    monkeypatch.setattr(service.facade, "get_factory", lambda _kind: factory)
+    monkeypatch.setattr(connection_service, "get_connection", AsyncMock(return_value=SimpleNamespace(tool_id=3)))
+    monkeypatch.setattr(tool_service, "get_tool_by_id", AsyncMock(return_value=SimpleNamespace(mail=object())))
+    pending = asyncio.create_task(service._run_listener(12))
+    try:
+        if mode == "sync":
+            await asyncio.wait_for(primary_started.wait(), 1)
+        if mail_configured:
+            await asyncio.wait_for(mail_started.wait(), 1)
+        assert primary.listen.await_count == (1 if mode == "sync" else 0)
+        assert secondary.listen.await_count == (1 if mail_configured else 0)
+    finally:
+        pending.cancel()
+        await asyncio.gather(pending, return_exceptions=True)
+
+
+@pytest.mark.asyncio
 async def test_listeners_running_tracks_root_supervisor() -> None:
     original = service._listener_supervisor  # pyright: ignore[reportPrivateUsage]
     root = asyncio.create_task(asyncio.Event().wait())
@@ -221,7 +261,7 @@ async def test_shutdown_prevents_listener_from_starting_after_construction(
     construction_started = asyncio.Event()
     release_construction = asyncio.Event()
     listen = AsyncMock()
-    messenger = SimpleNamespace(listen=listen)
+    messenger = SimpleNamespace(listen=listen, kind="matrix")
 
     async def get_messenger(connection_id: int) -> object:
         assert connection_id == 12

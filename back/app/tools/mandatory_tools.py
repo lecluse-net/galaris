@@ -327,27 +327,6 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         file_share_service="console",
     ),
     IntegratedToolSpec(
-        code="mail",
-        label="Mail",
-        description=DESCRIPTIONS["mail"],
-        mcp_tools=(
-            "mail_connection_status",
-            "mail_list_mailboxes",
-            "mail_search",
-            "mail_get",
-            "mail_send",
-            "mail_reply",
-            "mail_forward",
-            "mail_set_flags",
-            "mail_move",
-            "mail_trash",
-        ),
-        auto_connect_agents=False,
-        default_active=False,
-        file_share_service="mail",
-        messenger_service="mail",
-    ),
-    IntegratedToolSpec(
         code="calendar",
         label="Calendar",
         description=DESCRIPTIONS["calendar"],
@@ -570,57 +549,6 @@ def _browser_connection_params() -> dict[str, dict[str, Any]]:
     }
 
 
-def _mail_connection_params() -> dict[str, dict[str, Any]]:
-    return {
-        "email_address": _param(description="Mailbox email address used as SMTP sender"),
-        "password": _param(
-            "password",
-            description="Mailbox password or application password used by IMAP and SMTP",
-        ),
-        "imap_host": _param(description="IMAP server DNS name"),
-        "imap_port": _param("integer", default="993", description="IMAP server port"),
-        "imap_security": _param(
-            options=[{"value": "tls"}, {"value": "starttls"}],
-            default="tls", description="IMAP transport security: tls or starttls"
-        ),
-        "smtp_host": _param(description="SMTP submission server DNS name"),
-        "smtp_port": _param("integer", default="465", description="SMTP submission port"),
-        "smtp_security": _param(
-            options=[{"value": "tls"}, {"value": "starttls"}],
-            default="tls", description="SMTP transport security: tls or starttls"
-        ),
-        "connect_timeout_s": _param(
-            "integer", required=False, default="10", description="Connection timeout in seconds"
-        ),
-        "operation_timeout_s": _param(
-            "integer", required=False, default="30", description="I/O timeout in seconds"
-        ),
-        "poll_interval_s": _param(
-            "integer",
-            required=False,
-            default="60",
-            description="Delay between inbox polls in seconds",
-        ),
-        "max_attachment_mb": _param(
-            "integer",
-            required=False,
-            default="10",
-            description="Maximum size of one attachment in megabytes",
-        ),
-        "max_total_attachment_mb": _param(
-            "integer",
-            required=False,
-            default="20",
-            description="Maximum total attachment size per outgoing message in megabytes",
-        ),
-        "approver_user_id": _param(
-            "user",
-            required=False,
-            description="Human user responsible for approving outgoing messages",
-        ),
-    }
-
-
 def _calendar_connection_params() -> dict[str, dict[str, Any]]:
     return {
         "timezone": _param(
@@ -678,8 +606,6 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
                 "params": (
                     _console_connection_params()
                     if spec.code == "console"
-                    else _mail_connection_params()
-                    if spec.code == "mail"
                     else _calendar_connection_params()
                     if spec.code == "calendar"
                     else _browser_connection_params()
@@ -746,6 +672,9 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
             "global_params": global_params,
             "task_config": None,
         })
+    from .capabilities import capabilities_from_values
+    for row in rows:
+        row["capabilities"] = capabilities_from_values(row)
     return rows
 
 

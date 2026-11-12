@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 from .rest_contracts import RestConfig
+from .protocols import ProtocolConfig
+from .capabilities import validate_capabilities
 
 
 # =============================================================================
@@ -134,6 +136,7 @@ class ConnectionParamOption(BaseModel):
 class ConnectionParamDef(BaseModel):
     """Connection parameter definition."""
     type: str = "string"  # "string", "integer", "password", "boolean"
+    widget: str = ""
     required: bool = True
     default: str = ""
     description: str = ""
@@ -238,11 +241,15 @@ class ToolBase(BaseModel):
     code: str
     label: str
     description: str = ""
+    capabilities: list[str] | None = None
+    _validate_capabilities = field_validator("capabilities")(validate_capabilities)
     mcp_config: Optional[McpConfig] = None
     rest_config: RestConfig | None = None
     file_share_config: Optional[FileShareConfig] = None
     messenger_config: Optional[MessengerConfig] = None
     listener_config: Optional[ListenerConfig] = None
+    mail_config: ProtocolConfig | None = None
+    calendar_config: ProtocolConfig | None = None
     connection_schema: ConnectionSchema = Field(default_factory=ConnectionSchema)
     task_config: Optional[TaskConfig] = None
     conversation_enabled: bool = False
@@ -253,6 +260,8 @@ class ToolCreate(ToolBase):
 
 
 class ToolUpdate(BaseModel):
+    capabilities: list[str] | None = None
+    _validate_capabilities = field_validator("capabilities")(validate_capabilities)
     label: Optional[str] = None
     description: Optional[str] = None
     mcp_config: Optional[McpConfig] = None
@@ -260,6 +269,8 @@ class ToolUpdate(BaseModel):
     file_share_config: Optional[FileShareConfig] = None
     messenger_config: Optional[MessengerConfig] = None
     listener_config: Optional[ListenerConfig] = None
+    mail_config: ProtocolConfig | None = None
+    calendar_config: ProtocolConfig | None = None
     connection_schema: Optional[ConnectionSchema] = None
     task_config: Optional[TaskConfig] = None
     conversation_enabled: Optional[bool] = None
@@ -298,6 +309,16 @@ class ToolRead(ToolBase):
 
     @computed_field
     @property
+    def has_mail(self) -> bool:
+        return self.mail_config is not None
+
+    @computed_field
+    @property
+    def has_calendar(self) -> bool:
+        return self.calendar_config is not None
+
+    @computed_field
+    @property
     def can_edit(self) -> bool:
         from .assertions import tool_can_edit
 
@@ -312,12 +333,15 @@ class ToolPublic(BaseModel):
     code: str
     label: str
     description: str = ""
+    capabilities: list[str] = Field(default_factory=list)
     has_mcp: bool
     has_api: bool = False
     rest_config: RestConfig | None = None
     has_file_share: bool
     has_messenger: bool
     has_listener: bool
+    has_mail: bool = False
+    has_calendar: bool = False
     can_edit: bool
     can_disable: bool = True
     conversation_enabled: bool = False
@@ -325,6 +349,8 @@ class ToolPublic(BaseModel):
     file_share_config: Optional[FileShareConfig] = None
     messenger_config: Optional[MessengerConfig] = None
     listener_config: Optional[ListenerConfigPublic] = None
+    mail_config: ProtocolConfig | None = None
+    calendar_config: ProtocolConfig | None = None
     connection_schema: ConnectionSchema
     global_params: Dict[str, ToolGlobalParamPublic] = Field(default_factory=dict)
     task_config: Optional[TaskConfig] = None
@@ -350,6 +376,7 @@ class ToolMcpCatalogPublic(BaseModel):
     tool_label: str
     tool_description: str = ""
     connection_id: Optional[int] = None
+    mail_address: str = ""
     active: bool = False
     source: Literal["native", "external", "mixed"]
     runtime: str
@@ -443,11 +470,14 @@ class Tool(BaseModel):
     can_disable: bool = True
     label: str
     description: str = ""
+    capabilities: list[str] = Field(default_factory=list)
     mcp: Optional[McpConfig] = Field(default=None, alias="mcp_config")
     rest: RestConfig | None = Field(default=None, alias="rest_config")
     file_share: Optional[FileShareConfig] = Field(default=None, alias="file_share_config")
     messenger: Optional[MessengerConfig] = Field(default=None, alias="messenger_config")
     listener: Optional[ListenerConfig] = Field(default=None, alias="listener_config")
+    mail: ProtocolConfig | None = Field(default=None, alias="mail_config")
+    calendar: ProtocolConfig | None = Field(default=None, alias="calendar_config")
     connection: ConnectionSchema = Field(default_factory=ConnectionSchema, alias="connection_schema")
     task: Optional[TaskConfig] = Field(default=None, alias="task_config")
     conversation_enabled: bool = False
@@ -476,5 +506,15 @@ class Tool(BaseModel):
     @property
     def has_listener(self) -> bool:
         return self.listener is not None
+
+    @computed_field
+    @property
+    def has_mail(self) -> bool:
+        return self.mail is not None
+
+    @computed_field
+    @property
+    def has_calendar(self) -> bool:
+        return self.calendar is not None
 
     model_config = {"populate_by_name": True, "from_attributes": True}

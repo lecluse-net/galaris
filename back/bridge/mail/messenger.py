@@ -83,15 +83,13 @@ class MailMessenger(Messenger):
 
     @classmethod
     async def from_connection_id(cls, connection_id: int) -> "MailMessenger":
-        from app.messenger import resolve_messenger_configuration
-
-        resolved = await resolve_messenger_configuration(
-            connection_id,
-            expected_service=_KIND,
-        )
+        from app.connection import connection_service
+        connection = await connection_service.get_connection(connection_id)
+        if connection is None or not connection.active:
+            raise ValueError("Mail connection is unavailable")
         return cls(
-            await resolve_connection(connection_id),
-            tool_id=resolved.tool_id,
+            await resolve_connection(connection_id, require_active=True),
+            tool_id=connection.tool_id,
         )
 
     async def check_connection(self) -> str:
@@ -156,7 +154,7 @@ class MailMessenger(Messenger):
     async def listen(self) -> None:
         from .inbound import receive, resume_receipts
 
-        raw_cursor = await journal.listener_cursor(self.connection_id)
+        raw_cursor = await journal.listener_cursor(self.connection_id, platform="mail")
         cursor = _decode_cursor(raw_cursor)
         backoff = 5.0
         logger.info(
@@ -166,6 +164,9 @@ class MailMessenger(Messenger):
         )
         while True:
             try:
+                if not self.config.allows_mailbox("INBOX"):
+                    await asyncio.sleep(self.config.poll_interval_s)
+                    continue
                 async with get_db_session():
                     await resume_receipts(self.connection_id)
                 after_uid = cursor[1] if cursor is not None else None

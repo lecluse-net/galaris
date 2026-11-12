@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 782 detected HTTP/WebSocket handlers;
+- 784 detected HTTP/WebSocket handlers;
 - 184 detected SQLAlchemy tables;
 - 291 detected native MCP tools;
 - 55 detected Vue pages.
@@ -532,17 +532,17 @@ tests remain authoritative for behavior.
 | `app.task` | `core.user` | `back/app/task/mcp.py`, `back/app/task/run_events.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.util` | `back/app/task/activity_snapshot.py`, `back/app/task/facade.py`, `back/app/task/html_migration.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/router.py`, `back/app/task/schemas.py` |
 | `app.tools` | `app.agent` | `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/management_scope.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/permission_catalog.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_permissions.py` |
-| `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/management_scope.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/permission_catalog.py`, `back/app/tools/rest.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/management_scope.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/permission_catalog.py`, `back/app/tools/protocols.py`, `back/app/tools/rest.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.console` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `app.documentation` | `back/app/tools/documentation_service.py` |
-| `app.tools` | `app.file_share` | `back/app/tools/parameter_definitions.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `app.file_share` | `back/app/tools/capabilities.py`, `back/app/tools/parameter_definitions.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.llm` | `back/app/tools/documentation_service.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_search_service.py` |
-| `app.tools` | `app.messenger` | `back/app/tools/authorization_notifications.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `app.messenger` | `back/app/tools/authorization_notifications.py`, `back/app/tools/capabilities.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.task` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `app.util` | `back/app/tools/search_tool.py` |
 | `app.tools` | `core.authorize` | `back/app/tools/assertions.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization_router.py` |
 | `app.tools` | `core.database` | `back/app/tools/admin_service.py`, `back/app/tools/administration_lock.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_models.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/authorization_views.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/deletion.py`, `back/app/tools/documentation_service.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/models.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_authorization_router.py`, `back/app/tools/runtime_permissions.py`, `back/app/tools/tool_search_service.py`, `back/app/tools/tool_service.py` |
-| `app.tools` | `core.dbadmin` | `back/app/tools/dbadmin.py`, `back/app/tools/mandatory_tools.py` |
+| `app.tools` | `core.dbadmin` | `back/app/tools/capability_migration.py`, `back/app/tools/dbadmin.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/protocol_migration.py` |
 | `app.tools` | `core.failure_journal` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `core.i18n` | `back/app/tools/agent_registry.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_presentation.py`, `back/app/tools/authorization_router.py`, `back/app/tools/connection_functions.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_diagnostics.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/router.py`, `back/app/tools/search_tool.py`, `back/app/tools/tool_errors.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `core.params` | `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py` |
@@ -664,11 +664,11 @@ tests remain authoritative for behavior.
 | `bridge.hermes` | `core.util` | `back/bridge/hermes/client.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/dbadmin.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/session_binding.py` |
 | `bridge.huggingface` | `app.llm` | `back/bridge/huggingface/__init__.py` |
 | `bridge.mail` | `app.agent` | `back/bridge/mail/approvals.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `app.connection` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/router.py` |
+| `bridge.mail` | `app.connection` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/router.py` |
 | `bridge.mail` | `app.contact` | `back/bridge/mail/inbound.py` |
 | `bridge.mail` | `app.file_share` | `back/bridge/mail/__init__.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `app.messenger` | `back/bridge/mail/__init__.py`, `back/bridge/mail/approvals.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `app.tools` | `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `app.tools` | `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.authorize` | `back/bridge/mail/approvals.py`, `back/bridge/mail/assertions.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/router.py` |
 | `bridge.mail` | `core.database` | `back/bridge/mail/approvals.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/models.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.dbadmin` | `back/bridge/mail/dbadmin.py` |
@@ -1426,27 +1426,27 @@ tests remain authoritative for behavior.
 | GET | `/connections/permission-options` | `app.connection` | `permission_connection_options` | yes | `back/app/connection/router.py:120` |
 | POST | `/connections/refresh-tools` | `app.connection` | `refresh_connections_and_tool_catalogs` | yes | `back/app/connection/router.py:274` |
 | POST | `/connections/sync-integrated` | `app.connection` | `sync_integrated_connections` | yes | `back/app/connection/router.py:286` |
-| POST | `/connections/test-mcp-tools` | `app.connection` | `test_mcp_tools` | yes | `back/app/connection/router.py:637` |
+| POST | `/connections/test-mcp-tools` | `app.connection` | `test_mcp_tools` | yes | `back/app/connection/router.py:639` |
 | GET | `/connections/tool-options` | `app.connection` | `connection_tool_options` | yes | `back/app/connection/router.py:112` |
-| DELETE | `/connections/{connection_id}` | `app.connection` | `delete_connection` | yes | `back/app/connection/router.py:448` |
+| DELETE | `/connections/{connection_id}` | `app.connection` | `delete_connection` | yes | `back/app/connection/router.py:450` |
 | GET | `/connections/{connection_id}` | `app.connection` | `get_connection` | yes | `back/app/connection/router.py:343` |
 | PATCH | `/connections/{connection_id}` | `app.connection` | `update_connection` | yes | `back/app/connection/router.py:388` |
-| PUT | `/connections/{connection_id}/capabilities` | `app.connection` | `set_capability_policy` | yes | `back/app/connection/router.py:758` |
-| GET | `/connections/{connection_id}/functions` | `app.connection` | `list_connection_functions` | yes | `back/app/connection/router.py:697` |
-| PUT | `/connections/{connection_id}/functions/{function_name}` | `app.connection` | `set_connection_function` | yes | `back/app/connection/router.py:706` |
-| PUT | `/connections/{connection_id}/functions/{function_name}/global` | `app.connection` | `set_connection_function_global` | yes | `back/app/connection/router.py:720` |
-| PUT | `/connections/{connection_id}/management-scope` | `app.connection` | `update_management_scope` | yes | `back/app/connection/router.py:473` |
+| PUT | `/connections/{connection_id}/capabilities` | `app.connection` | `set_capability_policy` | yes | `back/app/connection/router.py:760` |
+| GET | `/connections/{connection_id}/functions` | `app.connection` | `list_connection_functions` | yes | `back/app/connection/router.py:699` |
+| PUT | `/connections/{connection_id}/functions/{function_name}` | `app.connection` | `set_connection_function` | yes | `back/app/connection/router.py:708` |
+| PUT | `/connections/{connection_id}/functions/{function_name}/global` | `app.connection` | `set_connection_function_global` | yes | `back/app/connection/router.py:722` |
+| PUT | `/connections/{connection_id}/management-scope` | `app.connection` | `update_management_scope` | yes | `back/app/connection/router.py:475` |
 | DELETE | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_disconnect` | yes | `back/app/connection/router.py:209` |
 | GET | `/connections/{connection_id}/oauth` | `app.connection` | `oauth_status` | yes | `back/app/connection/router.py:165` |
 | POST | `/connections/{connection_id}/oauth/callback` | `app.connection` | `oauth_callback` | yes | `back/app/connection/router.py:185` |
 | POST | `/connections/{connection_id}/oauth/device` | `app.connection` | `oauth_device` | yes | `back/app/connection/router.py:196` |
 | POST | `/connections/{connection_id}/oauth/start` | `app.connection` | `oauth_start` | yes | `back/app/connection/router.py:175` |
-| GET | `/connections/{connection_id}/params` | `app.connection` | `get_connection_params` | yes | `back/app/connection/router.py:487` |
-| POST | `/connections/{connection_id}/params` | `app.connection` | `create_or_update_param` | yes | `back/app/connection/router.py:534` |
-| POST | `/connections/{connection_id}/params/bulk` | `app.connection` | `create_or_update_params_bulk` | yes | `back/app/connection/router.py:560` |
-| DELETE | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `delete_param` | yes | `back/app/connection/router.py:620` |
-| GET | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `get_single_param` | yes | `back/app/connection/router.py:507` |
-| PATCH | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `update_connection_param` | yes | `back/app/connection/router.py:586` |
+| GET | `/connections/{connection_id}/params` | `app.connection` | `get_connection_params` | yes | `back/app/connection/router.py:489` |
+| POST | `/connections/{connection_id}/params` | `app.connection` | `create_or_update_param` | yes | `back/app/connection/router.py:536` |
+| POST | `/connections/{connection_id}/params/bulk` | `app.connection` | `create_or_update_params_bulk` | yes | `back/app/connection/router.py:562` |
+| DELETE | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `delete_param` | yes | `back/app/connection/router.py:622` |
+| GET | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `get_single_param` | yes | `back/app/connection/router.py:509` |
+| PATCH | `/connections/{connection_id}/params/{param_name}` | `app.connection` | `update_connection_param` | yes | `back/app/connection/router.py:588` |
 | POST | `/console/connections/{connection_id}/generate-key` | `app.console` | `generate_connection_key` | yes | `back/app/console/router.py:86` |
 | POST | `/console/connections/{connection_id}/install-editor` | `app.console` | `install_connection_code_editor` | yes | `back/app/console/router.py:150` |
 | POST | `/console/connections/{connection_id}/install-helper` | `app.console` | `install_connection_galaris_exec` | yes | `back/app/console/router.py:115` |
@@ -1818,17 +1818,18 @@ tests remain authoritative for behavior.
 | GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | no | `back/app/llm/call_router.py:419` |
 | GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | yes | `back/app/llm/personal_router.py:68` |
 | PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | yes | `back/app/llm/personal_router.py:75` |
-| GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | yes | `back/bridge/mail/router.py:159` |
-| GET | `/mail/browser/message` | `bridge.mail` | `read_browser_message` | yes | `back/bridge/mail/router.py:38` |
-| POST | `/mail/connections/{connection_id}/test` | `bridge.mail` | `test_connection` | yes | `back/bridge/mail/router.py:232` |
-| GET | `/mail/inbound` | `bridge.mail` | `list_inbound_mail` | yes | `back/bridge/mail/router.py:63` |
-| GET | `/mail/inbound/{receipt_id}` | `bridge.mail` | `read_inbound_mail` | yes | `back/bridge/mail/router.py:80` |
-| GET | `/mail/outbound` | `bridge.mail` | `list_outbound_mail` | yes | `back/bridge/mail/router.py:123` |
-| GET | `/mail/outbound/agents` | `bridge.mail` | `list_outbound_mail_agents` | yes | `back/bridge/mail/router.py:146` |
-| GET | `/mail/outbound/{delivery_id}` | `bridge.mail` | `read_outbound_mail` | yes | `back/bridge/mail/router.py:165` |
-| POST | `/mail/outbound/{delivery_id}/approve` | `bridge.mail` | `approve_outbound_mail` | yes | `back/bridge/mail/router.py:182` |
-| POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | yes | `back/bridge/mail/router.py:207` |
-| GET | `/mail/status` | `bridge.mail` | `read_mail_status` | yes | `back/bridge/mail/router.py:112` |
+| GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | yes | `back/bridge/mail/router.py:166` |
+| GET | `/mail/browser/message` | `bridge.mail` | `read_browser_message` | yes | `back/bridge/mail/router.py:39` |
+| GET | `/mail/connections/{connection_id}/mailboxes` | `bridge.mail` | `list_connection_mailboxes` | yes | `back/bridge/mail/router.py:265` |
+| POST | `/mail/connections/{connection_id}/test` | `bridge.mail` | `test_connection` | yes | `back/bridge/mail/router.py:239` |
+| GET | `/mail/inbound` | `bridge.mail` | `list_inbound_mail` | yes | `back/bridge/mail/router.py:70` |
+| GET | `/mail/inbound/{receipt_id}` | `bridge.mail` | `read_inbound_mail` | yes | `back/bridge/mail/router.py:87` |
+| GET | `/mail/outbound` | `bridge.mail` | `list_outbound_mail` | yes | `back/bridge/mail/router.py:130` |
+| GET | `/mail/outbound/agents` | `bridge.mail` | `list_outbound_mail_agents` | yes | `back/bridge/mail/router.py:153` |
+| GET | `/mail/outbound/{delivery_id}` | `bridge.mail` | `read_outbound_mail` | yes | `back/bridge/mail/router.py:172` |
+| POST | `/mail/outbound/{delivery_id}/approve` | `bridge.mail` | `approve_outbound_mail` | yes | `back/bridge/mail/router.py:189` |
+| POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | yes | `back/bridge/mail/router.py:214` |
+| GET | `/mail/status` | `bridge.mail` | `read_mail_status` | yes | `back/bridge/mail/router.py:119` |
 | POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | no | `back/app/harnesses/runtime_web.py:60` |
 | POST | `/media` | `app.file_share` | `prepare_media` | yes | `back/app/file_share/media_router.py:39` |
 | DELETE | `/media/{identifier}` | `app.file_share` | `release_media` | yes | `back/app/file_share/media_router.py:117` |
@@ -1972,22 +1973,23 @@ tests remain authoritative for behavior.
 | PUT | `/teams/{team_id}/humans/{user_id}` | `core.team` | `set_human_membership` | yes | `back/core/team/router.py:85` |
 | PUT | `/teams/{team_id}/position` | `core.team` | `move_team` | yes | `back/core/team/router.py:66` |
 | GET | `/tools` | `app.process` | `read_process_tools` | yes | `back/app/process/router.py:130` |
-| GET | `/tools` | `app.tools` | `list_tools` | yes | `back/app/tools/router.py:77` |
-| POST | `/tools` | `app.tools` | `create_tool` | yes | `back/app/tools/router.py:181` |
-| GET | `/tools/agents/{agent_id}/mcp-tools` | `app.tools` | `list_agent_mcp_tools` | yes | `back/app/tools/router.py:87` |
-| GET | `/tools/agents/{agent_id}/permissions` | `app.tools` | `read_agent_permission_catalog` | yes | `back/app/tools/router.py:96` |
-| POST | `/tools/import` | `app.tools` | `import_tool` | yes | `back/app/tools/router.py:285` |
-| POST | `/tools/mcp-candidates` | `app.tools` | `prepare_mcp_candidate` | yes | `back/app/tools/router.py:39` |
-| POST | `/tools/test-mcp` | `app.tools` | `test_mcp_connection` | yes | `back/app/tools/router.py:109` |
+| GET | `/tools` | `app.tools` | `list_tools` | yes | `back/app/tools/router.py:85` |
+| POST | `/tools` | `app.tools` | `create_tool` | yes | `back/app/tools/router.py:189` |
+| GET | `/tools/agents/{agent_id}/mcp-tools` | `app.tools` | `list_agent_mcp_tools` | yes | `back/app/tools/router.py:95` |
+| GET | `/tools/agents/{agent_id}/permissions` | `app.tools` | `read_agent_permission_catalog` | yes | `back/app/tools/router.py:104` |
+| GET | `/tools/capabilities` | `app.tools` | `list_supported_capabilities` | yes | `back/app/tools/router.py:37` |
+| POST | `/tools/import` | `app.tools` | `import_tool` | yes | `back/app/tools/router.py:293` |
+| POST | `/tools/mcp-candidates` | `app.tools` | `prepare_mcp_candidate` | yes | `back/app/tools/router.py:47` |
+| POST | `/tools/test-mcp` | `app.tools` | `test_mcp_connection` | yes | `back/app/tools/router.py:117` |
 | GET | `/tools/{tool_code}/health` | `app.process` | `read_process_tool_health` | yes | `back/app/process/router.py:136` |
-| DELETE | `/tools/{tool_id}` | `app.tools` | `delete_tool` | yes | `back/app/tools/router.py:245` |
-| GET | `/tools/{tool_id}` | `app.tools` | `get_tool` | yes | `back/app/tools/router.py:129` |
-| PUT | `/tools/{tool_id}` | `app.tools` | `update_tool` | yes | `back/app/tools/router.py:197` |
-| PATCH | `/tools/{tool_id}/conversation-access` | `app.tools` | `update_conversation_access` | yes | `back/app/tools/router.py:213` |
-| GET | `/tools/{tool_id}/deletion-impact` | `app.tools` | `tool_deletion_impact` | yes | `back/app/tools/router.py:233` |
-| GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | yes | `back/app/tools/router.py:262` |
-| GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:141` |
-| PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:158` |
+| DELETE | `/tools/{tool_id}` | `app.tools` | `delete_tool` | yes | `back/app/tools/router.py:253` |
+| GET | `/tools/{tool_id}` | `app.tools` | `get_tool` | yes | `back/app/tools/router.py:137` |
+| PUT | `/tools/{tool_id}` | `app.tools` | `update_tool` | yes | `back/app/tools/router.py:205` |
+| PATCH | `/tools/{tool_id}/conversation-access` | `app.tools` | `update_conversation_access` | yes | `back/app/tools/router.py:221` |
+| GET | `/tools/{tool_id}/deletion-impact` | `app.tools` | `tool_deletion_impact` | yes | `back/app/tools/router.py:241` |
+| GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | yes | `back/app/tools/router.py:270` |
+| GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:149` |
+| PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:166` |
 | GET | `/topics` | `app.topic` | `read_topics` | yes | `back/app/topic/router.py:47` |
 | POST | `/topics` | `app.topic` | `create_topic` | yes | `back/app/topic/router.py:104` |
 | GET | `/topics/conversation` | `app.topic` | `read_conversation_topics` | yes | `back/app/topic/router.py:66` |
@@ -2045,9 +2047,9 @@ tests remain authoritative for behavior.
 | `code_grants` | `CodeGrant` | `app.code` | no | `agents.id`, `code_workspaces.id`, `users.id` | `back/app/code/models.py:30` |
 | `code_sessions` | `CodeSession` | `app.code` | no | `code_workspaces.id`, `roles.id`, `users.id` | `back/app/code/models.py:65` |
 | `code_workspaces` | `CodeWorkspace` | `app.code` | no | `agents.id`, `connections.id`, `users.id` | `back/app/code/models.py:12` |
-| `connection_function_state` | `ConnectionFunctionState` | `app.connection` | no | `connections.id` | `back/app/connection/models.py:52` |
-| `connection_oauth` | `ConnectionOAuth` | `app.connection` | no | `connections.id` | `back/app/connection/models.py:107` |
-| `connection_params` | `ConnectionParam` | `app.connection` | no | `connections.id` | `back/app/connection/models.py:33` |
+| `connection_function_state` | `ConnectionFunctionState` | `app.connection` | no | `connections.id` | `back/app/connection/models.py:55` |
+| `connection_oauth` | `ConnectionOAuth` | `app.connection` | no | `connections.id` | `back/app/connection/models.py:110` |
+| `connection_params` | `ConnectionParam` | `app.connection` | no | `connections.id` | `back/app/connection/models.py:36` |
 | `connections` | `Connection` | `app.connection` | no | `agents.id`, `tools.id` | `back/app/connection/models.py:7` |
 | `contact_discovery_jobs` | `ContactDiscoveryJob` | `app.contact` | yes | `agents.id`, `memory_items.id` | `back/app/contact/models.py:15` |
 | `conversation_delivery_resolutions` | `ConversationDeliveryResolution` | `app.conversation` | no | `conversation_rounds.id`, `users.id` | `back/app/conversation/models.py:27` |
@@ -2199,8 +2201,8 @@ tests remain authoritative for behavior.
 | `team_users` | `TeamUser` | `core.team` | no | `agent_groups.id`, `users.id` | `back/core/team/models.py:19` |
 | `titles` | `Title` | `app.agent` | no | — | `back/app/agent/models.py:27` |
 | `tool_action_authorizations` | `ActionAuthorization` | `app.tools` | no | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_action_permissions.id`, `runtime_run_grants.id`, `tools.id`, `users.id` | `back/app/tools/authorization_models.py:13` |
-| `tool_function_state` | `ToolFunctionState` | `app.connection` | no | `tools.id` | `back/app/connection/models.py:81` |
-| `tool_search_documents` | `ToolSearchDocument` | `app.tools` | no | — | `back/app/tools/models.py:75` |
+| `tool_function_state` | `ToolFunctionState` | `app.connection` | no | `tools.id` | `back/app/connection/models.py:84` |
+| `tool_search_documents` | `ToolSearchDocument` | `app.tools` | no | — | `back/app/tools/models.py:80` |
 | `tools` | `Tool` | `app.tools` | no | — | `back/app/tools/models.py:24` |
 | `topics` | `Topic` | `app.topic` | yes | `memory_items.id` | `back/app/topic/models.py:15` |
 | `user_help_dismissals` | `UserHelpDismissal` | `core.user` | no | `users.id` | `back/core/user/models.py:80` |
@@ -2354,7 +2356,7 @@ tests remain authoritative for behavior.
 | `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:119` |
 | `team_list` | `galaris` | `app.agent` | `team_list` | `back/app/agent/mcp.py:68` |
 | `team_members` | `galaris` | `app.agent` | `team_members` | `back/app/agent/mcp.py:86` |
-| `tools_list` | `galaris` | `app.tools` | `list_mcp_tools` | `back/app/tools/mcp.py:89` |
+| `tools_list` | `galaris` | `app.tools` | `list_mcp_tools` | `back/app/tools/mcp.py:90` |
 | `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:248` |
 | `documentation_catalog` | `galaris_admin` | `app.tools` | `documentation_catalog` | `back/app/tools/mcp.py:37` |
 | `documentation_search` | `galaris_admin` | `app.tools` | `documentation_search` | `back/app/tools/mcp.py:50` |
@@ -2427,17 +2429,17 @@ tests remain authoritative for behavior.
 | `lab_topic_messages_import` | `lab` | `app.lab` | `lab_topic_messages_import` | `back/app/lab/mcp.py:462` |
 | `lab_topic_messages_preview` | `lab` | `app.lab` | `lab_topic_messages_preview` | `back/app/lab/mcp.py:449` |
 | `lab_topic_person_list` | `lab` | `app.lab` | `lab_topic_person_list` | `back/app/lab/mcp.py:436` |
-| `mail_connection_status` | `mail` | `bridge.mail` | `mail_connection_status` | `back/bridge/mail/mcp.py:40` |
-| `mail_forward` | `mail` | `bridge.mail` | `mail_forward` | `back/bridge/mail/mcp.py:206` |
-| `mail_get` | `mail` | `bridge.mail` | `mail_get` | `back/bridge/mail/mcp.py:109` |
-| `mail_list_mailboxes` | `mail` | `bridge.mail` | `mail_list_mailboxes` | `back/bridge/mail/mcp.py:49` |
-| `mail_move` | `mail` | `bridge.mail` | `mail_move` | `back/bridge/mail/mcp.py:273` |
-| `mail_process` | `mail` | `bridge.mail` | `mail_process` | `back/bridge/mail/mcp.py:29` |
-| `mail_reply` | `mail` | `bridge.mail` | `mail_reply` | `back/bridge/mail/mcp.py:172` |
-| `mail_search` | `mail` | `bridge.mail` | `mail_search` | `back/bridge/mail/mcp.py:63` |
-| `mail_send` | `mail` | `bridge.mail` | `mail_send` | `back/bridge/mail/mcp.py:134` |
-| `mail_set_flags` | `mail` | `bridge.mail` | `mail_set_flags` | `back/bridge/mail/mcp.py:250` |
-| `mail_trash` | `mail` | `bridge.mail` | `mail_trash` | `back/bridge/mail/mcp.py:282` |
+| `mail_connection_status` | `mail` | `bridge.mail` | `mail_connection_status` | `back/bridge/mail/mcp.py:45` |
+| `mail_forward` | `mail` | `bridge.mail` | `mail_forward` | `back/bridge/mail/mcp.py:215` |
+| `mail_get` | `mail` | `bridge.mail` | `mail_get` | `back/bridge/mail/mcp.py:115` |
+| `mail_list_mailboxes` | `mail` | `bridge.mail` | `mail_list_mailboxes` | `back/bridge/mail/mcp.py:54` |
+| `mail_move` | `mail` | `bridge.mail` | `mail_move` | `back/bridge/mail/mcp.py:284` |
+| `mail_process` | `mail` | `bridge.mail` | `mail_process` | `back/bridge/mail/mcp.py:34` |
+| `mail_reply` | `mail` | `bridge.mail` | `mail_reply` | `back/bridge/mail/mcp.py:180` |
+| `mail_search` | `mail` | `bridge.mail` | `mail_search` | `back/bridge/mail/mcp.py:68` |
+| `mail_send` | `mail` | `bridge.mail` | `mail_send` | `back/bridge/mail/mcp.py:141` |
+| `mail_set_flags` | `mail` | `bridge.mail` | `mail_set_flags` | `back/bridge/mail/mcp.py:260` |
+| `mail_trash` | `mail` | `bridge.mail` | `mail_trash` | `back/bridge/mail/mcp.py:293` |
 | `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:322` |
 | `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:205` |
 | `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:343` |
@@ -2480,7 +2482,7 @@ tests remain authoritative for behavior.
 | `skill_set_enabled` | `skills` | `app.skill` | `mcp_skill_set_enabled` | `back/app/skill/mcp.py:54` |
 | `skill_update` | `skills` | `app.skill` | `mcp_skill_update` | `back/app/skill/mcp.py:46` |
 | `skills_list` | `skills` | `app.skill` | `mcp_skills_list` | `back/app/skill/mcp.py:13` |
-| `tool_admin_catalog_refresh` | `tool_admin` | `app.tools` | `tool_admin_catalog_refresh` | `back/app/tools/mcp.py:394` |
+| `tool_admin_catalog_refresh` | `tool_admin` | `app.tools` | `tool_admin_catalog_refresh` | `back/app/tools/mcp.py:399` |
 | `tool_admin_connection_create` | `tool_admin` | `app.connection` | `tool_admin_connection_create` | `back/app/connection/mcp.py:20` |
 | `tool_admin_connection_delete` | `tool_admin` | `app.connection` | `tool_admin_connection_delete` | `back/app/connection/mcp.py:30` |
 | `tool_admin_connection_function_list` | `tool_admin` | `app.connection` | `tool_admin_connection_function_list` | `back/app/connection/mcp.py:50` |
@@ -2491,18 +2493,18 @@ tests remain authoritative for behavior.
 | `tool_admin_connection_params_set` | `tool_admin` | `app.connection` | `tool_admin_connection_params_set` | `back/app/connection/mcp.py:35` |
 | `tool_admin_connection_test` | `tool_admin` | `app.connection` | `tool_admin_connection_test` | `back/app/connection/mcp.py:45` |
 | `tool_admin_connection_update` | `tool_admin` | `app.connection` | `tool_admin_connection_update` | `back/app/connection/mcp.py:25` |
-| `tool_admin_conversation_set` | `tool_admin` | `app.tools` | `tool_admin_conversation_set` | `back/app/tools/mcp.py:364` |
-| `tool_admin_create` | `tool_admin` | `app.tools` | `tool_admin_create` | `back/app/tools/mcp.py:334` |
-| `tool_admin_delete` | `tool_admin` | `app.tools` | `tool_admin_delete` | `back/app/tools/mcp.py:352` |
-| `tool_admin_function_get` | `tool_admin` | `app.tools` | `tool_admin_function_get` | `back/app/tools/mcp.py:382` |
-| `tool_admin_function_list` | `tool_admin` | `app.tools` | `tool_admin_function_list` | `back/app/tools/mcp.py:376` |
-| `tool_admin_function_set` | `tool_admin` | `app.tools` | `tool_admin_function_set` | `back/app/tools/mcp.py:388` |
-| `tool_admin_get` | `tool_admin` | `app.tools` | `tool_admin_get` | `back/app/tools/mcp.py:328` |
-| `tool_admin_global_params_set` | `tool_admin` | `app.tools` | `tool_admin_global_params_set` | `back/app/tools/mcp.py:358` |
-| `tool_admin_impact` | `tool_admin` | `app.tools` | `tool_admin_impact` | `back/app/tools/mcp.py:346` |
-| `tool_admin_list` | `tool_admin` | `app.tools` | `tool_admin_list` | `back/app/tools/mcp.py:322` |
-| `tool_admin_mcp_test` | `tool_admin` | `app.tools` | `tool_admin_mcp_test` | `back/app/tools/mcp.py:370` |
-| `tool_admin_update` | `tool_admin` | `app.tools` | `tool_admin_update` | `back/app/tools/mcp.py:340` |
+| `tool_admin_conversation_set` | `tool_admin` | `app.tools` | `tool_admin_conversation_set` | `back/app/tools/mcp.py:369` |
+| `tool_admin_create` | `tool_admin` | `app.tools` | `tool_admin_create` | `back/app/tools/mcp.py:339` |
+| `tool_admin_delete` | `tool_admin` | `app.tools` | `tool_admin_delete` | `back/app/tools/mcp.py:357` |
+| `tool_admin_function_get` | `tool_admin` | `app.tools` | `tool_admin_function_get` | `back/app/tools/mcp.py:387` |
+| `tool_admin_function_list` | `tool_admin` | `app.tools` | `tool_admin_function_list` | `back/app/tools/mcp.py:381` |
+| `tool_admin_function_set` | `tool_admin` | `app.tools` | `tool_admin_function_set` | `back/app/tools/mcp.py:393` |
+| `tool_admin_get` | `tool_admin` | `app.tools` | `tool_admin_get` | `back/app/tools/mcp.py:333` |
+| `tool_admin_global_params_set` | `tool_admin` | `app.tools` | `tool_admin_global_params_set` | `back/app/tools/mcp.py:363` |
+| `tool_admin_impact` | `tool_admin` | `app.tools` | `tool_admin_impact` | `back/app/tools/mcp.py:351` |
+| `tool_admin_list` | `tool_admin` | `app.tools` | `tool_admin_list` | `back/app/tools/mcp.py:327` |
+| `tool_admin_mcp_test` | `tool_admin` | `app.tools` | `tool_admin_mcp_test` | `back/app/tools/mcp.py:375` |
+| `tool_admin_update` | `tool_admin` | `app.tools` | `tool_admin_update` | `back/app/tools/mcp.py:345` |
 | `voice_call_list` | `voice` | `app.voice` | `mcp_list_voice_calls` | `back/app/voice/mcp.py:355` |
 | `voice_call_start` | `voice` | `app.voice` | `mcp_start_voice_call` | `back/app/voice/mcp.py:298` |
 | `voice_call_stop` | `voice` | `app.voice` | `mcp_stop_voice_call` | `back/app/voice/mcp.py:323` |

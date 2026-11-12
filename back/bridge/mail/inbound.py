@@ -45,6 +45,7 @@ async def record_receipt(
 ) -> MailInboundReceipt:
     """Deduplicate before the poll cursor advances; receipt does not read the message."""
     _require_inbox(summary.ref)
+    config.require_mailbox(MailMessageRef.decode(summary.ref).mailbox)
     db = get_db()
     await db.execute(insert(MailInboundReceipt).values(
         id=uuid4(), connection_id=config.connection_id, agent_id=config.agent_id,
@@ -100,6 +101,8 @@ async def authorize_receipt(row: MailInboundReceipt) -> None:
     connection = await connections.get_connection(row.connection_id)
     if connection is None or not connection.active or connection.agent_id != row.agent_id:
         raise PermissionError("Mail connection is no longer available")
+    config = await resolve_connection(connection.id, require_active=True)
+    config.require_mailbox(MailMessageRef.decode(row.message_ref).mailbox)
     policy = await connections.resolve_function(connection, PROCESS_NAME)
     tool = await get_tool_by_id(connection.tool_id)
     if tool is None:
@@ -160,6 +163,7 @@ async def ensure_readable(
     config: MailConnectionConfig, message_ref: str, *, parent_context: str | None = None,
 ) -> MailInboundReceipt:
     _require_inbox(message_ref)
+    config.require_mailbox(MailMessageRef.decode(message_ref).mailbox)
     if parent_context is None and (execution := current_tool_execution()) is not None:
         # Covers generic file_* tools that materialize a Mail attachment.
         parent_context = execution.authorization_context
@@ -214,6 +218,7 @@ async def process_receipt(identifier: UUID) -> None:
         if connection is None:
             raise PermissionError("Mail connection was deleted")
         config = await resolve_connection(connection.id, require_active=True)
+        config.require_mailbox(MailMessageRef.decode(row.message_ref).mailbox)
         if row.content is None:
             detail = await asyncio.to_thread(ImapClient(config).get_message,
                 MailMessageRef.decode(row.message_ref), body_offset=0, body_limit=50_000)

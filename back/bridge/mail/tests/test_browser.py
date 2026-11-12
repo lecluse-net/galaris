@@ -19,10 +19,11 @@ from bridge.mail.models import MailInboundReceipt
 
 
 @pytest.mark.asyncio
-async def test_imap_browser_folders_messages_content_and_isolation(client, monkeypatch):
+@pytest.mark.parametrize("provider_code", ["mail", "synthetic-provider", "synthetic-multi-provider"])
+async def test_imap_browser_folders_messages_content_and_isolation(client, monkeypatch, provider_code):
     password = "synthetic-mail-browser-password"
     async with get_db_session() as db:
-        grants = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["MAIL_ACCESS", "FILE_ACCESS"]))))
+        grants = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["MAIL_ACCESS", "FILE_ACCESS", "CONNECTION_EDIT"]))))
         role = Role(code="synthetic-mail-browser", privileges=grants)
         files_only = Role(code="synthetic-files-only", privileges=[p for p in grants if p.code == "FILE_ACCESS"])
         users = [UserModel(email=f"imap-browser-{i}@example.com", is_active=True, hashed_password=encrypt_password(password)) for i in range(3)]
@@ -35,13 +36,39 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
         agents = [Agent(user_id=user.id, title_id=title.id, code=f"synthetic-imap-browser-{i}", first_name="Synthetic", last_name=str(i)) for i, user in enumerate(users)]
         db.add_all(agents)
         await db.flush()
-        tool = await db.scalar(select(Tool).where(Tool.code == "mail"))
+        tool = await db.scalar(select(Tool).where(Tool.code == provider_code))
+        if tool is None:
+            tool = Tool(code=provider_code, label="Synthetic mailbox", mail_config={})
+            db.add(tool)
+            await db.flush()
+        modern = provider_code != "mail"
+        if modern:
+            tool.mail_config = {
+                "settings": {"imap_host": "imap.example.com", "smtp_host": "smtp.example.com"},
+                "param_map": {"email_address": "email", "imap_username": "login", "imap_password": "secret",
+                    "smtp_username": "login", "smtp_password": "secret", "allowed_mailboxes": "folders"},
+            }
+            tool.connection_schema = {"params": {
+                "email": {"type": "string"}, "login": {"type": "string"},
+                "secret": {"type": "password"}, "folders": {"type": "string", "widget": "mail_folder_tree"},
+            }}
         connection = Connection(tool_id=tool.id, agent_id=agents[0].id, active=True)
         db.add(connection)
         await db.flush()
-        for name, value in {"email_address": "mail-reader@example.com", "password": "synthetic-imap-secret", "imap_host": "imap.example.com", "smtp_host": "smtp.example.com"}.items():
+        params = ({"email": "mail-reader@example.com", "login": "synthetic-imap-login", "secret": "synthetic-imap-secret"}
+            if modern else {"email_address": "mail-reader@example.com", "password": "synthetic-imap-secret",
+                "imap_host": "imap.example.com", "smtp_host": "smtp.example.com"})
+        for name, value in params.items():
             db.add(ConnectionParam(connection_id=connection.id, param_name=name, param_value=value))
         owner, foreign, connection_id = agents[0].id, agents[2].id, connection.id
+        second_connection_id = None
+        if provider_code == "synthetic-multi-provider":
+            second = Connection(tool_id=tool.id, agent_id=owner, active=True, singleton_key=None)
+            db.add(second)
+            await db.flush()
+            second_connection_id = second.id
+            for name, value in {"email": "second-box@example.com", "login": "second-login", "secret": "second-secret"}.items():
+                db.add(ConnectionParam(connection_id=second.id, param_name=name, param_value=value))
 
     raw = EmailMessage()
     raw["Subject"] = "Synthetic mail <script>untrusted</script>"
@@ -50,11 +77,18 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
     raw.set_content("Synthetic private body\n" + "x" * 20_100)
     raw.add_attachment(b"Synthetic attachment", maintype="text", subtype="plain", filename="example.txt")
     mime = raw.as_bytes()
+    second_raw = EmailMessage()
+    second_raw["Subject"] = "Second account"
+    second_raw["From"] = "sender@example.com"
+    second_raw.set_content("Second mailbox private body")
     calls = []
     validity = 7
     outage = False
 
     class FakeImap:
+        def __init__(self, content):
+            self.content = content
+
         def noop(self):
             if outage == "status":
                 return "NO", [b"Synthetic IMAP failure"]
@@ -63,6 +97,7 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
             return "OK", [b"NOOP"]
 
         def list(self):
+            calls.append(("LIST",))
             return "OK", [b'(\\HasNoChildren) "/" "INBOX"', b'(\\Noselect) "/" "Projects"',
                           b'(\\HasNoChildren) "/" "Projects/Example"', b'(\\Sent) "/" "Sent Items"']
 
@@ -82,13 +117,21 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
                 return "OK", [b"1" if "UID" in args else b" ".join(str(i).encode() for i in range(1, 52))]
             assert operation == "FETCH", "Browsing must not modify flags or messages"
             uid, query = args
-            metadata = f"1 (UID {uid} FLAGS () RFC822.SIZE {len(mime)})".encode()
-            return "OK", [(metadata, b"" if "RFC822.SIZE" in query else mime)]
+            metadata = f"1 (UID {uid} FLAGS () RFC822.SIZE {len(self.content)})".encode()
+            return "OK", [(metadata, b"" if "RFC822.SIZE" in query else self.content)]
 
     @contextmanager
     def session(self):
         assert self.config.agent_id == owner
-        yield FakeImap()
+        if self.config.connection_id == second_connection_id:
+            assert self.config.imap.username == "second-login"
+            assert self.config.imap.password.get_secret_value() == "second-secret"
+            yield FakeImap(second_raw.as_bytes())
+        else:
+            assert self.config.connection_id == connection_id
+            assert self.config.imap.username == ("synthetic-imap-login" if modern else "mail-reader@example.com")
+            assert self.config.imap.password.get_secret_value() == "synthetic-imap-secret"
+            yield FakeImap(mime)
 
     monkeypatch.setattr(ImapClient, "_session", session)
     headers = []
@@ -106,7 +149,13 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
         assert result.status_code == 200, result.text
         return result.json()
 
-    root = await listing("mail://")
+    base_uri = f"{provider_code}://"
+    if second_connection_id is not None:
+        accounts = await listing(base_uri)
+        assert len(accounts["entries"]) == 2
+        assert {row["metadata"]["mail_connection_id"] for row in accounts["entries"]} == {connection_id, second_connection_id}
+        base_uri += f"account/{connection_id}/"
+    root = await listing(base_uri)
     assert [row["name"] for row in root["entries"]] == ["INBOX", "Projects", "Sent Items"]
     assert all(row["capabilities"] == ["info", "list"] for row in root["entries"])
     projects = next(row for row in root["entries"] if row["name"] == "Projects")
@@ -123,7 +172,7 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
     assert len(full["entries"]) == 51 and full["next_cursor"] is None
     message = first["entries"][0]
     assert message["metadata"]["seen"] is False
-    detail_params = {"agent_id": owner, "message_ref": message["metadata"]["mail_message_ref"]}
+    detail_params = {"agent_id": owner, "connection_id": connection_id, "message_ref": message["metadata"]["mail_message_ref"]}
     detail = await client.get("/api/mail/browser/message", params=detail_params, headers=headers[0])
     assert detail.status_code == 200, detail.text
     detail = detail.json()
@@ -132,6 +181,11 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
     assert rest.status_code == 200 and rest.json()["next_body_offset"] is None
     reopened = await client.get("/api/mail/browser/message", params=detail_params, headers=headers[0])
     assert reopened.json() == detail
+    if second_connection_id is not None:
+        other = await client.get("/api/mail/browser/message", params={**detail_params, "connection_id": second_connection_id}, headers=headers[0])
+        assert other.status_code == 200, other.text
+        assert other.json()["body"].startswith("Second mailbox private body")
+        assert (await client.get("/api/mail/browser/message", params={"agent_id": owner, "message_ref": detail["ref"]}, headers=headers[0])).status_code == 422
     attachment = detail["attachments"][0]
     response = await client.get(base + "content", params={"agent_id": owner, "uri": attachment["uri"], "preview": False}, headers=headers[0])
     assert response.status_code == 200 and response.content == b"Synthetic attachment"
@@ -143,11 +197,12 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
         assert await db.scalar(select(func.count()).select_from(ActionAuthorization)) == 0
 
     before = len(calls)
-    for path, params in [(base + "entries", {"uri": "mail://"}),
+    for path, params in [(base + "entries", {"uri": base_uri}),
                          (base + "content", {"uri": attachment["uri"]}),
                          ("/api/mail/browser/message", {"message_ref": detail["ref"]})]:
         assert (await client.get(path, params={"agent_id": owner, **params})).status_code == 401
-        assert (await client.get(path, params={"agent_id": owner, **params}, headers=headers[1])).status_code == 403
+        expected_denial = 403 if provider_code == "mail" or path.startswith("/api/mail/") else 404
+        assert (await client.get(path, params={"agent_id": owner, **params}, headers=headers[1])).status_code == expected_denial
         assert (await client.get(path, params={"agent_id": foreign, **params}, headers=headers[0])).status_code == 404
         assert (await client.get(path, params={"agent_id": owner, **params}, headers=headers[2])).status_code == 404
     assert len(calls) == before
@@ -155,9 +210,27 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
     stale = await client.get("/api/mail/browser/message", params=detail_params, headers=headers[0])
     assert stale.status_code == 422
     for outage in (True, "status"):
-        assert (await client.get(base + "entries", params={"agent_id": owner, "uri": "mail://"}, headers=headers[0])).status_code == 502
+        assert (await client.get(base + "entries", params={"agent_id": owner, "uri": base_uri}, headers=headers[0])).status_code == 502
     outage = False
     async with get_db_session() as db:
         connection = await db.get(Connection, connection_id)
         connection.active = False
     assert (await client.get("/api/mail/browser/message", params=detail_params, headers=headers[0])).status_code == 422
+
+    # Connection administrators must discover excluded folders to change the
+    # allowlist, including on inactive accounts, without reading their messages.
+    async with get_db_session() as db:
+        db.add(ConnectionParam(connection_id=connection_id, param_name="folders" if modern else "allowed_mailboxes", param_value='["INBOX"]'))
+    endpoint = f"/api/mail/connections/{connection_id}/mailboxes"
+    before = len(calls)
+    assert (await client.get(endpoint)).status_code == 401
+    assert (await client.get(endpoint, headers=headers[1])).status_code == 403
+    assert (await client.get(endpoint, headers=headers[2])).status_code == 404
+    assert len(calls) == before
+    discovery = await client.get(endpoint, headers=headers[0])
+    assert discovery.status_code == 200, discovery.text
+    assert [folder["name"] for folder in discovery.json()] == ["INBOX", "Projects", "Projects/Example", "Sent Items"]
+    assert discovery.json()[1]["selectable"] is False
+    assert calls[before:] == [("LIST",)]
+    outage = True
+    assert (await client.get(endpoint, headers=headers[0])).status_code == 502

@@ -120,6 +120,18 @@ async def test_connection(connection_id: int) -> MailConnectionStatus:
     return await connection_status_for_config(await resolve_connection(connection_id))
 
 
+async def connection_mailboxes(connection_id: int) -> list[MailboxInfo]:
+    """Administrative discovery for a saved account, including excluded folders.
+
+    Only the connection editor's user-session route exposes this operation.
+    It lists metadata without selecting a folder or downloading messages.
+    """
+    config = await resolve_connection(connection_id)
+    discovery = config.model_copy(update={"allowed_mailboxes": ()})
+    mailboxes, _count = await complete_io(ImapClient(discovery).status)
+    return mailboxes
+
+
 async def connection_status(agent_id: int) -> MailConnectionStatus:
     return await connection_status_for_config(await resolve_mail_connection(agent_id))
 

@@ -2,6 +2,10 @@
 
 # Functional guarantees catalogue
 
+`app/connection/tests/test_mail_accounts.py` protects multiple mailboxes on one Tool, connection-specific MCP selection and per-account permissions.
+`bridge/mail/tests/test_browser.py` covers account URIs, attachments and folder restrictions.
+`system-tools.spec.mjs` and `connections-loading.spec.mjs` exercise the protocol editor, atomic Mail saving, folder selection, failures and late responses.
+
 `app/agent/tests/test_operating_instructions.py` checks editing, disabling and resetting the
 common Task/text/voice guide, preservation of executor-specific additions and frozen Lab
 prompts. `app/lab/tests/test_operating_benchmark.py` checks real reference contracts, detection

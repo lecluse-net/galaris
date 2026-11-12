@@ -123,10 +123,12 @@ async def list_tools(actor: AdministrationContext, search: str = "", kind: str =
         raise AdministrationError("configuration_invalid", "Unknown Tool kind filter.")
     if capability:
         columns = {"mcp": Tool.mcp_config, "api": Tool.rest_config, "file_share": Tool.file_share_config, "messenger": Tool.messenger_config,
-                   "listener": Tool.listener_config, "task": Tool.task_config}
+                   "listener": Tool.listener_config, "mail": Tool.mail_config, "calendar": Tool.calendar_config, "task": Tool.task_config}
         if capability not in columns:
             raise AdministrationError("configuration_invalid", "Unknown capability filter.")
         configured = columns[capability].is_not(None) & (columns[capability] != JSON.NULL) & (columns[capability] != {})
+        if capability in {"mail", "calendar"}:
+            configured = columns[capability].is_not(None) & (columns[capability] != JSON.NULL)
         if capability == "mcp":
             configured = configured | Tool.code.in_([spec.code for spec in INTEGRATED_TOOL_SPECS if spec.mcp_tools])
         query = query.where(configured)

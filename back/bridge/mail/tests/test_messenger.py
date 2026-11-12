@@ -67,6 +67,25 @@ def test_mail_sender_exposes_display_name_and_stable_email_identity() -> None:
 
 
 @pytest.mark.asyncio
+async def test_excluding_inbox_suspends_polling_and_receipt_resumption(monkeypatch):
+    adapter = messenger.MailMessenger(_config().model_copy(update={"allowed_mailboxes": ("Projects",)}), tool_id=3)
+    poll, resume = AsyncMock(), AsyncMock()
+    monkeypatch.setattr(messenger.ImapClient, "poll_inbox", poll)
+    monkeypatch.setattr(inbound, "resume_receipts", resume)
+    monkeypatch.setattr(messenger.journal, "listener_cursor", AsyncMock(return_value=None))
+
+    async def stop_after_delay(delay):
+        assert delay == 17
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(messenger.asyncio, "sleep", stop_after_delay)
+    with pytest.raises(asyncio.CancelledError):
+        await adapter.listen()
+    poll.assert_not_called()
+    resume.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_first_poll_establishes_baseline_and_uses_configured_interval(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

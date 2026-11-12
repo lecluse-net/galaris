@@ -16,6 +16,13 @@ export interface MailConnectionTestResult {
   status: MailConnectionStatus
 }
 
+export interface MailFolderOption {
+  name: string
+  label: string
+  delimiter: string | null
+  selectable: boolean
+}
+
 export interface MailStatus {
   enabled: boolean
 }
@@ -108,6 +115,9 @@ export interface MailDeliveryQuery {
 }
 
 export const mailService = {
+  listMailboxes(connectionId: number, signal?: AbortSignal): Promise<AxiosResponse<MailFolderOption[]>> {
+    return api.get(`/mail/connections/${connectionId}/mailboxes`, { signal })
+  },
   listInbound(query: Omit<MailDeliveryQuery, 'scope'>, signal?: AbortSignal): Promise<AxiosResponse<MailInboundPage>> {
     return api.get('/mail/inbound', { params: query, signal })
   },

@@ -2,6 +2,17 @@
 
 # Déléguer l’administration des Tools
 
+Un Tool représente un fournisseur, par exemple **Ionos**. Dans son formulaire, **Protocoles** et le bouton **Ajouter un protocole** sont placés au-dessus des onglets.
+Choisir **IMAP & SMTP** sous **Mail**, puis renseigner les serveurs dans les sections IMAP et SMTP.
+Les champs de compte référencent les paramètres standards, créés uniquement sur demande explicite : `email`, `login`, `password`, `folders`, `user_id`.
+Plusieurs champs ou protocoles peuvent partager les mêmes références. Créer ensuite une connexion par boîte, y compris plusieurs pour un même agent et fournisseur.
+Le bouton rouge **Supprimer le protocole** est sous sa configuration et demande confirmation ; les modifications s’appliquent à l’enregistrement.
+**Exporter en YAML** dans le formulaire exporte la version enregistrée, comme dans la liste.
+Les dossiers autorisés se choisissent dans les paramètres de connexion après authentification. Les mots de passe restent chiffrés et ne sont jamais exportés.
+DbAdmin convertit l’ancien Tool `mail` en fournisseur personnalisé en conservant connexions, droits, secrets et historiques. Les nouvelles installations ne le créent plus automatiquement.
+Les fonctions MCP conservent leurs noms `mail_*` et sélectionnent la boîte par `connection_id`.
+Le fonctionnement Agenda publié reste inchangé dans cette livraison ; ses évolutions sont indépendantes.
+
 **ToolAdmin** (`tool_admin`) administre le catalogue global des Tools, leurs paramètres partagés,
 les connexions des agents et les permissions des fonctions. Sa connexion est active dès la
 création de l’assistant Galaris proposé à l’administrateur, et inactive par défaut pour les
@@ -42,8 +53,8 @@ reste protégée. Un bridge dédié ne crée pas de Tool standard : les Tools ut
 AFFiNE ou un bridge de messagerie restent personnalisés. n8n n’est plus créé automatiquement ;
 une entrée existante reste personnalisée, avec ses références de processus et son historique.
 
-Dans le formulaire **Nouvel outil**, activer au moins une capacité (MCP, API, partage,
-messagerie ou listener) avant de créer l'outil. Sans capacité active, le bouton **Créer**
+Dans le formulaire **Nouvel outil**, ajouter au moins un protocole (MCP, API, partage,
+messagerie, listener ou Mail) avant de créer l'outil. Sans capacité active, le bouton **Créer**
 est désactivé et un message explique ce qui manque.
 
 ### Supprimer un outil personnalisé

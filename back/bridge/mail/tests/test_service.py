@@ -14,7 +14,7 @@ from bridge.mail.contracts import MailConnectionConfig, MailEndpointConfig, Outg
 
 async def _persist_connection(db: AsyncSession, *, user_id: int | None = None) -> tuple[int, int]:
     title = Title(label="Agent", gender="N")
-    tool = Tool(code="mail-idempotency-test", label="Mail")
+    tool = Tool(code="mail-idempotency-test", label="Mail", mail_config={})
     db.add_all([title, tool])
     await db.flush()
     agent = Agent(

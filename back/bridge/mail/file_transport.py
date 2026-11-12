@@ -7,33 +7,48 @@ import base64
 import json
 import mimetypes
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from collections.abc import Callable
+from types import CoroutineType
+from functools import wraps
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from app.file_share import FileEntry, FileListing, ResourceContext
 from core.util import complete_io
 from .browser_service import attachment_message, browser_config, read_attachment, read_raw_message
 from .contracts import MailboxInfo, MailMessageRef, MailMessageSummary, MailSearchQuery
-from .imap_client import ImapClient
+from .imap_client import ImapClient, mailbox_display_name
 from .service import get_attachment, list_mailboxes, parse_attachment_locator, search
+from app.tools import bind_protocol_connection, reset_protocol_connection
+
+
+def _bound_connection[**P, T](method: Callable[P, CoroutineType[Any, Any, T]]) -> Callable[P, CoroutineType[Any, Any, T]]:
+    @wraps(method)
+    async def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+        transport = cast("MailAttachmentTransport", args[0])
+        token = (bind_protocol_connection("mail", transport.agent_id, transport.connection_id)
+                 if transport.connection_id is not None else None)
+        try:
+            result = await method(*args, **kwargs)
+            def entry(value: FileEntry) -> FileEntry:
+                return replace(value, path=transport.prefix + value.path,
+                    metadata={"mail_connection_id": transport.connection_id, **value.metadata})
+            if isinstance(result, FileEntry):
+                return cast(T, entry(result))
+            if isinstance(result, FileListing):
+                return cast(T, replace(result, path=transport.prefix + result.path,
+                    entries=tuple(entry(value) for value in result.entries),
+                    ancestors=tuple(entry(value) for value in result.ancestors)))
+            return result
+        finally:
+            if token is not None:
+                reset_protocol_connection(token)
+    return wrapped
 
 
 def _segment(value: str) -> str:
     return "b_" + base64.urlsafe_b64encode(value.encode()).decode().rstrip("=")
-
-
-def _display_name(value: str) -> str:
-    """IMAP LIST keeps wire names for commands; labels decode modified UTF-7."""
-    def decode(match: re.Match[str]) -> str:
-        encoded = match[1]
-        if not encoded:
-            return "&"
-        try:
-            return base64.b64decode(encoded.replace(",", "/") + "=" * (-len(encoded) % 4), validate=True).decode("utf-16-be")
-        except (ValueError, UnicodeError):
-            return match[0]
-    return re.sub(r"&([A-Za-z0-9+,]*)-", decode, value)
 
 
 @dataclass(frozen=True)
@@ -55,7 +70,7 @@ def _folders(mailboxes: list[MailboxInfo]) -> dict[str, _Folder]:
         for index, part in enumerate(parts):
             path += _segment(part) + "/"
             previous = result.get(path)
-            result[path] = _Folder(path, _display_name(part), mailbox if index == len(parts) - 1 else previous.mailbox if previous else None)
+            result[path] = _Folder(path, mailbox_display_name(part), mailbox if index == len(parts) - 1 else previous.mailbox if previous else None)
     return result
 
 
@@ -102,11 +117,40 @@ def _page(path: str, cursor: str | None) -> tuple[int, str | None, bool]:
 class MailAttachmentTransport:
     """Browse live IMAP data; generic mutations remain forbidden."""
 
-    def __init__(self, agent_id: int, *, browser: bool = False) -> None:
+    def __init__(self, agent_id: int, *, browser: bool = False,
+                 connection_id: int | None = None, tool_code: str = "mail", prefix: str = "") -> None:
         self.agent_id, self.browser = agent_id, browser
+        self.connection_id, self.tool_code, self.prefix = connection_id, tool_code, prefix
+        self.accounts: dict[int, str] = {}
+
+    def for_accounts(self, accounts: dict[int, str], tool_code: str, *, prefix: str = "") -> MailAttachmentTransport:
+        transport = MailAttachmentTransport(self.agent_id, browser=self.browser, tool_code=tool_code, prefix=prefix)
+        transport.accounts = accounts
+        return transport
+
+    def for_connection(self, connection_id: int, tool_code: str, *, prefix: str = "") -> MailAttachmentTransport:
+        return MailAttachmentTransport(self.agent_id, browser=self.browser,
+            connection_id=connection_id, tool_code=tool_code, prefix=prefix)
+
+    def _path(self, path: str) -> str:
+        if self.prefix and not path.startswith(self.prefix):
+            raise ValueError("Mail resource is outside this protocol namespace")
+        return path.removeprefix(self.prefix)
 
     def for_resource_context(self, ctx: ResourceContext) -> MailAttachmentTransport:
-        return MailAttachmentTransport(self.agent_id, browser=ctx.browser_navigation)
+        transport = MailAttachmentTransport(self.agent_id, browser=ctx.browser_navigation,
+            connection_id=self.connection_id, tool_code=self.tool_code, prefix=self.prefix)
+        transport.accounts = self.accounts
+        return transport
+
+    async def _account_root(self) -> FileEntry:
+        if self.browser:
+            binding = bind_protocol_connection("mail", self.agent_id, next(iter(self.accounts)))
+            try:
+                await browser_config(self.agent_id)
+            finally:
+                reset_protocol_connection(binding)
+        return FileEntry(path="", name=self.tool_code, is_dir=True)
 
     async def _folders(self) -> dict[str, _Folder]:
         if self.browser:
@@ -120,7 +164,9 @@ class MailAttachmentTransport:
             raise FileNotFoundError("Mail folder unavailable")
         return ref
 
+    @_bound_connection
     async def download_to(self, remote: str, dest: Path, *, target: str = "", max_bytes: int = 512 * 1024 * 1024) -> int:
+        remote = self._path(remote)
         if target:
             raise ValueError("mail:// resources do not accept a target")
         if remote.startswith("attachment/"):
@@ -142,7 +188,11 @@ class MailAttachmentTransport:
         del src, filename, target
         raise PermissionError("mail:// resources are read-only")
 
+    @_bound_connection
     async def resource_info(self, path: str, *, include_sha256: bool = False) -> FileEntry:
+        path = self._path(path)
+        if self.accounts and not path:
+            return await self._account_root()
         del include_sha256
         if path.startswith("attachment/"):
             _ref, _part, filename = parse_attachment_locator(path)
@@ -166,10 +216,22 @@ class MailAttachmentTransport:
     async def resource_list(self, path: str, *, recursive: bool, limit: int) -> FileListing:
         return await self.resource_list_page(path, recursive=recursive, limit=limit)
 
+    @_bound_connection
     async def resource_list_page(self, path: str, *, recursive: bool, limit: int, cursor: str | None = None) -> FileListing:
+        path = self._path(path)
         if recursive:
             raise ValueError("Browse Mail one IMAP folder at a time")
         limit = max(1, min(limit, 500))
+        if self.accounts and not path:
+            root = await self._account_root()
+            offset, _unused, messages = _page(path, cursor)
+            if messages:
+                raise ValueError("Invalid Mail account cursor")
+            entries = tuple(FileEntry(path=f"account/{identity}/", name=label, is_dir=True,
+                metadata={"mail_connection_id": identity}) for identity, label in sorted(self.accounts.items()))
+            more = offset + limit < len(entries)
+            return FileListing(path, entries[offset:offset + limit], more,
+                _cursor(path, offset + limit, None, False) if more else None, ancestors=(root,))
         if path.startswith("attachment/"):
             parts = path.strip("/").split("/")
             if len(parts) != 2:
@@ -178,7 +240,7 @@ class MailAttachmentTransport:
             if messages:
                 raise ValueError("Invalid Mail attachment cursor")
             message = await attachment_message(self.agent_id, parts[1], browser=self.browser)
-            entries = tuple(FileEntry(path=a.uri.removeprefix("mail://"), name=a.filename, is_dir=False,
+            entries = tuple(FileEntry(path=a.uri.partition("://")[2].removeprefix(self.prefix), name=a.filename, is_dir=False,
                                       size=a.size, mime_type=a.media_type) for a in message.attachments[offset:offset + limit])
             more = offset + limit < len(message.attachments)
             return FileListing(path, entries, more, _cursor(path, offset + limit, None, False) if more else None)

@@ -617,13 +617,13 @@ async function persistForAction(payload: ConnectionPersistencePayload): Promise<
     && connection.agent_id === payload.data.agent_id
     && connection.tool_id === payload.data.tool_id
   )
-  if (duplicate) {
+  if (duplicate && !toolStore.tools.find(tool => tool.id === payload.data.tool_id)?.has_mail) {
     setDuplicateError(payload.data.agent_id, payload.data.tool_id)
     throw new Error(duplicateConnectionMessage(payload.data.agent_id, payload.data.tool_id))
   }
 
   try {
-    const atomicScope = Object.hasOwn(payload.params, 'tools.management_scope')
+    const atomicScope = Object.hasOwn(payload.params, 'tools.management_scope') || !!toolStore.tools.find(tool => tool.id === payload.data.tool_id)?.has_mail
     const data = { ...payload.data, ...(atomicScope ? { params: payload.params } : {}) }
     const connection = id
       ? await connectionStore.updateConnection(id, data)
@@ -655,14 +655,14 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
     && connection.agent_id === payload.data.agent_id
     && connection.tool_id === payload.data.tool_id
   )
-  if (duplicate) {
+  if (duplicate && !toolStore.tools.find(tool => tool.id === payload.data.tool_id)?.has_mail) {
     setDuplicateError(payload.data.agent_id, payload.data.tool_id)
     return
   }
 
   try {
     let connection: Connection
-    const atomicScope = Object.hasOwn(payload.params, 'tools.management_scope')
+    const atomicScope = Object.hasOwn(payload.params, 'tools.management_scope') || !!toolStore.tools.find(tool => tool.id === payload.data.tool_id)?.has_mail
     const data = { ...payload.data, ...(atomicScope ? { params: payload.params } : {}) }
 
     if (payload.id) {

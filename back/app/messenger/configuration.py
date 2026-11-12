@@ -97,7 +97,7 @@ async def resolve_messenger_configuration(
         decrypt_passwords=True,
     )
     messenger = getattr(tool, "messenger", None)
-    if messenger is None:
+    if messenger is None or service == "mail":
         settings = _legacy_settings(service, tool)
         resolved_params = _legacy_param_aliases(service, raw_params)
     else:

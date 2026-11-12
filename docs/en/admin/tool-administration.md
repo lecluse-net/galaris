@@ -2,6 +2,17 @@
 
 # Delegate Tool administration
 
+A Tool represents a provider, such as **Ionos**. Its editor places **Protocols** and **Add protocol** above the configuration tabs.
+Choose **IMAP & SMTP** under **Mail**, then configure the servers in the IMAP and SMTP sections.
+Account fields reference standard parameters created only on explicit request: `email`, `login`, `password`, `folders`, `user_id`.
+Fields and protocols may share references. Create one connection per mailbox, including several for the same agent and provider.
+The red **Delete protocol** button appears below its configuration and requires confirmation; changes apply when saving.
+**Export as YAML** exports the saved definition, using the same action as the list.
+Allowed folders are selected in connection parameters after authentication. Passwords stay encrypted and are never exported.
+DbAdmin converts the legacy `mail` Tool to a custom provider while preserving connections, rights, secrets and history. Fresh installations no longer seed it.
+MCP functions retain their `mail_*` names and select accounts through `connection_id`.
+Published Calendar behavior remains unchanged in this delivery; its extensions are independent.
+
 **ToolAdmin** (`tool_admin`) administers the global Tool catalogue, shared parameters,
 agent connections and function permissions. Its connection starts active when the bundled
 Galaris assistant is first created for the administrator, and inactive for other agents.
@@ -40,7 +51,7 @@ their definitions remain protected. A dedicated bridge does not create a standar
 Tools using Nextcloud, AFFiNE or a messaging bridge remain custom. n8n is no longer created
 automatically; an existing entry remains custom, with its process references and history.
 
-In the **New tool** form, enable at least one capability (MCP, API, file sharing,
+In the **New tool** form, add at least one protocol (MCP, API, file sharing,
 messaging or listener) before creating the Tool. Without an enabled capability, **Create**
 is disabled and a message explains what is missing.
 

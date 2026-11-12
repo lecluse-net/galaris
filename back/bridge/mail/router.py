@@ -18,6 +18,7 @@ from .assertions import MailApproverAssertion
 from .schemas import (
     MailApproverOption,
     MailConnectionTest,
+    MailFolderOption,
     MailDeliveryAgentOption,
     MailDeliveryDetail,
     MailDeliveryPage,
@@ -40,11 +41,14 @@ async def read_browser_message(
     message_ref: str = Query(max_length=2048),
     body_offset: int = Query(default=0, ge=0),
     body_limit: int = Query(default=20_000, ge=1, le=50_000),
+    connection_id: int | None = Query(default=None, gt=0),
 ) -> MailMessageDetail:
     from .browser_service import read_message
 
     if not (await current_management_scope()).allows(agent_id):
         raise HTTPException(404, "Agent not found")
+    from app.tools import bind_protocol_connection, reset_protocol_connection
+    token = bind_protocol_connection("mail", agent_id, connection_id) if connection_id is not None else None
     try:
         async with asyncio.timeout(120):
             return await read_message(agent_id, message_ref, body_offset=body_offset, body_limit=body_limit)
@@ -56,6 +60,9 @@ async def read_browser_message(
         raise HTTPException(504, "Mail provider timed out") from exc
     except (OSError, imaplib.IMAP4.error) as exc:
         raise HTTPException(502, "Mail provider unavailable") from exc
+    finally:
+        if token is not None:
+            reset_protocol_connection(token)
 
 
 @router.get("/inbound", response_model=MailInboundPage)
@@ -113,7 +120,7 @@ async def read_mail_status() -> MailStatus:
     scope = await current_management_scope()
     return MailStatus(
         enabled=await has_any_active_tool_connection(
-            "mail", agent_ids=scope.agent_ids
+            "mail", agent_ids=scope.agent_ids, protocol=True
         )
     )
 
@@ -251,6 +258,26 @@ async def test_connection(connection_id: int) -> MailConnectionTest:
             detail="The IMAP or SMTP server rejected the connection test",
         ) from exc
     return MailConnectionTest(connection_id=connection_id, status=result)
+
+
+@router.get("/connections/{connection_id}/mailboxes", response_model=list[MailFolderOption], dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def list_connection_mailboxes(connection_id: int) -> list[MailFolderOption]:
+    from .imap_client import mailbox_display_name
+
+    connection = await get_connection(connection_id)
+    if connection is None or not (await current_management_scope()).allows(connection.agent_id):
+        raise HTTPException(404, "Connection not found")
+    try:
+        async with asyncio.timeout(120):
+            folders = await service.connection_mailboxes(connection_id)
+        return [MailFolderOption(**folder.model_dump(), label=mailbox_display_name(folder.name)) for folder in folders]
+    except ValueError as exc:
+        raise HTTPException(400, "Save a valid Mail connection before loading folders") from exc
+    except TimeoutError as exc:
+        raise HTTPException(504, "Mail provider timed out") from exc
+    except (OSError, imaplib.IMAP4.error) as exc:
+        raise HTTPException(502, "Mail provider unavailable") from exc
 
 
 __all__ = ["router"]

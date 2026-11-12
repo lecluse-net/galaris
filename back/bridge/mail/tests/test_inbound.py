@@ -1,3 +1,4 @@
+from tests.protocol_tools import protocol_tool
 """Synthetic receive → common consent → read → canonical Task workflows."""
 
 from unittest.mock import AsyncMock, Mock
@@ -26,7 +27,7 @@ async def inbox(committed_database, monkeypatch):
     async with get_db_session() as db:
         config, manager, outsider, _smtp = await _setup_mail_chat(db, monkeypatch)
         connection = await connections.get_connection(config.connection_id)
-        mail_tool = await db.scalar(select(Tool).where(Tool.code == "mail"))
+        mail_tool = await protocol_tool(db, "mail")
         connection.tool_id = mail_tool.id
         await db.commit()
         manager_id, outsider_id = manager.id, outsider.id
@@ -40,6 +41,32 @@ async def inbox(committed_database, monkeypatch):
     monkeypatch.setattr(inbound.ImapClient, "get_message", read)
     monkeypatch.setattr(inbound.ImapClient, "get_summary", lambda _self, ref: _summary(ref.uid))
     return config, manager_id, outsider_id, read
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cached_body", [False, True])
+async def test_excluding_inbox_revokes_historical_processing_and_attachment_access(inbox, monkeypatch, cached_body):
+    config, _manager, _outsider, read = inbox
+    async with get_db_session() as db:
+        await create_mail_contact(owner_agent_id=config.agent_id,
+            display_name="Synthetic Sender", email="sender@example.org")
+        row = await inbound.record_receipt(config, _summary(124), dispatch=True)
+        await inbound.authorize_receipt(row)
+        assert row.authorized_at is not None
+        if cached_body:
+            row.content = {"body": "Synthetic cached content"}
+            await db.commit()
+        restricted = config.model_copy(update={"allowed_mailboxes": ("Projects",)})
+        monkeypatch.setattr(inbound, "resolve_connection", AsyncMock(return_value=restricted))
+        monkeypatch.setattr(service, "resolve_mail_connection", AsyncMock(return_value=restricted))
+        with pytest.raises(PermissionError, match="not allowed"):
+            await service.get_attachment(config.agent_id, row.message_ref, "part-1")
+        await inbound.process_receipt(row.id)
+        await db.refresh(row)
+        assert row.status == "blocked"
+        assert row.admitted_at is None
+        assert await db.scalar(select(func.count()).select_from(Task)) == 0
+    read.assert_not_called()
 
 
 @pytest.mark.asyncio

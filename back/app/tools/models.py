@@ -29,6 +29,9 @@ class Tool(Base):
     code: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     label: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text, default="")
+    capabilities: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=sql_text("'[]'::jsonb")
+    )
     # Software-owned policy, never accepted by the Tool write schemas.
     can_disable: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
@@ -42,6 +45,8 @@ class Tool(Base):
         String(20), nullable=False, default="excluded", server_default="excluded"
     )
     messenger_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    mail_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+    calendar_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
     listener_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     connection_schema: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
     # Administrator-owned values inherited by every connection.  This column is deliberately

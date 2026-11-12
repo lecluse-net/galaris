@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from collections.abc import Collection
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from app.tools.facade import AdministrationContext, AdministrationError
 from core.database import Base, get_db
@@ -130,9 +130,18 @@ async def create(actor: AdministrationContext, tool_id: int, agent_id: int, *, a
         raise AdministrationError("not_found", "Tool or agent not found.")
     actor.require_target(tool.code, can_disable=tool.can_disable,
                          executable=tool.mcp is not None and tool.mcp.type == "stdio")
-    if await service.get_connection_by_agent_tool(tool_id, agent_id) is not None:
+    if tool.mail is None and await service.get_connection_by_agent_tool(tool_id, agent_id) is not None:
         raise AdministrationError("conflict", "This agent/Tool connection already exists.")
-    return await service.get_or_create_connection(tool_id, agent_id, active=active, commit=False)
+    return await service.create_connection(tool_id, agent_id, active=active, commit=False)
+
+
+async def require_singleton_connections(tool_id: int) -> None:
+    """Do not strand multiple accounts when the Mail protocol is removed."""
+    duplicate = await get_db().scalar(select(Connection.agent_id).where(Connection.tool_id == tool_id)
+        .group_by(Connection.agent_id).having(func.count() > 1).limit(1))
+    if duplicate is not None:
+        raise ValueError("Remove the additional Mail connections before removing the Mail protocol")
+    await get_db().execute(update(Connection).where(Connection.tool_id == tool_id).values(singleton_key=0))
 
 
 async def lock_connection(connection_id: int) -> None:

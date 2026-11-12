@@ -93,15 +93,24 @@ async def _resolve_connected_tool(
     tool_code: str,
     *,
     language: str | None = None,
+    connection_id: int | None = None,
+    inspect_mail_accounts: bool = False,
 ) -> tuple[Any, Tool]:
     """Resolve one active agent connection and its exact Tool code."""
 
+    matches: list[tuple[Any, Tool]] = []
     for connection in await connection_service.get_connections_by_agent(agent_id):
         if not connection.active:
             continue
+        if connection_id is not None and connection.id != connection_id:
+            continue
         tool = await tool_service.get_tool_by_id(connection.tool_id)
         if tool is not None and tool.code == tool_code:
-            return connection, tool
+            matches.append((connection, tool))
+    if len(matches) == 1 or matches and inspect_mail_accounts and matches[0][1].mail is not None:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError("Multiple accounts exist; use an account-specific Mail URI")
     raise ValueError(_message(
         "connection_not_found",
         language,
@@ -158,7 +167,11 @@ async def effective_file_indexing_mode(agent_id: int, tool_code: str) -> FileInd
     tool = await tool_service.get_tool_record(tool_code)
     if tool is None:
         return "excluded"
-    connection = await connection_service.get_connection_by_agent_tool(tool.id, agent_id)
+    try:
+        connection = await connection_service.get_connection_by_agent_tool(tool.id, agent_id)
+    except ValueError:
+        # Mail accounts do not support implicit cross-account indexing.
+        return "excluded"
     if connection is None or not connection.active:
         return "excluded"
     _, params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
@@ -173,13 +186,14 @@ async def describe_targets(
 ) -> list[dict[str, Any]]:
     """Describe available file-sharing targets for an agent."""
     targets: list[dict[str, Any]] = []
+    seen: set[str] = set()
     connections = await connection_service.get_connections_by_agent(agent_id)
     tools = await tool_service.get_tools_by_ids({connection.tool_id for connection in connections if connection.active})
     for connection in connections:
         if not connection.active:
             continue
         tool = tools.get(connection.tool_id)
-        if not tool:
+        if not tool or tool.code in seen:
             continue
         if tool.code == "console":
             # console:// is a native provider. Its file-share configuration marks the Tool's
@@ -193,6 +207,7 @@ async def describe_targets(
         )
         if not has_file_share and not has_messenger:
             continue
+        seen.add(tool.code)
         _, params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
         indexing_mode = params.get(FILE_INDEXING_PARAM, "excluded")
         targets.append({
@@ -232,11 +247,46 @@ async def resolve_resource_transport_with_service(
             language=language,
         )
 
-    connection, tool = await _resolve_connected_tool(
-        agent_id,
-        tool_code,
-        language=language,
-    )
+    connection, tool = await _resolve_connected_tool(agent_id, tool_code, language=language, inspect_mail_accounts=True)
+    account_prefix = ""
+    selected_account: int | None = None
+    if tool.mail is not None:
+        base = "mail/" if tool.file_share and tool.file_share.service != "mail" else ""
+        if locator.startswith(base + "account/"):
+            raw = locator.removeprefix(base + "account/").partition("/")[0]
+            if not raw.isdecimal() or int(raw) <= 0:
+                raise ValueError("Invalid Mail account URI")
+            selected_account = int(raw)
+            account_prefix = base + f"account/{selected_account}/"
+        elif locator in {base, base + "placeholder"}:
+            connection_tool_id = connection.tool_id
+            accounts = [connection for connection in await connection_service.get_connections_by_agent(agent_id)
+                if connection.active and connection.tool_id == connection_tool_id]
+            if len(accounts) > 1:
+                factory = resource_transport_factory("mail")
+                if factory is None:
+                    raise ValueError("Mail resource transport is unavailable")
+                labels: dict[int, str] = {}
+                for account in accounts:
+                    _, params = await connection_service.get_params_as_dict(account, decrypt_passwords=False)
+                    email = params.get(tool.mail.param_map.get("email_address", "email_address"))
+                    labels[account.id] = f"{email or tool.label} ({account.id})"
+                binder = getattr(factory(agent_id), "for_accounts", None)
+                if binder is None:
+                    raise ValueError("Mail resource transport has no account listing")
+                return binder(labels, tool.code, prefix=base), "mail"
+
+    if tool.mail is not None:
+        connection, tool = await _resolve_connected_tool(agent_id, tool_code, language=language, connection_id=selected_account)
+    if tool.mail is not None and (tool.file_share is None or tool.file_share.service == "mail" or locator.startswith("mail/")):
+        factory = resource_transport_factory("mail")
+        if factory is None:
+            raise ValueError("Mail resource transport is unavailable")
+        specialized = factory(agent_id)
+        binder = getattr(specialized, "for_connection", None)
+        if binder is None:
+            raise ValueError("Mail resource transport has no connection binding")
+        return binder(connection.id, tool.code, prefix=account_prefix or ("mail/" if tool.file_share and tool.file_share.service != "mail" else "")), "mail"
     if specialized := connected_resource_transport(tool.code, agent_id):
         return specialized, tool.code
     if _has_messenger_files(tool):

@@ -114,6 +114,10 @@ de catégorie. **Compétences personnelles** conserve les dossiers nommés d’a
 et le nom de chaque agent. Le sélecteur de pièces jointes permet toujours de parcourir les
 fichiers du skill.
 
+Un agent peut posséder plusieurs boîtes chez le même fournisseur : créez plusieurs connexions
+au même Tool doté du protocole Mail, avec une adresse et des identifiants par connexion.
+Le navigateur du fournisseur présente les comptes séparément lorsque plusieurs boîtes sont actives.
+
 Dans **Mail**, les dossiers IMAP reprennent la hiérarchie de la boîte connectée à l’agent,
 y compris les dossiers parents sans messages. Ouvrez un dossier pour afficher ses sous-dossiers
 et ses messages, du plus récent au plus ancien. La liste charge 50 éléments à la fois au défilement
@@ -128,6 +132,11 @@ et ne donne aucune autorisation de traitement à l’agent. Les dossiers Envoyé
 Corbeille sont consultables par l’utilisateur. Les mails HTML sont présentés sous forme de texte,
 sans exécuter leur contenu ni charger leurs images distantes. La recherche dans Mail et les
 mutations IMAP ne sont pas proposées dans ce navigateur.
+
+Le paramètre Mail **Dossiers de messagerie autorisés** (`allowed_mailboxes`) s'applique aussi
+à cette navigation et aux téléchargements : seuls les dossiers listés sont consultables.
+Un parent peut apparaître pour atteindre un sous-dossier autorisé, sans exposer ses propres
+messages. Une liste vide autorise tous les dossiers.
 
 Dans **Documents** (`document://`), les répertoires apparaissent directement à la racine,
 avec les fichiers qui ne sont classés dans aucun répertoire accessible. Ouvrir un répertoire

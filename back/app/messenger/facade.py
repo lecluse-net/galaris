@@ -151,6 +151,8 @@ def kind_for_tool(
             mapping = cast(Mapping[str, Any], raw)
             raw_service = mapping.get("service")
             service = str(raw_service) if raw_service is not None else ""
+    if not service and (getattr(tool, "mail", None) is not None or getattr(tool, "mail_config", None) is not None):
+        service = "mail"
     normalized = normalize_kind(str(service)) if service else None
     if normalized in _factories:
         return normalized

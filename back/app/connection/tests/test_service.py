@@ -90,6 +90,7 @@ class TestConnectionService:
         existing = Connection(id=1, tool_id=1, agent_id=5, active=True)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = existing
+        mock_result.scalars.return_value.all.return_value = [existing]
         mock_db.execute.return_value = mock_result
 
         with patch.object(connection_service, 'get_db', return_value=mock_db):

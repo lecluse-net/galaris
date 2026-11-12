@@ -23,12 +23,20 @@ from .mcp_diagnostics import diagnose_mcp_connection
 from . import tool_service
 from .deletion import DeletionConflict, ToolDeletionImpact
 from .permission_catalog import AgentPermissionCatalog
+from .capabilities import CapabilityDefinition
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 from .authorization_router import router as authorization_router
 router.include_router(authorization_router)
 from .runtime_authorization_router import router as runtime_authorization_router
 router.include_router(runtime_authorization_router)
+
+
+@router.get("/capabilities")
+@authorize(privileges=[Privileges.TOOL_ACCESS, Privileges.TOOL_EDIT])
+async def list_supported_capabilities() -> list[CapabilityDefinition]:
+    from .capabilities import supported_capabilities
+    return supported_capabilities()
 
 
 from .admin_contracts import CandidateRequest, AdministrationError

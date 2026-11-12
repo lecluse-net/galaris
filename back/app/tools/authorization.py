@@ -81,6 +81,7 @@ def tool_authorization_configuration(tool: Tool) -> dict[str, Any]:
     return tool.model_dump(mode="json", exclude={
         "label", "description", "created_at", "updated_at", "can_edit", "has_mcp",
         "has_file_share", "has_messenger", "has_listener",
+        "capabilities",
     })
 
 

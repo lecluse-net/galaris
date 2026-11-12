@@ -4312,6 +4312,7 @@
           "back/app/tools/mcp_authorization.py",
           "back/app/tools/mcp_loader.py",
           "back/app/tools/permission_catalog.py",
+          "back/app/tools/protocols.py",
           "back/app/tools/rest.py",
           "back/app/tools/tool_service.py"
         ],
@@ -4334,6 +4335,7 @@
       },
       {
         "files": [
+          "back/app/tools/capabilities.py",
           "back/app/tools/parameter_definitions.py",
           "back/app/tools/resource_effects.py",
           "back/app/tools/router.py",
@@ -4354,6 +4356,7 @@
       {
         "files": [
           "back/app/tools/authorization_notifications.py",
+          "back/app/tools/capabilities.py",
           "back/app/tools/mcp_loader.py",
           "back/app/tools/tool_service.py"
         ],
@@ -4412,8 +4415,10 @@
       },
       {
         "files": [
+          "back/app/tools/capability_migration.py",
           "back/app/tools/dbadmin.py",
-          "back/app/tools/mandatory_tools.py"
+          "back/app/tools/mandatory_tools.py",
+          "back/app/tools/protocol_migration.py"
         ],
         "source": "app.tools",
         "target": "core.dbadmin"
@@ -5459,6 +5464,7 @@
           "back/bridge/mail/connection_service.py",
           "back/bridge/mail/dbadmin.py",
           "back/bridge/mail/inbound.py",
+          "back/bridge/mail/messenger.py",
           "back/bridge/mail/router.py"
         ],
         "source": "bridge.mail",
@@ -5496,8 +5502,10 @@
           "back/bridge/mail/browser_service.py",
           "back/bridge/mail/connection_service.py",
           "back/bridge/mail/dbadmin.py",
+          "back/bridge/mail/file_transport.py",
           "back/bridge/mail/inbound.py",
           "back/bridge/mail/mcp.py",
+          "back/bridge/mail/router.py",
           "back/bridge/mail/service.py"
         ],
         "source": "bridge.mail",
@@ -9018,7 +9026,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "list_mcp_tools",
-        "line": 89,
+        "line": 90,
         "module": "app.tools",
         "name": "tools_list",
         "namespace": "galaris"
@@ -9602,7 +9610,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_connection_status",
-        "line": 40,
+        "line": 45,
         "module": "bridge.mail",
         "name": "mail_connection_status",
         "namespace": "mail"
@@ -9610,7 +9618,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_forward",
-        "line": 206,
+        "line": 215,
         "module": "bridge.mail",
         "name": "mail_forward",
         "namespace": "mail"
@@ -9618,7 +9626,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_get",
-        "line": 109,
+        "line": 115,
         "module": "bridge.mail",
         "name": "mail_get",
         "namespace": "mail"
@@ -9626,7 +9634,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_list_mailboxes",
-        "line": 49,
+        "line": 54,
         "module": "bridge.mail",
         "name": "mail_list_mailboxes",
         "namespace": "mail"
@@ -9634,7 +9642,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_move",
-        "line": 273,
+        "line": 284,
         "module": "bridge.mail",
         "name": "mail_move",
         "namespace": "mail"
@@ -9642,7 +9650,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_process",
-        "line": 29,
+        "line": 34,
         "module": "bridge.mail",
         "name": "mail_process",
         "namespace": "mail"
@@ -9650,7 +9658,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_reply",
-        "line": 172,
+        "line": 180,
         "module": "bridge.mail",
         "name": "mail_reply",
         "namespace": "mail"
@@ -9658,7 +9666,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_search",
-        "line": 63,
+        "line": 68,
         "module": "bridge.mail",
         "name": "mail_search",
         "namespace": "mail"
@@ -9666,7 +9674,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_send",
-        "line": 134,
+        "line": 141,
         "module": "bridge.mail",
         "name": "mail_send",
         "namespace": "mail"
@@ -9674,7 +9682,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_set_flags",
-        "line": 250,
+        "line": 260,
         "module": "bridge.mail",
         "name": "mail_set_flags",
         "namespace": "mail"
@@ -9682,7 +9690,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_trash",
-        "line": 282,
+        "line": 293,
         "module": "bridge.mail",
         "name": "mail_trash",
         "namespace": "mail"
@@ -10026,7 +10034,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_catalog_refresh",
-        "line": 394,
+        "line": 399,
         "module": "app.tools",
         "name": "tool_admin_catalog_refresh",
         "namespace": "tool_admin"
@@ -10114,7 +10122,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_conversation_set",
-        "line": 364,
+        "line": 369,
         "module": "app.tools",
         "name": "tool_admin_conversation_set",
         "namespace": "tool_admin"
@@ -10122,7 +10130,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_create",
-        "line": 334,
+        "line": 339,
         "module": "app.tools",
         "name": "tool_admin_create",
         "namespace": "tool_admin"
@@ -10130,7 +10138,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_delete",
-        "line": 352,
+        "line": 357,
         "module": "app.tools",
         "name": "tool_admin_delete",
         "namespace": "tool_admin"
@@ -10138,7 +10146,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_function_get",
-        "line": 382,
+        "line": 387,
         "module": "app.tools",
         "name": "tool_admin_function_get",
         "namespace": "tool_admin"
@@ -10146,7 +10154,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_function_list",
-        "line": 376,
+        "line": 381,
         "module": "app.tools",
         "name": "tool_admin_function_list",
         "namespace": "tool_admin"
@@ -10154,7 +10162,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_function_set",
-        "line": 388,
+        "line": 393,
         "module": "app.tools",
         "name": "tool_admin_function_set",
         "namespace": "tool_admin"
@@ -10162,7 +10170,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_get",
-        "line": 328,
+        "line": 333,
         "module": "app.tools",
         "name": "tool_admin_get",
         "namespace": "tool_admin"
@@ -10170,7 +10178,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_global_params_set",
-        "line": 358,
+        "line": 363,
         "module": "app.tools",
         "name": "tool_admin_global_params_set",
         "namespace": "tool_admin"
@@ -10178,7 +10186,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_impact",
-        "line": 346,
+        "line": 351,
         "module": "app.tools",
         "name": "tool_admin_impact",
         "namespace": "tool_admin"
@@ -10186,7 +10194,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_list",
-        "line": 322,
+        "line": 327,
         "module": "app.tools",
         "name": "tool_admin_list",
         "namespace": "tool_admin"
@@ -10194,7 +10202,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_mcp_test",
-        "line": 370,
+        "line": 375,
         "module": "app.tools",
         "name": "tool_admin_mcp_test",
         "namespace": "tool_admin"
@@ -10202,7 +10210,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_update",
-        "line": 340,
+        "line": 345,
         "module": "app.tools",
         "name": "tool_admin_update",
         "namespace": "tool_admin"
@@ -10473,7 +10481,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 52,
+        "line": 55,
         "module": "app.connection",
         "table": "connection_function_state"
       },
@@ -10484,7 +10492,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 107,
+        "line": 110,
         "module": "app.connection",
         "table": "connection_oauth"
       },
@@ -10495,7 +10503,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 33,
+        "line": 36,
         "module": "app.connection",
         "table": "connection_params"
       },
@@ -12308,7 +12316,7 @@
           "tools.id"
         ],
         "history_mixin": false,
-        "line": 81,
+        "line": 84,
         "module": "app.connection",
         "table": "tool_function_state"
       },
@@ -12317,7 +12325,7 @@
         "file": "back/app/tools/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 75,
+        "line": 80,
         "module": "app.tools",
         "table": "tool_search_documents"
       },
@@ -16091,7 +16099,7 @@
         "declared_path": "/connections/test-mcp-tools",
         "file": "back/app/connection/router.py",
         "handler": "test_mcp_tools",
-        "line": 637,
+        "line": 639,
         "method": "POST",
         "module": "app.connection"
       },
@@ -16109,7 +16117,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "delete_connection",
-        "line": 448,
+        "line": 450,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -16136,7 +16144,7 @@
         "declared_path": "/connections/{connection_id}/capabilities",
         "file": "back/app/connection/router.py",
         "handler": "set_capability_policy",
-        "line": 758,
+        "line": 760,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -16145,7 +16153,7 @@
         "declared_path": "/connections/{connection_id}/functions",
         "file": "back/app/connection/router.py",
         "handler": "list_connection_functions",
-        "line": 697,
+        "line": 699,
         "method": "GET",
         "module": "app.connection"
       },
@@ -16154,7 +16162,7 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function",
-        "line": 706,
+        "line": 708,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -16163,7 +16171,7 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}/global",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function_global",
-        "line": 720,
+        "line": 722,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -16172,7 +16180,7 @@
         "declared_path": "/connections/{connection_id}/management-scope",
         "file": "back/app/connection/router.py",
         "handler": "update_management_scope",
-        "line": 473,
+        "line": 475,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -16226,7 +16234,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "get_connection_params",
-        "line": 487,
+        "line": 489,
         "method": "GET",
         "module": "app.connection"
       },
@@ -16235,7 +16243,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_param",
-        "line": 534,
+        "line": 536,
         "method": "POST",
         "module": "app.connection"
       },
@@ -16244,7 +16252,7 @@
         "declared_path": "/connections/{connection_id}/params/bulk",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_params_bulk",
-        "line": 560,
+        "line": 562,
         "method": "POST",
         "module": "app.connection"
       },
@@ -16253,7 +16261,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "delete_param",
-        "line": 620,
+        "line": 622,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -16262,7 +16270,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "get_single_param",
-        "line": 507,
+        "line": 509,
         "method": "GET",
         "module": "app.connection"
       },
@@ -16271,7 +16279,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "update_connection_param",
-        "line": 586,
+        "line": 588,
         "method": "PATCH",
         "module": "app.connection"
       },
@@ -19619,7 +19627,7 @@
         "declared_path": "/mail/approvers",
         "file": "back/bridge/mail/router.py",
         "handler": "list_mail_approvers",
-        "line": 159,
+        "line": 166,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19628,7 +19636,16 @@
         "declared_path": "/mail/browser/message",
         "file": "back/bridge/mail/router.py",
         "handler": "read_browser_message",
-        "line": 38,
+        "line": 39,
+        "method": "GET",
+        "module": "bridge.mail"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/mail/connections/{connection_id}/mailboxes",
+        "file": "back/bridge/mail/router.py",
+        "handler": "list_connection_mailboxes",
+        "line": 265,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19637,7 +19654,7 @@
         "declared_path": "/mail/connections/{connection_id}/test",
         "file": "back/bridge/mail/router.py",
         "handler": "test_connection",
-        "line": 232,
+        "line": 239,
         "method": "POST",
         "module": "bridge.mail"
       },
@@ -19646,7 +19663,7 @@
         "declared_path": "/mail/inbound",
         "file": "back/bridge/mail/router.py",
         "handler": "list_inbound_mail",
-        "line": 63,
+        "line": 70,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19655,7 +19672,7 @@
         "declared_path": "/mail/inbound/{receipt_id}",
         "file": "back/bridge/mail/router.py",
         "handler": "read_inbound_mail",
-        "line": 80,
+        "line": 87,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19664,7 +19681,7 @@
         "declared_path": "/mail/outbound",
         "file": "back/bridge/mail/router.py",
         "handler": "list_outbound_mail",
-        "line": 123,
+        "line": 130,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19673,7 +19690,7 @@
         "declared_path": "/mail/outbound/agents",
         "file": "back/bridge/mail/router.py",
         "handler": "list_outbound_mail_agents",
-        "line": 146,
+        "line": 153,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19682,7 +19699,7 @@
         "declared_path": "/mail/outbound/{delivery_id}",
         "file": "back/bridge/mail/router.py",
         "handler": "read_outbound_mail",
-        "line": 165,
+        "line": 172,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -19691,7 +19708,7 @@
         "declared_path": "/mail/outbound/{delivery_id}/approve",
         "file": "back/bridge/mail/router.py",
         "handler": "approve_outbound_mail",
-        "line": 182,
+        "line": 189,
         "method": "POST",
         "module": "bridge.mail"
       },
@@ -19700,7 +19717,7 @@
         "declared_path": "/mail/outbound/{delivery_id}/reject",
         "file": "back/bridge/mail/router.py",
         "handler": "reject_outbound_mail",
-        "line": 207,
+        "line": 214,
         "method": "POST",
         "module": "bridge.mail"
       },
@@ -19709,7 +19726,7 @@
         "declared_path": "/mail/status",
         "file": "back/bridge/mail/router.py",
         "handler": "read_mail_status",
-        "line": 112,
+        "line": 119,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -21005,7 +21022,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "list_tools",
-        "line": 77,
+        "line": 85,
         "method": "GET",
         "module": "app.tools"
       },
@@ -21014,7 +21031,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "create_tool",
-        "line": 181,
+        "line": 189,
         "method": "POST",
         "module": "app.tools"
       },
@@ -21023,7 +21040,7 @@
         "declared_path": "/tools/agents/{agent_id}/mcp-tools",
         "file": "back/app/tools/router.py",
         "handler": "list_agent_mcp_tools",
-        "line": 87,
+        "line": 95,
         "method": "GET",
         "module": "app.tools"
       },
@@ -21032,7 +21049,16 @@
         "declared_path": "/tools/agents/{agent_id}/permissions",
         "file": "back/app/tools/router.py",
         "handler": "read_agent_permission_catalog",
-        "line": 96,
+        "line": 104,
+        "method": "GET",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/tools/capabilities",
+        "file": "back/app/tools/router.py",
+        "handler": "list_supported_capabilities",
+        "line": 37,
         "method": "GET",
         "module": "app.tools"
       },
@@ -21041,7 +21067,7 @@
         "declared_path": "/tools/import",
         "file": "back/app/tools/router.py",
         "handler": "import_tool",
-        "line": 285,
+        "line": 293,
         "method": "POST",
         "module": "app.tools"
       },
@@ -21050,7 +21076,7 @@
         "declared_path": "/tools/mcp-candidates",
         "file": "back/app/tools/router.py",
         "handler": "prepare_mcp_candidate",
-        "line": 39,
+        "line": 47,
         "method": "POST",
         "module": "app.tools"
       },
@@ -21059,7 +21085,7 @@
         "declared_path": "/tools/test-mcp",
         "file": "back/app/tools/router.py",
         "handler": "test_mcp_connection",
-        "line": 109,
+        "line": 117,
         "method": "POST",
         "module": "app.tools"
       },
@@ -21077,7 +21103,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "delete_tool",
-        "line": 245,
+        "line": 253,
         "method": "DELETE",
         "module": "app.tools"
       },
@@ -21086,7 +21112,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "get_tool",
-        "line": 129,
+        "line": 137,
         "method": "GET",
         "module": "app.tools"
       },
@@ -21095,7 +21121,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "update_tool",
-        "line": 197,
+        "line": 205,
         "method": "PUT",
         "module": "app.tools"
       },
@@ -21104,7 +21130,7 @@
         "declared_path": "/tools/{tool_id}/conversation-access",
         "file": "back/app/tools/router.py",
         "handler": "update_conversation_access",
-        "line": 213,
+        "line": 221,
         "method": "PATCH",
         "module": "app.tools"
       },
@@ -21113,7 +21139,7 @@
         "declared_path": "/tools/{tool_id}/deletion-impact",
         "file": "back/app/tools/router.py",
         "handler": "tool_deletion_impact",
-        "line": 233,
+        "line": 241,
         "method": "GET",
         "module": "app.tools"
       },
@@ -21122,7 +21148,7 @@
         "declared_path": "/tools/{tool_id}/export",
         "file": "back/app/tools/router.py",
         "handler": "export_tool",
-        "line": 262,
+        "line": 270,
         "method": "GET",
         "module": "app.tools"
       },
@@ -21131,7 +21157,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "get_global_params",
-        "line": 141,
+        "line": 149,
         "method": "GET",
         "module": "app.tools"
       },
@@ -21140,7 +21166,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "update_global_params",
-        "line": 158,
+        "line": 166,
         "method": "PUT",
         "module": "app.tools"
       },

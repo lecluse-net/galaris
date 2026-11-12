@@ -110,12 +110,17 @@ async def observation_scope(ctx: ResourceContext, uri: object) -> ObservationSco
     if reference.scheme in PROTOCOL_SCHEMES or reference.scheme in NATIVE_RESOURCE_SCHEMES - {"console"} or reference.scheme == "mail":
         return None
     db = get_db()
-    row = (await db.execute(select(Connection.id, binding_stamp(), ToolModel.file_share_config,
+    rows = (await db.execute(select(Connection.id, binding_stamp(), ToolModel.file_share_config,
                                   indexing_mode_expression()).join(
         ToolModel, ToolModel.id == Connection.tool_id,
     ).where(Connection.agent_id == ctx.agent_id, Connection.active.is_(True),
-            ToolModel.code == reference.scheme))).one_or_none()
-    if row is None or row[3] == "excluded":
+            ToolModel.code == reference.scheme))).all()
+    # A provider-wide URI cannot choose an indexing policy between multiple accounts.
+    # Mail resources remain excluded from the file catalogue.
+    if len(rows) != 1:
+        return None
+    row = rows[0]
+    if row[3] == "excluded":
         return None
     if reference.scheme == "console":
         if row[3] != "known_uris":

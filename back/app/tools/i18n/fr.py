@@ -194,6 +194,7 @@ default: dict[str, object] = {
         "mcp_test_protocol_success": "Initialisation et négociation du protocole MCP réussies.",
         "mcp_test_discovery_success": "${count} fonction(s) annoncée(s) par le serveur.",
         "errors": {
+            "legacy_mail_namespace": "Cet outil migré conserve l’espace de compatibilité mail://. Créez un outil nommé pour le fournisseur afin d’ajouter un partage de fichiers ou une autre messagerie.",
             "system_read_only": "Ce service système obligatoire est en lecture seule et toujours actif.",
             "tool_not_found": "Outil ${tool_id} introuvable",
             "tool_exists_code": "L’outil « ${code} » existe déjà",

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple, cast, Mapping
 from sqlalchemy import CursorResult, delete, exists, or_, select
+from sqlalchemy.types import JSON
 from sqlalchemy.orm import joinedload
 
 from .models import Connection, ConnectionParam, ConnectionFunctionState, ToolFunctionState, ConnectionOAuth
@@ -177,6 +178,24 @@ async def get_or_create_connection(tool_id: int, agent_id: int, *, active: bool 
     return new_connection
 
 
+async def create_connection(tool_id: int, agent_id: int, *, active: bool = True, commit: bool = True) -> Connection:
+    """Create a distinct Mail account, preserving singleton behavior for other Tools."""
+    from app.tools.facade import get_tool_by_id
+
+    await lock_tools([tool_id], db=get_db())
+    tool = await get_tool_by_id(tool_id)
+    if tool is None:
+        raise ValueError("Tool not found")
+    multiple = tool.mail is not None
+    if not multiple and await get_connection_by_agent_tool(tool_id, agent_id) is not None:
+        raise ValueError("A connection already exists for this agent and Tool")
+    connection = Connection(tool_id=tool_id, agent_id=agent_id, active=active, singleton_key=None if multiple else 0)
+    get_db().add(connection)
+    await finish_write(commit=commit, db=get_db())
+    await get_db().refresh(connection)
+    return connection
+
+
 async def get_connection(connection_id: int) -> Optional[Connection]:
     db = get_db()
     result = await db.execute(
@@ -196,7 +215,10 @@ async def get_connection_by_agent_tool(
             Connection.agent_id == agent_id
         )
     )
-    return result.scalar_one_or_none()
+    rows = result.scalars().all()
+    if len(rows) > 1:
+        raise ValueError("Multiple accounts exist; select an exact connection_id")
+    return rows[0] if rows else None
 
 
 async def has_active_tool_connection(
@@ -277,6 +299,7 @@ async def has_active_tool_function(agent_id: int, tool_code: str, function_name:
 async def has_any_active_tool_connection(
     tool_code: str,
     *,
+    protocol: bool = False,
     agent_ids: Collection[int] | None = None,
 ) -> bool:
     """Return whether at least one agent has an active connection to a tool."""
@@ -287,7 +310,9 @@ async def has_any_active_tool_connection(
         .join(ToolModel, ToolModel.id == Connection.tool_id)
         .where(
             Connection.active.is_(True),
-            ToolModel.code == tool_code,
+            ((ToolModel.mail_config.is_not(None) & (ToolModel.mail_config != JSON.NULL)) if tool_code == "mail"
+             else (ToolModel.calendar_config.is_not(None) & (ToolModel.calendar_config != JSON.NULL)))
+            if protocol else ToolModel.code == tool_code,
         )
         .limit(1)
     )
@@ -1039,24 +1064,27 @@ async def connection_tool_options(*, include_globals: bool = False) -> list[dict
     from app.tools.facade import public_connection_schema, tool_can_edit
     records = await tool_service.get_all_tool_records()
     return [{"id": t.id, "code": t.code, "label": t.label, "description": t.description,
-             "can_disable": t.can_disable, "can_edit": tool_can_edit(t),
+             "can_disable": t.can_disable, "can_edit": tool_can_edit(t), "capabilities": t.capabilities or [],
              "has_mcp": bool(t.mcp_config), "has_api": bool(t.rest_config),
              "has_file_share": bool(t.file_share_config), "has_messenger": bool(t.messenger_config),
+             "has_mail": t.mail_config is not None, "has_calendar": t.calendar_config is not None,
              "has_listener": bool(t.listener_config), "conversation_enabled": t.conversation_enabled,
              "mcp_config": {"type": t.mcp_config.get("type")} if t.mcp_config else None,
-             "connection_schema": public_connection_schema(t.connection_schema or {}),
+             "connection_schema": public_connection_schema(tool_service.connection_schema_for_tool(t)),
              "global_params": {name: value.model_dump(mode="json") for name, value in tool_service.public_global_params(t).items()} if include_globals else {},
              "created_at": t.created_at, "updated_at": t.updated_at}
             for t in records]
 
 
-async def tool_connection_options(tool_code: str, *, agent_ids: Collection[int] | None) -> list[dict[str, Any]]:
+async def tool_connection_options(tool_code: str, *, agent_ids: Collection[int] | None, protocol: bool = False) -> list[dict[str, Any]]:
     from app.tools import ToolModel
     from app.agent import Agent
-    statement = select(Connection.id, Connection.agent_id, Agent.first_name, Agent.last_name).join(
+    statement = select(Connection.id, Connection.agent_id, Agent.first_name, Agent.last_name, ToolModel.label).join(
         ToolModel, ToolModel.id == Connection.tool_id).join(Agent, Agent.id == Connection.agent_id).where(
-        ToolModel.code == tool_code).order_by(Connection.id)
+        ((ToolModel.calendar_config.is_not(None) & (ToolModel.calendar_config != JSON.NULL)) if tool_code == "calendar"
+         else (ToolModel.mail_config.is_not(None) & (ToolModel.mail_config != JSON.NULL)))
+        if protocol else ToolModel.code == tool_code).order_by(Connection.id)
     if agent_ids is not None:
         statement = statement.where(Connection.agent_id.in_(agent_ids))
-    return [{"id": identity, "agent_id": agent_id, "label": f"{first} {last}"}
-            for identity, agent_id, first, last in (await get_db().execute(statement)).all()]
+    return [{"id": identity, "agent_id": agent_id, "label": f"{first} {last} · {provider}" if protocol else f"{first} {last}"}
+            for identity, agent_id, first, last, provider in (await get_db().execute(statement)).all()]

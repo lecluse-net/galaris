@@ -92,7 +92,13 @@ The sidebar shows only the screens authorized by your role:
 
 The **Tools** list opens on **Custom tools**, followed by **Galaris built-in tools**.
 A connection's **Tool** field also groups choices under **Galaris** and **Custom**.
-In **New tool**, enable at least one capability to make **Create** available.
+In **New tool**, add at least one protocol to make **Create** available.
+For several Ionos mailboxes, create one provider Tool **Ionos**, choose **IMAP & SMTP** under
+**Mail**, and configure server settings and standard connection parameter references.
+Then create a separate connection for each mailbox and agent with its address and credentials.
+One agent may have several connections to the same Mail Tool. The MCP `tools_list` catalogue
+provides mailbox addresses, `connection_id` values and authorized functions.
+
 
 To configure a REST integration, an administrator enables **API** on the Tool, then
 enters its address directly in the **REST API** tab. All Tool connections share this address.
@@ -554,7 +560,7 @@ previously saved choices.
 If a Task waits for your consent to read an email, answer its authorization request.
 The Harness continues reading the same message once the Task resumes; denial keeps
 its content private. Reading consent does not authorize sending an email.
-To browse an agent’s mailbox yourself, open **Knowledge → Files → Mail**, then an IMAP folder
+To browse an agent’s mailbox yourself, open **Knowledge → Files**, then its Mail provider and account, then an IMAP folder
 and a message. Your reading does not authorize the agent to process the email.
 
 Reading a Skill already available in the DeepSeek Harness does not request mutation consent.

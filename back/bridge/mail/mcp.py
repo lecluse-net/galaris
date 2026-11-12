@@ -15,6 +15,11 @@ from .inbound import PROCESS_NAME, PROCESS_REASON, ensure_readable
 from .connection_service import resolve_mail_connection
 from app.tools.facade import authorization_context_key
 
+MailConnectionId = Annotated[int | None, Field(gt=0, description=(
+    "Exact Mail connection_id from tools_list, which lists mailbox addresses and allowed functions. "
+    "An agent can have several mailboxes at the same provider. Keep this ID with message references "
+    "and cursors; omit only for a single unambiguous account or an already bound incoming Mail task."
+))]
 
 def _json(value: object) -> object:
     model_dump = getattr(value, "model_dump", None)
@@ -26,7 +31,7 @@ def _json(value: object) -> object:
     description=("Authorize processing one INBOX email before reading it. Other folders cannot be processed. By default known contacts "
         "are accepted; unknown senders require human consent. Explicit Ask applies to all senders; "
         "Enabled always allows processing. This does not authorize sending a reply."))
-async def mail_process(ctx: McpToolContext, message_ref: str) -> object:
+async def mail_process(ctx: McpToolContext, message_ref: str, connection_id: MailConnectionId = None) -> object:
     row = await ensure_readable(await resolve_mail_connection(ctx.agent_id), message_ref,
         parent_context=authorization_context_key(ctx.task_id, ctx.resources))
     return {"receipt_id": str(row.id), "message_ref": row.message_ref, "status": row.status}
@@ -37,7 +42,7 @@ async def mail_process(ctx: McpToolContext, message_ref: str) -> object:
     name="mail_connection_status",
     description="Test the current agent's configured IMAP and SMTP endpoints.",
 )
-async def mail_connection_status(ctx: McpToolContext) -> object:
+async def mail_connection_status(ctx: McpToolContext, connection_id: MailConnectionId = None) -> object:
     return _json(await service.connection_status(ctx.agent_id))
 
 
@@ -46,7 +51,7 @@ async def mail_connection_status(ctx: McpToolContext) -> object:
     name="mail_list_mailboxes",
     description="List selectable IMAP mailboxes and their advertised special roles.",
 )
-async def mail_list_mailboxes(ctx: McpToolContext) -> list[object]:
+async def mail_list_mailboxes(ctx: McpToolContext, connection_id: MailConnectionId = None) -> list[object]:
     return [_json(item) for item in await service.list_mailboxes(ctx.agent_id)]
 
 
@@ -76,6 +81,7 @@ async def mail_search(
     )] = None,
     limit: int = 20,
     cursor: str | None = None,
+    connection_id: MailConnectionId = None,
 ) -> object:
     return _json(
         await service.search(
@@ -111,6 +117,7 @@ async def mail_get(
     message_ref: str,
     body_offset: int = 0,
     body_limit: int = 20_000,
+    connection_id: MailConnectionId = None,
 ) -> object:
     return _json(
         await service.get_message(
@@ -142,6 +149,7 @@ async def mail_send(
     html_body: str | None = None,
     attachment_uris: list[str] | None = None,
     reply_to: str | None = None,
+    connection_id: MailConnectionId = None,
 ) -> object:
     return _json(
         await service.send(
@@ -178,6 +186,7 @@ async def mail_reply(
     reply_all: bool = False,
     additional_to: list[str] | None = None,
     attachment_uris: list[str] | None = None,
+    connection_id: MailConnectionId = None,
 ) -> object:
     return _json(
         await service.reply(
@@ -215,6 +224,7 @@ async def mail_forward(
     include_original: bool = True,
     include_original_attachments: bool = False,
     attachment_uris: list[str] | None = None,
+    connection_id: MailConnectionId = None,
 ) -> object:
     return _json(
         await service.forward(
@@ -252,6 +262,7 @@ async def mail_set_flags(
     message_ref: str,
     seen: bool | None = None,
     flagged: bool | None = None,
+    connection_id: MailConnectionId = None,
 ) -> object:
     if seen is None and flagged is None:
         raise ToolCallRejectedError("seen or flagged must be provided; false clears that flag. No message was changed.")
@@ -270,7 +281,7 @@ async def mail_set_flags(
     name="mail_move",
     description="Move one message to an existing selectable IMAP mailbox.",
 )
-async def mail_move(ctx: McpToolContext, message_ref: str, mailbox: str) -> object:
+async def mail_move(ctx: McpToolContext, message_ref: str, mailbox: str, connection_id: MailConnectionId = None) -> object:
     return _json(await service.move(ctx.agent_id, message_ref, mailbox))
 
 
@@ -279,7 +290,7 @@ async def mail_move(ctx: McpToolContext, message_ref: str, mailbox: str) -> obje
     name="mail_trash",
     description="Move one message to the configured or IMAP-advertised Trash mailbox.",
 )
-async def mail_trash(ctx: McpToolContext, message_ref: str) -> object:
+async def mail_trash(ctx: McpToolContext, message_ref: str, connection_id: MailConnectionId = None) -> object:
     return _json(await service.trash(ctx.agent_id, message_ref))
 
 

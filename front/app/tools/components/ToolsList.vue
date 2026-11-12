@@ -37,43 +37,10 @@
           <button v-if="toolDescription(props.row)" class="tool-description-link" @click.stop="openDescription(props.row)">{{ localizedToolLabel(props.row) }}</button>
           <span v-else>{{ localizedToolLabel(props.row) }}</span>
           <SystemToolIcon v-if="props.row.can_disable === false" class="q-ml-xs" />
-          <ToolOriginBadge :tool="props.row" class="q-ml-sm" />
         </q-td>
       </template>
-      <template v-slot:body-cell-has_mcp="props">
-        <q-td :props="props">
-          <q-chip v-if="props.row.has_mcp" dense color="positive" text-color="white" icon="check" size="sm">MCP</q-chip>
-          <span v-else class="text-grey-5">—</span>
-        </q-td>
-      </template>
-
-      <template #body-cell-has_api="props">
-        <q-td :props="props"><q-icon v-if="props.row.has_api" name="check" color="primary" :aria-label="$t('tools.restApi')" /><span v-else>—</span></q-td>
-      </template>
-
-      <template v-slot:body-cell-has_file_share="props">
-        <q-td :props="props">
-          <q-chip v-if="props.row.has_file_share" dense color="deep-purple" text-color="white" icon="folder_shared" size="sm">
-            {{ props.row.file_share_config?.service }}
-          </q-chip>
-          <span v-else class="text-grey-5">—</span>
-        </q-td>
-      </template>
-
-      <template v-slot:body-cell-has_messenger="props">
-        <q-td :props="props">
-          <q-chip v-if="props.row.has_messenger" dense color="indigo" text-color="white" icon="forum" size="sm">
-            {{ props.row.messenger_config?.service }}
-          </q-chip>
-          <span v-else class="text-grey-5">—</span>
-        </q-td>
-      </template>
-
-      <template v-slot:body-cell-has_listener="props">
-        <q-td :props="props">
-          <q-chip v-if="props.row.has_listener" dense color="info" text-color="white" icon="check" size="sm">{{ $t('tools.listener') }}</q-chip>
-          <span v-else class="text-grey-5">—</span>
-        </q-td>
+      <template #body-cell-capabilities="props">
+        <q-td :props="props"><ToolCapabilities :tool="props.row" :definitions="capabilityDefinitions" /></q-td>
       </template>
 
       <template v-slot:body-cell-conversation_enabled="props">
@@ -124,7 +91,6 @@
                     <button v-if="toolDescription(props.row)" class="tool-description-link" @click="openDescription(props.row)">{{ localizedToolLabel(props.row) }}</button>
                     <span v-else>{{ localizedToolLabel(props.row) }}</span>
                     <SystemToolIcon v-if="props.row.can_disable === false" class="q-ml-xs" />
-                    <ToolOriginBadge :tool="props.row" class="q-ml-sm" />
                   </div>
                   <div class="text-caption text-grey-7 ellipsis">{{ props.row.code }}</div>
                 </div>
@@ -150,20 +116,9 @@
                 />
               </div>
 
-              <div class="row items-center q-gutter-xs q-mt-sm tool-mobile-capabilities">
-                <q-chip v-if="props.row.has_api" dense icon="api">{{ $t('tools.restApi') }}</q-chip>
-                <q-chip v-if="props.row.has_mcp" dense color="positive" text-color="white" icon="check" size="sm">
-                  MCP
-                </q-chip>
-                <q-chip v-if="props.row.has_file_share" dense color="deep-purple" text-color="white" icon="folder_shared" size="sm">
-                  {{ props.row.file_share_config?.service || $t('tools.fileShare') }}
-                </q-chip>
-                <q-chip v-if="props.row.has_messenger" dense color="indigo" text-color="white" icon="forum" size="sm">
-                  {{ props.row.messenger_config?.service || $t('tools.messenger') }}
-                </q-chip>
-                <q-chip v-if="props.row.has_listener" dense color="info" text-color="white" icon="hearing" size="sm">
-                  {{ $t('tools.listener') }}
-                </q-chip>
+              <div class="q-mt-sm">
+                <div class="text-caption text-grey-7 q-mb-xs">{{ $t('tools.capabilities') }}</div>
+                <ToolCapabilities :tool="props.row" :definitions="capabilityDefinitions" />
               </div>
             </q-card-section>
             <q-separator />
@@ -364,7 +319,7 @@
               <div class="tool-editor-columns">
                 <div class="tool-main-fields-row">
                   <q-input v-model="form.code" :label="$t('tools.technicalName')" :readonly="!!editingTool" :disable="!!editingTool"
-                    :hint="$t(hasFileShare || hasMessenger ? 'tools.resourceTechnicalNameHint' : 'tools.technicalNameHint')" hide-bottom-space dense outlined class="tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
+                    :hint="$t(hasFileShare || hasMessenger || hasMail ? 'tools.resourceTechnicalNameHint' : 'tools.technicalNameHint')" hide-bottom-space dense outlined class="tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
                   <q-input v-model="form.label" :label="$t('tools.label')" hide-bottom-space dense outlined class="tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
                 </div>
                 <q-input v-model="form.description" :label="$t('tools.descriptionMarkdown')" type="textarea" :input-style="{ minHeight: '96px' }" dense outlined autogrow />
@@ -372,29 +327,65 @@
             </section>
 
             <div class="tool-editor-columns">
-              <section class="tool-section tool-section--active">
-                <div class="row q-gutter-md q-mb-md tool-capability-toggles">
-                  <q-toggle v-model="hasMcp" :label="$t('tools.enableMcp')" color="positive" dense />
-                  <q-toggle v-model="hasApi" :label="$t('tools.enableApi')" color="primary" dense />
-                  <q-toggle v-model="hasFileShare" :label="$t('tools.enableFileShare')" color="deep-purple" dense />
-                  <q-toggle v-model="hasMessenger" :label="$t('tools.enableMessenger')" color="indigo" dense />
-                  <q-toggle v-model="hasListener" :label="$t('tools.enableListener')" color="info" dense />
+              <section class="tool-section">
+                <div class="row items-center q-mb-sm">
+                  <div class="text-subtitle2 text-grey-7">{{ $t('tools.protocols') }}</div>
+                  <q-space />
+                  <q-btn outline color="primary" icon="add" :label="$t('tools.addCapability')">
+                    <q-menu v-model="protocolMenuOpen" max-height="70vh" class="tool-protocol-menu"
+                      role="menu" :aria-label="$t('tools.addCapability')">
+                      <div v-if="capabilityCatalogLoading" class="row justify-center q-pa-md" role="status">
+                        <q-spinner color="primary" :aria-label="$t('common.loading')" />
+                      </div>
+                      <q-banner v-else-if="capabilityCatalogError" dense role="alert">
+                        {{ $t('tools.capabilitiesLoadError') }}
+                        <template #action><q-btn outline color="primary" :label="$t('common.retry')" @click="fetchCapabilities" /></template>
+                      </q-banner>
+                      <q-list v-else>
+                        <template v-for="option in capabilityOptions" :key="option.value">
+                          <q-item-label v-if="option.header" header class="tool-protocol-group">{{ option.label }}</q-item-label>
+                          <q-item v-else clickable role="menuitem" :disable="option.disable" class="tool-protocol-option"
+                            @click="addCapability(option.value)">
+                            <q-item-section>{{ option.label }}</q-item-section>
+                          </q-item>
+                        </template>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
                 </div>
-                <q-banner v-if="missingCreationCapability" dense rounded class="q-mb-md" role="status">
-                  <template #avatar><q-icon name="info" /></template>
-                  {{ $t('tools.capabilityRequired') }}
+                <q-tabs v-if="selectedCapabilities.length" v-model="activeTab" dense align="left" class="tool-tabs" narrow-indicator>
+                  <q-tab v-for="value in selectedCapabilities" :key="value" :name="capabilityTab(value)"
+                    :label="capabilityLabels(value, capabilityDefinitions, t).protocol" />
+                </q-tabs>
+                <q-linear-progress v-if="selectedCapabilities.length && capabilityCatalogLoading" indeterminate color="primary" />
+                <q-banner v-if="selectedCapabilities.length && capabilityCatalogError" dense role="alert">
+                  {{ $t('tools.capabilitiesLoadError') }}
+                  <template #action><q-btn outline color="primary" :label="$t('common.retry')" @click="fetchCapabilities" /></template>
                 </q-banner>
-                <template v-if="hasMcp || hasApi || hasFileShare || hasMessenger || hasListener">
-                  <q-tabs v-model="activeTab" dense align="left" class="tool-tabs" narrow-indicator>
-                    <q-tab v-if="hasMcp" name="mcp" label="MCP" />
-                    <q-tab v-if="hasApi" name="api" :label="$t('tools.restApi')" />
-                    <q-tab v-if="hasFileShare" name="file_share" :label="$t('tools.fileShare')" />
-                    <q-tab v-if="hasMessenger" name="messenger" :label="$t('tools.messenger')" />
-                    <q-tab v-if="hasListener" name="listener" :label="$t('tools.listener')" />
-                  </q-tabs>
+                <template v-if="selectedCapabilities.length">
                   <q-separator class="q-mb-md" />
-
                   <q-tab-panels v-model="activeTab" animated>
+                    <q-tab-panel v-for="value in customCapabilities" :key="value" :name="capabilityTab(value)" class="q-pa-none">
+                      <code>{{ value }}</code>
+                    </q-tab-panel>
+                    <q-tab-panel v-for="protocol in parameterProtocols" :key="protocol.value" :name="capabilityTab(protocol.value)" class="q-pa-none">
+                      <div v-for="section in protocolSections(protocol)" :key="section.label" class="tool-section__body">
+                        <div v-if="section.label" class="text-subtitle2">{{ te(section.label) ? t(section.label) : section.label }}</div>
+                        <div class="tool-parameter-grid">
+                          <ConnectionParamInput v-for="[name, definition] in sortedConnectionParamEntries(section.settings)" :key="name"
+                            v-model="protocolSettings[protocol.capability][name]" :name="name" :definition="definition" :tool-code="form.code" />
+                        </div>
+                        <div v-if="Object.keys(section.bindings).length" class="text-caption text-grey-6">{{ $t('tools.messengerParamMap') }}</div>
+                        <div v-for="(binding, role) in section.bindings" :key="role" class="row q-gutter-md items-center"
+                          role="group" :aria-label="localizedParamLabel({ ...binding.definition, name: role, label: binding.label }, form.code)">
+                          <div class="col-3 text-body2">{{ localizedParamLabel({ ...binding.definition, name: role, label: binding.label }, form.code) }}<span v-if="binding.definition.required" class="text-negative"> *</span></div>
+                          <ConnectionParamSelect v-model="protocolParamMaps[protocol.capability][role]" outlined dense class="col"
+                            :label="$t('tools.mapToParam')" :options="connectionBindingOptions(binding.definition)"
+                            :create-parameter="() => createConnParam(binding.parameter, binding.definition.type,
+                              localizedParamLabel({ ...binding.definition, name: binding.parameter }, form.code), binding.definition.required, binding.definition.widget, binding.definition)" />
+                        </div>
+                      </div>
+                    </q-tab-panel>
                     <q-tab-panel name="api" class="q-pa-none">
                       <RestConfigEditor v-model="form.rest_config" :params="connParams" :create-param="createConnParam" class="tool-section__body" />
                     </q-tab-panel>
@@ -402,8 +393,6 @@
                     <q-tab-panel name="mcp" class="q-pa-none">
                       <div class="tool-section__body">
                         <div class="row q-gutter-md">
-                          <q-select v-model="form.mcp_config.type" :options="['http', 'sse', 'stdio']" :label="$t('tools.transport')"
-                            dense outlined class="col-auto" style="min-width: 120px" />
                           <q-input v-if="form.mcp_config.type !== 'stdio'" v-model="form.mcp_config.url" label="URL *"
                             dense outlined class="col" placeholder="https://..." />
                           <q-input v-else v-model="form.mcp_config.command" :label="$t('tools.command')" dense outlined class="col" placeholder="npx" />
@@ -479,10 +468,6 @@
                     <q-tab-panel name="file_share" class="q-pa-none">
                       <div class="tool-section__body">
                         <div class="row q-gutter-md">
-                          <q-select v-model="form.file_share_config.service" :options="fileShareBridgeOptions"
-                            emit-value map-options :label="$t('tools.fileShareServiceLabel')"
-                            dense outlined class="col-auto" style="min-width: 200px"
-                            @update:model-value="onFileShareServiceChange" />
                           <q-input v-model="form.file_share_config.base_url" :label="$t('tools.fileShareBaseUrlLabel')" dense outlined class="col"
                             :hint="$t('tools.fileShareBaseUrlHint')"
                             :placeholder="$t(form.file_share_config.service === 'samba' ? 'tools.fileShareSambaUrlPlaceholder' : 'tools.fileShareUrlPlaceholder')" />
@@ -513,16 +498,6 @@
                     <!-- Messaging section, independent from File sharing. -->
                     <q-tab-panel name="messenger" class="q-pa-none">
                       <div class="tool-section__body">
-                        <q-select
-                          v-model="form.messenger_config.service"
-                          :options="messengerBridgeOptions"
-                          emit-value map-options
-                          :label="$t('tools.messengerServiceLabel')"
-                          dense outlined
-                          style="max-width: 320px"
-                          @update:model-value="onMessengerServiceChange(true)"
-                        />
-
                         <template v-if="currentMessengerBridge">
                           <NetworkAccessNotice :kind="currentMessengerBridge.service" />
                           <div v-if="currentMessengerBridge.settings.length" class="q-gutter-y-sm">
@@ -588,6 +563,8 @@
                       </div>
                     </q-tab-panel>
                   </q-tab-panels>
+                  <q-btn v-if="canEdit && activeCapability" color="negative" icon="delete" class="q-mt-md"
+                    :label="$t('tools.deleteProtocol')" @click="requestProtocolRemoval(activeCapability)" />
                 </template>
               </section>
 
@@ -636,8 +613,26 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+          <q-btn v-if="editingTool" outline color="primary" icon="download" :label="$t('tools.exportYaml')" @click="exportTool(editingTool)" />
           <q-btn outline :label="$t('common.cancel')" v-close-popup />
           <q-btn v-if="canEdit" color="primary" :label="editingTool ? $t('common.save') : $t('common.create')" :loading="saving" :disable="missingCreationCapability" @click="saveTool" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="protocolDeleteOpen" @hide="pendingProtocolDelete = ''">
+      <q-card class="galaris-dialog-card" style="width: min(560px, 95vw); max-width: 95vw">
+        <q-card-section class="galaris-dialog-title row items-center">
+          <div class="text-h6">{{ $t('tools.deleteProtocol') }}</div>
+          <q-space />
+          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
+        </q-card-section>
+        <q-card-section class="galaris-dialog-body">
+          {{ $t('tools.deleteProtocolConfirm', { name: capabilityLabels(pendingProtocolDelete, capabilityDefinitions, t).protocol }) }}
+        </q-card-section>
+        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+          <q-btn outline :label="$t('common.cancel')" v-close-popup />
+          <q-btn color="negative" :label="$t('common.delete')" @click="confirmProtocolRemoval" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -815,7 +810,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Markdown, NetworkAccessNotice } from '@/core/util'
 import SystemToolIcon from './SystemToolIcon.vue'
-import ToolOriginBadge from './ToolOriginBadge.vue'
 import ConnectionParamInput from './ConnectionParamInput.vue'
 import RestConfigEditor from './RestConfigEditor.vue'
 import ConnectionParamSelect from './ConnectionParamSelect.vue'
@@ -845,6 +839,9 @@ import api from '@/core/api'
 import { isAxiosError } from 'axios'
 import type { ToolDeletionImpact } from '../services/toolService'
 import { useI18n } from 'vue-i18n'
+import ToolCapabilities from './ToolCapabilities.vue'
+import { capabilityCode, capabilityLabels, toolCapabilitySelections } from '../capabilities'
+import type { CapabilityDefinition, CapabilityProtocol } from '../services/toolService'
 import { connectionParamLabel, connectionParamMessageKey, sortedConnectionParamEntries, toolMessageKey, toolOrigin, type ToolOrigin } from '../presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { mailService, type MailApproverOption } from '@/app/connection'
@@ -925,7 +922,15 @@ async function openGlobalParams(tool: Tool): Promise<void> {
   if (!canEdit.value || tool.can_disable === false) return
   const { data } = await toolService.getGlobalParams(tool.id)
   globalParamsTool.value = tool
-  if (tool.code === 'mail' && approvers.value.length === 0) {
+  if (Object.values(tool.connection_schema.params).some(param => param.type === 'user')) await loadApprovers()
+  globalParamRows.value = sortedConnectionParamEntries(tool.connection_schema.params)
+    .filter(([name]) => name !== 'tools.management_scope')
+    .map(([name, definition]) => globalParamRow(name, definition, data.params[name]))
+  globalParamsDialogOpen.value = true
+}
+
+async function loadApprovers(): Promise<void> {
+  if (approvers.value.length === 0 && !approversLoading.value) {
     approversLoading.value = true
     try {
       approvers.value = (await mailService.listApprovers()).data
@@ -938,23 +943,12 @@ async function openGlobalParams(tool: Tool): Promise<void> {
       approversLoading.value = false
     }
   }
-  globalParamRows.value = sortedConnectionParamEntries(tool.connection_schema.params)
-    .filter(([name]) => name !== 'tools.management_scope').map(([name, definition]) => {
-    const current = data.params[name]
-    return {
-      ...definition,
-      name,
-      type: definition.type,
-      description: definition.description,
-      default: definition.default || '',
-      secret: definition.type === 'password',
-      configured: current?.configured ?? false,
-      forced: current?.forced ?? false,
-      clear: false,
-      value: current?.secret ? '' : current?.value ?? '',
-    }
-  })
-  globalParamsDialogOpen.value = true
+}
+
+function globalParamRow(name: string, definition: ConnectionParamDef, current?: Tool['global_params'][string]): GlobalParamRow {
+  return { ...definition, name, description: definition.description ?? '', default: definition.type === 'password' ? '' : definition.default || '',
+    secret: definition.type === 'password', configured: current?.configured ?? false, forced: current?.forced ?? false, clear: false,
+    value: definition.type === 'password' ? '' : current ? current.value ?? '' : definition.default || '' }
 }
 
 function clearGlobalParam(row: GlobalParamRow): void {
@@ -1050,11 +1044,7 @@ function filterTools(rows: readonly Tool[], terms: string): Tool[] {
 const columns = computed(() => [
   { name: 'code',        label: t('agent.colName'),     field: 'code',     align: 'left'   as const, sortable: true },
   { name: 'label', label: t('tools.labelColumn'), field: 'label', align: 'left' as const, sortable: true },
-  { name: 'has_mcp',     label: 'MCP',     field: 'has_mcp',  align: 'center' as const },
-  { name: 'has_api', label: t('tools.restApi'), field: 'has_api', align: 'center' as const },
-  { name: 'has_file_share', label: t('tools.fileShare'), field: 'has_file_share', align: 'center' as const },
-  { name: 'has_messenger', label: t('tools.messenger'), field: 'has_messenger', align: 'center' as const },
-  { name: 'has_listener', label: t('tools.listener'), field: 'has_listener', align: 'center' as const },
+  { name: 'capabilities', label: t('tools.capabilities'), field: 'capabilities', align: 'left' as const },
   { name: 'conversation_enabled', label: t('tools.conversationAccess'), field: 'conversation_enabled', align: 'center' as const },
   { name: 'actions',     label: '',        field: 'actions',  align: 'right'  as const },
 ])
@@ -1076,19 +1066,10 @@ const paramTypeOptions = [
 
 // Available file-share bridges returned by the backend drive the form.
 const fileShareBridges = ref<FileShareBridge[]>([])
-const fileShareBridgeOptions = computed(() =>
-  fileShareBridges.value.map(b => ({ label: b.label, value: b.service }))
-)
 const currentFileShareBridge = computed<FileShareBridge | null>(() =>
   fileShareBridges.value.find(b => b.service === form.value.file_share_config.service) ?? null
 )
 const messengerBridges = ref<MessengerBridge[]>([])
-const messengerBridgeOptions = computed(() =>
-  messengerBridges.value.map(bridge => ({
-    label: bridge.label,
-    value: bridge.service,
-  }))
-)
 const currentMessengerBridge = computed<MessengerBridge | null>(() =>
   messengerBridges.value.find(
     bridge => bridge.service === form.value.messenger_config.service
@@ -1228,38 +1209,125 @@ const hasApi = ref(false)
 const hasFileShare = ref(false)
 const hasMessenger = ref(false)
 const hasListener = ref(false)
-const missingCreationCapability = computed(() => !editingTool.value && !(
-  hasMcp.value || hasApi.value || hasFileShare.value || hasMessenger.value || hasListener.value
-))
+const hasMail = ref(false)
+const hasCalendar = ref(false)
+const selectedCapabilities = ref<string[]>([])
+const protocolMenuOpen = ref(false)
+const capabilityDefinitions = ref<CapabilityDefinition[]>([])
+const capabilityCatalogLoading = ref(false), capabilityCatalogError = ref(false)
+const protocolSettings = ref<Record<string, Record<string, string | null>>>({})
+const protocolParamMaps = ref<Record<string, Record<string, string>>>({})
+function protocolSections(protocol: CapabilityProtocol) {
+  const settings = protocol.parameters ?? {}, bindings = protocol.connection_parameters ?? {}
+  const labels = new Set([...Object.values(settings), ...Object.values(bindings)].map(field => field.section ?? ''))
+  return [...labels].map(label => ({ label,
+    settings: Object.fromEntries(Object.entries(settings).filter(([, field]) => (field.section ?? '') === label)),
+    bindings: Object.fromEntries(Object.entries(bindings).filter(([, field]) => (field.section ?? '') === label)),
+  }))
+}
+const parameterProtocols = computed(() => selectedCapabilities.value.flatMap(value =>
+  capabilityDefinitions.value.flatMap(definition => definition.protocols.filter(protocol => protocol.value === value
+    && (Object.keys(protocol.parameters ?? {}).length || Object.keys(protocol.connection_parameters ?? {}).length)))))
+watch(parameterProtocols, protocols => {
+  for (const protocol of protocols) {
+    const settings = protocolSettings.value[protocol.capability] ??= {}
+    for (const [name, definition] of Object.entries(protocol.parameters ?? {})) {
+      settings[name] ??= editingTool.value?.global_params?.[name]?.value ?? definition.default ?? ''
+    }
+    const bindings = protocolParamMaps.value[protocol.capability] ??= {}
+    for (const role of Object.keys(bindings)) {
+      if (!(role in (protocol.connection_parameters ?? {}))) delete bindings[role]
+    }
+    const existing = editingTool.value
+    const config = protocol.capability === 'mail' ? existing?.mail_config : existing?.calendar_config
+    const legacy = config && !Object.keys(config.settings ?? {}).length && !Object.keys(config.param_map ?? {}).length
+    for (const [role, binding] of Object.entries(protocol.connection_parameters ?? {})) {
+      const name = binding.legacy_parameter ?? binding.parameter
+      const definition = legacy ? existing?.connection_schema.params?.[name] : undefined
+      if (definition && !connParams.value.some(param => param.name === name)) {
+        connParams.value.push({ ...definition, builtin: false, name, label: definition.label ?? '',
+          options: definition.options ?? [], default: definition.default ?? '' })
+      }
+      if (!bindings[role]) bindings[role] = definition ? name : ''
+    }
+  }
+})
+function connectionBindingOptions(definition: ConnectionParamDef): string[] {
+  return connParams.value.filter(param => param.type === definition.type && (param.widget || '') === (definition.widget || '')).map(param => param.name)
+}
+const missingCreationCapability = computed(() => !editingTool.value && !selectedCapabilities.value.length)
 const activeTab = ref<string>('')
 const mcpArgsRaw = ref('')
 const mcpEnvRaw = ref('')
 
-function firstEnabledTab(): string {
-  if (hasMcp.value) return 'mcp'
-  if (hasApi.value) return 'api'
-  if (hasFileShare.value) return 'file_share'
-  if (hasMessenger.value) return 'messenger'
-  if (hasListener.value) return 'listener'
-  return ''
+function firstEnabledTab(): string { return selectedCapabilities.value[0] ? capabilityTab(selectedCapabilities.value[0]) : '' }
+
+function capabilityTab(value: string): string {
+  const code = capabilityCode(value)
+  const enabled: Record<string, boolean> = { mcp: hasMcp.value, api: hasApi.value, file_share: hasFileShare.value,
+    messenger: hasMessenger.value, listener: hasListener.value, mail: hasMail.value, calendar: hasCalendar.value }
+  return enabled[code] ? code : 'custom:' + value
+}
+const customCapabilities = computed(() => selectedCapabilities.value.filter(value => capabilityTab(value).startsWith('custom:')
+  && !parameterProtocols.value.some(protocol => protocol.value === value)))
+const activeCapability = computed(() => selectedCapabilities.value.find(value => capabilityTab(value) === activeTab.value))
+const capabilityOptions = computed(() => capabilityDefinitions.value.flatMap(definition => [
+  { label: definition.builtin ? t(definition.label) : definition.label, value: definition.code, header: true, disable: true },
+  ...definition.protocols.map(protocol => ({ value: protocol.value, header: false,
+    label: capabilityLabels(protocol.value, capabilityDefinitions.value, t).protocol,
+    disable: selectedCapabilities.value.some(value => capabilityCode(value) === definition.code),
+  })),
+]))
+function addCapability(value: string) {
+  if (capabilityCatalogLoading.value || capabilityCatalogError.value
+    || selectedCapabilities.value.some(item => capabilityCode(item) === capabilityCode(value))) return
+  const code = capabilityCode(value), protocol = value.slice(0, -(code.length + 1))
+  const recognized = capabilityDefinitions.value.some(definition => definition.protocols.some(item => item.value === value))
+  if (!recognized) return
+  if (recognized) {
+    if (code === 'mcp' && ['http', 'sse', 'stdio'].includes(protocol)) {
+      form.value.mcp_config.type = protocol as McpConfig['type']; hasMcp.value = true
+    } else if (code === 'api') hasApi.value = true
+    else if (code === 'file_share') { form.value.file_share_config.service = protocol; hasFileShare.value = true; onFileShareServiceChange() }
+    else if (code === 'messenger') { form.value.messenger_config.service = protocol; hasMessenger.value = true; onMessengerServiceChange(true) }
+    else if (code === 'listener') hasListener.value = true
+    else if (code === 'mail') hasMail.value = true
+    else if (code === 'calendar') hasCalendar.value = true
+  }
+  selectedCapabilities.value.push(value)
+  activeTab.value = capabilityTab(value)
+  protocolMenuOpen.value = false
+}
+const pendingProtocolDelete = ref('')
+const protocolDeleteOpen = ref(false)
+function requestProtocolRemoval(value: string) {
+  pendingProtocolDelete.value = value
+  protocolDeleteOpen.value = true
+}
+function confirmProtocolRemoval() {
+  const value = pendingProtocolDelete.value
+  if (canEdit.value && selectedCapabilities.value.includes(value)) removeCapability(value)
+  protocolDeleteOpen.value = false
+}
+function removeCapability(value: string) {
+  const code = capabilityCode(value)
+  selectedCapabilities.value = selectedCapabilities.value.filter(item => item !== value)
+  if (code === 'mcp') hasMcp.value = false
+  else if (code === 'api') hasApi.value = false
+  else if (code === 'file_share') hasFileShare.value = false
+  else if (code === 'messenger') hasMessenger.value = false
+  else if (code === 'listener') hasListener.value = false
+  else if (code === 'mail') hasMail.value = false
+  else if (code === 'calendar') hasCalendar.value = false
+  if (!selectedCapabilities.value.some(item => capabilityTab(item) === activeTab.value)) activeTab.value = firstEnabledTab()
+}
+async function fetchCapabilities() {
+  capabilityCatalogLoading.value = true; capabilityCatalogError.value = false
+  try { capabilityDefinitions.value = (await toolService.getCapabilities()).data }
+  catch { capabilityCatalogError.value = true }
+  finally { capabilityCatalogLoading.value = false }
 }
 
-// Focus a newly enabled section and fall back when the current tab is disabled.
-watch([hasMcp, hasFileShare, hasMessenger, hasListener, hasApi], ([m, f, g, l, a], [pm, pf, pg, pl, pa]) => {
-  if (m && !pm) activeTab.value = 'mcp'
-  else if (f && !pf) activeTab.value = 'file_share'
-  else if (g && !pg) activeTab.value = 'messenger'
-  else if (l && !pl) activeTab.value = 'listener'
-  else if (a && !pa) activeTab.value = 'api'
-  const enabled = [
-    m ? 'mcp' : '',
-    f ? 'file_share' : '',
-    g ? 'messenger' : '',
-    l ? 'listener' : '',
-    a ? 'api' : '',
-  ].filter(Boolean)
-  if (!enabled.includes(activeTab.value)) activeTab.value = enabled[0] ?? ''
-})
 const mcpHeadersRaw = ref('')
 const connParams = ref<ConnParamRow[]>([])
 const pendingParamDelete = ref<ConnParamRow | null>(null)
@@ -1269,6 +1337,9 @@ const pendingParamUsages = computed(() =>
 )
 watch(dialogOpen, open => {
   if (!open) {
+    protocolMenuOpen.value = false
+    protocolDeleteOpen.value = false
+    pendingProtocolDelete.value = ''
     paramDeleteOpen.value = false
     pendingParamDelete.value = null
   }
@@ -1285,7 +1356,7 @@ const mcpTestConnectionParams = computed(() =>
 
 // Connection parameter names used by authentication selects.
 const connParamNames = computed(() =>
-  connParams.value.map(p => p.name).filter(n => n.trim() !== '')
+  connParams.value.map(param => param.name).filter(name => name.trim() !== '')
 )
 
 type McpFormConfig = Omit<McpConfig, 'auth'> & { auth: McpAuth }
@@ -1407,6 +1478,11 @@ function resetForm() {
   hasFileShare.value = false
   hasMessenger.value = false
   hasListener.value = false
+  hasMail.value = false
+  hasCalendar.value = false
+  selectedCapabilities.value = []
+  protocolSettings.value = {}
+  protocolParamMaps.value = {}
   activeTab.value = ''
   mcpArgsRaw.value = ''; mcpEnvRaw.value = ''; mcpHeadersRaw.value = ''; connParams.value = []
   clearMcpTest()
@@ -1424,9 +1500,13 @@ function openEdit(tool: Tool) {
   if (!canEdit.value || tool.can_disable === false) return
   resetForm()
   editingTool.value = tool
+  protocolSettings.value = { mail: { ...tool.mail_config?.settings }, calendar: { ...tool.calendar_config?.settings } }
+  protocolParamMaps.value = { mail: { ...tool.mail_config?.param_map }, calendar: { ...tool.calendar_config?.param_map } }
   form.value.code = tool.code
   form.value.label = tool.label
   form.value.description = tool.description
+  hasMail.value = !!tool.has_mail
+  hasCalendar.value = !!tool.has_calendar
   hasApi.value = !!tool.rest_config
   form.value.rest_config = tool.rest_config ? JSON.parse(JSON.stringify(tool.rest_config)) : emptyRestConfig()
 
@@ -1460,17 +1540,23 @@ function openEdit(tool: Tool) {
   connParams.value = sortedConnectionParamEntries(tool.connection_schema.params ?? {}).filter(([, def]) => !def.builtin).map(([name, def]) => ({
     ...def, name, label: def.label ?? '', options: (def.options ?? []).map(option => ({ ...option })), default: def.default ?? '',
   }))
+  selectedCapabilities.value = toolCapabilitySelections(tool)
   activeTab.value = firstEnabledTab()
   dialogOpen.value = true
 }
 
 function addConnParam() { connParams.value.push({ name: '', label: '', options: [], type: 'string', required: true, description: '', default: '' }) }
-function createConnParam(baseName: string, type: string, label: string, required = true): string {
+function createConnParam(baseName: string, type: string, label: string, required = true, widget = '', definition?: Partial<ConnectionParamDef>): string {
   const stem = baseName.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'param'
   const names = new Set(connParams.value.map(param => param.name.trim()))
   let name = stem
   for (let suffix = 2; names.has(name); suffix++) name = `${stem}_${suffix}`
-  connParams.value.push({ name, label, options: [], type, required, description: '', default: '' })
+  connParams.value.push({ name, label,
+    options: (definition?.options ?? []).map(option => {
+      const key = option.label ?? ''
+      return { ...option, label: te(key) ? t(key) : option.label ?? option.value }
+    }),
+    type, required, widget, description: definition?.description && te(definition.description) ? t(definition.description) : '', default: definition?.default ?? '' })
   return name
 }
 function connParamUsages(rawName: string): string[] {
@@ -1496,6 +1582,9 @@ function connParamUsages(rawName: string): string[] {
   }
   if (hasFileShare.value && Object.values(form.value.file_share_config.param_map).some(matches)) usages.push(t('tools.fileShare'))
   if (hasMessenger.value && Object.values(form.value.messenger_config.param_map).some(matches)) usages.push(t('tools.messenger'))
+  for (const protocol of parameterProtocols.value) {
+    if (Object.values(protocolParamMaps.value[protocol.capability] ?? {}).some(matches)) usages.push(capabilityLabels(protocol.value, capabilityDefinitions.value, t).protocol)
+  }
   if (hasListener.value && matches(form.value.listener_config.connection_key)) usages.push(t('tools.listener'))
   if (editingTool.value?.global_params?.[name]?.configured) usages.push(t('tools.globalParams'))
   return usages
@@ -1609,10 +1698,14 @@ function buildPayload() {
       type: p.type, required: p.required, description: p.description,
       default: p.type === 'password' ? '' : p.default, order, label: p.label.trim(),
       options: ['string', 'integer'].includes(p.type) ? p.options : [],
+      widget: p.widget,
     }
   }
   return {
+    capabilities: [...selectedCapabilities.value],
     mcp_config,
+    mail_config: hasMail.value ? { settings: Object.fromEntries(Object.entries(protocolSettings.value.mail ?? {}).map(([name, value]) => [name, value ?? ''])), param_map: protocolParamMaps.value.mail ?? {} } : null,
+    calendar_config: hasCalendar.value ? { settings: Object.fromEntries(Object.entries(protocolSettings.value.calendar ?? {}).map(([name, value]) => [name, value ?? ''])), param_map: protocolParamMaps.value.calendar ?? {} } : null,
     rest_config,
     file_share_config,
     messenger_config,
@@ -1809,10 +1902,25 @@ onMounted(() => {
   toolStore.fetchTools()
   fetchFileShareBridges()
   fetchMessengerBridges()
+  fetchCapabilities()
 })
 </script>
 
 <style scoped>
+.tool-protocol-menu { min-width: 260px; max-width: calc(100vw - 24px); }
+.tool-protocol-group {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--solaire-blue-accent);
+  background: var(--solaire-blue-light);
+  color: inherit;
+  font-weight: 700;
+}
+
+.tool-protocol-group:first-child { margin-top: 0; }
+.body--dark .tool-protocol-group { background: var(--solaire-blue-dark); }
+.tool-protocol-option { padding-left: 28px; }
+
 .tool-tabs {
   color: var(--solaire-blue-accent);
 }
@@ -1893,15 +2001,15 @@ onMounted(() => {
   row-gap: 8px;
 }
 
-.tool-section {
-  border: 1px solid #d8dde6;
-  border-radius: 8px;
-  padding: 16px;
-  background: #ffffff;
+.tool-section,
+.connection-param-editor {
+  border: 1px solid rgba(0, 0, 0, .24);
+  border-radius: 4px;
 }
 
-.tool-section--active {
-  border-width: 2px;
+.tool-section {
+  padding: 16px;
+  background: #ffffff;
 }
 
 .tool-section__body {
@@ -1909,6 +2017,9 @@ onMounted(() => {
   gap: 12px;
   margin-top: 14px;
 }
+
+.tool-parameter-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1023px) { .tool-parameter-grid { grid-template-columns: minmax(0, 1fr); } }
 
 .connection-param-row {
   display: grid;
@@ -1921,8 +2032,6 @@ onMounted(() => {
 .connection-param-editor {
   padding: 16px;
   margin-bottom: 12px;
-  border: 1px solid var(--solaire-gray-accent);
-  border-radius: 8px;
 }
 
 .connection-param-name,
@@ -1961,12 +2070,12 @@ onMounted(() => {
 }
 
 body.body--dark .tool-section {
-  border-color: #3a3f47;
   background: #1d1d1d;
 }
 
-body.body--dark .connection-param-row {
-  border-color: #3a3f47;
+body.body--dark .tool-section,
+body.body--dark .connection-param-editor {
+  border-color: rgba(255, 255, 255, .6);
 }
 
 body.body--dark .import-dropzone {

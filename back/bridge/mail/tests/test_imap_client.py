@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from typing import Generator
 from datetime import datetime, timezone
+from unittest.mock import Mock
 
 from pydantic import SecretStr
 import pytest
@@ -30,6 +31,96 @@ def _client() -> imap_client.ImapClient:
             max_total_attachment_bytes=2_000,
         )
     )
+
+
+@pytest.mark.parametrize("allowed, mailbox, expected", [
+    ((), "Private", True),
+    (("INBOX", "Projects"), "inbox", True),
+    (("INBOX", "Projects"), "Projects", True),
+    (("INBOX", "Projects"), "projects", False),
+    (("INBOX", "Projects"), "Projects/Private", False),
+    (("INBOX", "Projects"), "Projects-old", False),
+    (("Projects/Active",), "Projects", False),
+    (("*",), "Private", False),
+])
+def test_mailbox_allowlist_uses_exact_names_with_inbox_case_exception(allowed, mailbox, expected):
+    config = _client().config.model_copy(update={"allowed_mailboxes": allowed})
+    assert config.allows_mailbox(mailbox) is expected
+
+
+@pytest.mark.parametrize("operation", [
+    "search", "summary", "get", "mime", "attachment", "flags", "move-source",
+    "move-destination", "poll", "message-id",
+])
+def test_disallowed_mailboxes_fail_before_opening_imap(monkeypatch, operation):
+    client = _client()
+    client.config = client.config.model_copy(update={"allowed_mailboxes": ("Projects",)})
+    ref = imap_client.MailMessageRef(mailbox="INBOX", uid_validity=7, uid=1)
+    session = Mock(side_effect=AssertionError("Disallowed folder must not open IMAP"))
+    monkeypatch.setattr(client, "_session", session)
+    with pytest.raises(PermissionError, match="not allowed"):
+        match operation:
+            case "search":
+                client.search(MailSearchQuery(mailbox="INBOX"))
+            case "summary":
+                client.get_summary(ref)
+            case "get":
+                client.get_message(ref, body_offset=0, body_limit=100)
+            case "mime":
+                client.get_raw_message(ref, max_bytes=100)
+            case "attachment":
+                client.get_attachment(ref, "part-1")
+            case "flags":
+                client.set_flags(ref, seen=True, flagged=None)
+            case "move-source":
+                client.move(ref, "Projects")
+            case "move-destination":
+                client.move(ref.model_copy(update={"mailbox": "Projects"}), "INBOX")
+            case "poll":
+                client.poll_inbox(after_uid=None)
+            case "message-id":
+                client.message_id_exists("INBOX", "<synthetic@example.test>")
+    session.assert_not_called()
+
+
+@pytest.mark.parametrize("allowed, expected", [((), ["INBOX", "Projects", "Sent"]), (("Projects",), ["Projects"])])
+def test_mailbox_discovery_filters_names_roles_and_count(monkeypatch, allowed, expected):
+    client = _client()
+    client.config = client.config.model_copy(update={"allowed_mailboxes": allowed})
+
+    class FakeImap:
+        def noop(self):
+            return "OK", [b"ok"]
+
+        def list(self):
+            return "OK", [b'(\\Inbox) "/" "INBOX"', b'() "/" "Projects"', b'(\\Sent) "/" "Sent"']
+
+    @contextmanager
+    def session():
+        yield FakeImap()
+
+    monkeypatch.setattr(client, "_session", session)
+    mailboxes, count = client.status()
+    assert [item.name for item in mailboxes] == expected
+    assert count == len(expected)
+
+
+def test_sent_archiving_never_selects_or_writes_a_disallowed_folder(monkeypatch):
+    client = _client()
+    client.config = client.config.model_copy(update={"allowed_mailboxes": ("INBOX",)})
+    from bridge.mail.contracts import MailboxInfo
+    select = Mock(side_effect=AssertionError("Disallowed Sent must not be selected"))
+
+    @contextmanager
+    def session():
+        yield object()
+
+    monkeypatch.setattr(client, "_session", session)
+    monkeypatch.setattr(client, "_mailboxes", lambda _: [MailboxInfo(name="Sent", role="sent")])
+    monkeypatch.setattr(client, "_select", select)
+    with pytest.raises(PermissionError, match="not allowed"):
+        client.store_sent_message(b"synthetic", message_id="<synthetic@example.test>", sent_at=datetime.now(timezone.utc))
+    select.assert_not_called()
 
 
 @pytest.mark.parametrize("provider_already_saved", [False, True])

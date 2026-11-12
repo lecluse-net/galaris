@@ -5,7 +5,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from .contracts import MailConnectionStatus, MailDeliveryKind, MailDeliveryStatus
+from .contracts import MailConnectionStatus, MailDeliveryKind, MailDeliveryStatus, MailboxInfo
+
+
+class MailFolderOption(MailboxInfo):
+    label: str
 
 
 class MailConnectionTest(BaseModel):

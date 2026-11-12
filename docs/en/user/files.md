@@ -86,6 +86,10 @@ their virtual filesystem: SSH console, documents, Galaris resources and
 connected providers. It respects the agents you can manage and each resource’s own
 access rules.
 
+An agent can have several mailboxes at the same provider: create several connections to the
+same Mail-enabled Tool, with separate addresses and credentials. The provider browser lists
+accounts separately when several mailboxes are active.
+
 In **Mail**, IMAP folders follow the connected agent’s mailbox hierarchy, including parent folders
 without messages. Open a folder to see its subfolders and messages, newest first. The list loads
 50 entries at a time as you scroll and shows the subject, sender, date and read/unread state.
@@ -98,6 +102,10 @@ managed-agent scope. It does not mark messages as read, create a Task or authori
 processing. Users can browse Sent, Archive and Trash folders. HTML emails appear as text,
 without executing their content or loading remote images. Mail search and IMAP mutations
 are not offered in this browser.
+
+The Mail **Allowed mail folders** (`allowed_mailboxes`) parameter also applies to browsing
+and downloads: only listed folders can be accessed. A parent may appear to reach an allowed
+subfolder without exposing its own messages. An empty list allows all folders.
 
 In **Documents** (`document://`), folders appear directly at the root alongside files that
 are not classified in any accessible folder. Opening a folder shows its subfolders and

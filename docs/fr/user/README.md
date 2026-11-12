@@ -103,7 +103,13 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 
 La liste **Outils** s'ouvre sur **Outils personnalisés** ; **Outils internes à Galaris** suit.
 Le champ **Outil** d'une connexion regroupe aussi les choix sous **Galaris** et **Personnalisé**.
-Dans **Nouvel outil**, activer au moins une capacité pour rendre le bouton **Créer** disponible.
+Dans **Nouvel outil**, ajouter au moins un protocole pour rendre le bouton **Créer** disponible.
+Pour plusieurs boîtes Ionos, créer un Tool fournisseur **Ionos**, choisir **IMAP & SMTP** sous
+**Mail**, puis configurer les serveurs et les références aux paramètres standards. Créer
+ensuite une connexion par boîte et par agent, avec son adresse et ses identifiants.
+Un agent peut avoir plusieurs connexions au même Tool Mail. Le catalogue MCP `tools_list`
+indique les adresses, les `connection_id` et les fonctions autorisées.
+
 
 Pour configurer une intégration REST, un responsable active **API** sur le Tool, puis
 saisit directement l'adresse dans l'onglet **API REST**. Cette adresse est commune à toutes
@@ -634,7 +640,7 @@ Un agent peut consulter l’annuaire des agents pendant une conversation pour id
 collègue et son rôle, sans créer de tâche. Demander la contribution d’un collègue suit la
 politique d’action habituelle et les droits de contact ; lire sa fiche ne le contacte pas.
 
-À l’initialisation, **Console SSH**, **Image**, **Mail** et **Multimédia** ne sont pas
+À l’initialisation, **Console SSH**, **Image** et **Multimédia** ne sont pas
 accessibles en mode conversation par défaut. Un administrateur peut autoriser chaque outil
 pour les conversations depuis le catalogue des outils. Ce réglage ne change pas leur accès
 dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
@@ -642,7 +648,7 @@ dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
 Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.
 Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
-Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers → Mail**,
+Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers**, puis son fournisseur Mail et le compte concerné,
 puis un dossier IMAP et un message. Cette lecture ne donne aucun accord de traitement à l’agent.
 
 La consultation d'une compétence déjà disponible dans le harnais DeepSeek ne demande pas

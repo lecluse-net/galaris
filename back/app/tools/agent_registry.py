@@ -64,6 +64,12 @@ async def build_agent_tool_advertisement(
             lines.append(f"- `{tool_code}`: {rendered_names}")
 
     tool_names = frozenset(definition.name for definition in definitions)
+    if "mail" in grouped:
+        lines.append("Mail supports multiple accounts, including several connections to the same provider Tool. "
+            "When tools_list is available, use it to discover each mailbox address, connection_id and authorized functions. "
+            "Pass the selected connection_id to every mail_* call and keep message references and cursors "
+            "with their original account. An incoming Mail task may already bind its source connection. "
+            "Never guess a connection ID or switch accounts to bypass a denial; ask when the intended mailbox is unclear.")
     if "file_list" in tool_names:
         lines.extend([
             "",

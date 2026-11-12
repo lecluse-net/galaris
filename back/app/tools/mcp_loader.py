@@ -100,7 +100,11 @@ def native_tool_codes_for_tool(tool: Any) -> frozenset[str]:
     """Return native families exposed by one concrete Tool configuration."""
 
     codes = set(native_tool_codes_for_connection(str(getattr(tool, "code", "") or "")))
-    codes.discard("messenger")
+    codes.difference_update({"messenger", "mail", "calendar"})
+    if getattr(tool, "mail", None) is not None:
+        codes.add("mail")
+    if getattr(tool, "calendar", None) is not None:
+        codes.add("calendar")
     messenger = getattr(tool, "messenger", None)
     service = str(getattr(messenger, "service", "") or "")
     if service:
@@ -449,6 +453,9 @@ def _public_signature(func: Callable[..., Any]) -> inspect.Signature:
 def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[..., Awaitable[Any]]:
     @functools.wraps(definition.function)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        from dataclasses import replace
+        from .protocols import bind_protocol_connection, reset_protocol_connection, resolve_protocol_connection
+        protocol_token = None
         # ``ctx.task_id`` is frozen when the toolset is built and needs no call-time lookup.
         language: str | None = None
         execution = current_tool_execution()
@@ -488,6 +495,12 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                         key: value for key, value in bound.arguments.items() if key not in {"ctx", "context"}
                     }
                     call_ctx = ctx
+                    if definition.tool_code == "mail":
+                        protocol = cast(Literal["mail", "calendar"], definition.tool_code)
+                        requested = arguments.get("connection_id") or ctx.resource("source_connection_id")
+                        selected = await resolve_protocol_connection(ctx.agent_id, protocol, requested)
+                        protocol_token = bind_protocol_connection(protocol, ctx.agent_id, selected)
+                        call_ctx = replace(ctx, resources={**ctx.resources, "source_connection_id": selected})
                     if definition.tool_code == "messenger":
                         from app.messenger import bind_messenger_tool_context
 
@@ -637,6 +650,10 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                 return ToolResult(content=message, is_error=True)
             raise ToolError(message) from exc
 
+        finally:
+            if protocol_token is not None:
+                reset_protocol_connection(protocol_token)
+
     wrapper.__name__ = definition.name
     wrapper.__doc__ = definition.description
     wrapper.__signature__ = _public_signature(definition.function)  # type: ignore[attr-defined]
@@ -725,8 +742,20 @@ async def get_disabled_internal_function_names(agent_id: int) -> set[str]:
     tools = await tool_service.get_tools_by_ids({connection.tool_id for connection in connections})
     native_connections = [connection for connection in connections
         if (tool := tools.get(connection.tool_id)) and native_tool_codes_for_tool(tool) & known_codes]
-    for disabled in (await connection_service.get_disabled_function_names_many(native_connections)).values():
+    disabled_by_connection = await connection_service.get_disabled_function_names_many(native_connections)
+    for disabled in disabled_by_connection.values():
         names.update(disabled)
+    # Protocol functions may be offered by several provider Tools. One blocked
+    # connection must not hide the function on another authorized connection.
+    protocol_definitions = [definition for definition in load_mcp_tools() if definition.tool_code in {"mail", "calendar"}]
+    for connection in native_connections:
+        tool = tools.get(connection.tool_id)
+        if tool is None:
+            continue
+        codes = native_tool_codes_for_tool(tool)
+        for definition in protocol_definitions:
+            if definition.tool_code in codes and definition.name not in disabled_by_connection.get(connection.id, set()):
+                names.discard(definition.name)
     from app.llm import available_media_functions
 
     media_names = {definition.name for definition in load_mcp_tools() if definition.tool_code == "multimedia"}
@@ -762,6 +791,10 @@ async def list_enabled_native_mcp_definitions(
         conversation_codes: set[str] = set()
         for tool in checked_tools:
             conversation_codes.add(tool.code)
+            if getattr(tool, "mail_config", None) is not None:
+                conversation_codes.add("mail")
+            if getattr(tool, "calendar_config", None) is not None:
+                conversation_codes.add("calendar")
             messenger_config = tool.messenger_config or {}
             service = str(messenger_config.get("service") or "")
             if service:
@@ -852,7 +885,12 @@ async def execute_native_mcp_tool(
         task_id=task_id,
         resources=dict(resources or {}),
     )
-    return await _wrap_tool(definition, ctx)(**arguments)
+    from pydantic import ConfigDict, validate_call
+
+    # Recovery receives JSON arguments just like MCP. Materialize typed inputs
+    # before authorization/execution instead of passing dictionaries to models.
+    validated = validate_call(config=ConfigDict(arbitrary_types_allowed=True))(_wrap_tool(definition, ctx))
+    return await validated(**arguments)
 
 
 async def build_agent_galaris_fastmcp(
@@ -1141,7 +1179,6 @@ async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:
     )
     profile = await effective_tool_profile(agent_id, runtime)
     connections = await connection_service.get_connections_by_agent(agent_id)
-    connections_by_tool = {connection.tool_id: connection for connection in connections}
     native_by_tool = mcp_tools_by_tool_code()
     from app.llm import available_media_functions
     media_functions: frozenset[str] = await available_media_functions(agent_id) if "multimedia" in native_by_tool else frozenset()
@@ -1152,7 +1189,9 @@ async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:
     records = await tool_service.get_all_tool_records()
 
     groups: list[dict[str, Any]] = []
-    for record in records:
+    record_connections = [(record, connection) for record in records
+        for connection in ([row for row in connections if row.tool_id == record.id] or [None])]
+    for record, connection in record_connections:
         tool = tool_service._to_internal(record)  # pyright: ignore[reportPrivateUsage]
         native_definitions = [
             definition
@@ -1164,7 +1203,6 @@ async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:
         if not (has_native or has_external):
             continue
 
-        connection = connections_by_tool.get(record.id)
         active = bool(connection and connection.active)
         disabled: set[str] = set()
         if connection is not None:
@@ -1200,12 +1238,17 @@ async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:
             except Exception:
                 error = t("tools.introspection_failed")
 
+        mail_address = ""
+        if connection is not None and tool.mail is not None:
+            _, account_params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
+            mail_address = str(account_params.get(tool.mail.param_map.get("email_address", "email_address")) or "")
         groups.append({
             "tool_id": record.id,
             "tool_code": record.code,
             "tool_label": record.label,
             "tool_description": record.description or "",
             "connection_id": connection.id if connection is not None else None,
+            "mail_address": mail_address,
             "active": active,
             "source": (
                 "mixed"

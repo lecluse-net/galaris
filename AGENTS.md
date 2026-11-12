@@ -102,6 +102,15 @@ a small change does not require a separate planning document.
   does not prove complete functional validation of a cross-cutting change.
 - Justify new abstractions, dependencies, and configuration by a concrete need. Prefer existing
   public contracts and the simplest implementation that preserves the required behavior.
+- Reuse the standard configuration and connection-parameter editors. Protocols reference those
+  parameters; account credentials and account-specific choices belong to connections. Do not
+  invent separate read-only parameter lists, parallel editors, special save flows, or provider-specific
+  exceptions when the existing mechanism covers the request. During UI iteration, implement
+  the requested adjustment without introducing additional product or architecture decisions.
+  Create connection parameters only on explicit user action. Reuse generic names such as
+  `email`, `login`, `password`, `token`, and `user_id`; never prefix proposed names with a
+  protocol name. A single standard parameter may be referenced by multiple fields or protocols.
+  OneBot's fixed `settings` and `param_map` mappings are the reference pattern.
 
 ### Check failure behavior and performance
 

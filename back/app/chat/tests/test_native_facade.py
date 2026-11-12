@@ -1253,6 +1253,7 @@ async def test_chat_excludes_mail_rooms_without_deleting_them(
     if mail_tool is None:
         mail_tool = Tool(
             code="mail",
+            mail_config={},
             label="Mail",
             description="",
             connection_schema={},

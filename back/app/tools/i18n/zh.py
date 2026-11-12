@@ -102,6 +102,7 @@ default: dict[str, object] = {
         "mcp_test_protocol_success": "MCP 协议初始化和协商成功。",
         "mcp_test_discovery_success": "服务器声明了 ${count} 个功能。",
         "errors": {
+            "legacy_mail_namespace": "此已迁移的工具保留 mail:// 兼容命名空间。若要添加文件共享或其他消息传输，请创建以服务提供商命名的工具。",
             "system_read_only": "此强制系统服务为只读且始终启用。",
             "tool_not_found": "未找到工具 ${tool_id}",
             "tool_exists_code": "工具 '${code}' 已存在",

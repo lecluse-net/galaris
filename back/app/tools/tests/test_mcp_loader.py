@@ -535,6 +535,7 @@ async def test_agent_catalog_accumulates_mcp_messenger_and_file_share_capabiliti
     tool = SimpleNamespace(
         code="nextcloud",
         mcp=SimpleNamespace(type="http"),
+        mail=None,
         messenger=SimpleNamespace(service="nextcloud_talk"),
         file_share=SimpleNamespace(service="nextcloud"),
     )

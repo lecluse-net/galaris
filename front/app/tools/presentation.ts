@@ -16,8 +16,6 @@ const BUILT_IN_TOOL_CODES = new Set([
   "browser",
   "chat",
   "console",
-  "mail",
-  "calendar",
   "image",
   "audio",
   "voice",
@@ -35,7 +33,7 @@ const CONNECTION_PARAM_CODES: Record<string, ReadonlySet<string>> = {
   browser: new Set(['default_output', 'public_access_mode', 'allow_local_network', 'network_filter_mode', 'network_filter', 'permission_methods']),
   mail: new Set([
     'email_address', 'password',
-    'imap_host', 'imap_port', 'imap_security',
+    'imap_host', 'imap_port', 'imap_security', 'allowed_mailboxes',
     'smtp_host', 'smtp_port', 'smtp_security',
     'connect_timeout_s', 'operation_timeout_s', 'poll_interval_s',
     'max_attachment_mb', 'max_total_attachment_mb',

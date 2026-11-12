@@ -38,6 +38,19 @@ _COPYUID_PATTERN = re.compile(rb"(?:COPYUID\s+)?(\d+)\s+\S+\s+(\d+)", re.IGNOREC
 _SIZE_PATTERN = re.compile(rb"\bRFC822\.SIZE\s+(\d+)\b", re.IGNORECASE)
 
 
+def mailbox_display_name(value: str) -> str:
+    """Decode IMAP labels while retaining wire names for commands."""
+    def decode(match: re.Match[str]) -> str:
+        encoded = match[1]
+        if not encoded:
+            return "&"
+        try:
+            return base64.b64decode(encoded.replace(",", "/") + "=" * (-len(encoded) % 4), validate=True).decode("utf-16-be")
+        except (ValueError, UnicodeError):
+            return match[0]
+    return re.sub(r"&([A-Za-z0-9+,]*)-", decode, value)
+
+
 def _decode_atom(value: bytes) -> str:
     raw = value.strip()
     if raw.startswith(b'"') and raw.endswith(b'"'):
@@ -251,7 +264,7 @@ class ImapClient:
         with self._session() as client:
             status, _data = client.noop()
             self._require_ok(status, _data, "NOOP")
-            mailboxes = self._mailboxes(client)
+            mailboxes = [item for item in self._mailboxes(client) if self.config.allows_mailbox(item.name)]
             return mailboxes, len(mailboxes)
 
     @staticmethod
@@ -288,6 +301,7 @@ class ImapClient:
         return criteria or ["ALL"]
 
     def search(self, query: MailSearchQuery) -> MailSearchPage:
+        self.config.require_mailbox(query.mailbox)
         limit = max(1, min(query.limit, 500))
         with self._session() as client:
             self._validate_mailbox(client, query.mailbox)
@@ -375,6 +389,7 @@ class ImapClient:
         """
 
         safe_limit = max(1, min(limit, 50))
+        self.config.require_mailbox("INBOX")
         with self._session() as client:
             uid_validity = self._select(client, "INBOX", readonly=True)
             if after_uid is None:
@@ -431,6 +446,7 @@ class ImapClient:
 
     def get_summary(self, ref: MailMessageRef) -> MailMessageSummary:
         """Fetch only headers, without setting Seen or downloading any MIME body."""
+        self.config.require_mailbox(ref.mailbox)
         with self._session() as client:
             self._assert_ref(client, ref, readonly=True)
             metadata, headers = self._fetch(
@@ -441,6 +457,7 @@ class ImapClient:
 
     def get_raw_message(self, ref: MailMessageRef, *, max_bytes: int) -> bytes:
         """Export the original MIME, without changing flags or fetching oversized mail."""
+        self.config.require_mailbox(ref.mailbox)
         maximum = min(max_bytes, self.config.max_total_attachment_bytes + 1_000_000)
         with self._session() as client:
             self._assert_ref(client, ref, readonly=True)
@@ -462,17 +479,21 @@ class ImapClient:
         body_offset: int,
         body_limit: int,
     ) -> MailMessageDetail:
+        self.config.require_mailbox(ref.mailbox)
         with self._session() as client:
             self._assert_ref(client, ref, readonly=True)
             self._ensure_message_size(client, ref.uid)
             metadata, raw = self._fetch(client, ref.uid, "(UID FLAGS BODY.PEEK[])")
-            return parse_message(
+            detail = parse_message(
                 raw,
                 ref,
                 self._flags(metadata),
                 body_offset=body_offset,
                 body_limit=body_limit,
             )
+            return detail.model_copy(update={"attachments": [attachment.model_copy(update={
+                "uri": attachment.uri.replace("mail://", f"{self.config.resource_scheme}://{self.config.resource_prefix}", 1)
+            }) for attachment in detail.attachments]})
 
     def set_flags(
         self,
@@ -481,6 +502,7 @@ class ImapClient:
         seen: bool | None,
         flagged: bool | None,
     ) -> MailMutationResult:
+        self.config.require_mailbox(ref.mailbox)
         if seen is None and flagged is None:
             raise ValueError("At least one Mail flag must be supplied")
         with self._session() as client:
@@ -501,6 +523,8 @@ class ImapClient:
             )
 
     def move(self, ref: MailMessageRef, mailbox: str) -> MailMutationResult:
+        self.config.require_mailbox(ref.mailbox)
+        self.config.require_mailbox(mailbox)
         with self._session() as client:
             self._validate_mailbox(client, mailbox)
             self._assert_ref(client, ref, readonly=False)
@@ -549,6 +573,7 @@ class ImapClient:
             )
 
     def get_attachment(self, ref: MailMessageRef, part_id: str, *, max_bytes: int | None = None) -> OutgoingAttachment:
+        self.config.require_mailbox(ref.mailbox)
         with self._session() as client:
             def interrupt_read() -> None:
                 try:
@@ -574,6 +599,7 @@ class ImapClient:
                 deadline.cancel()
 
     def message_id_exists(self, mailbox: str, message_id: str) -> bool:
+        self.config.require_mailbox(mailbox)
         with self._session() as client:
             self._validate_mailbox(client, mailbox)
             self._select(client, mailbox, readonly=True)
@@ -593,6 +619,7 @@ class ImapClient:
                 (item.name for item in mailboxes if item.role == "sent" and item.selectable), None)
             if mailbox is None or not any(item.name == mailbox and item.selectable for item in mailboxes):
                 raise ValueError("No selectable IMAP Sent mailbox is configured or advertised")
+            self.config.require_mailbox(mailbox)
             self._select(client, mailbox, readonly=False)
             if not self._contains_message_id(client, message_id):
                 status, data = client.append(_quote(mailbox), r"(\Seen)", imaplib.Time2Internaldate(sent_at), raw_message)
@@ -602,4 +629,4 @@ class ImapClient:
             return mailbox
 
 
-__all__ = ["ImapClient"]
+__all__ = ["ImapClient", "mailbox_display_name"]

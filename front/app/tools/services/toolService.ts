@@ -105,6 +105,7 @@ export interface ConnectionParamOption {
 
 export interface ConnectionParamDef {
     type: string
+    widget?: string
     required: boolean
     default: string
     description: string
@@ -141,7 +142,26 @@ export interface TaskConfig {
     objective?: string
 }
 
+export interface CapabilityProtocol {
+    value: string
+    capability: string
+    label: string
+    builtin: boolean
+    parameters?: Record<string, ConnectionParamDef & { section?: string }>
+    connection_parameters?: Record<string, { parameter: string; legacy_parameter?: string; label: string; section?: string; definition: ConnectionParamDef }>
+}
+
+export interface ProtocolConfig { settings?: Record<string, string>; param_map?: Record<string, string> }
+
+export interface CapabilityDefinition {
+    code: string
+    label: string
+    builtin: boolean
+    protocols: CapabilityProtocol[]
+}
+
 export interface Tool {
+    capabilities?: string[]
     id: number
     code: string
     label: string
@@ -152,6 +172,8 @@ export interface Tool {
     has_file_share: boolean
     has_messenger: boolean
     has_listener: boolean
+    has_mail?: boolean
+    has_calendar?: boolean
     can_edit: boolean
     can_disable: boolean
     conversation_enabled: boolean
@@ -159,6 +181,8 @@ export interface Tool {
     file_share_config?: FileShareConfig | null
     messenger_config?: MessengerConfig | null
     listener_config?: ListenerConfig | null
+    mail_config?: ProtocolConfig | null
+    calendar_config?: ProtocolConfig | null
     connection_schema: ConnectionSchema
     global_params: Record<string, ToolGlobalParam>
     task_config?: TaskConfig | null
@@ -167,6 +191,7 @@ export interface Tool {
 }
 
 export interface ToolCreate {
+    capabilities?: string[]
     code: string
     label: string
     description?: string
@@ -175,12 +200,15 @@ export interface ToolCreate {
     file_share_config?: FileShareConfig | null
     messenger_config?: MessengerConfig | null
     listener_config?: ListenerConfig | null
+    mail_config?: ProtocolConfig | null
+    calendar_config?: ProtocolConfig | null
     connection_schema?: ConnectionSchema
     task_config?: TaskConfig | null
     conversation_enabled?: boolean
 }
 
 export interface ToolUpdate {
+    capabilities?: string[]
     label?: string
     description?: string
     mcp_config?: McpConfig | null
@@ -188,6 +216,8 @@ export interface ToolUpdate {
     file_share_config?: FileShareConfig | null
     messenger_config?: MessengerConfig | null
     listener_config?: ListenerConfig | null
+    mail_config?: ProtocolConfig | null
+    calendar_config?: ProtocolConfig | null
     connection_schema?: ConnectionSchema
     task_config?: TaskConfig | null
     conversation_enabled?: boolean
@@ -268,6 +298,10 @@ export interface ToolDeletionImpact {
 export default {
     getTools(): Promise<AxiosResponse<Tool[]>> {
         return api.get('/tools')
+    },
+
+    getCapabilities(): Promise<AxiosResponse<CapabilityDefinition[]>> {
+        return api.get('/tools/capabilities')
     },
 
     getFileShareBridges(): Promise<AxiosResponse<FileShareBridge[]>> {

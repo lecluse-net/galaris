@@ -138,7 +138,7 @@
     </q-splitter>
     </q-card>
     <ResourceDetailDialog v-if="target" ref="detail" :target="target" @close="target = null; refresh()" @changed="refresh" />
-    <MailMessageDialog v-if="mailMessage && typeof mailMessage.metadata?.mail_message_ref === 'string'" :key="mailMessage.uri" :agent-id="agentId" :reference="mailMessage.metadata.mail_message_ref" :title="mailMessage.name" @close="mailMessage = null" />
+    <MailMessageDialog v-if="mailMessage && typeof mailMessage.metadata?.mail_message_ref === 'string'" :key="mailMessage.uri" :agent-id="agentId" :reference="mailMessage.metadata.mail_message_ref" :connection-id="typeof mailMessage.metadata?.mail_connection_id === 'number' ? mailMessage.metadata.mail_connection_id : undefined" :title="mailMessage.name" @close="mailMessage = null" />
     <ResourceAttachments ref="preview" :key="previewKey" :resource-id="String(agentId)" :agent-id="agentId" :attachments="previewEntries"
       :resource-source="previewSource" preview-only @previewing="filePreviewOpen = $event" />
     <FullscreenPreview :model-value="audioPreview !== null" :viewer-label="audioPreview?.name ?? ''" interactive @update:model-value="!$event && (audioPreview = null)">
@@ -220,7 +220,7 @@ const current = computed(() => query.value?.trim() ? searchState.value : current
 const unlistable = computed(() => schemes.value.some(scheme => `${scheme.scheme}://` === currentUri.value && (!scheme.capabilities.includes('list') || scheme.root_listable === false)))
 const sortedEntries = computed(() => (current.value?.entries ?? []).filter(isVisible).sort((a, b) => compareFileEntries(a, b, locale.value)))
 const mailEntries = computed(() => sortedEntries.value.filter(isMailMessage))
-function isMailMessage(entry: FileEntry): boolean { return entry.uri.startsWith('mail://') && typeof entry.metadata?.mail_message_ref === 'string' }
+function isMailMessage(entry: FileEntry): boolean { return entry.media_type === 'message/rfc822' && typeof entry.metadata?.mail_message_ref === 'string' }
 function mailDate(value: string): string {
   const date = new Date(value)
   return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(date) : value

@@ -27,6 +27,10 @@ async def test_binary_expansion_and_mail_conversion_are_idempotent_and_transacti
         db.add(agent)
         await db.flush()
         mail = await db.scalar(select(ToolModel).where(ToolModel.code == "mail"))
+        if mail is None:
+            # Recreate the historical row: new installations no longer seed a Mail Tool.
+            mail = ToolModel(code="mail", label="Synthetic historical Mail", mail_config={})
+            db.add(mail)
         mail.global_params = {"approval_required": {"value": "true", "forced": False}, "synthetic_keep": {"value": "preserved"}}
         system = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
         ordinary = ToolModel(code=f"legacy-{uuid4().hex}", label="Synthetic third-party Tool")

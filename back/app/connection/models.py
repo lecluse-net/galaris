@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import ForeignKey, UniqueConstraint, Index, String, Boolean, Text, CheckConstraint, DateTime
+from sqlalchemy import ForeignKey, UniqueConstraint, Index, Integer, String, Boolean, Text, CheckConstraint, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.database import Base
 
@@ -11,6 +11,8 @@ class Connection(Base):
     tool_id: Mapped[int] = mapped_column(ForeignKey("tools.id"), index=True)
     agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), index=True)
     active: Mapped[bool] = mapped_column(default=True)
+    # NULL permits distinct Mail accounts; other connections share the unique zero slot.
+    singleton_key: Mapped[int | None] = mapped_column(Integer().evaluates_none(), default=0, server_default="0", nullable=True)
 
     params: Mapped[list["ConnectionParam"]] = relationship(
         "ConnectionParam",
@@ -26,7 +28,8 @@ class Connection(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("tool_id", "agent_id", name="uq_connection_agent_tool"),
+        UniqueConstraint("tool_id", "agent_id", "singleton_key", name="uq_connection_agent_tool"),
+        CheckConstraint("singleton_key IS NULL OR singleton_key = 0", name="ck_connection_singleton_key"),
     )
 
 
