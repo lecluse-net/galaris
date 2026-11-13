@@ -170,3 +170,134 @@ async def test_process_completion_attaches_real_resources_to_the_chat_reply(atta
     denied = await ctx["client"].get(f"{base}/{message_id}/previews/content",
         headers=ctx["headers"], params={"uri": ctx["denied_uri"]})
     assert denied.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_draft_survives_requests_and_publishes_preuploaded_files_once(attachment_context):
+    ctx = attachment_context
+    client, headers = ctx['client'], ctx['headers']
+    base = f"/api/chat/rooms/{ctx['room_id']}"
+    key, message_key, mutation = str(uuid4()), str(uuid4()), str(uuid4())
+    uploaded = await client.post(f'{base}/draft/files/{key}', headers=headers,
+        files={'file': ('draft.txt', b'Synthetic unsent attachment', 'text/plain')})
+    assert uploaded.status_code == 200, uploaded.text
+    repeated = await client.post(f'{base}/draft/files/{key}', headers=headers,
+        files={'file': ('draft.txt', b'Synthetic unsent attachment', 'text/plain')})
+    assert repeated.json() == uploaded.json()
+    content = {'client_message_id': message_key, 'text': 'Synthetic unsent text',
+               'files': [uploaded.json()], 'resources': [], 'effort': 2}
+    save = {'expected_revision': 0, 'mutation_key': mutation, 'content': content}
+    saved = await client.put(f'{base}/draft', headers=headers, json=save)
+    assert saved.status_code == 200, saved.text
+    revision = saved.json()['revision']
+    assert (await client.put(f'{base}/draft', headers=headers, json=save)).json() == saved.json()
+    restored = await client.get(f'{base}/draft', headers=headers)
+    assert restored.json()['content']['text'] == content['text']
+    assert restored.json()['content']['files'] == [uploaded.json()]
+    stale = await client.put(f'{base}/draft', headers=headers,
+        json={**save, 'mutation_key': str(uuid4())})
+    assert stale.status_code == 409
+    body = {'client_message_id': message_key, 'text': content['text'], 'draft_revision': revision}
+    sent = await client.post(f'{base}/messages', headers=headers, json=body)
+    assert sent.status_code == 201, sent.text
+    assert len(sent.json()['files']) == 1
+    assert sent.json()['files'][0]['name'] == 'draft.txt'
+    file_id = sent.json()['files'][0]['id']
+    assert (await client.get(f'{base}/files/{file_id}', headers=headers)).content == b'Synthetic unsent attachment'
+    assert (await client.get(f'{base}/draft', headers=headers)).json() == {'revision': revision + 1, 'content': None}
+    retry = await client.post(f'{base}/messages', headers=headers, json=body)
+    assert retry.status_code == 201, retry.text
+    assert retry.json()['id'] == sent.json()['id']
+    assert len(retry.json()['files']) == 1
+    assert (await client.put(f'{base}/draft', headers=headers, json=save)).status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_draft_access_is_private_and_send_failure_keeps_snapshot(attachment_context):
+    from core.user import UserModel
+    ctx = attachment_context
+    client, headers = ctx['client'], ctx['headers']
+    base = f"/api/chat/rooms/{ctx['room_id']}"
+    content = {'client_message_id': str(uuid4()), 'text': 'Synthetic private draft', 'files': []}
+    saved = await client.put(f'{base}/draft', headers=headers,
+        json={'expected_revision': 0, 'mutation_key': str(uuid4()), 'content': content})
+    assert saved.status_code == 200, saved.text
+    # Invalid reply is rejected by the real publication path, without clearing autosave.
+    failed = await client.post(f'{base}/messages', headers=headers, json={
+        'client_message_id': content['client_message_id'], 'draft_revision': saved.json()['revision'],
+        'text': content['text'], 'reply_to_message_id': str(uuid4()),
+    })
+    assert failed.status_code == 422
+    assert (await client.get(f'{base}/draft', headers=headers)).json() == saved.json()
+    async with get_db_session() as db:
+        other = UserModel(email=f'draft-outsider-{uuid4().hex}@example.test', display_name='Synthetic outsider',
+            hashed_password='unused', is_active=True)
+        db.add(other)
+        await db.flush()
+        token = create_access_token({'sub': other.email, 'user_id': other.id})
+    denied = {'Authorization': f'Bearer {token}'}
+    for method in ('get', 'put'):
+        kwargs = {'json': {'expected_revision': 0, 'mutation_key': str(uuid4()), 'content': content}} if method == 'put' else {}
+        response = await getattr(client, method)(f'{base}/draft', headers=denied, **kwargs)
+        assert response.status_code == 403
+    response = await client.post(f'{base}/draft/files/{uuid4()}', headers=denied,
+        files={'file': ('private.txt', b'Synthetic private bytes', 'text/plain')})
+    assert response.status_code == 403
+    assert (await client.get(f'{base}/draft', headers=headers)).json() == saved.json()
+
+
+@pytest.mark.asyncio
+async def test_sent_revision_does_not_erase_newer_draft_and_removed_files_are_retired(attachment_context):
+    from app.chat.draft_service import clear_sent_draft, read_draft
+    from core.storage import StoredFile
+    from app.chat.models import ChatDraftFile
+    ctx = attachment_context
+    client, headers = ctx['client'], ctx['headers']
+    base = f"/api/chat/rooms/{ctx['room_id']}"
+    key = str(uuid4())
+    uploaded = await client.post(f'{base}/draft/files/{key}', headers=headers,
+        files={'file': ('removed.txt', b'Synthetic removed bytes', 'text/plain')})
+    assert uploaded.status_code == 200, uploaded.text
+    content = {'client_message_id': str(uuid4()), 'text': 'First draft', 'files': [uploaded.json()]}
+    first = await client.put(f'{base}/draft', headers=headers,
+        json={'expected_revision': 0, 'mutation_key': str(uuid4()), 'content': content})
+    assert first.status_code == 200, first.text
+    async with get_db_session() as db:
+        from app.chat.models import ChatDraft
+        row = await db.scalar(select(ChatDraft).where(ChatDraft.room_id == ctx['room_id']))
+        # Keep the first revision in this session's identity map while another
+        # request commits a newer snapshot. A lock alone must not reuse stale ORM state.
+        second = await client.put(f'{base}/draft', headers=headers, json={
+            'expected_revision': first.json()['revision'], 'mutation_key': str(uuid4()),
+            'content': {**content, 'text': 'More recent draft', 'files': []},
+        })
+        assert second.status_code == 200, second.text
+        await clear_sent_draft(row.user_id, ctx['room_id'], first.json()['revision'])
+        assert (await read_draft(row.user_id, ctx['room_id'])).content.text == 'More recent draft'
+        assert await db.get(ChatDraftFile, UUID(key)) is None
+        # The common storage lifecycle retired the unreferenced immutable file.
+        files = list(await db.scalars(select(StoredFile).where(StoredFile.name == 'removed.txt')
+            .execution_options(include_historized=True)))
+        assert len(files) == 1 and files[0].deleted_at is not None
+
+
+@pytest.mark.asyncio
+async def test_drafts_are_unique_and_isolated_by_user_and_room(attachment_context):
+    import asyncio
+    from app.chat.draft_service import DraftContent, DraftWrite, read_draft, write_draft
+    from app.chat.models import ChatDraft
+    ctx = attachment_context
+    base = f"/api/chat/rooms/{ctx['room_id']}"
+    content = {'client_message_id': str(uuid4()), 'text': 'Concurrent draft'}
+    responses = await asyncio.gather(*(ctx['client'].put(f'{base}/draft', headers=ctx['headers'],
+        json={'expected_revision': 0, 'mutation_key': str(uuid4()), 'content': content}) for _ in range(2)))
+    assert sorted(response.status_code for response in responses) == [200, 409]
+    async with get_db_session() as db:
+        first = await db.scalar(select(ChatDraft).where(ChatDraft.room_id == ctx['room_id']))
+        _, second_user, _ = await _scope(db)
+        await write_draft(second_user.id, ctx['room_id'], DraftWrite(expected_revision=0, mutation_key=uuid4(),
+            content=DraftContent(client_message_id=uuid4(), text='Other user draft')))
+        assert (await read_draft(first.user_id, ctx['room_id'])).content.text == 'Concurrent draft'
+        assert (await read_draft(second_user.id, ctx['room_id'])).content.text == 'Other user draft'
+        assert (await read_draft(second_user.id, uuid4())).content is None
+        assert len(list(await db.scalars(select(ChatDraft).where(ChatDraft.room_id == ctx['room_id'])))) == 2

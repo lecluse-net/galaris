@@ -513,8 +513,18 @@ Le texte et les pièces jointes sélectionnées restent dans la saisie tant que 
 pas confirmé. Après une erreur, vous pouvez réessayer sans les ressaisir ; un réessai
 inchangé conserve l’identifiant du message pour éviter une seconde admission si le premier
 envoi avait déjà été reçu. Après confirmation, un rafraîchissement lent ou indisponible du
-fil ne bloque pas l’envoi suivant ni la sélection des pièces jointes. Ces brouillons restent
-en mémoire dans la page : rechargez-la seulement après avoir conservé le contenu non envoyé.
+fil ne bloque pas l’envoi suivant ni la sélection des pièces jointes. Le texte est conservé
+immédiatement dans le stockage local du navigateur, les fichiers dans IndexedDB, et le
+brouillon est synchronisé au serveur toutes les deux secondes pendant la saisie. Les PJ
+sont téléversées dès leur sélection, avant de poster. Recharger la page, changer de
+conversation ou revenir depuis un document retrouve le brouillon du compte et de la
+conversation concernés. Une coupure réseau conserve la saisie locale et la synchronisation
+reprend au retour de la connexion. Le statut sous la saisie signale les erreurs et permet
+de réessayer. Si un autre éditeur a modifié le brouillon serveur, **Conserver ce brouillon**
+demande confirmation avant de le remplacer. Il n'existe qu'un brouillon courant, sans
+historique ; son contenu sauvegardé est effacé après confirmation de l'envoi, en conservant
+les modifications saisies pendant cet envoi. Effacer les données du navigateur supprime
+les modifications qui n'ont pas encore atteint le serveur.
 
 Dans les messages, cliquer sur la carte d’une tâche, d’un contact, d’un objectif, d’un
 thème ou d’une conversation ouvre sa modale habituelle. Cela fonctionne aussi pour les

@@ -286,14 +286,14 @@ async function prepare(): Promise<boolean> {
   preparedDocumentFocus = id ? captureDocumentFocus?.() ?? null : null
   return true
 }
-async function send(text: string, files: File[] | undefined, effort: ReasoningEffort | undefined, taskRequested: boolean, acknowledge: (accepted: boolean) => void, resourceUris: string[]): Promise<void> {
+async function send(text: string, files: File[] | undefined, effort: ReasoningEffort | undefined, taskRequested: boolean, acknowledge: (accepted: boolean) => void, resourceUris: string[], draft?: { revision: number; clientMessageId: string }): Promise<void> {
   let accepted = false
   const roomId = store.selectedRoom?.id
   error.value = ''
   try {
     accepted = await store.send(text, files, replyingTo.value?.id ?? null, null, effort ?? null, taskRequested,
       documentId === preparedDocumentId ? preparedDocumentId : null, locale.value,
-      documentId === preparedDocumentId ? preparedDocumentFocus : null, null, resourceUris)
+      documentId === preparedDocumentId ? preparedDocumentFocus : null, null, resourceUris, draft)
     if (accepted && store.selectedRoom?.id === roomId) { replyingTo.value = null; following = true; followBottom() }
   } catch { reportError() }
   finally { acknowledge(accepted) }

@@ -131,7 +131,8 @@ async def write_bounded_chunk(handle: BinaryIO, chunk: bytes) -> None:
         db = None  # Raw driver tests intentionally have no database context.
     if db is not None:
         chat_reference = select(FileAlias.id).where(
-            FileAlias.file_id == StoredFile.id, FileAlias.uri.like("chat://%"),
+            FileAlias.file_id == StoredFile.id,
+            (FileAlias.uri.like("chat://%") | FileAlias.uri.like("chat-draft://%")),
         ).exists()
         excluded_bytes = int(await db.scalar(select(func.sum(StoredFile.size_bytes)).where(
             StoredFile.backend == "disk", ~chat_reference,

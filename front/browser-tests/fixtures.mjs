@@ -13,6 +13,36 @@ export const test = base.extend({
     // Documents have no sharing in ordinary editor fixtures. Dedicated sharing tests override this route.
     // Help starts unread; persistence/error scenarios override this read-only fixture.
     await page.route('**/api/auth/me/help-dismissals', route => route.fulfill({ json: [] }))
+    // Private chat drafts start empty. Dedicated recovery scenarios override failures/concurrency.
+    const drafts = new Map()
+    await page.route('**/api/chat/rooms/*/draft', route => {
+      const room = new URL(route.request().url()).pathname
+      if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON()
+        drafts.set(room, { revision: body.expected_revision + 1, content: body.content })
+      }
+      return route.fulfill({ json: drafts.get(room) ?? { revision: 0, content: null } })
+    })
+    await page.route('**/api/chat/rooms/*/draft/files/*', async route => {
+      if (route.request().method() === 'DELETE') return route.fulfill({ status: 204 })
+      const key = new URL(route.request().url()).pathname.split('/').at(-1)
+      const form = await (await fetch('data:application/octet-stream;base64,' + route.request().postDataBuffer().toString('base64'))).arrayBuffer()
+      const request = new Request('http://fixture.invalid', { method: 'POST', headers: { 'content-type': route.request().headers()['content-type'] }, body: form })
+      let file = (await request.formData()).get('file')
+      // WebKit's Playwright interception omits binary multipart parts. Recover
+      // the selected fixture bytes from IndexedDB; real multipart persistence is
+      // exercised against the HTTP backend in test_attachment_http.py.
+      if (page.context().browser().browserType().name() === 'webkit' && file.size === 0) {
+        const room = new URL(route.request().url()).pathname.split('/')[4]
+        const stored = await page.evaluate(async ({ room, key }) => {
+          const { draftBlob, draftKey } = await import('/app/chat/drafts.ts')
+          const file = await draftBlob(draftKey(window.testApp.auth.user.id, room), key)
+          return file && { name: file.name, type: file.type, bytes: [...new Uint8Array(await file.arrayBuffer())] }
+        }, { room, key })
+        if (stored) file = new File([new Uint8Array(stored.bytes)], stored.name, { type: stored.type })
+      }
+      return route.fulfill({ json: { key, name: file.name, mime: file.type, size: file.size, uploaded: true } })
+    })
     // Personal Goal classifications start empty; classification journeys override this.
     await page.route('**/api/goals/categories', route => route.fulfill({ json: [] }))
     // Ordinary component fixtures use Alice (7) as the managed agent. Scope tests override this catalogue.

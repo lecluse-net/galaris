@@ -2848,3 +2848,11 @@ and suspension transfer, name collisions, storage failure recovery and real DbAd
 contraction. Former third-collection injection and DB-owned learned Markdown assertions are
 retired: personal package API reads and `front/browser-tests/skills.spec.mjs` now cover the same
 package's evidence and editing on mobile and desktop.
+
+`chat-drafts.spec.mjs` protects Chat drafts through reload and navigation with text and
+attachments, offline recovery, server restoration, delayed responses and typing during
+send. `app/chat/tests/test_attachment_http.py` exercises real HTTP and PostgreSQL for
+private draft isolation, preuploaded attachment publication, denied access, stale
+revisions, idempotent retries and file retention/retirement. Assertions expecting uploads
+only on Post are replaced with checks for bytes transferred before sending and the draft
+token passed at Post time.

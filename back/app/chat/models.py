@@ -186,3 +186,27 @@ class ChatPushDelivery(Base):
 
 
 __all__ = ["ChatDocumentConversation", "ChatEmojiUsage", "ChatPushDelivery", "ChatPushSubscription"]
+
+
+class ChatDraft(Base):
+    """One replaceable private snapshot; the empty row retains its concurrency cursor."""
+
+    __tablename__ = "chat_drafts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    room_id: Mapped[UUID] = mapped_column(ForeignKey("messenger_rooms.id", ondelete="CASCADE"), index=True)
+    revision: Mapped[int] = mapped_column(default=0)
+    mutation_key: Mapped[UUID | None] = mapped_column(nullable=True)
+    last_sent_key: Mapped[UUID | None] = mapped_column(nullable=True)
+    payload: Mapped[str] = mapped_column(Text, default="{}")
+    __table_args__ = (UniqueConstraint("user_id", "room_id", name="uq_chat_draft_user_room"),)
+
+
+class ChatDraftFile(Base):
+    """An uploaded attachment private to its author until message publication."""
+
+    __tablename__ = "chat_draft_files"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    room_id: Mapped[UUID] = mapped_column(ForeignKey("messenger_rooms.id", ondelete="CASCADE"), index=True)
+    file_id: Mapped[UUID] = mapped_column(ForeignKey("files.id"), index=True)

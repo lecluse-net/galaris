@@ -17,6 +17,8 @@ from core.authorize import authorize, check_privilege
 from core import websocket
 from core.database import get_db
 from core.storage import FileRename
+from .draft_service import (DraftSnapshot, DraftWrite, DraftFile, DraftConflict, read_draft,
+    write_draft, upload_draft_file, draft_attachments, clear_sent_draft, discard_draft_file)
 from core.util import source_code_response_headers
 from core.i18n import current_language, tr
 from core.params import runtime_settings
@@ -1177,6 +1179,11 @@ async def answer_interaction(
 async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerMessage:
     _require_enabled()
     await _validate_topic(data.topic_id)
+    try:
+        attachments = (await draft_attachments(await _user_id(), room_id, data.draft_revision, data.client_message_id)
+                       if data.draft_revision is not None else [])
+    except DraftConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
     resource_uris: list[str] = []
     if data.resource_uris:
         room = await get_internal_room(await _user_id(), room_id)
@@ -1197,6 +1204,7 @@ async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerM
             user_id=await _user_id(),
             room_id=room_id,
             client_message_id=data.client_message_id,
+            attachments=attachments,
             text=data.text,
             resource_uris=resource_uris,
             topic_id=data.topic_id,
@@ -1214,6 +1222,8 @@ async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerM
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if result is None:
         raise _not_found()
+    if data.draft_revision is not None:
+        await clear_sent_draft(await _user_id(), room_id, data.draft_revision)
     return result
 
 
@@ -1605,3 +1615,42 @@ async def stop_call(room_id: UUID, call_id: str) -> MutationResult:
         room=ChatRoom(room_id),
     )
     return MutationResult()
+
+
+@router.get("/rooms/{room_id}/draft", response_model=DraftSnapshot)
+@authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
+async def get_private_draft(room_id: UUID) -> DraftSnapshot:
+    _require_enabled()
+    return await read_draft(await _user_id(), room_id)
+
+
+@router.put("/rooms/{room_id}/draft", response_model=DraftSnapshot)
+@authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
+async def save_private_draft(room_id: UUID, data: DraftWrite) -> DraftSnapshot:
+    _require_enabled()
+    try:
+        return await write_draft(await _user_id(), room_id, data)
+    except DraftConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/rooms/{room_id}/draft/files/{key}", response_model=DraftFile)
+@authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
+async def upload_private_draft_file(room_id: UUID, key: UUID, file: UploadFile = File(...)) -> DraftFile:
+    _require_enabled()
+    try:
+        return await upload_draft_file(await _user_id(), room_id, key, file)
+    except storage.AttachmentStorageError as exc:
+        raise _attachment_error(exc) from exc
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from exc
+
+
+@router.delete("/rooms/{room_id}/draft/files/{key}", status_code=204)
+@authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
+async def discard_private_draft_file(room_id: UUID, key: UUID) -> None:
+    _require_enabled()
+    try:
+        await discard_draft_file(await _user_id(), room_id, key)
+    except DraftConflict as exc:
+        raise HTTPException(409, str(exc)) from exc

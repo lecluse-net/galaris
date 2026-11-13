@@ -8,14 +8,14 @@
     @pointerdown.capture="blockPreparingInteraction"
     @click.capture="blockPreparingInteraction"
   >
-    <div v-if="replyTo" class="reply-target row items-center no-wrap bg-grey-2 q-mb-xs">
+    <div v-if="replyTo || draft.replyId.value" class="reply-target row items-center no-wrap bg-grey-2 q-mb-xs">
       <q-icon name="reply" size="13px" class="q-mr-xs" />
       <div class="ellipsis text-caption">
-        <span class="text-weight-medium">{{ t('chat.replyTo', { name: replyTo.sender?.display_name || t('chat.message') }) }}</span>
-        · {{ visibleMessageText(replyTo.text) }}
+        <span class="text-weight-medium">{{ t('chat.replyTo', { name: replyTo?.sender?.display_name || t('chat.message') }) }}</span>
+        · {{ visibleMessageText(replyTo?.text ?? '') }}
       </div>
       <q-space />
-      <q-btn flat round dense size="xs" icon="close" :aria-label="t('chat.cancel')" @click="$emit('cancel-reply')" />
+      <q-btn flat round dense size="xs" icon="close" :aria-label="t('chat.cancel')" @click="draft.cancelReply(); $emit('cancel-reply')" />
     </div>
 
     <div class="composer-layout">
@@ -270,6 +270,11 @@
         </div>
       </div>
     </div>
+    <div class="text-caption q-mt-xs" role="status" aria-live="polite">
+      {{ t(draft.failed.value ? 'chat.draftOffline' : draft.saving.value ? 'chat.draftSaving' : 'chat.draftSaved') }}
+      <q-btn v-if="draft.failed.value" outline dense color="primary" class="q-ml-sm"
+        :label="t(draft.conflicted.value ? 'chat.draftReplace' : 'chat.retry')" @click="retryDraft" />
+    </div>
   </div>
   <DocumentResourceReferences v-if="resourcePickerOpen" v-model:picker-open="resourcePickerOpen" :agent-id="agentId" :editable="!sending" resources-only @resources-picked="addResources" />
 </template>
@@ -278,12 +283,14 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { DocumentResourceReferences } from '@/core/util'
+import { DocumentResourceReferences, showConfirmationDialog } from '@/core/util'
 import { TopicSelect } from '@/app/topic'
 import { chatService, DictationNotConfiguredError } from '../services/chatService'
 import { visibleMessageText } from '../messageDirectives'
 import type { ChatCommandCode, MessengerMessage, ReasoningEffort } from '../types'
 import EmojiPicker from './EmojiPicker.vue'
+import { useComposerDraft } from '../useComposerDraft'
+import type { DraftSend } from '../drafts'
 
 const MAX_ATTACHMENTS = 20
 const DICTATION_SEGMENT_MILLISECONDS = 3_000
@@ -318,12 +325,13 @@ const props = withDefaults(defineProps<{
   agentId: null,
 })
 const emit = defineEmits<{
-  send: [text: string, files: File[] | undefined, reasoningEffortOverride: ReasoningEffort | undefined, taskRequested: boolean, acknowledge: (accepted: boolean) => void, resourceUris: string[]]
+  send: [text: string, files: File[] | undefined, reasoningEffortOverride: ReasoningEffort | undefined, taskRequested: boolean, acknowledge: (accepted: boolean) => void, resourceUris: string[], draft?: DraftSend]
   error: [error: unknown]
   'cancel-reply': []
   'update:topicId': [value: string | null]
 }>()
 const text = ref('')
+const { locale, t } = useI18n()
 const isMobileDevice = Boolean(useQuasar().platform.is.mobile)
 const resourcePickerOpen = ref(false)
 const resources = ref<{ uri: string; name: string }[]>([])
@@ -343,6 +351,20 @@ function pendingFileKey(file: File): number {
   return key
 }
 const reasoningEffortIndex = ref(DEFAULT_REASONING_LEVEL)
+const draft = useComposerDraft({
+  room: () => props.roomId, text, files, resources, effort: reasoningEffortIndex,
+  topic: () => props.topicId, reply: () => props.replyTo?.id ?? null,
+  restoreContext: (topic) => { if (topic !== props.topicId) emit('update:topicId', topic) },
+  error: error => emit('error', new Error(t('chat.draftError'), { cause: error })),
+})
+function retryDraft(): void {
+  const retry = (replace = false): void => { void draft.retry(replace).catch(error => emit('error', error)) }
+  if (!draft.conflicted.value) { retry(); return }
+  showConfirmationDialog({ title: t('chat.draftReplace'), message: t('chat.draftReplaceConfirm'),
+    cancel: { flat: false, outline: true, color: 'primary' },
+    ok: { flat: false, color: 'primary', label: t('chat.draftReplace') }, focus: 'cancel',
+  }).onOk(() => retry(true))
+}
 const dictating = ref(false)
 const preparingDictation = ref(false)
 const transcribing = ref(false)
@@ -377,7 +399,6 @@ const actionsStacked = ref(false)
 let composerResizeObserver: ResizeObserver | null = null
 let composerLayoutFrame: number | null = null
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
-const { locale, t } = useI18n()
 let recorder: MediaRecorder | null = null
 let recordingStream: MediaStream | null = null
 let segmentTimer: number | null = null
@@ -495,10 +516,16 @@ function openFilePicker(): void {
   if (!props.sending) fileInput.value?.click()
 }
 
-function handleFileSelection(event: Event): void {
+async function handleFileSelection(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
-  addFiles(input.files ?? [])
-  input.value = ''
+  const room = props.roomId
+  try {
+    const selected = await Promise.all(Array.from(input.files ?? []).filter(file => !rejectOversized(file)).map(async file => (
+      new File([await file.arrayBuffer()], file.name, { type: file.type, lastModified: file.lastModified })
+    )))
+    if (props.roomId === room) addFiles(selected)
+  } catch (error) { emit('error', error) }
+  finally { input.value = '' }
 }
 
 function handleDrop(event: DragEvent): void {
@@ -968,22 +995,28 @@ async function submit(): Promise<void> {
       }
     }
     cancelDictation()
+    const savedDraft = await draft.prepare()
+    if (generation !== roomGeneration) return
     const submittedText = text.value
     const submittedFiles = [...files.value]
     const submittedResources = [...resources.value]
     const submittedEffort = reasoningEffortIndex.value
     const accepted = await new Promise<boolean>(acknowledge => emit(
-      'send', outgoingText.value, submittedFiles.length ? submittedFiles : undefined,
+      'send', outgoingText.value, savedDraft ? undefined : submittedFiles.length ? submittedFiles : undefined,
       effortSelectOpen.value ? reasoningEffort.value : undefined, taskRequested.value,
-      acknowledge, submittedResources.map(resource => resource.uri),
+      acknowledge, submittedResources.map(resource => resource.uri), savedDraft?.token,
     ))
-    if (!accepted || generation !== roomGeneration) return
-    // Acknowledging this message must not erase text typed while it was in flight.
-    if (text.value === submittedText) text.value = ''
-    files.value = files.value.filter(file => !submittedFiles.includes(file))
-    resources.value = resources.value.filter(resource => !submittedResources.includes(resource))
-    if (reasoningEffortIndex.value === submittedEffort) reasoningEffortIndex.value = DEFAULT_REASONING_LEVEL
-    commandHelpOpen.value = false
+    const clear = (): void => {
+      if (generation !== roomGeneration) return
+      // Acknowledging this message must not erase text typed while it was in flight.
+      if (text.value === submittedText) text.value = ''
+      files.value = files.value.filter(file => !submittedFiles.includes(file))
+      resources.value = resources.value.filter(resource => !submittedResources.includes(resource))
+      if (reasoningEffortIndex.value === submittedEffort) reasoningEffortIndex.value = DEFAULT_REASONING_LEVEL
+      commandHelpOpen.value = false
+    }
+    if (savedDraft) await savedDraft.acknowledge(accepted, clear)
+    else if (accepted) clear()
   } catch (error) {
     emit('error', error)
   } finally {
@@ -1029,11 +1062,9 @@ watch(effortSelectOpen, (visible, wasVisible) => {
 
 watch(() => props.roomId, () => {
   resourcePickerOpen.value = false
-  resources.value = []
   roomGeneration += 1
   cancelDictation()
   commandHelpOpen.value = false
-  reasoningEffortIndex.value = DEFAULT_REASONING_LEVEL
 })
 </script>
 

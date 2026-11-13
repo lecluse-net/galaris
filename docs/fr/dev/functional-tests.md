@@ -2985,3 +2985,11 @@ noms, la reprise après échec de stockage et la contraction DbAdmin avec le vé
 Les anciennes assertions sur une troisième collection injectée et sur le Markdown des listes
 `learned` sont retirées : ces garanties passent par les packages personnels, leurs tests de lecture
 API et `front/browser-tests/skills.spec.mjs` (preuves et édition du même package sur mobile/bureau).
+
+`chat-drafts.spec.mjs` protège le brouillon Chat : rechargement et navigation avec texte
+et PJ, reprise hors ligne, récupération serveur, réponses tardives et saisie pendant
+l'envoi. `app/chat/tests/test_attachment_http.py` vérifie sur HTTP et PostgreSQL réels
+l'isolation des brouillons, l'envoi des PJ préchargées, les refus, les révisions périmées,
+les réessais idempotents et la conservation/retraite des fichiers. Les assertions qui
+attendaient un téléversement seulement lors du Post sont remplacées par la vérification
+des octets transférés avant l'envoi et du jeton de brouillon transmis au Post.

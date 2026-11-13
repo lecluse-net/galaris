@@ -63,7 +63,7 @@ export function useChatState(documentId: () => string | null = () => null) {
   const loading = ref(false)
   const sending = ref(false)
   let sendSequence = 0
-  let unconfirmedSend: { signature: string; files: readonly File[]; clientMessageId: ReturnType<typeof crypto.randomUUID> } | null = null
+  let unconfirmedSend: { signature: string; files: readonly File[]; clientMessageId: string } | null = null
   const roomSearch = ref('')
   const viewerAgentId = ref<number | null>(null)
   const incomingMessageNotification = ref<{ roomId: string; messageId: string } | null>(null)
@@ -514,7 +514,7 @@ export function useChatState(documentId: () => string | null = () => null) {
     } catch (error) { if (request.canApply()) handleScopeError(error) }
     finally { loadingRecentMessages.value = false }
   }
-  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null, resourceUris: readonly string[] = []): Promise<boolean> {
+  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null, resourceUris: readonly string[] = [], draft?: { revision: number; clientMessageId: string }): Promise<boolean> {
     if (!selectedRoom.value?.writable || viewerAgentId.value !== null || sending.value) return false
     const room = selectedRoom.value
     const session = sessionGeneration()
@@ -530,7 +530,7 @@ export function useChatState(documentId: () => string | null = () => null) {
     const retry = unconfirmedSend?.signature === signature
       && unconfirmedSend.files.length === attachments.length
       && unconfirmedSend.files.every((file, index) => file === attachments[index])
-    const clientMessageId = retry && unconfirmedSend ? unconfirmedSend.clientMessageId : crypto.randomUUID()
+    const clientMessageId = draft?.clientMessageId ?? (retry && unconfirmedSend ? unconfirmedSend.clientMessageId : crypto.randomUUID())
     unconfirmedSend = { signature, files: [...attachments], clientMessageId }
     const repliedMessage = replyToMessageId
       ? messages.value.find(message => message.id === replyToMessageId) ?? null
@@ -560,7 +560,7 @@ export function useChatState(documentId: () => string | null = () => null) {
     try {
       const sentMessage = files?.length
         ? await service.upload(room.id, files, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId, resourceUris)
-        : await service.send(room.id, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId, resourceUris)
+        : await service.send(room.id, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId, resourceUris, draft)
       if (!active()) return false
       unconfirmedSend = null
       if (current()) {

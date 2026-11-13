@@ -239,6 +239,8 @@ for (const width of [390, 1280]) {
     await expect(input).toHaveValue('')
     await expect(post).toBeDisabled()
 
+    const uploads = []
+    page.on('request', request => { if (request.url().includes('/draft/files/')) uploads.push(request.postDataBuffer().toString()) })
     await page.locator('input[type=file]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Notes') })
     await expect(page.getByRole('button', { name: 'Remove notes.txt', exact: true })).toBeVisible()
     await expect(post).toBeEnabled()
@@ -254,14 +256,25 @@ for (const width of [390, 1280]) {
     await expect.poll(() => events(page, 'send')).toHaveLength(1)
     await page.evaluate(() => window.testApp.setProps({ sending: false }))
     await post.click()
-    await expect.poll(() => page.evaluate(() => {
+    await expect.poll(() => page.evaluate(async () => {
       const sent = window.testApp.events.filter(event => event.name === 'send').at(-1)
-      return [sent.args[0], sent.args[1]?.map(file => [file.name, file.type, file.size])]
-    })).toEqual(['', [['notes.txt', 'text/plain', 5], ['extra.txt', 'text/plain', 5]]])
-    expect(await page.evaluate(async () => {
+      const local = JSON.parse(localStorage.getItem('galaris:chat-draft:v1:1:room-a'))
+      const errors = window.testApp.events.filter(event => event.name === 'error').map(event => String(event.args[0]?.cause ?? event.args[0]))
+      const { draftBlob } = await import('/app/chat/drafts.ts')
+      for (const file of local.content.files) {
+        const stored = await draftBlob('galaris:chat-draft:v1:1:room-a', file.key)
+        if (stored?.size !== file.size) errors.push(`Stored ${stored?.size} vs uploaded ${file.size}; ${await stored?.text()}`)
+      }
+      return [sent.args[0], local.content.files.map(file => [file.name, file.mime, file.size]), errors]
+    })).toEqual(['', [['notes.txt', 'text/plain', 5], ['extra.txt', 'text/plain', 5]], []])
+    expect(await page.evaluate(() => {
       const sent = window.testApp.events.filter(event => event.name === 'send').at(-1)
-      return Promise.all(sent.args[1].map(file => file.text()))
-    })).toEqual(['Notes', 'Extra'])
+      return sent.args[1] === undefined && sent.args[6].revision > 0
+    })).toBe(true)
+    if (page.context().browser().browserType().name() !== 'webkit') {
+      expect(uploads.some(body => body.includes('Notes'))).toBe(true)
+      expect(uploads.some(body => body.includes('Extra'))).toBe(true)
+    }
     await acknowledgeSend(page)
     await expect(post).toBeDisabled()
   })

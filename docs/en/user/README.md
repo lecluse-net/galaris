@@ -425,8 +425,17 @@ before switching; if saving fails, the conversation and document draft stay open
 Text and selected attachments remain in the composer until sending is confirmed. After an
 error, you can retry without entering them again; an unchanged retry keeps the message identity
 to avoid a second admission if the first send was already received. Once confirmed, a slow or
-unavailable conversation refresh does not block the next send or attachment selection. These
-drafts remain in page memory: save any unsent content before reloading the page.
+unavailable conversation refresh does not block the next send or attachment selection.
+Text is saved immediately in browser local storage, files in IndexedDB, and the draft
+is synchronized to the server every two seconds while editing. Attachments upload as
+soon as they are selected, before posting. Reloading, switching conversations or returning
+from a document restores the draft for that account and conversation. Offline edits remain
+local and synchronization resumes when connectivity returns. The status below the composer
+reports saving errors and offers retry. If another editor changed the server draft,
+**Keep this draft** asks for confirmation before replacing it. There is one current draft
+with no history; its saved content is cleared after confirmed sending while preserving
+edits made during that send. Clearing browser data removes edits that have not yet reached
+the server.
 
 In messages, clicking a Task, Contact, Goal, Topic or conversation card opens its usual
 dialog. This also works for resources added as internal attachments. Existing read and

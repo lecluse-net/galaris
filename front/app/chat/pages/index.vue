@@ -658,13 +658,13 @@ async function prepareMessage(): Promise<boolean> {
   }
   return store.selectedRoom?.id === roomId
 }
-async function sendMessage(text:string,files:File[]|undefined,reasoningEffortOverride:ReasoningEffort|undefined,taskRequested:boolean,acknowledge:(accepted:boolean)=>void,resourceUris:string[]){
+async function sendMessage(text:string,files:File[]|undefined,reasoningEffortOverride:ReasoningEffort|undefined,taskRequested:boolean,acknowledge:(accepted:boolean)=>void,resourceUris:string[],draft?:{revision:number;clientMessageId:string}){
   let accepted = false
   const roomId = store.selectedRoom?.id
   try {
     const documentId = integratedDocument.value?.id === displayedDocumentId.value
       ? displayedDocumentId.value : null
-    accepted = await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null, codeStore.active?.loaded && !codeStore.active.error ? selectedCodeId.value : null,resourceUris)
+    accepted = await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null, codeStore.active?.loaded && !codeStore.active.error ? selectedCodeId.value : null,resourceUris,draft)
     if (accepted && store.selectedRoom?.id === roomId) { replyingTo.value=null;selectedTopicId.value=null }
   } catch(error) { reportError(error) }
   finally { acknowledge(accepted) }
