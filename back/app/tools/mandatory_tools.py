@@ -25,7 +25,7 @@ DEFAULT_CONVERSATION_TOOL_CODES = frozenset(
         "browser", "search",
     }
 )
-SYSTEM_TOOL_CODES = frozenset({"galaris", "conversation", "memory", "document", "file_sharing"})
+SYSTEM_TOOL_CODES = frozenset({"galaris", "conversation", "memory", "document", "file_sharing", "agenda"})
 
 
 @dataclass(frozen=True)
@@ -44,6 +44,9 @@ class IntegratedToolSpec:
 
 
 INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
+    IntegratedToolSpec(code="agenda", label="Personal agenda", description=DESCRIPTIONS["agenda"],
+        mcp_tools=("calendar_list", "calendar_events", "calendar_is_available", "calendar_find_free_slots",
+                   "calendar_create_event", "calendar_update_event", "calendar_delete_event"), default_active=True),
     IntegratedToolSpec(
         code="tool_admin", label="ToolAdmin", description=DESCRIPTIONS["tool_admin"],
         management_scopes=("usage", "personal", "team", "all"),
@@ -327,22 +330,6 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         file_share_service="console",
     ),
     IntegratedToolSpec(
-        code="calendar",
-        label="Calendar",
-        description=DESCRIPTIONS["calendar"],
-        mcp_tools=(
-            "calendar_list",
-            "calendar_events",
-            "calendar_is_available",
-            "calendar_find_free_slots",
-            "calendar_create_event",
-            "calendar_update_event",
-            "calendar_delete_event",
-        ),
-        auto_connect_agents=False,
-        default_active=False,
-    ),
-    IntegratedToolSpec(
         code="image",
         label="Image",
         description=DESCRIPTIONS["image"],
@@ -549,32 +536,6 @@ def _browser_connection_params() -> dict[str, dict[str, Any]]:
     }
 
 
-def _calendar_connection_params() -> dict[str, dict[str, Any]]:
-    return {
-        "timezone": _param(
-            required=False,
-            default="Europe/Paris",
-            description="IANA timezone used to search for available working-hour slots",
-        ),
-        "workday_start": _param(
-            required=False,
-            default="09:00",
-            description="Default local start of the working day (HH:MM)",
-        ),
-        "workday_end": _param(
-            required=False,
-            default="18:00",
-            description="Default local end of the working day (HH:MM)",
-        ),
-        "slot_step_minutes": _param(
-            "integer",
-            required=False,
-            default="15",
-            description="Default increment in minutes when searching for free slots",
-        ),
-    }
-
-
 def mandatory_tool_rows() -> list[dict[str, Any]]:
     """Return built-in tool rows ready for persistence."""
     from app.tools.tool_service import default_global_params
@@ -606,8 +567,6 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
                 "params": (
                     _console_connection_params()
                     if spec.code == "console"
-                    else _calendar_connection_params()
-                    if spec.code == "calendar"
                     else _browser_connection_params()
                     if spec.code == "browser"
                     else {}
@@ -674,7 +633,7 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
         })
     from .capabilities import capabilities_from_values
     for row in rows:
-        row["capabilities"] = capabilities_from_values(row)
+        row["capabilities"] = ["internal.calendar"] if row["code"] == "agenda" else capabilities_from_values(row)
     return rows
 
 

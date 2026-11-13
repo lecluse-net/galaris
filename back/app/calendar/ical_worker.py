@@ -4,6 +4,8 @@ import json
 import resource
 import sys
 import importlib
+import traceback
+from pathlib import Path
 from typing import Any
 from dataclasses import asdict
 from datetime import datetime
@@ -19,17 +21,19 @@ def main() -> None:
     start, end = datetime.fromisoformat(sys.argv[2]), datetime.fromisoformat(sys.argv[3])
     try:
         if sys.argv[1] == "events":
-            result = parser.events_between(content, start, end)
+            result = parser.events_between(content, start, end, sys.argv[4] if len(sys.argv) > 4 else "UTC",
+                compact=len(sys.argv) > 5 and sys.argv[5] == "compact")
         else:
             result = parser.due_actions(
                 content,
                 start,
                 end,
-                trigger_on_start=sys.argv[4] == "1",
-                trigger_on_alarm=sys.argv[5] == "1",
             )
         sys.stdout.write(json.dumps([asdict(item) for item in result], default=str))
-    except ValueError, MemoryError:
+    except Exception as exc:
+        frames = traceback.extract_tb(exc.__traceback__)
+        location = f"{Path(frames[-1].filename).name}:{frames[-1].lineno}:{frames[-1].name}" if frames else "worker"
+        sys.stdout.write(json.dumps({"error_category": type(exc).__name__, "error_location": location}))
         sys.exit(2)
 
 

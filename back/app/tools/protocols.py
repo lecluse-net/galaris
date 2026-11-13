@@ -1,7 +1,7 @@
 """Mail and Calendar protocols supply ordinary, inherited connection parameters."""
 
 from contextvars import ContextVar, Token
-from collections.abc import Collection
+from collections.abc import Collection, Callable, Awaitable
 from typing import Any, Literal, cast
 import re
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,6 +16,11 @@ class ProtocolConfig(BaseModel):
 
 
 _protocol_connection: ContextVar[tuple[str, int, int] | None] = ContextVar("protocol_connection", default=None)
+_resource_resolvers: dict[str, Callable[[int, int], Awaitable[int]]] = {}
+
+
+def register_protocol_resource_resolver(protocol: str, resolver: Callable[[int, int], Awaitable[int]]) -> None:
+    _resource_resolvers[protocol] = resolver
 
 
 def bind_protocol_connection(protocol: str, agent_id: int, connection_id: int) -> Token[tuple[str, int, int] | None]:
@@ -31,18 +36,24 @@ def current_protocol_connection(protocol: str, agent_id: int) -> int | None:
     return value[2] if value and value[:2] == (protocol, agent_id) else None
 
 
-async def resolve_protocol_connection(agent_id: int, protocol: Literal["mail", "calendar"], requested: int | None = None) -> int:
+async def resolve_protocol_connection(agent_id: int, protocol: Literal["mail", "calendar"], requested: int | None = None,
+                                      resource_id: int | None = None) -> int:
     from app.connection import connection_service
     from .tool_service import get_tool_by_id
 
     candidates: list[int] = []
+    native: list[int] = []
+    if requested is None and resource_id is not None and protocol in _resource_resolvers:
+        requested = await _resource_resolvers[protocol](agent_id, resource_id)
     providers: list[str] = []
     for connection in await connection_service.get_connections_by_agent(agent_id):
         if not connection.active or requested is not None and connection.id != requested:
             continue
         tool = await get_tool_by_id(connection.tool_id)
-        if tool is not None and getattr(tool, protocol) is not None:
+        if tool is not None and (getattr(tool, protocol) is not None or protocol == "calendar" and tool.code == "agenda"):
             candidates.append(connection.id)
+            if tool.code == "agenda" and protocol == "calendar":
+                native.append(connection.id)
             label = tool.code
             if protocol == "mail" and tool.mail is not None:
                 _, params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
@@ -50,6 +61,8 @@ async def resolve_protocol_connection(agent_id: int, protocol: Literal["mail", "
                 if address:
                     label += f" · {address}"
             providers.append(f"connection_id={connection.id} ({label})")
+    if requested is None and len(native) == 1:
+        return native[0]
     if len(candidates) != 1:
         choices = "; ".join(providers[:50])
         raise ValueError(f"Select one exact active {protocol} connection using connection_id" +
@@ -133,6 +146,13 @@ def _mail_connection_params() -> dict[str, dict[str, Any]]:
 
 def _calendar_connection_params() -> dict[str, dict[str, Any]]:
     return {
+        "url": _param("password", description="HTTPS CalDAV calendar URL, or iCalendar subscription URL; encrypted because it may contain a private token"),
+        "username": _param(required=False, description="Optional HTTP authentication login"),
+        "password": _param("password", required=False, description="Optional HTTP authentication password"),
+        "label": _param(required=False, description="Calendar label; defaults to the provider label"),
+        "owner_label": _param(required=False, description="Human owner of the calendar"),
+        "source_kind": _param(required=False, default="caldav", description="External calendar source: caldav or ical subscription",
+            options=[{"value": "caldav", "label": "CalDAV"}, {"value": "ical", "label": "iCalendar subscription"}]),
         "timezone": _param(
             required=False,
             default="Europe/Paris",
@@ -172,6 +192,11 @@ def protocol_parameters(protocol: str) -> dict[str, dict[str, Any]]:
 
 def protocol_parameter_bindings(protocol: str) -> dict[str, dict[str, Any]]:
     """Technical roles reference typed connection parameters, never literal credentials."""
+    if protocol == "calendar":
+        definitions = protocol_parameters(protocol)
+        names = ("url", "username", "password", "label", "owner_label")
+        return {name: {"parameter": "login" if name == "username" else name, "legacy_parameter": name,
+            "label": f"tools.connectionParamLabels.{name}", "definition": definitions[name]} for name in names}
     if protocol != "mail":
         return {}
     definitions = protocol_parameters(protocol)
@@ -237,10 +262,18 @@ def with_protocol_params(schema: dict[str, Any], *, mail: ProtocolConfig | None,
                 # Empty legacy configurations retain their original connection contract.
                 params[name] = definition
             mapping = config.param_map
+            if protocol == "calendar":
+                # Retired execution switches have no effect, including on older Tools.
+                retired = {"access_mode", "trigger_on_start", "trigger_on_alarm", "action_kind",
+                           "process_workflow_id", "action_instructions"}
+                mapping = {name: value for name, value in mapping.items() if name not in retired}
             if set(mapping) - set(bindings):
                 raise ValueError(f"Unknown {protocol} connection parameter role")
             used: dict[str, tuple[str, str]] = {}
             for role, binding in bindings.items():
+                if protocol == "calendar" and not mapping:
+                    # Older providers own CalendarFeed records, not source parameters.
+                    continue
                 target = mapping.get(role, str(binding["legacy_parameter"]) if not config.settings and not mapping else "")
                 if not target and not binding["definition"]["required"]:
                     continue

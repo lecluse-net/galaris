@@ -11,6 +11,7 @@ from app.agent.contracts import (
     AgentRunEventV1,
     AgentTask,
     AgentTaskDraft,
+    AgentTaskState,
     AgentTaskBlocker,
     AgentTaskBlockers,
     AgentContextCapsule,
@@ -214,6 +215,21 @@ class SqlAlchemyAgentTaskAdapter:
 
     async def get_by_id(self, task_id: UUID) -> Any | None:
         return await task_service.get_by_id(task_id)
+
+    async def find_submissions(self, agent_id: int, keys: Sequence[str]) -> dict[str, UUID]:
+        from core.database import get_db
+        identities = {task_service.submission_identity(agent_id, key): key for key in keys}
+        found = (await get_db().scalars(select(Task.id).where(Task.id.in_(identities), Task.agent_id == agent_id)
+            .execution_options(include_historized=True))).all()
+        return {identities[identity]: identity for identity in found}
+
+    async def inspect_states(self, task_ids: Sequence[UUID]) -> dict[UUID, AgentTaskState]:
+        from .facade import inspect_workflow_tasks
+
+        states = await inspect_workflow_tasks(task_ids)
+        return {identity: AgentTaskState(task_id=identity, agent_id=cast(int | None, state["agent_id"]),
+            status=str(state["status"]), operational_state=str(state["operational_state"]))
+            for identity, state in states.items()}
 
     async def replace(self, draft: AgentTaskDraft, *, target_task_id: UUID,
                       expected_revision: int, action_key: str) -> tuple[Any, bool]:

@@ -15,7 +15,7 @@ STANDARD_PROTOCOLS: dict[str, tuple[str, ...]] = {
     "mcp": ("http", "sse", "stdio"), "api": ("rest",),
     "file_share": ("affine", "nextcloud", "samba"),
     "messenger": ("matrix", "nextcloud_talk", "one_bot", "telegram", "whatsapp"),
-    "listener": ("webhook",), "mail": ("imap_smtp",), "calendar": ("ical",),
+    "listener": ("webhook",), "mail": ("imap_smtp",), "calendar": ("caldav",),
 }
 
 
@@ -101,7 +101,7 @@ def resolve_selections(
         if value is None:
             values[field] = None
             continue
-        if values.get(field) is None and value in {"imap_smtp.mail", "ical.calendar"}:
+        if values.get(field) is None and value in {"imap_smtp.mail", "caldav.calendar"}:
             values[field] = {}
         actual = capabilities_from_values({field: values.get(field)})
         if actual and actual != [value]:
@@ -117,10 +117,10 @@ def supported_capabilities() -> list[CapabilityDefinition]:
     from app.messenger import all_specs
     from .protocols import protocol_parameters, protocol_parameter_bindings
 
-    parameter_sets = {"imap_smtp.mail": protocol_parameters("mail"), "ical.calendar": protocol_parameters("calendar")}
+    parameter_sets = {"imap_smtp.mail": protocol_parameters("mail"), "caldav.calendar": protocol_parameters("calendar")}
 
     definitions = {code: CapabilityDefinition(code=code, label=f"tools.capabilityLabels.{code}")
-                   for code in CONFIG_FIELDS if code != "calendar"}
+                   for code in CONFIG_FIELDS}
     dynamic = {
         "file_share": [(bridge.service, bridge.label) for bridge in available_bridges()],
         "messenger": [(spec.kind, spec.label or spec.kind) for spec in all_specs() if spec.kind not in {"mail", "internal"}],

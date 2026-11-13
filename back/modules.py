@@ -55,6 +55,7 @@ MODULES = [
     "app.harness",
     "app.harnesses",
     "app.connection",
+    "app.calendar",
     "app.skill",
     # Historical translation code retained; its retired router exposes no routes.
     "app.webhook",

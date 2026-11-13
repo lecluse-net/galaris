@@ -2,6 +2,21 @@
 
 # Functional guarantees catalogue
 
+`app/calendar/tests/test_service.py` runs the actual CalDAV adapter against a stateful synthetic
+HTTP boundary: standard parameters, discovery, differential reads/multiget, conditional writes,
+lost acknowledgements, token expiry, conflicts, malformed responses and remote permissions.
+Independent PostgreSQL sessions verify leases and configuration fencing. Failures preserve
+the replica, cursor and secret-free durable diagnostics.
+`test_native.py` covers local CRUD, history, revisions, exceptions/rule splitting, independence
+of browsing and actions, lost admissions, Task outcomes and idempotent relaunches.
+`test_ical.py` covers cancellations, exclusive dates and daylight-saving timezone behavior.
+`test_volume.py` loads 10,000 and 100,000 synthetic events, verifies complete windows above
+1,000 occurrences and rejects source parsing during warm reads.
+`test_source_domain_boundaries.py` protects HTTP reads/mutations/conflicts by privilege and scope.
+Former expectations of live provider reads, full native-feed rewrites and retired-setting
+compatibility are removed: the contract is local, with no historical data to migrate.
+Qualification against an actual Nextcloud server remains separate.
+
 `app/connection/tests/test_mail_accounts.py` protects multiple mailboxes on one Tool, connection-specific MCP selection and per-account permissions.
 `bridge/mail/tests/test_browser.py` covers account URIs, attachments and folder restrictions.
 `system-tools.spec.mjs` and `connections-loading.spec.mjs` exercise the protocol editor, atomic Mail saving, folder selection, failures and late responses.

@@ -9,17 +9,17 @@ tests restent l’autorité sur le comportement.
 
 ## Résumé
 
-- 78 modules backend déclarés ;
+- 79 modules backend déclarés ;
 - 40 modules frontend déclarés ;
-- 638 arêtes de dépendance backend ;
+- 639 arêtes de dépendance backend ;
 - 217 arêtes de dépendance frontend ;
 - 304 arêtes entre domaines `app`/`bridge` ;
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 784 handlers HTTP/WebSocket détectés ;
-- 184 tables SQLAlchemy détectées ;
-- 291 outils MCP natifs détectés ;
+- 797 handlers HTTP/WebSocket détectés ;
+- 192 tables SQLAlchemy détectées ;
+- 294 outils MCP natifs détectés ;
 - 55 pages Vue détectées.
 
 ## Modules backend
@@ -40,6 +40,7 @@ tests restent l’autorité sur le comportement.
 | `app.harness` | app | non | oui | `contracts.py`, `facade.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.harnesses` | app | non | oui | `contracts.py`, `facade.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.connection` | app | non | oui | `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
+| `app.calendar` | app | non | oui | `contracts.py`, `facade.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.skill` | app | non | oui | `contracts.py`, `i18n/`, `interface.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.webhook` | app | non | oui | `i18n/`, `router.py`, `schemas.py`, `tests/` |
 | `app.llm` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
@@ -74,7 +75,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.n8n` | bridge | non | oui | `router.py`, `schemas.py`, `tests/` |
 | `bridge.code_server` | bridge | non | oui | — |
 | `bridge.mail` | bridge | non | oui | `contracts.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
-| `bridge.calendar` | bridge | non | oui | `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
+| `bridge.calendar` | bridge | non | oui | — |
 | `bridge.hermes` | bridge | non | oui | `i18n/`, `models.py`, `router.py`, `schemas.py`, `tests/` |
 | `bridge.one_bot` | bridge | non | oui | `router.py`, `tests/` |
 | `bridge.matrix` | bridge | non | oui | `router.py`, `schemas.py`, `tests/` |
@@ -190,6 +191,13 @@ tests restent l’autorité sur le comportement.
 | `app.browser` | `core.secrets` | `back/app/browser/router.py`, `back/app/browser/service.py` |
 | `app.browser` | `core.settings` | `back/app/browser/service.py` |
 | `app.browser` | `core.user` | `back/app/browser/__init__.py`, `back/app/browser/service.py` |
+| `app.calendar` | `app.agent` | `back/app/calendar/dispatch.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py` |
+| `app.calendar` | `app.connection` | `back/app/calendar/dbadmin.py`, `back/app/calendar/dispatch.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py`, `back/app/calendar/synchronization.py` |
+| `app.calendar` | `app.tools` | `back/app/calendar/__init__.py`, `back/app/calendar/dbadmin.py`, `back/app/calendar/mcp.py`, `back/app/calendar/service.py` |
+| `app.calendar` | `core.authorize` | `back/app/calendar/router.py` |
+| `app.calendar` | `core.database` | `back/app/calendar/dispatch.py`, `back/app/calendar/maintenance.py`, `back/app/calendar/models.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py`, `back/app/calendar/synchronization.py` |
+| `app.calendar` | `core.dbadmin` | `back/app/calendar/dbadmin.py` |
+| `app.calendar` | `core.util` | `back/app/calendar/crypto.py` |
 | `app.chat` | `app.agent` | `back/app/chat/assertions.py`, `back/app/chat/document_conversation.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
 | `app.chat` | `app.browser` | `back/app/chat/router.py`, `back/app/chat/thumbnail_service.py` |
 | `app.chat` | `app.code` | `back/app/chat/router.py` |
@@ -595,14 +603,8 @@ tests restent l’autorité sur le comportement.
 | `bridge.azure_speech` | `core.util` | `back/bridge/azure_speech/resources.py`, `back/bridge/azure_speech/speech.py` |
 | `bridge.byteplus` | `app.llm` | `back/bridge/byteplus/__init__.py`, `back/bridge/byteplus/media.py` |
 | `bridge.byteplus` | `core.util` | `back/bridge/byteplus/media.py` |
-| `bridge.calendar` | `app.agent` | `back/bridge/calendar/router.py`, `back/bridge/calendar/service.py` |
-| `bridge.calendar` | `app.connection` | `back/bridge/calendar/router.py`, `back/bridge/calendar/service.py` |
+| `bridge.calendar` | `app.calendar` | `back/bridge/calendar/__init__.py`, `back/bridge/calendar/caldav.py`, `back/bridge/calendar/transport.py` |
 | `bridge.calendar` | `app.file_share` | `back/bridge/calendar/transport.py` |
-| `bridge.calendar` | `app.process` | `back/bridge/calendar/router.py`, `back/bridge/calendar/service.py` |
-| `bridge.calendar` | `app.tools` | `back/bridge/calendar/mcp.py`, `back/bridge/calendar/service.py` |
-| `bridge.calendar` | `core.authorize` | `back/bridge/calendar/router.py` |
-| `bridge.calendar` | `core.database` | `back/bridge/calendar/models.py`, `back/bridge/calendar/service.py` |
-| `bridge.calendar` | `core.util` | `back/bridge/calendar/service.py` |
 | `bridge.cerebras` | `app.llm` | `back/bridge/cerebras/__init__.py` |
 | `bridge.claude_agent` | `app.agent` | `back/bridge/claude_agent/harness_provider.py` |
 | `bridge.claude_agent` | `app.harnesses` | `back/bridge/claude_agent/harness_provider.py` |
@@ -1049,7 +1051,6 @@ tests restent l’autorité sur le comportement.
 | `bridge.mail` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.messenger`, `app.tools` |
 | `bridge.nextcloud` | 6 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.tools`, `app.voice` |
 | `app.task` | 5 | `app.agent`, `app.goal`, `app.llm`, `app.messenger`, `app.tools` |
-| `bridge.calendar` | 5 | `app.agent`, `app.connection`, `app.file_share`, `app.process`, `app.tools` |
 | `bridge.claude_agent` | 5 | `app.agent`, `app.harnesses`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.matrix` | 5 | `app.agent`, `app.connection`, `app.messenger`, `app.tools`, `app.voice` |
 | `app.browser` | 4 | `app.connection`, `app.file_share`, `app.messenger`, `app.tools` |
@@ -1057,6 +1058,7 @@ tests restent l’autorité sur le comportement.
 | `app.multimedia` | 4 | `app.agent`, `app.file_share`, `app.llm`, `app.tools` |
 | `app.webhook` | 4 | `app.agent`, `app.connection`, `app.task`, `app.tools` |
 | `bridge.code_server` | 4 | `app.agent`, `app.code`, `app.console`, `app.file_share` |
+| `app.calendar` | 3 | `app.agent`, `app.connection`, `app.tools` |
 | `app.dashboard` | 3 | `app.agent`, `app.llm`, `app.task` |
 | `app.image` | 3 | `app.file_share`, `app.llm`, `app.tools` |
 | `app.skill` | 3 | `app.agent`, `app.connection`, `app.tools` |
@@ -1064,6 +1066,7 @@ tests restent l’autorité sur le comportement.
 | `app.connection` | 2 | `app.agent`, `app.tools` |
 | `app.harnesses` | 2 | `app.agent`, `app.tools` |
 | `app.mcp` | 2 | `app.agent`, `app.tools` |
+| `bridge.calendar` | 2 | `app.calendar`, `app.file_share` |
 | `bridge.one_bot` | 2 | `app.connection`, `app.messenger` |
 | `app.dataset` | 1 | `app.document` |
 | `app.incident` | 1 | `app.tools` |
@@ -1098,13 +1101,13 @@ tests restent l’autorité sur le comportement.
 | Module | Nombre | Dépendants |
 |---|---:|---|
 | `app.llm` | 45 | `app.agent`, `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
-| `app.agent` | 35 | `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
-| `app.tools` | 33 | `app.agent`, `app.audio`, `app.browser`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
+| `app.agent` | 35 | `app.calendar`, `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
+| `app.tools` | 33 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
 | `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
-| `app.connection` | 22 | `app.browser`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
+| `app.connection` | 22 | `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
 | `app.file_share` | 19 | `app.agent`, `app.audio`, `app.browser`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
 | `app.task` | 17 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.tools`, `app.topic`, `app.voice`, `app.webhook` |
-| `app.process` | 15 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.calendar`, `bridge.hermes`, `bridge.n8n` |
+| `app.process` | 14 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.memory` | 10 | `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
 | `app.skill` | 10 | `app.agent`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
@@ -1123,6 +1126,7 @@ tests restent l’autorité sur le comportement.
 | `app.documentation` | 2 | `app.file_share`, `app.tools` |
 | `app.image` | 2 | `app.agent`, `app.file_share` |
 | `app.browser` | 1 | `app.chat` |
+| `app.calendar` | 1 | `bridge.calendar` |
 | `app.dream` | 1 | `app.lab` |
 | `app.util` | 1 | `app.tools` |
 | `bridge.affine` | 1 | `app.file_share` |
@@ -1347,13 +1351,26 @@ tests restent l’autorité sur le comportement.
 | GET | `/browser/search` | `app.file_share` | `search` | oui | `back/app/file_share/browser_router.py:104` |
 | GET | `/browser/status` | `app.browser` | `status` | oui | `back/app/browser/router.py:34` |
 | GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | oui | `back/app/file_share/browser_router.py:122` |
-| GET | `/calendars` | `bridge.calendar` | `read_calendars` | oui | `back/bridge/calendar/router.py:70` |
-| POST | `/calendars` | `bridge.calendar` | `create_calendar` | oui | `back/bridge/calendar/router.py:77` |
-| GET | `/calendars/connection-options` | `bridge.calendar` | `connection_options` | oui | `back/bridge/calendar/router.py:63` |
-| GET | `/calendars/process-options` | `bridge.calendar` | `process_options` | oui | `back/bridge/calendar/router.py:54` |
-| DELETE | `/calendars/{calendar_id}` | `bridge.calendar` | `delete_calendar` | oui | `back/bridge/calendar/router.py:105` |
-| PUT | `/calendars/{calendar_id}` | `bridge.calendar` | `update_calendar` | oui | `back/bridge/calendar/router.py:91` |
-| POST | `/calendars/{calendar_id}/test` | `bridge.calendar` | `test_calendar` | oui | `back/bridge/calendar/router.py:113` |
+| GET | `/calendars` | `app.calendar` | `read_calendars` | oui | `back/app/calendar/router.py:95` |
+| POST | `/calendars` | `app.calendar` | `create_calendar` | oui | `back/app/calendar/router.py:233` |
+| GET | `/calendars/connection-options` | `app.calendar` | `connection_options` | oui | `back/app/calendar/router.py:88` |
+| GET | `/calendars/events` | `app.calendar` | `read_events` | oui | `back/app/calendar/router.py:124` |
+| GET | `/calendars/reminders` | `app.calendar` | `read_reminders` | oui | `back/app/calendar/router.py:110` |
+| DELETE | `/calendars/{calendar_id}` | `app.calendar` | `delete_calendar` | oui | `back/app/calendar/router.py:270` |
+| PUT | `/calendars/{calendar_id}` | `app.calendar` | `update_calendar` | oui | `back/app/calendar/router.py:256` |
+| GET | `/calendars/{calendar_id}/conflicts` | `app.calendar` | `calendar_conflicts` | oui | `back/app/calendar/router.py:174` |
+| POST | `/calendars/{calendar_id}/events` | `app.calendar` | `create_event` | oui | `back/app/calendar/router.py:139` |
+| DELETE | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `delete_event` | oui | `back/app/calendar/router.py:198` |
+| GET | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `event_detail` | oui | `back/app/calendar/router.py:157` |
+| PUT | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `update_event` | oui | `back/app/calendar/router.py:148` |
+| GET | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `read_actions` | oui | `back/app/calendar/router.py:207` |
+| POST | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `create_action` | oui | `back/app/calendar/router.py:215` |
+| PUT | `/calendars/{calendar_id}/events/{event_id}/actions/{action_id}` | `app.calendar` | `update_action` | oui | `back/app/calendar/router.py:224` |
+| GET | `/calendars/{calendar_id}/events/{event_id}/history` | `app.calendar` | `event_history` | oui | `back/app/calendar/router.py:165` |
+| POST | `/calendars/{calendar_id}/events/{event_id}/resolve` | `app.calendar` | `resolve_conflict` | oui | `back/app/calendar/router.py:182` |
+| POST | `/calendars/{calendar_id}/executions/{execution_id}/relaunch` | `app.calendar` | `relaunch_execution` | oui | `back/app/calendar/router.py:247` |
+| GET | `/calendars/{calendar_id}/sync-runs` | `app.calendar` | `sync_runs` | oui | `back/app/calendar/router.py:191` |
+| POST | `/calendars/{calendar_id}/test` | `app.calendar` | `test_calendar` | oui | `back/app/calendar/router.py:281` |
 | GET | `/catalogue` | `app.process` | `read_catalogue` | oui | `back/app/process/router.py:94` |
 | GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | oui | `back/app/chat/router.py:459` |
 | GET | `/chat/documents/{document_id}/conversation` | `app.chat` | `read_document_conversation_preference` | oui | `back/app/chat/router.py:199` |
@@ -2036,8 +2053,16 @@ tests restent l’autorité sur le comportement.
 | `agent_teams` | `AgentTeam` | `app.agent` | non | `agent_groups.id`, `agents.id` | `back/app/agent/models.py:17` |
 | `agents` | `Agent` | `app.agent` | oui | `harnesses.id`, `llm_profiles.id`, `memory_items.id`, `titles.id`, `users.id` | `back/app/agent/models.py:37` |
 | `assignments` | `Assignment` | `core.authorize` | oui | `roles.id`, `users.id` | `back/core/authorize/models.py:91` |
-| `calendar_feeds` | `CalendarFeed` | `bridge.calendar` | oui | `connections.id` | `back/bridge/calendar/models.py:15` |
-| `calendar_triggers` | `CalendarTrigger` | `bridge.calendar` | non | `calendar_feeds.id`, `process_runs.id`, `tasks.id` | `back/bridge/calendar/models.py:60` |
+| `calendar_actions` | `CalendarAction` | `app.calendar` | oui | `calendar_events.id` | `back/app/calendar/models.py:119` |
+| `calendar_event_exceptions` | `CalendarEventException` | `app.calendar` | non | `calendar_events.id` | `back/app/calendar/models.py:78` |
+| `calendar_event_revisions` | `CalendarEventRevision` | `app.calendar` | non | `calendar_events.id` | `back/app/calendar/models.py:176` |
+| `calendar_events` | `CalendarEvent` | `app.calendar` | oui | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:48` |
+| `calendar_feeds` | `CalendarFeed` | `app.calendar` | oui | `connections.id` | `back/app/calendar/models.py:12` |
+| `calendar_occurrences` | `CalendarOccurrence` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:87` |
+| `calendar_projection_windows` | `CalendarProjectionWindow` | `app.calendar` | non | `calendar_events.id` | `back/app/calendar/models.py:106` |
+| `calendar_sync_operations` | `CalendarSyncOperation` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:136` |
+| `calendar_sync_runs` | `CalendarSyncRun` | `app.calendar` | non | `calendar_feeds.id`, `calendar_sync_operations.id` | `back/app/calendar/models.py:159` |
+| `calendar_triggers` | `CalendarTrigger` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id`, `tasks.id` | `back/app/calendar/models.py:187` |
 | `chat_document_conversations` | `ChatDocumentConversation` | `app.chat` | non | `documents.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:25` |
 | `chat_emoji_usages` | `ChatEmojiUsage` | `app.chat` | non | `users.id` | `back/app/chat/models.py:46` |
 | `chat_push_deliveries` | `ChatPushDelivery` | `app.chat` | non | `chat_push_subscriptions.id`, `messenger_messages.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:126` |
@@ -2270,13 +2295,16 @@ tests restent l’autorité sur le comportement.
 | `browser_screenshot` | `browser` | `app.browser` | `browser_screenshot` | `back/app/browser/mcp.py:373` |
 | `browser_scroll` | `browser` | `app.browser` | `browser_scroll` | `back/app/browser/mcp.py:463` |
 | `browser_type` | `browser` | `app.browser` | `browser_type` | `back/app/browser/mcp.py:423` |
-| `calendar_create_event` | `calendar` | `bridge.calendar` | `calendar_create_event` | `back/bridge/calendar/mcp.py:132` |
-| `calendar_delete_event` | `calendar` | `bridge.calendar` | `calendar_delete_event` | `back/bridge/calendar/mcp.py:192` |
-| `calendar_events` | `calendar` | `bridge.calendar` | `calendar_events` | `back/bridge/calendar/mcp.py:49` |
-| `calendar_find_free_slots` | `calendar` | `bridge.calendar` | `calendar_find_free_slots` | `back/bridge/calendar/mcp.py:98` |
-| `calendar_is_available` | `calendar` | `bridge.calendar` | `calendar_is_available` | `back/bridge/calendar/mcp.py:75` |
-| `calendar_list` | `calendar` | `bridge.calendar` | `calendar_list` | `back/bridge/calendar/mcp.py:37` |
-| `calendar_update_event` | `calendar` | `bridge.calendar` | `calendar_update_event` | `back/bridge/calendar/mcp.py:162` |
+| `calendar_action_set` | `calendar` | `app.calendar` | `calendar_action_set` | `back/app/calendar/mcp.py:253` |
+| `calendar_actions` | `calendar` | `app.calendar` | `calendar_actions` | `back/app/calendar/mcp.py:246` |
+| `calendar_create_event` | `calendar` | `app.calendar` | `calendar_create_event` | `back/app/calendar/mcp.py:136` |
+| `calendar_delete_event` | `calendar` | `app.calendar` | `calendar_delete_event` | `back/app/calendar/mcp.py:216` |
+| `calendar_event_get` | `calendar` | `app.calendar` | `calendar_event_get` | `back/app/calendar/mcp.py:238` |
+| `calendar_events` | `calendar` | `app.calendar` | `calendar_events` | `back/app/calendar/mcp.py:52` |
+| `calendar_find_free_slots` | `calendar` | `app.calendar` | `calendar_find_free_slots` | `back/app/calendar/mcp.py:101` |
+| `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:77` |
+| `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:39` |
+| `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:173` |
 | `console_exec` | `console` | `app.console` | `console_exec` | `back/app/console/mcp.py:50` |
 | `console_poll` | `console` | `app.console` | `console_poll` | `back/app/console/mcp.py:98` |
 | `console_start` | `console` | `app.console` | `console_start` | `back/app/console/mcp.py:77` |
@@ -2523,6 +2551,8 @@ tests restent l’autorité sur le comportement.
 | `AUDIO_CONFIG_EDIT` | `app.audio` | privilege.AUDIO_CONFIG_EDIT | `back/app/audio/privileges.py:4` |
 | `BROWSER_CONFIG_ACCESS` | `app.browser` | privilege.BROWSER_CONFIG_ACCESS | `back/app/browser/privileges.py:2` |
 | `BROWSER_CONFIG_EDIT` | `app.browser` | privilege.BROWSER_CONFIG_EDIT | `back/app/browser/privileges.py:4` |
+| `CALENDAR_ACCESS` | `app.calendar` | privilege.CALENDAR_ACCESS | `back/app/calendar/privileges.py:2` |
+| `CALENDAR_EDIT` | `app.calendar` | privilege.CALENDAR_EDIT | `back/app/calendar/privileges.py:4` |
 | `CHAT_ACCESS` | `app.chat` | privilege.CHAT_ACCESS | `back/app/chat/privileges.py:3` |
 | `CHAT_CALL` | `app.chat` | privilege.CHAT_CALL | `back/app/chat/privileges.py:6` |
 | `CHAT_IMPERSONATE` | `app.chat` | privilege.CHAT_IMPERSONATE | `back/app/chat/privileges.py:7` |
@@ -2626,8 +2656,6 @@ tests restent l’autorité sur le comportement.
 | `VOICE_CONFIG_EDIT` | `app.voice` | privilege.VOICE_CONFIG_EDIT | `back/app/voice/privileges.py:6` |
 | `VOICE_HISTORY_ACCESS` | `app.voice` | privilege.VOICE_HISTORY_ACCESS | `back/app/voice/privileges.py:1` |
 | `VOICE_HISTORY_CONTROL` | `app.voice` | privilege.VOICE_HISTORY_CONTROL | `back/app/voice/privileges.py:2` |
-| `CALENDAR_ACCESS` | `bridge.calendar` | privilege.CALENDAR_ACCESS | `back/bridge/calendar/privileges.py:2` |
-| `CALENDAR_EDIT` | `bridge.calendar` | privilege.CALENDAR_EDIT | `back/bridge/calendar/privileges.py:4` |
 | `MAIL_ACCESS` | `bridge.mail` | privilege.MAIL_ACCESS | `back/bridge/mail/privileges.py:2` |
 | `MAIL_EDIT` | `bridge.mail` | privilege.MAIL_EDIT | `back/bridge/mail/privileges.py:4` |
 | `MANAGE_ASSIGNMENT` | `core.authorize` | privilege.MANAGE_ASSIGNMENT | `back/core/authorize/privileges.py:15` |

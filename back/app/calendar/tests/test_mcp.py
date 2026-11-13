@@ -1,26 +1,28 @@
 """Agent scoping for the Calendar MCP family."""
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
 from app.tools.mcp_loader import McpToolContext
-from bridge.calendar import mcp
-from bridge.calendar.schemas import CalendarAvailability
+from app.calendar import mcp
+from app.calendar.schemas import CalendarAvailability
 
 
 @pytest.mark.asyncio
 async def test_calendar_list_is_scoped_to_current_agent(monkeypatch) -> None:
     observed = []
 
-    async def list_feeds(*, agent_id=None):
-        observed.append(agent_id)
+    async def list_feeds(*, agent_id=None, connection_id=None):
+        observed.append((agent_id, connection_id))
         return [SimpleNamespace(model_dump=lambda **_kwargs: {"agent_id": agent_id})]
 
     monkeypatch.setattr(mcp.service, "list_feeds", list_feeds)
+    monkeypatch.setattr(mcp.service, "active_connection_for_agent", AsyncMock(return_value=SimpleNamespace(id=13)))
     result = await mcp.calendar_list(McpToolContext(agent_id=42, runtime="internal"))
     assert result == [{"agent_id": 42}]
-    assert observed == [42]
+    assert observed == [(42, 13)]
 
 
 @pytest.mark.asyncio

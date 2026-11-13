@@ -396,3 +396,5 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0271 — Autonomous Goal conduct with durable review Tasks](0271-autonomous-goal-conduct.md)
 
 - [0274 — Provider protocols and multiple Mail accounts](0274-provider-tool-protocols.md)
+- [0278 — Default personal agendas and Goal boundaries](0278-personal-agendas-and-goal-boundaries.md)
+- [0279 — Local agendas and background CalDAV synchronization](0279-local-agendas-and-caldav-synchronization.md)

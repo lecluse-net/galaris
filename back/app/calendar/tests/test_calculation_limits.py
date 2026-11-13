@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from bridge.calendar import calculation, ical
+from app.calendar import calculation, ical
 
 
 def explosive(recurrence="FREQ=SECONDLY;COUNT=5000"):

@@ -12,18 +12,12 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 import httpx
 
 from app.file_share import ResourceUriError, parse_resource_uri
+from app.calendar import CalendarHttpResponse
 
 
-_MAX_BYTES = 5 * 1024 * 1024
+_MAX_BYTES = 64 * 1024 * 1024
 _MAX_REDIRECTS = 5
 _TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=30.0, pool=10.0)
-
-
-@dataclass(frozen=True, slots=True)
-class CalendarHttpResponse:
-    content: bytes
-    final_url: str
-    headers: dict[str, str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,7 +77,7 @@ def _authorization(username: str | None, password: str | None) -> str | None:
     return f"Basic {token}"
 
 
-async def _request(
+async def request_calendar(
     method: str,
     url: str,
     *,
@@ -91,6 +85,7 @@ async def _request(
     password: str | None = None,
     content: bytes | None = None,
     extra_headers: dict[str, str] | None = None,
+    accepted_statuses: tuple[int, ...] = (),
 ) -> CalendarHttpResponse:
     current = url
     original_origin = urlsplit(validate_calendar_url(url)).netloc
@@ -131,28 +126,32 @@ async def _request(
                 raise
             try:
                 if response.status_code in {301, 302, 303, 307, 308}:
-                    if method not in {"GET", "HEAD", "OPTIONS"}:
+                    if method not in {"GET", "HEAD", "OPTIONS", "PROPFIND", "REPORT"}:
                         raise ValueError("Calendar writes cannot follow redirects")
                     location = response.headers.get("location")
                     if not location:
                         raise ValueError("Calendar redirect has no location")
                     redirect = urljoin(target.url, location)
+                    if method in {"PROPFIND", "REPORT"} and urlsplit(redirect).netloc != original_origin:
+                        raise ValueError("CalDAV discovery cannot redirect to another origin")
                     break
-                response.raise_for_status()
+                if response.status_code not in accepted_statuses:
+                    response.raise_for_status()
                 declared = response.headers.get("content-length")
                 if declared and int(declared) > _MAX_BYTES:
-                    raise ValueError("Calendar resource exceeds 5 MiB")
+                    raise ValueError("Calendar resource exceeds 64 MiB")
                 chunks: list[bytes] = []
                 size = 0
                 async for chunk in response.aiter_bytes(64 * 1024):
                     size += len(chunk)
                     if size > _MAX_BYTES:
-                        raise ValueError("Calendar resource exceeds 5 MiB")
+                        raise ValueError("Calendar resource exceeds 64 MiB")
                     chunks.append(chunk)
                 return CalendarHttpResponse(
                     content=b"".join(chunks),
                     final_url=target.url,
                     headers={key.lower(): value for key, value in response.headers.items()},
+                    status_code=response.status_code,
                 )
             finally:
                 await response.aclose()
@@ -167,15 +166,16 @@ async def _request(
 
 
 async def read_calendar(
-    url: str, *, username: str | None = None, password: str | None = None
+    url: str, *, username: str | None = None, password: str | None = None, etag: str | None = None
 ) -> CalendarHttpResponse:
-    return await _request("GET", url, username=username, password=password)
+    return await request_calendar("GET", url, username=username, password=password,
+                          extra_headers={"If-None-Match": etag} if etag else None, accepted_statuses=(304,))
 
 
 async def inspect_calendar(
     url: str, *, username: str | None = None, password: str | None = None
 ) -> CalendarHttpResponse:
-    return await _request("OPTIONS", url, username=username, password=password)
+    return await request_calendar("OPTIONS", url, username=username, password=password)
 
 
 async def write_calendar(
@@ -186,7 +186,7 @@ async def write_calendar(
     password: str | None = None,
     etag: str | None = None,
 ) -> None:
-    await _request(
+    await request_calendar(
         "PUT",
         url,
         username=username,

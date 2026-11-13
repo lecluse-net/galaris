@@ -98,7 +98,7 @@ les documents Galaris en sont le support canonique. Une Task ne nécessite pas �
 un document ; les échanges restent dans la conversation et l'état dans la ressource métier.
 Privilégier le document pertinent existant :
 une URI `document://` stable, enrichie au fil du travail, plutôt que des fichiers Markdown
-ou HTML concurrents. Galaris, Conversation, Document, Memory et File Sharing sont des services système
+ou HTML concurrents. Galaris, Conversation, Document, Memory, File Sharing et Agenda sont des services système
 obligatoires dont les connexions restent actives. Leurs fonctions ont les mêmes modes
 Actif/Bloqué/Sur demande et héritage global/local que les autres Tools ; seules leurs
 définitions sont protégées. Les ACL des ressources et les restrictions de contexte restent

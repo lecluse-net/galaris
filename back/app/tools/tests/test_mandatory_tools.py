@@ -302,33 +302,13 @@ def test_messaging_scopes_are_connection_only_and_exclude_personal_management() 
     assert schema["params"]["tools.management_scope"]["default"] == "team"
 
 
-def test_calendar_requires_an_administrator_connection() -> None:
-    specs = {spec.code: spec for spec in mandatory_tools.INTEGRATED_TOOL_SPECS}
-    calendar = specs["calendar"]
-
-    assert calendar.auto_connect_agents is False
-    assert calendar.default_active is False
-    assert {
-        "calendar_events",
-        "calendar_is_available",
-        "calendar_find_free_slots",
-        "calendar_create_event",
-    } <= set(calendar.mcp_tools)
-    row = next(
-        row for row in mandatory_tools.mandatory_tool_rows()
-        if row["code"] == "calendar"
-    )
-    assert list(row["connection_schema"]["params"]) == [
-        "timezone",
-        "workday_start",
-        "workday_end",
-        "slot_step_minutes",
-    ]
-
-
-def test_mail_is_a_protocol_without_a_seeded_tool() -> None:
+def test_external_mail_and_ical_remain_optional_while_personal_agenda_is_a_system_service() -> None:
+    from app.tools.protocols import protocol_parameters
     codes = {row["code"] for row in mandatory_tools.mandatory_tool_rows()}
-    assert "mail" not in codes and "mail" not in mandatory_tools.INTEGRATED_TOOL_CODES
+    assert {"mail", "calendar"}.isdisjoint(codes)
+    assert {"mail", "calendar"}.isdisjoint(mandatory_tools.INTEGRATED_TOOL_CODES)
+    assert "agenda" in codes and "agenda" in mandatory_tools.SYSTEM_TOOL_CODES
+    assert {"timezone", "workday_start", "workday_end", "slot_step_minutes"} <= protocol_parameters("calendar").keys()
 
 
 def test_topic_tool_is_seeded_without_agent_connections() -> None:

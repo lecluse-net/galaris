@@ -101,6 +101,8 @@ def native_tool_codes_for_tool(tool: Any) -> frozenset[str]:
 
     codes = set(native_tool_codes_for_connection(str(getattr(tool, "code", "") or "")))
     codes.difference_update({"messenger", "mail", "calendar"})
+    if getattr(tool, "code", "") == "agenda":
+        codes.add("calendar")
     if getattr(tool, "mail", None) is not None:
         codes.add("mail")
     if getattr(tool, "calendar", None) is not None:
@@ -495,10 +497,11 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                         key: value for key, value in bound.arguments.items() if key not in {"ctx", "context"}
                     }
                     call_ctx = ctx
-                    if definition.tool_code == "mail":
+                    if definition.tool_code in {"mail", "calendar"}:
                         protocol = cast(Literal["mail", "calendar"], definition.tool_code)
                         requested = arguments.get("connection_id") or ctx.resource("source_connection_id")
-                        selected = await resolve_protocol_connection(ctx.agent_id, protocol, requested)
+                        selected = await resolve_protocol_connection(ctx.agent_id, protocol, requested,
+                            resource_id=arguments.get("calendar_id") if protocol == "calendar" else None)
                         protocol_token = bind_protocol_connection(protocol, ctx.agent_id, selected)
                         call_ctx = replace(ctx, resources={**ctx.resources, "source_connection_id": selected})
                     if definition.tool_code == "messenger":

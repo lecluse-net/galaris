@@ -17,6 +17,7 @@ from loguru import logger
 from .scope_contracts import EffectDescriptorV1, ScopePreflightV1
 
 from .contracts import (
+    AgentTaskState,
     AIMessage,
     AgentUsage,
     AgentContextRequest,
@@ -105,6 +106,15 @@ async def aggregate_llm_run_usage(
     )
 
 
+async def inspect_task_states(task_ids: Sequence[UUID]) -> dict[UUID, AgentTaskState]:
+    """Inspect at most 500 linked Tasks after the caller authorizes their owning resource."""
+    from .task_port import task_port
+
+    if len(task_ids) > 500:
+        raise ValueError("Inspect at most 500 Tasks at once")
+    return await task_port.inspect_states(task_ids)
+
+
 async def submit_background_task(draft: AgentTaskDraft) -> UUID:
     """Persist and schedule a runtime-neutral Task requested by another domain."""
 
@@ -113,6 +123,14 @@ async def submit_background_task(draft: AgentTaskDraft) -> UUID:
     task = await task_port.create(draft)
     task_port.schedule(task.id)
     return task.id
+
+
+async def find_background_tasks(agent_id: int, idempotency_keys: Sequence[str]) -> dict[str, UUID]:
+    """Reconcile at most 500 authorized resource receipts without admitting work."""
+    from .task_port import task_port
+    if len(idempotency_keys) > 500:
+        raise ValueError("Reconcile at most 500 background task submissions")
+    return await task_port.find_submissions(agent_id, idempotency_keys)
 
 
 def _objective_fingerprint(objective: str) -> str:

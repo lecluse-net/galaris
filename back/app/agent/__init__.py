@@ -40,6 +40,7 @@ from .contracts import (
     AgentRunRequest,
     AgentSnapshot,
     AgentTaskDraft,
+    AgentTaskState,
     AgentTaskBlocker,
     AgentTaskBlockers,
     RealtimeAgentContext,
@@ -109,6 +110,8 @@ from .facade import (
     stream_conversation_turn_events,
     stream_workflow,
     submit_background_task,
+    inspect_task_states,
+    find_background_tasks,
     validate_agent_driver,
 )
 from .registry import register_driver_spec
@@ -281,6 +284,7 @@ __all__ = [
     "AIResult",
     "AgentUsage",
     "AgentTaskDraft",
+    "AgentTaskState",
     "AgentTaskBlocker",
     "AgentTaskBlockers",
     "ExecutionResult",
@@ -377,6 +381,8 @@ __all__ = [
     "stream_conversation_turn_events",
     "stream_workflow",
     "submit_background_task",
+    "inspect_task_states",
+    "find_background_tasks",
     "submit_realtime_task",
     "list_realtime_tasks",
     "realtime_task_status",

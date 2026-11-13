@@ -2,6 +2,7 @@
 
 from .models import Tool as ToolModel, ToolSearchDocument
 from .protocols import (
+    register_protocol_resource_resolver,
     bind_protocol_connection, current_protocol_connection,
     reset_protocol_connection, resolve_protocol_connection,
 )
@@ -90,6 +91,7 @@ from .mcp_loader import (
 from .tool_errors import RecoverableToolError, native_failure_key
 
 __all__ = [
+    "register_protocol_resource_resolver",
     "bind_protocol_connection", "current_protocol_connection",
     "reset_protocol_connection", "resolve_protocol_connection",
     "RestAuth", "RestConfig", "RestError", "RestRequest", "RestResponse", "execute_rest_request",

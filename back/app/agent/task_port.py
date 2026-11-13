@@ -7,7 +7,7 @@ facade.
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Protocol
+from typing import Any, Mapping, Protocol, Sequence
 from uuid import UUID
 from .scope_contracts import EffectDescriptorV1, ScopePreflightV1
 
@@ -16,6 +16,7 @@ from .contracts import (
     AgentTask,
     AgentTaskBlockers,
     AgentTaskDraft,
+    AgentTaskState,
     AgentContextCapsule,
     ExecutionResult,
     TaskPhase,
@@ -44,6 +45,8 @@ class AgentTaskPort(Protocol):
     async def replace(self, draft: AgentTaskDraft, *, target_task_id: UUID,
                       expected_revision: int, action_key: str) -> tuple[AgentTask, bool]: ...
     async def get_by_id(self, task_id: UUID) -> AgentTask | None: ...
+    async def inspect_states(self, task_ids: Sequence[UUID]) -> dict[UUID, AgentTaskState]: ...
+    async def find_submissions(self, agent_id: int, keys: Sequence[str]) -> dict[str, UUID]: ...
     async def get_children(self, parent_id: UUID) -> list[AgentTask]: ...
     async def list_for_agent(self, agent_id: int, *, limit: int) -> list[AgentTask]: ...
     async def harness_blockers(self, agent_id: int) -> AgentTaskBlockers: ...
@@ -153,6 +156,12 @@ class _TaskPortProxy:
 
     async def get_by_id(self, task_id: UUID) -> AgentTask | None:
         return await self._require().get_by_id(task_id)
+
+    async def inspect_states(self, task_ids: Sequence[UUID]) -> dict[UUID, AgentTaskState]:
+        return await self._require().inspect_states(task_ids)
+
+    async def find_submissions(self, agent_id: int, keys: Sequence[str]) -> dict[str, UUID]:
+        return await self._require().find_submissions(agent_id, keys)
 
     async def get_children(self, parent_id: UUID) -> list[AgentTask]:
         return await self._require().get_children(parent_id)

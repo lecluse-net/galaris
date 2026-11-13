@@ -1740,6 +1740,16 @@ class AgentRunRequest:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class AgentTaskState:
+    """Content-free state of an already authorized durable Task."""
+
+    task_id: UUID
+    agent_id: int | None
+    status: str
+    operational_state: str
+
+
 @dataclass(frozen=True)
 class AgentTaskDraft:
     """Generic durable creation request sent to ``app.task``."""

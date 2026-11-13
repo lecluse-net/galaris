@@ -3312,27 +3312,29 @@ Sources: [Mail flow](../architecture/flows/mail.md), [tools](../../../back/bridg
 [approval/history](../../../back/bridge/mail/router.py).
 
 <a id="calendrier"></a>
-## 23. Calendars and triggers
+## 23. Local agendas and CalDAV synchronization
 
 **Monitor → Calendars** (`/connection/calendars`) lists connections within management scope,
 with `CALENDAR_ACCESS` or `CALENDAR_EDIT`. The latter also permits creating, editing, testing
 and deleting feeds; creating the connection retains Connection privileges.
 
-Calendar connects one or more HTTPS iCalendar resources with timezone, working-day start/end and
-slot-search interval preferences. Users configure calendar, human owner, activation and read/write
-mode; test synchronisation and preview upcoming occurrences without triggering work. Tools list
-calendars/events over a period with recurrence expansion, check conflicts/availability, find free
-slots, create/edit/delete on writable resources, and trigger Tasks or assigned Processes at event
-start or alarms.
+Every agent has an internal personal agenda without an external account. `app.calendar` owns
+events, exceptions, revisions and actions; `bridge.calendar` adapts CalDAV and read-only HTTPS
+iCalendar subscriptions. Standard connection parameters hold external credentials and scheduling
+preferences. Tools list calendars/events, check availability, find slots, create/edit/delete
+appointments and schedule actions relative to their start/end with per-occurrence Task tracking.
 
-Cancelled/transparent events do not block availability. Recurrences/alarms come from iCalendar.
-Writes replace the `.ics` resource using an ETag precondition where supplied; this is not a general
-CalDAV client. Scheduler synchronisation currently runs every 15 minutes. Durable fingerprints avoid
-duplicate occurrences, recovery examines at most seven days, and disabling the connection removes
-its functions and automatic calendar processing.
+Reads and mutations use local persistence. Month-sized or shorter windows return all occurrences
+without silent pagination. Mutations check revisions and scope: one occurrence, following ones or
+the entire series. Cancelled/transparent events do not block availability; stale sources make it
+unknown. The external worker is examined every minute and polls healthy sources every five minutes.
+CalDAV uses differential tokens, ETags and a transactional outbox; `pending` is not remote confirmation.
+Conflicts preserve both versions. Local actions are examined every ten seconds independently of
+browsing and network access. Idempotent admission creates a Task; only its success marks the action
+processed. External actions require explicit activation. Goal reviews retain their own schedule.
 
-Sources: [calendar flow](../architecture/flows/calendar.md), [API](../../../back/bridge/calendar/router.py),
-[tools](../../../back/bridge/calendar/mcp.py).
+Sources: [calendar flow](../architecture/flows/calendar.md), [API](../../../back/app/calendar/router.py),
+[tools](../../../back/app/calendar/mcp.py).
 
 <a id="processus"></a>
 ## 24. Business Processes, n8n and webhooks

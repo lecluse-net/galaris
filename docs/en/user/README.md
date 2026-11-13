@@ -100,6 +100,13 @@ One agent may have several connections to the same Mail Tool. The MCP `tools_lis
 provides mailbox addresses, `connection_id` values and authorized functions.
 
 
+Every agent has a **Personal agenda** without an external account. Ask it to create an appointment
+or dated reminder using its authorized calendar functions. A reminder creates a tracked Task;
+creation does not yet mean that execution succeeded. External appointments use a local replica
+synchronized in the background through CalDAV, or a read-only iCalendar subscription. A pending
+write is not yet confirmed by the provider. Goals retain their own scheduled reviews without
+duplicating them as agenda reminders.
+
 To configure a REST integration, an administrator enables **API** on the Tool, then
 enters its address directly in the **REST API** tab. All Tool connections share this address.
 Credentials are entered in global parameters or the agent's connection.

@@ -111,6 +111,13 @@ Un agent peut avoir plusieurs connexions au même Tool Mail. Le catalogue MCP `t
 indique les adresses, les `connection_id` et les fonctions autorisées.
 
 
+Chaque agent dispose d'un **Agenda personnel** sans compte externe. Demandez-lui de créer un
+rendez-vous ou un rappel daté ; les fonctions autorisées de son agenda sont utilisées.
+Un rappel crée une Task suivie ; sa création ne signifie pas encore qu'elle a réussi.
+Les rendez-vous externes utilisent une copie locale synchronisée en arrière-plan par CalDAV,
+ou un abonnement iCalendar en lecture seule. Une écriture en attente n'est pas confirmée chez
+le fournisseur. Les Goals conservent leurs revues planifiées sans rappel dupliqué dans l'agenda.
+
 Pour configurer une intégration REST, un responsable active **API** sur le Tool, puis
 saisit directement l'adresse dans l'onglet **API REST**. Cette adresse est commune à toutes
 les connexions de l'outil. Les identifiants se renseignent dans ses paramètres globaux ou

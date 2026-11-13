@@ -64,6 +64,13 @@ async def build_agent_tool_advertisement(
             lines.append(f"- `{tool_code}`: {rendered_names}")
 
     tool_names = frozenset(definition.name for definition in definitions)
+    if {"calendar_list", "calendar_create_event"} <= tool_names:
+        lines.append("Use your personal agenda for appointments and dated reminders when its functions are allowed; no external account is needed. "
+            "Call calendar_list() for its calendar_id, then calendar_create_event with reminder_minutes_before=0 "
+            "for a reminder at the event start, or a positive number for advance notice. A reminder creates one tracked Task. "
+            "Use Goals for durable outcomes, recurring progress and their existing scheduled reviews. Never duplicate a Goal cycle "
+            "with an agenda reminder. A Goal-related calendar entry must represent a distinct appointment or commitment. "
+            "Connected calendars are optional: use their explicit connection_id or calendar_id; never bypass a denied function.")
     if "mail" in grouped:
         lines.append("Mail supports multiple accounts, including several connections to the same provider Tool. "
             "When tools_list is available, use it to discover each mailbox address, connection_id and authorized functions. "

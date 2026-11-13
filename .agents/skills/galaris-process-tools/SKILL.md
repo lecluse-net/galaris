@@ -36,6 +36,23 @@ besoin de suivi durable ne changent pas leur nature : leur domaine possède cet 
 
 ## Ajouter ou modifier un outil MCP
 
+### Agendas et objectifs
+
+`app.calendar` possède les agendas, événements iCalendar historisés, projections locales,
+actions et exécutions liées aux Tasks. `bridge.calendar` traduit CalDAV (protocole de référence)
+et les abonnements iCalendar HTTPS en lecture seule. Les consultations et commandes restent
+locales ; la synchronisation bidirectionnelle utilise un outbox transactionnel, les jetons
+CalDAV, les ETag et des écritures conditionnelles, sans écrasement des conflits.
+Le service système `agenda` est actif par défaut et sans identifiants externes ; une source
+externe est optionnelle. Les fonctions `calendar_*` gardent leurs contrôles habituels et choisissent
+l’agenda personnel par défaut. Un identifiant de calendrier lie l’appel à sa connexion réelle.
+Les actions admettent des Tasks idempotentes indépendamment des périodes consultées. Les
+modifications contrôlent les révisions et l'identité d'origine des occurrences. Une admission
+dont le reçu a été perdu est réconciliée avant modification ou relance ; une création de Task
+ne vaut pas traitement réussi. `pending` ne vaut jamais confirmation d'une écriture externe.
+L’agenda porte les engagements datés et rappels ponctuels. Goal conserve le suivi d’un résultat
+durable et ses cycles : ne pas créer un rappel qui duplique un cycle Goal déjà planifié.
+
 1. Définir un nom stable, une description actionnable et un schéma d’entrée borné.
 2. Valider les paramètres avant l’accès réseau, disque ou base.
 3. Résoudre les connexions et secrets côté serveur ; ne jamais les exposer au modèle.

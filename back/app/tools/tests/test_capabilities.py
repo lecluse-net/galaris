@@ -24,7 +24,7 @@ def test_rejects_duplicate_functional_capabilities(values):
 
 @pytest.mark.asyncio
 async def test_explicit_selections_preserve_custom_values_across_edits_exports_and_reimports(db):
-    selections = ["imap_smtp.mail", "ical.calendar", "vendor.custom_sensors", "Unclassified extension"]
+    selections = ["imap_smtp.mail", "caldav.calendar", "vendor.custom_sensors", "Unclassified extension"]
     tool = await tool_service.create_tool(ToolCreate(code="capability-provider", label="Synthetic provider", capabilities=selections))
     assert to_public(tool).capabilities == selections
     assert to_public(tool).has_mail and to_public(tool).has_calendar
@@ -75,14 +75,14 @@ async def test_capability_backfill_keeps_existing_configuration_and_is_idempoten
     await _populate_selections(db, delta)
     await _populate_selections(db, delta)
     assert await _selections_populated(db, delta)
-    assert tool.capabilities == ["sse.mcp", "vendor_share.file_share", "imap_smtp.mail", "ical.calendar"]
+    assert tool.capabilities == ["sse.mcp", "vendor_share.file_share", "imap_smtp.mail", "caldav.calendar"]
     assert (tool.id, tool.label, tool.mcp_config, tool.file_share_config, tool.global_params) == original
     assert await db.scalar(select(Tool.id).where(Tool.id == tool.id)) == original[0]
 
 
 def test_catalogue_exposes_functional_strings_and_translatable_standard_labels():
     catalogue = {item.code: item for item in supported_capabilities()}
-    assert set(catalogue) == {"mcp", "api", "file_share", "messenger", "listener", "mail"}
+    assert set(catalogue) == {"mcp", "api", "file_share", "messenger", "listener", "mail", "calendar"}
     assert {item.value for item in catalogue["mcp"].protocols} == {"http.mcp", "sse.mcp", "stdio.mcp"}
     for capability in catalogue.values():
         assert capability.label == f"tools.capabilityLabels.{capability.code}"
@@ -99,6 +99,7 @@ def test_catalogue_exposes_functional_strings_and_translatable_standard_labels()
     assert bindings["email_address"]["parameter"] == "email"
     assert bindings["allowed_mailboxes"]["parameter"] == "folders"
     assert bindings["allowed_mailboxes"]["definition"]["widget"] == "mail_folder_tree"
+    assert {"timezone", "workday_start", "slot_step_minutes"} <= catalogue["calendar"].protocols[0].parameters.keys()
 
 
 @pytest.mark.asyncio
@@ -132,7 +133,7 @@ async def test_protocol_editor_requires_privileges_and_saves_settings_atomically
             assert "imap_smtp.mail" in {protocol["value"] for item in response.json() for protocol in item["protocols"]}
 
     definition = {"code": f"inline-provider-{suffix}", "label": "Synthetic inline provider",
-        "capabilities": ["imap_smtp.mail", "ical.calendar"],
+        "capabilities": ["imap_smtp.mail", "caldav.calendar"],
         "connection_schema": {"params": {"login": {"type": "string"}, "password": {"type": "password"}}},
         "mail_config": {"settings": {"imap_host": "imap.example.test", "smtp_host": "smtp.example.test", "smtp_port": "587"},
             "param_map": {"email_address": "login", "imap_username": "login", "imap_password": "password",

@@ -382,6 +382,72 @@
       },
       {
         "files": [
+          "back/app/calendar/dispatch.py",
+          "back/app/calendar/router.py",
+          "back/app/calendar/service.py",
+          "back/app/calendar/store.py"
+        ],
+        "source": "app.calendar",
+        "target": "app.agent"
+      },
+      {
+        "files": [
+          "back/app/calendar/dbadmin.py",
+          "back/app/calendar/dispatch.py",
+          "back/app/calendar/router.py",
+          "back/app/calendar/service.py",
+          "back/app/calendar/store.py",
+          "back/app/calendar/synchronization.py"
+        ],
+        "source": "app.calendar",
+        "target": "app.connection"
+      },
+      {
+        "files": [
+          "back/app/calendar/__init__.py",
+          "back/app/calendar/dbadmin.py",
+          "back/app/calendar/mcp.py",
+          "back/app/calendar/service.py"
+        ],
+        "source": "app.calendar",
+        "target": "app.tools"
+      },
+      {
+        "files": [
+          "back/app/calendar/router.py"
+        ],
+        "source": "app.calendar",
+        "target": "core.authorize"
+      },
+      {
+        "files": [
+          "back/app/calendar/dispatch.py",
+          "back/app/calendar/maintenance.py",
+          "back/app/calendar/models.py",
+          "back/app/calendar/router.py",
+          "back/app/calendar/service.py",
+          "back/app/calendar/store.py",
+          "back/app/calendar/synchronization.py"
+        ],
+        "source": "app.calendar",
+        "target": "core.database"
+      },
+      {
+        "files": [
+          "back/app/calendar/dbadmin.py"
+        ],
+        "source": "app.calendar",
+        "target": "core.dbadmin"
+      },
+      {
+        "files": [
+          "back/app/calendar/crypto.py"
+        ],
+        "source": "app.calendar",
+        "target": "core.util"
+      },
+      {
+        "files": [
           "back/app/chat/assertions.py",
           "back/app/chat/document_conversation.py",
           "back/app/chat/events.py",
@@ -4890,19 +4956,12 @@
       },
       {
         "files": [
-          "back/bridge/calendar/router.py",
-          "back/bridge/calendar/service.py"
+          "back/bridge/calendar/__init__.py",
+          "back/bridge/calendar/caldav.py",
+          "back/bridge/calendar/transport.py"
         ],
         "source": "bridge.calendar",
-        "target": "app.agent"
-      },
-      {
-        "files": [
-          "back/bridge/calendar/router.py",
-          "back/bridge/calendar/service.py"
-        ],
-        "source": "bridge.calendar",
-        "target": "app.connection"
+        "target": "app.calendar"
       },
       {
         "files": [
@@ -4910,44 +4969,6 @@
         ],
         "source": "bridge.calendar",
         "target": "app.file_share"
-      },
-      {
-        "files": [
-          "back/bridge/calendar/router.py",
-          "back/bridge/calendar/service.py"
-        ],
-        "source": "bridge.calendar",
-        "target": "app.process"
-      },
-      {
-        "files": [
-          "back/bridge/calendar/mcp.py",
-          "back/bridge/calendar/service.py"
-        ],
-        "source": "bridge.calendar",
-        "target": "app.tools"
-      },
-      {
-        "files": [
-          "back/bridge/calendar/router.py"
-        ],
-        "source": "bridge.calendar",
-        "target": "core.authorize"
-      },
-      {
-        "files": [
-          "back/bridge/calendar/models.py",
-          "back/bridge/calendar/service.py"
-        ],
-        "source": "bridge.calendar",
-        "target": "core.database"
-      },
-      {
-        "files": [
-          "back/bridge/calendar/service.py"
-        ],
-        "source": "bridge.calendar",
-        "target": "core.util"
       },
       {
         "files": [
@@ -6742,6 +6763,7 @@
           "count": 35,
           "module": "app.agent",
           "modules": [
+            "app.calendar",
             "app.chat",
             "app.connection",
             "app.console",
@@ -6768,7 +6790,6 @@
             "app.topic",
             "app.voice",
             "app.webhook",
-            "bridge.calendar",
             "bridge.claude_agent",
             "bridge.code_server",
             "bridge.codex",
@@ -6786,6 +6807,7 @@
             "app.agent",
             "app.audio",
             "app.browser",
+            "app.calendar",
             "app.connection",
             "app.console",
             "app.contact",
@@ -6810,7 +6832,6 @@
             "app.topic",
             "app.voice",
             "app.webhook",
-            "bridge.calendar",
             "bridge.hermes",
             "bridge.mail",
             "bridge.matrix",
@@ -6853,6 +6874,7 @@
           "module": "app.connection",
           "modules": [
             "app.browser",
+            "app.calendar",
             "app.console",
             "app.conversation",
             "app.dream",
@@ -6867,7 +6889,6 @@
             "app.topic",
             "app.voice",
             "app.webhook",
-            "bridge.calendar",
             "bridge.hermes",
             "bridge.mail",
             "bridge.matrix",
@@ -6925,7 +6946,7 @@
           ]
         },
         {
-          "count": 15,
+          "count": 14,
           "module": "app.process",
           "modules": [
             "app.agent",
@@ -6940,7 +6961,6 @@
             "app.onboarding",
             "app.topic",
             "app.voice",
-            "bridge.calendar",
             "bridge.hermes",
             "bridge.n8n"
           ]
@@ -7141,6 +7161,13 @@
           "module": "app.browser",
           "modules": [
             "app.chat"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app.calendar",
+          "modules": [
+            "bridge.calendar"
           ]
         },
         {
@@ -7547,17 +7574,6 @@
         },
         {
           "count": 5,
-          "module": "bridge.calendar",
-          "modules": [
-            "app.agent",
-            "app.connection",
-            "app.file_share",
-            "app.process",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 5,
           "module": "bridge.claude_agent",
           "modules": [
             "app.agent",
@@ -7630,6 +7646,15 @@
         },
         {
           "count": 3,
+          "module": "app.calendar",
+          "modules": [
+            "app.agent",
+            "app.connection",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 3,
           "module": "app.dashboard",
           "modules": [
             "app.agent",
@@ -7686,6 +7711,14 @@
           "modules": [
             "app.agent",
             "app.tools"
+          ]
+        },
+        {
+          "count": 2,
+          "module": "bridge.calendar",
+          "modules": [
+            "app.calendar",
+            "app.file_share"
           ]
         },
         {
@@ -8336,58 +8369,82 @@
         "namespace": "browser"
       },
       {
-        "file": "back/bridge/calendar/mcp.py",
+        "file": "back/app/calendar/mcp.py",
+        "handler": "calendar_action_set",
+        "line": 253,
+        "module": "app.calendar",
+        "name": "calendar_action_set",
+        "namespace": "calendar"
+      },
+      {
+        "file": "back/app/calendar/mcp.py",
+        "handler": "calendar_actions",
+        "line": 246,
+        "module": "app.calendar",
+        "name": "calendar_actions",
+        "namespace": "calendar"
+      },
+      {
+        "file": "back/app/calendar/mcp.py",
         "handler": "calendar_create_event",
-        "line": 132,
-        "module": "bridge.calendar",
+        "line": 136,
+        "module": "app.calendar",
         "name": "calendar_create_event",
         "namespace": "calendar"
       },
       {
-        "file": "back/bridge/calendar/mcp.py",
+        "file": "back/app/calendar/mcp.py",
         "handler": "calendar_delete_event",
-        "line": 192,
-        "module": "bridge.calendar",
+        "line": 216,
+        "module": "app.calendar",
         "name": "calendar_delete_event",
         "namespace": "calendar"
       },
       {
-        "file": "back/bridge/calendar/mcp.py",
+        "file": "back/app/calendar/mcp.py",
+        "handler": "calendar_event_get",
+        "line": 238,
+        "module": "app.calendar",
+        "name": "calendar_event_get",
+        "namespace": "calendar"
+      },
+      {
+        "file": "back/app/calendar/mcp.py",
         "handler": "calendar_events",
-        "line": 49,
-        "module": "bridge.calendar",
+        "line": 52,
+        "module": "app.calendar",
         "name": "calendar_events",
         "namespace": "calendar"
       },
       {
-        "file": "back/bridge/calendar/mcp.py",
+        "file": "back/app/calendar/mcp.py",
         "handler": "calendar_find_free_slots",
-        "line": 98,
-        "module": "bridge.calendar",
+        "line": 101,
+        "module": "app.calendar",
         "name": "calendar_find_free_slots",
         "namespace": "calendar"
       },
       {
-        "file": "back/bridge/calendar/mcp.py",
+        "file": "back/app/calendar/mcp.py",
         "handler": "calendar_is_available",
-        "line": 75,
-        "module": "bridge.calendar",
+        "line": 77,
+        "module": "app.calendar",
         "name": "calendar_is_available",
         "namespace": "calendar"
       },
       {
-        "file": "back/bridge/calendar/mcp.py",
+        "file": "back/app/calendar/mcp.py",
         "handler": "calendar_list",
-        "line": 37,
-        "module": "bridge.calendar",
+        "line": 39,
+        "module": "app.calendar",
         "name": "calendar_list",
         "namespace": "calendar"
       },
       {
-        "file": "back/bridge/calendar/mcp.py",
+        "file": "back/app/calendar/mcp.py",
         "handler": "calendar_update_event",
-        "line": 162,
-        "module": "bridge.calendar",
+        "line": 173,
+        "module": "app.calendar",
         "name": "calendar_update_event",
         "namespace": "calendar"
       },
@@ -10337,27 +10394,119 @@
         "table": "assignments"
       },
       {
+        "class_name": "CalendarAction",
+        "file": "back/app/calendar/models.py",
+        "foreign_keys": [
+          "calendar_events.id"
+        ],
+        "history_mixin": true,
+        "line": 119,
+        "module": "app.calendar",
+        "table": "calendar_actions"
+      },
+      {
+        "class_name": "CalendarEventException",
+        "file": "back/app/calendar/models.py",
+        "foreign_keys": [
+          "calendar_events.id"
+        ],
+        "history_mixin": false,
+        "line": 78,
+        "module": "app.calendar",
+        "table": "calendar_event_exceptions"
+      },
+      {
+        "class_name": "CalendarEventRevision",
+        "file": "back/app/calendar/models.py",
+        "foreign_keys": [
+          "calendar_events.id"
+        ],
+        "history_mixin": false,
+        "line": 176,
+        "module": "app.calendar",
+        "table": "calendar_event_revisions"
+      },
+      {
+        "class_name": "CalendarEvent",
+        "file": "back/app/calendar/models.py",
+        "foreign_keys": [
+          "calendar_events.id",
+          "calendar_feeds.id"
+        ],
+        "history_mixin": true,
+        "line": 48,
+        "module": "app.calendar",
+        "table": "calendar_events"
+      },
+      {
         "class_name": "CalendarFeed",
-        "file": "back/bridge/calendar/models.py",
+        "file": "back/app/calendar/models.py",
         "foreign_keys": [
           "connections.id"
         ],
         "history_mixin": true,
-        "line": 15,
-        "module": "bridge.calendar",
+        "line": 12,
+        "module": "app.calendar",
         "table": "calendar_feeds"
       },
       {
-        "class_name": "CalendarTrigger",
-        "file": "back/bridge/calendar/models.py",
+        "class_name": "CalendarOccurrence",
+        "file": "back/app/calendar/models.py",
+        "foreign_keys": [
+          "calendar_events.id",
+          "calendar_feeds.id"
+        ],
+        "history_mixin": false,
+        "line": 87,
+        "module": "app.calendar",
+        "table": "calendar_occurrences"
+      },
+      {
+        "class_name": "CalendarProjectionWindow",
+        "file": "back/app/calendar/models.py",
+        "foreign_keys": [
+          "calendar_events.id"
+        ],
+        "history_mixin": false,
+        "line": 106,
+        "module": "app.calendar",
+        "table": "calendar_projection_windows"
+      },
+      {
+        "class_name": "CalendarSyncOperation",
+        "file": "back/app/calendar/models.py",
+        "foreign_keys": [
+          "calendar_events.id",
+          "calendar_feeds.id"
+        ],
+        "history_mixin": false,
+        "line": 136,
+        "module": "app.calendar",
+        "table": "calendar_sync_operations"
+      },
+      {
+        "class_name": "CalendarSyncRun",
+        "file": "back/app/calendar/models.py",
         "foreign_keys": [
           "calendar_feeds.id",
-          "process_runs.id",
+          "calendar_sync_operations.id"
+        ],
+        "history_mixin": false,
+        "line": 159,
+        "module": "app.calendar",
+        "table": "calendar_sync_runs"
+      },
+      {
+        "class_name": "CalendarTrigger",
+        "file": "back/app/calendar/models.py",
+        "foreign_keys": [
+          "calendar_events.id",
+          "calendar_feeds.id",
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 60,
-        "module": "bridge.calendar",
+        "line": 187,
+        "module": "app.calendar",
         "table": "calendar_triggers"
       },
       {
@@ -12640,6 +12789,23 @@
       {
         "capabilities": [
           "contracts.py",
+          "facade.py",
+          "mcp.py",
+          "models.py",
+          "privileges.py",
+          "router.py",
+          "schemas.py",
+          "tests/"
+        ],
+        "conditional": false,
+        "exists": true,
+        "layer": "app",
+        "name": "app.calendar",
+        "path": "back/app/calendar"
+      },
+      {
+        "capabilities": [
+          "contracts.py",
           "i18n/",
           "interface.py",
           "mcp.py",
@@ -13152,14 +13318,7 @@
         "path": "back/bridge/mail"
       },
       {
-        "capabilities": [
-          "mcp.py",
-          "models.py",
-          "privileges.py",
-          "router.py",
-          "schemas.py",
-          "tests/"
-        ],
+        "capabilities": [],
         "conditional": false,
         "exists": true,
         "layer": "bridge",
@@ -13498,6 +13657,20 @@
         "line": 4,
         "module": "app.browser",
         "value": "privilege.BROWSER_CONFIG_EDIT"
+      },
+      {
+        "constant": "CALENDAR_ACCESS",
+        "file": "back/app/calendar/privileges.py",
+        "line": 2,
+        "module": "app.calendar",
+        "value": "privilege.CALENDAR_ACCESS"
+      },
+      {
+        "constant": "CALENDAR_EDIT",
+        "file": "back/app/calendar/privileges.py",
+        "line": 4,
+        "module": "app.calendar",
+        "value": "privilege.CALENDAR_EDIT"
       },
       {
         "constant": "CHAT_ACCESS",
@@ -14219,20 +14392,6 @@
         "line": 2,
         "module": "app.voice",
         "value": "privilege.VOICE_HISTORY_CONTROL"
-      },
-      {
-        "constant": "CALENDAR_ACCESS",
-        "file": "back/bridge/calendar/privileges.py",
-        "line": 2,
-        "module": "bridge.calendar",
-        "value": "privilege.CALENDAR_ACCESS"
-      },
-      {
-        "constant": "CALENDAR_EDIT",
-        "file": "back/bridge/calendar/privileges.py",
-        "line": 4,
-        "module": "bridge.calendar",
-        "value": "privilege.CALENDAR_EDIT"
       },
       {
         "constant": "MAIL_ACCESS",
@@ -15386,65 +15545,182 @@
       {
         "authorized": true,
         "declared_path": "/calendars",
-        "file": "back/bridge/calendar/router.py",
+        "file": "back/app/calendar/router.py",
         "handler": "read_calendars",
-        "line": 70,
+        "line": 95,
         "method": "GET",
-        "module": "bridge.calendar"
+        "module": "app.calendar"
       },
       {
         "authorized": true,
         "declared_path": "/calendars",
-        "file": "back/bridge/calendar/router.py",
+        "file": "back/app/calendar/router.py",
         "handler": "create_calendar",
-        "line": 77,
+        "line": 233,
         "method": "POST",
-        "module": "bridge.calendar"
+        "module": "app.calendar"
       },
       {
         "authorized": true,
         "declared_path": "/calendars/connection-options",
-        "file": "back/bridge/calendar/router.py",
+        "file": "back/app/calendar/router.py",
         "handler": "connection_options",
-        "line": 63,
+        "line": 88,
         "method": "GET",
-        "module": "bridge.calendar"
+        "module": "app.calendar"
       },
       {
         "authorized": true,
-        "declared_path": "/calendars/process-options",
-        "file": "back/bridge/calendar/router.py",
-        "handler": "process_options",
-        "line": 54,
+        "declared_path": "/calendars/events",
+        "file": "back/app/calendar/router.py",
+        "handler": "read_events",
+        "line": 124,
         "method": "GET",
-        "module": "bridge.calendar"
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/reminders",
+        "file": "back/app/calendar/router.py",
+        "handler": "read_reminders",
+        "line": 110,
+        "method": "GET",
+        "module": "app.calendar"
       },
       {
         "authorized": true,
         "declared_path": "/calendars/{calendar_id}",
-        "file": "back/bridge/calendar/router.py",
+        "file": "back/app/calendar/router.py",
         "handler": "delete_calendar",
-        "line": 105,
+        "line": 270,
         "method": "DELETE",
-        "module": "bridge.calendar"
+        "module": "app.calendar"
       },
       {
         "authorized": true,
         "declared_path": "/calendars/{calendar_id}",
-        "file": "back/bridge/calendar/router.py",
+        "file": "back/app/calendar/router.py",
         "handler": "update_calendar",
-        "line": 91,
+        "line": 256,
         "method": "PUT",
-        "module": "bridge.calendar"
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/conflicts",
+        "file": "back/app/calendar/router.py",
+        "handler": "calendar_conflicts",
+        "line": 174,
+        "method": "GET",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/events",
+        "file": "back/app/calendar/router.py",
+        "handler": "create_event",
+        "line": 139,
+        "method": "POST",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/events/{event_id}",
+        "file": "back/app/calendar/router.py",
+        "handler": "delete_event",
+        "line": 198,
+        "method": "DELETE",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/events/{event_id}",
+        "file": "back/app/calendar/router.py",
+        "handler": "event_detail",
+        "line": 157,
+        "method": "GET",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/events/{event_id}",
+        "file": "back/app/calendar/router.py",
+        "handler": "update_event",
+        "line": 148,
+        "method": "PUT",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/events/{event_id}/actions",
+        "file": "back/app/calendar/router.py",
+        "handler": "read_actions",
+        "line": 207,
+        "method": "GET",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/events/{event_id}/actions",
+        "file": "back/app/calendar/router.py",
+        "handler": "create_action",
+        "line": 215,
+        "method": "POST",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/events/{event_id}/actions/{action_id}",
+        "file": "back/app/calendar/router.py",
+        "handler": "update_action",
+        "line": 224,
+        "method": "PUT",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/events/{event_id}/history",
+        "file": "back/app/calendar/router.py",
+        "handler": "event_history",
+        "line": 165,
+        "method": "GET",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/events/{event_id}/resolve",
+        "file": "back/app/calendar/router.py",
+        "handler": "resolve_conflict",
+        "line": 182,
+        "method": "POST",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/executions/{execution_id}/relaunch",
+        "file": "back/app/calendar/router.py",
+        "handler": "relaunch_execution",
+        "line": 247,
+        "method": "POST",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/sync-runs",
+        "file": "back/app/calendar/router.py",
+        "handler": "sync_runs",
+        "line": 191,
+        "method": "GET",
+        "module": "app.calendar"
       },
       {
         "authorized": true,
         "declared_path": "/calendars/{calendar_id}/test",
-        "file": "back/bridge/calendar/router.py",
+        "file": "back/app/calendar/router.py",
         "handler": "test_calendar",
-        "line": 113,
+        "line": 281,
         "method": "POST",
-        "module": "bridge.calendar"
+        "module": "app.calendar"
       },
       {
         "authorized": true,

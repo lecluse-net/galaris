@@ -153,7 +153,7 @@ async def test_calendar_roles_use_scoped_metadata_and_do_not_open_connector_conf
         _, other_user = await actor([])
         other = await owned_agent(other_user)
         async with get_db_session() as db:
-            tool = await db.scalar(select(Tool).where(Tool.code == "calendar"))
+            tool = (await db.scalars(select(Tool).where(Tool.code == "agenda"))).one()
             connections = [Connection(agent_id=identity, tool_id=tool.id, active=True) for identity in [own, other]]
             db.add_all(connections)
             await db.flush()
@@ -162,15 +162,39 @@ async def test_calendar_roles_use_scoped_metadata_and_do_not_open_connector_conf
         if code == "CONNECTION_ACCESS":
             assert response.status_code == 403
             assert (await client.get("/api/calendars", params={"connection_id": own_id}, headers=headers)).status_code == 403
+            assert (await client.get("/api/calendars/reminders", params={"connection_id": own_id}, headers=headers)).status_code == 403
             continue
         assert response.status_code == 200 and response.json()
         assert all(set(item) == {"id", "agent_id", "label"} for item in response.json())
         assert {item["id"] for item in response.json()} == {own_id}
         assert (await client.get("/api/calendars", params={"connection_id": other_id}, headers=headers)).status_code == 404
+        assert (await client.get("/api/calendars/reminders", params={"connection_id": other_id}, headers=headers)).status_code == 404
+        journal = await client.get("/api/calendars/reminders", params={"connection_id": own_id, "limit": 500}, headers=headers)
+        assert journal.status_code == 200 and journal.json() == {"items": [], "total": 0}
         assert (await client.get(f"/api/connections/{own_id}/params", headers=headers)).status_code == 403
         created = await client.post("/api/calendars", headers=headers, json={"connection_id": own_id,
-            "label": "Synthetic calendar", "url": "https://calendar.example.invalid/events.ics"})
+            "label": "Synthetic calendar"})
         assert created.status_code == (201 if code == "CALENDAR_EDIT" else 403), created.text
+        calendars = await client.get('/api/calendars', params={'connection_id': own_id}, headers=headers)
+        calendar_id = calendars.json()[0]['id']
+        appointment = {'summary': 'Synthetic API appointment', 'start': '2030-04-05T10:00:00Z', 'end': '2030-04-05T11:00:00Z'}
+        event = await client.post(f'/api/calendars/{calendar_id}/events', headers=headers, json=appointment)
+        assert event.status_code == (201 if code == 'CALENDAR_EDIT' else 403), event.text
+        foreign = await client.get('/api/calendars/events', headers=headers, params={'agent_id': other, 'period': 'month'})
+        assert foreign.status_code == 404
+        if code == 'CALENDAR_EDIT':
+            identity = event.json()['event_id']
+            window = await client.get('/api/calendars/events', headers=headers, params={'agent_id': own,
+                'start': '2030-04-01T00:00:00Z', 'end': '2030-05-01T00:00:00Z'})
+            assert window.status_code == 200 and window.json()['total'] == len(window.json()['items']) == 1
+            stale = await client.put(f'/api/calendars/{calendar_id}/events/{identity}', headers=headers,
+                json={'expected_revision': 99, 'summary': 'Synthetic stale edit'})
+            assert stale.status_code == 409
+            changed = await client.put(f'/api/calendars/{calendar_id}/events/{identity}', headers=headers,
+                json={'expected_revision': 1, 'summary': 'Synthetic accepted edit'})
+            assert changed.status_code == 200 and changed.json()['revision'] == 2
+            detail = await client.get(f'/api/calendars/{calendar_id}/events/{identity}', headers=headers)
+            assert detail.status_code == 200 and detail.json()['summary'] == 'Synthetic accepted edit'
 
 
 @pytest.mark.asyncio
@@ -190,7 +214,7 @@ async def test_connector_metadata_does_not_disclose_global_tool_configuration(cl
     assert "private-marker" not in response.text and "synthetic-private.invalid" not in response.text
     item = next(item for item in response.json() if item["id"] == identity)
     assert item["can_edit"] is True  # Definition origin, independent of this reader's privileges.
-    assert next(item for item in response.json() if item["code"] == "calendar")["can_edit"] is False
+    assert next(item for item in response.json() if item["code"] == "galaris")["can_edit"] is False
     if tool_privilege:
         assert item["global_params"]["region"] == {"value": "synthetic-region", "configured": True, "secret": False, "forced": True}
         assert item["global_params"]["token"] == {"value": None, "configured": True, "secret": True, "forced": False}

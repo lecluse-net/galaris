@@ -4193,36 +4193,39 @@ Sources : [flux Mail](../architecture/flows/mail.md), [fonctions](../../../back/
 [validation et historique](../../../back/bridge/mail/router.py).
 
 <a id="calendrier"></a>
-## 23. Calendriers et déclenchements
+## 23. Agendas locaux et synchronisation CalDAV
 
 **Superviser → Calendriers** (`/connection/calendars`) propose les connexions du périmètre
 géré, avec `CALENDAR_ACCESS` ou `CALENDAR_EDIT`. Le second droit permet aussi d'ajouter,
 modifier, tester ou supprimer les flux ; créer la connexion conserve les droits Connexions.
 
-Le Tool Calendar connecte des ressources **iCalendar HTTPS** à un agent. Une connexion peut porter
-plusieurs calendriers et des préférences de disponibilité : fuseau horaire, début/fin de journée
-et pas de recherche des créneaux.
+Chaque agent dispose d'un agenda personnel interne sans compte externe. `app.calendar` possède
+les événements, exceptions, révisions et actions ; `bridge.calendar` adapte CalDAV et les
+abonnements iCalendar HTTPS en lecture seule. Les paramètres standards des connexions portent
+les identifiants externes et les préférences de disponibilité.
 
-- Ajouter/configurer un calendrier, son propriétaire humain, son activation et son mode lecture
-  ou écriture.
+- Créer un agenda interne et configurer son activation et ses actions locales.
 - Tester la synchronisation et voir les prochaines occurrences sans déclencher d’action.
 - Lister les calendriers et les événements sur une période, avec développement des récurrences.
 - Vérifier la disponibilité sur une plage et obtenir les conflits.
 - Rechercher des créneaux libres selon les préférences de travail.
 - Créer, modifier ou supprimer un événement sur une ressource déclarée inscriptible.
-- Déclencher une tâche ou un Process affecté à l’agent à partir d’un début d’événement ou d’une alarme.
+- Programmer des actions avant/après le début ou la fin et suivre leurs Tasks par occurrence.
 
-Les événements annulés ou transparents ne bloquent pas la disponibilité. Les récurrences et alarmes
-sont développées à partir d’iCalendar. Les écritures utilisent le remplacement de la ressource `.ics`
-et une précondition ETag lorsque le serveur la fournit ; il ne s’agit pas d’un client CalDAV général.
+Les consultations et mutations utilisent le stockage local. Les fenêtres mensuelles ou plus
+courtes renvoient toutes les occurrences, sans pagination silencieuse. Les mutations contrôlent
+la révision et la portée : occurrence seule, suivantes ou série entière. Les événements annulés
+ou transparents ne bloquent pas la disponibilité ; une source périmée rend celle-ci inconnue.
 
-La synchronisation périodique est hébergée par le scheduler, avec une cadence de 15 minutes dans le
-code courant. Une empreinte durable évite de déclencher deux fois la même occurrence. La reprise
-après indisponibilité relit une fenêtre bornée, au plus sept jours. Désactiver la connexion retire
-les fonctions et ses calendriers du traitement automatique.
+Le worker externe est examiné chaque minute et relève les sources saines toutes les cinq minutes.
+CalDAV utilise les jetons différentiels, ETag et une outbox transactionnelle ; `pending` ne vaut
+pas confirmation distante. Les conflits conservent les deux versions. Le worker d'actions local
+est examiné toutes les dix secondes, indépendamment de la navigation et du réseau. Une admission
+idempotente crée une Task ; seul son succès marque l'action comme traitée. Les actions externes
+nécessitent une activation explicite. Goal conserve ses propres cycles, sans rappel dupliqué.
 
-Sources : [calendrier](../architecture/flows/calendar.md), [API](../../../back/bridge/calendar/router.py),
-[fonctions](../../../back/bridge/calendar/mcp.py).
+Sources : [calendrier](../architecture/flows/calendar.md), [API](../../../back/app/calendar/router.py),
+[fonctions](../../../back/app/calendar/mcp.py).
 
 <a id="processus"></a>
 ## 24. Processus métier, n8n et webhooks

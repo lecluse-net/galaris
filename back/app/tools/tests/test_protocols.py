@@ -11,12 +11,26 @@ from app.tools.protocols import ProtocolConfig, bind_protocol_connection, reset_
 from app.tools.schemas import ToolCreate, ToolUpdate, ToolGlobalParamsUpdate, ToolGlobalParamUpdate, FileShareConfig, ConnectionSchema
 from app.tools.projections import to_public
 from app.tools.protocol_migration import _convert_legacy_tools, _introduces_protocols, _legacy_tools_converted
-from bridge.calendar.models import CalendarFeed
+from app.calendar.models import CalendarFeed
 from bridge.mail.models import MailOutboundDelivery
 from bridge.mail.connection_service import resolve_connection, resolve_mail_connection
 from core.dbadmin import SchemaTransitionSet
 from core.util import get_encryption_service
 from app.tools.rest_contracts import RestAuth, RestConfig
+
+
+def test_ical_advertises_standard_connection_parameter_bindings():
+    from app.tools.capabilities import supported_capabilities
+
+    calendar = next(item for item in supported_capabilities() if item.code == "calendar")
+    protocol = calendar.protocols[0]
+    assert protocol.connection_parameters["url"]["parameter"] == "url"
+    assert protocol.connection_parameters["url"]["definition"]["type"] == "password"
+    assert protocol.connection_parameters["username"]["parameter"] == "login"
+    assert protocol.connection_parameters["password"]["parameter"] == "password"
+    assert "url" not in protocol.parameters
+    assert not {"access_mode", "trigger_on_start", "trigger_on_alarm", "action_kind",
+        "process_workflow_id", "action_instructions"} & protocol.connection_parameters.keys()
 
 
 @pytest.mark.asyncio
@@ -131,9 +145,7 @@ async def test_protocol_upgrade_preserves_legacy_connections_secrets_and_calenda
     legacy_mail = Tool(code="mail", label="Existing mailbox provider", connection_schema={"params": {"password": {"type": "password"}}},
         messenger_config={"service": "mail"}, file_share_config={"service": "mail", "base_url": ""},
         global_params={"imap_host": {"value": "imap.example.test", "forced": True}})
-    legacy_calendar = await db.scalar(select(Tool).where(Tool.code == "calendar"))
-    assert legacy_calendar is not None
-    legacy_calendar.global_params = {}
+    legacy_calendar = Tool(code="calendar", label="Existing calendar provider", global_params={})
     title = Title(label="Migration", gender="N")
     db.add_all([legacy_mail, legacy_calendar, title])
     await db.flush()
@@ -165,7 +177,7 @@ async def test_protocol_upgrade_preserves_legacy_connections_secrets_and_calenda
     assert (mail.id, calendar.id, feed.id, feed.url_encrypted, legacy_mail.global_params) == original
     assert not mail.active and calendar.active
     assert (await db.scalar(select(ConnectionParam.param_value).where(ConnectionParam.connection_id == mail.id))) == secret
-    assert to_public(legacy_mail).can_edit and not to_public(legacy_calendar).can_edit
+    assert to_public(legacy_mail).can_edit and to_public(legacy_calendar).can_edit
     assert legacy_mail.mail_config == {} and legacy_calendar.calendar_config == {}
     assert legacy_mail.messenger_config is None and legacy_mail.file_share_config is None
     await db.refresh(global_policy)

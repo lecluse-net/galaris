@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.goal import register_scheduler_jobs as register_goal_jobs
         from app.lab import register_scheduler_jobs as register_lab_jobs
         from app.voice import register_scheduler_jobs as register_voice_jobs
-        from bridge.calendar import sync_calendars
+        from app.calendar import sync_external_calendars, sync_native_calendars, prune_calendar_cache
         from bridge.mail import retry_approval_notifications
         from app.task import register_runtime_settings, scheduler as task_scheduler
         from app.chat import reconcile_storage, register_scheduler_jobs as register_chat_jobs
@@ -115,8 +115,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "expired-browser-sessions", purge_expired_sessions, interval=3_600.0,
         )
         task_scheduler.register_periodic_job(
-            "calendar-sync", sync_calendars, interval=15 * 60.0
+            "calendar-sync", sync_external_calendars, interval=60.0
         )
+        task_scheduler.register_periodic_job("agenda-reminders", sync_native_calendars, interval=10.0)
+        task_scheduler.register_periodic_job("calendar-cache", prune_calendar_cache, interval=86400.0)
         task_scheduler.register_periodic_job(
             "chat-storage-reconciliation",
             reconcile_storage,
