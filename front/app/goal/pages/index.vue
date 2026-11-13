@@ -1856,6 +1856,7 @@ function formatDate(value: string | null): string {
   return new Intl.DateTimeFormat(locale.value, {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: store.settings?.timezone,
   }).format(new Date(value))
 }
 

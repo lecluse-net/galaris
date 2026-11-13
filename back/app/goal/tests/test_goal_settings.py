@@ -144,6 +144,75 @@ def test_schedule_window_can_cross_midnight(monkeypatch: pytest.MonkeyPatch) -> 
     assert is_active is True
 
 
+@pytest.mark.parametrize(
+    ("common", "own", "eligible", "expected"),
+    [
+        # No restrictions, and eligibility already inside both windows.
+        ([], [], "2026-07-17T08:30:00+00:00", "2026-07-17T08:30:00+00:00"),
+        ([([4], "09:00", "17:00")], [([4], "10:00", "18:00")],
+         "2026-07-17T08:30:00+00:00", "2026-07-17T08:30:00+00:00"),
+        # An excluded end boundary moves to the next opening, even with a daily delay.
+        ([], [([4, 5], "09:00", "17:00")],
+         "2026-07-17T15:00:00+00:00", "2026-07-18T07:00:00+00:00"),
+        ([([0], "09:00", "17:00")], [],
+         "2026-07-19T10:00:00+00:00", "2026-07-20T07:00:00+00:00"),
+        # Opening each schedule separately is insufficient: find their intersection.
+        ([([0], "10:00", "18:00")], [([0, 5], "09:00", "17:00")],
+         "2026-07-17T16:00:00+00:00", "2026-07-20T08:00:00+00:00"),
+        ([([0], "09:00", "10:00")], [([0], "10:00", "11:00")],
+         "2026-07-17T16:00:00+00:00", None),
+        # An overnight window belongs to its starting weekday, including after midnight.
+        ([([0], "22:00", "02:00")], [([1], "01:00", "03:00")],
+         "2026-07-13T23:30:00+00:00", "2026-07-13T23:30:00+00:00"),
+        ([([0], "22:00", "02:00")], [([1], "01:00", "03:00")],
+         "2026-07-13T19:00:00+00:00", "2026-07-13T23:00:00+00:00"),
+        # Unsorted and overlapping windows still produce the earliest opening.
+        ([([0], "14:00", "18:00"), ([0], "09:00", "12:00")],
+         [([0], "11:00", "15:00"), ([0], "10:00", "13:00")],
+         "2026-07-20T06:00:00+00:00", "2026-07-20T08:00:00+00:00"),
+        # Timezone offsets follow the actual date of opening across DST transitions.
+        ([], [([6], "09:00", "17:00")],
+         "2026-03-28T18:00:00+00:00", "2026-03-29T07:00:00+00:00"),
+        ([], [([6], "09:00", "17:00")],
+         "2026-10-24T18:00:00+00:00", "2026-10-25T08:00:00+00:00"),
+        # A nonexistent spring opening must not be announced as executable.
+        ([], [([6], "02:30", "03:00")],
+         "2026-03-28T18:00:00+00:00", "2026-04-05T00:30:00+00:00"),
+        # The repeated autumn hour uses the same boundaries as runner admission.
+        ([], [([6], "02:30", "02:45")],
+         "2026-10-25T01:00:00+00:00", "2026-11-01T01:30:00+00:00"),
+    ],
+)
+def test_next_schedule_at_is_the_first_common_executable_instant(
+    monkeypatch: pytest.MonkeyPatch, common, own, eligible: str, expected: str | None,
+) -> None:
+    monkeypatch.setenv("TZ", "Europe/Paris")
+
+    def schedule(windows) -> GoalScheduleConfig:
+        return GoalScheduleConfig(
+            schedule_enabled=bool(windows),
+            schedule=[GoalScheduleWindow(weekdays=days, start_time=start, end_time=end)
+                      for days, start, end in windows],
+        )
+
+    config = GoalSettingsConfig(**schedule(common).model_dump())
+    individual = schedule(own)
+    result = settings_service.next_schedule_at(
+        individual, config, not_before=datetime.fromisoformat(eligible),
+    )
+    assert result == (datetime.fromisoformat(expected) if expected is not None else None)
+    if result is not None:
+        assert settings_service.evaluate_settings(config, now=result).is_active
+        assert settings_service.is_goal_processing_allowed(individual, now=result)
+
+
+def test_next_schedule_does_not_announce_a_cycle_while_globally_paused() -> None:
+    assert settings_service.next_schedule_at(
+        GoalScheduleConfig(), GoalSettingsConfig(globally_paused=True),
+        not_before=datetime(2026, 7, 17, tzinfo=timezone.utc),
+    ) is None
+
+
 @pytest.mark.asyncio
 async def test_process_goals_blocks_new_cycles_while_globally_paused(
     monkeypatch: pytest.MonkeyPatch,

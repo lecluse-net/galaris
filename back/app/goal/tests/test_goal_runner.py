@@ -34,6 +34,7 @@ from app.goal.schemas import (
     GoalMessengerReferrerInput,
     GoalProgress,
     GoalScheduleWindow,
+    GoalSettingsConfig,
     GoalUpdate,
 )
 from app.goal.tests.factories import make_goal
@@ -117,6 +118,63 @@ def test_next_cycle_at_is_a_minimum_delay_after_task_completion() -> None:
     assert runner.next_cycle_at(finished, 3600) == finished + timedelta(hours=1)
     assert runner.next_cycle_at(finished, 0) == finished
     assert runner.next_cycle_at(finished, -10) == finished
+
+
+@pytest.mark.asyncio
+async def test_next_cycle_projection_respects_both_schedules_without_losing_due_cycle(
+    db, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 7, 17, 16, tzinfo=timezone.utc).astimezone(tz)
+
+    monkeypatch.setenv("TZ", "Europe/Paris")
+    monkeypatch.setattr(settings_service, "datetime", Clock)
+    monkeypatch.setattr(runner, "datetime", Clock)
+    monkeypatch.setattr("app.task.scheduler.wake", lambda *_args, **_kwargs: None)
+    global_config = GoalSettingsConfig(
+        schedule_enabled=True,
+        schedule=[GoalScheduleWindow(weekdays=[0, 1, 2, 3, 4], start_time="10:00", end_time="18:00")],
+    )
+    monkeypatch.setattr(settings_service, "get_config", AsyncMock(return_value=global_config))
+    agent, referrer = await _new_agent(db), await _new_agent(db)
+    due = datetime(2026, 7, 17, 16, tzinfo=timezone.utc)
+    goal = await make_goal(
+        title="Compatible next cycle", description="Keep the pending cycle until opening.",
+        agent_id=agent.id, referrer_type=GoalReferrerType.AGENT, referrer_agent_id=referrer.id,
+        cycle_delay_seconds=3600, next_cycle_at=due, status=GoalStatus.ACTIVE,
+        schedule_enabled=True,
+        schedule=[dict(weekdays=[0, 1, 2, 3, 4, 5], start_time="09:00", end_time="17:00")],
+    )
+    db.add(goal)
+    await db.commit()
+    expected = datetime(2026, 7, 20, 8, tzinfo=timezone.utc)
+    detail = await goal_service.get_detail(goal.id)
+    page = await goal_service.list_page(agent_id=agent.id)
+    tree = await goal_service.list_tree(agent_ids=[agent.id])
+    assert detail is not None
+    assert detail.next_cycle_at == expected
+    assert page.items[0].next_cycle_at == expected
+    assert tree.items[0].next_cycle_at == expected
+    assert await runner.start_due_cycle() is False
+    await db.refresh(goal)
+    assert goal.next_cycle_at == due
+
+    # Widening the global gate immediately reveals Saturday, without rewriting eligibility.
+    global_config.schedule[0].weekdays.append(5)
+    refreshed = await goal_service.get_read(goal.id)
+    assert refreshed is not None
+    assert refreshed.next_cycle_at == datetime(2026, 7, 18, 8, tzinfo=timezone.utc)
+
+    class OpeningClock(Clock):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 7, 18, 8, tzinfo=timezone.utc).astimezone(tz)
+
+    monkeypatch.setattr(runner, "datetime", OpeningClock)
+    assert await runner.start_due_cycle() is True
+    assert await runner.start_due_cycle() is False
 
 
 @pytest.mark.parametrize(

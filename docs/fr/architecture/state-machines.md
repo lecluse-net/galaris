@@ -438,6 +438,11 @@ les nouveaux cycles et relances de tous les Goals. Chaque Goal peut ajouter une 
 hebdomadaire individuelle, sans jamais réactiver un créneau fermé globalement. Une demande de
 cycle manuel est persistée jusqu'à la création de sa tâche et contourne les restrictions horaires
 globale et individuelle, mais jamais la pause globale explicite.
+L'échéance persistée conserve le délai minimal après la fin du travail. Les lectures
+annoncent le premier instant compatible avec les deux plages, dans le fuseau de l'application,
+sans déplacer cette échéance ni consommer le cycle en attente. Une fermeture, une modification
+du planning ou un redémarrage ne supprime donc pas son éligibilité. Sans intersection des plages,
+ou pendant la pause globale, aucun prochain instant automatique n'est annoncé.
 Si « Lancer un cycle maintenant » doit d’abord reprendre une évaluation en erreur, la
 demande manuelle reste en attente : `CONTINUE` permet de créer une nouvelle tâche sans attendre
 le planning, tandis que `STOP` annule cette demande. « Réessayer le suivi » reprend seulement

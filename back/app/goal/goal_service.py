@@ -25,7 +25,7 @@ from core.database import get_db
 from core.user import get_current_user_id
 
 from .document_store import GoalMarkdown, get_goal_document_store
-from . import category_service
+from . import category_service, settings_service
 from .contact_port import contact_directory_port
 from .lifecycle import notify_goal
 from .hierarchy import goal_hierarchy
@@ -53,6 +53,7 @@ from .schemas import (
     GoalReferrerInput,
     GoalReferrerRead,
     GoalScheduleConfig,
+    GoalSettingsConfig,
     GoalSummary,
     GoalUpdate,
     GoalTreeNode,
@@ -290,11 +291,12 @@ def _serialize_referrer(goal: Goal) -> GoalReferrerRead | None:
 
 def _serialize_goal(
     goal: Goal, metrics: GoalMetrics, markdown: GoalMarkdown,
-    *, children_count: int | None = None,
+    *, settings: GoalSettingsConfig, children_count: int | None = None,
 ) -> GoalRead:
     return GoalRead.model_validate(
         {
             **goal.__dict__,
+            "next_cycle_at": settings_service.projected_next_cycle_at(goal, settings),
             "category_id": (
                 goal.category_id if goal.category is not None
                 and get_current_user_id() is not None
@@ -380,7 +382,9 @@ async def get_read(
     if goal is None:
         return None
     metrics = (await _metrics_for([goal.id])).get(goal.id, GoalMetrics())
-    return _serialize_goal(goal, metrics, await read_markdown(goal))
+    return _serialize_goal(
+        goal, metrics, await read_markdown(goal), settings=await settings_service.get_config()
+    )
 
 
 async def get_detail(
@@ -568,6 +572,7 @@ async def list_page(
     goals = [goal for goal, _count, _category in rows]
     metrics = await _metrics_for([goal.id for goal in goals])
     markdown_by_goal = await _read_markdown_batch(goals)
+    settings = await settings_service.get_config()
 
     status_rows = (
         await db.execute(
@@ -602,6 +607,7 @@ async def list_page(
                     goal,
                     metrics.get(goal.id, GoalMetrics()),
                     markdown_by_goal[goal.id],
+                    settings=settings,
                     children_count=int(children_count),
                 ).model_dump(),
                 effective_category_id=effective_category_id,
@@ -667,7 +673,8 @@ async def list_tree(*, agent_ids: Collection[int] | None = None) -> GoalTreePage
         select(Goal, _children_count())
         .options(
             load_only(Goal.id, Goal.parent_goal_id, Goal.title, Goal.agent_id, Goal.status,
-                      Goal.cycle_delay_seconds, Goal.next_cycle_at, raiseload=True),
+                      Goal.cycle_delay_seconds, Goal.next_cycle_at, Goal.manual_run_requested_at,
+                      Goal.schedule_enabled, Goal.schedule, raiseload=True),
             joinedload(Goal.agent).load_only(*_AGENT_SUMMARY_FIELDS, raiseload=True).joinedload(Agent.title),
             raiseload(Goal.children),
         )
@@ -676,6 +683,7 @@ async def list_tree(*, agent_ids: Collection[int] | None = None) -> GoalTreePage
     if agent_ids is not None:
         query = query.where(Goal.agent_id.in_(agent_ids))
     rows = list((await get_db().execute(Goal.histo_filter(query))).all())
+    settings = await settings_service.get_config()
     return GoalTreePage(
         items=[
             GoalTreeNode(
@@ -687,7 +695,7 @@ async def list_tree(*, agent_ids: Collection[int] | None = None) -> GoalTreePage
                 agent_code=goal.agent.code if goal.agent is not None else "",
                 status=goal.status,
                 cycle_delay_seconds=goal.cycle_delay_seconds,
-                next_cycle_at=goal.next_cycle_at,
+                next_cycle_at=settings_service.projected_next_cycle_at(goal, settings),
                 children_count=int(children_count),
             )
             for goal, children_count in rows

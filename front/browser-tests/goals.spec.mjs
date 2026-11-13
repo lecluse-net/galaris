@@ -1,8 +1,8 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, goal } from './data.mjs'
 
-async function goals(page, status = 'ACTIVE', id = 'goal-a') {
-  let current = { ...goal, id, status }
+async function goals(page, status = 'ACTIVE', id = 'goal-a', changes = {}) {
+  let current = { ...goal, id, status, ...changes }
   const commands = []
   await jsonRoute(page, '**/api/agents?*', [agent])
   await jsonRoute(page, '**/api/agents/titles?*', [])
@@ -20,6 +20,31 @@ async function goals(page, status = 'ACTIVE', id = 'goal-a') {
   })
   return commands
 }
+
+test.describe('Goal schedule timezone', () => {
+  test.use({ timezoneId: 'America/New_York' })
+  for (const width of [390, 1440]) test(`announced cycles use the schedule timezone at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 950 })
+    const nextCycle = '2026-07-20T08:00:00Z'
+    await goals(page, 'ACTIVE', 'goal-a', { next_cycle_at: nextCycle })
+    const settings = { globally_paused: false, schedule_enabled: true,
+      schedule: [{ weekdays: [0, 1, 2, 3, 4], start_time: '09:00', end_time: '17:00' }],
+      timezone: 'Europe/Paris', is_active: true, inactive_reason: null, next_active_at: null }
+    await jsonRoute(page, '**/api/goals/settings', settings)
+    await jsonRoute(page, '**/api/goals/runtime-status', settings)
+    await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_ACCESS'] })
+    const expected = new Intl.DateTimeFormat('en', {
+      dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Paris',
+    }).format(new Date(nextCycle))
+    await expect(page.getByText(expected, { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Goal details', exact: true }).click()
+    await expect(page.getByRole('dialog').getByText(expected, { exact: true })).toBeVisible()
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => window.testApp.dark(dark), dark)
+      await page.screenshot({ path: testInfo.outputPath(`schedule-timezone-${dark ? 'dark' : 'light'}.png`), fullPage: true })
+    }
+  })
+})
 
 for (const mode of ['read', 'edit']) test(`a Goal citation opens its original modal and preserves another Goal selection in ${mode} mode`, async ({ page }) => {
   const id = '00000000-0000-0000-0000-000000000003'

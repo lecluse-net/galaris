@@ -129,7 +129,7 @@ export function createGoalState() {
     settingsSaving.value = true
     try {
       const result = await goalService.updateSettings(data)
-      if (current()) settings.value = result
+      if (current()) onSettingsUpdate({ data: result })
       return result
     } catch (caught) {
       console.error('Error updating Goal settings:', caught)
@@ -376,6 +376,7 @@ export function createGoalState() {
 
   function onSettingsUpdate(response: { data: GoalSettings }): void {
     settings.value = response.data
+    scheduleRefresh({ list: true, tree: true, detail: Boolean(currentGoal.value) })
   }
 
   function subscribe(): void {

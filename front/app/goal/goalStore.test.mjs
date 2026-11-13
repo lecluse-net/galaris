@@ -60,6 +60,21 @@ test('opening a Goal loads its history only when the cycles tab is requested', a
 
 const settle = async () => { for (let i = 0; i < 15; i++) await Promise.resolve() }
 
+test('a global schedule update refreshes announced cycles in list, tree and open detail', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { store, events, calls, requests } = setup()
+  store.currentGoal = { id: 'A', revision: 1 }
+  store.subscribe()
+  events.get('goal_settings:update')({ data: { schedule_enabled: true, schedule: [] } })
+  t.mock.timers.tick(300)
+  await settle()
+  assert.deepEqual(calls, { list: 1, tree: 1, detail: 1, cycles: 0 })
+  requests.get('A').resolve({ id: 'A', revision: 1, next_cycle_at: '2026-07-20T08:00:00Z' })
+  await settle()
+  assert.equal(store.currentGoal.next_cycle_at, '2026-07-20T08:00:00Z')
+  store.$dispose()
+})
+
 test('a burst of Task events refreshes the list once without reloading the tree or an unrelated selection', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const { store, events, calls } = setup()

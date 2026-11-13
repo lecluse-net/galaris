@@ -450,6 +450,13 @@ In a Goal form, **Frequency** can be set in seconds, minutes, hours, days, weeks
 or years. These units represent fixed durations: a week is 7 days, a month 30 days and
 a year 365 days. They do not select a calendar date; allowed time windows still apply.
 
+**Next cycle** shows the first time allowed by both the global and individual windows,
+after the delay has elapsed. Dates use the schedule timezone shown at the top of the page.
+A cycle due outside these windows remains pending until opening; changing the windows
+recalculates its announced time. If the windows do not overlap or the system is globally
+paused, no next automatic time is announced. **Run a cycle now** retains its exception
+to the time windows.
+
 A Goal description is a simple HTML field. Its tracking is an unclassified Document,
 visible in the Documents list but outside the tree until you classify it. No Goal folder
 is imposed. Existing folders retain their names and behave as ordinary editable folders,

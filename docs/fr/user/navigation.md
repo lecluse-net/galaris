@@ -491,6 +491,13 @@ jours, semaines, mois ou années. Ces unités représentent des durées fixes : 
 vaut 7 jours, un mois 30 jours et une année 365 jours. Elles ne fixent pas une date dans
 le calendrier ; les fenêtres horaires autorisées continuent de s'appliquer.
 
+Le **Prochain cycle** indique le premier horaire compatible avec la plage globale et
+celle de l'objectif, une fois le délai écoulé. Les dates utilisent le fuseau du planning
+affiché en haut de la page. Un cycle dû hors plage reste en attente jusqu'à l'ouverture ;
+modifier les plages recalcule l'horaire annoncé. Si les plages ne se croisent pas ou que
+le système est globalement pausé, aucun prochain horaire automatique n'est annoncé.
+**Lancer un cycle maintenant** conserve son exception aux plages horaires.
+
 La description d'un Goal est un simple texte HTML. Son suivi est un document non classé,
 présent dans la liste Documents mais absent de l'arborescence tant que vous ne le classez pas.
 Aucun dossier Objectifs n'est imposé. Les dossiers déjà créés gardent leur nom et se modifient

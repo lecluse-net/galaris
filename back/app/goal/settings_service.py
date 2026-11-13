@@ -162,6 +162,74 @@ def is_goal_processing_allowed(
     return evaluate_goal_schedule(source, now=now)[0]
 
 
+def next_schedule_at(
+    source: Goal | GoalScheduleConfig,
+    config: GoalSettingsConfig,
+    *,
+    not_before: datetime,
+) -> datetime | None:
+    """Find the first instant in both weekly schedules, at or after eligibility."""
+
+    if not_before.tzinfo is None or not_before.utcoffset() is None:
+        raise ValueError("Goal scheduling requires a timezone-aware datetime")
+    if config.globally_paused:
+        return None
+    try:
+        individual = GoalScheduleConfig.model_validate(
+            {"schedule_enabled": source.schedule_enabled, "schedule": source.schedule}
+        )
+    except ValidationError as exc:
+        logger.error("Invalid schedule for Goal; next cycle is unavailable: {}", exc)
+        return None
+    reference = not_before.astimezone(timezone.utc)
+    _, local_zone = _timezone()
+    local_today = reference.astimezone(local_zone).date()
+    # Two weekly recurrences also cover an opening lost to the spring clock change.
+    horizon = datetime.combine(local_today + timedelta(days=15), time(), tzinfo=local_zone)
+
+    def intervals(schedule: GoalScheduleConfig) -> list[tuple[datetime, datetime]]:
+        if not schedule.schedule_enabled:
+            return [(reference, horizon.astimezone(timezone.utc))]
+        result: list[tuple[datetime, datetime]] = []
+        for offset in range(-1, 15):
+            start_date = local_today + timedelta(days=offset)
+            for window in schedule.schedule:
+                if start_date.weekday() not in window.weekdays:
+                    continue
+                start, end = _window_interval(start_date, window, local_zone)
+                if max(start, reference) < end:
+                    result.append((max(start, reference), end))
+        return sorted(result)
+
+    common, own = intervals(config), intervals(individual)
+    common_index = own_index = 0
+    while common_index < len(common) and own_index < len(own):
+        common_start, common_end = common[common_index]
+        own_start, own_end = own[own_index]
+        opening = max(common_start, own_start)
+        if opening < min(common_end, own_end):
+            return opening
+        if common_end <= own_end:
+            common_index += 1
+        else:
+            own_index += 1
+    return None
+
+
+def projected_next_cycle_at(goal: Goal, config: GoalSettingsConfig) -> datetime | None:
+    """Keep durable eligibility intact while announcing an executable scheduled time."""
+
+    if goal.manual_run_requested_at is not None:
+        return goal.manual_run_requested_at
+    if goal.next_cycle_at is None:
+        return None
+    if not config.globally_paused and not config.schedule_enabled and not goal.schedule_enabled:
+        return goal.next_cycle_at
+    return next_schedule_at(
+        goal, config, not_before=max(goal.next_cycle_at, datetime.now(timezone.utc))
+    )
+
+
 def _decode(raw: str | None) -> GoalSettingsConfig:
     if not raw:
         return GoalSettingsConfig()

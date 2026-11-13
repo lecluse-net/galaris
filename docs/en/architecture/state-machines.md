@@ -431,6 +431,11 @@ new cycles and reruns for all Goals. Each Goal may add an individual weekly rest
 without ever reactivating a slot closed globally. A manual cycle request is persisted until its
 Task is created and bypasses global and individual time restrictions, but never the explicit
 global pause.
+The persisted deadline retains the minimum delay after work finishes. Read projections
+announce the first instant compatible with both windows, in the application timezone,
+without moving that deadline or consuming the pending cycle. A closure, schedule change,
+or restart therefore preserves its eligibility. Without overlapping windows, or during
+a global pause, no next automatic instant is announced.
 If “Run a cycle now” first needs to recover a failed evaluation, the manual request remains
 pending: `CONTINUE` allows a new Task to start without waiting for the schedule, while `STOP`
 cancels the request. “Retry tracking” only retries the evaluation. Both commands preserve the
