@@ -55,6 +55,7 @@ from .editorial_client import require_editorial_client
 from .resource_summary import (
     normalize_source as normalize_summary_source,
     change_percent as summary_change_percent,
+    changed_characters as summary_changed_characters,
     needs_summary as needs_resource_summary,
 )
 from .source_files import source_code_media_type, source_code_response_headers
@@ -119,5 +120,6 @@ __all__ = [
     "month_bounds",
     "normalize_summary_source",
     "summary_change_percent",
+    "summary_changed_characters",
     "needs_resource_summary",
 ]

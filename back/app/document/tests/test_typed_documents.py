@@ -18,7 +18,7 @@ from core.user import HumanActor, UserModel
 
 
 @pytest.mark.asyncio
-async def test_types_share_library_content_history_and_current_metadata(db, agents, memory_storage):
+async def test_types_share_library_content_history_and_current_metadata(db, agents, memory_storage, revision_clock):
     owner, reader = agents
     prose = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic prose",
         content="<p>Notes</p>", task_id=None)
@@ -35,6 +35,7 @@ async def test_types_share_library_content_history_and_current_metadata(db, agen
         payload=DocumentPayload(text='{"value":2}')), actor_agent_id=owner.id)
     assert changed.revision == 2
     assert (await data_service.record(identity, owner.id)).content == '{"value":2}'
+    await revision_clock.settle()
     with pytest.raises((resource_service.DocumentPermissionError, resource_service.DocumentNotFoundError)):
         await resource_service.get_item(identity, agent_id=reader.id)
     with pytest.raises(ValueError):
@@ -46,6 +47,7 @@ async def test_types_share_library_content_history_and_current_metadata(db, agen
     restored = await data_service.restore(identity, owner.id, number=1, expected_revision=2)
     assert restored.content == ' {"value": 1}\n' and restored.revision == 3
     assert restored.title == "Synthetic renamed values" and restored.keywords == ["current"]
+    await revision_clock.settle()
     assert await db.scalar(select(func.count()).select_from(DocumentRevision).where(DocumentRevision.document_id == identity)) == 3
 
 
@@ -119,6 +121,8 @@ async def test_migration_rejects_identity_collision_and_rolls_back(db, agents, m
     await db.commit()
     with pytest.raises(ValueError, match="unrelated"):
         await preserve(db, SchemaTransitionSet())
+        # Collisions are rejected during transfer, after the source archive exists.
+        await finalize(db, SchemaTransitionSet())
     await db.rollback()
     assert await db.scalar(select(Document.content).where(Document.id == identity)) == "<p>Keep me</p>"
 

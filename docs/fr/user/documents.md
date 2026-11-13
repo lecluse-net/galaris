@@ -126,9 +126,17 @@ Seul le contenu du document conserve ses versions ; restaurer un ancien contenu 
 ni le résumé ni les mots-clés actuels. La fiche documentaire dans Mémoire montre toujours
 le résumé courant et ne propose plus son ancien historique.
 
+La sauvegarde du travail reste immédiate. Après une modification du contenu, une nouvelle
+version entre dans l'historique après **cinq minutes sans autre modification du contenu**.
+Les sauvegardes rapprochées sont regroupées et le délai survit aux redémarrages. L'état initial
+reste conservé ; revenir à la dernière version conservée ne crée pas de doublon. Le numéro
+technique de version continue de protéger chaque sauvegarde concurrente : les numéros des
+versions présentes dans l'historique peuvent donc avoir des intervalles.
+
 Au repos, Dream peut générer une courte description de la nature et de l'utilité du document,
 avec des termes de recherche. Par défaut, il intervient au-delà de **1 000 caractères de texte
-utile**. Un résumé automatique n'est ensuite actualisé que si plus de **25 %** du contenu a changé
+utile**. Une entrée Dream pour actualiser un résumé automatique n'est créée qu'après
+**cinq minutes sans modification du contenu** et **au moins 100 caractères modifiés**
 depuis sa dernière génération : les petites modifications se cumulent. La mise en forme HTML
 seule ne compte pas. Un résumé saisi manuellement est préservé. Les deux seuils sont réglables
 dans les paramètres Dream et s'appliquent aussi aux jeux de données.

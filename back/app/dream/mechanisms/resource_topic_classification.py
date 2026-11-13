@@ -4,13 +4,15 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, literal, select
 
 from app.dataset import facade as datasets
 from app.llm import model_usages, profile_service
 from app.document import facade as documents
 from app.topic import TopicClassification, classify_topic as classify, service as topics
 from core.database import get_db, get_db_session
+from core.params import runtime_settings
+from core.util import summary_changed_characters as changed_characters
 
 from ..contracts import DreamClaim, DreamPrepared
 from ..language import source_language
@@ -36,11 +38,32 @@ class ResourceTopicClassificationMechanism:
         self._count, self._claim, self._source, self._assign = count, claim, source, assign
         self._current = current
 
-    def _handled(self) -> Select[tuple[str]]:
-        return select(DreamReceipt.subject_id).where(
+    def _handled(self, skipped: list[str] | None = None) -> Select[tuple[str]]:
+        handled = select(DreamReceipt.subject_id).where(
             DreamReceipt.mechanism_key == self.key,
             DreamReceipt.subject_kind == self.kind,
         )
+        if skipped:
+            combined = handled.union_all(*(select(literal(identity).label("subject_id")) for identity in skipped)).subquery()
+            return select(combined.c.subject_id)
+        return handled
+
+    async def _substantial_source(self, identity: str) -> tuple[str, int | None, str | None] | None:
+        source = await self._source(identity)
+        if source is None:
+            return None
+        activity, agent_id, language = source
+        activity = safe_memory_text(activity)
+        previous = await get_db().scalar(select(DreamReceipt.prepared_payload).where(
+            DreamReceipt.mechanism_key == self.key,
+            DreamReceipt.subject_kind == self.kind,
+            DreamReceipt.subject_id.startswith(identity.split(":", 1)[0] + ":"),
+            DreamReceipt.status == "success",
+            DreamReceipt.prepared_payload["_classification_source"].astext.is_not(None),
+        ).order_by(DreamReceipt.created_at.desc(), DreamReceipt.id.desc()).limit(1))
+        if previous is not None and changed_characters(str(previous["_classification_source"]), activity) < runtime_settings.DREAM_RESOURCE_SUMMARY_MIN_CHANGED_CHARS:
+            return None
+        return activity, agent_id, language
 
     async def is_available(self) -> bool:
         async with get_db_session():
@@ -55,22 +78,26 @@ class ResourceTopicClassificationMechanism:
         if retry is not None:
             return retry
         async with get_db_session():
-            identity = await self._claim(self._handled())
-            if identity is None:
-                return None
-            claim = create_running_receipt(
-                mechanism_key=self.key, subject_kind=self.kind, subject_id=identity
-            )
-            await get_db().flush()
-            return claim
+            skipped: list[str] = []
+            while (identity := await self._claim(self._handled(skipped))) is not None:
+                # Reject insignificant versions before creating any Dream receipt.
+                # Continue scanning so an older small edit cannot block other sources.
+                if await self._substantial_source(identity) is None:
+                    skipped.append(identity)
+                    continue
+                claim = create_running_receipt(
+                    mechanism_key=self.key, subject_kind=self.kind, subject_id=identity
+                )
+                await get_db().flush()
+                return claim
+        return None
 
     async def prepare(self, claim: DreamClaim) -> DreamPrepared:
         async with get_db_session():
-            source = await self._source(claim.subject_id)
+            source = await self._substantial_source(claim.subject_id)
             if source is None:
                 return DreamPrepared(payload={"stale": True})
             activity, agent_id, language_value = source
-            activity = safe_memory_text(activity)
             language = source_language(language_value)
             candidates = await topics.list_candidates(activity=activity, limit=100)
             decision, cost = await classify(
@@ -81,12 +108,10 @@ class ResourceTopicClassificationMechanism:
                 language=language,
             )
             decision, _ = await topics.prefer_reuse(decision)
-            return DreamPrepared(
-                payload=topic_classification_payload(
-                    decision, candidates, language=language, creation_mode=topic_creation_mode()
-                ),
-                cost=cost,
-            )
+            payload = topic_classification_payload(
+                decision, candidates, language=language, creation_mode=topic_creation_mode())
+            payload["_classification_source"] = activity
+            return DreamPrepared(payload=payload, cost=cost)
 
     async def apply(self, claim: DreamClaim, payload: dict[str, Any]) -> int:
         if payload.get("stale"):

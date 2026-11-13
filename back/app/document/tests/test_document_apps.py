@@ -237,7 +237,7 @@ async def test_app_manifest_validation_is_atomic_and_source_survives_restore(db,
 
 
 @pytest.mark.asyncio
-async def test_ordinary_html_form_and_scripts_preserve_source_and_write_declared_dataset(db, agents, memory_storage):
+async def test_ordinary_html_form_and_scripts_preserve_source_and_write_declared_dataset(db, agents, memory_storage, revision_clock):
     document, dataset, scope, _ = await setup(db, agents)
     source = (f'<p>Editable introduction</p><form data-dataset="document://{dataset.id}" id="entry">'
               '<label>Answer<input name="answer" required></label><button>Save</button></form>'
@@ -254,6 +254,7 @@ async def test_ordinary_html_form_and_scripts_preserve_source_and_write_declared
         document_revision=saved.revision, operation="append", expected_revision=1, value={"answer": "Synthetic"},
     ), scope)
     assert written.data == [{"answer": "Synthetic"}]
+    await revision_clock.settle()
     await service.update_item(document.id, DocumentUpdate(expected_revision=2, payload=DocumentPayload(text='<p>Replaced</p>')), actor_agent_id=agents[0].id)
     await service.restore_document_content_revision(document.id, 2, expected_revision=3, actor_agent_id=agents[0].id)
     assert (await service.get_item(document.id, agent_id=agents[0].id))[1].decode() == text

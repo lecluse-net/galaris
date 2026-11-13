@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0281 — Quiet document history and substantial Dream updates](0281-quiet-document-history-and-dream.md)
+
 - [0277 — Configurable operating knowledge shared by executors](0277-configurable-operating-knowledge.md)
 
 - [0273 — Agent portrait resources](0273-agent-portrait-resources.md)

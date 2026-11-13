@@ -22,6 +22,7 @@ from app.memory.models import (
 )
 from app.memory.schemas import MemoryItemUpdate, MemoryPayload
 from app.document import mcp as document_mcp, DocumentRevision, resource_service as documents
+from app.document.tests.revision_helpers import revision_clock as revision_clock
 from app.memory.tests.document_fixtures import project_document, edit_document_summary
 from app.memory.tests.fact_fixtures import remember_fact
 from app.messenger.models import Message, Room, MessengerUser
@@ -524,6 +525,7 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    revision_clock,
 ) -> None:
     del memory_storage
     owner, peer = agents
@@ -684,6 +686,7 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     peer_forget = json.loads(await mcp.memory_forget(peer_ctx, document_id))
     assert "cannot be forgotten" in peer_forget["error"]
 
+    await revision_clock.settle()
     revisions = list(
         (
             await db.scalars(

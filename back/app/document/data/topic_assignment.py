@@ -11,6 +11,7 @@ from core.database import get_db
 
 from .access import accessible_clause
 from .models import Dataset
+from ..revision_batching import settled_clause
 
 
 async def assignment(identity: UUID, scope: AgentManagementScope) -> tuple[UUID | None, bool]:
@@ -60,7 +61,7 @@ def _identity() -> ColumnElement[str]:
 
 def _pending(handled: Select[tuple[str]]) -> Select[tuple[str]]:
     return select(_identity()).where(
-        Dataset.topic_id.is_(None), Dataset.deleted_at.is_(None), ~_identity().in_(handled)
+        Dataset.topic_id.is_(None), Dataset.deleted_at.is_(None), settled_clause(), ~_identity().in_(handled)
     )
 
 
@@ -88,7 +89,7 @@ async def source(identity: str) -> tuple[str, int | None, str | None] | None:
                 Dataset.owner_agent_id,
                 Dataset.metadata_,
             ).where(
-                _identity() == identity, Dataset.topic_id.is_(None), Dataset.deleted_at.is_(None)
+                _identity() == identity, Dataset.topic_id.is_(None), Dataset.deleted_at.is_(None), settled_clause()
             )
         )
     ).one_or_none()
@@ -109,6 +110,7 @@ async def assign(identity: str, topic_id: UUID) -> bool:
             _identity() == identity,
             Dataset.topic_id.is_(None),
             Dataset.deleted_at.is_(None),
+            settled_clause(),
         )
         .values(topic_id=topic_id)
         .returning(Dataset.id)
@@ -123,6 +125,7 @@ async def is_current(identity: str) -> bool:
                 _identity() == identity,
                 Dataset.topic_id.is_(None),
                 Dataset.deleted_at.is_(None),
+                settled_clause(),
             )
         )
         is not None

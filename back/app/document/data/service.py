@@ -142,8 +142,9 @@ async def replace(identity: UUID, actor: DataActor, *, content: str, expected_re
     dataset.thumbnail_id = None
     from .resource_summaries import refresh_pending
     refresh_pending(dataset)
-    get_db().add(DatasetRevision(dataset_id=dataset.id, revision=dataset.revision, content=content,
-        **actor_keys(actor)))
+    from ..revision_batching import stage_revision
+    await stage_revision(dataset, DatasetRevision(dataset_id=dataset.id, revision=dataset.revision,
+        content=content, **actor_keys(actor)))
     await get_db().flush()
     from .projection import changed
     await changed(dataset, invalidate_access=False)

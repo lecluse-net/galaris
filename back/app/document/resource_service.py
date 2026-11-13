@@ -287,7 +287,7 @@ async def restore_document_content_revision(
         from .content import bind_binary_content
         item.revision += 1
         await bind_binary_content(item, entry.file_id)
-        get_db().add(_revision_for(item, author_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None))
+        get_db().add(revision_for(item, author_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None))
         await _commit_with_conflict("The document changed while restoring its content")
         return item
     return await update_item(
@@ -362,7 +362,7 @@ async def set_item_grant(
     if item.node_kind != "document":
         item.revision += 1
         db.add(
-            _revision_for(
+            revision_for(
                 item,
                 author_agent_id=actor_agent_id,
                 task_id=actor_task_id,
@@ -474,7 +474,7 @@ async def remove_item_grant(
         if item.node_kind != "document":
             item.revision += 1
             db.add(
-                _revision_for(
+                revision_for(
                     item,
                     author_agent_id=actor_agent_id,
                     task_id=actor_task_id,
@@ -970,22 +970,24 @@ async def update_item(
     if content_changed or (item.node_kind != "document" and changed):
         item.revision += 1
     db = get_db()
+    revision: DocumentRevision | None = None
+    batch_revision = item.node_kind == "document"
     if content_changed or (item.node_kind != "document" and changed):
-        db.add(
-            _revision_for(
-                item,
-                author_agent_id=(
-                    document_revision_author_agent_id
-                    if item.node_kind == "document"
-                    else (actor_agent_id if isinstance(actor_agent_id, int) else None)
-                ),
-                task_id=actor_task_id,
-                author_user_id=actor_agent_id.user_id if isinstance(actor_agent_id, HumanActor) else None,
-                document_content_version=(True if item.node_kind == "document" else None),
-                document_append=document_append if item.node_kind == "document" else False,
-            )
+        revision = revision_for(
+            item,
+            author_agent_id=(
+                document_revision_author_agent_id
+                if item.node_kind == "document"
+                else (actor_agent_id if isinstance(actor_agent_id, int) else None)
+            ),
+            task_id=actor_task_id,
+            author_user_id=actor_agent_id.user_id if isinstance(actor_agent_id, HumanActor) else None,
+            document_content_version=(True if item.node_kind == "document" else None),
+            document_append=document_append if item.node_kind == "document" else False,
         )
     try:
+        if revision is not None and not batch_revision:
+            db.add(revision)
         if item.node_kind == "document" and (content_changed or document_format_changed or any(
             previous_metadata.get(key) != item.metadata_.get(key)
             for key in ("document_attachments", "retained_document_attachments")
@@ -995,6 +997,9 @@ async def update_item(
             await sync_document_structure(item, document_content)
         if content_changed:
             item.thumbnail_id = None
+        if revision is not None and batch_revision:
+            from .revision_batching import stage_revision
+            await stage_revision(item, revision)
         await db.commit()
     except StaleDataError as exc:
         await db.rollback()
@@ -1166,7 +1171,7 @@ async def get_item(item_id: UUID, *, agent_id: int | HumanActor, revision: int |
     if item is None:
         raise DocumentNotFoundError("Document not found")
     access = await assert_item_access(item, agent_id, administrative=administrative)
-    if revision is not None:
+    if revision is not None and revision != item.revision:
         entry = await get_db().scalar(select(DocumentRevision).where(DocumentRevision.document_id == item_id, DocumentRevision.revision == revision))
         if entry is None:
             raise DocumentNotFoundError("Document revision not found")
@@ -1190,7 +1195,7 @@ async def item_to_detail(item: Document, content: bytes, access: DocumentAccess,
     return DocumentDetail(**item_to_public(item, access).model_dump(), payload=encode_payload(content, content_type=content_type, media_type=media_type), source_refs=await source_refs(item.id))
 
 
-def _revision_for(item: Document, *, author_agent_id: int | None, task_id: UUID | None = None, author_user_id: int | None = None, document_content_version: bool | None = True, document_append: bool = False) -> DocumentRevision:
+def revision_for(item: Document, *, author_agent_id: int | None, task_id: UUID | None = None, author_user_id: int | None = None, document_content_version: bool | None = True, document_append: bool = False) -> DocumentRevision:
     if author_agent_id is None and author_user_id is None:
         from core.user import get_current_user_id
         author_user_id = get_current_user_id() or item.owner_user_id
@@ -1254,7 +1259,7 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
                 await register_file(attachment.id, name=attachment.name, media_type=attachment.media_type,
                     alias=f"document://{item.id}/attachments/{attachment.id}")
             await sync_document_structure(item)
-        db.add(_revision_for(item, author_agent_id=None if owner_user_id is not None else data.owner_agent_id, task_id=actor_task_id))
+        db.add(revision_for(item, author_agent_id=None if owner_user_id is not None else data.owner_agent_id, task_id=actor_task_id))
         from .resource_summaries import refresh_pending
         await refresh_pending(item, content)
         if initial_editor_agent_id is not None:

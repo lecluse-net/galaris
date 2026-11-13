@@ -128,6 +128,13 @@ async def _is_immediate_append_retry(
 
     if task_id is None or item.revision < 2:
         return False
+    from .models import DocumentAutomationJob
+    from .revision_batching import job_key
+    pending = await get_db().scalar(select(DocumentAutomationJob.payload).where(
+        DocumentAutomationJob.idempotency_key == job_key(item.id)))
+    if pending is not None and pending.get("revision") == item.revision:
+        return bool(pending.get("document_append") and pending.get("author_agent_id") == actor_agent_id
+            and pending.get("task_id") == str(task_id) and current.endswith(content))
     latest = (await get_db().execute(select(
         DocumentRevision.document_append, DocumentRevision.author_agent_id, DocumentRevision.task_id,
     ).where(DocumentRevision.document_id == item.id, DocumentRevision.revision == item.revision))).tuples().one_or_none()

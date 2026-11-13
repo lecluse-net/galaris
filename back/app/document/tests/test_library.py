@@ -498,6 +498,7 @@ async def test_document_creation_rejects_another_user_without_privilege(
 async def test_document_history_tracks_all_content_and_restores_forward(
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    revision_clock,
 ) -> None:
     del memory_storage
     owner, peer = agents
@@ -521,6 +522,7 @@ async def test_document_history_tracks_all_content_and_restores_forward(
         actor_agent_id=owner.id,
     )
     assert human_edit.revision == initial_revision + 1
+    await revision_clock.settle()
     assert [
         revision.revision
         for revision in (
@@ -558,6 +560,7 @@ async def test_document_history_tracks_all_content_and_restores_forward(
         actor_agent_id=owner.id,
     )
     assert shared.revision == agent_edit.revision
+    await revision_clock.settle()
 
     revisions = await service.list_document_content_revisions(
         document.id,
@@ -608,6 +611,7 @@ async def test_document_history_tracks_all_content_and_restores_forward(
     assert [(grant.agent_id, grant.can_write) for grant in restored_item.grants] == [
         (peer.id, False)
     ]
+    await revision_clock.settle()
     assert [
         revision.revision
         for revision in (

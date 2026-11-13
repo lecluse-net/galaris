@@ -42,11 +42,11 @@ def normalize_source(content: str, kind: Literal["html", "json"]) -> str:
     return " ".join(visible_text(content).split())
 
 
-def change_percent(previous: str, current: str) -> float:
-    """Changed share of the larger source; insertions and deletions count once."""
+def changed_characters(previous: str, current: str) -> int:
+    """Estimate edited characters; substitutions, insertions and deletions count once."""
     size = max(len(previous), len(current))
     if not size or previous == current:
-        return 0.0
+        return 0
     # Strip unchanged edges before matching: common long boilerplate should not
     # mask a local edit or dominate the matcher. Autojunk bounds repetitive input.
     prefix = 0
@@ -67,13 +67,19 @@ def change_percent(previous: str, current: str) -> float:
     else:
         edges = prefix + len(previous) - end_old
         unchanged = max(unchanged, edges + _nearby_matches(previous[prefix:end_old], current[prefix:end_new]))
-    return 100 * (size - unchanged) / size
+    return size - unchanged
+
+
+def change_percent(previous: str, current: str) -> float:
+    """Compatibility helper for percentage-based diagnostics."""
+    size = max(len(previous), len(current))
+    return 100 * changed_characters(previous, current) / size if size else 0.0
 
 
 def needs_summary(current: str, *, summary_present: bool, generated: bool,
-                  baseline: str | None, min_chars: int, threshold: float) -> bool:
+                  baseline: str | None, min_chars: int, min_changed_chars: int) -> bool:
     if len(current) <= min_chars:
         return False
     if not summary_present:
         return True
-    return generated and (baseline is None or change_percent(baseline, current) > threshold)
+    return generated and (baseline is None or changed_characters(baseline, current) >= min_changed_chars)

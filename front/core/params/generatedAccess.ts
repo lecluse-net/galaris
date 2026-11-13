@@ -104,7 +104,7 @@ export const parameterAccess: Record<string, readonly string[]> = {
     "DREAM_CONFIG_ACCESS",
     "DREAM_EDIT"
   ],
-  "DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT": [
+  "DREAM_RESOURCE_SUMMARY_MIN_CHANGED_CHARS": [
     "DREAM_CONFIG_ACCESS",
     "DREAM_EDIT"
   ],

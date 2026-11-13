@@ -10,6 +10,7 @@ from core.params import runtime_settings
 from core.util import needs_resource_summary as needs_summary, normalize_summary_source as normalize_source
 
 from .models import Dataset
+from ..revision_batching import settled_clause
 
 
 def sync_summary_metadata(item: Dataset) -> None:
@@ -31,11 +32,11 @@ def refresh_pending(item: Dataset) -> None:
             if item.summary_content is not None else bool(item.summary_size_bytes),
         generated=bool(item.summary_generated), baseline=item.summary_source_text,
         min_chars=runtime_settings.DREAM_RESOURCE_SUMMARY_MIN_CHARS,
-        threshold=runtime_settings.DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT)
+        min_changed_chars=runtime_settings.DREAM_RESOURCE_SUMMARY_MIN_CHANGED_CHARS)
 
 
 def pending(handled: Select[tuple[str]]) -> Select[tuple[Dataset]]:
-    return select(Dataset).where(Dataset.summary_pending.is_(True),
+    return select(Dataset).where(Dataset.summary_pending.is_(True), settled_clause(),
         ~func.concat(Dataset.id, ":", Dataset.lock_version).in_(handled))
 
 
@@ -51,7 +52,8 @@ async def claim_one(handled: Select[tuple[str]]) -> str | None:
 
 async def source(identity: str) -> tuple[str, str, int | None] | None:
     item = await get_db().scalar(select(Dataset).where(
-        func.concat(Dataset.id, ":", Dataset.lock_version) == identity, Dataset.summary_pending.is_(True)))
+        func.concat(Dataset.id, ":", Dataset.lock_version) == identity, Dataset.summary_pending.is_(True),
+        settled_clause()))
     if item is None:
         return None
     refresh_pending(item)
@@ -61,7 +63,7 @@ async def source(identity: str) -> tuple[str, str, int | None] | None:
 async def apply(identity: str, description: str, keywords: list[str]) -> bool:
     item = await get_db().scalar(select(Dataset).where(
         func.concat(Dataset.id, ":", Dataset.lock_version) == identity,
-        Dataset.summary_pending.is_(True)).with_for_update())
+        Dataset.summary_pending.is_(True), settled_clause()).with_for_update())
     if item is None:
         return False
     refresh_pending(item)

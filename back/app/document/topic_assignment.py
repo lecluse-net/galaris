@@ -12,6 +12,7 @@ from core.util import visible_text
 
 from .access import readable_workflow_document_clause
 from .models import Document
+from .revision_batching import settled_clause
 from core.storage import get_storage
 
 
@@ -89,6 +90,7 @@ def _pending(handled: Select[tuple[str]]) -> Select[tuple[str]]:
         .where(
             Document.topic_id.is_(None),
             Document.document_type == "text",
+            settled_clause(),
             Document.deleted_at.is_(None),
             Document.deleted_at.is_(None),
             ~_identity().in_(handled),
@@ -128,6 +130,7 @@ async def source(identity: str) -> tuple[str, int | None, str | None] | None:
                 Document.deleted_at.is_(None),
                 Document.deleted_at.is_(None),
                 Document.document_type == "text",
+                settled_clause(),
             )
         )
     ).one_or_none()
@@ -155,6 +158,7 @@ async def is_current(identity: str) -> bool:
                 Document.deleted_at.is_(None),
                 Document.deleted_at.is_(None),
                 Document.document_type == "text",
+                settled_clause(),
             )
         )
         is not None
@@ -169,6 +173,7 @@ async def assign(identity: str, topic_id: UUID) -> bool:
             Document.topic_id.is_(None),
             Document.deleted_at.is_(None),
             Document.document_type == "text",
+            settled_clause(),
             Document.id.in_(
                 select(Document.id).where(Document.deleted_at.is_(None))
             ),

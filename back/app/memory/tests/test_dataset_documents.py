@@ -18,10 +18,11 @@ from app.memory.schemas import MemoryItemUpdate, MemoryPayload, MemorySearchRequ
 from app.document.schemas import DocumentGrantUpdate
 from app.document.schemas import DocumentLibraryRequest
 from app.dataset import service as datasets
+from app.document.tests.revision_helpers import revision_clock as revision_clock
 
 
 @pytest.mark.asyncio
-async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memory_storage):
+async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memory_storage, revision_clock):
     owner, reader = agents
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
     source = '{\n  "label": "<strong>Literal HTML</strong>",\n  "amount": 1200\n}\n'
@@ -55,6 +56,7 @@ async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memo
         await files.resource_write(ctx, created.uri, b"{}", expected_revision=1)
     unchanged = await files.resource_write(ctx, created.uri, changed.content.encode(), expected_revision=2)
     assert unchanged.revision == 2
+    await revision_clock.settle()
     restored = await datasets.restore(identity, owner.id, number=1, expected_revision=2)
     assert restored.revision == 3
     assert (await files.resource_read(reader_ctx, created.uri)).content == source

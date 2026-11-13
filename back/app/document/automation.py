@@ -1,6 +1,7 @@
-"""Durable, leased personal-classification jobs owned by Document."""
+"""Durable, leased Document maintenance and history checkpoints."""
 import asyncio
 from datetime import datetime,timedelta,timezone
+from uuid import UUID
 from sqlalchemy import and_,or_,select,update
 from loguru import logger
 from core.database import get_db,get_db_session
@@ -25,7 +26,10 @@ async def process_next() -> bool:
         attempts=job.attempts
     try:
         async with get_db_session():
-            if kind == "resource_cleanup":
+            if kind == "document_revision":
+                from .revision_batching import seal_revision
+                await seal_revision(UUID(str(payload["document_id"])), int(payload["revision"]))
+            elif kind == "resource_cleanup":
                 from core.storage import get_storage, resource_is_referenced
                 provider, pointer = str(payload["provider"]), str(payload["pointer"])
                 if not await resource_is_referenced(provider, pointer):
@@ -45,7 +49,7 @@ async def process_next() -> bool:
                 available_at=datetime.now(timezone.utc)+timedelta(seconds=min(300,2**attempts))))
         if isinstance(error,asyncio.CancelledError):
             raise
-        logger.exception("Document classification job {} failed",identity)
+        logger.exception("Document maintenance job {} failed",identity)
     else:
         async with get_db_session():
             await get_db().execute(update(DocumentAutomationJob).where(DocumentAutomationJob.id==identity,
@@ -61,7 +65,7 @@ async def _worker() -> None:
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.exception("Document classification worker failed")
+            logger.exception("Document maintenance worker failed")
             await asyncio.sleep(2)
 
 

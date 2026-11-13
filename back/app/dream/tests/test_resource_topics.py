@@ -24,6 +24,7 @@ from app.topic.schemas import TopicCreate
 from app.topic.schemas import TopicResourceAssignmentWrite
 from core.params import runtime_settings
 from core.user import UserModel
+from app.document.tests.revision_helpers import revision_clock as revision_clock
 
 
 async def resource(db, owner, kind):
@@ -49,6 +50,7 @@ async def test_classification_checkpoint_preserves_content_and_lists_readable_re
     agents,
     memory_storage,
     monkeypatch,
+    revision_clock,
     kind,
 ):
     owner, other = agents
@@ -58,6 +60,7 @@ async def test_classification_checkpoint_preserves_content_and_lists_readable_re
     db.add(reader)
     await db.flush()
     item = await resource(db, owner, kind)
+    await revision_clock.settle()
     identity, content, revision = item.id, item.content, item.revision
     topic = await topics.create(TopicCreate(title="Gardening"))
     mechanism = getattr(classification, f"{kind}_topic_classification_mechanism")
@@ -200,10 +203,12 @@ async def test_late_classification_cannot_overwrite_a_changed_resource(
     db,
     agents,
     memory_storage,
+    revision_clock,
     kind,
     change,
 ):
     item = await resource(db, agents[0], kind)
+    await revision_clock.settle()
     first = await topics.create(TopicCreate(title="Gardening"))
     second = await topics.create(TopicCreate(title="Plants"))
     mechanism = getattr(classification, f"{kind}_topic_classification_mechanism")
@@ -232,9 +237,10 @@ async def test_late_classification_cannot_overwrite_a_changed_resource(
 @pytest.mark.parametrize("kind", ["document", "dataset"])
 @pytest.mark.parametrize("mode", ["forbid", "propose", "auto"])
 async def test_resource_topic_creation_obeys_dream_policy(
-    db, agents, memory_storage, monkeypatch, kind, mode
+    db, agents, memory_storage, monkeypatch, revision_clock, kind, mode
 ):
     item = await resource(db, agents[0], kind)
+    await revision_clock.settle()
     mechanism = getattr(classification, f"{kind}_topic_classification_mechanism")
     monkeypatch.setattr(runtime_settings, "DREAM_TOPIC_CREATION_MODE", mode)
 
@@ -248,3 +254,52 @@ async def test_resource_topic_creation_obeys_dream_policy(
     await db.refresh(item)
     assert (item.topic_id is not None) == (mode == "auto")
     assert await db.scalar(select(func.count(Topic.id))) == int(mode == "auto")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["document", "dataset"])
+async def test_unassigned_topics_skip_small_edits_and_accumulate_from_last_inference(
+    db, agents, memory_storage, monkeypatch, revision_clock, kind
+):
+    item = await resource(db, agents[0], kind)
+    await revision_clock.settle()
+    original = item.content
+    mechanism = getattr(classification, f"{kind}_topic_classification_mechanism")
+    monkeypatch.setattr(runtime_settings, "DREAM_TOPIC_CREATION_MODE", "propose")
+    inference = AsyncMock(return_value=(TopicClassification(action="create", title="Gardening"), 0.01))
+    monkeypatch.setattr(classification, "classify", inference)
+
+    async def consider():
+        claim = await mechanism.claim_one()
+        assert claim is not None
+        prepared = await mechanism.prepare(claim)
+        await store_prepared(claim, prepared.payload, cost=prepared.cost)
+        count = await mechanism.apply(claim, prepared.payload)
+        await mark_success(claim, result_count=count)
+        return prepared.payload
+
+    await consider()
+    assert inference.await_count == 1
+    for changed in (99, 100):
+        content = original.replace(".</p>", "." + "x" * changed + "</p>") if kind == "document" else original.replace("bean", "bean" + "x" * changed)
+        if kind == "document":
+            from app.document.schemas import DocumentUpdate
+            item = await memory.update_item(item.id, DocumentUpdate(payload=MemoryPayload(text=content)), actor_agent_id=agents[0].id)
+        else:
+            item = await datasets.replace(item.id, agents[0].id, content=content, expected_revision=item.revision)
+            await db.commit()
+        assert await mechanism.claim_one() is None
+        await revision_clock.settle()
+        if changed == 99:
+            assert await mechanism.claim_one() is None
+            assert await db.scalar(select(func.count(DreamReceipt.id)).where(DreamReceipt.mechanism_key == mechanism.key)) == 1
+            # An insignificant older document must not starve a new eligible one.
+            other = await resource(db, agents[1], kind)
+            await revision_clock.settle()
+            claim = await mechanism.claim_one()
+            assert claim is not None and claim.subject_id.startswith(f"{other.id}:")
+            await mark_success(claim, result_count=0)
+        else:
+            result = await consider()
+            assert not result.get("stale")
+    assert inference.await_count == 2

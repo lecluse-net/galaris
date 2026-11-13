@@ -2546,8 +2546,9 @@ et remplace le résumé manuel ou automatique depuis le contenu enregistré, ave
 même pour un document court. Contenu, versions et mots-clés restent conservés.
 
 Au repos, Dream peut produire une description de la nature et de l’utilité du document au-delà
-de **1 000 caractères utiles**, puis actualiser un résumé automatique après plus de **25 % de
-changement cumulé**. La seule mise en forme HTML ne compte pas ; les résumés manuels sont préservés.
+de **1 000 caractères utiles**, puis actualiser un résumé automatique après **au moins 100 caractères
+modifiés cumulés**. L'historique regroupe les sauvegardes après cinq minutes sans changement du
+contenu et Dream attend cette stabilisation. La seule mise en forme HTML ne compte pas ; les résumés manuels sont préservés.
 Les seuils sont configurables pour Texte et Données. Résumés et mots-clés sont des métadonnées
 courantes sans historique propre ; restaurer le contenu ne les remplace pas.
 

@@ -111,9 +111,16 @@ Only its content keeps restorable versions; restoring content preserves the curr
 and keywords. Its documentary entry in Memory always shows the current description and no longer
 offers description history.
 
+Work is still saved immediately. After a content edit, a new version enters history after
+**five minutes without another content edit**. Nearby saves are grouped and the delay survives
+restarts. The initial state is retained; reverting to the latest checkpoint creates no duplicate.
+The technical version token still protects every concurrent save, so history version numbers
+may have gaps.
+
 During idle time, Dream can generate a short explanation of what the Document is and when it is
 useful, with search terms. The default threshold is **more than 1,000 useful text characters**.
-An automatic description is refreshed only after **more than 25%** of the content has changed
+A Dream entry to refresh an automatic description is created only after **five minutes
+without content edits** and **at least 100 characters have changed**
 since its last generation; small edits accumulate. HTML presentation changes alone do not count.
 Manual descriptions are preserved. Both thresholds are configurable in Dream settings and also
 apply to Datasets.

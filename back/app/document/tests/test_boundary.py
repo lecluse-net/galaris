@@ -10,7 +10,7 @@ from app.memory.tests.conftest import agents, memory_storage
 
 
 @pytest.mark.asyncio
-async def test_document_content_history_and_sharing_without_a_memory(db, agents, memory_storage):
+async def test_document_content_history_and_sharing_without_a_memory(db, agents, memory_storage, revision_clock):
     owner, reader=agents
     document=await document_service.create_document(owner_agent_id=owner.id,title="Synthetic launch notes",content="<p>Initial notes.</p>",task_id=None)
     identity=document.id
@@ -20,6 +20,8 @@ async def test_document_content_history_and_sharing_without_a_memory(db, agents,
     await document_service.share_document(identity,owner_agent_id=owner.id,target_agent_id=reader.id,access="edit",task_id=None)
     result=await document_service.edit_document(identity,actor_agent_id=reader.id,task_id=None,old_text="Initial notes.",new_text="Revised notes.")
     assert result["revision"]==2
+    assert await db.scalar(select(func.count()).select_from(DocumentRevision).where(DocumentRevision.document_id==identity))==1
+    await revision_clock.settle()
     assert await db.scalar(select(func.count()).select_from(DocumentRevision).where(DocumentRevision.document_id==identity))==2
     assert await db.scalar(select(MemoryItem.id).where(MemoryItem.id==identity)) is None
     await document_service.share_document(identity,owner_agent_id=owner.id,target_agent_id=reader.id,access="none",task_id=None)

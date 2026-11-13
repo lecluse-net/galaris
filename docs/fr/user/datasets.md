@@ -45,7 +45,9 @@ confirmation, comme pour un [document Texte](documents.md).
 Une erreur ou un conflit conserve la saisie. Les descriptions existantes sont conservées.
 Dream peut compléter une
 description absente au-delà de 1 000 caractères de JSON normalisé et actualiser une
-description automatique après plus de 25 % de changement cumulé. Ces seuils sont réglables ;
+description automatique après au moins 100 caractères modifiés depuis la dernière génération.
+L'historique regroupe les sauvegardes après cinq minutes sans modification du contenu ; Dream
+attend aussi cette stabilisation. Ces seuils sont réglables ;
 les descriptions manuelles sont préservées.
 
 ## Utiliser les données avec un agent ou une page

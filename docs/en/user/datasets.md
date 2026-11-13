@@ -40,8 +40,10 @@ The **View summary** icon refreshes the current summary without showing keywords
 With edit rights, you can edit, save or regenerate it after confirmation, as for a
 [Text document](documents.md). Errors and conflicts preserve
 your draft. Existing descriptions are retained. Dream can fill a missing description
-above 1,000 normalized JSON characters and refresh an automatic description after more
-than 25% cumulative change. Both thresholds are configurable; manual descriptions are preserved.
+above 1,000 normalized JSON characters and refresh an automatic description after at least
+100 changed characters since the last generation. History groups saves after five minutes
+without content edits; Dream also waits for this stabilization. Both thresholds are configurable;
+manual descriptions are preserved.
 
 ## Use data with an agent or a page
 

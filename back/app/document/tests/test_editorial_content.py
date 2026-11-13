@@ -16,7 +16,7 @@ def png():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("equation", [False, True])
-async def test_editorial_state_is_document_content_with_independent_revisions(agents, memory_storage, db, equation):
+async def test_editorial_state_is_document_content_with_independent_revisions(agents, memory_storage, db, revision_clock, equation):
     owner, reader = agents
     unchecked = '<ul class="galaris-checklist"><li data-checked="false"><p>Review draft</p></li></ul>'
     checked = unchecked.replace('data-checked="false"', 'data-checked="true"')
@@ -29,6 +29,7 @@ async def test_editorial_state_is_document_content_with_independent_revisions(ag
     await service.set_item_grant(document.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     reopened = await read_document(document.id, actor_agent_id=reader.id, task_id=None)
     assert reopened["content"] == checked
+    await revision_clock.settle()
     snapshots = (await db.scalars(select(DocumentRevision).where(DocumentRevision.document_id == document.id).order_by(DocumentRevision.revision))).all()
     assert [snapshot.revision for snapshot in snapshots] == [1, 2]
     with pytest.raises(service.DocumentPermissionError):
@@ -117,7 +118,7 @@ async def test_file_mutation_diagnostics_preserve_document_content_and_revision(
     ("image/png", png()),
     ("image/svg+xml", b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"><rect width="4" height="4" fill="blue"/></svg>'),
 ])
-async def test_inline_images_history_and_current_access(agents, memory_storage, db, media_type, source):
+async def test_inline_images_history_and_current_access(agents, memory_storage, db, revision_clock, media_type, source):
     owner, peer = agents
     document = await create_document(
         owner_agent_id=owner.id, title="Image document", content="<p>Before</p>", task_id=None
@@ -148,6 +149,7 @@ async def test_inline_images_history_and_current_access(agents, memory_storage, 
         actor_agent_id=owner.id,
     )
     assert unchanged.revision == revision
+    await revision_clock.settle()
     snapshot = await db.scalar(
         select(DocumentRevision).where(
             DocumentRevision.document_id == document.id, DocumentRevision.revision == revision

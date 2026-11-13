@@ -111,7 +111,7 @@ dataset_summary_mechanism = ResourceSummaryMechanism("dataset",
 
 
 async def on_summary_policy_change(name: str, _value: str | None) -> None:
-    if name not in {"DREAM_RESOURCE_SUMMARY_MIN_CHARS", "DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT"}:
+    if name not in {"DREAM_RESOURCE_SUMMARY_MIN_CHARS", "DREAM_RESOURCE_SUMMARY_MIN_CHANGED_CHARS"}:
         return
     db = get_db()
     async with db.begin_nested():

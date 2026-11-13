@@ -12,6 +12,7 @@ from core.user import HumanActor
 from core.util import needs_resource_summary as needs_summary, normalize_summary_source as normalize_source
 
 from .models import Document
+from .revision_batching import settled_clause
 
 
 async def normalized_content(item: Document, content: bytes | None = None) -> str:
@@ -29,13 +30,14 @@ async def refresh_pending(item: Document, content: bytes | None = None) -> None:
         summary_present=bool(item.summary_content.strip() if item.summary_media_type == "text/plain" else normalize_source(item.summary_content, "html")) if item.summary_content is not None else bool(item.summary_size_bytes),
         generated=bool(item.summary_generated), baseline=item.summary_source_text,
         min_chars=runtime_settings.DREAM_RESOURCE_SUMMARY_MIN_CHARS,
-        threshold=runtime_settings.DREAM_RESOURCE_SUMMARY_CHANGE_PERCENT,
+        min_changed_chars=runtime_settings.DREAM_RESOURCE_SUMMARY_MIN_CHANGED_CHARS,
     )
 
 
 def pending(handled: Select[tuple[str]]) -> Select[tuple[Document]]:
     return select(Document).where(Document.summary_pending.is_(True),
-        Document.document_type == "text", ~func.concat(Document.id, ":", Document.lock_version).in_(handled))
+        Document.document_type == "text", settled_clause(),
+        ~func.concat(Document.id, ":", Document.lock_version).in_(handled))
 
 
 async def count_pending(handled: Select[tuple[str]]) -> int:
@@ -50,7 +52,8 @@ async def claim_one(handled: Select[tuple[str]]) -> str | None:
 
 async def source(identity: str) -> tuple[str, str, int | None] | None:
     item = await get_db().scalar(select(Document).where(
-        func.concat(Document.id, ":", Document.lock_version) == identity, Document.summary_pending.is_(True)))
+        func.concat(Document.id, ":", Document.lock_version) == identity, Document.summary_pending.is_(True),
+        settled_clause()))
     if item is None:
         return None
     await refresh_pending(item)
@@ -65,7 +68,7 @@ async def apply(identity: str, description: str, keywords: list[str]) -> bool:
 
     item = await get_db().scalar(select(Document).where(
         func.concat(Document.id, ":", Document.lock_version) == identity,
-        Document.summary_pending.is_(True)).with_for_update())
+        Document.summary_pending.is_(True), settled_clause()).with_for_update())
     if item is None:
         return False
     await refresh_pending(item)

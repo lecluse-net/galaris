@@ -2010,7 +2010,8 @@ from saved content using the Dream model, even for short documents. Content, ver
 are preserved.
 
 During idle periods, Dream can describe a document's nature and usefulness above **1,000 useful
-characters**, then refresh automatic summaries after more than **25% cumulative change**. HTML
+characters**, then refresh automatic summaries after **at least 100 cumulatively changed characters**.
+History groups saves after five minutes without content edits and Dream waits for this stabilization. HTML
 formatting alone does not count; manual summaries are preserved. Thresholds are configurable for
 Text and Data. Summaries and keywords are current metadata without their own history; restoring
 content does not replace them.

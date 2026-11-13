@@ -18,6 +18,7 @@ from app.memory.tests.conftest import agents as agents, memory_storage as memory
 from core.database import get_db
 from core.params import runtime_settings
 from core.util.resource_summary import change_percent, normalize_source, needs_summary
+from app.document.tests.revision_helpers import revision_clock as revision_clock
 
 
 def body(kind, text):
@@ -47,25 +48,28 @@ def test_summary_policy_uses_strict_thresholds_and_ignores_presentation():
     from app.dream.mechanisms.resource_summaries import ResourceSummary
     with pytest.raises(ValidationError):
         ResourceSummary(description=" ", keywords=[" "])
-    assert not needs_summary("x" * 1000, summary_present=False, generated=False, baseline=None, min_chars=1000, threshold=25)
-    assert needs_summary("x" * 1001, summary_present=False, generated=False, baseline=None, min_chars=1000, threshold=25)
+    assert not needs_summary("x" * 1000, summary_present=False, generated=False, baseline=None, min_chars=1000, min_changed_chars=100)
+    assert needs_summary("x" * 1001, summary_present=False, generated=False, baseline=None, min_chars=1000, min_changed_chars=100)
     assert change_percent("a" * 1200, "a" * 900 + "b" * 300) == 25
     assert change_percent("a" * 1200, "a" * 100 + "b" + "a" * 998 + "b" + "a" * 100) < 1
     assert change_percent("a" * 1200, "a" * 100 + "b" + "a" * 1000 + "b" + "a" * 100) < 1
-    assert not needs_summary("a" * 900 + "b" * 300, summary_present=True, generated=True,
-        baseline="a" * 1200, min_chars=1000, threshold=25)
+    assert not needs_summary("a" * 1101 + "b" * 99, summary_present=True, generated=True,
+        baseline="a" * 1200, min_chars=1000, min_changed_chars=100)
+    assert needs_summary("a" * 1100 + "b" * 100, summary_present=True, generated=True,
+        baseline="a" * 1200, min_chars=1000, min_changed_chars=100)
     assert normalize_source('<p><strong>Useful</strong> text</p>', "html") == normalize_source('<div>Useful text</div>', "html")
     assert normalize_source('{ "b": 2, "a": 1 }', "json") == normalize_source('{"a":1,"b":2}', "json")
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["document", "data", "dataset"])
-async def test_summary_generation_and_cumulative_changes_preserve_content_history(db, agents, memory_storage, kind):
+async def test_summary_generation_and_cumulative_changes_preserve_content_history(db, agents, memory_storage, revision_clock, kind):
     owner, _ = agents
     port = document_summaries if kind == "document" else dataset_summaries
     item = await create(kind, owner, "a" * 1200)
     identity = item.id
     assert item.summary_pending
+    await revision_clock.settle()
     assert await db.get(MemoryItem, identity) is None
     assert await port.apply(f"{identity}:{item.lock_version}", "Synthetic resource description", ["synthetic", "reference"])
     await db.commit()
@@ -77,15 +81,18 @@ async def test_summary_generation_and_cumulative_changes_preserve_content_histor
     assert summary and item.summary_size_bytes == len(summary)
     assert item.summary_content_hash == sha256(summary).hexdigest()
     baseline = item.summary_source_text
-    item = await write(kind, item, owner, "a" * 960 + "b" * 240)
+    item = await write(kind, item, owner, "a" * 1101 + "b" * 99)
     assert not item.summary_pending
     assert item.summary_source_text == baseline
+    await revision_clock.settle()
     item = await write(kind, item, owner, "a" * 840 + "b" * 360)
     assert item.summary_pending
+    await revision_clock.settle()
     stale = f"{identity}:{item.lock_version}"
     item = await write(kind, item, owner, "a" * 800 + "b" * 400)
     assert not await port.apply(stale, "Stale result must not overwrite current metadata", ["stale"])
     assert item.summary_pending and item.keywords == ["synthetic", "reference"]
+    await revision_clock.settle()
     assert await port.apply(f"{identity}:{item.lock_version}", "Current description", ["current"])
     await db.commit()
     assert not item.summary_pending and item.revision == 4
@@ -127,12 +134,13 @@ async def test_small_resources_and_manual_summaries_do_not_trigger_dream(db, age
 
 
 @pytest.mark.asyncio
-async def test_dream_reads_every_source_part_and_rejects_a_late_manual_edit(db, agents, memory_storage, monkeypatch):
+async def test_dream_reads_every_source_part_and_rejects_a_late_manual_edit(db, agents, memory_storage, monkeypatch, revision_clock):
     from app.dream.mechanisms import resource_summaries as mechanism
     from app.dream.contracts import DreamClaim
     from uuid import uuid4
 
     item = await create("document", agents[0], "a" * 48_000 + "Synthetic important final section")
+    await revision_clock.settle()
     run = mechanism.document_summary_mechanism
     inference = AsyncMock(return_value=SimpleNamespace(output=mechanism.ResourceSummary(
         description="Synthetic reusable reference", keywords=["reference"]), cost=0.0))
@@ -150,7 +158,7 @@ async def test_dream_reads_every_source_part_and_rejects_a_late_manual_edit(db, 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["document", "data", "dataset"])
-async def test_dream_coalesces_pending_edits_and_rechecks_changed_policy(db, agents, memory_storage, monkeypatch, kind):
+async def test_dream_coalesces_pending_edits_and_rechecks_changed_policy(db, agents, memory_storage, monkeypatch, revision_clock, kind):
     from app.dream.mechanisms.resource_summaries import document_summary_mechanism, dataset_summary_mechanism, on_summary_policy_change
     owner = agents[0]
     item = await create(kind, owner, "a" * 600)
@@ -162,6 +170,34 @@ async def test_dream_coalesces_pending_edits_and_rechecks_changed_policy(db, age
     item = await write(kind, item, owner, "a" * 650)
     item = await write(kind, item, owner, "a" * 700)
     mechanism = document_summary_mechanism if kind == "document" else dataset_summary_mechanism
+    assert await mechanism.claim_one() is None
+    await revision_clock.settle()
     claim = await mechanism.claim_one()
     assert claim is not None and claim.subject_id == f"{item.id}:{item.lock_version}"
     assert await mechanism.claim_one() is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["document", "data", "dataset"])
+async def test_summary_receipts_require_both_quiet_time_and_substantial_changes(db, agents, memory_storage, revision_clock, kind):
+    from app.dream.mechanisms.resource_summaries import document_summary_mechanism, dataset_summary_mechanism
+    from app.dream.models import DreamReceipt
+
+    item = await create(kind, agents[0], "a" * 1200)
+    port = document_summaries if kind == "document" else dataset_summaries
+    mechanism = document_summary_mechanism if kind == "document" else dataset_summary_mechanism
+    assert await mechanism.claim_one() is None
+    await revision_clock.settle()
+    assert await port.apply(f"{item.id}:{item.lock_version}", "Synthetic description", ["synthetic"])
+    await db.commit()
+    item = await write(kind, item, agents[0], "a" * 1101 + "b" * 99)
+    await revision_clock.settle()
+    assert await mechanism.claim_one() is None
+    item = await write(kind, item, agents[0], "a" * 1100 + "b" * 100)
+    assert await mechanism.claim_one() is None
+    assert await db.scalar(select(func.count(DreamReceipt.id)).where(DreamReceipt.mechanism_key == mechanism.key)) == 0
+    await revision_clock.settle()
+    claim = await mechanism.claim_one()
+    assert claim is not None
+    assert await mechanism.claim_one() is None
+    assert await db.scalar(select(func.count(DreamReceipt.id)).where(DreamReceipt.mechanism_key == mechanism.key)) == 1

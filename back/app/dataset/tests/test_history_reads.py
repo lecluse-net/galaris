@@ -14,10 +14,11 @@ from core.authorize.models import Assignment, Privilege, Role
 from core.database import get_db_session
 from core.user import UserModel
 from core.user.user_service import encrypt_password
+from app.document.tests.revision_helpers import revision_clock as revision_clock
 
 
 @pytest.mark.asyncio
-async def test_history_preserves_exact_metadata_and_does_not_materialize_revision_contents(db, agents):
+async def test_history_preserves_exact_metadata_and_does_not_materialize_revision_contents(db, agents, revision_clock):
     owner, reader = agents
     owner_id, reader_id = owner.id, reader.id
     now = datetime.now(timezone.utc)
@@ -69,6 +70,8 @@ async def test_history_preserves_exact_metadata_and_does_not_materialize_revisio
     assert (await service.revision(identity, owner_id, 1)).content == contents[0]
     restored = await service.restore(identity, owner_id, number=1, expected_revision=64)
     assert restored.revision == 65 and restored.content == contents[0]
+    await db.commit()
+    await revision_clock.settle()
     assert (await service.history(identity, owner_id))["total"] == 65
     report = {"page_revisions": len(page["items"]), "loaded_revision_bytes": sum(loaded)}
     destination = Path(__file__).resolve().parents[4] / "artifacts/dataset-history-reads.json"

@@ -1433,6 +1433,7 @@
           "back/app/document/query_policy.py",
           "back/app/document/resource_service.py",
           "back/app/document/resource_summaries.py",
+          "back/app/document/revision_batching.py",
           "back/app/document/revision_queries.py",
           "back/app/document/router.py",
           "back/app/document/sharing_inheritance.py",
@@ -1870,6 +1871,7 @@
           "back/app/dream/mechanisms/file_catalogue.py",
           "back/app/dream/mechanisms/memory_extraction.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
+          "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/mechanisms/skill_learning.py",
           "back/app/dream/mechanisms/stale_memory.py",
           "back/app/dream/mechanisms/task_memory.py",
@@ -1902,7 +1904,8 @@
       {
         "files": [
           "back/app/dream/attachment_processing.py",
-          "back/app/dream/contracts.py"
+          "back/app/dream/contracts.py",
+          "back/app/dream/mechanisms/resource_topic_classification.py"
         ],
         "source": "app.dream",
         "target": "core.util"
