@@ -262,7 +262,8 @@ import DocumentIcon from '@/app/document/components/DocumentIcon.vue'
 import DocumentApplicationBlock from '@/app/document/components/DocumentApplicationBlock.vue'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { isAxiosError } from 'axios'
-import { apiErrorDetail } from '@/core/api'
+import { apiErrorDetail, AUTH_TOKEN_CHANGED_EVENT, registerBeforeLogoutHook, sessionGeneration } from '@/core/api'
+import { useAuthStore } from '@/core/user'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { copyToClipboard, useQuasar, type QInput } from 'quasar'
@@ -277,6 +278,7 @@ import { documentType } from '../documentTypes'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
 import { reconcileLibrarySnapshot } from '@/app/document/librarySnapshot'
+import { documentDraftKey, restoreDocumentDraft, sameDocumentDraft, type DocumentDraft } from '../documentDraft'
 import type {
   DocumentAttachment,
   DocumentGlobalAccess,
@@ -296,15 +298,6 @@ import DocumentSummaryPanel from './DocumentSummaryPanel.vue'
 
 type DocumentShareAccess = 'none' | 'read' | 'edit'
 type AutosaveState = 'saved' | 'pending' | 'saving' | 'invalid' | 'error'
-
-interface DocumentDraft {
-  owner: string
-  title: string
-  content: string
-  keywords: string[]
-  globalAccess: DocumentGlobalAccess
-  sharing: Record<number, DocumentShareAccess>
-}
 
 type OwnerChoice = OwnerOption & { value: string }
 
@@ -346,6 +339,15 @@ const referenceFormatting = useReferenceFormatting()
 const $q = useQuasar()
 const headingInDialog = computed(() => $q.screen.lt.md && !!props.headingTarget)
 const agentStore = useAgentChoices()
+const authStore = useAuthStore()
+// This editor and its pending work always belong to the account that opened it.
+const draftUserId = authStore.user?.id ?? null
+const editorSession = sessionGeneration()
+const sessionActive = ref(true)
+function isCurrentEditorSession(): boolean {
+  return sessionActive.value && editorSession === sessionGeneration()
+    && (draftUserId === null || authStore.user?.id === draftUserId)
+}
 const documentMutations = useDocumentMutations()
 const privilegeStore = usePrivilegeStore()
 const loading = ref(true)
@@ -474,6 +476,7 @@ let saveQueued = false
 let saveWaiters: Array<() => void> = []
 let autosaveTimer: ReturnType<typeof setTimeout> | undefined
 let realtimeTimer: ReturnType<typeof setTimeout> | undefined
+let draftTimer: ReturnType<typeof setTimeout> | undefined
 let pendingExternalRevision = 0
 let pendingExternalLockVersion = 0
 let loadGeneration = 0
@@ -510,6 +513,7 @@ const currentUserOwnsDocument = computed(() => Boolean(
 const requestAgentId = computed(() => currentUserOwnsDocument.value ? null : props.agentId)
 const canEditDocument = computed(() => Boolean(
   props.editable
+  && isCurrentEditorSession()
   && currentDocument.value?.access.can_write
   && !currentDocument.value.read_only
   && !currentDocument.value.source_managed
@@ -519,6 +523,7 @@ const sharingPermission = ref<boolean | null>(null)
 watch(() => props.documentId, () => { sharingPermission.value = null })
 const canManageSharing = computed(() => Boolean(
   props.editable
+  && isCurrentEditorSession()
   && currentDocument.value
   && !currentDocument.value.source_managed
   && (
@@ -641,7 +646,7 @@ function draftFromDocument(document: DocumentDetail): DocumentDraft {
   }
 }
 
-function draftFromEditor(): DocumentDraft {
+function readEditorDraft(): DocumentDraft {
   return {
     owner: editorOwner.value,
     title: editorTitle.value.trim(),
@@ -652,12 +657,15 @@ function draftFromEditor(): DocumentDraft {
   }
 }
 
+const editorDraft = computed(readEditorDraft)
+function draftFromEditor(): DocumentDraft { return editorDraft.value }
+
 function sameValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
 }
 
 function sameDraft(left: DocumentDraft | null, right: DocumentDraft | null): boolean {
-  return left !== null && right !== null && sameValue(left, right)
+  return sameDocumentDraft(left, right)
 }
 
 const hasUnsavedChanges = computed(() => currentDocument.value !== null && !sameDraft(lastSavedDraft.value, draftFromEditor()))
@@ -803,6 +811,7 @@ async function closeDocumentSummary(): Promise<void> {
   } catch { refreshError.value = true }
 }
 async function flushEditor(): Promise<boolean> {
+  preserveDraft()
   if (summaryPanel.value && !await summaryPanel.value.flush()) return false
   return await flushAutosave()
 }
@@ -817,6 +826,7 @@ async function onHistoryRestored(): Promise<void> {
 }
 
 async function loadDocument(): Promise<void> {
+  if (!isCurrentEditorSession()) return
   const generation = ++loadGeneration
   loading.value = !currentDocument.value
   refreshError.value = false
@@ -899,6 +909,7 @@ async function persistSharingChange(
 }
 
 function scheduleAutosave(delay = 700): void {
+  if (!isCurrentEditorSession()) return
   if (topicChangeInFlight.value) return
   if (deletingDocument.value) return
   if (conflictDocument.value) return
@@ -996,6 +1007,8 @@ function mergeDocument(latest: DocumentDetail): void {
 }
 
 async function persistAutosave(): Promise<void> {
+  // The editor may already be unmounted, with its listeners disposed, when a save completes.
+  if (!isCurrentEditorSession()) return
   if (topicChangeInFlight.value) return
   if (deletingDocument.value) return
   if (conflictDocument.value) return
@@ -1028,6 +1041,7 @@ async function persistAutosave(): Promise<void> {
     if (update) {
       if (update.payload) update.media_type = document.media_type
       const updated = await documentService.updateDocument(document.id, requestAgentId.value, update)
+      if (!isCurrentEditorSession()) return
       applyPublicDocument(updated)
       persisted = {
         ...cloneDraft(draft),
@@ -1044,6 +1058,7 @@ async function persistAutosave(): Promise<void> {
         currentDocument.value?.lock_version ?? document.lock_version,
         draft.globalAccess,
       )
+      if (!isCurrentEditorSession()) return
       applyPublicDocument(updated)
       persisted.globalAccess = draft.globalAccess
       lastSavedDraft.value = cloneDraft(persisted)
@@ -1054,6 +1069,7 @@ async function persistAutosave(): Promise<void> {
         const desired = draft.sharing[agent.value] ?? 'none'
         if (initial === desired) continue
         const updated = await persistSharingChange(document, agent.value, desired)
+        if (!isCurrentEditorSession()) return
         applyPublicDocument(updated)
         persisted.sharing[agent.value] = desired
         lastSavedDraft.value = cloneDraft(persisted)
@@ -1077,6 +1093,7 @@ async function persistAutosave(): Promise<void> {
         kind,
         ownerId,
       )
+      if (!isCurrentEditorSession()) return
       applyPublicDocument(updated)
       const latest = await documentService.getDocument(document.id, requestAgentId.value)
       if (currentDocument.value?.id === document.id) applyDocument(latest, 'updated')
@@ -1097,7 +1114,8 @@ async function persistAutosave(): Promise<void> {
     }
   } finally {
     saveInFlight = false
-    preserveDraft()
+    // Lifecycle/session changes already flushed the old draft; a late reply must not rewrite it.
+    if (isCurrentEditorSession()) preserveDraft()
     const waiters = saveWaiters
     saveWaiters = []
     for (const resolve of waiters) resolve()
@@ -1150,7 +1168,7 @@ async function deleteDocument(): Promise<void> {
     await waitForActiveSave()
     if (disposed || currentDocument.value?.id !== document.id || requestAgentId.value !== agentId || !canDeleteDocument.value) return
     await documentService.deleteDocument(document.id, agentId)
-    try { sessionStorage.removeItem(storageKey) } catch { /* Storage may be unavailable. */ }
+    try { if (storageKey) sessionStorage.removeItem(storageKey) } catch { /* Storage may be unavailable. */ }
     if (disposed || currentDocument.value?.id !== document.id || requestAgentId.value !== agentId) return
     loadGeneration += 1
     currentDocument.value = null
@@ -1265,15 +1283,18 @@ watch(
     editorGlobalAccess,
     sharingAccessByAgentId,
   ],
-  () => { preserveDraft(); scheduleAutosave() },
+  () => { scheduleDraft(); scheduleAutosave() },
   { deep: true, flush: 'sync' },
 )
 
 onMounted(async () => {
-  await agentStore.fetchAgents()
-  if (disposed) return
+  window.addEventListener('pagehide', preserveDraft)
+  document.addEventListener('visibilitychange', preserveHiddenDraft)
+  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, changeEditorSession)
+  // Labels are optional: their catalogue must not block document loading or realtime setup.
+  void agentStore.fetchAgents().catch(() => { /* Agent labels retain their ID fallback. */ })
   await loadDocument()
-  if (disposed) return
+  if (disposed || !sessionActive.value) return
   websocket.createWebsocket()
   websocket.onEvent('document', 'update', onMemoryRealtime)
   websocket.onEvent('document', 'delete', onMemoryDelete)
@@ -1286,6 +1307,10 @@ onBeforeUnmount(() => {
   loadGeneration += 1
   if (autosaveTimer) clearTimeout(autosaveTimer)
   if (realtimeTimer) clearTimeout(realtimeTimer)
+  window.removeEventListener('pagehide', preserveDraft)
+  document.removeEventListener('visibilitychange', preserveHiddenDraft)
+  window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, changeEditorSession)
+  removeLogoutHook()
   websocket.offEvent('document', 'update', onMemoryRealtime)
   websocket.offEvent('document', 'delete', onMemoryDelete)
   websocket.offEvent('document', 'invalidate', onWebsocketConnect)
@@ -1349,20 +1374,28 @@ async function uploadInlineImage(file: File, signal: AbortSignal, progress: (val
   return 'document://' + document.id + '/attachments/' + attachment.id
 }
 
-function draftKey(): string { return 'galaris:document-draft:' + props.agentId + ':' + props.documentId }
+function draftKey(): string | null { return draftUserId === null ? null : documentDraftKey(draftUserId, props.agentId, props.documentId) }
+function scheduleDraft(): void {
+  if (!props.editable || applyingDocument || !currentDocument.value || !sessionActive.value) return
+  // Bound the delay during continuous typing, rather than postponing recovery indefinitely.
+  draftTimer ??= setTimeout(preserveDraft, 200)
+}
 function preserveDraft(): void {
+  if (draftTimer) clearTimeout(draftTimer)
+  draftTimer = undefined
   if (!props.editable || applyingDocument || !currentDocument.value || !lastSavedDraft.value) return
+  const key = draftKey()
+  if (!key) return
   try {
-    if (hasUnsavedChanges.value) sessionStorage.setItem(draftKey(), JSON.stringify({ revision: currentDocument.value.revision, base: lastSavedDraft.value, draft: draftFromEditor() }))
-    else sessionStorage.removeItem(draftKey())
+    if (hasUnsavedChanges.value) sessionStorage.setItem(key, JSON.stringify({ user_id: draftUserId, revision: currentDocument.value.revision, base: lastSavedDraft.value, draft: draftFromEditor() }))
+    else sessionStorage.removeItem(key)
   } catch { autosaveState.value = 'error' }
 }
 function restoreDraft(document: DocumentDetail): void {
+  if (draftUserId === null || !sessionActive.value) return
   try {
-    const raw = sessionStorage.getItem(draftKey())
-    if (!raw) return
-    const saved = JSON.parse(raw) as { revision?: number; base?: DocumentDraft; draft?: DocumentDraft }
-    if (!saved.draft || !saved.base || typeof saved.draft.content !== 'string' || !Array.isArray(saved.draft.keywords)) return
+    const saved = restoreDocumentDraft(sessionStorage, draftUserId, props.agentId, props.documentId)
+    if (!saved) return
     applyEditorDraft(saved.draft)
     lastSavedDraft.value = cloneDraft(saved.base)
     if (saved.revision !== document.revision) {
@@ -1372,6 +1405,25 @@ function restoreDraft(document: DocumentDetail): void {
     } else autosaveState.value = 'pending'
   } catch { autosaveState.value = 'error' }
 }
+function preserveHiddenDraft(): void { if (document.visibilityState === 'hidden') preserveDraft() }
+function invalidateEditorSession(): void {
+  if (!sessionActive.value) return
+  preserveDraft()
+  sessionActive.value = false
+  ++loadGeneration; ++ownerLoadGeneration; ++keywordLoadGeneration
+  if (autosaveTimer) clearTimeout(autosaveTimer)
+  if (realtimeTimer) clearTimeout(realtimeTimer)
+  currentDocument.value = null
+  conflictDocument.value = null
+  deleteDialogOpen.value = false
+  loading.value = false
+  emit('unavailable', props.documentId)
+}
+function changeEditorSession(event: Event): void {
+  if ((event as CustomEvent<string | null>).detail === null || editorSession !== sessionGeneration()) invalidateEditorSession()
+}
+watch(() => authStore.user?.id, id => { if (draftUserId !== null && id !== draftUserId) invalidateEditorSession() }, { flush: 'sync' })
+const removeLogoutHook = registerBeforeLogoutHook(async () => { preserveDraft() })
 </script>
 
 <style scoped>

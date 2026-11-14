@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { onScopeDispose, ref } from 'vue'
-import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
+import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
 import { documentService } from '../services/documentService'
 
 export const useDocumentIcons = defineStore('document.Icons', () => {
@@ -11,6 +11,8 @@ export const useDocumentIcons = defineStore('document.Icons', () => {
   const pending = new Set<string>()
   const loading = new Set<string>()
   const versions = new Map<string, number>()
+  const controllers = new Set<AbortController>()
+  let authSession = sessionGeneration()
   let timer: ReturnType<typeof setTimeout> | undefined
 
   function ensure(id: string): void {
@@ -24,8 +26,10 @@ export const useDocumentIcons = defineStore('document.Icons', () => {
     for (let offset = 0; offset < ids.length; offset += 500) {
       const batch = ids.slice(offset, offset + 500)
       const requestedVersions = new Map(batch.map(id => [id, versions.get(id) ?? 0]))
+      const controller = new AbortController()
+      controllers.add(controller)
       try {
-        const result = await documentService.resolveDocumentIcons(batch)
+        const result = await documentService.resolveDocumentIcons(batch, controller.signal)
         if (session.value !== epoch) return
         for (const id of batch) if ((versions.get(id) ?? 0) === requestedVersions.get(id)) {
           icons.value[id] = result[id] ?? null; errors.value[id] = false
@@ -33,7 +37,10 @@ export const useDocumentIcons = defineStore('document.Icons', () => {
       } catch {
         if (session.value !== epoch) return
         for (const id of batch) if ((versions.get(id) ?? 0) === requestedVersions.get(id)) errors.value[id] = true
-      } finally { if (session.value === epoch) batch.forEach(id => loading.delete(id)) }
+      } finally {
+        controllers.delete(controller)
+        if (session.value === epoch) batch.forEach(id => loading.delete(id))
+      }
     }
   }
   async function save(id: string, icon: string | null): Promise<boolean> {
@@ -52,11 +59,20 @@ export const useDocumentIcons = defineStore('document.Icons', () => {
   }
   function reset(): void {
     ++session.value
+    for (const controller of controllers) controller.abort()
+    controllers.clear()
     clearTimeout(timer); timer = undefined
     pending.clear(); loading.clear(); versions.clear()
     icons.value = {}; errors.value = {}; saving.value = {}
   }
-  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, reset)
-  onScopeDispose(() => { reset(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, reset) })
+  function changeSession(event: Event): void {
+    const current = sessionGeneration()
+    // A refresh rotates the token within the same session, including pending icon commands.
+    if ((event as CustomEvent<string | null>).detail !== null && current === authSession) return
+    authSession = current
+    reset()
+  }
+  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession)
+  onScopeDispose(() => { reset(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession) })
   return { icons, errors, saving, session, ensure, save }
 })

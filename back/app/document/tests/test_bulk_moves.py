@@ -1,8 +1,13 @@
 from time import perf_counter
+import gc
+import hashlib
+import json
+from pathlib import Path
+import tracemalloc
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import event, func, select
 
 from app.agent import AgentManagementScope
 from app.document import bulk_moves, document_tags, resource_service
@@ -13,6 +18,82 @@ from core.user import UserModel
 from app.topic import Topic
 from app.topic.service import move_library_documents
 from app.document.schemas import DocumentTopicBatch, DocumentTopicBatchEntry
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["keywords", "owners"])
+async def test_bulk_metadata_cost_and_content_preservation(db, agents, memory_storage, operation):
+    from app.document.keyword_actions import replace_keywords
+    from app.document.schemas import DocumentKeywordChange
+    from core.storage import get_storage
+    from tests.sharing_fixtures import bind_private_shares
+
+    owner, peer = agents
+    owner_id, peer_id = owner.id, peer.id
+    human = UserModel(email="synthetic-metadata-batch@example.test", hashed_password="unused", is_active=True)
+    db.add(human)
+    await db.flush()
+    scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner_id, peer_id}))
+    resource = await get_storage("native").create(b"Synthetic metadata batch")
+    rows = [{"id": uuid4(), "owner_agent_id": owner_id, "title": f"Synthetic metadata {index:02d}",
+        "resource_id": resource, "provider_code": "native", "content_hash": "0" * 64,
+        "keywords": ["source", "retained"]} for index in range(40)]
+    await bind_private_shares(db, rows, kind="document")
+    await db.execute(Document.__table__.insert(), rows)
+    await db.commit()
+    ids = [row["id"] for row in rows]
+    measurements = []
+    for size in (32, 400_000):
+        body = "x" * size
+        digest = hashlib.sha256(body.encode()).hexdigest()
+        await db.execute(Document.__table__.update().where(Document.id.in_(ids)).values(
+            content=body, content_hash=digest, keywords=["source", "retained"]))
+        await db.commit()
+        versions = dict((await db.execute(select(Document.id, Document.lock_version).where(Document.id.in_(ids)))).tuples().all())
+        target = peer_id if size == 32 else owner_id
+        if operation == "keywords":
+            data = DocumentKeywordChange(documents=[{"id": identity, "expected_lock_version": version} for identity, version in versions.items()],
+                source_keywords=["source"], keyword="target")
+        else:
+            data = DocumentOwnerBatch(documents=[DocumentOwnerBatchEntry(document_id=identity, kind="agent", id=target,
+                expected_revision=1, expected_lock_version=version, keywords=["retained", "target"]) for identity, version in versions.items()])
+        db.expunge_all()
+        gc.collect()
+        statements = []
+
+        def capture(_connection, _cursor, statement, _parameters, _context, _many):
+            statements.append(statement)
+
+        event.listen(engine.sync_engine, "before_cursor_execute", capture)
+        tracemalloc.start()
+        started = perf_counter()
+        try:
+            if operation == "keywords":
+                await replace_keywords(data, scope)
+            else:
+                await bulk_moves.move_owners(data, scope)
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            elapsed = perf_counter() - started
+            tracemalloc.stop()
+            event.remove(engine.sync_engine, "before_cursor_execute", capture)
+        measurements.append({"body_bytes_per_document": size, "documents": len(ids), "seconds": elapsed,
+            "python_peak_bytes": peak, "statements": len(statements),
+            "reads": sum(statement.lstrip().upper().startswith(("SELECT", "WITH")) for statement in statements)})
+        saved = (await db.execute(select(Document.content_hash, func.octet_length(Document.content),
+            Document.revision, Document.keywords, Document.owner_agent_id, Document.content).where(Document.id.in_(ids)))).all()
+        assert len(saved) == len(ids)
+        assert all((row[0], row[1], row[2], row[3]) == (digest, size, 1, ["retained", "target"]) and row[5] == body for row in saved)
+        if operation == "owners":
+            assert {row[4] for row in saved} == {target}
+    destination = Path(__file__).resolve().parents[4] / "artifacts" / "document-optimization"
+    destination.mkdir(parents=True, exist_ok=True)
+    (destination / f"bulk-{operation}.json").write_text(json.dumps(measurements, indent=2) + "\n")
+    if operation == "keywords":
+        assert all(sample["reads"] <= 5 * len(ids) + 5 for sample in measurements), "Keyword metadata must use one bounded locked read"
+        assert measurements[1]["python_peak_bytes"] <= measurements[0]["python_peak_bytes"] + 2 * 1024 * 1024, "Keyword memory cost must not grow with document bodies"
+    else:
+        assert all(sample["reads"] <= 23 * len(ids) for sample in measurements), "Ownership preflight must not reload every document's auxiliary collections"
 
 
 async def setup(db, owner, count):

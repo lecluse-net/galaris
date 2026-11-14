@@ -27,12 +27,12 @@ test('Documents creates Text through its type menu and exposes the common type f
   // Creation must work even before the page's independent Agent catalogue arrives.
   let releaseAgents
   const agentsReady = new Promise(resolve => { releaseAgents = resolve })
-  await page.route('**/api/agents?*', async route => { await agentsReady; return route.fallback() })
+  await page.route('**/api/agents/selection?scope=management', async route => { await agentsReady; return route.fallback() })
   await jsonRoute(page, '**/api/documents/owner-options?*', {
     agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }],
     users: [{ id: 1, kind: 'user', label: 'Synthetic owner', subtitle: '', avatar_url: null, is_current_user: true }],
   })
-  const requests = [], creations = []
+  const requests = [], creations = [], placements = []
   await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
   await jsonRoute(page, '**/api/documents/doc-a', { item: state.current(), agent_id: 7 })
   await page.route('**/api/documents/library', route => {
@@ -43,8 +43,13 @@ test('Documents creates Text through its type menu and exposes the common type f
     creations.push(route.request().postDataJSON())
     return route.fulfill({ status: 201, json: state.current() })
   })
+  await page.route('**/api/documents/doc-a/tags', route => {
+    placements.push(route.request().postDataJSON())
+    return route.fulfill({ status: 204 })
+  })
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
-  await page.getByRole('button', { name: 'Create document', exact: true }).click()
+  // The root creation action replaced the old page-header button; keep the creation guarantee.
+  await page.getByRole('button', { name: 'Create a document at the root', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Scenarios')
@@ -55,6 +60,7 @@ test('Documents creates Text through its type menu and exposes the common type f
     expect(creations[0]).toMatchObject({ document_type: 'text', title: 'Scenarios', owner_kind: 'user', owner_id: 1, actor_agent_id: 7 })
   } finally { releaseAgents() }
   await expect(page.locator('[data-editor-surface]')).toContainText('Synthetic document')
+  expect(placements).toEqual([{ tag_id: null, at_root: true }])
   await page.getByRole('button', { name: 'Filters', exact: true }).click()
   await expect(page.getByRole('combobox', { name: 'Document type', exact: true })).toBeVisible()
   await page.getByRole('combobox', { name: 'Sort by', exact: true }).click()

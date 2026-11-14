@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import time
 import tracemalloc
+from statistics import median
 from uuid import uuid4
 
 import pytest
@@ -17,6 +18,111 @@ from app.document.schemas import DocumentLibraryRequest
 from core.storage import get_storage
 from core.user import UserModel
 from tests.sharing_fixtures import bind_private_shares
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("document_count", [600, 6000])
+async def test_grouped_navigation_cost_and_live_access(db, agents, memory_storage, document_count):
+    """Measure recent navigation paths with repeated tags and a private peer corpus."""
+    from app.agent import AgentManagementScope
+    from app.document import agent_library, topic_library
+    from app.document.topic_assignment import change_assignment
+    from app.topic import Topic
+    from app.document.models import DocumentListPosition
+
+    owner, peer = agents
+    human = UserModel(email="synthetic-navigation@example.test", hashed_password="unused", is_active=True)
+    topics = [Topic(title=f"Synthetic group {index}", description="", keywords=[]) for index in range(3)]
+    db.add_all([human, *topics])
+    await db.flush()
+    owner_id, peer_id, user_id = owner.id, peer.id, human.id
+    topic_ids = [topic.id for topic in topics]
+    scope = AgentManagementScope(user_id=user_id, agent_ids=frozenset({owner_id}))
+    resource = await get_storage("native").create(b"Synthetic navigation")
+    rows = [{"id": uuid4(), "owner_agent_id": owner_id if index % 3 != 2 else peer_id,
+        "resource_id": resource, "provider_code": "native", "title": f"Synthetic document {index:05d}",
+        "topic_id": topic_ids[index % 3], "keywords": ["Common", "common", f"tag-{index % 7}"] if index % 5 else [],
+        "content_hash": "0" * 64} for index in range(document_count)]
+    await bind_private_shares(db, rows, kind="document")
+    await db.execute(Document.__table__.insert(), rows)
+    # Position order deliberately differs from title order for range endpoints.
+    await db.execute(DocumentListPosition.__table__.insert(), [{"user_id": user_id, "document_id": row["id"],
+        "position": document_count - index} for index, row in enumerate(rows)])
+    await db.commit()
+    await db.execute(text("ANALYZE documents, share_configs, share_grants, document_list_positions"))
+    visible = [row for index, row in enumerate(rows) if index % 3 != 2]
+    measurements = {}
+
+    async def measure(name, read):
+        samples = []
+        result = None
+        for _ in range(3):
+            db.expunge_all()
+            connection = await db.connection()
+            reads = []
+
+            def capture(_connection, cursor, statement, _parameters, _context, _many):
+                if statement.lstrip().upper().startswith(("SELECT", "WITH")):
+                    reads.append({"rows": cursor.rowcount})
+
+            event.listen(connection.sync_connection, "after_cursor_execute", capture)
+            gc.collect()
+            tracemalloc.start()
+            started = time.perf_counter()
+            try:
+                result = await read()
+                _, peak = tracemalloc.get_traced_memory()
+            finally:
+                elapsed = time.perf_counter() - started
+                tracemalloc.stop()
+                event.remove(connection.sync_connection, "after_cursor_execute", capture)
+            samples.append({"seconds": elapsed, "python_peak_bytes": peak, "queries": len(reads),
+                "returned_rows": sum(max(0, read["rows"]) for read in reads)})
+            await db.rollback()
+        measurements[name] = {key: median(sample[key] for sample in samples) for key in samples[0]}
+        return result
+
+    groups = await measure("topics", lambda: topic_library.catalog(scope))
+    for group in groups:
+        expected = [row for row in visible if row["topic_id"] == group.id]
+        assert group.document_count == len(expected)
+        assert group.without_keywords_count == sum(not row["keywords"] for row in expected)
+        assert set(group.keywords) == {keyword for row in expected for keyword in row["keywords"]}
+    assert {group.id for group in groups} == set(topic_ids[:2])
+    owners = await measure("agents", lambda: agent_library.catalog(scope))
+    assert len(owners) == 1 and owners[0].id == owner_id and owners[0].document_count == len(visible)
+    assert set(owners[0].keywords) == {keyword for row in visible for keyword in row["keywords"]}
+    page = await measure("ranges", lambda: service.browse_document_library(DocumentLibraryRequest(
+        include_tree_ranges=True, include_keywords=False, sort_by="position", limit=100,
+    ), managed_agent_ids=scope.agent_ids, user_id=user_id))
+    ordered = list(reversed(visible))
+    assert [entry.item.id for entry in page.entries] == [row["id"] for row in ordered[:100]]
+    assert [(group.first_title, group.last_title) for group in page.tree_ranges] == [
+        (ordered[offset]["title"], ordered[min(offset + 100, len(ordered)) - 1]["title"])
+        for offset in range(0, len(ordered), 100)
+    ]
+
+    async def move():
+        for row in visible[:20]:
+            await change_assignment(row["id"], scope, topic_id=topic_ids[1], expected_topic_id=row["topic_id"],
+                expected_lock_version=1, keyword_move=(None, "target"))
+
+    await measure("topic_changes", move)
+    assert measurements["topics"]["returned_rows"] == 2, "Topic catalogs must transfer groups, not the document corpus"
+    assert measurements["agents"]["returned_rows"] == 1, "Owner catalogs must transfer groups, not the document corpus"
+    assert measurements["ranges"]["queries"] <= 3, "Named ranges must reuse the page's visibility snapshot"
+    assert measurements["topic_changes"]["queries"] <= 120, "Classification must not reload content or auxiliary collections"
+    destination = Path(__file__).resolve().parents[4] / "artifacts" / "document-optimization"
+    destination.mkdir(parents=True, exist_ok=True)
+    (destination / f"navigation-{document_count}.json").write_text(json.dumps({
+        "documents": document_count, "visible_documents": len(visible), "measurements": measurements,
+    }, indent=2) + "\n")
+    # Read-only groups must reflect a subsequent revocation without shared caching.
+    await db.execute(Document.__table__.update().where(Document.id.in_([row["id"] for row in visible]))
+        .values(owner_agent_id=peer_id))
+    await db.commit()
+    assert await topic_library.catalog(scope) == []
+    assert await agent_library.catalog(scope) == []
 
 
 @pytest.mark.asyncio

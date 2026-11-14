@@ -103,7 +103,9 @@ for (const journey of ['choose', 'reset']) test(`document icons: ${journey === '
 test('late icon reads cannot undo a saved choice and session changes discard personal icons and pending writes', async ({ page }) => {
   let releaseRead, releaseWrite
   let firstRead = true
+  let reads = 0
   await page.route('**/api/documents/icons/resolve', async route => {
+    reads++
     if (firstRead) { firstRead = false; await new Promise(resolve => { releaseRead = resolve }); return route.fulfill({ json: { 'doc-a': 'emoji:1F600' } }) }
     return route.fulfill({ json: { 'doc-a': 'emoji:1F600' } })
   })
@@ -117,6 +119,13 @@ test('late icon reads cannot undo a saved choice and session changes discard per
   const button = page.getByRole('button', { name: 'Icon for document Report', exact: true })
   await expect.poll(() => Boolean(releaseRead)).toBe(true)
   await button.click()
+  await jsonRoute(page, '**/api/auth/refresh', { access_token: 'renewed-session', token_type: 'bearer' })
+  await page.evaluate(async () => {
+    const { refreshAccessToken } = await import('/core/api.ts')
+    await refreshAccessToken()
+  })
+  await expect(page.getByLabel('Search icons', { exact: true })).toBeVisible()
+  expect(reads).toBe(1)
   await page.getByRole('combobox', { name: 'Icon library', exact: true }).click()
   await page.getByRole('option', { name: 'Unicode emoji', exact: true }).click()
   await page.getByLabel('Search icons', { exact: true }).fill('rocket')
@@ -129,7 +138,10 @@ test('late icon reads cannot undo a saved choice and session changes discard per
   await button.click()
   await page.getByRole('button', { name: 'Default icon', exact: true }).click()
   await expect.poll(() => Boolean(releaseWrite)).toBe(true)
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('galaris:auth-token-changed', { detail: 'other-user' })))
+  await page.evaluate(async () => {
+    const { saveAccessToken } = await import('/core/api.ts')
+    saveAccessToken('other-user')
+  })
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
   await expect(button).toContainText('😀')
   const writeResponse = page.waitForResponse(response => response.url().endsWith('/documents/doc-a/icon'))

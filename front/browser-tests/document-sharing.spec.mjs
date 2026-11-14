@@ -462,15 +462,17 @@ test(`a private human-owned document opens using the human identity: ${scenario.
   })
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   if (!scenario.folder) {
+    await page.getByRole('tree').getByText('Work', { exact: true }).hover()
     await page.getByRole('button', { name: 'New document in Work', exact: true }).press('Enter')
     await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page.getByRole('button', { name: 'Create document', exact: true }).press('Enter')
+    await page.getByRole('button', { name: 'Create a document at the root', exact: true }).press('Enter')
     await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
   } else {
     if (scenario.folder === 'project') await page.getByText('Work', { exact: true }).click()
     const folder = tags.find(tag => tag.id === scenario.folder)
+    await page.getByRole('tree').getByText(folder.name, { exact: true }).hover()
     await page.getByRole('button', { name: `New document in ${folder.name}`, exact: true }).press('Enter')
     await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
     await expect(page.getByRole('dialog')).toContainText(`New document in ${folder.name}`)
@@ -480,7 +482,8 @@ test(`a private human-owned document opens using the human identity: ${scenario.
   if (scenario.width >= 1024) await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('[data-editor-surface]')).toContainText('Private notes')
   expect(creations).toHaveLength(1)
-  expect(moves).toEqual(scenario.folder ? [{ tag_id: scenario.folder }] : [])
+  // Root creation explicitly classifies at the root; it must never reuse the cancelled Work folder.
+  expect(moves).toEqual(scenario.folder ? [{ tag_id: scenario.folder }] : [{ tag_id: null, at_root: true }])
   if (scenario.width < 1024) await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).first().click()
   if (scenario.folder && !scenario.failClassification) {
     const folder = tags.find(tag => tag.id === scenario.folder)

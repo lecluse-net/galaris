@@ -6,7 +6,7 @@ from uuid import UUID
 
 from sqlalchemy import Select, func, select, update
 from sqlalchemy.sql.elements import ColumnElement
-from sqlalchemy.orm import defer
+from sqlalchemy.orm import defer, raiseload
 
 from app.agent import AgentManagementScope
 from core.database import get_db
@@ -45,29 +45,22 @@ async def change_assignment(
 ) -> int:
     from .document_sharing import document_actor
     from .resource_service import (
-        item_record,
         assert_item_access,
         DocumentConflictError,
         DocumentNotFoundError,
     )
 
     actor = await document_actor(identity, scope, write=True)
-    # Lock in the same order as topic retirement: Topic, then resource.
-    await get_db().scalar(select(Document.id).where(Document.id == identity).with_for_update())
-    item = await item_record(identity, revisions=False, contents=False)
+    # Lock in the same order as topic retirement: Topic, then resource. ACL checks
+    # below use live SQL, so classification needs no content, grants or URL lists.
+    item = await get_db().scalar(select(Document).options(
+        defer(Document.content), defer(Document.summary_content), raiseload("*"),
+    ).where(Document.id == identity).with_for_update().execution_options(populate_existing=True))
     if item is None or item.document_type not in {"text", "html", "data"}:
         raise DocumentNotFoundError("Document not found")
     await assert_item_access(item, actor, write=True)
-    document = await get_db().scalar(
-        select(Document)
-        .options(defer(Document.content), defer(Document.summary_content))
-        .where(Document.id == identity)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
-    if document is None:
-        raise DocumentNotFoundError("Document not found")
-    if item.lock_version != expected_lock_version or document.topic_id != expected_topic_id:
+    # Compare against the fresh values obtained while holding the row lock.
+    if item.lock_version != expected_lock_version or item.topic_id != expected_topic_id:
         raise DocumentConflictError("Document changed; reload and retry")
     if keyword_move is not None:
         source, target = keyword_move
@@ -80,7 +73,7 @@ async def change_assignment(
             raise DocumentConflictError("A document cannot have more than 50 keywords")
         item.keywords = values
         item.updated_at = datetime.now(timezone.utc)
-    document.topic_id = topic_id
+    item.topic_id = topic_id
     item.metadata_ = {
         **item.metadata_,
         "topic_assignment": {"origin": "manual", "topic_id": str(topic_id) if topic_id else None},

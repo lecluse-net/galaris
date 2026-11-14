@@ -219,8 +219,8 @@ async sortDocumentFolder(parentId: string | null, descending: boolean): Promise<
     await api.put('/documents/order/sort', { parent_id: parentId, descending })
   },
 
-async resolveDocumentIcons(documentIds: string[]): Promise<Record<string, string | null>> {
-    return (await api.post<Record<string, string | null>>('/documents/icons/resolve', { document_ids: documentIds })).data
+async resolveDocumentIcons(documentIds: string[], signal?: AbortSignal): Promise<Record<string, string | null>> {
+    return (await api.post<Record<string, string | null>>('/documents/icons/resolve', { document_ids: documentIds }, { signal })).data
   },
 
 async saveDocumentIcon(documentId: string, icon: string | null): Promise<{ icon: string | null }> {

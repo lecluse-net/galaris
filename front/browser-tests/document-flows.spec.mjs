@@ -111,10 +111,15 @@ for (const location of ['list', 'tree']) test(`dragging a document from the ${lo
   expect(moves).toEqual([])
 })
 
-test('document content is usable while optional owner and keyword catalogues are still loading', async ({ page }) => {
+for (const failure of [false, true]) test(`document content is usable while optional catalogues ${failure ? 'fail' : 'are still loading'}`, async ({ page }) => {
   await library(page)
   let release
   const gate = new Promise(resolve => { release = resolve })
+  await page.route('**/api/agents/selection?scope=management', async route => {
+    if (failure) return route.fulfill({ status: 503, json: { detail: 'Synthetic catalogue failure' } })
+    await gate
+    return route.fallback()
+  })
   await page.route('**/api/documents/owner-options?*', async route => {
     await gate
     return route.fallback()
@@ -244,7 +249,8 @@ test('a draft from an earlier client keeps its edits and clears after saving wit
   const state = await library(page)
   const base = { owner: 'user:1', title: state.item.title, content: state.item.payload.text,
     keywords: [], globalAccess: 0, sharing: { 7: 'none' } }
-  await page.addInitScript(saved => sessionStorage.setItem('galaris:document-draft:null:doc-a', JSON.stringify(saved)), {
+  // Preserve older draft payloads under an attributed key; anonymous keys cannot establish authorship.
+  await page.addInitScript(saved => sessionStorage.setItem('galaris:document-draft:user:1:null:doc-a', JSON.stringify(saved)), {
     revision: state.item.revision, base, draft: { ...base, title: 'Recovered draft' },
   })
   const updates = []
@@ -259,7 +265,87 @@ test('a draft from an earlier client keeps its edits and clears after saving wit
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Recovered draft')
   await page.getByLabel('Title', { exact: true }).fill('Recovered and saved')
   await expect.poll(() => updates.length).toBe(1)
-  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('galaris:document-draft:null:doc-a'))).toBeNull()
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('galaris:document-draft:user:1:null:doc-a'))).toBeNull()
   expect(updates[0]).toMatchObject({ title: 'Recovered and saved' })
   expect(updates[0]).not.toHaveProperty('payload')
+})
+
+test('pending draft edits flush on page hide and token renewal preserves the active editor', async ({ page }) => {
+  await library(page)
+  await page.route('**/api/documents/doc-a', route => route.request().method() === 'PATCH'
+    ? route.fulfill({ status: 503, json: { detail: 'Synthetic write failure' } }) : route.fallback())
+  await jsonRoute(page, '**/api/auth/refresh', { access_token: 'renewed', token_type: 'bearer' })
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: null }, privileges: ['DOCUMENT_EDIT'] })
+  const title = page.getByLabel('Title', { exact: true })
+  await expect(title).toHaveValue('Test document')
+  await title.fill('Pending before page hide')
+  const saved = await page.evaluate(async () => {
+    const { refreshAccessToken } = await import('/core/api.ts')
+    await refreshAccessToken()
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
+    return JSON.parse(sessionStorage.getItem('galaris:document-draft:user:1:null:doc-a'))
+  })
+  expect(saved).toMatchObject({ user_id: 1, draft: { title: 'Pending before page hide' } })
+  await expect(title).toHaveValue('Pending before page hide')
+  await page.evaluate(async () => {
+    const { saveAccessToken } = await import('/core/api.ts')
+    saveAccessToken('another-account')
+  })
+  await expect(title).toHaveCount(0)
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('galaris:document-draft:user:1:null:doc-a')))).toMatchObject({ draft: { title: 'Pending before page hide' } })
+})
+
+test('document drafts stay with their author across account changes and attributed legacy drafts migrate safely', async ({ page }) => {
+  const state = await library(page)
+  const base = { owner: 'user:1', title: state.item.title, content: state.item.payload.text,
+    keywords: [], globalAccess: 0, sharing: {} }
+  await page.addInitScript(saved => sessionStorage.setItem('galaris:document-draft:null:doc-a', JSON.stringify(saved)), {
+    user_id: 1, revision: state.item.revision, base, draft: { ...base, title: 'First account unsaved draft' },
+  })
+  await page.route('**/api/documents/doc-a', route => route.request().method() === 'PATCH'
+    ? route.fulfill({ status: 503, json: { detail: 'Synthetic write failure' } }) : route.fallback())
+  await mount(page, 'app/document/components/DocumentEditor.vue', { user: { id: 2 }, props: { documentId: 'doc-a', agentId: null }, privileges: ['DOCUMENT_EDIT'] })
+  const title = page.getByLabel('Title', { exact: true })
+  await expect(title).toHaveValue('Test document')
+  await title.fill('Second account unsaved draft')
+  await page.evaluate(() => window.testApp.unmount())
+  await page.evaluate(() => window.testApp.mount({ component: 'app/document/components/DocumentEditor.vue', user: { id: 1 }, props: { documentId: 'doc-a', agentId: null } }))
+  await expect(title).toHaveValue('First account unsaved draft')
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('galaris:document-draft:null:doc-a'))).toBeNull()
+  await page.evaluate(() => window.testApp.mount({ component: 'app/document/components/DocumentEditor.vue', user: { id: 2 }, props: { documentId: 'doc-a', agentId: null } }))
+  await expect(title).toHaveValue('Second account unsaved draft')
+})
+
+test('a background save cannot retry under a new account after its editor has unmounted', async ({ page }) => {
+  const state = await library(page)
+  const writes = []
+  let release
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route('**/api/documents/doc-a', async route => {
+    if (route.request().method() !== 'PATCH') return route.fallback()
+    const update = route.request().postDataJSON()
+    writes.push(update)
+    if (writes.length === 1) await gate
+    return route.fulfill({ json: { ...state.item, ...update, revision: 4, lock_version: 4 } })
+  })
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: null }, privileges: ['DOCUMENT_EDIT'] })
+  const title = page.getByLabel('Title', { exact: true })
+  await expect(title).toHaveValue('Test document')
+  await page.clock.install()
+  await title.fill('First pending save')
+  await page.clock.fastForward(1000)
+  await expect.poll(() => writes.length).toBe(1)
+  await title.fill('Latest draft before leaving')
+  await page.evaluate(async () => {
+    window.testApp.unmount()
+    const { saveAccessToken } = await import('/core/api.ts')
+    saveAccessToken('other-account')
+  })
+  const response = page.waitForResponse(response => response.url().endsWith('/documents/doc-a') && response.request().method() === 'PATCH')
+  release()
+  await (await response).finished()
+  await page.clock.fastForward(2000)
+  await page.waitForLoadState('networkidle')
+  expect(writes).toHaveLength(1)
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('galaris:document-draft:user:1:null:doc-a')))).toMatchObject({ draft: { title: 'Latest draft before leaving' } })
 })

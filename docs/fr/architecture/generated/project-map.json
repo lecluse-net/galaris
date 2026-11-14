@@ -22485,6 +22485,7 @@
       },
       {
         "files": [
+          "front/app/document/components/DocumentEditor.vue",
           "front/app/document/components/DocumentLibraryNavigation.vue"
         ],
         "source": "app/document",

@@ -39,10 +39,16 @@ async def move_owners(data: DocumentOwnerBatch, scope: AgentManagementScope) -> 
         for entry in sorted(data.documents, key=lambda entry: entry.document_id)}
     user = await get_user_record(scope.user_id)
     administrative = await check_privilege(user, Privileges.DOCUMENT_ADMIN, db)
+    # This preflight only needs ownership. The transfer writer still refreshes
+    # and authorizes each resource before changing its sharing or version.
+    ownership = {row.id: (row.owner_agent_id, row.owner_user_id) for row in await db.execute(
+        select(Document.id, Document.owner_agent_id, Document.owner_user_id).where(Document.id.in_(actors)))}
     for entry in data.documents:
-        item = await resource_service.item_record(entry.document_id, revisions=False, contents=False)
-        assert item is not None
-        if not (scope.allows(item.owner_agent_id) or item.owner_user_id == scope.user_id or administrative):
+        current = ownership.get(entry.document_id)
+        if current is None:
+            raise resource_service.DocumentNotFoundError("Document not found")
+        owner_agent_id, owner_user_id = current
+        if not (scope.allows(owner_agent_id) or owner_user_id == scope.user_id or administrative):
             raise resource_service.DocumentPermissionError("Only the document owner can transfer ownership")
         if entry.kind == "agent" and not scope.allows(entry.id):
             raise resource_service.DocumentNotFoundError("Agent not found")

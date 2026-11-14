@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import cast
 from uuid import UUID
 from pydantic import TypeAdapter
-from sqlalchemy import Select, Text, case, false, func, literal, or_, select, true, union_all
+from sqlalchemy import BigInteger, Select, Text, case, false, func, literal, or_, select, true, union_all
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.orm import defer, joinedload, load_only, raiseload, selectinload
 from sqlalchemy.sql.elements import ColumnElement
@@ -205,6 +205,32 @@ async def browse_document_library(
         "created_at": Document.created_at,
         "updated_at": func.coalesce(Document.updated_at, Document.created_at),
     }[request.sort_by]
+    tree_range_query: ScalarSelect[str] | None = None
+    if request.include_tree_ranges:
+        # Keep counts, endpoints and page entries on one live ACL snapshot.
+        # Only the two boundary titles of each range are aggregated, at most 200.
+        start = request.offset
+        end = func.least(summary.c.total, start + request.tree_range_size) if request.tree_range_size else summary.c.total
+        bounds = select(end.label("end"), func.power(100, func.greatest(1,
+            func.ceil(func.log(100, func.greatest(end - start, 1))) - 1)).cast(BigInteger).label("size")).cte("library_range_bounds").prefix_with("MATERIALIZED")
+        ranked = select(Document.title, (func.row_number().over(order_by=(
+            sort_column.desc() if request.sort_desc else sort_column.asc(),
+            func.lower(Document.title), Document.id,
+        )) - 1).label("offset")).where(Document.id.in_(select(filtered_documents.c.id))).correlate(None).cte("library_range_titles")
+        relative = ranked.c.offset - start
+        offset = start + (relative // bounds.c.size) * bounds.c.size
+        last = func.least(bounds.c.end, offset + bounds.c.size) - 1
+        endpoints = select(offset.label("offset"), bounds.c.size,
+            func.min(case((ranked.c.offset == offset, ranked.c.title))).label("first_title"),
+            func.min(case((ranked.c.offset == last, ranked.c.title))).label("last_title"),
+        ).select_from(ranked.join(bounds, true())).where(
+            bounds.c.end - start > 100, ranked.c.offset >= start, ranked.c.offset < bounds.c.end,
+            or_(relative % bounds.c.size == 0, (relative + 1) % bounds.c.size == 0, ranked.c.offset == bounds.c.end - 1),
+        ).group_by(offset, bounds.c.size).subquery("library_range_endpoints")
+        tree_range_query = select(func.jsonb_agg(aggregate_order_by(func.jsonb_build_object(
+            "offset", endpoints.c.offset, "size", endpoints.c.size,
+            "first_title", endpoints.c.first_title, "last_title", endpoints.c.last_title,
+        ), endpoints.c.offset)).cast(Text)).scalar_subquery()
     page = select(
         Document.id, position.label("position"), sort_column.label("sort_value"),
         func.lower(Document.title).label("sort_title"),
@@ -241,6 +267,7 @@ async def browse_document_library(
             # per document. Text keeps ORM row deduplication hashable.
             case((first_row, summary.c.owners)).label("owners"),
             case((first_row, summary.c.keywords)).label("keywords"),
+            case((first_row, tree_range_query if tree_range_query is not None else literal(None, Text))).label("tree_ranges"),
             case((first_document_row, details.c.tags)).label("tags"),
             select(func.jsonb_agg(DocumentURL.url).cast(Text)).where(DocumentURL.document_id == Document.id).correlate(Document).scalar_subquery().label("urls"),
             case((first_row, select(func.jsonb_agg(Agent.id).cast(Text)).where(Agent.deleted_at.is_(None)).correlate(None).scalar_subquery())).label("available_agents"),
@@ -351,32 +378,7 @@ async def browse_document_library(
             )
         )
 
-    tree_ranges: list[DocumentLibraryRange] = []
-    if request.include_tree_ranges:
-        # Only the endpoints of this level (at most 200 titles) leave PostgreSQL.
-        # Reuse the exact filtered set and ordering, including ACLs and tie-breaks.
-        start = request.offset
-        end = min(total, start + request.tree_range_size) if request.tree_range_size else total
-        size = 100
-        while (end - start + size - 1) // size > 100:
-            size *= 100
-        if end - start > 100:
-            offsets = range(start, end, size)
-            endpoints = {index for offset in offsets for index in (offset, min(end, offset + size) - 1)}
-            ranked = select(
-                Document.title,
-                (func.row_number().over(order_by=(
-                    sort_column.desc() if request.sort_desc else sort_column.asc(),
-                    func.lower(Document.title), Document.id,
-                )) - 1).label("offset"),
-            ).where(Document.id.in_(select(filtered_documents.c.id))).subquery("library_range_titles")
-            titles = {cast(int, row.offset): cast(str, row.title) for row in (
-                await db.execute(select(ranked).where(ranked.c.offset.in_(endpoints)))
-            )}
-            tree_ranges = [DocumentLibraryRange(
-                offset=offset, size=size, first_title=titles[offset],
-                last_title=titles[min(end, offset + size) - 1],
-            ) for offset in offsets if offset in titles and min(end, offset + size) - 1 in titles]
+    tree_ranges = TypeAdapter(list[DocumentLibraryRange]).validate_json(cast(str | None, summary_row.tree_ranges) or "[]")
 
     return DocumentLibraryPage(
         owners=owner_options,

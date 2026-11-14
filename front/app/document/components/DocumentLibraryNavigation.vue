@@ -117,7 +117,7 @@
 import { websocket } from '@/core/websocket'
 import { TreePageHeader, TREE_PAGE_SIZE, treePages, treePageKey, treePageFromKey, treePageDataKey, virtualTreeNodes, type TreePage } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, type ComponentPublicInstance } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowReactive, shallowRef, watch, type ComponentPublicInstance, type ComputedRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -227,18 +227,14 @@ const branches = useDocumentBranches(publishEntries)
 const { entries: branchSnapshots, errors: branchErrors } = branches
 const documentMutations = useDocumentMutations()
 // One current item per document; list/folder entries retain only their placement and access context.
-const libraryItems = shallowRef<Record<string, DocumentRecord>>({})
+const libraryItems = shallowRef(shallowReactive<Record<string, DocumentRecord>>({}))
 function rememberItems(incoming: DocumentRecord[]): void {
-  const next = { ...libraryItems.value }
-  let changed = false
   for (const item of incoming) {
-    const current = next[item.id]
+    const current = libraryItems.value[item.id]
     if (current && (item.lock_version ?? item.revision) < (current.lock_version ?? current.revision)) continue
     if (current === item || (current && JSON.stringify(current) === JSON.stringify(item))) continue
-    next[item.id] = item
-    changed = true
+    libraryItems.value[item.id] = item
   }
-  if (changed) libraryItems.value = next
 }
 function projectEntries(values: DocumentLibraryEntry[], includePending = false): DocumentLibraryEntry[] {
   return values.filter(entry => includePending || documentMutations.deleting[entry.item.id] === undefined).map(entry => {
@@ -248,8 +244,22 @@ function projectEntries(values: DocumentLibraryEntry[], includePending = false):
 }
 const visibleEntries = computed(() => projectEntries(entries.value))
 const visibleTotal = computed(() => Math.max(0, total.value - (entries.value.length - visibleEntries.value.length)))
-const branchEntries = computed(() => Object.fromEntries(Object.entries(branchSnapshots.value).map(([key, values]) => [key,
-  projectEntries(values).slice(0, TREE_PAGE_SIZE)])))
+const branchProjections = computed<Map<string, ComputedRef<DocumentLibraryEntry[]>>>(previous => new Map(
+  Object.keys(branchSnapshots.value).map(key => [key, previous?.get(key) ?? computed<DocumentLibraryEntry[]>(values =>
+    reconcileLibrarySnapshot(values ?? [], projectEntries(branchSnapshots.value[key] ?? []).slice(0, TREE_PAGE_SIZE), entry => entry.item.id))]),
+))
+const branchEntries = computed<Record<string, DocumentLibraryEntry[]>>(previous => {
+  const next = Object.fromEntries([...branchProjections.value].map(([key, values]) => [key, values.value]))
+  return previous && Object.keys(previous).length === Object.keys(next).length
+    && Object.keys(next).every(key => next[key] === previous[key]) ? previous : next
+})
+const knownEntries = computed(() => [...entries.value, ...Object.values(branchSnapshots.value).flat()])
+const knownEntryIndex = computed(() => {
+  const index = new Map<string, DocumentLibraryEntry>()
+  // A document can occur in several folders; retain the first placement, as in the list.
+  for (const entry of knownEntries.value) if (!index.has(entry.item.id)) index.set(entry.item.id, entry)
+  return index
+})
 const dropTarget = ref<string | null>(null)
 const dropPlacement = ref<'inside' | 'before' | 'after'>('inside')
 let pendingDrop: Omit<DocumentOrderMove, 'node'> | null = null
@@ -442,9 +452,7 @@ function publishEntries(incoming?: DocumentLibraryEntry[]): void {
   if (incoming) rememberItems(incoming.map(entry => entry.item))
   const snapshots = [...entries.value, ...Object.values(branchSnapshots.value).flat(), ...topicEntries.value]
   const retained = new Set(snapshots.map(entry => entry.item.id))
-  if (Object.keys(libraryItems.value).some(id => !retained.has(id))) {
-    libraryItems.value = Object.fromEntries(Object.entries(libraryItems.value).filter(([id]) => retained.has(id)))
-  }
+  for (const id of Object.keys(libraryItems.value)) if (!retained.has(id)) delete libraryItems.value[id]
   emit('loaded', [...new Map(projectEntries(snapshots, true).map(entry => [entry.item.id, entry])).values()])
 }
 function onTopicEntries(values: DocumentLibraryEntry[], mode: ClassificationMode): void {
@@ -858,9 +866,9 @@ function startDocumentDrag(event: DragEvent, id: string): void {
   sourceKeyword = null
   topicDragActive.value = treeMode.value !== 'folders' && canMoveClassification.value
   documentFromTree = event.target instanceof Element && Boolean(event.target.closest('.document-tree, .document-children'))
-  const known = [...entries.value, ...Object.values(branchSnapshots.value).flat()]
+  const known = knownEntries.value
   const ordered = (documentFromTree ? visibleTreeDocuments.value : visibleListDocuments.value)
-    .flatMap(value => { const entry = known.find(entry => entry.item.id === value.id); return entry ? [entry] : [] })
+    .flatMap(value => { const entry = knownEntryIndex.value.get(value.id); return entry ? [entry] : [] })
   draggedDocuments = treeMode.value !== 'folders'
     ? ordered.filter(entry => selectedDocumentIds.value.includes(id) ? selectedDocumentIds.value.includes(entry.item.id) : entry.item.id === id)
     : documentDragSelection(id, selectedDocumentIds.value, ordered, known)
@@ -988,10 +996,9 @@ function dragOverDocument(event: DragEvent, entry: DocumentLibraryEntry, parentD
   // Known descendants are rejected immediately; the server checks the entire stored hierarchy.
   let ancestor = parent
   const seen = new Set<string>()
-  const known = [...entries.value, ...Object.values(branchSnapshots.value).flat()]
   while (ancestor && !seen.has(ancestor)) {
     if (draggedDocuments.some(value => value.item.id === ancestor)) return
-    seen.add(ancestor); ancestor = known.find(value => value.item.id === ancestor)?.parent_document_id
+    seen.add(ancestor); ancestor = knownEntryIndex.value.get(ancestor)?.parent_document_id
   }
   event.preventDefault()
   if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
@@ -1027,7 +1034,7 @@ function dropFiles(event: DragEvent, target: Omit<DocumentOrderMove, 'node'> | n
   clearDrag()
   if (allowed && files.length && target) {
     const tag = tags.value.find(tag => tag.id === target.parent_id)
-    const parent = [...entries.value, ...Object.values(branchSnapshots.value).flat()].find(entry => entry.item.id === target.parent_document_id)
+    const parent = target.parent_document_id ? knownEntryIndex.value.get(target.parent_document_id) : undefined
     emit('filesDropped', files, tag, parent, target.at_root)
   }
   return true
@@ -1093,7 +1100,7 @@ async function changeSession(event: Event): Promise<void> {
   listController?.abort()
   pendingChanges = []
   if (refreshTimer) clearTimeout(refreshTimer)
-  ++generation; ++tagGeneration; entries.value = []; topicEntries.value = []; libraryItems.value = {}; tags.value = []; owners.value = []; keywords.value = []; total.value = 0
+  ++generation; ++tagGeneration; entries.value = []; topicEntries.value = []; libraryItems.value = shallowReactive<Record<string, DocumentRecord>>({}); tags.value = []; owners.value = []; keywords.value = []; total.value = 0
   deleteDialog.value = false; editingTag.value = null; renameTagId.value = null; userId.value = null; busy.value = false; expanded.value = []; branches.reset(); clearDrag()
   expandedDocuments.value = []; virtualExpanded.value = []; requestedDocumentId = undefined
   ready = false; reset(); page.value = 1; await loadTags()

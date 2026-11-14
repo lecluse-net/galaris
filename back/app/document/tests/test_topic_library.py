@@ -67,6 +67,14 @@ async def test_catalog_and_branches_use_all_readable_documents_independent_of_ma
     assert await ids(document_ids=[]) == (set(), 0)
     assert await ids(document_ids=[items[0].id], topic_id=topics[1].id) == (set(), 0)
 
+    # Empty keyword aggregates must retain a readable group and its exact count.
+    from sqlalchemy import update
+    await db.execute(update(Document).where(Document.id == items[3].id).values(keywords=[]))
+    await db.commit()
+    refreshed = {branch.id: branch for branch in await catalog(scope)}
+    assert refreshed[topics[1].id].keywords == []
+    assert refreshed[topics[1].id].document_count == refreshed[topics[1].id].without_keywords_count == 1
+
 
 @pytest.mark.asyncio
 async def test_keyword_merge_and_removal_preserve_documents_and_other_tags(db, agents, memory_storage):
@@ -204,6 +212,70 @@ async def test_failed_move_never_changes_either_topic_or_tags(db, agents, memory
     await db.rollback()
     restored = await db.get(Document, identity)
     assert (restored.topic_id, restored.keywords, restored.lock_version) == before
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["version", "access"])
+@pytest.mark.parametrize("operation", ["classification", "keywords"])
+async def test_metadata_change_waiting_on_a_row_lock_rechecks_committed_changes(committed_database, memory_storage, change, operation):
+    import asyncio
+    from sqlalchemy import select, text
+    from core.database import get_db_session
+    from app.agent import Agent
+    from app.agent.models import Title
+
+    async with get_db_session() as seed:
+        manager = UserModel(email="synthetic-lock-manager@example.test", hashed_password="unused", is_active=True)
+        title = Title(label="Synthetic classification", gender="X")
+        owners = [Agent(user=manager, title=title, code=f"synthetic-lock-{index}", first_name="Synthetic",
+            last_name=f"Owner {index}", agent_driver="internal") for index in range(2)]
+        seed.add_all(owners)
+        await seed.flush()
+        scope, topics, items = await setup_library(seed, owners)
+        identity, source, target = items[0].id, topics[0].id, topics[1].id
+        version = items[0].lock_version
+        other_owner = owners[1].id
+    started = asyncio.get_running_loop().create_future()
+
+    async def classify():
+        async with get_db_session() as reader:
+            started.set_result(await reader.scalar(text("SELECT pg_backend_pid()")))
+            if operation == "classification":
+                await move(identity, DocumentTopicMove(topic_id=target, expected_topic_id=source,
+                    expected_lock_version=version, source_keyword="source", keyword="target"), scope)
+            else:
+                from app.document.keyword_actions import replace_keywords
+                from app.document.schemas import DocumentKeywordChange
+                await replace_keywords(DocumentKeywordChange(documents=[{"id": identity, "expected_lock_version": version}],
+                    source_keywords=["source"], keyword="target"), scope)
+
+    async with get_db_session() as writer:
+        item = await writer.scalar(select(Document).where(Document.id == identity).with_for_update())
+        item.keywords = [*item.keywords, "concurrent"]
+        if change == "access":
+            item.owner_agent_id = other_owner
+        await writer.flush()
+        waiter = asyncio.create_task(classify())
+        try:
+            pid = await asyncio.wait_for(started, 5)
+            async with asyncio.timeout(5):
+                while not await writer.scalar(text("SELECT cardinality(pg_blocking_pids(:pid)) > 0"), {"pid": pid}):
+                    if waiter.done():
+                        await waiter
+                        pytest.fail("Metadata change completed without waiting for the document row lock")
+                    await asyncio.sleep(0.01)
+            await writer.commit()
+            expected_error = documents.DocumentConflictError if change == "version" else documents.DocumentPermissionError
+            with pytest.raises(expected_error):
+                await asyncio.wait_for(waiter, 5)
+        finally:
+            if not waiter.done():
+                waiter.cancel()
+            await asyncio.gather(waiter, return_exceptions=True)
+    async with get_db_session() as check:
+        restored = await check.get(Document, identity)
+        assert restored.topic_id == source
+        assert restored.keywords == ["common", "source", "retained", "concurrent"]
 
 
 @pytest.mark.asyncio

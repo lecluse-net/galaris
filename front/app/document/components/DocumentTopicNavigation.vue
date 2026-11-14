@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowReactive, shallowRef, useTemplateRef, watch, type ComputedRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { documentService } from '../services/documentService'
 import type { DocumentLibraryEntry, DocumentLibraryRange, DocumentTopicBranch } from '../types'
@@ -89,7 +89,7 @@ const pinnedTopics = new Map<string, DocumentTopicBranch>()
 const topics = shallowRef<DocumentTopicBranch[]>([])
 const expanded = ref<string[]>([])
 const loading = ref(false), error = ref(false), dropTarget = ref<string | null>(null)
-const entries = shallowRef<Record<string, DocumentLibraryEntry[]>>({})
+const entries = shallowRef(shallowReactive<Record<string, DocumentLibraryEntry[]>>({}))
 const branchLoading = ref<Record<string, boolean>>({}), branchErrors = ref<Record<string, boolean>>({})
 const branchTotals = ref<Record<string, number>>({})
 const ranges = ref<Record<string, DocumentLibraryRange[]>>({})
@@ -106,14 +106,25 @@ interface TopicNode {
   page?: TreePage; total?: number; titles?: DocumentLibraryRange
   header?: string; branch?: string; entry?: DocumentLibraryEntry; children?: TopicNode[]
 }
-const nodes = computed<TopicNode[]>(previous => reconcileLibraryTree(previous ?? [], topics.value.map(topic => ({
+// Catalogue identity depends on topics/owners and locale, never on loaded document pages.
+const catalogue = computed<TopicNode[]>(previous => reconcileLibraryTree(previous ?? [], topics.value.map(topic => ({
   id: topic.id, label: topic.title || t('documents.library.noOwner'), topicId: topic.id, topic: true,
   hasAvatar: 'has_avatar' in topic ? Boolean(topic.has_avatar) : undefined,
   children: [
     { id: `${topic.id}:all`, label: t('documents.library.all'), topicId: topic.id, special: 'all' as const },
     ...topic.keywords.map(keyword => ({ id: JSON.stringify([topic.id, keyword]), label: keyword, topicId: topic.id, keyword })),
     { id: `${topic.id}:none`, label: t('documents.library.withoutTag'), topicId: topic.id, keyword: null, special: 'none' as const },
-  ].map(branch => ({ ...branch, children: branchChildren(branch) })),
+  ],
+}))))
+const branchIndex = computed(() => new Map(catalogue.value.flatMap(topic => (topic.children ?? []).map(branch => [branch.id, branch] as const))))
+// Each branch tracks only its own cache keys; loading one page leaves sibling subtrees intact.
+interface BranchTree { branch: TopicNode; node: ComputedRef<TopicNode> }
+const branchTrees = computed<Map<string, BranchTree>>(previous => new Map([...branchIndex.value].map(([id, branch]) => {
+  const cached = previous?.get(id)
+  return [id, cached?.branch === branch ? cached : { branch, node: computed(() => ({ ...branch, children: branchChildren(branch) })) }]
+})))
+const nodes = computed<TopicNode[]>(previous => reconcileLibraryTree(previous ?? [], catalogue.value.map(topic => ({
+  ...topic, children: topic.children?.map(branch => branchTrees.value.get(branch.id)!.node.value),
 }))))
 function branchChildren(branch: TopicNode, page?: TreePage): TopicNode[] {
   const total = branchTotals.value[branch.id] ?? 0
@@ -138,7 +149,7 @@ function branchChildren(branch: TopicNode, page?: TreePage): TopicNode[] {
       ? [{ id: `${key}:status`, label: '', topicId: branch.topicId, header: 'status', branch: key }] : []),
   ]
 }
-function branchNode(id: string): TopicNode | undefined { return nodes.value.flatMap(node => node.children ?? []).find(node => node.id === id) }
+function branchNode(id: string): TopicNode | undefined { return branchIndex.value.get(id) }
 const displayNodes = computed(() => virtualTreeNodes(nodes.value, 'id', expanded.value) as TopicNode[])
 function canSelectNode(node: TopicNode): boolean { return !node.page && !node.special && !(props.mode === 'agents' && node.topic) }
 const selectableNodes = computed(() => {
@@ -228,16 +239,14 @@ function patchDocuments(ids: string[], values: DocumentLibraryEntry[]): void {
   const byId = new Map(values.map(entry => [entry.item.id, entry]))
   const sequence = ++patchSequence
   for (const id of ids) patches.set(id, { sequence, entry: byId.get(id) ?? null })
-  const next = { ...entries.value }
   const refreshPages: string[] = []
-  for (const id of Object.keys(next)) {
+  for (const id of Object.keys(entries.value)) {
     const branch = branchNode(treePageFromKey(id)?.parent ?? id)
     if (branch) {
-      if ((branchTotals.value[branch.id] ?? 0) > TREE_PAGE_SIZE && (next[id]!.some(entry => byId.has(entry.item.id) || ids.includes(entry.item.id)) || values.some(entry => matches(entry, branch)))) refreshPages.push(id)
-      next[id] = patched(next[id]!, branch, sequence - 1)
+      if ((branchTotals.value[branch.id] ?? 0) > TREE_PAGE_SIZE && (entries.value[id]!.some(entry => byId.has(entry.item.id) || ids.includes(entry.item.id)) || values.some(entry => matches(entry, branch)))) refreshPages.push(id)
+      entries.value[id] = patched(entries.value[id]!, branch, sequence - 1)
     }
   }
-  entries.value = next
   publish()
   // Reconcile only ranges already requested by the user, never all remaining pages.
   for (const id of refreshPages) void loadBranch(id, true)
@@ -266,7 +275,7 @@ async function loadBranch(id: string, force = false): Promise<void> {
     if (!current) return
     branchTotals.value[branch.id] = result.total
     ranges.value[id] = result.tree_ranges ?? []
-    entries.value = { ...entries.value, [id]: reconcileLibrarySnapshot(entries.value[id] ?? [], patched(result.entries, current, sequence), entry => entry.item.id) }
+    entries.value[id] = reconcileLibrarySnapshot(entries.value[id] ?? [], patched(result.entries, current, sequence), entry => entry.item.id)
     stale.delete(id); publish()
   } catch { if (branchControllers.get(id) === request && !request.signal.aborted) branchErrors.value[id] = true }
   finally {
@@ -291,13 +300,11 @@ async function reload(documentIds?: string[]): Promise<void> {
     ])
     if (current !== generation) return
     topics.value = reconcileLibrarySnapshot(topics.value, [...result, ...[...pinnedTopics.values()].filter(topic => !result.some(value => value.id === topic.id))], topic => topic.id)
-    const retained = new Set(nodes.value.flatMap(node => [node.id, ...(node.children ?? []).map(child => child.id)]))
-    const next = { ...entries.value }
+    const retained = new Set([...catalogue.value.map(node => node.id), ...branchIndex.value.keys()])
     for (const id of new Set([...Object.keys(entries.value), ...branchControllers.keys()])) if (!retained.has(treePageFromKey(id)?.parent ?? id)) {
       branchControllers.get(id)?.abort(); branchControllers.delete(id)
-      delete next[id]; delete ranges.value[id]; delete branchErrors.value[id]; delete branchLoading.value[id]; stale.delete(id)
+      delete entries.value[id]; delete ranges.value[id]; delete branchErrors.value[id]; delete branchLoading.value[id]; stale.delete(id)
     }
-    entries.value = next
     expanded.value = expanded.value.filter(id => treePageFromKey(id)?.parent.startsWith('local-tree:') || retained.has(treePageFromKey(id)?.parent ?? id))
     if (changedIds) {
       patchDocuments(changedIds, documents)

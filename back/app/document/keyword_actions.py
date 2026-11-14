@@ -1,6 +1,7 @@
 """Versioned keyword replacement for the documents selected in the library."""
 
 from sqlalchemy import select
+from sqlalchemy.orm import defer, raiseload
 
 from app.agent import AgentManagementScope
 from core import websocket
@@ -18,12 +19,17 @@ async def replace_keywords(data: DocumentKeywordChange, scope: AgentManagementSc
     replacements: list[tuple[Document, list[str]]] = []
     source = {value.casefold() for value in data.source_keywords}
     db = get_db()
+    # Authorize before taking locks, then lock in the same UUID order as the
+    # individual writers. Rights and versions are checked again under those locks.
+    actors = {identity: await document_actor(identity, scope, write=True) for identity in sorted(versions)}
+    records = {item.id: item for item in await db.scalars(select(Document).options(
+        defer(Document.content), defer(Document.summary_content), raiseload("*"),
+    ).where(Document.id.in_(versions)).order_by(Document.id).with_for_update().execution_options(populate_existing=True))}
     for identity in sorted(versions):
-        actor = await document_actor(identity, scope, write=True)
-        item = await db.scalar(select(Document).where(Document.id == identity).with_for_update().execution_options(populate_existing=True))
+        item = records.get(identity)
         if item is None:
             raise DocumentNotFoundError("Document not found")
-        await assert_item_access(item, actor, write=True)
+        await assert_item_access(item, actors[identity], write=True)
         if item.read_only or item.source_managed:
             raise DocumentPermissionError("A protected document cannot change keywords")
         if item.lock_version != versions[identity]:

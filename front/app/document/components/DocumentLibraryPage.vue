@@ -585,7 +585,7 @@ onBeforeRouteLeave(async () => {
   }
 })
 onMounted(async () => {
-  await agentStore.fetchAgents()
+  void agentStore.fetchAgents().catch(() => { /* Optional agent labels must not block the library. */ })
   if (disposed) return
   const routeId = documentIdFromRouteQuery(route.query.document_id)
   if (routeId) await openRouteDocument(routeId)

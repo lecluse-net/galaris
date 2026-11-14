@@ -138,13 +138,8 @@ test('topic/tag moves persist while preserving the editor, other tags and manual
   const batchRequest = page.waitForRequest(request => request.url().endsWith('/documents/library/owners') && request.method() === 'POST')
   const batchResponse = page.waitForResponse(response => response.url().endsWith('/documents/library/owners') && response.request().method() === 'POST')
   const destination = agentTree.getByText(branch.title, { exact: true })
-  await list.getByText(personal.title, { exact: true }).hover()
-  await page.mouse.down()
-  // Chromium needs a second move after native dragstart to dispatch dragover reliably.
-  await destination.hover()
-  await destination.hover()
-  await expect(destination.locator('..')).toHaveClass(/topic-target--drop/)
-  await page.mouse.up()
+  // Assert the submitted selection and persisted owners rather than a transient hover class.
+  await list.getByText(personal.title, { exact: true }).dragTo(destination)
   const command = (await batchRequest).postDataJSON()
   expect(command.documents.map(entry => entry.document_id).sort()).toEqual([personal.id, items[0].id].sort())
   await page.locator('a[href="/"]').first().click()
