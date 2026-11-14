@@ -241,7 +241,7 @@ async def stop_run(identity: UUID, actor: int | AgentManagementScope) -> None:
 
 
 async def is_activity_inference_agent(run_id: UUID, agent_id: int, correlation_ref: str | None) -> bool:
-    """A delegated IF call must identify its real, admitted Process activity."""
+    """A delegated LLM call must identify its real, admitted Process activity."""
     from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 
     run = await get_db().get(ProcessRun, run_id)
@@ -264,7 +264,7 @@ async def is_activity_inference_agent(run_id: UUID, agent_id: int, correlation_r
 
     graph = local_graph(run, occurrence)
     node = graph.node(occurrence.node_key)
-    return node.kind == "if" and simple_llm(node) and execution_agent(graph, node, run.launcher_agent_id) == agent_id
+    return simple_llm(node) and execution_agent(graph, node, run.launcher_agent_id) == agent_id
 
 
 async def definition_options(*, agent_ids: Collection[int] | None) -> list[dict[str, Any]]:

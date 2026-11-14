@@ -225,8 +225,9 @@ Les fichiers conservent leur URI source : aucun transfert automatique n'accompag
 passage entre tâches. Un lien ne confère aucun droit sur la ressource.
 
 Les IF configurés possèdent exactement deux sorties : `decision` pour True et une sortie
-sans condition pour False. `config.mode` vaut `ai`, `code` ou `human`. Un acteur IA autorise
-IA ou code ; un acteur humain impose humain. Les tentatives durables exigent un booléen
+sans condition pour False. Les nouveaux IF utilisent `config.mode: code`, ou `mode: ai`
+avec `ai_mode: llm`, sur toute ligne. Les anciens modes agentiques et humains restent lisibles
+et exécutables pour préserver les définitions et snapshots existants. Les tentatives durables exigent un booléen
 `decision`, sans l'intégrer aux variables du run. Le choix humain passe par les boutons True/False
 de Messenger, sans tâche IA d'attente. Les IF historiques sans mode conservent leurs expressions.
 
@@ -239,6 +240,16 @@ avant admission. Un reçu acquis est réutilisé après reprise ; une inférence
 échouée provoque une erreur explicite, sans nouvel appel automatique ni repli vers un autre
 modèle. L'annulation attend l'arrêt de l'inférence. Les appels sont corrélés au run et à
 la tentative pour les coûts par occurrence. Voir [0231](../../../project/decisions/0231-native-if-ai-execution-modes.md).
+
+Les tâches typées proposent quatre traitements : `task` agentique (défaut), `task` avec
+`ai_mode: llm` et `llm_id`, `code` et `human_task`. Les tâches LLM réutilisent l'inférence
+durable avec `request_limit: 1`, aucun retry de sortie ni repli de modèle. Leur contrat
+structuré est `{"output": {...}}` en valeurs JSON ordinaires ; Process le convertit selon
+les seules sorties sélectionnées puis applique son intégration atomique habituelle.
+Elles exigent un modèle texte et ne créent aucune Task. Code, tâches LLM et IF LLM/code
+peuvent référencer tout acteur ou aucun. Les tâches agentiques et humaines conservent
+leurs restrictions d'acteur ; déplacer un nœud ne change jamais son type.
+Voir [0272](../../../project/decisions/0272-explicit-process-activity-types.md).
 
 Les phases `preprocess`, `code` et `postprocess` utilisent `IsolatedCodeRunner`. L'adapter
 Monty démarre un worker neuf par invocation : sous-ensemble Python sans montage, réseau,
@@ -367,10 +378,10 @@ depuis le Chat ; les pages Process ne proposent pas de lancement manuel.
 
 `actors` contient des rôles locaux au graphe : `id`, `name`, `kind: agent/human`,
 `agent_id` ou `user_id`. `config.actor` référence le rôle. `task` exige un acteur agent
-si renseigné ; `human_task` exige un acteur humain. Le XML conserve ces affectations
+si renseigné, sauf en mode LLM ; `human_task` exige un acteur humain. Le XML conserve ces affectations
 et exporte des `laneSet/lane/flowNodeRef` ainsi que `userTask`. Dans le profil typé, les tâches
-et IF adoptent le traitement humain sur une ligne humaine et IA/code sur une ligne agent.
-Les définitions historiques conservent le refus des changements de type incompatibles.
+agentiques restent sur les lignes IA, et les tâches humaines sur les lignes humaines.
+Les tâches LLM, Code et IF LLM/code acceptent toute ligne sans conversion implicite.
 Les anciens graphes sans acteurs restent valides.
 L'admission vérifie le périmètre des agents et l'activité des utilisateurs ; le moteur
 revérifie ces droits avant un nouvel effet. Les droits de données et fichiers sont ceux du processus parent ; l'affectation ne crée

@@ -5,10 +5,13 @@ const graph = () => ({ schema_version: 'galaris.bpmn/v1', input_schema: {}, outp
     title: '', config: id === 'work' ? { prompt: 'Prepare an invented result' } : {}, body: null, x: 60 + index * 240, y: 100 })),
   flows: [{ id: 'f1', source: 'start', target: 'work', condition: null }, { id: 'f2', source: 'work', target: 'end', condition: null }] })
 
+for (const schema of ['galaris.bpmn/v1', 'galaris.bpmn/v2']) {
 for (const kind of ['task', 'human_task']) {
-  test(`${kind} can be dragged between compatible actors without changing its type or flows`, async ({ page }) => {
+  test(`${schema} ${kind} can be dragged between compatible actors without changing its type or flows`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1400 })
     const value = graph()
+    value.schema_version = schema
+    if (schema === 'galaris.bpmn/v2') value.variables = []
     value.actors = [
       { id: 'executor', name: 'Executor', kind: 'agent', agent_id: 7, user_id: null },
       { id: 'validator', name: 'Validator', kind: 'agent', agent_id: 8, user_id: null },
@@ -59,6 +62,7 @@ for (const kind of ['task', 'human_task']) {
     expect(await lastGraph()).toBeUndefined()
     expect(await layout()).toEqual(editingLayout)
   })
+}
 }
 
 test('the diagram connects activities, supports keyboard movement and enforces read-only access', async ({ page }) => {
@@ -175,7 +179,7 @@ test('a new workflow can be built from its start handle and retains typed human 
   await page.getByRole('option', { name: 'Synthetic human', exact: true }).click()
   await page.getByRole('button', { name: 'Output of Start', exact: true }).click()
   await page.getByText('Human task', { exact: true }).click()
-  await page.getByRole('dialog', { name: 'Activity settings', exact: true }).getByRole('textbox', { name: 'Title', exact: true }).fill('Review invented result')
+  await page.getByRole('complementary', { name: 'Activity settings', exact: true }).getByRole('textbox', { name: 'Title', exact: true }).fill('Review invented result')
   await page.getByRole('textbox', { name: 'Task instructions', exact: true }).fill('Approve an invented result.')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   const writes = []
@@ -254,7 +258,7 @@ test('ordinary activities can branch and converge directly without a dedicated g
   await page.getByRole('button', { name: 'Output of Task', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Parallel gateway', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Add a branch', exact: true }).click()
-  await page.getByRole('button', { name: 'Task', exact: true }).last().click()
+  await page.getByRole('button', { name: 'Agentic AI', exact: true }).last().click()
   await expect.poll(lastGraph).toBeTruthy()
   const branched = await lastGraph(), branch = branched.nodes.at(-1)
   expect(branch.kind).toBe('task')
@@ -294,14 +298,14 @@ test('typed actor lanes preserve task assignment when editing and saving', async
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
   await page.getByRole('button', { name: 'Fit the diagram', exact: true }).click()
   await page.getByRole('button', { name: 'Prepare a synthetic business decision · work', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Activity settings', exact: true })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Activity settings', exact: true })).toBeVisible()
   await page.screenshot({ path: test.info().outputPath('actor-editor-light.png'), fullPage: true, animations: 'disabled' })
   await page.evaluate(() => window.testApp.dark(true))
   await page.screenshot({ path: test.info().outputPath('actor-editor-dark.png'), fullPage: true, animations: 'disabled' })
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'View process in full screen', exact: true }).click()
   await page.getByRole('button', { name: 'Prepare a synthetic business decision · work', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Activity settings', exact: true })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Activity settings', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => writes.length).toBe(1)
@@ -309,7 +313,7 @@ test('typed actor lanes preserve task assignment when editing and saving', async
   await page.getByRole('button', { name: 'Exit full screen', exact: true }).click()
   await page.setViewportSize({ width: 390, height: 844 })
   await page.getByRole('button', { name: 'Prepare a synthetic business decision · work', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Activity settings', exact: true }).getByRole('textbox', { name: 'Title', exact: true })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Activity settings', exact: true }).getByRole('textbox', { name: 'Title', exact: true })).toBeVisible()
   await page.screenshot({ path: test.info().outputPath('actor-form-mobile.png'), fullPage: true, animations: 'disabled' })
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Output of Start', exact: true }).click()
@@ -345,7 +349,60 @@ async function definitionFixtures(page, writable, kind = 'task', typed = false, 
   return writes
 }
 
-test('AI IF preserves agentic and simple LLM modes, selected model and instructions after saving and reopening', async ({ page }) => {
+for (const scenario of ['create', 'convert', 'named-role']) {
+test(`agentic assignment uses the chosen agent without creating a redundant lane (${scenario})`, async ({ page }) => {
+  const writes = await definitionFixtures(page, true, 'task', true)
+  const value = graph()
+  value.schema_version = 'galaris.bpmn/v2'; value.variables = []; value.execution_agent_id = 7
+  value.actors = scenario === 'convert' ? [{ id: 'reviewer', name: 'Reviewer', kind: 'human', user_id: 11, agent_id: null }]
+    : scenario === 'named-role' ? [{ id: 'executor', name: 'Executor', kind: 'agent', agent_id: 7, user_id: null }] : []
+  if (scenario === 'convert') {
+    value.nodes[1].kind = 'code'; value.nodes[1].config = { actor: 'reviewer', code: 'return {}', dataset_code: true, prompt: 'Synthetic instructions' }
+  }
+  await jsonRoute(page, '**/api/processes/internal/agents', [{ id: 7, label: 'Synthetic agent' }, { id: 8, label: 'Synthetic delegate' }])
+  await page.route('**/api/processes/internal/definitions/invented_process', route => route.request().method() === 'GET'
+    ? route.fulfill({ json: { id: 1, code: 'invented_process', title: 'Synthetic workflow', revision: 1, can_write: true,
+      can_manage: true, lock_version: 1, archived: false, diagnostics: [], graph: value, ...writes.at(-1) } }) : route.fallback())
+  const open = () => mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
+  await open()
+  if (scenario === 'convert') {
+    await page.getByRole('button', { name: 'Code · work', exact: true }).click()
+    await page.getByRole('combobox', { name: 'Processing', exact: true }).click()
+    await page.getByRole('option', { name: 'Agentic AI', exact: true }).click()
+  } else {
+    await page.getByRole('button', { name: 'Output of Start', exact: true }).click()
+    await page.getByRole('button', { name: 'Agentic AI', exact: true }).click()
+  }
+  const panel = page.getByRole('complementary', { name: 'Activity settings', exact: true })
+  await panel.getByRole('textbox', { name: 'Title', exact: true }).fill('Synthetic assigned work')
+  await panel.getByRole('textbox', { name: 'Task instructions', exact: true }).fill('Synthetic instructions')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0].graph.actors ?? []).toEqual(value.actors)
+  await page.getByRole('button', { name: /^Synthetic assigned work · / }).click()
+  const agent = panel.getByRole('combobox', { name: 'Assigned agent', exact: true })
+  await agent.click()
+  await page.getByRole('option', { name: 'Synthetic delegate', exact: true }).click()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(2)
+  const saved = writes[1].graph, task = saved.nodes.find(node => node.title === 'Synthetic assigned work')
+  expect(task.kind).toBe('task')
+  expect(saved.actors).toHaveLength(value.actors.length)
+  if (scenario === 'named-role') {
+    expect(task.config.actor).toBe('executor')
+    expect(saved.actors[0].agent_id).toBe(8)
+  } else {
+    expect(task.config.actor ?? null).toBeNull()
+    expect(saved.execution_agent_id).toBe(8)
+  }
+  await open()
+  await page.getByRole('button', { name: /^Synthetic assigned work · / }).click()
+  await expect(agent).toHaveValue('Synthetic delegate')
+  await page.screenshot({ path: test.info().outputPath(`agentic-assignment-${scenario}.png`), fullPage: true, animations: 'disabled' })
+})
+}
+
+test('decision IF preserves its model and instructions after catalogue errors, saving and reopening', async ({ page }) => {
   const writes = await definitionFixtures(page, true, 'if', true)
   const value = graph()
   value.schema_version = 'galaris.bpmn/v2'; value.variables = []
@@ -367,17 +424,17 @@ test('AI IF preserves agentic and simple LLM modes, selected model and instructi
   const open = () => page.getByRole('button', { name: 'Conditional choice · work', exact: true }).click()
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
   await open()
-  const mode = page.getByRole('combobox', { name: 'AI mode', exact: true })
-  await expect(mode).toHaveValue('Agentic (Task)')
-  await mode.click(); await page.getByRole('option', { name: 'Simple LLM call', exact: true }).click()
+  const mode = page.getByRole('combobox', { name: 'Processing', exact: true })
+  await expect(mode).toHaveValue('Agentic AI')
+  await mode.click(); await page.getByRole('option', { name: 'Decision AI', exact: true }).click()
   await expect(page.getByText('Unable to load LLM models.', { exact: true })).toBeVisible()
   unavailable = false
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   const model = page.getByRole('combobox', { name: 'LLM model', exact: true })
   await model.click(); await page.getByRole('option', { name: 'Jev synthetic · Synthetic provider', exact: true }).click()
-  await mode.click(); await page.getByRole('option', { name: 'Agentic (Task)', exact: true }).click()
+  await mode.click(); await page.getByRole('option', { name: 'Code', exact: true }).click()
   await expect(model).toHaveCount(0)
-  await mode.click(); await page.getByRole('option', { name: 'Simple LLM call', exact: true }).click()
+  await mode.click(); await page.getByRole('option', { name: 'Decision AI', exact: true }).click()
   await expect(model).toHaveValue('Jev synthetic · Synthetic provider')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -387,8 +444,8 @@ test('AI IF preserves agentic and simple LLM modes, selected model and instructi
   await page.setViewportSize({ width: 390, height: 844 })
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ'] })
   await open()
-  const inspector = page.getByRole('dialog', { name: 'Activity settings', exact: true })
-  await expect(inspector.getByText('Simple LLM call', { exact: true })).toBeVisible()
+  const inspector = page.getByRole('complementary', { name: 'Activity settings', exact: true })
+  await expect(inspector.getByText('Decision AI', { exact: true })).toBeVisible()
   await expect(inspector.getByText('Jev synthetic · Synthetic provider', { exact: true })).toBeVisible()
   await mode.click()
   await expect(page.getByRole('listbox')).toHaveCount(0)
@@ -637,9 +694,10 @@ test('saved process states require confirmation, preserve drafts on failure and 
 })
 
 for (const initialMode of ['ai', null]) {
-test(`binary IF exposes two branches and processing follows its actor (${initialMode ?? 'historical expression'})`, async ({ page }) => {
+test(`binary IF preserves its processing when moved to a human lane (${initialMode ?? 'historical expression'})`, async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1400 })
   const writes = await definitionFixtures(page, true)
+  await jsonRoute(page, '**/api/processes/internal/decision-models', [])
   const value = graph()
   value.schema_version = 'galaris.bpmn/v2'; value.variables = []
   value.actors = [{ id: 'executor', name: 'Executor', kind: 'agent', agent_id: 7, user_id: null },
@@ -670,7 +728,7 @@ test(`binary IF exposes two branches and processing follows its actor (${initial
   await mode.click(); await page.getByRole('option', { name: 'Code', exact: true }).click()
   const code = page.getByRole('textbox', { name: 'Python program', exact: true })
   await code.fill('return variable_2 != "pas mon projet"')
-  await mode.click(); await page.getByRole('option', { name: 'AI', exact: true }).click()
+  await mode.click(); await page.getByRole('option', { name: 'Decision AI', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'Task instructions', exact: true })).toHaveValue('Check the project name.')
   await mode.click(); await page.getByRole('option', { name: 'Code', exact: true }).click()
   await expect(code).toHaveValue('return variable_2 != "pas mon projet"')
@@ -686,34 +744,64 @@ test(`binary IF exposes two branches and processing follows its actor (${initial
   await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2); await page.mouse.down()
   await page.mouse.move(source.x + source.width / 2, lane.y + lane.height / 2, { steps: 8 }); await page.mouse.up()
   await activity.click()
-  await expect(mode).toHaveCount(0)
-  await expect(page.getByRole('textbox', { name: 'Task instructions', exact: true })).toHaveValue('Check the project name.')
-  await page.getByRole('dialog').screenshot({ path: test.info().outputPath('human-if.png'), animations: 'disabled' })
+  await expect(mode).toHaveValue('Code')
+  await expect(code).toHaveValue('return variable_2 != "pas mon projet"')
+  await page.getByRole('complementary').screenshot({ path: test.info().outputPath('code-if-human-lane.png'), animations: 'disabled' })
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => writes.length).toBe(2)
-  expect(writes[1].graph.nodes.find(node => node.id === 'work').config).toMatchObject({ mode: 'human', actor: 'reviewer' })
+  expect(writes[1].graph.nodes.find(node => node.id === 'work').config).toMatchObject({ mode: 'code', actor: 'reviewer' })
 })
 }
 
-test('typed tasks switch between AI and Dataset code without losing instructions', async ({ page }) => {
+test('typed tasks preserve instructions, model and code across all four explicit types', async ({ page }) => {
   const writes = await definitionFixtures(page, true, 'task', true)
+  await jsonRoute(page, '**/api/processes/internal/decision-models', [
+    { id: 45, label: 'Synthetic decision only', provider: 'Synthetic provider', decision: true, chat: false },
+    { id: 46, label: 'Synthetic text model', provider: 'Synthetic provider', decision: false, chat: true },
+  ])
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
+  await page.getByRole('button', { name: 'New actor', exact: true }).click()
+  await page.getByText('Add a human actor', { exact: true }).click()
+  await page.getByRole('textbox', { name: 'Role name', exact: true }).fill('Synthetic reviewer')
+  await page.getByRole('combobox', { name: 'Assigned human', exact: true }).click()
+  await page.getByRole('option', { name: 'Synthetic human', exact: true }).click()
   await page.getByRole('button', { name: 'Task · work', exact: true }).click()
   const mode = page.getByRole('combobox', { name: 'Processing', exact: true })
   await mode.click(); await page.getByRole('option', { name: 'Code', exact: true }).click()
   const code = page.getByRole('textbox', { name: 'Python program', exact: true })
   await expect(code).toHaveValue(/# Example:/)
   await code.fill('return {"variable_1": variable_1 + 1}')
-  await mode.click(); await page.getByRole('option', { name: 'AI', exact: true }).click()
+  await mode.click(); await page.getByRole('option', { name: 'Agentic AI', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'Task instructions', exact: true })).toHaveValue('Prepare an invented result')
-  await mode.click(); await page.getByRole('option', { name: 'Code', exact: true }).click()
-  await expect(code).toHaveValue('return {"variable_1": variable_1 + 1}')
-  await page.getByRole('dialog').screenshot({ path: test.info().outputPath('dataset-code-task.png'), animations: 'disabled' })
+  await mode.click(); await page.getByRole('option', { name: 'AI LLM call', exact: true }).click()
+  const model = page.getByRole('combobox', { name: 'LLM model', exact: true })
+  await model.click()
+  await expect(page.getByRole('option', { name: /Synthetic decision only/ })).toHaveCount(0)
+  await page.getByRole('option', { name: 'Synthetic text model · Synthetic provider', exact: true }).click()
+  await page.getByRole('combobox', { name: 'Responsible actor', exact: true }).click()
+  await page.getByRole('option', { name: 'Synthetic reviewer', exact: true }).click()
+  await expect(mode).toHaveValue('AI LLM call')
+  await mode.click(); await page.getByRole('option', { name: 'Human', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: 'Responsible actor', exact: true })).toHaveValue('Synthetic reviewer')
+  await expect(page.getByRole('textbox', { name: 'Task instructions', exact: true })).toHaveValue('Prepare an invented result')
+  await mode.click(); await page.getByRole('option', { name: 'AI LLM call', exact: true }).click()
+  await expect(model).toHaveValue('Synthetic text model · Synthetic provider')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => writes.length).toBe(1)
-  expect(writes[0].graph.nodes.find(node => node.id === 'work')).toMatchObject({ kind: 'code', config: { dataset_code: true, prompt: 'Prepare an invented result', code: 'return {"variable_1": variable_1 + 1}' } })
+  expect(writes[0].graph.nodes.find(node => node.id === 'work')).toMatchObject({ kind: 'task', config: { ai_mode: 'llm', llm_id: 46,
+    actor: writes[0].graph.actors.find(actor => actor.kind === 'human').id } })
+  await page.getByRole('button', { name: 'Task · work', exact: true }).click()
+  await expect(mode).toHaveValue('AI LLM call')
+  await expect(model).toHaveValue('Synthetic text model · Synthetic provider')
+  await mode.click(); await page.getByRole('option', { name: 'Code', exact: true }).click()
+  await expect(code).toHaveValue('return {"variable_1": variable_1 + 1}')
+  await page.getByRole('complementary').screenshot({ path: test.info().outputPath('dataset-code-task.png'), animations: 'disabled' })
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(2)
+  expect(writes[1].graph.nodes.find(node => node.id === 'work')).toMatchObject({ kind: 'code', config: { dataset_code: true, prompt: 'Prepare an invented result', code: 'return {"variable_1": variable_1 + 1}' } })
 })
 
 test('process variables preserve defaults and invalid drafts through activity reopening', async ({ page }) => {
@@ -771,7 +859,7 @@ test('process and step variable bindings can be edited from either side and surv
   await page.getByRole('option', { name: 'Start · start', exact: true }).click()
   await closeOptions()
   await page.getByRole('button', { name: 'Task · work', exact: true }).click()
-  const inspector = page.getByRole('dialog')
+  const inspector = page.getByRole('complementary', { name: 'Activity settings', exact: true })
   await inspector.getByRole('combobox', { name: 'Input variables', exact: true }).click()
   await page.getByRole('option', { name: 'source', exact: true }).click()
   await closeOptions()
@@ -1129,17 +1217,17 @@ test('invalid tool argument drafts survive node changes and prevent saving until
   const mapping = page.getByRole('textbox', { name: 'Tool arguments (JSON)', exact: true })
   await mapping.fill('{')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Activity settings', exact: true })).toHaveCount(0)
+  await expect(mapping).toHaveCount(0)
   await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
   await expect(mapping).toHaveValue('{')
-  await page.getByRole('dialog', { name: 'Activity settings', exact: true }).getByRole('textbox', { name: 'Title', exact: true }).focus()
+  await page.getByRole('complementary', { name: 'Activity settings', exact: true }).getByRole('textbox', { name: 'Title', exact: true }).focus()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog', { name: 'Activity settings', exact: true })).toHaveCount(0)
+  await expect(mapping).toHaveCount(0)
   await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
   await expect(mapping).toHaveValue('{')
-  // Click outside the inspector independently of where its popover fits in the viewport.
+  // The side panel stays usable while interacting with the rest of the page.
   await page.getByRole('heading', { name: 'Process editor', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Activity settings', exact: true })).toHaveCount(0)
+  await expect(mapping).toHaveValue('{')
   await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
   await page.getByRole('button', { name: 'End · end', exact: true }).click()
   await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
@@ -1152,7 +1240,7 @@ test('invalid tool argument drafts survive node changes and prevent saving until
   await mapping.fill('{"amount": 8}')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Flow from start to work', exact: true }).click()
-  const flowForm = page.getByRole('dialog', { name: 'Flow settings', exact: true })
+  const flowForm = page.getByRole('complementary', { name: 'Activity settings', exact: true })
   await expect(flowForm).toBeVisible()
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Save', exact: true }).click()

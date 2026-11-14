@@ -65,5 +65,8 @@ def build_activity_prompt(graph: Workflow, node: Node, *, inputs: dict[str, Any]
         )
     else:
         prompt += ("\nNo tools or external actions are available. Evaluate only the supplied values; "
-            "resource URIs do not provide their contents. Return the control decision required by the inference schema.")
+            "resource URIs do not provide their contents. ")
+        prompt += ("Return the control decision required by the inference schema." if decision else
+            'Return {"output": {...}} with only selected business output names and ordinary JSON values. '
+            'If none are selected, return {"output": {}}.')
     return prompt + CONTRACT_SEPARATOR + json.dumps(contract, ensure_ascii=False, allow_nan=False)

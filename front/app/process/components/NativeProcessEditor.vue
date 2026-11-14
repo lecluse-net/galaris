@@ -56,24 +56,27 @@
                   :icon="definition.archived ? 'unarchive' : 'archive'" :label="t(definition.archived ? 'nativeProcesses.reactivate' : 'nativeProcesses.archive')"
                   :loading="archiving" :disable="saving" @click="requestArchive" />
               </template>
-              <template #inspector>
-                <div v-if="selected || flowSelected" class="editor-inspector q-gutter-y-sm">
+              <template #sidebar>
+                <div v-if="selected || flowSelected" class="editor-inspector q-gutter-y-sm" @keydown.esc="closeInspectorOnEscape">
                   <div class="row items-center no-wrap q-gutter-x-sm">
                     <span class="col-auto">{{ selected ? t('nativeProcesses.kinds.' + selected.kind) : t('nativeProcesses.flowSettings') }}</span>
-                    <q-select v-if="modeEditable && currentMode !== 'human'" :model-value="selected?.kind === 'if' && !selected.config.mode ? null : currentMode" :options="processingOptions"
-                      class="col" dense outlined emit-value map-options :readonly="!editable" :label="t('nativeProcesses.processingMode')" @update:model-value="setProcessingMode" />
-                    <q-space v-else />
+                    <q-space />
                     <q-btn flat round dense icon="close" :aria-label="t('nativeProcesses.closeSettings')" @click="selectedNode = null; selectedFlow = null" />
                   </div>
                   <template v-if="selected">
-                    <q-select v-if="contractActivity && !['task', 'human_task', 'code'].includes(selected.kind)" :model-value="configString('actor') || null" :options="actorOptions"
+                    <q-select v-if="modeEditable" :model-value="selected.kind === 'if' && !selected.config.mode ? null : currentMode" :options="processingOptions"
+                      outlined emit-value map-options :readonly="!editable" :label="t('nativeProcesses.processingMode')" @update:model-value="setProcessingMode" />
+                    <q-select v-if="contractActivity || selected.kind === 'if'" :model-value="configString('actor') || null" :options="actorOptions"
                       emit-value map-options outlined clearable :readonly="!editable" :label="t('nativeProcesses.taskActor')" @update:model-value="setActor" />
+                    <ProcessAgentSelect v-if="selected.kind === 'task' && currentMode === 'ai'" v-model="activityAgentId"
+                      :options="[{ id: null, label: t(activityActor ? 'nativeProcesses.defaultAgent' : 'nativeProcesses.launchingAgent') }, ...agents]"
+                      outlined :readonly="!editable" :label="t('nativeProcesses.assignedAgent')" />
                     <q-input :model-value="selected.title" outlined :readonly="!editable" :label="t('nativeProcesses.nodeTitle')" @update:model-value="setTitle" />
                     <ProcessVariableBindings v-if="graph.schema_version === 'galaris.bpmn/v2'" :key="`${selected.id}-bindings`"
                       :kind="selected.kind" :inputs="selected.inputs" :outputs="selected.outputs" :variables="graph.variables ?? []" :readonly="!editable"
                       @update:inputs="setNodeVariables('inputs', $event)" @update:outputs="setNodeVariables('outputs', $event)" />
-                    <ProcessAiDecision v-if="selected.kind === 'if' && selected.config.mode === 'ai'" :key="selected.id"
-                      :config="selected.config" :readonly="!editable" @change="setConfig" />
+                    <ProcessAiDecision v-if="currentMode === 'llm'" :key="selected.id"
+                      :config="selected.config" :decision="selected.kind === 'if'" :readonly="!editable" @change="setConfig" />
                     <q-input v-if="selected.kind === 'task' || selected.kind === 'human_task' || selected.kind === 'if' && selected.config.mode && currentMode !== 'code'" :model-value="configString('prompt')" outlined type="textarea" autogrow :readonly="!editable" :label="t('nativeProcesses.instructions')" @update:model-value="setConfig('prompt', String($event ?? ''))" />
                     <q-input v-if="selected.kind === 'for'" :model-value="configString('items')" outlined :readonly="!editable" :label="t('nativeProcesses.items')" @update:model-value="setConfig('items', String($event ?? ''))" />
                     <q-input v-if="selected.kind === 'while'" :model-value="configString('condition')" outlined :readonly="!editable" :label="t('nativeProcesses.whileCondition')" @update:model-value="setConfig('condition', String($event ?? ''))" />
@@ -109,6 +112,7 @@
                     <q-btn v-if="editable" color="negative" icon="delete_outline" :label="t('nativeProcesses.removeFlow')" @click="removeFlow" />
                   </template>
                 </div>
+                <div v-else class="editor-inspector text-body2">{{ t('nativeProcesses.selectActivity') }}</div>
               </template>
             </BpmnCanvas>
           </div>
@@ -199,7 +203,8 @@ import ProcessVariableBindings from './ProcessVariableBindings.vue'
 import ProcessVariableUsage from './ProcessVariableUsage.vue'
 import { allowsVariableDirection, processInputs, processOutputs, updateProcessVariables, type VariableDirection } from '../variableBindings'
 import ProcessAiDecision from './ProcessAiDecision.vue'
-import { persistLayout, processingMode, defaultDecisionCode, defaultTaskCode } from '../graphEditing'
+import ProcessAgentSelect from './ProcessAgentSelect.vue'
+import { persistLayout, processingMode, canAssignActivityActor, assignActivityActor, defaultDecisionCode, defaultTaskCode } from '../graphEditing'
 import { emptyGraph, nativeProcessService as service, type BpmnGraph, type BpmnNode, type NativeDefinition, type ProcessHistory, type ProcessAgentOption, type ProcessVariable } from '../services/nativeProcessService'
 const props = withDefaults(defineProps<{ code?: string | null }>(), { code: null })
 const { t, locale } = useI18n(), router = useRouter(), $q = useQuasar(), privileges = usePrivilegeStore()
@@ -269,15 +274,25 @@ const localGraph = computed<BpmnGraph>({ get: () => atPath(graph.value, bodyPath
 } })
 const selected = computed(() => localGraph.value.nodes.find(node => node.id === selectedNode.value))
 const modeEditable = computed(() => localGraph.value.schema_version === 'galaris.bpmn/v2' && selected.value && ['task', 'human_task', 'code', 'if'].includes(selected.value.kind))
-const currentMode = computed(() => selected.value ? processingMode(selected.value, localGraph.value) : 'ai')
-const processingOptions = computed(() => ['ai', 'code'].map(value => ({ value, label: t('nativeProcesses.processingModes.' + value) })))
+const currentMode = computed(() => selected.value ? processingMode(selected.value) : 'ai')
+const processingOptions = computed(() => (selected.value?.kind === 'if'
+  ? [...(selected.value.config.mode && ['ai', 'human'].includes(currentMode.value) ? [currentMode.value] : []), 'code', 'llm']
+  : ['ai', 'llm', 'code', 'human']).map(value => ({ value,
+  label: t('nativeProcesses.processingModes.' + (selected.value?.kind === 'if' && value === 'llm' ? 'decision' : value)),
+  disable: selected.value?.kind === 'if' && ['ai', 'human'].includes(value) || value === 'human' && !localGraph.value.actors?.some(actor => actor.kind === 'human') })))
 function setProcessingMode(value: unknown): void {
-  if (!editable.value || !modeEditable.value || currentMode.value === 'human' || value !== 'ai' && value !== 'code') return
+  if (!editable.value || !modeEditable.value || !processingOptions.value.some(option => option.value === value && !option.disable)) return
   const converting = selected.value?.kind === 'if' && !selected.value.config.mode ? selected.value.id : null
+  const required = selected.value?.kind === 'if' ? null : value === 'ai' ? 'agent' : value === 'human' ? 'human' : null
   editNode(node => {
     const config: Record<string, unknown> = { prompt: '', ...node.config }
-    if (node.kind === 'if') return { ...node, config: { ...config, mode: value, code: config.code ?? defaultDecisionCode } }
-    return { ...node, kind: value === 'code' ? 'code' : 'task', config: { ...config, code: config.code ?? defaultTaskCode, ...(value === 'code' ? { dataset_code: true } : {}) } }
+    delete config.ai_mode
+    if (node.kind === 'if') return { ...node, config: { ...config, mode: value === 'llm' ? 'ai' : 'code', ...(value === 'llm' ? { ai_mode: 'llm' } : {}), code: config.code ?? defaultDecisionCode } }
+    delete config.mode
+    if (required && (required === 'human' || config.actor) && localGraph.value.actors?.find(actor => actor.id === config.actor)?.kind !== required)
+      config.actor = localGraph.value.actors?.find(actor => actor.kind === required)?.id ?? null
+    return { ...node, kind: value === 'code' ? 'code' : value === 'human' ? 'human_task' : 'task', config: { ...config,
+      ...(value === 'llm' ? { ai_mode: 'llm' } : {}), code: config.code ?? defaultTaskCode, ...(value === 'code' ? { dataset_code: true } : {}) } }
   })
   if (converting) {
     const links = localGraph.value.flows.filter(flow => flow.source === converting)
@@ -302,10 +317,23 @@ function upgradeProfile(): void {
     body: node.body ? upgrade(node.body) : null })) } }
   graph.value = upgrade(graph.value)
 }
-const actorOptions = computed(() => (localGraph.value.actors ?? []).filter(actor => actor.kind === (selected.value?.kind === 'human_task' ? 'human' : 'agent')).map(actor => ({ value: actor.id, label: actor.name })))
+const actorOptions = computed(() => [
+  ...(selected.value && canAssignActivityActor(selected.value, '', localGraph.value) ? [{ value: null, label: t('nativeProcesses.defaultAgent') }] : []),
+  ...(localGraph.value.actors ?? []).filter(actor => selected.value && canAssignActivityActor(selected.value, actor.id, localGraph.value)).map(actor => ({ value: actor.id, label: actor.name })),
+])
+const activityActor = computed(() => localGraph.value.actors?.find(actor => actor.id === selected.value?.config.actor))
+const activityAgentId = computed({
+  get: () => activityActor.value?.agent_id ?? (activityActor.value ? null : executionAgentId.value),
+  set: (id: number | null) => {
+    if (!editable.value || selected.value?.kind !== 'task' || currentMode.value !== 'ai') return
+    const actor = activityActor.value
+    if (actor?.kind === 'agent') localGraph.value = { ...localGraph.value, actors: localGraph.value.actors?.map(item => item.id === actor.id ? { ...item, agent_id: id } : item) }
+    else if (!actor) executionAgentId.value = id
+  },
+})
 const flowSourceOptions = computed(() => localGraph.value.nodes.filter(node => node.kind !== 'end' && node.id !== flowSelected.value?.target).map(node => ({ value: node.id, label: node.title || t('nativeProcesses.kinds.' + node.kind) })))
 const flowTargetOptions = computed(() => localGraph.value.nodes.filter(node => node.kind !== 'start' && node.id !== flowSelected.value?.source).map(node => ({ value: node.id, label: node.title || t('nativeProcesses.kinds.' + node.kind) })))
-function setActor(value: unknown): void { if (typeof value === 'string' || value === null) { if (typeof value === 'string' && !actorOptions.value.some(actor => actor.value === value)) return; setConfig('actor', value) } }
+function setActor(value: unknown): void { if (typeof value === 'string' || value === null) editNode(node => assignActivityActor(node, value ?? '', localGraph.value)) }
 function setFlowEndpoint(side: 'source' | 'target', value: unknown): void { if (editable.value && typeof value === 'string') localGraph.value = { ...localGraph.value, flows: localGraph.value.flows.map(flow => flow.id === selectedFlow.value ? { ...flow, [side]: value } : flow) } }
 const flowSelected = computed(() => localGraph.value.flows.find(flow => flow.id === selectedFlow.value))
 const outgoing = computed(() => localGraph.value.flows.filter(flow => flow.source === selectedNode.value))
@@ -346,6 +374,10 @@ watch([ownerDirectoryAllowed, loading], async ([allowed, pageLoading]) => {
   finally { if (request === ownerOptionsGeneration && token === generation) ownerOptionsLoading.value = false }
 }, { immediate: true })
 function selectNode(id: string): void { selectedNode.value = id; selectedFlow.value = null }
+function closeInspectorOnEscape(event: KeyboardEvent): void {
+  if (event.defaultPrevented || document.querySelector('[role="listbox"], [role="menu"]')) return
+  selectedNode.value = null; selectedFlow.value = null
+}
 async function refreshOwners(): Promise<void> {
   if (!ownerDirectoryAllowed.value || loading.value) return
   const request = ++ownerOptionsGeneration, token = generation

@@ -13,7 +13,7 @@ from app.agent.models import Title
 from app.llm import LLMCall
 from app.llm.facade import read_inference, run_decision
 from app.process import process_service, registry
-from app.process.bpmn import Actor, compile_bpmn, to_bpmn, validate_graph
+from app.process.bpmn import Actor, Flow, Node, compile_bpmn, to_bpmn, validate_graph
 from app.process.activity_prompts import CONTRACT_SEPARATOR
 from app.process.values import Variable
 from app.process.models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
@@ -221,6 +221,108 @@ async def test_unassigned_agent_cannot_attribute_inference_to_process_activity(w
     assert len(calls) == 1
     await process_service.cancel_run(run_id)
     await drive(db, run_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lane", [None, "agent", "human"])
+async def test_llm_task_integrates_only_selected_outputs_once_without_creating_a_task(workflow, runtime, lane):
+    db, agent, *_ = workflow
+    _, text_model, calls, mode = runtime
+    mode["outputs"] = [json.dumps({"output": {"variable_1": 124, "variable_2": "Synthetic result"}})]
+    graph = decision_graph("ai")
+    graph.nodes = [graph.nodes[0], Node(id="check", kind="task", inputs=["variable_1"],
+        outputs=["variable_1", "variable_2"], config={"ai_mode": "llm", "llm_id": text_model.id,
+            "prompt": "Return the next number and a synthetic label."}), graph.nodes[2]]
+    graph.flows = [Flow(id="a", source="start", target="check"), Flow(id="b", source="check", target="yes")]
+    if lane:
+        executor = agent
+        if lane == "agent":
+            executor = Agent(user_id=agent.user_id, title_id=agent.title_id, code=f"delegate-{uuid4().hex}", first_name="Synthetic", last_name="Delegate")
+            db.add(executor); await db.commit()
+        graph.actors = [Actor(id="role", name="Synthetic role", kind=lane,
+            **({"agent_id": executor.id} if lane == "agent" else {"user_id": agent.user_id}))]
+        graph.nodes[1].config["actor"] = "role"
+    run_id = await launch(workflow, text_model.id, graph=graph)
+    await drive(db, run_id, until=lambda: bool(calls))
+    occurrence = await db.scalar(select(ProcessNodeRun).where(ProcessNodeRun.run_id == run_id, ProcessNodeRun.node_key == "check"))
+    completed = await decision_tests.lifecycle.state(UUID(occurrence.context["llm_inference_id"]), "completed")
+    registry.register(NativeProcessEngine())
+    run = await drive(db, run_id)
+    assert run.status == "success", run.error_message
+    assert run.data == {"variable_1": {"type": "int", "value": 124}, "variable_2": {"type": "string", "value": "Synthetic result"}}
+    assert run.output == run.data
+    assert await db.scalar(select(func.count()).select_from(Task)) == 0
+    assert completed.request.request_limit == 1 and completed.request.output_retries == 0
+    assert not completed.request.allow_profile_fallback
+    contract = json.loads(completed.request.prompt.rsplit(CONTRACT_SEPARATOR, 1)[1])
+    assert [item["name"] for item in contract["input_variables"]] == ["variable_1"]
+    assert [item["name"] for item in contract["output_variables"]] == ["variable_1", "variable_2"]
+    assert "control_result" not in contract and "process_activity_complete" not in completed.request.prompt
+    await process_service.refresh_run(run_id)
+    assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_stopping_llm_task_cancels_inference_and_discards_late_output(workflow, runtime):
+    db, _, *_ = workflow
+    _, model, calls, mode = runtime
+    mode.update(gate=asyncio.Event(), outputs=[json.dumps({"output": {"variable_1": 999}})])
+    graph = decision_graph("ai")
+    graph.nodes = [graph.nodes[0], Node(id="check", kind="task", outputs=["variable_1"],
+        config={"ai_mode": "llm", "llm_id": model.id, "prompt": "Return a synthetic value."}), graph.nodes[2]]
+    graph.flows = [Flow(id="a", source="start", target="check"), Flow(id="b", source="check", target="yes")]
+    run_id = await launch(workflow, model.id, graph=graph)
+    await drive(db, run_id, until=lambda: bool(calls))
+    occurrence = await db.scalar(select(ProcessNodeRun).where(ProcessNodeRun.run_id == run_id, ProcessNodeRun.node_key == "check"))
+    await process_service.cancel_run(run_id)
+    await decision_tests.lifecycle.state(UUID(occurrence.context["llm_inference_id"]), "stopped")
+    mode["gate"].set()
+    run = await drive(db, run_id)
+    assert run.status == "cancelled"
+    assert run.data["variable_1"] == {"type": "int", "value": 123}
+    await process_service.refresh_run(run_id)
+    assert len(calls) == 1
+    assert await db.scalar(select(func.count()).select_from(Task)) == 0
+    assert set(await db.scalars(select(ProcessNodeRun.node_key).where(ProcessNodeRun.run_id == run_id))) == {"start", "check"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("output", [{"unknown": 1}, {"variable_1": "not an integer"}])
+async def test_llm_task_rejects_invalid_outputs_without_changing_data(workflow, runtime, output):
+    db, _, *_ = workflow
+    _, model, calls, mode = runtime
+    mode["outputs"] = [json.dumps({"output": output})]
+    graph = decision_graph("ai")
+    graph.nodes = [graph.nodes[0], Node(id="check", kind="task", outputs=["variable_1"],
+        config={"ai_mode": "llm", "llm_id": model.id, "prompt": "Return a synthetic value."}), graph.nodes[2]]
+    graph.flows = [Flow(id="a", source="start", target="check"), Flow(id="b", source="check", target="yes")]
+    run = await drive(db, await launch(workflow, model.id, graph=graph))
+    assert run.status == "error"
+    assert run.data["variable_1"] == {"type": "int", "value": 123}
+    assert len(calls) == 1
+    assert "yes" not in list(await db.scalars(select(ProcessNodeRun.node_key).where(ProcessNodeRun.run_id == run.id)))
+
+
+@pytest.mark.parametrize("kind,config,allowed", [
+    ("task", {"prompt": "Synthetic task"}, False),
+    ("human_task", {"prompt": "Synthetic task"}, True),
+    ("task", {"prompt": "Synthetic task", "ai_mode": "llm", "llm_id": 7}, True),
+    ("code", {"code": "return {}"}, True),
+    ("if", {"mode": "code", "code": "return True"}, True),
+    ("if", {"mode": "ai", "ai_mode": "llm", "llm_id": 7, "prompt": "Synthetic decision"}, True),
+])
+def test_human_lane_does_not_turn_code_or_llm_activities_into_human_work(kind, config, allowed):
+    graph = decision_graph("ai")
+    graph.actors = [Actor(id="reviewer", name="Synthetic reviewer", kind="human", user_id=1)]
+    graph.nodes[1] = Node(id="check", kind=kind, config={**config, "actor": "reviewer"})
+    if kind != "if":
+        graph.nodes.pop(); graph.flows.pop(); graph.flows[1].condition = None
+    if allowed:
+        validate_graph(graph)
+        assert compile_bpmn(to_bpmn(graph)).model_dump() == graph.model_dump()
+    else:
+        with pytest.raises(ValueError, match="actor types"):
+            validate_graph(graph)
 
 
 @pytest.mark.parametrize("config", [{"ai_mode": "unknown"}, {"ai_mode": "llm"}, {"ai_mode": "llm", "llm_id": True}])

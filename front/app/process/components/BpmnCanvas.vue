@@ -28,6 +28,8 @@
         </GraphViewControls>
       </div>
     </div>
+    <div class="diagram-content" :class="{ 'has-sidebar': $slots.sidebar }">
+    <div class="diagram-main">
     <div ref="scroll" class="bpmn-scroll" @keydown.esc="connecting = null; cancelDrag()">
       <div class="diagram-scale" :style="{ width: `${width * zoom}px`, height: `${height * zoom}px` }">
         <div class="diagram-board" :style="{ width: `${width}px`, height: `${height}px`, transform: `scale(${zoom})` }" @pointermove="move" @pointerup="stop" @pointercancel="cancelDrag">
@@ -61,7 +63,7 @@
               @pointerdown="begin($event, node.id)" @lostpointercapture="cancelDrag" @keydown="key($event, node.id)" @click="choose(node.id)">
               <ProcessNodeFrame :radius="isEvent(node) ? 32 : isGateway(node) ? 0 : 10" />
               <span class="node-symbol"><q-icon :name="nodeIcons[node.kind]" :size="isEvent(node) ? '28px' : isGateway(node) ? '22px' : '14px'" /></span>
-              <span v-if="!isEvent(node) && !isGateway(node)" class="node-copy"><strong>{{ node.title || t('nativeProcesses.untitledActivity') }}</strong><span class="node-kind">{{ t('nativeProcesses.kinds.' + node.kind) }}</span></span>
+              <span v-if="!isEvent(node) && !isGateway(node)" class="node-copy"><strong>{{ node.title || t('nativeProcesses.untitledActivity') }}</strong><span class="node-kind">{{ activityTypeLabel(node) }}</span></span>
               <span v-if="node.body" class="body-indicator"><q-icon name="add_box" size="16px" /></span>
               <q-menu v-if="selected === node.id && $slots.inspector && !drag?.moved" :model-value="true" no-parent-event anchor="bottom middle" self="top middle" :offset="[0, 12]"
                 class="process-context-form process-activity-form" :max-height="readonly ? 'min(520px, 70vh)' : 'min(420px, 60vh)'" role="dialog" :aria-label="inspectorLabel || t('nativeProcesses.activitySettings')"
@@ -80,16 +82,16 @@
                 <q-menu anchor="bottom middle" self="top middle" class="handle-menu">
                   <q-list style="min-width: 240px">
                     <q-item-label header>{{ t(port.side === 'input' ? 'nativeProcesses.insertBefore' : 'nativeProcesses.continueFlow') }}</q-item-label>
-                    <q-item v-for="kind in activityKinds.filter(kind => kind !== 'end' || port.side === 'output' && !adjacent(node.id, port.side, port.outcome).length)" :key="kind" clickable v-close-popup
+                    <q-item v-for="kind in availableKinds.filter(kind => kind !== 'end' || port.side === 'output' && !adjacent(node.id, port.side, port.outcome).length)" :key="kind" clickable v-close-popup
                       :disable="kind === 'human_task' && !modelValue.actors?.some(actor => actor.kind === 'human')" @click="add(node.id, port.side, kind, false, port.outcome)">
-                      <q-item-section avatar><q-icon :name="nodeIcons[kind]" /></q-item-section><q-item-section>{{ t('nativeProcesses.kinds.' + kind) }}</q-item-section>
+                      <q-item-section avatar><q-icon :name="nodeIcons[kind === 'llm_task' ? 'task' : kind]" /></q-item-section><q-item-section>{{ activityLabel(kind) }}</q-item-section>
                     </q-item>
                     <q-separator />
                     <q-item clickable v-close-popup @click="connecting = { id: node.id, side: port.side, outcome: port.outcome }"><q-item-section avatar><q-icon name="link" /></q-item-section><q-item-section>{{ t('nativeProcesses.connect') }}</q-item-section></q-item>
                     <template v-if="port.side === 'output' && port.outcome === undefined && adjacent(node.id, port.side).length">
                       <q-item clickable><q-item-section avatar><q-icon name="call_split" /></q-item-section><q-item-section>{{ t('nativeProcesses.addBranch') }}</q-item-section>
-                        <ContextSubmenu><q-list><q-item v-for="kind in activityKinds" :key="kind" clickable v-close-popup
-                          :disable="kind === 'human_task' && !modelValue.actors?.some(actor => actor.kind === 'human')" @click="add(node.id, port.side, kind, true)"><q-item-section>{{ t('nativeProcesses.kinds.' + kind) }}</q-item-section></q-item></q-list></ContextSubmenu>
+                        <ContextSubmenu><q-list><q-item v-for="kind in availableKinds" :key="kind" clickable v-close-popup
+                          :disable="kind === 'human_task' && !modelValue.actors?.some(actor => actor.kind === 'human')" @click="add(node.id, port.side, kind, true)"><q-item-section>{{ activityLabel(kind) }}</q-item-section></q-item></q-list></ContextSubmenu>
                       </q-item>
                     </template>
                     <q-item v-for="flow in adjacent(node.id, port.side, port.outcome)" :key="flow.id" clickable v-close-popup @click="emit('flow', flow.id)"><q-item-section avatar><q-icon name="edit" /></q-item-section><q-item-section>{{ t('nativeProcesses.flow', { source: title(flow.source), target: title(flow.target) }) }}</q-item-section></q-item>
@@ -116,12 +118,15 @@
     <div v-if="connecting" role="status" class="connect-hint"><q-icon name="link" />{{ t('nativeProcesses.connectTarget') }}<q-btn flat dense :label="t('nativeProcesses.cancelConnection')" @click="connecting = null" /></div>
     <div v-if="drag?.moved && dropTarget?.create" role="status" class="drop-message"><q-icon name="group_add" />{{ t('nativeProcesses.dropToCreateActor') }}</div>
     <div v-if="dropError" role="status" class="drop-message"><q-icon name="block" />{{ t('nativeProcesses.incompatibleActorDrop') }}</div>
+    </div>
+    <aside v-if="$slots.sidebar" class="diagram-sidebar" :aria-label="t('nativeProcesses.activitySettings')"><slot name="sidebar" /></aside>
+    </div>
     <Teleport to="body">
       <div v-if="drag?.moved && draggedNode" class="node-wrap drag-preview selected process-diagram-theme process-diagram-node" :class="[draggedNode.kind, statusClass(draggedNode), { 'invalid-drop': !dropTarget?.allowed }]" :style="dragPreviewStyle" aria-hidden="true">
         <div class="node-card">
           <ProcessNodeFrame :radius="isEvent(draggedNode) ? 32 : isGateway(draggedNode) ? 0 : 10" />
           <span class="node-symbol"><q-icon :name="nodeIcons[draggedNode.kind]" :size="isEvent(draggedNode) ? '28px' : isGateway(draggedNode) ? '22px' : '14px'" /></span>
-          <span v-if="!isEvent(draggedNode) && !isGateway(draggedNode)" class="node-copy"><strong>{{ draggedNode.title || t('nativeProcesses.untitledActivity') }}</strong><span class="node-kind">{{ t('nativeProcesses.kinds.' + draggedNode.kind) }}</span></span>
+          <span v-if="!isEvent(draggedNode) && !isGateway(draggedNode)" class="node-copy"><strong>{{ draggedNode.title || t('nativeProcesses.untitledActivity') }}</strong><span class="node-kind">{{ activityTypeLabel(draggedNode) }}</span></span>
           <span v-if="draggedNode.body" class="body-indicator"><q-icon name="add_box" size="16px" /></span>
         </div>
         <div v-if="(isEvent(draggedNode) || isGateway(draggedNode)) && (draggedNode.kind !== 'if' || draggedNode.title)" class="event-title">{{ draggedNode.title || t('nativeProcesses.kinds.' + draggedNode.kind) }}</div>
@@ -141,8 +146,8 @@ import { computed, ref, shallowRef, useId, watch, onMounted, onBeforeUnmount } f
 import { useI18n } from 'vue-i18n'
 import { ContextSubmenu, GraphViewControls } from '@/core/util'
 import ProcessRunStatusBadge from './ProcessRunStatusBadge.vue'
-import type { BpmnGraph, BpmnNode, BpmnFlow, NodeKind, ProcessActor, ProcessAgentOption } from '../services/nativeProcessService'
-import { activityKinds, nodeIcons, graphLayout, insertActivity, canConnectActivities, connectActivities, assignActivityActor, laneHeaderWidth, nodeStartX } from '../graphEditing'
+import type { BpmnGraph, BpmnNode, BpmnFlow, ProcessActor, ProcessAgentOption } from '../services/nativeProcessService'
+import { activityKinds, nodeIcons, graphLayout, insertActivity, canConnectActivities, connectActivities, assignActivityActor, canAssignActivityActor, laneHeaderWidth, nodeStartX, type ActivityKind } from '../graphEditing'
 import ProcessLaneHeader from './ProcessLaneHeader.vue'
 import ProcessNodeFrame from './ProcessNodeFrame.vue'
 const props = withDefaults(defineProps<{ modelValue: BpmnGraph; readonly?: boolean; showGuide?: boolean; autoFit?: boolean; inspectorLabel?: string; selected?: string | null; selectedFlow?: string | null;
@@ -242,12 +247,12 @@ const dropTarget = computed(() => {
   if (!current) return null
   const node = props.modelValue.nodes.find(node => node.id === current.id)
   if (!node) return null
-  if (current.outside && (node.kind === 'task' || node.kind === 'human_task')) return { lane: null, allowed: true, create: true }
+  if (current.outside && (node.kind === 'task' && node.config.ai_mode !== 'llm' || node.kind === 'human_task')) return { lane: null, allowed: true, create: true }
   if (!props.modelValue.actors?.length) return { lane: '', allowed: true, create: false }
   const lane = layout.value.lanes[Math.floor((current.preview.y + 44) / layout.value.laneHeight)]
   if (lane === undefined) return { lane: null, allowed: false, create: false }
   const required = node.kind === 'task' ? 'agent' : node.kind === 'human_task' ? 'human' : null
-  if (props.modelValue.schema_version === 'galaris.bpmn/v2' && ['task', 'human_task', 'code', 'if'].includes(node.kind)) return { lane, allowed: true, create: false }
+  if (props.modelValue.schema_version === 'galaris.bpmn/v2' && ['task', 'human_task', 'code', 'if'].includes(node.kind)) return { lane, allowed: canAssignActivityActor(node, lane, props.modelValue), create: false }
   return { lane, allowed: required ? lane === '' ? required === 'agent' : actor(lane)?.kind === required : lane === String(node.config.actor ?? ''), create: false }
 })
 const contentWidth = computed(() => Math.max(laneHeaderWidth, ...props.modelValue.nodes.map(node => savedPosition(node).x + nodeWidth(node) + 48)))
@@ -468,7 +473,10 @@ function onFullscreenChange(): void {
 function onFullscreenKey(event: KeyboardEvent): void {
   if (event.key === 'Escape' && isFullscreen.value && document.fullscreenElement === null) setFullscreen(false)
 }
-function add(anchor: string, side: 'input' | 'output', kind: NodeKind, branch = false, outcome?: boolean): void {
+function activityLabel(kind: ActivityKind): string { return t(kind === 'task' && props.modelValue.schema_version === 'galaris.bpmn/v2' ? 'nativeProcesses.processingModes.ai' : kind === 'llm_task' ? 'nativeProcesses.processingModes.llm' : 'nativeProcesses.kinds.' + kind) }
+function activityTypeLabel(node: BpmnNode): string { return activityLabel(node.kind === 'task' && node.config.ai_mode === 'llm' ? 'llm_task' : node.kind) }
+const availableKinds = computed(() => activityKinds.filter(kind => props.modelValue.schema_version === 'galaris.bpmn/v2' || !['llm_task', 'code'].includes(kind)))
+function add(anchor: string, side: 'input' | 'output', kind: ActivityKind, branch = false, outcome?: boolean): void {
   if (props.readonly) return
   const next = insertActivity(props.modelValue, anchor, side, kind, branch, outcome)
   const positions = graphLayout(next.graph).positions
@@ -600,6 +608,17 @@ onBeforeUnmount(() => {
 .diagram-toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; background: var(--galaris-page-background); border-bottom: 1px solid var(--q-separator-color, rgba(128, 128, 128, .24)); }
 .body--dark .diagram-toolbar { color: #EEEEF0; }
 .diagram-toolbar-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.diagram-content { min-height: 0; }
+.diagram-content.has-sidebar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 380px); }
+.diagram-main { min-width: 0; min-height: 0; }
+.diagram-sidebar { min-width: 0; max-height: 76vh; overflow: auto; background: var(--galaris-page-background); border-left: 1px solid var(--diagram-separator); }
+.fullscreen .diagram-content { flex: 1; overflow: auto; }
+.fullscreen .diagram-main { display: flex; flex-direction: column; }
+.fullscreen .diagram-sidebar { max-height: none; }
+@media (max-width: 1023px) {
+  .diagram-content.has-sidebar { grid-template-columns: minmax(0, 1fr); }
+  .diagram-sidebar { border-left: 0; border-top: 1px solid var(--diagram-separator); max-height: none; }
+}
 .diagram-guide { display: flex; gap: 8px; align-items: center; font-size: 12px; opacity: .75; }
 .diagram-editor.fullscreen { position: fixed; z-index: 5999; inset: 0; width: 100vw; height: 100dvh; display: flex; flex-direction: column; border: 0; border-radius: 0; }
 .diagram-editor.fullscreen .bpmn-scroll { flex: 0 1 auto; min-height: 0; max-height: none; }

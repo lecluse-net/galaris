@@ -1121,12 +1121,16 @@ rollback and a delegated activity that still exchanges messages in the launch co
 `app/process/tests/test_decisions.py` covers both IF branches for AI/code/human, human
 authorization and receipts. `app/process/tests/test_llm_decisions.py` covers direct text and
 decision calls without a Task, acquired-result recovery, cancellation and failures without
-an implicit branch. `native-processes.spec.mjs` exercises AI submode/model selection,
+an implicit branch. It also covers single-call LLM tasks: selected outputs, delegated AI
+and human lanes, no Task creation, recovery, cancellation and invalid outputs.
+`graphEditing.test.mjs` protects explicit creation of the four task types and preservation
+of processing when changing actors. `native-processes.spec.mjs` exercises the settings panel and processing/model selection,
 catalogue retry, saving and reopening read-only. The original decision tests also cover
 run-data updates from ordinary Python return values and the
 real Monty worker: denied host/network access and bounded loops/memory exhaustion.
 Assembled Chromium journeys execute a code task, followed by a code IF or the human
-False button in Chat. Component tests cover both handles and actor-specific modes.
+False button in Chat for historical definitions. Component tests cover both handles and
+preserved processing when moving between actors.
 Actors survive XML round trips; human/agent type inversions are rejected. Coverage checks
 the actual assigned agent and writable run-data access, human waiting, another user's denial,
 deactivation, repeated replies and cancellation. Components build from Start,

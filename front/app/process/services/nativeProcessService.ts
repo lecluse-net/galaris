@@ -12,7 +12,7 @@ import type { TypedValue } from '@/app/dataset'
 export interface ProcessVariable { name: string; label?: string; description?: string; type: ValueType; nullable: boolean; default?: TypedValue; document_format?: string; mime_type?: string }
 export interface ProcessActor { id: string; name: string; kind: 'agent' | 'human'; agent_id: number | null; user_id: number | null }
 export interface ProcessAgentOption { id: number; label: string; has_avatar?: boolean }
-export interface ProcessDecisionModel { id: number; label: string; provider: string; decision: boolean }
+export interface ProcessDecisionModel { id: number; label: string; provider: string; decision: boolean; chat?: boolean }
 export interface BpmnNode {
   id: string; kind: NodeKind; title: string; config: Record<string, unknown>; x: number; y: number; body: BpmnGraph | null
   inputs?: string[]; outputs?: string[]

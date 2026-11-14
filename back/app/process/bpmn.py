@@ -223,12 +223,13 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None,
     for node in graph.nodes:
         mode = node.config.get("mode")
         if "ai_mode" in node.config:
-            if node.kind != "if" or not graph.typed or node.config["ai_mode"] not in ("task", "llm"):
-                raise ValueError("AI execution modes belong to typed IF activities and require task or llm")
-        if node.kind == "if" and mode == "ai" and node.config.get("ai_mode") == "llm":
+            if node.kind not in {"if", "task"} or not graph.typed or node.config["ai_mode"] not in ("task", "llm"):
+                raise ValueError("AI execution modes belong to typed tasks or IF activities and require task or llm")
+        direct_llm = node.config.get("ai_mode") == "llm" and (node.kind == "task" or node.kind == "if" and mode == "ai")
+        if direct_llm:
             model_id = node.config.get("llm_id")
             if type(model_id) is not int or model_id <= 0:
-                raise ValueError("A simple LLM IF requires a configured model")
+                raise ValueError("A simple LLM activity requires a configured model")
         if node.kind == "if" and mode is not None:
             if not graph.typed or mode not in ("ai", "code", "human"):
                 raise ValueError("IF processing modes require the typed profile and ai, code or human")
@@ -239,7 +240,7 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None,
             assigned = actors.get(str(node.config.get("actor", "")))
             if mode == "human" and (assigned is None or assigned.kind != "human"):
                 raise ValueError("A human IF requires a human actor")
-            if mode != "human" and assigned is not None and assigned.kind != "agent":
+            if mode == "ai" and not direct_llm and assigned is not None and assigned.kind != "agent":
                 raise ValueError("An AI actor permits only AI or code processing")
         if "external_output_typed" in node.config and type(node.config["external_output_typed"]) is not bool:
             raise ValueError(f"{node.id}: external_output_typed must be a boolean")
@@ -254,7 +255,8 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None,
         if actor_key is not None:
             if not isinstance(actor_key, str) or actor_key not in actors:
                 raise ValueError("An activity references an unknown actor")
-            required = "human" if node.kind == "human_task" else "agent" if node.kind == "task" or graph.typed and node.kind in ACTIVITY_KINDS else None
+            unrestricted = direct_llm or node.kind == "code" or node.kind == "if" and mode == "code"
+            required = "human" if node.kind == "human_task" else "agent" if not unrestricted and (node.kind == "task" or graph.typed and node.kind in ACTIVITY_KINDS) else None
             if required and actors[actor_key].kind != required:
                 raise ValueError("Human and agent tasks cannot exchange actor types")
         elif node.kind == "human_task":

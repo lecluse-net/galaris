@@ -1204,12 +1204,17 @@ et une activité déléguée qui continue d'échanger dans la conversation de la
 `app/process/tests/test_decisions.py` exerce les deux branches des IF IA/code/humain,
 et `app/process/tests/test_llm_decisions.py` les deux sous-modes IA : appels LLM directs
 texte/décisionnels sans tâche, résultat réutilisé après reprise, annulation et erreurs sans
-branche implicite. `native-processes.spec.mjs` vérifie le choix du sous-mode et du modèle,
+branche implicite. Ce dernier fichier protège aussi les tâches LLM à appel unique : sorties
+sélectionnées, acteur délégué ou ligne humaine, absence de Task, reprise, annulation et
+refus des sorties invalides. `graphEditing.test.mjs` protège la création des quatre types
+et la conservation du traitement lors d'un changement d'acteur.
+`native-processes.spec.mjs` vérifie le panneau de paramètres, le choix du traitement et du modèle,
 la reprise du chargement après erreur, l'enregistrement et la réouverture en lecture seule.
 Le premier fichier protège aussi les droits et reçus humains, la modification du Dataset par retour Python ordinaire et
 le vrai worker Monty : accès système/réseau refusés, boucle et saturation bornées.
 Les parcours Chromium assemblés exécutent une tâche code, puis un IF code ou le clic
-humain False dans Chat. Les composants vérifient les deux poignées et les modes par acteur.
+humain False dans Chat pour les anciennes définitions. Les composants vérifient les deux
+poignées et la conservation du mode lors du déplacement entre acteurs.
 Le parcours humain ajoute une activité par poignée, sauvegarde, lance, répond depuis
 la boîte d'activités affectées et vérifie la reprise jusqu'à la fin du Run.
 Le JSON métier et les pièces jointes sont communs à toutes les tâches d'un Run : les

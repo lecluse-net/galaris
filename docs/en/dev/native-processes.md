@@ -208,8 +208,9 @@ an unselected IF branch does not block convergence. File references keep their
 source URI without automatic transfers between activities. A link grants no resource access.
 
 Configured IFs have exactly two outputs: `decision` for True and an unconditional False output.
-`config.mode` is `ai`, `code` or `human`. AI actors permit AI or code; human actors require human
-processing. Durable attempts require a boolean `decision`, without integrating it into run variables. Human decisions use Messenger's True/False buttons without an AI Task just to wait.
+New IFs use `config.mode: code`, or `mode: ai` with `ai_mode: llm`, on any lane.
+Historical agentic and human modes remain readable and executable for existing definitions
+and snapshots. Durable attempts require a boolean `decision`, without integrating it into run variables. Human decisions use Messenger's True/False buttons without an AI Task just to wait.
 Historical IFs without a mode retain their expressions.
 
 For an IF with `mode: ai`, `config.ai_mode` is `task` (the historical default) or `llm`.
@@ -221,6 +222,15 @@ admission. Recovery reuses acquired answers; interrupted or failed inference cau
 explicit error without automatically calling again or switching models. Cancellation
 waits for inference to stop. Calls are correlated with the run and attempt for occurrence
 costs. See [0231](../../../project/decisions/0231-native-if-ai-execution-modes.md).
+
+Typed tasks offer four processing types: agentic `task` (default), `task` with `ai_mode: llm`
+and `llm_id`, `code`, and `human_task`. LLM tasks reuse durable inference with `request_limit: 1`,
+no output retry and no model fallback. Their structured contract is `{"output": {...}}` using
+ordinary JSON values; Process converts only selected outputs and applies its existing atomic
+integration. They require a text model and create no Task. Code, LLM tasks and LLM/code IFs
+may reference any actor or none. Agentic and human tasks retain their actor restrictions;
+moving a node never changes its type.
+See [0272](../../../project/decisions/0272-explicit-process-activity-types.md).
 
 `preprocess`, `code` and `postprocess` use `IsolatedCodeRunner`. The Monty adapter starts a fresh
 worker per invocation: a Python subset without mounts, networking, external functions or host
@@ -346,10 +356,10 @@ Process pages do not provide manual launch controls.
 
 `actors` contains graph-local roles: `id`, `name`, `kind: agent/human`, and `agent_id`
 or `user_id`. `config.actor` references a role. When assigned, `task` requires an agent
-actor; `human_task` requires a human actor. XML retains these assignments and exports
-`laneSet/lane/flowNodeRef` and `userTask`. In the typed profile, tasks and IF nodes use human
-handling on human lanes and AI/code on agent lanes. Historical definitions retain rejection
-of incompatible type changes.
+actor unless using LLM processing; `human_task` requires a human actor. XML retains these assignments and exports
+`laneSet/lane/flowNodeRef` and `userTask`. In the typed profile, agentic tasks stay on AI lanes
+and human tasks on human lanes. LLM tasks, Code and LLM/code IFs accept any lane without
+implicit type conversion.
 Existing graphs without actors remain valid. Admission checks managed agent scope and
 active users; the engine rechecks these rights before each new effect. Data and file access follows the parent Process's policy; assignment creates no
 additional grant.

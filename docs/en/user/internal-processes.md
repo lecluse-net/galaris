@@ -124,8 +124,14 @@ The up and down arrow keys on that handle also move the lane. Saving preserves t
 
 To change actors, **drag the task onto the intended actor's lane**. Assignment changes on
 release and the task aligns to its new lane, retaining its instructions and flows.
-In the typed profile, a task or IF adopts human processing on a human lane and AI/code
-on an agent lane. Historical definitions still refuse incompatible type changes.
+The processing type is preserved: **Agentic AI** tasks stay on AI lanes and **Human** tasks
+stay on human lanes. **AI LLM call**, **Code** tasks and IF nodes may use any lane, including
+the process lane.
+The execution-agent lane also accepts agentic tasks: creating a task or changing its
+processing does not create an extra lane. In an agentic task's panel, **Assigned agent**
+selects the lane's agent directly, just like its header. Without a named role, this sets
+the process execution agent; with a role, it sets the agent shared by tasks on that lane.
+**Use the execution agent** assigns the task to the default lane.
 Escape or an interrupted gesture
 cancels the move. Save retains the new assignment.
 Dropping a task outside the table creates a new lane and an actor of the same type, then
@@ -134,10 +140,10 @@ and contains the **New actor** button. Rename the new actor
 and choose its agent or human in the lane header; human actors need an assignment before
 launch. Cancelling the gesture creates no lane.
 
-Click an activity to open its contextual form below the block; click a flow label to
-open its settings in the same way. The form adapts to the available space and remains
-accessible on mobile and in full screen. Click outside, press Escape or use the close
-button to dismiss it. Changes and JSON drafts, including invalid drafts, survive
+Click an activity to edit its settings in the panel to the right of the diagram; flow
+labels use the same panel. On mobile, it appears below the diagram. It also remains available
+in full screen, without a modal covering the process. Escape or the close button clears the
+selection; clicking elsewhere leaves the panel open. Changes and JSON drafts, including invalid drafts, survive
 reopening until saving or reloading.
 The **Save** button is in the diagram toolbar, next to **Validate**, and remains
 available in full screen.
@@ -184,18 +190,16 @@ values. Explicit null requires nullable and never uses the default. False and ze
 Contract errors identify the task and variable. FOR/WHILE use the same editor and breadcrumbs.
 Old definitions retain their shared pool; **Configure process variables** starts
 an explicit conversion to complete before saving. Existing runs retain their original profile.
-For an IF using **AI** processing, **AI mode** distinguishes **Agentic (Task)** from
-**Simple LLM call**. Agentic delegates work to the agent through a Task, with its tools
-and interactions. Simple LLM call evaluates only the instructions and process data:
-explicitly choose a text or decision **LLM model**, such as Jev. It creates no Task and
-uses no tools. A model failure ends the process in error; it never selects the False
-branch. Existing IFs remain agentic. Saving preserves both the mode and selected model.
+**Processing** offers four task types: **Agentic AI** creates a Task for the lane's agent,
+with its tools and interactions; **AI LLM call** makes one call to the selected text **LLM model**,
+without tools or an agent Task; **Code** executes Python; **Human** waits for the assignee's
+reply in messaging. LLM outputs are checked against the selected variables before integration.
 
-An IF has two output handles, **True** and **False**. On an AI actor's lane, choose **AI**
-and enter instructions, or **Code** and enter a Python program. On a human lane, human mode
-is automatic: the assignee receives the question in messaging and chooses True or False.
-The run waits and follows exactly one branch. Historical IFs without a mode keep their
-existing conditions. Tasks retain agentic AI, Code or Human processing according to their actor.
+An IF has two output handles, **True** and **False**, and two processing types: **Code**,
+with Python source, or **Decision AI**, with one call to a selected text or decision model,
+such as Jev. It can use any lane without changing its processing. A model failure ends the
+process in error and never selects False. Historical definitions and runs retain their modes
+until explicitly changed. Saving preserves both the processing type and selected model.
 Code receives run data variables directly: `return variable_2 != "pas mon projet"` for
 an IF, or `return {"variable_1": variable_1 + 1}` to update a declared task output. The editor
 starts with a commented example; only valid outputs are integrated.

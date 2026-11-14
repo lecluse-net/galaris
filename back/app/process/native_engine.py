@@ -828,7 +828,7 @@ class NativeProcessEngine:
             try:
                 result = normalize_activity_result(graph, node, result)
             except ValueContractError as error:
-                if node.kind == "task":
+                if node.kind == "task" and not simple_llm(node):
                     raise ValueError(f"{error}. The activity must submit changes to process variables with process_activity_complete(output={{...}}).") from error
                 raise
         attempt.status = "completed"

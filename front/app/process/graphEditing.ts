@@ -1,33 +1,40 @@
 import { emptyGraph, type BpmnGraph, type BpmnNode, type NodeKind } from './services/nativeProcessService'
 
 // Existing parallel nodes remain readable; ordinary links express new splits and joins.
-export const activityKinds: NodeKind[] = ['task', 'human_task', 'if', 'for', 'while', 'call', 'tool_call', 'rest', 'code', 'end']
+export type ActivityKind = NodeKind | 'llm_task'
+export type ProcessingMode = 'ai' | 'llm' | 'code' | 'human'
+export const activityKinds: ActivityKind[] = ['task', 'llm_task', 'code', 'human_task', 'if', 'for', 'while', 'call', 'tool_call', 'rest', 'end']
 export const nodeIcons: Record<NodeKind, string> = { start: 'play_arrow', end: 'stop', task: 'smart_toy', human_task: 'person',
   if: 'alt_route', parallel: 'call_split', for: 'repeat', while: 'loop', call: 'account_tree', tool_call: 'build', rest: 'http', code: 'code', program: 'code' }
 const identity = (prefix: string): string => prefix + '_' + crypto.randomUUID().replaceAll('-', '').slice(0, 12)
 export const defaultDecisionCode = '# Example: return variable_2 != "pas mon projet"\nreturn True'
 export const defaultTaskCode = '# Example: return {"variable_1": variable_1 + 1}\nreturn {}'
 
-export function processingMode(node: BpmnNode, graph: BpmnGraph): 'ai' | 'code' | 'human' {
-  const assigned = graph.actors?.find(actor => actor.id === node.config.actor)
-  if (assigned?.kind === 'human' || node.kind === 'human_task') return 'human'
-  return node.kind === 'code' || node.kind === 'if' && node.config.mode === 'code' ? 'code' : 'ai'
+export function processingMode(node: BpmnNode): ProcessingMode {
+  if (node.kind === 'human_task' || node.kind === 'if' && node.config.mode === 'human') return 'human'
+  if (node.kind === 'code' || node.kind === 'if' && node.config.mode === 'code') return 'code'
+  return node.config.ai_mode === 'llm' ? 'llm' : 'ai'
+}
+
+export function canAssignActivityActor(node: BpmnNode, key: string, graph: BpmnGraph): boolean {
+  const actor = graph.actors?.find(actor => actor.id === key)
+  if (key && !actor) return false
+  if (node.kind === 'human_task') return actor?.kind === 'human'
+  if (node.kind === 'if' && node.config.mode === 'human') return actor?.kind === 'human'
+  if (node.kind === 'if' && node.config.mode === 'ai' && node.config.ai_mode !== 'llm') return actor?.kind !== 'human'
+  if (node.kind === 'task' && node.config.ai_mode !== 'llm') return actor?.kind === 'agent' || !key
+  return ['task', 'code', 'if'].includes(node.kind) || actor?.kind !== 'human'
 }
 
 export function assignActivityActor(node: BpmnNode, key: string, graph: BpmnGraph): BpmnNode {
-  const human = graph.actors?.find(actor => actor.id === key)?.kind === 'human'
-  const config = { ...node.config, actor: key || null }
-  if (node.kind === 'if' && graph.schema_version === 'galaris.bpmn/v2') return { ...node, config: { ...config, mode: human ? 'human' : node.config.mode === 'code' ? 'code' : 'ai' } }
-  if (graph.schema_version === 'galaris.bpmn/v2' && ['task', 'human_task', 'code'].includes(node.kind))
-    return { ...node, kind: human ? 'human_task' : node.kind === 'code' ? 'code' : 'task', config: { prompt: '', ...config } }
-  return { ...node, config }
+  return canAssignActivityActor(node, key, graph) ? { ...node, config: { ...node.config, actor: key || null } } : node
 }
 
-export function createActivity(kind: NodeKind, graph: BpmnGraph, actorKey?: string): BpmnNode {
-  const inherited = graph.actors?.find(actor => actor.id === actorKey)
-  if (graph.schema_version === 'galaris.bpmn/v2' && kind === 'task' && inherited?.kind === 'human') kind = 'human_task'
-  const actor = graph.actors?.find(actor => actor.id === actorKey && (kind === 'if' || actor.kind === (kind === 'human_task' ? 'human' : 'agent')))
-    ?? graph.actors?.find(actor => actor.kind === (kind === 'human_task' ? 'human' : 'agent'))
+export function createActivity(activity: ActivityKind, graph: BpmnGraph, actorKey?: string): BpmnNode {
+  const kind: NodeKind = activity === 'llm_task' ? 'task' : activity
+  const required = activity === 'task' ? 'agent' : activity === 'human_task' ? 'human' : null
+  const actor = graph.actors?.find(actor => actor.id === actorKey && (!required || actor.kind === required))
+    ?? (required ? graph.actors?.find(actor => actor.kind === required) : undefined)
   const id = identity(kind)
   const body = kind === 'for' || kind === 'while' ? emptyGraph() : null
   if (body) {
@@ -38,13 +45,14 @@ export function createActivity(kind: NodeKind, graph: BpmnGraph, actorKey?: stri
   }
 
   const config: Record<string, unknown> = kind === 'task' || kind === 'human_task' ? { prompt: '' } : kind === 'for' ? { items: 'input.items' } : kind === 'while' ? { condition: 'false' } : {}
-  if (kind === 'if' && graph.schema_version === 'galaris.bpmn/v2') Object.assign(config, { mode: actor?.kind === 'human' ? 'human' : 'ai', prompt: '', code: defaultDecisionCode })
+  if (kind === 'if' && graph.schema_version === 'galaris.bpmn/v2') Object.assign(config, { mode: 'ai', ai_mode: 'llm', prompt: '', code: defaultDecisionCode })
+  if (activity === 'llm_task') Object.assign(config, { ai_mode: 'llm' })
   if (kind === 'code') Object.assign(config, { code: defaultTaskCode, dataset_code: true })
   if (actor && ['task', 'human_task', 'code', 'if'].includes(kind)) config.actor = actor.id
   return { id, kind, title: '', config, body, x: 0, y: 0 }
 }
 
-export function insertActivity(graph: BpmnGraph, anchor: string, side: 'input' | 'output', kind: NodeKind, branch = false, outcome?: boolean): { graph: BpmnGraph; id: string } {
+export function insertActivity(graph: BpmnGraph, anchor: string, side: 'input' | 'output', kind: ActivityKind, branch = false, outcome?: boolean): { graph: BpmnGraph; id: string } {
   const parent = graph.nodes.find(node => node.id === anchor)!
   const node = createActivity(kind, graph, String(parent.config.actor ?? ''))
   const adjacent = graph.flows.filter(flow => side === 'output' ? flow.source === anchor && (outcome === undefined || (flow.condition !== null) === outcome) : flow.target === anchor)

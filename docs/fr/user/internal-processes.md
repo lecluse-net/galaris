@@ -143,9 +143,15 @@ Enregistrer conserve cet ordre.
 
 Pour changer d'acteur, **glisser-déposer la tâche sur la ligne de l'acteur voulu**.
 L'affectation change au relâchement et la tâche s'aligne sur sa nouvelle ligne, en conservant
-ses instructions et ses liens. Dans le profil typé, une tâche ou un IF adopte le traitement
-humain sur une ligne humaine, et IA/code sur une ligne agent. Les définitions historiques
-conservent le refus des changements de type incompatibles.
+ses instructions, son type de traitement et ses liens. Les tâches **IA agentique** restent
+sur les lignes IA et les tâches **Humain** sur les lignes humaines. Les tâches **IA appel LLM**,
+**Code** et les IF peuvent être placés sur toute ligne, y compris la ligne du processus.
+La ligne de l'agent exécutant accueille aussi les tâches agentiques : créer une tâche ou
+changer son traitement ne crée pas de ligne supplémentaire. Dans le panneau d'une tâche
+agentique, **Agent affecté** permet de choisir directement l'agent de sa ligne, comme dans
+l'en-tête. Sans rôle nommé, ce choix règle l'agent exécutant du processus ; avec un rôle,
+il règle l'agent partagé par les tâches de cette ligne. **Utiliser l’agent exécutant** permet
+de rattacher une tâche à la ligne par défaut.
 Échap ou une interruption du geste annule le déplacement. Enregistrer conserve l'affectation.
 Déposer une tâche hors du tableau crée une nouvelle ligne et un nouvel acteur du même type,
 puis lui affecte la tâche. La bande hachurée de 40 px sous le diagramme accepte aussi ce dépôt
@@ -153,10 +159,11 @@ et contient le bouton **Nouvel acteur**. Renommer le
 nouvel acteur et choisir son agent ou son humain dans l'en-tête de sa ligne ; un acteur
 humain doit être affecté avant le lancement. Un geste annulé ne crée aucune ligne.
 
-Cliquer une activité ouvre son formulaire contextuel sous le bloc ; cliquer le libellé
-d'un lien ouvre ses paramètres de la même façon. Le formulaire s'adapte à la place
-disponible et reste accessible sur mobile et en plein écran. Un clic extérieur, Échap
-ou le bouton de fermeture le referme. Les modifications et les brouillons JSON,
+Cliquer une activité affiche ses paramètres dans le panneau à droite du diagramme ;
+cliquer le libellé d'un lien utilise ce même panneau. Sur mobile, le panneau se place sous
+le diagramme. Il reste disponible en plein écran et ne masque pas le processus par une modale.
+Échap ou le bouton de fermeture efface la sélection ; un clic ailleurs laisse le panneau ouvert.
+Les modifications et les brouillons JSON,
 même invalides, sont conservés à la réouverture jusqu'à la sauvegarde ou au rechargement.
 Le bouton **Enregistrer** se trouve dans la barre du diagramme, à côté de **Valider**,
 et reste disponible en plein écran.
@@ -216,20 +223,19 @@ lancés conservent leur profil d'origine.
 Une erreur d'exécution arrête le processus et ses branches actives. Le suivi renvoie
 le code d'erreur, avec son message ; les données du run et les fichiers sont conservés.
 Il n'y a aucun traitement de secours ni réessai automatique à configurer.
-Dans un IF avec le traitement **IA**, **Mode IA** distingue **Agentique (tâche)** et
-**Appel LLM simple**. Agentique confie le travail à l'agent via une tâche, avec ses outils
-et ses possibilités d'interaction. Appel LLM simple évalue uniquement la consigne et les
-données du processus : choisissez explicitement un **Modèle LLM** texte ou décisionnel,
-par exemple Jev. Il ne crée aucune tâche et n'utilise aucun outil. Une erreur du modèle
-arrête le processus en erreur ; elle ne sélectionne pas la branche False. Les IF existants
-restent agentiques. Le choix du mode et du modèle est conservé à l'enregistrement.
+Le champ **Traitement** propose quatre types de tâches : **IA agentique** lance une tâche
+confiée à l'agent de la ligne, avec ses outils et interactions ; **IA appel LLM** effectue un
+unique appel au **Modèle LLM** texte choisi, sans outil ni tâche agentique ; **Code** exécute
+un programme Python ; **Humain** attend la réponse de la personne affectée dans sa messagerie.
+Les sorties LLM sont contrôlées selon les variables sélectionnées avant intégration.
 
-Un IF possède deux poignées de sortie, **True** et **False**. Sur la ligne d'un acteur IA,
-choisir **IA** et saisir les instructions, ou **Code** et saisir un programme Python.
-Sur une ligne humaine, le mode humain est automatique : la personne affectée reçoit la
-question dans sa messagerie et choisit True ou False. Le run attend ce choix et poursuit
-une seule branche. Les IF historiques sans mode conservent leurs anciennes conditions.
-Les tâches conservent les traitements IA agentique, Code ou Humain selon leur acteur. Le code reçoit les variables du
+Un IF possède deux poignées de sortie, **True** et **False**, et deux traitements :
+**Code**, avec un programme Python, ou **IA décisionnelle**, avec un unique appel au modèle
+texte ou décisionnel choisi, par exemple Jev. Il peut être placé sur n'importe quelle ligne,
+sans changer de traitement. Une erreur du modèle arrête le processus en erreur et ne choisit
+jamais False. Les définitions et runs historiques conservent leurs modes tant qu'ils ne sont
+pas explicitement modifiés. Le choix du traitement et du modèle est conservé à l'enregistrement.
+Le code reçoit les variables du
 run directement : `return variable_2 != "pas mon projet"` pour un IF, ou
 `return {"variable_1": variable_1 + 1}` pour mettre à jour une sortie déclarée d'une tâche.
 Le champ est prérempli avec un exemple commenté ; seules les sorties valides sont intégrées.

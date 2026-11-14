@@ -404,7 +404,7 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0253 — Inline Goal descriptions and freely classified tracking Documents](0253-goal-current-html-columns.md)
 - [0254 — Private contact phone numbers and postal addresses](0254-private-contact-coordinates.md)
 - [0271 — Autonomous Goal conduct with durable review Tasks](0271-autonomous-goal-conduct.md)
-
+- [0272 — Explicit Process activity types independent of lane placement](0272-explicit-process-activity-types.md)
 - [0274 — Provider protocols and multiple Mail accounts](0274-provider-tool-protocols.md)
 - [0278 — Default personal agendas and Goal boundaries](0278-personal-agendas-and-goal-boundaries.md)
 - [0279 — Local agendas and background CalDAV synchronization](0279-local-agendas-and-caldav-synchronization.md)

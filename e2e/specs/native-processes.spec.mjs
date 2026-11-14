@@ -21,6 +21,50 @@ async function humanRequestRoom(request, fixture, headers, title) {
   return destination
 }
 
+test('an agentic activity keeps its selected execution agent without adding a lane', async ({ page, request }) => {
+  const fixture = await (await request.post('/api/__test/seed?mode=process-human')).json()
+  await page.goto('/user/login')
+  await page.locator('input[type=email]').fill(fixture.email)
+  await page.locator('input[type=password]').fill(fixture.password)
+  const login = page.waitForResponse(response => response.url().endsWith('/api/auth/login-json'))
+  await page.locator('button[type=submit]').click()
+  const session = await (await login).json()
+  await expect(page.locator('input[type=password]')).toHaveCount(0)
+  const headers = { Authorization: `Bearer ${session.access_token}` }
+  const agents = await (await request.get('/api/processes/internal/agents', { headers })).json()
+  const agent = agents.find(item => item.id === fixture.agent_id)
+  expect(agent).toBeTruthy()
+  const created = await request.post('/api/processes/internal/definitions', { headers, data: {
+    agent_id: fixture.agent_id, title: 'Synthetic agent assignment', owner: 'user', graph: {
+      schema_version: 'galaris.bpmn/v2', variables: [], actors: [],
+      nodes: [{ id: 'start', kind: 'start' }, { id: 'end', kind: 'end' }],
+      flows: [{ id: 'initial', source: 'start', target: 'end' }],
+    },
+  } })
+  expect(created.ok(), await created.text()).toBeTruthy()
+  const definition = await created.json(), path = `/api/processes/internal/definitions/${definition.code}`
+  await page.goto(`/process/internal/${definition.code}`)
+  await page.getByRole('button', { name: /^(Output of Start|Sortie de Début)$/ }).click()
+  await page.getByRole('button', { name: /^(Agentic AI|IA agentique)$/ }).click()
+  const panel = page.getByRole('complementary', { name: /^(Activity settings|Paramètres de l’activité)$/ })
+  await panel.getByRole('textbox', { name: /^(Title|Titre)$/ }).fill('Synthetic agentic work')
+  await panel.getByRole('textbox', { name: /^(Task instructions|Instructions de la tâche)$/ }).fill('Prepare a synthetic result.')
+  const assigned = panel.getByRole('combobox', { name: /^(Assigned agent|Agent affecté)$/ })
+  await assigned.click()
+  await page.getByRole('option', { name: agent.label, exact: true }).click()
+  const saved = page.waitForResponse(response => response.request().method() === 'PUT' && response.url().endsWith(path))
+  await page.getByRole('button', { name: /^(Save|Enregistrer)$/, exact: true }).click()
+  expect((await saved).ok()).toBeTruthy()
+  const persisted = await (await request.get(path, { headers })).json()
+  expect(persisted.graph.actors).toEqual([])
+  expect(persisted.graph.execution_agent_id).toBe(fixture.agent_id)
+  expect(persisted.graph.nodes.find(node => node.title === 'Synthetic agentic work')).toMatchObject({ kind: 'task' })
+  await page.reload()
+  await page.getByRole('button', { name: /^Synthetic agentic work · task_/ }).click()
+  await expect(assigned).toHaveValue(agent.label)
+  await page.screenshot({ path: test.info().outputPath('agentic-assignment.png'), fullPage: true, animations: 'disabled' })
+})
+
 for (const mode of ['code', 'human']) {
 test(`a real ${mode} IF follows its boolean branch after Dataset code execution`, async ({ page, request }) => {
   const fixture = await (await request.post('/api/__test/seed?mode=process-human')).json()
@@ -33,18 +77,18 @@ test(`a real ${mode} IF follows its boolean branch after Dataset code execution`
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}` }
   const user = await (await request.get('/api/auth/me', { headers })).json()
-  const output = [{ name: 'variable_1', type: 'int', nullable: false }]
-  const graph = { schema_version: 'galaris.bpmn/v2', inputs: [
+  const output = ['variable_1']
+  const graph = { schema_version: 'galaris.bpmn/v2', variables: [
     { name: 'variable_1', type: 'int', nullable: false, default: { type: 'int', value: 123 } },
     { name: 'variable_2', type: 'string', nullable: false, default: { type: 'string', value: 'mon projet' } },
-  ], outputs: output, actors: [{ id: 'executor', name: 'Executor', kind: 'agent', agent_id: fixture.agent_id },
+  ], actors: [{ id: 'executor', name: 'Executor', kind: 'agent', agent_id: fixture.agent_id },
     { id: 'reviewer', name: 'Reviewer', kind: 'human', user_id: user.id }], nodes: [
-    { id: 'start', kind: 'start' },
-    { id: 'work', kind: 'code', title: 'Update the counter', inputs: [], outputs: output,
-      config: { actor: 'executor', dataset_code: true, code: 'return {"variable_1": variable_1}' } },
-    { id: 'check', kind: 'if', title: 'Synthetic project decision', config: { mode, actor: mode === 'human' ? 'reviewer' : 'executor',
+    { id: 'start', kind: 'start', inputs: ['variable_1', 'variable_2'] },
+    { id: 'work', kind: 'code', title: 'Update the counter', inputs: ['variable_1'], outputs: output,
+      config: { actor: 'reviewer', dataset_code: true, code: 'return {"variable_1": variable_1}' } },
+    { id: 'check', kind: 'if', title: 'Synthetic project decision', inputs: ['variable_2'], config: { mode, actor: 'reviewer',
       prompt: 'Choose whether this invented project should continue.', code: 'return variable_2 != "pas mon projet"' } },
-    { id: 'yes', kind: 'end', title: 'Approved' }, { id: 'no', kind: 'end', title: 'Declined' },
+    { id: 'yes', kind: 'end', title: 'Approved', outputs: output }, { id: 'no', kind: 'end', title: 'Declined', outputs: output },
   ], flows: [{ id: 'a', source: 'start', target: 'work' }, { id: 'b', source: 'work', target: 'check' },
     { id: 'c', source: 'check', target: 'yes', condition: 'decision' }, { id: 'd', source: 'check', target: 'no' }] }
   const created = await request.post('/api/processes/internal/definitions', { headers, data: {
@@ -363,7 +407,7 @@ test('an activity inserted from a handle waits for its human and resumes after o
   await page.goto(`/process/internal/${definition.code}`)
   await page.getByRole('button', { name: /^(Output of Start|Sortie de Début)$/ }).click()
   await page.getByText(/^(Human task|Tâche humaine)$/, { exact: true }).click()
-  const activityTitle = page.getByRole('dialog', { name: /^(Activity settings|Paramètres de l’activité)$/ }).getByRole('textbox', { name: /^(Title|Titre)$/ })
+  const activityTitle = page.getByRole('complementary', { name: /^(Activity settings|Paramètres de l’activité)$/ }).getByRole('textbox', { name: /^(Title|Titre)$/ })
   // Clicking waits for the newly opened inspector to settle before native paste.
   await activityTitle.click()
   await activityTitle.fill('Review invented note')
