@@ -23,4 +23,16 @@ SPEC = BridgeSpec(
 register_bridge(SPEC.kind, MailMessenger, SPEC)
 register_resource_transport("mail", MailAttachmentTransport)
 
+
+async def _test_saved_connection(connection_id: int) -> bool:
+    from .service import test_connection
+
+    result = await test_connection(connection_id)
+    return result.imap_ok and result.smtp_ok
+
+
+from app.tools import register_connection_probe
+
+register_connection_probe("mail", _test_saved_connection)
+
 __all__ = ["MailMessenger", "MailOutboundDelivery", "MailInboundReceipt", "SPEC", "retry_approval_notifications"]

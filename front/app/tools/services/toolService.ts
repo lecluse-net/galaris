@@ -167,6 +167,7 @@ export interface Tool {
     label: string
     description: string
     has_mcp: boolean
+    has_function_permissions?: boolean
     has_api: boolean
     rest_config?: RestConfig | null
     has_file_share: boolean

@@ -123,6 +123,11 @@ export interface TestMcpToolsResponse {
     tools: McpToolInfo[]
 }
 
+export interface ConnectionTestResult {
+    status: 'success' | 'error' | 'unsupported'
+    checks: { protocol: string; status: ConnectionTestResult['status']; message: string }[]
+}
+
 // =============================================================================
 // MCP function authorization contracts by connection.
 // =============================================================================
@@ -205,6 +210,9 @@ export function saveFunctionPolicy(
 // =============================================================================
 
 export default {
+    testConnection(connectionId: number): Promise<AxiosResponse<ConnectionTestResult>> {
+        return api.post(`/connections/${connectionId}/test`)
+    },
     async getToolOptions(): Promise<Tool[]> {
         return (await api.get<Tool[]>('/connections/tool-options')).data
     },

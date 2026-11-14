@@ -128,6 +128,9 @@
       </template>
       <template v-slot:body-cell-actions="props">
         <q-td :props="props" @click.stop>
+          <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" />
+          <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.tool_id))" flat round color="primary" icon="shield"
+            :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
           <q-btn v-if="canEdit && !isSystemTool(props.row.tool_id)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
           <q-btn v-if="canEdit && !isSystemTool(props.row.tool_id)" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)" />
         </q-td>
@@ -184,15 +187,20 @@
               </div>
             </q-card-section>
 
-            <template v-if="canEdit && !isSystemTool(props.row.tool_id)">
+            <template v-if="canTest || canInspectPermissions(props.row) || (canEdit && !isSystemTool(props.row.tool_id))">
               <q-separator />
               <q-card-actions align="right" class="q-px-sm q-py-xs" @click.stop>
+                <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" />
+                <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.tool_id))" flat round color="primary" icon="shield"
+                  :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
                 <q-btn
+                  v-if="canEdit && !isSystemTool(props.row.tool_id)"
                   flat round color="primary" icon="edit" size="sm"
                   :aria-label="$t('common.edit')"
                   @click="openDialog(props.row)"
                 />
                 <q-btn
+                  v-if="canEdit && !isSystemTool(props.row.tool_id)"
                   flat round color="negative" icon="delete" size="sm"
                   :aria-label="$t('common.delete')"
                   @click="confirmDelete(props.row)"
@@ -208,10 +216,18 @@
     <q-dialog v-model="showDialog" @hide="previewConnectionId && emit('close')">
       <q-card class="connection-dialog-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ isEdit ? $t('connection.editDialogTitle') : $t('connection.addDialogTitle') }}</div>
+          <div class="text-h6">{{ !showSettings ? t('permissions.title') : isEdit ? $t('connection.editDialogTitle') : $t('connection.addDialogTitle') }}</div>
           <q-space />
           <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup />
         </q-card-section>
+
+        <q-tabs v-if="currentConnection && showPermissionTab && !previewLoading && !previewError"
+          v-model="connectionTab" inline-label align="left" active-color="primary" indicator-color="primary"
+          class="connection-dialog-tabs text-primary bg-grey-1">
+          <q-tab v-if="showSettings" name="settings" icon="edit" :label="t('connection.settingsTab')" />
+          <q-tab name="permissions" icon="shield" :label="t('permissions.title')" />
+        </q-tabs>
+        <q-separator v-if="currentConnection && showPermissionTab && !previewLoading && !previewError" />
 
         <div class="galaris-dialog-body">
           <q-linear-progress v-if="previewLoading" indeterminate color="primary" />
@@ -236,8 +252,10 @@
           </q-banner>
 
           <q-card-section v-if="!previewLoading && !previewError" class="connection-dialog-body q-pt-md scroll">
+            <ConnectionPermissions v-if="connectionTab === 'permissions' && showPermissionTab && currentConnection"
+              :key="currentConnection.id" :connection="currentConnection" />
+            <div v-if="showSettings" v-show="connectionTab === 'settings'">
             <ConnectionForm
-
               :connection="currentConnection"
               :connection-params="currentConnectionParams"
               :configured-params="currentConnectionConfiguredParams"
@@ -251,7 +269,14 @@
               @submit="onSubmit"
               @configured="onEmbeddedConfigured"
               @cancel="showDialog = false"
-            />
+            >
+              <template #actions>
+                <div v-if="currentConnection && canTest">
+                  <ConnectionTestButton :connection-id="currentConnection.id" />
+                </div>
+              </template>
+            </ConnectionForm>
+            </div>
           </q-card-section>
         </div>
       </q-card>
@@ -285,6 +310,8 @@ import { useConnectionStore, type Connection } from '../stores/connectionStore'
 import connectionService, { type ConnectionActionResult, type ConnectionCreate, type ConnectionUpdate } from '../services/connectionService'
 import { AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import ConnectionForm from './ConnectionForm.vue'
+import ConnectionTestButton from './ConnectionTestButton.vue'
+import ConnectionPermissions from './ConnectionPermissions.vue'
 import { SystemToolIcon, ToolFilterSelect, ToolOriginBadge, type Tool } from '@/app/tools'
 import { useI18n } from 'vue-i18n'
 import { connectionParamLabel, connectionParamOptions, toolMessageKey } from '@/app/tools/presentation'
@@ -323,6 +350,15 @@ const { t, te } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
+const canTest = computed(() => canEdit.value || privilegeStore.hasPrivilege(privileges.CONNECTION_ACCESS))
+const connectionTab = ref('settings')
+const showSettings = computed(() => !currentConnection.value || !isSystemTool(currentConnection.value.tool_id))
+function canInspectPermissions(connection: Connection): boolean {
+  return canViewPermissions.value && Boolean(toolStore.tools.find(tool => tool.id === connection.tool_id)?.has_function_permissions)
+}
+const showPermissionTab = computed(() => canViewPermissions.value && Boolean(
+  toolStore.tools.find(tool => tool.id === currentConnection.value?.tool_id)?.has_function_permissions,
+))
 const canViewPermissions = computed(() => privilegeStore.hasAnyPrivilege([
   privileges.PERMISSION_ACCESS, privileges.PERMISSION_DECIDE, privileges.PERMISSION_REVOKE,
 ]))
@@ -420,7 +456,7 @@ const columns = computed<QTableProps['columns']>(() => [
   { name: 'tool_id', label: t('connection.colTool'), field: 'tool_id', sortable: true, align: 'left', headerStyle: 'width: 22%', classes: 'connection-identity-cell' },
   { name: 'active', label: t('connection.colState'), field: 'active', sortable: true, align: 'center', headerStyle: 'width: 64px' },
   { name: 'params', label: t('connection.colParams'), field: 'params', align: 'left' },
-  { name: 'actions', label: t('common.actions'), field: 'actions', align: 'right', headerStyle: 'width: 88px' }
+  { name: 'actions', label: t('common.actions'), field: 'actions', align: 'right', headerStyle: 'width: 210px' }
 ])
 
 const agentOptions = computed(() =>
@@ -528,12 +564,20 @@ function hasVisibleParams(connectionId: number, toolId: number): boolean {
 }
 
 async function openDialog(connection?: Connection) {
-  if ((!canEdit.value && !props.previewConnectionId) || (connection && isSystemTool(connection.tool_id))) return
+  if (!canEdit.value && !props.previewConnectionId && !(connection && canInspectPermissions(connection))) return
+  if (connection && isSystemTool(connection.tool_id) && !canInspectPermissions(connection)) return
   const generation = ++dialogGeneration
+  connectionTab.value = connection && (isSystemTool(connection.tool_id) || !canEdit.value) ? 'permissions' : 'settings'
   actionConnection = null
   saveError.value = null
   existingConnectionTarget.value = null
   currentConnection.value = connection || null
+  if (connection && isSystemTool(connection.tool_id)) {
+    currentConnectionParams.value = null
+    currentConnectionConfiguredParams.value = []
+    showDialog.value = true
+    return
+  }
   if (connection) {
     try {
       await connectionStore.fetchConnectionParams(connection.id)
@@ -834,7 +878,7 @@ async function loadPreview(): Promise<void> {
     if (request !== previewRequest || !showDialog.value) return
     if (connectionStore.error) throw connectionStore.error
     const connection = connectionStore.connections.find(row => row.id === props.previewConnectionId)
-    if (!connection || isSystemTool(connection.tool_id)) throw new Error(t('connection.auth.loadConnectionsError'))
+    if (!connection || (isSystemTool(connection.tool_id) && !canInspectPermissions(connection))) throw new Error(t('connection.auth.loadConnectionsError'))
     await openDialog(connection)
   } catch (error) {
     if (request === previewRequest) previewError.value = apiErrorDetail(error) || t('connection.auth.loadConnectionsError')
@@ -965,6 +1009,8 @@ body.body--dark .config-col-value {
   max-width: 1100px;
   max-height: 80vh;
 }
+
+.connection-dialog-tabs { flex: 0 0 auto; }
 
 .connection-dialog-body {
   flex: 1 1 auto;

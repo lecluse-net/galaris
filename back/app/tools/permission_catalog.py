@@ -63,7 +63,7 @@ class AgentPermissionCatalog(BaseModel):
     unavailable_catalogs: list[str] = Field(default_factory=list[str])
 
 
-async def agent_permission_catalog(agent_id: int) -> AgentPermissionCatalog:
+async def agent_permission_catalog(agent_id: int, *, connection_id: int | None = None) -> AgentPermissionCatalog:
     agent = await get_agent_record(agent_id)
     if agent is None:
         raise LookupError("Agent not found")
@@ -76,6 +76,8 @@ async def agent_permission_catalog(agent_id: int) -> AgentPermissionCatalog:
         tool = tool_service._to_internal(record)  # pyright: ignore[reportPrivateUsage]
         connection = configured.get(record.id)
         if connection is None:
+            continue
+        if connection_id is not None and connection.id != connection_id:
             continue
         active = bool(connection and connection.active)
         safe_parameters: dict[str, str | None] = {}
@@ -111,7 +113,7 @@ async def agent_permission_catalog(agent_id: int) -> AgentPermissionCatalog:
             for definition in native.get(code, [])}
         descriptions: dict[tuple[Kind, str], tuple[str, bool]] = {
             ("tool", name): (definition.description, True) for name, definition in definitions.items()}
-        if tool.mcp and active and connection:
+        if tool.mcp and (active or connection_id is not None) and connection:
             try:
                 _, params = await connections.get_params_as_dict(connection.id, decrypt_passwords=True)
                 exposed = await asyncio.wait_for(list_external_mcp_capabilities(tool, params, include_resources=False), timeout=10)

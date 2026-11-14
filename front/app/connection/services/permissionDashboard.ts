@@ -19,6 +19,7 @@ export interface PermissionControl {
   value: string
   options: { value: string; label: string; disable?: boolean }[]
   disabled?: boolean
+  allowReselect?: boolean
   save: (value: string) => Promise<unknown>
 }
 export interface PermissionEntry {

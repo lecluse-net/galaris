@@ -66,6 +66,15 @@ export default {
       mailJournal_desc: 'Autorisations et journal des courriels envoyés et reçus par les agents',
     },
     connection: {
+      settingsTab: 'Configuration',
+      localPolicy: 'Local (cette connexion)',
+      test: {
+        savedSettings: 'Teste les paramètres enregistrés. Enregistrez vos modifications avant de les tester.',
+        button: 'Tester', title: 'Test de la connexion', success: 'Connexion fonctionnelle', error: 'Échec du test',
+        unsupported: 'Vérification incomplète', requestError: 'Impossible de lancer le test. Vérifiez vos droits et réessayez.',
+        protocols: { mcp: 'MCP', console: 'Console SSH', mail: 'E-mail (IMAP et SMTP)', calendar: 'Agenda', rest: 'API REST',
+          file_share: 'Fichiers', messenger: 'Messagerie', listener: 'Écoute entrante', internal: 'Service interne' },
+      },
       oauth: {
         errorTitle: 'La connexion du compte a échoué',
         title: 'Compte externe', loading: 'Chargement…', connected: 'Compte connecté',
@@ -337,6 +346,15 @@ export default {
       mailJournal_desc: 'Permissions and journal of emails sent and received by agents',
     },
     connection: {
+      settingsTab: 'Settings',
+      localPolicy: 'Local (this connection)',
+      test: {
+        savedSettings: 'Tests the saved settings. Save your changes before testing them.',
+        button: 'Test', title: 'Connection test', success: 'Connection working', error: 'Test failed',
+        unsupported: 'Verification incomplete', requestError: 'Unable to run the test. Check your permissions and try again.',
+        protocols: { mcp: 'MCP', console: 'SSH console', mail: 'Email (IMAP and SMTP)', calendar: 'Calendar', rest: 'REST API',
+          file_share: 'Files', messenger: 'Messaging', listener: 'Inbound listener', internal: 'Internal service' },
+      },
       oauth: {
         errorTitle: 'Account connection failed',
         title: 'External account', loading: 'Loading…', connected: 'Account connected',
@@ -596,6 +614,15 @@ export default {
     },
     nav: { connection: '连接', connection_desc: '连接管理', mailJournal: '邮件日志', mailJournal_desc: '授权并记录智能体收发的邮件' },
     connection: {
+      settingsTab: '设置',
+      localPolicy: '本地（此连接）',
+      test: {
+        savedSettings: '测试已保存的设置。请先保存更改再进行测试。',
+        button: '测试', title: '连接测试', success: '连接正常', error: '测试失败',
+        unsupported: '验证不完整', requestError: '无法运行测试。请检查权限并重试。',
+        protocols: { mcp: 'MCP', console: 'SSH 控制台', mail: '电子邮件（IMAP 和 SMTP）', calendar: '日历', rest: 'REST API',
+          file_share: '文件', messenger: '消息', listener: '入站监听器', internal: '内部服务' },
+      },
       oauth: {
         errorTitle: '账户连接失败',
         title: '外部账户', loading: '正在加载…', connected: '账户已连接',

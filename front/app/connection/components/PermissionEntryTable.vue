@@ -1,6 +1,6 @@
 <template>
   <q-table v-model:pagination="pagination" :rows="entries" :columns="columns" row-key="id" flat bordered wrap-cells
-    :class="{ 'permission-functions-table': nested }"
+    :class="{ 'permission-functions-table': nested, 'permission-scoped-policies': policyScopes }"
     :loading="loading" :grid="$q.screen.lt.md" :rows-per-page-options="[10, 20, 50, 100, 500]"
     :no-data-label="t(nested ? 'connection.auth.noFunctions' : 'permissions.empty')" @request="emit('request', $event)">
     <template #body-cell-title="props"><q-td :props="props"><div class="text-weight-medium">{{ props.row.title }}</div>
@@ -13,6 +13,12 @@
       <PermissionToggle v-for="control in props.row.controls" :key="control.id" :control="control" :disabled="busy || loading"
         @change="value => emit('change', props.row, control, value)" />
     </div></q-td></template>
+    <template v-for="scope in ['global', 'local']" :key="scope" v-slot:[`body-cell-${scope}`]="props">
+      <q-td :props="props" class="permission-controls-cell">
+        <PermissionToggle v-for="control in props.row.controls.filter((control: PermissionControl) => control.id === (scope === 'global' ? 'global-policy' : 'policy'))"
+          :key="control.id" :control="control" :disabled="busy || loading" @change="value => emit('change', props.row, control, value)" />
+      </q-td>
+    </template>
     <template #item="props"><div class="col-12 q-pa-xs"><q-card tag="article" :aria-label="props.row.title" flat bordered>
       <q-card-section class="permission-text"><div class="text-weight-medium">{{ props.row.title }}</div>
         <div>{{ props.row.description }}</div><div v-if="!nested">{{ props.row.scope }}</div><div>{{ props.row.origin }}</div>
@@ -20,7 +26,7 @@
         <div class="text-caption">{{ props.row.note }}</div>
       </q-card-section>
       <q-card-section class="column q-gutter-sm q-pt-none">
-        <PermissionToggle v-for="control in props.row.controls" :key="control.id" :control="control" :disabled="busy || loading"
+        <PermissionToggle v-for="control in props.row.controls" :key="control.id" :control="control" :disabled="busy || loading" :show-label="policyScopes"
           @change="value => emit('change', props.row, control, value)" />
       </q-card-section>
     </q-card></div></template>
@@ -34,8 +40,8 @@ import type { QTableColumn, QTableProps } from 'quasar'
 import PermissionToggle from './PermissionToggle.vue'
 import PermissionStateBadge from './PermissionStateBadge.vue'
 import type { PermissionControl, PermissionEntry, PermissionPagination } from '../services/permissionDashboard'
-const { entries, loading = false, busy = false, nested = false } = defineProps<{
-  entries: PermissionEntry[]; loading?: boolean; busy?: boolean; nested?: boolean
+const { entries, loading = false, busy = false, nested = false, policyScopes = false } = defineProps<{
+  entries: PermissionEntry[]; loading?: boolean; busy?: boolean; nested?: boolean; policyScopes?: boolean
 }>()
 const pagination = defineModel<PermissionPagination>('pagination', { default: () => ({ page: 1, rowsPerPage: 50 }) })
 const emit = defineEmits<{ change: [entry: PermissionEntry, control: PermissionControl, value: string]; request: [request: Parameters<NonNullable<QTableProps['onRequest']>>[0]] }>()
@@ -44,7 +50,10 @@ const columns = computed<QTableColumn[]>(() => [
   { name: 'title', field: 'title', label: t(nested ? 'connection.auth.colFunction' : 'permissions.question'), align: 'left' },
   ...(!nested ? [{ name: 'scope', field: 'scope', label: t('permissions.dashboard.scope'), align: 'left' as const }] : []),
   { name: 'state', field: 'state', label: t('permissions.decision'), align: 'left' },
-  { name: 'controls', field: 'id', label: t('permissions.actions'), align: 'right' },
+  ...(policyScopes ? [
+    { name: 'global', field: 'id', label: t('connection.auth.colGlobal'), align: 'left' as const },
+    { name: 'local', field: 'id', label: t('connection.localPolicy'), align: 'left' as const },
+  ] : [{ name: 'controls', field: 'id', label: t('permissions.actions'), align: 'right' as const }]),
 ])
 watch(() => entries, () => {
   if (pagination.value.rowsNumber === undefined && (pagination.value.page - 1) * pagination.value.rowsPerPage >= entries.length) pagination.value.page = 1
@@ -59,5 +68,6 @@ watch(() => entries, () => {
   .permission-functions-table :deep(td:first-child) { overflow-wrap: anywhere; }
   .permission-functions-table :deep(th:nth-child(2)) { width: 25%; }
   .permission-functions-table :deep(th:nth-child(3)) { width: 12rem; }
+  .permission-scoped-policies :deep(th:nth-child(4)) { width: 12rem; }
 }
 </style>

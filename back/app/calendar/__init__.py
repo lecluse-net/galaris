@@ -6,10 +6,12 @@ from .models import (CalendarFeed, CalendarTrigger, CalendarEvent, CalendarEvent
 from .service import sync_calendars, sync_native_calendars, sync_external_calendars
 from .service import connection_for_calendar, calendar_authorization_changed
 from app.connection.facade import register_oauth_observer
-from app.tools import register_protocol_resource_resolver
+from app.tools import register_protocol_resource_resolver, register_connection_probe
+from .connection_diagnostics import test_saved_connection as _test_saved_connection
 from .maintenance import prune_calendar_cache
 
 register_protocol_resource_resolver("calendar", connection_for_calendar)
+register_connection_probe("calendar", _test_saved_connection)
 register_oauth_observer("calendar", calendar_authorization_changed)
 
 from app.agent import register_context_provider

@@ -103,12 +103,12 @@ def native_tool_codes_for_tool(tool: Any) -> frozenset[str]:
     codes.difference_update({"messenger", "mail", "calendar"})
     if getattr(tool, "code", "") == "agenda":
         codes.add("calendar")
-    if getattr(tool, "mail", None) is not None:
+    if getattr(tool, "mail", getattr(tool, "mail_config", None)) is not None:
         codes.add("mail")
-    if getattr(tool, "calendar", None) is not None:
+    if getattr(tool, "calendar", getattr(tool, "calendar_config", None)) is not None:
         codes.add("calendar")
-    messenger = getattr(tool, "messenger", None)
-    service = str(getattr(messenger, "service", "") or "")
+    messenger = getattr(tool, "messenger", getattr(tool, "messenger_config", None))
+    service = str((cast(dict[str, Any], messenger).get("service") if isinstance(messenger, dict) else getattr(messenger, "service", "")) or "")
     if service:
         from app.messenger import is_kind_enabled
 
@@ -117,6 +117,12 @@ def native_tool_codes_for_tool(tool: Any) -> frozenset[str]:
         else:
             codes.discard("messenger")
     return frozenset(codes)
+
+
+def has_function_permissions(tool: object) -> bool:
+    """Whether a public Tool or runtime configuration exposes governed functions."""
+    return bool(getattr(tool, "mcp_config", getattr(tool, "mcp", None))) or bool(
+        native_tool_codes_for_tool(tool) & mcp_tools_by_tool_code().keys())
 
 
 @dataclass(frozen=True)

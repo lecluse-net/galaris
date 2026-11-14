@@ -209,6 +209,11 @@ from .mcp import (
 
 from .agent_identity import project_agent_messages
 
+from app.tools import register_connection_probe
+from .connection_diagnostics import test_saved_connection as _test_saved_connection
+
+register_connection_probe("messenger", _test_saved_connection)
+
 __all__ = [
     "project_agent_messages",
     "rename_internal_file",

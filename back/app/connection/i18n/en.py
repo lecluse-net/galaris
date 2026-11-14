@@ -2,6 +2,13 @@
 
 default = {
     "connection_api": {
+        "test": {
+            "inactive": "Activate the connection to test this messaging protocol.",
+            "success": "Connection verified with the saved credentials.",
+            "error": "Connection failed. Check the settings, credentials and service availability.",
+            "unsupported": "This protocol has no automatic connection check. Its availability could not be verified.",
+            "internal": "The internal service functions are available. No external service was tested.",
+        },
         "oauth": {
             "configuration": "Unable to connect this account. Check the Tool OAuth configuration, application registration and server addresses.",
             "https_required": "OAuth requires HTTPS (HTTP is allowed on localhost only).",

@@ -128,6 +128,13 @@ async def test_overview_http_requires_privileges_and_limits_rows_to_managed_agen
             assert [row["id"] for row in response.json()] == [expected]
             assert response.json()[0]["params"] == {}
             assert (await client.get(path, headers=headers, params={"limit": 501})).status_code == 422
+            diagnostic = await client.post(f"/api/connections/{expected}/test", headers=headers)
+            assert diagnostic.status_code == 200, diagnostic.text
+            assert diagnostic.json()["status"] == "unsupported"
+            assert (await client.post(f"/api/connections/{connections[1].id}/test", headers=headers)).status_code == 404
+        else:
+            assert (await client.post(f"/api/connections/{expected}/test", headers=headers)).status_code == 403
+    assert (await client.post(f"/api/connections/{expected}/test")).status_code == 401
 
 
 @pytest.mark.asyncio

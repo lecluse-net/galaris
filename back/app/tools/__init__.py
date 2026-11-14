@@ -87,10 +87,15 @@ from .mcp_loader import (
     mcp_tools_by_tool_code,
     native_tool_codes_for_connection,
     native_tool_codes_for_tool,
+    has_function_permissions,
 )
 from .tool_errors import RecoverableToolError, native_failure_key
 
+from .connection_diagnostics import register_connection_probe, test_saved_connection, ConnectionTestResult
+
 __all__ = [
+    "has_function_permissions",
+    "register_connection_probe", "test_saved_connection", "ConnectionTestResult",
     "register_protocol_resource_resolver",
     "bind_protocol_connection", "current_protocol_connection",
     "reset_protocol_connection", "resolve_protocol_connection",

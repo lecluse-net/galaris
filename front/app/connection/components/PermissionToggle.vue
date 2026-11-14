@@ -24,7 +24,7 @@ const { control, disabled = false, showLabel = false } = defineProps<{ control: 
 const emit = defineEmits<{ change: [value: string] }>()
 const options = computed(() => control.options.map(option => ({ ...option, ...permissionChoiceAppearance(control.id, option.value) })))
 function select(value: string) {
-  if (!disabled && !control.disabled && value !== control.value && control.options.some(option => option.value === value && !option.disable)) emit('change', value)
+  if (!disabled && !control.disabled && (value !== control.value || control.allowReselect) && control.options.some(option => option.value === value && !option.disable)) emit('change', value)
 }
 const scroller = useTemplateRef<HTMLDivElement>('scroller')
 let observer: ResizeObserver | undefined

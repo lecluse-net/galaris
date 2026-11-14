@@ -26,7 +26,7 @@ interface RuntimePolicy {
   remembered_allowed: boolean | null; active: boolean; remembered: boolean; can_decide: boolean; can_revoke: boolean
 }
 
-export function createPermissionDashboard(t: Composer['t'], agents: AgentSelectionOption[]) {
+export function createPermissionDashboard(t: Composer['t'], agents: AgentSelectionOption[], connectionId?: number) {
   const authorize = usePrivilegeStore()
   const readPrivileges = [privileges.PERMISSION_ACCESS, privileges.PERMISSION_DECIDE, privileges.PERMISSION_REVOKE]
   const canDecide = () => authorize.hasPrivilege(privileges.PERMISSION_DECIDE)
@@ -45,7 +45,9 @@ export function createPermissionDashboard(t: Composer['t'], agents: AgentSelecti
     const key = `${sessionGeneration()}:${query.agentId}`
     if (!catalogueRequest || key !== catalogueKey) {
       invalidate(); catalogueKey = key; controller = new AbortController()
-      const request = api.get<Catalogue>(`/tools/agents/${query.agentId}/permissions`, { signal: controller.signal }).then(response => response.data)
+      const request = api.get<Catalogue>(`/tools/agents/${query.agentId}/permissions`, {
+        signal: controller.signal, params: connectionId === undefined ? undefined : { connection_id: connectionId },
+      }).then(response => response.data)
       catalogueRequest = request
       void request.catch(() => { if (catalogueRequest === request) catalogueRequest = undefined })
     }
@@ -99,7 +101,16 @@ export function createPermissionDashboard(t: Composer['t'], agents: AgentSelecti
               !row.runtime_supported ? t('permissions.dashboard.runtimeUnsupported') : '',
               !row.available ? t('permissions.dashboard.catalogUnverified') : '',
               `${t('permissions.dashboard.configuredRule')}: ${policyLabel(row.policy_state)}`].filter(Boolean).join('\n'),
-            controls: [{ id: 'policy', label: t('permissions.decision'), value: row.connection_state,
+            controls: [
+              ...(connectionId === undefined ? [] : [{ id: 'global-policy', label: t('connection.auth.colGlobal'),
+                allowReselect: true,
+                value: row.connection_state === 'default' ? (row.global_state === 'default' ? row.default_state : row.global_state) : '',
+                disabled: !canDecide() || !authorize.hasPrivilege(privileges.AGENT_MANAGE_ALL),
+                options: policyOptions(),
+                save: (value: string) => saveFunctionPolicy({ id: row.connection_id!, agent_id: query.agentId, tool_id: row.tool_id, active: connection.active },
+                  { name: row.name, capability_kind: row.capability_kind }, { scope: 'global', state: value as EffectiveFunctionState }),
+              }]),
+              { id: 'policy', label: t(connectionId === undefined ? 'permissions.decision' : 'connection.localPolicy'), value: row.connection_state,
               options: [...policyOptions(), { value: 'default', label: t('permissions.dashboard.inherit'), disable: !canDecide() }],
               save: value => saveFunctionPolicy({ id: row.connection_id!, agent_id: query.agentId, tool_id: row.tool_id, active: connection.active },
                 { name: row.name, capability_kind: row.capability_kind }, { scope: 'connection', state: value as FunctionState }) }] }

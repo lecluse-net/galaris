@@ -22,6 +22,20 @@ from .provisioning import provision_new_agent_console
 
 register_agent_profile_observer("console_defaults", provision_new_agent_console)
 
+
+async def _test_saved_connection(connection_id: int) -> bool:
+    transport = SshExecutionTransport(await resolve_connection(connection_id))
+    try:
+        result = await transport.status()
+        return result.reachable and result.authenticated and result.host_key_verified and result.sftp_available
+    finally:
+        await transport.close()
+
+
+from app.tools import register_connection_probe
+
+register_connection_probe("console", _test_saved_connection)
+
 __all__ = [
     "ConsoleFile",
     "ConsoleResult",

@@ -42,6 +42,7 @@ async def test_provider_composes_mail_calendar_and_keeps_connections_isolated(db
         mail_config=ProtocolConfig(), calendar_config=ProtocolConfig()))
     public = to_public(provider)
     assert public.can_edit and public.has_mail and public.has_calendar
+    assert public.has_function_permissions
     assert not public.has_messenger and not public.has_file_share
     assert {"mail", "calendar"} <= native_tool_codes_for_tool(await tool_service.get_tool_by_id(provider.id))
     assert public.connection_schema.params["password"].type == "password"

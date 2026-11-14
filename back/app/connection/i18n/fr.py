@@ -2,6 +2,13 @@
 
 default = {
     "connection_api": {
+        "test": {
+            "inactive": "Activez la connexion pour tester ce protocole de messagerie.",
+            "success": "Connexion vérifiée avec les identifiants enregistrés.",
+            "error": "Échec de connexion. Vérifiez les paramètres, les identifiants et la disponibilité du service.",
+            "unsupported": "Ce protocole ne possède pas de test automatique. Sa disponibilité n’a pas pu être vérifiée.",
+            "internal": "Les fonctions du service interne sont disponibles. Aucun service externe n’a été testé.",
+        },
         "oauth": {
             "configuration": "Impossible de connecter ce compte. Vérifiez la configuration OAuth du Tool, son application et ses adresses de serveur.",
             "https_required": "OAuth exige HTTPS (HTTP est permis uniquement sur localhost).",

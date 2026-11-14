@@ -364,6 +364,12 @@ class ToolPublic(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @computed_field
+    @property
+    def has_function_permissions(self) -> bool:
+        from .mcp_loader import has_function_permissions
+        return has_function_permissions(self)
+
     model_config = {"from_attributes": True}
 
 

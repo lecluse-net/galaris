@@ -133,6 +133,7 @@ for (const width of [390, 1440]) {
     const connection = { id: 42, tool_id: 8, agent_id: 7, active: true }
     const params = { host: 'initial.example.test', token: null }
     const tool = { id: 8, code: 'synthetic_connector', label: 'Synthetic connector', can_disable: true, can_edit: true,
+      has_function_permissions: true,
       connection_schema: { params: { host: { type: 'string', label: 'Service host', required: false }, token: { type: 'password', label: 'Token', required: false } } }, global_params: {} }
     await jsonRoute(page, '**/api/tools', [tool])
     await jsonRoute(page, '**/api/tools/capabilities', [])
@@ -202,6 +203,26 @@ for (const width of [390, 1440]) {
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByLabel('Service host', { exact: true })).toHaveValue('reopened.example.test')
     expect(parameterReads).toBe(1)
+    const policies = { connections: [{ tool_id: 8, tool_code: tool.code, tool_label: tool.label, connection_id: 42,
+      active: true, can_disable: true, parameters: {} }], capabilities: [{ id: '8:tool:lookup', tool_id: 8, tool_label: tool.label,
+      connection_id: 42, name: 'lookup', description: 'Synthetic lookup', capability_kind: 'tool', connection_state: 'default',
+      global_state: 'default', default_state: 'ask', effective_state: 'ask', policy_state: 'ask', policy_source: 'software',
+      available: true, runtime_supported: true }], unavailable_catalogs: [] }
+    let catalogReads = 0
+    await page.route('**/api/tools/agents/7/permissions?connection_id=42', route => { catalogReads++; return route.fulfill({ json: policies }) })
+    await expect(dialog.getByRole('tab', { name: 'Permissions', exact: true })).toBeVisible()
+    expect(catalogReads).toBe(0)
+    await dialog.getByRole('tab', { name: 'Permissions', exact: true }).click()
+    await expect(dialog.getByText('lookup', { exact: true })).toBeVisible()
+    await expect(dialog.getByLabel('Service host', { exact: true })).toBeHidden()
+    await expect(dialog.getByRole('group', { name: 'Local (this connection)', exact: true }).getByRole('button', { name: 'Allow', exact: true })).toBeDisabled()
+    await expect(dialog.getByRole('group', { name: 'Global (all)', exact: true }).getByRole('button', { name: 'Allow', exact: true })).toBeDisabled()
+    expect(catalogReads).toBe(1)
+    await page.screenshot({ path: testInfo.outputPath('connection-permissions-light.png'), fullPage: true, animations: 'disabled' })
+    await page.evaluate(() => window.testApp.dark(true))
+    await page.screenshot({ path: testInfo.outputPath('connection-permissions-dark.png'), fullPage: true, animations: 'disabled' })
+    await page.evaluate(() => window.testApp.dark(false))
+    await dialog.getByRole('tab', { name: 'Settings', exact: true }).click()
     await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/tools?tab=connections')
     await page.screenshot({ path: testInfo.outputPath('connection-dialog-light.png'), fullPage: true, animations: 'disabled' })
     await page.evaluate(() => window.testApp.dark(true))
@@ -217,6 +238,11 @@ for (const width of [390, 1440]) {
     await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     await expect(rows).toContainText('saved.example.test')
+    await jsonRoute(page, '**/api/connections/42/test', { status: 'success', checks: [{ protocol: 'mcp', status: 'success', message: 'Synthetic authenticated MCP check' }] })
+    await rows.getByRole('button', { name: 'Test', exact: true }).press('Enter')
+    await expect(page.getByRole('dialog')).toContainText('Connection working')
+    await expect(page.getByRole('dialog')).toContainText('Synthetic authenticated MCP check')
+    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
     expect(params.token).toBeNull()
     await expect(page.getByRole('link', { name: 'Scopes and permissions', exact: true })).toHaveAttribute('href', '/permissions')
     let refreshes = 0

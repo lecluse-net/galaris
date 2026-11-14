@@ -47,6 +47,8 @@ from app.tools import (
     list_available_connection_functions,
     tool_service,
     sync_integrated_tool_connections,
+    test_saved_connection,
+    ConnectionTestResult,
 )
 from app.tools.mcp import build_mcp_server
 
@@ -693,6 +695,17 @@ async def test_mcp_tools(data: TestMcpToolsRequest):
 # =============================================================================
 # MCP function authorization endpoints.
 # =============================================================================
+
+
+@router.post("/{connection_id}/test", response_model=ConnectionTestResult, dependencies=[Depends(require_web_session)])
+@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+async def test_connection(connection_id: int) -> ConnectionTestResult:
+    await _managed_connection(connection_id)
+    try:
+        return await test_saved_connection(connection_id)
+    except LookupError:
+        raise HTTPException(404, detail=await _message("errors.not_found")) from None
+
 
 @router.get("/{connection_id}/functions", response_model=ConnectionFunctionsResponse)
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT, Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])

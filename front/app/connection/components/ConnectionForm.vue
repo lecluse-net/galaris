@@ -236,7 +236,7 @@
       </q-card-section>
     </q-card>
 
-    <div class="row items-center q-mt-md">
+    <div class="connection-form-actions row items-center q-mt-md">
       <q-toggle
         v-if="selectedTool?.code !== 'console' || consoleTarget === 'external'"
         v-model="form.active"
@@ -244,17 +244,20 @@
         color="positive"
       />
       <q-space />
-      <q-btn :label="t('common.cancel')" color="grey-6" v-close-popup @click="$emit('cancel')" class="q-mr-sm" />
-      <q-btn
-        v-if="canEdit"
-        :label="selectedTool?.code === 'console' && consoleTarget === 'embedded'
-          ? t('connection.console.useEmbedded')
-          : isEdit ? t('common.edit') : t('common.create')"
-        type="submit"
-        color="primary"
-        :loading="loading || consoleAction === 'embedded'"
-        :disable="!isValidForm || consoleAction === 'editor'"
-      />
+      <div class="connection-form-buttons row items-center q-gutter-sm">
+        <slot name="actions" />
+        <q-btn :label="t('common.cancel')" color="grey-6" v-close-popup @click="$emit('cancel')" />
+        <q-btn
+          v-if="canEdit"
+          :label="selectedTool?.code === 'console' && consoleTarget === 'embedded'
+            ? t('connection.console.useEmbedded')
+            : isEdit ? t('common.edit') : t('common.create')"
+          type="submit"
+          color="primary"
+          :loading="loading || consoleAction === 'embedded'"
+          :disable="!isValidForm || consoleAction === 'editor'"
+        />
+      </div>
     </div>
   </q-form>
 
@@ -1083,6 +1086,8 @@ body.body--dark .schema-params-row { border-bottom-color: #2e3238; }
 .param-desc { font-size: 12px; margin-top: 4px; }
 
 @media (max-width: 1023px) {
+  .connection-form-actions { gap: 12px; }
+  .connection-form-buttons { width: 100%; justify-content: flex-end; }
   .schema-params-header { display: none; }
   .schema-params-row { gap: 8px; }
   .col-param, .col-value { width: 100%; min-width: 0; }

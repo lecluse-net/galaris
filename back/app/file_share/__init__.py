@@ -5,6 +5,11 @@ directly with bounded memory; legacy transports retain a temporary-file fallback
 services are registered bridges and Messenger attachments keep their provider identity.
 """
 
+from app.tools import register_connection_probe
+from .connection_diagnostics import test_saved_connection as _test_saved_connection
+
+register_connection_probe("file_share", _test_saved_connection)
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.agent import AgentManagementScope
