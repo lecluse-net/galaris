@@ -1,6 +1,17 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { document } from './data.mjs'
 
+test('skill files remain directly selectable throughout the tree', async ({ page }, testInfo) => {
+  const files = Array.from({ length: 301 }, (_, index) => ({ path: `docs/entry-${String(index).padStart(3, '0')}.txt`, name: `entry-${index}.txt`, size: 12, text: true }))
+  await mount(page, 'app/skill/components/SkillViewerDialog.vue', { props: { label: 'Synthetic package', files, path: files[205].path, content: 'Synthetic contents' } })
+  const tree = page.getByRole('tree')
+  await tree.getByText('entry-000.txt', { exact: true }).click()
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').at(-1).value)).toBe(files[0].path)
+  await tree.getByText('entry-300.txt', { exact: true }).click()
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').at(-1).value)).toBe(files[300].path)
+  await page.screenshot({ path: testInfo.outputPath('skill-file-tree.png'), animations: 'disabled' })
+})
+
 test('folder selectors reveal their current folder through its range and preserve selection', async ({ page }) => {
   const options = Array.from({ length: 301 }, (_, index) => ({ path: `Folder${String(index).padStart(3, '0')}` }))
   await mount(page, 'app/document/components/DocumentFolderSelect.vue', { props: { options, modelValue: options[205].path } })
@@ -11,6 +22,18 @@ test('folder selectors reveal their current folder through its range and preserv
   await tree.getByText('1–100', { exact: true }).click()
   await tree.getByText(options[0].path, { exact: true }).click()
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1).value)).toBe(options[0].path)
+})
+
+test('Mail folder filtering preserves previously selected folders', async ({ page }) => {
+  await jsonRoute(page, '**/api/mail/connections/42/mailboxes', ['INBOX', 'Projects', 'Archive'].map(name => ({
+    name, label: name, delimiter: '/', selectable: true,
+  })))
+  await mount(page, 'app/connection/components/MailFolderAccess.vue', { props: { connectionId: 42, modelValue: '["INBOX"]' } })
+  await expect(page.getByRole('checkbox', { name: 'Projects', exact: true })).toBeVisible()
+  await page.getByRole('textbox', { name: 'Filter folders', exact: true }).fill('Archive')
+  await expect(page.getByRole('checkbox', { name: 'Projects', exact: true })).toBeHidden()
+  await page.getByRole('checkbox', { name: 'Archive', exact: true }).check()
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1).value)).toBe('["INBOX","Archive"]')
 })
 
 test('sub-document ranges in the lower list fetch only the opened page and survive reopening', async ({ page }, testInfo) => {

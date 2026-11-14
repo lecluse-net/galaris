@@ -25,7 +25,8 @@ from app.skill import skill_service, storage
 async def test_authorized_product_guide_loads_without_agent_identity_and_respects_revocations(db, revocation):
     from sqlalchemy import select
     from app.agent.models import Agent, Title
-    from app.connection import Connection, ConnectionFunctionState
+    from app.connection import Connection
+    from app.connection.facade import set_connection_function_state
     from app.tools import ToolModel, initialize_admin_agent_connections
     from core.user import UserModel
 
@@ -82,9 +83,8 @@ async def test_authorized_product_guide_loads_without_agent_identity_and_respect
         connection.active = False
         await db.flush()
     else:
-        db.add(ConnectionFunctionState(connection_id=connection.id,
-                                      function_name="documentation_catalog", enabled=False))
-        await db.flush()
+        # Mandatory connection setup may already provision this function state.
+        await set_connection_function_state(connection.id, "documentation_catalog", "disabled", commit=False)
     assert await build_eager_skill_capabilities(assistant.id) == []
     assert "galaris-knowledge" not in {
         skill.id for skill in await build_internal_skill_capabilities(assistant.id)

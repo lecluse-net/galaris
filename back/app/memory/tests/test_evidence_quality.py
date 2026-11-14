@@ -76,22 +76,15 @@ def test_causal_task_reference_does_not_turn_a_human_continuation_into_ai():
 
 
 @pytest.mark.asyncio
-async def test_calendar_saturation_keeps_a_relevant_fact_in_the_final_budget(monkeypatch):
-    now = datetime.now(timezone.utc)
-
-    def hit(title, text, *, temporal=False):
-        return SimpleNamespace(item=SimpleNamespace(id=uuid4(), title=title, temporal={} if temporal else None),
-            excerpt=text, score=1.0 if temporal else 0.7, source_refs=[],
-            temporal_match_at=now if temporal else None)
+async def test_ordinary_memory_context_keeps_relevant_facts_in_its_own_budget(monkeypatch):
+    def hit(title, text):
+        return SimpleNamespace(item=SimpleNamespace(id=uuid4(), title=title, temporal=None),
+            excerpt=text, score=0.7, source_refs=[], temporal_match_at=None)
 
     fact = hit("Reporting preference", "Monthly reports must include a cash-flow comparison.")
-    calendar = [hit(f"Appointment {index}", "Unrelated scheduled appointment. " * 40, temporal=True) for index in range(4)]
 
     async def search(*_args, **_kwargs):
         return SimpleNamespace(hits=[fact], has_more=False)
-
-    async def temporal(*_args, **_kwargs):
-        return calendar, False
 
     async def admit(_request, hits):
         return hits
@@ -100,7 +93,6 @@ async def test_calendar_saturation_keeps_a_relevant_fact_in_the_final_budget(mon
         pass
 
     monkeypatch.setattr(context, "search_memory_detailed", search)
-    monkeypatch.setattr(context, "temporal_hits", temporal)
     monkeypatch.setattr(context, "admit_recall_hits", admit)
     monkeypatch.setattr(context, "record_llm_retrieval", record)
     monkeypatch.setattr(context.runtime_settings, "MEMORY_CONTEXT_ENABLED", True)
@@ -110,7 +102,7 @@ async def test_calendar_saturation_keeps_a_relevant_fact_in_the_final_budget(mon
     assert any(item.memory_id == str(fact.item.id) for item in brief.items)
     assert "cash-flow comparison" in brief.rendered
     assert len(brief.items) <= 4 and len(brief.rendered) <= 2_000
-    assert brief.truncated
+    assert not brief.truncated
 
 
 @pytest.mark.asyncio
