@@ -48,6 +48,9 @@ class PermissionConnectionOption(Connection):
     service_label: str
     service_can_edit: bool
     service_can_disable: bool
+    # Icon bytes were validated on the owning Service; this read projection
+    # carries that portable JSON without importing the Services bootstrap.
+    service_icon: dict[str, str] | None = None
 
 
 # =============================================================================

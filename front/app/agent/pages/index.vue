@@ -201,7 +201,7 @@
                   <template v-if="isManagedRuntime(agent) && canManageAgent(agent)">
                     <q-btn
                       v-if="hasHarnessAction(agent, 'start')"
-                      class="agent-action-button"
+                      class="agent-action-button solaire-warning-action"
                       flat color="warning" icon="play_arrow" :label="$t('agent.harness.start')" :aria-label="$t('agent.harness.start')" size="sm"
                       :loading="Boolean(harnessActionLoading[agent.id])"
                       :disable="harnessLifecycleBusy(agent)"
@@ -211,7 +211,7 @@
                     </q-btn>
                     <q-btn
                       v-if="hasHarnessAction(agent, 'stop')"
-                      class="agent-action-button"
+                      class="agent-action-button solaire-warning-action"
                       flat color="warning" icon="stop" :label="$t('agent.harness.stop')" :aria-label="$t('agent.harness.stop')" size="sm"
                       :loading="Boolean(harnessActionLoading[agent.id])"
                       :disable="harnessLifecycleBusy(agent)"

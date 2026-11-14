@@ -186,6 +186,8 @@ export interface CapabilityDefinition {
 }
 
 export interface Service {
+    /** Present in list responses; includes inactive connections. */
+    connection_count?: number
     icon?: ServiceIcon | null
     catalog?: ServiceCatalogMetadata | null
     capabilities?: string[]

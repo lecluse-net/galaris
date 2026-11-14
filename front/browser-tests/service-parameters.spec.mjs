@@ -95,7 +95,7 @@ for (const mobile of [false, true]) {
     await page.route('**/api/services', route => route.fulfill({ json: [saved] }))
     await mount(page, 'app/services/components/ServicesList.vue', { privileges })
     await page.getByRole('tab', { name: 'Custom services', exact: true }).click()
-    const row = page.locator(mobile ? '.tool-mobile-card' : 'tbody tr').filter({ hasText: tool.label })
+    const row = page.getByRole('article').filter({ hasText: tool.label })
     await row.getByRole('button', { name: 'Edit service', exact: true }).click()
     const dialog = page.getByRole('dialog')
     const regionEditor = dialog.locator('.connection-param-editor').filter({ has: page.locator('input[value="region"]') })
@@ -135,7 +135,7 @@ test('Global parameters display fixed choices and store their codes', async ({ p
   })
   await mount(page, 'app/services/components/ServicesList.vue', { privileges })
   await page.getByRole('tab', { name: 'Custom services', exact: true }).click()
-  await page.getByRole('button', { name: 'Global parameters', exact: true }).click()
+  await page.getByRole('button', { name: 'Parameters', exact: true }).click()
   await page.getByRole('combobox', { name: 'Service region *', exact: true }).click()
   await page.getByRole('option', { name: 'United States', exact: true }).click()
   await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -148,9 +148,9 @@ const indexing = { type: 'string', required: false, default: 'excluded', builtin
   options: ['excluded', 'known_uris'].map(value => ({ value, label: `services.connectionParamOptions.fileindexing.${value}` })) }
 
 for (const [locale, label, choice, globalButton, save] of [
-  ['fr', 'Indexation des fichiers', 'Uniquement les fichiers déjà connus', 'Paramètres globaux', 'Enregistrer'],
-  ['en', 'File indexing', 'Only files already known', 'Global parameters', 'Save'],
-  ['zh', '文件索引', '仅已知文件', '全局参数', '保存'],
+  ['fr', 'Indexation des fichiers', 'Uniquement les fichiers déjà connus', 'Paramètres', 'Enregistrer'],
+  ['en', 'File indexing', 'Only files already known', 'Parameters', 'Save'],
+  ['zh', '文件索引', '仅已知文件', '参数', '保存'],
 ]) {
   test(`Platform parameters on a custom Service use the usual translated global controls (${locale})`, async ({ page }) => {
     await toolsRoutes(page)
@@ -288,7 +288,7 @@ test('Saving a scoped connection uses one request, preserves failures and reopen
     return route.fulfill({ json: connection })
   })
   await mount(page, 'app/connection/components/ConnectionList.vue', { privileges })
-  const row = page.locator('tbody tr').filter({ hasText: 'Skills' })
+  const row = page.getByRole('row').filter({ hasText: 'Skills' })
   await expect(row).toContainText('Use skills and manage own personal skills')
   expect(overviewReads).toBe(1)
   expect(parameterReads).toBe(0)

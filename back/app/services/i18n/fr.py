@@ -194,6 +194,7 @@ default: dict[str, object] = {
         "mcp_test_protocol_success": "Initialisation et négociation du protocole MCP réussies.",
         "mcp_test_discovery_success": "${count} fonction(s) annoncée(s) par le serveur.",
         "errors": {
+            "internal_export_forbidden": "Les services internes à Galaris ne peuvent pas être exportés.",
             "legacy_mail_namespace": "Ce service migré conserve l’espace de compatibilité mail://. Créez un service nommé pour le fournisseur afin d’ajouter un partage de fichiers ou une autre messagerie.",
             "system_read_only": "Ce service système obligatoire est en lecture seule et toujours actif.",
             "tool_not_found": "Service ${service_id} introuvable",

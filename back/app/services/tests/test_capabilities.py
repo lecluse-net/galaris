@@ -163,3 +163,18 @@ async def test_protocol_editor_requires_privileges_and_saves_settings_atomically
     assert updated.status_code == 200, updated.text
     assert updated.json()["mail_config"] == definition["mail_config"]
     assert updated.json()["calendar_config"]["settings"]["timezone"] == "Europe/London"
+
+    # Built-in definitions remain readable, but cannot be exported or overwritten by import.
+    catalogue = (await client.get("/api/services", headers=actors["SERVICE_ACCESS"])).json()
+    for code in ("galaris", "console"):
+        internal = next(item for item in catalogue if item["code"] == code)
+        assert internal["can_edit"] is False
+        for privilege in ("SERVICE_ACCESS", "SERVICE_EDIT"):
+            exported = await client.get(f"/api/services/{internal['id']}/export", headers=actors[privilege])
+            assert exported.status_code == 403, exported.text
+    exported = await client.get(f"{tool_path}/export", headers=actors["SERVICE_ACCESS"])
+    assert exported.status_code == 200 and definition["code"] in exported.text
+    imported = await client.post("/api/services/import?overwrite=true", headers={
+        **actors["SERVICE_EDIT"], "Content-Type": "text/plain"},
+        content="code: console\nlabel: Synthetic forbidden overwrite\n")
+    assert imported.status_code == 403, imported.text

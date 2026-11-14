@@ -521,7 +521,7 @@ tests restent l’autorité sur le comportement.
 | `app.process` | `core.user` | `back/app/process/activity_controls.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/process_service.py` |
 | `app.process` | `core.util` | `back/app/process/input_editing.py`, `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
 | `app.services` | `app.agent` | `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/catalog.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/connection_functions.py`, `back/app/services/dbadmin.py`, `back/app/services/management_scope.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_permissions.py` |
-| `app.services` | `app.connection` | `back/app/services/admin_access.py`, `back/app/services/admin_candidates.py`, `back/app/services/admin_contracts.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/dbadmin.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/management_scope.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp.py`, `back/app/services/mcp_authorization.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/protocols.py`, `back/app/services/rest.py`, `back/app/services/service.py` |
+| `app.services` | `app.connection` | `back/app/services/admin_access.py`, `back/app/services/admin_candidates.py`, `back/app/services/admin_contracts.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/dbadmin.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/management_scope.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp.py`, `back/app/services/mcp_authorization.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/protocols.py`, `back/app/services/rest.py`, `back/app/services/router.py`, `back/app/services/service.py` |
 | `app.services` | `app.console` | `back/app/services/mcp_loader.py` |
 | `app.services` | `app.documentation` | `back/app/services/documentation_service.py` |
 | `app.services` | `app.file_share` | `back/app/services/capabilities.py`, `back/app/services/parameter_definitions.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/service.py` |
@@ -946,8 +946,8 @@ tests restent l’autorité sur le comportement.
 | `app/services` | `app/connection` | `front/app/services/components/ServicesList.vue`, `front/app/services/pages/index.vue`, `front/app/services/stores/serviceStore.ts` |
 | `app/services` | `core/api` | `front/app/services/components/ServicesList.vue`, `front/app/services/services/serviceApi.ts` |
 | `app/services` | `core/authorize` | `front/app/services/components/MatrixServiceSetup.vue`, `front/app/services/components/ServiceCatalog.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/components/TelegramServiceSetup.vue`, `front/app/services/navigation.ts`, `front/app/services/pages/index.vue` |
-| `app/services` | `core/navigation` | `front/app/services/navigation.ts`, `front/app/services/pages/index.vue` |
-| `app/services` | `core/util` | `front/app/services/components/ServicesList.vue`, `front/app/services/pages/index.vue` |
+| `app/services` | `core/navigation` | `front/app/services/components/ServiceIcon.vue`, `front/app/services/components/ServiceIdentityIcon.vue`, `front/app/services/navigation.ts`, `front/app/services/pages/index.vue` |
+| `app/services` | `core/util` | `front/app/services/components/ServiceCard.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/pages/index.vue` |
 | `app/share` | `core/util` | `front/app/share/components/OwnerAvatar.vue`, `front/app/share/components/OwnerSelect.vue`, `front/app/share/components/ResourceSharingPanel.vue`, `front/app/share/components/SharingPanel.vue`, `front/app/share/components/SharingRecipients.vue`, `front/app/share/ownerCache.ts`, `front/app/share/ownerGroups.ts`, `front/app/share/panel.ts` |
 | `app/skill` | `app/agent` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillAuthorizationManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue` |
 | `app/skill` | `core/api` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue`, `front/app/skill/pages/index.vue`, `front/app/skill/services/skillService.ts` |
@@ -1962,25 +1962,25 @@ tests restent l’autorité sur le comportement.
 | POST | `/runtime-authorizations/receipt` | `app.services` | `action_receipt` | non | `back/app/services/runtime_authorization_router.py:96` |
 | GET | `/runtime-authorizations/{identifier}` | `app.services` | `action_status` | non | `back/app/services/runtime_authorization_router.py:84` |
 | GET | `/services` | `app.process` | `read_process_tools` | oui | `back/app/process/router.py:130` |
-| GET | `/services` | `app.services` | `list_services` | oui | `back/app/services/router.py:100` |
-| POST | `/services` | `app.services` | `create_service` | oui | `back/app/services/router.py:204` |
-| GET | `/services/agents/{agent_id}/mcp-tools` | `app.services` | `list_agent_mcp_tools` | oui | `back/app/services/router.py:110` |
-| GET | `/services/agents/{agent_id}/permissions` | `app.services` | `read_agent_permission_catalog` | oui | `back/app/services/router.py:119` |
-| GET | `/services/capabilities` | `app.services` | `list_supported_capabilities` | oui | `back/app/services/router.py:52` |
-| GET | `/services/catalog` | `app.services` | `service_catalogue` | oui | `back/app/services/router.py:40` |
-| POST | `/services/catalog/refresh` | `app.services` | `refresh_service_catalogue` | oui | `back/app/services/router.py:46` |
-| POST | `/services/import` | `app.services` | `import_service` | oui | `back/app/services/router.py:308` |
-| POST | `/services/mcp-candidates` | `app.services` | `prepare_mcp_candidate` | oui | `back/app/services/router.py:62` |
-| POST | `/services/test-mcp` | `app.services` | `test_mcp_connection` | oui | `back/app/services/router.py:132` |
+| GET | `/services` | `app.services` | `list_services` | oui | `back/app/services/router.py:101` |
+| POST | `/services` | `app.services` | `create_service` | oui | `back/app/services/router.py:209` |
+| GET | `/services/agents/{agent_id}/mcp-tools` | `app.services` | `list_agent_mcp_tools` | oui | `back/app/services/router.py:115` |
+| GET | `/services/agents/{agent_id}/permissions` | `app.services` | `read_agent_permission_catalog` | oui | `back/app/services/router.py:124` |
+| GET | `/services/capabilities` | `app.services` | `list_supported_capabilities` | oui | `back/app/services/router.py:53` |
+| GET | `/services/catalog` | `app.services` | `service_catalogue` | oui | `back/app/services/router.py:41` |
+| POST | `/services/catalog/refresh` | `app.services` | `refresh_service_catalogue` | oui | `back/app/services/router.py:47` |
+| POST | `/services/import` | `app.services` | `import_service` | oui | `back/app/services/router.py:316` |
+| POST | `/services/mcp-candidates` | `app.services` | `prepare_mcp_candidate` | oui | `back/app/services/router.py:63` |
+| POST | `/services/test-mcp` | `app.services` | `test_mcp_connection` | oui | `back/app/services/router.py:137` |
 | GET | `/services/{service_code}/health` | `app.process` | `read_process_tool_health` | oui | `back/app/process/router.py:136` |
-| DELETE | `/services/{service_id}` | `app.services` | `delete_service` | oui | `back/app/services/router.py:268` |
-| GET | `/services/{service_id}` | `app.services` | `get_service` | oui | `back/app/services/router.py:152` |
-| PUT | `/services/{service_id}` | `app.services` | `update_service` | oui | `back/app/services/router.py:220` |
-| PATCH | `/services/{service_id}/conversation-access` | `app.services` | `update_conversation_access` | oui | `back/app/services/router.py:236` |
-| GET | `/services/{service_id}/deletion-impact` | `app.services` | `service_deletion_impact` | oui | `back/app/services/router.py:256` |
-| GET | `/services/{service_id}/export` | `app.services` | `export_service` | oui | `back/app/services/router.py:285` |
-| GET | `/services/{service_id}/global-params` | `app.services` | `get_global_params` | oui | `back/app/services/router.py:164` |
-| PUT | `/services/{service_id}/global-params` | `app.services` | `update_global_params` | oui | `back/app/services/router.py:181` |
+| DELETE | `/services/{service_id}` | `app.services` | `delete_service` | oui | `back/app/services/router.py:273` |
+| GET | `/services/{service_id}` | `app.services` | `get_service` | oui | `back/app/services/router.py:157` |
+| PUT | `/services/{service_id}` | `app.services` | `update_service` | oui | `back/app/services/router.py:225` |
+| PATCH | `/services/{service_id}/conversation-access` | `app.services` | `update_conversation_access` | oui | `back/app/services/router.py:241` |
+| GET | `/services/{service_id}/deletion-impact` | `app.services` | `service_deletion_impact` | oui | `back/app/services/router.py:261` |
+| GET | `/services/{service_id}/export` | `app.services` | `export_service` | oui | `back/app/services/router.py:290` |
+| GET | `/services/{service_id}/global-params` | `app.services` | `get_global_params` | oui | `back/app/services/router.py:169` |
+| PUT | `/services/{service_id}/global-params` | `app.services` | `update_global_params` | oui | `back/app/services/router.py:186` |
 | GET | `/skills` | `app.skill` | `list_skills` | oui | `back/app/skill/router.py:159` |
 | POST | `/skills` | `app.skill` | `create_skill` | oui | `back/app/skill/router.py:422` |
 | GET | `/skills/agents` | `app.skill` | `list_skill_agents` | oui | `back/app/skill/router.py:295` |

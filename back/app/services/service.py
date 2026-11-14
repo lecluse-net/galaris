@@ -802,6 +802,10 @@ def _record_to_export_dict(record: ServiceModel) -> Dict[str, object]:
 
 def serialize_to_yaml(record: ServiceModel) -> str:
     """Return exportable YAML content for a tool."""
+    from .assertions import service_can_edit
+
+    if not service_can_edit(record):
+        raise PermissionError("Internal Galaris services cannot be exported")
     return cast(str, yaml.dump(  # type: ignore[call-overload]
         _record_to_export_dict(record),
         allow_unicode=True,

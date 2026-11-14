@@ -1,6 +1,6 @@
 import api, { sessionGeneration, SupersededSessionError } from '@/core/api'
 import type { AxiosRequestConfig, AxiosResponse } from 'axios'
-import type { Service } from '@/app/services'
+import type { Service, ServiceIcon } from '@/app/services'
 import { CONNECTIONS_CHANGED_EVENT } from '../events'
 
 function connectionsChanged<T>(response: T): T {
@@ -25,6 +25,7 @@ export interface ConnectionOverview extends Connection {
 }
 
 export interface PermissionConnectionOption extends Connection {
+    service_icon?: ServiceIcon | null
     service_code: string
     service_label: string
     service_can_edit: boolean

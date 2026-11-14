@@ -25,6 +25,20 @@ const BUILT_IN_TOOL_CODES = new Set([
 
 export type ServiceOrigin = 'galaris' | 'custom'
 
+const INTERNAL_SERVICE_ICONS: Record<string, string> = {
+  agenda: 'calendar_month', service_admin: 'hub', lab: 'science', multimedia: 'movie',
+  chat: 'forum', search: 'search', browser: 'language', galaris: 'img:/logo/128.png',
+  conversation: 'psychology_alt', memory: 'memory', document: 'description', file_sharing: 'folder_open',
+  process_admin: 'account_tree', agent_admin: 'people', topic: 'folder_copy',
+  goal_management: 'flag_circle', skills: 'psychology', platform_admin: 'monitor_heart',
+  console: 'terminal', image: 'image', audio: 'hearing', voice: 'record_voice_over',
+  app: 'hub', skill_management: 'auto_stories',
+}
+
+export function internalServiceIcon(service: Pick<Service, 'code' | 'can_edit'>): string {
+  return !service.can_edit ? INTERNAL_SERVICE_ICONS[service.code] ?? 'hub' : 'hub'
+}
+
 export function toolOrigin(tool: Pick<Service, 'can_edit'>): ServiceOrigin {
   // The backend protects integrated definitions; bridge names do not imply ownership.
   return tool.can_edit ? 'custom' : 'galaris'

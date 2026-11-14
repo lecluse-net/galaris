@@ -12,6 +12,7 @@ from . import admin_service as administration
 from .parameter_resolution import effective_param_value_expression as effective_param_value_expression
 
 from .connection_service import (
+    count_connections_by_service,
     get_management_scope as get_management_scope,
     tool_connection_options,
     function_state_label,
@@ -48,6 +49,7 @@ from .calendar_oauth import calendar_access_token, invalidate_calendar_token
 from .oauth_service import register_oauth_observer
 
 __all__ = [
+    "count_connections_by_service",
     "register_oauth_observer",
     "calendar_access_token", "invalidate_calendar_token",
     "mcp_oauth_auth", "tool_connection_options",

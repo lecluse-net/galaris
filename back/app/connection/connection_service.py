@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple, cast, Mapping
-from sqlalchemy import CursorResult, delete, exists, or_, select
+from sqlalchemy import CursorResult, delete, exists, func, or_, select
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import joinedload
 
@@ -20,6 +20,15 @@ from core.i18n import render_prompt, tr
 _encryption = get_encryption_service()
 
 
+async def count_connections_by_service(service_ids: Collection[int]) -> dict[int, int]:
+    """Count existing connections, including inactive ones, in one grouped query."""
+    if not service_ids:
+        return {}
+    rows = await get_db().execute(select(Connection.service_id, func.count(Connection.id))
+        .where(Connection.service_id.in_(service_ids)).group_by(Connection.service_id))
+    return {service_id: count for service_id, count in rows}
+
+
 async def permission_connection_options(
     *, agent_ids: Collection[int] | None, skip: int, limit: int,
 ) -> list["PermissionConnectionOption"]:
@@ -28,7 +37,7 @@ async def permission_connection_options(
     from app.services.facade import service_can_edit
     from .schemas import PermissionConnectionOption
 
-    statement = select(Connection, ServiceModel.code, ServiceModel.label, ServiceModel.can_disable).join(
+    statement = select(Connection, ServiceModel.code, ServiceModel.label, ServiceModel.can_disable, ServiceModel.icon).join(
         ServiceModel, ServiceModel.id == Connection.service_id
     ).join(Agent, Agent.id == Connection.agent_id).where(
         Connection.active.is_(True)
@@ -38,8 +47,8 @@ async def permission_connection_options(
     rows = (await get_db().execute(statement)).all()
     return [PermissionConnectionOption(id=connection.id, agent_id=connection.agent_id,
         service_id=connection.service_id, active=connection.active, service_code=code, service_label=label,
-        service_can_edit=can_disable and service_can_edit(code), service_can_disable=can_disable)
-        for connection, code, label, can_disable in rows]
+        service_can_edit=can_disable and service_can_edit(code), service_can_disable=can_disable, service_icon=icon)
+        for connection, code, label, can_disable, icon in rows]
 
 if TYPE_CHECKING:
     from app.services import Service
@@ -1066,6 +1075,7 @@ async def connection_tool_options(*, include_globals: bool = False) -> list[dict
     from app.services.facade import public_connection_schema, service_can_edit
     records = await service.get_all_service_records()
     return [{"id": t.id, "code": t.code, "label": t.label, "description": t.description,
+             "icon": t.icon,
              "can_disable": t.can_disable, "can_edit": service_can_edit(t), "capabilities": t.capabilities or [],
              "has_mcp": bool(t.mcp_config), "has_api": bool(t.rest_config),
              "has_function_permissions": has_function_permissions(t),

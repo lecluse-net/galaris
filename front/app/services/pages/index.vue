@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <PageHeader help-key="tools" :help-text="$t('contextHelpPages.tools')" :icon="navigationIcon('build')" :title="$t('nav.services')" :description="$t('nav.services_desc')" />
+    <PageHeader help-key="tools" :help-text="$t('contextHelpPages.tools')" :icon="navigationIcon('hub')" :title="$t('nav.services')" :description="$t('nav.services_desc')" />
 
     <q-tabs
       v-model="tab"
@@ -10,7 +10,7 @@
       active-color="primary"
       indicator-color="primary"
     >
-      <q-tab v-if="canView('tools')" name="tools" icon="build" :label="$t('services.tabServices')" />
+      <q-tab v-if="canView('tools')" name="tools" class="services-tab" :icon="navigationIcon('hub')" :label="$t('services.tabServices')" />
       <q-tab v-if="canView('connections')" name="connections" icon="link" :label="$t('services.tabConnections')" />
       <q-tab v-if="canView('authorizations')" name="authorizations" icon="shield" :label="$t('services.tabAuthorizations')" />
     </q-tabs>
@@ -64,6 +64,13 @@ watch([() => route.query.tab, allowedTabs], ([requested, tabs]) => {
 </script>
 
 <style scoped>
+.services-tab :deep(.q-tab__icon) {
+  background-color: currentColor;
+  mask: url('/menu-icons/hub.svg') center / contain no-repeat;
+  -webkit-mask: url('/menu-icons/hub.svg') center / contain no-repeat;
+}
+.services-tab :deep(.q-tab__icon img) { visibility: hidden; }
+
 @media (max-width: 1023px) {
   .tools-tabs :deep(.q-tabs__content) {
     justify-content: stretch;

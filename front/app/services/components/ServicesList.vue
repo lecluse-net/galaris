@@ -3,10 +3,7 @@
     <q-tabs v-model="origin" dense align="left" class="q-mb-md tool-tabs" no-caps>
       <q-tab name="custom" :label="$t('services.customServices')" />
       <q-tab name="galaris" :label="$t('services.internalServices')" />
-      <q-tab name="catalog" icon="apps" :label="$t('services.catalogTitle')" />
     </q-tabs>
-    <ServiceCatalog v-if="origin === 'catalog'" :installed="serviceStore.services" @select="openPreset" />
-    <template v-else>
     <div class="row items-center q-gutter-sm q-mb-md tools-actions">
       <q-input
         v-model="search"
@@ -17,150 +14,46 @@
         <template #prepend><q-icon name="search" /></template>
       </q-input>
       <q-btn v-if="canEdit" outline color="secondary" icon="upload" :label="$t('services.import')" @click="openImport" />
-      <q-btn v-if="canEdit" color="primary" icon="add" :label="$t('services.newService')" @click="openCreate" />
+      <q-btn v-if="canEdit" color="primary" icon="add" :label="$t('services.newService')" @click="catalogOpen = true" />
     </div>
 
+    <q-banner v-if="serviceStore.error" class="q-mb-md" role="alert">
+      {{ $t('services.listLoadError') }}
+      <template #action><q-btn outline color="primary" :label="$t('common.retry')" @click="loadServices" /></template>
+    </q-banner>
     <q-table
-      :rows="visibleTools"
-      :filter="search"
-      :filter-method="filterTools"
-      :no-results-label="$t('services.noSearchResults')"
-      :columns="columns"
-      :grid="$q.screen.lt.md"
-      row-key="id"
-      :loading="serviceStore.loading"
-      :rows-per-page-options="[10, 20, 50, 100, 500]"
-      :pagination="{ rowsPerPage: 50 }"
-      class="tools-table"
-      @row-click="(_event, row) => openDescription(row)"
-      :table-row-class-fn="row => toolDescription(row) ? 'cursor-pointer' : ''"
+      :rows="visibleTools" :filter="search" :filter-method="filterTools"
+      :no-results-label="$t('services.noSearchResults')" :columns="columns"
+      grid hide-header row-key="id" :loading="serviceStore.loading"
+      :rows-per-page-options="[10, 20, 50, 100, 500]" :pagination="{ rowsPerPage: 50 }"
+      class="services-grid"
     >
-      <template v-slot:body-cell-label="props">
-        <q-td :props="props">
-          <ServiceIcon :icon="props.row.icon" class="q-mr-sm" />
-          <button v-if="toolDescription(props.row)" class="tool-description-link" @click.stop="openDescription(props.row)">{{ localizedToolLabel(props.row) }}</button>
-          <span v-else>{{ localizedToolLabel(props.row) }}</span>
-          <SystemServiceIcon v-if="props.row.can_disable === false" class="q-ml-xs" />
-        </q-td>
-      </template>
-      <template #body-cell-capabilities="props">
-        <q-td :props="props"><ServiceCapabilities :tool="props.row" :definitions="capabilityDefinitions" /></q-td>
-      </template>
-
-      <template v-slot:body-cell-conversation_enabled="props">
-        <q-td :props="props" @click.stop>
-          <q-toggle
-            :model-value="props.row.conversation_enabled"
-            :disable="!canEdit || props.row.can_disable === false || conversationAccessLoading.has(props.row.id)"
-            color="primary"
-            :aria-label="$t('services.conversationAccessFor', { name: localizedToolLabel(props.row) })"
-            @update:model-value="value => updateConversationAccess(props.row, value)"
-          >
-            <q-tooltip>{{ $t('services.conversationAccessHint') }}</q-tooltip>
-          </q-toggle>
-          <q-spinner
-            v-if="conversationAccessLoading.has(props.row.id)"
-            size="18px"
-            color="primary"
-            class="q-ml-xs"
-          />
-        </q-td>
-      </template>
-
-      <template v-slot:body-cell-actions="props">
-        <q-td :props="props" class="q-gutter-x-xs" @click.stop>
-          <q-btn flat round icon="download" size="sm" color="secondary" :aria-label="$t('services.exportYaml')" @click="exportTool(props.row)">
-            <q-tooltip>{{ $t('services.exportYaml') }}</q-tooltip>
-          </q-btn>
-          <q-btn
-            v-if="canEdit && props.row.can_disable !== false && Object.keys(props.row.connection_schema?.params ?? {}).length"
-            flat round icon="tune" size="sm" color="deep-purple"
-            :aria-label="$t('services.globalParams')"
-            @click="openGlobalParams(props.row)"
-          >
-            <q-tooltip>{{ $t('services.globalParams') }}</q-tooltip>
-          </q-btn>
-          <q-btn v-if="canEdit && props.row.can_edit && props.row.can_disable !== false" flat round icon="edit" size="sm" color="primary" :aria-label="$t('services.editService')" @click="openEdit(props.row)" />
-          <q-btn v-if="canEdit && props.row.can_edit && props.row.can_disable !== false" flat round icon="delete" size="sm" color="negative" :aria-label="$t('common.delete')" @click="confirmDelete(props.row)" />
-        </q-td>
-      </template>
-
       <template #item="props">
-        <div class="q-table__grid-item col-12">
-          <q-card flat bordered class="tool-mobile-card">
-            <q-card-section class="q-pa-md" :class="{ 'cursor-pointer': toolDescription(props.row) }" @click="openDescription(props.row)">
-              <div class="row items-start no-wrap q-gutter-sm">
-                <div class="col tool-mobile-heading">
-                  <div class="text-weight-medium">
-                    <ServiceIcon :icon="props.row.icon" class="q-mr-sm" />
-                    <button v-if="toolDescription(props.row)" class="tool-description-link" @click="openDescription(props.row)">{{ localizedToolLabel(props.row) }}</button>
-                    <span v-else>{{ localizedToolLabel(props.row) }}</span>
-                    <SystemServiceIcon v-if="props.row.can_disable === false" class="q-ml-xs" />
-                  </div>
-                  <div class="text-caption text-grey-7 ellipsis">{{ props.row.code }}</div>
-                </div>
-              </div>
-
-              <div class="row items-center no-wrap q-mt-sm tool-mobile-conversation" @click.stop>
-                <span class="text-caption text-grey-7">{{ $t('services.conversationAccess') }}</span>
-                <q-space />
-                <q-toggle
-                  :model-value="props.row.conversation_enabled"
-                  :disable="!canEdit || props.row.can_disable === false || conversationAccessLoading.has(props.row.id)"
-                  color="primary"
-                  size="sm"
-                  :aria-label="$t('services.conversationAccessFor', { name: localizedToolLabel(props.row) })"
-                  @update:model-value="value => updateConversationAccess(props.row, value)"
-                >
-                  <q-tooltip>{{ $t('services.conversationAccessHint') }}</q-tooltip>
-                </q-toggle>
-                <q-spinner
-                  v-if="conversationAccessLoading.has(props.row.id)"
-                  size="18px"
-                  color="primary"
-                />
-              </div>
-
-              <div class="q-mt-sm">
-                <div class="text-caption text-grey-7 q-mb-xs">{{ $t('services.capabilities') }}</div>
-                <ServiceCapabilities :tool="props.row" :definitions="capabilityDefinitions" />
-              </div>
-            </q-card-section>
-            <q-separator />
-            <q-card-actions align="right" class="q-px-sm q-py-xs">
-              <q-btn
-                flat round icon="download" size="sm" color="secondary"
-                :aria-label="$t('services.exportYaml')"
-                @click="exportTool(props.row)"
-              >
-                <q-tooltip>{{ $t('services.exportYaml') }}</q-tooltip>
-              </q-btn>
-              <q-btn
-                v-if="canEdit && props.row.can_disable !== false && Object.keys(props.row.connection_schema?.params ?? {}).length"
-                flat round icon="tune" size="sm" color="deep-purple"
-                :aria-label="$t('services.globalParams')"
-                @click="openGlobalParams(props.row)"
-              >
-                <q-tooltip>{{ $t('services.globalParams') }}</q-tooltip>
-              </q-btn>
-              <q-btn
-                v-if="canEdit && props.row.can_edit && props.row.can_disable !== false"
-                flat round icon="edit" size="sm" color="primary"
-                :aria-label="$t('services.editService')"
-                @click="openEdit(props.row)"
-              />
-              <q-btn
-                v-if="canEdit && props.row.can_edit && props.row.can_disable !== false"
-                flat round icon="delete" size="sm" color="negative"
-                :aria-label="$t('common.delete')"
-                @click="confirmDelete(props.row)"
-              />
-            </q-card-actions>
-          </q-card>
+        <div class="service-grid-item">
+          <ServiceCard :service="props.row" :label="localizedToolLabel(props.row)"
+            :description="toolDescription(props.row)" :definitions="capabilityDefinitions"
+            :can-edit="canEdit" :busy="conversationAccessLoading.has(props.row.id)"
+            @describe="openDescription(props.row)" @export="exportTool(props.row)"
+            @parameters="openGlobalParams(props.row)" @edit="openEdit(props.row)"
+            @delete="confirmDelete(props.row)" @conversation="value => updateConversationAccess(props.row, value)" />
         </div>
       </template>
     </q-table>
-    </template>
+    <q-dialog v-model="catalogOpen">
+      <q-card class="service-catalog-dialog galaris-dialog-card">
+        <q-card-section class="galaris-dialog-title row items-center">
+          <div class="text-h6">{{ $t('services.newService') }}</div>
+          <q-space />
+          <q-btn flat round dense icon="close" v-close-popup :aria-label="$t('common.close')" />
+        </q-card-section>
+        <q-card-section class="scroll galaris-dialog-body">
+          <div class="row justify-end q-mb-md">
+            <q-btn outline color="primary" icon="add" :label="$t('services.createCustomService')" @click="openCreate" />
+          </div>
+          <ServiceCatalog :installed="serviceStore.services" @select="openPreset" />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
     <q-dialog v-model="descriptionOpen">
       <q-card class="tool-description-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center">
@@ -620,7 +513,7 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn v-if="editingTool" outline color="primary" icon="download" :label="$t('services.exportYaml')" @click="exportTool(editingTool)" />
+          <q-btn v-if="editingTool?.can_edit" outline color="primary" icon="download" :label="$t('services.exportYaml')" @click="exportTool(editingTool)" />
           <q-btn outline :label="$t('common.cancel')" v-close-popup />
           <q-btn v-if="canEdit" color="primary" :label="editingTool ? $t('common.save') : $t('common.create')" :loading="saving" :disable="missingCreationCapability" @click="saveTool" />
         </q-card-actions>
@@ -814,9 +707,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import ServiceCatalog from './ServiceCatalog.vue'
-import ServiceIcon from './ServiceIcon.vue'
+import ServiceCard from './ServiceCard.vue'
 import ServiceIconEditor from './ServiceIconEditor.vue'
 import type { ServiceCreate, ServiceIcon as Icon, ServiceCatalogMetadata } from '../services/serviceApi'
 import { Markdown, NetworkAccessNotice } from '@/core/util'
@@ -850,7 +743,6 @@ import api from '@/core/api'
 import { isAxiosError } from 'axios'
 import type { ServiceDeletionImpact } from '../services/serviceApi'
 import { useI18n } from 'vue-i18n'
-import ServiceCapabilities from './ServiceCapabilities.vue'
 import { capabilityCode, capabilityLabels, toolCapabilitySelections } from '../capabilities'
 import type { CapabilityDefinition, CapabilityProtocol } from '../services/serviceApi'
 import { connectionParamLabel, connectionParamMessageKey, sortedConnectionParamEntries, toolMessageKey, toolOrigin, type ServiceOrigin } from '../presentation'
@@ -863,7 +755,8 @@ const serviceStore = useServiceStore()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.SERVICE_EDIT))
 const search = ref<string | null>('')
-const origin = ref<ServiceOrigin | 'catalog'>('custom')
+const origin = ref<ServiceOrigin>('custom')
+const catalogOpen = ref(false)
 const serviceIcon = ref<Icon | null>(null)
 const catalogInfo = ref<ServiceCatalogMetadata | null>(null)
 const iconEditorKey = ref(0)
@@ -1511,7 +1404,7 @@ watch([form, connParams, mcpTestParams], () => {
   preparingCandidate.value = false
 }, { deep: true })
 
-function openCreate() { if (!canEdit.value) return; editingTool.value = null; resetForm(); dialogOpen.value = true }
+function openCreate() { if (!canEdit.value) return; catalogOpen.value = false; editingTool.value = null; resetForm(); dialogOpen.value = true }
 
 function openEdit(tool: Service) {
   if (!canEdit.value || tool.can_disable === false) return
@@ -1521,6 +1414,7 @@ function openEdit(tool: Service) {
 
 function openPreset(definition: ServiceCreate) {
   if (!canEdit.value) return
+  catalogOpen.value = false
   editingTool.value = null
   openDefinition(definition)
 }
@@ -1927,8 +1821,16 @@ async function fetchMessengerBridges() {
   }
 }
 
+async function loadServices(): Promise<void> {
+  try { await serviceStore.fetchServices() } catch { /* The store exposes the error for retry. */ }
+}
+
+onActivated(() => {
+  if (!serviceStore.loading) void loadServices()
+})
+
 onMounted(() => {
-  serviceStore.fetchServices()
+  void loadServices()
   fetchFileShareBridges()
   fetchMessengerBridges()
   fetchCapabilities()
@@ -1963,35 +1865,22 @@ onMounted(() => {
 
 .hidden { display: none; }
 
-.tools-table :deep(.q-table__grid-content) {
+.services-grid :deep(.q-table__grid-content) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 510px), 1fr));
+  gap: 16px;
   width: 100%;
   margin: 0;
 }
-
-.tools-table :deep(.q-table__grid-item) {
-  min-width: 0;
-  max-width: 100%;
-  padding: 8px 0;
+.service-grid-item { min-width: 0; }
+.service-catalog-dialog {
+  width: min(1200px, 96vw);
+  max-width: 96vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
 }
-
-.tool-mobile-card,
-.tool-mobile-heading {
-  min-width: 0;
-}
-
-.tool-mobile-capabilities {
-  min-height: 24px;
-}
-
-.tool-mobile-capabilities :deep(.q-chip) {
-  max-width: 100%;
-}
-
-.tool-mobile-capabilities :deep(.q-chip__content) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.service-catalog-dialog .galaris-dialog-body { min-height: 0; }
 
 .mcp-test-dialog {
   max-height: 90vh;

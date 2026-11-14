@@ -4191,6 +4191,7 @@
           "back/app/services/permission_catalog.py",
           "back/app/services/protocols.py",
           "back/app/services/rest.py",
+          "back/app/services/router.py",
           "back/app/services/service.py"
         ],
         "source": "app.services",
@@ -21028,7 +21029,7 @@
         "declared_path": "/services",
         "file": "back/app/services/router.py",
         "handler": "list_services",
-        "line": 100,
+        "line": 101,
         "method": "GET",
         "module": "app.services"
       },
@@ -21037,7 +21038,7 @@
         "declared_path": "/services",
         "file": "back/app/services/router.py",
         "handler": "create_service",
-        "line": 204,
+        "line": 209,
         "method": "POST",
         "module": "app.services"
       },
@@ -21046,7 +21047,7 @@
         "declared_path": "/services/agents/{agent_id}/mcp-tools",
         "file": "back/app/services/router.py",
         "handler": "list_agent_mcp_tools",
-        "line": 110,
+        "line": 115,
         "method": "GET",
         "module": "app.services"
       },
@@ -21055,7 +21056,7 @@
         "declared_path": "/services/agents/{agent_id}/permissions",
         "file": "back/app/services/router.py",
         "handler": "read_agent_permission_catalog",
-        "line": 119,
+        "line": 124,
         "method": "GET",
         "module": "app.services"
       },
@@ -21064,7 +21065,7 @@
         "declared_path": "/services/capabilities",
         "file": "back/app/services/router.py",
         "handler": "list_supported_capabilities",
-        "line": 52,
+        "line": 53,
         "method": "GET",
         "module": "app.services"
       },
@@ -21073,7 +21074,7 @@
         "declared_path": "/services/catalog",
         "file": "back/app/services/router.py",
         "handler": "service_catalogue",
-        "line": 40,
+        "line": 41,
         "method": "GET",
         "module": "app.services"
       },
@@ -21082,7 +21083,7 @@
         "declared_path": "/services/catalog/refresh",
         "file": "back/app/services/router.py",
         "handler": "refresh_service_catalogue",
-        "line": 46,
+        "line": 47,
         "method": "POST",
         "module": "app.services"
       },
@@ -21091,7 +21092,7 @@
         "declared_path": "/services/import",
         "file": "back/app/services/router.py",
         "handler": "import_service",
-        "line": 308,
+        "line": 316,
         "method": "POST",
         "module": "app.services"
       },
@@ -21100,7 +21101,7 @@
         "declared_path": "/services/mcp-candidates",
         "file": "back/app/services/router.py",
         "handler": "prepare_mcp_candidate",
-        "line": 62,
+        "line": 63,
         "method": "POST",
         "module": "app.services"
       },
@@ -21109,7 +21110,7 @@
         "declared_path": "/services/test-mcp",
         "file": "back/app/services/router.py",
         "handler": "test_mcp_connection",
-        "line": 132,
+        "line": 137,
         "method": "POST",
         "module": "app.services"
       },
@@ -21127,7 +21128,7 @@
         "declared_path": "/services/{service_id}",
         "file": "back/app/services/router.py",
         "handler": "delete_service",
-        "line": 268,
+        "line": 273,
         "method": "DELETE",
         "module": "app.services"
       },
@@ -21136,7 +21137,7 @@
         "declared_path": "/services/{service_id}",
         "file": "back/app/services/router.py",
         "handler": "get_service",
-        "line": 152,
+        "line": 157,
         "method": "GET",
         "module": "app.services"
       },
@@ -21145,7 +21146,7 @@
         "declared_path": "/services/{service_id}",
         "file": "back/app/services/router.py",
         "handler": "update_service",
-        "line": 220,
+        "line": 225,
         "method": "PUT",
         "module": "app.services"
       },
@@ -21154,7 +21155,7 @@
         "declared_path": "/services/{service_id}/conversation-access",
         "file": "back/app/services/router.py",
         "handler": "update_conversation_access",
-        "line": 236,
+        "line": 241,
         "method": "PATCH",
         "module": "app.services"
       },
@@ -21163,7 +21164,7 @@
         "declared_path": "/services/{service_id}/deletion-impact",
         "file": "back/app/services/router.py",
         "handler": "service_deletion_impact",
-        "line": 256,
+        "line": 261,
         "method": "GET",
         "module": "app.services"
       },
@@ -21172,7 +21173,7 @@
         "declared_path": "/services/{service_id}/export",
         "file": "back/app/services/router.py",
         "handler": "export_service",
-        "line": 285,
+        "line": 290,
         "method": "GET",
         "module": "app.services"
       },
@@ -21181,7 +21182,7 @@
         "declared_path": "/services/{service_id}/global-params",
         "file": "back/app/services/router.py",
         "handler": "get_global_params",
-        "line": 164,
+        "line": 169,
         "method": "GET",
         "module": "app.services"
       },
@@ -21190,7 +21191,7 @@
         "declared_path": "/services/{service_id}/global-params",
         "file": "back/app/services/router.py",
         "handler": "update_global_params",
-        "line": 181,
+        "line": 186,
         "method": "PUT",
         "module": "app.services"
       },
@@ -23592,6 +23593,8 @@
       },
       {
         "files": [
+          "front/app/services/components/ServiceIcon.vue",
+          "front/app/services/components/ServiceIdentityIcon.vue",
           "front/app/services/navigation.ts",
           "front/app/services/pages/index.vue"
         ],
@@ -23600,6 +23603,7 @@
       },
       {
         "files": [
+          "front/app/services/components/ServiceCard.vue",
           "front/app/services/components/ServicesList.vue",
           "front/app/services/pages/index.vue"
         ],

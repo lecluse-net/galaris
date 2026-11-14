@@ -19,6 +19,29 @@ from app.services.schemas import (
 
 
 @pytest.mark.asyncio
+async def test_service_list_counts_existing_active_and_inactive_connections(db):
+    from app.agent.models import Agent, Title
+    from app.connection import Connection
+
+    suffix = uuid4().hex
+    connected = await router.service.create_service(ServiceCreate(code=f"counted-{suffix}", label="Synthetic counted service"))
+    empty = await router.service.create_service(ServiceCreate(code=f"empty-{suffix}", label="Synthetic empty service"))
+    title = Title(label="Synthetic counter", gender="N")
+    db.add(title)
+    await db.flush()
+    agents = [Agent(code=f"counter-{index}-{suffix}", first_name="Synthetic", last_name="Counter", title_id=title.id)
+        for index in range(2)]
+    db.add_all(agents)
+    await db.flush()
+    db.add_all([Connection(service_id=connected.id, agent_id=agent.id, active=index == 0)
+        for index, agent in enumerate(agents)])
+    await db.flush()
+    counts = {item.id: item.connection_count for item in await router.list_services()}
+    assert counts[connected.id] == 2
+    assert counts[empty.id] == 0
+
+
+@pytest.mark.asyncio
 async def test_mcp_connection_delegates_with_existing_secret_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

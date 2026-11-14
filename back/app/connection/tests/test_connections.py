@@ -146,6 +146,7 @@ async def test_overview_batches_parameters_preserves_scope_and_hides_historized_
     tool = Service(code=f"overview_{uuid4().hex}", label="Synthetic connector", connection_schema={
         "params": {"host": {"type": "string"}, "token": {"type": "password"}},
     })
+    tool.icon = {"media_type": "image/svg+xml", "encoding": "text", "data": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>'}
     db.add_all([title, tool])
     await db.flush()
     agents = [Agent(title_id=title.id, code=f"overview-{index}-{uuid4().hex}", first_name=f"Synthetic {index}", last_name="Overview",
@@ -212,6 +213,11 @@ async def test_overview_batches_parameters_preserves_scope_and_hides_historized_
     agents[0].deleted_at = datetime.now(timezone.utc)
     await db.flush()
     options = await router.permission_connection_options(skip=0, limit=500)
+    assert all(row.service_icon == tool.icon for row in options)
+    assert "synthetic-legacy-secret" not in str(options)
+    service_choices = await router.connection_service.connection_tool_options(include_globals=False)
+    choice = next(item for item in service_choices if item["id"] == tool.id)
+    assert choice["icon"] == tool.icon and choice["global_params"] == {}
     assert [row.id for row in options] == [connection.id for connection in connections[2:-1]]
     assert [row.id for row in await router.permission_connection_options(skip=0, limit=1)] == [connections[2].id]
     assert [row.id for row in await router.permission_connection_options(skip=1, limit=1)] == [connections[3].id]

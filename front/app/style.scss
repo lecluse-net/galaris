@@ -33,6 +33,11 @@ h1 {
     color: inherit;
 }
 
+/* Shared by service editing and agent lifecycle actions; Quasar color utilities are important. */
+body.body--light .q-btn.solaire-warning-action.text-warning {
+    color: var(--solaire-warning-action-text) !important;
+}
+
 /* Keep application and editor tooltips readable, including lazy editor panels. */
 body .q-tooltip,
 body .ck.ck-balloon-panel.ck-tooltip .ck-tooltip__text {

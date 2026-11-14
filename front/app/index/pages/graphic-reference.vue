@@ -26,6 +26,7 @@
           <q-btn color="negative" icon="delete" :label="t('graphicReference.delete')" @click="notify" />
           <q-btn disable :label="t('graphicReference.disabled')" />
           <q-btn color="primary" loading :label="t('graphicReference.loading')" />
+          <q-btn flat color="warning" class="solaire-warning-action" icon="edit" :label="t('graphicReference.name')" />
           <q-btn flat round icon="edit" :aria-label="t('graphicReference.name')"><q-tooltip>{{ t('graphicReference.hint') }}</q-tooltip></q-btn>
           <q-btn flat round color="negative" icon="delete" :aria-label="t('graphicReference.delete')" @click="notify" />
           <q-btn-dropdown outline :label="t('graphicReference.menu')"><q-list><q-item v-close-popup clickable @click="notify"><q-item-section avatar><q-icon name="edit" /></q-item-section><q-item-section>{{ t('graphicReference.sample') }}</q-item-section></q-item></q-list></q-btn-dropdown>

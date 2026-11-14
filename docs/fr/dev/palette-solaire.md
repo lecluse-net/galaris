@@ -90,6 +90,15 @@ Les hexadécimaux du tableau sont la référence à consommer, sans interpolatio
 
 ## Adoption
 
+### Actions jaune/orange sur fond clair
+
+Les commandes **Modifier** des Services et **Démarrer / Arrêter** des Agents utilisent
+le même texte orange foncé `#A35F00` en mode clair (contraste 5,01:1 sur blanc).
+Ce jeton de lisibilité, `--solaire-warning-action-text`, est centralisé dans `solaire.ts`
+et appliqué par la classe `solaire-warning-action`. Il complète les 33 nuances de base
+sans changer leurs accents ni les autres boutons `warning`. Le mode sombre conserve
+sa couleur habituelle. La section Actions de la référence graphique montre ce bouton.
+
 ### Actions d’autorisation
 
 La page Permissions partage une même présentation pour ses bascules, badges et compteurs :

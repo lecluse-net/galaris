@@ -61,12 +61,16 @@
         >
           <template #option="scope">
             <q-item v-bind="scope.itemProps">
+              <q-item-section avatar><ServiceIdentityIcon :service="scope.opt.tool" /></q-item-section>
               <q-item-section>{{ scope.opt.label }}</q-item-section>
               <q-item-section side><ServiceOriginBadge :tool="scope.opt.tool" /></q-item-section>
             </q-item>
           </template>
           <template #selected-item="scope">
-            <span>{{ scope.opt.label }} <ServiceOriginBadge :tool="scope.opt.tool" class="q-ml-sm" /></span>
+            <span class="row items-center no-wrap">
+              <ServiceIdentityIcon :service="scope.opt.tool" :size="20" class="q-mr-sm" />
+              <span>{{ scope.opt.label }} <ServiceOriginBadge :tool="scope.opt.tool" class="q-ml-sm" /></span>
+            </span>
           </template>
         </q-select>
       </div>
@@ -294,7 +298,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { toolMessageKey } from '@/app/services/presentation'
 import { AgentSelect, getAgentSelection } from '@/app/agent'
-import { SystemServiceIcon, ServiceFilterSelect, ServiceOriginBadge } from '@/app/services'
+import { SystemServiceIcon, ServiceIdentityIcon, ServiceFilterSelect, ServiceOriginBadge } from '@/app/services'
 import connectionService, {
   saveFunctionPolicy,
   waitForFunctionPolicyWrites,
@@ -322,6 +326,7 @@ const { t } = useI18n()
 const agents = ref<{ id: number; first_name: string; last_name: string }[]>([])
 const tools = computed(() => [...new Map(connections.value.map(connection => [connection.service_id, {
   id: connection.service_id, code: connection.service_code, label: connection.service_label,
+  icon: connection.service_icon,
   can_edit: connection.service_can_edit, can_disable: connection.service_can_disable,
 }])).values()])
 async function loadAgents(): Promise<void> {

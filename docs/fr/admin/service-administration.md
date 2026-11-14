@@ -245,7 +245,7 @@ paramètres de connexion pour l'authentification et les en-têtes supplémentair
 placer un token dans l'adresse ou le code d'un appel. Pour Basic, déclarer aussi un paramètre
 de connexion pour l'identifiant et sélectionner le paramètre secret du mot de passe.
 
-Renseigner ensuite les valeurs des identifiants et des en-têtes dans **Paramètres globaux** ou **Connexions → Modifier**.
+Renseigner ensuite les valeurs des identifiants et des en-têtes dans **Paramètres** ou **Connexions → Modifier**.
 L'héritage, les surcharges, les valeurs imposées, le chiffrement et le masquage existants
 s'appliquent. Pour ces valeurs, la définition et l'export YAML conservent uniquement les noms des paramètres.
 Une connexion désactivée ou appartenant à un autre agent ne peut pas être utilisée.
@@ -445,7 +445,7 @@ La disponibilité d’une fonction découverte avec une connexion ne prouve pas 
 
 ## Choisir l’accès du Navigateur aux sites publics
 
-Dans **Services & connexions → Outils**, ouvrez les **Paramètres globaux** du Navigateur.
+Dans **Services & connexions → Services**, ouvrez les **Paramètres** du Navigateur.
 **Accès aux sites publics** (`public_access_mode`) propose **Sites publics autorisés** (`allow`, choix initial des nouvelles installations)
 pour éviter les demandes site par site, ou **Autorisation par site** (`ask`).
 Une instance existante conserve ses choix ; si ce paramètre était absent, la mise à jour ajoute

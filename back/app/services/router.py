@@ -18,6 +18,7 @@ from .schemas import (
     ServiceGlobalParamsUpdate,
     ServiceCreate,
     ServicePublic,
+    ServiceListItem,
     ServiceUpdate,
 )
 from .mcp_diagnostics import diagnose_mcp_connection
@@ -95,11 +96,15 @@ def _is_visible(record: ServiceModel) -> bool:
     return True
 
 
-@router.get("", response_model=List[ServicePublic])
+@router.get("", response_model=List[ServiceListItem])
 @authorize(privileges=[Privileges.SERVICE_ACCESS, Privileges.SERVICE_EDIT])
-async def list_services():
+async def list_services() -> list[ServiceListItem]:
+    from app.connection.facade import count_connections_by_service
+
     records = await service.get_all_service_records()
-    return [_to_public(record) for record in records if _is_visible(record)]
+    counts = await count_connections_by_service([record.id for record in records])
+    return [ServiceListItem(**_to_public(record).model_dump(), connection_count=counts.get(record.id, 0))
+        for record in records if _is_visible(record)]
 
 
 @router.get("/agents/{agent_id}/mcp-tools", response_model=List[ServiceMcpCatalogPublic])
@@ -290,7 +295,10 @@ async def export_service(service_id: int) -> Response:
             status_code=404,
             detail=await _detail("tool_not_found", service_id=service_id),
         )
-    content = service.serialize_to_yaml(record)
+    try:
+        content = service.serialize_to_yaml(record)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=await _detail("internal_export_forbidden")) from exc
     filename = f"{record.code}.yaml"
     return Response(
         content=content,

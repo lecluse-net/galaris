@@ -230,7 +230,7 @@ parameter names for authentication and additional headers; never put a token in 
 or calling code. For Basic authentication, also declare a username connection parameter
 and select the secret password parameter.
 
-Enter credential and header values in **Global parameters** or **Connections → Edit**. Existing inheritance,
+Enter credential and header values in **Parameters** or **Connections → Edit**. Existing inheritance,
 overrides, imposed values, encryption and masking apply. Definitions and YAML exports
 contain only parameter names for these values. Disabled connections and connections belonging to another
 agent cannot be used.
@@ -421,7 +421,7 @@ connection does not establish another agent's access.
 
 ## Choose Browser access to public sites
 
-Under **Services & connections → Services**, open the Browser's **Global parameters**.
+Under **Services & connections → Services**, open the Browser's **Parameters**.
 **Public site access** (`public_access_mode`) offers **Public sites allowed** (`allow`, initial choice for new installations) to avoid
 per-site requests, or **Per-site approval** (`ask`).
 Existing instances keep their choices; if this parameter was absent, the upgrade adds `ask`

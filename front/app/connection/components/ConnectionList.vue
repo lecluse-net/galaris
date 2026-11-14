@@ -93,6 +93,7 @@
       </template>
       <template v-slot:body-cell-service_id="props">
         <q-td :props="props">
+          <ServiceIdentityIcon :service="toolsById.get(props.row.service_id)" class="q-mr-sm" />
           {{ getToolLabel(props.row.service_id) }}
           <SystemServiceIcon v-if="isSystemTool(props.row.service_id)" class="q-ml-xs" />
           <ServiceOriginBadge :tool="serviceStore.services.find(tool => tool.id === props.row.service_id)" class="q-ml-sm" />
@@ -141,7 +142,7 @@
           <q-card flat bordered class="connection-mobile-card" @click="openDialog(props.row)">
             <q-card-section class="q-pa-md">
               <div class="row items-start no-wrap q-gutter-sm">
-                <q-icon name="link" color="primary" size="24px" />
+                <ServiceIdentityIcon :service="toolsById.get(props.row.service_id)" :size="28" />
                 <div class="col connection-mobile-heading">
                   <div class="text-weight-medium ellipsis">
                     {{ getToolLabel(props.row.service_id) }}
@@ -312,7 +313,7 @@ import { AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app
 import ConnectionForm from './ConnectionForm.vue'
 import ConnectionTestButton from './ConnectionTestButton.vue'
 import ConnectionPermissions from './ConnectionPermissions.vue'
-import { SystemServiceIcon, ServiceFilterSelect, ServiceOriginBadge, type Service } from '@/app/services'
+import { SystemServiceIcon, ServiceIdentityIcon, ServiceFilterSelect, ServiceOriginBadge, type Service } from '@/app/services'
 import { useI18n } from 'vue-i18n'
 import { connectionParamLabel, connectionParamOptions, toolMessageKey } from '@/app/services/presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'

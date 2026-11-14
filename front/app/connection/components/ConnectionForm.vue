@@ -385,7 +385,7 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { connectionParamLabel, connectionParamMessageKey, connectionParamOptions, sortedConnectionParamEntries } from '@/app/services/presentation'
-import { ConnectionParamInput, ServiceFilterSelect, type ConnectionParamDef } from '@/app/services'
+import { ConnectionParamInput, ServiceFilterSelect, type ConnectionParamDef, type ServiceIcon } from '@/app/services'
 import { AgentSelect } from '@/app/agent'
 import { consoleService, type ConsoleConnectionStatus } from '@/app/console/services/consoleService'
 import { mailService, type MailApproverOption } from '@/app/connection/services/mailService'
@@ -417,6 +417,7 @@ interface ServiceOption {
 }
 
 interface Service {
+  icon?: ServiceIcon | null
   id: number
   has_mail?: boolean
   has_calendar?: boolean
@@ -526,7 +527,7 @@ const isEdit = computed(() => !!form.value.id)
 
 const selectableTools = computed(() => props.serviceOptions.map(option => {
   const tool = props.tools.find(item => item.id === option.id)
-  return { id: option.id, label: option.label, code: tool?.code ?? '', can_edit: tool?.can_edit ?? false }
+  return { id: option.id, label: option.label, code: tool?.code ?? '', can_edit: tool?.can_edit ?? false, icon: tool?.icon }
 }))
 
 const selectedTool = computed(() =>

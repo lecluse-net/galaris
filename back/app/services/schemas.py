@@ -390,6 +390,12 @@ class ServicePublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ServiceListItem(ServicePublic):
+    """Service catalogue entry with its existing active and inactive connections."""
+
+    connection_count: int = Field(ge=0)
+
+
 class McpToolFunctionPublic(BaseModel):
     """MCP function exposed by an application tool."""
 

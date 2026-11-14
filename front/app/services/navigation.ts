@@ -6,7 +6,7 @@ const navigation: NavigationTree = {
     children: {
       tools: {
         label: 'nav.services',
-        icon: 'build',
+        icon: 'hub',
         order: 30,
         to: '/services',
         description: 'nav.services_desc',

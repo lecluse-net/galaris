@@ -89,6 +89,15 @@ Consume the table's hex values as the reference, without additional interpolatio
 
 ## Adoption
 
+### Yellow/orange actions on light surfaces
+
+Service **Edit** and Agent **Start / Stop** actions share dark orange text `#A35F00`
+in light mode (5.01:1 contrast on white). This readability token,
+`--solaire-warning-action-text`, is centralized in `solaire.ts` and applied through
+the `solaire-warning-action` class. It complements the 33 base shades without changing
+their accents or other `warning` buttons. Dark mode keeps its existing color.
+The graphic reference's Actions section displays this button.
+
 ### Permission actions
 
 The Permissions page shares one presentation across toggles, badges and counters:

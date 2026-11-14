@@ -7,7 +7,17 @@ facility. Its protocols provide files, messaging or API access. A **Connection**
 an agent to that service with its settings and credentials. MCP tools remain individual
 operations that an agent can call.
 
-Open **Services & connections → Services → Catalog**, find a provider and choose
+Open **Services & connections → Services** to see cards with the icon, a description excerpt,
+capabilities and the number of existing connections, including inactive connections.
+Card actions provide export, parameters, editing and deletion according to your privileges.
+Built-in services reuse the menu icons in blue wherever possible and cannot be exported.
+Services without a custom icon use the Services menu icon by default.
+Click the name or description to open the full description.
+
+The same icon accompanies the service in connection lists, filters and selectors,
+including when creating a connection or setting permissions.
+
+Click **New service** to open the catalog dialog, find a provider and choose
 **Configure a copy**. The standard editor opens: review the name, enter your instance
 addresses, select the useful protocols and save. Then create agent connections and set
 their permissions. Adding a preset neither grants access nor activates agent connections.
@@ -27,7 +37,7 @@ Catalog refreshes never replace installed services. A different preset version i
 indicated; **Configure a copy** lets you compare it under another name. Settings, secrets
 and permissions on the first copy remain intact.
 
-**New service** remains available for custom configurations. Add an SVG, PNG or GIF icon
+In the same dialog, **Create a custom service** opens an empty configuration. Add an SVG, PNG or GIF icon
 in its form; YAML export includes the image without a separate file or remote link.
 Share that single YAML file and import it on another installation. Connection secrets
 are not exported. Icons are limited to 128 KiB; PNG/GIF to 1024 pixels per side and 100

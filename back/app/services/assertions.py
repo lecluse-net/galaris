@@ -37,7 +37,7 @@ class ServiceCanEditAssertion(BaseAssertion):
         if service_id is not None:
             return await self._assert_service_id(service_id, context)
 
-        if route_name == "import_tool":
+        if route_name == "import_service":
             return await self._assert_import(params, context)
 
         code = str(params.get("code") or "")
