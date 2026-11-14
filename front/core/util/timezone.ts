@@ -1,6 +1,16 @@
 /** Local wall-clock conversion shared by agenda events and Goal planning. */
+const wallClockFormatters = new Map<string, Intl.DateTimeFormat>()
+function wallClockFormatter(timezone: string): Intl.DateTimeFormat {
+  const cached = wallClockFormatters.get(timezone)
+  if (cached) return cached
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  // Keep only formatting rules, with bounded memory as users explore timezones.
+  if (wallClockFormatters.size >= 32) wallClockFormatters.delete(wallClockFormatters.keys().next().value!)
+  wallClockFormatters.set(timezone, formatter)
+  return formatter
+}
 export function wallTime(instant: string | Date, timezone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(instant))
+  const parts = wallClockFormatter(timezone).formatToParts(new Date(instant))
   const value = (key: string) => parts.find(part => part.type === key)?.value ?? ''
   return `${value('year')}-${value('month')}-${value('day')}T${value('hour')}:${value('minute')}`
 }

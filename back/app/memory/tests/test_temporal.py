@@ -34,6 +34,7 @@ def global_timezone(monkeypatch):
     ({'hour': 9, 'minute': 30, 'timezone': 'Europe/Paris'}, '2026-03-29T00:00:00+00:00', '2026-03-29T10:00:00+00:00', '2026-03-29T07:30:00+00:00'),
     ({'hour': 2, 'minute': 30, 'timezone': 'Europe/Paris'}, '2026-03-29T00:00:00+00:00', '2026-03-29T22:00:00+00:00', None),
     ({'hour': 2, 'minute': 30, 'timezone': 'Europe/Paris'}, '2026-10-25T00:45:00+00:00', '2026-10-25T02:00:00+00:00', '2026-10-25T01:30:00+00:00'),
+    ({'minute': 30, 'timezone': 'Europe/Paris'}, '2026-10-25T00:45:00+00:00', '2026-10-25T02:30:00+00:00', '2026-10-25T01:30:00+00:00'),
 ])
 @pytest.mark.parametrize(('anchor_model', 'match'), [(MemoryTemporalAnchor, next_match), (TemporalAnchor, shared_next_match)], ids=['memory', 'shared'])
 def test_partial_calendar_matches(parts, start, end, expected, monkeypatch, anchor_model, match):
@@ -43,6 +44,36 @@ def test_partial_calendar_matches(parts, start, end, expected, monkeypatch, anch
     assert 'timezone' not in anchor.model_dump()
     result = match(anchor, datetime.fromisoformat(start), datetime.fromisoformat(end))
     assert result == (datetime.fromisoformat(expected) if expected else None)
+
+
+@pytest.mark.parametrize('zone', ['UTC', 'Europe/Paris', 'America/New_York', 'Australia/Lord_Howe', 'Pacific/Auckland'])
+def test_partial_calendar_first_match_agrees_with_a_utc_minute_oracle(monkeypatch, zone):
+    import random
+    from zoneinfo import ZoneInfo
+    monkeypatch.setenv('TZ', zone)
+    clock = random.Random(2026)
+    dates = [datetime(2026, 3, 29, tzinfo=timezone.utc), datetime(2026, 10, 25, tzinfo=timezone.utc),
+        datetime(2026, 11, 1, 4, tzinfo=timezone.utc), datetime(2026, 4, 4, 13, tzinfo=timezone.utc),
+        datetime(2026, 9, 26, 13, tzinfo=timezone.utc), datetime(2026, 12, 31, 22, tzinfo=timezone.utc)]
+    fields = ('year', 'month', 'day', 'weekday', 'hour', 'minute')
+    for _ in range(80):
+        start = clock.choice(dates) + timedelta(minutes=clock.randrange(-120, 180), seconds=clock.choice([0, 17]))
+        end = start + timedelta(minutes=clock.randrange(0, 361))
+        target = (start + timedelta(minutes=clock.randrange(-60, 421))).astimezone(ZoneInfo(zone))
+        values = (target.year, target.month, target.day, target.isoweekday(), target.hour, target.minute)
+        mask = clock.randrange(1, 64)
+        parts = {key: value for index, (key, value) in enumerate(zip(fields, values, strict=True)) if mask & (1 << index)}
+        expected = None
+        instant = start
+        while instant <= end:
+            wall = instant.astimezone(ZoneInfo(zone))
+            actual = dict(zip(fields, (wall.year, wall.month, wall.day, wall.isoweekday(), wall.hour, wall.minute), strict=True))
+            if all(actual[key] == value for key, value in parts.items()):
+                expected = instant
+                break
+            instant = instant.replace(second=0, microsecond=0) + timedelta(minutes=1)
+        for model, match in ((MemoryTemporalAnchor, next_match), (TemporalAnchor, shared_next_match)):
+            assert match(model.model_validate(parts), start, end) == expected, (zone, parts, start, end)
 
 
 @pytest.mark.parametrize('parts', [

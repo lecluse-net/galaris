@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { loadTypescript } from '../../test-support/load-typescript.mjs'
 const clock = loadTypescript(new URL('../../core/util/timezone.ts', import.meta.url), {})
-const { addMonths, isoWeekNumber, zonedInstant, wallTime, queryWindows, visibleDays, eventOnDay, positionEvents } = loadTypescript(new URL('./calendarDates.ts', import.meta.url), { '@/core/util': clock })
+const { addMonths, isoWeekNumber, zonedInstant, wallTime, queryWindows, visibleDays, eventOnDay, eventsByDay, positionEvents } = loadTypescript(new URL('./calendarDates.ts', import.meta.url), { '@/core/util': clock })
 
 test('ISO week numbers keep Monday boundaries and the week year across New Year', () => {
   for (const [day, week] of [
@@ -20,6 +20,26 @@ test('calendar queries cover a six-week month with bounded contiguous timezone-a
   assert.equal(windows[0].end, windows[1].start)
   assert.ok(windows.every(row => Date.parse(row.end) - Date.parse(row.start) <= 32 * 86400000))
   assert.equal(addMonths('2026-01-31', 1), '2026-02-28')
+  for (const zone of ['Europe/Paris', 'America/New_York', 'Pacific/Auckland']) {
+    const schedule = queryWindows(visibleDays('2026-10-20', 'list'), zone)
+    assert.equal(schedule.length, 1)
+    assert.ok(Date.parse(schedule[0].end) - Date.parse(schedule[0].start) <= 32 * 86400000)
+  }
+})
+test('grid grouping preserves source order, exclusive ends, midnight instants and timezone changes', () => {
+  const events = [
+    { event_id: 'all-day', all_day: true, start_date: '2026-03-28', end_date: '2026-03-30' },
+    { event_id: 'overnight', all_day: false, start: '2026-03-28T23:30:00Z', end: '2026-03-30T00:00:00Z' },
+    { event_id: 'instant', all_day: false, start: '2026-03-29T00:00:00Z', end: '2026-03-29T00:00:00Z' },
+    { event_id: 'outside', all_day: false, start: '2025-03-29T00:00:00Z', end: '2025-03-29T01:00:00Z' },
+  ]
+  const days = ['2026-03-28', '2026-03-29', '2026-03-30', '2026-03-31']
+  for (const zone of ['UTC', 'Europe/Paris', 'America/New_York', 'Pacific/Auckland', 'UTC']) {
+    const grouped = eventsByDay(events, days, zone)
+    for (const day of days) assert.deepEqual(grouped.get(day), events.filter(event => eventOnDay(event, day, zone)))
+  }
+  assert.deepEqual([...eventsByDay(events, [], 'UTC')], [])
+  assert.deepEqual([...eventsByDay([], days, 'UTC').values()], days.map(() => []))
 })
 test('event wall clocks are independent of browser timezone and reject a skipped DST hour', () => {
   assert.equal(zonedInstant('2026-07-20T09:00', 'Europe/Paris'), '2026-07-20T07:00:00.000Z')
@@ -55,4 +75,8 @@ test('overlap groups reuse free columns, expand into free space and include the 
       assert.ok(!vertical || !horizontal, `${a.event.event_id} obscures ${b.event.event_id}`)
     }
   }
+  const crowded = positionEvents(Array.from({ length: 1500 }, (_, n) => make(`crowded-${n}`, '09:00', '10:00')), '2026-11-12', 'UTC')
+  assert.equal(crowded.length, 1500)
+  assert.equal(new Set(crowded.map(row => row.column)).size, crowded.length)
+  assert.ok(crowded.every(row => row.columns === crowded.length && row.span === 1))
 })

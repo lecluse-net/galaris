@@ -2,6 +2,7 @@ import { wallTime, zonedInstant } from "@/core/util"
 import type { CalendarEvent } from './services/calendarService'
 
 export type CalendarView = 'month' | 'week' | 'day' | 'list'
+export const MONTH_VISIBLE_EVENTS = 3
 export const dayKey = (date: Date): string => date.toISOString().slice(0, 10)
 export function addDays(day: string, amount: number): string { const date = new Date(`${day}T12:00:00Z`); date.setUTCDate(date.getUTCDate() + amount); return dayKey(date) }
 export function addMonths(day: string, amount: number): string {
@@ -31,13 +32,29 @@ export function visibleDays(day: string, view: CalendarView): string[] {
 /** API windows are capped at 32 days; a month grid may cover six weeks. */
 export function queryWindows(days: string[], timezone: string): { start: string; end: string }[] {
   const result: { start: string; end: string }[] = []
-  for (let n = 0; n < days.length; n += 28) result.push({ start: zonedInstant(`${days[n]}T00:00`, timezone), end: zonedInstant(`${addDays(days[Math.min(n + 27, days.length - 1)]!, 1)}T00:00`, timezone) })
+  // 31 local days stay below 32 elapsed days even across a DST change.
+  for (let n = 0; n < days.length; n += 31) result.push({ start: zonedInstant(`${days[n]}T00:00`, timezone), end: zonedInstant(`${addDays(days[Math.min(n + 30, days.length - 1)]!, 1)}T00:00`, timezone) })
   return result
 }
 export function eventOnDay(event: CalendarEvent, day: string, timezone: string): boolean {
+  const { start, end } = eventDayRange(event, timezone)
+  return start <= day && (event.all_day ? end > day : end >= day)
+}
+function eventDayRange(event: CalendarEvent, timezone: string): { start: string; end: string } {
   const start = event.all_day ? event.start_date ?? event.start.slice(0, 10) : wallTime(event.start, timezone).slice(0, 10)
   const end = event.all_day ? event.end_date ?? event.end.slice(0, 10) : wallTime(new Date(Math.max(Date.parse(event.start), Date.parse(event.end) - 1)), timezone).slice(0, 10)
-  return start <= day && (event.all_day ? end > day : end >= day)
+  return { start, end }
+}
+/** Convert each occurrence's boundaries once for the whole visible grid. */
+export function eventsByDay(events: CalendarEvent[], days: string[], timezone: string): Map<string, CalendarEvent[]> {
+  const result = new Map(days.map(day => [day, [] as CalendarEvent[]]))
+  for (const event of events) {
+    const { start, end } = eventDayRange(event, timezone)
+    for (const day of days) {
+      if (start <= day && (event.all_day ? end > day : end >= day)) result.get(day)!.push(event)
+    }
+  }
+  return result
 }
 export const occurrenceKey = (event: Pick<CalendarEvent, 'event_id' | 'recurrence_key'>): string => `${event.event_id}:${event.recurrence_key}`
 export interface PositionedEvent { event: CalendarEvent; top: number; height: number; column: number; columns: number; span: number }
@@ -50,18 +67,20 @@ export function positionEvents(events: CalendarEvent[], day: string, timezone: s
   let group: PositionedEvent[] = [], until = 0
   const overlaps = (a: PositionedEvent, b: PositionedEvent) => a.top < b.top + b.height && b.top < a.top + a.height
   const finish = () => {
-    const count = Math.max(1, ...group.map(row => row.column + 1))
+    const columns: PositionedEvent[][] = []
+    for (const row of group) (columns[row.column] ??= []).push(row)
+    const count = columns.length
     for (const row of group) {
       row.columns = count
-      while (row.column + row.span < count && !group.some(other => other.column === row.column + row.span && overlaps(row, other))) row.span++
+      while (row.column + row.span < count && !columns[row.column + row.span]!.some(other => overlaps(row, other))) row.span++
     }
     group = []
   }
   for (const row of rows) {
     if (group.length && row.top >= until) finish()
-    const occupied = group.filter(other => other.top + other.height > row.top).map(other => other.column)
-    while (occupied.includes(row.column)) row.column++
-    group.push(row); until = Math.max(...group.map(other => other.top + other.height))
+    const occupied = new Set(group.filter(other => other.top + other.height > row.top).map(other => other.column))
+    while (occupied.has(row.column)) row.column++
+    group.push(row); until = Math.max(until, row.top + row.height)
   }
   finish(); return rows
 }

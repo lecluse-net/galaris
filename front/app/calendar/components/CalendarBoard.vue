@@ -10,8 +10,8 @@
           @click="createDay($event, day)" @keydown.enter.self.prevent="createDay($event, day)" @keydown.space.self.prevent="createDay($event, day)"
           @dragover.prevent @drop.prevent="drop($event, day)">
           <div class="day-heading"><q-btn flat round dense color="primary" :label="String(Number(day.slice(8)))" :aria-label="label(day, { dateStyle: 'full' })" @click.stop="emit('day', day)" /></div>
-          <div class="month-events"><CalendarEventChip v-for="event in byDay(day).slice(0, 3)" :key="occurrenceKey(event)" v-bind="chipProps(event)" compact @open="emit('open', $event)" />
-            <q-btn v-if="byDay(day).length > 3" outline dense no-caps color="primary" :label="t('agenda.more', { count: byDay(day).length - 3 })" @click.stop="emit('day', day)" /></div>
+          <div class="month-events"><CalendarEventChip v-for="event in byDay(day).slice(0, MONTH_VISIBLE_EVENTS)" :key="occurrenceKey(event)" v-bind="chipProps(event)" compact @open="emit('open', $event)" />
+            <q-btn v-if="byDay(day).length > MONTH_VISIBLE_EVENTS" outline dense no-caps color="primary" :label="t('agenda.more', { count: byDay(day).length - MONTH_VISIBLE_EVENTS })" @click.stop="emit('day', day)" /></div>
         </div>
         </template>
       </div>
@@ -55,7 +55,7 @@ import { useQuasar } from 'quasar'
 import type { SolaireColor } from '@/core/util'
 import { defaultCalendarColor } from '../presentation'
 import type { CalendarEvent, CalendarFeed } from '../services/calendarService'
-import { eventOnDay, isoWeekNumber, occurrenceKey, positionEvents, wallTime, type CalendarView } from '../calendarDates'
+import { MONTH_VISIBLE_EVENTS, eventsByDay, isoWeekNumber, occurrenceKey, positionEvents, wallTime, type CalendarView } from '../calendarDates'
 import CalendarEventChip, { type EventExecutionSummary } from './CalendarEventChip.vue'
 const props = defineProps<{ view: CalendarView; days: string[]; date: string; timezone: string; events: CalendarEvent[]; feeds: CalendarFeed[]; colors?: Record<number, SolaireColor>; executions: Record<string, EventExecutionSummary>; canCreate: boolean; canEdit: boolean }>()
 const emit = defineEmits<{ open: [event: CalendarEvent]; day: [day: string]; create: [day: string, time?: string, endTime?: string]; move: [event: CalendarEvent, day: string, time?: string] }>()
@@ -64,8 +64,8 @@ const timeScroll = ref<HTMLElement | null>(null), now = ref(new Date())
 const today = computed(() => wallTime(now.value, props.timezone).slice(0, 10))
 const nowMinutes = computed(() => { const wall = wallTime(now.value, props.timezone); return Number(wall.slice(11, 13)) * 60 + Number(wall.slice(14)) })
 const gridStyle = computed(() => ({ gridTemplateColumns: `58px repeat(${props.days.length}, minmax(0, 1fr))` }))
-const daysMap = computed(() => new Map(props.days.map(day => [day, props.events.filter(event => eventOnDay(event, day, props.timezone))])))
-const positionsMap = computed(() => new Map(props.days.map(day => [day, positionEvents(props.events, day, props.timezone)])))
+const daysMap = computed(() => eventsByDay(props.events, props.days, props.timezone))
+const positionsMap = computed(() => new Map(props.days.map(day => [day, positionEvents(byDay(day), day, props.timezone)])))
 function byDay(day: string): CalendarEvent[] { return daysMap.value.get(day) ?? [] }
 function positions(day: string) { return positionsMap.value.get(day) ?? [] }
 function label(day: string, options: Intl.DateTimeFormatOptions): string { return new Intl.DateTimeFormat(locale.value, { timeZone: 'UTC', ...options }).format(new Date(`${day}T12:00:00Z`)) }

@@ -108,15 +108,21 @@ def next_match(anchor: TemporalAnchor, start: datetime, end: datetime) -> dateti
             (current.day, anchor.day), (current.isoweekday(), anchor.weekday),
         )):
             candidates: list[datetime] = []
-            for hour in [anchor.hour] if anchor.hour is not None else range(24):
-                for minute in [anchor.minute] if anchor.minute is not None else range(60):
-                    naive = datetime.combine(current, time(hour, minute))
-                    for fold in (0, 1):
+            # Wall times are ordered within each fold. Keep its first valid
+            # instant, then compare both folds so a repeated hour stays correct.
+            for fold in (0, 1):
+                for hour in [anchor.hour] if anchor.hour is not None else range(24):
+                    for minute in [anchor.minute] if anchor.minute is not None else range(60):
+                        naive = datetime.combine(current, time(hour, minute))
                         instant = naive.replace(tzinfo=zone, fold=fold).astimezone(timezone.utc)
                         if instant.astimezone(zone).replace(tzinfo=None) != naive:
                             continue
                         if instant <= end and instant + timedelta(minutes=1) > start:
                             candidates.append(max(instant, start))
+                            break
+                    else:
+                        continue
+                    break
             if candidates:
                 return min(candidates)
         if current == last:

@@ -14,6 +14,82 @@ from app.task.models import Task, TaskStatus
 NOW = datetime(2026, 11, 12, 9, 30, tzinfo=timezone.utc)
 
 
+@pytest.mark.asyncio
+async def test_concurrent_readers_reuse_coverage_built_while_waiting_for_the_event_lock(committed_database, monkeypatch):
+    import asyncio
+    from sqlalchemy import event as sql_event
+    from core.database import get_db_session
+    from core.user import UserModel
+    from app.agent.models import Agent, Title
+    from app.connection import Connection
+    from app.services.models import Service
+    from app.calendar import ical
+    from app.calendar.models import CalendarProjectionWindow
+    from app.calendar.tests.test_volume import synthetic_calendar
+
+    async with get_db_session() as db:
+        user = UserModel(email='synthetic-coverage@example.test', hashed_password='unused', display_name='Synthetic owner', is_active=True)
+        title = Title(label='Synthetic', gender='M')
+        provider = Service(code='synthetic-coverage', label='Synthetic calendar', calendar_config={})
+        db.add_all([user, title, provider])
+        await db.flush()
+        owner = Agent(user_id=user.id, title_id=title.id, first_name='Synthetic', last_name='Coverage', code='synthetic-coverage-owner')
+        db.add(owner)
+        await db.flush()
+        connection = Connection(service_id=provider.id, agent_id=owner.id, active=True)
+        db.add(connection)
+        await db.flush()
+        feed = CalendarFeed(connection_id=connection.id, label='Synthetic recurrence', source_kind='internal')
+        db.add(feed)
+        await db.flush()
+        calendar_id, agent_id = feed.id, owner.id
+        content = synthetic_calendar(1, dense=True).replace(b'END:VEVENT', b'RRULE:FREQ=DAILY;COUNT=3\r\nEND:VEVENT')
+        await store.import_new_resources(feed, ical.split_resources(content))
+
+    began, release, second_read = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    original = asyncio.create_subprocess_exec
+    launches = 0
+    async def launch(*args, **kwargs):
+        nonlocal launches
+        launches += 1
+        if launches == 1:
+            began.set()
+            await release.wait()
+        return await original(*args, **kwargs)
+    def observed(connection, cursor, statement, parameters, context, many):
+        task = asyncio.current_task()
+        if task and task.get_name() == 'synthetic-second-coverage' and 'FROM calendar_projection_windows' in statement:
+            second_read.set()
+    async def read():
+        async with get_db_session() as db:
+            feed = await db.get(CalendarFeed, calendar_id)
+            await store.ensure_coverage(feed, datetime(2026, 1, 1, tzinfo=timezone.utc), datetime(2026, 1, 5, tzinfo=timezone.utc), agent_id)
+
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', launch)
+    sql_engine = committed_database.kw['bind'].sync_engine
+    sql_event.listen(sql_engine, 'after_cursor_execute', observed)
+    first = asyncio.create_task(read())
+    second = None
+    try:
+        await asyncio.wait_for(began.wait(), 5)
+        second = asyncio.create_task(read(), name='synthetic-second-coverage')
+        await asyncio.wait_for(second_read.wait(), 5)
+        release.set()
+        await asyncio.wait_for(asyncio.gather(first, second), 10)
+    finally:
+        release.set()
+        sql_event.remove(sql_engine, 'after_cursor_execute', observed)
+        for task in (first, second):
+            if task is not None and not task.done():
+                task.cancel()
+        await asyncio.gather(*(task for task in (first, second) if task is not None), return_exceptions=True)
+    assert launches == 1
+    async with get_db_session() as db:
+        assert await db.scalar(select(func.count()).select_from(CalendarProjectionWindow)) == 1
+        assert await db.scalar(select(func.count()).select_from(CalendarOccurrence)) == 3
+        assert await db.scalar(select(func.count()).select_from(CalendarTrigger)) == 0
+
+
 def appointment(**kwargs):
     return CalendarEventCreate(summary="Synthetic appointment", start=NOW + timedelta(minutes=30),
         end=NOW + timedelta(minutes=60), **kwargs)

@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from loguru import logger
 from sqlalchemy import and_, func, or_, select, true, tuple_, update
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, load_only
 
 from app.agent import inspect_task_states
 from app.agent.contracts import AgentTaskState
@@ -318,10 +318,14 @@ async def event_window(agent_id: int, start: datetime, end: datetime, *, calenda
     # Keep one indexed event lookup per occurrence even before PostgreSQL has
     # analyzed a large first import. A reorderable join can otherwise scan the
     # entire event index for each occurrence when its row estimate is still 1.
-    resource = (select(CalendarEvent).where(CalendarEvent.id == CalendarOccurrence.event_id)
+    resource = (select(CalendarEvent.id, CalendarEvent.uid, CalendarEvent.contact_id, CalendarEvent.revision,
+        CalendarEvent.recurring, CalendarEvent.conflict, CalendarEvent.synced_revision, CalendarEvent.deleted_at)
+        .where(CalendarEvent.id == CalendarOccurrence.event_id)
         .correlate(CalendarOccurrence).limit(1).lateral())
     event_row = aliased(CalendarEvent, resource)
-    statement = select(CalendarOccurrence, event_row).select_from(CalendarOccurrence).join(resource, true()).where(
+    statement = select(CalendarOccurrence, event_row).options(load_only(event_row.id, event_row.uid, event_row.contact_id,
+        event_row.revision, event_row.recurring, event_row.conflict, event_row.synced_revision, raiseload=True)
+    ).select_from(CalendarOccurrence).join(resource, true()).where(
         CalendarOccurrence.calendar_id.in_([feed.id for feed in feeds]), CalendarOccurrence.start_at < end,
         or_(CalendarOccurrence.end_at > start, (CalendarOccurrence.start_at == CalendarOccurrence.end_at) & (CalendarOccurrence.start_at >= start)))
     rows = (await get_db().execute(statement.order_by(CalendarOccurrence.start_at, CalendarOccurrence.id).limit(10001))).all()
@@ -355,11 +359,15 @@ async def upcoming_context_events(agent_id: int, now: datetime) -> tuple[list[Ca
     until = now + timedelta(days=runtime_settings.AGENDA_CONTEXT_DAYS)
     for feed in feeds:
         await store.ensure_coverage(feed, now, until, agent_id)
-    resource = (select(CalendarEvent).where(CalendarEvent.id == CalendarOccurrence.event_id)
+    resource = (select(CalendarEvent.id, CalendarEvent.uid, CalendarEvent.contact_id, CalendarEvent.revision,
+        CalendarEvent.recurring, CalendarEvent.conflict, CalendarEvent.synced_revision, CalendarEvent.deleted_at)
+        .where(CalendarEvent.id == CalendarOccurrence.event_id)
         .correlate(CalendarOccurrence).limit(1).lateral())
     event_row = aliased(CalendarEvent, resource)
     rows = (await get_db().execute(
-        select(CalendarOccurrence, event_row).select_from(CalendarOccurrence).join(resource, true()).where(
+        select(CalendarOccurrence, event_row).options(load_only(event_row.id, event_row.uid, event_row.contact_id,
+            event_row.revision, event_row.recurring, event_row.conflict, event_row.synced_revision, raiseload=True)
+        ).select_from(CalendarOccurrence).join(resource, true()).where(
             CalendarOccurrence.calendar_id.in_([feed.id for feed in feeds]),
             CalendarOccurrence.cancelled.is_(False),
             CalendarOccurrence.start_at < until,
@@ -614,18 +622,20 @@ async def execution_summaries(connection_id: int, occurrences: Sequence[Calendar
     if not identities:
         return []
     predicate = (CalendarFeed.connection_id == connection_id) & tuple_(CalendarTrigger.event_id, CalendarTrigger.recurrence_key).in_(identities)
-    totals = (await get_db().execute(select(CalendarTrigger.event_id, CalendarTrigger.recurrence_key, func.count())
-        .join(CalendarFeed, CalendarFeed.id == CalendarTrigger.calendar_id).where(predicate)
-        .group_by(CalendarTrigger.event_id, CalendarTrigger.recurrence_key))).all()
-    counts = {(event_id, key): total for event_id, key, total in totals}
-    rows = (await get_db().scalars(select(CalendarTrigger).join(CalendarFeed, CalendarFeed.id == CalendarTrigger.calendar_id)
+    # Window totals include all launches before DISTINCT ON retains the latest
+    # launch per action. Grid badges never need the encrypted dispatch snapshots.
+    rows = (await get_db().execute(select(CalendarTrigger, func.count().over(
+        partition_by=(CalendarTrigger.event_id, CalendarTrigger.recurrence_key)))
+        .options(load_only(CalendarTrigger.event_id, CalendarTrigger.recurrence_key, CalendarTrigger.task_id,
+            CalendarTrigger.status, raiseload=True)).join(CalendarFeed, CalendarFeed.id == CalendarTrigger.calendar_id)
         .where(predicate).distinct(CalendarTrigger.event_id, CalendarTrigger.recurrence_key, CalendarTrigger.action_key)
         .order_by(CalendarTrigger.event_id, CalendarTrigger.recurrence_key, CalendarTrigger.action_key, CalendarTrigger.launch_number.desc()))).all()
-    tasks = await inspect_task_states([row.task_id for row in rows if row.task_id])
-    result = {identity: CalendarExecutionSummary(event_id=identity[0], recurrence_key=identity[1], total=counts.get(identity, 0)) for identity in identities}
-    for row in rows:
+    tasks = await inspect_task_states(list({row.task_id for row, _ in rows if row.task_id}))
+    result = {identity: CalendarExecutionSummary(event_id=identity[0], recurrence_key=identity[1], total=0) for identity in identities}
+    for row, total in rows:
         state = _execution_state(row, tasks.get(row.task_id) if row.task_id else None, connection.agent_id)
         summary = result[(row.event_id, row.recurrence_key)]
+        summary.total = total
         summary.states[state] = summary.states.get(state, 0) + 1
     return list(result.values())
 

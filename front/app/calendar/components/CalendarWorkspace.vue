@@ -69,7 +69,7 @@
   </q-page>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
@@ -81,18 +81,19 @@ import { GoalAgendaPanel, goalService, type GoalAgendaEvent } from '@/app/goal'
 import { memoryService, type MemoryAgendaOccurrence } from '@/app/memory'
 import { PageHeader, ResourceDetailDialog, solaireColors, solaireCss, type SolaireColor } from '@/core/util'
 import { calendarLabel, calendarSourceLabel, defaultCalendarColor } from '../presentation'
-import { addDays, addMonths, isoWeekNumber, occurrenceKey, queryWindows, visibleDays, wallTime, zonedInstant, type CalendarView } from '../calendarDates'
+import { retainCalendarEvents, retainExecutionStates } from '../calendarState'
+import { MONTH_VISIBLE_EVENTS, addDays, addMonths, eventsByDay, isoWeekNumber, occurrenceKey, queryWindows, visibleDays, wallTime, zonedInstant, type CalendarView } from '../calendarDates'
 import { calendarService, type CalendarConnection, type CalendarEvent, type CalendarFeed, type EventDetail, type EventScope, type MutationReceipt } from '../services/calendarService'
 import CalendarBoard from './CalendarBoard.vue'
-import CalendarEventPanel from './CalendarEventPanel.vue'
-import CalendarEventEditor from './CalendarEventEditor.vue'
-import CalendarSettings from './CalendarSettings.vue'
 import CalendarConfirmDialog from './CalendarConfirmDialog.vue'
 import CalendarTimezoneSelect from './CalendarTimezoneSelect.vue'
 import CalendarMiniDate from './CalendarMiniDate.vue'
 import CalendarRowMenu from './CalendarRowMenu.vue'
 import CalendarSyncMonitor from './CalendarSyncMonitor.vue'
 import type { EventExecutionSummary } from './CalendarEventChip.vue'
+const CalendarEventPanel = defineAsyncComponent(() => import('./CalendarEventPanel.vue'))
+const CalendarEventEditor = defineAsyncComponent(() => import('./CalendarEventEditor.vue'))
+const CalendarSettings = defineAsyncComponent(() => import('./CalendarSettings.vue'))
 const { t, locale } = useI18n(), $q = useQuasar(), privilegeStore = usePrivilegeStore(), route = useRoute(), router = useRouter()
 const canRead = computed(() => privilegeStore.hasAnyPrivilege([privileges.CALENDAR_ACCESS, privileges.CALENDAR_EDIT]))
 const canEdit = computed(() => privilegeStore.hasAnyPrivilege([privileges.CALENDAR_EDIT]))
@@ -121,7 +122,7 @@ const today = computed(() => wallTime(new Date(), timezone.value).slice(0, 10))
 const date = ref(validDay(route.query.date) ? route.query.date : today.value)
 const view = ref<CalendarView>(views.includes(route.query.view as CalendarView) ? route.query.view as CalendarView : $q.screen.lt.md ? 'list' : 'month')
 const agentId = ref<number | null>(null), agentOptions = ref<{ value: number; label: string; hasAvatar: boolean }[]>([]), connections = ref<CalendarConnection[]>([])
-const feeds = ref<CalendarFeed[]>([]), selectedIds = ref<number[]>([]), events = ref<CalendarEvent[]>([]), executions = ref<Record<string, EventExecutionSummary>>({})
+const feeds = ref<CalendarFeed[]>([]), selectedIds = ref<number[]>([]), events = shallowRef<CalendarEvent[]>([]), executions = shallowRef<Record<string, EventExecutionSummary>>({})
 const loading = ref(false), refreshing = ref(false), error = ref(''), feedError = ref(''), stale = ref(false), sidebarOpen = ref(false)
 const selectedEvent = ref<CalendarEvent | null>(null), selectedFeed = computed(() => feeds.value.find(feed => feed.id === selectedEvent.value?.calendar_id))
 interface Editor { date: string; time?: string; endTime?: string; calendarId?: number; detail?: EventDetail; master?: EventDetail; recurrenceKey?: string }
@@ -213,7 +214,19 @@ async function loadFeeds(preserve = false): Promise<void> {
   if (!agent || !canRead.value) { loading.value = false; return }
   loading.value = true; feedError.value = ''
   const options = connections.value.filter(connection => connection.agent_id === agent)
-  const result = await Promise.allSettled(options.map(option => calendarService.list(option.id, context.signal)))
+  let existingFeeds: CalendarFeed[] = []
+  try { if (options.length > 1) existingFeeds = await calendarService.listForAgent(agent, context.signal) }
+  catch (caught) { if (isCancelledRequest(caught)) return }
+  if (!alive || token !== feedGeneration || agentId.value !== agent) return
+  const grouped = new Map<number, CalendarFeed[]>()
+  for (const feed of existingFeeds) {
+    const rows = grouped.get(feed.connection_id) ?? []
+    rows.push(feed); grouped.set(feed.connection_id, rows)
+  }
+  // Existing sources share one read. Missing projections retain their original
+  // connection initialization, and a failed grouped read falls back independently.
+  const result = await Promise.allSettled(options.map(option => grouped.has(option.id)
+    ? Promise.resolve(grouped.get(option.id)!) : calendarService.list(option.id, context.signal)))
   if (!alive || token !== feedGeneration || agentId.value !== agent) return
   const previous = new Set(feeds.value.map(feed => feed.id)), existing = selectedIds.value
   feeds.value = result.flatMap(row => row.status === 'fulfilled' ? row.value : [])
@@ -231,6 +244,7 @@ async function loadFeeds(preserve = false): Promise<void> {
 }
 async function loadEvents(clear = true): Promise<void> {
   eventController.abort(); stateController.abort(); eventController = new AbortController()
+  stateGeneration++
   const token = ++eventGeneration, agent = agentId.value
   if (clear) { events.value = []; executions.value = {}; selectedEvent.value = null }
   if (!agent || (!selectedIds.value.length && !(canReadGoals.value && showGoals.value) && !(canReadMemory.value && showMemory.value)) || !canRead.value) { events.value = []; refreshing.value = false; return }
@@ -249,11 +263,15 @@ async function loadEvents(clear = true): Promise<void> {
       }) : Promise.resolve([]),
     ])
     if (!alive || token !== eventGeneration) return
-    events.value = [...new Map([...result.flatMap(window => window.items), ...goalWindows.flatMap(window => window.items.map(goalEvent)), ...memoryWindows.flatMap(window => window.items.map(memoryEvent))].map(event => [occurrenceKey(event), event])).values()].sort((a, b) => a.start.localeCompare(b.start))
-    const next = { ...executions.value }
+    events.value = retainCalendarEvents(events.value, [...new Map([...result.flatMap(window => window.items), ...goalWindows.flatMap(window => window.items.map(goalEvent)), ...memoryWindows.flatMap(window => window.items.map(memoryEvent))].map(event => [occurrenceKey(event), event])).values()].sort((a, b) => a.start.localeCompare(b.start)))
+    const next: Record<string, EventExecutionSummary> = {}
+    for (const event of events.value) {
+      const key = occurrenceKey(event), previous = executions.value[key]
+      if (previous) next[key] = previous
+    }
     for (const event of events.value) if (event.goal_event) next[occurrenceKey(event)] = { total: 1, states: { [event.goal_event.state]: 1 } }
     for (const event of events.value) if (event.memory_event) next[occurrenceKey(event)] = { total: 0 }
-    executions.value = next
+    executions.value = retainExecutionStates(executions.value, next)
     if (selectedEvent.value?.goal_event) selectedEvent.value = events.value.find(event => event.event_id === selectedEvent.value?.event_id) ?? null
     if (selectedEvent.value?.memory_event) selectedEvent.value = events.value.find(event => event.event_id === selectedEvent.value?.event_id) ?? null
     stale.value = [...result, ...goalWindows].some(window => !window.complete)
@@ -265,7 +283,12 @@ async function loadStates(): Promise<void> {
   stateController.abort(); stateController = new AbortController()
   const token = ++stateGeneration, groups = new Map<number, CalendarEvent[]>()
   const connectionsByFeed = new Map(feeds.value.map(feed => [feed.id, feed.connection_id]))
+  // The month renders a bounded set of chips per day. Fetch hidden badges when their
+  // day is opened, rather than polling every occurrence in a dense month.
+  const visible = view.value === 'month' ? new Set([...eventsByDay(events.value, days.value, timezone.value).values()]
+    .flatMap(rows => rows.slice(0, MONTH_VISIBLE_EVENTS).map(occurrenceKey))) : null
   for (const event of events.value) {
+    if (visible && !visible.has(occurrenceKey(event))) continue
     const connection = connectionsByFeed.get(event.calendar_id)
     if (connection && !event.goal_event && !event.memory_event) { const group = groups.get(connection) ?? []; group.push(event); groups.set(connection, group) }
   }
@@ -277,10 +300,10 @@ async function loadStates(): Promise<void> {
       try {
         const states = await calendarService.executionStates(batch.connection, batch.items.map(event => ({ event_id: event.event_id, recurrence_key: event.recurrence_key })), stateController.signal)
         if (!alive || token !== stateGeneration) return
-        const next = { ...executions.value }; for (const row of states) next[occurrenceKey(row)] = row; executions.value = next
+        const next = { ...executions.value }; for (const row of states) next[occurrenceKey(row)] = row; executions.value = retainExecutionStates(executions.value, next)
       } catch (caught) {
         if (!alive || token !== stateGeneration || isCancelledRequest(caught)) return
-        const next = { ...executions.value }; batch.items.forEach(event => { next[occurrenceKey(event)] = { total: 0, failed: true } }); executions.value = next
+        const next = { ...executions.value }; batch.items.forEach(event => { next[occurrenceKey(event)] = { total: 0, failed: true } }); executions.value = retainExecutionStates(executions.value, next)
       }
     }
   }

@@ -7,7 +7,7 @@ from uuid import UUID, NAMESPACE_URL, uuid5
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from core.database import get_db
 from core.util import local_timezone_name
@@ -15,6 +15,7 @@ from core.util import local_timezone_name
 from . import retrieval, service
 from .access import effective_access_many
 from .models import MemoryItem
+from .query_policy import prepare_memory_read
 from .schemas import MemoryRecallRequest, MemorySearchHit
 from .source_access import readable_evidence_ids
 from .temporal import MemoryTemporalAnchor, next_match
@@ -76,6 +77,10 @@ async def memory_agenda(
         raise ValueError("Use an ordered timezone-aware window of at most 32 days")
     if not 1 <= limit <= 10_000:
         raise ValueError("Use a limit between 1 and 10000")
+    # Agenda is an independent read entry point, with the same extensive live
+    # permission predicates as search. Apply its interactive planner policy
+    # before the first query, even when this window contains no memories.
+    await prepare_memory_read()
     request = MemoryRecallRequest(agent_id=agent_id, contact_item_id=contact_item_id,
         strict_contact_scope=strict_contact_scope, exclude_agent_projections=True)
     global_request, _ = retrieval._branch_requests(request, limit=min(limit, 500))  # pyright: ignore[reportPrivateUsage]
@@ -83,6 +88,15 @@ async def memory_agenda(
     selected: list[MemoryAgendaOccurrence] = []
     cursor: UUID | None = None
     zone = local_timezone_name()
+    first_day = start.astimezone(ZoneInfo(zone)).date()
+    last_day = end.astimezone(ZoneInfo(zone)).date()
+    months = {(first_day + timedelta(days=offset)).month for offset in range((last_day - first_day).days + 1)}
+    # Only reject impossible candidates here. Missing components remain wildcards;
+    # next_match still owns exact dates, precision, weekdays and DST behavior.
+    year = MemoryItem.temporal["year"].as_integer()
+    month = MemoryItem.temporal["month"].as_integer()
+    filters.extend((or_(year.is_(None), year.between(first_day.year, last_day.year)),
+        or_(month.is_(None), month.in_(months))))
     while True:
         statement = select(MemoryItem).where(*filters, MemoryItem.temporal.is_not(None))
         if cursor is not None:

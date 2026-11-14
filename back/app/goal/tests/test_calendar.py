@@ -45,6 +45,46 @@ async def create_goal(db):
         recurrence=GoalRecurrence(start_at=START, timezone="Europe/Paris")))
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize('legacy', [False, True])
+async def test_agenda_reads_live_task_states_without_materializing_task_content(db, clock, legacy):
+    from sqlalchemy import event
+    goal = await create_goal(db)
+    agent_id = goal.agent_id
+    objective = '<p>' + 'Synthetic task context. ' * 5000 + '</p>'
+    task = Task(agent_id=agent_id, goal_id=goal.id, label='Synthetic agenda work',
+        objective=objective, data={'synthetic': 'Synthetic payload. ' * 5000}, status=TaskStatus.SUCCESS)
+    db.add(task)
+    await db.flush()
+    cycle = GoalCycle(goal_id=goal.id, task_id=task.id, sequence=1, created_at=START,
+        status=GoalCycleStatus.DECIDED, verdict=GoalVerdict.CONTINUE, reason='Synthetic retained explanation')
+    db.add(cycle)
+    await db.flush()
+    if not legacy:
+        db.add(GoalOccurrence(goal_id=goal.id, cycle_id=cycle.id, scheduled_at=START,
+            title=goal.title, timezone='UTC', state='linked'))
+    await db.commit()
+    task_id = task.id
+    db.expunge_all()
+    loaded = []
+    def observed(task, context):
+        loaded.append(bool(task.__dict__.get('objective') or task.__dict__.get('data')))
+    event.listen(Task, 'load', observed)
+    try:
+        page = await calendar.agenda_window(agent_id, START - timedelta(minutes=1), START + timedelta(days=1))
+    finally:
+        event.remove(Task, 'load', observed)
+    passage = next(item for item in page.items if item.task_uri == f'galaris://task/{task_id}')
+    assert passage.state == 'done' and passage.reason == 'Synthetic retained explanation'
+    assert not any(loaded)
+    task = await db.get(Task, task_id)
+    assert task.objective == objective
+    task.status = TaskStatus.ERROR
+    await db.commit()
+    page = await calendar.agenda_window(agent_id, START - timedelta(minutes=1), START + timedelta(days=1))
+    assert next(item for item in page.items if item.id == passage.id).state == 'error'
+
+
 def test_fixed_cadence_preserves_local_time_and_skips_invalid_dates():
     daily = GoalRecurrence(start_at=datetime(2026, 3, 28, 8, tzinfo=UTC), timezone="Europe/Paris")
     assert calendar.next_passage(daily, datetime(2026, 3, 29, 0, tzinfo=UTC)) == datetime(2026, 3, 29, 7, tzinfo=UTC)

@@ -8,6 +8,8 @@ from time import perf_counter
 import pytest
 from sqlalchemy import event as sql_event
 from app.calendar import ical, service, store, calculation
+from app.calendar.models import CalendarProjectionWindow, CalendarTrigger
+from sqlalchemy import func, select
 
 
 def synthetic_calendar(count, *, dense=False):
@@ -18,6 +20,34 @@ def synthetic_calendar(count, *, dense=False):
         finish = start + timedelta(minutes=30)
         components.append(f'BEGIN:VEVENT\r\nUID:{"dense" if dense else "sparse"}-{index}@example.test\r\nDTSTAMP:20200101T000000Z\r\nDTSTART:{start:%Y%m%dT%H%M%SZ}\r\nDTEND:{finish:%Y%m%dT%H%M%SZ}\r\nSUMMARY:Synthetic appointment {index}\r\nDESCRIPTION:Synthetic load data\r\nEND:VEVENT\r\n')
     return ('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n' + ''.join(components) + 'END:VCALENDAR\r\n').encode()
+
+
+@pytest.mark.asyncio
+async def test_cold_recurrence_coverage_batches_sql_without_scheduling_and_warm_reads_reuse_it(db, agent, personal, monkeypatch):
+    _, feed = personal
+    resources = ical.split_resources(synthetic_calendar(100, dense=True).replace(
+        b'END:VEVENT', b'RRULE:FREQ=DAILY;COUNT=3\r\nEND:VEVENT'))
+    await store.import_new_resources(feed, resources)
+    await db.commit()
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    end = start + timedelta(days=10)
+    statements = []
+    def observed(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+    sql_event.listen(db.bind.sync_engine, 'before_cursor_execute', observed)
+    try:
+        await store.ensure_coverage(feed, start, end, agent.id)
+        await db.commit()
+    finally:
+        sql_event.remove(db.bind.sync_engine, 'before_cursor_execute', observed)
+    # Network round trips stay bounded per batch, rather than per series.
+    assert len(statements) <= 20
+    assert await db.scalar(select(func.count()).select_from(CalendarProjectionWindow)) == 100
+    assert await db.scalar(select(func.count()).select_from(CalendarTrigger)) == 0
+    def unexpected(*args, **kwargs):
+        raise AssertionError('Warm recurrence coverage must not expand the source again')
+    monkeypatch.setattr(calculation, 'events_between', unexpected)
+    assert (await service.event_window(agent.id, start, end)).total == 300
 
 
 @pytest.mark.asyncio

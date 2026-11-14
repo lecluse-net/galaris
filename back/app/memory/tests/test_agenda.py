@@ -21,6 +21,83 @@ async def remember(agent, title, **parts):
 
 
 @pytest.mark.asyncio
+async def test_memory_agenda_avoids_jit_compilation_even_in_a_fresh_transaction(agents, memory_storage, db):
+    from sqlalchemy import event, text
+
+    owner, _ = agents
+    agent_id = owner.id
+    await remember(owner, 'Synthetic interactive date', year=2026, month=11, day=14)
+    await db.commit()
+    # A fresh HTTP request does not inherit search/graph's transaction-local
+    # planner policy. Force the expensive compiler on before opening Agenda.
+    await db.execute(text('SET LOCAL jit = on'))
+    connection = await db.connection()
+    settings = []
+
+    def observe(connection, cursor, statement, parameters, context, many):
+        if 'SELECT' in statement.upper() and 'memory_items' in statement:
+            settings.append(connection.exec_driver_sql('SHOW jit').scalar_one())
+
+    event.listen(connection.sync_connection, 'before_cursor_execute', observe)
+    try:
+        page = await memory_agenda(agent_id, datetime(2026, 11, 1, tzinfo=timezone.utc),
+            datetime(2026, 12, 1, tzinfo=timezone.utc))
+        assert len(page.items) == 1
+        assert settings and set(settings) == {'off'}
+    finally:
+        event.remove(connection.sync_connection, 'before_cursor_execute', observe)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('zone', ['Pacific/Kiritimati', 'Europe/Paris', 'America/Los_Angeles'])
+async def test_memory_agenda_keeps_partial_periods_across_local_year_and_month_boundaries(agents, memory_storage, monkeypatch, zone):
+    from zoneinfo import ZoneInfo
+    owner, _ = agents
+    monkeypatch.setenv('TZ', zone)
+    start = datetime(2026, 12, 31, 12, tzinfo=timezone.utc)
+    end = start + timedelta(days=2)
+    anchors = [dict(year=2026), dict(year=2027), dict(year=2028), dict(month=12), dict(month=1),
+        dict(month=2), dict(year=2027, month=1, day=1), dict(weekday=5), dict(hour=9),
+        dict(year=2026, month=1), dict(year=2027, month=12)]
+    rows = [await remember(owner, f'Synthetic boundary observation {index}', **anchor) for index, anchor in enumerate(anchors)]
+    expected = {rows[index].id for index in (1, 4, 6, 7, 8)}
+    if start.astimezone(ZoneInfo(zone)).year == 2026:
+        expected.update((rows[0].id, rows[3].id))
+    page = await memory_agenda(owner.id, start, end)
+    assert {item.memory_id for item in page.items} == expected and page.complete
+    assert len([item for item in page.items if item.memory_id == rows[8].id]) == 2
+
+
+@pytest.mark.asyncio
+async def test_memory_agenda_does_not_materialize_unrelated_historical_or_annual_dates(agents, db, monkeypatch):
+    from uuid import uuid4
+    from sqlalchemy import event
+    from app.memory.models import MemoryItem
+    owner, _ = agents
+    agent_id = owner.id
+    monkeypatch.setenv('TZ', 'UTC')
+    rows = [dict(id=uuid4(), owner_agent_id=agent_id, resource_id=f'synthetic-agenda-{index}',
+        title=f'Synthetic observation {index}', content_hash=f'{index:064x}', search_text='Synthetic evidence',
+        temporal=dict(year=2020, month=3) if index % 2 else dict(month=2)) for index in range(500)]
+    visible = dict(id=uuid4(), owner_agent_id=agent_id, resource_id='synthetic-visible',
+        title='Synthetic visible date', content_hash='f' * 64, search_text='Synthetic current evidence',
+        temporal=dict(year=2027, month=3, day=28))
+    await db.execute(MemoryItem.__table__.insert(), [*rows, visible])
+    await db.commit()
+    db.expunge_all()
+    loaded = []
+    def observed(item, context):
+        loaded.append(item.id)
+    event.listen(MemoryItem, 'load', observed)
+    try:
+        page = await memory_agenda(agent_id, datetime(2027, 3, 27, tzinfo=timezone.utc), datetime(2027, 3, 30, tzinfo=timezone.utc))
+    finally:
+        event.remove(MemoryItem, 'load', observed)
+    assert [item.memory_id for item in page.items] == [visible['id']]
+    assert len(loaded) <= 2
+
+
+@pytest.mark.asyncio
 async def test_memory_agenda_repeats_preserves_precision_identity_and_never_schedules(agents, memory_storage, db, monkeypatch):
     owner, peer = agents
     monkeypatch.setenv('TZ', 'Europe/Paris')

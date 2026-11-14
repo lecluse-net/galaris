@@ -49,3 +49,34 @@ async def test_isolated_calculation_preserves_loop_and_valid_recurrence():
     finally:
         beat.cancel()
         await asyncio.gather(beat, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_failed_projection_stops_its_other_worker_and_does_not_publish_partial_coverage(db, agent, personal, monkeypatch):
+    import sys
+    from sqlalchemy import func, select
+    from app.calendar import store
+    from app.calendar.models import CalendarProjectionWindow
+    from app.calendar.tests.test_volume import synthetic_calendar
+
+    _, feed = personal
+    content = synthetic_calendar(20, dense=True).replace(b'END:VEVENT', b'RRULE:FREQ=DAILY;COUNT=3\r\nEND:VEVENT')
+    content = content.replace(b'RRULE:FREQ=DAILY;COUNT=3', b'RRULE:FREQ=SECONDLY;COUNT=5000', 1)
+    rows = await store.import_new_resources(feed, ical.split_resources(content))
+    processes = []
+    original = asyncio.create_subprocess_exec
+    launches = 0
+    async def launch(*args, **kwargs):
+        nonlocal launches
+        launches += 1
+        # The second real process stays alive until cancellation kills it.
+        command = args if launches == 1 else (sys.executable, '-c', 'import time; time.sleep(30)')
+        process = await original(*command, **kwargs)
+        processes.append(process)
+        return process
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', launch)
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    with pytest.raises(calculation.CalendarCalculationError):
+        await store.project_events(feed, rows, agent_id=agent.id, start=start, end=start + timedelta(days=1), reschedule=False)
+    assert len(processes) == 2 and all(process.returncode is not None for process in processes)
+    assert await db.scalar(select(func.count()).select_from(CalendarProjectionWindow)) == 0

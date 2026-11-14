@@ -144,13 +144,33 @@ async def project_events(feed: CalendarFeed, events: Sequence[CalendarEvent], *,
         lower, upper = window_start, window_end
         parsed: dict[str, list[ical.ParsedEvent]] = defaultdict(list)
         if recurring:
+            async def expand(spans: Sequence[bytes]) -> None:
+                # Only pure calculations run concurrently; all SQL stays on the
+                # caller's contextual session. The worker pool still caps CPU at two.
+                tasks = [asyncio.create_task(calculation.events_between(span, lower, upper, feed.timezone, compact=True))
+                    for span in spans]
+                try:
+                    results = await asyncio.gather(*tasks)
+                finally:
+                    for task in tasks:
+                        if not task.done():
+                            task.cancel()
+                    await asyncio.gather(*tasks, return_exceptions=True)
+                for occurrences in results:
+                    for occurrence in occurrences:
+                        parsed[occurrence.uid].append(occurrence)
+
+            pending: list[bytes] = []
             for part in range(0, len(recurring), 10):
                 contents = [ical.join_resource(decrypt(event.content_encrypted), grouped[event.id]) for event in recurring[part:part + 10]]
                 combined = await asyncio.to_thread(ical.combine_resources, contents)
                 spans = [combined] if len(combined) <= 5 * 1024 * 1024 else contents
-                for span in spans:
-                    for occurrence in await calculation.events_between(span, lower, upper, feed.timezone, compact=True):
-                        parsed[occurrence.uid].append(occurrence)
+                pending.extend(spans)
+                while len(pending) >= 2:
+                    await expand(pending[:2])
+                    del pending[:2]
+            if pending:
+                await expand(pending)
         for event in batch:
             if not event.recurring:
                 parsed[event.uid] = [ical.master_event(decrypt(event.content_encrypted).encode(), feed.timezone)]
@@ -164,14 +184,14 @@ async def project_events(feed: CalendarFeed, events: Sequence[CalendarEvent], *,
             action_groups[action.event_id].append(action)
         occurrences: list[dict[str, object]] = []
         deadlines: list[dict[str, object]] = []
+        windows: list[dict[str, object]] = []
         for event in batch:
             if reschedule:
                 event.has_actions = True
                 event.actions_planned_until = upper
             if event.recurring:
-                covered = insert(CalendarProjectionWindow).values(id=uuid4(), event_id=event.id, event_revision=event.revision,
-                    start_at=lower, end_at=upper, built_at=now)
-                await get_db().execute(covered.on_conflict_do_update(constraint="uq_calendar_projection_window", set_={"built_at": now}))
+                windows.append(dict(id=uuid4(), event_id=event.id, event_revision=event.revision,
+                    start_at=lower, end_at=upper, built_at=now))
             for occurrence in parsed[event.uid]:
                 identity = uuid5(event.id, occurrence.recurrence_key)
                 payload = asdict(occurrence)
@@ -201,6 +221,9 @@ async def project_events(feed: CalendarFeed, events: Sequence[CalendarEvent], *,
                         recurrence_key=occurrence.recurrence_key, action_key=key, action_revision=action_revision, launch_number=0, event_revision=event.revision,
                         fingerprint=fingerprint, trigger_kind="alarm", occurrence_at=at, max_lateness_minutes=lateness,
                         dispatch_encrypted=encrypt(json.dumps(snapshot, default=str)), status="scheduled"))
+        if windows:
+            covered = insert(CalendarProjectionWindow).values(windows)
+            await get_db().execute(covered.on_conflict_do_update(constraint="uq_calendar_projection_window", set_={"built_at": now}))
         for index in range(0, len(occurrences), 200):
             projected = insert(CalendarOccurrence).values(occurrences[index:index + 200])
             await get_db().execute(projected.on_conflict_do_update(constraint="uq_calendar_occurrence",
@@ -217,13 +240,17 @@ async def ensure_coverage(feed: CalendarFeed, start: datetime, end: datetime, ag
     covered = select(CalendarProjectionWindow.id).where(CalendarProjectionWindow.event_id == CalendarEvent.id,
         CalendarProjectionWindow.event_revision == CalendarEvent.revision, CalendarProjectionWindow.start_at <= start,
         CalendarProjectionWindow.end_at >= end, CalendarProjectionWindow.built_at >= datetime.now(timezone.utc) - timedelta(days=30)).exists()
-    events = list((await get_db().scalars(select(CalendarEvent).where(CalendarEvent.calendar_id == feed.id,
+    identities = list((await get_db().scalars(select(CalendarEvent.id).where(CalendarEvent.calendar_id == feed.id,
         CalendarEvent.recurring, ~covered))).all())
-    if events:
-        # Serialize cache reconstruction with mutations, then re-read their revisions.
-        locked = list((await get_db().scalars(select(CalendarEvent).where(CalendarEvent.id.in_([event.id for event in events]))
-            .with_for_update().execution_options(populate_existing=True))).all())
-        await project_events(feed, locked, agent_id=agent_id, start=start, end=end, reschedule=False)
+    if identities:
+        # Lock identities first, then recheck at a fresh statement snapshot: a
+        # previous reader may have built this coverage while we waited. Load
+        # source content only for revisions still missing from the projection.
+        locked = list((await get_db().scalars(select(CalendarEvent.id).where(CalendarEvent.id.in_(identities))
+            .order_by(CalendarEvent.id).with_for_update())).all())
+        events = list((await get_db().scalars(select(CalendarEvent).where(CalendarEvent.id.in_(locked),
+            CalendarEvent.recurring, ~covered).execution_options(populate_existing=True))).all())
+        await project_events(feed, events, agent_id=agent_id, start=start, end=end, reschedule=False)
 
 
 def decode_occurrence(row: CalendarOccurrence) -> ical.ParsedEvent:

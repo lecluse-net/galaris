@@ -76,6 +76,7 @@ export const calendarService = {
   },
   async connections(signal?: AbortSignal): Promise<CalendarConnection[]> { return (await api.get('/calendars/connection-options', { signal })).data },
   async list(connectionId: number, signal?: AbortSignal): Promise<CalendarFeed[]> { return (await api.get('/calendars', { params: { connection_id: connectionId }, signal })).data },
+  async listForAgent(agentId: number, signal?: AbortSignal): Promise<CalendarFeed[]> { return (await api.get('/calendars', { params: { agent_id: agentId }, signal })).data },
   async events(agent: number, start: string, end: string, calendars: number[], signal?: AbortSignal): Promise<EventWindow> {
     return (await api.get('/calendars/events', { params: { agent_id: agent, start, end, calendar_ids: calendars }, paramsSerializer: { indexes: null }, signal })).data
   },

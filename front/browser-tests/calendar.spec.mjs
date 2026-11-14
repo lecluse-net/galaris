@@ -64,6 +64,62 @@ async function start(page, options = {}) {
   await mount(page, 'app/calendar/pages/index.vue', { route: '/calendar?agent_id=7&date=2026-11-12&view=month&timezone=Europe%2FParis', privileges: ['CALENDAR_EDIT', 'TASK_ACCESS'], ...options })
 }
 
+test('a sole new calendar source initializes in one request', async ({ page }) => {
+  await calendar(page)
+  let reads = 0
+  await page.route('**/api/calendars?*', route => {
+    reads++
+    const connection = new URL(route.request().url()).searchParams.get('connection_id')
+    return route.fulfill({ json: connection === '42' ? [feed] : [] })
+  })
+  await start(page)
+  await expect(page.getByRole('checkbox', { name: feed.label, exact: true })).toBeVisible()
+  expect(reads).toBe(1)
+})
+
+for (const mode of ['complete', 'missing', 'fallback']) test(`calendar groups existing source reads and preserves initialization and retry: ${mode}`, async ({ page }) => {
+  const feeds = [feed, { ...feed, id: 10, connection_id: 43, label: 'Synthetic second source', source_kind: 'caldav', is_default: false },
+    { ...feed, id: 11, connection_id: 44, label: 'Synthetic third source', source_kind: 'caldav', is_default: false }]
+  if (mode === 'complete') for (let n = 0; n < 9; n++) feeds.push({ ...feed, id: 12 + n, connection_id: 45 + n, label: `Synthetic additional source ${n}`, source_kind: 'caldav', is_default: false })
+  const model = await calendar(page, { feeds })
+  await jsonRoute(page, '**/api/calendars/connection-options', feeds.map(feed => ({ id: feed.connection_id, agent_id: 7, label: `Synthetic connection ${feed.connection_id}` })))
+  let recovered = false, groupedReads = 0
+  const individualReads = []
+  await page.route('**/api/calendars?*', route => {
+    const params = new URL(route.request().url()).searchParams
+    const connection = Number(params.get('connection_id'))
+    if (connection) {
+      individualReads.push(connection)
+      if (mode === 'fallback' && connection === 43 && !recovered) return route.fulfill({ status: 503, json: { detail: 'Synthetic unavailable source' } })
+      return route.fulfill({ json: model.feeds.filter(feed => feed.connection_id === connection) })
+    }
+    groupedReads++
+    expect(params.get('agent_id')).toBe('7')
+    if (mode === 'fallback' && !recovered) return route.fulfill({ status: 503, json: { detail: 'Synthetic grouped read failure' } })
+    const selected = mode === 'missing' && !recovered ? model.feeds.filter(feed => feed.connection_id !== 43) : model.feeds
+    return route.fulfill({ json: [...selected, { ...feed, id: 99, agent_id: 8, connection_id: 99, label: 'Synthetic other context' }] })
+  })
+  await start(page)
+  await expect(page.getByRole('checkbox', { name: feed.label, exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Synthetic third source', exact: true })).toBeVisible()
+  await expect(page.getByText('Synthetic other context', { exact: true })).toHaveCount(0)
+  expect(groupedReads).toBe(1)
+  expect(individualReads).toEqual(mode === 'complete' ? [] : mode === 'missing' ? [43] : [42, 43, 44])
+  if (mode === 'fallback') {
+    await expect(page.getByRole('alert')).toBeVisible()
+    recovered = true
+    await page.getByRole('button', { name: 'Retry', exact: true }).click()
+    await expect(page.getByRole('alert')).toHaveCount(0)
+  } else {
+    recovered = true
+    model.feeds[1].label = 'Synthetic renamed source'
+    await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+    await expect(page.getByRole('checkbox', { name: 'Synthetic renamed source', exact: true })).toBeVisible()
+  }
+  await expect(page.getByRole('checkbox', { name: model.feeds[1].label, exact: true })).toBeVisible()
+  expect(groupedReads).toBe(2)
+})
+
 for (const width of [390, 1440]) test(`calendar reference menu works with button, right click and keyboard at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 950 })
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
@@ -781,6 +837,45 @@ for (const width of [390, 1440]) test(`synchronization monitoring follows the re
     await page.evaluate(dark => window.testApp.dark(dark), dark)
     await page.screenshot({ path: testInfo.outputPath(`sync-failure-${dark ? 'dark' : 'light'}.png`), fullPage: true })
   }
+})
+
+test('background refresh applies live Task, sync and content changes even when the event revision stays unchanged', async ({ page }) => {
+  await page.clock.install()
+  const model = await calendar(page)
+  let state = 'done'
+  await page.route('**/api/calendars/execution-states', route => {
+    const body = route.request().postDataJSON()
+    return route.fulfill({ json: body.occurrences.map(row => ({ ...row, total: 1, states: { [state]: 1 } })) })
+  })
+  await start(page)
+  await expect(page.getByRole('button', { name: /Prepare synthetic review.*Completed 1/ })).toBeVisible()
+  state = 'running'
+  await page.clock.fastForward(30_000)
+  await expect(page.getByRole('button', { name: /Prepare synthetic review.*Running 1/ })).toBeVisible()
+  model.events = [{ ...event, summary: 'Synthetic provider update', sync_state: 'conflict' }]
+  await page.clock.fastForward(30_000)
+  const changed = page.getByRole('button', { name: /Synthetic provider update.*Running 1/ })
+  await expect(changed).toBeVisible()
+  await expect(changed.getByTitle('Synchronization conflict', { exact: true })).toBeVisible()
+  model.events = []
+  await page.clock.fastForward(30_000)
+  await expect(changed).toHaveCount(0)
+})
+
+test('a dense month loads badges for displayed appointments and opens all badge states in its day', async ({ page }) => {
+  const events = Array.from({ length: 120 }, (_, n) => ({ ...event, event_id: `synthetic-dense-${n}`, summary: `Synthetic dense appointment ${n}` }))
+  const model = await calendar(page, { events })
+  await start(page)
+  const appointments = page.getByRole('button', { name: /Synthetic dense appointment/ })
+  await expect(appointments.first()).toBeVisible()
+  const displayed = await appointments.count()
+  expect(displayed).toBeLessThan(events.length)
+  await expect.poll(() => model.stateReads.flatMap(batch => batch.occurrences).length).toBe(displayed)
+  model.stateReads.length = 0
+  await page.getByRole('group', { name: 'Calendar view', exact: true }).getByRole('button', { name: 'Day', exact: true }).click()
+  await expect.poll(() => model.stateReads.flatMap(batch => batch.occurrences).length).toBe(events.length)
+  await expect(page.getByRole('button', { name: /Synthetic dense appointment/ })).toHaveCount(events.length)
+  expect(new Set(model.stateReads.flatMap(batch => batch.occurrences.map(row => row.event_id))).size).toBe(events.length)
 })
 
 test('a late response for a previous period cannot replace the current calendar; errors remain retryable', async ({ page }) => {

@@ -8,6 +8,7 @@ from uuid import UUID, uuid4, uuid5
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import exists, or_, select, update
+from sqlalchemy.orm import load_only
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_db
@@ -196,10 +197,15 @@ async def agenda_window(agent_id: int, start: datetime, end: datetime, *,
     if managed_agents is not None:
         conditions.append(or_(Goal.referrer_agent_id.is_(None), Goal.referrer_agent_id.in_(managed_agents)))
     cap = 500
+    # Agenda states need neither Task payloads/history nor judgement evidence.
+    options = (load_only(Task.id, Task.status, Task.paused, raiseload=True),
+        load_only(GoalCycle.id, GoalCycle.goal_id, GoalCycle.sequence, GoalCycle.status,
+            GoalCycle.task_id, GoalCycle.review_task_id, GoalCycle.created_at,
+            GoalCycle.task_finished_at, GoalCycle.verdict, GoalCycle.reason, GoalCycle.error, raiseload=True))
     query = (select(GoalOccurrence, GoalCycle, Task).join(Goal, Goal.id == GoalOccurrence.goal_id)
         .outerjoin(GoalCycle, GoalCycle.id == GoalOccurrence.cycle_id)
         .outerjoin(Task, Task.id == GoalCycle.task_id)
-        .where(*conditions, GoalOccurrence.scheduled_at >= start, GoalOccurrence.scheduled_at < end)
+        .options(*options).where(*conditions, GoalOccurrence.scheduled_at >= start, GoalOccurrence.scheduled_at < end)
         .order_by(GoalOccurrence.scheduled_at, GoalOccurrence.id).limit(cap + 1))
     rows = (await db.execute(query)).all()
     items = {row[0].id: agenda_event(*row) for row in rows}
@@ -226,7 +232,7 @@ async def agenda_window(agent_id: int, start: datetime, end: datetime, *,
             break
     # Existing Goals keep their actual cycle history without inventing historical planning.
     legacy = (await db.execute(select(GoalCycle, Task, Goal.title).join(Goal, Goal.id == GoalCycle.goal_id)
-        .outerjoin(Task, Task.id == GoalCycle.task_id).where(*conditions,
+        .outerjoin(Task, Task.id == GoalCycle.task_id).options(*options).where(*conditions,
             GoalCycle.created_at >= start, GoalCycle.created_at < end,
             ~exists().where(GoalOccurrence.cycle_id == GoalCycle.id))
         .order_by(GoalCycle.created_at, GoalCycle.id).limit(cap + 1))).all()
@@ -235,13 +241,13 @@ async def agenda_window(agent_id: int, start: datetime, end: datetime, *,
             scheduled_at=cycle.created_at, timezone="UTC", state="linked")
         items[occurrence.id] = agenda_event(occurrence, cycle, task)
     # Delay-based Goals have only one predictable future instant; never fabricate a series.
-    goals = list((await db.scalars(select(Goal).where(*conditions, Goal.status == GoalStatus.ACTIVE,
+    goals = (await db.execute(select(Goal.id, Goal.title, Goal.next_cycle_at).where(*conditions, Goal.status == GoalStatus.ACTIVE,
         Goal.recurrence.is_(None), Goal.next_cycle_at >= start, Goal.next_cycle_at < end,
         # A durable passage replaces its prediction, even if eligibility was retained.
         ~exists().where(GoalOccurrence.goal_id == Goal.id,
             GoalOccurrence.scheduled_at == Goal.next_cycle_at),
         ~exists().where(GoalCycle.goal_id == Goal.id, GoalCycle.verdict.is_(None)))
-        .order_by(Goal.next_cycle_at, Goal.id).limit(cap + 1))).all())
+        .order_by(Goal.next_cycle_at, Goal.id).limit(cap + 1))).all()
     for goal in goals:
         if goal.next_cycle_at is not None:
             items[goal.id] = GoalAgendaEvent(id=goal.id, goal_id=goal.id, title=goal.title,

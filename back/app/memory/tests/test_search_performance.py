@@ -97,7 +97,7 @@ async def test_multilingual_search_has_bounded_queries_and_preserves_private_sco
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["search", "library"])
+@pytest.mark.parametrize("operation", ["search", "library", "agenda"])
 async def test_memory_reads_keep_connection_planner_defaults_after_commit_and_rollback(committed_database, operation):
     from core.database import get_db_session
     from app.document.library_queries import browse_document_library
@@ -109,8 +109,14 @@ async def test_memory_reads_keep_connection_planner_defaults_after_commit_and_ro
             if operation == "search":
                 result = await search_items(MemorySearchRequest(agent_id=1, query="Synthetic absent planner probe"))
                 assert result.hits == []
-            else:
+            elif operation == "library":
                 page = await browse_document_library(DocumentLibraryRequest(), managed_agent_ids=set())
                 assert page.entries == []
+            else:
+                from datetime import datetime, timedelta, timezone
+                from app.memory.agenda import memory_agenda
+                start = datetime.now(timezone.utc)
+                window = await memory_agenda(1, start, start + timedelta(days=1))
+                assert window.items == []
             await finish()
             assert await session.scalar(text("SHOW jit")) == original
