@@ -83,6 +83,7 @@
       v-model:pagination="pagination"
       :rows-per-page-options="[10, 20, 50, 100, 500]"
       class="connection-table"
+      @row-click="(_event, row) => openDialog(row)"
     >
       <template v-slot:body-cell-agent_id="props">
         <q-td :props="props">
@@ -97,7 +98,7 @@
         </q-td>
       </template>
       <template v-slot:body-cell-active="props">
-        <q-td :props="props">
+        <q-td :props="props" @click.stop>
           <q-toggle
             v-if="canEdit"
             :model-value="props.row.active"
@@ -125,7 +126,7 @@
         </q-td>
       </template>
       <template v-slot:body-cell-actions="props">
-        <q-td :props="props">
+        <q-td :props="props" @click.stop>
           <q-btn v-if="canEdit && !isSystemTool(props.row.tool_id)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
           <q-btn v-if="canEdit && !isSystemTool(props.row.tool_id)" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)" />
         </q-td>
@@ -133,7 +134,7 @@
 
       <template #item="props">
         <div class="q-table__grid-item col-12">
-          <q-card flat bordered class="connection-mobile-card">
+          <q-card flat bordered class="connection-mobile-card" @click="openDialog(props.row)">
             <q-card-section class="q-pa-md">
               <div class="row items-start no-wrap q-gutter-sm">
                 <q-icon name="link" color="primary" size="24px" />
@@ -155,6 +156,7 @@
                   :disable="connectionStore.loading || isSystemTool(props.row.tool_id)"
                   :label="props.row.active ? $t('connection.active') : $t('connection.inactive')"
                   :aria-label="props.row.active ? $t('connection.active') : $t('connection.inactive')"
+                  @click.stop
                   @update:model-value="toggleActive(props.row)"
                 />
                 <q-badge
@@ -183,7 +185,7 @@
 
             <template v-if="canEdit && !isSystemTool(props.row.tool_id)">
               <q-separator />
-              <q-card-actions align="right" class="q-px-sm q-py-xs">
+              <q-card-actions align="right" class="q-px-sm q-py-xs" @click.stop>
                 <q-btn
                   flat round color="primary" icon="edit" size="sm"
                   :aria-label="$t('common.edit')"
