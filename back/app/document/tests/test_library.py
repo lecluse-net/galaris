@@ -960,3 +960,36 @@ def test_document_content_diff_preserves_final_newline_changes() -> None:
     assert hunks
     assert additions == 1
     assert deletions == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("descending", [False, True])
+async def test_tree_range_titles_follow_filtered_order_without_loading_other_pages(db, agents, memory_storage, descending):
+    from app.document.schemas import DocumentLibraryRequest
+    from tests.sharing_fixtures import bind_private_shares
+    from core.storage import get_storage
+
+    owner, peer = agents
+    resource = await get_storage("native").create(b"Synthetic range contents")
+    rows = [{"id": uuid4(), "owner_agent_id": owner.id if index < 205 else peer.id,
+        "resource_id": resource, "provider_code": "native", "content_hash": "0" * 64,
+        "title": f"Synthetic document {index:03d}"}
+        for index in range(206)]
+    await bind_private_shares(db, rows, kind="document")
+    await db.execute(Document.__table__.insert(), rows)
+    titles = sorted([row["title"] for row in rows[:205]], reverse=descending)
+    page = await service.browse_document_library(DocumentLibraryRequest(
+        limit=100, include_tree_ranges=True, sort_desc=descending,
+    ), managed_agent_ids={owner.id})
+    assert len(page.entries) == 100 and page.total == 205
+    assert [(value.offset, value.size, value.first_title, value.last_title) for value in page.tree_ranges] == [
+        (offset, 100, titles[offset], titles[min(205, offset + 100) - 1]) for offset in (0, 100, 200)
+    ]
+    nested = await service.browse_document_library(DocumentLibraryRequest(
+        limit=100, offset=100, tree_range_size=10000, include_tree_ranges=True, sort_desc=descending,
+    ), managed_agent_ids={owner.id})
+    assert [(value.offset, value.first_title, value.last_title) for value in nested.tree_ranges] == [
+        (100, titles[100], titles[199]), (200, titles[200], titles[204]),
+    ]
+    leaf = await service.browse_document_library(DocumentLibraryRequest(limit=100, offset=200), managed_agent_ids={owner.id})
+    assert len(leaf.entries) == 5 and leaf.tree_ranges == []

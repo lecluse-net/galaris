@@ -401,3 +401,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0278 — Default personal agendas and Goal boundaries](0278-personal-agendas-and-goal-boundaries.md)
 - [0279 — Local agendas and background CalDAV synchronization](0279-local-agendas-and-caldav-synchronization.md)
 - [0280 — Private current Chat drafts](0280-private-chat-drafts.md)
+- [0284 — Server-owned document batch moves](0284-server-owned-document-batch-moves.md)

@@ -2447,6 +2447,13 @@ without passing it to linked private documents, keyboard use, failed saves and e
 while loading, denied access and replies after closing. Existing consumers are exercised in
 `chat-document-workspace.spec.mjs`, `topic-detail.spec.mjs` and `file-browser.spec.mjs`.
 
+`test_topic_library.py` checks the topic/tag catalogue and branches against live permissions,
+atomic tag replacement, preserved content and folders, conflicts and HTTP denials when either
+editing privilege is missing. `front/browser-tests/document-topics.spec.mjs` covers switching,
+tags shared by several topics, unassigned documents, errors and drag-and-drop on mobile and
+desktop. `e2e/specs/document-topics.spec.mjs` exercises saving and reloading in the complete
+shell, with the document open in the editor.
+
 `front/browser-tests/document-flows.spec.mjs` holds ancillary and deletion responses to verify
 usable content before catalogues, early row removal and restoration of the current row on refusal,
 saved titles appearing in both tree and list before rereads, coalesced notifications during slow
@@ -2502,6 +2509,23 @@ their meaning without disclosing private diagnostics.
   Document icon choices propagate between tree and list, persist on reopening and ignore stale
   reads or previous-session writes; resetting the default and retrying failures remain usable.
   In the list and tree, a document icon opens the document without an icon picker; choosing an icon remains available in the editor, and folder icons remain editable.
+- `front/core/util/treePages.test.mjs` checks contiguous range coverage and the limit of
+  100 branches per level, up to one million entries.
+  `front/browser-tests/tree-pages.spec.mjs` exercises selected folders and sub-document
+  ranges.
+  Range scenarios in `document-topics.spec.mjs` and `document-classification.spec.mjs`
+  verify requested offsets, recovery and the absence of full-collection loading.
+- `front/browser-tests/document-batch-moves.spec.mjs` checks that 210 selected documents
+  are submitted in one request and continue after leaving the view in all three trees.
+  `back/app/document/tests/test_bulk_moves.py` covers complete batches, ordering, access,
+  atomic conflicts and cycles, and compares SQL work before/after.
+  `e2e/specs/document-topics.spec.mjs` also checks batch ownership transfer and navigation
+  against the real backend.
+- `front/browser-tests/document-topics.spec.mjs`: mounted rows and loaded branches survive
+  tag changes and tab switches without rereading unrelated branches; multiple selection,
+  topic/owner moves, tag merging/deletion with conflict recovery, and topic menus.
+  `back/app/document/tests/test_topic_library.py` checks targeted reads with current access
+  and keyword batches that preserve all records after a refusal or version conflict.
 - `e2e/specs/document-folder-create.spec.mjs`: creation from a nested folder, persisted
   personal classification, sub-document creation and expansion after reloading the assembled library.
   `test_document_classification.py` also covers personal isolation, read-only classification,

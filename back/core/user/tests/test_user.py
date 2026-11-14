@@ -60,10 +60,14 @@ async def test_user_can_persist_simplified_chinese_language(
 
 
 @pytest.mark.asyncio
-async def test_document_open_mode_is_saved_per_user(client: AsyncClient) -> None:
+@pytest.mark.parametrize("field, default, modes, invalid_value", [
+    ("document_open_mode", "split", ("dialog", "split"), "window"),
+    ("document_library_mode", "folders", ("topics", "agents", "folders"), "unknown"),
+])
+async def test_document_preferences_are_saved_per_user(client: AsyncClient, field, default, modes, invalid_value) -> None:
     headers = await _registered_user_headers(client)
     initial = await client.get("/api/auth/me", headers=headers)
-    assert initial.json()["document_open_mode"] == "split"
+    assert initial.json()[field] == default
     other = await client.post(
         "/api/auth/users",
         headers=headers,
@@ -72,22 +76,22 @@ async def test_document_open_mode_is_saved_per_user(client: AsyncClient) -> None
     assert other.status_code == status.HTTP_201_CREATED
     other_id = other.json()["id"]
 
-    for mode in ("dialog", "split"):
+    for mode in modes:
         updated = await client.put(
-            "/api/auth/me", headers=headers, json={"document_open_mode": mode},
+            "/api/auth/me", headers=headers, json={field: mode},
         )
         assert updated.status_code == status.HTTP_200_OK
-        assert updated.json()["document_open_mode"] == mode
+        assert updated.json()[field] == mode
         reloaded = await client.get("/api/auth/me", headers=headers)
-        assert reloaded.json()["document_open_mode"] == mode
+        assert reloaded.json()[field] == mode
         unchanged = await client.get(f"/api/auth/users/{other_id}", headers=headers)
-        assert unchanged.json()["document_open_mode"] == "split"
+        assert unchanged.json()[field] == default
 
     invalid = await client.put(
-        "/api/auth/me", headers=headers, json={"document_open_mode": "window"},
+        "/api/auth/me", headers=headers, json={field: invalid_value},
     )
     assert invalid.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
-    unauthenticated = await client.put("/api/auth/me", json={"document_open_mode": "dialog"})
+    unauthenticated = await client.put("/api/auth/me", json={field: modes[0]})
     assert unauthenticated.status_code == status.HTTP_401_UNAUTHORIZED
 
 

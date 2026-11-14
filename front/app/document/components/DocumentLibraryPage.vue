@@ -71,9 +71,12 @@
       <q-card class="documents-mobile-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <DocumentNavigationButtons class="q-mr-sm" :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
-          <DocumentIcon v-if="mobileDocumentId" :document-id="mobileDocumentId" :document-type="mobileInitialDocument?.document_type" :title="mobileDocumentTitle" size="36px" class="q-mr-sm" />
-          <div class="text-h6 ellipsis">{{ mobileDocumentTitle }}</div>
-          <q-space />
+          <div ref="mobileHeading" class="documents-mobile-heading">
+            <div class="documents-mobile-heading-fallback row items-center no-wrap">
+              <DocumentIcon v-if="mobileDocumentId" :document-id="mobileDocumentId" :document-type="mobileInitialDocument?.document_type" :title="mobileDocumentTitle" size="32px" class="q-mr-sm" />
+              <div class="text-h6 ellipsis">{{ mobileDocumentTitle }}</div>
+            </div>
+          </div>
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
         <div class="documents-mobile-editor galaris-dialog-body">
@@ -84,6 +87,7 @@
             :document-id="mobileDocumentId"
             :agent-id="mobileDocumentAgentId"
             :initial-document="mobileInitialDocument"
+            :heading-target="mobileHeading"
             @loaded="loadedMobileDocumentId = $event.id"
             content-min-height="min(42vh, 420px)"
             @updated="onDocumentUpdated"
@@ -205,6 +209,7 @@ watch(canAccessChat, allowed => { if (!allowed) { chatOpen.value = false; chatSt
 const documentEditor = useTemplateRef<InstanceType<typeof DocumentEditor>>('documentEditor')
 const mobileChatHost = useTemplateRef<HTMLElement>('mobileChatHost')
 const mobileDocumentEditor = useTemplateRef<InstanceType<typeof DocumentEditor>>('mobileDocumentEditor')
+const mobileHeading = useTemplateRef<HTMLElement>('mobileHeading')
 const navigation = useTemplateRef<InstanceType<typeof DocumentLibraryNavigation>>('navigation')
 const entries = ref<DocumentLibraryEntry[]>([])
 const splitterModel = ref(30)
@@ -626,7 +631,9 @@ onBeforeUnmount(() => {
 .document-recent-badge { width: 8px; min-width: 8px; height: 8px; padding: 0; }
 .documents-create-dialog { width: min(560px, calc(100vw - 32px)); }
 .documents-mobile-dialog { display: flex; min-width: 0; flex-direction: column; }
-.documents-mobile-editor { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
+.documents-mobile-editor { min-height: 0; flex: 1 1 auto; overflow: hidden; }
+.documents-mobile-heading { flex: 1; min-width: 0; }
+.documents-mobile-heading:has(> :deep(.document-editor-heading)) > .documents-mobile-heading-fallback { display: none; }
 @media (min-width: 1024px) {
   .documents-page {
     display: flex;

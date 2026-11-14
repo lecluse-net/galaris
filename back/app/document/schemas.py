@@ -316,6 +316,17 @@ class DocumentOrderSort(BaseModel):
     parent_id: UUID | None = None
     descending: bool = False
 
+class DocumentOrderBatch(DocumentOrderMove):
+    document_ids: list[UUID] = Field(min_length=1, max_length=5000)
+
+    @model_validator(mode="after")
+    def validate_documents(self) -> DocumentOrderBatch:
+        if self.node.kind != "document" or self.node.id != self.document_ids[0] or len(set(self.document_ids)) != len(self.document_ids):
+            raise ValueError("Expected distinct documents in selection order")
+        if self.anchor is not None and self.anchor.kind == "document" and self.anchor.id in self.document_ids:
+            raise ValueError("A selected document cannot be its own anchor")
+        return self
+
 class DocumentTagIconWrite(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=100)
@@ -354,6 +365,11 @@ class DocumentLibraryRequest(BaseModel):
 
     query: str = Field(default="", max_length=4_000)
     keyword: str | None = Field(default=None, max_length=100)
+    document_ids: list[UUID] | None = Field(default=None, max_length=500)
+    topic_id: UUID | None = None
+    topic_classification: Literal["all", "classified", "unclassified"] = "all"
+    agent_classification: Literal["all", "classified", "unclassified"] = "all"
+    without_keywords: bool = False
     document_type: DocumentType | None = None
     limit: int = Field(default=50, ge=1, le=500)
     offset: int = Field(default=0, ge=0)
@@ -363,6 +379,8 @@ class DocumentLibraryRequest(BaseModel):
     include_descendants: bool = True
     include_owners: bool = False
     include_keywords: bool = True
+    include_tree_ranges: bool = False
+    tree_range_size: int | None = Field(default=None, ge=100)
     classification: Literal["all", "classified", "unclassified", "root"] = "all"
     owner_kind: Literal["agent", "user"] | None = None
     owner: int | None = Field(default=None, gt=0)
@@ -387,6 +405,83 @@ class DocumentLibraryRequest(BaseModel):
                 raise ValueError("The end must follow the start")
         return self
 
+
+class DocumentTopicGroup(BaseModel):
+    id: UUID
+    keywords: list[str]
+    document_count: int
+    without_keywords_count: int
+
+
+class DocumentTopicBranch(DocumentTopicGroup):
+    title: str
+
+
+class DocumentAgentBranch(BaseModel):
+    id: int
+    title: str
+    has_avatar: bool = False
+    keywords: list[str]
+    document_count: int
+    without_keywords_count: int
+
+
+class DocumentTopicMove(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    topic_id: UUID | None
+    expected_topic_id: UUID | None
+    expected_lock_version: int = Field(ge=1)
+    source_keyword: str | None = Field(default=None, min_length=1, max_length=100)
+    keyword: str | None = Field(default=None, min_length=1, max_length=100)
+    clear_keywords: bool = False
+
+    @field_validator("source_keyword", "keyword")
+    @classmethod
+    def normalize_keyword(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("A keyword cannot be empty")
+        return value
+
+
+class DocumentKeywordVersion(BaseModel):
+    id: UUID
+    expected_lock_version: int = Field(ge=1)
+
+class DocumentTopicBatchEntry(DocumentTopicMove):
+    id: UUID
+
+class DocumentTopicBatch(BaseModel):
+    documents: list[DocumentTopicBatchEntry] = Field(min_length=1, max_length=5000)
+
+    @model_validator(mode="after")
+    def distinct_documents(self) -> DocumentTopicBatch:
+        if len({entry.id for entry in self.documents}) != len(self.documents):
+            raise ValueError("Duplicate documents")
+        return self
+
+
+class DocumentKeywordChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    documents: list[DocumentKeywordVersion] = Field(min_length=1, max_length=500)
+    source_keywords: list[str] = Field(min_length=1, max_length=50)
+    keyword: str | None = Field(default=None, min_length=1, max_length=100)
+
+    @field_validator("source_keywords")
+    @classmethod
+    def validate_sources(cls, values: list[str]) -> list[str]:
+        if any(not value.strip() or len(value) > 100 for value in values):
+            raise ValueError("Invalid keyword")
+        return list(dict.fromkeys(value.strip() for value in values))
+
+    @field_validator("keyword")
+    @classmethod
+    def validate_target(cls, value: str | None) -> str | None:
+        return DocumentTopicMove.normalize_keyword(value)
+
 class DocumentLibraryEntry(BaseModel):
     parent_document_id: UUID | None = None
     children_count: int = Field(default=0, ge=0)
@@ -403,6 +498,12 @@ class DocumentFolderOption(BaseModel):
     kind: Literal["custom"]
     shared: bool
 
+class DocumentLibraryRange(BaseModel):
+    offset: int = Field(ge=0)
+    size: int = Field(ge=100)
+    first_title: str
+    last_title: str
+
 class DocumentLibraryPage(BaseModel):
     owners: list[DocumentOwnerOption] = Field(default_factory=lambda: list[DocumentOwnerOption]())
     query: str
@@ -410,6 +511,7 @@ class DocumentLibraryPage(BaseModel):
     keywords: list[str]
     total: int = Field(ge=0)
     has_more: bool
+    tree_ranges: list[DocumentLibraryRange] = Field(default_factory=list[DocumentLibraryRange])
 
 class ManagedDocumentDetail(BaseModel):
     item: DocumentDetail
@@ -507,6 +609,25 @@ class DocumentOwnerUpdate(BaseModel):
     expected_lock_version: int | None = Field(default=None, ge=1)
     kind: DocumentOwnerKind
     id: int = Field(gt=0)
+    keywords: list[str] | None = Field(default=None, max_length=50)
+
+    @model_validator(mode="after")
+    def require_keyword_version(self) -> DocumentOwnerUpdate:
+        if self.keywords is not None and self.expected_lock_version is None:
+            raise ValueError("Changing keywords requires the document lock version")
+        return self
+
+class DocumentOwnerBatchEntry(DocumentOwnerUpdate):
+    document_id: UUID
+
+class DocumentOwnerBatch(BaseModel):
+    documents: list[DocumentOwnerBatchEntry] = Field(min_length=1, max_length=5000)
+
+    @model_validator(mode="after")
+    def distinct_documents(self) -> DocumentOwnerBatch:
+        if len({entry.document_id for entry in self.documents}) != len(self.documents):
+            raise ValueError("Duplicate documents")
+        return self
 
 class DocumentFolderUpdate(BaseModel):
     expected_revision: int = Field(ge=1)

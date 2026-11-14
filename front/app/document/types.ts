@@ -101,6 +101,13 @@ export interface DocumentFolderOption {
   shared: boolean
 }
 
+export interface DocumentLibraryRange {
+  offset: number
+  size: number
+  first_title: string
+  last_title: string
+}
+
 export interface DocumentLibraryPage {
   owners?: DocumentOwnerOption[]
   query: string
@@ -108,6 +115,7 @@ export interface DocumentLibraryPage {
   total: number
   keywords: string[]
   has_more: boolean
+  tree_ranges?: DocumentLibraryRange[]
 }
 
 export interface DocumentTag {
@@ -136,6 +144,11 @@ export interface DocumentOrderMove {
 }
 
 export interface DocumentLibraryFilters {
+  document_ids?: string[]
+  topic_id?: string | null
+  topic_classification?: 'all' | 'classified' | 'unclassified'
+  agent_classification?: 'all' | 'classified' | 'unclassified'
+  without_keywords?: boolean
   document_type?: DocumentType | null
   query?: string
   keyword?: string | null
@@ -146,6 +159,8 @@ export interface DocumentLibraryFilters {
   include_descendants?: boolean
   include_owners?: boolean
   include_keywords?: boolean
+  include_tree_ranges?: boolean
+  tree_range_size?: number
   classification?: 'all' | 'classified' | 'unclassified' | 'root'
   owner_kind?: DocumentOwnerKind | null
   owner?: number | null
@@ -155,6 +170,31 @@ export interface DocumentLibraryFilters {
   updated_until?: string | null
   sort_by?: 'position' | 'title' | 'created_at' | 'updated_at' | 'document_type'
   sort_desc?: boolean
+}
+
+export interface DocumentTopicBranch {
+  id: string
+  title: string
+  keywords: string[]
+  document_count: number
+  without_keywords_count: number
+}
+
+export interface DocumentAgentBranch extends Omit<DocumentTopicBranch, 'id'> { id: number; has_avatar: boolean }
+
+export interface DocumentTopicMove {
+  topic_id: string | null
+  expected_topic_id: string | null
+  expected_lock_version: number
+  source_keyword?: string | null
+  keyword?: string | null
+  clear_keywords?: boolean
+}
+
+export interface DocumentKeywordChange {
+  documents: { id: string; expected_lock_version: number }[]
+  source_keywords: string[]
+  keyword: string | null
 }
 
 export interface ManagedDocumentDetail {

@@ -98,3 +98,36 @@ test('search changes reset the list selection and its range anchor', async ({ pa
   await list.getByText('Beta', { exact: true }).click({ modifiers: ['Shift'] })
   await expect(list.locator('[aria-selected="true"]')).toHaveCount(1)
 })
+
+test('a late editor selection acknowledgement preserves the newer multiple selection', async ({ page }) => {
+  await library(page)
+  const list = page.getByRole('list', { name: 'Unclassified documents', exact: true })
+  await list.getByText('Beta', { exact: true }).click()
+  await list.getByText('Omega', { exact: true }).click({ modifiers: ['Control'] })
+  await expect(list.locator('.document-row[aria-selected="true"]')).toHaveCount(2)
+  await page.evaluate(() => window.testApp.setProps({ selectedDocumentId: 'selection-1' }))
+  await expect(list.locator('.document-row[aria-selected="true"]')).toHaveCount(2)
+  // Navigating to an unrelated document still replaces the selection.
+  await page.evaluate(() => window.testApp.setProps({ selectedDocumentId: 'selection-0' }))
+  await expect(list.locator('.document-row[aria-selected="true"]')).toHaveCount(1)
+  await expect(list.locator('.document-row').filter({ has: page.getByText('Alpha', { exact: true }) })).toHaveAttribute('aria-selected', 'true')
+})
+
+test('retained document rows remain selectable during a background refresh', async ({ page }) => {
+  await library(page)
+  let release
+  await page.route('**/api/documents/library', async route => {
+    if (route.request().postDataJSON().classification === 'root') return route.fallback()
+    await new Promise(resolve => { release = resolve })
+    return route.fallback()
+  })
+  await page.evaluate(() => window.testApp.emitSocket('document.classification', { data: { user_id: 1, list_changed: true } }))
+  await expect.poll(() => Boolean(release)).toBe(true)
+  const list = page.getByRole('list', { name: 'Unclassified documents', exact: true })
+  try {
+    await list.getByText('Beta', { exact: true }).click()
+    await list.getByText('Omega', { exact: true }).click({ modifiers: ['Control'] })
+    await expect(list.locator('.document-row[aria-selected="true"]')).toHaveCount(2)
+  } finally { release() }
+  await expect(list.locator('.document-row[aria-selected="true"]')).toHaveCount(2)
+})

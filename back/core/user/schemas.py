@@ -49,10 +49,12 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
     language: Literal["en", "fr", "zh"] | None = None
     document_open_mode: Literal["split", "dialog"] | None = None
+    document_library_mode: Literal["folders", "topics", "agents"] | None = None
 
 class User(UserBase):
     id: int
     document_open_mode: Literal["split", "dialog"] = "split"
+    document_library_mode: Literal["folders", "topics", "agents"] = "folders"
     is_active: bool
     avatar_url: str | None
     created_at: datetime

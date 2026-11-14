@@ -210,6 +210,10 @@
     },
     {
       "source": "app/document",
+      "target": "app/topic"
+    },
+    {
+      "source": "app/document",
       "target": "core/api"
     },
     {
@@ -219,6 +223,10 @@
     {
       "source": "app/document",
       "target": "core/navigation"
+    },
+    {
+      "source": "app/document",
+      "target": "core/user"
     },
     {
       "source": "app/document",

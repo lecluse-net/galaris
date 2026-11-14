@@ -20,6 +20,8 @@ export default {
     refresh: '刷新',
     search: '搜索',
     loading: '加载中…',
+    treePage: '{first}–{last}',
+    treePageNames: '{first} - {last}',
     viewLoadError: '无法加载此视图，请重试。',
     yes: '是',
     no: '否',

@@ -8,3 +8,16 @@ export function reconcileLibrarySnapshot<T>(previous: T[], incoming: T[], key: (
   return previous.length === reconciled.length && reconciled.every((value, index) => value === previous[index])
     ? previous : reconciled
 }
+
+/** Preserve every unchanged subtree, including its node and children identities. */
+export function reconcileLibraryTree<T extends { id: string; children?: T[] }>(previous: T[], incoming: T[]): T[] {
+  const existing = new Map(previous.map(node => [node.id, node]))
+  const result = incoming.map(node => {
+    const current = existing.get(node.id)
+    if (!current) return node
+    if (node.children) node.children = reconcileLibraryTree(current.children ?? [], node.children)
+    const keys = Object.keys(node) as (keyof T)[]
+    return keys.length === Object.keys(current).length && keys.every(key => current[key] === node[key]) ? current : node
+  })
+  return previous.length === result.length && result.every((node, index) => node === previous[index]) ? previous : result
+}

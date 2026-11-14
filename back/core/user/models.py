@@ -23,6 +23,9 @@ class User(Base):
     document_open_mode: Mapped[str] = mapped_column(
         String(16), default="split", server_default="split", nullable=False,
     )
+    document_library_mode: Mapped[str] = mapped_column(
+        String(16), default="folders", server_default="folders", nullable=False,
+    )
     avatar: Mapped[Optional[bytes]] = mapped_column(
         LargeBinary,
         nullable=True,

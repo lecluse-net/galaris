@@ -9,6 +9,8 @@ from core.user import get_user_record
 from core.database import get_db
 from app.memory import MemoryNotFoundError, MemoryConflictError, MemoryPermissionError
 from app.document import DocumentNotFoundError, DocumentConflictError, DocumentPermissionError
+from app.document import DocumentTopicBranch, DocumentTopicMove
+from app.document import DocumentTopicBatch
 from app.dataset.facade import DatasetNotFoundError, DatasetConflictError, DatasetPermissionError
 from app.agent import current_management_scope
 from app.connection.facade import get_connection
@@ -104,6 +106,54 @@ async def read_topic_refs(
 async def create_topic(data: TopicCreate) -> TopicRead:
     await _require_global_scope()
     return await service.create(data)
+
+
+@router.get("/document-library", response_model=list[DocumentTopicBranch])
+@authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def read_document_topics() -> list[DocumentTopicBranch]:
+    return await service.document_library(await current_management_scope())
+
+
+@router.post("/documents/classification-batch", status_code=204)
+@authorize(privileges=[Privileges.TOPIC_EDIT])
+async def move_document_classifications(data: DocumentTopicBatch) -> None:
+    scope = await current_management_scope()
+    if not await check_privilege(await get_user_record(scope.user_id), [Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN], get_db()):
+        raise HTTPException(403, "Document editing is required")
+    try:
+        await service.move_library_documents(data, scope)
+    except (DocumentNotFoundError, service.TopicNotFoundError) as exc:
+        await get_db().rollback()
+        raise HTTPException(404, str(exc)) from exc
+    except DocumentPermissionError as exc:
+        await get_db().rollback()
+        raise HTTPException(403, str(exc)) from exc
+    except DocumentConflictError as exc:
+        await get_db().rollback()
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        await get_db().rollback()
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.put("/documents/{identity}/classification", status_code=204)
+@authorize(privileges=Privileges.TOPIC_EDIT)
+async def move_library_document(identity: UUID, data: DocumentTopicMove) -> None:
+    scope = await current_management_scope()
+    user = await get_user_record(scope.user_id)
+    if not await check_privilege(user, [Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN], get_db()):
+        raise HTTPException(status_code=403, detail="Document editing is required")
+    try:
+        await service.move_library_document(identity, data, scope)
+    except (DocumentNotFoundError, service.TopicNotFoundError) as exc:
+        await get_db().rollback()
+        raise HTTPException(404, detail=str(exc)) from exc
+    except DocumentPermissionError as exc:
+        await get_db().rollback()
+        raise HTTPException(403, detail=str(exc)) from exc
+    except DocumentConflictError as exc:
+        await get_db().rollback()
+        raise HTTPException(409, detail=str(exc)) from exc
 
 
 @router.put("/resources/{kind}/{identity}", response_model=TopicResourceAssignmentRead)

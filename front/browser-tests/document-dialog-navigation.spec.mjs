@@ -101,7 +101,8 @@ for (const width of [1440, 390]) {
   })
 }
 
-test('modal navigation preserves unsaved changes after refusal and edits made while a destination loads', async ({ page }) => {
+for (const width of [1440, 390]) test(`modal navigation preserves unsaved changes after refusal and edits made while a destination loads at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
   const state = await documents(page)
   await mount(page, 'core/util/components/WorkingDocumentDialog.vue', {
     route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, editable: true }, privileges: ['DOCUMENT_EDIT'],

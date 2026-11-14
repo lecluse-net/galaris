@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from uuid import UUID
 
 from loguru import logger
@@ -22,9 +22,21 @@ def register_document_observer(name: str, observer: DocumentObserver) -> None:
 
 
 async def notify_document(item_id: UUID, action: str) -> None:
+    await notify_documents([item_id], action)
+
+
+async def notify_documents(item_ids: Sequence[UUID], action: str) -> None:
+    """Keep per-resource observers while invalidating shared views only once per batch."""
+    if not item_ids:
+        return
     if action == "sharing":
         from core import websocket
         await websocket.emit("document", "invalidate", {}, None)
+    for item_id in item_ids:
+        await _notify_observers(item_id, action)
+
+
+async def _notify_observers(item_id: UUID, action: str) -> None:
     if _observers:
         # Do not hold a caller connection while a downstream session waits for
         # another slot in the pool. Notifications follow the source commit.
@@ -53,6 +65,7 @@ def reset_document_observers() -> None:
 
 __all__ = [
     "notify_document",
+    "notify_documents",
     "register_document_observer",
     "reset_document_observers",
     "unregister_document_observer",

@@ -20,6 +20,8 @@ export default {
     refresh: 'Rafraîchir',
     search: 'Rechercher',
     loading: 'Chargement…',
+    treePage: '{first}–{last}',
+    treePageNames: '{first} - {last}',
     viewLoadError: 'Impossible de charger cette vue. Veuillez réessayer.',
     yes: 'Oui',
     no: 'Non',

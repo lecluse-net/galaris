@@ -12,7 +12,7 @@ async function openFolderIcon(button) {
 
 async function folderAction(page, folder, action) {
   const menuLabel = `Actions for folder ${folder}`
-  await page.getByText(folder, { exact: true }).click({ button: 'right' })
+  await page.getByRole('tree').getByText(folder, { exact: true }).click({ button: 'right' })
   if (action !== menuLabel) await page.getByRole('menuitem', { name: action, exact: true }).click()
 }
 
@@ -212,7 +212,7 @@ test(`sub-documents expand recursively, recover loading and move between parents
   await surface.getByRole('button', { name: 'Retry', exact: true }).click()
   const children = location === 'tree' ? page.locator('.document-tree') : list.getByLabel('Sub-documents of Test document', { exact: true })
   await expect(children.getByText('Child notes', { exact: true })).toBeVisible()
-  expect(reads.filter(read => read.parent_document_id === 'doc-a').at(-1)).toMatchObject({ include_descendants: false, limit: 500 })
+  expect(reads.filter(read => read.parent_document_id === 'doc-a').at(-1)).toMatchObject({ include_descendants: false, limit: 100 })
   await toggle('Child notes', true)
   await expect(children.getByText('Grandchild notes', { exact: true })).toBeVisible()
   const before = reads.length
@@ -697,7 +697,8 @@ test('compact filters keep the orphan list unclassified while filtering owner, d
   await expect(page.getByLabel('Created from', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Filters', exact: true }).click()
   await page.getByRole('combobox', { name: 'Owner', exact: true }).click()
-  await expect(page.getByRole('option').first()).toHaveAccessibleName('Me')
+  // Preserve the personal-owner choice without freezing team/type group ordering.
+  await expect(page.getByRole('option', { name: 'Me', exact: true })).toBeVisible()
   await page.getByRole('option', { name: 'Alice', exact: true }).click()
   await page.getByLabel('Created from', { exact: true }).fill('2026-09-01')
   await page.getByLabel('Created through', { exact: true }).fill('2026-09-14')
@@ -803,7 +804,7 @@ test('tag creation, inline rename, reparenting and confirmed recursive deletion 
   expect(deletions.at(-1)).toMatchObject({ deleted: true })
 })
 
-test('tree loads all documents, retries, ignores list search and discards closed-branch responses', async ({ page }) => {
+test('tree loads only requested virtual ranges, retries, ignores list search and discards closed-branch responses', async ({ page }) => {
   const { requests } = await fixture(page)
   expect(requests.every(request => request.tag_id == null && ['unclassified', 'root'].includes(request.classification))).toBe(true)
   const branchRequests = []
@@ -829,8 +830,13 @@ test('tree loads all documents, retries, ignores list search and discards closed
   fail = false
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   const branch = page.locator('.q-tree')
+  await expect(branch.getByText('1–100', { exact: true })).toBeVisible()
+  expect(branchRequests.at(-1)).toMatchObject({ tag_id: 'work', include_descendants: false, limit: 100, offset: 0 })
+  await branch.getByText('1–100', { exact: true }).click()
   await expect(branch.getByText('Tag report 1', { exact: true })).toBeVisible()
-  expect(branchRequests.at(-1)).toMatchObject({ tag_id: 'work', include_descendants: false, limit: 500, offset: 500 })
+  await branch.getByText('501–502', { exact: true }).click()
+  await expect.poll(() => branchRequests.at(-1).offset).toBe(500)
+  expect(branchRequests.at(-1)).toMatchObject({ tag_id: 'work', include_descendants: false, limit: 100, offset: 500 })
   await expect(branch.getByText('Tag report 502', { exact: true })).toHaveCount(1)
   await expect(branch.getByLabel('Documents per page')).toHaveCount(0)
   const requestCount = branchRequests.length
@@ -862,7 +868,7 @@ test('folder actions edit name and icon without toggling the branch or requiring
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
   await icon.click()
   await expect(page.getByText('Project', { exact: true })).toHaveCount(0)
-  await page.getByText('Work', { exact: true }).dblclick()
+  await page.getByRole('tree').getByText('Work', { exact: true }).dblclick()
   await expect(page.getByLabel('Name', { exact: true })).toHaveCount(0)
   await editFolder(page, 'Work')
   await page.getByLabel('Name', { exact: true }).fill('Renamed folder')
@@ -919,7 +925,7 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await page.mouse.click(width - 8, 990)
   await expect(menu).toHaveCount(0)
   // Escape and backdrop dismissal above remain usable even when the menu covers the row.
-  const trigger = page.getByText('Work', { exact: true })
+  const trigger = page.getByRole('tree').getByText('Work', { exact: true })
   await trigger.focus()
   await page.keyboard.press('Shift+F10')
   await expect(menu).toBeVisible()
@@ -929,7 +935,7 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await menu.getByRole('menuitem', { name: 'Create Text document', exact: true }).click()
   await expect(menu).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1)?.args[0]?.id)).toBe('work')
-  await page.getByText('Work', { exact: true }).focus()
+  await page.getByRole('tree').getByText('Work', { exact: true }).focus()
   await page.keyboard.press('Shift+F10')
   await menu.getByRole('menuitem', { name: 'Expand all in this folder', exact: true }).press('Enter')
   await expect(page.getByText('Project', { exact: true })).toBeVisible()
@@ -1197,7 +1203,7 @@ test('failed moves keep existing classification and inline rename failures retai
   await expect.poll(() => attempts).toBe(1)
   await expect(create).toBeEnabled()
   await expect(page.getByLabel('Name', { exact: true })).toHaveCount(0)
-  await expect(page.getByText('New folder', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('tree').getByText('New folder', { exact: true })).toHaveCount(0)
 })
 
 test('late search responses cannot replace current results and request errors can be retried', async ({ page }) => {

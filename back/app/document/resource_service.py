@@ -120,6 +120,18 @@ def _set_keywords(item: Document, values: Sequence[str]) -> bool:
     item.keywords = normalized
     return True
 
+
+def replace_document_keywords(item: Document, values: Sequence[str]) -> bool:
+    """Apply keyword metadata after the caller has authorized and locked the document."""
+    _assert_not_source_managed(item)
+    if item.read_only:
+        raise DocumentPermissionError("A read-only document cannot change keywords")
+    if not _set_keywords(item, values):
+        return False
+    item.updated_at = datetime.now(timezone.utc)
+    _set_semantic_fingerprint(item)
+    return True
+
 def _search_text(content: bytes, *, content_type: str, media_type: str) -> str:
     if content_type != "text" and not media_type.startswith("text/"):
         return ""
@@ -520,11 +532,12 @@ async def transfer_document_owner(
     *,
     actor_agent_id: int | HumanActor,
     include_revisions: bool = True,
+    defer_commit: bool = False,
 ) -> Document:
     """Transfer a document while preserving the current editor's write access."""
     from .sharing_inheritance import lock_sharing, prepare_own_sharing, finish_own_sharing
     await lock_sharing()
-    item = await _get_item_record(document_id, revisions=include_revisions)
+    item = await _get_item_record(document_id, revisions=include_revisions, contents=not defer_commit)
     if item is None or item.node_kind != "document":
         raise DocumentNotFoundError("Document not found.")
     _assert_not_source_managed(item)
@@ -544,7 +557,20 @@ async def transfer_document_owner(
         data.kind == "agent" and item.owner_agent_id == data.id and item.owner_user_id is None
     ) or (data.kind == "user" and item.owner_user_id == data.id and item.owner_agent_id is None)
     if unchanged:
+        if data.keywords is not None:
+            if defer_commit:
+                if item.read_only:
+                    raise DocumentPermissionError("A read-only document cannot change keywords.")
+                if _set_keywords(item, data.keywords):
+                    item.lock_version += 1
+                    item.updated_at = datetime.now(timezone.utc)
+                return item
+            return await update_item(document_id, DocumentUpdate(expected_revision=data.expected_revision,
+                expected_lock_version=data.expected_lock_version, keywords=data.keywords),
+                actor_agent_id=actor_agent_id, include_revisions=include_revisions)
         return item
+    if data.keywords is not None and item.read_only:
+        raise DocumentPermissionError("A read-only document cannot change keywords.")
     if _is_goal_document(item):
         raise DocumentPermissionError(
             "The title, owner, and Goal association of a tracking document are controlled by its Goal "
@@ -607,12 +633,26 @@ async def transfer_document_owner(
     await db.flush()
     has_grants = await has_document_grants(document_id)
     item.visibility = "shared" if has_grants or item.global_access > 0 or item.group_access > 0 else "private"
-    await finish_own_sharing(item)
+    if defer_commit:
+        from .sharing_inheritance import capture_intent
+        await capture_intent(item.share_id)
+    else:
+        await finish_own_sharing(item)
+    keywords_changed = data.keywords is not None and _set_keywords(item, data.keywords)
+    if keywords_changed:
+        item.updated_at = datetime.now(timezone.utc)
+        _set_semantic_fingerprint(item)
+    if defer_commit:
+        item.lock_version += 1
+        await db.flush()
+        return item
     await commit_item_sharing(item)
     loaded = await _get_item_record(document_id, revisions=include_revisions)
     assert loaded is not None
     await _emit_document_event("update", loaded)
     await notify_document(loaded.id, "update")
+    if keywords_changed:
+        await notify_document(loaded.id, "index")
     return loaded
 
 async def list_document_folders(agent_id: int) -> list[str]:

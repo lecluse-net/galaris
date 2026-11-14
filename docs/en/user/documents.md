@@ -211,6 +211,67 @@ contextual toolbar, or **Ctrl/Cmd+click**, to follow its target. Read-only views
 Common commands are not repeated. To edit a link or equation, select it
 and use the corresponding toolbar button.
 
+## Organize by folders, topics or agents
+
+Use **Folders**, **Topics** and **Agents** to switch library views immediately. Your last
+selected tab is saved to your account and restored when reopening, including in another
+browser. Without a saved preference, **Folders** remains the default and preserves your
+manual organization.
+
+**Topics** groups accessible documents by topic, then by tag (the document’s keyword).
+**Agents** groups them by their owning agent, then by tag. A tag appears once within each
+group and can appear under several groups. **All documents** opens the complete group;
+**Without a tag** groups its documents without keywords. These navigation entries use
+different colored markers from the tags.
+
+The lower list keeps unassigned documents available: without manual placement in Folders,
+without a topic in Topics, or without an owning agent in Agents. Human-owned documents
+therefore remain accessible in that last list. Search and filters remain available there.
+
+In **Topics**, drag a document from one tag branch to another to change its topic and
+replace the source tag with the destination tag. Other tags, content, permissions and
+manual folders are preserved. Dropping onto the topic itself changes only the topic;
+dropping into the lower list removes the topic while preserving tags. Changes require
+permission to edit topics and the document. If the document has changed in the meantime,
+the move is refused and only its classification is reread. Dropping on **Without a tag**
+removes all its tags.
+
+In **Agents**, the same move transfers ownership to the destination agent and replaces
+the source tag with the destination tag. Other tags are preserved; dropping on an agent
+preserves every tag. Dropping into the lower list places documents under your personal
+ownership. Your editing rights are preserved.
+
+Use Ctrl/Cmd or Shift to select several documents, topics or tags. Dragging
+moves the entire selection; hovering over a tab during a drag switches trees. Context
+menus (right-click, the **…** button or Shift+F10) move the selection and open document
+bulk operations. Topics can be created, edited, deleted or merged; tags can be renamed,
+deleted or merged. Dropping a topic or tag on a compatible entry prepares a merge for
+confirmation. Deleting a topic or tag preserves documents. Topic actions apply throughout
+the application; renaming, removing or merging a tag affects all accessible documents
+carrying it. Confirmations explain this scope. A refused operation keeps the entries and
+allows a retry.
+
+Above 100 entries, a branch is split into virtual folders labeled with the names of its
+first and last documents, identified by a cyan zipped-folder icon. The names follow each
+other when space allows; otherwise, each is truncated with a balanced share of the available
+width. Hovering shows both complete names. Opening a range loads only its own 100 documents
+at most. Very large collections add range levels, with at most 100 folders per level.
+This grouping does not move documents or change their classification.
+
+When merging tags, choose the destination from the selected tags; the first is selected
+by default.
+
+Selection moves and bulk ownership changes are submitted to the server as one operation,
+up to 5,000 documents. You can then navigate to another application page while processing
+continues. Moves report their result in a notification. An access denial or version
+conflict rolls back the whole batch; if the outcome could not be confirmed, refresh the
+library before retrying.
+
+A change updates only the affected entries: other rows, expanded branches and loaded
+documents stay in place. Switching tabs preserves each tree. Reconnection and access
+changes reconcile data without emptying the tree; changing accounts removes the previous
+account’s data.
+
 ## Create and find Documents
 
 To change a title through an agent, ask it to rename the document. It uses `file_info`,

@@ -24,7 +24,7 @@ window.testApp = {
     this.pendingMount = this.mountComponent(options)
     return this.pendingMount
   },
-  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', browserHistory = false, authenticated = true, dark = toQuasarDark(getThemeMode()), locale = 'en' }) {
+  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', browserHistory = false, authenticated = true, dark = toQuasarDark(getThemeMode()), locale = 'en', user = {} }) {
     this.unmount?.()
     errors.length = 0
     const pinia = createPinia()
@@ -35,7 +35,7 @@ window.testApp = {
     await router.push(route)
     const auth = useAuthStore(pinia)
     if (authenticated) {
-      auth.$patch({ token: 'component-test', user: { id: 1, email: 'test@example.invalid', display_name: 'Test User', language: locale } })
+      auth.$patch({ token: 'component-test', user: { id: 1, email: 'test@example.invalid', display_name: 'Test User', language: locale, document_library_mode: 'folders', ...user } })
     }
     const privileges = usePrivilegeStore(pinia)
     await privileges.loadPrivileges()

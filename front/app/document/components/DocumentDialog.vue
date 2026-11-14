@@ -3,9 +3,12 @@
     <q-card class="document-navigation-dialog galaris-detail-dialog galaris-dialog-card" :class="cardClass">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <DocumentNavigationButtons class="q-mr-sm" :can-go-back="!busy && history.canGoBack.value" :can-go-forward="!busy && history.canGoForward.value" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
-        <DocumentIcon v-if="current" :document-id="current.id" :document-type="current.document_type" :title="currentTitle" size="24px" class="q-mr-sm" />
-        <div class="text-h6 ellipsis">{{ currentTitle }}</div>
-        <q-space />
+        <div ref="heading" class="document-dialog-heading">
+          <div class="document-dialog-heading-fallback row items-center no-wrap">
+            <DocumentIcon v-if="current" :document-id="current.id" :document-type="current.document_type" :title="currentTitle" size="24px" class="q-mr-sm" />
+            <div class="text-h6 ellipsis">{{ currentTitle }}</div>
+          </div>
+        </div>
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
       <div class="document-navigation-dialog-body galaris-dialog-body">
@@ -16,6 +19,7 @@
         </q-banner>
         <DocumentEditor v-if="current" :key="`${currentAgentId}:${current.id}`" ref="editor"
           :document-id="current.id" :agent-id="currentAgentId" :initial-document="current" :editable="editable"
+          :heading-target="heading"
           content-min-height="min(42vh, 440px)" content-max-height="52vh"
           @loaded="onLoaded" @updated="onUpdated" @unavailable="emit('unavailable', $event)" @deleted="onDeleted" />
       </div>
@@ -57,6 +61,7 @@ const history = useDocumentHistory({
   },
 })
 const editor = useTemplateRef<InstanceType<typeof DocumentEditor>>('editor')
+const heading = useTemplateRef<HTMLElement>('heading')
 const current = shallowRef<DocumentDetail | null>(null)
 const currentAgentId = ref<number | null>(null)
 const currentTitle = computed(() => current.value?.title || title || t('nav.documents'))
@@ -150,5 +155,7 @@ defineExpose({ flush })
 
 <style scoped>
 .document-navigation-dialog { display: flex; width: min(94vw, 1080px); max-width: 1080px; height: calc(100dvh - 32px); min-height: 0; max-height: calc(100dvh - 32px); flex-direction: column; }
-.document-navigation-dialog-body { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
+.document-navigation-dialog-body { min-height: 0; flex: 1 1 auto; overflow: hidden; }
+.document-dialog-heading { flex: 1; min-width: 0; }
+.document-dialog-heading:has(> :deep(.document-editor-heading)) > .document-dialog-heading-fallback { display: none; }
 </style>

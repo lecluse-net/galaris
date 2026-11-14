@@ -238,6 +238,71 @@ En lecture seule, le clic gauche continue d'ouvrir la cible.
 Les commandes communes ne sont pas répétées. Pour modifier un lien ou une équation,
 sélectionnez-le puis utilisez le bouton correspondant dans la barre d'outils.
 
+## Classer par dossiers, sujets ou agents
+
+Les onglets **Dossiers**, **Sujets** et **Agents** changent immédiatement la vue de la
+bibliothèque. Le dernier onglet choisi est enregistré dans votre compte et retrouvé à
+la prochaine ouverture, y compris sur un autre navigateur. Sans préférence enregistrée,
+**Dossiers** conserve la vue par défaut et votre classement manuel.
+
+**Sujets** regroupe les documents accessibles par sujet, puis par étiquette (mot-clé du
+document). **Agents** les regroupe par agent propriétaire, puis par étiquette. Une
+étiquette n’apparaît qu’une fois dans chaque groupe et peut être présente dans plusieurs
+groupes. **Tous les documents** ouvre le groupe complet ; **Sans étiquette** regroupe ses
+documents sans mot-clé. Ces deux entrées ont des repères colorés distincts des étiquettes.
+
+En bas, les non attribués restent disponibles : sans placement manuel en mode Dossiers,
+sans sujet en mode Sujets, ou sans agent propriétaire en mode Agents. Les documents
+appartenant à une personne restent donc accessibles dans cette dernière liste. Les
+filtres et la recherche y restent utilisables.
+
+Dans **Sujets**, glissez un document d’une branche étiquette vers une autre pour changer
+son sujet et remplacer l’étiquette de départ par celle d’arrivée. Les autres étiquettes,
+le contenu, les droits et les dossiers manuels sont conservés. Un dépôt sur le sujet
+lui-même change uniquement le sujet ; un dépôt dans la liste du bas retire le sujet en
+conservant les étiquettes. Ces modifications demandent le droit de modifier les sujets
+et le document concerné. Si le document a changé entre-temps, le déplacement est refusé
+et seul son classement est relu. Déposer sur **Sans étiquette** retire toutes ses étiquettes.
+
+Dans **Agents**, le même déplacement transfère la propriété à l’agent de destination et
+remplace l’étiquette de départ par celle d’arrivée. Les autres étiquettes sont conservées ;
+le dépôt sur un agent conserve toutes les étiquettes. Un dépôt dans la liste du bas place
+les documents sous votre propriété personnelle. Vos droits d’édition sont conservés.
+
+Utilisez Ctrl/Cmd ou Maj pour sélectionner plusieurs documents, sujets ou
+étiquettes. Le glisser-déposer porte sur toute la sélection ; survoler un onglet pendant
+le déplacement permet de changer d’arbre. Les menus contextuels (clic droit, bouton **…**
+ou Maj+F10) permettent de déplacer la sélection et d’ouvrir les opérations groupées
+sur les documents. Les sujets peuvent être créés, modifiés, supprimés ou fusionnés ;
+les étiquettes peuvent être renommées, supprimées ou fusionnées. Déposer un sujet ou une
+étiquette sur une autre entrée compatible prépare une fusion à confirmer.
+La suppression d’un sujet ou d’une étiquette conserve les documents. Les actions sur
+les sujets s’appliquent dans toute l’application ; renommer, supprimer ou fusionner une
+étiquette concerne tous les documents accessibles qui la portent. Les confirmations
+précisent cette portée. Une opération refusée conserve les éléments et permet de réessayer.
+
+Au-delà de 100 entrées, une branche se découpe en répertoires virtuels dont le libellé
+indique les noms du premier et du dernier document, avec une icône de dossier compressé cyan.
+Les noms se suivent si la place suffit ; sinon, chacun est tronqué de façon équilibrée.
+Le survol affiche les deux noms complets. Ouvrir une
+tranche charge uniquement ses 100 documents au maximum. Les très grandes collections
+ajoutent des niveaux de tranches, avec au plus 100 répertoires par niveau. Ce regroupement
+ne déplace aucun document et ne modifie pas son classement.
+
+Pour fusionner des étiquettes, choisissez la destination parmi les étiquettes sélectionnées ;
+la première est proposée par défaut.
+
+Le déplacement d’une sélection et le changement de propriétaire groupé sont envoyés au
+serveur en une seule opération, jusqu’à 5 000 documents. Vous pouvez ensuite changer de
+page dans l’application : le traitement continue. Les déplacements affichent leur résultat
+dans une notification. Un refus d’accès ou un conflit annule tout le lot ; si le résultat
+n’a pas pu être confirmé, actualisez la bibliothèque avant de réessayer.
+
+Une modification met à jour uniquement les entrées concernées : les autres lignes,
+branches ouvertes et documents chargés restent en place. Changer d’onglet conserve chaque
+arbre. Une reconnexion ou un changement de droits réconcilie les données sans vider l’arbre ;
+un changement de compte retire les données du compte précédent.
+
 ## Créer et retrouver
 
 Pour changer le titre avec un agent, demandez-lui de renommer le document. Il utilise

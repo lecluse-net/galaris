@@ -17,10 +17,10 @@
     </q-card>
     <div class="row items-center q-gutter-sm q-mb-sm">
       <q-input v-model="query" outlined dense clearable debounce="350" class="bulk-search" :label="t('documents.search')" :disable="busy" />
-      <q-checkbox v-if="folder" v-model="recursive" :label="t('documents.bulk.recursive')" :disable="busy" />
+      <q-toggle v-if="folder" v-model="recursive" :label="t('documents.bulk.recursive')" :disable="busy" />
     </div>
     <div class="row items-center q-gutter-sm q-mb-sm">
-      <q-checkbox :model-value="allSelected" :label="t('documents.bulk.selectPage')" :disable="busy || loading || !selectable.length" @update:model-value="togglePage" />
+      <q-btn outline dense no-caps color="primary" icon="select_all" :label="t('documents.bulk.selectPage')" :aria-pressed="allSelected === true" :disable="busy || loading || !selectable.length" @click="togglePage" />
       <span class="text-caption">{{ t('documents.bulk.selected', { count: selected.length }) }}</span>
       <q-space />
       <q-btn color="primary" icon="checklist" :label="t('documents.bulk.actions')" :disable="busy || loading || !selected.length" @click="dialogOpen = true" />
@@ -38,10 +38,6 @@
       <q-item v-for="entry in entries" :key="entry.item.id" v-library-shortcuts="rowShortcuts(entry)" class="relative-position" clickable :active="selected.includes(entry.item.id)" :aria-selected="selected.includes(entry.item.id)" :disable="busy || loading" :title="entry.item.title" aria-keyshortcuts="F2 F4 Delete"
         :draggable="!busy && !loading" @dragstart.stop="startDrag($event, entry)" @dragend="emit('dragend')"
         @click="selectRow(entry, $event)" @mousedown="preventTextSelection">
-        <q-item-section side>
-          <q-checkbox :model-value="selected.includes(entry.item.id)" :aria-label="t('documents.bulk.selectDocument', { title: entry.item.title })"
-            :disable="busy || loading || !canSelect(entry)" @click.stop @update:model-value="(_value, event) => toggle(entry.item.id, event)" />
-        </q-item-section>
         <q-item-section side class="bulk-thumbnail">
           <DocumentThumbnail :document-id="entry.item.id" :document-type="entry.item.document_type" :revision="entry.item.revision" :updated-at="entry.item.updated_at" :agent-id="documentEntryActor(entry)" />
         </q-item-section>
@@ -72,7 +68,7 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { defineAsyncView, documentResourceHref, documentFolderHref, CopyResourceReference } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { documentService } from '../services/documentService'
-import { applyDocumentBulkOperation, documentEntryActor, type DocumentBulkOperation } from '@/app/document/services/documentBulkService'
+import { applyDocumentBulkOperation, applyDocumentOwnerBatch, documentEntryActor, type DocumentBulkOperation } from '@/app/document/services/documentBulkService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
 import type { DocumentCreationMode } from '../documentTypes'
 import type { DocumentLibraryEntry, DocumentTag } from '../types'
@@ -123,19 +119,15 @@ let refreshTimer: ReturnType<typeof setTimeout> | undefined
 function canSelect(entry: DocumentLibraryEntry): boolean {
   return privilegeStore.hasPrivilege(privileges.DOCUMENT_EDIT) && entry.item.access.can_write && !entry.item.read_only && !entry.item.source_managed
 }
-function selectRow(entry: DocumentLibraryEntry, event: Event, toggle = false): void {
+function selectRow(entry: DocumentLibraryEntry, event: Event): void {
   if (busy.value || loading.value || !canSelect(entry)) return
-  selection.select('list', entry.item.id, selectable.value.map(value => ({ key: value.item.id, id: value.item.id })), event, toggle)
+  selection.select('list', entry.item.id, selectable.value.map(value => ({ key: value.item.id, id: value.item.id })), event)
 }
 function startDrag(event: DragEvent, entry: DocumentLibraryEntry): void {
   if (busy.value || loading.value) { event.preventDefault(); return }
   const values = documentDragSelection(entry.item.id, selected.value, entries.value, entries.value)
   setDocumentDragData(event, values)
   emit('dragstart', event, values)
-}
-function toggle(id: string, event: Event): void {
-  const entry = entries.value.find(value => value.item.id === id)
-  if (entry && (event instanceof MouseEvent || event instanceof KeyboardEvent)) selectRow(entry, event, true)
 }
 function openDocument(entry: DocumentLibraryEntry, event: MouseEvent): void {
   if (event.ctrlKey || event.metaKey || event.shiftKey) selectRow(entry, event)
@@ -189,7 +181,18 @@ async function run(operation: DocumentBulkOperation): Promise<void> {
   const failed: Failure[] = []
   const succeeded: string[] = []
   try {
-    for (const entry of snapshot) {
+    if (operation.kind === 'owner' && snapshot.length > 1) {
+      try {
+        await applyDocumentOwnerBatch(snapshot, operation)
+        if (!active()) return
+        succeeded.push(...snapshot.map(entry => entry.item.id))
+        selected.value = []
+      } catch (error) {
+        if (!active()) return
+        failed.push(...snapshot.map(entry => ({ id: entry.item.id, title: entry.item.title, reason: failureReason(error) })))
+      }
+      processed.value = snapshot.length
+    } else for (const entry of snapshot) {
       if (!active()) break
       const finish = operation.kind === 'delete' ? mutations.beginDeletion(entry.item.id) : undefined
       try {

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, onScopeDispose } from 'vue'
-import { authService, type User, type UserCredentials, type UserRegistration, type UserUpdate, type TokenResponse } from '../services/authService'
+import { authService, type User, type UserCredentials, type UserRegistration, type UserUpdate, type TokenResponse, type DocumentLibraryMode } from '../services/authService'
 import type { AxiosError } from 'axios'
 import { applyUserLocale, i18n, setLocale, type AppLocale } from '@/core/i18n'
 import { apiErrorDetail, AUTH_TOKEN_CHANGED_EVENT, runBeforeLogoutHooks, sessionGeneration, SupersededSessionError } from '@/core/api'
@@ -23,10 +23,49 @@ export const useAuthStore = defineStore('auth', () => {
     let authOperation = 0
     let languageOperation = 0
     let observedGeneration = sessionGeneration()
+    let libraryPreference: { userId: number; generation: ReturnType<typeof sessionGeneration>; confirmed: DocumentLibraryMode; sequence: number; pending: number; writes: Promise<void> } | undefined
     // Getters
     const isAuthenticated = computed(() => !!token.value && !!user.value)
     const userEmail = computed(() => user.value?.email ?? '')
     const userDisplayName = computed(() => user.value?.display_name || user.value?.email)
+    const documentLibraryMode = computed<DocumentLibraryMode>(() => {
+        const mode = user.value?.document_library_mode
+        return mode === 'topics' || mode === 'agents' ? mode : 'folders'
+    })
+
+    /** Serialize personal view writes so a slow response cannot restore an older tab. */
+    function setDocumentLibraryMode(mode: DocumentLibraryMode): Promise<void> {
+        if (!user.value) return Promise.resolve()
+        const userId = user.value.id, generation = sessionGeneration()
+        if (!libraryPreference || libraryPreference.userId !== userId || libraryPreference.generation !== generation) {
+            libraryPreference = { userId, generation, confirmed: documentLibraryMode.value, sequence: 0, pending: 0, writes: Promise.resolve() }
+        }
+        const state = libraryPreference
+        if (!state.pending) state.confirmed = documentLibraryMode.value
+        ++state.pending
+        const sequence = ++state.sequence
+        user.value = { ...user.value, document_library_mode: mode }
+        const current = () => generation === sessionGeneration() && user.value?.id === userId
+        const apply = (value: DocumentLibraryMode): void => {
+            if (!current() || sequence !== state.sequence || !user.value) return
+            user.value = { ...user.value, document_library_mode: value }
+            localStorage.setItem('user', JSON.stringify(user.value))
+        }
+        const write = state.writes.then(async () => {
+            if (!current()) return
+            try {
+                const saved = await authService.updateProfile({ document_library_mode: mode })
+                if (!current()) return
+                state.confirmed = saved.document_library_mode
+                apply(state.confirmed)
+            } catch (err) {
+                apply(state.confirmed)
+                throw err
+            }
+        }).finally(() => { --state.pending })
+        state.writes = write.catch(() => undefined)
+        return write
+    }
 
     /**
      * Set token directly (used by other modules like Authorize)
@@ -201,10 +240,16 @@ export const useAuthStore = defineStore('auth', () => {
         if (!token.value) return
 
         const generation = sessionGeneration()
+        const preferenceAtRead = libraryPreference
+        const preferenceSequence = libraryPreference?.sequence
         loading.value = true
         try {
             const userData = await authService.getCurrentUser()
             if (generation !== sessionGeneration()) throw new SupersededSessionError()
+            if (libraryPreference?.generation === generation && user.value?.id === userData.id
+                && (libraryPreference.pending > 0 || libraryPreference !== preferenceAtRead || libraryPreference.sequence !== preferenceSequence)) {
+                userData.document_library_mode = documentLibraryMode.value
+            }
             user.value = userData
             localStorage.setItem('user', JSON.stringify(userData))
             // Apply the profile locale, falling back to the browser and then English.
@@ -340,6 +385,7 @@ export const useAuthStore = defineStore('auth', () => {
         isAuthenticated,
         userEmail,
         userDisplayName,
+        documentLibraryMode,
         // Actions
         initializeAuth,
         register,
@@ -352,6 +398,7 @@ export const useAuthStore = defineStore('auth', () => {
         deleteAvatar,
         setToken,
         setLanguage,
+        setDocumentLibraryMode,
         clearLocalSession
     }
 })

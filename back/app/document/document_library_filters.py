@@ -11,6 +11,16 @@ from .schemas import DocumentLibraryRequest
 
 async def library_filters(request: DocumentLibraryRequest, user_id: int | None, visible_ids: Select[tuple[UUID]]) -> list[ColumnElement[bool]]:
     filters: list[ColumnElement[bool]] = []
+    if request.document_ids is not None:
+        filters.append(Document.id.in_(request.document_ids))
+    if request.topic_id is not None:
+        filters.append(Document.topic_id == request.topic_id)
+    if request.topic_classification != "all":
+        filters.append(Document.topic_id.is_(None) if request.topic_classification == "unclassified" else Document.topic_id.is_not(None))
+    if request.agent_classification != "all":
+        filters.append(Document.owner_agent_id.is_(None) if request.agent_classification == "unclassified" else Document.owner_agent_id.is_not(None))
+    if request.without_keywords:
+        filters.append(func.jsonb_array_length(Document.keywords) == 0)
     if request.document_type is not None:
         kind = "text" if request.document_type in {"html", "form"} else request.document_type
         filters.append(Document.document_type == kind)

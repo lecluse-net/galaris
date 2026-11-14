@@ -20,6 +20,8 @@ export default {
     refresh: 'Refresh',
     search: 'Search',
     loading: 'Loading…',
+    treePage: '{first}–{last}',
+    treePageNames: '{first} - {last}',
     viewLoadError: 'This view could not be loaded. Please try again.',
     yes: 'Yes',
     no: 'No',

@@ -3,7 +3,8 @@
     <template #before>
       <div class="q-pa-sm" @dragover.self="overRoot($event, true)" @drop.prevent.self="drop">
         <q-banner v-if="tagError" dense role="alert">{{ t('datasets.library.tagError') }}<q-btn outline :label="t('datasets.reload')" @click="loadTags" /></q-banner>
-        <q-tree v-model:expanded="expanded" :nodes="tree" node-key="id" dense no-transition>
+        <q-tree v-model:expanded="expanded" :nodes="virtualTreeNodes(tree, 'id', expanded)" node-key="id" dense no-transition>
+          <template #header-virtual-range="{ node }"><TreePageHeader :page="node.page" :total="node.total" :loading="branchLoading[treePageDataKey(node.id)]" /></template>
           <template #default-header="{ node }">
             <div class="full-width" :class="{ 'dataset-drop': dropTarget === node.id }"
               @dragstart.stop="startDrag($event, 'tag', node.id)" @dragend="clearDrag"
@@ -94,6 +95,7 @@ import { useQuasar } from 'quasar'
 import { usePrivilegeStore } from '@/core/authorize'
 import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
 import { LibrarySplitterHandle } from '@/core/util'
+import { TreePageHeader, TREE_PAGE_SIZE, treePages, treePageKey, treePageFromKey, treePageDataKey, virtualTreeNodes, type TreePage } from '@/core/util'
 import type { OwnerOption } from '@/app/share'
 import { datasetService as service } from '../services/datasetService'
 import { defaultLibraryFilters, libraryRequestFilters } from '../libraryFilterState'
@@ -116,7 +118,25 @@ let drag: { kind: 'tag' | 'dataset'; id: string } | null = null, pendingMove: Da
 let generation = 0, epoch = 0, disposed = false, tagGeneration = 0, facetsGeneration = 0
 let authSession = sessionGeneration()
 const branchGenerations = new Map<string, number>()
-interface TreeNode { id: string; label: string; tag?: DatasetFolder; folderId: string | null; header?: string; item?: Dataset; children?: TreeNode[] }
+interface TreeNode { id: string; label: string; tag?: DatasetFolder; folderId: string | null; header?: string; item?: Dataset; children?: TreeNode[]; page?: TreePage; total?: number }
+function directoryChildren(id: string, tag?: DatasetFolder, page?: TreePage): TreeNode[] {
+  const total = branches.value[id]?.total ?? 0
+  if (total > TREE_PAGE_SIZE && (!page || page.size > TREE_PAGE_SIZE)) {
+    return treePages(id, total, page).map(range => {
+      const key = treePageKey(range)
+      return { id: key, label: t('common.treePage', { first: range.offset + 1, last: Math.min(total, range.offset + range.size) }),
+        page: range, total, tag, folderId: id === 'root' ? null : id, header: 'virtual-range',
+        children: expanded.value.includes(key) ? directoryChildren(id, tag, range)
+          : [{ id: key + ':status', label: '', tag, folderId: treePageDataKey(key), header: 'status' }] }
+    })
+  }
+  const key = page ? treePageDataKey(treePageKey(page)) : id
+  const items = branches.value[key]?.items ?? []
+  return [
+    ...items.map(item => ({ id: `dataset:${key}:${item.id}`, label: item.title, tag, folderId: id === 'root' ? null : id, item, header: 'dataset' })),
+    ...(!items.length || branchErrors.value[key] ? [{ id: `status:${key}`, label: '', tag, folderId: key, header: 'status' }] : []),
+  ]
+}
 const tree = computed(() => {
   const nodes = new Map<string, TreeNode>(folders.value.map(tag => [tag.id, { id: tag.id, label: tag.name, tag, folderId: tag.id, children: [] }]))
   const roots: TreeNode[] = []
@@ -125,11 +145,9 @@ const tree = computed(() => {
   roots.sort(compare)
   for (const node of nodes.values()) {
     node.children!.sort(compare)
-    const branch = branches.value[node.id]
-    node.children!.push(...(branch?.items ?? []).map(item => ({ id: `dataset:${node.id}:${item.id}`, label: item.title, tag: node.tag, folderId: node.id, item, header: 'dataset' })))
-    if (!branch || branchErrors.value[node.id] || !node.children!.length || branch.items.length < branch.total) node.children!.push({ id: `status:${node.id}`, label: '', tag: node.tag, folderId: node.id, header: 'status' })
+    node.children!.push(...directoryChildren(node.id, node.tag))
   }
-  roots.push(...(branches.value.root?.items ?? []).map(item => ({ id: `dataset:root:${item.id}`, label: item.title, folderId: null, item, header: 'dataset' })))
+  if (branches.value.root?.total) roots.push(...directoryChildren('root'))
   return roots
 })
 const hasFilters = computed(() => activeFolder.value || query.value || !onlyUnclassified.value || JSON.stringify(filters.value) !== JSON.stringify(defaultLibraryFilters()))
@@ -160,21 +178,19 @@ async function loadFacets(): Promise<void> {
   try { const result = await service.facets(); if (!disposed && token === facetsGeneration) { owners.value = result.owners.filter((owner): owner is typeof owner & OwnerOption => owner.kind !== 'team'); keywords.value = result.keywords; currentUserId.value = result.current_user_id; facetsError.value = false } }
   catch { if (!disposed && token === facetsGeneration) facetsError.value = true }
 }
-async function loadBranch(id: string): Promise<void> {
+async function loadBranch(id: string, force = false): Promise<void> {
+  const page = treePageFromKey(id)
+  if (page && (page.size > TREE_PAGE_SIZE || page.parent.startsWith('local-tree:'))) return
+  const parent = page?.parent ?? id
+  id = treePageDataKey(id)
+  if (branchLoading.value[id]) return
+  if (page && !force && branches.value[id] && !branchErrors.value[id]) return
   const token = (branchGenerations.get(id) ?? 0) + 1, session = epoch; branchGenerations.set(id, token); branchLoading.value[id] = true; branchErrors.value[id] = false
   const valid = () => !disposed && session === epoch && token === branchGenerations.get(id)
   try {
-    const filters = id === 'root' ? { classification: 'root' } : { tag_id: id }
-    const result = await service.list(1, 500, '', null, { ...filters, sort_by: 'position', sort_desc: false })
+    const filters = parent === 'root' ? { classification: 'root' } : { tag_id: parent }
+    const result = await service.list((page?.offset ?? 0) / TREE_PAGE_SIZE + 1, TREE_PAGE_SIZE, '', null, { ...filters, sort_by: 'position', sort_desc: false })
     if (!valid()) return
-    // Root items have no folder list to open: retain every page in the tree.
-    let next = 2
-    while (id === 'root' && result.items.length < result.total) {
-      const more = await service.list(next++, 500, '', null, { ...filters, sort_by: 'position', sort_desc: false })
-      if (!valid()) return
-      if (!more.items.length) break
-      result.items.push(...more.items); result.total = more.total
-    }
     branches.value[id] = result
   }
   catch { if (!disposed && session === epoch && token === branchGenerations.get(id)) { branchErrors.value[id] = true; delete branches.value[id] } }
@@ -183,7 +199,7 @@ async function loadBranch(id: string): Promise<void> {
 function search(): void { if (page.value === 1) void load(); else page.value = 1 }
 function reset(): void { query.value = ''; filters.value = defaultLibraryFilters(); onlyUnclassified.value = true; activeFolder.value = null; search() }
 function browse(folder: DatasetFolder): void { activeFolder.value = folder; search() }
-async function refresh(): Promise<void> { const session = epoch; await loadTags(); if (disposed || session !== epoch) return; await Promise.all([load(), loadFacets(), loadBranch('root'), ...expanded.value.filter(id => folders.value.some(tag => tag.id === id)).map(loadBranch)]) }
+async function refresh(): Promise<void> { const session = epoch; await loadTags(); if (disposed || session !== epoch) return; await Promise.all([load(), loadFacets(), loadBranch('root'), ...expanded.value.filter(id => treePageFromKey(id) || folders.value.some(tag => tag.id === id)).map(id => loadBranch(id, true))]) }
 async function mutate(action: () => Promise<void>): Promise<boolean> {
   if (busy.value) return false
   const session = epoch; busy.value = true
@@ -248,7 +264,10 @@ function sessionChanged(event: Event): void {
   activeFolder.value = null; moving.value = null; deleting.value = null; busy.value = false
   reset(); void loadTags(); void loadFacets(); void loadBranch('root')
 }
-watch(expanded, (next, previous) => { for (const id of next) if (!previous.includes(id) && folders.value.some(tag => tag.id === id)) void loadBranch(id) }, { deep: true })
+watch(expanded, (next, previous) => {
+  for (const id of previous) if (!next.includes(id)) { const key = treePageDataKey(id); branchGenerations.set(key, (branchGenerations.get(key) ?? 0) + 1); branchLoading.value[key] = false }
+  for (const id of next) if (!previous.includes(id) && (treePageFromKey(id) || folders.value.some(tag => tag.id === id))) void loadBranch(id)
+}, { deep: true })
 watch([filters, onlyUnclassified, pageSize], search, { deep: true })
 watch(page, () => { void load() })
 onMounted(() => { void refresh(); window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, sessionChanged) })

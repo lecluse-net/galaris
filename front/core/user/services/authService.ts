@@ -11,6 +11,7 @@ import api, {
 import type { AxiosResponse } from 'axios'
 
 export type DocumentOpenMode = 'split' | 'dialog'
+export type DocumentLibraryMode = 'folders' | 'topics' | 'agents'
 
 export interface User {
     id: number
@@ -19,6 +20,7 @@ export interface User {
     is_active: boolean
     language: string | null
     document_open_mode: DocumentOpenMode
+    document_library_mode: DocumentLibraryMode
     avatar_url: string | null
     created_at: string
 }
@@ -40,6 +42,7 @@ export interface UserUpdate {
     is_active?: boolean
     language?: string
     document_open_mode?: DocumentOpenMode
+    document_library_mode?: DocumentLibraryMode
 }
 
 export interface TokenResponse {

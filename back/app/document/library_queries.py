@@ -23,6 +23,7 @@ from .schemas import (
     DocumentLibraryRequest,
     DocumentLibraryPage,
     DocumentLibraryEntry,
+    DocumentLibraryRange,
     DocumentOwnerOption,
     DocumentOwnerOptions,
     DocumentTagPublic,
@@ -350,6 +351,33 @@ async def browse_document_library(
             )
         )
 
+    tree_ranges: list[DocumentLibraryRange] = []
+    if request.include_tree_ranges:
+        # Only the endpoints of this level (at most 200 titles) leave PostgreSQL.
+        # Reuse the exact filtered set and ordering, including ACLs and tie-breaks.
+        start = request.offset
+        end = min(total, start + request.tree_range_size) if request.tree_range_size else total
+        size = 100
+        while (end - start + size - 1) // size > 100:
+            size *= 100
+        if end - start > 100:
+            offsets = range(start, end, size)
+            endpoints = {index for offset in offsets for index in (offset, min(end, offset + size) - 1)}
+            ranked = select(
+                Document.title,
+                (func.row_number().over(order_by=(
+                    sort_column.desc() if request.sort_desc else sort_column.asc(),
+                    func.lower(Document.title), Document.id,
+                )) - 1).label("offset"),
+            ).where(Document.id.in_(select(filtered_documents.c.id))).subquery("library_range_titles")
+            titles = {cast(int, row.offset): cast(str, row.title) for row in (
+                await db.execute(select(ranked).where(ranked.c.offset.in_(endpoints)))
+            )}
+            tree_ranges = [DocumentLibraryRange(
+                offset=offset, size=size, first_title=titles[offset],
+                last_title=titles[min(end, offset + size) - 1],
+            ) for offset in offsets if offset in titles and min(end, offset + size) - 1 in titles]
+
     return DocumentLibraryPage(
         owners=owner_options,
         query=normalized,
@@ -357,6 +385,7 @@ async def browse_document_library(
         keywords=keywords,
         total=total,
         has_more=has_more,
+        tree_ranges=tree_ranges,
     )
 
 

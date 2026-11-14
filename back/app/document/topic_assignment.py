@@ -1,10 +1,12 @@
 """Document-owned Topic associations and versioned Dream sources."""
 
 from collections.abc import Collection
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import Select, func, select, update
 from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.orm import defer
 
 from app.agent import AgentManagementScope
 from core.database import get_db
@@ -35,9 +37,11 @@ async def change_assignment(
     identity: UUID,
     scope: AgentManagementScope,
     *,
-    topic_id: UUID,
+    topic_id: UUID | None,
     expected_topic_id: UUID | None,
     expected_lock_version: int,
+    keyword_move: tuple[str | None, str | None] | None = None,
+    clear_keywords: bool = False,
 ) -> int:
     from .document_sharing import document_actor
     from .resource_service import (
@@ -56,6 +60,7 @@ async def change_assignment(
     await assert_item_access(item, actor, write=True)
     document = await get_db().scalar(
         select(Document)
+        .options(defer(Document.content), defer(Document.summary_content))
         .where(Document.id == identity)
         .with_for_update()
         .execution_options(populate_existing=True)
@@ -64,10 +69,21 @@ async def change_assignment(
         raise DocumentNotFoundError("Document not found")
     if item.lock_version != expected_lock_version or document.topic_id != expected_topic_id:
         raise DocumentConflictError("Document changed; reload and retry")
+    if keyword_move is not None:
+        source, target = keyword_move
+        values = [] if clear_keywords else [value for value in item.keywords if source is None or value.casefold() != source.casefold()]
+        if target is not None:
+            values = [target if value.casefold() == target.casefold() else value for value in values]
+        if target is not None and target.casefold() not in {value.casefold() for value in values}:
+            values.append(target)
+        if len(values) > 50:
+            raise DocumentConflictError("A document cannot have more than 50 keywords")
+        item.keywords = values
+        item.updated_at = datetime.now(timezone.utc)
     document.topic_id = topic_id
     item.metadata_ = {
         **item.metadata_,
-        "topic_assignment": {"origin": "manual", "topic_id": str(topic_id)},
+        "topic_assignment": {"origin": "manual", "topic_id": str(topic_id) if topic_id else None},
     }
     item.lock_version += 1
     await get_db().flush()

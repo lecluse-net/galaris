@@ -2558,6 +2558,13 @@ la sauvegarde refusée ou effectuée pendant un chargement, les droits refusés 
 tardives après fermeture. Les consommateurs existants sont exercés dans
 `chat-document-workspace.spec.mjs`, `topic-detail.spec.mjs` et `file-browser.spec.mjs`.
 
+`test_topic_library.py` vérifie le catalogue topic/tag et les branches sur les droits réels,
+le remplacement atomique d’un tag, la conservation du contenu et des dossiers, les conflits
+et les refus HTTP sans l’un des droits d’édition. `front/browser-tests/document-topics.spec.mjs`
+couvre le basculement, les tags communs à plusieurs topics, les non attribués, les erreurs et
+le glisser-déposer sur mobile et desktop. `e2e/specs/document-topics.spec.mjs` exerce la
+sauvegarde et le rechargement dans le shell complet, avec le document ouvert dans l’éditeur.
+
 `front/browser-tests/document-flows.spec.mjs` retient les réponses annexes et de suppression :
 contenu utilisable avant les catalogues, retrait anticipé et restauration de la ligne courante
 en cas de refus, propagation d'un titre sauvegardé dans l'arbre et la liste avant relecture,
@@ -2619,6 +2626,24 @@ réel : authentification, délai et statuts serveur gardent leur sens sans divul
   Le choix d'icône se propage entre arbre et liste, persiste à la réouverture et ignore les réponses
   périmées après sauvegarde ou changement de session ; l'icône par défaut et les erreurs restent utilisables.
   Dans la liste et l'arbre, l'icône d'un document ouvre le document sans sélecteur d'icône ; le choix reste disponible dans l'éditeur et l'icône d'un dossier reste modifiable.
+- `front/core/util/treePages.test.mjs` vérifie la couverture contiguë des tranches et la
+  limite de 100 branches par niveau, jusqu’à un million d’entrées.
+  `front/browser-tests/tree-pages.spec.mjs` exerce le maintien de la sélection dans les
+  sélecteurs et l’ouverture des sous-documents par tranches. Les scénarios de tranches de `document-topics.spec.mjs`
+  et `document-classification.spec.mjs` vérifient les offsets demandés, les reprises et
+  l’absence de chargement de la collection complète.
+- `front/browser-tests/document-batch-moves.spec.mjs` vérifie qu’une sélection de 210
+  documents est soumise en une requête et continue après la fermeture de la vue dans les
+  trois arbres. `back/app/document/tests/test_bulk_moves.py` couvre le lot complet, l’ordre,
+  les droits, les conflits atomiques et les cycles, avec une mesure SQL avant/après.
+  `e2e/specs/document-topics.spec.mjs` vérifie aussi le transfert groupé et la navigation
+  avec le backend réel.
+- `front/browser-tests/document-topics.spec.mjs` : conservation des lignes montées et des
+  branches chargées après ajout/retrait d’étiquette et changement d’onglet ; aucune relecture
+  des branches étrangères à la modification ; sélection multiple, déplacement par sujet ou
+  propriétaire, fusion/suppression d’étiquettes avec conflit puis réessai et menus des sujets.
+  `back/app/document/tests/test_topic_library.py` vérifie les lectures ciblées avec droits
+  actuels et les lots d’étiquettes sans modification partielle après refus ou conflit.
 - `e2e/specs/document-folder-create.spec.mjs` : création depuis un sous-dossier, classement
   personnel persisté, création de sous-documents et dépliage après rechargement de la bibliothèque assemblée.
   `test_document_classification.py` couvre aussi l'isolation personnelle, la lecture seule,

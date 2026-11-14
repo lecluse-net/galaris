@@ -147,3 +147,10 @@ from .file_import import DocumentImportSource, register_document_import_reader, 
 __all__ += ["DocumentImportSource", "register_document_import_reader", "read_native_document_import"]
 __all__ += ["count_pending_document_summaries", "claim_document_summary", "document_summary_source",
             "apply_document_summary", "reconcile_document_summaries"]
+
+from .schemas import DocumentTopicBranch, DocumentTopicGroup, DocumentTopicMove
+from .topic_library import catalog as document_topic_groups, move as move_document_classification
+from .bulk_moves import move_topics as move_document_classifications
+from .schemas import DocumentTopicBatch
+__all__ += ["DocumentTopicBranch", "DocumentTopicGroup", "DocumentTopicMove", "document_topic_groups", "move_document_classification"]
+__all__ += ["DocumentTopicBatch", "move_document_classifications"]

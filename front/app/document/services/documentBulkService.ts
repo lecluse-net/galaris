@@ -13,6 +13,11 @@ export function documentEntryActor(entry: DocumentLibraryEntry): number | null {
   return entry.writable_agent_ids[0] ?? entry.agent_ids[0] ?? null
 }
 
+export async function applyDocumentOwnerBatch(entries: DocumentLibraryEntry[], operation: Extract<DocumentBulkOperation, { kind: 'owner' }>): Promise<void> {
+  await documentService.changeOwnerBatch(entries.map(({ item }) => ({ document_id: item.id,
+    expected_revision: item.revision, expected_lock_version: item.lock_version, kind: operation.ownerKind, id: operation.ownerId })))
+}
+
 /** Apply a command to one resource using its current version, never another row's settings. */
 export async function applyDocumentBulkOperation(entry: DocumentLibraryEntry, operation: DocumentBulkOperation, active: () => boolean): Promise<void> {
   const id = entry.item.id

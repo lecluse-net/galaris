@@ -10,6 +10,7 @@ def test_topic_mutations_require_edit_privilege() -> None:
         router.delete_topic,
         router.read_topic_memories,
         router.change_resource_topic,
+        router.move_library_document,
     ):
         metadata = getattr(endpoint, "_authorize_meta")
         assert metadata["privileges"] == ["TOPIC_EDIT"]

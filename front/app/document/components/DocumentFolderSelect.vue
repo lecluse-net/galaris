@@ -43,12 +43,13 @@
           <q-tree
             v-if="folderNodes.length"
             v-model:expanded="expanded"
-            :nodes="folderNodes"
+            :nodes="virtualTreeNodes(folderNodes, 'path', expanded)"
             node-key="path"
             dense
             no-transition
             class="q-pa-sm"
           >
+            <template #header-virtual-range="{ node }"><TreePageHeader :page="node.page" :total="node.total" /></template>
             <template #default-header="treeProps">
               <button
                 type="button"
@@ -113,7 +114,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { TreePageHeader, virtualTreeNodes, treePageAncestors } from '@/core/util'
 import { useI18n } from 'vue-i18n'
 import type { QInput } from 'quasar'
 import { FolderIcon } from '@/core/util'
@@ -178,6 +180,9 @@ const folderNodes = computed<FolderNode[]>(() => {
   }
   return roots
 })
+watch([folderNodes, model], ([nodes, path]) => {
+  expanded.value = [...new Set([...expanded.value, ...(treePageAncestors(nodes, 'path', path) ?? [])])]
+}, { immediate: true })
 
 function selectFolder(path: string): void {
   model.value = path

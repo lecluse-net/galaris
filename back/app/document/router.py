@@ -33,6 +33,7 @@ from . import (
     resource_service as service,
 )
 from .assertions import ManagedDocumentAccessAssertion
+from .schemas import DocumentOrderBatch, DocumentOwnerBatch
 from .schemas import (
     DocumentProcessAttachmentWrite,
     DocumentInternalAttachmentWrite,
@@ -51,6 +52,8 @@ from .schemas import (
     DocumentGlobalAccessUpdate,
     DocumentLibraryPage,
     DocumentLibraryRequest,
+    DocumentAgentBranch,
+    DocumentKeywordChange,
     DocumentTagPublic,
     DocumentOrderMove,
     DocumentOrderSort,
@@ -405,6 +408,24 @@ async def browse_managed_documents(
     except Exception as exc:
         raise _http_error(exc) from exc
 
+@router.get("/library/agents", response_model=list[DocumentAgentBranch])
+@authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def read_document_agents() -> list[DocumentAgentBranch]:
+    from .agent_library import catalog
+
+    return await catalog(await current_management_scope())
+
+
+@router.post("/library/keywords", status_code=status.HTTP_204_NO_CONTENT)
+@authorize(privileges=[Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def change_library_keywords(data: DocumentKeywordChange) -> None:
+    from .keyword_actions import replace_keywords
+    try:
+        await replace_keywords(data, await current_management_scope())
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
 @router.post("/icons/resolve", response_model=dict[UUID, str | None])
 @authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
 async def resolve_document_icons(data: DocumentIconRequest) -> dict[UUID, str | None]:
@@ -421,6 +442,26 @@ async def save_document_icon(document_id: UUID, data: DocumentIconWrite) -> Docu
         return await document_icons.save(await current_management_scope(), document_id, data)
     except Exception as exc:
         raise _http_error(exc) from exc
+
+@router.post("/order/batch", status_code=204)
+@authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def move_document_batch(data: DocumentOrderBatch) -> None:
+    from .bulk_moves import move_folders
+    try:
+        await move_folders(data, await current_management_scope())
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.post("/library/owners", status_code=204)
+@authorize(privileges=[Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def transfer_document_batch(data: DocumentOwnerBatch) -> None:
+    from .bulk_moves import move_owners
+    try:
+        await move_owners(data, await current_management_scope())
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
 
 @router.put("/order", status_code=204)
 @authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])

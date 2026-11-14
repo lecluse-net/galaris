@@ -42,6 +42,27 @@ export interface DocumentFolderPage {
 const ownerOptionsCache = createOwnerOptionsCache<DocumentOwnerOptions>()
 
 export const documentService = {
+  async moveDocumentBatch(documentIds: string[], target: Omit<DocumentOrderMove, 'node'>): Promise<void> {
+    await api.post('/documents/order/batch', { ...target, node: { kind: 'document', id: documentIds[0] }, document_ids: documentIds }, { timeout: 0 })
+  },
+  async moveClassificationBatch(documents: (import('../types').DocumentTopicMove & { id: string })[]): Promise<void> {
+    await api.post('/topics/documents/classification-batch', { documents }, { timeout: 0 })
+  },
+  async changeOwnerBatch(documents: { document_id: string; expected_revision: number; expected_lock_version: number; kind: DocumentOwnerKind; id: number; keywords?: string[] }[]): Promise<void> {
+    await api.post('/documents/library/owners', { documents }, { timeout: 0 })
+  },
+  async replaceLibraryKeywords(data: import('../types').DocumentKeywordChange): Promise<void> {
+    await api.post('/documents/library/keywords', data)
+  },
+  async documentAgents(signal?: AbortSignal): Promise<import('../types').DocumentAgentBranch[]> {
+    return (await api.get<import('../types').DocumentAgentBranch[]>('/documents/library/agents', { signal })).data
+  },
+  async documentTopics(signal?: AbortSignal): Promise<import('../types').DocumentTopicBranch[]> {
+    return (await api.get<import('../types').DocumentTopicBranch[]>('/topics/document-library', { signal })).data
+  },
+  async moveDocumentClassification(id: string, data: import('../types').DocumentTopicMove): Promise<void> {
+    await api.put(`/topics/documents/${id}/classification`, data)
+  },
 async summary(id: string, agentId: number | null, signal?: AbortSignal): Promise<DocumentDetail> {
   return (await api.get<DocumentDetail>(`/documents/${id}/summary`, {
     params: { agent_id: agentId ?? undefined }, signal,
@@ -324,12 +345,14 @@ async changeDocumentOwner(
     expectedLockVersion: number,
     kind: DocumentOwnerKind,
     ownerId: number,
+    keywords?: string[],
   ): Promise<DocumentRecord> {
     const response = await api.patch<DocumentRecord>(`/documents/${id}/owner`, {
       expected_revision: expectedRevision,
       expected_lock_version: expectedLockVersion,
       kind,
       id: ownerId,
+      ...(keywords ? { keywords } : {}),
     })
     return response.data
   },

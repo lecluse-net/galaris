@@ -29,6 +29,8 @@ from app.memory import (
 )
 from app.agent import AgentManagementScope
 from app.document import list_documents_by_topics, reassign_topic_documents, change_document_topic
+from app.document import DocumentTopicBranch, DocumentTopicMove, document_topic_groups, move_document_classification
+from app.document import DocumentTopicBatch, move_document_classifications
 from app.dataset.facade import list_datasets_by_topics, reassign_topic_datasets, change_dataset_topic
 from core.database import get_db
 from core.i18n import current_language, normalize_language, t
@@ -196,6 +198,25 @@ async def _record(topic_id: UUID, *, for_update: bool = False) -> Topic | None:
 async def lock_for_resource_assignment(topic_id: UUID) -> bool:
     """Serialize a resource assignment against retiring its target Topic."""
     return await _record(topic_id, for_update=True) is not None
+
+
+async def document_library(scope: AgentManagementScope) -> list[DocumentTopicBranch]:
+    groups = {group.id: group for group in await document_topic_groups(scope)}
+    refs = await list_refs(set(groups))
+    return [DocumentTopicBranch(**groups[ref.id].model_dump(), title=ref.title) for ref in refs]
+
+
+async def move_library_document(identity: UUID, data: DocumentTopicMove, scope: AgentManagementScope) -> None:
+    if data.topic_id is not None and not await lock_for_resource_assignment(data.topic_id):
+        raise TopicNotFoundError("Topic not found")
+    await move_document_classification(identity, data, scope)
+
+
+async def move_library_documents(data: DocumentTopicBatch, scope: AgentManagementScope) -> None:
+    for identity in sorted({entry.topic_id for entry in data.documents if entry.topic_id is not None}):
+        if not await lock_for_resource_assignment(identity):
+            raise TopicNotFoundError("Topic not found")
+    await move_document_classifications(data, scope)
 
 
 async def change_resource_topic(kind: TopicResourceKind, identity: UUID, data: TopicResourceAssignmentWrite,

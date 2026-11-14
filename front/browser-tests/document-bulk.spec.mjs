@@ -62,11 +62,15 @@ async function fixture(page, { count = 2, folder: initialFolder = folder } = {})
     const data = route.request().postDataJSON(); writes.push({ documentId: id, ...data })
     return route.fulfill({ json: docs.find(item => item.id === id) })
   })
+  await page.route('**/api/documents/library/owners', route => {
+    for (const { document_id, ...command } of route.request().postDataJSON().documents) writes.push({ documentId: document_id, ...command })
+    return route.fulfill({ status: 204 })
+  })
   await mount(page, 'app/document/components/DocumentBulkList.vue', { props: { folder: initialFolder }, privileges: ['DOCUMENT_EDIT'] })
   await expect(page.getByRole('link', { name: 'Report 00', exact: true })).toBeVisible()
   return { docs, reads, writes, states, fail: id => { failId = id } }
 }
-async function selectPage(page) { await page.getByRole('checkbox', { name: 'Select this page', exact: true }).check() }
+async function selectPage(page) { await page.getByRole('button', { name: 'Select this page', exact: true }).click() }
 async function action(page, name) {
   await page.getByRole('button', { name: 'Selection actions', exact: true }).click()
   await page.getByRole('combobox', { name: 'Operation', exact: true }).click()
@@ -87,7 +91,7 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     const { docs, reads } = await fixture(page, { count: 51 })
     expect(reads[0]).toMatchObject({ tag_id: 'work', include_descendants: false, limit: 50, offset: 0 })
-    await page.getByRole('checkbox', { name: 'Include subfolders and sub-documents', exact: true }).check()
+    await page.getByRole('switch', { name: 'Include subfolders and sub-documents', exact: true }).check()
     await expect.poll(() => reads.at(-1).include_descendants).toBe(true)
     await selectPage(page)
     await expect(page.getByText('50 selected', { exact: true })).toBeVisible()
@@ -148,21 +152,21 @@ test('sharing commands preserve different existing shares and update or remove o
   expect(states[0].grants).toEqual([other])
 })
 
-test('range and individual clicks update the bulk action selection and checkbox anchors', async ({ page }) => {
+test('range and individual clicks update the bulk action selection and its anchor', async ({ page }) => {
   const { writes } = await fixture(page, { count: 5 })
   const link = index => page.getByRole('link', { name: `Report 0${index}`, exact: true })
-  const checkbox = index => page.getByRole('checkbox', { name: `Select Report 0${index}`, exact: true })
-  await checkbox(1).check()
-  await checkbox(4).click({ modifiers: ['Shift'] })
+  const row = index => page.locator('.bulk-list .q-item').filter({ has: link(index) })
+  await link(1).click({ modifiers: ['Control'] })
+  await link(4).click({ modifiers: ['Shift'] })
   await expect(page.getByText('4 selected', { exact: true })).toBeVisible()
   await link(2).click({ modifiers: ['Control'] })
-  await expect(checkbox(2)).not.toBeChecked()
+  await expect(row(2)).toHaveAttribute('aria-selected', 'false')
   await link(0).click({ modifiers: ['Control', 'Shift'] })
   await expect(page.getByText('5 selected', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select'))).toEqual([])
   await page.locator('.bulk-list .q-item').filter({ has: link(3) }).click({ position: { x: 380, y: 15 } })
   await expect(page.getByText('1 selected', { exact: true })).toBeVisible()
-  await expect(checkbox(3)).toBeChecked()
+  await expect(row(3)).toHaveAttribute('aria-selected', 'true')
   await action(page, 'Add keywords')
   const keywords = page.getByRole('combobox', { name: 'Keywords', exact: true })
   await keywords.fill('selected'); await keywords.press('Enter')
@@ -175,9 +179,10 @@ test('bulk intervals skip protected documents while their titles remain availabl
   docs[1].read_only = true
   docs[2].access.can_write = false
   await page.evaluate(() => window.testApp.emitSocket('document.update', { data: {} }))
-  await expect(page.getByRole('checkbox', { name: 'Select Report 01', exact: true })).toBeDisabled()
-  await expect(page.getByRole('checkbox', { name: 'Select Report 02', exact: true })).toBeDisabled()
-  await page.getByRole('checkbox', { name: 'Select Report 00', exact: true }).check()
+  await page.getByRole('link', { name: 'Report 01', exact: true }).click({ modifiers: ['Control'] })
+  await page.getByRole('link', { name: 'Report 02', exact: true }).click({ modifiers: ['Control'] })
+  await expect(page.getByText('0 selected', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Report 00', exact: true }).click({ modifiers: ['Control'] })
   await page.getByRole('link', { name: 'Report 03', exact: true }).click({ modifiers: ['Shift'] })
   await expect(page.getByText('2 selected', { exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Report 01', exact: true }).click({ modifiers: ['Control'] })
@@ -221,7 +226,7 @@ test('shortcuts on a paginated document row target that document and preserve th
 test('unclassified lists require delete confirmation and retain failed documents', async ({ page }) => {
   const { docs, reads, fail } = await fixture(page, { folder: null })
   expect(reads[0]).toMatchObject({ tag_id: null, classification: 'unclassified' })
-  await expect(page.getByRole('checkbox', { name: 'Include subfolders and sub-documents' })).toHaveCount(0)
+  await expect(page.getByRole('switch', { name: 'Include subfolders and sub-documents' })).toHaveCount(0)
   await selectPage(page)
   await action(page, 'Delete documents')
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
@@ -230,7 +235,7 @@ test('unclassified lists require delete confirmation and retain failed documents
   await action(page, 'Delete documents')
   await page.getByRole('button', { name: 'Delete documents', exact: true }).click()
   await expect(page.getByText('Report 01 — The document changed. Review it before retrying.')).toBeVisible()
-  await expect(page.getByRole('checkbox', { name: 'Select Report 01', exact: true })).toBeChecked()
+  await expect(page.locator('.bulk-list .q-item').filter({ has: page.getByRole('link', { name: 'Report 01', exact: true }) })).toHaveAttribute('aria-selected', 'true')
   expect(docs.map(item => item.id)).toEqual(['doc-1'])
   fail(null)
   await action(page, 'Delete documents')

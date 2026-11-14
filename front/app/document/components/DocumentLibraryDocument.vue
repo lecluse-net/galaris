@@ -29,12 +29,18 @@
       <q-banner v-if="errors[branchKey]" dense role="alert">{{ t('documents.loadError') }}
         <q-btn flat dense :label="t('documents.retry')" @click="emit('retry', entry.item.id)" />
       </q-banner>
-      <DocumentLibraryDocument v-for="child in visibleChildren" :key="child.item.id" :entry="child" :parent-document-id="entry.item.id" :ancestors="[...(ancestors ?? []), entry.item.id]"
+      <TreePageGroups :parent="branchKey" :total="totals[branchKey] ?? children[branchKey]?.length ?? 0" :ranges="ranges" :loading="loading" :errors="errors" :load="loadPage" :expanded="expanded" @toggle="(key, open) => emit('page', key, open)">
+        <template #default="{ dataKey }">
+      <DocumentLibraryDocument v-for="child in visibleChildren(dataKey)" :key="child.item.id" :entry="child" :parent-document-id="entry.item.id" :ancestors="[...(ancestors ?? []), entry.item.id]"
         :compact="true" :selected-document-id="selectedDocumentId" :selected-document-ids="selectedDocumentIds" :busy="busy" :children="children" :loading="loading" :errors="errors"
+        :totals="totals" :ranges="ranges" :load-page="loadPage"
         :expanded="expanded" :drop-target="dropTarget" :drop-placement="dropPlacement"
         @select="(entry, event) => emit('select', entry, event)" @create="(entry, type, event) => emit('create', entry, type, event)" @action="(entry, action) => emit('action', entry, action)"
         @toggle="emit('toggle', $event)" @retry="emit('retry', $event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')"
+        @page="(key, open) => emit('page', key, open)"
         @dragover="(event, value, parent, tag, list) => emit('dragover', event, value, parent, tag, list)" @dragleave="emit('dragleave')" @drop="emit('drop', $event)" />
+        </template>
+      </TreePageGroups>
       <span v-if="!loading[branchKey] && !errors[branchKey] && !(children[branchKey]?.length)" class="text-caption q-pa-sm">{{ t('documents.library.noSubdocuments') }}</span>
     </div>
   </div>
@@ -42,13 +48,14 @@
 <script setup lang="ts">
 import type { DocumentCreationMode } from '../documentTypes'
 import { computed } from 'vue'
+import { TreePageGroups } from '@/core/util'
 import { useI18n } from 'vue-i18n'
-import type { DocumentLibraryEntry } from '../types'
+import type { DocumentLibraryEntry, DocumentLibraryRange } from '../types'
 import DocumentLibraryEntryRow from '@/app/document/components/DocumentLibraryEntryRow.vue'
 import DocumentRowMenu from '@/app/document/components/DocumentRowMenu.vue'
 import { documentRowShortcuts, vLibraryShortcuts, type DocumentRowAction } from '@/app/document/libraryShortcuts'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   entry: DocumentLibraryEntry
   selectedDocumentId: string | null
   selectedDocumentIds?: string[]
@@ -62,14 +69,18 @@ const props = defineProps<{
   children: Record<string, DocumentLibraryEntry[]>
   loading: Record<string, boolean>
   errors: Record<string, boolean>
+  totals?: Record<string, number>
+  ranges?: Record<string, DocumentLibraryRange[]>
+  loadPage?: (key: string) => Promise<void>
   expanded: string[]
   dropTarget: string | null
   dropPlacement: string
-}>()
+}>(), { totals: () => ({}), loadPage: () => Promise.resolve() })
 const emit = defineEmits<{
   action: [entry: DocumentLibraryEntry, action: DocumentRowAction]
   select: [entry: DocumentLibraryEntry, event?: Event]; create: [entry: DocumentLibraryEntry, type?: DocumentCreationMode, event?: Event]
   toggle: [id: string]; retry: [id: string]; dragstart: [event: DragEvent, id: string]; dragend: []
+  page: [key: string, open: boolean]
   dragover: [event: DragEvent, entry: DocumentLibraryEntry, parent?: string | null, tag?: string | null, listOnly?: boolean]
   dragleave: []; drop: [event: DragEvent]
 }>()
@@ -77,8 +88,9 @@ const { t } = useI18n()
 const shortcuts = computed(() => documentRowShortcuts(props.entry, props.busy,
   () => emit('select', props.entry), props.treeRow ? () => emit('create', props.entry) : undefined, action => emit('action', props.entry, action)))
 const branchKey = computed(() => `doc:${props.entry.item.id}`)
-const visibleChildren = computed(() => (props.children[branchKey.value] ?? []).filter(child =>
-  child.item.id !== props.entry.item.id && !props.ancestors?.includes(child.item.id)))
+function visibleChildren(key: string): DocumentLibraryEntry[] {
+  return (props.children[key] ?? []).filter(child => child.item.id !== props.entry.item.id && !props.ancestors?.includes(child.item.id))
+}
 const open = computed(() => props.expanded.includes(branchKey.value))
 const hasChildren = computed(() => open.value || Boolean(props.entry.children_count) || Boolean(props.children[branchKey.value]?.length))
 const dropClass = computed(() => props.dropTarget === `doc:${props.entry.item.id}` ? {

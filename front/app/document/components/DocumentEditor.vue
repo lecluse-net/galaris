@@ -13,27 +13,30 @@
         {{ t('documents.loadError') }}
         <q-btn flat :label="t('documents.retry')" @click="onWebsocketConnect" />
       </q-banner>
-      <q-toolbar class="document-editor-toolbar">
-        <DocumentIcon class="document-editor-heading-icon" :document-id="currentDocument.id" :document-type="currentDocument.document_type" :title="editorTitle || currentDocument.title" size="64px" plain />
+      <q-toolbar class="document-editor-toolbar" :class="{ 'document-editor-toolbar--dialog': headingInDialog }">
         <q-toolbar-title>
-          <div class="row items-center no-wrap">
-            <q-input
-              ref="titleInput"
-              v-model="editorTitle"
-              class="document-editor-title col"
-              input-class="text-h6"
-              :input-style="{ lineHeight: '1.4' }"
-              type="textarea"
-              autogrow
-              :rows="1"
-              outlined
-              dense
-              hide-bottom-space
-              :aria-label="t('documents.title')"
-              :readonly="historyOpen || summaryOpen || !canEditDocument || isGoalDocument(currentDocument)"
-              :rules="[requiredRule]"
-            />
-          </div>
+          <Teleport :to="headingTarget ?? 'body'" :disabled="!headingInDialog">
+            <div class="document-editor-heading" :class="{ 'document-editor-heading--dialog': headingInDialog }">
+              <DocumentIcon class="document-editor-heading-icon" :document-id="currentDocument.id" :document-type="currentDocument.document_type" :title="editorTitle || currentDocument.title" :size="headingInDialog ? '32px' : '64px'" plain />
+              <q-input
+                ref="titleInput"
+                v-model="editorTitle"
+                class="document-editor-title col"
+                input-class="text-h6"
+                :input-style="{ lineHeight: '1.4' }"
+                :type="headingInDialog ? 'text' : 'textarea'"
+                :autogrow="!headingInDialog"
+                :rows="1"
+                :outlined="!headingInDialog"
+                :borderless="headingInDialog"
+                dense
+                hide-bottom-space
+                :aria-label="t('documents.title')"
+                :readonly="historyOpen || summaryOpen || !canEditDocument || isGoalDocument(currentDocument)"
+                :rules="[requiredRule]"
+              />
+            </div>
+          </Teleport>
           <div class="document-editor-details row items-center text-caption text-grey-7">
             <div class="document-editor-reference row items-center">
               <q-badge
@@ -325,6 +328,7 @@ const props = withDefaults(defineProps<{
   editable?: boolean
   contentMinHeight?: string
   contentMaxHeight?: string
+  headingTarget?: HTMLElement | null
 }>(), {
   editable: true,
   contentMinHeight: '520px',
@@ -340,6 +344,7 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const referenceFormatting = useReferenceFormatting()
 const $q = useQuasar()
+const headingInDialog = computed(() => $q.screen.lt.md && !!props.headingTarget)
 const agentStore = useAgentChoices()
 const documentMutations = useDocumentMutations()
 const privilegeStore = usePrivilegeStore()
@@ -1370,20 +1375,30 @@ function restoreDraft(document: DocumentDetail): void {
 </script>
 
 <style scoped>
-.document-editor { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; }
+.document-editor { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; overflow: auto; }
 .document-editor > :not(.document-editor-fields) { flex-shrink: 0; }
 .document-editor--summary :deep(> .document-summary-panel) { flex: 1 1 auto; min-height: 0; }
 .document-editor-state { min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .document-editor-error { color: var(--solaire-red-accent); background: var(--solaire-red-light); }
 .document-editor-error--dark { background: var(--solaire-red-dark); }
-.document-editor-toolbar { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; min-height: 72px; align-items: center; padding-top: 8px; padding-bottom: 8px; }
+.document-editor-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; min-height: 72px; align-items: center; padding-top: 8px; padding-bottom: 8px; }
+.document-editor-toolbar > .q-toolbar__title { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; column-gap: 12px; padding: 0; }
+.document-editor-heading { display: contents; }
+.document-editor-heading-icon { grid-column: 1; grid-row: 1 / 3; }
+.document-editor-title, .document-editor-details { grid-column: 2; }
+.document-editor-heading--dialog { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; }
+.document-editor-heading--dialog .document-editor-heading-icon { grid-row: auto; }
+.document-editor-heading--dialog :deep(.q-field__native) { color: white; text-overflow: ellipsis; }
+.document-editor-toolbar--dialog { min-height: 0; padding: 4px; }
+.document-editor-toolbar--dialog > .q-toolbar__title { display: block; }
+.document-editor-toolbar--dialog .document-editor-details { margin-top: 0; }
 .document-editor-heading-icon { align-self: center; }
 .document-editor-title { min-width: 0; }
 .document-editor-details { gap: 4px; margin-top: 4px; }
 .document-editor-reference { min-width: 0; max-width: 100%; gap: 4px; }
 .document-editor-detail-control { height: 24px; min-height: 24px; }
 .document-editor-live-status { flex: 0 0 auto; padding-left: 12px; }
-.document-editor-fields { display: grid; grid-template-columns: 40% 60%; grid-template-rows: auto auto minmax(min-content, 1fr) auto; flex: 1; min-width: 0; min-height: 0; overflow: auto; }
+.document-editor-fields { display: grid; grid-template-columns: 40% 60%; grid-template-rows: auto auto minmax(min-content, 1fr) auto; flex: 1 0 auto; min-width: 0; }
 .document-editor-fields > .col-12 { grid-column: 1 / -1; width: auto; }
 .document-editor-content { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .document-editor-content :deep(> .tiptap-galaris-editor:not(.editorial-fullscreen)) { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -1418,6 +1433,10 @@ function restoreDraft(document: DocumentDetail): void {
 .document-editor-sharing-badges :deep(.q-chip) { margin: 0; }
 .document-editor-sharing-menu { width: min(340px, calc(100vw - 32px)); }
 .document-editor-sharing-options { max-height: 260px; overflow-y: auto; }
+@media (max-width: 1023px) {
+  .document-editor-content { padding-top: 0; }
+  .document-editor-content :deep(.editorial-toolbar) { border-top: 0; }
+}
 @media (max-width: 599.98px) {
   .document-editor-sharing-row { align-items: flex-start; }
   .document-editor-sharing-label { padding-top: 5px; }

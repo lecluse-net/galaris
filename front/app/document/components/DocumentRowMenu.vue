@@ -16,7 +16,7 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import type { DocumentLibraryEntry } from '../types'
 import { documentRowShortcuts, type DocumentRowAction } from '@/app/document/libraryShortcuts'
-const { entry, busy, target, allowCreate = false } = defineProps<{ entry: DocumentLibraryEntry; busy: boolean; target: string; allowCreate?: boolean }>()
+const { entry, busy, target, allowCreate = false, extraActions = [] } = defineProps<{ entry: DocumentLibraryEntry; busy: boolean; target: string; allowCreate?: boolean; extraActions?: ContextAction[] }>()
 const emit = defineEmits<{ select: []; create: [type?: DocumentCreationMode]; action: [value: DocumentRowAction] }>()
 const { t } = useI18n()
 const { action: copyAction } = useResourceCopy()
@@ -36,6 +36,6 @@ const actions = computed<ContextAction[]>(() => {
       label: t('documents.createTypedDocument', { type: t(type.label) }), run: () => emit('create', type.code) })),
     { key: 'import', icon: 'file_open', label: t('documents.importFrom'), run: () => emit('create', 'import') },
   ] : []
-  return [...standard, { ...copyAction(`document://${entry.item.id}`), label: t('documents.copyUrl') }, ...creations]
+  return [...standard, ...extraActions, { ...copyAction(`document://${entry.item.id}`), label: t('documents.copyUrl') }, ...creations]
 })
 </script>

@@ -187,7 +187,7 @@ async def get_users(
     query = select(User)
     if public_only:
         query = query.options(load_only(
-            User.id, User.email, User.display_name, User.language, User.document_open_mode,
+            User.id, User.email, User.display_name, User.language, User.document_open_mode, User.document_library_mode,
             User.is_active, User.avatar_key, User.avatar_mime_type, User.created_at,
             raiseload=True,
         ))
@@ -369,6 +369,8 @@ async def update(user_id: int, user_update: UserUpdate) -> Optional[User]:
 
     if user_update.document_open_mode is not None:
         user.document_open_mode = user_update.document_open_mode
+    if user_update.document_library_mode is not None:
+        user.document_library_mode = user_update.document_library_mode
 
     if revoke_persistent_sessions:
         from .refresh_session_service import revoke_all_user_sessions

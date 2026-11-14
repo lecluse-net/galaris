@@ -527,8 +527,9 @@ async def test_transferred_owner_needs_no_self_grant(db, agents, memory_storage,
     ])
     item = await service.transfer_document_owner(item.id, DocumentOwnerUpdate(
         kind=target_kind, id=target_id, expected_revision=item.revision,
-        expected_lock_version=item.lock_version,
+        expected_lock_version=item.lock_version, keywords=["retained", "target", "target"],
     ), actor_agent_id=owner.id)
+    assert item.keywords == ["retained", "target"]
     state = await document_sharing.sharing(item.id, recipient)
     assert state.can_manage
     assert state.owner.kind == target_kind and state.owner.id == target_id
