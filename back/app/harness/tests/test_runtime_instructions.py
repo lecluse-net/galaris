@@ -134,7 +134,7 @@ def test_pydantic_history_keeps_file_only_message_reference() -> None:
     message = TaskMessage(
         room_id=room_id,
         room_external_id="!room:test",
-        tool_code="matrix-primary",
+        service_code="matrix-primary",
         attachments=[
             TaskMessageAttachment(
                 id=file_id,
@@ -175,7 +175,7 @@ def test_pydantic_history_keeps_compact_context_with_each_message() -> None:
                 sender_display_name="Nicolas",
                 timestamp=posted_at,
                 text="Voici le rapport",
-                tool_code="nextcloud",
+                service_code="nextcloud",
                 room_external_id="talk-room",
                 attachments=[
                     TaskMessageAttachment(id=file_id, name="rapport.pdf")

@@ -9,7 +9,7 @@ from typing import Any, Literal
 from app.file_share import ResourceContext, materialize_resource, parse_resource_uri, resource_info
 from app.llm import MediaOperation, MediaRequest, MediaResult, resolve_media_resource
 from app.llm.facade import start_media_call, finish_media_call
-from app.tools import McpToolContext, list_enabled_native_mcp_definitions
+from app.services import McpToolContext, list_enabled_native_mcp_definitions
 from core.util import buffered_io_budget
 
 

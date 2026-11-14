@@ -13,7 +13,7 @@ from app.agent import (
     section,
 )
 from app.process import build_agent_process_advertisement
-from app.tools.agent_registry import (
+from app.services.agent_registry import (
     build_agent_tool_advertisement,
     build_tool_context_values,
 )

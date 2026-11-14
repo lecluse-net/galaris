@@ -110,7 +110,7 @@ Changing required status or reopening a `done`/`skipped` milestone requires a re
 The internal harness applies `runtime.yaml` from effectively assigned skills: `loading: eager`
 loads them on the first request in Tasks, text conversations and turn-based voice; the default
 remains on demand in all three contexts. The deferred catalogue makes assigned skills
-discoverable during a conversation. Tools retain
+discoverable during a conversation. Services retain
 their own permissions and restrictions. `galaris-knowledge` supplies this configuration and retains its
 documentation access check. Execution depends on neither the agent's name nor its installation
 marker. See the [product knowledge workflow](../../admin/product-knowledge.md).
@@ -151,7 +151,7 @@ See [0214](../../../../project/decisions/0214-explicit-task-retry-fresh-inferenc
 ## Elementary inference
 
 All managed external Harness local actions can receive human **Always allow this action type** consent,
-limited to the agent, Harness and exact action name. `app.tools` stores that consent and its
+limited to the agent, Harness and exact action name. `app.services` stores that consent and its
 configuration fingerprint, then claims a separate one-use authorization for each operation.
 Revocation blocks unconsumed dispatches; context, run and resource guards still apply.
 The internal Harness is excluded from this mechanism.
@@ -297,7 +297,7 @@ or terminal result, and call-based views wait for `completed_at`. Internal fragm
 available to guards and checkpoints. See [0087](../../../../project/decisions/0087-task-activity-snapshots.md).
 
 The visual `TaskAttempt.data.live_activity` checkpoint is limited to 40 messages of 4,000 characters,
-without prompts. Tool arguments and structured results each retain a preview of at most
+without prompts. Service arguments and structured results each retain a preview of at most
 4,000 bytes, with secret keys redacted and explicit truncation markers. The authorized Task
 stream preserves the same details, including after reconnection. An independent JSONB write preserves effect receipts
 and checkpoints. Custom Harnesses can select correlated LLM calls with `streams_ai_messages=false`;
@@ -706,7 +706,7 @@ deliberately pessimistic: declaring a function safe is a contract decision, not 
 its name.
 
 Before each model request, history is compacted according to the resolved context window.
-Tool call/return pairs remain atomic units, and the most recent elements are retained within the
+Service call/return pairs remain atomic units, and the most recent elements are retained within the
 remaining budget. The JSON arguments of a tool call remain structurally valid: compaction bounds
 their large values without removing required fields. The historical Chat adapter locally
 summarizes large old results with their fingerprint. The internal harness retains outcome,
@@ -766,7 +766,7 @@ typed entry carries at least a stable role, a resource type, an exact reference,
 document's content nor a file's bytes. A new active reference for the same role marks the old one
 as `superseded` without deleting it; subtasks read and update their root's registry under a lock.
 
-After the actual success of a native tool, `app.tools.resource_effects` promotes its effect into
+After the actual success of a native tool, `app.services.resource_effects` promotes its effect into
 this registry. The first document created receives the `primary_working_document` role; subsequent
 creations each retain their URI and a reference role. Later steps must read or edit them by UUID.
 File writes record the exact provider URI. A Messenger delivery or sharing upload separately
@@ -827,7 +827,7 @@ See [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
 ## Conversational Rounds and Real-Time Audio Sessions
 
-Tool cards represent invocation updates rather than text fragments. `tool_call_external_id`
+Service cards represent invocation updates rather than text fragments. `tool_call_external_id`
 (together with the retry number when present), or otherwise `stream_id`, matches live events
 with snapshots without concatenating or double-counting the result. Hermes preserves this
 identity through session history and checkpoints. The terminal Task projection includes
@@ -861,7 +861,7 @@ Its scheduler claims neither a Task nor an agent slot and launches a short round
 Pydantic AI harness and the effective agent profile's `low` text level. An empty column is a
 configuration error and does not fall back to the executor or current profile when the agent has a
 personal profile. The Hermes driver is never used as a fallback. The toolset is a dedicated
-projection: active connection, `Tool.conversation_enabled` flag, function declared `short` or
+projection: active connection, `Service.conversation_enabled` flag, function declared `short` or
 `deferred` for native functions, effective permissions, and runtime profile. An explicitly
 checked external MCP connector is mounted with its current function states; unchecked functions
 are not even resolved.
@@ -878,7 +878,7 @@ diagnostics and deterministic decisions.
 The conversational system prompt is distinct from the executor's, but reuses its identity
 contract: name, gender, position, personality, and job description. It adds the current temporal
 and social context, the authorized native inventory, and the compact catalog of Processes
-assigned to the agent. It separately renders the Tools from active connections reserved for Task
+assigned to the agent. It separately renders the Services from active connections reserved for Task
 mode, without repeating those authorized in conversation, and prohibits inferring a lack of access
 from this: if the request requires one of them, admission through `conversation_task_submit` is
 mandatory. Its rules require an immediate response for short work; long work first launches a
@@ -913,7 +913,7 @@ structured output immediately triggers its deterministic `END` fallback.
 Every new root, including one requested by `conversation_task_submit`, nevertheless goes through a
 dedicated structured call at the effective profile's `standard` level. This call directly
 reconstructs the standalone `label` and `objective` from the canonical chronology, frozen turn,
-Memory, continuity, related work, URLs, and attachments. Tool arguments are only hints, and
+Memory, continuity, related work, URLs, and attachments. Service arguments are only hints, and
 references absent from the context are rejected. Its system instruction is the administrable
 Markdown Param `ai.task-objective-system-prompt`. The server separately injects the room,
 interlocutor, and dispatch controls. It verifies idempotency before the call and round freshness
@@ -1157,7 +1157,7 @@ longer been available since ADR 0058, and resumption fails explicitly.
   function and its services retrieve it only with `get_db()`. Checkpoints and events are locked
   in journal order and then persisted in an independent transaction. A local failure therefore
   rolls back without invalidating another tool's session or the Task's durable transaction.
-  Tools declared `exclusive` remain barriers, while only tools explicitly marked `safe` execute
+  Services declared `exclusive` remain barriers, while only tools explicitly marked `safe` execute
   simultaneously. The Task scheduler and conversation controller sequential sessions remain
   available during runtime initialization (catalog, model, context), then their transaction is
   released before the first model request; no parallel branch uses them.
@@ -1201,7 +1201,7 @@ longer been available since ADR 0058, and resumption fails explicitly.
   `model_resolver.py`.
 - Internal harness: `back/app/harness/driver.py`, `executor.py`, `run_control.py`,
   `checkpoint.py`.
-- Tool discovery: `back/app/tools/catalog.py`, `tool_search_service.py`, and
+- Service discovery: `back/app/services/catalog.py`, `tool_search_service.py`, and
   `back/app/harness/mcp_toolset.py`.
 - Persistence: `back/app/task/agent_adapter.py`, `workflow.py`, `scheduler.py`, `models.py`.
 - Boundary tests: `back/app/agent/tests/test_architecture.py`.
@@ -1230,12 +1230,12 @@ omitted requirements, unknown keys and unsourced targets. It checks declared cov
 without replacing semantic result evaluation. Necessary clarification uses the same Task.
 Runtimes and `AgentRunEnvelopeV1` receive the scope.
 
-The filtered `app.tools` catalog optionally exposes owner-defined `EffectDescriptorV1`:
+The filtered `app.services` catalog optionally exposes owner-defined `EffectDescriptorV1`:
 capability, kind, targets, visibility, reversibility, idempotence and receipt. Preflight
 persists before the effect and rechecks the revision after native authorization. Reads and
 descriptor-defined ordinary creation remain autonomous. Verified creation in the Working
 Set permits updating that artifact; reading a resource does not. Unknown versions, stale
-scopes, stopped Tasks and divergent targets prevent the effect. Tools without descriptors
+scopes, stopped Tasks and divergent targets prevent the effect. Services without descriptors
 remain usable and record an unknown effect under existing controls. Domains retain their
 ACLs and final validation.
 Process declares autonomous selection from its assigned catalog when the request specifies

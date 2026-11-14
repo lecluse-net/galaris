@@ -15,7 +15,7 @@ from app.chat.models import ChatPushDelivery, ChatPushSubscription
 from app.chat.schemas import PushSubscriptionCreate, PushSubscriptionKeys
 from app.connection import Connection
 from app.messenger.models import Message, MessengerUser, Room, RoomUser
-from app.tools import ToolModel as Tool
+from app.services import ServiceModel as Service
 from core.params import VapidKeyPair, runtime_settings
 from core.util import decrypt_value
 from core.user import UserModel as User
@@ -55,7 +55,7 @@ async def _message_scope(
         code=f"push-{suffix}",
         agent_driver="internal",
     )
-    tool = Tool(
+    tool = Service(
         code=f"push-tool-{suffix}",
         label="Push tool",
         description="",
@@ -64,18 +64,18 @@ async def _message_scope(
     )
     db.add_all([agent, tool])
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     sender = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         agent_id=agent.id,
         external_id=f"agent:{agent.id}",
         display_name="Push Agent",
         is_ai=True,
     )
     recipient_identity = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         galaris_user_id=recipient.id,
         external_id=f"user:{recipient.id}",
         display_name="Push recipient",
@@ -101,7 +101,7 @@ async def _message_scope(
     )
     message = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="internal",
         remote_message_id=f"push-message-{suffix}",
         direction="outbound",

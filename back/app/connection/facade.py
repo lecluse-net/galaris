@@ -21,17 +21,17 @@ from .connection_service import (
     get_disabled_function_names_many,
     get_params_as_dict,
     has_active_tool_connection,
-    has_active_tool_function,
+    has_active_service_function,
     has_any_active_tool_connection,
     list_function_states,
-    list_tool_function_states,
+    list_service_function_states,
     resolve_function_enabled,
     resolve_function_state,
     stored_function_state,
     project_function_policy,
     validate_param_value,
     validate_params,
-    get_connection_by_agent_tool,
+    get_connection_by_agent_service,
     get_agent_ids_by_tool,
     get_or_create_connection,
     create_connection,
@@ -41,7 +41,7 @@ from .connection_service import (
     set_params_bulk,
     delete_param,
     set_connection_function_state,
-    set_tool_function_state,
+    set_service_function_state,
     resolve_function,
 )
 from .calendar_oauth import calendar_access_token, invalidate_calendar_token
@@ -59,10 +59,10 @@ __all__ = [
     "get_disabled_function_names_many",
     "get_params_as_dict",
     "has_active_tool_connection",
-    "has_active_tool_function",
+    "has_active_service_function",
     "has_any_active_tool_connection",
     "list_function_states",
-    "list_tool_function_states",
+    "list_service_function_states",
     "resolve_function_enabled",
     "resolve_function_state", "stored_function_state",
     "project_function_policy",
@@ -79,8 +79,8 @@ from .agent_admin_service import (
 )
 
 __all__ += [
-    "administration", "validate_param_value", "validate_params", "get_connection_by_agent_tool",
+    "administration", "validate_param_value", "validate_params", "get_connection_by_agent_service",
     "get_agent_ids_by_tool", "get_or_create_connection", "create_connection", "set_connection_active", "delete_connection",
     "get_params_for_api", "set_params_bulk", "delete_param", "set_connection_function_state",
-    "set_tool_function_state", "resolve_function",
+    "set_service_function_state", "resolve_function",
 ]

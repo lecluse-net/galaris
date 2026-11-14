@@ -9,15 +9,15 @@ autorisé, sans réponse brute ni jeton. Le bouton Réessayer relance l’action
 - Statut : accepté.
 
 Les connexions MCP HTTP/SSE proposent un bouton **Connecter le compte**, sans réglage
-OAuth dans le Tool ni saisie habituelle de Client ID, scopes ou secret. `app.connection` possède
-le parcours humain et les grants par connexion ; `app.tools`
+OAuth dans le Service ni saisie habituelle de Client ID, scopes ou secret. `app.connection` possède
+le parcours humain et les grants par connexion ; `app.services`
 construit les transports et conserve ses règles d'exposition et d'autorisation des fonctions.
-Les jetons ne sont ni des paramètres EAV, ni des secrets globaux du Tool, ni des données
+Les jetons ne sont ni des paramètres EAV, ni des secrets globaux du Service, ni des données
 fournies au modèle. Une table `connection_oauth`, supprimée avec sa connexion, conserve
 le grant et la demande temporaire dans des enveloppes chiffrées par la clé existante.
 Le bouton enregistre d’abord le brouillon de connexion, puis ouvre le fournisseur ;
 un échec d’enregistrement ne lance aucune autorisation. Les anciennes configurations
-OAuth du Tool restent lisibles, normalisées vers une authentification ordinaire sans
+OAuth du Service restent lisibles, normalisées vers une authentification ordinaire sans
 identifiants. Les accords liés à leur ancienne empreinte demandent une reconnexion.
 
 Le navigateur ouvre le fournisseur puis revient sur `/connection/oauth-callback`. Cette
@@ -69,11 +69,11 @@ Les configurations OAuth propriétaires hors métadonnées MCP restent hors de c
 
 Un marqueur typé, non sérialisé dans les paramètres, relie les transports à leur connexion
 et indique si celle-ci possède un accord ou une demande OAuth. Les autres connexions
-du même Tool conservent leur authentification ordinaire. Le grant OAuth remplace les
+du même Service conservent leur authentification ordinaire. Le grant OAuth remplace les
 en-têtes d’authentification ordinaires et ne place jamais de jeton dans l’URL.
 L'adaptateur HTTPX commun aux clients FastMCP et Pydantic AI résout le grant au moment
 de chaque requête, dans une transaction autonome courte. Le verrou de ligne sérialise
-le renouvellement et sa rotation entre workers. L'empreinte lie le grant à l'agent, au Tool,
+le renouvellement et sa rotation entre workers. L'empreinte lie le grant à l'agent, au Service,
 à l’URL résolue. Une réponse 401 invalide seulement le token
 utilisé ; elle ne rejoue jamais l'effet distant. Une déconnexion ou une nouvelle demande
 pendant l'échange du code empêche une réponse tardive de restaurer l'ancien grant.

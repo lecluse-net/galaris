@@ -13,7 +13,7 @@ et la reprise réelle de l'exécuteur Task.
 
 ## Décision
 
-`app.tools` conserve un port de disponibilité d'exécution des runtimes. `app.task`
+`app.services` conserve un port de disponibilité d'exécution des runtimes. `app.task`
 exige une Task en `EXEC`, non suspendue ni annulée, un lease valide et la tentative
 `CLAIMED` exacte référencée par le grant. Après décision humaine, cette tentative doit
 avoir commencé après la décision : un accord rapide ne libère pas le callback pendant

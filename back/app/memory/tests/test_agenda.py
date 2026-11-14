@@ -12,7 +12,7 @@ from app.memory.temporal import MemoryTemporalAnchor
 from app.calendar import context as calendar_context, dispatch
 from app.calendar.models import CalendarEvent, CalendarTrigger
 from app.agent.contracts import AgentContextRequest, AgentSnapshot
-from app.tools import sync_integrated_tool_connections
+from app.services import sync_integrated_service_connections
 
 
 async def remember(agent, title, **parts):
@@ -74,7 +74,7 @@ async def test_calendar_context_contains_memory_once_with_live_preferences(agent
     from app.memory.context import build_memory_brief
     from core.params import runtime_settings
     owner, _ = agents
-    await sync_integrated_tool_connections(owner.id)
+    await sync_integrated_service_connections(owner.id)
     now = datetime.now(timezone.utc)
     item = await remember(owner, 'Synthetic period for agent awareness', year=now.year)
     request = AgentContextRequest(task_id=None,
@@ -92,10 +92,10 @@ async def test_calendar_context_contains_memory_once_with_live_preferences(agent
         MemoryUsage.item_id == item.id, MemoryUsage.access_kind == 'context')) == 1
     assert datetime.fromisoformat(snapshot['until']) - datetime.fromisoformat(snapshot['as_of']) == timedelta(days=4)
     assert not (await build_memory_brief(agent_id=owner.id, query='')).items
-    from app.connection.facade import set_tool_function_state
-    from app.tools import tool_service
-    tool = await tool_service.get_tool_record('memory')
-    await set_tool_function_state(tool.id, 'memory_upcoming', 'disabled')
+    from app.connection.facade import set_service_function_state
+    from app.services import service
+    tool = await service.get_service_record('memory')
+    await set_service_function_state(tool.id, 'memory_upcoming', 'disabled')
     contribution = await calendar_context.calendar_context_provider(request)
     assert contribution.metadata['calendar_context_count'] == 0
 
@@ -130,9 +130,9 @@ async def test_memory_agenda_http_requires_management_and_memory_rights(client, 
 @pytest.mark.asyncio
 async def test_calendar_tools_share_informational_memory_projection(agents, memory_storage):
     from app.calendar import mcp
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
     owner, _ = agents
-    await sync_integrated_tool_connections(owner.id)
+    await sync_integrated_service_connections(owner.id)
     now = datetime.now(timezone.utc)
     item = await remember(owner, 'Synthetic tool calendar evidence', year=now.year)
     ctx = McpToolContext(agent_id=owner.id, runtime='internal')

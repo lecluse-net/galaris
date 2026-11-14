@@ -2,10 +2,10 @@
 
 # Flux du protocole Mail IMAP/SMTP
 
-Le bridge `bridge.mail` adapte une boîte externe aux contrats Tool et Messenger de Galaris.
-Un Tool fournisseur personnalisé sélectionne `imap_smtp.mail` dans `capabilities`, active
+Le bridge `bridge.mail` adapte une boîte externe aux contrats Service et Messenger de Galaris.
+Un Service fournisseur personnalisé sélectionne `imap_smtp.mail` dans `capabilities`, active
 `mail_config` et peut cumuler plusieurs capacités différentes, chacune avec un seul protocole.
-Mail ne fait plus partie des Tools internes. L’agent invoque des fonctions MCP bornées sur une
+Mail ne fait plus partie des Services internes. L’agent invoque des fonctions MCP bornées sur une
 connexion active de ce fournisseur ; `connection_id` sélectionne explicitement la connexion
 lorsque plusieurs fournisseurs sont actifs. L'autorisation et l'exécution utilisent cette même
 connexion ; une sélection ambiguë ou étrangère est refusée. Le listener
@@ -19,13 +19,13 @@ approbations. Les deux authentifications peuvent partager `login` et `password` 
 des paramètres distincts. Aucun paramètre n'est créé à l'activation du protocole.
 Les configurations historiques vides conservent les valeurs globales et locales existantes.
 
-Un même agent peut créer plusieurs connexions au même Tool Mail : par exemple deux boîtes
+Un même agent peut créer plusieurs connexions au même Service Mail : par exemple deux boîtes
 chez un seul fournisseur. Chaque connexion conserve ses paramètres, secrets, restrictions de
 dossiers, autorisations et curseurs propres. Les appels MCP utilisent `connection_id` ; sans
 sélection non ambiguë, ils refusent l'opération et indiquent les connexions disponibles.
-Les autres Tools conservent une seule connexion par agent. Retirer le protocole Mail exige
+Les autres Services conservent une seule connexion par agent. Retirer le protocole Mail exige
 de supprimer d'abord les connexions supplémentaires du même agent.
-Le catalogue MCP `tools_list` présente chaque compte avec son adresse, son `connection_id`
+Le catalogue MCP `services_list` présente chaque compte avec son adresse, son `connection_id`
 et les fonctions autorisées sur cette connexion. Le skill système Galaris et les descriptions
 des paramètres MCP expliquent comment choisir le compte et conserver ses références.
 
@@ -38,13 +38,13 @@ arbitrairement une boîte parmi plusieurs.
 ```text
 Agent / Tâche
    → fonctions MCP mail_*
-   → paramètres effectifs : surcharge de connexion, sinon valeur globale du Tool
+   → paramètres effectifs : surcharge de connexion, sinon valeur globale du Service
    → connexion Mail active de l'agent
    ├── IMAP TLS/STARTTLS : dossiers, recherche, lecture, flags, move, trash
    ├── SMTP TLS/STARTTLS : send, reply, forward
    ├── mail_outbound_deliveries : contenu MIME + enveloppe + validation + issue durable
    ├── app.messenger → Memory : un contact privé par compte observé
-   └── app.file_share : ressources <tool.code>:// en lecture seule
+   └── app.file_share : ressources <service.code>:// en lecture seule
 
 Connexion Mail active
    → polling IMAP toutes les poll_interval_s
@@ -128,7 +128,7 @@ d’autorisation. Le MIME final et ses pièces jointes sont préparés avant la 
 seuls ces octets persistés sont envoyés. Seul le responsable Mail désigné peut répondre.
 La ligne Mail référence cette autorisation par `authorization_id`. Le Journal des mails
 projette son attente et sa décision sans créer un second circuit : accepter ou refuser dans
-le journal appelle `app.tools.answer_action`, comme le choix de la conversation. L'accord
+le journal appelle `app.services.answer_action`, comme le choix de la conversation. L'accord
 réveille l'appelant d'origine ; le journal ne soumet pas lui-même le message à SMTP.
 Le reçu distingue donc un accord enregistré d'un envoi effectivement accepté par SMTP.
 Le journal SMTP continue de gérer les doublons et résultats incertains. Une décision répétée
@@ -185,7 +185,7 @@ un envoi `error` ou `uncertain` ne crée aucun contact. Deux adresses différent
 items, même si leur nom d’affichage est identique. Dream pourra ultérieurement les relier à un
 même individu par des liens non destructifs, sans fusionner ni réécrire les identités sources.
 
-Quand `mail_send`, `file_search` et `file_read` sont tous autorisés, le registre des Tools demande
+Quand `mail_send`, `file_search` et `file_read` sont tous autorisés, le registre des Services demande
 automatiquement à l’agent de chercher `memory://` si le destinataire est donné uniquement par son
 nom. Une adresse explicitement fournie dans la demande est utilisée telle quelle après validation.
 L’agent ne devine jamais une adresse : zéro ou plusieurs correspondances provoquent une demande
@@ -215,7 +215,7 @@ mais la vérification et l'archivage IMAP dans Envoyés exigent que ce dossier s
 
 La connexion saisit uniquement l'adresse de la boîte et un mot de passe commun à IMAP et SMTP.
 L'adresse sert aussi d'identifiant auprès des deux serveurs. Hôtes, ports, sécurité, timeouts et
-l'intervalle de relève sont configurables globalement sur le Tool ; les limites de pièces jointes
+l'intervalle de relève sont configurables globalement sur le Service ; les limites de pièces jointes
 y sont exprimées en Mo puis converties en octets à la frontière du bridge. Une connexion peut les
 personnaliser sauf
 lorsqu'une valeur est imposée. Tous les paramètres `password`, globaux ou locaux, restent chiffrés
@@ -224,7 +224,7 @@ permet de tester IMAP et SMTP après enregistrement. `approver_user_id` suit la 
 globale/surcharge locale. Les modes des fonctions remplacent le réglage `approval_required` :
 DbAdmin convertit les anciens opt-ins en Sur demande sans réactiver les fonctions bloquées.
 Une politique active sans USER actif est refusée
-avant la création du mail. Le Tool n’est pas auto-connecté et reste absent du catalogue d’un agent
+avant la création du mail. Le Service n’est pas auto-connecté et reste absent du catalogue d’un agent
 tant qu’un administrateur n’a pas créé et activé sa connexion.
 
 La page `/connection/mail`, protégée par `MAIL_ACCESS` ou `MAIL_EDIT`, affiche en premier les mails

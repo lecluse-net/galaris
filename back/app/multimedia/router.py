@@ -28,7 +28,7 @@ async def _scoped_run(run_id: UUID) -> int:
 
 
 @router.get("/runs/{run_id}/deliveries")
-@authorize(privileges=[Privileges.TOOL_ACCESS, Privileges.TOOL_EDIT])
+@authorize(privileges=[Privileges.SERVICE_ACCESS, Privileges.SERVICE_EDIT])
 async def list_deliveries(run_id: UUID) -> list[dict[str, object]]:
     await _scoped_run(run_id)
     rows = await get_db().execute(select(
@@ -40,7 +40,7 @@ async def list_deliveries(run_id: UUID) -> list[dict[str, object]]:
 
 
 @router.post("/runs/{run_id}/deliveries/{receipt_id}/resolve")
-@authorize(privileges=Privileges.TOOL_EDIT)
+@authorize(privileges=Privileges.SERVICE_EDIT)
 async def resolve_delivery(run_id: UUID, receipt_id: UUID, repair: DeliveryRepair) -> dict[str, bool]:
     actor = await _scoped_run(run_id)
     try:

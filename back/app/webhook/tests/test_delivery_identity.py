@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select
 
 from app.memory.tests.conftest import agents  # noqa: F401
-from app.tools.models import Tool
+from app.services.models import Service
 from app.connection.models import Connection, ConnectionParam
 from app.task import Task
 from app.webhook import functions
@@ -12,11 +12,11 @@ from app.webhook import functions
 
 @pytest.mark.asyncio
 async def test_redelivery_returns_same_task_but_distinct_connection_and_payload_are_respected(db, agents, monkeypatch):
-    tool = Tool(code=f"delivery-{uuid4().hex}", label="Webhook", listener_config={"connection_key": "channel"})
+    tool = Service(code=f"delivery-{uuid4().hex}", label="Webhook", listener_config={"connection_key": "channel"})
     db.add(tool)
     await db.flush()
     for index, agent in enumerate(agents):
-        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
         db.add(connection)
         await db.flush()
         db.add(ConnectionParam(connection_id=connection.id, param_name="channel", param_value=str(index)))

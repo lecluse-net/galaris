@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from .admin_schemas import PageLimit, PageOffset
 
 

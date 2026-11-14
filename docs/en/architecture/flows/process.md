@@ -1,6 +1,6 @@
 <p align="right"><a href="../../../fr/architecture/flows/process.md">Français</a> · <strong>English</strong></p>
 
-# Tool and Process Flow
+# Service and Process Flow
 
 Native inspection and `processus_get` share persisted operational evidence: activities,
 waits, last activity and available commands. Runs, variables and attachments inherit the
@@ -35,16 +35,16 @@ do not constitute a global security qualification.
 A tool call returns a structured output directly. Business workflows, such as those managed
 in n8n, use a durable `ProcessRun` so the Agent can wait, resume, cancel, and analyze them
 without keeping a request open. Technical maintenance stays in its owning module:
-catalogue refresh uses Python functions in `app.tools` and creates no Process.
+catalogue refresh uses Python functions in `app.services` and creates no Process.
 
 To add third-party software, read the
 [external engine integration guide](../../dev/process-engines.md).
 The registry and workers support multiple engines simultaneously;
-each definition selects its engine through its Tool.
+each definition selects its engine through its Service.
 
 ```text
 Agent runtime
-   → app.tools / MCP toolset catalog
+   → app.services / MCP toolset catalog
    → @mcp_tool tool
    → app.process (definition + run + event + startup job)
    → engine registry
@@ -127,8 +127,8 @@ with `defer_loading` and become accessible through `search_tools`. The common MC
 continues to apply function disablements and runtime constraints before this
 discovery.
 
-The planner always receives the exhaustive name manifest. `app.tools.catalog` derives its version
-from the same effective MCP server. `app.tools.tool_search_service` enriches this manifest with a
+The planner always receives the exhaustive name manifest. `app.services.catalog` derives its version
+from the same effective MCP server. `app.services.tool_search_service` enriches this manifest with a
 hybrid FTS + pgvector search over bounded public metadata. Embeddings are shared by definition
 fingerprint, never by Agent; for each request, candidate fingerprints come exclusively from the
 Agent's effective catalog, the runtime, and the Task.
@@ -273,7 +273,7 @@ idempotency, cancellation, and terminal-state rules as the other engines.
 
 - Engine contracts: `back/app/process/engine.py` and `registry.py`.
 - Persistence and matrix: `back/app/process/models.py`, `process_service.py`.
-- Tools: `back/app/process/mcp.py` and `back/app/tools/mcp_loader.py`.
+- Services: `back/app/process/mcp.py` and `back/app/services/mcp_loader.py`.
 - n8n adapter: `back/bridge/n8n/`.
 ## Stop evidence for replacement
 

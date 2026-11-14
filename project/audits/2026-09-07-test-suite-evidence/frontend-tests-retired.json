@@ -584,7 +584,7 @@
     "name": "the paused and running overview metrics expose mouse and keyboard filtering"
   },
   {
-    "file": "front/app/tools/responsiveToolDialog.test.mjs",
+    "file": "front/app/services/responsiveToolDialog.test.mjs",
     "name": "the tool editor uses readable stacked layouts on mobile"
   },
   {

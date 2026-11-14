@@ -14,7 +14,7 @@ class LaunchSnapshot(BaseModel):
     version: Literal[1] = 1
     workflow_id: str = ""
     process_label: str = ""
-    tool_code: str = ""
+    service_code: str = ""
     input: dict[str, Any] = Field(default_factory=dict)
     files: list[ProcessFileRef] = Field(default_factory=lambda: list[ProcessFileRef]())
 

@@ -1,0 +1,39 @@
+code: qonto
+label: Qonto
+description: |-
+  Qonto banking API: accounts and operations available to your key.
+
+  API bancaire Qonto : comptes et opérations accessibles à votre clé.
+
+  https://docs.qonto.com/get-started/business-api/overview
+catalog:
+  format_version: 1
+  version: 1.0.0
+  minimum_galaris_version: 0.1.0
+  summary:
+    fr: 'API bancaire Qonto : comptes et opérations accessibles à votre clé.'
+    en: 'Qonto banking API: accounts and operations available to your key.'
+  documentation: https://docs.qonto.com/get-started/business-api/overview
+  icon_credit: Original generic service icon by Galaris contributors; project license.
+icon:
+  media_type: image/svg+xml
+  encoding: text
+  data: |-
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="12" fill="#087FF5"/><path d="M20 18h24v6H26v10h14v6H26v6h18v6H20z" fill="#ffffff"/></svg>
+conversation_enabled: false
+capabilities:
+- rest.api
+rest_config:
+  base_url: https://thirdparty.qonto.com/v2
+  auth:
+    type: header
+    header_name: Authorization
+    param: token
+connection_schema:
+  params:
+    token:
+      type: password
+      label: Token
+      description: 'Qonto API authorization value: organization login:secret key (literal
+        colon, no Basic encoding).'
+      required: true

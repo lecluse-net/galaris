@@ -26,8 +26,8 @@ from core.database import get_db
 from core.util import BufferedAdmissionDeferred
 from core.i18n import render_prompt, tr
 from core.params import runtime_settings
-from app.tools import ToolModel
-from app.tools.facade import AuthorizationClosed, AuthorizationSuspended, continued_deferred_dispatch
+from app.services import ServiceModel
+from app.services.facade import AuthorizationClosed, AuthorizationSuspended, continued_deferred_dispatch
 
 from . import metrics, registry
 from .checkpoints import LaunchSnapshot
@@ -218,18 +218,18 @@ async def has_process_definitions(
     return result.scalar_one_or_none() is not None
 
 
-async def list_process_tools() -> list[ToolModel]:
-    query = select(ToolModel).where(ToolModel.code.in_(registry.codes())).order_by(ToolModel.label)
+async def list_process_tools() -> list[ServiceModel]:
+    query = select(ServiceModel).where(ServiceModel.code.in_(registry.codes())).order_by(ServiceModel.label)
     return list((await get_db().execute(query)).scalars().all())
 
 
-async def get_process_tool_by_code(tool_code: str) -> ToolModel:
+async def get_process_tool_by_code(service_code: str) -> ServiceModel:
     """Resolve one configured process engine from its stable tool code."""
-    code = tool_code.strip()
+    code = service_code.strip()
     if not code:
         raise ValueError(await tr("process.errors.engine_code_required"))
     tool = (
-        await get_db().execute(select(ToolModel).where(ToolModel.code == code))
+        await get_db().execute(select(ServiceModel).where(ServiceModel.code == code))
     ).scalar_one_or_none()
     if tool is None:
         raise LookupError(await tr("process.errors.tool_not_found"))
@@ -237,8 +237,8 @@ async def get_process_tool_by_code(tool_code: str) -> ToolModel:
     return tool
 
 
-async def get_tool_health(tool_code: str) -> ProcessEngineHealth:
-    return await registry.get(tool_code).health()
+async def get_tool_health(service_code: str) -> ProcessEngineHealth:
+    return await registry.get(service_code).health()
 
 
 async def get_operations(
@@ -304,8 +304,8 @@ async def _validate_agent(agent_id: int | None) -> None:
         raise LookupError(await tr("process.errors.agent_not_found"))
 
 
-async def _process_tool(tool_id: int) -> ToolModel:
-    tool = await get_db().get(ToolModel, tool_id)
+async def _process_tool(service_id: int) -> ServiceModel:
+    tool = await get_db().get(ServiceModel, service_id)
     if tool is None:
         raise LookupError(await tr("process.errors.tool_not_found"))
     registry.get(tool.code)
@@ -313,14 +313,14 @@ async def _process_tool(tool_id: int) -> ToolModel:
 
 
 async def create_definition(data: ProcessDefinitionCreate) -> ProcessDefinition:
-    tool = await _process_tool(data.tool_id)
+    tool = await _process_tool(data.service_id)
     if tool.code == "galaris":
         raise ValueError("Create internal BPMN definitions through the Process contract")
     await _validate_agent(data.agent_id)
     existing_engine_process = (
         await get_db().execute(
             select(ProcessDefinition.id).where(
-                ProcessDefinition.tool_id == data.tool_id,
+                ProcessDefinition.service_id == data.service_id,
                 ProcessDefinition.engine_process_id == data.engine_process_id,
             )
         )
@@ -344,17 +344,17 @@ async def update_definition(
     changes = data.model_dump(exclude_unset=True)
     if record.code is not None:
         raise ValueError("Internal definitions are edited through their Process contract")
-    for required_field in ("tool_id", "engine_process_id", "label"):
+    for required_field in ("service_id", "engine_process_id", "label"):
         if required_field in changes and changes[required_field] is None:
             raise ValueError(f"{required_field} cannot be null")
-    if "tool_id" in changes:
-        tool = await _process_tool(cast(int, changes["tool_id"]))
+    if "service_id" in changes:
+        tool = await _process_tool(cast(int, changes["service_id"]))
         if tool.code == "galaris":
             raise ValueError("Internal definitions are created through their Process contract")
     if "agent_id" in changes:
         await _validate_agent(cast(int | None, changes["agent_id"]))
 
-    tool_id = cast(int, changes.get("tool_id", record.tool_id))
+    service_id = cast(int, changes.get("service_id", record.service_id))
     engine_process_id = cast(
         str,
         changes.get("engine_process_id", record.engine_process_id),
@@ -362,7 +362,7 @@ async def update_definition(
     duplicate_id = (
         await get_db().execute(
             select(ProcessDefinition.id).where(
-                ProcessDefinition.tool_id == tool_id,
+                ProcessDefinition.service_id == service_id,
                 ProcessDefinition.engine_process_id == engine_process_id,
                 ProcessDefinition.id != process_id,
             )
@@ -407,7 +407,7 @@ async def list_for_agent(agent_id: int) -> list[dict[str, Any]]:
             "workflow_id": process.engine_process_id,
             "label": process.label,
             "description": process.description,
-            "tool_id": process.tool_id,
+            "service_id": process.service_id,
         }
         for process in rows
     ]
@@ -483,7 +483,7 @@ async def resolve_engine_run(
     )
     if process is None or process.agent_id is None:
         raise LookupError(await tr("process.errors.workflow_without_agent"))
-    tool = await _process_tool(process.tool_id)
+    tool = await _process_tool(process.service_id)
 
     existing = (
         await get_db().execute(
@@ -515,7 +515,7 @@ async def resolve_engine_run(
             "version": 1,
             "workflow_id": workflow_id,
             "process_label": process.label,
-            "tool_code": tool.code,
+            "service_code": tool.code,
         },
         engine_code=tool.code,
         engine_run_id=engine_run_id,
@@ -784,7 +784,7 @@ async def start_process(
     process = allowed
     if not process.engine_process_id:
         raise ValueError(await tr("process.errors.engine_process_id_missing"))
-    tool = await _process_tool(process.tool_id)
+    tool = await _process_tool(process.service_id)
 
     engine = registry.get(tool.code)
     if isinstance(engine, IntegratedProcessEngine):
@@ -859,7 +859,7 @@ async def start_process(
         "version": 1,
         "workflow_id": process.engine_process_id,
         "process_label": process.label,
-        "tool_code": tool.code,
+        "service_code": tool.code,
         "input": input_data,
         "files": serialized_files,
     }
@@ -869,7 +869,7 @@ async def start_process(
         launch_snapshot["process_label"] = definition["title"]
         from .run_participants import participant_agents
         launch_snapshot["participant_agents"] = participant_agents(launch_snapshot, agent_id)
-    from app.tools.facade import register_deferred_dispatch
+    from app.services.facade import register_deferred_dispatch
     authorization_permit = await register_deferred_dispatch(launch_snapshot)
     if authorization_permit is not None:
         launch_snapshot["authorization_permit"] = str(authorization_permit)
@@ -895,7 +895,7 @@ async def start_process(
     db = get_db()
     db.add_all([run, job])
     await _append_event(run, "run.created", payload={"workflow_id": process.engine_process_id})
-    await _append_event(run, "engine.start.requested", payload={"tool_code": tool.code})
+    await _append_event(run, "engine.start.requested", payload={"service_code": tool.code})
     process_id = process.id
     try:
         if native_definition is not None:
@@ -1357,7 +1357,7 @@ async def _apply_snapshot(run: ProcessRun, snapshot: EngineRunSnapshot, event_ty
 
 async def _reconcile_authorization_receipt(run: ProcessRun) -> None:
     if run.status in TERMINAL_STATUSES and (permit := run.launch_snapshot.get("authorization_permit")):
-        from app.tools.facade import finish_action
+        from app.services.facade import finish_action
         await finish_action(UUID(str(permit)), deferred=True,
             outcome="completed" if run.status == "success" else "failed",
             receipt={"process_run": str(run.id), "status": run.status, "remote_run": run.engine_run_id})
@@ -1844,8 +1844,8 @@ async def record_inbound_call(
     metrics.increment("process_inbound_calls_total", kind=kind, target=target_code)
 
 
-async def sync_tool_definitions(tool_code: str) -> list[dict[str, Any]]:
-    definitions = await registry.get(tool_code).sync_definitions()
+async def sync_tool_definitions(service_code: str) -> list[dict[str, Any]]:
+    definitions = await registry.get(service_code).sync_definitions()
     return [definition.model_dump(mode="json") for definition in definitions]
 
 
@@ -1903,7 +1903,7 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
         started = asyncio.get_running_loop().time()
         authorization_permit = run.launch_snapshot.get("authorization_permit")
         dispatch_claimed = False
-        from app.tools.facade import claim_deferred_dispatch, finish_action, authorized_request
+        from app.services.facade import claim_deferred_dispatch, finish_action, authorized_request
         try:
             try:
                 snapshot = LaunchSnapshot.model_validate(run.launch_snapshot)
@@ -1942,7 +1942,7 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
                 await finish_action(UUID(str(authorization_permit)), receipt=result.model_dump(mode="json"), deferred=True)
         except (BufferedAdmissionDeferred, AuthorizationSuspended):
             if dispatch_claimed and authorization_permit:
-                from app.tools.facade import release_buffered_dispatch
+                from app.services.facade import release_buffered_dispatch
                 await release_buffered_dispatch(UUID(str(authorization_permit)))
             locked_job = (await db.execute(
                 select(ProcessStartJob).where(ProcessStartJob.id == job.id)

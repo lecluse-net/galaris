@@ -24,9 +24,9 @@ async function fixtures(page) {
   await catalogueRoute(page, catalogueItems())
   await jsonRoute(page, '**/api/processes/internal/definitions?*', { items: [{ id: 2, code: 'synthetic', title: 'Synthetic process', archived: false, document_id: 'synthetic-document' }], total: 1, page: 1, page_size: 50 })
   await jsonRoute(page, '**/api/processes/internal/runs?*', { items: [{ id: 'synthetic-run', status: 'success', process_label: 'Synthetic execution', engine_code: 'galaris', result_preview: 'Synthetic result', started_at: '2026-01-01T12:00:00Z', finished_at: '2026-01-01T12:01:05Z' }], total: 1, page: 1, page_size: 50 })
-  await jsonRoute(page, '**/api/processes/definitions', [{ id: 1, agent_id: 7, tool_id: 1, engine_process_id: 'synthetic-external', label: 'Synthetic n8n workflow', description: null }])
-  await jsonRoute(page, '**/api/processes/tools', [{ id: 1, code: 'n8n', label: 'Synthetic n8n' }])
-  await jsonRoute(page, '**/api/processes/tools/n8n/health', { status: 'healthy', message: 'Synthetic engine available' })
+  await jsonRoute(page, '**/api/processes/definitions', [{ id: 1, agent_id: 7, service_id: 1, engine_process_id: 'synthetic-external', label: 'Synthetic n8n workflow', description: null }])
+  await jsonRoute(page, '**/api/processes/services', [{ id: 1, code: 'n8n', label: 'Synthetic n8n' }])
+  await jsonRoute(page, '**/api/processes/services/n8n/health', { status: 'healthy', message: 'Synthetic engine available' })
   await jsonRoute(page, '**/api/processes/operations', { pending_start_jobs: 0, stale_active_runs: 0, failed_last_24h: 0 })
   await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Alice', last_name: 'Example', code: 'synthetic', has_avatar: false }])
   await jsonRoute(page, '**/api/processes/internal/runs/synthetic-run?*', { id: 'synthetic-run', status: 'success', graph: null,
@@ -151,7 +151,7 @@ test('external definitions display before slow auxiliary catalogues and engine h
   await fixtures(page)
   let release
   const pending = new Promise(resolve => { release = resolve })
-  await page.route(url => ['/api/agents', '/api/agents/selection', '/api/processes/tools', '/api/processes/tools/n8n/health'].includes(url.pathname), async route => { await pending; await route.fallback() })
+  await page.route(url => ['/api/agents', '/api/agents/selection', '/api/processes/services', '/api/processes/services/n8n/health'].includes(url.pathname), async route => { await pending; await route.fallback() })
   await mount(page, 'app/process/pages/index.vue', { privileges: ['PROCESS_READ', 'PROCESS_ADMIN'] })
   try {
     await expect(page.getByText('Synthetic n8n workflow', { exact: true })).toBeVisible()
@@ -273,7 +273,7 @@ for (const kind of ['external', 'native']) {
   })
 }
 
-const externalDefinition = { id: 1, agent_id: 7, tool_id: 1, engine_process_id: 'synthetic-external', label: 'Synthetic external process', description: 'Saved synthetic description' }
+const externalDefinition = { id: 1, agent_id: 7, service_id: 1, engine_process_id: 'synthetic-external', label: 'Synthetic external process', description: 'Saved synthetic description' }
 
 for (const width of [1440, 390]) {
   test(`external editor preserves its draft after a failed save at ${width}px`, async ({ page }) => {
@@ -325,7 +325,7 @@ test('external process creation navigates to its own editor page', async ({ page
   await jsonRoute(page, '**/api/processes/definitions/sync?*', [{ engine_process_id: 'synthetic-external', label: externalDefinition.label, description: externalDefinition.description, active: true }])
   await page.route('**/api/processes/definitions', route => {
     expect(route.request().method()).toBe('POST')
-    expect(route.request().postDataJSON()).toEqual({ agent_id: null, tool_id: 1, engine_process_id: 'synthetic-external', label: externalDefinition.label, description: externalDefinition.description })
+    expect(route.request().postDataJSON()).toEqual({ agent_id: null, service_id: 1, engine_process_id: 'synthetic-external', label: externalDefinition.label, description: externalDefinition.description })
     return route.fulfill({ json: externalDefinition })
   })
   await mount(page, 'app/process/components/ExternalProcessEditor.vue', { route: '/process/new-external', privileges: ['PROCESS_ADMIN'] })
@@ -338,7 +338,7 @@ test('external process creation navigates to its own editor page', async ({ page
 })
 
 const n8nHealth = (message, code = null) => ({
-  tool_code: 'n8n', status: code ? 'error' : 'healthy', reachable: code !== 'engine_unreachable', authenticated: code !== 'unauthorized',
+  service_code: 'n8n', status: code ? 'error' : 'healthy', reachable: code !== 'engine_unreachable', authenticated: code !== 'unauthorized',
   supports_cancel: true, cancel_mode: 'best_effort', message, details: code ? [code] : [], checked_at: '2026-01-01T12:00:00Z',
 })
 
@@ -346,7 +346,7 @@ for (const width of [1440, 390]) {
   test(`n8n diagnostics open on synchronization and stay hidden after closing at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     await fixtures(page)
-    await jsonRoute(page, '**/api/processes/tools/n8n/health', n8nHealth('Synthetic n8n API available; 3 workflows discovered.'))
+    await jsonRoute(page, '**/api/processes/services/n8n/health', n8nHealth('Synthetic n8n API available; 3 workflows discovered.'))
     let release, calls = 0
     const pending = new Promise(resolve => { release = resolve })
     await page.route('**/api/processes/definitions/sync?*', async route => {
@@ -378,7 +378,7 @@ for (const width of [1440, 390]) {
 for (const [code, visible] of [['not_configured', false], ['engine_unreachable', true]]) {
   test(`n8n connection banner distinguishes ${code}`, async ({ page }) => {
     await fixtures(page)
-    await jsonRoute(page, '**/api/processes/tools/n8n/health', n8nHealth('Synthetic n8n connection diagnostic', code))
+    await jsonRoute(page, '**/api/processes/services/n8n/health', n8nHealth('Synthetic n8n connection diagnostic', code))
     await mount(page, 'app/process/pages/index.vue', { privileges: ['PROCESS_READ'] })
     const banner = page.getByRole('alert').filter({ hasText: 'Synthetic n8n connection diagnostic' })
     if (visible) await expect(banner).toBeVisible()

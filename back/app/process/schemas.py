@@ -54,7 +54,7 @@ class EngineProcessDefinition(BaseModel):
 
 
 class ProcessEngineHealth(BaseModel):
-    tool_code: str
+    service_code: str
     status: Literal["healthy", "degraded", "error"]
     reachable: bool
     authenticated: bool
@@ -124,7 +124,7 @@ class ProcessStartPayload(BaseModel):
 
 class ProcessDefinitionBase(BaseModel):
     agent_id: Optional[int] = None
-    tool_id: int
+    service_id: int
     engine_process_id: str = Field(min_length=1, max_length=255)
     label: str = Field(min_length=1, max_length=255)
     description: Optional[str] = None
@@ -136,7 +136,7 @@ class ProcessDefinitionCreate(ProcessDefinitionBase):
 
 class ProcessDefinitionUpdate(BaseModel):
     agent_id: Optional[int] = Field(default=None, gt=0)
-    tool_id: Optional[int] = Field(default=None, gt=0)
+    service_id: Optional[int] = Field(default=None, gt=0)
     engine_process_id: Optional[str] = Field(default=None, min_length=1, max_length=255)
     label: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = None
@@ -190,7 +190,7 @@ class ProcessRunRead(BaseModel):
     launcher_agent_code: Optional[str] = None
     task_id: Optional[UUID] = None
     await_task_id: Optional[UUID] = None
-    tool_code: str = Field(validation_alias=AliasChoices("engine_code", "tool_code"))
+    service_code: str = Field(validation_alias=AliasChoices("engine_code", "service_code"))
     engine_run_id: Optional[str] = None
     correlation_id: str
     status: ProcessStatus

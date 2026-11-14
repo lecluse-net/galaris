@@ -4,7 +4,7 @@ import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
 
 for (const mobile of [false, true]) {
-  test(`ToolAdmin prepares a secret candidate and administers a Tool (${mobile ? 'mobile' : 'desktop'})`, async ({ page, request }) => {
+  test(`ServiceAdmin prepares a secret candidate and administers a Service (${mobile ? 'mobile' : 'desktop'})`, async ({ page, request }) => {
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
     const pageErrors = collectPageErrors(page)
     await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: /^(Plus tard|Later|稍后)$/, exact: true }).click())
@@ -25,20 +25,20 @@ for (const mobile of [false, true]) {
       const path = new URL(response.url()).pathname
       if (path.startsWith('/api/') && response.status() >= 400) errors.push(`${response.status()} ${path}`)
     })
-    const tools = await (await request.get('/api/tools', { headers })).json()
-    const admin = tools.find(tool => tool.code === 'tool_admin')
+    const tools = await (await request.get('/api/services', { headers })).json()
+    const admin = tools.find(tool => tool.code === 'service_admin')
     expect(admin.conversation_enabled).toBe(false)
-    const grants = await (await request.get(`/api/connections?tool_id=${admin.id}&agent_id=${fixture.agent_id}`, { headers })).json()
+    const grants = await (await request.get(`/api/connections?service_id=${admin.id}&agent_id=${fixture.agent_id}`, { headers })).json()
     const grant = grants.length ? grants[0] : await (await request.post('/api/connections', {
-      headers, data: { tool_id: admin.id, agent_id: fixture.agent_id, active: false },
+      headers, data: { service_id: admin.id, agent_id: fixture.agent_id, active: false },
     })).json()
     expect(grant.active).toBe(false)
     expect((await request.patch(`/api/connections/${grant.id}`, { headers, data: { active: true,
-      params: { 'tools.management_scope': 'all' } } })).ok()).toBeTruthy()
+      params: { 'services.management_scope': 'all' } } })).ok()).toBeTruthy()
     // This administration scenario starts with explicit human authorization.
     const definitions = await (await request.get(`/api/connections/${grant.id}/functions`, { headers })).json()
     for (const definition of definitions.functions) {
-      if (definition.name.startsWith('tool_admin_')) {
+      if (definition.name.startsWith('service_admin_')) {
         const enabled = await request.put(`/api/connections/${grant.id}/functions/${definition.name}`, { headers, data: { state: 'enabled' } })
         expect(enabled.ok(), await enabled.text()).toBeTruthy()
       }
@@ -55,12 +55,12 @@ for (const mobile of [false, true]) {
     }
     const code = `candidate_${fixture.agent_id}`
     await pageErrors.settle()
-    await page.goto('/tools')
+    await page.goto('/services')
     if (mobile) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
     await page.getByRole('button', { name: 'Nouvel outil', exact: true }).click()
     const editor = page.getByRole('dialog').first()
     await editor.getByLabel('Nom technique *', { exact: true }).fill(code)
-    await editor.getByLabel('Libellé *', { exact: true }).fill('Synthetic ToolAdmin candidate')
+    await editor.getByLabel('Libellé *', { exact: true }).fill('Synthetic ServiceAdmin candidate')
     await editor.getByRole('button', { name: 'Ajouter un paramètre', exact: true }).click()
     await editor.getByLabel('Nom *', { exact: true }).fill('token')
     await editor.getByRole('combobox', { name: 'Type', exact: true }).press('ArrowDown')
@@ -85,9 +85,9 @@ for (const mobile of [false, true]) {
     await expect(referenceInput).toBeVisible()
     const reference = await referenceInput.inputValue()
     expect(reference).not.toContain(secret)
-    const before = await allowed('tool_admin_list', { search: code })
+    const before = await allowed('service_admin_list', { search: code })
     expect(before.total).toBe(0)
-    const tested = await allowed('tool_admin_mcp_test', { candidate_reference: reference })
+    const tested = await allowed('service_admin_mcp_test', { candidate_reference: reference })
     expect(tested.diagnostic.success, JSON.stringify(tested)).toBe(true)
     expect(tested.diagnostic.tools.map(tool => tool.name)).toContain('lookup')
     expect(JSON.stringify(tested)).not.toContain(secret)
@@ -103,40 +103,40 @@ for (const mobile of [false, true]) {
     await expect(page.getByRole('dialog')).toHaveCount(1)
     await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    const created = await allowed('tool_admin_create', { candidate_reference: reference })
+    const created = await allowed('service_admin_create', { candidate_reference: reference })
     expect(created.persisted).toBe(true)
     expect(JSON.stringify(created)).not.toContain(secret)
     const toolId = created.tool.id
-    const connected = await allowed('tool_admin_connection_create', {
-      tool_id: toolId, agent_id: fixture.agent_id, expected_version: created.version,
+    const connected = await allowed('service_admin_connection_create', {
+      service_id: toolId, agent_id: fixture.agent_id, expected_version: created.version,
     })
     const connectionId = connected.connection.id
     expect(connected.connection.active).toBe(false)
     expect(connected.connection.effective_params.token.configured).toBe(true)
-    const connectionTest = await allowed('tool_admin_connection_test', { connection_id: connectionId })
+    const connectionTest = await allowed('service_admin_connection_test', { connection_id: connectionId })
     expect(connectionTest.diagnostic.success).toBe(true)
-    const active = await allowed('tool_admin_connection_update', {
+    const active = await allowed('service_admin_connection_update', {
       connection_id: connectionId, active: true, expected_version: connected.version,
     })
-    const functions = await allowed('tool_admin_connection_function_list', { connection_id: connectionId })
+    const functions = await allowed('service_admin_connection_function_list', { connection_id: connectionId })
     expect(functions.items.find(fn => fn.name === 'lookup').available).toBe(true)
-    const revoked = await allowed('tool_admin_connection_function_set', {
+    const revoked = await allowed('service_admin_connection_function_set', {
       connection_id: connectionId, function_name: 'lookup', state: 'disabled', expected_version: active.version,
     })
     expect(revoked.function.effective).toBe(false)
     await pageErrors.settle()
     await page.reload()
-    await page.getByRole('tab', { name: 'Outils personnalisés', exact: true }).click()
+    await page.getByRole('tab', { name: 'Services personnalisés', exact: true }).click()
     await expect(page.getByText(code, { exact: true })).toBeVisible()
-    const current = await allowed('tool_admin_get', { tool_id: toolId })
-    const blocked = await invoke('tool_admin_delete', { tool_id: toolId, expected_version: current.version })
+    const current = await allowed('service_admin_get', { service_id: toolId })
+    const blocked = await invoke('service_admin_delete', { service_id: toolId, expected_version: current.version })
     expect(blocked.error.kind).toBe('dependencies_blocking')
-    await allowed('tool_admin_connection_delete', { connection_id: connectionId, expected_version: revoked.version })
-    const detached = await allowed('tool_admin_get', { tool_id: toolId })
-    await allowed('tool_admin_delete', { tool_id: toolId, expected_version: detached.version })
+    await allowed('service_admin_connection_delete', { connection_id: connectionId, expected_version: revoked.version })
+    const detached = await allowed('service_admin_get', { service_id: toolId })
+    await allowed('service_admin_delete', { service_id: toolId, expected_version: detached.version })
     await pageErrors.settle()
     await page.reload()
-    await page.getByRole('tab', { name: 'Outils personnalisés', exact: true }).click()
+    await page.getByRole('tab', { name: 'Services personnalisés', exact: true }).click()
     await expect(page.getByText(code, { exact: true })).toHaveCount(0)
     expect([...errors, ...pageErrors()]).toEqual([])
   })

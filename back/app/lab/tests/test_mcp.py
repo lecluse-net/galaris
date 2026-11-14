@@ -15,8 +15,8 @@ from app.task import TaskStatus
 from app.agent.models import Title
 from app.connection import Connection
 from app.connection.models import ConnectionFunctionState
-from app.tools import mandatory_tools, mcp_loader
-from app.tools.models import Tool
+from app.services import mandatory_services, mcp_loader
+from app.services.models import Service
 from app.lab import mcp
 from app.lab.contracts import CONTRACTS
 from app.lab.mcp_schemas import DatasetPatch, CasePatch, Page
@@ -57,9 +57,9 @@ async def provision(db):
     )
     db.add(agent)
     await db.flush()
-    await mandatory_tools.sync_integrated_tool_connections(agent.id)
+    await mandatory_services.sync_integrated_service_connections(agent.id)
     connection = await db.scalar(
-        select(Connection).join(Tool).where(Connection.agent_id == agent.id, Tool.code == "lab")
+        select(Connection).join(Service).where(Connection.agent_id == agent.id, Service.code == "lab")
     )
     assert connection is not None and not connection.active
     connection.active = True
@@ -67,10 +67,10 @@ async def provision(db):
     # These journeys exercise Lab effects and receipts after a human function grant.
     # Common one-action admission is qualified separately through the mounted MCP server.
     for definition in mcp_loader.load_mcp_tools():
-        if definition.tool_code == "lab":
+        if definition.service_code == "lab":
             db.add(ConnectionFunctionState(connection_id=connection.id,
                 function_name=definition.name, state="enabled", enabled=True))
-    inspection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent.id, Tool.code == "platform_admin"))
+    inspection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent.id, Service.code == "platform_admin"))
     for name in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
         db.add(ConnectionFunctionState(connection_id=inspection.id, function_name=name, state="enabled", enabled=True))
     await db.flush()
@@ -140,8 +140,8 @@ async def test_each_mechanism_can_be_authored_inspected_and_cloned(db, actor, me
 @pytest.mark.asyncio
 async def test_mounted_lab_action_waits_for_one_exact_human_agreement(committed_database):
     from app.connection import facade as connections
-    from app.tools.authorization import AUTHORIZATION_META_KEY, answer_action
-    from app.tools.authorization_models import ActionAuthorization
+    from app.services.authorization import AUTHORIZATION_META_KEY, answer_action
+    from app.services.authorization_models import ActionAuthorization
     async with get_db_session() as db:
         agent_id, connection_id = await provision(db)
         await connections.set_connection_function_state(connection_id, "lab_dataset_create", "ask")
@@ -575,12 +575,12 @@ async def test_capture_confirmation_survives_real_mcp_and_requires_source_access
         async with get_db_session() as db:
             admin = await db.scalar(
                 select(Connection)
-                .join(Tool)
-                .where(Connection.agent_id == agent_id, Tool.code == "platform_admin")
+                .join(Service)
+                .where(Connection.agent_id == agent_id, Service.code == "platform_admin")
             )
             admin.active = True
             from app.connection.facade import set_params_bulk
-            await set_params_bulk(admin.id, {"tools.management_scope": "all"}, commit=False, scope_edit_authorized=True)
+            await set_params_bulk(admin.id, {"services.management_scope": "all"}, commit=False, scope_edit_authorized=True)
         conflict = await client.call_tool("lab_case_import", args, raise_on_error=False)
         assert conflict.is_error
         text = " ".join(item.text for item in conflict.content if hasattr(item, "text"))
@@ -635,10 +635,10 @@ async def test_async_task_diagnosis_uses_real_evidence_and_persisted_diagnosis(d
     ctx, _ = actor
     _, llm, _ = benchmark
     monkeypatch.setattr(analysis_service.llm_service, "get_profile_llm_for_agent_id", AsyncMock(return_value=llm))
-    admin = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == ctx.agent_id, Tool.code == "platform_admin"))
+    admin = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == ctx.agent_id, Service.code == "platform_admin"))
     admin.active = True
     from app.connection.facade import set_params_bulk
-    await set_params_bulk(admin.id, {"tools.management_scope": "all"}, commit=False, scope_edit_authorized=True)
+    await set_params_bulk(admin.id, {"services.management_scope": "all"}, commit=False, scope_edit_authorized=True)
     task = Task(label="Synthetic diagnosis", objective="<p>Report observatory opening hours.</p>", status=TaskStatus.SUCCESS,
         execution_result={"success": True, "result": "Opens at nine."})
     db.add(task)

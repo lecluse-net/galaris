@@ -42,14 +42,14 @@ filtrent chaque nœud voisin avec les ACL du demandeur ; l’administration cons
 Les anciens nœuds de conversation et liens du projecteur `task_structure` sont supprimés lors de
 la mise à niveau et ne sont plus produits.
 
-Le Tool intégré `topic` constitue la façade d'administration agentique de ce domaine. Il expose le
+Le Service intégré `topic` constitue la façade d'administration agentique de ce domaine. Il expose le
 catalogue et les items liés, la création et la modification révisionnelle, la fusion, la scission
 par sélection hétérogène et la réaffectation d'un item exact. Les types réaffectables correspondent
 aux porteurs canoniques du lien : Task, message, round texte, tour vocal, Memory et document. Les
 mutations vérifient toujours le Topic source courant avant d'écrire et déplacent aussi les scopes
 Topic/contact lorsqu'un nœud Memory est concerné.
 
-La définition du Tool est une donnée permanente `app.tools` créée par DbAdmin. Aucune `Connection`
+La définition du Service est une donnée permanente `app.services` créée par DbAdmin. Aucune `Connection`
 n'est créée automatiquement : un administrateur choisit explicitement les agents qui reçoivent
 cette capacité globale. Chaque appel revérifie l'existence de cette connexion active.
 
@@ -59,7 +59,7 @@ cette capacité globale. Chaque appel revérifie l'existence de cette connexion 
 - Une Task ou session ne peut pas être simultanément répartie sur plusieurs dossiers.
 - Un souvenir consolidé peut être relié à plusieurs Topics s’il provient de plusieurs épisodes.
 - Les dossiers sont consultables par une API et une page globales protégées par `TOPIC_ACCESS`.
-- Un agent ne peut administrer les dossiers que si le Tool `topic` lui a été explicitement connecté.
+- Un agent ne peut administrer les dossiers que si le Service `topic` lui a été explicitement connecté.
 - Les métadonnées publiques d’un Topic ne doivent contenir aucun identifiant de transport,
   extrait privé ou nom de contact privé.
 - Les conversations Voice sans texte exploitable restent non classées plutôt que de créer un

@@ -48,7 +48,7 @@ LATE_ANSWER_GRACE_SECONDS = 7200  # 2 h
 
 def request_runtime_wait() -> None:
     """Yield at the runtime's next safe boundary after admitting a child request."""
-    from app.tools.contracts import current_tool_execution
+    from app.services.contracts import current_tool_execution
 
     execution = current_tool_execution()
     if execution is not None:

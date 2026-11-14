@@ -9,7 +9,7 @@ from app.dataset import access as dataset_access
 from app.process.models import ProcessDefinition
 from app.process import native_access as process_access
 from app.share import ShareGrant
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.team import TeamModel, TeamUserModel
 from core.user import HumanActor, UserModel
 
@@ -31,10 +31,10 @@ async def test_common_sql_preserves_existing_access_matrix(db, agents, domain):
         foreign = Dataset(owner_agent_id=outsider.id, title="Synthetic unrelated resource", content="{}", group_access=2)
     else:
         model, rules = ProcessDefinition, process_access
-        tool = await db.scalar(select(ToolModel.id).where(ToolModel.code == "galaris"))
-        resource = ProcessDefinition(agent_id=owner.id, tool_id=tool, label="Synthetic ACL matrix",
+        tool = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "galaris"))
+        resource = ProcessDefinition(agent_id=owner.id, service_id=tool, label="Synthetic ACL matrix",
             code="synthetic_matrix", engine_process_id="synthetic_matrix")
-        foreign = ProcessDefinition(agent_id=outsider.id, tool_id=tool, label="Synthetic unrelated resource",
+        foreign = ProcessDefinition(agent_id=outsider.id, service_id=tool, label="Synthetic unrelated resource",
             code="synthetic_other", engine_process_id="synthetic_other", group_access=2)
     db.add_all([resource, foreign])
     await db.flush()

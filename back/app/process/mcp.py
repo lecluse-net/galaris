@@ -6,8 +6,8 @@ from app.agent import EffectDescriptorV1
 from typing import Any, Optional, Literal
 from uuid import UUID
 
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
-from app.tools.facade import AdministrationScope, administration_scope
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services.facade import AdministrationScope, administration_scope
 from core.i18n import render_prompt, t
 from core.database import get_db
 
@@ -51,16 +51,16 @@ def _run_id(value: str) -> UUID:
 
 def _definition_payload(
     definition: Any,
-    tool_codes: dict[int, str],
+    service_codes: dict[int, str],
 ) -> dict[str, Any]:
     payload = dict(
         ProcessDefinitionRead.model_validate(definition).model_dump(mode="json")
     )
-    payload["tool_code"] = tool_codes.get(definition.tool_id, "")
+    payload["service_code"] = service_codes.get(definition.service_id, "")
     return payload
 
 
-async def _process_tool_codes() -> dict[int, str]:
+async def _process_service_codes() -> dict[int, str]:
     return {
         tool.id: tool.code
         for tool in await process_service.list_process_tools()
@@ -90,7 +90,7 @@ async def _process_administration(ctx: McpToolContext) -> AdministrationScope:
 
 
 async def _require_visible_run(ctx: McpToolContext, identity: UUID) -> None:
-    from app.tools import has_process_admin_access
+    from app.services import has_process_admin_access
 
     run = await process_service.get_run(identity)
     if run is None:
@@ -127,7 +127,7 @@ async def process_get(ctx: McpToolContext, workflow_id: str) -> dict[str, Any]:
         "workflow_id": process.engine_process_id,
         "label": process.label,
         "description": process.description,
-        "tool_id": process.tool_id,
+        "service_id": process.service_id,
     }
     if process.code is not None:
         definition = await native_definitions.read(workflow_id, ctx.agent_id)
@@ -161,7 +161,7 @@ async def process_activity_complete(ctx: McpToolContext, output: dict[str, Any],
         raise ValueError("The activity message exceeds 12000 characters")
     from .activity_controls import submit_result
     from .values import ValueContractError
-    from app.tools import RecoverableToolError
+    from app.services import RecoverableToolError
     try:
         return await submit_result(ctx.task_id, ctx.agent_id, output, message)
     except ValueContractError as error:
@@ -419,12 +419,12 @@ async def process_admin_engines(
 )
 async def process_admin_sync(
     ctx: McpToolContext,  # noqa: ARG001
-    tool_code: str = "n8n",
+    service_code: str = "n8n",
 ) -> list[dict[str, Any]]:
 
     (await _process_administration(ctx)).require_global()
-    await process_service.get_process_tool_by_code(tool_code)
-    return await process_service.sync_tool_definitions(tool_code)
+    await process_service.get_process_tool_by_code(service_code)
+    return await process_service.sync_tool_definitions(service_code)
 
 
 @mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
@@ -453,10 +453,10 @@ async def process_admin_list(
         agent_ids=scope.agent_ids,
         assigned_only=True,
     )
-    tool_codes = await _process_tool_codes()
+    service_codes = await _process_service_codes()
     visible: list[dict[str, Any]] = []
     for item in definitions:
-        visible.append(_definition_payload(item, tool_codes))
+        visible.append(_definition_payload(item, service_codes))
     return visible
 
 
@@ -476,8 +476,8 @@ async def process_admin_get(
     if definition is None:
         raise ValueError(f"Process definition not found: {process_id}")
     await _admin_native_definition(ctx, process_id)
-    tool_codes = await _process_tool_codes()
-    return _definition_payload(definition, tool_codes)
+    service_codes = await _process_service_codes()
+    return _definition_payload(definition, service_codes)
 
 
 @mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
@@ -491,15 +491,15 @@ async def process_admin_create(
     workflow_id: str,
     label: str,
     description: str = "",
-    tool_code: str = "n8n",
+    service_code: str = "n8n",
 ) -> dict[str, Any]:
 
     (await _process_administration(ctx)).require(agent_id)
-    tool = await process_service.get_process_tool_by_code(tool_code)
+    tool = await process_service.get_process_tool_by_code(service_code)
     definition = await process_service.create_definition(
         ProcessDefinitionCreate(
             agent_id=agent_id,
-            tool_id=tool.id,
+            service_id=tool.id,
             engine_process_id=workflow_id,
             label=label,
             description=description or None,
@@ -523,7 +523,7 @@ async def process_admin_update(
     workflow_id: str | None = None,
     label: str | None = None,
     description: str | None = None,
-    tool_code: str | None = None,
+    service_code: str | None = None,
     clear_description: bool = False,
 ) -> dict[str, Any]:
 
@@ -546,9 +546,9 @@ async def process_admin_update(
     if clear_description:
         values["description"] = None
 
-    if tool_code is not None:
-        tool = await process_service.get_process_tool_by_code(tool_code)
-        values["tool_id"] = tool.id
+    if service_code is not None:
+        tool = await process_service.get_process_tool_by_code(service_code)
+        values["service_id"] = tool.id
     if not values:
         raise ValueError("At least one process field must be supplied")
     definition = await process_service.update_definition(
@@ -557,8 +557,8 @@ async def process_admin_update(
     )
     if definition is None:
         raise ValueError(f"Process definition not found: {process_id}")
-    tool_codes = await _process_tool_codes()
-    return _definition_payload(definition, tool_codes)
+    service_codes = await _process_service_codes()
+    return _definition_payload(definition, service_codes)
 
 
 @mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",

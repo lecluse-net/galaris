@@ -84,7 +84,7 @@
                     <CodeEditor v-if="selected.kind === 'code' || selected.kind === 'if' && currentMode === 'code'" :key="`${selected.id}-code`" :model-value="configString('code')" language="python" :readonly="!editable" :label="t('nativeProcesses.pythonCode')" @update:model-value="setConfig('code', $event)" />
                     <q-input v-if="selected.kind === 'tool_call'" :model-value="configString('tool')" outlined :readonly="!editable" :label="t('nativeProcesses.tool')" @update:model-value="setConfig('tool', String($event ?? ''))" />
                     <template v-if="selected.kind === 'rest'">
-                      <q-input :model-value="configString('tool_code')" outlined :readonly="!editable" :label="t('nativeProcesses.restTool')" @update:model-value="setConfig('tool_code', String($event ?? ''))" />
+                      <q-input :model-value="configString('service_code')" outlined :readonly="!editable" :label="t('nativeProcesses.restTool')" @update:model-value="setConfig('service_code', String($event ?? ''))" />
                       <CodeEditor :key="`${selected.id}-request`" :model-value="configJson('request')" language="json" :readonly="!editable" :label="t('nativeProcesses.restRequest')" @update:model-value="setConfigJson('request', $event)" />
                     </template>
                     <q-btn v-if="selected.body" flat icon="open_in_new" :label="t('nativeProcesses.openBody')" @click="openBody" />

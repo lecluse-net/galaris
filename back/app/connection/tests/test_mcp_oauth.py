@@ -21,12 +21,12 @@ from app.connection.models import Connection, ConnectionOAuth
 from app.connection.oauth_service import OAuthCallback, OAuthError, Grant
 from app.connection.oauth_service import DevicePoll, OAuthStartOptions, RegisteredClient
 from pydantic import SecretStr
-from app.tools.models import Tool
-from app.tools.mcp import build_mcp_server
-from app.tools.mcp_loader import _external_transport
-from app.tools.schemas import McpConfig
-from app.tools.tests.test_tool_admin import synthetic_mcp  # noqa: F401 - shared real HTTP/SSE server
-from app.tools import tool_service
+from app.services.models import Service
+from app.services.mcp import build_mcp_server
+from app.services.mcp_loader import _external_transport
+from app.services.schemas import McpConfig
+from app.services.tests.test_service_admin import synthetic_mcp  # noqa: F401 - shared real HTTP/SSE server
+from app.services import service
 from core.user import UserModel
 from core.util import get_encryption_service
 from core.database import get_db_session
@@ -49,11 +49,11 @@ async def prepare_connection(db, monkeypatch):
     db.add_all([user, title])
     await db.flush()
     agent = Agent(user_id=user.id, title_id=title.id, code=f"oauth-{uuid4().hex}", first_name="OAuth", last_name="Synthetic")
-    tool = Tool(code=f"oauth_{uuid4().hex}", label="Synthetic OAuth MCP",
+    tool = Service(code=f"oauth_{uuid4().hex}", label="Synthetic OAuth MCP",
                 mcp_config={"type": "http", "url": "https://mcp.example.test/mcp", "auth": {"type": "none"}})
     db.add_all([agent, tool])
     await db.flush()
-    connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
+    connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
     db.add(connection)
     await db.commit()
     requests = []
@@ -63,7 +63,7 @@ async def prepare_connection(db, monkeypatch):
         requests.append(request)
         path = request.url.path
         if path in {"/mcp", "/sse"}:
-            return httpx.Response(401, headers={"WWW-Authenticate": 'Bearer resource_metadata="https://mcp.example.test/.well-known/oauth-protected-resource", scope="tools.read"'})
+            return httpx.Response(401, headers={"WWW-Authenticate": 'Bearer resource_metadata="https://mcp.example.test/.well-known/oauth-protected-resource", scope="services.read"'})
         if path == "/.well-known/oauth-protected-resource":
             return httpx.Response(200, json={"resource": provider.get("server_url", tool.mcp_config["url"]), "authorization_servers": ["https://oauth.example.test"]})
         if path == "/.well-known/oauth-authorization-server":
@@ -332,7 +332,7 @@ async def test_oauth_pkce_encryption_refresh_and_disconnect(db, oauth_connection
     # a valid RFC 9207 issuer without that slash must still match.
     data.iss = "https://oauth.example.test"
     assert query["resource"] == [resource]
-    assert query["scope"] == ["tools.read"]
+    assert query["scope"] == ["services.read"]
     assert query["code_challenge_method"] == ["S256"]
     row = await db.get(ConnectionOAuth, connection.id)
     assert data.state not in row.pending
@@ -455,7 +455,7 @@ async def test_grant_isolated_between_connections_and_invalidated_by_config(db, 
     other_agent = Agent(user_id=user_id, title_id=agent.title_id, code=f"oauth-other-{uuid4().hex}", first_name="Other", last_name="Synthetic")
     db.add(other_agent)
     await db.flush()
-    other = Connection(agent_id=other_agent.id, tool_id=tool.id, active=True)
+    other = Connection(agent_id=other_agent.id, service_id=tool.id, active=True)
     db.add(other)
     await db.commit()
     _, authorized_params = await connection_service.get_params_as_dict(connection)
@@ -478,15 +478,15 @@ async def test_real_http_and_sse_clients_discover_and_execute_with_oauth(committ
     url, calls = synthetic_mcp
     provider["server_url"] = url
     async with get_db_session() as db:
-        tool = await db.get(Tool, tool.id)
-        # OAuth overrides ordinary Tool credentials for this connection only.
+        tool = await db.get(Service, tool.id)
+        # OAuth overrides ordinary Service credentials for this connection only.
         tool.mcp_config = {"type": "sse" if url.endswith("/sse") else "http", "url": url,
                            "auth": {"type": "bearer", "param": "unused_token"},
                            "headers": {"Authorization": "${connection:unused_token}"}}
         await db.commit()
         data, _ = callback(await oauth_service.start(connection, user_id))
         await oauth_service.complete(connection, data, user_id)
-        current = await tool_service.get_tool_by_id(tool.id)
+        current = await service.get_service_by_id(tool.id)
         _, params = await connection_service.get_params_as_dict(connection)
     # Internal harness discovery uses Pydantic AI; the aggregate proxy uses FastMCP.
     server = build_mcp_server(current, params, prefix_tools=False)
@@ -499,11 +499,11 @@ async def test_real_http_and_sse_clients_discover_and_execute_with_oauth(committ
     assert calls.headers == ["Bearer synthetic-access-1"]
     assert provider["token_count"] == 1
     from app.connection.facade import mcp_oauth_auth
-    from app.tools.mcp_diagnostics import diagnose_mcp_connection
-    from app.tools.schemas import ToolMcpTestRequest
+    from app.services.mcp_diagnostics import diagnose_mcp_connection
+    from app.services.schemas import ServiceMcpTestRequest
     http_client = httpx.AsyncClient()
     try:
-        diagnostic = await diagnose_mcp_connection(ToolMcpTestRequest(
+        diagnostic = await diagnose_mcp_connection(ServiceMcpTestRequest(
             code=current.code, mcp_config=current.mcp), http_client=http_client,
             mcp_auth=mcp_oauth_auth(params, url))
     finally:
@@ -567,7 +567,7 @@ async def test_http_oauth_requires_web_edit_privileges_and_managed_agent(committ
         other_agent = Agent(user_id=stranger.id, title_id=own_agent.title_id, code=f"foreign-{uuid4().hex}", first_name="Foreign", last_name="Synthetic")
         db.add(other_agent)
         await db.flush()
-        other = Connection(agent_id=other_agent.id, tool_id=tool.id, active=True)
+        other = Connection(agent_id=other_agent.id, service_id=tool.id, active=True)
         db.add(other)
         await db.flush()
         other_id = other.id
@@ -679,7 +679,7 @@ async def test_calendar_oauth_keeps_mcp_grants_isolated_and_rotates_refresh_toke
 
 
 def test_legacy_tool_oauth_configuration_is_readable_without_manual_settings():
-    # OAuth now belongs to the connection; obsolete Tool settings are ignored.
+    # OAuth now belongs to the connection; obsolete Service settings are ignored.
     config = McpConfig.model_validate({"type": "http", "url": "https://mcp.example.test/mcp",
         "auth": {"type": "oauth", "oauth_client_id": "legacy-client", "oauth_scopes": "legacy-scope"}})
     assert config.auth.type == "none"

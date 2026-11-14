@@ -197,8 +197,8 @@ class NativeMessengerFileAccess(BaseModel):
 
 class NativeMessengerConnection(BaseModel):
     connection_id: int
-    tool_id: int
-    tool_code: str
+    service_id: int
+    service_code: str
     agent_id: int
     agent_code: str
     agent_name: str
@@ -206,9 +206,9 @@ class NativeMessengerConnection(BaseModel):
 
 
 class NativeMessengerIdentityMapping(BaseModel):
-    tool_id: int
-    tool_code: str
-    tool_label: str
+    service_id: int
+    service_code: str
+    service_label: str
     source: str
     external_id: str | None = None
     display_name: str | None = None

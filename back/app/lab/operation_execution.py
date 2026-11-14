@@ -12,7 +12,7 @@ from app.llm import llm_service, model_usages, reasoning_effort_scope, Reasoning
 from .operation_contracts import LabOperationError, LabOperationSnapshot, Operation
 from .operation_store import operation_checkpoint, snapshot
 from .operation_models import LabOperation
-from app.tools import McpToolContext
+from app.services import McpToolContext
 from core.database import get_db
 
 from . import (

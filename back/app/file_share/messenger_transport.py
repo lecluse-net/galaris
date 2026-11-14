@@ -32,16 +32,16 @@ class MessengerFileTransport:
     """Adapt a ``Messenger`` to the standard ``FileTransport`` interface."""
 
     def __init__(self, messenger: Any, *, language: str | None = None,
-                 task_id: UUID | None = None, tool_code: str = "") -> None:
+                 task_id: UUID | None = None, service_code: str = "") -> None:
         self._messenger = messenger
         self._language = language
         self._task_id = task_id
-        self._tool_code = tool_code
+        self._service_code = service_code
 
-    def for_task(self, task_id: UUID | None, tool_code: str) -> MessengerFileTransport:
+    def for_task(self, task_id: UUID | None, service_code: str) -> MessengerFileTransport:
         """Bind operation context without mutating a reusable transport."""
         return MessengerFileTransport(self._messenger, language=self._language,
-                                      task_id=task_id, tool_code=tool_code)
+                                      task_id=task_id, service_code=service_code)
 
     def _message(self, key: str, **values: Any) -> str:
         return render_prompt(
@@ -180,7 +180,7 @@ class MessengerFileTransport:
             from app.agent.contracts import WorkingResource
             from app.task import upsert_working_resource
 
-            uri = str(parse_resource_uri(f"{self._tool_code}://{room_locator}/{identifier}"))
+            uri = str(parse_resource_uri(f"{self._service_code}://{room_locator}/{identifier}"))
             identity = hashlib.sha256(uri.encode()).hexdigest()[:24]
             await upsert_working_resource(self._task_id, WorkingResource(
                 resource_type="delivery_receipt", role=f"delivery_receipt:upload:{identity}",

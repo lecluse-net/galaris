@@ -394,7 +394,7 @@ async def test_attachment_requests_and_document_context_reach_conversation_dispa
             "platform": "nextcloud_talk",
             "room_id": "family-room",
             "room_locator": "family-room",
-            "tool_code": "nextcloud",
+            "service_code": "nextcloud",
         },
         assert_fresh_before_effect=freshness,
     )

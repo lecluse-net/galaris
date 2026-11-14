@@ -6,17 +6,17 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
-from app.tools.contracts import ToolCallRejectedError
-from app.tools.mcp_loader import McpToolContext, mcp_tool
+from app.services.contracts import ToolCallRejectedError
+from app.services.mcp_loader import McpToolContext, mcp_tool
 
 from .contracts import MailSearchQuery
 from . import service
 from .inbound import PROCESS_NAME, PROCESS_REASON, ensure_readable
 from .connection_service import resolve_mail_connection
-from app.tools.facade import authorization_context_key
+from app.services.facade import authorization_context_key
 
 MailConnectionId = Annotated[int | None, Field(gt=0, description=(
-    "Exact Mail connection_id from tools_list, which lists mailbox addresses and allowed functions. "
+    "Exact Mail connection_id from services_list, which lists mailbox addresses and allowed functions. "
     "An agent can have several mailboxes at the same provider. Keep this ID with message references "
     "and cursors; omit only for a single unambiguous account or an already bound incoming Mail task."
 ))]

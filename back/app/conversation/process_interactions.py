@@ -12,7 +12,7 @@ from app.messenger import (ChoiceRequest, ChoiceOption, ChoiceResolution, Pendin
     messenger_for_agent_connection, request_user_choice, list_pending_choices, expire_user_choice, Room, Message, MessengerUser)
 from app.process import ProcessHumanContact, ProcessHumanRequest
 from app.process.facade import complete_human_activity, human_activity_pending, normalize_human_reply, ValueContractError
-from app.tools import RecoverableToolError
+from app.services import RecoverableToolError
 from core.i18n import current_language, t
 from core.database import get_db
 from core.user import get_user_record
@@ -136,7 +136,7 @@ async def respond_to_process_activity(turn: ConversationTurn, reference: str,
 
     applied = await apply_interpreted_response(reference=reference, kind=PROCESS_HUMAN_INTERACTION,
         agent_id=turn.agent_id, connection_id=int(str(scope["connection_id"])),
-        tool_id=int(str(scope["tool_id"])) if scope.get("tool_id") is not None else None,
+        service_id=int(str(scope["service_id"])) if scope.get("service_id") is not None else None,
         room_id=str(turn.room_id), user_id=str(scope["participant_id"]), response=output, apply=apply,
         normalize_response=normalize_response)
     return {"completed": True, "applied": applied, "reference": reference.strip().lstrip("#").upper()}
@@ -154,7 +154,7 @@ async def pending_process_activities(turn: ConversationTurn, page: int = 1) -> d
         raise ValueError("An authenticated conversation participant and a positive page are required")
     choices = await list_pending_choices(agent_id=turn.agent_id,
         connection_id=int(str(scope["connection_id"])),
-        tool_id=int(str(scope["tool_id"])) if scope.get("tool_id") is not None else None,
+        service_id=int(str(scope["service_id"])) if scope.get("service_id") is not None else None,
         room_id=str(turn.room_id), user_id=str(scope["participant_id"]),
         kind=PROCESS_HUMAN_INTERACTION, limit=20, offset=(page - 1) * 20)
     requester = scope.get("requester_user_id")

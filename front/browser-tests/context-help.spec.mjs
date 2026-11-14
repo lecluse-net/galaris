@@ -99,7 +99,7 @@ test('help remains usable in French on a narrow screen in both themes', async ({
   await page.route(`${endpoint}/*`, route => route.fulfill({ status: 204 }))
   await mount(page, component, { props, locale: 'fr' })
   await page.evaluate(async () => {
-    const { default: messages } = await import('/app/tools/i18n.ts')
+    const { default: messages } = await import('/app/services/i18n.ts')
     await window.testApp.setProps({ helpKey: 'tools', helpText: messages.fr.contextHelpPages.tools })
   })
   const banner = page.getByRole('complementary', { name: 'Aide contextuelle' })

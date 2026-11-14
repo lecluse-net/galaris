@@ -73,7 +73,7 @@ from .service import (
     send_task_progress,
     messenger_for_agent,
     messenger_for_agent_connection,
-    messenger_for_agent_tool_code,
+    messenger_for_agent_service_code,
     messenger_for_agent_kind,
     messenger_room_locator_known,
     messenger_known_room_locators,
@@ -209,7 +209,7 @@ from .mcp import (
 
 from .agent_identity import project_agent_messages
 
-from app.tools import register_connection_probe
+from app.services import register_connection_probe
 from .connection_diagnostics import test_saved_connection as _test_saved_connection
 
 register_connection_probe("messenger", _test_saved_connection)
@@ -282,7 +282,7 @@ __all__ = [
     "send_task_progress",
     "messenger_for_agent",
     "messenger_for_agent_connection",
-    "messenger_for_agent_tool_code",
+    "messenger_for_agent_service_code",
     "messenger_for_agent_kind",
     "messenger_room_locator_known",
     "messenger_known_room_locators",

@@ -15,9 +15,9 @@
           emit-value
           map-options
         />
-        <ToolFilterSelect
+        <ServiceFilterSelect
           v-model="filterTool"
-          :tools="toolStore.tools"
+          :tools="serviceStore.services"
           :label="$t('connection.filterTool')"
           style="min-width: 200px"
         />
@@ -91,11 +91,11 @@
           {{ getAgentName(props.row.agent_id) }}
         </q-td>
       </template>
-      <template v-slot:body-cell-tool_id="props">
+      <template v-slot:body-cell-service_id="props">
         <q-td :props="props">
-          {{ getToolLabel(props.row.tool_id) }}
-          <SystemToolIcon v-if="isSystemTool(props.row.tool_id)" class="q-ml-xs" />
-          <ToolOriginBadge :tool="toolStore.tools.find(tool => tool.id === props.row.tool_id)" class="q-ml-sm" />
+          {{ getToolLabel(props.row.service_id) }}
+          <SystemServiceIcon v-if="isSystemTool(props.row.service_id)" class="q-ml-xs" />
+          <ServiceOriginBadge :tool="serviceStore.services.find(tool => tool.id === props.row.service_id)" class="q-ml-sm" />
         </q-td>
       </template>
       <template v-slot:body-cell-active="props">
@@ -104,22 +104,22 @@
             v-if="canEdit"
             :model-value="props.row.active"
             color="positive"
-            :disable="connectionStore.loading || isSystemTool(props.row.tool_id)"
+            :disable="connectionStore.loading || isSystemTool(props.row.service_id)"
             @update:model-value="toggleActive(props.row)"
           />
         </q-td>
       </template>
       <template v-slot:body-cell-params="props">
         <q-td :props="props">
-          <div v-if="hasVisibleParams(props.row.id, props.row.tool_id)" class="config-table">
+          <div v-if="hasVisibleParams(props.row.id, props.row.service_id)" class="config-table">
             <div
-              v-for="param in getVisibleConnectionParams(props.row.id, props.row.tool_id)"
+              v-for="param in getVisibleConnectionParams(props.row.id, props.row.service_id)"
               :key="param.name"
               class="config-row"
             >
-              <div class="config-col-name">{{ configParamLabel(param.name, props.row.tool_id) }}</div>
+              <div class="config-col-name">{{ configParamLabel(param.name, props.row.service_id) }}</div>
               <div class="config-col-value">
-                {{ formatConfigValue(param.name, param.value, props.row.tool_id) }}
+                {{ formatConfigValue(param.name, param.value, props.row.service_id) }}
               </div>
             </div>
           </div>
@@ -129,10 +129,10 @@
       <template v-slot:body-cell-actions="props">
         <q-td :props="props" @click.stop>
           <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" />
-          <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.tool_id))" flat round color="primary" icon="shield"
+          <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.service_id))" flat round color="primary" icon="shield"
             :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
-          <q-btn v-if="canEdit && !isSystemTool(props.row.tool_id)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
-          <q-btn v-if="canEdit && !isSystemTool(props.row.tool_id)" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)" />
+          <q-btn v-if="canEdit && !isSystemTool(props.row.service_id)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
+          <q-btn v-if="canEdit && !isSystemTool(props.row.service_id)" flat round color="negative" icon="delete" size="sm" :aria-label="$t('common.delete')" @click="confirmDelete(props.row)" />
         </q-td>
       </template>
 
@@ -144,9 +144,9 @@
                 <q-icon name="link" color="primary" size="24px" />
                 <div class="col connection-mobile-heading">
                   <div class="text-weight-medium ellipsis">
-                    {{ getToolLabel(props.row.tool_id) }}
-                    <SystemToolIcon v-if="isSystemTool(props.row.tool_id)" class="q-ml-xs" />
-                    <ToolOriginBadge :tool="toolStore.tools.find(tool => tool.id === props.row.tool_id)" class="q-ml-sm" />
+                    {{ getToolLabel(props.row.service_id) }}
+                    <SystemServiceIcon v-if="isSystemTool(props.row.service_id)" class="q-ml-xs" />
+                    <ServiceOriginBadge :tool="serviceStore.services.find(tool => tool.id === props.row.service_id)" class="q-ml-sm" />
                   </div>
                   <div class="text-caption text-grey-7 ellipsis">
                     {{ getAgentName(props.row.agent_id) }}
@@ -157,7 +157,7 @@
                   :model-value="props.row.active"
                   color="positive"
                   size="sm"
-                  :disable="connectionStore.loading || isSystemTool(props.row.tool_id)"
+                  :disable="connectionStore.loading || isSystemTool(props.row.service_id)"
                   :label="props.row.active ? $t('connection.active') : $t('connection.inactive')"
                   :aria-label="props.row.active ? $t('connection.active') : $t('connection.inactive')"
                   @click.stop
@@ -171,36 +171,36 @@
               </div>
 
               <div
-                v-if="hasVisibleParams(props.row.id, props.row.tool_id)"
+                v-if="hasVisibleParams(props.row.id, props.row.service_id)"
                 class="config-table full-width q-mt-sm"
               >
                 <div
-                  v-for="param in getVisibleConnectionParams(props.row.id, props.row.tool_id)"
+                  v-for="param in getVisibleConnectionParams(props.row.id, props.row.service_id)"
                   :key="param.name"
                   class="config-row"
                 >
-                  <div class="config-col-name">{{ configParamLabel(param.name, props.row.tool_id) }}</div>
+                  <div class="config-col-name">{{ configParamLabel(param.name, props.row.service_id) }}</div>
                   <div class="config-col-value">
-                    {{ formatConfigValue(param.name, param.value, props.row.tool_id) }}
+                    {{ formatConfigValue(param.name, param.value, props.row.service_id) }}
                   </div>
                 </div>
               </div>
             </q-card-section>
 
-            <template v-if="canTest || canInspectPermissions(props.row) || (canEdit && !isSystemTool(props.row.tool_id))">
+            <template v-if="canTest || canInspectPermissions(props.row) || (canEdit && !isSystemTool(props.row.service_id))">
               <q-separator />
               <q-card-actions align="right" class="q-px-sm q-py-xs" @click.stop>
                 <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" />
-                <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.tool_id))" flat round color="primary" icon="shield"
+                <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.service_id))" flat round color="primary" icon="shield"
                   :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
                 <q-btn
-                  v-if="canEdit && !isSystemTool(props.row.tool_id)"
+                  v-if="canEdit && !isSystemTool(props.row.service_id)"
                   flat round color="primary" icon="edit" size="sm"
                   :aria-label="$t('common.edit')"
                   @click="openDialog(props.row)"
                 />
                 <q-btn
-                  v-if="canEdit && !isSystemTool(props.row.tool_id)"
+                  v-if="canEdit && !isSystemTool(props.row.service_id)"
                   flat round color="negative" icon="delete" size="sm"
                   :aria-label="$t('common.delete')"
                   @click="confirmDelete(props.row)"
@@ -261,8 +261,8 @@
               :configured-params="currentConnectionConfiguredParams"
               :loading="connectionStore.loading"
               :agent-options="agentOptions"
-              :tool-options="toolOptions"
-              :tools="toolStore.tools"
+              :service-options="serviceOptions"
+              :tools="serviceStore.services"
               :default-agent-id="filterAgent"
               :default-tool-id="filterTool"
               :persist-for-action="persistForAction"
@@ -312,15 +312,15 @@ import { AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app
 import ConnectionForm from './ConnectionForm.vue'
 import ConnectionTestButton from './ConnectionTestButton.vue'
 import ConnectionPermissions from './ConnectionPermissions.vue'
-import { SystemToolIcon, ToolFilterSelect, ToolOriginBadge, type Tool } from '@/app/tools'
+import { SystemServiceIcon, ServiceFilterSelect, ServiceOriginBadge, type Service } from '@/app/services'
 import { useI18n } from 'vue-i18n'
-import { connectionParamLabel, connectionParamOptions, toolMessageKey } from '@/app/tools/presentation'
+import { connectionParamLabel, connectionParamOptions, toolMessageKey } from '@/app/services/presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { mailService, type MailApproverOption } from '../services/mailService'
 import { refreshMailAvailability } from '../availability'
 
 const SESSION_FILTER_AGENT_KEY = 'connection_filter_agent_id'
-const SESSION_FILTER_TOOL_KEY = 'connection_filter_tool_id'
+const SESSION_FILTER_TOOL_KEY = 'connection_filter_service_id'
 const SESSION_FILTER_STATE_KEY = 'connection_filter_state'
 const props = defineProps<{ previewConnectionId?: number }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
@@ -334,7 +334,7 @@ interface ExistingConnectionTarget {
 interface ConnectionPersistencePayload {
   id: number | null
   reuseExisting?: boolean
-  data: { agent_id: number; tool_id: number; active: boolean }
+  data: { agent_id: number; service_id: number; active: boolean }
   params: Record<string, string | null>
 }
 
@@ -345,19 +345,19 @@ interface VisibleConnectionParam {
 
 const connectionStore = useConnectionStore()
 const agentOptionsData = ref<AgentSelectionOption[]>([])
-const toolStore = reactive({ tools: [] as Tool[], loading: false })
+const serviceStore = reactive({ services: [] as Service[], loading: false })
 const { t, te } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
 const canTest = computed(() => canEdit.value || privilegeStore.hasPrivilege(privileges.CONNECTION_ACCESS))
 const connectionTab = ref('settings')
-const showSettings = computed(() => !currentConnection.value || !isSystemTool(currentConnection.value.tool_id))
+const showSettings = computed(() => !currentConnection.value || !isSystemTool(currentConnection.value.service_id))
 function canInspectPermissions(connection: Connection): boolean {
-  return canViewPermissions.value && Boolean(toolStore.tools.find(tool => tool.id === connection.tool_id)?.has_function_permissions)
+  return canViewPermissions.value && Boolean(serviceStore.services.find(tool => tool.id === connection.service_id)?.has_function_permissions)
 }
 const showPermissionTab = computed(() => canViewPermissions.value && Boolean(
-  toolStore.tools.find(tool => tool.id === currentConnection.value?.tool_id)?.has_function_permissions,
+  serviceStore.services.find(tool => tool.id === currentConnection.value?.service_id)?.has_function_permissions,
 ))
 const canViewPermissions = computed(() => privilegeStore.hasAnyPrivilege([
   privileges.PERMISSION_ACCESS, privileges.PERMISSION_DECIDE, privileges.PERMISSION_REVOKE,
@@ -426,7 +426,7 @@ const pagination = ref({
 
 const isEdit = computed(() => !!currentConnection.value || Boolean(props.previewConnectionId))
 const agentsById = computed(() => new Map(agentOptionsData.value.map(agent => [agent.id, agent])))
-const toolsById = computed(() => new Map(toolStore.tools.map(tool => [tool.id, tool])))
+const toolsById = computed(() => new Map(serviceStore.services.map(tool => [tool.id, tool])))
 
 const agentFilterOptions = computed(() =>
   agentOptionsData.value.map(e => ({ label: e.label, value: e.id }))
@@ -443,7 +443,7 @@ const filteredConnections = computed(() => {
   if (filterAgent.value !== null)
     result = result.filter(c => c.agent_id === filterAgent.value)
   if (filterTool.value !== null)
-    result = result.filter(c => c.tool_id === filterTool.value)
+    result = result.filter(c => c.service_id === filterTool.value)
   if (filterState.value === 'active')
     result = result.filter(c => c.active)
   else if (filterState.value === 'inactive')
@@ -453,7 +453,7 @@ const filteredConnections = computed(() => {
 
 const columns = computed<QTableProps['columns']>(() => [
   { name: 'agent_id', label: t('connection.colAgent'), field: 'agent_id', sortable: true, align: 'left', headerStyle: 'width: 18%', classes: 'connection-identity-cell' },
-  { name: 'tool_id', label: t('connection.colTool'), field: 'tool_id', sortable: true, align: 'left', headerStyle: 'width: 22%', classes: 'connection-identity-cell' },
+  { name: 'service_id', label: t('connection.colTool'), field: 'service_id', sortable: true, align: 'left', headerStyle: 'width: 22%', classes: 'connection-identity-cell' },
   { name: 'active', label: t('connection.colState'), field: 'active', sortable: true, align: 'center', headerStyle: 'width: 64px' },
   { name: 'params', label: t('connection.colParams'), field: 'params', align: 'left' },
   { name: 'actions', label: t('common.actions'), field: 'actions', align: 'right', headerStyle: 'width: 210px' }
@@ -467,11 +467,11 @@ const agentOptions = computed(() =>
   }))
 )
 
-const toolOptions = computed(() =>
-  toolStore.tools.filter(tool => tool.can_disable !== false).map(tool => ({ id: tool.id, label: localizedToolLabel(tool) }))
+const serviceOptions = computed(() =>
+  serviceStore.services.filter(tool => tool.can_disable !== false).map(tool => ({ id: tool.id, label: localizedToolLabel(tool) }))
 )
 
-function localizedToolLabel(tool: Tool): string {
+function localizedToolLabel(tool: Service): string {
   const key = toolMessageKey(tool.code, 'label')
   return key && (!tool.can_edit || tool.label === t(key, {}, { locale: 'en' })) ? t(key) : tool.label
 }
@@ -565,14 +565,14 @@ function hasVisibleParams(connectionId: number, toolId: number): boolean {
 
 async function openDialog(connection?: Connection) {
   if (!canEdit.value && !props.previewConnectionId && !(connection && canInspectPermissions(connection))) return
-  if (connection && isSystemTool(connection.tool_id) && !canInspectPermissions(connection)) return
+  if (connection && isSystemTool(connection.service_id) && !canInspectPermissions(connection)) return
   const generation = ++dialogGeneration
-  connectionTab.value = connection && (isSystemTool(connection.tool_id) || !canEdit.value) ? 'permissions' : 'settings'
+  connectionTab.value = connection && (isSystemTool(connection.service_id) || !canEdit.value) ? 'permissions' : 'settings'
   actionConnection = null
   saveError.value = null
   existingConnectionTarget.value = null
   currentConnection.value = connection || null
-  if (connection && isSystemTool(connection.tool_id)) {
+  if (connection && isSystemTool(connection.service_id)) {
     currentConnectionParams.value = null
     currentConnectionConfiguredParams.value = []
     showDialog.value = true
@@ -599,13 +599,13 @@ async function openDialog(connection?: Connection) {
 }
 
 function confirmDelete(connection: Connection) {
-  if (!canEdit.value || isSystemTool(connection.tool_id)) return
+  if (!canEdit.value || isSystemTool(connection.service_id)) return
   connectionToDelete.value = connection
   showDeleteDialog.value = true
 }
 
 async function toggleActive(connection: Connection) {
-  if (!canEdit.value || isSystemTool(connection.tool_id)) return
+  if (!canEdit.value || isSystemTool(connection.service_id)) return
   const newActive = !connection.active
   try {
     await connectionStore.updateConnection(connection.id, { active: newActive })
@@ -651,8 +651,8 @@ async function onRefreshTools() {
 async function existingOAuthConnection(payload: ConnectionPersistencePayload): Promise<ConnectionActionResult | null> {
   // The displayed list may be filtered, stale, or paginated. Resolve this pair
   // from the API, including inactive connections, before creating anything.
-  const { data: connections } = await connectionService.getConnections(payload.data.tool_id, payload.data.agent_id)
-  const existing = connections.find(connection => connection.agent_id === payload.data.agent_id && connection.tool_id === payload.data.tool_id)
+  const { data: connections } = await connectionService.getConnections(payload.data.service_id, payload.data.agent_id)
+  const existing = connections.find(connection => connection.agent_id === payload.data.agent_id && connection.service_id === payload.data.service_id)
   if (!existing) return null
   const { data: savedParams } = await connectionService.getConnectionParams(existing.id)
   const connection = existing.active ? existing : await connectionStore.updateConnection(existing.id, { active: true })
@@ -665,7 +665,7 @@ async function persistForAction(payload: ConnectionPersistencePayload): Promise<
   existingConnectionTarget.value = null
   const current = dialogGeneration
   const saved = actionConnection
-  const id = payload.id ?? (saved?.agent_id === payload.data.agent_id && saved.tool_id === payload.data.tool_id ? saved.id : null)
+  const id = payload.id ?? (saved?.agent_id === payload.data.agent_id && saved.service_id === payload.data.service_id ? saved.id : null)
 
   if (payload.reuseExisting && !id) {
     const existing = await existingOAuthConnection(payload)
@@ -675,15 +675,15 @@ async function persistForAction(payload: ConnectionPersistencePayload): Promise<
   const duplicate = connectionStore.connections.find(connection =>
     connection.id !== id
     && connection.agent_id === payload.data.agent_id
-    && connection.tool_id === payload.data.tool_id
+    && connection.service_id === payload.data.service_id
   )
-  if (duplicate && !toolStore.tools.find(tool => tool.id === payload.data.tool_id)?.has_mail) {
-    setDuplicateError(payload.data.agent_id, payload.data.tool_id)
-    throw new Error(duplicateConnectionMessage(payload.data.agent_id, payload.data.tool_id))
+  if (duplicate && !serviceStore.services.find(tool => tool.id === payload.data.service_id)?.has_mail) {
+    setDuplicateError(payload.data.agent_id, payload.data.service_id)
+    throw new Error(duplicateConnectionMessage(payload.data.agent_id, payload.data.service_id))
   }
 
   try {
-    const atomicScope = Object.hasOwn(payload.params, 'tools.management_scope') || !!toolStore.tools.find(tool => tool.id === payload.data.tool_id)?.has_mail
+    const atomicScope = Object.hasOwn(payload.params, 'services.management_scope') || !!serviceStore.services.find(tool => tool.id === payload.data.service_id)?.has_mail
     const data = { ...payload.data, ...(atomicScope ? { params: payload.params } : {}) }
     const connection = id
       ? await connectionStore.updateConnection(id, data)
@@ -713,16 +713,16 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
   const duplicate = connectionStore.connections.find(connection =>
     connection.id !== payload.id
     && connection.agent_id === payload.data.agent_id
-    && connection.tool_id === payload.data.tool_id
+    && connection.service_id === payload.data.service_id
   )
-  if (duplicate && !toolStore.tools.find(tool => tool.id === payload.data.tool_id)?.has_mail) {
-    setDuplicateError(payload.data.agent_id, payload.data.tool_id)
+  if (duplicate && !serviceStore.services.find(tool => tool.id === payload.data.service_id)?.has_mail) {
+    setDuplicateError(payload.data.agent_id, payload.data.service_id)
     return
   }
 
   try {
     let connection: Connection
-    const atomicScope = Object.hasOwn(payload.params, 'tools.management_scope') || !!toolStore.tools.find(tool => tool.id === payload.data.tool_id)?.has_mail
+    const atomicScope = Object.hasOwn(payload.params, 'services.management_scope') || !!serviceStore.services.find(tool => tool.id === payload.data.service_id)?.has_mail
     const data = { ...payload.data, ...(atomicScope ? { params: payload.params } : {}) }
 
     if (payload.id) {
@@ -752,7 +752,7 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
   } catch (error) {
     console.error('Error saving connection:', error)
     if (isAxiosError(error) && error.response?.status === 409) {
-      setDuplicateError(payload.data.agent_id, payload.data.tool_id)
+      setDuplicateError(payload.data.agent_id, payload.data.service_id)
     } else {
       saveError.value = apiErrorDetail(error) || t('connection.saveError')
     }
@@ -785,7 +785,7 @@ function showExistingConnection(): void {
   const target = existingConnectionTarget.value
   if (!target) return
   if (props.previewConnectionId) {
-    const existing = connectionStore.connections.find(connection => connection.agent_id === target.agentId && connection.tool_id === target.toolId)
+    const existing = connectionStore.connections.find(connection => connection.agent_id === target.agentId && connection.service_id === target.toolId)
     if (existing) void openDialog(existing)
     return
   }
@@ -855,15 +855,15 @@ watch([filterAgent, filterTool], () => {
 // Apply the status filter client-side without reloading.
 watch(filterState, () => { if (!props.previewConnectionId) saveFiltersToSession() })
 
-watch(() => toolStore.tools.map(tool => tool.id), ids => {
-  if (!toolStore.loading && filterTool.value !== null && !ids.includes(filterTool.value)) filterTool.value = null
+watch(() => serviceStore.services.map(tool => tool.id), ids => {
+  if (!serviceStore.loading && filterTool.value !== null && !ids.includes(filterTool.value)) filterTool.value = null
 })
 
 async function loadConnectionsTab(): Promise<void> {
   await Promise.all([
     reloadConnections(),
     getAgentSelection('management').then(options => { agentOptionsData.value = options }),
-    connectionService.getToolOptions().then(options => { toolStore.tools = options }),
+    connectionService.getServiceOptions().then(options => { serviceStore.services = options }),
     loadApproverLabels(),
   ])
 }
@@ -878,7 +878,7 @@ async function loadPreview(): Promise<void> {
     if (request !== previewRequest || !showDialog.value) return
     if (connectionStore.error) throw connectionStore.error
     const connection = connectionStore.connections.find(row => row.id === props.previewConnectionId)
-    if (!connection || (isSystemTool(connection.tool_id) && !canInspectPermissions(connection))) throw new Error(t('connection.auth.loadConnectionsError'))
+    if (!connection || (isSystemTool(connection.service_id) && !canInspectPermissions(connection))) throw new Error(t('connection.auth.loadConnectionsError'))
     await openDialog(connection)
   } catch (error) {
     if (request === previewRequest) previewError.value = apiErrorDetail(error) || t('connection.auth.loadConnectionsError')

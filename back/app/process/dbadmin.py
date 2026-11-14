@@ -3,7 +3,7 @@
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.dbadmin import DbAdminAction, DbAdminPhase, DbAdminReconciler, DbAdminRegistry
 
 from .models import ProcessDefinition, ProcessRun
@@ -17,15 +17,15 @@ async def _purge_avatar_processes(session: AsyncSession) -> None:
 
 
 async def _purge_catalog_refresh_processes(session: AsyncSession) -> None:
-    await _purge_technical_processes(session, "tool_admin", "catalog_refresh",
-        "Catalogue refresh now uses direct app.tools functions; retry the unfinished agents there.")
+    await _purge_technical_processes(session, "service_admin", "catalog_refresh",
+        "Catalogue refresh now uses direct app.services functions; retry the unfinished agents there.")
 
 
-async def _purge_technical_processes(session: AsyncSession, tool_code: str, operation: str,
+async def _purge_technical_processes(session: AsyncSession, service_code: str, operation: str,
                                      message: str) -> None:
     definitions = list((await session.scalars(select(ProcessDefinition).where(
-        ProcessDefinition.tool_id.in_(select(ToolModel.id).where(ToolModel.code == tool_code)),
-        ProcessDefinition.engine_process_id.regexp_match(rf"^{tool_code}:[0-9]+:{operation}$"),
+        ProcessDefinition.service_id.in_(select(ServiceModel.id).where(ServiceModel.code == service_code)),
+        ProcessDefinition.engine_process_id.regexp_match(rf"^{service_code}:[0-9]+:{operation}$"),
     ).execution_options(include_historized=True))).all())
     for definition in definitions:
         runs = list((await session.scalars(select(ProcessRun).where(
@@ -40,7 +40,7 @@ async def _purge_technical_processes(session: AsyncSession, tool_code: str, oper
                 # Settle existing approval receipts and wake any waiting Task before purging.
                 if permit := run.launch_snapshot.get("authorization_permit"):
                     from uuid import UUID
-                    from app.tools.facade import finish_action
+                    from app.services.facade import finish_action
                     await finish_action(UUID(str(permit)), deferred=True,
                         outcome="completed" if run.status == "success" else "failed")
                 await refresh_run(run.id)
@@ -66,15 +66,15 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
     ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.process.remove_catalog_refresh_workflows", handler=_purge_catalog_refresh_processes,
-        depends_on=("app.tools.mandatory.tools",),
+        depends_on=("app.services.mandatory.services",),
     ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.process.remove_avatar_workflows", handler=_purge_avatar_processes,
-        depends_on=("app.tools.mandatory.tools",),
+        depends_on=("app.services.mandatory.services",),
     ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.process.move_document_analyses", handler=_move_document_analyses,
-        depends_on=("app.tools.mandatory.tools",),
+        depends_on=("app.services.mandatory.services",),
     ))
 
 
@@ -99,7 +99,7 @@ async def _move_document_analyses(session: AsyncSession) -> None:
     from app.llm.facade import import_document_analysis
 
     definitions = list(await session.scalars(select(ProcessDefinition).where(
-        ProcessDefinition.tool_id.in_(select(ToolModel.id).where(ToolModel.code == "galaris")),
+        ProcessDefinition.service_id.in_(select(ServiceModel.id).where(ServiceModel.code == "galaris")),
         ProcessDefinition.engine_process_id.regexp_match(r"^galaris:[0-9]+:document_analysis$"),
     ).execution_options(include_historized=True)))
     for definition in definitions:

@@ -250,16 +250,16 @@ async def test_file_browser_uses_source_domain_and_never_client_policy_fields(cl
 
 @pytest.mark.asyncio
 async def test_permission_revocation_cannot_enable_or_inherit_an_allow_rule(client):
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.connection import Connection
 
     headers, user_id = await actor(["PERMISSION_REVOKE"])
     agent_id = await owned_agent(user_id)
     async with get_db_session() as db:
-        tool = ToolModel(code=f"synthetic-policy-{uuid4()}", label="Synthetic policy Tool")
+        tool = ServiceModel(code=f"synthetic-policy-{uuid4()}", label="Synthetic policy Tool")
         db.add(tool)
         await db.flush()
-        connection = Connection(agent_id=agent_id, tool_id=tool.id, active=True)
+        connection = Connection(agent_id=agent_id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
         connection_id = connection.id

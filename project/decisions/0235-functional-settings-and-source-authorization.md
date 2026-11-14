@@ -38,7 +38,7 @@ current assignments, independently of the sender's context.
 Calendar feed management has its own page and rights. Selecting a Calendar connection
 or trigger Process returns scoped metadata, never connection parameters or Process
 payloads. Domain Agent selectors use public, scoped display metadata; Connection editors
-receive public connection schemas without Tool transport credentials or global values.
+receive public connection schemas without Service transport credentials or global values.
 These projections do not grant the neighbouring domain's administration rights.
 
 ## Existing roles and exceptions

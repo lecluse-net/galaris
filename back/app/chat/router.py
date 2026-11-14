@@ -401,18 +401,18 @@ async def read_identity_mappings() -> list[NativeMessengerIdentityMapping]:
 
 
 @router.put(
-    "/identities/{tool_id}",
+    "/identities/{service_id}",
     response_model=NativeMessengerIdentityMapping,
 )
 @authorize(privileges=ACCESS)
 async def update_identity_mapping(
-    tool_id: int,
+    service_id: int,
     data: IdentityMappingUpdate,
 ) -> NativeMessengerIdentityMapping:
     try:
         mapping = await set_chat_identity_mapping(
             await _user_id(),
-            tool_id,
+            service_id,
             data.external_id,
         )
     except PermissionError as exc:
@@ -424,10 +424,10 @@ async def update_identity_mapping(
     return mapping
 
 
-@router.delete("/identities/{tool_id}", response_model=MutationResult)
+@router.delete("/identities/{service_id}", response_model=MutationResult)
 @authorize(privileges=ACCESS)
-async def delete_identity_mapping(tool_id: int) -> MutationResult:
-    await clear_chat_identity_mapping(await _user_id(), tool_id)
+async def delete_identity_mapping(service_id: int) -> MutationResult:
+    await clear_chat_identity_mapping(await _user_id(), service_id)
     return MutationResult()
 
 

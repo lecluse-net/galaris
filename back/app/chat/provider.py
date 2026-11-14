@@ -47,14 +47,14 @@ class InternalMessenger(Messenger):
         self,
         *,
         connection_id: int,
-        tool_id: int,
-        tool_code: str,
+        service_id: int,
+        service_code: str,
         agent_id: int,
         self_id: str,
     ) -> None:
         self.connection_id = connection_id
-        self.tool_id = tool_id
-        self.tool_code = tool_code
+        self.service_id = service_id
+        self.service_code = service_code
         self.agent_id = agent_id
         self.self_id = self_id
 
@@ -65,8 +65,8 @@ class InternalMessenger(Messenger):
             raise LookupError("The Chat connection is unavailable.")
         return cls(
             connection_id=scope.connection_id,
-            tool_id=scope.tool_id,
-            tool_code=scope.tool_code,
+            service_id=scope.service_id,
+            service_code=scope.service_code,
             agent_id=scope.agent_id,
             self_id=f"agent:{scope.agent_id}",
         )

@@ -16,7 +16,7 @@ from sqlalchemy.orm import aliased
 
 from app.agent import inspect_task_states
 from app.agent.contracts import AgentTaskState
-from app.tools import tool_service
+from app.services import service
 from app.connection import Connection, connection_service
 from core.database import get_db, get_db_session
 from core.params import runtime_settings
@@ -36,7 +36,7 @@ async def _calendar_connection(connection_id: int, *, require_active: bool = Fal
     connection = await connection_service.get_connection(connection_id)
     if connection is None:
         raise LookupError("Calendar connection not found")
-    tool = await tool_service.get_tool_by_id(connection.tool_id)
+    tool = await service.get_service_by_id(connection.service_id)
     if tool is None or (tool.calendar is None and tool.code != "agenda"):
         raise ValueError("Connection is not a Calendar connection")
     if require_active and not connection.active:
@@ -83,7 +83,7 @@ async def calendar_authorization_changed(connection_id: int) -> None:
 
 
 async def active_connection_for_agent(agent_id: int) -> Connection:
-    from app.tools import current_protocol_connection, resolve_protocol_connection
+    from app.services import current_protocol_connection, resolve_protocol_connection
     identity = current_protocol_connection("calendar", agent_id)
     if identity is None:
         identity = await resolve_protocol_connection(agent_id, "calendar")
@@ -96,7 +96,7 @@ async def active_connection_for_agent(agent_id: int) -> Connection:
 async def _refresh_parameter_feed(connection_id: int) -> None:
     """Connection configuration projection only. Never performs external I/O."""
     connection = await _calendar_connection(connection_id)
-    tool = await tool_service.get_tool_by_id(connection.tool_id)
+    tool = await service.get_service_by_id(connection.service_id)
     if tool is not None and tool.code == "agenda":
         await _ensure_native_feed(connection)
         return
@@ -199,9 +199,9 @@ def _scheduled_sync_at(feed: CalendarFeed) -> datetime | None:
     return max(feed.next_sync_at, anchor + timedelta(hours=feed.sync_interval_hours))
 
 
-def serialize_feed(feed: CalendarFeed, agent_id: int, *, tool_label: str = "") -> CalendarFeedRead:
+def serialize_feed(feed: CalendarFeed, agent_id: int, *, service_label: str = "") -> CalendarFeedRead:
     return CalendarFeedRead(id=feed.id, connection_id=feed.connection_id, agent_id=agent_id, label=feed.label,
-        tool_label=tool_label, owner_label=feed.owner_label, source_kind=cast(Literal["internal", "ical", "caldav", "google", "microsoft", "icloud"], feed.source_kind), is_default=feed.is_default and feed.source_kind == "internal",
+        service_label=service_label, owner_label=feed.owner_label, source_kind=cast(Literal["internal", "ical", "caldav", "google", "microsoft", "icloud"], feed.source_kind), is_default=feed.is_default and feed.source_kind == "internal",
         origin=urlsplit(decrypt(feed.url_encrypted)).netloc, url_configured=bool(feed.url_encrypted),
         username_configured=bool(feed.username_encrypted), password_configured=bool(feed.password_encrypted),
         active=feed.active, writable=feed.writable, initialized=feed.initialized, actions_enabled=feed.actions_enabled,
@@ -215,15 +215,15 @@ async def list_feeds(*, connection_id: int | None = None, agent_id: int | None =
         exists = await get_db().scalar(select(CalendarFeed.id).where(CalendarFeed.connection_id == connection_id).limit(1))
         if exists is None:
             await _refresh_parameter_feed(connection_id)
-    statement = select(CalendarFeed, Connection.agent_id, Connection.tool_id).join(Connection, Connection.id == CalendarFeed.connection_id)
+    statement = select(CalendarFeed, Connection.agent_id, Connection.service_id).join(Connection, Connection.id == CalendarFeed.connection_id)
     if connection_id is not None:
         statement = statement.where(CalendarFeed.connection_id == connection_id)
     if agent_id is not None:
         statement = statement.where(Connection.agent_id == agent_id)
     rows = (await get_db().execute(statement.order_by(CalendarFeed.label, CalendarFeed.id))).all()
-    tools = await tool_service.get_tools_by_ids({tool_id for _, _, tool_id in rows})
-    return [serialize_feed(feed, owner, tool_label=tools[tool_id].label if tool_id in tools else "")
-            for feed, owner, tool_id in rows]
+    tools = await service.get_services_by_ids({service_id for _, _, service_id in rows})
+    return [serialize_feed(feed, owner, service_label=tools[service_id].label if service_id in tools else "")
+            for feed, owner, service_id in rows]
 
 
 async def create_feed(data: CalendarFeedCreate) -> CalendarFeedRead:
@@ -243,8 +243,8 @@ async def update_feed(calendar_id: int, data: CalendarFeedUpdate) -> CalendarFee
         await store.project_events(feed, events, agent_id=connection.agent_id)
     await get_db().commit()
     await get_db().refresh(feed)
-    tool = await tool_service.get_tool_by_id(connection.tool_id)
-    return serialize_feed(feed, connection.agent_id, tool_label=tool.label if tool else "")
+    tool = await service.get_service_by_id(connection.service_id)
+    return serialize_feed(feed, connection.agent_id, service_label=tool.label if tool else "")
 
 
 async def delete_feed(calendar_id: int) -> bool:
@@ -259,7 +259,7 @@ async def delete_feed(calendar_id: int) -> bool:
 
 
 async def _feeds_for_agent(agent_id: int, calendar_ids: Sequence[int] | None = None) -> list[CalendarFeed]:
-    from app.tools import current_protocol_connection
+    from app.services import current_protocol_connection
     statement = select(CalendarFeed).join(Connection, Connection.id == CalendarFeed.connection_id).where(
         Connection.agent_id == agent_id, Connection.active.is_(True), CalendarFeed.active.is_(True))
     selected = current_protocol_connection("calendar", agent_id)
@@ -423,7 +423,7 @@ async def find_free_slots_for_agent(agent_id: int, start: datetime, end: datetim
         raise ValueError("Calendar freshness is insufficient; availability is unknown")
     connection = await active_connection_for_agent(agent_id)
     _, params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
-    tool = await tool_service.get_tool_by_id(connection.tool_id)
+    tool = await service.get_service_by_id(connection.service_id)
     if tool is not None and tool.calendar is not None and tool.calendar.settings:
         params = tool.calendar.settings
     try:
@@ -464,7 +464,7 @@ async def find_free_slots_for_agent(agent_id: int, start: datetime, end: datetim
 
 
 async def _writable_calendar(calendar_id: int, agent_id: int) -> CalendarFeed:
-    from app.tools import current_protocol_connection
+    from app.services import current_protocol_connection
     feed, connection = await feed_context(calendar_id, require_active_connection=True)
     selected = current_protocol_connection("calendar", agent_id)
     if connection.agent_id != agent_id or selected is not None and selected != connection.id:
@@ -554,7 +554,7 @@ async def delete_calendar_event(calendar_id: int, agent_id: int, uid: str, data:
 
 
 async def write_action(calendar_id: int, agent_id: int, uid: str, data: CalendarActionWrite, action_id: UUID | None = None) -> CalendarActionRead:
-    from app.tools import current_protocol_connection
+    from app.services import current_protocol_connection
     feed, connection = await feed_context(calendar_id, require_active_connection=True)
     selected = current_protocol_connection("calendar", agent_id)
     if connection.agent_id != agent_id or not feed.active or selected is not None and selected != connection.id:

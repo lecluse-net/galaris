@@ -8,7 +8,7 @@ from pydantic import SecretStr
 from sqlalchemy import select
 
 from app.connection import Connection
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.console.contracts import SshConnectionConfig
 from app.console.ssh_client import SshExecutionTransport
 from app.console.file_transport import SshAgentFileTransport
@@ -45,9 +45,9 @@ async def test_console_catalogue_over_real_ssh_sftp(db, agents, memory_storage, 
     async def resolve(_ctx):
         return transport
     monkeypatch.setattr(resource_service, '_console_transport', resolve)
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'console'))
-    tool.global_params = {'tools.fileindexing': {'value': 'known_uris', 'forced': False}}
-    db.add(Connection(agent_id=owner.id, tool_id=tool.id))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'console'))
+    tool.global_params = {'services.fileindexing': {'value': 'known_uris', 'forced': False}}
+    db.add(Connection(agent_id=owner.id, service_id=tool.id))
     await db.commit()
     ctx = ResourceContext(agent_id=owner.id, runtime='internal', console_resource=object())
     try:
@@ -85,14 +85,14 @@ async def test_nextcloud_catalogue_pagination_recovery_and_permission_revocation
     monkeypatch.setattr(resource_service, 'resolve_resource_transport_with_service', resolve)
     monkeypatch.setattr(file_share_service, 'resolve_resource_transport_with_service', resolve)
     monkeypatch.setattr(catalogue, 'resolve_resource_transport_with_service', resolve)
-    tool = ToolModel(code='dav-proof', label='Synthetic DAV', file_share_config={'service': 'nextcloud', 'base_url': 'https://cloud.example.test/cloud'},
+    tool = ServiceModel(code='dav-proof', label='Synthetic DAV', file_share_config={'service': 'nextcloud', 'base_url': 'https://cloud.example.test/cloud'},
         messenger_config={'service': 'nextcloud_talk', 'settings': {'base_url': 'https://cloud.example.test/cloud'},
             'param_map': {'login': 'login', 'password': 'password'}},
         connection_schema={'params': {'login': {'type': 'string'}, 'password': {'type': 'password'}}},
-        global_params={'tools.fileindexing': {'value': 'recursive', 'forced': False}})
+        global_params={'services.fileindexing': {'value': 'recursive', 'forced': False}})
     db.add(tool)
     await db.flush()
-    db.add(Connection(agent_id=owner.id, tool_id=tool.id))
+    db.add(Connection(agent_id=owner.id, service_id=tool.id))
     await db.commit()
     ctx = ResourceContext(agent_id=owner.id, runtime='internal')
     run = await start_index_run(ctx, 'dav-proof://')
@@ -112,11 +112,11 @@ async def test_nextcloud_catalogue_pagination_recovery_and_permission_revocation
     await db.refresh(run)
     assert run.status == 'success' and run.scanned == 503
     from app.memory.models import MemoryItem
-    from app.tools.schemas import ToolUpdate
-    from app.tools.tool_service import update_tool
+    from app.services.schemas import ServiceUpdate
+    from app.services.service import update_service
     root_item = await db.scalar(select(MemoryItem).where(MemoryItem.primary_url == 'dav-proof://'))
     assert root_item.title == 'Synthetic DAV'
-    await update_tool(tool.id, ToolUpdate(label='Synthetic renamed DAV'))
+    await update_service(tool.id, ServiceUpdate(label='Synthetic renamed DAV'))
     assert root_item.title == 'Synthetic renamed DAV'
     assert len(await hits(owner.id, 'item-0000')) == 1
     assert await hits(peer.id, 'item-0000') == []
@@ -140,13 +140,13 @@ async def test_hybrid_graph_keeps_room_authorization_separate_from_file_batches(
     from app.messenger import messenger_known_room_locators
     from app.messenger.models import Room
     owner, peer = agents
-    tool = ToolModel(code='hybrid-proof', label='Synthetic hybrid',
+    tool = ServiceModel(code='hybrid-proof', label='Synthetic hybrid',
         file_share_config={'service': 'nextcloud', 'base_url': 'https://cloud.example.test/cloud'},
         messenger_config={'service': 'nextcloud_talk'})
     db.add(tool)
     await db.flush()
-    connection = Connection(agent_id=owner.id, tool_id=tool.id)
-    other = Connection(agent_id=peer.id, tool_id=tool.id)
+    connection = Connection(agent_id=owner.id, service_id=tool.id)
+    other = Connection(agent_id=peer.id, service_id=tool.id)
     db.add_all([connection, other])
     await db.flush()
     db.add_all([

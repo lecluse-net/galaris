@@ -4,7 +4,7 @@ import { notificationPrompt } from '../notification-prompt.mjs'
 import { withSidebarDismissal } from '../sidebar.mjs'
 
 for (const [provider, service] of [['Telegram', 'telegram'], ['Matrix', 'matrix']]) {
-test(`${provider} setup creates the actual Tool and preserves its configuration on reopening`, async ({ page, request }, testInfo) => {
+test(`${provider} setup creates the actual Service and preserves its configuration on reopening`, async ({ page, request }, testInfo) => {
   const errors = collectPageErrors(page)
   const seeded = await request.post('/api/__test/seed')
   expect(seeded.ok(), await seeded.text()).toBeTruthy()
@@ -35,7 +35,7 @@ test(`${provider} setup creates the actual Tool and preserves its configuration 
   if (await inactive.isVisible()) await inactive.click()
   await expect(page.getByRole('switch', { name: 'Active', exact: true })).toBeChecked()
   const guide = page.getByRole('region', { name: 'Guide de configuration', exact: true })
-  const created = page.waitForResponse(response => response.url().endsWith('/api/tools') && response.request().method() === 'POST')
+  const created = page.waitForResponse(response => response.url().endsWith('/api/services') && response.request().method() === 'POST')
   await page.getByRole('button', { name: `Créer l’outil ${provider}`, exact: true }).click()
   const result = await created
   expect(result.ok(), await result.text()).toBeTruthy()
@@ -76,7 +76,7 @@ test(`${provider} setup creates the actual Tool and preserves its configuration 
   await page.reload()
   // Authentication restores the shell asynchronously after a full reload.
   await expect(page.getByRole('tab', { name: provider, exact: true })).toBeVisible()
-  const checked = page.waitForResponse(response => response.url().endsWith('/api/tools') && response.request().method() === 'GET')
+  const checked = page.waitForResponse(response => response.url().endsWith('/api/services') && response.request().method() === 'GET')
   await withSidebarDismissal(page, () => page.getByRole('tab', { name: provider, exact: true }).click())
   await expect(guide.getByRole('link', { name: 'Ouvrir les outils et connexions', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: `Créer l’outil ${provider}`, exact: true })).toHaveCount(0)
@@ -90,7 +90,7 @@ test(`${provider} setup creates the actual Tool and preserves its configuration 
   await expect(page.getByRole('tab', { name: 'Connexions', exact: true })).toHaveAttribute('aria-selected', 'true')
   await errors.settle()
   expect(errors()).toEqual([])
-  const removed = await request.delete(`/api/tools/${tool.id}`, { headers })
+  const removed = await request.delete(`/api/services/${tool.id}`, { headers })
   expect(removed.status(), await removed.text()).toBe(204)
 })
 }
@@ -137,9 +137,9 @@ for (const width of [390, 1440]) test(`external reception is visible and the man
   await errors.settle()
   expect(errors()).toEqual([])
   // Remove only this scenario's synthetic transport and its dependent conversation.
-  const impact = await request.get(`/api/tools/${fixture.external_tool_id}/deletion-impact`, { headers })
+  const impact = await request.get(`/api/services/${fixture.external_service_id}/deletion-impact`, { headers })
   expect(impact.ok(), await impact.text()).toBeTruthy()
   const { version } = await impact.json()
-  const removed = await request.delete(`/api/tools/${fixture.external_tool_id}?cascade=true&expected_version=${encodeURIComponent(version)}`, { headers })
+  const removed = await request.delete(`/api/services/${fixture.external_service_id}?cascade=true&expected_version=${encodeURIComponent(version)}`, { headers })
   expect(removed.status(), await removed.text()).toBe(204)
 })

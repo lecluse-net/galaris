@@ -62,7 +62,7 @@ reste interne à une room déjà autorisée et ne crée aucun droit supplémenta
 
 `app.llm` possède la résolution du modèle vectoriel, son identité et le client d'embedding.
 Memory conserve la classification de ses erreurs ; les consommateurs conservent leurs délais
-et leurs politiques de dégradation. L'identité commune reprend celle des index Memory/Tools
+et leurs politiques de dégradation. L'identité commune reprend celle des index Memory/Services
 existants. L'index documentaire, qui utilisait une autre empreinte, se reconstruit par son
 traitement périodique normal ; la recherche lexicale reste disponible pendant cette convergence.
 

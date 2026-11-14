@@ -66,7 +66,7 @@ export const useConnectionStore = defineStore('connection', {
                 }
                 // Publish the rows and their parameters together, including removals.
                 this.$patch(state => {
-                    state.connections = rows.map(({ id, tool_id, agent_id, active }) => ({ id, tool_id, agent_id, active }))
+                    state.connections = rows.map(({ id, service_id, agent_id, active }) => ({ id, service_id, agent_id, active }))
                     state.paramsCache = Object.fromEntries(rows.map(row => [row.id, row.params]))
                     state.configuredParamsCache = Object.fromEntries(rows.map(row => [row.id, row.configured_params]))
                 })
@@ -87,8 +87,8 @@ export const useConnectionStore = defineStore('connection', {
         forgetDeletedTool(toolId: number): void {
             invalidateReads(this)
             this.loading = false
-            this.connections = this.connections.filter(connection => connection.tool_id !== toolId)
-            if (this.currentConnection?.tool_id === toolId) {
+            this.connections = this.connections.filter(connection => connection.service_id !== toolId)
+            if (this.currentConnection?.service_id === toolId) {
                 this.currentConnection = null
                 this.currentConnectionParams = null
             }

@@ -31,7 +31,7 @@ from app.messenger.models import Message, MessengerUser, Room, RoomUser
 from app.chat.provider import InternalMessenger
 from app.conversation.models import ConversationRoundMessage
 from app.topic import Topic
-from app.tools import ToolModel as Tool
+from app.services import ServiceModel as Service
 from core.database import get_db, get_db_session
 from core.user import UserModel as User
 
@@ -40,18 +40,18 @@ from core.user import UserModel as User
 @pytest.mark.parametrize("cancel_request", [False, True])
 async def test_room_list_survives_stalled_and_offline_providers(db, monkeypatch, cancel_request):
     agent, owner, _ = await _scope(db)
-    tools = [Tool(code=f"slow-{uuid4().hex[:10]}", label="Slow provider", description="",
+    tools = [Service(code=f"slow-{uuid4().hex[:10]}", label="Slow provider", description="",
                   connection_schema={}, messenger_config={"service": "nextcloud_talk"}) for _ in range(7)]
     db.add_all(tools)
     await db.flush()
-    connections = [Connection(tool_id=tool.id, agent_id=agent.id, active=True) for tool in tools]
+    connections = [Connection(service_id=tool.id, agent_id=agent.id, active=True) for tool in tools]
     db.add_all(connections)
     await db.flush()
     rooms = [Room(connection_id=conn.id, external_id=f"slow-{i}", label=f"Room {i}",
                   kind="direct", conversation_type="text") for i, conn in enumerate(connections)]
     db.add_all(rooms)
     await db.flush()
-    identities = [MessengerUser(tool_id=tool.id, external_id="agent", agent_id=agent.id,
+    identities = [MessengerUser(service_id=tool.id, external_id="agent", agent_id=agent.id,
                                 is_ai=True) for tool in tools]
     db.add_all(identities)
     await db.flush()
@@ -123,9 +123,9 @@ async def test_room_list_survives_stalled_and_offline_providers(db, monkeypatch,
 
 async def _scope(db: AsyncSession) -> tuple[Agent, User, User]:
     suffix = uuid4().hex[:10]
-    tool = await db.scalar(select(Tool).where(Tool.code == "chat"))
+    tool = await db.scalar(select(Service).where(Service.code == "chat"))
     if tool is None:
-        tool = Tool(
+        tool = Service(
             code="chat",
             label="Chat",
             description="",
@@ -161,7 +161,7 @@ async def _scope(db: AsyncSession) -> tuple[Agent, User, User]:
     )
     db.add(agent)
     await db.flush()
-    db.add(Connection(tool_id=tool.id, agent_id=agent.id, active=True))
+    db.add(Connection(service_id=tool.id, agent_id=agent.id, active=True))
     await db.flush()
     return agent, owner, member
 
@@ -174,7 +174,7 @@ async def test_file_tool_delivers_to_user_with_independent_journal_transactions(
     from app.chat import storage
     from app.file_share import MaterializedResource, resource_delivery
     from app.messenger import mcp
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
 
     monkeypatch.setattr(storage, "root", lambda: tmp_path / "chat")
 
@@ -296,9 +296,9 @@ async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope
         assert result.status == "RESOLVED" and result.selected_option_id == selected_option
         await answer_internal_interaction(owner.id, room.id, pending.id, option_id=selected_option)
     else:
-        incoming = Message(connection_id=room.connection_id, tool_id=messenger.tool_id, text=selected_label, direction="inbound")
+        incoming = Message(connection_id=room.connection_id, service_id=messenger.service_id, text=selected_label, direction="inbound")
         incoming.room = await db.get(Room, room.id)
-        incoming.sender = await db.scalar(select(MessengerUser).where(MessengerUser.tool_id == messenger.tool_id, MessengerUser.external_id == f"user:{owner.id}"))
+        incoming.sender = await db.scalar(select(MessengerUser).where(MessengerUser.service_id == messenger.service_id, MessengerUser.external_id == f"user:{owner.id}"))
         assert await resolve_from_message(incoming, agent_id=agent.id) is not None
     handler.assert_awaited_once()
     if answer_mode == "button":
@@ -474,10 +474,10 @@ async def test_room_creation_creates_distinct_threads_with_numbered_labels(
     persisted = await get_internal_room(owner_id, room_id)
     assert persisted is not None
 
-    tool = await db.scalar(select(Tool).where(Tool.code == "chat"))
+    tool = await db.scalar(select(Service).where(Service.code == "chat"))
     assert tool is not None
     legacy_member = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         external_id=f"user:{member_id}",
         display_name="Member",
         is_ai=False,
@@ -542,7 +542,7 @@ async def test_room_name_suggestions_include_archived_and_renamed_rooms_beyond_f
 @pytest.mark.asyncio
 async def test_agent_pages_filter_before_counting_and_keep_stable_order(db: AsyncSession) -> None:
     base, owner, _ = await _scope(db)
-    tool = await db.scalar(select(Tool).where(Tool.code == "chat"))
+    tool = await db.scalar(select(Service).where(Service.code == "chat"))
     assert tool is not None
     agents = [Agent(
         user_id=owner.id, title_id=base.title_id,
@@ -551,7 +551,7 @@ async def test_agent_pages_filter_before_counting_and_keep_stable_order(db: Asyn
     ) for index in range(52)]
     db.add_all(agents)
     await db.flush()
-    db.add_all([Connection(tool_id=tool.id, agent_id=agent.id, active=index != 51)
+    db.add_all([Connection(service_id=tool.id, agent_id=agent.id, active=index != 51)
                 for index, agent in enumerate(agents)])
     await db.flush()
     scope = [agent.id for agent in agents]
@@ -635,7 +635,7 @@ async def test_recent_chat_rooms_use_message_activity_before_counting_and_pagina
     assert sender is not None
     for room, age in zip(rooms, [1, 7, 8]):
         db.add(Message(
-            connection_id=room.connection_id, tool_id=sender.tool_id,
+            connection_id=room.connection_id, service_id=sender.service_id,
             platform="internal", remote_message_id=f"recent-{uuid4()}", direction="inbound",
             messenger_room_id=room.id, messenger_user_id=sender.id,
             room_id=room.external_id, user_id=sender.external_id, text=room.label,
@@ -711,16 +711,16 @@ async def test_unread_chat_rooms_count_only_internal_conversations_including_arc
     assert internal_room is not None
     internal_connection = await db.get(Connection, internal_room.connection_id)
     assert internal_connection is not None
-    external_tool = Tool(code=f"unread-{uuid4().hex[:10]}", label="Synthetic messenger",
+    external_tool = Service(code=f"unread-{uuid4().hex[:10]}", label="Synthetic messenger",
                          description="", connection_schema={}, messenger_config={"service": "nextcloud_talk"})
     db.add(external_tool)
     await db.flush()
-    connection = Connection(tool_id=external_tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=external_tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
-    identity = MessengerUser(tool_id=external_tool.id, external_id="synthetic-human",
+    identity = MessengerUser(service_id=external_tool.id, external_id="synthetic-human",
                              galaris_user_id=owner.id, is_ai=False)
-    other_identity = MessengerUser(tool_id=external_tool.id, external_id="other-human",
+    other_identity = MessengerUser(service_id=external_tool.id, external_id="other-human",
                                    galaris_user_id=other.id, is_ai=False)
     db.add_all([identity, other_identity])
     await db.flush()
@@ -743,7 +743,7 @@ async def test_unread_chat_rooms_count_only_internal_conversations_including_arc
             db.add(memberships[name])
         message = Message(
             connection_id=room.connection_id,
-            tool_id=internal_connection.tool_id if name == "internal" else external_tool.id,
+            service_id=internal_connection.service_id if name == "internal" else external_tool.id,
             platform="internal" if name == "internal" else "nextcloud_talk",
             remote_message_id=f"unread-{name}", direction="outbound",
             messenger_room_id=room.id, room_id=room.external_id, text="Synthetic message",
@@ -765,7 +765,7 @@ async def test_unread_chat_rooms_count_only_internal_conversations_including_arc
     assert archived_internal is not None
     await native_facade.set_chat_room_archived(owner.id, archived_internal.id, True)
     archived_message = Message(
-        connection_id=internal_connection.id, tool_id=internal_connection.tool_id,
+        connection_id=internal_connection.id, service_id=internal_connection.service_id,
         platform="internal", remote_message_id="internal-archived-unread", direction="outbound",
         messenger_room_id=archived_internal.id, room_id=archived_internal.external_id,
         text="Synthetic archived reply",
@@ -988,7 +988,7 @@ async def test_chat_filters_external_rooms_by_linked_identity_and_agent_view(
 ) -> None:
     agent, owner, _member = await _scope(db)
     suffix = uuid4().hex[:10]
-    tool = Tool(
+    tool = Service(
         code=f"talk-{suffix}",
         label="Nextcloud Talk",
         description="",
@@ -997,23 +997,23 @@ async def test_chat_filters_external_rooms_by_linked_identity_and_agent_view(
     )
     db.add(tool)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     nicolas = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         external_id="nicolas",
         display_name="Nicolas",
         is_ai=False,
     )
     other = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         external_id="someone-else",
         display_name="Someone else",
         is_ai=False,
     )
     bot = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         external_id="aster",
         display_name="Aster",
         agent_id=agent.id,
@@ -1058,7 +1058,7 @@ async def test_chat_filters_external_rooms_by_linked_identity_and_agent_view(
     db.add(
         Message(
             connection_id=connection.id,
-            tool_id=tool.id,
+            service_id=tool.id,
             platform="nextcloud_talk",
             remote_message_id=f"private-preview-{suffix}",
             direction="inbound",
@@ -1109,7 +1109,7 @@ async def test_chat_filters_external_rooms_by_linked_identity_and_agent_view(
     assert page.items[0].unread_count == 0
     received = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="nextcloud_talk",
         remote_message_id=f"private-reply-{suffix}",
         direction="outbound",
@@ -1129,7 +1129,7 @@ async def test_chat_filters_external_rooms_by_linked_identity_and_agent_view(
 
     latest_received = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="nextcloud_talk",
         remote_message_id=f"private-latest-reply-{suffix}",
         direction="outbound",
@@ -1249,9 +1249,9 @@ async def test_chat_excludes_mail_rooms_without_deleting_them(
     assert discussion is not None
 
     suffix = uuid4().hex[:10]
-    mail_tool = await db.scalar(select(Tool).where(Tool.code == "mail"))
+    mail_tool = await db.scalar(select(Service).where(Service.code == "mail"))
     if mail_tool is None:
-        mail_tool = Tool(
+        mail_tool = Service(
             code="mail",
             mail_config={},
             label="Mail",
@@ -1261,18 +1261,18 @@ async def test_chat_excludes_mail_rooms_without_deleting_them(
         )
         db.add(mail_tool)
         await db.flush()
-    connection = Connection(tool_id=mail_tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=mail_tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     sender = MessengerUser(
-        tool_id=mail_tool.id,
+        service_id=mail_tool.id,
         external_id=f"sender-{suffix}@example.test",
         display_name="Mail sender",
         galaris_user_id=owner.id,
         is_ai=False,
     )
     recipient = MessengerUser(
-        tool_id=mail_tool.id,
+        service_id=mail_tool.id,
         external_id=f"mailbox-{suffix}@example.test",
         display_name="Agent mailbox",
         agent_id=agent.id,
@@ -1366,7 +1366,7 @@ async def test_chat_history_uses_pages_of_fifty_latest_messages(
         [
             Message(
                 connection_id=room.connection_id,
-                tool_id=sender.tool_id,
+                service_id=sender.service_id,
                 platform="internal",
                 remote_message_id=f"history-{index}-{uuid4()}",
                 direction="inbound",
@@ -1430,7 +1430,7 @@ async def test_chat_history_hides_conversation_output_until_round_link_commit(
     round_id = uuid4()
     pending = Message(
         connection_id=room.connection_id,
-        tool_id=sender.tool_id,
+        service_id=sender.service_id,
         platform="internal",
         remote_message_id=f"pending-output-{uuid4()}",
         direction="outbound",
@@ -1475,7 +1475,7 @@ async def test_chat_message_agent_ids_follow_authors_not_filtered_room_members(
         agent_id=primary_agent.id,
     )
     assert room is not None
-    tool = await db.scalar(select(Tool).where(Tool.code == "chat"))
+    tool = await db.scalar(select(Service).where(Service.code == "chat"))
     primary_identity = await db.scalar(
         select(MessengerUser).where(MessengerUser.agent_id == primary_agent.id)
     )
@@ -1498,7 +1498,7 @@ async def test_chat_message_agent_ids_follow_authors_not_filtered_room_members(
     db.add(secondary_agent)
     await db.flush()
     secondary_identity = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         agent_id=secondary_agent.id,
         external_id=f"agent:{secondary_agent.id}",
         display_name="Orion Test",
@@ -1521,7 +1521,7 @@ async def test_chat_message_agent_ids_follow_authors_not_filtered_room_members(
         db.add(
             Message(
                 connection_id=room.connection_id,
-                tool_id=tool.id,
+                service_id=tool.id,
                 platform="internal",
                 remote_message_id=f"speech-author-{uuid4()}",
                 direction=direction,
@@ -1556,7 +1556,7 @@ async def test_nextcloud_message_authors_resolve_agents_from_login_connections(
 ) -> None:
     primary_agent, owner, _member = await _scope(db)
     suffix = uuid4().hex[:10]
-    tool = Tool(
+    tool = Service(
         code=f"nextcloud-authors-{suffix}",
         label="Nextcloud Talk",
         description="",
@@ -1578,7 +1578,7 @@ async def test_nextcloud_message_authors_resolve_agents_from_login_connections(
     db.add(tool)
     await db.flush()
     primary_connection = Connection(
-        tool_id=tool.id,
+        service_id=tool.id,
         agent_id=primary_agent.id,
         active=True,
     )
@@ -1606,7 +1606,7 @@ async def test_nextcloud_message_authors_resolve_agents_from_login_connections(
     db.add(secondary_agent)
     await db.flush()
     secondary_connection = Connection(
-        tool_id=tool.id,
+        service_id=tool.id,
         agent_id=secondary_agent.id,
         active=True,
     )
@@ -1621,14 +1621,14 @@ async def test_nextcloud_message_authors_resolve_agents_from_login_connections(
     )
 
     primary_identity = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         external_id="astertest",
         display_name="Aster Test",
         agent_id=primary_agent.id,
         is_ai=True,
     )
     secondary_identity = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         external_id="orion-demo-test",
         display_name="Orion Test",
         agent_id=None,
@@ -1651,7 +1651,7 @@ async def test_nextcloud_message_authors_resolve_agents_from_login_connections(
             RoomUser(room_id=room.id, user_id=secondary_identity.id),
             Message(
                 connection_id=primary_connection.id,
-                tool_id=tool.id,
+                service_id=tool.id,
                 platform="nextcloud_talk",
                 remote_message_id=f"aster-{suffix}",
                 direction="outbound",
@@ -1664,7 +1664,7 @@ async def test_nextcloud_message_authors_resolve_agents_from_login_connections(
             ),
             Message(
                 connection_id=primary_connection.id,
-                tool_id=tool.id,
+                service_id=tool.id,
                 platform="nextcloud_talk",
                 remote_message_id=f"orion-{suffix}",
                 direction="inbound",
@@ -1735,7 +1735,7 @@ async def test_message_topic_reassignment_can_include_later_messages_of_same_top
     def message(index: int, topic: Topic) -> Message:
         return Message(
             connection_id=room.connection_id,
-            tool_id=sender.tool_id,
+            service_id=sender.service_id,
             platform="internal",
             remote_message_id=f"topic-update-{index}-{uuid4()}",
             direction="inbound",
@@ -1810,7 +1810,7 @@ async def test_room_topic_is_the_dynamic_default_without_overwriting_message_ove
     assert updated_room.topic_id == first_default.id
     inherited = Message(
         connection_id=room.connection_id,
-        tool_id=sender.tool_id,
+        service_id=sender.service_id,
         platform="internal",
         remote_message_id=f"room-default-{uuid4()}",
         direction="inbound",
@@ -1822,7 +1822,7 @@ async def test_room_topic_is_the_dynamic_default_without_overwriting_message_ove
     )
     overridden = Message(
         connection_id=room.connection_id,
-        tool_id=sender.tool_id,
+        service_id=sender.service_id,
         platform="internal",
         remote_message_id=f"room-override-{uuid4()}",
         direction="inbound",
@@ -1873,7 +1873,7 @@ async def test_message_topic_reassignment_single_scope_and_missing_anchor(
     await db.flush()
     first = Message(
         connection_id=room.connection_id,
-        tool_id=sender.tool_id,
+        service_id=sender.service_id,
         platform="internal",
         remote_message_id=f"topic-single-first-{uuid4()}",
         direction="inbound",
@@ -1886,7 +1886,7 @@ async def test_message_topic_reassignment_single_scope_and_missing_anchor(
     )
     second = Message(
         connection_id=room.connection_id,
-        tool_id=sender.tool_id,
+        service_id=sender.service_id,
         platform="internal",
         remote_message_id=f"topic-single-second-{uuid4()}",
         direction="inbound",

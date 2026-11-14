@@ -19,7 +19,7 @@ Le [chantier d'écosystème](cible.md#écosystème-signé) porte la direction pr
 ## Familles de contributions
 
 Un plugin est une unité de distribution ; il peut fournir plusieurs contributions
-typées. Un même bundle pourrait associer un stockage, un Tool préconfiguré, un lecteur
+typées. Un même bundle pourrait associer un stockage, un Service préconfiguré, un lecteur
 et un éditeur. Une famille n'impose ni un package distinct ni un nouveau domaine métier.
 Les familles ci-dessous sont une cible de conception, pas des extensions déjà disponibles.
 
@@ -27,7 +27,7 @@ Les familles ci-dessous sont une cible de conception, pas des extensions déjà 
 |---|---|---|
 | Interfaces File Share | Transports de stockage, navigation paginée, métadonnées, lecture/écriture, copie, déplacement, suppression et partage selon capacités réelles. Google Drive, Dropbox, Proton Drive, autres clouds ou stockages spécialisés. | `app.file_share` conserve les URI et opérations génériques ; `app.connection` possède configuration et secrets. |
 | Fournisseurs | Modèles LLM, embeddings, reranking, image, vidéo, transcription et synthèse vocale. | Ports publics des domaines IA/média ; résolution, admission, coûts et suivi restent gouvernés par l'hôte. |
-| Tools et préréglages | Outils natifs, adaptateurs MCP/HTTP et définitions de Tools préconfigurées pour un service. Un préréglage peut être purement déclaratif. | `app.tools`, `app.mcp` et `app.connection` ; installation, connexion et autorisation d'appel sont distinctes. |
+| Services et préréglages | Outils natifs, adaptateurs MCP/HTTP et définitions de Services préconfigurées pour un service. Un préréglage peut être purement déclaratif. | `app.services`, `app.mcp` et `app.connection` ; installation, connexion et autorisation d'appel sont distinctes. |
 | Visualisation de fichiers | Lecteurs pour formats spécialisés, miniatures, inspection de métadonnées, navigation dans une archive ou un assemblage, rendu 2D/3D. | Extension des aperçus et lecteurs ; la source peut appartenir à n'importe quel provider File Share autorisé. |
 | Édition de fichiers | Éditeurs spécialisés d'image, audio, vidéo, CAO ou scène 3D, opérant sur une URI externe sans imposer son import dans Documents. | Sauvegarde par le provider propriétaire ; capacités et contrôle de concurrence vérifiés avant de proposer l'édition. |
 | Formats de document | Types créables et éditables dans la bibliothèque : CAO, MAO, image, vidéo, scène 3D et autres projets spécialisés. | `app.document` conserve identité, métadonnées, ACL, classification et révisions ; le plugin apporte le format et ses comportements. |
@@ -35,9 +35,9 @@ Les familles ci-dessous sont une cible de conception, pas des extensions déjà 
 | Exécution agentique | Drivers, harnais, capacités et adaptateurs de runtimes externes. | Contrat `app.agent` ; persistance, transitions et leases restent dans `app.task`. |
 | Canaux et événements externes | Bridges Messenger/voix, calendriers, webhooks et sources d'événements. | Traduction vers les façades canoniques, sans workflow Task parallèle dans le plugin. |
 | Processus métier | Adaptateurs de moteurs, activités métier et préréglages de véritables workflows. | `app.process` possède définitions BPMN, historique et grants ; un outil technique isolé ne devient pas un Process. |
-| Interfaces et packages métier | Vues, panneaux spécialisés, tableaux de bord, skills, modèles d'agents ou packs métier combinant plusieurs contributions. | Slots SDK et façades des domaines concernés ; aucun accès implicite aux données ou aux Tools du fait du pack. |
+| Interfaces et packages métier | Vues, panneaux spécialisés, tableaux de bord, skills, modèles d'agents ou packs métier combinant plusieurs contributions. | Slots SDK et façades des domaines concernés ; aucun accès implicite aux données ou aux Services du fait du pack. |
 
-Priorité de qualification : File Share, fournisseurs, Tools préconfigurés,
+Priorité de qualification : File Share, fournisseurs, Services préconfigurés,
 visualisation, puis édition et formats documentaires. Les autres familles constituent
 un inventaire des points d'extension possibles, sans imposer leur livraison au premier palier.
 
@@ -46,7 +46,7 @@ un inventaire des points d'extension possibles, sans imposer leur livraison au p
 Évaluer un bridge Galaris vers **Rclone** afin de réutiliser ses connecteurs Google Drive,
 Dropbox et d'autres stockages, plutôt que réimplémenter chaque API. Le plugin expose des
 profils de fournisseurs explicites ; les locators Rclone et sa configuration restent internes.
-Le schéma d'une connexion reste le code du Tool, conformément au contrat File Share.
+Le schéma d'une connexion reste le code du Service, conformément au contrat File Share.
 Une interface commune ne prouve pas des garanties identiques : qualifier pagination,
 identité des fichiers de même nom, exports Google Docs/Sheets/Slides, renouvellement OAuth,
 fraîcheur des métadonnées, taille des transferts et écritures concurrentes par fournisseur.
@@ -70,9 +70,9 @@ transfert et les erreurs explicites. Les binaires doivent être versionnés et f
 l'image/SDK au premier palier, ou par un service externe supervisé explicitement supporté ;
 le plugin n'installe pas arbitrairement des dépendances au démarrage.
 
-### Tools préconfigurés
+### Services préconfigurés
 
-Un plugin peut distribuer une définition de Tool, ses schémas, libellés FR/EN,
+Un plugin peut distribuer une définition de Service, ses schémas, libellés FR/EN,
 instructions, paramètres non secrets et références aux capacités requises, avec ou sans
 code exécutable. Les identifiants distribués sont stables et les contributions ont un
 propriétaire connu ; leur réconciliation est idempotente et préserve les réglages locaux.
@@ -82,7 +82,7 @@ Le bundle ne contient ni secrets, ni sessions, ni connexions nominatives d'agent
 L'installation n'accorde aucun droit d'appel et ne connecte pas automatiquement des agents.
 Les modes Actif/Bloqué/Sur demande, les accords de contexte et les ACL restent applicables ;
 les services système obligatoires ne peuvent pas être remplacés ou désactivés par un plugin.
-Un Tool existant ne devient pas nécessairement un plugin : le plugin est son mode facultatif
+Un Service existant ne devient pas nécessairement un plugin : le plugin est son mode facultatif
 de distribution et de configuration.
 
 ### Lecteurs, éditeurs et formats documentaires
@@ -235,7 +235,7 @@ composant facultatif dégradé, configuration et révocation.
 TCK : archives/intégrité/reproductibilité, imports/namespaces, contributions, Pyright/types,
 FR/EN, RBAC, cycle complet, interruptions et conservation des données.
 Qualifications propres aux familles : isolement de deux connexions de stockage et copie
-inter-provider ; Tool préconfiguré installé deux fois sans secrets ni grants automatiques ;
+inter-provider ; Service préconfiguré installé deux fois sans secrets ni grants automatiques ;
 source préservée par un aperçu ; ouverture/sauvegarde/réouverture d'un projet avec assets,
 conflit concurrent, erreur de sauvegarde et refus d'écriture ; originaux et révisions
 récupérables après désactivation/retrait de l'éditeur ; réinstallation compatible.

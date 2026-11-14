@@ -4,7 +4,7 @@ import * as pinia from 'pinia'
 import * as axios from 'axios'
 import { loadTypescript, deferred } from '../../../test-support/load-typescript.mjs'
 
-const row = (id, host = 'synthetic.example.test') => ({ id, agent_id: id, tool_id: 9, active: true,
+const row = (id, host = 'synthetic.example.test') => ({ id, agent_id: id, service_id: 9, active: true,
   params: { host, token: null }, configured_params: ['token'] })
 
 function setup() {

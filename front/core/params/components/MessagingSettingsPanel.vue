@@ -120,7 +120,7 @@
                     />
                     <q-btn
                         v-if="canConfigureConnections"
-                        to="/tools?tab=connections"
+                        to="/services?tab=connections"
                         outline
                         color="primary"
                         icon="link"

@@ -17,7 +17,7 @@ pas de second système d'agents ni de gestion des fichiers.
    utiliser la section **Multimédia** et vérifier la connexion Multimedia de l’agent.
 
 Les connexions Multimedia sont créées automatiquement et actives par défaut. Les désactivations
-déjà enregistrées sont conservées ; le mode conversation du Tool exige une activation explicite.
+déjà enregistrées sont conservées ; le mode conversation du Service exige une activation explicite.
 Leurs fonctions ne sont exposées que si le profil possède une ressource compatible
 et que le fournisseur et la connexion sont actifs. Voir [Multimédia](multimedia.md).
 Les crédits API sont distincts des quotas de l'application Mammouth ; le fournisseur

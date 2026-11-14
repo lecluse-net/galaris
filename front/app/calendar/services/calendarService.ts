@@ -8,7 +8,7 @@ export type EventScope = 'series' | 'occurrence' | 'following'
 export interface CalendarConnection { id: number; agent_id: number; label: string }
 export interface CalendarFeed {
   resource_uri?: string
-  id: number; connection_id: number; agent_id: number; label: string; tool_label: string; owner_label: string | null
+  id: number; connection_id: number; agent_id: number; label: string; service_label: string; owner_label: string | null
   source_kind: 'internal' | 'ical' | 'caldav' | 'google' | 'microsoft' | 'icloud'; timezone: string; writable: boolean; initialized: boolean
   actions_enabled: boolean; is_default: boolean; origin: string; url_configured: boolean; username_configured: boolean
   password_configured: boolean; active: boolean; last_synced_at: string | null; last_checked_at: string | null

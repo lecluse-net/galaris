@@ -19,7 +19,7 @@ router.include_router(permission_router)
 
 
 @router.get("/bridges", response_model=list[MessengerBridgeInfo])
-@authorize(privileges=[Privileges.TOOL_ACCESS, Privileges.TOOL_EDIT])
+@authorize(privileges=[Privileges.SERVICE_ACCESS, Privileges.SERVICE_EDIT])
 async def list_messenger_bridges() -> list[MessengerBridgeInfo]:
     """List services and parameters available to a Tool's Messenger capability."""
 
@@ -50,14 +50,14 @@ async def search_messenger_users(
     """Return all matching identities from every enabled messaging connection."""
 
     results: list[MessengerUserSearchResult] = []
-    for connection_id, tool_id, platform, user in await search_agent_users(
+    for connection_id, service_id, platform, user in await search_agent_users(
         agent_id, query
     ):
         results.append(
             MessengerUserSearchResult(
                 id=user.id,
                 messaging_id=connection_id,
-                tool_id=tool_id,
+                service_id=service_id,
                 platform=platform,
                 external_id=user.external_id,
                 user_id=str(user.id),

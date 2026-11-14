@@ -32,7 +32,7 @@ from app.process.schemas import (
     ProcessFileInput,
     ProcessLLMCallRead,
 )
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 def test_transition_matrix_is_monotonic() -> None:
@@ -47,7 +47,7 @@ def test_transition_matrix_is_monotonic() -> None:
 def test_definition_update_accepts_administrative_assignment_fields() -> None:
     update = ProcessDefinitionUpdate(
         agent_id=2,
-        tool_id=3,
+        service_id=3,
         engine_process_id="workflow-2",
         label="Updated workflow",
         description="New text",
@@ -55,7 +55,7 @@ def test_definition_update_accepts_administrative_assignment_fields() -> None:
 
     assert update.model_dump(exclude_unset=True) == {
         "agent_id": 2,
-        "tool_id": 3,
+        "service_id": 3,
         "engine_process_id": "workflow-2",
         "label": "Updated workflow",
         "description": "New text",
@@ -67,7 +67,7 @@ def test_definition_update_accepts_administrative_assignment_fields() -> None:
 def test_definition_stores_generic_engine_process_id() -> None:
     definition = ProcessDefinitionCreate(
         agent_id=1,
-        tool_id=2,
+        service_id=2,
         engine_process_id="Kw70xUO8uRWkXvtX",
         label="Weather",
     )
@@ -124,7 +124,7 @@ async def test_definition_can_be_reassigned_without_leaking_between_agents(
         last_name="Agent",
         agent_driver="internal",
     )
-    engine_tool = Tool(
+    engine_tool = Service(
         code="fake",
         label="Fake process engine",
         description="",
@@ -136,7 +136,7 @@ async def test_definition_can_be_reassigned_without_leaking_between_agents(
     definition = await process_service.create_definition(
         ProcessDefinitionCreate(
             agent_id=first.id,
-            tool_id=engine_tool.id,
+            service_id=engine_tool.id,
             engine_process_id=f"workflow-{suffix}",
             label="Original workflow",
             description="Original description",
@@ -152,7 +152,7 @@ async def test_definition_can_be_reassigned_without_leaking_between_agents(
         actor_agent_id=first.id,
     )
     assert projected is not None
-    assert projected["tool_code"] == "fake"
+    assert projected["service_code"] == "fake"
     assert isinstance(projected["created_at"], str)
     assert await read_process_resource(
         f"workflow-{suffix}",
@@ -193,7 +193,7 @@ async def test_paginated_runs_separate_active_execution_from_history(
 ) -> None:
     suffix = uuid4().hex[:8]
     title = Title(label=f"Process activity {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"process-activity-{suffix}",
         label="Process activity",
         description="",
@@ -212,7 +212,7 @@ async def test_paginated_runs_separate_active_execution_from_history(
     await db.flush()
     definition = ProcessDefinition(
         agent_id=agent.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         engine_process_id=f"workflow-{suffix}",
         label="Activity workflow",
     )
@@ -551,7 +551,7 @@ async def test_terminal_start_failure_resolves_process_await(
     process = ProcessDefinition(
         id=1,
         agent_id=1,
-        tool_id=1,
+        service_id=1,
         engine_process_id="workflow-start-failure",
         label="Start failure",
     )
@@ -671,7 +671,7 @@ async def test_correlated_agent_call_rejects_unassigned_agent(
     process = ProcessDefinition(
         id=1,
         agent_id=2,
-        tool_id=1,
+        service_id=1,
         engine_process_id="Kw70xUO8uRWkXvtX",
         label="Invoice recording",
     )

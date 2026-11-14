@@ -75,7 +75,7 @@ def _onebot_text(message: Any) -> str:
 
 def onebot_to_message(
     event: OneBotMessage,
-    tool_id: int = 0,
+    service_id: int = 0,
     connection_id: int | None = None,
     conversation_remote_id: str | None = None,
     agent_id: int | None = None,
@@ -95,25 +95,25 @@ def onebot_to_message(
     return ObservedMessengerMessage(
         id=str(event.message_id),
         platform="one_bot",
-        tool_id=tool_id,
+        service_id=service_id,
         sender=ObservedMessengerUser(
             id=str(event.user_id),
             display_name=event.sender.nickname or "",
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
             agent_id=agent_id if event.user_id == event.self_id else None,
         ),
         recipient=ObservedMessengerUser(
             id=remote_room_id if event.user_id == event.self_id and not is_group else event.self_id,
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
             agent_id=agent_id if event.user_id != event.self_id or is_group else None,
         ),
         room=ObservedMessengerRoom(
             id=onebot_room_id(event.message_type, remote_room_id),
             kind="group" if is_group else "direct",
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
         ),
         text=_onebot_text(event.message),
         time=event.time,
@@ -134,11 +134,11 @@ class OneBotMessenger(Messenger):
         Capability.SEARCH_USERS,
     }
     def __init__(
-        self, one_bot: OneBot, tool_id: int, self_id: str, connection_id: Optional[int] = None,
+        self, one_bot: OneBot, service_id: int, self_id: str, connection_id: Optional[int] = None,
         agent_id: int | None = None,
     ) -> None:
         self._one_bot = one_bot
-        self.tool_id = tool_id
+        self.service_id = service_id
         self.self_id = self_id
         self.connection_id = connection_id
         self.agent_id = agent_id
@@ -155,7 +155,7 @@ class OneBotMessenger(Messenger):
         one_bot = await OneBot.from_connection(connection)
         return cls(
             one_bot=one_bot,
-            tool_id=int(connection.tool_id),
+            service_id=int(connection.service_id),
             self_id=one_bot.user_id,
             connection_id=connection_id,
             agent_id=int(connection.agent_id),
@@ -204,7 +204,7 @@ class OneBotMessenger(Messenger):
                 id=user_id,
                 display_name=display_name,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             )
         return sorted(
             users.values(),
@@ -231,21 +231,21 @@ class OneBotMessenger(Messenger):
         return ObservedMessengerMessage(
             id=_message_id_from_response(response),
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=ObservedMessengerUser(
                 id=self.self_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
                 agent_id=self.agent_id,
             ),
             recipient=ObservedMessengerUser(
-                id=remote_id, connection_id=self.connection_id, tool_id=self.tool_id,
+                id=remote_id, connection_id=self.connection_id, service_id=self.service_id,
             ) if room_kind == "direct" else None,
             room=ObservedMessengerRoom(
                 id=onebot_room_id(room_kind, remote_id),
                 kind=room_kind,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=text,
             reply_to=reply_to,
@@ -256,23 +256,23 @@ class OneBotMessenger(Messenger):
         return ObservedMessengerMessage(
             id=_message_id_from_response(response),
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=ObservedMessengerUser(
                 id=self.self_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
                 agent_id=self.agent_id,
             ),
             recipient=ObservedMessengerUser(
                 id=user_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             room=ObservedMessengerRoom(
                 id=onebot_room_id("direct", user_id),
                 kind="direct",
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=text,
         )
@@ -289,7 +289,7 @@ class OneBotMessenger(Messenger):
         return [
             onebot_to_message(
                 event,
-                self.tool_id,
+                self.service_id,
                 self.connection_id,
                 conversation_remote_id=remote_id,
                 agent_id=self.agent_id,

@@ -93,7 +93,7 @@ async def _lock_inbound_message(message_id: UUID) -> None:
 
 async def messaging_tool_records(kind: str) -> list[Any]:
     """Return tool records whose connections own credentials for ``kind``."""
-    from app.tools import tool_service
+    from app.services import service
     from core.params import runtime_settings
 
     normalized_kind = _normalize_bridge_kind(kind)
@@ -101,7 +101,7 @@ async def messaging_tool_records(kind: str) -> list[Any]:
         return []
     return [
         record
-        for record in await tool_service.get_all_tool_records()
+        for record in await service.get_all_service_records()
         if facade.kind_for_tool(
             record,
             preferred_kind=runtime_settings.MESSENGER_DRIVER,
@@ -165,7 +165,7 @@ class AppMessengerResolver:
 
     async def messenger_for_connection(self, connection_id: int) -> Messenger:
         from app.connection import connection_service
-        from app.tools import tool_service
+        from app.services import service
 
         connection = await connection_service.get_connection(connection_id)
         if connection is None:
@@ -176,12 +176,12 @@ class AppMessengerResolver:
             raise ValueError(_bridge_error(
                 "connection_inactive", connection_id=connection_id
             ))
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+        tool = await service.get_service_by_id(connection.service_id)
 
         kind = _bridge_kind_for_tool(tool)
         if not kind:
             raise ValueError(_bridge_error(
-                "tool_not_registered", tool_id=connection.tool_id
+                "tool_not_registered", service_id=connection.service_id
             ))
         if not facade.is_kind_enabled(kind):
             raise ValueError(f"Messaging bridge {kind} is disabled.")
@@ -189,18 +189,18 @@ class AppMessengerResolver:
         if bridge is None:
             raise ValueError(_bridge_error("bridge_not_registered", kind=kind))
         messenger = await bridge.from_connection_id(connection_id)
-        messenger.tool_code = str(getattr(tool, "code", ""))
+        messenger.service_code = str(getattr(tool, "code", ""))
         return messenger
 
-    async def messenger_for(self, tool_id: int, self_id: str) -> Messenger:
+    async def messenger_for(self, service_id: int, self_id: str) -> Messenger:
         from app.connection import connection_service
 
         connections = await connection_service.get_connections_by_param(
-            tool_id=tool_id, param_name="user_id", param_value=self_id
+            service_id=service_id, param_name="user_id", param_value=self_id
         )
         if not connections:
             raise ValueError(_bridge_error(
-                "identity_connection_not_found", tool_id=tool_id, self_id=self_id
+                "identity_connection_not_found", service_id=service_id, self_id=self_id
             ))
         return await self.messenger_for_connection(connections[0].id)
 
@@ -311,25 +311,25 @@ async def admit_incoming(message: Message) -> bool:
 
 
 async def _process_incoming(message: Message) -> None:
-    from app.tools import tool_service
+    from app.services import service
     from app.connection import connection_service
     from app.agent import agent_service
     from app.task import TaskCreate, TaskMessage, TaskStatus, task_service
     from app.task import runner
 
     recipient = message.recipient
-    if recipient is None or not message.tool_id:
-        logger.warning("Ignoring incoming message without recipient or tool_id")
+    if recipient is None or not message.service_id:
+        logger.warning("Ignoring incoming message without recipient or service_id")
         return
 
-    tool = await tool_service.get_tool_by_id(message.tool_id)
+    tool = await service.get_service_by_id(message.service_id)
     if tool is None:
-        logger.warning("Incoming message tool {} not found", message.tool_id)
+        logger.warning("Incoming message tool {} not found", message.service_id)
         return
 
     connection = await connection_service.get_connection(message.connection_id)
     if connection is not None and (
-        connection.tool_id != message.tool_id or not connection.active
+        connection.service_id != message.service_id or not connection.active
     ):
         connection = None
     if connection is None:
@@ -684,7 +684,7 @@ async def resolve_task_messaging(
         return None, None
     if not facade.is_kind_enabled(str(platform)):
         return None, None
-    from app.tools import tool_service
+    from app.services import service
     from app.connection import connection_service
 
     connection = None
@@ -731,7 +731,7 @@ async def resolve_task_messaging(
         ):
             if not candidate.active:
                 continue
-            tool = await tool_service.get_tool_by_id(int(candidate.tool_id))
+            tool = await service.get_service_by_id(int(candidate.service_id))
             if _bridge_kind_for_tool(tool) == str(platform):
                 candidates.append(candidate)
         if len(candidates) != 1:
@@ -795,13 +795,13 @@ async def send_task_progress(agent_id: int, task_id: UUID, message: str) -> bool
 async def messenger_for_agent(agent_id: int) -> Optional[facade.MessengerFacade]:
     """Choose Chat by default, then the oldest active available connection."""
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
     candidates: list[tuple[bool, int]] = []
     for conn in await connection_service.get_connections_by_agent(agent_id):
         if not getattr(conn, "active", True):
             continue
-        tool = await tool_service.get_tool_by_id(conn.tool_id)
+        tool = await service.get_service_by_id(conn.service_id)
         kind = _bridge_kind_for_tool(tool)
         if kind and facade.is_kind_enabled(kind) and facade.get_factory(kind):
             candidates.append((kind != "internal", int(conn.id)))
@@ -828,7 +828,7 @@ async def messenger_for_agent_connection(
     """
     from app.connection import connection_service
     from app.messenger.models import Capability
-    from app.tools import tool_service
+    from app.services import service
 
     connection = await connection_service.get_connection(connection_id)
     if connection is None or connection.agent_id != agent_id:
@@ -837,7 +837,7 @@ async def messenger_for_agent_connection(
         )
     if not connection.active:
         raise ValueError(f"Messaging connection {connection_id} is inactive.")
-    tool = await tool_service.get_tool_by_id(connection.tool_id)
+    tool = await service.get_service_by_id(connection.service_id)
     kind = _bridge_kind_for_tool(tool)
     if kind is None or facade.get_factory(kind) is None:
         raise ValueError(f"Connection {connection_id} is not a messaging connection.")
@@ -849,30 +849,30 @@ async def messenger_for_agent_connection(
     return messenger
 
 
-async def messenger_for_agent_tool_code(
+async def messenger_for_agent_service_code(
     agent_id: int,
-    tool_code: str,
+    service_code: str,
 ) -> facade.MessengerFacade:
-    """Resolve the exact active Messenger capability carried by one Tool code."""
+    """Resolve the exact active Messenger capability carried by one Service code."""
 
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
     candidates: list[Any] = []
     for connection in await connection_service.get_connections_by_agent(agent_id):
         if not connection.active:
             continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
-        if tool is not None and tool.code == tool_code and tool.messenger is not None:
+        tool = await service.get_service_by_id(connection.service_id)
+        if tool is not None and tool.code == service_code and tool.messenger is not None:
             candidates.append(connection)
     if not candidates:
         raise ValueError(
-            f"Agent {agent_id} has no active Messenger Tool {tool_code!r}."
+            f"Agent {agent_id} has no active Messenger Service {service_code!r}."
         )
     if len(candidates) > 1:
         raise ValueError(
             f"Agent {agent_id} has several active Messenger connections for "
-            f"Tool {tool_code!r}."
+            f"Service {service_code!r}."
         )
     return await messenger_for_agent_connection(agent_id, int(candidates[0].id))
 
@@ -920,7 +920,7 @@ async def messenger_for_agent_kind(
     """Resolve the agent's single active connection for an explicit channel kind."""
 
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
     requested = facade.normalize_kind(kind)
     if requested is None or not facade.is_kind_enabled(requested):
@@ -929,7 +929,7 @@ async def messenger_for_agent_kind(
     for connection in await connection_service.get_connections_by_agent(agent_id):
         if not getattr(connection, "active", True):
             continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+        tool = await service.get_service_by_id(connection.service_id)
         if _bridge_kind_for_tool(tool) == requested:
             candidates.append(connection)
     if not candidates:
@@ -1067,14 +1067,14 @@ async def search_agent_users(
     """
     from app.connection import connection_service
     from app.messenger.models import Capability
-    from app.tools import tool_service
+    from app.services import service
 
     value = query.strip()
     available: dict[int, tuple[Any, str]] = {}
     for connection in await connection_service.get_connections_by_agent(agent_id):
         if not connection.active:
             continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+        tool = await service.get_service_by_id(connection.service_id)
         kind = _bridge_kind_for_tool(tool)
         if (
             kind is None
@@ -1111,7 +1111,7 @@ async def search_agent_users(
                     continue
                 matches[(connection_id, user.id)] = (
                     connection_id,
-                    int(connection.tool_id),
+                    int(connection.service_id),
                     messenger.kind or kind,
                     user,
                 )
@@ -1166,12 +1166,12 @@ def _listener_configuration_signature() -> str:
 async def _listener_configuration_signatures(
     connection_ids: set[int],
 ) -> dict[int, str]:
-    """Hash each listener's Tool config and encrypted connection values."""
+    """Hash each listener's Service config and encrypted connection values."""
 
     from sqlalchemy import select
 
     from app.connection import Connection, ConnectionParam
-    from app.tools import ToolModel as Tool
+    from app.services import ServiceModel as Service
 
     if not connection_ids:
         return {}
@@ -1180,12 +1180,12 @@ async def _listener_configuration_signatures(
             await db.execute(
                 select(
                     Connection.id,
-                    Tool.updated_at,
-                    Tool.messenger_config,
+                    Service.updated_at,
+                    Service.messenger_config,
                     ConnectionParam.param_name,
                     ConnectionParam.param_value,
                 )
-                .join(Tool, Tool.id == Connection.tool_id)
+                .join(Service, Service.id == Connection.service_id)
                 .outerjoin(
                     ConnectionParam,
                     ConnectionParam.connection_id == Connection.id,
@@ -1228,8 +1228,8 @@ async def check_configuration(provider: str | None = None) -> dict[str, Any]:
             continue
         for tool in await messaging_tool_records(kind):
             tool_kind_by_id.setdefault(int(tool.id), kind)
-    tool_ids = list(tool_kind_by_id)
-    if not tool_ids:
+    service_ids = list(tool_kind_by_id)
+    if not service_ids:
         return {"provider": response_provider, "ok": False, "connections": []}
 
     from app.messenger.models import ListenerState
@@ -1240,7 +1240,7 @@ async def check_configuration(provider: str | None = None) -> dict[str, Any]:
             select(
                 Connection.id,
                 Connection.agent_id,
-                Connection.tool_id,
+                Connection.service_id,
                 ListenerState.available,
                 ListenerState.last_event_at,
             )
@@ -1249,7 +1249,7 @@ async def check_configuration(provider: str | None = None) -> dict[str, Any]:
                 ListenerState.connection_id == Connection.id,
             )
             .where(
-                Connection.tool_id.in_(tool_ids),
+                Connection.service_id.in_(service_ids),
                 Connection.active.is_(True),
             )
             .order_by(Connection.id)
@@ -1257,8 +1257,8 @@ async def check_configuration(provider: str | None = None) -> dict[str, Any]:
     ).all()
 
     results: list[dict[str, Any]] = []
-    for connection_id, agent_id, tool_id, available, last_event_at in records:
-        provider = tool_kind_by_id.get(int(tool_id), "messenger")
+    for connection_id, agent_id, service_id, available, last_event_at in records:
+        provider = tool_kind_by_id.get(int(service_id), "messenger")
         messenger: facade.MessengerFacade | None = None
         try:
             messenger = await facade.get_messenger(int(connection_id))
@@ -1337,7 +1337,7 @@ async def _discover_active_listener_connections() -> set[int]:
     from sqlalchemy import select
     from app.connection import Connection
     async with get_db_session() as db:
-        tool_ids: set[int] = set()
+        service_ids: set[int] = set()
         for spec in facade.enabled_specs():
             if not set(spec.inbound_modes).intersection(
                 {"polling", "sync", "signaling"}
@@ -1346,12 +1346,12 @@ async def _discover_active_listener_connections() -> set[int]:
             if facade.get_factory(spec.kind) is None:
                 continue
             records = await messaging_tool_records(spec.kind)
-            tool_ids.update(int(record.id) for record in records)
-        if not tool_ids:
+            service_ids.update(int(record.id) for record in records)
+        if not service_ids:
             return set()
         result = await db.execute(
             select(Connection.id).where(
-                Connection.tool_id.in_(tool_ids), Connection.active.is_(True)
+                Connection.service_id.in_(service_ids), Connection.active.is_(True)
             )
         )
         return {int(cid) for cid in result.scalars().all()}
@@ -1425,9 +1425,9 @@ async def _run_listener(connection_id: int) -> None:
                 [messenger] if primary_spec is None or set(primary_spec.inbound_modes).intersection({"polling", "sync", "signaling"}) else []
             )
             from app.connection import connection_service
-            from app.tools import tool_service
+            from app.services import service
             connection = await connection_service.get_connection(connection_id)
-            tool = await tool_service.get_tool_by_id(connection.tool_id) if connection else None
+            tool = await service.get_service_by_id(connection.service_id) if connection else None
             if tool is not None and tool.mail is not None and messenger.kind != "mail":
                 factory = facade.get_factory("mail")
                 if factory is not None:
@@ -1498,10 +1498,10 @@ def register_messaging() -> None:
         }:
             return
         if name == Params.MESSENGER_DRIVER:
-            from app.tools import sync_mandatory_tools
+            from app.services import sync_mandatory_services
             from core.database import get_db
 
-            await sync_mandatory_tools()
+            await sync_mandatory_services()
             await get_db().commit()
     facade.set_resolver(AppMessengerResolver())
     message_received.connect(handle_incoming)

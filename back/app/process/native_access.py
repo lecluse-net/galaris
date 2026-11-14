@@ -51,7 +51,7 @@ def accessible_clause(actor: ProcessActor, *, write: bool = False, manage: bool 
 async def administrative_definition_clause(actor: ProcessActor) -> ColumnElement[bool]:
     if not isinstance(actor, int):
         return false()
-    from app.tools.facade import administration_scope
+    from app.services.facade import administration_scope
     scope = await administration_scope(actor, "process_admin")
     return true() if scope.is_global else Definition.agent_id.in_(scope.agent_ids or ())
 
@@ -59,7 +59,7 @@ async def administrative_definition_clause(actor: ProcessActor) -> ColumnElement
 async def administrative_run_clause(actor: ProcessActor) -> ColumnElement[bool]:
     if not isinstance(actor, int):
         return false()
-    from app.tools.facade import administration_scope
+    from app.services.facade import administration_scope
     from .models import ProcessRun
     scope = await administration_scope(actor, "process_admin")
     return true() if scope.is_global else ProcessRun.launcher_agent_id.in_(scope.agent_ids or ())

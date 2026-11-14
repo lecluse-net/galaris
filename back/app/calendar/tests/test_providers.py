@@ -19,8 +19,8 @@ from app.calendar.crypto import decrypt
 from app.calendar.schemas import CalendarEventCreate, CalendarEventUpdate, CalendarEventDelete
 from app.calendar.synchronization import synchronize_calendar
 from app.connection import connection_service, oauth_service
-from app.tools import tool_service
-from app.tools.schemas import ToolCreate
+from app.services import service
+from app.services.schemas import ServiceCreate
 from bridge.calendar import transport
 from bridge.calendar.rest import RestCalendarProvider, LOCAL_PROPERTY
 from bridge.calendar.rest_codec import decode, encode
@@ -108,7 +108,7 @@ async def provider(db, agent, monkeypatch, request):
         assert host in ('www.googleapis.com', 'graph.microsoft.com')
         return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, '', ('93.184.216.34', port))]
     monkeypatch.setattr(asyncio.get_running_loop(), 'getaddrinfo', resolve)
-    tool = await tool_service.create_tool(ToolCreate.model_validate({
+    tool = await service.create_service(ServiceCreate.model_validate({
         'code': 'synthetic-' + kind, 'label': 'Synthetic provider', 'capabilities': ['caldav.calendar'],
         'calendar_config': {'settings': {'source_kind': kind}, 'param_map': {'client_id': 'client_id', 'client_secret': 'client_secret'}},
         'connection_schema': {'params': {'client_id': {'type': 'string'}, 'client_secret': {'type': 'password'}}}}))

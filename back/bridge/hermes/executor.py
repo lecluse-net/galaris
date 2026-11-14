@@ -65,7 +65,7 @@ async def _unregister_active_run(request: AgentRunRequest) -> None:
 async def cancel(run_id: UUID) -> None:
     """Stop the Hermes runtime run associated with a Galaris run identifier."""
     if run_id in _MANAGED_RUNS:
-        from app.tools.facade import revoke_runtime_run_grant
+        from app.services.facade import revoke_runtime_run_grant
         await revoke_runtime_run_grant(run_id)
     async with _ACTIVE_RUNS_LOCK:
         active = _ACTIVE_RUNS.get(run_id)
@@ -93,7 +93,7 @@ async def request_cancellation(
     run_id: UUID, *, checkpoint: AgentRunCheckpoint | None = None,
 ) -> HarnessCancellationReceipt:
     if run_id in _MANAGED_RUNS or (checkpoint is not None and checkpoint.data.get("runtime_run_context")):
-        from app.tools.facade import revoke_runtime_run_grant
+        from app.services.facade import revoke_runtime_run_grant
         await revoke_runtime_run_grant(run_id)
     async with _ACTIVE_RUNS_LOCK:
         active = _ACTIVE_RUNS.get(run_id)
@@ -120,7 +120,7 @@ async def request_cancellation(
 
 async def _cancel_if_active(request: AgentRunRequest) -> None:
     if request.target is not None and request.target.target_ref.startswith("harness:"):
-        from app.tools.facade import revoke_runtime_run_grant
+        from app.services.facade import revoke_runtime_run_grant
         await revoke_runtime_run_grant(request.run_id)
     async with _ACTIVE_RUNS_LOCK:
         active = _ACTIVE_RUNS.get(request.id) or _ACTIVE_RUNS.get(request.run_id)
@@ -675,7 +675,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
     if managed:
         await client.verify_authorization_control(target)
     if managed and checkpoint is not None:
-        from app.tools.facade import renew_runtime_run_grant
+        from app.services.facade import renew_runtime_run_grant
         encrypted_context = checkpoint_data.get("runtime_run_context")
         if not isinstance(encrypted_context, str) or not encrypted_context:
             raise PermissionError("The Hermes continuation has no server-issued runtime context")
@@ -737,7 +737,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
         except client.HermesRunNotFound:
             if managed or _checkpoint_has_effects(checkpoint):
                 if run_context:
-                    from app.tools.facade import close_runtime_run_grant
+                    from app.services.facade import close_runtime_run_grant
                     await close_runtime_run_grant(run_context)
                 lost_result = (
                     checkpoint.result.model_copy(deep=True)
@@ -801,7 +801,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
         history = _merged_conversation_history(task, session_messages)
         if managed:
             import hashlib
-            from app.tools.facade import issue_runtime_run_grant
+            from app.services.facade import issue_runtime_run_grant
             run_context = await issue_runtime_run_grant(task)
             checkpoint_data["runtime_run_context"] = get_encryption_service().encrypt(run_context)
             # A lost start reply cannot prove that the runtime did not execute effects.
@@ -825,7 +825,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
             )
         except Exception as e:
             if run_context:
-                from app.tools.facade import close_runtime_run_grant
+                from app.services.facade import close_runtime_run_grant
                 await close_runtime_run_grant(run_context)
             result = ExecutionResult(
                 prompt=human_prompt,
@@ -1087,7 +1087,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
 
         elif name == "approval.request":
             from app.agent import get_agent_record
-            from app.tools.facade import (
+            from app.services.facade import (
                 AuthorizationAction, AuthorizationClosed, AuthorizationRequired,
                 claim_action, finish_action,
             )
@@ -1280,7 +1280,7 @@ async def _stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
         "execution_stopped": execution_stopped,
     }
     if run_context:
-        from app.tools.facade import close_runtime_run_grant
+        from app.services.facade import close_runtime_run_grant
         await close_runtime_run_grant(run_context)
     yield AgentEvent.from_result(result)
 

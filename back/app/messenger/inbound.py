@@ -18,7 +18,7 @@ from app.messenger.models import Message
 
 InboundHandler = Callable[[Message], Awaitable[None]]
 
-# Bounded deduplication of recently seen ``(connection_id, tool_id, message_id)`` pairs.
+# Bounded deduplication of recently seen ``(connection_id, service_id, message_id)`` pairs.
 # A single Messenger tool can own several bot/account connections, so the connection must be
 # part of the key just like it is in the durable uniqueness constraint.
 _DEDUP_MAXLEN = 2048
@@ -35,7 +35,7 @@ def _already_seen(message: Message) -> bool:
     """Return whether this message was processed recently."""
     if not message.remote_message_id:
         return False
-    key = (message.connection_id, message.tool_id, message.remote_message_id)
+    key = (message.connection_id, message.service_id, message.remote_message_id)
     if key in _seen:
         return True
     if len(_seen_order) == _seen_order.maxlen:
@@ -51,7 +51,7 @@ def _forget_seen(message: Message) -> None:
 
     if not message.remote_message_id:
         return
-    key = (message.connection_id, message.tool_id, message.remote_message_id)
+    key = (message.connection_id, message.service_id, message.remote_message_id)
     _seen.discard(key)
     try:
         _seen_order.remove(key)
@@ -123,9 +123,9 @@ async def dispatch_incoming(
         return True
     if not message_received.has_required_receivers:
         logger.warning(
-            "Inbound message received (tool_id={}) but 'message_received' has no subscribers "
+            "Inbound message received (service_id={}) but 'message_received' has no subscribers "
             "(app.messenger.on_message or message_received.connect was not called)",
-            stored.tool_id,
+            stored.service_id,
         )
         raise RuntimeError("Inbound Messenger admission has no registered receiver.")
     if _already_seen(stored):

@@ -454,7 +454,7 @@ tomber toute l’application sur une dégradation locale.
 | Core API, auth, RBAC, WebSocket | Middleware, sessions, protections de routes, tests HTTP/DB et frontières | R02/R03 ; matrices rôle/compte/révocation et connexions longues |
 | Base, DbAdmin, datasets | Orchestration, phases, journal, staging et tests PostgreSQL ; upgrade réel du code précédent | R08/R23 ; compatibilité multi-livraisons et gros backfills |
 | Agent, Harness, Task, Goal | Contrats, scheduler, leases, budgets, chemins de reprise ; suite complète | R10/R21/R22/R23 ; matrice de crash de chaque driver |
-| Process, Tools, MCP, Connection | Soumission, refresh, callbacks, contrats de ressources et rétention | R06/R09–R13 ; admission par moteur et résultats incertains |
+| Process, Services, MCP, Connection | Soumission, refresh, callbacks, contrats de ressources et rétention | R06/R09–R13 ; admission par moteur et résultats incertains |
 | Multimédia et fournisseurs LLM | Contrats, engines, HTTP, receipts, supports/capabilités et tests | R10–R14 ; essais contractuels contre fournisseurs réels avec budget explicite |
 | Messenger, Chat, Conversation | Journal, livraisons, stores, types, reconnexion, PWA ; E2E multiengines | R03/R06/R07/R15 ; erreurs entre protocole et reçu |
 | Bridges conversationnels | Telegram/WhatsApp/Nextcloud approfondis, autres transports et suites inventoriés/testés | Matrice commune par bridge, médias et messages multiparties |

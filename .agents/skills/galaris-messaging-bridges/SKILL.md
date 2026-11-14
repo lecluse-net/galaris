@@ -30,7 +30,7 @@ webhook push, d’un polling ou d’une boucle de synchronisation.
 3. Dédupliquer dans la portée correcte, au minimum connexion + identifiant externe.
 4. Journaliser la réception et ses transitions pour permettre reprise et diagnostic.
 5. Résoudre ou créer la conversation canonique.
-6. Normaliser les métadonnées et construire l'URI avec le code exact du Tool d'origine ; ne pas
+6. Normaliser les métadonnées et construire l'URI avec le code exact du Service d'origine ; ne pas
    remplacer cette identité par une copie locale.
 7. Appeler le dispatch `app.messenger`, qui décide de créer ou reprendre une tâche.
 8. Accuser réception au protocole seulement selon sa sémantique réelle de livraison.
@@ -71,9 +71,9 @@ source, destination et reçu de livraison sans ambiguïté.
 - Matérialiser seulement dans un temporaire serveur borné lorsqu'une bibliothèque exige des
   octets ; ce temporaire n'est jamais exposé comme ressource.
 - Exposer une pièce jointe persistée comme
-  `<tool.code>://<room-locator-provider>/<attachment-uuid-local>` ; Messenger est une capability,
+  `<service.code>://<room-locator-provider>/<attachment-uuid-local>` ; Messenger est une capability,
   jamais un schéma. Le nom visible reste une métadonnée non fiable.
-- Le schéma vient exactement du Tool connecté, le locator de room du provider et l'identité du
+- Le schéma vient exactement du Service connecté, le locator de room du provider et l'identité du
   fichier de `messenger_files.id`. Ne jamais substituer le kind du bridge ou un code générique.
 - Conserver les fichiers dans l'entrée chronologique du message qui les porte. Un message sans
   texte mais avec une pièce jointe reste un message d'historique ; chaque entrée de fichier expose

@@ -7,7 +7,7 @@
 ## Contexte
 
 Les opérations de fichier employaient simultanément des chemins de workspace, des couples
-`tool_code + path`, des identifiants Messenger et des URLs propres aux providers. Un modèle devait
+`service_code + path`, des identifiants Messenger et des URLs propres aux providers. Un modèle devait
 donc choisir une fonction et une grammaire différentes pour chaque origine, puis reconstruire une
 référence lors d'un transfert. Ces formes ne pouvaient pas non plus alimenter proprement le
 Working Set ou un historique de documents inter-Tasks.
@@ -18,17 +18,17 @@ Working Set ou un historique de documents inter-Tasks.
 `<scheme>://<locator>` et toutes les opérations usuelles — découverte, liste, métadonnées,
 recherche, écriture complète binaire ou texte, lecture/écriture texte, copie, move et suppression
 — traversent ses contrats publics.
-La surface MCP `file_*` est enregistrée exclusivement sous le Tool intégré `file_sharing`.
+La surface MCP `file_*` est enregistrée exclusivement sous le Service intégré `file_sharing`.
 Le schéma `galaris://` est un provider de cette façade ; il ne rattache aucune fonction de fichier
-au Tool `galaris`, réservé aux actions métier.
+au Service `galaris`, réservé aux actions métier.
 Un chemin relatif historique est normalisé en `workspace://` à l'entrée. Les résultats MCP sont
 structurés et rendent toujours la référence canonique réutilisable.
 
-Le schéma d'un provider externe est exactement le `code` du Tool connecté à l'agent lorsqu'il
+Le schéma d'un provider externe est exactement le `code` du Service connecté à l'agent lorsqu'il
 porte la capability file-share ou Messenger.
 Il respecte la grammaire d'un schéma URI en minuscules. Les protocoles Web/réseau usuels et les
 schémas natifs Galaris sont réservés ; notamment `http` et `https` ne peuvent jamais être des codes
-de Tool. `http://` est désactivé. `https://` est une source publique en lecture seule, protégée
+de Service. `http://` est désactivé. `https://` est une source publique en lecture seule, protégée
 contre les credentials, fragments, hôtes non publics et redirections SSRF.
 
 Les schémas natifs restent gouvernés par leur domaine : `workspace://`, `console://`,
@@ -73,10 +73,10 @@ Le Working Set et la capsule par interlocuteur conservent ces URI, sans recopier
 livraison externe réussie produit un artefact final et un reçu source/destination ; move et delete
 font expirer les références antérieures. Les queries HTTPS sont retirées des références durables.
 
-Messenger et file-share sont des capabilities d'un Tool, pas des providers URI. Une pièce jointe
+Messenger et file-share sont des capabilities d'un Service, pas des providers URI. Une pièce jointe
 est donc rendue dans l'entrée chronologique du message qui la porte sous la forme
 `<tool.code>://<room-locator-provider>/<file-uuid-local>`. Par exemple Talk et WebDAV partagent le
-schéma `nextcloud://`, tandis qu'une connexion Telegram utilise `telegram://`. Pour un Tool qui
+schéma `nextcloud://`, tandis qu'une connexion Telegram utilise `telegram://`. Pour un Service qui
 porte les deux capabilities, une room connue sélectionne Messenger et tout autre chemin sélectionne
 file-share. Un message qui ne contient qu'un fichier n'est jamais écarté des projections de session
 ou de runtime ; le nom visible ne sert pas d'identité.
@@ -110,4 +110,4 @@ ou de runtime ; le nom visible ne sert pas d'identité.
 `web_transport.py`, `mcp.py`, `back/app/file_share/messenger_transport.py`,
 `back/app/memory/file_facade.py`, `back/app/messenger/resource_reference.py`,
 `back/bridge/nextcloud/file_share.py`,
-`back/app/tools/resource_effects.py` et les tests associés.
+`back/app/services/resource_effects.py` et les tests associés.

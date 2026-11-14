@@ -128,7 +128,7 @@ async def test_process_completion_attaches_real_resources_to_the_chat_reply(atta
         document = await resource_create(ResourceContext(ctx["agent_id"], "internal"),
             "document://", "<p>Synthetic process report</p>".encode(), name="Process report")
         connection = await db.get(Connection, ctx["connection_id"])
-        definition = ProcessDefinition(agent_id=ctx["agent_id"], tool_id=connection.tool_id,
+        definition = ProcessDefinition(agent_id=ctx["agent_id"], service_id=connection.service_id,
             engine_process_id=uuid4().hex, label="Synthetic report")
         round_ = ConversationRound(room_id=ctx["room_id"], status="SUCCEEDED", delivery_state="DELIVERED", language="en")
         db.add_all([definition, round_])

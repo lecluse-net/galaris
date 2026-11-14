@@ -22,7 +22,7 @@ from app.messenger import create_internal_room, service
 from app.messenger.contact_access import require_outgoing_room
 from app.messenger.models import Interaction, Message, MessengerUser, PermissionDecision, Room
 from app.messenger.permissions import answer_permission, delete_decision, list_decisions
-from app.tools import ToolModel
+from app.services import ServiceModel
 from bridge.telegram.messenger import TelegramMessenger
 from bridge.telegram.schemas import TelegramConnectionConfig
 from bridge.whatsapp.messenger import WhatsAppMessenger
@@ -76,7 +76,7 @@ async def _scope(db, monkeypatch, platform="telegram", *, onebot_stack=None):
     outsider = UserModel(email=f"contact-outsider-{suffix}@example.test", hashed_password="unused", is_active=True)
     title = Title(label="Synthetic contact consent", gender="X")
     role = Role(code=f"contact-reviewer-{suffix}", privileges=[await db.scalar(select(Privilege).where(Privilege.code == "PERMISSION_DECIDE"))])
-    tool = ToolModel(code=f"contact-channel-{suffix}", label="Synthetic Telegram", description="", connection_schema={},
+    tool = ServiceModel(code=f"contact-channel-{suffix}", label="Synthetic Telegram", description="", connection_schema={},
                      messenger_config={"service": "telegram", "param_map": {"token": "token"}}, conversation_enabled=True)
     db.add_all([manager, outsider, title, role, tool])
     await db.flush()
@@ -84,9 +84,9 @@ async def _scope(db, monkeypatch, platform="telegram", *, onebot_stack=None):
     agent = Agent(user_id=manager.id, title_id=title.id, code=f"contact-agent-{suffix}", first_name="Synthetic", last_name="Agent", agent_driver="internal")
     db.add(agent)
     await db.flush()
-    chat = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
-    connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
-    db.add_all([connection, Connection(agent_id=agent.id, tool_id=chat.id, active=True)])
+    chat = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
+    connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
+    db.add_all([connection, Connection(agent_id=agent.id, service_id=chat.id, active=True)])
     await db.flush()
     db.add(ConnectionParam(connection_id=connection.id, param_name="token", param_value="synthetic-token"))
     await db.commit()
@@ -95,11 +95,11 @@ async def _scope(db, monkeypatch, platform="telegram", *, onebot_stack=None):
     # use the real native Chat and canonical permission/interaction services.
     monkeypatch.setattr(service, "messenger_for_agent", AsyncMock(return_value=None))
     if platform == "one_bot":
-        from app.tools import ConnectionParamDef, ConnectionSchema, MessengerConfig, ToolUpdate, tool_service
+        from app.services import ConnectionParamDef, ConnectionSchema, MessengerConfig, ServiceUpdate, service
         from app.connection import connection_service
         from bridge.one_bot.tests.adapter import connected_adapter
 
-        await tool_service.update_tool(tool.id, ToolUpdate(
+        await service.update_service(tool.id, ServiceUpdate(
             messenger_config=MessengerConfig(service="one_bot", settings={"platform": "qq"},
                 param_map={"user_id": "adapter_bot", "token": "token"}),
             connection_schema=ConnectionSchema(params={
@@ -124,10 +124,10 @@ async def _scope(db, monkeypatch, platform="telegram", *, onebot_stack=None):
         await connection_service.set_param(connection.id, "token", "synthetic-token")
         return agent, manager, outsider, connection, messenger
     if platform == "whatsapp":
-        from app.tools import ConnectionParamDef, ConnectionSchema, MessengerConfig, ToolUpdate, tool_service
+        from app.services import ConnectionParamDef, ConnectionSchema, MessengerConfig, ServiceUpdate, service
         from app.connection import connection_service
 
-        await tool_service.update_tool(tool.id, ToolUpdate(
+        await service.update_service(tool.id, ServiceUpdate(
             messenger_config=MessengerConfig(service="whatsapp",
                 settings={"app_secret": "synthetic-meta-secret", "verify_token": "synthetic-verify-token"},
                 param_map={"access_token": "token", "phone_number_id": "meta_phone"}),
@@ -148,7 +148,7 @@ async def _scope(db, monkeypatch, platform="telegram", *, onebot_stack=None):
     provider = SimpleNamespace(initialize=AsyncMock(return_value=bot), aclose=AsyncMock(), send_text=AsyncMock(return_value=sent))
     monkeypatch.setattr("bridge.telegram.messenger.TelegramClient", lambda _token: provider)
     messenger = TelegramMessenger(provider, TelegramConnectionConfig(bot_token="synthetic"), bot,
-        tool_id=tool.id, connection_id=connection.id, agent_id=agent.id)
+        service_id=tool.id, connection_id=connection.id, agent_id=agent.id)
     return agent, manager, outsider, connection, messenger
 
 
@@ -188,7 +188,7 @@ async def _receive(messenger, number=1, sender_id=420, *, client=None):
         }]}]}
         raw = json.dumps(payload).encode()
         signature = "sha256=" + hmac.new(b"synthetic-meta-secret", raw, hashlib.sha256).hexdigest()
-        response = await client.post(f"/api/whatsapp/webhook/{messenger.tool_id}", content=raw,
+        response = await client.post(f"/api/whatsapp/webhook/{messenger.service_id}", content=raw,
             headers={"X-Hub-Signature-256": signature})
         assert response.status_code == 200, response.text
         return
@@ -209,7 +209,7 @@ async def test_received_contact_waits_in_activity_and_manager_decides_once(conta
     db = contact_db
     agent, manager, outsider, connection, messenger = await _scope(db, monkeypatch, platform, onebot_stack=onebot_stack)
     if platform == "whatsapp":
-        webhook = f"/api/whatsapp/webhook/{messenger.tool_id}"
+        webhook = f"/api/whatsapp/webhook/{messenger.service_id}"
         verification = {"hub.mode": "subscribe", "hub.verify_token": "synthetic-verify-token", "hub.challenge": "synthetic-challenge"}
         verified = await contact_client.get(webhook, params=verification)
         assert verified.status_code == 200 and verified.text == "synthetic-challenge"
@@ -272,7 +272,7 @@ async def test_received_contact_waits_in_activity_and_manager_decides_once(conta
         # Existing receipts may predate the bridge's canonical agent link. Its
         # authenticated provider identity is not an additional human recipient.
         own_identity = await db.scalar(select(MessengerUser).where(
-            MessengerUser.tool_id == connection.tool_id, MessengerUser.external_id == "700"))
+            MessengerUser.service_id == connection.service_id, MessengerUser.external_id == "700"))
         assert own_identity.agent_id == agent.id and own_identity.is_ai
         own_identity.agent_id = None
         await db.commit()
@@ -287,7 +287,7 @@ async def test_received_contact_waits_in_activity_and_manager_decides_once(conta
         if platform == "one_bot":
             assert outputs[0].user_id == "420" and outputs[0].messenger_user_id is not None
         assert await db.scalar(select(func.count()).select_from(MessengerUser).where(
-            MessengerUser.tool_id == connection.tool_id, MessengerUser.galaris_user_id.is_not(None))) == 0
+            MessengerUser.service_id == connection.service_id, MessengerUser.galaris_user_id.is_not(None))) == 0
         await delete_decision(permission.id, managed_agent_ids=frozenset({agent.id}))
         with pytest.raises(PermissionError):
             await require_outgoing_room(connection.id, round_.room_id)

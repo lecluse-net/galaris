@@ -30,7 +30,7 @@ class FakeProcessEngine:
 
     async def health(self) -> ProcessEngineHealth:
         return ProcessEngineHealth(
-            tool_code=self.code,
+            service_code=self.code,
             status="healthy",
             reachable=True,
             authenticated=True,

@@ -6,7 +6,7 @@ from sqlalchemy import and_, case, exists, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
 from app.agent import Agent, AgentManagementScope
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.database import get_db
 
 from .models import ProcessDefinition as Definition, ProcessNodeAttempt, ProcessNodeRun, ProcessRun
@@ -30,12 +30,12 @@ async def page_for(
         and_(accessible_clause(scope), Definition.bpmn_xml.is_not(None)),
         and_(Definition.code.is_(None), external_scope),
     )
-    tool = case((Definition.code.is_not(None), literal("Galaris")), else_=ToolModel.label)
+    tool = case((Definition.code.is_not(None), literal("Galaris")), else_=ServiceModel.label)
     catalogue_agent = aliased(Agent)
     agent = func.nullif(func.concat_ws(" ", catalogue_agent.first_name, catalogue_agent.last_name), "")
     query = select(Definition.id, Definition.code, Definition.label, Definition.description,
         Definition.archived, tool.label("tool"), agent.label("agent")).outerjoin(
-        ToolModel, ToolModel.id == Definition.tool_id).outerjoin(catalogue_agent, catalogue_agent.id == Definition.agent_id).where(allowed)
+        ServiceModel, ServiceModel.id == Definition.service_id).outerjoin(catalogue_agent, catalogue_agent.id == Definition.agent_id).where(allowed)
     if kind != "all":
         query = query.where(Definition.code.is_not(None) if kind == "native" else Definition.code.is_(None))
     if archive != "all":

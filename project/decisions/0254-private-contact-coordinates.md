@@ -27,7 +27,7 @@ country. Each entry can override or clear its country. Saved entries remain unch
 when the global location changes. Contact coordinates grant no additional access.
 
 Self-service MCP functions `contact_list`, `contact_get`, `contact_create` and
-`contact_update` belong to the existing `galaris` Tool and run in Tasks and conversations.
+`contact_update` belong to the existing `galaris` Service and run in Tasks and conversations.
 Ownership always comes from the injected caller context; no target-agent argument or
 administrative scope can widen it. Updates reuse Contacts validation, preserve identities
 and omitted coordinates, and replace only explicitly supplied coordinate collections.
@@ -36,9 +36,9 @@ also changes whether that sender is known to the default inbound Mail admission 
 this effect is described in the tool and runtime instructions. Merge, split, forgetting
 and editing existing email or Messenger identities remain outside this MCP surface.
 
-The adapter adds a reviewed `app.contact → app.tools` dependency through the public
+The adapter adds a reviewed `app.contact → app.services` dependency through the public
 decorator and injected context only. This follows other domain-owned native MCP adapters,
-adds no reverse dependency from Tools to Contacts and introduces no new storage or port.
+adds no reverse dependency from Services to Contacts and introduces no new storage or port.
 `app/contact/tests/test_mcp.py` verifies discovery, schemas, private ownership and persistence.
 
 The File Sharing port also exposes conditional writes to `galaris://contact/<uuid>`.

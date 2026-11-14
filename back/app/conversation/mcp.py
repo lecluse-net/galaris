@@ -18,7 +18,7 @@ from app.agent import (
     get_plan_progress,
 )
 from app.task import STARTUP_TIMING_DATA_KEY, TaskAdmissionTiming, Task, TaskCreate, TaskStatus, amendment_basis
-from app.tools import (
+from app.services import (
     McpToolContext,
     RecoverableToolError,
     mcp_tool,
@@ -254,7 +254,7 @@ async def conversation_round_get(
 
 
     identifier = _round_id(round_id)
-    from app.tools.facade import administration_scope
+    from app.services.facade import administration_scope
     scope = await administration_scope(ctx.agent_id, "platform_admin")
     scope.require_administration()
     payload = await inspect_round(identifier, agent_ids=scope.agent_ids)
@@ -886,12 +886,12 @@ async def conversation_choice_resolve(
     if turn.origin != "text":
         raise ValueError("Pending messaging choices can only be resolved from a text round.")
     connection_id = _connection_id(turn)
-    tool_id_raw = turn.messaging_context.get("tool_id")
+    service_id_raw = turn.messaging_context.get("service_id")
     room_id = str(turn.messaging_context.get("room_id") or "").strip()
     user_id = str(turn.messaging_context.get("participant_id") or "").strip() or None
     if connection_id is None or not room_id:
         raise ValueError("The conversation has no exact messaging scope.")
-    tool_id = int(str(tool_id_raw)) if tool_id_raw is not None else None
+    service_id = int(str(service_id_raw)) if service_id_raw is not None else None
     response_text = ""
     if turn.messages:
         response_text = str(turn.messages[-1].get("text") or "")
@@ -904,7 +904,7 @@ async def conversation_choice_resolve(
         response_text=response_text,
         agent_id=turn.agent_id,
         connection_id=connection_id,
-        tool_id=tool_id,
+        service_id=service_id,
         room_id=room_id,
         user_id=user_id,
     )

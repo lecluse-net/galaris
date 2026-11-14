@@ -4,7 +4,7 @@ import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 export interface ProcessDefinition {
   id: number
   agent_id: number | null
-  tool_id: number
+  service_id: number
   engine_process_id: string
   label: string
   description: string | null
@@ -61,7 +61,7 @@ export interface ProcessRun {
   process_label: string | null
   launcher_agent_id: number
   launcher_agent_code: string | null
-  tool_code: string
+  service_code: string
   engine_run_id: string | null
   correlation_id: string
   status: ProcessRunStatus
@@ -88,13 +88,13 @@ export interface ProcessRunPage {
   page_size: number
 }
 
-export interface ProcessTool {
+export interface ProcessService {
   id: number
   code: string
   label: string
 }
 
-export interface ToolProcessDefinition {
+export interface ServiceProcessDefinition {
   engine_process_id: string
   label: string
   description: string | null
@@ -102,7 +102,7 @@ export interface ToolProcessDefinition {
 }
 
 export interface ProcessEngineHealth {
-  tool_code: string
+  service_code: string
   status: 'healthy' | 'degraded' | 'error'
   reachable: boolean
   authenticated: boolean
@@ -137,11 +137,11 @@ export interface ProcessAnalysis {
 export type AgentOption = AgentSelectionOption
 
 export const processService = {
-  async tools(): Promise<ProcessTool[]> {
-    return (await api.get('/processes/tools')).data
+  async tools(): Promise<ProcessService[]> {
+    return (await api.get('/processes/services')).data
   },
   async toolHealth(toolCode: string): Promise<ProcessEngineHealth> {
-    return (await api.get(`/processes/tools/${toolCode}/health`)).data
+    return (await api.get(`/processes/services/${toolCode}/health`)).data
   },
   async operations(agentId?: number): Promise<ProcessOperations> {
     return (await api.get('/processes/operations', {
@@ -165,8 +165,8 @@ export const processService = {
   async deleteDefinition(id: number): Promise<void> {
     await api.delete(`/processes/definitions/${id}`)
   },
-  async syncDefinitions(toolCode: string): Promise<ToolProcessDefinition[]> {
-    return (await api.post('/processes/definitions/sync', null, { params: { tool_code: toolCode } })).data
+  async syncDefinitions(toolCode: string): Promise<ServiceProcessDefinition[]> {
+    return (await api.post('/processes/definitions/sync', null, { params: { service_code: toolCode } })).data
   },
   async runs(params: {
     agentId?: number

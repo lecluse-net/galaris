@@ -45,7 +45,7 @@ async def delete_turn(turn_id: UUID) -> bool:
     from . import conversation_service
     from .models import VoiceConversationSession, VoiceConversationStatus, VoiceTurnDeletion
     from .runtime_control import cancel_session
-    from app.tools.facade import invalidate_authorization_context
+    from app.services.facade import invalidate_authorization_context
 
     db = get_db()
     session_id = await db.scalar(
@@ -182,7 +182,7 @@ async def force_hangup(turn_id: UUID) -> dict[str, object] | None:
     its orphan rounds are retired; no live transport registry is required.
     """
     from app.llm import LLMCall
-    from app.tools.facade import invalidate_authorization_context
+    from app.services.facade import invalidate_authorization_context
     from app.conversation import publish_round_activity
     from app.conversation import scheduler
     from . import conversation_service, runtime_control

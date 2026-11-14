@@ -6,7 +6,7 @@ from typing import cast
 from uuid import UUID
 
 from app.connection.facade import has_active_tool_connection
-from app.tools import McpToolContext, mcp_tool
+from app.services import McpToolContext, mcp_tool
 
 from . import service
 from .schemas import (

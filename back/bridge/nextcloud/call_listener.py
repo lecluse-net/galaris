@@ -19,7 +19,7 @@ from core.util import as_dict, as_list
 from app.connection.models import Connection
 from app.agent.models import Agent
 from app.messenger import messaging_tool_records
-from app.tools import tool_service
+from app.services import service
 from app.voice.call_manager import voice_call_manager
 
 
@@ -217,11 +217,11 @@ async def _discover_voice_capable_talk_connections() -> list[tuple[int, int]]:
         return []
     async with get_db_session() as db:
         records = await messaging_tool_records("nextcloud_talk")
-        tool_ids = [int(record.id) for record in records]
-        if not tool_ids:
+        service_ids = [int(record.id) for record in records]
+        if not service_ids:
             return []
 
-        voice_tool = await tool_service.get_tool_record("voice")
+        voice_tool = await service.get_service_record("voice")
         if voice_tool is None:
             return []
 
@@ -235,9 +235,9 @@ async def _discover_voice_capable_talk_connections() -> list[tuple[int, int]]:
                 voice_connection.agent_id == Connection.agent_id,
             )
             .where(
-                Connection.tool_id.in_(tool_ids),
+                Connection.service_id.in_(service_ids),
                 Connection.active.is_(True),
-                voice_connection.tool_id == voice_tool.id,
+                voice_connection.service_id == voice_tool.id,
                 voice_connection.active.is_(True),
                 Agent.agent_driver.in_(voice_driver_codes),
             )

@@ -3,7 +3,7 @@
 Accepted on 2026-10-12. Extends [0153](0153-common-action-authorizations.md).
 
 All managed external runtimes expose **Always allow this action type** alongside the one-action
-choices. `app.tools` owns the durable consent, scoped to the agent, runtime provider
+choices. `app.services` owns the durable consent, scoped to the agent, runtime provider
 and exact local tool name. Arguments, sessions and Task identities are excluded
 from this reusable scope; file writes and command execution remain distinct types.
 The human request names that scope explicitly, including its application to future

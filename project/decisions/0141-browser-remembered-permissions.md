@@ -8,7 +8,7 @@ Le navigateur applique la même politique réseau pour tous ses appelants, y com
 redirections et requêtes déclenchées par une page. Les agents peuvent prévisualiser leurs
 applications locales lorsque leur connexion le permet et qu’un humain l’a autorisé.
 Les permissions conservées sont communes au mécanisme d’interactions, indépendantes du
-transport de messagerie. Les consommateurs sont le Tool Browser, les aperçus humains,
+transport de messagerie. Les consommateurs sont le Service Browser, les aperçus humains,
 le sidecar Chromium, les interactions Messenger et l’écran de gestion des décisions.
 Les exports PDF inertes gardent leur interdiction de scripts et de réseau.
 
@@ -81,8 +81,8 @@ indépendamment. Les filtres, connexions désactivées et refus explicites reste
 Le réseau local reste interdit par défaut. Son activation conserve les autorisations locales
 séparées ; le mode public ne les accorde pas. Les politiques des fonctions MCP restent distinctes.
 La convergence du schéma de paramètres ajoute le choix sans changer les valeurs administrées
-ni les décisions existantes. Le jeu initial du Tool neuf initialise le paramètre global à `allow`.
-La convergence d’un Tool existant conserve sa valeur ; si la clé était absente, elle ajoute `ask`.
+ni les décisions existantes. Le jeu initial du Service neuf initialise le paramètre global à `allow`.
+La convergence d’un Service existant conserve sa valeur ; si la clé était absente, elle ajoute `ask`.
 Le repli du schéma et du contrôle réseau reste `ask`, également après effacement d’une valeur.
 Une mise à jour ne bascule donc aucune instance en mode public. `ask` reste disponible pour
 rétablir les demandes par site sur une nouvelle installation. Aucun changement de table ou de

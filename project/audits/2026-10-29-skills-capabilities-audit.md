@@ -20,7 +20,7 @@ Les signatures MCP courantes restent l'autorité ; les exemples du guide ne cons
 
 - Les connexions système restent actives, tandis que leurs fonctions conservent les modes
   Actif/Bloqué/Sur demande, les ACL et les restrictions de contexte.
-- Les délégations ToolAdmin, Goal et Process sont bornées par leur portée effective.
+- Les délégations ServiceAdmin, Goal et Process sont bornées par leur portée effective.
   Une connexion active ne signifie pas une administration globale.
 - Process possède directement le BPMN, ses révisions et ses droits. Le guide ne demande plus
   un Document support et ne présente plus les données de run comme un Dataset indépendant.
@@ -41,15 +41,15 @@ préservé. Aucun comportement du moteur d'exécution n'est modifié par ces cor
 ## Sources vérifiées
 
 Les descriptions ont été confrontées notamment aux déclarations MCP et à leurs tests :
-[services et defaults](../../back/app/tools/mandatory_tools.py),
-[permissions système](../../back/app/tools/tests/test_system_tools.py),
-[portées administratives](../../back/app/tools/management_scope.py),
+[services et defaults](../../back/app/services/mandatory_services.py),
+[permissions système](../../back/app/services/tests/test_system_services.py),
+[portées administratives](../../back/app/services/management_scope.py),
 [accès Goal](../../back/app/goal/access.py),
 [stockage Process](../../back/app/process/models.py),
 [test de propriété du BPMN](../../back/app/process/tests/test_definition_storage.py),
 [fichiers gérés](../../back/app/file_share/managed_files.py),
 [politique réseau](../../back/app/browser/network.py),
-[accès documentaire](../../back/app/tools/admin_access.py),
+[accès documentaire](../../back/app/services/admin_access.py),
 [fonctions Lab](../../back/app/lab/mcp.py) et
 [campagnes Process](../../back/app/lab/process_evaluation.py).
 

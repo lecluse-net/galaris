@@ -47,7 +47,7 @@ from app.messenger.models import MessengerUser
 from app.document.schemas import DocumentPayload, DocumentUpdate
 from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 from app.task import task_service
-from app.tools.models import Tool
+from app.services.models import Service
 from core.user import user_service
 from core.user.models import User
 
@@ -725,7 +725,7 @@ async def test_messenger_goal_cycles_keep_the_linked_galaris_requester(
     db, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     agent = await _new_agent(db)
-    tool = Tool(
+    tool = Service(
         code=f"goal-requester-{uuid4().hex[:8]}",
         label="Goal requester test",
         description="",
@@ -743,9 +743,9 @@ async def test_messenger_goal_cycles_keep_the_linked_galaris_requester(
     )
     db.add_all([tool, owner, creator])
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     identity = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         external_id="linked-owner",
         display_name="Linked owner",
         is_ai=False,
@@ -755,7 +755,7 @@ async def test_messenger_goal_cycles_keep_the_linked_galaris_requester(
     await db.commit()
 
     messenger = SimpleNamespace(
-        tool_id=tool.id,
+        service_id=tool.id,
         self_id="goal-agent",
         kind="test_messenger",
     )
@@ -1204,7 +1204,7 @@ async def test_terminal_legacy_messenger_cycle_restores_frozen_requester(
         hashed_password="not-used",
         is_active=True,
     )
-    tool = Tool(
+    tool = Service(
         code=f"legacy-goal-chat-{uuid4().hex[:8]}",
         label="Legacy Goal Chat",
         description="",
@@ -1212,7 +1212,7 @@ async def test_terminal_legacy_messenger_cycle_restores_frozen_requester(
     )
     db.add_all([owner, tool])
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     goal = await make_goal(
@@ -2244,7 +2244,7 @@ async def test_messenger_referrer_search_keeps_exact_connection(
         return_value=(
             GoalHumanContact(
                 connection_id=17,
-                tool_id=8,
+                service_id=8,
                 platform="nextcloud_talk",
                 user_id="nicolas",
                 display_name="Nicolas",

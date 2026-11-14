@@ -29,7 +29,7 @@ les fichiers aux messages et conserve leur position dans chacun. Le bridge tél�
 à la demande depuis la messagerie d'origine.
 
 Une room est unique par `(connection_id, external_id)` et un utilisateur par
-`(tool_id, external_id)`. `messenger_room_users` représente l'appartenance courante entre leurs
+`(service_id, external_id)`. `messenger_room_users` représente l'appartenance courante entre leurs
 UUID ; cette association n'utilise pas `HistoryMixin`. Rooms, utilisateurs, messages et fichiers
 l'utilisent.
 Une identité avec `agent_id` est nécessairement marquée `is_ai`, tandis qu'un agent IA externe
@@ -49,9 +49,9 @@ sont déclenchés automatiquement par sa façade.
 
 Le bridge Nextcloud Talk certifie la liste complète des rooms visibles et les participants chargés
 par l'endpoint complet d'une room. Aucun annuaire utilisateur par connexion n'est actuellement
-autoritatif à l'échelle d'un Tool potentiellement partagé par plusieurs connexions : même une liste
+autoritatif à l'échelle d'un Service potentiellement partagé par plusieurs connexions : même une liste
 OneBot complète pour un compte ne prouve pas qu'un utilisateur a disparu des autres comptes du
-Tool. La réconciliation exhaustive des utilisateurs devra agréger toutes les sources de cette
+Service. La réconciliation exhaustive des utilisateurs devra agréger toutes les sources de cette
 portée avant d'activer explicitement l'historisation des absences.
 
 ## Conséquences

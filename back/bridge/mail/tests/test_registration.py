@@ -1,5 +1,5 @@
-from app.tools.mandatory_tools import INTEGRATED_TOOL_SPECS, mandatory_tool_rows
-from app.tools.mcp_loader import mcp_tool_names_by_tool_code
+from app.services.mandatory_services import INTEGRATED_SERVICE_SPECS, mandatory_service_rows
+from app.services.mcp_loader import mcp_tool_names_by_service_code
 from bridge.mail import SPEC
 from bridge.mail.assertions import MailApproverAssertion
 from bridge.mail.router import (
@@ -27,8 +27,8 @@ EXPECTED_FUNCTIONS = {
 
 
 def test_mail_tool_is_explicit_and_discovers_all_mcp_functions() -> None:
-    assert not any(item.code == "mail" for item in INTEGRATED_TOOL_SPECS)
-    assert set(mcp_tool_names_by_tool_code()["mail"]) == EXPECTED_FUNCTIONS
+    assert not any(item.code == "mail" for item in INTEGRATED_SERVICE_SPECS)
+    assert set(mcp_tool_names_by_service_code()["mail"]) == EXPECTED_FUNCTIONS
     assert SPEC.inbound_modes == ["polling"]
     assert SPEC.availability == "tool"
     assert SPEC.inbound_admission == "task"
@@ -36,7 +36,7 @@ def test_mail_tool_is_explicit_and_discovers_all_mcp_functions() -> None:
 
 
 def test_mail_connection_schema_uses_one_account_password_and_safe_defaults() -> None:
-    from app.tools.protocols import protocol_parameters
+    from app.services.protocols import protocol_parameters
     params = protocol_parameters("mail")
 
     assert params["password"]["type"] == "password"
@@ -61,7 +61,7 @@ def test_approver_directory_is_available_to_connection_readers() -> None:
 
     assert metadata["privileges"] == [
         Privileges.CONNECTION_ACCESS,
-        Privileges.TOOL_EDIT,
+        Privileges.SERVICE_EDIT,
         Privileges.CONNECTION_EDIT,
     ]
 

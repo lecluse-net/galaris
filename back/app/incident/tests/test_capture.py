@@ -99,8 +99,8 @@ async def _request(db: AsyncSession):
     db.add_all([agent, task])
     await db.flush()
     task.agent_id = agent.id
-    from app.tools import mandatory_tools
-    await mandatory_tools.sync_integrated_tool_connections(agent.id)
+    from app.services import mandatory_services
+    await mandatory_services.sync_integrated_service_connections(agent.id)
     attempt = TaskAttempt(task_id=task.id, attempt_number=1, phase="DISPATCH", worker_id="test", lease_token=uuid4())
     db.add(attempt)
     await db.commit()
@@ -159,7 +159,7 @@ async def test_native_diagnostic_is_durable_private_and_enriched_without_duplica
     from app.agent.contracts import AIMessage
     from pydantic_ai.messages import ToolReturnPart
     from app.incident import service
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
     from core import failure_journal
     from core.database import get_db
     from app.task.models import Task
@@ -173,7 +173,7 @@ async def test_native_diagnostic_is_durable_private_and_enriched_without_duplica
         raise ValueError("Invalid offset 900; password=synthetic-password-value; https://example.test/a?signature=synthetic-signature")
 
     definition = mcp_loader.McpToolDefinition(
-        tool_code="file_sharing", name="file_read", description="Read", required_capabilities=frozenset(), function=broken,
+        service_code="file_sharing", name="file_read", description="Read", required_capabilities=frozenset(), function=broken,
         approval="enabled", approval_reason="Synthetic governed read after permission",
     )
     monkeypatch.setattr("app.agent.effective_capabilities", AsyncMock(return_value={"execute"}))
@@ -242,7 +242,7 @@ async def test_old_tool_checkpoint_does_not_duplicate_its_failure_after_upgrade(
 
 
 def test_administrative_exception_diagnostics_redact_quoted_secrets_and_urls():
-    from app.tools.tool_errors import exception_diagnostic
+    from app.services.tool_errors import exception_diagnostic
 
     exception = ValueError('Offset refused: {"password": "hidden words", "token": "hidden-token"}; Authorization: Bearer hidden-bearer; https://user:hidden-pass@example.test/?signature=hidden-signature')
     diagnostic = str(exception_diagnostic(exception))

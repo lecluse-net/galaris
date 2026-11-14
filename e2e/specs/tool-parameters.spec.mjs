@@ -4,7 +4,7 @@ import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
 
 for (const mobile of [false, true]) {
-  test(`Tool parameter labels and choices persist across editing and global settings (${mobile ? 'mobile' : 'desktop'})`, async ({ page, request }, testInfo) => {
+  test(`Service parameter labels and choices persist across editing and global settings (${mobile ? 'mobile' : 'desktop'})`, async ({ page, request }, testInfo) => {
     // Desktop also checks the built-in browser's global/local settings through
     // several full navigations; keep time for that journey and its cleanup.
     if (!mobile) test.setTimeout(120_000)
@@ -28,11 +28,11 @@ for (const mobile of [false, true]) {
       if (path.startsWith('/api/') && response.status() >= 400) errors.push(`${response.status()} ${path}`)
     })
     await pageErrors.settle()
-    await page.goto('/tools')
+    await page.goto('/services')
     if (!mobile) {
-      const catalog = await (await request.get('/api/tools', { headers })).json()
+      const catalog = await (await request.get('/api/services', { headers })).json()
       const internal = catalog.filter(entry => Object.values(entry.connection_schema?.params ?? {})
-        .some(parameter => parameter.label?.startsWith('tools.connectionParamLabels.')))
+        .some(parameter => parameter.label?.startsWith('services.connectionParamLabels.')))
       expect(internal.map(entry => entry.code)).toEqual(expect.arrayContaining(['browser', 'console', 'mail', 'calendar']))
       // Check the real backend definitions against each catalogue, without a fallback language hiding missing keys.
       const untranslated = []
@@ -47,7 +47,7 @@ for (const mobile of [false, true]) {
           for (const entry of entries) {
             for (const [name, parameter] of Object.entries(entry.connection_schema.params)) {
               for (const definition of [parameter, ...(parameter.options ?? [])]) {
-                if (definition.label?.startsWith('tools.') && !$te(definition.label, locale)) {
+                if (definition.label?.startsWith('services.') && !$te(definition.label, locale)) {
                   failures.push(`${locale}:${entry.code}:${name}:${definition.label}`)
                 }
               }
@@ -79,7 +79,7 @@ for (const mobile of [false, true]) {
     }
     await editor.getByRole('switch', { name: 'Activer MCP', exact: true }).check()
     await editor.getByLabel('URL *', { exact: true }).fill('https://mcp.example.test')
-    const create = page.waitForResponse(response => response.url().endsWith('/api/tools') && response.request().method() === 'POST')
+    const create = page.waitForResponse(response => response.url().endsWith('/api/services') && response.request().method() === 'POST')
     await editor.getByRole('button', { name: 'Créer', exact: true }).click()
     const response = await create
     expect(response.ok(), await response.text()).toBe(true)
@@ -96,39 +96,39 @@ for (const mobile of [false, true]) {
     await row.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
     await selectOption(page, editor.getByRole('combobox', { name: 'Région du service *', exact: true }), 'Amérique du Nord')
     await page.screenshot({ path: testInfo.outputPath('global-parameters.png'), animations: 'disabled' })
-    const saved = page.waitForResponse(response => response.url().endsWith(`/api/tools/${created.id}/global-params`)
+    const saved = page.waitForResponse(response => response.url().endsWith(`/api/services/${created.id}/global-params`)
       && response.request().method() === 'PUT')
     await editor.getByRole('button', { name: 'Enregistrer', exact: true }).click()
     expect((await saved).ok()).toBe(true)
     await expect(editor).toHaveCount(0)
-    const globals = await (await request.get(`/api/tools/${created.id}/global-params`, { headers })).json()
+    const globals = await (await request.get(`/api/services/${created.id}/global-params`, { headers })).json()
     expect(globals.params.region.value).toBe('us')
     await row.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
     await expect(editor.getByRole('combobox', { name: 'Région du service *', exact: true })).toHaveValue('Amérique du Nord')
     await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
     // A file provider supplies tools.fileindexing through the same global/local parameter journey.
-    const updated = await request.put(`/api/tools/${created.id}`, { headers, data: {
+    const updated = await request.put(`/api/services/${created.id}`, { headers, data: {
       file_share_config: { service: 'nextcloud', base_url: 'https://synthetic.invalid', param_map: {} },
     } })
     expect(updated.ok(), await updated.text()).toBe(true)
-    const definition = (await updated.json()).connection_schema.params['tools.fileindexing']
+    const definition = (await updated.json()).connection_schema.params['services.fileindexing']
     expect(definition.options.map(option => option.value)).toEqual(['excluded', 'known_uris', 'recursive'])
     await pageErrors.settle()
     await page.reload()
     if (mobile) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
     await row.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
     await selectOption(page, editor.getByRole('combobox', { name: 'Indexation des fichiers', exact: true }), 'Uniquement les fichiers déjà connus')
-    const savedIndexing = page.waitForResponse(response => response.url().endsWith(`/api/tools/${created.id}/global-params`) && response.request().method() === 'PUT')
+    const savedIndexing = page.waitForResponse(response => response.url().endsWith(`/api/services/${created.id}/global-params`) && response.request().method() === 'PUT')
     await editor.getByRole('button', { name: 'Enregistrer', exact: true }).click()
     expect((await savedIndexing).ok()).toBe(true)
     await expect(editor).toHaveCount(0)
-    const indexingGlobals = await (await request.get(`/api/tools/${created.id}/global-params`, { headers })).json()
-    expect(indexingGlobals.params['tools.fileindexing'].value).toBe('known_uris')
-    const connectionResponse = await request.post('/api/connections', { headers, data: { tool_id: created.id, agent_id: fixture.agent_id, active: false } })
+    const indexingGlobals = await (await request.get(`/api/services/${created.id}/global-params`, { headers })).json()
+    expect(indexingGlobals.params['services.fileindexing'].value).toBe('known_uris')
+    const connectionResponse = await request.post('/api/connections', { headers, data: { service_id: created.id, agent_id: fixture.agent_id, active: false } })
     expect(connectionResponse.ok(), await connectionResponse.text()).toBe(true)
     const connection = await connectionResponse.json()
     await pageErrors.settle()
-    await page.goto('/tools?tab=connections')
+    await page.goto('/services?tab=connections')
     if (mobile) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
     const agent = await (await request.get(`/api/agents/${fixture.agent_id}`, { headers })).json()
     await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${agent.first_name} ${agent.last_name}`)
@@ -145,9 +145,9 @@ for (const mobile of [false, true]) {
     expect((await savedLocal).ok()).toBe(true)
     await expect(editor).toHaveCount(0)
     const local = await (await request.get(`/api/connections/${connection.id}/params`, { headers })).json()
-    expect(local.params['tools.fileindexing']).toBe('excluded')
-    const inheritedGlobal = await (await request.get(`/api/tools/${created.id}/global-params`, { headers })).json()
-    expect(inheritedGlobal.params['tools.fileindexing'].value).toBe('known_uris')
+    expect(local.params['services.fileindexing']).toBe('excluded')
+    const inheritedGlobal = await (await request.get(`/api/services/${created.id}/global-params`, { headers })).json()
+    expect(inheritedGlobal.params['services.fileindexing'].value).toBe('known_uris')
     await connectionRow.getByRole('button', { name: 'Modifier', exact: true }).click()
     await expect(editor).toBeVisible()
     await expect(editor.getByRole('combobox', { name: 'Indexation des fichiers', exact: true })).toBeVisible()
@@ -155,34 +155,34 @@ for (const mobile of [false, true]) {
     await page.screenshot({ path: testInfo.outputPath('connection-file-indexing.png'), animations: 'disabled' })
     await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
     expect((await request.delete(`/api/connections/${connection.id}`, { headers })).ok()).toBe(true)
-    expect((await request.delete(`/api/tools/${created.id}`, { headers })).ok()).toBe(true)
+    expect((await request.delete(`/api/services/${created.id}`, { headers })).ok()).toBe(true)
     if (!mobile) {
       // The built-in browser uses the same global/local UI, without opening the local network.
-      const catalog = await (await request.get('/api/tools', { headers })).json()
+      const catalog = await (await request.get('/api/services', { headers })).json()
       const browser = catalog.find(tool => tool.code === 'browser')
-      const original = await (await request.get(`/api/tools/${browser.id}/global-params`, { headers })).json()
+      const original = await (await request.get(`/api/services/${browser.id}/global-params`, { headers })).json()
       expect(original.params.public_access_mode.value).toBe('allow')
       expect(original.params.allow_local_network.value).toBe('false')
       const createdBrowser = await request.post('/api/connections', { headers, data: {
-        tool_id: browser.id, agent_id: fixture.agent_id, active: false,
+        service_id: browser.id, agent_id: fixture.agent_id, active: false,
       } })
       expect(createdBrowser.ok(), await createdBrowser.text()).toBe(true)
       const browserConnection = await createdBrowser.json()
       try {
-        await page.goto('/tools')
-        await page.getByRole('tab', { name: 'Outils internes à Galaris', exact: true }).click()
+        await page.goto('/services')
+        await page.getByRole('tab', { name: 'Services internes à Galaris', exact: true }).click()
         const browserRow = page.locator('tbody tr').filter({ has: page.getByText('browser', { exact: true }) })
         await browserRow.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
         await expect(editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true })).toHaveValue('Sites publics autorisés')
         await selectOption(page, editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true }), 'Sites publics autorisés')
-        const savePublic = page.waitForResponse(response => response.url().endsWith(`/api/tools/${browser.id}/global-params`) && response.request().method() === 'PUT')
+        const savePublic = page.waitForResponse(response => response.url().endsWith(`/api/services/${browser.id}/global-params`) && response.request().method() === 'PUT')
         await editor.getByRole('button', { name: 'Enregistrer', exact: true }).click()
         expect((await savePublic).ok()).toBe(true)
         await expect(editor).toHaveCount(0)
         await browserRow.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
         await expect(editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true })).toHaveValue('Sites publics autorisés')
         await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
-        await page.goto('/tools?tab=connections')
+        await page.goto('/services?tab=connections')
         await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${agent.first_name} ${agent.last_name}`)
         await page.getByRole('button', { name: 'Inactives', exact: true }).click()
         const browserConnectionRow = page.locator('tbody tr').filter({ has: page.getByRole('cell', { name: /^Navigateur\b/ }) })
@@ -206,7 +206,7 @@ for (const mobile of [false, true]) {
         await page.screenshot({ path: testInfo.outputPath('browser-public-access.png'), animations: 'disabled' })
         await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
       } finally {
-        const restore = await request.put(`/api/tools/${browser.id}/global-params`, { headers, data: {
+        const restore = await request.put(`/api/services/${browser.id}/global-params`, { headers, data: {
           params: Object.fromEntries(Object.entries(original.params).map(([name, param]) => [name,
             param.configured ? { value: param.value, forced: param.forced } : { clear: true }])) } })
         expect(restore.ok(), await restore.text()).toBe(true)

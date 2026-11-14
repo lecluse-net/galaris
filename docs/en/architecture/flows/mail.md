@@ -2,10 +2,10 @@
 
 # Mail IMAP/SMTP Protocol Flow
 
-The `bridge.mail` adapts an external mailbox to Galaris's Tool and Messenger contracts.
-A custom provider Tool selects `imap_smtp.mail` in `capabilities`, enables `mail_config`,
+The `bridge.mail` adapts an external mailbox to Galaris's Service and Messenger contracts.
+A custom provider Service selects `imap_smtp.mail` in `capabilities`, enables `mail_config`,
 and can combine different capabilities, each using a single protocol. Mail is no
-longer a built-in Tool. The agent invokes MCP functions scoped to an active provider connection;
+longer a built-in Service. The agent invokes MCP functions scoped to an active provider connection;
 `connection_id` explicitly selects the connection when several providers are active.
 Authorization and execution use that same connection; ambiguous or foreign selections are rejected. The
 canonical listener also polls INBOX, journals headers and admits authorized emails as
@@ -17,12 +17,12 @@ email address, usernames, passwords, folders and approver. Both authentications 
 `login` and `password` or use different parameters. Enabling the protocol creates no parameters.
 Empty legacy configurations retain existing global and local values.
 
-An agent may create several connections to the same Mail Tool, for example two mailboxes
+An agent may create several connections to the same Mail Service, for example two mailboxes
 at one provider. Each connection retains its own parameters, secrets, folder restrictions,
 permissions and polling cursors. MCP calls select `connection_id`; an ambiguous selection
-is rejected with the available connections. Other Tools retain one connection per agent.
+is rejected with the available connections. Other Services retain one connection per agent.
 Removing the Mail protocol requires removing additional connections for the same agent first.
-The MCP `tools_list` catalogue presents each account's address, `connection_id` and authorized
+The MCP `services_list` catalogue presents each account's address, `connection_id` and authorized
 functions. The Galaris system skill and MCP parameter descriptions explain account selection
 and keeping message references with their source account.
 
@@ -34,13 +34,13 @@ can be selected; they never choose an arbitrary mailbox among multiple accounts.
 ```text
 Agent / Task
    → mail_* MCP functions
-   → effective parameters: connection override, otherwise the Tool's global value
+   → effective parameters: connection override, otherwise the Service's global value
    → agent's active Mail connection
    ├── IMAP TLS/STARTTLS: folders, search, read, flags, move, trash
    ├── SMTP TLS/STARTTLS: send, reply, forward
    ├── mail_outbound_deliveries: MIME content + envelope + validation + durable outcome
    ├── app.messenger → Memory: one private contact per observed account
-   └── app.file_share: read-only <tool.code>:// resources
+   └── app.file_share: read-only <service.code>:// resources
 
 Active Mail connection
    → IMAP polling every poll_interval_s
@@ -59,7 +59,7 @@ Receipt creation, authorization, body reads and attachment downloads enforce thi
 before accessing content. It also applies to historical receipts and consent recovery: a receipt
 outside INBOX cannot trigger a Task, even if previously authorized.
 
-`poll_interval_s` is a parameter of the Mail Tool, configurable globally and overridable per
+`poll_interval_s` is a parameter of the Mail Service, configurable globally and overridable per
 connection unless a global value is imposed. It defaults to 60 seconds and is bounded between
 5 seconds and 24 hours. The first activation establishes a baseline on `UIDNEXT` without turning
 the history already present into Tasks. Subsequent UIDs are processed in ascending order, in
@@ -121,7 +121,7 @@ New MCP calls use Enabled/Disabled/Ask modes and the common authorization journa
 MIME and attachments are prepared before asking; after agreement, only those persisted bytes
 are submitted. Only the designated Mail approver may answer. The Mail row references this
 authorization through `authorization_id`. The Mail journal projects its pending state and
-decision: accepting or rejecting there calls `app.tools.answer_action`, like the conversation
+decision: accepting or rejecting there calls `app.services.answer_action`, like the conversation
 choice. Approval wakes the original caller; the journal does not submit the message to SMTP
 itself. Its receipt distinguishes a recorded approval from an actual SMTP acceptance.
 The SMTP journal still handles duplicates and unknown outcomes. Repeating the same decision
@@ -175,7 +175,7 @@ duplicate; an `error` or `uncertain` send creates no contact. Two different addr
 items, even if their display name is identical. Dream may later link them to the same individual
 through non-destructive links, without merging or rewriting the source identities.
 
-When `mail_send`, `file_search`, and `file_read` are all authorized, the Tool registry
+When `mail_send`, `file_search`, and `file_read` are all authorized, the Service registry
 automatically asks the agent to search `memory://` if the recipient is provided only by name.
 An address explicitly provided in the request is used as provided after validation. The agent
 never guesses an address: zero or multiple matches trigger a request for clarification. The two
@@ -202,14 +202,14 @@ replaying SMTP.
 
 The connection accepts only the mailbox address and a password shared by IMAP and SMTP.
 The address also serves as the identifier with both servers. Hosts, ports, security, timeouts,
-and the polling interval are configurable globally on the Tool; attachment limits are expressed
+and the polling interval are configurable globally on the Service; attachment limits are expressed
 there in MB and then converted to bytes at the bridge boundary. A connection can customize them
 unless a value is imposed. All `password` parameters, global or local, remain encrypted
 at rest. Only implicit TLS and STARTTLS with certificate validation are accepted. The form
 allows IMAP and SMTP to be tested after registration. `approver_user_id` follows the global/local
 override cascade. Function modes replace `approval_required`: DbAdmin converts old opt-ins
 to Ask without enabling blocked functions. An active policy without an active USER is rejected
-before the mail is created. The Tool is not auto-connected and remains absent from an agent's
+before the mail is created. The Service is not auto-connected and remains absent from an agent's
 catalog until an administrator has created and activated its connection.
 
 The `/connection/mail` page, protected by `MAIL_ACCESS` or `MAIL_EDIT`, displays emails with a pending

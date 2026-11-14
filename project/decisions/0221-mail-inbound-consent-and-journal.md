@@ -21,7 +21,7 @@ reception and processing. Searches in other folders return headers without creat
 receipts. Agent body reads, attachment downloads and authorization reject non-INBOX references,
 including historical receipts recovered after consent. Search discovery does not imply reception.
 
-`mail_process` is a native prepared capability governed by existing Tool/connection function
+`mail_process` is a native prepared capability governed by existing Service/connection function
 policies. Its software default asks for unknown senders and accepts existing contacts.
 Explicit Ask applies to every sender; Enabled accepts all and Disabled blocks processing.
 Common authorizations provide the responsible human, private Chat notification, expiration,
@@ -37,7 +37,7 @@ second task workflow. Reading, replies, forwarding and attachment downloads chec
 receipt, live connection and processing policy. Changes to connection configuration invalidate
 reuse of a previous grant. Context waiters and recovery batches are bounded.
 
-Managed runtimes observe message-owned consent through an `app.tools` waiter port.
+Managed runtimes observe message-owned consent through an `app.services` waiter port.
 Mail proves the exact receipt, authorization, agent and server-registered parent context;
 knowing an authorization UUID is insufficient. This grants status observation only,
 never runtime receipt writes. Both HTTP polling and orchestrator readiness use this

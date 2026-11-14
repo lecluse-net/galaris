@@ -66,14 +66,14 @@ from app.process.models import ProcessDefinition, ProcessRun
 from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 from app.task import parse_working_set
 from app.topic import Topic
-from app.tools.models import Tool
+from app.services.models import Service
 from tests.conftest import responses_sse  # noqa: F401
 
 
 async def _scope(db: AsyncSession, *, user_id: int | None = None) -> tuple[Agent, Connection, Room]:
     suffix = uuid4().hex[:10]
     title = Title(label=f"Conversation {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"messenger-{suffix}",
         label="Conversation transport",
         description="",
@@ -92,7 +92,7 @@ async def _scope(db: AsyncSession, *, user_id: int | None = None) -> tuple[Agent
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(
@@ -116,7 +116,7 @@ async def test_amendment_after_concurrent_update_keeps_one_task(db, monkeypatch,
     from app.conversation.contracts import ConversationTurn
     from app.task.working_set import upsert_working_resource
     from app.task.models import TaskAmendment
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
 
     agent, connection, room = await _scope(db)
     task = Task(label="Report", objective="<p>Prepare the report.</p>",
@@ -188,7 +188,7 @@ async def test_amendment_after_concurrent_update_keeps_one_task(db, monkeypatch,
 @pytest.mark.parametrize("blocker", ["missing", "incomplete", "terminal", "failed", "plan", "remote_checkpoint", "starting"])
 async def test_failed_amendment_preserves_target_and_explicit_new_work_is_idempotent(db, monkeypatch, blocker):
     from app.conversation import mcp
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
 
     agent, connection, room = await _scope(db)
     document = f"document://{uuid4()}"
@@ -306,7 +306,7 @@ async def test_explicit_replacement_admits_one_waiting_successor_and_keeps_indep
     from app.conversation import mcp
     from app.agent import submit_realtime_task
     from app.task import reconcile_replacements
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
 
     agent, connection, room = await _scope(db)
     original = Task(label="Initial", objective="<p>Ancien rapport.</p>", status=TaskStatus.CREATE,
@@ -455,12 +455,12 @@ async def _message(
     sequence: int,
     text: str,
 ) -> Message:
-    sender_id = uuid5(NAMESPACE_URL, f"{connection.tool_id}:human-42")
+    sender_id = uuid5(NAMESPACE_URL, f"{connection.service_id}:human-42")
     sender = await db.get(MessengerUser, sender_id)
     if sender is None:
         sender = MessengerUser(
             id=sender_id,
-            tool_id=connection.tool_id,
+            service_id=connection.service_id,
             external_id="human-42",
             display_name="Nicolas",
         )
@@ -469,7 +469,7 @@ async def _message(
     message = Message(
         id=uuid4(),
         connection_id=connection.id,
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         platform="telegram",
         remote_message_id=f"message-{sequence}-{uuid4()}",
         direction="inbound",
@@ -520,7 +520,7 @@ def _install_messenger(
     publish_events: list[bool] | None = None,
 ) -> None:
     connection_id = connection.id
-    tool_id = connection.tool_id
+    service_id = connection.service_id
     canonical_room_id = room.id
     external_room_id = room.external_id
 
@@ -541,7 +541,7 @@ def _install_messenger(
             message = Message(
                 id=uuid4(),
                 connection_id=connection_id,
-                tool_id=tool_id,
+                service_id=service_id,
                 platform="telegram",
                 remote_message_id=f"outbound-{uuid4()}",
                 direction="outbound",
@@ -944,7 +944,7 @@ async def test_build_turn_projects_a_pending_choice_for_the_exact_sender(
         kind="hermes_approval",
         agent_id=agent.id,
         connection_id=connection.id,
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         room_id=str(room.id),
         user_id="human-42",
         title="Approbation requise",
@@ -970,7 +970,7 @@ async def test_build_turn_projects_a_pending_choice_for_the_exact_sender(
 
     turn = await build_turn(round_.id, lease_token=round_.lease_token)
 
-    assert turn.messaging_context["tool_id"] == connection.tool_id
+    assert turn.messaging_context["service_id"] == connection.service_id
     assert turn.pending_interactions == (
         {
             "reference": "DEC1DE42",
@@ -1492,7 +1492,7 @@ async def test_room_work_projection_starts_at_oldest_displayed_message(
     )
     definition = ProcessDefinition(
         agent_id=agent.id,
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         engine_process_id=f"workflow-{uuid4()}",
         label="Conversation process",
     )
@@ -2586,7 +2586,7 @@ async def test_terminal_process_notification_uses_link_directly(
     assert round_ is not None
     definition = ProcessDefinition(
         agent_id=agent.id,
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         engine_process_id=f"workflow-{uuid4()}",
         label="Export nocturne",
     )
@@ -3126,7 +3126,7 @@ async def test_terminal_task_success_skips_only_an_already_delivered_result(
 async def test_conversation_can_deliberately_retry_a_failed_task(db, monkeypatch):
     from app.conversation import ConversationTurn
     from app.conversation.mcp import conversation_task_retry
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
 
     agent, connection, room = await _scope(db)
     task = Task(
@@ -3170,7 +3170,7 @@ async def test_conversation_stop_preserves_terminal_state_on_repeated_request(
 ) -> None:
     from app.conversation import ConversationTurn
     from app.conversation.mcp import conversation_task_stop
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
 
     agent, connection, room = await _scope(db)
     task = Task(
@@ -3363,7 +3363,7 @@ async def test_notification_resolution_is_scoped_versioned_and_does_not_replay_w
         await db.flush()
         link = ConversationTaskLink(round_id=round_.id, task_id=work.id, action_key="notification")
     else:
-        definition = ProcessDefinition(agent_id=agent.id, tool_id=connection.tool_id,
+        definition = ProcessDefinition(agent_id=agent.id, service_id=connection.service_id,
                                        engine_process_id=f"workflow-{uuid4()}", label="Completed work")
         db.add(definition)
         await db.flush()
@@ -3438,7 +3438,7 @@ async def test_remote_success_before_local_commit_recovers_unknown_without_resen
         deliver = deliver_task_notification
         claim = claim_next_task_notification
     else:
-        definition = ProcessDefinition(agent_id=agent.id, tool_id=connection.tool_id,
+        definition = ProcessDefinition(agent_id=agent.id, service_id=connection.service_id,
                                        engine_process_id=uuid4().hex, label="Durable result")
         db.add(definition)
         await db.flush()

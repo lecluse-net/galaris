@@ -26,7 +26,7 @@ from app.file_share.file_contracts import (
     FileMutation,
     FileText,
 )
-from app.tools.contracts import ToolCallRejectedError
+from app.services.contracts import ToolCallRejectedError
 
 from .ssh_client import SshExecutionTransport
 

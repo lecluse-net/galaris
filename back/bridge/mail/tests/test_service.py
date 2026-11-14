@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
 from app.connection.models import Connection
-from app.tools.models import Tool
+from app.services.models import Service
 from core.user.models import User
 from bridge.mail import service
 from bridge.mail.contracts import MailConnectionConfig, MailEndpointConfig, OutgoingMail
@@ -14,7 +14,7 @@ from bridge.mail.contracts import MailConnectionConfig, MailEndpointConfig, Outg
 
 async def _persist_connection(db: AsyncSession, *, user_id: int | None = None) -> tuple[int, int]:
     title = Title(label="Agent", gender="N")
-    tool = Tool(code="mail-idempotency-test", label="Mail", mail_config={})
+    tool = Service(code="mail-idempotency-test", label="Mail", mail_config={})
     db.add_all([title, tool])
     await db.flush()
     agent = Agent(
@@ -26,7 +26,7 @@ async def _persist_connection(db: AsyncSession, *, user_id: int | None = None) -
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     return connection.id, agent.id

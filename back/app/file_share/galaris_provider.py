@@ -253,7 +253,7 @@ def _descriptor(
             "requester_agent_id",
             "goal_id",
             "task_id",
-            "tool_code",
+            "service_code",
             "native_code",
         )
         if payload.get(key) is not None
@@ -572,7 +572,7 @@ async def galaris_resource_list(
         visible_kinds: tuple[GalarisResourceKind, ...] = tuple(
             kind for kind in _KINDS if kind != "goal_cycle" and (skill_access or kind != "skill")
         )
-        from app.tools import has_documentation_access
+        from app.services import has_documentation_access
         from .documentation_provider import collection_descriptor
         entries = [_collection_descriptor(kind) for kind in visible_kinds]
         if await has_documentation_access(ctx.agent_id):
@@ -689,7 +689,7 @@ async def galaris_resource_search(
         from . import skill_provider
         return await skill_provider.search(ctx, reference, query, mode=mode, max_results=max_results, cursor=cursor)
     if reference.segments[:1] == ("documentation",):
-        from app.tools import require_documentation_access
+        from app.services import require_documentation_access
         await require_documentation_access(ctx.agent_id)
         raise NotImplementedError("Use documentation_search for the versioned Galaris documentation corpus.")
     if mode == "semantic":

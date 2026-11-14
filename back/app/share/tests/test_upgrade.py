@@ -17,7 +17,7 @@ from app.agent.models import Title
 from app.process.models import ProcessDefinition, ProcessDefinitionGrant
 from app.share.dbadmin import register_dbadmin
 from app.share.migration import complete
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core import settings
 from core.dbadmin import DbAdminRegistry, DbAdminVerdict, orchestrator
 from core.dbadmin._internal import atlas
@@ -87,13 +87,13 @@ async def test_populated_legacy_upgrade_keeps_exact_rights_sources_and_restarts_
         team = TeamModel(name="Synthetic historical recipients")
         db.add_all([owner, peer, team])
         await db.flush()
-        tool = await db.scalar(select(ToolModel.id).where(ToolModel.code == "galaris"))
+        tool = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "galaris"))
         for index in range(121):
             public = index % 3
             groups = (index // 3) % 3 if public == 0 else 0
             row = ProcessDefinition(
                 agent_id=owner.id,
-                tool_id=tool,
+                service_id=tool,
                 label=f"Synthetic legacy workflow {index}",
                 engine_process_id=f"legacy_{index}",
                 code=f"legacy_{index}",

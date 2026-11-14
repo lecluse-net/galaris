@@ -12,7 +12,7 @@ from sqlalchemy import String, cast, select
 
 from app.llm.models import LLMCall
 from app.llm.schemas import LLMCallRead
-from app.tools.mcp_loader import McpToolContext, mcp_tool
+from app.services.mcp_loader import McpToolContext, mcp_tool
 from core.database import get_db
 
 _INSPECTION_LIMIT_MAX = 100
@@ -29,7 +29,7 @@ _INSPECTION_LIMIT_MAX = 100
 async def document_analyze(ctx: McpToolContext, uri: str, question: str,
                            model_slot: str = "document", max_calls: int = 256,
                            idempotency_key: str = "") -> dict[str, Any]:
-    from app.tools.contracts import current_tool_execution
+    from app.services.contracts import current_tool_execution
     from .document_service import start_analysis
 
     operation = current_tool_execution()
@@ -70,7 +70,7 @@ async def document_analysis_cancel(ctx: McpToolContext, run_id: str) -> dict[str
 async def mcp_llm_call(ctx: McpToolContext, llm_call_id: str) -> str:  # noqa: ARG001
     """Return the complete JSON representation of an LLM call."""
 
-    from app.tools.facade import administration_scope
+    from app.services.facade import administration_scope
     scope = await administration_scope(ctx.agent_id, "platform_admin")
     scope.require_administration()
     payload = await inspect_llm_call(llm_call_id, agent_ids=scope.agent_ids)
@@ -93,7 +93,7 @@ async def mcp_llm_calls(
 ) -> str:
     """Return LLM-call IDs in an inclusive datetime range as JSON text."""
 
-    from app.tools.facade import administration_scope
+    from app.services.facade import administration_scope
     scope = await administration_scope(ctx.agent_id, "platform_admin")
     scope.require_administration()
     payload = await inspect_llm_calls(date_debut, date_fin, limit=limit, agent_ids=scope.agent_ids)

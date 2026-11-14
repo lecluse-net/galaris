@@ -16,14 +16,14 @@ from dataclasses import asdict
 from sqlalchemy.dialects.postgresql import insert
 from uuid import uuid4
 from app.llm import LLMExecutionAuthority, current_execution_authority
-from app.tools.facade import register_deferred_dispatch, finish_action
+from app.services.facade import register_deferred_dispatch, finish_action
 from core.user import get_current_user_id
 from .operation_models import LabOperation
 from .operation_contracts import Operation
 from .operation_worker import advance as advance, settle_authorization
 from .operation_store import publish
 from app.task import Task
-from app.tools import McpToolContext
+from app.services import McpToolContext
 from core.database import get_db
 
 from . import (

@@ -12,10 +12,10 @@ from ..models import Connection, ConnectionFunctionState, ConnectionParam
 from .. import router
 from ..router import list_connections
 from ..schemas import CapabilityKind, FunctionState, FunctionStateUpdate
-from app.tools import ToolCatalogRefreshResult
+from app.services import ToolCatalogRefreshResult
 from app.agent import AgentManagementScope
 from app.agent.models import Agent, Title
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 @pytest.mark.asyncio
@@ -39,33 +39,33 @@ async def test_dashboard_scope_delegation_is_human_global_local_and_bounded(clie
             db.add(Assignment(user_id=user.id, role_id=role.id, is_default=True))
             users.append(user)
         title = Title(label="Synthetic scope dashboard", gender="X")
-        tool = await db.scalar(select(Tool).where(Tool.code == "galaris"))
+        tool = await db.scalar(select(Service).where(Service.code == "galaris"))
         tool.can_disable = False
-        # Exercise the narrow exception with a genuinely protected Tool code.
-        tool.connection_schema = {"params": {"tools.management_scope": {"type": "string", "required": False,
+        # Exercise the narrow exception with a genuinely protected Service code.
+        tool.connection_schema = {"params": {"services.management_scope": {"type": "string", "required": False,
             "default": "team", "options": [{"value": value} for value in ["none", "team", "all"]]}}}
-        tool.global_params = {"tools.management_scope": {"value": "all", "forced": True}}
+        tool.global_params = {"services.management_scope": {"value": "all", "forced": True}}
         db.add(title); await db.flush()
         agent = Agent(user_id=users[1].id, title_id=title.id, code=f"scope-dashboard-{suffix}", first_name="Synthetic", last_name="Agent")
         db.add(agent); await db.flush()
-        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
         db.add(connection); await db.flush()
         for user in users:
             refresh = await sessions.create_refresh_session(user.id)
             token = await auth_service.create_access_token_for_user(user, session_family=await sessions.family_for_token(refresh))
             headers.append({"Authorization": f"Bearer {token}"})
         path = f"/api/connections/{connection.id}/management-scope"
-        catalog_path = f"/api/tools/agents/{agent.id}/permissions"
+        catalog_path = f"/api/services/agents/{agent.id}/permissions"
     async def scope():
         response = await client.get(catalog_path, headers=headers[0])
         assert response.status_code == 200, response.text
-        return next(row for row in response.json()["connections"] if row["tool_id"] == tool.id)
+        return next(row for row in response.json()["connections"] if row["service_id"] == tool.id)
     initial = await scope()
     assert initial["can_disable"] is False
     assert initial["management_scope"]["value"] == "team"
     assert initial["management_scope"]["configured"] is None
     assert {option["value"] for option in initial["management_scope"]["options"]} == {"none", "team", "all"}
-    assert initial["parameter_sources"]["tools.management_scope"] == "software"
+    assert initial["parameter_sources"]["services.management_scope"] == "software"
     assert (await client.put(path, json={"value": "all"})).status_code == 401
     for actor in headers[1:]:
         assert (await client.put(path, headers=actor, json={"value": "all"})).status_code == 403
@@ -75,7 +75,7 @@ async def test_dashboard_scope_delegation_is_human_global_local_and_bounded(clie
     changed = await scope()
     assert changed["can_disable"] is False
     assert changed["management_scope"]["value"] == changed["management_scope"]["configured"] == "none"
-    assert changed["parameter_sources"]["tools.management_scope"] == "connection"
+    assert changed["parameter_sources"]["services.management_scope"] == "connection"
     # This narrow exception must not unlock any other property of a protected service.
     protected = await client.patch(f"/api/connections/{connection.id}", headers=headers[0], json={"active": False})
     assert protected.status_code == 403, protected.text
@@ -102,7 +102,7 @@ async def test_overview_http_requires_privileges_and_limits_rows_to_managed_agen
         users = [UserModel(email=f"overview-{suffix}-{index}@example.com", hashed_password=encrypt_password(password))
                  for index in range(2)]
         title = Title(label="Synthetic overview HTTP", gender="X")
-        tool = Tool(code=f"overview-http-{suffix}", label="Synthetic HTTP connector")
+        tool = Service(code=f"overview-http-{suffix}", label="Synthetic HTTP connector")
         db.add_all([role, empty_role, *users, title, tool])
         await db.flush()
         db.add_all([Assignment(user_id=user.id, role_id=selected.id, is_default=True)
@@ -111,7 +111,7 @@ async def test_overview_http_requires_privileges_and_limits_rows_to_managed_agen
                         first_name="Synthetic", last_name=str(index)) for index, user in enumerate(users)]
         db.add_all(agents)
         await db.flush()
-        connections = [Connection(agent_id=agent.id, tool_id=tool.id, active=True) for agent in agents]
+        connections = [Connection(agent_id=agent.id, service_id=tool.id, active=True) for agent in agents]
         db.add_all(connections)
         await db.flush()
         expected = connections[0].id
@@ -143,7 +143,7 @@ async def test_overview_batches_parameters_preserves_scope_and_hides_historized_
     from uuid import uuid4
 
     title = Title(label="Synthetic connections", gender="X")
-    tool = Tool(code=f"overview_{uuid4().hex}", label="Synthetic connector", connection_schema={
+    tool = Service(code=f"overview_{uuid4().hex}", label="Synthetic connector", connection_schema={
         "params": {"host": {"type": "string"}, "token": {"type": "password"}},
     })
     db.add_all([title, tool])
@@ -152,7 +152,7 @@ async def test_overview_batches_parameters_preserves_scope_and_hides_historized_
                     agent_driver="internal") for index in range(20)]
     db.add_all(agents)
     await db.flush()
-    connections = [Connection(tool_id=tool.id, agent_id=agent.id, active=index != 1)
+    connections = [Connection(service_id=tool.id, agent_id=agent.id, active=index != 1)
                    for index, agent in enumerate(agents)]
     db.add_all(connections)
     await db.flush()
@@ -204,7 +204,7 @@ async def test_overview_batches_parameters_preserves_scope_and_hides_historized_
     assert connections[-1].id not in {row.id for row in overview}
     assert overview[0].params == {"host": "updated.example.test"}
     assert overview[0].configured_params == []
-    listed = await router.list_connections(tool_id=tool.id, agent_id=None, active_only=False, skip=0, limit=500)
+    listed = await router.list_connections(service_id=tool.id, agent_id=None, active_only=False, skip=0, limit=500)
     assert connections[-1].id not in {row.id for row in listed}
 
     # Authorization choices also exclude historized agents, before pagination.
@@ -240,8 +240,8 @@ async def test_list_connections_uses_stable_bounded_pagination(
 ) -> None:
     db = AsyncMock(spec=AsyncSession)
     expected = [
-        Connection(id=501, tool_id=35, agent_id=1, active=True),
-        Connection(id=502, tool_id=35, agent_id=2, active=True),
+        Connection(id=501, service_id=35, agent_id=1, active=True),
+        Connection(id=502, service_id=35, agent_id=2, active=True),
     ]
     result = MagicMock()
     result.all.return_value = expected
@@ -254,7 +254,7 @@ async def test_list_connections_uses_stable_bounded_pagination(
     )
 
     rows = await list_connections(
-        tool_id=None,
+        service_id=None,
         agent_id=None,
         active_only=True,
         skip=500,
@@ -284,7 +284,7 @@ async def test_unified_refresh_syncs_connections_and_rebuilds_catalogs(
     )
     monkeypatch.setattr(
         router,
-        "sync_integrated_tool_connections",
+        "sync_integrated_service_connections",
         AsyncMock(return_value=2),
     )
     monkeypatch.setattr(
@@ -319,7 +319,7 @@ async def test_connection_function_update_does_not_wait_for_catalog_discovery(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(router, "_require_permission_state", AsyncMock())
-    connection = Connection(id=11, tool_id=35, agent_id=7, active=True)
+    connection = Connection(id=11, service_id=35, agent_id=7, active=True)
     monkeypatch.setattr(
         router,
         "current_management_scope",
@@ -367,7 +367,7 @@ async def test_global_function_update_does_not_wait_for_catalog_discovery(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(router, "_require_permission_state", AsyncMock())
-    connection = Connection(id=11, tool_id=35, agent_id=7, active=True)
+    connection = Connection(id=11, service_id=35, agent_id=7, active=True)
     monkeypatch.setattr(
         router,
         "current_management_scope",
@@ -380,7 +380,7 @@ async def test_global_function_update_does_not_wait_for_catalog_discovery(
     )
     monkeypatch.setattr(
         router.connection_service,
-        "set_tool_function_state",
+        "set_service_function_state",
         AsyncMock(),
     )
     monkeypatch.setattr(
@@ -424,7 +424,7 @@ async def test_global_choice_inherits_only_selected_connection_atomically(
 ) -> None:
     monkeypatch.setattr(router, "_require_permission_state", AsyncMock())
     title = Title(label="Synthetic policy", gender="X")
-    tool = Tool(code="synthetic-policy", label="Synthetic policy")
+    tool = Service(code="synthetic-policy", label="Synthetic policy")
     db.add_all([title, tool])
     await db.flush()
     agents = [Agent(title_id=title.id, code=f"synthetic-policy-{index}",
@@ -432,13 +432,13 @@ async def test_global_choice_inherits_only_selected_connection_atomically(
               for index in range(2)]
     db.add_all(agents)
     await db.flush()
-    connections = [Connection(tool_id=tool.id, agent_id=agent.id, active=True) for agent in agents]
+    connections = [Connection(service_id=tool.id, agent_id=agent.id, active=True) for agent in agents]
     db.add_all(connections)
     await db.commit()
     selected, other = connections
     name = "synthetic://policy" if capability_kind == "resource" else "synthetic_read"
     other_kind: CapabilityKind = "resource" if capability_kind == "tool" else "tool"
-    await router.connection_service.set_tool_function_state(tool.id, name, "enabled", capability_kind=capability_kind)
+    await router.connection_service.set_service_function_state(tool.id, name, "enabled", capability_kind=capability_kind)
     for connection, mode in [(selected, "disabled"), (other, "ask")]:
         await router.connection_service.set_connection_function_state(connection.id, name, mode, capability_kind=capability_kind)
     await router.connection_service.set_connection_function_state(selected.id, name, "disabled", capability_kind=other_kind)

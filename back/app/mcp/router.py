@@ -186,8 +186,8 @@ async def agent_mcp_endpoint(agent_code: str, request: Request) -> Response:
     """
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 
-    # app.tools centrally builds the aggregated native and external tool server.
-    from app.tools.mcp_loader import build_agent_mcp
+    # app.services centrally builds the aggregated native and external tool server.
+    from app.services.mcp_loader import build_agent_mcp
 
     auth = request.headers.get("Authorization", "")
     token = auth.removeprefix("Bearer ").strip()
@@ -219,10 +219,10 @@ async def agent_mcp_endpoint(agent_code: str, request: Request) -> Response:
         if matched.hidden and not credential:
             raise HTTPException(401, "A managed runtime MCP token requires its server-issued run context")
         if credential:
-            from app.tools.facade import resolve_runtime_run_grant
+            from app.services.facade import resolve_runtime_run_grant
             from uuid import UUID
             try:
-                from app.tools.facade import RuntimePrincipal
+                from app.services.facade import RuntimePrincipal
                 grant = await resolve_runtime_run_grant(credential, principal=RuntimePrincipal(matched.id, matched.agent_id, matched.enabled))
             except PermissionError as exc:
                 raise HTTPException(403, "Invalid runtime run context") from exc

@@ -40,16 +40,16 @@ Un appel d’outil retourne directement une sortie structurée. Les workflows m�
 ceux gérés dans n8n, utilisent un `ProcessRun` durable afin que l’agent puisse attendre,
 reprendre, annuler et analyser sans garder une requête ouverte. La maintenance technique
 reste dans son module : le rafraîchissement du catalogue utilise les fonctions Python de
-`app.tools` et ne crée aucun Process.
+`app.services` et ne crée aucun Process.
 
 Pour ajouter un logiciel tiers, lire le
 [guide d'intégration des moteurs externes](../../dev/process-engines.md).
 Le registry et les workers acceptent plusieurs moteurs simultanément ;
-chaque définition choisit le sien via son Tool.
+chaque définition choisit le sien via son Service.
 
 ```text
 Agent runtime
-   → catalogue app.tools / toolset MCP
+   → catalogue app.services / toolset MCP
    → outil @mcp_tool
    → app.process (définition + run + événement + job de démarrage)
    → registry d’engine
@@ -133,8 +133,8 @@ avec `defer_loading` et deviennent accessibles via `search_tools`. La projection
 continue d’appliquer les désactivations de fonctions et les contraintes du runtime avant cette
 découverte.
 
-Le planner reçoit toujours le manifeste exhaustif des noms. `app.tools.catalog` dérive sa version
-depuis le même serveur MCP effectif. `app.tools.tool_search_service` enrichit ce manifeste par une
+Le planner reçoit toujours le manifeste exhaustif des noms. `app.services.catalog` dérive sa version
+depuis le même serveur MCP effectif. `app.services.tool_search_service` enrichit ce manifeste par une
 recherche hybride FTS + pgvector sur des métadonnées publiques bornées. Les embeddings sont
 mutualisés par empreinte de définition, jamais par agent ; à chaque requête, les empreintes
 candidates proviennent exclusivement du catalogue effectif de l’agent, du runtime et de la tâche.
@@ -277,7 +277,7 @@ règles d'idempotence, d'annulation et d'état terminal que les autres engines.
 
 - Contrats d’engine : `back/app/process/engine.py` et `registry.py`.
 - Persistance et matrice : `back/app/process/models.py`, `process_service.py`.
-- Outils : `back/app/process/mcp.py` et `back/app/tools/mcp_loader.py`.
+- Outils : `back/app/process/mcp.py` et `back/app/services/mcp_loader.py`.
 - Adaptateur n8n : `back/bridge/n8n/`.
 ## Preuve d'arrêt pour un remplacement
 

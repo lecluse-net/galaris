@@ -17,7 +17,7 @@ les checkpoints, la couverture, les résultats et les autorisations. Un job du s
 existant avance les analyses avec un bail expirant ; aucun nouveau scheduler n'est créé.
 Le moteur Process `galaris` et ses définitions techniques sont supprimés.
 Les outils `document_analyze`, `document_analysis_get`
-et `document_analysis_cancel` passent par les autorisations normales du Tool Galaris.
+et `document_analysis_cancel` passent par les autorisations normales du Service Galaris.
 L'entrée est une URI file-share ; les chemins internes ne sont jamais rendus au modèle.
 
 Chaque lot a une identité d'inférence déterministe dérivée de l'analyse et de son rang.

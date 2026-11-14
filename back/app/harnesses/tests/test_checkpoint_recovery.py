@@ -20,7 +20,7 @@ from core.util import get_encryption_service
 @pytest.mark.parametrize("provider", ["deepseek_harness", "claude_agent", "codex", "openai_messages"])
 @pytest.mark.parametrize("outcome", ["completed", "waiting_for_authorization", "waiting_for_children", "outcome_unknown", "authority_missing"])
 async def test_interrupted_checkpoint_observes_the_same_actor_without_restarting(monkeypatch, provider, outcome):
-    from app.tools import facade as authority
+    from app.services import facade as authority
 
     credential = "synthetic-runtime-authority"
     identifier = hashlib.sha256(credential.encode()).hexdigest()
@@ -108,7 +108,7 @@ async def test_explicit_retry_creates_new_operation_with_same_parameters_after_s
     import json
     import app.agent
     from app.agent import prepare_run_retry
-    from app.tools import facade as authority
+    from app.services import facade as authority
 
     old_context, new_context = "synthetic-old-authority", "synthetic-new-authority"
     old_id = hashlib.sha256(old_context.encode()).hexdigest()

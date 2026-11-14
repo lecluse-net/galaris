@@ -374,7 +374,7 @@ See [0257](../../../../project/decisions/0257-atomic-memory-facts-and-source-pri
 Extraction includes successful child Tasks and Goal-cycle Tasks with their producing identities.
 Prepared instructions, delegated work and Goal instructions remain attributed to AI; AI-only
 sources cannot create human personal facts, preferences or corrections. Capture opt-out
-propagates through Task lineage. Tool evidence remains distinct from final claims. Already
+propagates through Task lineage. Service evidence remains distinct from final claims. Already
 acquired document analyses can be reused without new analysis, checking agent, URI, version
 and access. See [0228](../../../../project/decisions/0228-work-discovery-and-memory-continuity.md)
 and [0229](../../../../project/decisions/0229-memory-evidence-and-context-budgets.md).

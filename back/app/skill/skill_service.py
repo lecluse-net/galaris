@@ -542,7 +542,7 @@ async def get_assigned_codes(agent_id: int) -> list[str]:
     )
     codes = list(result.scalars().all())
     if "galaris-knowledge" in codes:
-        from app.tools import has_documentation_access
+        from app.services import has_documentation_access
 
         if not await has_documentation_access(agent_id):
             codes.remove("galaris-knowledge")

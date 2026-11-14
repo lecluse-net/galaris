@@ -20,7 +20,7 @@ from app.llm.handlers import LLMModelInfo, OpenAICompatibleHandler
 from app.llm.provider_models import LLM, LLMProvider
 from app.memory.tests.conftest import memory_storage as memory_storage
 from app.onboarding import services as onboarding
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.voice import monitoring_service as voice
 from app.voice.models import VoiceConversationSession
 from app.messenger import Room
@@ -37,11 +37,11 @@ async def test_connection_batch_bounds_reads_and_preserves_encryption_and_valida
     owner = read_actors[0]
     definitions = {f"value{index}": {"type": "string"} for index in range(size)}
     definitions.update(token={"type": "password"}, count={"type": "integer"}, fixed={"type": "string"})
-    tool = ToolModel(code=f"synthetic-batch-{size}", label="Synthetic parameter batch",
+    tool = ServiceModel(code=f"synthetic-batch-{size}", label="Synthetic parameter batch",
                      connection_schema={"params": definitions}, global_params={"fixed": {"value": "global", "forced": True}})
     db.add(tool)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     identifier = connection.id
@@ -191,12 +191,12 @@ async def test_welcome_checks_do_not_load_full_configuration_payloads(db, read_a
         fields = {LLMProvider: ("configuration",)}
     else:
         monkeypatch.setattr(onboarding, "enabled_specs", lambda: [SimpleNamespace(kind="telegram")])
-        tools = [ToolModel(code=f"synthetic-welcome-{index}", label="Synthetic messaging", description="x" * 30000,
+        tools = [ServiceModel(code=f"synthetic-welcome-{index}", label="Synthetic messaging", description="x" * 30000,
                            messenger_config={"service": "telegram"}, connection_schema={"unused": "x" * 30000}) for index in range(41)]
         db.add_all(tools)
         await db.flush()
-        db.add_all([Connection(agent_id=owner_id, tool_id=row.id, active=True) for row in tools])
-        fields = {ToolModel: ("description", "connection_schema")}
+        db.add_all([Connection(agent_id=owner_id, service_id=row.id, active=True) for row in tools])
+        fields = {ServiceModel: ("description", "connection_schema")}
     await db.commit()
     async with measured(db, f"configuration-onboarding-{check}", fields) as report:
         result = await onboarding.check_llm_status() if check == "llm" else await onboarding.check_messaging_status(agent_ids=[owner_id])
@@ -218,8 +218,8 @@ async def test_welcome_checks_do_not_load_full_configuration_payloads(db, read_a
 @pytest.mark.parametrize("view", ["list", "detail"])
 async def test_voice_monitoring_omits_checkpoints_while_turn_detail_keeps_driver_result(db, read_actors, view):
     owner_id = read_actors[0].id
-    tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == "galaris"))
-    connection = Connection(agent_id=owner_id, tool_id=tool_id, active=True)
+    service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "galaris"))
+    connection = Connection(agent_id=owner_id, service_id=service_id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(connection_id=connection.id, external_id="synthetic-voice-monitoring", label="Synthetic Call", conversation_type="audio")

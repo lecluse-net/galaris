@@ -34,7 +34,7 @@ class MessengerUserSearchResult(BaseModel):
 
     id: UUID
     messaging_id: int
-    tool_id: int
+    service_id: int
     platform: str
     external_id: str
     user_id: str

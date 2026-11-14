@@ -107,7 +107,7 @@ window compatible with all models used by this configuration; see the
 | Unknown or unavailable model | Exact catalog selector, **API code**, and tier assigned to an active model |
 | Wrong provider or model at startup | User/project/local settings and inherited variables; check `/status` |
 | Catalog missing from the menu | Client version supporting discovery, enabled variable, and any `availableModels` restriction |
-| Tool or reasoning failure | Assigned model capabilities and options requested by the client |
+| Service or reasoning failure | Assigned model capabilities and options requested by the client |
 
 This connection supplies inference to your local client. It does not create a
 Galaris Task or Agent, or configure an MCP server. To call a concrete model

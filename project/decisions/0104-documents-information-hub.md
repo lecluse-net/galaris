@@ -42,7 +42,7 @@ Galaris et les skills de développement portent ce principe. Les prompts personn
 planificateur conservent leur priorité et doivent être alignés par leur administrateur.
 
 `test_agent_registry.py` vérifie les consignes selon les fonctions autorisées ;
-`test_mandatory_tools.py` vérifie l'activation initiale et la conservation d'une désactivation ;
+`test_mandatory_services.py` vérifie l'activation initiale et la conservation d'une désactivation ;
 `test_storage.py` vérifie que le skill système est lu depuis le package livré. Ces tests
 ne garantissent pas l'obéissance de chaque modèle ; le choix effectif d'un document reste
 un comportement agentique à observer.

@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from app.tools.facade import administration_scope
+from app.services.facade import administration_scope
 
 from . import goal_service
 

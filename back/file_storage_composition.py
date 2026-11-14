@@ -103,7 +103,7 @@ async def legacy_inventory(session: AsyncSession) -> list[LegacyFile]:
         SELECT f.id, f.name, f.mime_type, m.room_id
         FROM messenger_files f
         JOIN connections c ON c.id = f.connection_id
-        JOIN tools t ON t.id = c.tool_id AND t.code = 'chat'
+        JOIN services t ON t.id = c.service_id AND t.code = 'chat'
         LEFT JOIN messenger_message_files a ON a.file_id = f.id
         LEFT JOIN messenger_messages m ON m.id = a.message_id
         ORDER BY f.id, m.room_id

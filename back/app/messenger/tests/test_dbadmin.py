@@ -16,7 +16,7 @@ from app.conversation.models import (
 from app.messenger.models import Message, MessengerUser, Room
 from app.messenger.user_service import reconcile_nextcloud_agent_identities
 from app.task.models import Task, TaskStatus
-from app.tools.models import Tool
+from app.services.models import Service
 from core.dbadmin import SchemaTransitionSet
 
 
@@ -33,7 +33,7 @@ def test_legacy_admission_action_is_tied_to_durable_task_key() -> None:
 async def test_legacy_admission_backfill_is_idempotent(db: AsyncSession) -> None:
     suffix = uuid4().hex[:10]
     title = Title(label=f"Admission {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"admission-{suffix}",
         label="Admission",
         description="",
@@ -50,7 +50,7 @@ async def test_legacy_admission_backfill_is_idempotent(db: AsyncSession) -> None
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(
@@ -65,7 +65,7 @@ async def test_legacy_admission_backfill_is_idempotent(db: AsyncSession) -> None
     message = Message(
         id=uuid4(),
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="nextcloud_talk",
         remote_message_id=f"legacy-{suffix}",
         direction="inbound",
@@ -171,7 +171,7 @@ async def test_nextcloud_agent_identity_reconciliation_is_exact_and_idempotent(
 ) -> None:
     suffix = uuid4().hex[:10]
     title = Title(label=f"Nextcloud identity {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"nextcloud-identity-{suffix}",
         label="Nextcloud Talk",
         description="",
@@ -198,7 +198,7 @@ async def test_nextcloud_agent_identity_reconciliation_is_exact_and_idempotent(
     db.add_all(agents)
     await db.flush()
     connections = [
-        Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+        Connection(service_id=tool.id, agent_id=agent.id, active=True)
         for agent in agents
     ]
     db.add_all(connections)
@@ -229,28 +229,28 @@ async def test_nextcloud_agent_identity_reconciliation_is_exact_and_idempotent(
     )
     identities = [
         MessengerUser(
-            tool_id=tool.id,
+            service_id=tool.id,
             external_id="lyra",
             display_name="Lyra d'Exemple",
             agent_id=agents[1].id,
             is_ai=True,
         ),
         MessengerUser(
-            tool_id=tool.id,
+            service_id=tool.id,
             external_id="orion",
             display_name="Orion Test",
             agent_id=None,
             is_ai=False,
         ),
         MessengerUser(
-            tool_id=tool.id,
+            service_id=tool.id,
             external_id="unknown",
             display_name="Unknown",
             agent_id=agents[0].id,
             is_ai=True,
         ),
         MessengerUser(
-            tool_id=tool.id,
+            service_id=tool.id,
             external_id="shared-login",
             display_name="Ambiguous",
             agent_id=agents[2].id,

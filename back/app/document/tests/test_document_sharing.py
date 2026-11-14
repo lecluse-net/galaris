@@ -45,12 +45,12 @@ async def test_mcp_sharing_conflict_preserves_content_and_safe_retry(
     from app.harness.mcp_toolset import ExecutionEvidenceClient
     from app.harness.tests.test_checkpoint import _request
     from app.document import mcp
-    from app.tools.execution_evidence import ExecutionEvidenceMiddleware
-    from app.tools.mcp_loader import McpToolContext, _wrap_tool
-    from app.tools import mandatory_tools
+    from app.services.execution_evidence import ExecutionEvidenceMiddleware
+    from app.services.mcp_loader import McpToolContext, _wrap_tool
+    from app.services import mandatory_services
 
     owner, peer = agents
-    await mandatory_tools.sync_integrated_tool_connections(owner.id)
+    await mandatory_services.sync_integrated_service_connections(owner.id)
     item, _ = await service.create_item(DocumentItemCreate(
         owner_agent_id=owner.id, title="Sharing after editing", node_kind="document",
         media_type="text/html", payload=DocumentPayload(text="<p>Original</p>"),
@@ -58,11 +58,11 @@ async def test_mcp_sharing_conflict_preserves_content_and_safe_retry(
     from app.task.models import Task
     from app.connection import facade as connections
     from app.connection.models import Connection
-    from app.tools.models import Tool
+    from app.services.models import Service
     task = Task(agent_id=owner.id, label="Synthetic sharing", objective="<p>Check conflict recovery.</p>")
     db.add(task)
     await db.flush()
-    connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == owner.id, Tool.code == "document"))
+    connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == owner.id, Service.code == "document"))
     await connections.set_connection_function_state(connection.id, f"{node_kind}_share", "enabled")
     ctx = McpToolContext(agent_id=owner.id, runtime="internal", task_id=task.id)
     previous = json.loads(await mcp.document_sharing(ctx, str(item.id)))
@@ -126,7 +126,7 @@ async def grant(item, scope, kind, identity, can_write):
 @pytest.mark.parametrize(("node_kind", "document_format"), [("document", "text"), ("document", "dataset")])
 async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(db, agents, memory_storage, node_kind, document_format):
     from app.document import mcp
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
     from core.team.service import set_human_membership
     from app.agent.dialogue_service import set_agent_membership
 

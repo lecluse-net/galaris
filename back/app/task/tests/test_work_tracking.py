@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from app.agent import WorkPlan, work_plan_progress
 from app.task import Task, TaskStatus
 from app.task.mcp import mcp_work_update
-from app.tools.mcp_loader import McpToolContext
+from app.services.mcp_loader import McpToolContext
 from core.database import get_db_session
 
 
@@ -115,8 +115,8 @@ async def test_work_tracking_survives_reload_and_preserves_completed_work(commit
         changed = await mcp_work_update(ctx, reclassified_plan, reopened["work_plan_revision"],
                                         "The request clarifies which outputs are necessary")
         assert changed["work_plan"]["milestones"][0]["required"] == (completed_state == "skipped")
-        from app.tools.tool_errors import classify_tool_failure
-        from app.tools.contracts import ToolCallRejectedError
+        from app.services.tool_errors import classify_tool_failure
+        from app.services.contracts import ToolCallRejectedError
         with pytest.raises(ToolCallRejectedError) as conflict:
             await mcp_work_update(ctx, plan("done", "Output reread", ""), revision)
         failure = classify_tool_failure(conflict.value)

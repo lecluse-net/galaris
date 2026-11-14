@@ -23,7 +23,7 @@ from core.storage import StoredFileDerivative
 async def test_mcp_search_can_requery_uploaded_file_without_creating_memories(committed_database, monkeypatch, runtime):
     from app.file_share import mcp
     from app.memory.models import MemoryItem, MemoryRevision
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
 
     source = ('Synthetic background. ' * 2500 + '\nQUARTZ cancellation deadline is 47 days.\n'
               + 'Other synthetic details. ' * 100 + '\nNEBULA warranty is 83 months.').encode()

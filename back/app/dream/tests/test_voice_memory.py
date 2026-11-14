@@ -32,7 +32,7 @@ from app.memory.models import (
 from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.messenger import ConversationType, Message, Room
 from app.topic import TopicClassification, service as topic_service
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.voice.models import (
     VoiceConversationSession,
     VoiceConversationStatus,
@@ -57,7 +57,7 @@ async def _audio_round(
         code=f"audio-memory-{suffix}",
         agent_driver="internal",
     )
-    tool = ToolModel(
+    tool = ServiceModel(
         code=f"audio-memory-messenger-{suffix}",
         label="Audio memory Messenger",
         description="",
@@ -65,7 +65,7 @@ async def _audio_round(
     )
     db.add_all([owner, tool])
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(
@@ -118,7 +118,7 @@ async def _audio_round(
     messages = (
         Message(
             connection_id=connection.id,
-            tool_id=tool.id,
+            service_id=tool.id,
             platform="matrix",
             remote_message_id=f"audio-input-{suffix}",
             direction="inbound",
@@ -129,7 +129,7 @@ async def _audio_round(
         ),
         Message(
             connection_id=connection.id,
-            tool_id=tool.id,
+            service_id=tool.id,
             platform="matrix",
             remote_message_id=f"audio-output-{suffix}",
             direction="outbound",

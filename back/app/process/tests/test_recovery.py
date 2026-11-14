@@ -14,7 +14,7 @@ from app.process.models import ProcessDefinition, ProcessRun, ProcessRunEvent, P
 from app.process.schemas import EngineError, EngineRunSnapshot, ProcessCallbackEvent
 from app.task import collab, task_service
 from app.task.models import Task, TaskStatus
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 @pytest_asyncio.fixture
@@ -23,13 +23,13 @@ async def waiting_run(db, monkeypatch):
 
     monkeypatch.setattr(runner, "go_next", lambda *args, **kwargs: None)
     title = Title(label="Recovery", gender="X")
-    tool = Tool(code=f"recovery-{uuid4().hex}", label="Recovery", connection_schema={})
+    tool = Service(code=f"recovery-{uuid4().hex}", label="Recovery", connection_schema={})
     db.add_all([title, tool])
     await db.flush()
     agent = Agent(title_id=title.id, code=f"recovery-{uuid4().hex}", first_name="Recovery", last_name="Test")
     db.add(agent)
     await db.flush()
-    definition = ProcessDefinition(agent_id=agent.id, tool_id=tool.id, engine_process_id="recovery", label="Recovery")
+    definition = ProcessDefinition(agent_id=agent.id, service_id=tool.id, engine_process_id="recovery", label="Recovery")
     parent = Task(label="Parent", agent_id=agent.id, status=TaskStatus.DISPATCH, paused=True, data={"pause_reasons": ["await"]})
     db.add_all([definition, parent])
     await db.flush()
@@ -48,14 +48,14 @@ async def waiting_run(db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_human_tool_deletion_releases_process_waiters(db, waiting_run):
-    from app.tools import tool_service
+    from app.services import service
 
     run, parent, child = waiting_run
     run_id = run.id
-    tool_id = await db.scalar(select(ProcessDefinition.tool_id).where(ProcessDefinition.id == run.process_id))
-    preview = await tool_service.deletion_impact(tool_id)
+    service_id = await db.scalar(select(ProcessDefinition.service_id).where(ProcessDefinition.id == run.process_id))
+    preview = await service.deletion_impact(service_id)
     assert preview is not None
-    assert await tool_service.delete_tool(tool_id, cascade=True, expected_version=preview.version)
+    assert await service.delete_service(service_id, cascade=True, expected_version=preview.version)
     assert await db.get(ProcessRun, run_id) is None
     await db.refresh(parent)
     await db.refresh(child)

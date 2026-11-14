@@ -25,7 +25,7 @@ from app.messenger.models import (
 )
 from app.messenger.room_service import synchronize_rooms
 from app.messenger.user_service import synchronize_users
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 async def _connection(db: AsyncSession) -> Connection:
@@ -40,7 +40,7 @@ async def _connection(db: AsyncSession) -> Connection:
         code=f"bridge-sync-{suffix}",
         agent_driver="internal",
     )
-    tool = Tool(
+    tool = Service(
         code=f"messenger-sync-{suffix}",
         label="Messenger sync test",
         description="",
@@ -48,19 +48,19 @@ async def _connection(db: AsyncSession) -> Connection:
     )
     db.add_all([agent, tool])
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     return connection
 
 
-async def _all_users(db: AsyncSession, tool_id: int) -> list[MessengerUser]:
+async def _all_users(db: AsyncSession, service_id: int) -> list[MessengerUser]:
     db.expire_all()
     return list(
         (
             await db.scalars(
                 select(MessengerUser)
-                .where(MessengerUser.tool_id == tool_id)
+                .where(MessengerUser.service_id == service_id)
                 .execution_options(include_historized=True)
             )
         ).all()
@@ -74,14 +74,14 @@ async def test_filtered_user_sync_never_historizes_out_of_scope_users(
     connection = await _connection(db)
     users = [User(id="alice"), User(id="bob")]
 
-    await synchronize_users(tool_id=connection.tool_id, users=users)
+    await synchronize_users(service_id=connection.service_id, users=users)
     await synchronize_users(
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         users=[User(id="alice")],
         authoritative=False,
     )
 
-    rows = await _all_users(db, connection.tool_id)
+    rows = await _all_users(db, connection.service_id)
     assert {row.external_id for row in rows if row.deleted_at is None} == {
         "alice",
         "bob",
@@ -93,31 +93,31 @@ async def test_complete_user_sync_historizes_and_later_restores_missing_user(
     db: AsyncSession,
 ) -> None:
     connection = await _connection(db)
-    tool_id = connection.tool_id
+    service_id = connection.service_id
     await synchronize_users(
-        tool_id=tool_id,
+        service_id=service_id,
         users=[User(id="alice"), User(id="bob")],
         authoritative=True,
     )
 
     await synchronize_users(
-        tool_id=tool_id,
+        service_id=service_id,
         users=[User(id="alice")],
         authoritative=True,
     )
-    rows = await _all_users(db, tool_id)
+    rows = await _all_users(db, service_id)
     bob = next(row for row in rows if row.external_id == "bob")
     assert bob.deleted_at is not None
     assert bob.deleted_by is None
 
     restored = await synchronize_users(
-        tool_id=tool_id,
+        service_id=service_id,
         users=[User(id="bob", display_name="Bob restored")],
         authoritative=False,
     )
     assert len(restored) == 1
     assert restored[0].id == bob.id
-    rows = await _all_users(db, tool_id)
+    rows = await _all_users(db, service_id)
     bob = next(row for row in rows if row.external_id == "bob")
     assert bob.deleted_at is None
     assert bob.display_name == "Bob restored"
@@ -129,7 +129,7 @@ async def test_room_membership_is_reconciled_only_from_a_complete_member_list(
 ) -> None:
     connection = await _connection(db)
     connection_id = connection.id
-    tool_id = connection.tool_id
+    service_id = connection.service_id
     room = Room(
         id="room-1",
         users=[User(id="alice"), User(id="bob")],
@@ -137,7 +137,7 @@ async def test_room_membership_is_reconciled_only_from_a_complete_member_list(
     )
     stored = await synchronize_rooms(
         connection_id=connection_id,
-        tool_id=tool_id,
+        service_id=service_id,
         rooms=[room],
     )
     room_uuid = stored[0].id
@@ -154,7 +154,7 @@ async def test_room_membership_is_reconciled_only_from_a_complete_member_list(
     )
     stored = await synchronize_rooms(
         connection_id=connection_id,
-        tool_id=tool_id,
+        service_id=service_id,
         rooms=[partial],
     )
     assert (
@@ -168,7 +168,7 @@ async def test_room_membership_is_reconciled_only_from_a_complete_member_list(
     complete = partial.model_copy(update={"users_complete": True})
     stored = await synchronize_rooms(
         connection_id=connection_id,
-        tool_id=tool_id,
+        service_id=service_id,
         rooms=[complete],
     )
     assert (
@@ -185,7 +185,7 @@ async def test_room_membership_is_reconciled_only_from_a_complete_member_list(
     assert (
         await db.scalar(
             select(func.count(MessengerUser.id)).where(
-                MessengerUser.tool_id == tool_id
+                MessengerUser.service_id == service_id
             )
         )
     ) == 2
@@ -197,7 +197,7 @@ async def test_limited_message_import_is_idempotent_and_never_historizes_absence
 ) -> None:
     connection = await _connection(db)
     connection_id = connection.id
-    tool_id = connection.tool_id
+    service_id = connection.service_id
     messages = [
         Message(
             id="message-1",
@@ -241,13 +241,13 @@ async def test_limited_message_import_is_idempotent_and_never_historizes_absence
 
     first = await journal.synchronize_messages(
         connection_id=connection_id,
-        tool_id=tool_id,
+        service_id=service_id,
         self_id="bot",
         messages=messages,
     )
     second = await journal.synchronize_messages(
         connection_id=connection_id,
-        tool_id=tool_id,
+        service_id=service_id,
         self_id="bot",
         messages=messages[-1:],
     )

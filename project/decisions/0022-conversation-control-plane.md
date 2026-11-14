@@ -30,9 +30,9 @@ Le scheduler conversationnel possède ses tables, leases et workers. Il n’acqu
 ni slot d’agent. Son contrôleur est toujours le harnais interne Pydantic AI avec la colonne
 `conversation_llm_id` de l’unique profil effectif de l’agent. Une colonne vide ne reprend ni
 l’exécuteur ni un autre profil. Son catalogue est
-deny-by-default : connexion active, case `Tool.conversation_enabled`, politique de fonction
+deny-by-default : connexion active, case `Service.conversation_enabled`, politique de fonction
 `short | deferred | forbidden` pour les fonctions natives et profil du runtime doivent tous
-autoriser la fonction. Pour un connecteur MCP externe, la case du Tool constitue l’autorisation
+autoriser la fonction. Pour un connecteur MCP externe, la case du Service constitue l’autorisation
 conversationnelle explicite ; les états de fonctions de sa connexion continuent de s’appliquer.
 
 Le prompt système de ce contrôleur reste dédié et plus court que celui de l’executor. Il conserve
@@ -87,7 +87,7 @@ realtime audio natif, qui raisonne directement sur le flux et gère le barge-in,
   Tasks simultanées pour le même agent.
 - Les réponses courtes restent possibles pendant une longue Task Hermès.
 - Une fonction native doit déclarer sa compatibilité conversationnelle. Pour un MCP externe, la
-  case Tool reste une décision administrative explicite.
+  case Service reste une décision administrative explicite.
 - La projection conserve les derniers messages complets dans un budget souple et trace les
   omissions. La compression résumée est différée.
 - La priorité d’admission au provider LLM, la voix pipeline et les chats humains OpenAI/Janus
@@ -100,7 +100,7 @@ realtime audio natif, qui raisonne directement sur le flux et gère le barge-in,
 ## Preuves dans le code
 
 `back/app/conversation/`, `back/app/harness/conversation.py`,
-`back/app/messenger/service.py`, `back/app/tools/mcp_loader.py`,
+`back/app/messenger/service.py`, `back/app/services/mcp_loader.py`,
 `back/app/llm/llm_call_service.py`, `back/app/agent/facade.py`,
-`back/app/agent/planner_service.py`, `front/app/tools/components/ToolsList.vue` et
+`back/app/agent/planner_service.py`, `front/app/services/components/ServicesList.vue` et
 `front/app/conversation/components/ConversationHistory.vue`.

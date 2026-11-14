@@ -19,9 +19,9 @@ from uuid import UUID
 
 from loguru import logger
 
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
-from app.tools import RecoverableToolError
-from app.tools.contracts import ToolCallRejectedError
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services import RecoverableToolError
+from app.services.contracts import ToolCallRejectedError
 from core.database import release_db_transaction
 from core.i18n import default_language, is_supported, render_prompt, t
 from .facade import MessengerFacade, normalize_kind
@@ -204,7 +204,7 @@ def _attachment_history_payload(message: Message, attachment: File) -> dict[str,
     return {
         "id": str(attachment.id),
         "uri": attachment_resource_uri(
-            message.tool_code,
+            message.service_code,
             message.room.external_id,
             attachment.id,
         ),
@@ -585,13 +585,13 @@ async def _recipient_agent_id(
             return None
         return await get_db().scalar(select(MessengerUser.agent_id).where(
             MessengerUser.id == identity_id,
-            MessengerUser.tool_id == messenger.tool_id,
+            MessengerUser.service_id == messenger.service_id,
         ))
 
-    tool_id = int(getattr(messenger, "tool_id", 0) or 0)
-    if not tool_id:
+    service_id = int(getattr(messenger, "service_id", 0) or 0)
+    if not service_id:
         return None
-    user = await directory.resolve_user(tool_id, user_id)
+    user = await directory.resolve_user(service_id, user_id)
     return user.agent_id
 
 
@@ -671,7 +671,7 @@ async def mcp_send_audio_message(
 ) -> dict[str, Any]:
     """Generate an MP3 from ``message`` and post it to the user's latest room."""
     from app.llm.tts_service import TTSNotConfigured
-    from app.tools import RecoverableToolError
+    from app.services import RecoverableToolError
 
     tool_language = await _context_language(ctx)
     try:
@@ -893,11 +893,11 @@ async def mcp_search_users(ctx: McpToolContext, query: str = "") -> str:
         (
             f"{user.display_name or user.external_id} (id: {user.id}; "
             f"external_id: {user.external_id}; connection_id: {connection_id}; "
-            f"tool_id: {tool_id}; channel: {platform}; "
+            f"service_id: {service_id}; channel: {platform}; "
             f"type: {'agent' if user.agent_id is not None else 'bot' if user.is_ai else 'human'}"
             f"{'; agent_id: ' + str(user.agent_id) if user.agent_id is not None else ''})"
         )
-        for connection_id, tool_id, platform, user in users
+        for connection_id, service_id, platform, user in users
     ]
     return "\n".join(user_lines) or _message(language, "no_users")
 

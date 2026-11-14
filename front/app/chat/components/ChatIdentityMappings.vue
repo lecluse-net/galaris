@@ -10,25 +10,25 @@
     </q-card-section>
     <q-separator />
     <q-list v-if="mappings.length" separator>
-      <q-item v-for="mapping in mappings" :key="mapping.tool_id" class="identity-row">
+      <q-item v-for="mapping in mappings" :key="mapping.service_id" class="identity-row">
         <q-item-section>
           <q-item-label class="row items-center q-gutter-xs">
-            <span>{{ mapping.tool_label }}</span>
+            <span>{{ mapping.service_label }}</span>
             <q-badge outline color="grey-7" :label="t(sourceTranslationKey(mapping.source))" />
           </q-item-label>
           <q-input
-            v-model.trim="externalIds[mapping.tool_id]"
+            v-model.trim="externalIds[mapping.service_id]"
             dense
             outlined
             class="q-mt-sm"
             :label="t('chat.identity.externalId')"
             :hint="mapping.display_name && mapping.display_name !== mapping.external_id ? mapping.display_name : undefined"
-            @keyup.enter="save(mapping.tool_id)"
+            @keyup.enter="save(mapping.service_id)"
           />
         </q-item-section>
         <q-item-section side top class="identity-actions">
-          <q-btn flat round dense color="primary" icon="save" :loading="savingToolId === mapping.tool_id" :aria-label="t('common.save')" @click="save(mapping.tool_id)" />
-          <q-btn v-if="mapping.external_id" flat round dense color="negative" icon="link_off" :disable="savingToolId !== null" :aria-label="t('chat.identity.unlink')" @click="clear(mapping.tool_id)" />
+          <q-btn flat round dense color="primary" icon="save" :loading="savingToolId === mapping.service_id" :aria-label="t('common.save')" @click="save(mapping.service_id)" />
+          <q-btn v-if="mapping.external_id" flat round dense color="negative" icon="link_off" :disable="savingToolId !== null" :aria-label="t('chat.identity.unlink')" @click="clear(mapping.service_id)" />
         </q-item-section>
       </q-item>
     </q-list>
@@ -57,7 +57,7 @@ async function load(): Promise<void> {
   loading.value = true
   try {
     mappings.value = await chatService.identityMappings()
-    for (const mapping of mappings.value) externalIds[mapping.tool_id] = mapping.external_id ?? ''
+    for (const mapping of mappings.value) externalIds[mapping.service_id] = mapping.external_id ?? ''
   } catch (error) {
     $q.notify({ type: 'negative', message: apiErrorDetail(error) ?? t('chat.identity.loadError') })
   } finally {

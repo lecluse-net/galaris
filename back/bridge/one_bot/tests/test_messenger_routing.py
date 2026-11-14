@@ -25,8 +25,8 @@ def _event(message_type: str, *, remote_id: str = "42") -> OneBotMessage:
 
 
 def test_group_and_direct_rooms_with_same_remote_id_do_not_collide() -> None:
-    group = onebot_to_message(_event("group"), tool_id=3, connection_id=19)
-    direct = onebot_to_message(_event("private"), tool_id=3, connection_id=19)
+    group = onebot_to_message(_event("group"), service_id=3, connection_id=19)
+    direct = onebot_to_message(_event("private"), service_id=3, connection_id=19)
 
     assert group.room is not None and group.room.id == "group:42"
     assert group.room.kind == "group"
@@ -43,7 +43,7 @@ def test_standard_numeric_identifiers_are_normalized(message_type):
     if message_type == "group":
         payload["group_id"] = 42
     event = OneBotMessage.model_validate(payload)
-    observed = onebot_to_message(event, tool_id=3, connection_id=19)
+    observed = onebot_to_message(event, service_id=3, connection_id=19)
     assert observed.id == "-123"
     assert observed.sender.id == "420"
     assert observed.recipient.id == "700"
@@ -53,7 +53,7 @@ def test_standard_numeric_identifiers_are_normalized(message_type):
 def test_group_event_without_group_id_is_rejected():
     event = _event("group").model_copy(update={"group_id": None})
     with pytest.raises(ValueError, match="conversation"):
-        onebot_to_message(event, tool_id=3, connection_id=19)
+        onebot_to_message(event, service_id=3, connection_id=19)
 
 
 @pytest.mark.asyncio
@@ -71,7 +71,7 @@ async def test_send_to_room_dispatches_by_namespaced_kind_and_keeps_remote_id() 
     }
     messenger = OneBotMessenger(
         cast(OneBot, client),
-        tool_id=3,
+        service_id=3,
         self_id="bot",
         connection_id=19,
     )
@@ -96,7 +96,7 @@ async def test_direct_history_uses_private_history_action() -> None:
     client.get_private_msg_history.return_value = [outgoing]
     messenger = OneBotMessenger(
         cast(OneBot, client),
-        tool_id=3,
+        service_id=3,
         self_id="bot",
         connection_id=19,
         agent_id=7,
@@ -122,7 +122,7 @@ async def test_failed_or_incomplete_send_is_not_reported_as_delivered() -> None:
     }
     messenger = OneBotMessenger(
         cast(OneBot, client),
-        tool_id=3,
+        service_id=3,
         self_id="bot",
         connection_id=19,
     )

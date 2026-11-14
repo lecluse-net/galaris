@@ -8,13 +8,13 @@ from fastmcp.client import Client
 from sqlalchemy import select
 
 from app.chat import events
-from app.connection import Connection, ConnectionFunctionState, ToolFunctionState
+from app.connection import Connection, ConnectionFunctionState, ServiceFunctionState
 from app.conversation import ConversationTurn
 from app.document import document_service
 from app.messenger import create_internal_room
-from app.tools import ToolModel
-from app.tools.agent_registry import build_agent_tool_advertisement
-from app.tools.mcp_loader import build_agent_galaris_fastmcp
+from app.services import ServiceModel
+from app.services.agent_registry import build_agent_tool_advertisement
+from app.services.mcp_loader import build_agent_galaris_fastmcp
 from core.settings import settings
 
 
@@ -23,14 +23,14 @@ async def display_scope(db, agents, memory_storage, monkeypatch):
     agent, other = agents
     conversation_connection = None
     for code in ("chat", "conversation", "memory"):
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == code))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == code))
         if tool is None:
-            tool = ToolModel(code=code, label=code, connection_schema={},
+            tool = ServiceModel(code=code, label=code, connection_schema={},
                              messenger_config={"service": "internal"} if code == "chat" else None)
             db.add(tool)
             await db.flush()
         tool.conversation_enabled = code != "memory"
-        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=code != "memory")
+        connection = Connection(service_id=tool.id, agent_id=agent.id, active=code != "memory")
         db.add(connection)
         if code == "conversation":
             conversation_connection = connection
@@ -70,8 +70,8 @@ async def test_show_document_honors_function_policy_without_changing_content_or_
             ConnectionFunctionState(
                 connection_id=connection.id, function_name="document_show", enabled=False,
             ),
-            ToolFunctionState(
-                tool_id=connection.tool_id, function_name="document_show", enabled=False,
+            ServiceFunctionState(
+                service_id=connection.service_id, function_name="document_show", enabled=False,
             ),
         ])
         await db.flush()
@@ -125,21 +125,21 @@ async def test_show_document_is_absent_outside_its_authorized_context(display_sc
     elif case == "external":
         room = await db.get(Room, turn.room_id)
         chat_connection = await db.get(Connection, room.connection_id)
-        tool = await db.get(ToolModel, chat_connection.tool_id)
+        tool = await db.get(ServiceModel, chat_connection.service_id)
         tool.code = "external-chat-test"
         tool.messenger_config = {"service": "nextcloud_talk"}
     elif case == "inactive":
         connection.active = False
     elif case == "memory_only":
         connection.active = False
-        memory_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "memory"))
+        memory_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "memory"))
         memory_tool.conversation_enabled = True
         memory_connection = await db.scalar(select(Connection).where(
-            Connection.tool_id == memory_tool.id, Connection.agent_id == agent.id,
+            Connection.service_id == memory_tool.id, Connection.agent_id == agent.id,
         ))
         memory_connection.active = True
     elif case == "conversation_disabled":
-        tool = await db.get(ToolModel, connection.tool_id)
+        tool = await db.get(ServiceModel, connection.service_id)
         tool.conversation_enabled = False
     await db.flush()
     async with Client(await server_for(agent, turn, conversation_only=case != "task")) as client:

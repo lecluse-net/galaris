@@ -10,7 +10,7 @@ from pydantic import SecretStr, ValidationError
 
 from app.agent import get_agent_record
 from app.connection import Connection, connection_service
-from app.tools import tool_service
+from app.services import service
 from core.user import user_service
 
 from .contracts import MailConnectionConfig, MailEndpointConfig, MailSecurity
@@ -95,7 +95,7 @@ async def _config_from_connection(
     *,
     require_active: bool,
 ) -> MailConnectionConfig:
-    tool = await tool_service.get_tool_by_id(connection.tool_id)
+    tool = await service.get_service_by_id(connection.service_id)
     if tool is None or tool.mail is None:
         raise ValueError("Connection is not a Mail connection")
     if require_active and not connection.active:
@@ -177,7 +177,7 @@ async def resolve_connection(
 
 
 async def resolve_mail_connection(agent_id: int) -> MailConnectionConfig:
-    from app.tools import current_protocol_connection, resolve_protocol_connection
+    from app.services import current_protocol_connection, resolve_protocol_connection
     selected = current_protocol_connection("mail", agent_id)
     if selected is None:
         selected = await resolve_protocol_connection(agent_id, "mail")

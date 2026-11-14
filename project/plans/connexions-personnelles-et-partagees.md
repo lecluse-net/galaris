@@ -2,7 +2,7 @@
 
 - Statut : `design` — conception à relire ; aucune implémentation engagée.
 - Date : 2026-11-13.
-- Demande : permettre aux utilisateurs de posséder des connexions aux Tools, de les
+- Demande : permettre aux utilisateurs de posséder des connexions aux Services, de les
   partager avec plusieurs agents comme des documents et de définir des autorisations
   différentes pour chaque agent.
 - Ce plan ne constitue pas une autorisation d'implémenter, de synchroniser une base,
@@ -42,10 +42,10 @@ relire leurs contrats avant toute réalisation.
 | `back/app/share/{models,contracts,access,service}.py` | Contrats et stockage communs disponibles ; `connection` doit être ajouté aux types acceptés, y compris à la contrainte SQL. |
 | `back/app/document/{models,item_sharing,access}.py` | Référence pour la propriété, l'acteur humain, la gestion réservée du partage et les versions concurrentes. Les classements/répertoires documentaires ne concernent pas les connexions. |
 | `front/app/share/` | Sélecteur de propriétaire, panneau, destinataires et contrôleur asynchrone réutilisables. |
-| `back/app/tools/{mcp_loader,mcp_authorization,authorization,protocols}.py` | Plusieurs contrôles exigent aujourd'hui `connection.agent_id == actor_agent_id`. Les remplacer par la résolution d'accès et de politique du véritable appelant. |
-| `back/app/connection/oauth_service.py` | La liaison OAuth inclut actuellement l'agent et le Tool ; préserver les grants existants demande une migration ou une compatibilité explicite. |
-| `back/app/tools/dbadmin.py`, `mandatory_tools.py` | La création des connexions système reste liée à chaque agent ; son idempotence doit être préservée. |
-| `back/app/connection/tests/test_mail_accounts.py` | Plusieurs comptes par fournisseur existent pour Mail. Les autres Tools ont une unicité agent/Tool ; plusieurs connexions accessibles rendent les sélections implicites ambiguës. |
+| `back/app/services/{mcp_loader,mcp_authorization,authorization,protocols}.py` | Plusieurs contrôles exigent aujourd'hui `connection.agent_id == actor_agent_id`. Les remplacer par la résolution d'accès et de politique du véritable appelant. |
+| `back/app/connection/oauth_service.py` | La liaison OAuth inclut actuellement l'agent et le Service ; préserver les grants existants demande une migration ou une compatibilité explicite. |
+| `back/app/services/dbadmin.py`, `mandatory_services.py` | La création des connexions système reste liée à chaque agent ; son idempotence doit être préservée. |
+| `back/app/connection/tests/test_mail_accounts.py` | Plusieurs comptes par fournisseur existent pour Mail. Les autres Services ont une unicité agent/Service ; plusieurs connexions accessibles rendent les sélections implicites ambiguës. |
 
 Références : [partage commun](../decisions/0200-exclusive-resource-sharing.md),
 [protocoles fournisseurs](../decisions/0274-provider-tool-protocols.md),
@@ -57,7 +57,7 @@ autoritaires ; le présent plan décrit une cible non réalisée.
 
 ### Connexion commune
 
-Conserver `connections.id` et `tool_id`. Ajouter un libellé permettant de distinguer
+Conserver `connections.id` et `service_id`. Ajouter un libellé permettant de distinguer
 plusieurs comptes, `owner_user_id` / `owner_agent_id`, une référence exclusive de
 partage de type `connection` et une version pour les mutations concurrentes.
 Les deux propriétaires sont des FK réelles ; une contrainte exige exactement un
@@ -89,7 +89,7 @@ attendu est le suivant :
 | Propriétaire et destinataires | Connexion et `app.share` |
 | Activation locale, surcharge Actif/Bloqué/Sur demande | Usage de cette connexion par cet agent |
 | Décision ponctuelle, accord mémorisé, contexte d'exécution | Mécanismes existants d'autorisation, toujours liés à l'agent réel |
-| Portée administrative, notamment `tools.management_scope` | Délégation propre à l'agent ; jamais un secret ou un pouvoir commun hérité du propriétaire |
+| Portée administrative, notamment `services.management_scope` | Délégation propre à l'agent ; jamais un secret ou un pouvoir commun hérité du propriétaire |
 
 Une ligne d'usage ne constitue jamais un droit d'accès. Les partages d'équipe et Public
 restent évalués à la demande ; ne pas matérialiser leurs membres comme des grants directs.
@@ -97,7 +97,7 @@ Sans état local enregistré, appliquer les défauts existants. Créer l'état l
 lorsqu'un réglage le nécessite, sans multiplier les lignes à chaque lecture.
 
 La cascade de fonctions devient : surcharge de l'agent pour cette connexion, puis
-règle globale du Tool, puis défaut logiciel. Ne pas ajouter un niveau commun de
+règle globale du Service, puis défaut logiciel. Ne pas ajouter un niveau commun de
 fonctions qui modifierait silencieusement cette cascade. Les anciens réglages locaux
 seront transférés uniquement à l'agent historique ; ils ne deviendront pas les droits
 de tous les nouveaux destinataires. Couvrir outils, ressources et prompts.
@@ -130,7 +130,7 @@ de tous les nouveaux destinataires. Couvrir outils, ressources et prompts.
 
 Introduire dans la façade Connection une résolution explicite de la connexion pour
 l'acteur. Pour un agent, elle vérifie le propriétaire ou les grants effectifs, l'activation
-globale, l'activation locale, le Tool, puis la politique de fonction de cet agent.
+globale, l'activation locale, le Service, puis la politique de fonction de cet agent.
 Chaque frontière d'exécution utilise cette résolution ; la présence dans le catalogue
 ou dans un cache ne suffit pas à autoriser un appel.
 
@@ -144,10 +144,10 @@ Inventorier et traiter les consommateurs par groupes :
    sélection du compte et ACL des ressources du domaine.
 4. Flux persistants : listeners, polling, webhooks, connexions Messenger/voix, sessions
    distantes, synchronisation et reprises après interruption.
-5. Administration : ToolAdmin, AgentAdmin, portées locales, permissions, synchronisation
-   des connexions obligatoires et suppression d'un Tool.
+5. Administration : ServiceAdmin, AgentAdmin, portées locales, permissions, synchronisation
+   des connexions obligatoires et suppression d'un Service.
 
-Avec plusieurs connexions accessibles au même Tool, annoncer leur identité et leur
+Avec plusieurs connexions accessibles au même Service, annoncer leur identité et leur
 libellé ; exiger une sélection exacte si le contexte ne désigne pas déjà le compte.
 Ne jamais choisir arbitrairement la connexion propriétaire plutôt qu'une partagée.
 Conserver les URI existantes et leur rattachement au bon compte.
@@ -192,7 +192,7 @@ Le retrait définitif des sources attend une livraison ultérieure qualifiée.
 
 Pour chaque connexion historique :
 
-- Conserver son `id`, son Tool, ses paramètres, leur chiffrement, son activation et
+- Conserver son `id`, son Service, ses paramètres, leur chiffrement, son activation et
   toutes les FK dépendantes, URI, journaux, reçus et historiques associés.
 - Initialiser `owner_agent_id` avec l'ancien `agent_id`, sans transfert automatique
   à son responsable humain, et créer un partage privé exclusif sans nouveau destinataire.
@@ -249,7 +249,7 @@ réversibilité par changement de branche après de nouvelles écritures.
 
 Réutiliser les formulaires de paramètres et OAuth actuels, `OwnerSelect` et le panneau
 de partage commun. Prévoir « Mes connexions » et « Partagées avec moi », avec propriétaire,
-Tool, compte et droits effectifs. Une vue agent affiche ses connexions propres et
+Service, compte et droits effectifs. Une vue agent affiche ses connexions propres et
 partagées et ses autorisations locales ; elle distingue clairement une modification
 de compte commune d'une modification de permissions pour cet agent seulement.
 
@@ -293,7 +293,7 @@ Ne pas créer un éditeur spécial de paramètres pour les connexions humaines.
 | L'accès retiré est réellement perdu, même avec un ancien catalogue ou accord | Tests d'exécution après retrait direct, sortie d'équipe, désactivation locale/globale, attente humaine et reprise ; conserver les droits accordés par une autre source |
 | Une permission locale ne suffit pas sans partage | Conserver une ligne d'usage et tenter l'appel après suppression du dernier droit d'accès |
 | Le bon compte est utilisé et les secrets restent côté serveur | Plusieurs comptes accessibles, refus d'ambiguïté, appels et URI exacts, inspection des réponses et erreurs ; OAuth avec fournisseur simulé à la frontière |
-| Le partage ne délègue pas l'administration du propriétaire | Tests négatifs ToolAdmin/AgentAdmin, portée locale, actions humaines réservées et identité réelle de l'appelant |
+| Le partage ne délègue pas l'administration du propriétaire | Tests négatifs ServiceAdmin/AgentAdmin, portée locale, actions humaines réservées et identité réelle de l'appelant |
 | Les événements entrants et synchronisations ne sont pas dupliqués | Réception unique, routage explicite, redelivery, reprise et retrait d'un destinataire avec maintien des autres |
 | La migration conserve les contrats et peut reprendre | Base PostgreSQL isolée : ancien binaire réellement publié peuplé de données synthétiques, pipeline Atlas réel, comparaison des droits/identités, pannes et rejeu après révocation |
 | L'interface reste utilisable après erreurs et changements de contexte | Composants réels et quelques E2E : chargement/vide/existant, refus, retry, sauvegarde, partage concurrent, navigation et réouverture ; contrôle clavier/mobile et erreurs réseau |
@@ -301,7 +301,7 @@ Ne pas créer un éditeur spécial de paramètres pour les connexions humaines.
 Étendre d'abord les suites existantes : `app/share/tests`,
 `app/connection/tests/test_connections.py`, `test_function_states.py`,
 `test_mcp_oauth.py`, `test_mail_accounts.py`, les tests d'autorisations et de chargement
-dans `app/tools/tests`, puis les tests propres aux transports concernés. Ajouter une
+dans `app/services/tests`, puis les tests propres aux transports concernés. Ajouter une
 suite d'upgrade Connection si aucune suite existante ne couvre ce transfert.
 Toutes les fixtures sont synthétiques. Les tests d'interaction protègent les droits,
 les effets et les reprises, sans figer la présentation.

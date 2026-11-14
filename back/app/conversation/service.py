@@ -257,7 +257,7 @@ async def admit_message(
         ConversationRound.contact_authorization_pending.is_(False),
     ).with_for_update())).all()
     if waiting:
-        from app.tools.facade import invalidate_authorization_context
+        from app.services.facade import invalidate_authorization_context
         for previous in waiting:
             await invalidate_authorization_context(agent_id, f"round:{previous.id}")
             if previous.status == "PAUSED" or not previous.effect_started:
@@ -791,7 +791,7 @@ async def build_turn(
     pending_choices = await list_pending_choices(
         agent_id=connection.agent_id,
         connection_id=room.connection_id,
-        tool_id=newest.tool_id,
+        service_id=newest.service_id,
         room_id=str(room.id),
         user_id=newest.sender_external_id,
     )
@@ -802,7 +802,7 @@ async def build_turn(
     from .facade import active_work_snapshot
 
     async def save_checkpoint(checkpoint: AgentRunCheckpoint) -> None:
-        from app.tools.facade import canonical_authorization_snapshot
+        from app.services.facade import canonical_authorization_snapshot
         async with get_db_session():
             owned = await _locked_owned_round(round_id, lease_token)
             owned.encrypted_checkpoint = get_encryption_service().encrypt(canonical_authorization_snapshot(checkpoint))
@@ -819,13 +819,13 @@ async def build_turn(
         messaging_context={
             "round_id": str(round_.id),
             "connection_id": room.connection_id,
-            "tool_id": newest.tool_id,
+            "service_id": newest.service_id,
             "platform": newest.platform or "messenger",
             "room_id": str(room.id),
             "room_locator": newest.room_external_id,
             "room_label": room.label,
             "room_kind": room.kind,
-            "tool_code": newest.tool_code,
+            "service_code": newest.service_code,
             "participant_id": newest.sender_external_id,
             "requester_user_id": hydrated[-1].requester_user_id,
             "voice_session_id": str(round_.voice_session_id) if round_.voice_session_id else None,
@@ -1993,7 +1993,7 @@ async def deliver_process_notification(link_id: UUID) -> None:
 async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
     if not context_key.startswith("round:"):
         return False
-    from app.tools.facade import authorization_context_pending, invalidate_authorization_context
+    from app.services.facade import authorization_context_pending, invalidate_authorization_context
     from .facade import wake
     async with get_db_session():
         round_ = await get_db().scalar(select(ConversationRound).where(
@@ -2035,7 +2035,7 @@ async def _authorization_context_snapshot(agent_id: int, context_key: str) -> di
     return {"round_id": str(round_.id), "room_id": str(round_.room_id)}
 
 
-from app.tools.facade import register_authorization_waker, register_authorization_context_guard
+from app.services.facade import register_authorization_waker, register_authorization_context_guard
 register_authorization_waker("conversation", _wake_authorization_context)
 register_authorization_context_guard("round", _authorization_context_snapshot)
 
@@ -2151,7 +2151,7 @@ async def control_round(
             response_only=round_.response_only,
         )
         if checkpoint is not None:
-            from app.tools.facade import canonical_authorization_snapshot
+            from app.services.facade import canonical_authorization_snapshot
             successor.encrypted_checkpoint = get_encryption_service().encrypt(
                 canonical_authorization_snapshot(replace(checkpoint, runtime_run_id=str(successor.id)))
             )

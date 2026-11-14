@@ -1,7 +1,7 @@
 """MCP owns the reusable principal; Tools owns the per-run authority."""
 from sqlalchemy import select
 
-from app.tools.facade import RuntimePrincipal, register_runtime_principal_port
+from app.services.facade import RuntimePrincipal, register_runtime_principal_port
 from core.database import get_db
 
 from .models import AgentMcpToken

@@ -14,14 +14,14 @@ from sqlalchemy.orm import defer
 from app.connection import facade as connections
 from app.contact.facade import is_known_mail_contact
 from app.messenger import Message, dispatch_incoming, register_inbound_contact_authorizer
-from app.tools.facade import (
+from app.services.facade import (
     AuthorizationAction, AuthorizationClosed, AuthorizationRequired, AuthorizationReview,
-    authorization_reviews, claim_action, finish_action, get_tool_by_id,
+    authorization_reviews, claim_action, finish_action, get_service_by_id,
     register_authorization_context_guard, register_authorization_waker,
     register_runtime_authorization_waiter,
     tool_authorization_configuration, authorization_fingerprint, wake_authorization_context,
 )
-from app.tools.contracts import ToolCallRejectedError, current_tool_execution
+from app.services.contracts import ToolCallRejectedError, current_tool_execution
 from core.database import get_db
 
 from .connection_service import resolve_connection
@@ -104,7 +104,7 @@ async def authorize_receipt(row: MailInboundReceipt) -> None:
     config = await resolve_connection(connection.id, require_active=True)
     config.require_mailbox(MailMessageRef.decode(row.message_ref).mailbox)
     policy = await connections.resolve_function(connection, PROCESS_NAME)
-    tool = await get_tool_by_id(connection.tool_id)
+    tool = await get_service_by_id(connection.service_id)
     if tool is None:
         raise PermissionError("Mail tool is no longer available")
     _, params = await connections.get_params_as_dict(connection.id)
@@ -134,7 +134,7 @@ async def authorize_receipt(row: MailInboundReceipt) -> None:
         action = AuthorizationAction(
             agent_id=row.agent_id, runtime="internal", source="mcp",
             context_key=f"{_CONTEXT_PREFIX}:{row.id}", callback_key=str(row.id),
-            name=PROCESS_NAME, tool_id=connection.tool_id, connection_id=connection.id,
+            name=PROCESS_NAME, service_id=connection.service_id, connection_id=connection.id,
             arguments={"sender": row.sender_address, "subject": row.subject,
                        "message_ref": row.message_ref},
             configuration=configuration,
@@ -226,7 +226,7 @@ async def process_receipt(identifier: UUID) -> None:
         from .messenger import MailMessenger
 
         summary = MailMessageSummary.model_validate(row.summary)
-        await dispatch_incoming(MailMessenger(config, tool_id=connection.tool_id).message(summary))
+        await dispatch_incoming(MailMessenger(config, service_id=connection.service_id).message(summary))
         row.status, row.error = "admitted", None
         row.admitted_at = datetime.now(timezone.utc)
         await db.commit()

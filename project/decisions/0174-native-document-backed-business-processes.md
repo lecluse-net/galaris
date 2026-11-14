@@ -65,7 +65,7 @@ Son XML, son graphe compilé et la révision documentaire sont figés dans le Ru
 l'observation et la reprise ; aucun paramètre de lancement ne sélectionne une version.
 Une restauration produit une nouvelle sauvegarde documentaire.
 
-Le profil `galaris.bpmn/v1` accepte Tasks, Tools déclarés, appels, XOR, AND,
+Le profil `galaris.bpmn/v1` accepte Tasks, Services déclarés, appels, XOR, AND,
 FOR séquentiel et WHILE. Les boucles ont des corps structurés ;
 les cycles bruts et les éléments BPMN non exécutables par ce moteur sont refusés.
 Les appels de processus utilisent des Runs enfants durables, sans récursion Python
@@ -74,9 +74,9 @@ des slots de harnais et de l'attente collaborative.
 
 Chaque tentative d'activité possède une intention et une identité persistées avant
 l'effet. Les admissions Tasks/Runs se réattachent avec cette identité après interruption.
-Une opération Tool sans reçu certain ne se rejoue pas automatiquement. Les Tools passent
+Une opération Service sans reçu certain ne se rejoue pas automatiquement. Les Services passent
 par la gouvernance MCP commune et les Connections ; les agents ne reçoivent pas les secrets.
-Une API REST doit être une opération déclarée d'un Tool connecté, jamais une URL libre
+Une API REST doit être une opération déclarée d'un Service connecté, jamais une URL libre
 dans le graphe. L'exécuteur de programmes documentaires possède un port public distinct,
 activable seulement par son module qualifié.
 
@@ -99,7 +99,7 @@ Les mocks externes restent une seconde phase, conformément à la demande utilis
 Il n'y a aucun budget Process v1 de coût, tokens, durée, profondeur ou itérations.
 Les limites de parsing/transport et les quanta de scheduling sont des protections techniques.
 
-Les dépendances supplémentaires passent par les ports publics Memory, Task, Tools et Process.
+Les dépendances supplémentaires passent par les ports publics Memory, Task, Services et Process.
 Le fan-out autorisé de Process augmente pour inclure son propriétaire documentaire Memory ;
 aucun import privé ni cycle supplémentaire n'est accepté. Revue explicite de la dépendance
 frontend `app/process → app/memory` : l'éditeur utilise uniquement l'export public du
@@ -129,7 +129,7 @@ le JSON courant via `data`. Les révisions documentaires existantes protègent l
 concurrentes ; une tâche doit relire après conflit et préserver les modifications reçues.
 La sortie du Run est le contenu du Dataset à sa fin. Les appels initialisent un pool
 enfant distinct avec les données et fichiers courants du parent, sans recopie automatique
-des modifications de l'enfant. Les arguments des opérations Tool restent configurables.
+des modifications de l'enfant. Les arguments des opérations Service restent configurables.
 
 ### Arrêt à la première erreur — 2026-10-13
 

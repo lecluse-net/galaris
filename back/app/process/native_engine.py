@@ -95,7 +95,7 @@ class NativeProcessEngine:
     refresh_timeout_seconds = 45.0
 
     async def health(self) -> ProcessEngineHealth:
-        return ProcessEngineHealth(tool_code=self.code, status="healthy", reachable=True,
+        return ProcessEngineHealth(service_code=self.code, status="healthy", reachable=True,
             authenticated=True, supports_cancel=True, cancel_mode="supported",
             message="Durable internal BPMN engine", checked_at=now())
 
@@ -585,7 +585,7 @@ class NativeProcessEngine:
             if attempt.status == "tool_ready":
                 return None
             if attempt.status == "authorization":
-                from app.tools.facade import authorization_status
+                from app.services.facade import authorization_status
                 authorization = (attempt.receipt or {}).get("authorization", {})
                 if await authorization_status(UUID(str(authorization["request_id"])), agent_id=assigned_agent) == "pending":
                     return None
@@ -724,9 +724,9 @@ class NativeProcessEngine:
         elif node.kind == "tool_call":
             if attempt.status == "started":
                 raise ValueError("Tool effect outcome is unknown; reconcile it before retrying")
-            from app.tools.facade import execute_workflow_tool
+            from app.services.facade import execute_workflow_tool
             if attempt.status == "authorization":
-                from app.tools.facade import authorization_status
+                from app.services.facade import authorization_status
                 authorization = (attempt.receipt or {}).get("authorization", {})
                 if await authorization_status(UUID(str(authorization["request_id"])), agent_id=assigned_agent) == "pending":
                     return None
@@ -808,7 +808,7 @@ class NativeProcessEngine:
                     raise ProcessEngineError("effect_outcome_unknown", "REST outcome is unknown; reconcile before retrying")
             if attempt.status == "rest_ready":
                 return None
-            from app.tools.facade import RestRequest
+            from app.services.facade import RestRequest
             plain_input = {key: unwrap(value) for key, value in attempt.input.items()}
             request = RestRequest.model_validate(resolve(node.config.get("request", {}), {"input": plain_input}))
             attempt.status = "rest_ready"

@@ -32,7 +32,7 @@ from app.memory.schemas import MemoryItemCreate, MemoryPayload
 from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.messenger import Message, Room
 from app.task import Task, TaskStatus
-from app.tools import ToolModel
+from app.services import ServiceModel
 from tests.sql_reads import measured_reads
 
 
@@ -48,9 +48,9 @@ async def seed_reachable_directory(db, count):
     db.add_all(agents)
     await db.flush()
     owner, other = agents
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
     assert tool is not None
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = await create_internal_room(actor_user_id=owner.user_id, agent_id=owner.id)
@@ -197,9 +197,9 @@ async def test_empty_reachable_search_skips_canonical_history_and_reopens_with_a
     assert len(reads) <= 1, "An empty route search must not scan the canonical contact history"
     assert await db.scalar(select(func.count(MemoryItem.id)).where(MemoryItem.owner_agent_id == owner.id)) == count
 
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
     assert tool is not None
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = await create_internal_room(actor_user_id=owner.user_id, agent_id=owner.id)
@@ -425,7 +425,7 @@ async def test_merge_repoints_identities_memory_and_conversation_lineage(
             ]
         )
 
-        tool = ToolModel(
+        tool = ServiceModel(
             code=f"contact-test-{suffix}",
             label="Contact test",
             description="",
@@ -433,7 +433,7 @@ async def test_merge_repoints_identities_memory_and_conversation_lineage(
         )
         db.add(tool)
         await db.flush()
-        connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
         db.add(connection)
         await db.flush()
         room = Room(
@@ -605,7 +605,7 @@ async def test_forget_erases_contact_memories_and_clears_conversation_lineage(
             source_ref=f"task:{uuid4()}",
         )
 
-        tool = ToolModel(
+        tool = ServiceModel(
             code=f"contact-forget-test-{suffix}",
             label="Contact forget test",
             description="",
@@ -613,7 +613,7 @@ async def test_forget_erases_contact_memories_and_clears_conversation_lineage(
         )
         db.add(tool)
         await db.flush()
-        connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
         db.add(connection)
         await db.flush()
         room = Room(

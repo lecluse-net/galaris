@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
 from app.connection.models import Connection
-from app.tools.models import Tool
+from app.services.models import Service
 from bridge.mail import dbadmin
 from bridge.mail.models import MailOutboundDelivery
 from core.dbadmin import DbAdminRegistry, SchemaTransitionSet
@@ -33,7 +33,7 @@ def test_agent_snapshot_action_only_targets_the_new_column() -> None:
 @pytest.mark.asyncio
 async def test_agent_snapshot_backfill_is_idempotent(db: AsyncSession) -> None:
     title = Title(label="Agent", gender="N")
-    tool = Tool(code="mail-dbadmin-test", label="Mail")
+    tool = Service(code="mail-dbadmin-test", label="Mail")
     db.add_all([title, tool])
     await db.flush()
     agent = Agent(
@@ -44,7 +44,7 @@ async def test_agent_snapshot_backfill_is_idempotent(db: AsyncSession) -> None:
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     delivery = MailOutboundDelivery(

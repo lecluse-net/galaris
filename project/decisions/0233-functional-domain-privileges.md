@@ -41,7 +41,7 @@ Provider configuration, OAuth and server-side model installation/deletion retain
 `LLM_PROVIDER_*`. Model editors can discover providers and their resource metadata without
 editing provider credentials. Profiles and call displays can read the configured model
 catalogue for selection and labels. Assignment managers have minimal user/role lookups;
-permission editors have scoped connection/Tool metadata without connection parameters.
+permission editors have scoped connection/Service metadata without connection parameters.
 Task settings can read pipeline eligibility metadata without full harness configuration.
 These bounded reads never confer the neighbouring domain's mutation privileges.
 

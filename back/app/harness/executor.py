@@ -20,7 +20,7 @@ from app.agent.contracts import (
     AIResult,
     AIMessage,
 )
-from app.tools.agent_registry import (
+from app.services.agent_registry import (
     build_agent_tool_advertisement,
     build_tool_context_instructions,
 )

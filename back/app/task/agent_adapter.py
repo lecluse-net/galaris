@@ -688,7 +688,7 @@ async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
     if not context_key.startswith("task:"):
         return False
     from core.database import get_db_session
-    from app.tools.facade import authorization_status
+    from app.services.facade import authorization_status
     try:
         task_id = UUID(context_key.removeprefix("task:"))
     except ValueError:
@@ -764,8 +764,8 @@ async def _deferred_authorization_snapshot(agent_id: int, context_key: str) -> d
     return {"task_id": str(task.id), "objective": task.objective, "effort": task.effort}
 
 
-from app.tools.facade import register_authorization_waker, register_authorization_context_guard, register_authorization_dispatch_guard, register_deferred_authorization_guard
-from app.tools.facade import register_runtime_dispatch_guard
+from app.services.facade import register_authorization_waker, register_authorization_context_guard, register_authorization_dispatch_guard, register_deferred_authorization_guard
+from app.services.facade import register_runtime_dispatch_guard
 register_runtime_dispatch_guard("task", _runtime_dispatch_ready)
 register_deferred_authorization_guard("task", _deferred_authorization_snapshot)
 register_authorization_dispatch_guard("task", _authorization_dispatch_available)

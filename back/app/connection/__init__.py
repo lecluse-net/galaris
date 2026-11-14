@@ -1,7 +1,7 @@
 """Connections and their entity-attribute-value parameters."""
 
 # Models and schemas are always available.
-from .models import Connection, ConnectionParam, ConnectionFunctionState, ToolFunctionState
+from .models import Connection, ConnectionParam, ConnectionFunctionState, ServiceFunctionState
 from .schemas import (
     Connection as ConnectionSchema,
     ConnectionCreate,
@@ -24,7 +24,7 @@ __all__ = [
     "Connection",
     "ConnectionParam",
     "ConnectionFunctionState",
-    "ToolFunctionState",
+    "ServiceFunctionState",
     # Schemas.
     "ConnectionSchema",
     "ConnectionCreate",

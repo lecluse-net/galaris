@@ -13,7 +13,7 @@ from app.agent import Agent, Title
 from app.connection import Connection
 from app.connection import facade as connections
 from app.llm import LLM, LLMProvider, LlmProfile
-from app.tools import build_agent_galaris_fastmcp, sync_integrated_tool_connections, ToolModel
+from app.services import build_agent_galaris_fastmcp, sync_integrated_service_connections, ServiceModel
 from core.database import get_db_session
 
 router = APIRouter(prefix="/api/__test/agent-admin")
@@ -31,16 +31,16 @@ async def setup(caller_id: int) -> dict[str, int]:
         caller = await db.get(Agent, caller_id)
         if caller is None or not caller.code.startswith("browser-"):
             raise HTTPException(404, "Synthetic browser agent not found")
-        await sync_integrated_tool_connections(caller_id)
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == "agent_admin"))
-        connection = await db.scalar(select(Connection).where(Connection.agent_id == caller_id, Connection.tool_id == tool.id))
+        await sync_integrated_service_connections(caller_id)
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "agent_admin"))
+        connection = await db.scalar(select(Connection).where(Connection.agent_id == caller_id, Connection.service_id == tool.id))
         connection.active = True
-        await connections.set_params_bulk(connection.id, {"tools.management_scope": "all"},
+        await connections.set_params_bulk(connection.id, {"services.management_scope": "all"},
                                           commit=False, scope_edit_authorized=True)
         # This existing journey exercises portraits, with delegation explicitly granted.
-        from app.tools.mcp_loader import load_mcp_tools
+        from app.services.mcp_loader import load_mcp_tools
         for definition in load_mcp_tools():
-            if definition.tool_code == "agent_admin":
+            if definition.service_code == "agent_admin":
                 await connections.set_connection_function_state(connection.id, definition.name, "enabled")
         provider = LLMProvider(name=f"Synthetic portrait {uuid4().hex}", base_url="https://portrait.example.test")
         db.add(provider)
@@ -76,8 +76,8 @@ async def call(caller_id: int, function: str, arguments: dict[str, Any],
 @router.post("/{caller_id}/revoke")
 async def revoke(caller_id: int) -> dict[str, bool]:
     async with get_db_session() as db:
-        connection = await db.scalar(select(Connection).join(ToolModel).where(
-            Connection.agent_id == caller_id, ToolModel.code == "agent_admin"))
+        connection = await db.scalar(select(Connection).join(ServiceModel).where(
+            Connection.agent_id == caller_id, ServiceModel.code == "agent_admin"))
         connection.active = False
         await db.commit()
         return {"revoked": True}

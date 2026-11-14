@@ -6,9 +6,9 @@ Galaris can run all configured bridges of an agent simultaneously. The technical
 `nextcloud_talk`, `matrix`, `one_bot`, `telegram`, and `whatsapp`; the order displayed in
 **Preferences → Messaging** is used only to break ties between endpoints with no prior exchange.
 
-Messaging is enabled on a Tool chosen by the administrator. Agent-specific secrets are stored in
-the agent’s connection to that Tool and encrypted as `password` parameters. Invariant server
-values are stored in the Tool’s Messenger tab. The Tool code is unrestricted and does not determine
+Messaging is enabled on a Service chosen by the administrator. Agent-specific secrets are stored in
+the agent’s connection to that Service and encrypted as `password` parameters. Invariant server
+values are stored in the Service’s Messenger tab. The Service code is unrestricted and does not determine
 the bridge.
 
 **Test reception** checks only active connections for the displayed messaging provider.
@@ -29,11 +29,11 @@ a public URL is needed depends on the direction of the connection, not on the me
 | OneBot 11 | Depends on the adapter location | The adapter must reach the Galaris WebSocket; a local network or VPN is sufficient if it allows that connection. |
 
 For WhatsApp, Galaris can stay on the development machine: a public HTTPS tunnel to
-`/api/whatsapp/webhook/<tool_id>` is sufficient, without exposing the entire interface.
+`/api/whatsapp/webhook/<service_id>` is sufficient, without exposing the entire interface.
 Configure this public URL and its verify token in Meta. This bridge exclusively uses the
 official WhatsApp Business Cloud API; it does not connect a personal WhatsApp account.
 
-In **Preferences → Messaging** and a Tool’s **Messaging** tab, a notice explains the bridge’s
+In **Preferences → Messaging** and a Service’s **Messaging** tab, a notice explains the bridge’s
 network requirement. WhatsApp warns when the browser address is local, private or lacks HTTPS;
 OneBot warns for a local or private address without requiring public exposure. Detection recognizes
 `localhost`, short hostnames, common local suffixes, and private, loopback and link-local IPv4/IPv6
@@ -51,14 +51,14 @@ also need suitable WebRTC connectivity, potentially through TURN.
 
 1. Create the bot with [BotFather](https://t.me/BotFather) and retain its token.
 2. In **Configuration → Messaging → Telegram**, read the **Setup guide**, open by default for every messaging provider, and click
-   **Create Telegram Tool** (Tool editing rights required). This button is offered only
-   if no Tool already uses messaging through the `telegram` bridge, regardless of its code.
-   It prepares a Tool with code `telegram`, label `Telegram`, Messaging enabled with the `telegram` bridge,
+   **Create Telegram Service** (Service editing rights required). This button is offered only
+   if no Service already uses messaging through the `telegram` bridge, regardless of its code.
+   It prepares a Service with code `telegram`, label `Telegram`, Messaging enabled with the `telegram` bridge,
    and an empty, required secret connection parameter `token` mapped to the bridge token.
-   If a Tool already uses this bridge, create connections on that Tool. If only the code
-   `telegram` is occupied by another Tool, review its settings in **Tools** before continuing.
-3. The same configuration can be entered manually in **Tools**.
-4. In **Tools → Connections**, create a connection to this Tool for each agent and
+   If a Service already uses this bridge, create connections on that Service. If only the code
+   `telegram` is occupied by another Service, review its settings in **Services** before continuing.
+3. The same configuration can be entered manually in **Services**.
+4. In **Services → Connections**, create a connection to this Service for each agent and
    paste the token supplied by BotFather. Use a separate bot for each agent.
    The guide’s **Configure agent accounts** button opens this tab directly.
 5. Send a message to the bot from Telegram. Without an existing contact authorization, the
@@ -118,12 +118,12 @@ account and uses neither WhatsApp Web nor Baileys.
 5. Expose the following public URL over HTTPS:
 
    ```text
-   https://galaris.example/api/whatsapp/webhook/<tool_id>
+   https://galaris.example/api/whatsapp/webhook/<service_id>
    ```
 
 6. Configure this URL and the verify token in Meta, then subscribe the WABA to the `messages` field.
 
-In the Tool’s Messenger tab, select `whatsapp`, then enter `app_secret` and
+In the Service’s Messenger tab, select `whatsapp`, then enter `app_secret` and
 `verify_token`. In the connection schema, map `access_token` and
 `phone_number_id`; each agent connection provides its own values.
 
@@ -207,15 +207,15 @@ Reference: [Official Meta WhatsApp Business Platform collection](https://www.pos
 
 ### 1. Configure the homeserver and the agent account
 
-In **Preferences → Messaging → Matrix**, enter the homeserver. When no Tool already
-uses the `matrix` bridge, the guide offers **Create Matrix Tool** to users with Tool editing
-privileges. This button creates the `matrix` Tool, copies the entered homeserver and sets up
-the connection parameters below with empty credentials. An existing Matrix Tool hides creation
-regardless of its code; if another Tool already uses the `matrix` code, the guide asks you to
-review its configuration. Then open **Tools → Connections** to configure agent accounts.
+In **Preferences → Messaging → Matrix**, enter the homeserver. When no Service already
+uses the `matrix` bridge, the guide offers **Create Matrix Service** to users with Service editing
+privileges. This button creates the `matrix` Service, copies the entered homeserver and sets up
+the connection parameters below with empty credentials. An existing Matrix Service hides creation
+regardless of its code; if another Service already uses the `matrix` code, the guide asks you to
+review its configuration. Then open **Services → Connections** to configure agent accounts.
 
-The Tool selects `matrix` and carries the `homeserver` setting. The sync timeout remains a global
-technical parameter. Each agent uses its own connection to the Tool:
+The Service selects `matrix` and carries the `homeserver` setting. The sync timeout remains a global
+technical parameter. Each agent uses its own connection to the Service:
 
 - `user_id`: full bot identifier, for example `@agent:example.org`;
 - `token`: optional long-lived token;
@@ -259,7 +259,7 @@ The bridge supports:
 - bounded streaming upload and authenticated download, with fallback for older homeservers;
 - OGG/Opus voice notes sent as `m.audio`, with the voice marker understood by Element clients.
 
-Attachments retain the Matrix Tool URI and are downloaded only on demand into a server temporary
+Attachments retain the Matrix Service URI and are downloaded only on demand into a server temporary
 file that is cleaned up after the call. Names, advertised sizes, and actually transferred bytes are
 bounded. `m.notice` messages never create a Task, to prevent loops between bots. An `m.replace`
 edit is not interpreted as a new message.
@@ -275,9 +275,9 @@ Reference: [Matrix Client-Server specification](https://spec.matrix.org/latest/c
 
 ### 1. Configure the account and adapter
 
-1. In **Tools**, enable Messaging, select `one_bot` and enter the Tool’s `platform` setting,
+1. In **Services**, enable Messaging, select `one_bot` and enter the Service’s `platform` setting,
    for example `qq`.
-2. Map `user_id` and `token` to the connection schema. In **Tools → Connections**, each agent
+2. Map `user_id` and `token` to the connection schema. In **Services → Connections**, each agent
    provides its bot identifier and Bearer secret.
 3. Configure the adapter for **Universal reverse WebSocket**, with **segment array** messages.
    The endpoint is `wss://your-galaris/ws/onebot/<platform>/<user_id>`; `ws://` is suitable on a
@@ -286,7 +286,7 @@ Reference: [Matrix Client-Server specification](https://spec.matrix.org/latest/c
 4. Send `Authorization: Bearer <token>`, `X-Self-ID: <user_id>` and `X-Client-Role: Universal`.
    Separate `API` and `Event` connections are refused.
 
-The former global settings remain a compatibility mechanism; new configurations use the Tool
+The former global settings remain a compatibility mechanism; new configurations use the Service
 and its agents’ connections. **Test reception** calls `get_login_info` and verifies the bot’s
 identity; this check does not prove that a human message has arrived.
 
@@ -354,7 +354,7 @@ Prerequisites:
 - the room contains exactly the bot and one interlocutor;
 - signaling events are not encrypted;
 - the homeserver ideally exposes `/_matrix/client/v3/voip/turnServer` with TURN credentials;
-- the agent has an active connection to the `voice` Tool and a voice-compatible driver.
+- the agent has an active connection to the `voice` Service and a voice-compatible driver.
 
 Auto-answering respects `VOICE_AUTO_ANSWER_ENABLED` and the invitation duration. The `/sync` flow
 remains unique: an internal bus broadcasts call events to the transport to avoid two concurrent

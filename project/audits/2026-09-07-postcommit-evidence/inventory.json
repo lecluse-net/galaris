@@ -162,7 +162,7 @@
       "test_files": 20,
       "test_lines": 5250
     },
-    "back/app/tools": {
+    "back/app/services": {
       "files": 27,
       "lines": 7630,
       "test_files": 16,
@@ -594,7 +594,7 @@
       "test_files": 7,
       "test_lines": 573
     },
-    "front/app/tools": {
+    "front/app/services": {
       "files": 7,
       "lines": 2705,
       "test_files": 1,
@@ -796,7 +796,7 @@
     ],
     [
       1685,
-      "front/app/tools/components/ToolsList.vue"
+      "front/app/services/components/ServicesList.vue"
     ],
     [
       1628,
@@ -868,7 +868,7 @@
     ],
     [
       390,
-      "back/app/tools/resource_effects.py",
+      "back/app/services/resource_effects.py",
       65,
       "record_tool_resources"
     ],
@@ -970,7 +970,7 @@
     ],
     [
       202,
-      "back/app/tools/mcp_diagnostics.py",
+      "back/app/services/mcp_diagnostics.py",
       439,
       "diagnose_mcp_connection"
     ],

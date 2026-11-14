@@ -74,8 +74,8 @@ class BridgeSpec:
 class Messenger(ABC):
     """Unified internal interface implemented by every messaging backend."""
 
-    tool_id: int = 0
-    tool_code: str = ""
+    service_id: int = 0
+    service_code: str = ""
     kind: str = ""
     self_id: str = ""
     capabilities: Set[Capability] = set()

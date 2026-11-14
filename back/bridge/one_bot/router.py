@@ -33,10 +33,10 @@ async def _dispatch_onebot_event(
     *,
     connected_user_id: str | None = None,
     connection_id: int | None = None,
-    tool_id: int | None = None,
+    service_id: int | None = None,
     token: str | None = None,
 ) -> None:
-    """Resolve ``tool_id`` from the platform and deliver the canonical message.
+    """Resolve ``service_id`` from the platform and deliver the canonical message.
 
     Tool resolution needs a dedicated database session because WebSockets do not
     own one. The inbound handler then opens its own transaction boundary.
@@ -54,7 +54,7 @@ async def _dispatch_onebot_event(
         return
     if event.user_id == event.self_id:
         return
-    if connection_id is not None and tool_id is not None:
+    if connection_id is not None and service_id is not None:
         from core.database import get_db_session
         from app.messenger import resolve_messenger_configuration
 
@@ -63,14 +63,14 @@ async def _dispatch_onebot_event(
                 resolved = await resolve_messenger_configuration(connection_id, expected_service="one_bot")
             except ValueError:
                 return
-            if (resolved.tool_id != tool_id or resolved.settings.get("platform") != platform
+            if (resolved.service_id != service_id or resolved.settings.get("platform") != platform
                     or str(resolved.params.get("user_id") or "") != event.self_id
                     or (token is not None and not hmac.compare_digest(
                         token.encode(), str(resolved.params.get("token") or "").encode(),
                     ))):
                 return
         await dispatch_incoming(
-            onebot_to_message(event, tool_id, connection_id, agent_id=resolved.agent_id)
+            onebot_to_message(event, service_id, connection_id, agent_id=resolved.agent_id)
         )
         return
     matches: dict[int, tuple[int, Any]] = {}
@@ -87,7 +87,7 @@ async def _dispatch_onebot_event(
                     continue
                 param_map = cast(dict[str, Any], config.get("param_map") or {})
                 connections = await connection_service.get_connections_by_param(
-                    tool_id=int(record.id),
+                    service_id=int(record.id),
                     param_name=str(param_map.get("user_id") or "user_id"),
                     param_value=str(event.self_id),
                 )
@@ -109,8 +109,8 @@ async def _dispatch_onebot_event(
             platform,
         )
         return
-    connection_id, (tool_id, connection) = next(iter(matches.items()))
-    await dispatch_incoming(onebot_to_message(event, tool_id, connection_id, agent_id=connection.agent_id))
+    connection_id, (service_id, connection) = next(iter(matches.items()))
+    await dispatch_incoming(onebot_to_message(event, service_id, connection_id, agent_id=connection.agent_id))
 
 
 async def _authenticate_connection(
@@ -132,7 +132,7 @@ async def _authenticate_connection(
             param_map = cast(dict[str, Any], config.get("param_map") or {})
             param_name = str(param_map.get("user_id") or "user_id")
             connections = await connection_service.get_connections_by_param(
-                tool_id=int(record.id),
+                service_id=int(record.id),
                 param_name=param_name,
                 param_value=user_id,
             )
@@ -174,7 +174,7 @@ async def onebot_endpoint(websocket: WebSocket, platform: str, user_id: str) -> 
     if authenticated is None:
         await websocket.close(code=1008)
         return
-    connection_id, tool_id = authenticated
+    connection_id, service_id = authenticated
     header_self_id = str(websocket.headers.get("x-self-id") or "").strip()
     if header_self_id and header_self_id != user_id:
         await websocket.close(code=1008)
@@ -190,7 +190,7 @@ async def onebot_endpoint(websocket: WebSocket, platform: str, user_id: str) -> 
                 if drain_events or hub.is_current(platform, user_id, websocket, connection_id=connection_id, token=token):
                     await _dispatch_onebot_event(
                         platform, event, connected_user_id=user_id,
-                        connection_id=connection_id, tool_id=tool_id, token=token,
+                        connection_id=connection_id, service_id=service_id, token=token,
                     )
             except Exception as exc:
                 logger.warning("OneBot admission failed connection={} error={}", connection_id, type(exc).__name__)

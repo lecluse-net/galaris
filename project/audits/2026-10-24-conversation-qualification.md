@@ -68,7 +68,7 @@ ensuite **3/3**, sur les trois navigateurs. Firefox/WebKit remplacent uniquement
 du presse-papiers système ; Chromium utilise son presse-papiers réel.
 
 La recette complémentaire de portée et Process passe **15/15** : cinq scénarios dans chacun
-des trois navigateurs. Elle vérifie cinq Tools administratifs et les appels MCP réellement
+des trois navigateurs. Elle vérifie cinq Services administratifs et les appels MCP réellement
 limités au scope choisi, un IF humain après computation Dataset, les valeurs fausses et
 nullables, la réponse Chat avec fichier conservant son URI, et une activité humaine en
 attente reprise après un seul résultat. Les services, droits et effets persistés sont réels ;

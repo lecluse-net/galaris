@@ -353,6 +353,20 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//services/': RouteRecordInfo<
+      '//services/',
+      '/services',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '//services/legacy': RouteRecordInfo<
+      '//services/legacy',
+      '/tools',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//skill/': RouteRecordInfo<
       '//skill/',
       '/skill',
@@ -370,13 +384,6 @@ declare module 'vue-router/auto-routes' {
     '//team/': RouteRecordInfo<
       '//team/',
       '/team',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
-    '//tools/': RouteRecordInfo<
-      '//tools/',
-      '/tools',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -804,6 +811,22 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
+    'app/services/pages/index.vue': {
+      routes:
+        | '//services/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/services/pages/legacy.vue': {
+      routes:
+        | '//services/legacy'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
     'app/skill/pages/index.vue': {
       routes:
         | '//skill/'
@@ -823,14 +846,6 @@ declare module 'vue-router/auto-routes' {
     'core/team/pages/index.vue': {
       routes:
         | '//team/'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'app/tools/pages/index.vue': {
-      routes:
-        | '//tools/'
       views:
         | never
       pathParamNames:

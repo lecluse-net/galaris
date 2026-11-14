@@ -9,7 +9,7 @@ mais pas son titre. Un déplacement ne convient pas aux ressources dont l'URI po
 
 ## Décision
 
-Exposer `file_rename(uri, name, expected_lock_version)` sous le Tool `file_sharing`.
+Exposer `file_rename(uri, name, expected_lock_version)` sous le Service `file_sharing`.
 Pour `document://` et `data://`, déléguer aux opérations de métadonnées du domaine propriétaire.
 L'URI, le contenu, les révisions de contenu, les pièces jointes et les droits sont conservés.
 Le jeton de métadonnées `lock_version` est obligatoire et publié par `file_info` ; la révision

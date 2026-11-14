@@ -29,7 +29,7 @@ importlib.import_module("main")
 from app.file_share import mcp as file_tools, resource_service
 from app.file_share.file_contracts import FileEntry, FileListing
 from app.file_share.resource_contracts import ResourceContext
-from app.tools.mcp_loader import McpToolContext
+from app.services.mcp_loader import McpToolContext
 
 from .corpus import save
 

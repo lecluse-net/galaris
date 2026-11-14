@@ -10,7 +10,7 @@ from app.connection import Connection
 from app.conversation.models import ConversationRound, ConversationTaskLink
 from app.messenger.models import Room
 from app.task import Task, TaskStatus
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.authorize.models import Assignment, Privilege, Role, RolePrivilege
 from core.database import get_db_session
 from core.user import UserModel
@@ -40,9 +40,9 @@ async def test_resolution_requires_edit_privilege_and_owner_scope(client):
         agent = Agent(user_id=users[0].id, title_id=title.id, first_name="Delivery", last_name="Test", code=suffix)
         db.add(agent)
         await db.flush()
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
         assert tool is not None
-        connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
+        connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
         room = Room(connection_id=connection.id, external_id=suffix, kind="direct", label="Private",

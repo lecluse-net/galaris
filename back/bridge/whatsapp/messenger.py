@@ -77,7 +77,7 @@ def whatsapp_to_message(
     *,
     contacts: dict[str, str],
     phone_number_id: str,
-    tool_id: int,
+    service_id: int,
     connection_id: int,
     agent_id: int | None = None,
 ) -> ObservedMessengerMessage | None:
@@ -118,24 +118,24 @@ def whatsapp_to_message(
     return ObservedMessengerMessage(
         id=remote_id,
         platform=_KIND,
-        tool_id=tool_id,
+        service_id=service_id,
         sender=ObservedMessengerUser(
             id=sender_id,
             display_name=contacts.get(sender_id, ""),
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
         ),
         recipient=ObservedMessengerUser(
             id=phone_number_id,
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
             agent_id=agent_id,
         ),
         room=ObservedMessengerRoom(
             id=sender_id,
             kind="direct",
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
         ),
         text=text,
         attachments=attachments,
@@ -154,13 +154,13 @@ class WhatsAppMessenger(Messenger):
         client: WhatsAppClient,
         config: WhatsAppConnectionConfig,
         *,
-        tool_id: int,
+        service_id: int,
         connection_id: int,
         agent_id: int | None = None,
     ) -> None:
         self.client = client
         self.config = config
-        self.tool_id = tool_id
+        self.service_id = service_id
         self.connection_id = connection_id
         self.agent_id = agent_id
         self.self_id = config.phone_number_id
@@ -200,7 +200,7 @@ class WhatsAppMessenger(Messenger):
         return cls(
             client,
             config,
-            tool_id=resolved.tool_id,
+            service_id=resolved.service_id,
             connection_id=connection_id,
             agent_id=resolved.agent_id,
         )
@@ -246,23 +246,23 @@ class WhatsAppMessenger(Messenger):
         return ObservedMessengerMessage(
             id=remote_id,
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=ObservedMessengerUser(
                 id=self.self_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
                 agent_id=self.agent_id,
             ),
             recipient=ObservedMessengerUser(
                 id=room_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             room=ObservedMessengerRoom(
                 id=room_id,
                 kind="direct",
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=text,
             attachments=[attachment] if attachment is not None else [],
@@ -340,7 +340,7 @@ class WhatsAppMessenger(Messenger):
             id=recipient,
             kind="direct",
             connection_id=self.connection_id,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
         )
 
     async def _require_media_window(self, recipient: str) -> None:

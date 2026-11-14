@@ -15,7 +15,7 @@ from app.llm.mcp import inspect_llm_calls, mcp_llm_call, mcp_llm_calls
 from app.llm.models import LLMCall
 from app.task.mcp import inspect_tasks, mcp_task, mcp_tasks
 from app.task.models import Task, TaskAmendment, TaskAttempt, TaskStatus
-from app.tools.mcp_loader import McpToolContext
+from app.services.mcp_loader import McpToolContext
 
 _CTX = McpToolContext(agent_id=1, runtime="internal")
 
@@ -45,7 +45,7 @@ async def test_task_get_exposes_latest_attempt_while_work_is_running(db):
 async def test_task_access_separates_delegated_reads_from_management_and_live_admin(db):
     from sqlalchemy import select
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.task.mcp import mcp_get_task, mcp_stop_task
     from app.task.resource_facade import list_task_resources, read_task_resource
     from core.team import TeamModel
@@ -78,8 +78,8 @@ async def test_task_access_separates_delegated_reads_from_management_and_live_ad
         await mcp_stop_task(ctx, uri)
     target.requester_agent_id = None
 
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "platform_admin"))
-    connection = Connection(agent_id=peer.id, tool_id=tool.id, active=False)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "platform_admin"))
+    connection = Connection(agent_id=peer.id, service_id=tool.id, active=False)
     db.add(connection)
     await db.flush()
     with pytest.raises(PermissionError):
@@ -87,7 +87,7 @@ async def test_task_access_separates_delegated_reads_from_management_and_live_ad
     connection.active = True
     await db.flush()
     from app.connection.connection_service import set_param
-    await set_param(connection.id, "tools.management_scope", "all", scope_edit_authorized=True)
+    await set_param(connection.id, "services.management_scope", "all", scope_edit_authorized=True)
     assert (await mcp_get_task(ctx, uri))["id"] == str(target.id)
     assert await read_task_resource(target.id, actor_agent_id=peer.id) is not None
     assert [row["id"] for row in await list_task_resources(actor_agent_id=peer.id)] == [str(target.id)]
@@ -334,19 +334,19 @@ async def test_llm_call_and_llm_calls_return_complete_json_and_ids(db: AsyncSess
 
     from sqlalchemy import select
     from app.connection import Connection
-    from app.tools import ToolModel
-    admin_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "platform_admin"))
+    from app.services import ServiceModel
+    admin_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "platform_admin"))
     assert admin_tool is not None
     ctx = McpToolContext(agent_id=agent.id, runtime="internal")
     with pytest.raises(PermissionError):
         await mcp_llm_call(ctx, str(first.id))
     with pytest.raises(PermissionError):
         await mcp_llm_calls(ctx, start, end, limit=2)
-    connection = Connection(agent_id=agent.id, tool_id=admin_tool.id, active=True)
+    connection = Connection(agent_id=agent.id, service_id=admin_tool.id, active=True)
     db.add(connection)
     await db.commit()
     from app.connection.connection_service import set_param
-    await set_param(connection.id, "tools.management_scope", "all", scope_edit_authorized=True)
+    await set_param(connection.id, "services.management_scope", "all", scope_edit_authorized=True)
     detail = json.loads(await mcp_llm_call(ctx, str(first.id)))
     ids = json.loads(await mcp_llm_calls(ctx, start, end, limit=2))
     connection.active = False

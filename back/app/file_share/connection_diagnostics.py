@@ -1,7 +1,7 @@
 """Bounded metadata-only verification of a file provider's saved account."""
 
 from app.connection.facade import get_connection, get_params_as_dict
-from app.tools.facade import get_tool_by_id
+from app.services.facade import get_service_by_id
 
 from .file_share_service import build_client
 from .file_contracts import FileResourceTransport
@@ -10,7 +10,7 @@ from .resource_contracts import ResourceListingTransport
 
 async def test_saved_connection(connection_id: int) -> bool | None:
     connection = await get_connection(connection_id)
-    tool = await get_tool_by_id(connection.tool_id) if connection else None
+    tool = await get_service_by_id(connection.service_id) if connection else None
     if tool is None or tool.file_share is None:
         raise ValueError("File provider not found")
     _, params = await get_params_as_dict(connection_id, decrypt_passwords=True)

@@ -39,18 +39,18 @@ from .schemas import (
 from . import connection_service
 from . import oauth_service
 from .oauth_service import DevicePoll, DevicePollResult, OAuthCallback, OAuthStart, OAuthStartOptions, OAuthStatus
-from app.tools import (
+from app.services import (
     refresh_agent_tool_catalog,
     refresh_agents_tool_catalogs,
     refresh_all_tool_catalogs,
     refresh_tool_catalogs,
     list_available_connection_functions,
-    tool_service,
-    sync_integrated_tool_connections,
+    service,
+    sync_integrated_service_connections,
     test_saved_connection,
     ConnectionTestResult,
 )
-from app.tools.mcp import build_mcp_server
+from app.services.mcp import build_mcp_server
 
 from loguru import logger
 
@@ -84,13 +84,13 @@ async def _managed_connection(connection_id: int, *, editable: bool = False) -> 
     if connection is None or not scope.allows(connection.agent_id):
         raise HTTPException(status_code=404, detail=await _message("errors.not_found"))
     if editable:
-        await _editable_tool(connection.tool_id)
+        await _editable_tool(connection.service_id)
     return connection
 
 
-async def _editable_tool(tool_id: int) -> None:
+async def _editable_tool(service_id: int) -> None:
     try:
-        await connection_service.require_editable_tool(tool_id)
+        await connection_service.require_editable_tool(service_id)
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
@@ -109,11 +109,11 @@ async def list_function_permissions(agent_id: int | None = None,
     return await list_permissions(await current_management_scope(), agent_id=agent_id, offset=offset, limit=limit)
 
 
-@router.get("/tool-options")
+@router.get("/service-options")
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
 async def connection_tool_options() -> list[dict[str, Any]]:
     user = await get_current_user()
-    include_globals = user is not None and await check_privilege(user, [Privileges.TOOL_ACCESS, Privileges.TOOL_EDIT], get_db())
+    include_globals = user is not None and await check_privilege(user, [Privileges.SERVICE_ACCESS, Privileges.SERVICE_EDIT], get_db())
     return await connection_service.connection_tool_options(include_globals=include_globals)
 
 
@@ -216,12 +216,12 @@ async def oauth_disconnect(connection_id: int, purpose: Literal["mcp", "calendar
 @router.get("/find-by-param", response_model=AgentByParamResponse)
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
 async def find_agents_by_param(
-    tool_id: int = Query(..., description="Tool ID"),
+    service_id: int = Query(..., description="Tool ID"),
     param_name: str = Query(..., description="Parameter name"),
     param_value: str = Query(..., description="Value to find")
 ):
     agent_ids = await connection_service.find_agents_by_param(
-        tool_id, param_name, param_value
+        service_id, param_name, param_value
     )
     scope = await current_management_scope()
     agent_ids = [agent_id for agent_id in agent_ids if scope.allows(agent_id)]
@@ -236,11 +236,11 @@ async def _refresh_connections_and_tool_catalogs() -> RefreshToolCatalogsRespons
     db = get_db()
     scope = await current_management_scope()
     if scope.agent_ids is None:
-        created = await sync_integrated_tool_connections()
+        created = await sync_integrated_service_connections()
     else:
         created = sum(
             [
-                await sync_integrated_tool_connections(agent_id)
+                await sync_integrated_service_connections(agent_id)
                 for agent_id in sorted(scope.agent_ids)
             ]
         )
@@ -327,7 +327,7 @@ async def list_connection_overviews(
 @router.get("", response_model=List[ConnectionSchema])
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
 async def list_connections(
-    tool_id: Optional[int] = Query(None, description="Filter by tool ID"),
+    service_id: Optional[int] = Query(None, description="Filter by tool ID"),
     agent_id: Optional[int] = Query(None, description="Filter by agent ID"),
     active_only: bool = Query(False, description="Return active connections only"),
     skip: Annotated[int, Query(ge=0)] = 0,
@@ -335,7 +335,7 @@ async def list_connections(
 ):
     scope = await current_management_scope()
     return await connection_service.list_management_connections(
-        agent_ids=scope.agent_ids, tool_id=tool_id, agent_id=agent_id,
+        agent_ids=scope.agent_ids, service_id=service_id, agent_id=agent_id,
         active_only=active_only, skip=skip, limit=limit,
     )
 
@@ -351,9 +351,9 @@ async def get_connection(connection_id: int):
 async def create_connection(data: ConnectionCreate, request: Request):
     scope = await current_management_scope()
     await _require_agent(scope, data.agent_id)
-    await _editable_tool(data.tool_id)
-    tool = await tool_service.get_tool_by_id(data.tool_id)
-    existing = (await connection_service.get_connection_by_agent_tool(data.tool_id, data.agent_id)
+    await _editable_tool(data.service_id)
+    tool = await service.get_service_by_id(data.service_id)
+    existing = (await connection_service.get_connection_by_agent_service(data.service_id, data.agent_id)
         if tool is None or tool.mail is None else None)
     if existing:
         raise HTTPException(
@@ -361,11 +361,11 @@ async def create_connection(data: ConnectionCreate, request: Request):
             detail=await _message(
                 "errors.duplicate",
                 agent_id=data.agent_id,
-                tool_id=data.tool_id,
+                service_id=data.service_id,
             ),
         )
     connection = await connection_service.create_connection(
-        data.tool_id, data.agent_id, active=data.active, commit=data.params is None
+        data.service_id, data.agent_id, active=data.active, commit=data.params is None
     )
     if data.params is not None:
         try:
@@ -390,28 +390,28 @@ async def create_connection(data: ConnectionCreate, request: Request):
 async def update_connection(connection_id: int, update: ConnectionUpdate, request: Request):
     db = get_db()
     connection = await _managed_connection(connection_id)
-    from app.tools.facade import lock_tools
+    from app.services.facade import lock_services
 
-    await lock_tools([connection.tool_id, update.tool_id or connection.tool_id])
+    await lock_services([connection.service_id, update.service_id or connection.service_id])
     connection = await _managed_connection(connection_id, editable=True)
-    if update.tool_id is not None:
-        await _editable_tool(update.tool_id)
+    if update.service_id is not None:
+        await _editable_tool(update.service_id)
     scope = await current_management_scope()
     previous_agent_id = connection.agent_id
 
-    new_tool_id = update.tool_id if update.tool_id is not None else connection.tool_id
+    new_service_id = update.service_id if update.service_id is not None else connection.service_id
     new_agent_id = update.agent_id or connection.agent_id
     await _require_agent(scope, new_agent_id)
 
-    if (update.tool_id is not None or update.agent_id is not None) and \
-       (new_tool_id != connection.tool_id or new_agent_id != connection.agent_id):
-        from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    if (update.service_id is not None or update.agent_id is not None) and \
+       (new_service_id != connection.service_id or new_agent_id != connection.agent_id):
+        from app.services.contracts import MANAGEMENT_SCOPE_PARAM
         scoped = await db.scalar(select(ConnectionParam.id).where(
             ConnectionParam.connection_id == connection_id, ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM))
         if scoped is not None:
             await _authorize_scope_parameter(request, [MANAGEMENT_SCOPE_PARAM])
-        target_tool = await tool_service.get_tool_by_id(new_tool_id)
-        existing = (await connection_service.get_connection_by_agent_tool(new_tool_id, new_agent_id)
+        target_tool = await service.get_service_by_id(new_service_id)
+        existing = (await connection_service.get_connection_by_agent_service(new_service_id, new_agent_id)
             if target_tool is None or target_tool.mail is None else None)
         if existing and existing.id != connection_id:
             raise HTTPException(
@@ -419,14 +419,14 @@ async def update_connection(connection_id: int, update: ConnectionUpdate, reques
                 detail=await _message(
                     "errors.duplicate",
                     agent_id=new_agent_id,
-                    tool_id=new_tool_id,
+                    service_id=new_service_id,
                 ),
             )
 
-    target_tool = await tool_service.get_tool_by_id(new_tool_id)
+    target_tool = await service.get_service_by_id(new_service_id)
     connection.singleton_key = None if target_tool is not None and target_tool.mail is not None else 0
-    if update.tool_id is not None:
-        connection.tool_id = update.tool_id
+    if update.service_id is not None:
+        connection.service_id = update.service_id
     if update.agent_id is not None:
         connection.agent_id = update.agent_id
     if update.active is not None:
@@ -464,7 +464,7 @@ async def delete_connection(connection_id: int):
 # =============================================================================
 
 async def _authorize_scope_parameter(request: Request, names: list[str]) -> bool:
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    from app.services.contracts import MANAGEMENT_SCOPE_PARAM
     if MANAGEMENT_SCOPE_PARAM not in names:
         return False
     await require_web_session(request)
@@ -475,7 +475,7 @@ async def _authorize_scope_parameter(request: Request, names: list[str]) -> bool
 @router.put("/{connection_id}/management-scope", status_code=204, dependencies=[Depends(require_web_session)])
 @authorize(privileges=Privileges.CONNECTION_EDIT)
 async def update_management_scope(connection_id: int, data: ManagementScopeUpdate, request: Request) -> None:
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    from app.services.contracts import MANAGEMENT_SCOPE_PARAM
 
     connection = await _managed_connection(connection_id)
     authorized = await _authorize_scope_parameter(request, [MANAGEMENT_SCOPE_PARAM])
@@ -499,7 +499,7 @@ async def get_connection_params(
         raise HTTPException(status_code=404, detail=await _message("errors.not_found"))
     return ConnectionParamsResponse(
         connection_id=connection_id,
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         agent_id=connection.agent_id,
         params=params,
         configured_params=configured,
@@ -639,19 +639,19 @@ async def delete_param(connection_id: int, param_name: str, request: Request):
 @router.post("/test-mcp-tools", response_model=TestMcpToolsResponse)
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
 async def test_mcp_tools(data: TestMcpToolsRequest):
-    logger.info("Testing MCP tools for tool_id={}", data.tool_id)
+    logger.info("Testing MCP tools for service_id={}", data.service_id)
 
-    tool_schema = await tool_service.get_tool_by_id(data.tool_id)
+    tool_schema = await service.get_service_by_id(data.service_id)
     if not tool_schema:
         return TestMcpToolsResponse(
             success=False,
-            message=await _message("errors.tool_not_found", tool_id=data.tool_id),
+            message=await _message("errors.tool_not_found", service_id=data.service_id),
             tools=[]
         )
     if not tool_schema.mcp:
         return TestMcpToolsResponse(
             success=False,
-            message=await _message("errors.no_mcp", tool_id=data.tool_id),
+            message=await _message("errors.no_mcp", service_id=data.service_id),
             tools=[]
         )
 
@@ -660,7 +660,7 @@ async def test_mcp_tools(data: TestMcpToolsRequest):
             key: value for key, value in data.params.items() if value not in (None, "")
         }
         connection_params = await connection_service.merge_with_global_params(
-            data.tool_id,
+            data.service_id,
             local_params,
             decrypt_passwords=True,
         )
@@ -757,7 +757,7 @@ async def _set_global_function_policy(
             connection, function_name, data.state, capability_kind=data.capability_kind,
         )
     else:
-        await connection_service.set_tool_function_state(connection.tool_id, function_name, data.state, capability_kind=data.capability_kind)
+        await connection_service.set_service_function_state(connection.service_id, function_name, data.state, capability_kind=data.capability_kind)
     resolved = await connection_service.resolve_function(connection, function_name, capability_kind=data.capability_kind)
     return FunctionStateResolved(**resolved)
 
@@ -780,7 +780,7 @@ async def set_capability_policy(connection_id: int, data: CapabilityStateUpdate)
         from .models import ConnectionFunctionState
         from sqlalchemy import func
         result.local_override_count = await get_db().scalar(select(func.count()).select_from(ConnectionFunctionState)
-            .join(Connection).where(Connection.tool_id == connection.tool_id,
+            .join(Connection).where(Connection.service_id == connection.service_id,
                 ConnectionFunctionState.capability_kind == data.capability_kind,
                 ConnectionFunctionState.function_name == data.function_name)) or 0
         return result

@@ -16,7 +16,7 @@ from app.skill.contracts import SkillScope, SkillRevisionConflict
 from app.skill.models import Skill, AgentSkill
 from app.skill.projection import build_skill_projection
 from app.skill.schemas import SkillCreate, SkillCategoryCreate
-from app.tools.mcp_loader import McpToolContext
+from app.services.mcp_loader import McpToolContext
 from .test_personal_packages import agents, personal, set_scope
 
 
@@ -181,8 +181,8 @@ async def test_global_release_is_explicit_collision_safe_and_replay_does_not_res
 async def test_actual_fastmcp_server_enforces_live_scope_after_tool_discovery(db, agents):
     from fastmcp import Client
     from app.connection import Connection, ConnectionFunctionState, ConnectionParam
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
-    from app.tools import ToolModel, build_agent_galaris_fastmcp
+    from app.services.contracts import MANAGEMENT_SCOPE_PARAM
+    from app.services import ServiceModel, build_agent_galaris_fastmcp
     a, other, admin = agents
     generic = await interface.create_package(personal('protocol-shared'), actor_agent_id=admin.id, generic=True)
     await skill_service.set_agent_authorization(generic.id, a.id, 'enabled')
@@ -190,10 +190,10 @@ async def test_actual_fastmcp_server_enforces_live_scope_after_tool_discovery(db
                             'skill_delete', 'skill_set_authorization'],
                  'file_sharing': ['file_create', 'file_read', 'file_write']}
     for code, names in functions.items():
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == code))
-        connection = await db.scalar(select(Connection).where(Connection.tool_id == tool.id, Connection.agent_id == a.id))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == code))
+        connection = await db.scalar(select(Connection).where(Connection.service_id == tool.id, Connection.agent_id == a.id))
         if connection is None:
-            connection = Connection(agent_id=a.id, tool_id=tool.id, active=True)
+            connection = Connection(agent_id=a.id, service_id=tool.id, active=True)
             db.add(connection)
             await db.flush()
         for name in names:
@@ -267,7 +267,7 @@ async def test_fastmcp_scope_matrix_preserves_private_usage_and_bounds_every_mut
     from fastmcp import Client
     from app.agent import AgentTeamModel
     from app.connection import Connection, ConnectionFunctionState
-    from app.tools import ToolModel, build_agent_galaris_fastmcp
+    from app.services import ServiceModel, build_agent_galaris_fastmcp
     from core.team import TeamModel
 
     actor, teammate, outside = agents
@@ -291,10 +291,10 @@ async def test_fastmcp_scope_matrix_preserves_private_usage_and_bounds_every_mut
         'file_sharing': ['file_read', 'file_create', 'file_write', 'file_delete'],
     }
     for code, names in functions.items():
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == code))
-        connection = await db.scalar(select(Connection).where(Connection.tool_id == tool.id, Connection.agent_id == actor.id))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == code))
+        connection = await db.scalar(select(Connection).where(Connection.service_id == tool.id, Connection.agent_id == actor.id))
         if connection is None:
-            connection = Connection(agent_id=actor.id, tool_id=tool.id, active=True)
+            connection = Connection(agent_id=actor.id, service_id=tool.id, active=True)
             db.add(connection)
             await db.flush()
         db.add_all([ConnectionFunctionState(connection_id=connection.id, function_name=name, state='enabled', enabled=True)

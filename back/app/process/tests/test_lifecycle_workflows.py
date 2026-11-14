@@ -19,13 +19,13 @@ from app.process.schemas import (
     ProcessFileInput,
 )
 from app.task.models import Task, TaskStatus
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 @pytest_asyncio.fixture
 async def workflow(db, monkeypatch):
     title = Title(label="Process workflows", gender="X")
-    tool = Tool(code="fake", label="Remote workflows", connection_schema={})
+    tool = Service(code="fake", label="Remote workflows", connection_schema={})
     db.add_all([title, tool])
     await db.flush()
     agents = [Agent(title_id=title.id, code=f"workflow-{uuid4().hex}", first_name=name, last_name="Test")
@@ -41,7 +41,7 @@ async def workflow(db, monkeypatch):
     )
     monkeypatch.setattr(service.registry, "get", lambda code: engine)
     definition = await service.create_definition(ProcessDefinitionCreate(
-        agent_id=agents[0].id, tool_id=tool.id, engine_process_id="report", label="Quarterly report",
+        agent_id=agents[0].id, service_id=tool.id, engine_process_id="report", label="Quarterly report",
     ))
     return SimpleNamespace(owner=agents[0], other=agents[1], tool=tool, definition=definition, engine=engine)
 
@@ -232,10 +232,10 @@ async def test_assignment_is_rechecked_before_reusing_an_idempotency_key(db, wor
 @pytest.mark.asyncio
 @pytest.mark.parametrize("invalid", ["tool", "agent", "duplicate", "null_label"])
 async def test_invalid_definition_edits_preserve_assignment_and_identity(db, workflow, invalid):
-    changes = {"tool": {"tool_id": 2147483647}, "agent": {"agent_id": 2147483647},
+    changes = {"tool": {"service_id": 2147483647}, "agent": {"agent_id": 2147483647},
                "null_label": {"label": None}, "duplicate": {"engine_process_id": "other"}}[invalid]
     if invalid == "duplicate":
-        await service.create_definition(ProcessDefinitionCreate(tool_id=workflow.tool.id, engine_process_id="other", label="Other"))
+        await service.create_definition(ProcessDefinitionCreate(service_id=workflow.tool.id, engine_process_id="other", label="Other"))
     with pytest.raises((LookupError, ValueError)):
         await service.update_definition(workflow.definition.id, ProcessDefinitionUpdate(**changes))
     await db.refresh(workflow.definition)
@@ -259,7 +259,7 @@ async def test_deleted_definition_cannot_start_but_past_run_keeps_its_label(db, 
 
 @pytest.mark.asyncio
 async def test_admin_scope_includes_unassigned_definitions_without_other_agents(db, workflow):
-    unassigned = await service.create_definition(ProcessDefinitionCreate(tool_id=workflow.tool.id, engine_process_id="unassigned", label="Available"))
+    unassigned = await service.create_definition(ProcessDefinitionCreate(service_id=workflow.tool.id, engine_process_id="unassigned", label="Available"))
     own = await service.list_definitions(agent_ids=[workflow.owner.id])
     other = await service.list_definitions(agent_ids=[workflow.other.id])
     assert {row.id for row in own} == {workflow.definition.id, unassigned.id}
@@ -293,7 +293,7 @@ async def test_external_execution_is_correlated_once_and_scoped_to_its_workflow(
     workflow.engine.get_run.assert_awaited_once()
     with pytest.raises(LookupError):
         await service.resolve_engine_run("report", "external-42", agent_ids=[workflow.other.id])
-    await service.create_definition(ProcessDefinitionCreate(agent_id=workflow.owner.id, tool_id=workflow.tool.id, engine_process_id="other", label="Other"))
+    await service.create_definition(ProcessDefinitionCreate(agent_id=workflow.owner.id, service_id=workflow.tool.id, engine_process_id="other", label="Other"))
     with pytest.raises(PermissionError):
         await service.resolve_engine_run("other", "external-42")
 
@@ -426,7 +426,7 @@ async def test_run_filters_count_only_matching_authorized_results(db, workflow, 
     old = datetime.now(timezone.utc) - timedelta(days=2)
     own.status, own.engine_run_id = "success", "unique-receipt"
     other.launcher_agent_id, other.created_at = workflow.other.id, old
-    different = await service.create_definition(ProcessDefinitionCreate(agent_id=workflow.other.id, tool_id=workflow.tool.id, engine_process_id="other", label="Other"))
+    different = await service.create_definition(ProcessDefinitionCreate(agent_id=workflow.other.id, service_id=workflow.tool.id, engine_process_id="other", label="Other"))
     other.process_id = different.id
     await db.commit()
     filters = {"agent_id": workflow.owner.id, "agent_ids": [workflow.owner.id], "process_id": workflow.definition.id,

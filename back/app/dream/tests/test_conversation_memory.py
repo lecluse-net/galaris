@@ -16,7 +16,7 @@ from app.dream.mechanisms.conversation_memory import (
 )
 from app.memory import MessengerContactObservation, observe_messenger_contact
 from app.messenger import Attachment, File, Message, MessengerUser, Room
-from app.tools.models import Tool
+from app.services.models import Service
 from app.topic import Topic
 from tests.test_inference_lifecycle import runtime
 from tests.conftest import responses_sse
@@ -32,7 +32,7 @@ async def _scope(
     db.add(owner)
     await db.flush()
     title = Title(label=f"Conversation memory {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"conversation-memory-{suffix}",
         label="Conversation memory",
         description="",
@@ -51,7 +51,7 @@ async def _scope(
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     contact_item_id = await observe_messenger_contact(
@@ -80,7 +80,7 @@ async def test_conversation_memory_waits_for_a_non_null_topic(
     _agent, connection, room, _topic, contact_item_id = await _scope(db)
     message = Message(
         connection_id=connection.id,
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         platform="telegram",
         remote_message_id=f"message-{uuid4()}",
         direction="inbound",
@@ -119,7 +119,7 @@ async def test_conversation_projection_keeps_five_prior_messages_plus_current_ro
     _agent, connection, room, topic, contact_item_id = await _scope(db)
     baseline = datetime(2026, 8, 7, 8, 0, tzinfo=timezone.utc)
     person = MessengerUser(
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         external_id="nicolas",
         display_name="Nicolas",
         is_ai=False,
@@ -224,7 +224,7 @@ async def test_transcribed_attachment_is_an_eligible_attributed_memory_source(db
     audio = File(connection_id=connection.id, name="preference.ogg", mime_type="audio/ogg", kind="audio")
     db.add(audio)
     await db.flush()
-    message = Message(connection_id=connection.id, tool_id=connection.tool_id, platform="telegram",
+    message = Message(connection_id=connection.id, service_id=connection.service_id, platform="telegram",
         remote_message_id=str(uuid4()), direction="inbound", messenger_room_id=room.id,
         room_id=room.external_id, text=written,
         metadata_={"sender_display_name": "Camille", "conversation_audio_transcripts": {
@@ -249,7 +249,7 @@ async def test_transcribed_attachment_is_an_eligible_attributed_memory_source(db
     assert "comptes rendus en français" in current.text
     assert "orphelin" not in current.text
     assert current.evidence[-1].kind == "transcription"
-    tool = await db.get(Tool, connection.tool_id)
+    tool = await db.get(Service, connection.service_id)
     assert current.evidence[-1].uri == f"{tool.code}://{room.external_id}/{audio.id}"
     assert current.evidence[-1].message_id == message.id
     assert written in current.text
@@ -268,7 +268,7 @@ async def test_each_supporting_audio_file_must_remain_available(db, memory_extra
         for index in range(2)]
     db.add_all(files)
     await db.flush()
-    message = Message(connection_id=connection.id, tool_id=connection.tool_id, platform="telegram",
+    message = Message(connection_id=connection.id, service_id=connection.service_id, platform="telegram",
         remote_message_id=str(uuid4()), direction="inbound", messenger_room_id=room.id, room_id=room.external_id,
         text="", metadata_={"conversation_audio_transcripts": {str(file.id): "Je préfère des rapports courts." for file in files}})
     db.add(message)
@@ -310,7 +310,7 @@ async def test_late_transcription_has_a_new_receipt_and_preserves_existing_memor
     audio = File(connection_id=connection.id, name="preference.ogg", mime_type="audio/ogg", kind="audio")
     db.add(audio)
     await db.flush()
-    message = Message(connection_id=connection.id, tool_id=connection.tool_id, platform="telegram",
+    message = Message(connection_id=connection.id, service_id=connection.service_id, platform="telegram",
         remote_message_id=str(uuid4()), direction="inbound", messenger_room_id=room.id,
         room_id=room.external_id, text="Je préfère les réponses courtes.",
         metadata_={"sender_display_name": "Camille"})
@@ -405,7 +405,7 @@ async def test_audio_only_capture_rechecks_evidence_after_preparation(runtime, m
     audio = File(connection_id=connection.id, name="preference.ogg", mime_type="audio/ogg", kind="audio")
     db.add(audio)
     await db.flush()
-    message = Message(connection_id=connection.id, tool_id=connection.tool_id, platform="telegram",
+    message = Message(connection_id=connection.id, service_id=connection.service_id, platform="telegram",
         remote_message_id=str(uuid4()), direction="inbound", messenger_room_id=room.id,
         room_id=room.external_id, text="", metadata_={"sender_display_name": "Camille",
             "conversation_audio_transcripts": {str(audio.id): "Je préfère des comptes rendus en français."}})

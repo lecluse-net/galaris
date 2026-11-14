@@ -32,7 +32,7 @@ async def test_peer_request_drains_the_tool_batch_without_another_model_request(
     from app.harness.checkpoint import HarnessRunCheckpoint
     from app.harness.mcp_toolset import ExecutionEvidenceClient
     from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel, _request
-    from app.tools.execution_evidence import ExecutionEvidenceMiddleware
+    from app.services.execution_evidence import ExecutionEvidenceMiddleware
     from app.task.collab import request_runtime_wait
 
     server = FastMCP("synthetic-peer-wait")

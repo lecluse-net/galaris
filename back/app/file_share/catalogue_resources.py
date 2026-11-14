@@ -10,7 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel
 from sqlalchemy import select, case
 from app.connection import Connection
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.memory import MemoryItem
 from app.document import render_file_thumbnail
 from core.database import get_db
@@ -32,7 +32,7 @@ class CatalogueResource(BaseModel):
 
 async def resources(item_id: UUID, agent_id: int, *, limit: int = 500) -> list[CatalogueResource]:
     entries = await get_db().scalars(select(FileCatalogEntry).join(Connection, Connection.id == FileCatalogEntry.connection_id)
-        .join(ToolModel, ToolModel.id == Connection.tool_id).where(
+        .join(ServiceModel, ServiceModel.id == Connection.service_id).where(
             FileCatalogEntry.memory_node_id == item_id, FileCatalogEntry.agent_id == agent_id,
             FileCatalogEntry.present.is_(True), live_catalogue_binding(),
         ).order_by(case((FileCatalogEntry.uri == select(MemoryItem.primary_url).where(
@@ -49,7 +49,7 @@ async def resources(item_id: UUID, agent_id: int, *, limit: int = 500) -> list[C
 
 async def authorized_resource(item_id: UUID, agent_id: int, entry_id: UUID) -> tuple[ResourceContext, ResourceDescriptor]:
     entry = await get_db().scalar(select(FileCatalogEntry).join(Connection, Connection.id == FileCatalogEntry.connection_id)
-        .join(ToolModel, ToolModel.id == Connection.tool_id).where(
+        .join(ServiceModel, ServiceModel.id == Connection.service_id).where(
             FileCatalogEntry.id == entry_id, FileCatalogEntry.memory_node_id == item_id,
             FileCatalogEntry.agent_id == agent_id, FileCatalogEntry.present.is_(True), live_catalogue_binding(),
         ).execution_options(populate_existing=True))

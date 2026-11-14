@@ -52,8 +52,8 @@ test('a late document library response cannot cancel navigation to another lazy 
 // No connector account or remote model is needed to browse local configuration.
 for (const width of [390, 1440]) {
   for (const scenario of [
-    { path: '/tools', tab: 'Connexions', other: 'Outils' },
-    { path: '/tools', tab: 'Autorisations', other: 'Outils' },
+    { path: '/services', tab: 'Connexions', other: 'Outils' },
+    { path: '/services', tab: 'Autorisations', other: 'Outils' },
     { path: '/skill', tab: 'Autorisations', other: 'Compétences' },
   ]) {
     test(`${scenario.path} ${scenario.tab} loads usable agent choices and preserves them across tabs at ${width}px`, async ({ page, request }) => {

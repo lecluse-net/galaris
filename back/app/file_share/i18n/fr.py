@@ -10,18 +10,18 @@ default: dict[str, object] = {
             "webdav_download": "téléchargement WebDAV",
             "share_creation": "création du partage",
         },
-        "upload_failed": "Échec du téléversement via ${tool_code} : ${error}",
+        "upload_failed": "Échec du téléversement via ${service_code} : ${error}",
         "affine_upload_path": (
             "Échec du téléversement AFFiNE : précisez le workspace au début de destination "
             "(par exemple entreprise/mon_fichier)."
         ),
-        "upload_ok": "Fichier téléversé via ${tool_code} (${service}, ${size} octets) : ${location}",
-        "download_failed": "Échec du téléchargement via ${tool_code} : ${error}",
+        "upload_ok": "Fichier téléversé via ${service_code} (${service}, ${size} octets) : ${location}",
+        "download_failed": "Échec du téléchargement via ${service_code} : ${error}",
         "affine_download_path": (
             "Échec du téléchargement AFFiNE : précisez le workspace au début de remote "
             "(par exemple entreprise/<clé>)."
         ),
-        "download_ok": "Fichier téléchargé via ${tool_code} (${service}, ${size} octets) : ${location}",
+        "download_ok": "Fichier téléchargé via ${service_code} (${service}, ${size} octets) : ${location}",
         "destination_required": "Échec du transfert : dest_path est requis.",
         "transfer_ok": (
             "Fichier transféré ${source} -> ${destination} (${size} octets) : ${location}"
@@ -32,7 +32,7 @@ default: dict[str, object] = {
             "Aucun service de fichiers n’est connecté à votre compte. Demandez à un "
             "administrateur d’activer une connexion de partage de fichiers."
         ),
-        "targets_heading": "Services de fichiers connectés (valeur pour tool_code) :",
+        "targets_heading": "Services de fichiers connectés (valeur pour service_code) :",
         "messenger_label": "Votre messagerie",
         "messenger_description": "Transport interne : fichiers échangés via votre messagerie.",
         "errors": {
@@ -41,7 +41,7 @@ default: dict[str, object] = {
                 "fourni (paramètre de connexion associé : « ${connection_parameter} »)."
             ),
             "connection_not_found": (
-                "Aucune connexion « file_share/${tool_code} » active n’est configurée pour "
+                "Aucune connexion « file_share/${service_code} » active n’est configurée pour "
                 "l’agent ${agent_id}."
             ),
             "service_connection_not_found": (

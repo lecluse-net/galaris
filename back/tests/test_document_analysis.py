@@ -15,7 +15,7 @@ from app.llm.models import LLMDocumentAnalysis
 from app.process.models import ProcessDefinition, ProcessRun
 from app.llm.facade import read_inference
 from app.llm.models import LLMCall
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.chat.tests.test_native_facade import _scope
 from app.messenger import create_internal_room, get_messenger
 from app.file_share import ResourceContext, prepared_resource
@@ -49,7 +49,7 @@ async def setup_run(db, agent, uri, model_key):
 async def test_document_analysis_does_not_create_a_business_process(runtime, tmp_path, monkeypatch):
     from app.llm.profile_models import LlmProfile
     from app.llm.mcp import document_analyze
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
     import main  # Assemble the registered application capabilities.
 
     db, llm, _, _ = runtime
@@ -510,11 +510,11 @@ async def test_dbadmin_moves_legacy_analyses_without_rebilling_and_keeps_busines
     # Represent the previous persisted contract, using entirely synthetic source data.
     input_data, checkpoint = dict(run.input), dict(run.checkpoint)
     await db.execute(delete(LLMDocumentAnalysis).where(LLMDocumentAnalysis.id == reference))
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'galaris'))
-    definition = ProcessDefinition(agent_id=agent.id, tool_id=tool.id,
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'galaris'))
+    definition = ProcessDefinition(agent_id=agent.id, service_id=tool.id,
         engine_process_id=f'galaris:{agent.id}:document_analysis', label='Synthetic legacy analysis',
         deleted_at=datetime.now(timezone.utc) if archived else None)
-    business = ProcessDefinition(agent_id=agent.id, tool_id=tool.id,
+    business = ProcessDefinition(agent_id=agent.id, service_id=tool.id,
         engine_process_id='synthetic-business-workflow', label='Synthetic business workflow')
     db.add_all([definition, business]); await db.flush()
     legacy = ProcessRun(id=reference, process_id=definition.id, launcher_agent_id=agent.id,
@@ -560,9 +560,9 @@ async def test_document_worker_uses_the_real_mcp_agreement(runtime, tmp_path, mo
     from app.connection import Connection
     from app.llm.profile_models import LlmProfile
     from app.llm.document_service import analysis_tick
-    from app.tools import build_agent_galaris_fastmcp
-    from app.tools.authorization import answer_action
-    from app.tools.authorization_models import ActionAuthorization
+    from app.services import build_agent_galaris_fastmcp
+    from app.services.authorization import answer_action
+    from app.services.authorization_models import ActionAuthorization
     from core.database import get_db_session
     from core.authorize.models import Assignment, Privilege, Role
     from uuid import UUID
@@ -578,8 +578,8 @@ async def test_document_worker_uses_the_real_mcp_agreement(runtime, tmp_path, mo
     profile = LlmProfile(label='Synthetic approved reader', text_standard_llm_id=llm.id)
     db.add(profile); await db.flush()
     agent.profile_id = profile.id
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'galaris'))
-    connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'galaris'))
+    connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
     db.add(connection); await db.commit()
     server = await build_agent_galaris_fastmcp(agent.id, allowed_tool_names={'document_analyze'})
     requests = []

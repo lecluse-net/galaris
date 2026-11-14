@@ -21,7 +21,7 @@ from app.code import register_runtime
 from app.code.models import CodeGrant, CodeSession, CodeWorkspace
 from app.console import SshConnectionConfig
 from app.connection import Connection
-from app.tools import ToolModel
+from app.services import ServiceModel
 from bridge.code_server.adapter import CodeServerRuntime
 from core.authorize import Assignment, Privilege, Role, RolePrivilege, public
 from core.database import get_db_session
@@ -50,10 +50,10 @@ async def main():
         db.add_all([agent, role])
         await db.flush()
         privilege = await db.scalar(select(Privilege).where(Privilege.code == 'CODE_ACCESS'))
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'console'))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'console'))
         db.add_all([RolePrivilege(role_id=role.id, privilege_id=privilege.id),
                     Assignment(user_id=user.id, role_id=role.id, is_default=True)])
-        connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
+        connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
         config = SshConnectionConfig(connection_id=connection.id, host='fixture', port=2222,

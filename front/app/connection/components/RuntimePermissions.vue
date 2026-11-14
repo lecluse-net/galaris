@@ -56,7 +56,7 @@ const canEdit = computed(() => authorize.hasPrivilege(privileges.PERMISSION_REVO
 type PermanentPermission = RuntimePermission | FunctionPermission
 const rows = ref<PermanentPermission[]>([])
 const selected = ref<PermanentPermission | null>(null)
-const scopeLabel = (row: PermanentPermission) => 'connection_id' in row ? row.tool_label : row.runtime
+const scopeLabel = (row: PermanentPermission) => 'connection_id' in row ? row.service_label : row.runtime
 const loading = ref(false)
 const error = ref(false)
 const revoking = ref(false)

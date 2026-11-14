@@ -6,7 +6,7 @@ Statut : Accepted
 
 `BROWSER_SESSION_TTL_SECONDS` et `BROWSER_MAX_SESSIONS` rejoignent `params` et
 Préférences → Navigateur, avec les mêmes conditions de visibilité et droits que les
-autres réglages du Tool. Leurs défauts sont 120 secondes (10–3600) et 32 sessions (1–256).
+autres réglages du Service. Leurs défauts sont 120 secondes (10–3600) et 32 sessions (1–256).
 Cette décision remplace leur maintien dans `.env` prévu par la décision 0005.
 
 Le backend les transmet avec chaque opération authentifiée. Le sidecar vérifie la

@@ -277,13 +277,13 @@ async def test_copy_to_affine_workspace_uses_source_name_without_destination_fil
 
     async def resolve(
         _agent_id: int,
-        tool_code: str,
+        service_code: str,
         locator: str,
         *,
         language: str | None = None,
     ) -> tuple[TemporaryFileTransport, str]:
         del language
-        assert tool_code == "affine"
+        assert service_code == "affine"
         assert locator in {"workspace-42", "workspace-42/report.pdf"}
         return affine, "affine"
 
@@ -357,13 +357,13 @@ async def test_connected_move_detects_existing_collection_without_slash(
 
     async def resolve(
         _agent_id: int,
-        tool_code: str,
+        service_code: str,
         locator: str,
         *,
         language: str | None = None,
     ) -> tuple[NextcloudProvider, str]:
         del language
-        assert tool_code == "nextcloud"
+        assert service_code == "nextcloud"
         assert locator in {"source.txt", "Shared"}
         return provider, "nextcloud"
 
@@ -504,7 +504,7 @@ async def test_galaris_json_resource_can_be_copied_to_console(
 
 
 @pytest.mark.asyncio
-async def test_scheme_listing_uses_connected_tool_codes_not_capability_names(
+async def test_scheme_listing_uses_connected_service_codes_not_capability_names(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async def targets(*_args: object, **_kwargs: object) -> list[dict[str, object]]:
@@ -770,7 +770,7 @@ async def test_resource_read_rejects_large_binary_with_console_guidance(
 
     with pytest.raises(ValueError, match="console software") as failure:
         await resource_service.resource_read(ctx, "console://large.bin")
-    from app.tools import tool_errors
+    from app.services import tool_errors
 
     diagnostic = tool_errors.classify_tool_failure(failure.value)
     assert diagnostic.kind == "actionable"
@@ -841,7 +841,7 @@ async def test_resource_edit_replaces_one_inclusive_text_line_range(
             end_line=12,
             content="impossible",
         )
-    from app.tools import tool_errors
+    from app.services import tool_errors
 
     diagnostic = tool_errors.classify_tool_failure(failure.value)
     assert diagnostic.kind == "actionable"
@@ -987,7 +987,7 @@ async def test_copying_console_text_to_document_collection_creates_document(
 
 
 @pytest.mark.asyncio
-async def test_messenger_listing_uses_tool_code_room_locator_and_local_file_uuid(
+async def test_messenger_listing_uses_service_code_room_locator_and_local_file_uuid(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     room_id = uuid4()

@@ -112,7 +112,7 @@ permettre de supprimer des données. Ces règles sont exercées sur PostgreSQL, 
 | Q07 | Upload binaire atomique, écritures hors boucle async, ancien contenu conservé sur interruption et temporaires nettoyés. Tests du manager sur les chemins de succès et d’annulation. |
 | Q08 | Bcrypt exécuté hors boucle, cache PDF borné en nombre et en octets, extraction en processus avec limites mémoire/CPU/pages/entrée/sortie et délai de terminaison. |
 | Q09 | Générations de requêtes dans les stores Task/Process, y compris pagination et détails ; une réponse ancienne ne remplace plus la réponse récente. Tests des véritables stores Pinia. |
-| Q10 | Projections Chat et codes Tools groupés, fournisseurs distants concurrents bornés. Mesure Memory complémentaire : 54 → 5 SELECT pour 50 résultats sur 6 000 éléments multilingues, sans index ajouté à l’aveugle. |
+| Q10 | Projections Chat et codes Services groupés, fournisseurs distants concurrents bornés. Mesure Memory complémentaire : 54 → 5 SELECT pour 50 résultats sur 6 000 éléments multilingues, sans index ajouté à l’aveugle. |
 | Q11 | Délais HTTP adaptés aux opérations, timeout SQL/attente de verrou, délais Atlas/psql et nettoyage effectif des sous-processus après expiration ou annulation. |
 | Q12 | Allowlist HTML commune et validation des protocoles par URL normalisée. Test DOM Chromium des protocoles encodés, attributs et formulaires ; liens et contenus usuels préservés. |
 | Q13 | Bases principales Docker figées par digest, dépendances dev exclues de production, import de `devtools` retiré du planner. Construction de quatre images, export avec identités/SHA-256 et chargement vérifié sans redémarrage ; procédure de promotion/retour arrière documentée. |

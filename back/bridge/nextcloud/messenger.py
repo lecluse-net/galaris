@@ -88,14 +88,14 @@ class NextcloudTalkMessenger(Messenger):
     def __init__(
         self,
         client: NextcloudTalkClient,
-        tool_id: int,
+        service_id: int,
         self_id: str,
         connection_id: Optional[int] = None,
         inbound: str = "polling",
         inbound_options: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.client = client
-        self.tool_id = tool_id
+        self.service_id = service_id
         self.self_id = self_id
         self.connection_id = connection_id
         # Select the inbound listener from MESSENGER_NEXTCLOUD_TALK_INBOUND.
@@ -125,7 +125,7 @@ class NextcloudTalkMessenger(Messenger):
         )
         return cls(
             client=client,
-            tool_id=config.tool_id,
+            service_id=config.service_id,
             self_id=config.self_id,
             connection_id=connection_id,
             inbound=inbound,
@@ -155,7 +155,7 @@ class NextcloudTalkMessenger(Messenger):
             users=users or [],
             users_complete=users_complete,
             connection_id=self.connection_id,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
         )
 
     def _participant_users(self, rows: list[dict[str, Any]]) -> list[ObservedMessengerUser]:
@@ -174,7 +174,7 @@ class NextcloudTalkMessenger(Messenger):
                 ),
                 is_ai=is_ai,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             )
         return list(users.values())
 
@@ -192,7 +192,7 @@ class NextcloudTalkMessenger(Messenger):
             id=actor_id,
             display_name=display_name,
             connection_id=self.connection_id,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
         )
 
     @staticmethod
@@ -248,7 +248,7 @@ class NextcloudTalkMessenger(Messenger):
         return ObservedMessengerMessage(
             id=str(raw.get("id", "")),
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=self._to_user(
                 str(raw.get("actorId", "")), str(raw.get("actorDisplayName", ""))
             ),
@@ -256,12 +256,12 @@ class NextcloudTalkMessenger(Messenger):
             recipient=ObservedMessengerUser(
                 id=self.self_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             room=ObservedMessengerRoom(
                 id=token,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=self._render_text(raw),
             attachments=self._to_attachments(raw),
@@ -296,12 +296,12 @@ class NextcloudTalkMessenger(Messenger):
         return ObservedMessengerMessage(
             id=str(res.get("id", "")),
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=self._to_user(self.self_id),
             room=ObservedMessengerRoom(
                 id=room_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=text,
             time=int(res.get("timestamp", 0) or 0),
@@ -533,12 +533,12 @@ class NextcloudTalkMessenger(Messenger):
         return ObservedMessengerMessage(
             id=f"file-share:{accepted_ref or remote_path.lstrip('/')}",
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=self._to_user(self.self_id),
             room=ObservedMessengerRoom(
                 id=room_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=display_name,
         )
@@ -647,7 +647,7 @@ class NextcloudTalkMessenger(Messenger):
         disappears or becomes archived.
         """
         logger.info(
-            "Nextcloud Talk polling started (self_id={}, tool_id={})", self.self_id, self.tool_id
+            "Nextcloud Talk polling started (self_id={}, service_id={})", self.self_id, self.service_id
         )
         try:
             while True:
@@ -853,8 +853,8 @@ class NextcloudTalkMessenger(Messenger):
             return
 
         logger.info(
-            "Nextcloud Talk signaling started (hpb={}, self_id={}, tool_id={})",
-            hpb_url, self.self_id, self.tool_id,
+            "Nextcloud Talk signaling started (hpb={}, self_id={}, service_id={})",
+            hpb_url, self.self_id, self.service_id,
         )
         clients: Dict[str, TalkSignalingRoom] = {}
         tasks: Dict[str, asyncio.Task[None]] = {}

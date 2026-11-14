@@ -57,14 +57,14 @@ async def test_conversation_dispatch_uses_personal_decision_profile_and_persists
     from app.conversation import ConversationTaskLink
     from app.process import agent_process_dispatch_candidates
     from app.process.models import ProcessDefinition, ProcessRun
-    from app.tools.models import Tool
+    from app.services.models import Service
 
     db, _, native_calls, text_calls, mode = decisions
     task, _ = await profile_context(decisions, runtime, specialized=outcome != "absent", fallback=False)
-    tool = Tool(code=f"synthetic-dispatch-{uuid4().hex}", label="Synthetic workflow engine", connection_schema={})
+    tool = Service(code=f"synthetic-dispatch-{uuid4().hex}", label="Synthetic workflow engine", connection_schema={})
     db.add(tool)
     await db.flush()
-    definition = ProcessDefinition(agent_id=task.agent_id, tool_id=tool.id,
+    definition = ProcessDefinition(agent_id=task.agent_id, service_id=tool.id,
         engine_process_id="synthetic-report", label="Synthetic report", description="Produce a fictional report.")
     db.add(definition)
     await db.flush()

@@ -66,7 +66,7 @@ async def _runtime_authorization_configuration(agent_id: int) -> dict[str, str]:
     return await runtime_authorization_configuration(agent_id)
 
 
-from app.tools.facade import register_runtime_authorization_configuration
+from app.services.facade import register_runtime_authorization_configuration
 register_runtime_authorization_configuration("hermes", _runtime_authorization_configuration)
 
 __all__ = ["HERMES_DRIVER"]

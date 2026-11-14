@@ -39,7 +39,7 @@ async def pause_for_contact_authorization(message: Message, *, agent_id: int, co
     # Authority comes from the stored journal, never from a caller's hydrated payload.
     stored = await get_db().get(Message, message.id, populate_existing=True)
     if (stored is None or stored.connection_id != connection_id
-            or stored.messenger_user_id != sender.id or stored.tool_id != sender.tool_id):
+            or stored.messenger_user_id != sender.id or stored.service_id != sender.service_id):
         return False
     from .service import admit_message
     from .facade import wake

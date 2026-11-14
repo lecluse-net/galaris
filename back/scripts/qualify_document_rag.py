@@ -174,7 +174,7 @@ async def qualify(args: argparse.Namespace) -> int:
     from app.file_share import ResourceContext, resource_service
     from app.file_share import mcp
     from app.file_share.tests.local_file_transport import TemporaryFileTransport
-    from app.tools.mcp_loader import McpToolContext, load_mcp_tools
+    from app.services.mcp_loader import McpToolContext, load_mcp_tools
 
     load_models()
     async with get_db_session():

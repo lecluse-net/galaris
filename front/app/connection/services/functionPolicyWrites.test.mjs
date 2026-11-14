@@ -22,7 +22,7 @@ test('queued policy choices cannot execute under a replacement user session', as
       '../events': { CONNECTIONS_CHANGED_EVENT: 'test-connections-changed' },
     },
   )
-  const connection = { id: 5, tool_id: 9, agent_id: 7, active: true }
+  const connection = { id: 5, service_id: 9, agent_id: 7, active: true }
   const capability = { name: 'synthetic_read', capability_kind: 'tool' }
   const first = saveFunctionPolicy(connection, capability, { scope: 'global', state: 'disabled' })
   await setImmediate()
@@ -32,7 +32,7 @@ test('queued policy choices cannot execute under a replacement user session', as
   firstResponse.resolve({ data: {} })
   await first
   await cancelled
-  await waitForFunctionPolicyWrites(connection.tool_id)
+  await waitForFunctionPolicyWrites(connection.service_id)
   assert.equal(requests.length, 1)
   assert.equal(requests[0].config._sessionGeneration, 'session-one')
 

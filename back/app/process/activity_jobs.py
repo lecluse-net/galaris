@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 
 from core.database import get_db, get_db_session
-from app.tools.facade import RestRequest, execute_rest_request, execute_workflow_tool
+from app.services.facade import RestRequest, execute_rest_request, execute_workflow_tool
 from app.task import task_service
 from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 from .process_service import TERMINAL_STATUSES
@@ -74,7 +74,7 @@ async def execute_external_activity(identity: UUID) -> None:
             request = RestRequest.model_validate(prepared["request"])
             if not await mark_dispatched():
                 return
-            response = await execute_rest_request(agent_id=agent_id, tool_code=str(node.config["tool_code"]), request=request)
+            response = await execute_rest_request(agent_id=agent_id, service_code=str(node.config["service_code"]), request=request)
             result = response.model_dump(mode="json")
         else:
             assert attempt.task_id is not None

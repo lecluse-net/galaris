@@ -20,7 +20,7 @@ from .browser_service import attachment_message, browser_config, read_attachment
 from .contracts import MailboxInfo, MailMessageRef, MailMessageSummary, MailSearchQuery
 from .imap_client import ImapClient, mailbox_display_name
 from .service import get_attachment, list_mailboxes, parse_attachment_locator, search
-from app.tools import bind_protocol_connection, reset_protocol_connection
+from app.services import bind_protocol_connection, reset_protocol_connection
 
 
 def _bound_connection[**P, T](method: Callable[P, CoroutineType[Any, Any, T]]) -> Callable[P, CoroutineType[Any, Any, T]]:
@@ -118,19 +118,19 @@ class MailAttachmentTransport:
     """Browse live IMAP data; generic mutations remain forbidden."""
 
     def __init__(self, agent_id: int, *, browser: bool = False,
-                 connection_id: int | None = None, tool_code: str = "mail", prefix: str = "") -> None:
+                 connection_id: int | None = None, service_code: str = "mail", prefix: str = "") -> None:
         self.agent_id, self.browser = agent_id, browser
-        self.connection_id, self.tool_code, self.prefix = connection_id, tool_code, prefix
+        self.connection_id, self.service_code, self.prefix = connection_id, service_code, prefix
         self.accounts: dict[int, str] = {}
 
-    def for_accounts(self, accounts: dict[int, str], tool_code: str, *, prefix: str = "") -> MailAttachmentTransport:
-        transport = MailAttachmentTransport(self.agent_id, browser=self.browser, tool_code=tool_code, prefix=prefix)
+    def for_accounts(self, accounts: dict[int, str], service_code: str, *, prefix: str = "") -> MailAttachmentTransport:
+        transport = MailAttachmentTransport(self.agent_id, browser=self.browser, service_code=service_code, prefix=prefix)
         transport.accounts = accounts
         return transport
 
-    def for_connection(self, connection_id: int, tool_code: str, *, prefix: str = "") -> MailAttachmentTransport:
+    def for_connection(self, connection_id: int, service_code: str, *, prefix: str = "") -> MailAttachmentTransport:
         return MailAttachmentTransport(self.agent_id, browser=self.browser,
-            connection_id=connection_id, tool_code=tool_code, prefix=prefix)
+            connection_id=connection_id, service_code=service_code, prefix=prefix)
 
     def _path(self, path: str) -> str:
         if self.prefix and not path.startswith(self.prefix):
@@ -139,7 +139,7 @@ class MailAttachmentTransport:
 
     def for_resource_context(self, ctx: ResourceContext) -> MailAttachmentTransport:
         transport = MailAttachmentTransport(self.agent_id, browser=ctx.browser_navigation,
-            connection_id=self.connection_id, tool_code=self.tool_code, prefix=self.prefix)
+            connection_id=self.connection_id, service_code=self.service_code, prefix=self.prefix)
         transport.accounts = self.accounts
         return transport
 
@@ -150,7 +150,7 @@ class MailAttachmentTransport:
                 await browser_config(self.agent_id)
             finally:
                 reset_protocol_connection(binding)
-        return FileEntry(path="", name=self.tool_code, is_dir=True)
+        return FileEntry(path="", name=self.service_code, is_dir=True)
 
     async def _folders(self) -> dict[str, _Folder]:
         if self.browser:

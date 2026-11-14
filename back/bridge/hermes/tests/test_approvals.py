@@ -14,7 +14,7 @@ def _interaction() -> PendingChoice:
         id=uuid4(),
         kind=approvals.HERMES_APPROVAL_INTERACTION,
         agent_id=7,
-        tool_id=None,
+        service_id=None,
         room_id="room-1",
         user_id="human-1",
         title="Approval",

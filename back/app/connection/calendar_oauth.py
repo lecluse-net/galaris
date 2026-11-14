@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 
 from pydantic import AnyHttpUrl, SecretStr
 
-from app.tools.facade import get_tool_by_id
+from app.services.facade import get_service_by_id
 from . import connection_service
 from .models import Connection
 from .oauth_service import AuthorizationMetadata, OAuthError, RegisteredClient
@@ -19,7 +19,7 @@ PROVIDER_ROOTS = {"google": "https://www.googleapis.com/calendar/v3/users/me/cal
 
 
 async def configuration(connection: Connection) -> tuple[str, str, dict[str, object]]:
-    tool = await get_tool_by_id(connection.tool_id)
+    tool = await get_service_by_id(connection.service_id)
     if tool is None or tool.calendar is None:
         raise OAuthError("configuration")
     config = tool.calendar
@@ -36,7 +36,7 @@ async def configuration(connection: Connection) -> tuple[str, str, dict[str, obj
         raise OAuthError("configuration")
     # Include registration, endpoints and account choices. Changed configuration
     # cannot refresh a previous account's credential into a different resource.
-    bound = json.dumps([connection.agent_id, connection.id, connection.tool_id, url,
+    bound = json.dumps([connection.agent_id, connection.id, connection.service_id, url,
                         {name: config.settings.get(name) for name in ("source_kind", "auth_type", "tenant", "issuer", "authorization_endpoint", "token_endpoint", "scope")},
                         {role: params.get(name) for role, name in config.param_map.items() if role in ("url", "username", "client_id", "client_secret")}], sort_keys=True, default=str)
     return url, hashlib.sha256(bound.encode()).hexdigest(), params
@@ -44,7 +44,7 @@ async def configuration(connection: Connection) -> tuple[str, str, dict[str, obj
 
 async def authorization(connection: Connection) -> tuple[AuthorizationMetadata, str, RegisteredClient, dict[str, str]]:
     _, _, params = await configuration(connection)
-    tool = await get_tool_by_id(connection.tool_id)
+    tool = await get_service_by_id(connection.service_id)
     assert tool is not None and tool.calendar is not None
     config = tool.calendar
     provider = config.settings.get("source_kind", "caldav")

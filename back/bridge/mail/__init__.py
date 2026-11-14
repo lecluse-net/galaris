@@ -31,7 +31,7 @@ async def _test_saved_connection(connection_id: int) -> bool:
     return result.imap_ok and result.smtp_ok
 
 
-from app.tools import register_connection_probe
+from app.services import register_connection_probe
 
 register_connection_probe("mail", _test_saved_connection)
 

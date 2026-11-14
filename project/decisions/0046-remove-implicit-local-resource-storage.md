@@ -9,19 +9,19 @@
 Le schéma `workspace://` donnait au modèle l'impression qu'un stockage local générique existait
 pour chaque runtime. En pratique, certains drivers ne l'implémentaient pas, les chemins relatifs
 étaient convertis sans propriétaire explicite et les pièces jointes Messenger pouvaient perdre le
-schéma du Tool qui permettait réellement de les relire. Ajouter des instructions aux prompts ne
+schéma du Service qui permettait réellement de les relire. Ajouter des instructions aux prompts ne
 rendait pas cette ressource plus accessible.
 
 ## Décision
 
-`workspace://` est retiré de la façade `app.file_share`. Son nom reste réservé afin qu'aucun Tool
+`workspace://` est retiré de la façade `app.file_share`. Son nom reste réservé afin qu'aucun Service
 externe ne puisse le réutiliser. Le parseur refuse ce schéma ainsi que tout chemin relatif : chaque
 référence échangée doit nommer explicitement son provider.
 
 `console://` est l'unique système de fichiers local visible, uniquement lorsqu'une console est
 attachée au run. Sans console, `file_schemes` n'annonce aucun stockage local, `file_list` sans URI
 échoue et les outils producteurs exigent une destination writable explicite. L'agent travaille
-alors directement avec les URI du Messenger courant ou des Tools compatibles file-share.
+alors directement avec les URI du Messenger courant ou des Services compatibles file-share.
 
 Une pièce jointe entrante conserve toujours la forme
 `<tool.code>://<room-locator-provider>/<attachment-uuid-local>`. Lorsqu'un modèle ou une

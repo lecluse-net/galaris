@@ -13,11 +13,11 @@ configuration remain in the standard connection parameter editors.
 Month, Week, Day and Schedule views select calendars per managed agent. Event editing uses
 explicit recurrence scopes and revision checks. Each agent has one automatically created
 internal default agenda, protected against deletion and deactivation. New internal calendars
-cannot be created through the UI or API; external Tools supply additional agendas. Legacy
+cannot be created through the UI or API; external Services supply additional agendas. Legacy
 secondary internal agendas remain accessible without deleting or moving their events.
 The API's default flag identifies only the internal agenda; the external ORM marker remains
 private synchronization-root metadata. Source captions show Galaris for internal layers and
-the current Tool label for external calendars, resolved through the public Tools facade.
+the current Service label for external calendars, resolved through the public Services facade.
 CalDAV writes
 use local receipts; iCalendar subscriptions remain read-only. Local actions do not require
 remote event write permission. Events never become Documents, Goals or Process definitions.

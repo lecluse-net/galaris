@@ -5,7 +5,7 @@ Status: accepted, implemented with the explicit limits below.
 ## Decision
 
 Keep `caldav.calendar` as the existing capability and select the provider in standard
-Tool settings. `app.calendar` owns persistence, permissions, outbox, leases and schedules;
+Service settings. `app.calendar` owns persistence, permissions, outbox, leases and schedules;
 `bridge.calendar` adapts external protocols. No separate parameter editor is introduced.
 
 | Provider | Authorization | Transport |
@@ -16,10 +16,10 @@ Tool settings. `app.calendar` owns persistence, permissions, outbox, leases and 
 | Apple iCloud | Apple account and app-specific password | CalDAV, validated Apple shard discovery |
 | Private/public ICS subscription | Private URL, optional HTTP credentials | HTTPS, read only |
 
-Shared CalDAV roots and OAuth application registrations use existing global Tool parameters
+Shared CalDAV roots and OAuth application registrations use existing global Service parameters
 with forced inheritance where appropriate. Account credentials and private ICS URLs belong
 to connections. Native providers use fixed API endpoints. Generic CalDAV OAuth endpoints
-and scopes are explicit Tool settings and may use private enterprise HTTPS origins.
+and scopes are explicit Service settings and may use private enterprise HTTPS origins.
 
 Reuse connection OAuth PKCE S256, user-bound single-use callbacks, encrypted grants,
 serialized refresh and refresh-token rotation. Store calendar grants separately from MCP

@@ -13,7 +13,7 @@ from app.llm.facade import find_dataset_agent_usages
 from app.llm.models import LLMCall
 from app.process.facade import find_dataset_run_usages
 from app.process.models import ProcessDefinition, ProcessRun
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.team import TeamModel, TeamUserModel
 from core.user import HumanActor, UserModel
 from core.authorize import Assignment, Privilege
@@ -90,8 +90,8 @@ async def test_dataset_usages_find_current_documents_processes_and_agent_traces_
     for agent, label in [(owner, "Synthetic visible page"), (owner, "Synthetic other page"), (other, "Synthetic hidden page")]:
         await document_service.create_document(owner_agent_id=agent.id, title=label, task_id=None,
             content=f'<form data-dataset="{uri}"><p>Synthetic Dataset application</p></form>')
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
-    definition = ProcessDefinition(agent_id=owner.id, code="synthetic_" + uuid4().hex, tool_id=tool.id, engine_process_id=f"synthetic-{uuid4()}", label="Synthetic workflow")
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+    definition = ProcessDefinition(agent_id=owner.id, code="synthetic_" + uuid4().hex, service_id=tool.id, engine_process_id=f"synthetic-{uuid4()}", label="Synthetic workflow")
     db.add(definition); await db.flush()
     run = ProcessRun(process_id=definition.id, launcher_agent_id=owner.id, engine_code="galaris", correlation_id=str(uuid4()),
         callback_token=str(uuid4()),

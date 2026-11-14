@@ -6,7 +6,7 @@ from core.authorize import Assignment, Privilege, Role
 from core.database import get_db_session
 from app.agent.models import Agent, Title
 from app.connection import Connection
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.user import UserModel
 
 
@@ -62,9 +62,9 @@ async def test_team_membership_controls_chat_without_granting_management_over_ht
         db.add(agent)
         await db.flush()
         agent_id = agent.id
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
         assert tool is not None
-        db.add(Connection(agent_id=agent_id, tool_id=tool.id, active=True))
+        db.add(Connection(agent_id=agent_id, service_id=tool.id, active=True))
     # These actors represent separate browsers. Reusing the admin's refresh cookie
     # would intentionally revoke its session when logging in as the human.
     client.cookies.clear()

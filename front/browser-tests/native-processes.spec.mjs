@@ -1329,7 +1329,7 @@ test(`internal run ${host} ${width}px view highlights active work and opens acti
     run.data = { kept: { type: 'bool', value: false }, result: { type: 'string', value: 'Synthetic business value' },
       report: { type: 'File', value: 'file://11111111-1111-4111-8111-111111111111' } }
   }
-  const summary = { id: run.id, status: run.status, tool_code: 'galaris', process_id: 1, workflow_id: 'synthetic_flow',
+  const summary = { id: run.id, status: run.status, service_code: 'galaris', process_id: 1, workflow_id: 'synthetic_flow',
     process_label: 'Synthetic inspection workflow', summary: 'Synthetic inspection workflow', input: {}, output: null,
     engine_metadata: {}, launcher_agent_id: 7, launcher_agent_code: 'synthetic_agent', created_at: '2026-01-01T12:00:00Z',
     started_at: '2026-01-01T12:00:00Z', finished_at: null, error_message: null, error_code: null, events: [], task_ids: [] }

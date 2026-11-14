@@ -22,10 +22,10 @@ def _signature(raw: bytes, secret: str) -> str:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("tool_id, expected", [(None, None), (7, 42), (8, 43)])
+@pytest.mark.parametrize("service_id, expected", [(None, None), (7, 42), (8, 43)])
 async def test_phone_number_lookup_uses_the_tool_mapping(
     monkeypatch: pytest.MonkeyPatch,
-    tool_id: int | None,
+    service_id: int | None,
     expected: int | None,
 ) -> None:
     from app import messenger
@@ -46,14 +46,14 @@ async def test_phone_number_lookup_uses_the_tool_mapping(
         return [tool, other_tool]
 
     async def connections(
-        tool_id: int,
+        service_id: int,
         param_name: str,
         param_value: str,
     ) -> list[SimpleNamespace]:
-        assert (tool_id, param_name, param_value) in {
+        assert (service_id, param_name, param_value) in {
             (7, "meta_phone", "123"), (8, "other_phone", "123"),
         }
-        return [SimpleNamespace(id=42 if tool_id == 7 else 43, active=True),
+        return [SimpleNamespace(id=42 if service_id == 7 else 43, active=True),
                 SimpleNamespace(id=99, active=False)]
 
     monkeypatch.setattr(messenger, "messaging_tool_records", records)
@@ -64,7 +64,7 @@ async def test_phone_number_lookup_uses_the_tool_mapping(
     )
 
     assert (
-        await whatsapp_router._connection_for_phone_number_id("123", tool_id=tool_id)  # pyright: ignore[reportPrivateUsage]
+        await whatsapp_router._connection_for_phone_number_id("123", service_id=service_id)  # pyright: ignore[reportPrivateUsage]
         == expected
     )
 
@@ -174,6 +174,6 @@ async def test_webhook_stops_consuming_oversized_stream(monkeypatch, declared):
     headers = [] if declared is None else [(b"content-length", declared.encode())]
     request = Request({"type": "http", "headers": headers}, receive)
     with pytest.raises(HTTPException) as raised:
-        await whatsapp_router._receive_webhook(request, tool_id=None)
+        await whatsapp_router._receive_webhook(request, service_id=None)
     assert raised.value.status_code == 413
     assert reads == [b"x" * 512, b"y" * 513]

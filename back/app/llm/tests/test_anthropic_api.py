@@ -84,7 +84,7 @@ def test_translate_request_carries_system_prompt_and_stream_flags() -> None:
 def test_tool_use_ids_pass_through_verbatim() -> None:
     """The client echoes our toolu_ ids; the translation must not rewrite them,
     or upstream assistant/tool messages stop matching."""
-    tool_id = "toolu_01abc"
+    service_id = "toolu_01abc"
     request = MessageRequest.model_validate({
         "model": "m",
         "max_tokens": 10,
@@ -93,13 +93,13 @@ def test_tool_use_ids_pass_through_verbatim() -> None:
                 "role": "assistant",
                 "content": [
                     {"type": "text", "text": "Je vais chercher."},
-                    {"type": "tool_use", "id": tool_id, "name": "recherche", "input": {"q": "x"}},
+                    {"type": "tool_use", "id": service_id, "name": "recherche", "input": {"q": "x"}},
                 ],
             },
             {
                 "role": "user",
                 "content": [
-                    {"type": "tool_result", "tool_use_id": tool_id, "content": "42"},
+                    {"type": "tool_result", "tool_use_id": service_id, "content": "42"},
                 ],
             },
         ],
@@ -108,9 +108,9 @@ def test_tool_use_ids_pass_through_verbatim() -> None:
     body = translate_to_openai(request)
     assistant, tool = body["messages"]
 
-    assert assistant["tool_calls"][0]["id"] == tool_id
+    assert assistant["tool_calls"][0]["id"] == service_id
     assert assistant["tool_calls"][0]["function"]["arguments"] == '{"q":"x"}'
-    assert tool == {"role": "tool", "tool_call_id": tool_id, "content": "42"}
+    assert tool == {"role": "tool", "tool_call_id": service_id, "content": "42"}
 
 
 def test_tool_error_is_marked_in_band_and_images_become_vision_payload() -> None:

@@ -12,7 +12,7 @@ from app.file_share import (
     parse_resource_uri,
 )
 from app.messenger import MessagingContext, reset_context, set_context
-from app.tools.mcp_loader import McpToolContext, add_galaris_tools
+from app.services.mcp_loader import McpToolContext, add_galaris_tools
 
 
 async def _resource_context(
@@ -99,7 +99,7 @@ def test_transcript_defaults_to_console_or_requires_a_destination() -> None:
 @pytest.mark.asyncio
 async def test_audio_tool_schema_uses_resource_uri() -> None:
     mcp = FastMCP("test")
-    add_galaris_tools(mcp, 1, runtime="internal", enabled_tool_codes={"audio"})
+    add_galaris_tools(mcp, 1, runtime="internal", enabled_service_codes={"audio"})
 
     tools = {tool.name: tool for tool in await mcp.list_tools()}
     schema = tools["audio_transcribe"].parameters

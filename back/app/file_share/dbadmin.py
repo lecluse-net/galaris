@@ -14,5 +14,5 @@ async def _reconcile_root_titles(_session: AsyncSession) -> None:
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_reconciler(DbAdminReconciler(
         key="app.file_share.catalogue_root_titles", handler=_reconcile_root_titles,
-        depends_on=("app.tools.mandatory.tools", "app.memory.catalogue_editability"),
+        depends_on=("app.services.mandatory.services", "app.memory.catalogue_editability"),
     ))

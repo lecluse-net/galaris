@@ -34,7 +34,7 @@ directe reste disponible sans cet adaptateur.
 L'API documentaire est sous `/documents`. La bibliothèque conserve son chemin
 public `/documents`, ses URI `document://` et une redirection du précédent chemin
 de page `/memory/documents`. Les anciennes routes API documentaires ne sont plus
-une surface de Memory. Le Tool `document` possède `document_sharing` et
+une surface de Memory. Le Service `document` possède `document_sharing` et
 `document_share` ; les opérations de partage ne sont plus exposées par Memory.
 Les politiques de fonctions et les capacités documentaires des rôles existants
 sont transférées sans élargissement implicite des droits.
@@ -63,7 +63,7 @@ le vrai reconciler de contacts avant la contraction, y compris après un échec 
 
 L'extraction conserve les dépendances documentaires existantes : Agent pour les
 propriétaires, Conversation et Goal pour leurs adaptateurs, Process pour ses
-références, Share pour les ACL, Task pour les auteurs et Tools pour MCP. Aucun
+références, Share pour les ACL, Task pour les auteurs et Services pour MCP. Aucun
 import privé supplémentaire n'est nécessaire ; l'import privé de Goal autrefois
 porté par Memory est remplacé par sa surface publique. Le nombre d'importations
 privées backend passe de 272 à 271, et celui du frontend reste à 122.

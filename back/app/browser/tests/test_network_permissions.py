@@ -9,7 +9,7 @@ from app.connection.models import Connection, ConnectionParam
 from app.messenger import create_internal_room, answer_internal_interaction, resolve_from_message
 from app.messenger.models import Interaction, Message, MessengerUser, PermissionDecision, Room
 from app.messenger.permissions import request_permission
-from app.tools.models import Tool
+from app.services.models import Service
 from core.user.models import User
 from app.browser.network import NetworkRequest, authorize_network, canonical_origin, filter_matches, is_local
 
@@ -30,13 +30,13 @@ async def setup_scope(db, *, create_rooms=True, public_access_mode="ask"):
                     last_name="Synthetic", agent_driver="internal") for i, user in enumerate(users)]
     db.add_all(agents)
     await db.flush()
-    browser = await db.scalar(select(Tool).where(Tool.code == "browser"))
-    chat = await db.scalar(select(Tool).where(Tool.code == "chat"))
+    browser = await db.scalar(select(Service).where(Service.code == "browser"))
+    chat = await db.scalar(select(Service).where(Service.code == "chat"))
     connections = []
     for agent in agents:
-        connection = Connection(agent_id=agent.id, tool_id=browser.id, active=True)
+        connection = Connection(agent_id=agent.id, service_id=browser.id, active=True)
         connections.append(connection)
-        db.add_all([connection, Connection(agent_id=agent.id, tool_id=chat.id, active=True)])
+        db.add_all([connection, Connection(agent_id=agent.id, service_id=chat.id, active=True)])
     await db.flush()
     if public_access_mode is not None:
         db.add_all([ConnectionParam(connection_id=connection.id, param_name="public_access_mode",
@@ -64,11 +64,11 @@ async def test_saved_choice_reused_and_deleted_choice_asks_again(db, answer_mode
     if answer_mode == "button":
         await answer_internal_interaction(users[0].id, UUID(interaction.room_id), interaction.id, option_id="allow" if allow else "deny")
     else:
-        message = Message(connection_id=interaction.connection_id, tool_id=interaction.tool_id,
+        message = Message(connection_id=interaction.connection_id, service_id=interaction.service_id,
                           text="oui" if allow else "non", direction="inbound")
         message.room = await db.get(Room, UUID(interaction.room_id))
         message.sender = await db.scalar(select(MessengerUser).where(
-            MessengerUser.tool_id == interaction.tool_id, MessengerUser.external_id == f"user:{users[0].id}"))
+            MessengerUser.service_id == interaction.service_id, MessengerUser.external_id == f"user:{users[0].id}"))
         assert await resolve_from_message(message, agent_id=agents[0].id) is not None
     request.url = "https://EXAMPLE.com:443/another?different=value"
     repeated = await authorize_network(request)
@@ -116,10 +116,10 @@ async def test_configuration_precedes_saved_grants_and_public_get_needs_no_choic
 @pytest.mark.asyncio
 @pytest.mark.parametrize("saved_mode", [None, "ask", "allow"])
 async def test_upgrade_preserves_existing_browser_site_policy(db, saved_mode):
-    from app.tools import mandatory_tools
+    from app.services import mandatory_services
 
     agents, _, connections = await setup_scope(db, public_access_mode=None)
-    browser = await db.get(Tool, connections[0].tool_id)
+    browser = await db.get(Service, connections[0].service_id)
     globals_before = {name: entry for name, entry in browser.global_params.items() if name != "public_access_mode"}
     if saved_mode is not None:
         globals_before["public_access_mode"] = {"value": saved_mode, "forced": True}
@@ -129,7 +129,7 @@ async def test_upgrade_preserves_existing_browser_site_policy(db, saved_mode):
     request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://upgrade.example.test/",
                              method="POST", addresses=["93.184.215.14"])
     for _ in range(2):
-        await mandatory_tools.sync_mandatory_tools()
+        await mandatory_services.sync_mandatory_services()
         await db.refresh(browser)
         assert browser.global_params["public_access_mode"] == {
             "value": expected_mode, "forced": saved_mode is not None,
@@ -142,14 +142,14 @@ async def test_upgrade_preserves_existing_browser_site_policy(db, saved_mode):
 @pytest.mark.asyncio
 async def test_public_access_mode_inherits_global_settings_and_supports_agent_override(db):
     from app.connection import connection_service
-    from app.tools import tool_service
-    from app.tools.schemas import ToolGlobalParamsUpdate
+    from app.services import service
+    from app.services.schemas import ServiceGlobalParamsUpdate
 
     agents, _, connections = await setup_scope(db, public_access_mode=None)
-    tool_id = connections[0].tool_id
+    service_id = connections[0].service_id
     request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://inherited.example.test/",
                              method="POST", addresses=["93.184.215.14"])
-    await tool_service.update_global_params(tool_id, ToolGlobalParamsUpdate(params={
+    await service.update_global_params(service_id, ServiceGlobalParamsUpdate(params={
         "public_access_mode": {"value": "allow"},
     }))
     assert (await authorize_network(request)).allowed
@@ -164,7 +164,7 @@ async def test_public_access_mode_inherits_global_settings_and_supports_agent_ov
     assert (await authorize_network(request)).code == "local_network_blocked"
     with pytest.raises(ValueError):
         await connection_service.set_param(connections[0].id, "public_access_mode", "invalid")
-    await tool_service.update_global_params(tool_id, ToolGlobalParamsUpdate(params={
+    await service.update_global_params(service_id, ServiceGlobalParamsUpdate(params={
         "public_access_mode": {"value": "allow", "forced": True},
     }))
     request.owner.agent_id = agents[1].id
@@ -546,9 +546,9 @@ async def test_revoked_decision_right_rejects_buttons_and_text_without_consuming
     await db.commit()
     with pytest.raises(PermissionError):
         await answer_internal_interaction(users[0].id, UUID(choice.room_id), choice.id, option_id="allow")
-    message = Message(connection_id=choice.connection_id, tool_id=choice.tool_id, text="oui", direction="inbound")
+    message = Message(connection_id=choice.connection_id, service_id=choice.service_id, text="oui", direction="inbound")
     message.room = await db.get(Room, UUID(choice.room_id))
-    message.sender = await db.scalar(select(MessengerUser).where(MessengerUser.tool_id == choice.tool_id,
+    message.sender = await db.scalar(select(MessengerUser).where(MessengerUser.service_id == choice.service_id,
         MessengerUser.external_id == f"user:{users[0].id}"))
     assert await resolve_from_message(message, agent_id=agents[0].id) is None
     await db.refresh(choice)

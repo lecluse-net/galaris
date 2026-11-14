@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0291 — Services et catalogue YAML autonome](0291-services-and-portable-catalog.md)
+
 - [0289 — Stable native Calendar resources](0289-calendar-resource-identity.md)
 
 - [0287 — Optional local contact references on calendar events](0287-calendar-contact-references.md)
@@ -79,8 +81,8 @@
 - [0223 — Souvenirs personnels et documents indépendants](0223-memory-document-independence.md)
 - [0222 — Frontière des packages de skills personnels](0222-personal-skill-package-boundary.md)
 - [0221 — Réception Mail, consentement et journal](0221-mail-inbound-consent-and-journal.md)
-- [0220 — Origine des Tools et bridges dédiés](0220-tool-origin-and-dedicated-bridges.md)
-- [0219 — Suppression en cascade d’un Tool confirmée par un humain](0219-human-confirmed-tool-deletion.md)
+- [0220 — Origine des Services et bridges dédiés](0220-tool-origin-and-dedicated-bridges.md)
+- [0219 — Suppression en cascade d’un Service confirmée par un humain](0219-human-confirmed-tool-deletion.md)
 - [0218 — Partages additifs dans les arborescences personnelles](0218-personal-tree-sharing-inheritance.md)
 - [0217 — Journal Mail relié aux autorisations communes](0217-mail-journal-common-authorizations.md)
 - [0216 — Reprise des accords gérés après réclamation de la Task](0216-managed-approval-resumption.md)
@@ -140,7 +142,7 @@
 
 - [0183 — Révocation durable et nettoyage des flux audio](0183-durable-audio-revocation.md)
 
-- [0182 — Capacité REST des Tools et connexions](0182-tool-rest-capability.md)
+- [0182 — Capacité REST des Services et connexions](0182-tool-rest-capability.md)
 
 - [0181 — Admission prioritaire des appels LLM par fournisseur](0181-provider-llm-admission.md)
 
@@ -188,7 +190,7 @@
 
 - [0151 — Analyse documentaire reprenable et couverture explicite](0151-resumable-document-analysis.md)
 
-- [0150 — Administration déléguée des Tools](0150-tool-administration.md)
+- [0150 — Administration déléguée des Services](0150-service-administration.md)
 
 - [0148 — Délégation AgentAdmin et génération directe des avatars](0148-agent-admin-delegation.md)
 
@@ -287,8 +289,8 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0031 — Working Set de Task et postconditions de livraison](0031-task-working-set-and-delivery-postconditions.md)
 - [0032 — Capsule de continuité figée par interlocuteur](0032-frozen-interlocutor-context-capsule.md)
 - [0033 — URI de ressources comme façade de fichiers virtuelle](0033-resource-uri-virtual-file-facade.md) — stockage local implicite remplacé par 0046
-- [0034 — Le courriel comme Tool borné, distinct de Messenger](0034-mail-as-bounded-tool.md)
-- [0035 — Paramètres globaux hérités par les connexions de Tool](0035-global-tool-connection-parameters.md)
+- [0034 — Le courriel comme Service borné, distinct de Messenger](0034-mail-as-bounded-tool.md)
+- [0035 — Paramètres globaux hérités par les connexions de Service](0035-global-tool-connection-parameters.md)
 - [0036 — Exécution cohérente `high` avant planification](0036-cohesive-high-execution-before-planning.md)
 - [0037 — L'effort mesure la complexité cognitive](0037-effort-measures-cognitive-complexity.md)
 - [0038 — Gestionnaire hôte générique des harnais conteneurisés](0038-generic-harness-manager.md)
@@ -358,7 +360,7 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0103 — Les erreurs d’outil reviennent à l’agent](0103-tool-errors-return-to-agent.md)
 - [0104 — Documents comme pivot de l'information rédigée](0104-documents-information-hub.md)
 - [0106 — Structure documentaire déterministe et mémoire des pièces jointes](0106-document-structure-memory.md)
-- [0105 — Services système obligatoires et séparation des Tools](0105-mandatory-system-tools.md)
+- [0105 — Services système obligatoires et séparation des Services](0105-mandatory-system-tools.md)
 - [0107 — Classement automatique des documents des objectifs](0107-personal-goal-folders.md)
 - [0108 — Index documentaire complet et admission du rappel mémoire](0108-memory-document-retrieval.md)
 - [0109 — Mise à jour Compose ciblée et construction backend séparée](0109-compose-update-and-build-stages.md)
@@ -372,7 +374,7 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0127 — Modèle de décision facultatif pour le dispatcher Task](0127-optional-dispatcher-decision-model.md)
 - [0128 — Requêtes HTTP de l'interface sans délai maximal](0128-http-client-without-deadline.md)
 - [0141 — Permissions réseau du navigateur et décisions humaines mémorisées](0141-browser-remembered-permissions.md)
-- [0152 — Indexation par les paramètres standards des Tools](0152-tool-file-indexing-preference.md)
+- [0152 — Indexation par les paramètres standards des Services](0152-tool-file-indexing-preference.md)
 - [0154 — Catalogue privé des ressources rencontrées](0154-file-catalogue-observations.md)
 - [0158 — Preuves lexicales indexées et complémentarité du rappel mémoire](0158-indexed-memory-query-evidence.md)
 - [0159 — URL des nœuds mémoire et source principale](0159-memory-url-associations.md)
@@ -405,7 +407,7 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0254 — Private contact phone numbers and postal addresses](0254-private-contact-coordinates.md)
 - [0271 — Autonomous Goal conduct with durable review Tasks](0271-autonomous-goal-conduct.md)
 - [0272 — Explicit Process activity types independent of lane placement](0272-explicit-process-activity-types.md)
-- [0274 — Capabilities and protocols on provider Tools](0274-provider-tool-protocols.md)
+- [0274 — Capabilities and protocols on provider Services](0274-provider-tool-protocols.md)
 - [0278 — Default personal agendas and Goal boundaries](0278-personal-agendas-and-goal-boundaries.md)
 - [0279 — Local agendas and background CalDAV synchronization](0279-local-agendas-and-caldav-synchronization.md)
 - [0280 — Private current Chat drafts](0280-private-chat-drafts.md)

@@ -14,7 +14,7 @@ _INVALID_TOOL_CODES = frozenset(
 
 
 def attachment_resource_uri(
-    tool_code: str,
+    service_code: str,
     room_locator: str,
     attachment_id: UUID | str,
 ) -> str:
@@ -24,7 +24,7 @@ def attachment_resource_uri(
     a connection identifier. The attachment keeps its durable local UUID.
     """
 
-    scheme = tool_code.strip()
+    scheme = service_code.strip()
     room = room_locator.strip()
     if (
         not _TOOL_CODE_PATTERN.fullmatch(scheme)

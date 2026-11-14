@@ -18,14 +18,14 @@ permet de qualifier ces choix.
 
 ## Activation
 
-1. Dans **Configurer → Outils & connexions → Connexions** (`/tools?tab=connections`),
+1. Dans **Configurer → Services & connexions → Connexions** (`/services?tab=connections`),
    activer la connexion **Administration** de l'agent.
 2. Dans les autorisations de cette connexion, conserver `documentation_catalog` et
    `documentation_search` autorisés.
 3. Pour un accès documentaire seul, désactiver `conversation_round_get`, `voice_turn_get`,
    `llm_call` et `llm_calls`. Ces fonctions donnent accès à des données d'exécution sensibles ;
    elles ne sont pas nécessaires à la connaissance du produit.
-4. Activer le **mode conversation** du Tool pour que ses fonctions soient proposées dans le Chat.
+4. Activer le **mode conversation** du Service pour que ses fonctions soient proposées dans le Chat.
 5. Autoriser `galaris-knowledge` pour l'agent dans les attributions de compétences. Son
    défaut global est désactivé ; les réglages de compétence et de catégorie restent applicables.
    Sa projection effective exige également l'autorisation `documentation_catalog`.

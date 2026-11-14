@@ -16,7 +16,7 @@ from app.agent.models import Agent, Title
 from app.process.models import ProcessDefinition, ProcessRun, ProcessRunEvent, ProcessStartJob
 from app.task import collab, runner
 from app.task.models import Task, TaskStatus
-from app.tools.models import Tool
+from app.services.models import Service
 from core.database import get_db_session
 from core.user.models import User
 
@@ -45,13 +45,13 @@ async def test_worker_crash_preserves_committed_result_and_external_identity(com
     async with get_db_session() as db:
         user = User(email=f"crash-{code}@example.test", hashed_password="unused")
         title = Title(label=code, gender="X")
-        tool = Tool(code=code, label=code, connection_schema={})
+        tool = Service(code=code, label=code, connection_schema={})
         db.add_all([user, title, tool])
         await db.flush()
         agent = Agent(user_id=user.id, title_id=title.id, code=code, first_name="Crash", last_name="Test")
         db.add(agent)
         await db.flush()
-        definition = ProcessDefinition(agent_id=agent.id, tool_id=tool.id, engine_process_id=code, label=code)
+        definition = ProcessDefinition(agent_id=agent.id, service_id=tool.id, engine_process_id=code, label=code)
         parent = Task(label="Waiting for receipt", agent_id=agent.id, status=TaskStatus.DISPATCH,
                       paused=True, data={"pause_reasons": ["await"]})
         db.add_all([definition, parent])

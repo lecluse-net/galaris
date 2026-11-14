@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent import Agent
 from app.connection import Connection
-from app.tools.facade import authorization_reviews, prepared_authorization_links
+from app.services.facade import authorization_reviews, prepared_authorization_links
 from core.dbadmin import (
     DbAdminAction,
     DbAdminPhase,

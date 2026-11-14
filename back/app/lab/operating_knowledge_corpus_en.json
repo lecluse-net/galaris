@@ -24,7 +24,7 @@
       "memory_forget",
       "memory_remember",
       "task_get",
-      "tools_list"
+      "services_list"
     ],
     "tool_catalog": [
       {
@@ -1152,7 +1152,7 @@
         }
       },
       {
-        "name": "tools_list",
+        "name": "services_list",
         "description": "List authorized MCP functions and distinguish those present in this run from those requiring a new execution context, grouped by application tool.",
         "parameters": {
           "additionalProperties": false,
@@ -2489,7 +2489,7 @@
             "memory_forget",
             "memory_remember",
             "task_get",
-            "tools_list"
+            "services_list"
           ],
           "max_tool_calls": 0,
           "response_values": [

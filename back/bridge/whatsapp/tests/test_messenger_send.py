@@ -33,7 +33,7 @@ def _messenger(*, template: str = "") -> tuple[WhatsAppMessenger, SimpleNamespac
         WhatsAppMessenger(
             client=client,  # type: ignore[arg-type]
             config=config,
-            tool_id=3,
+            service_id=3,
             connection_id=7,
             agent_id=11,
         ),

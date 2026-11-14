@@ -67,7 +67,7 @@ from app.llm.models import LLMCall
 from app.messenger import Message
 from app.task import TaskMessage
 from app.task.models import Task, TaskAttempt, TaskStatus
-from app.tools.models import Tool
+from app.services.models import Service
 from app.topic import Topic
 from app.topic.evaluation import (
     TopicDetectionLabConfiguration,
@@ -1068,7 +1068,7 @@ async def test_topic_lab_previews_and_imports_one_human_ai_exchange_as_one_case(
         code=f"topic-source-{suffix}",
         agent_driver="internal",
     )
-    tool = Tool(
+    tool = Service(
         code=f"topic-source-{suffix}",
         label="Topic source",
         description="",
@@ -1076,7 +1076,7 @@ async def test_topic_lab_previews_and_imports_one_human_ai_exchange_as_one_case(
     )
     db.add_all([agent, tool])
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     topic = Topic(
         title="Potager urbain",
         description="Cultures et entretien d'un petit potager en ville.",
@@ -1098,7 +1098,7 @@ async def test_topic_lab_previews_and_imports_one_human_ai_exchange_as_one_case(
     messages = [
         Message(
             connection_id=connection.id,
-            tool_id=tool.id,
+            service_id=tool.id,
             platform="telegram",
             remote_message_id=f"garden-{index}",
             direction="inbound" if index % 2 == 0 else "outbound",
@@ -1112,7 +1112,7 @@ async def test_topic_lab_previews_and_imports_one_human_ai_exchange_as_one_case(
     ]
     unrelated = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="telegram",
         remote_message_id="other-room",
         direction="inbound",
@@ -1187,7 +1187,7 @@ async def test_topic_lab_previews_and_imports_one_human_ai_exchange_as_one_case(
     await db.execute(delete(Task).where(Task.id == previous_task.id))
     await db.execute(delete(Topic).where(Topic.id == topic.id))
     await db.execute(delete(Connection).where(Connection.id == connection.id))
-    await db.execute(delete(Tool).where(Tool.id == tool.id))
+    await db.execute(delete(Service).where(Service.id == tool.id))
     await db.execute(delete(Agent).where(Agent.id == agent.id))
     await db.execute(delete(Title).where(Title.id == title.id))
     await db.commit()

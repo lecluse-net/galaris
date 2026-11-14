@@ -12,7 +12,7 @@ from uuid import UUID
 
 from loguru import logger
 
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.i18n import default_language, is_supported, render_prompt, t
 
 
@@ -59,7 +59,7 @@ async def voice_turn_get(
     from .inspection_service import inspect_turn
 
     identifier = _turn_id(turn_id)
-    from app.tools.facade import administration_scope
+    from app.services.facade import administration_scope
     scope = await administration_scope(ctx.agent_id, "platform_admin")
     scope.require_administration()
     payload = await inspect_turn(identifier, agent_ids=scope.agent_ids)
@@ -191,7 +191,7 @@ async def _call_provider_for_connection(
     if connection_id is not None:
         from app.connection import connection_service
         from app.messenger import is_kind_enabled, kind_for_tool
-        from app.tools import tool_service
+        from app.services import service
 
         connection = await connection_service.get_connection(connection_id)
         if connection is None:
@@ -210,12 +210,12 @@ async def _call_provider_for_connection(
             raise ValueError(
                 _message(language, "connection_inactive", connection_id=connection_id)
             )
-        tool = await tool_service.get_tool_by_id(int(connection.tool_id))
-        tool_code = str(getattr(tool, "code", "") or "")
+        tool = await service.get_service_by_id(int(connection.service_id))
+        service_code = str(getattr(tool, "code", "") or "")
         resolved_kind = kind_for_tool(tool)
         if resolved_kind is None:
             raise ValueError(
-                _message(language, "provider_missing", provider=tool_code or "messenger")
+                _message(language, "provider_missing", provider=service_code or "messenger")
             )
         kind = resolved_kind
         if not is_kind_enabled(kind):

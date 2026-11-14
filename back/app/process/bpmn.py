@@ -63,6 +63,17 @@ class Node(BaseModel):
             if not isinstance(raw_config, dict):
                 return value
             config = dict(cast(dict[str, Any], raw_config))
+            if value.get("kind") == "rest" and "tool_code" in config:
+                if "service_code" in config and config["service_code"] != config["tool_code"]:
+                    raise ValueError("Conflicting REST service references")
+                config["service_code"] = config.pop("tool_code")
+            if value.get("kind") == "tool_call":
+                from app.services.facade import canonical_service_call
+                name, _ = canonical_service_call(str(config.get("tool", "")), {})
+                config["tool"] = name
+                arguments = config.get("tool_arguments")
+                if isinstance(arguments, dict) and "$expr" not in arguments:
+                    _, config["tool_arguments"] = canonical_service_call(name, cast(dict[str, Any], arguments))
             for key in ("input_schema", "output_schema", "output_mapping", "output", "result_format", "result_condition", "files", "catch", "retry"):
                 config.pop(key, None)
             if value.get("kind") not in {"tool_call", "program"}:
@@ -317,7 +328,7 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None,
             raise ValueError("A call activity requires a process code")
         if node.kind == "tool_call" and not str(node.config.get("tool", "")).strip():
             raise ValueError("A tool activity requires an operation name")
-        if node.kind == "rest" and (not graph.typed or not str(node.config.get("tool_code", "")).strip()):
+        if node.kind == "rest" and (not graph.typed or not str(node.config.get("service_code", "")).strip()):
             raise ValueError("A REST activity requires the typed profile and a Tool code")
         if node.kind == "parallel" and len(graph.incoming(node.id)) > 1 and len(outgoing) > 1:
             raise ValueError("Use distinct parallel split and join gateways")

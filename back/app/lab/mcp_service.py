@@ -9,7 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel
 from sqlalchemy import Select, select
 
-from app.tools import McpToolContext
+from app.services import McpToolContext
 from core.database import get_db
 
 from . import mechanism_evaluation_service as evaluations

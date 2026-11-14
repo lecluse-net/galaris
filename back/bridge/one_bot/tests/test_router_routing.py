@@ -49,7 +49,7 @@ async def test_action_response_cannot_cross_agent_connections(monkeypatch, other
     monkeypatch.setattr(messenger_module, "is_kind_enabled", lambda _: True)
     monkeypatch.setattr(router, "_authenticate_connection", AsyncMock(side_effect=[(19, 3), (20, 4)]))
     monkeypatch.setattr(messenger_module, "resolve_messenger_configuration", AsyncMock(return_value=SimpleNamespace(
-        connection_id=19, tool_id=3, agent_id=7, settings={"platform": "qq"},
+        connection_id=19, service_id=3, agent_id=7, settings={"platform": "qq"},
         params={"user_id": "700", "token": "synthetic-token"},
     )))
     owner, other = AdapterSocket(), AdapterSocket()

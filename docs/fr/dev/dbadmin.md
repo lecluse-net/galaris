@@ -382,8 +382,8 @@ lieu de dépendre artificiellement du tri lexical.
 Le dataset `app.agent.initial_galaris` propose une seule fois l'agent **Galaris**,
 rattaché au premier administrateur actif, avec son avatar dédié fourni dans le backend,
 le harnais interne, le profil courant par défaut, les connexions `platform_admin`
-(documentation comprise), `tool_admin`, `agent_admin`, `process_admin`, `goal_management`,
-`skills` et `chat` actives avec `tools.management_scope=all` et les compétences
+(documentation comprise), `service_admin`, `agent_admin`, `process_admin`, `goal_management`,
+`skills` et `chat` actives avec `services.management_scope=all` et les compétences
 `galaris-lab` et `galaris-knowledge` autorisées individuellement. Leur défaut global reste désactivé.
 S'il n'y a pas encore d'administrateur, la première inscription rejoue ce même dataset.
 Le paramètre global interne `galaris.agent_id` conserve l'identifiant de cet agent après

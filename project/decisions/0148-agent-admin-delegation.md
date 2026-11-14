@@ -2,7 +2,7 @@
 
 Status: accepted. Date: 2026-09-30.
 
-AgentAdmin is an optional built-in Tool, inactive by default for ordinary agents. The
+AgentAdmin is an optional built-in Service, inactive by default for ordinary agents. The
 bundled Galaris assistant receives an active connection when first created; subsequent
 synchronization preserves manual deactivation and previously initialized agents.
 Every operation requires
@@ -31,12 +31,12 @@ Waiting Tasks and approval receipts are settled before removal. Business process
 stored avatars are preserved. Automatic provider resubmission is not introduced.
 
 Native discovery uses the same live projection as execution, including conditional
-image generation. AgentAdmin supplies no skill management, global Tool permissions,
+image generation. AgentAdmin supplies no skill management, global Service permissions,
 LLM provisioning or task termination commands.
 
 The Agent domain gains two public dependencies: `app.file_share` for bounded authorized
 URI materialization and `app.image` for specialist image generation. Harness MCP entries
-use the public `app.tools` decorators. These explicit dependencies extend the declared
+use the public `app.services` decorators. These explicit dependencies extend the declared
 fan-out limits; they do not authorize new private imports or increased coupling baselines.
 Portrait publication and UI cache invalidation reuse `agents.updated_at`; there is no
 dedicated avatar revision column. Every avatar write explicitly advances this timestamp

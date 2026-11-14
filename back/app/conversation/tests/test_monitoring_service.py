@@ -24,7 +24,7 @@ from app.conversation.models import ConversationRound, ConversationRoundAttempt,
 from app.conversation.service import admit_message, claim_next_round, complete_round, fail_round
 from app.llm import LLMCall
 from app.messenger import Message, MessengerUser, Room
-from app.tools.models import Tool
+from app.services.models import Service
 from app.topic import Topic
 from core.authorize import Privileges
 
@@ -146,7 +146,7 @@ async def test_historical_preparation_is_recovered_only_with_unambiguous_task_li
 async def _scope(db: AsyncSession) -> tuple[Agent, Connection, Room, MessengerUser]:
     suffix = uuid4().hex[:10]
     title = Title(label=f"Conversation monitoring {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"conversation-monitoring-{suffix}",
         label="Conversation monitoring",
         description="",
@@ -164,7 +164,7 @@ async def _scope(db: AsyncSession) -> tuple[Agent, Connection, Room, MessengerUs
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(
@@ -176,8 +176,8 @@ async def _scope(db: AsyncSession) -> tuple[Agent, Connection, Room, MessengerUs
         conversation_type="text",
     )
     sender = MessengerUser(
-        id=uuid5(NAMESPACE_URL, f"{connection.tool_id}:human-monitoring"),
-        tool_id=connection.tool_id,
+        id=uuid5(NAMESPACE_URL, f"{connection.service_id}:human-monitoring"),
+        service_id=connection.service_id,
         external_id="human-monitoring",
         display_name="Nicolas",
     )
@@ -200,7 +200,7 @@ async def _message(
         remote_message_id=f"monitoring-message-{sequence}-{uuid4()}",
         direction="inbound",
         platform="telegram",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         messenger_room_id=room.id,
         messenger_user_id=sender.id,
         room_id=room.external_id,
@@ -235,7 +235,7 @@ def _install_messenger(
             message = Message(
                 id=uuid4(),
                 connection_id=connection.id,
-                tool_id=connection.tool_id,
+                service_id=connection.service_id,
                 platform="telegram",
                 remote_message_id=f"monitoring-output-{uuid4()}",
                 direction="outbound",

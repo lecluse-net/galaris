@@ -7,7 +7,7 @@ Statut : accepté. Date : 2026-10-01.
 File Share possède les identités par agent, connexion, empreinte SHA-256 de configuration
 persistée et runtime. L'empreinte inclut les paramètres globaux et locaux chiffrés ; aucun
 credential déchiffré ne rejoint le catalogue. Les observations sont prises dans la façade
-Python publique, sous contrôle du mode d'indexation du Tool et du transport réellement
+Python publique, sous contrôle du mode d'indexation du Service et du transport réellement
 résolu. Mail, Documents, Memory, Galaris, Web et Messenger sont exclus.
 
 Un port Memory transactionnel crée des projections privées, gérées, protégées de l'oubli

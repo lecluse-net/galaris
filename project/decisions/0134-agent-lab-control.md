@@ -11,7 +11,7 @@ ne changent pas les réglages de production.
 
 ## Décision
 
-Le Tool intégré `lab` expose cinquante fonctions `lab_*` dans le serveur MCP existant.
+Le Service intégré `lab` expose cinquante fonctions `lab_*` dans le serveur MCP existant.
 Sa connexion est provisionnée inactive. L'activer délègue l'administration des Labs ;
 les restrictions par fonction et par contexte du catalogue commun continuent à s'appliquer.
 Chaque appel et chaque nouvelle unité de travail vérifient les autorisations courantes.

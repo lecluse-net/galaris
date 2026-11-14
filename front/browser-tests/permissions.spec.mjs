@@ -2,24 +2,24 @@ import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
 const privileges = ['PERMISSION_ACCESS', 'PERMISSION_DECIDE', 'PERMISSION_REVOKE']
 const names = {
-  functions: 'Tool functions and prompts',
+  functions: 'Service functions and prompts',
   network: 'Contacts and network access: requests and decisions', runtime: 'Harness action type decisions',
 }
 const empty = { connections: [], capabilities: [], unavailable_catalogs: [] }
-const capability = (name, extra = {}) => ({ id: `14:tool:${name}`, tool_id: 14, tool_label: 'Synthetic topics', connection_id: 9,
+const capability = (name, extra = {}) => ({ id: `14:tool:${name}`, service_id: 14, service_label: 'Synthetic topics', connection_id: 9,
   name, description: 'Synthetic capability', capability_kind: 'tool', connection_state: 'default', global_state: 'default',
   default_state: 'ask', effective_state: 'ask', policy_state: 'ask', policy_source: 'software', available: true, runtime_supported: true, ...extra })
-const connection = { tool_id: 14, tool_code: 'topic', tool_label: 'Synthetic topics', description: 'Synthetic connection', connection_id: 9,
+const connection = { service_id: 14, service_code: 'topic', service_label: 'Synthetic topics', description: 'Synthetic connection', connection_id: 9,
   active: true, can_disable: true, parameters: {} }
 const decision = { id: 'remembered-contact', agent_id: 7, permission_key: 'messenger-contact:9:synthetic',
   question: 'Contact with Synthetic Visitor', allowed: false, can_decide: true, active: true, approver_label: 'Synthetic manager' }
 
 async function setup(page, options = {}) {
   await jsonRoute(page, '**/api/agents/selection?scope=management', [{ id: 7, label: 'Synthetic agent' }, { id: 8, label: 'Other synthetic agent' }])
-  await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [], total: 0 })
-  await jsonRoute(page, '**/api/tools/action-authorizations/runtime-policies?*', [])
+  await jsonRoute(page, '**/api/services/action-authorizations?*', { items: [], total: 0 })
+  await jsonRoute(page, '**/api/services/action-authorizations/runtime-policies?*', [])
   await jsonRoute(page, '**/api/messenger/permissions?*', { items: [], total: 0, counts: {} })
-  await jsonRoute(page, '**/api/tools/agents/*/permissions', empty)
+  await jsonRoute(page, '**/api/services/agents/*/permissions', empty)
   if (options.routes) await options.routes()
   await mount(page, 'app/connection/pages/permissions.vue', { route: options.route ?? '/permissions?agent_id=7', privileges: options.privileges ?? (options.readonly ? ['PERMISSION_ACCESS'] : privileges) })
 }
@@ -30,8 +30,8 @@ for (const editable of [true, false]) test(`management scopes remain visible and
   const writes = []
   let fail = true
   await setup(page, { privileges: [...privileges, 'CONNECTION_EDIT', ...(editable ? ['AGENT_MANAGE_ALL'] : [])], routes: async () => {
-    await page.route('**/api/tools/agents/7/permissions', route => route.fulfill({ json: {
-      ...empty, connections: [{ ...connection, can_disable: false, management_scope: scope, parameters: { 'tools.management_scope': scope.value } }],
+    await page.route('**/api/services/agents/7/permissions', route => route.fulfill({ json: {
+      ...empty, connections: [{ ...connection, can_disable: false, management_scope: scope, parameters: { 'services.management_scope': scope.value } }],
     } }))
     await page.route('**/api/connections/9/management-scope', route => {
       const data = route.request().postDataJSON(); writes.push(data)
@@ -41,7 +41,7 @@ for (const editable of [true, false]) test(`management scopes remain visible and
     })
   } })
   const panel = page.getByRole('region', { name: names.functions })
-  const select = panel.getByRole('group', { name: 'Scope for Synthetic topics (tools.management_scope)', exact: true })
+  const select = panel.getByRole('group', { name: 'Scope for Synthetic topics (services.management_scope)', exact: true })
   await expect(select).toBeVisible()
   await expect(select.getByRole('button', { name: 'Default: Team', exact: true })).toHaveAttribute('aria-pressed', 'true')
   if (!editable) { for (const button of await select.getByRole('button').all()) await expect(button).toBeDisabled(); expect(writes).toEqual([]); return }
@@ -62,28 +62,28 @@ for (const width of [390, 1440]) test(`one searchable dashboard manages inherite
   await page.setViewportSize({ width, height: 1000 })
   const functions = Array.from({ length: 53 }, (_, index) => capability(index === 52 ? 'needle_function' : `synthetic_function_${index}`))
   functions.push(...['enabled', 'disabled', 'ask'].map(state => capability(`other_${state}`, {
-    id: `17:tool:other_${state}`, tool_id: 17, tool_label: 'Synthetic second Tool', connection_id: 10,
+    id: `17:tool:other_${state}`, service_id: 17, service_label: 'Synthetic second Service', connection_id: 10,
     effective_state: state, policy_state: state,
   })))
   const connections = [connection,
-    { ...connection, tool_id: 17, tool_code: 'second', tool_label: 'Synthetic second Tool', connection_id: 10 },
-    { ...connection, tool_id: 15, tool_label: 'Disconnected service', connection_id: null, active: false }]
+    { ...connection, service_id: 17, service_code: 'second', service_label: 'Synthetic second Service', connection_id: 10 },
+    { ...connection, service_id: 15, service_label: 'Disconnected service', connection_id: null, active: false }]
   connections.push(...Array.from({ length: 51 }, (_, index) => ({ ...connection,
-    tool_id: 100 + index, connection_id: 100 + index, tool_code: `additional_${index}`, tool_label: `Additional synthetic Tool ${index}`,
+    service_id: 100 + index, connection_id: 100 + index, service_code: `additional_${index}`, service_label: `Additional synthetic Service ${index}`,
   })))
   const calls = [], writes = [], activations = []
   const policy = { id: 'runtime-ask', agent_id: 7, runtime: 'hermes', capability_name: 'write_file', allowed: null,
     remembered: false, active: false, can_decide: true, can_revoke: false }
   await setup(page, { privileges: [...privileges, 'CONNECTION_EDIT'], routes: async () => {
-    await page.route('**/api/tools/agents/7/permissions', route => {
+    await page.route('**/api/services/agents/7/permissions', route => {
       calls.push(route.request().url())
       return route.fulfill({ json: { connections, capabilities: functions, unavailable_catalogs: ['Offline external service'] } })
     })
-    await jsonRoute(page, '**/api/tools/action-authorizations/runtime-policies?*', [policy])
+    await jsonRoute(page, '**/api/services/action-authorizations/runtime-policies?*', [policy])
     await page.route('**/api/connections/10', route => {
       const { active } = route.request().postDataJSON(); activations.push(active); connections[1].active = active
-      for (const row of functions.filter(row => row.tool_id === 17)) row.effective_state = active ? row.policy_state : 'disabled'
-      return route.fulfill({ json: { id: 10, tool_id: 17, agent_id: 7, active } })
+      for (const row of functions.filter(row => row.service_id === 17)) row.effective_state = active ? row.policy_state : 'disabled'
+      return route.fulfill({ json: { id: 10, service_id: 17, agent_id: 7, active } })
     })
     await page.route('**/api/connections/9/capabilities', route => {
       const data = route.request().postDataJSON(); writes.push(data)
@@ -101,11 +101,11 @@ for (const width of [390, 1440]) test(`one searchable dashboard manages inherite
   await expect(page.getByRole('button', { name: 'Configure', exact: true })).toHaveCount(0)
   const functionsPanel = page.getByRole('region', { name: names.functions })
   await expect(functionsPanel.getByRole('status').filter({ hasText: 'Offline external service' })).toBeVisible()
-  const toolList = functionsPanel.getByRole('complementary', { name: 'Tool', exact: true })
-  await toolList.getByRole('button', { name: 'Additional synthetic Tool 50', exact: true }).click()
-  await expect(functionsPanel.getByRole('group', { name: 'Additional synthetic Tool 50', exact: true })).toBeVisible()
+  const toolList = functionsPanel.getByRole('complementary', { name: 'Service', exact: true })
+  await toolList.getByRole('button', { name: 'Additional synthetic Service 50', exact: true }).click()
+  await expect(functionsPanel.getByRole('group', { name: 'Additional synthetic Service 50', exact: true })).toBeVisible()
   await expect(toolList.getByRole('button', { name: 'Disconnected service', exact: true })).toHaveCount(0)
-  await toolList.getByRole('button', { name: 'Synthetic second Tool', exact: true }).click()
+  await toolList.getByRole('button', { name: 'Synthetic second Service', exact: true }).click()
   for (const state of ['enabled', 'disabled', 'ask']) await expect(functionsPanel.getByText(`other_${state}`, { exact: true })).toBeVisible()
   await expect(functionsPanel.getByText('synthetic_function_0', { exact: true })).toHaveCount(0)
   const filters = page.getByRole('group', { name: 'Loaded results', exact: true })
@@ -152,14 +152,14 @@ for (const width of [390, 1440]) test(`one searchable dashboard manages inherite
   await expect(item).toContainText('On request')
   await expect(item.getByRole('button', { name: 'Inherit', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await search.fill('')
-  await toolList.getByRole('button', { name: 'Synthetic second Tool', exact: true }).click()
+  await toolList.getByRole('button', { name: 'Synthetic second Service', exact: true }).click()
   await expect(item).toHaveCount(0)
-  const tool = functionsPanel.getByRole('group', { name: 'Synthetic second Tool', exact: true })
+  const tool = functionsPanel.getByRole('group', { name: 'Synthetic second Service', exact: true })
   const active = tool.getByRole('group', { name: 'Active connection', exact: true })
   await expect(active.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await active.getByRole('button', { name: 'Inactive', exact: true }).click()
   await expect(active.getByRole('button', { name: 'Inactive', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await expect(toolList.getByRole('button', { name: 'Synthetic second Tool', exact: true })).toHaveAttribute('aria-current', 'true')
+  await expect(toolList.getByRole('button', { name: 'Synthetic second Service', exact: true })).toHaveAttribute('aria-current', 'true')
   await active.getByRole('button', { name: 'Active', exact: true }).click()
   await expect(active.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute('aria-pressed', 'true')
   expect(activations).toEqual([false, true])
@@ -174,14 +174,14 @@ test('Harness policies keep the stored toggle selected through errors, allow, de
   const writes = []
   let fail = true
   await setup(page, { routes: async () => {
-    await page.route('**/api/tools/action-authorizations/runtime-policies?*', route => route.fulfill({ json: [policy] }))
-    await page.route('**/api/tools/action-authorizations/runtime-policies', route => {
+    await page.route('**/api/services/action-authorizations/runtime-policies?*', route => route.fulfill({ json: [policy] }))
+    await page.route('**/api/services/action-authorizations/runtime-policies', route => {
       const data = route.request().postDataJSON(); writes.push(data.allowed)
       if (fail) { fail = false; return route.fulfill({ status: 409, json: {} }) }
       policy.allowed = data.allowed; policy.remembered = true; policy.active = true
       return route.fulfill({ json: { accepted: true } })
     })
-    await page.route('**/api/tools/action-authorizations/runtime-permissions/runtime-policy', route => {
+    await page.route('**/api/services/action-authorizations/runtime-permissions/runtime-policy', route => {
       writes.push(null); policy.allowed = null; policy.remembered = false; policy.active = false
       return route.fulfill({ json: { revoked: true } })
     })
@@ -261,13 +261,13 @@ test('pending approvals stay usable and a one-time decision does not change a fu
     status: 'pending', preview: 'Create a synthetic topic', can_answer: true, can_remember: true }
   const writes = []
   await setup(page, { route: '/permissions?request=synthetic-action', routes: async () => {
-    await page.route('**/api/tools/action-authorizations?*', route => route.fulfill({ json: { items: row.status === 'pending' ? [row] : [], total: row.status === 'pending' ? 1 : 0 } }))
-    await page.route('**/api/tools/action-authorizations/synthetic-action', route => route.fulfill({ json: row }))
-    await page.route('**/api/tools/action-authorizations/synthetic-action/answer', route => {
+    await page.route('**/api/services/action-authorizations?*', route => route.fulfill({ json: { items: row.status === 'pending' ? [row] : [], total: row.status === 'pending' ? 1 : 0 } }))
+    await page.route('**/api/services/action-authorizations/synthetic-action', route => route.fulfill({ json: row }))
+    await page.route('**/api/services/action-authorizations/synthetic-action/answer', route => {
       writes.push(route.request().postDataJSON()); row.status = 'approved'; row.can_answer = false
       return route.fulfill({ json: { accepted: true } })
     })
-    await jsonRoute(page, '**/api/tools/agents/7/permissions', { ...empty, connections: [connection], capabilities: [capability('topic_create')] })
+    await jsonRoute(page, '**/api/services/agents/7/permissions', { ...empty, connections: [connection], capabilities: [capability('topic_create')] })
   } })
   await expect(page.getByRole('combobox', { name: 'Agent', exact: true })).toHaveValue('Synthetic agent')
   await expect(page.getByRole('dialog')).toContainText('Create a synthetic topic')
@@ -283,7 +283,7 @@ test('pending approvals stay usable and a one-time decision does not change a fu
 test('a catalogue failure stays visible and retry restores its functions', async ({ page }) => {
   let failed = true
   await setup(page, { routes: async () => {
-    await page.route('**/api/tools/agents/7/permissions', route => route.fulfill(failed ? { status: 503, json: {} } : {
+    await page.route('**/api/services/agents/7/permissions', route => route.fulfill(failed ? { status: 503, json: {} } : {
       json: { ...empty, connections: [connection], capabilities: [capability('recovered_function')] },
     }))
   } })
@@ -302,27 +302,27 @@ test('custom settings filter before pagination and reset restores inherited righ
     capability('software_override', { connection_state: 'ask', default_state: 'enabled', policy_source: 'connection' }),
   )
   functions.push(...Array.from({ length: 60 }, (_, index) => capability(`inactive_local_${index}`, {
-    id: `18:tool:inactive_local_${index}`, tool_id: 18, connection_id: 11, tool_label: 'Disabled synthetic Tool',
+    id: `18:tool:inactive_local_${index}`, service_id: 18, connection_id: 11, service_label: 'Disabled synthetic Service',
     connection_state: 'enabled', default_state: 'ask', policy_state: 'enabled', effective_state: 'disabled', policy_source: 'connection',
   })))
-  functions.push(capability('global_blocked', { id: '19:tool:global_blocked', tool_id: 19, connection_id: 12,
-    tool_label: 'Global synthetic Tool', connection_state: 'default', global_state: 'disabled',
+  functions.push(capability('global_blocked', { id: '19:tool:global_blocked', service_id: 19, connection_id: 12,
+    service_label: 'Global synthetic Service', connection_state: 'default', global_state: 'disabled',
     policy_state: 'disabled', effective_state: 'disabled', policy_source: 'tool' }))
   const pending = Array.from({ length: 51 }, (_, index) => ({ ...decision, id: `pending-${index}`, allowed: null,
     question: `Pending synthetic contact ${index}`, can_answer: false, options: [] }))
   const queries = []
   await setup(page, { routes: async () => {
-    await jsonRoute(page, '**/api/tools/agents/7/permissions', { ...empty, capabilities: functions, connections: [connection,
-      { ...connection, tool_id: 17, connection_id: 10, tool_label: 'Scoped synthetic Tool', management_scope: {
+    await jsonRoute(page, '**/api/services/agents/7/permissions', { ...empty, capabilities: functions, connections: [connection,
+      { ...connection, service_id: 17, connection_id: 10, service_label: 'Scoped synthetic Service', management_scope: {
         configured: 'all', value: 'all', default: 'team', description: '', options: [{ value: 'team', label: '' }, { value: 'all', label: '' }],
       } },
-      { ...connection, tool_id: 18, connection_id: 11, tool_label: 'Disabled synthetic Tool', active: false,
+      { ...connection, service_id: 18, connection_id: 11, service_label: 'Disabled synthetic Service', active: false,
         parameters: { public_access_mode: 'ask' }, parameter_sources: { public_access_mode: 'tool' } },
-      { ...connection, tool_id: 19, connection_id: 12, tool_label: 'Global synthetic Tool' },
+      { ...connection, service_id: 19, connection_id: 12, service_label: 'Global synthetic Service' },
     ] })
-    await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [{ id: 'pending-action', agent_id: 7,
+    await jsonRoute(page, '**/api/services/action-authorizations?*', { items: [{ id: 'pending-action', agent_id: 7,
       source: 'mcp', status: 'pending', preview: 'Pending synthetic action', can_answer: false }], total: 1 })
-    await jsonRoute(page, '**/api/tools/action-authorizations/runtime-policies?*', [
+    await jsonRoute(page, '**/api/services/action-authorizations/runtime-policies?*', [
       { id: 'default-action', runtime: 'internal', capability_name: 'default_runtime', allowed: null, remembered: false },
       { id: 'remembered-action', runtime: 'internal', capability_name: 'remembered_runtime', allowed: false, remembered: true, active: true },
     ])
@@ -347,10 +347,10 @@ test('custom settings filter before pagination and reset restores inherited righ
   await customSettings.focus(); await page.keyboard.press('Space')
   await expect(customSettings).toHaveAttribute('aria-pressed', 'true')
   await expect(customSettings.getByText('6', { exact: true })).toBeVisible()
-  const toolList = tools.getByRole('complementary', { name: 'Tool', exact: true })
-  await expect(toolList.getByRole('button', { name: 'Global synthetic Tool', exact: true })).toHaveCount(0)
-  await toolList.getByRole('button', { name: 'Disabled synthetic Tool', exact: true }).click()
-  const disabledTool = tools.getByRole('group', { name: 'Disabled synthetic Tool', exact: true })
+  const toolList = tools.getByRole('complementary', { name: 'Service', exact: true })
+  await expect(toolList.getByRole('button', { name: 'Global synthetic Service', exact: true })).toHaveCount(0)
+  await toolList.getByRole('button', { name: 'Disabled synthetic Service', exact: true }).click()
+  const disabledTool = tools.getByRole('group', { name: 'Disabled synthetic Service', exact: true })
   await expect(disabledTool.getByRole('button', { name: 'Inactive', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(disabledTool.getByText('inactive_local_0', { exact: true })).toHaveCount(0)
   await expect(disabledTool).not.toContainText('Public sites')
@@ -364,10 +364,10 @@ test('custom settings filter before pagination and reset restores inherited righ
   await expect(network.getByText(decision.question, { exact: true })).toBeVisible()
   await expect(network.getByText('Pending synthetic contact 0', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Pending approvals', exact: true })).not.toContainText('Pending synthetic action')
-  await tools.getByRole('complementary', { name: 'Tool', exact: true }).getByRole('button', { name: 'Scoped synthetic Tool', exact: true }).click()
-  await expect(tools.getByRole('group', { name: 'Scope for Scoped synthetic Tool (tools.management_scope)', exact: true })
+  await tools.getByRole('complementary', { name: 'Service', exact: true }).getByRole('button', { name: 'Scoped synthetic Service', exact: true }).click()
+  await expect(tools.getByRole('group', { name: 'Scope for Scoped synthetic Service (services.management_scope)', exact: true })
     .getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await tools.getByRole('complementary', { name: 'Tool', exact: true }).getByRole('button', { name: 'Synthetic topics', exact: true }).click()
+  await tools.getByRole('complementary', { name: 'Service', exact: true }).getByRole('button', { name: 'Synthetic topics', exact: true }).click()
   await filters.getByRole('button', { name: 'Allowed', exact: true }).click()
   await expect(tools.getByText('local_allowed', { exact: true })).toBeVisible()
   await expect(customSettings.getByText('6', { exact: true })).toBeVisible()

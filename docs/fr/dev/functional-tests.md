@@ -2,8 +2,18 @@
 
 # Catalogue des garanties fonctionnelles
 
+Le catalogue de services et le YAML autonome sont couverts par
+`app/services/tests/test_service_catalog.py` : icônes SVG/PNG/GIF, ancien YAML, absence de
+secrets distribués, compatibilité et actualisation atomique avec repli hors ligne.
+`app/services/tests/test_naming_migration.py` vérifie les identités, connexions, secrets et
+droits ainsi que convergence Atlas, interruption et reprise.
+`front/browser-tests/service-catalog.spec.mjs` couvre copie, échec/retry, conservation des
+paramètres et permissions ; `e2e/specs/services.spec.mjs` vérifie création, rechargement et
+export avec icône dans l'application assemblée. Les scénarios des services système portent
+sur l'absence d'actions Modifier/Supprimer, sans interdire diagnostic ou inspection des droits.
+
 Les diagnostics des connexions et leurs permissions ciblées sont couverts par
-`app/tools/tests/test_connection_diagnostics.py` et le scénario HTTP de portée de
+`app/services/tests/test_connection_diagnostics.py` et le scénario HTTP de portée de
 `app/connection/tests/test_connections.py` : secrets enregistrés, inactivité préservée,
 sources indépendantes, erreurs assainies et refus hors périmètre. Les scénarios
 `front/browser-tests/connection-actions.spec.mjs` et `connections-loading.spec.mjs`
@@ -57,12 +67,12 @@ la persistance de l’événement et du lancement et l’action Créer dans le s
 la sauvegarde idempotente d’une action après perte de réponse. Les contrôles de droits
 existants couvrent les privilèges, connexions et limites de la lecture groupée.
 
-`app/tools/tests/test_protocols.py` couvre les protocoles Mail/Calendrier sur un Tool fournisseur,
+`app/services/tests/test_protocols.py` couvre les protocoles Mail/Calendrier sur un Service fournisseur,
 l'isolation des connexions et secrets, la sélection explicite et la migration idempotente des
-anciens Tools sans perte des identités et calendriers. `system-tools.spec.mjs` vérifie leur
+anciens Services sans perte des identités et calendriers. `system-services.spec.mjs` vérifie leur
 création, champs fixes et références aux paramètres dans les onglets Mail/CalDAV, reprise après erreur,
 réouverture et désactivation indépendante en composants réels. Le parcours HTTP de
-`test_capabilities.py` vérifie l'enregistrement atomique des réglages et références avec le Tool et les refus de droits.
+`test_capabilities.py` vérifie l'enregistrement atomique des réglages et références avec le Service et les refus de droits.
 
 `app/calendar/tests/test_service.py` exerce le véritable adaptateur CalDAV sur une frontière HTTP
 synthétique avec état : paramètres standards, découverte, diff et multiget, écritures conditionnelles,
@@ -94,10 +104,10 @@ privilège et périmètre. Les anciennes attentes de lecture réseau directe, de
 natif et de compatibilité des anciens réglages sont retirées : le contrat est désormais local,
 sans données historiques à migrer. La qualification d'un serveur Nextcloud réel est distincte.
 
-`app/tools/tests/test_capabilities.py` vérifie l'unicité du protocole par capacité,
+`app/services/tests/test_capabilities.py` vérifie l'unicité du protocole par capacité,
 la cohérence avec les configurations, les identifiants personnalisés conservés lors des
 modifications et exports/imports, et la migration idempotente de la liste des sélections.
-`system-tools.spec.mjs` couvre aussi le sélecteur avec bouton « + », le refus des doublons,
+`system-services.spec.mjs` couvre aussi le sélecteur avec bouton « + », le refus des doublons,
 la reprise après échec du catalogue et la réouverture d'une entrée de plugin issue du catalogue.
 
 `app/agent/tests/test_operating_instructions.py` vérifie l'édition, la désactivation et la
@@ -383,7 +393,7 @@ assemblée, crée un contact, le retrouve après rechargement et vérifie les re
 catalogue Agent et agent étranger sur ordinateur/mobile. Les données sont entièrement fictives.
 Le même parcours refuse les requêtes API de domaines non autorisés dans l'interface globale.
 Le sélecteur des connexions expose les paramètres globaux hérités aux lecteurs du domaine
-Tools uniquement, sans valeur secrète ni configuration privée du transport. Les rôles limités
+Services uniquement, sans valeur secrète ni configuration privée du transport. Les rôles limités
 aux connexions conservent leur projection restreinte.
 `front/scripts/navigation-context.test.mjs` vérifie aussi que les droits générés des paramètres
 figurent dans les deux cartes documentaires, tout en refusant les imports non examinés.
@@ -414,17 +424,17 @@ réponses tardives, changements de rôle, refus et fermeture des sélecteurs de 
 
 ## Lectures groupées des catalogues et retrait des fichiers
 
-`app/tools/tests/test_catalog_sql_budget.py` borne les lectures du catalogue délégué
-à 10, 50 et 500 Tools et conserve ordre, pagination, recherche Unicode, masquage des
+`app/services/tests/test_catalog_sql_budget.py` borne les lectures du catalogue délégué
+à 10, 50 et 500 Services et conserve ordre, pagination, recherche Unicode, masquage des
 secrets et configuration courante après une écriture indépendante. Les tests AgentAdmin
 et `e2e/specs/agent-admin.spec.mjs` vérifient les cibles autorisées et le refus après révocation.
-Une page de dix Tools conserve un budget d'allocations Python avec 0 ou 500 configurations
+Une page de dix Services conserve un budget d'allocations Python avec 0 ou 500 configurations
 volumineuses non affichées ; les consommateurs sans projection retrouvent ensuite leur
 configuration complète dans la même session.
-La page de métadonnées ToolAdmin garde aussi ce budget à 10 et 500 éléments malgré
+La page de métadonnées ServiceAdmin garde aussi ce budget à 10 et 500 éléments malgré
 des descriptions privées volumineuses ; ouvrir ensuite le détail restitue sa configuration
 complète avec les secrets masqués. Les filtres et révocations restent couverts par
-`app/tools/tests/test_tool_admin.py` et le parcours ToolAdmin ordinateur/mobile.
+`app/services/tests/test_service_admin.py` et le parcours ServiceAdmin ordinateur/mobile.
 
 `core/storage/tests/test_lifecycle.py` exerce le retrait de 10, 100 et 1 001 références,
 le partage, le rollback, les octets conservés avant commit et la reprise du purgeur.
@@ -698,13 +708,13 @@ L’annulation d’une activation de harnais utilise son action nommée, y compr
 les confirmations mobiles plein écran. Les scénarios de dialogue partagés couvrent
 la fermeture par l’arrière-plan lorsqu’il est visible.
 
-`app/tools/tests/test_management_scopes.py` protège les portées locales des connexions
-Process, ToolAdmin, Goals et Administration : absence de délégation implicite, filtrage
+`app/services/tests/test_management_scopes.py` protège les portées locales des connexions
+Process, ServiceAdmin, Goals et Administration : absence de délégation implicite, filtrage
 avant pagination, refus des réaffectations hors périmètre et révocation après retrait
 d'une équipe. `app/agent/tests/test_agent_admin.py` vérifie la création en équipe et
 l'interdiction de s'automodifier ; les scénarios d'avatar, connexion et harnais ciblent
 un autre agent. Les lectures de conversations et traces LLM, les tâches et les projections
-`galaris://` appliquent les mêmes portées. `tool-parameters.spec.mjs` couvre le formulaire
+`galaris://` appliquent les mêmes portées. `service-parameters.spec.mjs` couvre le formulaire
 commun, sa sauvegarde atomique, les erreurs et la réouverture.
 `management-scopes.spec.mjs` vérifie les cinq formulaires, leurs appels MCP réels,
 la révocation et la création/exécution/réouverture d'une campagne sur Dataset natif.
@@ -959,7 +969,7 @@ et réessai après erreur. Le scénario Process vérifie le rechargement à la r
 expiration, sans perdre le brouillon.
 
 
-`app/tools/tests/test_action_authorizations.py` vérifie aussi que les anciens accords
+`app/services/tests/test_action_authorizations.py` vérifie aussi que les anciens accords
 automatiques non consommés sont invalidés avant exécution, directement ou par réconciliation.
 `app/agent/tests/test_agents.py` refuse les anciens réglages d’approbation dans les écritures API.
 
@@ -971,7 +981,7 @@ l'absence de la définition dans la bibliothèque Documents avant de la modifier
 
 `tests/test_module_loading.py` vérifie les imports obligatoires tâche, plusieurs ordres de
 chargement et les jobs injectés, y compris le rafraîchissement Process. Les suites embedding LLM,
-recherche Tools et Memory protègent l'identité des index et les replis. Les scénarios
+recherche Services et Memory protègent l'identité des index et les replis. Les scénarios
 `app/memory/tests/test_mcp.py` passent par `file_search`/`file_read` pour les droits, le contexte
 du contact et les lectures bornées ; les anciens wrappers MCP retirés ne servent plus de parcours.
 
@@ -1286,7 +1296,7 @@ tests vérifient lecture/écriture via File Sharing, révisions dépassées, pr�
 des modifications parallèles, accès humain/agent, boucles et isolation entre Runs.
 Les anciens oracles de schémas, slots et affectations sont retirés avec ces fonctions ;
 le compilateur vérifie qu'ils ne créent plus d'exigences cachées. Le brouillon JSON
-invalide est protégé sur les arguments Tool qui restent éditables. Le parcours humain
+invalide est protégé sur les arguments Service qui restent éditables. Le parcours humain
 assemblé édite le Dataset, ajoute un fichier et vérifie leur conservation jusqu'à la fin.
 L'arrêt sur erreur remplace les anciens tests de réessai/secours : une seule tentative,
 aucun successeur, annulation des branches actives, codes d'erreur conservés pour les
@@ -1663,7 +1673,7 @@ le réessai, la réouverture puis l'ajout et la suppression de fichiers en arri�
 Le test `graph_hierarchy` du catalogue traverse les vrais services de ressources,
 la pagination des enfants, les filtres et les sources disparues ou révoquées.
 Les tests du catalogue vérifient aussi les titres de racines persistés depuis le libellé du
-Tool, le repli sur le schéma, la réparation des anciens titres et les noms personnalisés.
+Service, le repli sur le schéma, la réparation des anciens titres et les noms personnalisés.
 
 `front/browser-tests/async-views.spec.mjs` couvre l'ouverture différée d'un vrai éditeur,
 la saisie dans le reste de la page pendant l'attente, la fermeture avant la réponse,
@@ -1677,7 +1687,7 @@ seule lecture des filtres à l'initialisation de l'agent de la page Mémoire.
 1 000 révisions : contenu courant frais sans matérialiser l’historique, ancienne version
 lisible et pagination bornée. Il mesure aussi identité, Agents, bibliothèque, propriétaires
 et cycles Goal, puis vérifie les refus après retrait du gestionnaire et du rôle.
-`app/messenger/tests/test_contact_access.py` vérifie `tools.management_scope` aux frontières
+`app/messenger/tests/test_contact_access.py` vérifie `services.management_scope` aux frontières
 émission directe, salon et réception, la révocation immédiate, l'isolation des connexions et
 les droits humains indépendants. `test_mcp_routing.py` couvre aussi les demandes internes,
 le refus avant création de tâche et les portées des deux agents.
@@ -1719,7 +1729,7 @@ Ces budgets SQL synthétiques ne constituent pas une mesure de latence en produc
 des listes sans charger les contenus JSON, ainsi que la révocation à la réouverture.
 `app/memory/tests/test_search_history_budget.py` protège la recherche de documents partagés :
 droits de lecture/écriture conservés, nombre de requêtes borné et historique non matérialisé.
-`app/tools/tests/test_catalog_sql_budget.py` contrôle les lectures groupées du catalogue MCP,
+`app/services/tests/test_catalog_sql_budget.py` contrôle les lectures groupées du catalogue MCP,
 l'héritage des modes de fonctions et la prise en compte immédiate d'une désactivation.
 `app/task/tests/test_tree_performance.py` exerce pause et reprise d'un arbre en base réelle,
 sans retirer les autres raisons d'attente ni modifier les tâches terminées.
@@ -1743,21 +1753,21 @@ sans demande créée d'une vraie attente ou d'un refus, avec consigne de résolu
 `browser-executor/network-proxy.test.mjs` utilise Chromium et des serveurs
 synthétiques pour vérifier POST, redirections, isolation, HTTPS avec validation du certificat,
 WebSocket et révocation. `front/browser-tests/permissions.spec.mjs` vérifie le tableau de bord
-par agent, la recherche au-delà de la première page, le filtre par Tool combiné aux états,
-la hiérarchie Tool → fonctions, la désactivation puis réactivation sans perdre le Tool sélectionné,
+par agent, la recherche au-delà de la première page, le filtre par Service combiné aux états,
+la hiérarchie Service → fonctions, la désactivation puis réactivation sans perdre le Service sélectionné,
 les règles MCP héritées et interdites et leur présélection dans les bascules, les réponses ponctuelles
 sans accord permanent, les décisions de contact et le réessai après erreur sur mobile et desktop.
 Les anciennes confirmations de retrait sont remplacées par la bascule « Sur demande » ; les tests
 de revue d’action conservent la fermeture par fond de modale. Les anciens scénarios d’onglets sont
 remplacés par la conservation des actions et l’isolation des réponses tardives entre agents.
-Les périmètres `tools.management_scope` sont visibles en lecture seule ou modifiables selon les droits,
+Les périmètres `services.management_scope` sont visibles en lecture seule ou modifiables selon les droits,
 avec réessai et retour au défaut. `app/connection/tests/test_connections.py` couvre la délégation
 humaine globale, les choix valides, la persistance locale et la protection des autres paramètres.
 La même suite backend vérifie l’accord couvrant tous les sites, sa révocation, la priorité des
 filtres et la séparation du réseau local, ainsi que le français, le chinois et la langue par défaut.
 Les accords historiques par site ne sont pas élargis ; les anciennes questions sont remplacées
 avant de recueillir un accord pour tous les sites.
-`app/tools/tests/test_action_authorizations.py` vérifie l’accord permanent par fonction et
+`app/services/tests/test_action_authorizations.py` vérifie l’accord permanent par fonction et
 connexion, la reprise sans rejeu de l’action initiale et l’exécution suivante sans question.
 Pour chaque fournisseur de harnais externe enregistré (Hermès, DeepSeek Harness, Codex,
 Claude Agent et OpenAI Messages configuré), elle vérifie aussi l’accord par type d’action, la séparation
@@ -1782,7 +1792,7 @@ ils libèrent une vraie tâche en attente sans exécuter l’action. L’annulat
 d’un outil natif après son envoi conservent un résultat incertain et interdisent son rejeu.
 `app/voice/tests/test_conversation_service.py` vérifie qu’un accord ou un refus reçu avant
 la suspension du tour reste à traiter, puis réveille ce tour après sa mise en attente.
-`app/tools/tests/test_action_authorizations.py` vérifie aussi que `voice_call_stop`
+`app/services/tests/test_action_authorizations.py` vérifie aussi que `voice_call_stop`
 arme le raccrochage sans accord par défaut, tout en respectant une règle explicite
 Sur demande ou Bloqué ; après un accord ponctuel, la même opération ne peut pas être rejouée.
 `front/browser-tests/execution.spec.mjs` vérifie sur mobile et ordinateur que cette attente
@@ -1799,7 +1809,7 @@ Les routes HTTP réelles refusent le jeton système d'un runtime sans son contex
 acceptent un contexte valide, refusent un contexte révoqué et conservent les clients MCP indépendants.
 `app/connection/tests/test_function_modes_migration.py` prouve sur PostgreSQL la conversion
 des anciens booléens, le rollback et le rejeu après un choix humain ultérieur.
-`front/browser-tests/system-tools.spec.mjs` vérifie les trois choix à chaque niveau :
+`front/browser-tests/system-services.spec.mjs` vérifie les trois choix à chaque niveau :
 une exception locale décoche le groupe global sans le bloquer ; un choix global remet
 cette connexion en héritage, y compris après réouverture sur desktop et mobile.
 Il vérifie aussi les choix immédiats pendant une réponse retardée, leur sauvegarde
@@ -1811,7 +1821,7 @@ la conservation des autres connexions et types de capacités, le refus d'un resp
 globaux sans option de remise en héritage conservent leurs exceptions locales.
 La sauvegarde ne déclenche aucune redécouverte du catalogue. La recherche effective
 reste filtrée et indexe les nouvelles fonctions visibles lors de la requête suivante
-(`app/tools/tests/test_tool_search_service.py`). Le parcours assemblé
+(`app/services/tests/test_tool_search_service.py`). Le parcours assemblé
 `e2e/specs/tool-authorizations.spec.mjs` retarde une réponse de la véritable API,
 enchaîne les choix dans l’interface, relit les règles et exerce leurs effets via MCP.
 `app/harnesses/tests/test_runtime_control.py` vérifie les appels suspendus, la réponse de claim
@@ -1861,7 +1871,7 @@ attend l’état suspendu avant de répondre et annule les workers encore actifs
 en-têtes immédiats, keepalives MCP et natifs, accord et refus tardifs, un seul appel et aucun
 effet avant accord. La qualification SDK exerce aussi le vrai client MCP sur la réponse SSE,
 avec un seul effet après la continuation et aucun après refus.
-Les diagnostics ToolAdmin utilisent des serveurs HTTP/SSE synthétiques successifs et vérifient
+Les diagnostics ServiceAdmin utilisent des serveurs HTTP/SSE synthétiques successifs et vérifient
 les bornes du catalogue sans exécuter ses fonctions. Chaque serveur repart avec son indicateur
 d'arrêt SSE réinitialisé, car la bibliothèque le conserve au niveau du processus de test.
 `e2e/specs/tool-authorizations.spec.mjs` vérifie dans l’application assemblée l’accord et le
@@ -2110,14 +2120,14 @@ pendant une génération bloquée et vérifie qu'un outil déjà commencé termi
 `test_conversation_prompt.py` couvre le branchement dans le contrôleur réel et la conservation
 du brouillon dans sa trace. Les intégrations Conversation conservent les messages en rafale,
 refusent un lease étranger et distinguent reprise sans effet et consommation après effet.
-`app/tools/tests/test_mcp.py` distingue les fonctions autorisées mais absentes du run des
+`app/services/tests/test_mcp.py` distingue les fonctions autorisées mais absentes du run des
 fonctions montées, en FR/EN, sans exposer les fonctions refusées. Le test du serveur agrégé
 dans `test_mcp_loader.py` vérifie que cette découverte observe bien le serveur du run.
 
-`app/tools/tests/test_tool_arguments.py` conserve la validation des arguments obligatoires,
+`app/services/tests/test_tool_arguments.py` conserve la validation des arguments obligatoires,
 types et objets imbriqués après retrait des clés inconnues d'un schéma fermé. Les tests MCP
 du loader couvrent ce retrait sur les runtimes interne et Hermès, sans modifier la sortie
-structurée ni exposer les valeurs ignorées. Les parcours d'autorisation et de ToolAdmin
+structurée ni exposer les valeurs ignorées. Les parcours d'autorisation et de ServiceAdmin
 conservent l'accord avant effet, la révocation et la rotation des credentials sur un appel
 corrigé, y compris externe. `app/harness/tests/test_execution_evidence.py` vérifie que
 l'avertissement atteint un vrai agent Pydantic AI et son checkpoint sans réexécuter l'effet.
@@ -2136,7 +2146,7 @@ refus et l'annulation des chargements d'une ancienne révision (`document-apps.s
 
 `app/conversation/tests/test_service.py` couvre l'arrêt conversationnel répété d'une tâche
 active, réussie ou en erreur : résultat, cause et révision terminaux sont conservés, et
-la portée d'agent reste obligatoire. `app/tools/tests/test_mcp_loader.py` distingue un
+la portée d'agent reste obligatoire. `app/services/tests/test_mcp_loader.py` distingue un
 refus HTTP 403 distant d'un refus local dans le diagnostic français/anglais, sans changer
 la catégorie d'erreur utilisée pour les effets ni exposer URL ou réponse du fournisseur.
 
@@ -2295,13 +2305,13 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Chargement des compétences | Charger les seules compétences autorisées selon leur configuration, indépendamment de l'identité de l'agent ; découvrir et charger les modèles associés en conversation texte et voix par tours, préserver les révocations et le repli sur configuration invalide | `app/harness/tests/test_skills.py`, `app/harness/tests/test_conversation_prompt.py`, `app/harness/tests/test_executor_streaming.py` |
 | Frontière des harnais | Refuser les résultats et événements invalides avant publication, fermer les flux, respecter les capacités déclarées | `make tests-harness-contracts`, `app/agent/tests/test_driver_boundary.py` |
 | Politique des harnais | Même configuration pour tous, conflits SQL, restriction des outils à l’appel, checkpoints opaques et retry sûr | `test_execution_configuration.py`, `test_checkpoint_contract.py`, `harness-policy.spec.mjs` |
-| Réessai par driver | Journal d'effets interne conservé ; réessai réseau géré explicite avec nouvelle inférence, mêmes paramètres tâche et reçus archivés, pour tâches simples et plans ; arrêt ou observation de l'ancien acteur avant nouvelle autorité ; récupération automatique par observation du même acteur sans nouvelle soumission | `back/app/task/tests/test_task_service.py`, `back/app/harnesses/tests/test_checkpoint_recovery.py`, `back/app/agent/tests/test_checkpoint_contract.py`, `back/app/tools/tests/test_action_authorizations.py` |
+| Réessai par driver | Journal d'effets interne conservé ; réessai réseau géré explicite avec nouvelle inférence, mêmes paramètres tâche et reçus archivés, pour tâches simples et plans ; arrêt ou observation de l'ancien acteur avant nouvelle autorité ; récupération automatique par observation du même acteur sans nouvelle soumission | `back/app/task/tests/test_task_service.py`, `back/app/harnesses/tests/test_checkpoint_recovery.py`, `back/app/agent/tests/test_checkpoint_contract.py`, `back/app/services/tests/test_action_authorizations.py` |
 | SDK réels des harnais | Exécuter dans les quatre images épinglées avec modèle local ; vérifier la connexion MCP DeepSeek | `make tests-harness-runtimes`, `artifacts/harness-runtimes/summary.txt` |
 | `harnesses` | Changer de runtime sans perdre une tâche active ; révoquer/configurer selon les droits | `test_service.py`, `test_runtime_actions.py`, `test_router.py`, `configuration.spec.mjs` |
 | `task` | Créer, suspendre, reprendre, terminer et supprimer une tâche ; préserver budget et propriété du lease | `test_task_service.py`, `test_workflow.py`, `test_active_lease.py`, `test_budget.py`, `task-panel.spec.mjs` |
-| Nouvelle demande après échec | Conserver la relance conversationnelle délibérée et manuelle ; une création indépendante préserve l'état, l'erreur et le résultat de la tâche échouée et reste idempotente. Le choix sémantique entre relance et création relève des consignes du modèle | `back/app/tools/tests/test_mcp_loader.py`, `back/app/conversation/tests/test_service.py`, `back/app/task/tests/test_task_service.py` |
+| Nouvelle demande après échec | Conserver la relance conversationnelle délibérée et manuelle ; une création indépendante préserve l'état, l'erreur et le résultat de la tâche échouée et reste idempotente. Le choix sémantique entre relance et création relève des consignes du modèle | `back/app/services/tests/test_mcp_loader.py`, `back/app/conversation/tests/test_service.py`, `back/app/task/tests/test_task_service.py` |
 | Working Set tâche | Conserver les ressources racine/enfants, checkpoints et première capsule lors de commits concurrents ; enregistrement idempotent et rollback avec l'appelant | `back/app/task/tests/test_working_set.py` (sessions PostgreSQL indépendantes) |
-| Preuves de livraison tâche | Refuser les faux succès avec un autre fichier, une autre destination, une autre tâche ou un fichier périmé ; préserver les reçus natifs, la livraison Conversation, l'URI exacte sur place et la reprise sans envoi en double | `back/app/agent/tests/test_planner_service.py`, `back/app/agent/tests/test_executor_lifecycle.py`, `back/app/tools/tests/test_resource_effects.py` |
+| Preuves de livraison tâche | Refuser les faux succès avec un autre fichier, une autre destination, une autre tâche ou un fichier périmé ; préserver les reçus natifs, la livraison Conversation, l'URI exacte sur place et la reprise sans envoi en double | `back/app/agent/tests/test_planner_service.py`, `back/app/agent/tests/test_executor_lifecycle.py`, `back/app/services/tests/test_resource_effects.py` |
 | Amendement conversationnel | Tolérer les seules révisions techniques avec une définition connue ; refuser avant interruption un checkpoint incompatible ou une exécution sans point de reprise vérifiable, même apparus après lecture ; préserver la cible et permettre une création indépendante explicite et idempotente dans le même document | `back/app/task/tests/test_amendment_service.py`, `back/app/conversation/tests/test_service.py`, `test_task_admission.py`, `back/app/agent/tests/test_checkpoint_contract.py`, `back/app/agent/tests/test_realtime.py` |
 | Remplacement explicite | Enregistrer un seul successeur texte/voix, attendre le nettoyage ou une preuve d'arrêt valide, reprendre après changement de worker, préserver les autres pauses et tâches ; bloquer sur une relance, une coordination ou un changement de contexte du prédécesseur | `back/app/task/tests/test_replacement.py`, `back/app/conversation/tests/test_service.py`, `back/app/agent/tests/test_driver_boundary.py` |
 | Propriétaires et événements tardifs | Refuser le renouvellement d'un lease expiré ; ne pas remplacer le round affiché à partir d'un événement d'un autre round, demander une réconciliation serveur | `back/app/task/tests/test_replacement.py`, `back/app/conversation/tests/test_service.py`, `front/app/chat/runtimeState.test.mjs` |
@@ -2338,19 +2348,19 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | `contact` | Périmètre agent et `CONTACT_EDIT` (oubli : aussi `MEMORY_EDIT`) ; nom unique, regroupement par sélection/fusion et scission atomique sans suppression d’identité, avec conservation de l’historique ; création de contacts mail indépendants des utilisateurs/agents, validation et doublons concurrents ; rollback des projections lors d’une erreur de scission ; rejet du rattachement direct par API ; Chat interne représenté uniquement par l’utilisateur Galaris et nettoyage idempotent ; brouillon, annulation, reprise et réponses tardives sur mobile/bureau | `test_service.py`, `test_router.py`, `app/memory/tests/test_messenger_contact.py`, `app/memory/tests/test_source_projection.py`, `front/browser-tests/contacts.spec.mjs` |
 | `topic` | Classer et retrouver les sujets, rechercher au-delà de la première page, ignorer les réponses obsolètes | `test_service.py`, `test_router.py`, `test_sequential_detection.py`, `topics.spec.mjs` |
 | `dream` | Extraire/relier des connaissances sans réécrire le contenu existant, reprendre les traitements | `test_memory_extraction.py`, `test_claim_timeout.py`, `test_skill_learning.py` |
-| `skill` | Créer/lire une procédure, préserver fichiers et permissions ; MCP réel, isolation/budgets et homonymes ; nouvelles connexions actives avec portée personnelle par défaut, conservation des désactivations et portées explicites ; portée locale usage/personal/team/all, union des équipes et révocation, délégation humaine protégée et sauvegarde atomique ; migration, conversion rejouable et reprise après panne ; consultation humaine | `test_service.py`, `test_storage.py`, `test_learning.py`, `test_personal_packages.py`, `test_agent_reads.py`, `test_mcp.py`, `test_lifecycle.py`, `test_projection.py`, `app/tools/tests/test_mandatory_tools.py`, `skills.spec.mjs`, `tool-parameters.spec.mjs` |
+| `skill` | Créer/lire une procédure, préserver fichiers et permissions ; MCP réel, isolation/budgets et homonymes ; nouvelles connexions actives avec portée personnelle par défaut, conservation des désactivations et portées explicites ; portée locale usage/personal/team/all, union des équipes et révocation, délégation humaine protégée et sauvegarde atomique ; migration, conversion rejouable et reprise après panne ; consultation humaine | `test_service.py`, `test_storage.py`, `test_learning.py`, `test_personal_packages.py`, `test_agent_reads.py`, `test_mcp.py`, `test_lifecycle.py`, `test_projection.py`, `app/services/tests/test_mandatory_services.py`, `skills.spec.mjs`, `service-parameters.spec.mjs` |
 | `process` | Lancer, suivre, annuler et reprendre un traitement externe ; préserver ses états terminaux | `test_recovery.py`, `test_process_core.py`, `test_router_scope.py`, `test_worker_concurrency.py`, `execution.spec.mjs` |
 | `tools` | Découvrir les outils autorisés, refuser les accès interdits, masquer les secrets ; révocation avant effet dans un serveur natif déjà monté, réactivation et isolation entre agents | `test_admin_access.py`, `test_agent_registry.py`, `test_secrets.py`, `test_resource_effects.py`, `test_live_authorization.py` |
-| API REST des Tools | Héritage et surcharge des identifiants, connexion active propre à l'agent, modes d'authentification, erreurs HTTP, redirections, limites de taille et timeout ; sauvegarde, réouverture et désactivation du formulaire desktop/mobile et parcours assemblé avec identifiants masqués | `app/tools/tests/test_rest.py`, `front/browser-tests/system-tools.spec.mjs`, `e2e/specs/tools-rest.spec.mjs` |
-| Recherche Web | Préserver requête, encodage, ordre et langue configurée ; distinguer recherche vide, partielle, dégradée et échec ; conserver les sources valides, masquer les exceptions brutes et annuler le transport sans bloquer la boucle | `back/app/tools/tests/test_search.py` (frontière HTTP remplacée, client et outil réels) |
-| Paramètres d’indexation des Tools | Configurer `tools.fileindexing` par Tool et par connexion avec héritage, surcharge, valeur imposée et limites du provider ; reprendre les anciennes préférences sans les réappliquer ; respecter la valeur effective dans les recherches et le parcours automatique ; enregistrer depuis la Console embarquée et reprendre après erreur ; traduire les libellés internes dans les trois langues | `back/app/tools/tests/test_file_indexing.py`, `back/app/memory/tests/test_file_catalogue.py`, `front/browser-tests/tool-parameters.spec.mjs`, `e2e/specs/tool-parameters.spec.mjs` (desktop/mobile) |
-| Administration ToolAdmin | Tester/créer un candidat sans fuite de secret dans le modèle ou les checkpoints ; connexion initialement inactive, héritage, atomicité, conflits, dépendances et interdiction d’auto-délégation ; révocation et rotation sur les anciens clients FastMCP/Pydantic AI ; rafraîchissement massif retournant ses résultats directement, avec droits revérifiés et processus métier préservés | `back/app/tools/tests/test_tool_admin.py`, `test_admin_network.py` ; `e2e/specs/tool-admin.spec.mjs` (application assemblée, clavier, fermeture et réouverture, desktop/mobile) |
-| Disponibilité de la recherche | Un HTTP 200 sans sources ne valide pas le diagnostic ; une dégradation conserve les sources et produit un verdict distinct | `back/app/tools/tests/test_search.py` ; `make check-search` pour le corpus externe volontaire, avec relecture humaine de la pertinence |
+| API REST des Services | Héritage et surcharge des identifiants, connexion active propre à l'agent, modes d'authentification, erreurs HTTP, redirections, limites de taille et timeout ; sauvegarde, réouverture et désactivation du formulaire desktop/mobile et parcours assemblé avec identifiants masqués | `app/services/tests/test_rest.py`, `front/browser-tests/system-services.spec.mjs`, `e2e/specs/tools-rest.spec.mjs` |
+| Recherche Web | Préserver requête, encodage, ordre et langue configurée ; distinguer recherche vide, partielle, dégradée et échec ; conserver les sources valides, masquer les exceptions brutes et annuler le transport sans bloquer la boucle | `back/app/services/tests/test_search.py` (frontière HTTP remplacée, client et outil réels) |
+| Paramètres d’indexation des Services | Configurer `services.fileindexing` par Service et par connexion avec héritage, surcharge, valeur imposée et limites du provider ; reprendre les anciennes préférences sans les réappliquer ; respecter la valeur effective dans les recherches et le parcours automatique ; enregistrer depuis la Console embarquée et reprendre après erreur ; traduire les libellés internes dans les trois langues | `back/app/services/tests/test_file_indexing.py`, `back/app/memory/tests/test_file_catalogue.py`, `front/browser-tests/service-parameters.spec.mjs`, `e2e/specs/service-parameters.spec.mjs` (desktop/mobile) |
+| Administration ServiceAdmin | Tester/créer un candidat sans fuite de secret dans le modèle ou les checkpoints ; connexion initialement inactive, héritage, atomicité, conflits, dépendances et interdiction d’auto-délégation ; révocation et rotation sur les anciens clients FastMCP/Pydantic AI ; rafraîchissement massif retournant ses résultats directement, avec droits revérifiés et processus métier préservés | `back/app/services/tests/test_service_admin.py`, `test_admin_network.py` ; `e2e/specs/tool-admin.spec.mjs` (application assemblée, clavier, fermeture et réouverture, desktop/mobile) |
+| Disponibilité de la recherche | Un HTTP 200 sans sources ne valide pas le diagnostic ; une dégradation conserve les sources et produit un verdict distinct | `back/app/services/tests/test_search.py` ; `make check-search` pour le corpus externe volontaire, avec relecture humaine de la pertinence |
 | Mise à jour des images d'infrastructure | Récupérer les images déclarées, dont SearXNG, en dev et prod avant le build et le redémarrage ; un téléchargement échoué laisse les services actifs et fait échouer la commande | `make tests-update` (recettes Make réelles, frontière Docker remplacée) |
 | `document_show` (Conversation) | Exposer l'outil uniquement dans le chat interne autorisé, indépendamment de la connexion Memory, en appliquant les refus de fonction du service système ; vérifier l'accès au document et les révocations ; ouvrir et rouvrir la visionneuse sans perdre les brouillons ni appliquer une demande à une autre conversation | `back/app/memory/tests/test_document_show.py`, `front/browser-tests/chat-document-workspace.spec.mjs` |
 | `connection` | Activer/configurer une connexion et ses fonctions sans exposer ses secrets ou un autre agent | `test_connections.py`, `test_encryption.py`, `test_function_states.py` |
 | OAuth MCP | Retour direct localhost, CIMD/DCR et négociation du secret client, client pré-enregistré en repli, PKCE, chiffrement, retour unique et expirant, isolation et refus HTTP ; code d’appareil avant le relais, intervalle/slow_down, refus terminal et jeton tardif après déconnexion ; clients HTTP/SSE réels ; relais téléchargé sur un vrai port HTTP, contrôles Host/state, expiration et port occupé ; parcours navigateur desktop/mobile, nouvel onglet, erreurs et annulation au changement de connexion | `app/connection/tests/test_mcp_oauth.py`, `app/connection/tests/test_oauth_loopback.py`, `front/browser-tests/mcp-oauth.spec.mjs` |
-| `mcp` | Exposer les capacités et propager l’identité d’exécution dans les outils | `back/tests/test_realtime_security.py`, `back/app/tools/tests/test_mcp.py`, `back/core/authorize/tests/test_guard_provider.py` |
+| `mcp` | Exposer les capacités et propager l’identité d’exécution dans les outils | `back/tests/test_realtime_security.py`, `back/app/services/tests/test_mcp.py`, `back/core/authorize/tests/test_guard_provider.py` |
 | `file_share` | Lire/copier/modifier via URI canonique, respecter ACL et limites, nettoyer les temporaires | `test_resource_service.py`, `test_transport.py`, `test_web_transport.py`, `test_galaris_provider.py` |
 | Comparaison File Share par harnais | Vérifier la vraie façade MCP sur un provider synthétique, les continuations, l'isolation des deux accès, la comptabilité et les décisions appariées ; distinguer erreurs d'infrastructure et réussite mesurée | `back/tests/test_file_share_navigation.py` ; [campagne réelle distincte](file-share-navigation.md) |
 | Fichiers internes et migration | Déplacer uniquement les octets internes avec empreintes vérifiées et reprise après interruption ; préserver mémoire, documents, historiques, journal et anciens liens ; ne jamais ouvrir un fournisseur externe ; effacer une PJ devenue inutile sans supprimer un fichier encore référencé ; reprendre une purge interrompue sans réutiliser son UUID | `back/core/storage/tests`, `back/app/memory/tests/test_managed_files.py`, `test_service.py`, `back/app/file_share/tests/test_managed_http.py`, `e2e/specs/office-thumbnails.spec.mjs` |
@@ -2526,7 +2536,7 @@ identifiant distant ; les contacts absents ou d’un autre agent restent anonyme
 `app/agent/tests/test_history_attribution.py` exercent la même attribution dans les projections
 Pydantic AI, OpenAI et Hermès, tout en préservant les rôles des agents et les pièces jointes.
 
-`front/browser-tests/messaging-network.spec.mjs` couvre la création préconfigurée du Tool
+`front/browser-tests/messaging-network.spec.mjs` couvre la création préconfigurée du Service
 Telegram et Matrix, les paramètres secrets vides, le homeserver requis et repris pour Matrix,
 la reprise après erreur, la réouverture sans doublon,
 la conservation d’un outil existant incompatible et les droits du bouton. La création reste
@@ -2983,7 +2993,7 @@ assemblée, avec API réelle et base synthétique isolée ; les positions, natur
 et cadrage survivent aussi à une navigation complète. Les tests WebDAV vérifient que les lectures de
 métadonnées suivent le nombre de dossiers pour 300 et 3 000 fichiers, avec repli individuel
 et nouveaux contrôles après révocation. Le scénario fournisseur vérifie aussi la résolution
-groupée des fichiers d'un Tool combinant File Share et Messenger.
+groupée des fichiers d'un Service combinant File Share et Messenger.
 `e2e/specs/file-indexing.spec.mjs` exerce l'application assemblée et son API réelle.
 Le navigateur **Connaissances → Fichiers** est couvert par
 `bridge/mail/tests/test_browser.py` pour le parcours HTTP IMAP : hiérarchie, continuation,

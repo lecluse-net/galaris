@@ -198,7 +198,7 @@ async def test_galaris_process_uses_the_assigned_workflow_id_and_cursor_page(
             "workflow_id": workflow_id,
             "label": "Météo du jour → Aster",
             "description": "Météo test",
-            "tool_code": "n8n",
+            "service_code": "n8n",
         }
 
     async def list_processes(**kwargs: object) -> list[dict[str, Any]]:
@@ -208,7 +208,7 @@ async def test_galaris_process_uses_the_assigned_workflow_id_and_cursor_page(
                 "workflow_id": workflow_id,
                 "label": "Météo du jour → Aster",
                 "description": "Météo test",
-                "tool_code": "n8n",
+                "service_code": "n8n",
             }
         ]
 
@@ -236,7 +236,7 @@ async def test_galaris_process_uses_the_assigned_workflow_id_and_cursor_page(
     }
     assert descriptor.uri == uri
     assert descriptor.name == f"process-{workflow_id}.json"
-    assert descriptor.metadata["tool_code"] == "n8n"
+    assert descriptor.metadata["service_code"] == "n8n"
     assert '"workflow_id": "Kw70xUO8uRWkXvtX"' in content.content
     assert [entry.uri for entry in listing.entries] == [uri]
 

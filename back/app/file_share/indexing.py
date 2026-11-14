@@ -11,7 +11,7 @@ from sqlalchemy.sql.selectable import Exists
 from sqlalchemy.orm import aliased, defer
 
 from app.connection import Connection
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.memory import catalogue_projection_write
 from core.database import get_db
 from core.params import runtime_settings
@@ -58,7 +58,7 @@ async def start_index_run(ctx: ResourceContext, root: str, *, max_entries: int =
     if scope is None:
         raise PermissionError("This source is excluded from file indexing")
     mode = await get_db().scalar(select(indexing_mode_expression()).select_from(Connection).join(
-        ToolModel, ToolModel.id == Connection.tool_id).where(Connection.id == scope.connection_id))
+        ServiceModel, ServiceModel.id == Connection.service_id).where(Connection.id == scope.connection_id))
     if mode != "recursive":
         raise PermissionError("This source does not support automatic traversal")
     await lock_binding(scope)
@@ -111,7 +111,7 @@ async def process_index_page(run: FileIndexRun) -> None:
     if scope is None or scope.stamp != run.binding_stamp or scope.connection_id != run.connection_id:
         run.status = "excluded"
         return
-    mode = await get_db().scalar(select(indexing_mode_expression()).select_from(Connection).join(ToolModel, ToolModel.id == Connection.tool_id).where(Connection.id == scope.connection_id))
+    mode = await get_db().scalar(select(indexing_mode_expression()).select_from(Connection).join(ServiceModel, ServiceModel.id == Connection.service_id).where(Connection.id == scope.connection_id))
     if mode != "recursive":
         run.status = "excluded"
         return
@@ -194,15 +194,15 @@ def _covered_root() -> Exists:
         covered = FileIndexRun.id.is_not(None)
     return exists(select(FileIndexRun.id).where(
         FileIndexRun.connection_id == Connection.id, FileIndexRun.binding_stamp == binding_stamp(),
-        FileIndexRun.runtime == "internal", FileIndexRun.root_uri == ToolModel.code + "://",
+        FileIndexRun.runtime == "internal", FileIndexRun.root_uri == ServiceModel.code + "://",
         covered,
-    ).correlate(Connection, ToolModel))
+    ).correlate(Connection, ServiceModel))
 
 
 async def schedule_automatic_runs() -> None:
     recent = _covered_root()
-    rows = (await get_db().execute(select(Connection.agent_id, ToolModel.code).join(
-        ToolModel, ToolModel.id == Connection.tool_id).where(Connection.active.is_(True),
+    rows = (await get_db().execute(select(Connection.agent_id, ServiceModel.code).join(
+        ServiceModel, ServiceModel.id == Connection.service_id).where(Connection.active.is_(True),
         indexing_mode_expression() == "recursive", ~recent).order_by(Connection.id).limit(20))).all()
     for agent_id, code in rows:
         root = f"{code}://"
@@ -296,7 +296,7 @@ async def discovery_pending(claimed: list[dict[str, str]]) -> int:
         func.greatest(1, func.jsonb_array_length(FileIndexRun.frontier))), 0)).where(active)) or 0)
     recent = _covered_root()
     count += int(await get_db().scalar(select(func.count()).select_from(Connection).join(
-        ToolModel, ToolModel.id == Connection.tool_id).where(Connection.active.is_(True),
+        ServiceModel, ServiceModel.id == Connection.service_id).where(Connection.active.is_(True),
         indexing_mode_expression() == "recursive", ~recent)) or 0)
     claimed_by_identity = {subject["identity"]: subject for subject in claimed}
     if claimed:
@@ -353,7 +353,7 @@ async def repair_tick() -> None:
         with suspend_observations():
             async with catalogue_projection_write():
                 async with db.begin_nested():
-                    scheme = await db.scalar(select(ToolModel.code).join(Connection).where(Connection.id == repair.connection_id))
+                    scheme = await db.scalar(select(ServiceModel.code).join(Connection).where(Connection.id == repair.connection_id))
                     if scheme is None:
                         raise PermissionError("Source connection disappeared")
                     await observe_result(ctx, {scheme: scope},
@@ -378,10 +378,10 @@ async def prune_index_history() -> None:
         newer.runtime == FileIndexRun.runtime, newer.root_uri == FileIndexRun.root_uri,
         newer.started_at > FileIndexRun.started_at,
     ))
-    current_root = exists(select(Connection.id).join(ToolModel).where(
+    current_root = exists(select(Connection.id).join(ServiceModel).where(
         Connection.id == FileIndexRun.connection_id, Connection.active.is_(True),
         FileIndexRun.binding_stamp == binding_stamp(), FileIndexRun.runtime == "internal",
-        FileIndexRun.root_uri == ToolModel.code + "://",
+        FileIndexRun.root_uri == ServiceModel.code + "://",
     ))
     # Retain the latest current root marker even with periodic rescanning off.
     # Pruning diagnostics must not turn it into a new initial traversal.
@@ -396,7 +396,7 @@ async def refresh_known_tick() -> None:
     """Validate one known URI without traversing providers configured for known URIs."""
     from .resource_service import resource_info
     db = get_db()
-    entry = await db.scalar(select(FileCatalogEntry).join(Connection).join(ToolModel).where(
+    entry = await db.scalar(select(FileCatalogEntry).join(Connection).join(ServiceModel).where(
         FileCatalogEntry.present.is_(True), Connection.active.is_(True),
         indexing_mode_expression().in_(("known_uris", "recursive")),
         or_(FileCatalogEntry.checked_at.is_(None), FileCatalogEntry.checked_at < now() - timedelta(hours=6)),

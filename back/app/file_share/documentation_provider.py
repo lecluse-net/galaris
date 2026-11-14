@@ -6,7 +6,7 @@ import asyncio
 from pathlib import PurePosixPath
 
 from app.documentation import facade as documentation
-from app.tools import require_documentation_access
+from app.services import require_documentation_access
 
 from .resource_contracts import ResourceContext, ResourceDescriptor, ResourceListing, ResourceRead
 from .resource_uri import ResourceUri

@@ -3,7 +3,7 @@
 Le 17 octobre 2026, l'inspection transversale du backend a identifié douze chantiers,
 dont quatre évalués sur PostgreSQL 17 avec des données synthétiques. Les premiers
 lots proposés concernent l'attribution des Topics, les listes Process et les
-lectures groupées des Tools. Les prototypes restent des expériences locales ;
+lectures groupées des Services. Les prototypes restent des expériences locales ;
 aucun correctif applicatif n'est livré par cet audit.
 
 ## Mesures sur les prototypes
@@ -58,12 +58,12 @@ Conserver le rafraîchissement explicite des réponses unitaires après mutation
 les libellés de définitions historisées et les replis du `launch_snapshot`.
 Qualifier les transitions concurrentes et ces replis avant intégration.
 
-### Lectures groupées des Tools
+### Lectures groupées des Services
 
 Dans [`console.connection_service`](../../back/app/console/connection_service.py),
-la recherche parcourt les connexions actives et appelle `get_tool_by_id` pour
+la recherche parcourt les connexions actives et appelle `get_service_by_id` pour
 chacune. Chaque appel émet une lecture explicite avec `populate_existing`.
-Une recherche ciblée du Tool puis de sa connexion remplace les 31 lectures du
+Une recherche ciblée du Service puis de sa connexion remplace les 31 lectures du
 scénario par deux.
 
 La recherche de variantes a repéré 23 occurrences structurelles dans quinze
@@ -72,7 +72,7 @@ fichiers, inspectées dans leur contexte :
 | Domaine | Surfaces concernées |
 |---|---|
 | Console et Browser | `console/connection_service.py`, `browser/service.py`, `browser/network.py` |
-| Tools | `tools/agent_registry.py`, deux boucles de `tools/mcp_loader.py` |
+| Services | `tools/agent_registry.py`, deux boucles de `tools/mcp_loader.py` |
 | File Sharing | cinq boucles de `file_share/file_share_service.py` |
 | Messenger | quatre boucles de `messenger/service.py`, `messenger/session.py` |
 | Connection | `connection/connection_service.py`, `connection/agent_admin_service.py` |
@@ -80,11 +80,11 @@ fichiers, inspectées dans leur contexte :
 
 Ces occurrences ont des fréquences et des priorités différentes ; seul Console a
 été mesuré dynamiquement. L'historique Messenger déduplique déjà les identifiants
-de Tool : son surcoût dépend des Tools distincts, pas directement des messages.
+de Service : son surcoût dépend des Services distincts, pas directement des messages.
 
-Pour les fonctions parcourant tous les Tools, réutiliser
-[`get_tools_by_ids`](../../back/app/tools/facade.py). Si seuls les codes sont
-nécessaires, `get_tool_codes` évite les configurations complètes. Préserver la
+Pour les fonctions parcourant tous les Services, réutiliser
+[`get_services_by_ids`](../../back/app/services/facade.py). Si seuls les codes sont
+nécessaires, `get_service_codes` évite les configurations complètes. Préserver la
 fraîcheur des configurations, les connexions actives, les capacités et l'ordre de
 sélection. Le prototype Console couvre le cas absent ; les connexions présentes,
 inactives et les paramètres globaux, locaux ou chiffrés restent à tester.
@@ -116,12 +116,12 @@ mesurer avec une distribution représentative.
 | Supervision conversationnelle | [`list_messages`](../../back/app/conversation/monitoring_service.py) joint la résolution du round courant par room à chaque message, puis réemploie ces jointures dans les compteurs. | Examiner les plans et l'éventuel `Memoize`, puis résoudre une fois par room et alléger les compteurs selon les filtres. Préserver les priorités de statut et la visibilité. |
 | Mois disponibles | [`Dashboard`](../../back/app/dashboard/dashboard_service.py) et Topics recalculent les mois distincts depuis les historiques à chaque réponse. | Évaluer une projection mensuelle ou une lecture incrémentale si les mesures justifient sa maintenance. Conserver les scopes et fuseaux ; min/max inventerait des mois absents. |
 | Accès inverse aux membres Messenger | [`RoomUser`](../../back/app/messenger/models.py) a une clé primaire `(room_id, user_id)`, sans index commençant par `user_id`. | Mesurer les parcours réellement filtrés par utilisateur avant d'évaluer `(user_id, room_id)` ; ne pas indexer indistinctement toutes les FK signalées. |
-| Pagination du catalogue Tools | [`agent_admin_service.list_tools`](../../back/app/connection/agent_admin_service.py) charge tout le catalogue, filtre et pagine dans Python, puis relit chaque Tool de la page pour vérifier son existence. | Supprimer les relectures ; évaluer ensuite recherche et pagination SQL en préservant la sémantique Unicode de `casefold`. |
+| Pagination du catalogue Services | [`agent_admin_service.list_tools`](../../back/app/connection/agent_admin_service.py) charge tout le catalogue, filtre et pagine dans Python, puis relit chaque Service de la page pour vérifier son existence. | Supprimer les relectures ; évaluer ensuite recherche et pagination SQL en préservant la sémantique Unicode de `casefold`. |
 
 ## Ordre de réalisation et garanties
 
 Commencer par l'attribution des Topics et la sérialisation Process. Étendre ensuite
-les lectures groupées des Tools par familles de consommateurs : Console,
+les lectures groupées des Services par familles de consommateurs : Console,
 MCP et File Sharing, puis messageries et bridges. Traiter le stockage et les index
 redondants avec leurs contrôles de suppression et de convergence du schéma.
 

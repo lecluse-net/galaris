@@ -5,7 +5,7 @@ import pytest
 from app.file_share.resource_uri import (
     ResourceUriError,
     parse_resource_uri,
-    validate_external_tool_code,
+    validate_external_service_code,
 )
 from app.file_share.resource_contracts import ResourceDescriptor
 
@@ -99,7 +99,7 @@ def test_memory_and_document_uris_accept_only_their_canonical_shapes() -> None:
         parse_resource_uri("document://folder/report.md")
     with pytest.raises(ResourceUriError) as invalid_attachment:
         parse_resource_uri(f"document://{identifier}/attachments/not-a-uuid")
-    from app.tools.tool_errors import classify_tool_failure
+    from app.services.tool_errors import classify_tool_failure
 
     diagnostic = classify_tool_failure(invalid_attachment.value)
     assert diagnostic.kind == "actionable"
@@ -111,9 +111,9 @@ def test_memory_and_document_uris_accept_only_their_canonical_shapes() -> None:
     "code",
     ["http", "https", "ssh", "workspace", "messenger", "galaris", "image", "task"],
 )
-def test_reserved_tool_codes_are_rejected(code: str) -> None:
+def test_reserved_service_codes_are_rejected(code: str) -> None:
     with pytest.raises(ValueError, match="reserved"):
-        validate_external_tool_code(code, file_share=True)
+        validate_external_service_code(code, file_share=True)
 
 
 def test_process_runs_use_galaris_and_the_retired_scheme_stays_reserved() -> None:
@@ -122,24 +122,24 @@ def test_process_runs_use_galaris_and_the_retired_scheme_stays_reserved() -> Non
     with pytest.raises(ResourceUriError, match="galaris://processes/runs/"):
         parse_resource_uri(f"processus://run/{identity}")
     with pytest.raises(ValueError, match="reserved"):
-        validate_external_tool_code("processus", file_share=True)
+        validate_external_service_code("processus", file_share=True)
 
 
-def test_file_share_tool_code_must_be_a_uri_scheme() -> None:
+def test_file_share_service_code_must_be_a_uri_scheme() -> None:
     for code in ("nextcloud-pro", "nextcloud", "affine", "n8n"):
-        assert validate_external_tool_code(code, file_share=True) == code
+        assert validate_external_service_code(code, file_share=True) == code
     with pytest.raises(ValueError, match="lowercase URI scheme"):
-        validate_external_tool_code("nextcloud_personal", file_share=True)
+        validate_external_service_code("nextcloud_personal", file_share=True)
 
 
-def test_messenger_tool_code_must_also_be_a_uri_scheme() -> None:
-    assert validate_external_tool_code(
+def test_messenger_service_code_must_also_be_a_uri_scheme() -> None:
+    assert validate_external_service_code(
         "telegram-team",
         file_share=False,
         messenger=True,
     ) == "telegram-team"
     with pytest.raises(ValueError, match="lowercase URI scheme"):
-        validate_external_tool_code(
+        validate_external_service_code(
             "telegram_team",
             file_share=False,
             messenger=True,

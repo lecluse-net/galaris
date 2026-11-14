@@ -14,7 +14,7 @@ from app.process.models import ProcessRun
 from app.topic.models import Topic
 from app.task.models import Task, TaskStatus
 from app.connection.models import Connection
-from app.tools.models import Tool
+from app.services.models import Service
 from bridge.mail.models import MailOutboundDelivery
 
 
@@ -28,7 +28,7 @@ async def test_calendar_sync_interval_cannot_be_overridden_per_agenda(client, pr
     other = await owned_agent(other_user)
     async with get_db_session() as db:
         tool = await protocol_tool(db, 'calendar')
-        connections = [Connection(agent_id=identity, tool_id=tool.id, active=True) for identity in (own, other)]
+        connections = [Connection(agent_id=identity, service_id=tool.id, active=True) for identity in (own, other)]
         db.add_all(connections)
         await db.flush()
         feeds = [CalendarFeed(connection_id=connection.id, label='Synthetic source', source_kind='caldav') for connection in connections]
@@ -117,7 +117,7 @@ async def test_mail_decision_does_not_use_connection_read_only(client):
     async with get_db_session() as db:
         tool = await protocol_tool(db, "mail")
         assert tool is not None
-        connection = Connection(agent_id=agent_id, tool_id=tool.id, active=True)
+        connection = Connection(agent_id=agent_id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
         delivery = MailOutboundDelivery(connection_id=connection.id, agent_id=agent_id,
@@ -185,8 +185,8 @@ async def test_calendar_roles_use_scoped_metadata_and_do_not_open_connector_conf
         _, other_user = await actor([])
         other = await owned_agent(other_user)
         async with get_db_session() as db:
-            tool = (await db.scalars(select(Tool).where(Tool.code == "agenda"))).one()
-            connections = [Connection(agent_id=identity, tool_id=tool.id, active=True) for identity in [own, other]]
+            tool = (await db.scalars(select(Service).where(Service.code == "agenda"))).one()
+            connections = [Connection(agent_id=identity, service_id=tool.id, active=True) for identity in [own, other]]
             db.add_all(connections)
             await db.flush()
             own_id, other_id = [connection.id for connection in connections]
@@ -239,18 +239,18 @@ async def test_calendar_roles_use_scoped_metadata_and_do_not_open_connector_conf
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("tool_privilege", [None, "TOOL_ACCESS", "TOOL_EDIT"])
+@pytest.mark.parametrize("tool_privilege", [None, "SERVICE_ACCESS", "SERVICE_EDIT"])
 async def test_connector_metadata_does_not_disclose_global_tool_configuration(client, tool_privilege):
     headers, _ = await actor(["CONNECTION_ACCESS", *([tool_privilege] if tool_privilege else [])])
     async with get_db_session() as db:
-        tool = Tool(code=f"synthetic-{uuid4()}", label="Synthetic schema",
+        tool = Service(code=f"synthetic-{uuid4()}", label="Synthetic schema",
             mcp_config={"type": "http", "url": "https://synthetic-private.invalid", "env": {"TOKEN": "private-marker"}},
             global_params={"token": {"value": "private-marker"}, "region": {"value": "synthetic-region", "forced": True}},
             connection_schema={"params": {"token": {"type": "password"}, "region": {"type": "string"}}})
         db.add(tool)
         await db.flush()
         identity = tool.id
-    response = await client.get("/api/connections/tool-options", headers=headers)
+    response = await client.get("/api/connections/service-options", headers=headers)
     assert response.status_code == 200 and response.json()
     assert "private-marker" not in response.text and "synthetic-private.invalid" not in response.text
     item = next(item for item in response.json() if item["id"] == identity)
@@ -261,4 +261,4 @@ async def test_connector_metadata_does_not_disclose_global_tool_configuration(cl
         assert item["global_params"]["token"] == {"value": None, "configured": True, "secret": True, "forced": False}
     else:
         assert all(item["global_params"] == {} for item in response.json())
-    assert (await client.get("/api/tools", headers=headers)).status_code == (200 if tool_privilege else 403)
+    assert (await client.get("/api/services", headers=headers)).status_code == (200 if tool_privilege else 403)

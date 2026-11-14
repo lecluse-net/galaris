@@ -79,12 +79,12 @@ async def test_system_skill_uses_bundled_read_only_storage(skill_root: Path, cod
 
 
 def test_system_skill_documents_every_native_mcp_tool(skill_root: Path) -> None:
-    from app.tools.mcp_loader import load_mcp_tools
+    from app.services.mcp_loader import load_mcp_tools
 
     # Native operations may live in a dedicated system guide linked by the general skill.
     markdown = "\n".join(storage.read_text(definition.code, "SKILL.md") for definition in storage.SYSTEM_SKILLS)
     missing = sorted(
-        f"{definition.tool_code}:{definition.name}"
+        f"{definition.service_code}:{definition.name}"
         for definition in load_mcp_tools()
         if f"`{definition.name}" not in markdown
     )

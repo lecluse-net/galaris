@@ -17,7 +17,7 @@ from app.process import native_sharing
 from app.process.models import ProcessDefinition
 from app.process.native_definitions import DefinitionConflictError
 from app.share import ShareGrant, SharingUpdate
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.database import get_db_session
 from core.user import UserModel
 
@@ -41,7 +41,7 @@ async def seed_resources(domain):
         db.add(owner)
         await db.flush()
         scope = AgentManagementScope(manager.id, frozenset({owner.id}))
-        tool = await db.scalar(select(ToolModel.id).where(ToolModel.code == "galaris"))
+        tool = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "galaris"))
         resources = []
         for index in range(2):
             if domain == "dataset":
@@ -60,7 +60,7 @@ async def seed_resources(domain):
             else:
                 record = ProcessDefinition(
                     agent_id=owner.id,
-                    tool_id=tool,
+                    service_id=tool,
                     label=f"Synthetic concurrent {index}",
                     code=f"concurrent_{uuid4().hex}",
                     engine_process_id=f"synthetic_{index}",

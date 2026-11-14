@@ -77,4 +77,4 @@ jamais présentée comme une mesure exacte.
 `back/app/agent/contracts.py`, `back/app/agent/facade.py`,
 `back/app/agent/driver_testkit.py`, `back/app/task/agent_adapter.py`,
 `back/app/harness/checkpoint.py`, `back/app/harness/runtime.py`,
-`back/app/tools/mcp_loader.py`, `back/bridge/hermes/executor.py` et leurs tests de contrat.
+`back/app/services/mcp_loader.py`, `back/bridge/hermes/executor.py` et leurs tests de contrat.

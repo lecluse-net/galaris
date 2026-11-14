@@ -12,9 +12,9 @@ from sqlalchemy import select
 from app.agent.models import Agent, Title
 from app.connection.models import Connection
 from app.connection import connection_service
-from app.tools.facade import AdministrationScope
-from app.tools.mcp_loader import McpToolContext, add_galaris_tools
-from app.tools.models import Tool
+from app.services.facade import AdministrationScope
+from app.services.mcp_loader import McpToolContext, add_galaris_tools
+from app.services.models import Service
 
 from .. import mcp
 from ..models import Goal, GoalStatus
@@ -77,7 +77,7 @@ async def test_goal_self_service_tool_schemas_are_exposed_by_galaris() -> None:
     add_galaris_tools(
         server, 90,
         runtime="internal",
-        enabled_tool_codes={"galaris", "file_sharing"},
+        enabled_service_codes={"galaris", "file_sharing"},
     )
     tools = {tool.name: tool for tool in await server.list_tools()}
 
@@ -325,10 +325,10 @@ async def test_live_management_connection_controls_cross_owner_goal_access(db: A
     db.add_all([own_goal, foreign_goal])
 
     management_tool = await db.scalar(
-        select(Tool).where(Tool.code == "goal_management")
+        select(Service).where(Service.code == "goal_management")
     )
     if management_tool is None:
-        management_tool = Tool(
+        management_tool = Service(
             code="goal_management",
             label="Goal management",
             description="",
@@ -337,7 +337,7 @@ async def test_live_management_connection_controls_cross_owner_goal_access(db: A
         db.add(management_tool)
         await db.flush()
     connection = Connection(
-        tool_id=management_tool.id,
+        service_id=management_tool.id,
         agent_id=caller.id,
         active=False,
     )
@@ -362,7 +362,7 @@ async def test_live_management_connection_controls_cross_owner_goal_access(db: A
 
     connection.active = True
     await db.commit()
-    await connection_service.set_param(connection.id, "tools.management_scope", "all", scope_edit_authorized=True)
+    await connection_service.set_param(connection.id, "services.management_scope", "all", scope_edit_authorized=True)
     foreign = await mcp.mcp_goal_get(ctx, str(foreign_goal.id))
     assert foreign["agent_id"] == owner.id
     administered = await mcp.mcp_goal_update(

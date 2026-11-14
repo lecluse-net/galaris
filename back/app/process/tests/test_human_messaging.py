@@ -24,8 +24,8 @@ from app.process.models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 from app.process.native_actors import human_work
 from app.process.native_definitions import create
 from app.process.values import Variable
-from app.tools import McpToolContext
-from app.tools.models import Tool
+from app.services import McpToolContext
+from app.services.models import Service
 from core.user import UserModel
 
 from .test_native_bpmn import native as native, finish_run
@@ -73,8 +73,8 @@ async def setup_wait(db, native, monkeypatch, *, typed=True, file_output=False, 
 @pytest.mark.asyncio
 async def test_human_decision_buttons_complete_the_chosen_branch_without_an_ai_task(db, native, monkeypatch, answer):
     owner, user, run_id = await setup_wait(db, native, monkeypatch, decision=True)
-    chat = await db.scalar(select(Tool).where(Tool.code == "chat"))
-    db.add(Connection(agent_id=owner.id, tool_id=chat.id, active=True))
+    chat = await db.scalar(select(Service).where(Service.code == "chat"))
+    db.add(Connection(agent_id=owner.id, service_id=chat.id, active=True))
     await db.commit()
     await deliver_human_requests()
     choice = await db.scalar(select(Interaction).where(Interaction.kind == PROCESS_HUMAN_INTERACTION))
@@ -82,7 +82,7 @@ async def test_human_decision_buttons_complete_the_chosen_branch_without_an_ai_t
     assert choice.options == [{"id": "true", "label": "True", "aliases": []}, {"id": "false", "label": "False", "aliases": []}]
     room = await db.get(Room, UUID(choice.room_id))
     sender = MessengerUser(id=uuid4(), external_id=choice.user_id, is_ai=False)
-    incoming = Message(connection_id=choice.connection_id, tool_id=choice.tool_id,
+    incoming = Message(connection_id=choice.connection_id, service_id=choice.service_id,
         remote_message_id="synthetic-decision", direction="inbound", text=f"#{choice.reference} {answer}", platform="internal")
     incoming.room, incoming.sender = room, sender
     resolution = await resolve_from_message(incoming, agent_id=owner.id)
@@ -98,8 +98,8 @@ async def test_human_decision_buttons_complete_the_chosen_branch_without_an_ai_t
 @pytest.mark.asyncio
 async def test_internal_request_is_durable_scoped_and_does_not_consume_unrelated_messages(db, native, monkeypatch):
     owner, user, run_id = await setup_wait(db, native, monkeypatch)
-    chat = await db.scalar(select(Tool).where(Tool.code == "chat"))
-    db.add(Connection(agent_id=owner.id, tool_id=chat.id, active=True))
+    chat = await db.scalar(select(Service).where(Service.code == "chat"))
+    db.add(Connection(agent_id=owner.id, service_id=chat.id, active=True))
     await db.commit()
     assert await deliver_human_requests() == 1
     assert await deliver_human_requests() == 0
@@ -109,19 +109,19 @@ async def test_internal_request_is_durable_scoped_and_does_not_consume_unrelated
     assert choice.metadata_["outputs"][0]["name"] == "approved"
     room = await db.get(Room, UUID(choice.room_id))
     sender = MessengerUser(id=uuid4(), external_id=choice.user_id, is_ai=False)
-    incoming = Message(connection_id=choice.connection_id, tool_id=choice.tool_id,
+    incoming = Message(connection_id=choice.connection_id, service_id=choice.service_id,
         remote_message_id="synthetic-question", direction="inbound", text="What is the weather?", platform="internal")
     incoming.room, incoming.sender = room, sender
     assert await resolve_from_message(incoming, agent_id=owner.id) is None
-    scope = dict(agent_id=owner.id, connection_id=choice.connection_id, tool_id=choice.tool_id,
+    scope = dict(agent_id=owner.id, connection_id=choice.connection_id, service_id=choice.service_id,
         room_id=choice.room_id, user_id=choice.user_id)
     assert len(await list_pending_choices(**scope)) == 1
     turn = ConversationTurn(room_id=room.id, round_id=uuid4(), agent_id=owner.id, language="en",
         objective="Yes, approve it", messages=({"text": "Yes, approve it"},),
-        messaging_context={"connection_id": choice.connection_id, "tool_id": choice.tool_id,
+        messaging_context={"connection_id": choice.connection_id, "service_id": choice.service_id,
             "participant_id": choice.user_id, "requester_user_id": user.id})
     ctx = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
-    from app.tools import RecoverableToolError
+    from app.services import RecoverableToolError
     with pytest.raises(RecoverableToolError, match="null is not allowed"):
         await conversation_process_respond(ctx, reference=choice.reference, output={"approved": None})
     assert choice.status == "PENDING"
@@ -171,18 +171,18 @@ async def test_delivery_failure_keeps_wait_and_retry_uses_one_attempt(db, native
 async def test_file_only_message_reaches_controller_and_process_with_its_original_uri(db, native, monkeypatch):
     from app.conversation.service import admit_message, build_turn, claim_next_round
     owner, user, run_id = await setup_wait(db, native, monkeypatch, file_output=True)
-    chat = await db.scalar(select(Tool).where(Tool.code == "chat"))
-    db.add(Connection(agent_id=owner.id, tool_id=chat.id, active=True))
+    chat = await db.scalar(select(Service).where(Service.code == "chat"))
+    db.add(Connection(agent_id=owner.id, service_id=chat.id, active=True))
     await db.commit()
     await deliver_human_requests()
     choice = await db.scalar(select(Interaction).where(Interaction.kind == PROCESS_HUMAN_INTERACTION))
     room = await db.get(Room, UUID(choice.room_id))
-    sender = await db.scalar(select(MessengerUser).where(MessengerUser.tool_id == chat.id,
+    sender = await db.scalar(select(MessengerUser).where(MessengerUser.service_id == chat.id,
         MessengerUser.external_id == choice.user_id))
     file = File(connection_id=choice.connection_id, name="synthetic-review.pdf",
         mime_type="application/pdf", size_bytes=17, kind="document")
     db.add(file)
-    incoming = Message(connection_id=choice.connection_id, tool_id=chat.id, platform="internal",
+    incoming = Message(connection_id=choice.connection_id, service_id=chat.id, platform="internal",
         remote_message_id=uuid4().hex, direction="inbound", text="", messenger_room_id=room.id,
         messenger_user_id=sender.id, sender_messenger_user_id=sender.id,
         requester_user_id=user.id, room_id=room.external_id, user_id=sender.external_id)
@@ -190,7 +190,7 @@ async def test_file_only_message_reaches_controller_and_process_with_its_origina
     await db.flush()
     db.add(Attachment(message_id=incoming.id, file_id=file.id, position=0))
     await db.commit()
-    incoming.room, incoming.sender, incoming.files, incoming.tool_code = room, sender, [file], "chat"
+    incoming.room, incoming.sender, incoming.files, incoming.service_code = room, sender, [file], "chat"
     uri = f"chat://{room.external_id}/{file.id}"
     assert await resolve_from_message(incoming, agent_id=owner.id) is None
     await admit_message(incoming, agent_id=owner.id, connection_id=choice.connection_id)
@@ -215,10 +215,10 @@ async def test_file_only_message_reaches_controller_and_process_with_its_origina
 async def test_external_route_is_used_and_cancelled_process_refuses_a_late_chat_reply(db, native, monkeypatch):
     from app.conversation import process_interactions
     owner, user, run_id = await setup_wait(db, native, monkeypatch)
-    tool = Tool(code="synthetic-messenger-" + uuid4().hex, label="Synthetic external messenger")
+    tool = Service(code="synthetic-messenger-" + uuid4().hex, label="Synthetic external messenger")
     db.add(tool)
     await db.flush()
-    connection = Connection(agent_id=owner.id, tool_id=tool.id, active=True)
+    connection = Connection(agent_id=owner.id, service_id=tool.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(connection_id=connection.id, external_id="external-synthetic-room", label="Synthetic external room", conversation_type="text")
@@ -227,7 +227,7 @@ async def test_external_route_is_used_and_cancelled_process_refuses_a_late_chat_
     contact = ProcessHumanContact(user_id=user.id, display_name="Synthetic peer",
         connection_id=connection.id, external_user="@synthetic:example.invalid")
     monkeypatch.setattr(human_directory, "_directory", SimpleNamespace(list_humans=AsyncMock(return_value=(contact,))))
-    transport = SimpleNamespace(connection_id=connection.id, tool_id=tool.id,
+    transport = SimpleNamespace(connection_id=connection.id, service_id=tool.id,
         ensure_direct_room=AsyncMock(return_value=room), send_to_room=AsyncMock(return_value=SimpleNamespace(id=uuid4())))
     monkeypatch.setattr(process_interactions, "messenger_for_agent_connection", AsyncMock(return_value=transport))
     await deliver_human_requests()
@@ -238,7 +238,7 @@ async def test_external_route_is_used_and_cancelled_process_refuses_a_late_chat_
     await process_service.cancel_run(run_id)
     turn = ConversationTurn(room_id=room.id, round_id=uuid4(), agent_id=owner.id, language="en",
         objective="Approve", messages=({"text": "Approve"},), messaging_context={
-            "connection_id": connection.id, "tool_id": tool.id, "participant_id": contact.external_user,
+            "connection_id": connection.id, "service_id": tool.id, "participant_id": contact.external_user,
             "requester_user_id": user.id})
     with pytest.raises(ValueError, match="no longer"):
         await conversation_process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
@@ -247,15 +247,15 @@ async def test_external_route_is_used_and_cancelled_process_refuses_a_late_chat_
     attempt = await db.get(ProcessNodeAttempt, UUID(choice.metadata_["attempt_id"]))
     assert attempt.receipt is None
     await deliver_human_requests()
-    assert not await list_pending_choices(agent_id=owner.id, connection_id=connection.id, tool_id=tool.id,
+    assert not await list_pending_choices(agent_id=owner.id, connection_id=connection.id, service_id=tool.id,
         room_id=str(room.id), user_id=contact.external_user)
 
 
 @pytest.mark.asyncio
 async def test_successive_human_steps_send_distinct_requests_and_preserve_their_results(db, native, monkeypatch):
     owner, user, run_id = await setup_wait(db, native, monkeypatch, sequential=True)
-    chat = await db.scalar(select(Tool).where(Tool.code == "chat"))
-    db.add(Connection(agent_id=owner.id, tool_id=chat.id, active=True))
+    chat = await db.scalar(select(Service).where(Service.code == "chat"))
+    db.add(Connection(agent_id=owner.id, service_id=chat.id, active=True))
     await db.commit()
     references = []
     for approved in (True, False):
@@ -265,7 +265,7 @@ async def test_successive_human_steps_send_distinct_requests_and_preserve_their_
         references.append(choice.reference)
         turn = ConversationTurn(room_id=UUID(choice.room_id), round_id=uuid4(), agent_id=owner.id, language="en",
             objective="Synthetic answer", messages=({"text": "Synthetic answer"},),
-            messaging_context={"connection_id": choice.connection_id, "tool_id": choice.tool_id,
+            messaging_context={"connection_id": choice.connection_id, "service_id": choice.service_id,
                 "participant_id": choice.user_id, "requester_user_id": user.id})
         await conversation_process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
             resources={"conversation_turn": turn}), reference=choice.reference,

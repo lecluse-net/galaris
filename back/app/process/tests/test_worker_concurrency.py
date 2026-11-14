@@ -10,7 +10,7 @@ from sqlalchemy import select
 from core.database import get_db_session
 from core.user.models import User
 from app.agent.models import Agent, Title
-from app.tools.models import Tool
+from app.services.models import Service
 from app.process.models import ProcessDefinition, ProcessRun, ProcessStartJob
 from app.process.schemas import EngineRunSnapshot, EngineStartResult
 from app.process import registry
@@ -25,16 +25,16 @@ async def test_parallel_external_execution_discovery_creates_one_canonical_run(c
     code = f"discovery-{uuid4().hex[:8]}"
     async with get_db_session() as db:
         title = Title(label=code, gender="X")
-        tool = Tool(code=code, label=code, connection_schema={})
+        tool = Service(code=code, label=code, connection_schema={})
         user = User(email=f"{code}@example.test", hashed_password="unused", is_active=True)
         db.add_all([title, tool, user])
         await db.flush()
         agent = Agent(user_id=user.id, code=code, first_name="Discovery", last_name="Test", title_id=title.id)
         db.add(agent)
         await db.flush()
-        db.add(ProcessDefinition(tool_id=tool.id, agent_id=agent.id, engine_process_id=code, label=code))
+        db.add(ProcessDefinition(service_id=tool.id, agent_id=agent.id, engine_process_id=code, label=code))
         if different_workflow:
-            db.add(ProcessDefinition(tool_id=tool.id, agent_id=agent.id, engine_process_id=code + "-other", label="Other workflow"))
+            db.add(ProcessDefinition(service_id=tool.id, agent_id=agent.id, engine_process_id=code + "-other", label="Other workflow"))
 
     arrivals = 0
     both_read = asyncio.Event()
@@ -70,12 +70,12 @@ async def test_slow_admission_does_not_block_other_run_and_parallel_worker_canno
     code = f"test-{uuid4().hex[:8]}"
     async with get_db_session() as db:
         title = Title(label=code, gender="X")
-        tool = Tool(code=code, label=code, connection_schema={})
+        tool = Service(code=code, label=code, connection_schema={})
         user = User(email=f"{code}@example.test", hashed_password="unused", is_active=True)
         db.add_all([title, tool, user]); await db.flush()
         agent = Agent(user_id=user.id, code=code, first_name="Worker", last_name="Test", title_id=title.id)
         db.add(agent); await db.flush()
-        definition = ProcessDefinition(tool_id=tool.id, agent_id=agent.id, engine_process_id=code, label=code)
+        definition = ProcessDefinition(service_id=tool.id, agent_id=agent.id, engine_process_id=code, label=code)
         db.add(definition); await db.flush()
         runs = [ProcessRun(process_id=definition.id, launcher_agent_id=agent.id, engine_code=code,
             correlation_id=uuid4().hex, callback_token="token", status="queued", launch_snapshot={"input": {}}) for _ in range(2)]

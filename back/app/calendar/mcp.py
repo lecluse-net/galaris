@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 from uuid import UUID
 
-from app.tools import McpToolContext, mcp_tool
+from app.services import McpToolContext, mcp_tool
 
 from . import service
 from .awareness import memory_read_enabled, with_memory_events

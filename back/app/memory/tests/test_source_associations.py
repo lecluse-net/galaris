@@ -21,8 +21,8 @@ from app.memory.tests.fact_fixtures import remember_fact
 from app.memory.models import MemorySource
 from app.memory.schemas import MemoryItemCreate, MemoryPayload, MemorySourceCreate
 from app.task import Task, TaskStatus
-from app.tools.mcp_loader import McpToolContext
-from app.tools.models import Tool
+from app.services.mcp_loader import McpToolContext
+from app.services.models import Service
 from app.voice import VoiceConversationSession, VoiceTurnStatus
 
 
@@ -31,14 +31,14 @@ async def _canonical_rounds(
     owner: Agent,
 ) -> tuple[ConversationRound, ConversationRound]:
     suffix = uuid4().hex[:10]
-    tool = Tool(
+    tool = Service(
         code=f"memory-source-{suffix}",
         label="Memory source test",
         description="",
     )
     db.add(tool)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(

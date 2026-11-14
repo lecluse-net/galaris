@@ -23,9 +23,9 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthClientMetadata, OAu
 from pydantic import AnyHttpUrl, AnyUrl, BaseModel, Field, SecretStr, ValidationError
 from sqlalchemy import select
 
-from app.tools.facade import get_tool_by_id, mcp_http_client
-from app.tools import McpConfig
-from app.tools.facade import resolve_connection_references
+from app.services.facade import get_service_by_id, mcp_http_client
+from app.services import McpConfig
+from app.services.facade import resolve_connection_references
 from core.database import get_db
 from core.settings import settings
 from core.util import get_encryption_service
@@ -226,7 +226,7 @@ async def configuration(connection: Connection, purpose: Literal["mcp", "calenda
         from .calendar_oauth import configuration as calendar_configuration
         url, binding, params = await calendar_configuration(connection)
         return None, url, binding, params
-    tool = await get_tool_by_id(connection.tool_id)
+    tool = await get_service_by_id(connection.service_id)
     if tool is None or tool.mcp is None or tool.mcp.type == "stdio":
         raise OAuthError("configuration")
     _, params = await connection_service.get_params_as_dict(connection)
@@ -235,7 +235,7 @@ async def configuration(connection: Connection, purpose: Literal["mcp", "calenda
     if urlsplit(url).query:
         raise OAuthError("configuration")
     # Authorization belongs to this agent connection and its resolved resource.
-    binding = _hash(f"{connection.agent_id}:{connection.tool_id}:{url}")
+    binding = _hash(f"{connection.agent_id}:{connection.service_id}:{url}")
     return tool.mcp, url, binding, params
 
 

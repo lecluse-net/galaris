@@ -1,6 +1,6 @@
 <template>
   <ResourceDetailDialog v-if="open && process"
-    :target="{ kind: process.tool_code === 'galaris' ? 'process_run' : 'external_process_run', id: process.id, title: processLabel }" @close="open = false" />
+    :target="{ kind: process.service_code === 'galaris' ? 'process_run' : 'external_process_run', id: process.id, title: processLabel }" @close="open = false" />
 </template>
 
 <script setup lang="ts">

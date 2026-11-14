@@ -16,8 +16,8 @@ exige en plus sa propre autorisation. Chaque opération revalide les droits ; l'
 jamais d'accès. Les autorisations existantes des inspections sont conservées.
 
 Le module `app.documentation` possède le corpus et une projection PostgreSQL/pgvector
-reconstructible. Il ne dépend d'aucun autre domaine. Les adaptateurs `app.tools` et
-`app.file_share` vérifient les droits avant d'appeler sa façade. `app.tools` compose l'accès au
+reconstructible. Il ne dépend d'aucun autre domaine. Les adaptateurs `app.services` et
+`app.file_share` vérifient les droits avant d'appeler sa façade. `app.services` compose l'accès au
 modèle vectoriel par la façade LLM publique, sans introduire de cycle documentaire.
 
 Les sources `docs/`, `project/decisions/` et `project/plans/` sont embarquées par des contextes

@@ -29,7 +29,7 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
         DbAdminReconciler(
             key="app.messenger.agent_identities",
             handler=_reconcile_agent_identities,
-            depends_on=("app.tools.mandatory.connections",),
+            depends_on=("app.services.mandatory.connections",),
         )
     )
     registry.register_reconciler(

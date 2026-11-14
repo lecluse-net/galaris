@@ -18,7 +18,7 @@ from app.process.mcp import processus_get, process_get_run, process_list_runs
 from app.process.native_definitions import create, update
 from app.process.native_runs import inspect_run, list_runs, control_run, inspect_occurrence, run_metrics, children
 from app.process.models import ProcessRun, ProcessNodeRun, ProcessNodeAttempt
-from app.tools import McpToolContext, ToolModel
+from app.services import McpToolContext, ServiceModel
 from core.user import UserModel
 from core.user import HumanActor
 
@@ -139,20 +139,20 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
                       lambda: run_metrics(run_id, observer.id), lambda: children(run_id, observer.id)):
         with pytest.raises(PermissionError):
             await operation()
-    global_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "platform_admin"))
-    global_connection = Connection(agent_id=observer.id, tool_id=global_tool.id, active=True)
+    global_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "platform_admin"))
+    global_connection = Connection(agent_id=observer.id, service_id=global_tool.id, active=True)
     db.add(global_connection)
     await db.flush()
     from app.connection.facade import set_params_bulk
-    await set_params_bulk(global_connection.id, {"tools.management_scope": "all"}, scope_edit_authorized=True)
+    await set_params_bulk(global_connection.id, {"services.management_scope": "all"}, scope_edit_authorized=True)
     with pytest.raises(PermissionError):
         await processus_get(McpToolContext(agent_id=observer.id, runtime="internal"), str(run_id))
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "process_admin"))
-    connection = Connection(agent_id=observer.id, tool_id=tool.id, active=True)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process_admin"))
+    connection = Connection(agent_id=observer.id, service_id=tool.id, active=True)
     db.add(connection); await db.commit()
     with pytest.raises(PermissionError):
         await inspect_run(run_id, observer.id)
-    await set_params_bulk(connection.id, {"tools.management_scope": "all"}, scope_edit_authorized=True)
+    await set_params_bulk(connection.id, {"services.management_scope": "all"}, scope_edit_authorized=True)
     assert (await inspect_run(run_id, observer.id))["can_control"]
     assert (await resource_read(denied_ctx, uri)).uri == uri
     assert (await list_runs(observer.id))["total"] == 1

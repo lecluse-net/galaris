@@ -4,8 +4,8 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from app.agent import WorkPlan
-from app.tools import McpToolContext, RecoverableToolError
-from app.tools.contracts import ToolCallRejectedError
+from app.services import McpToolContext, RecoverableToolError
+from app.services.contracts import ToolCallRejectedError
 from core.database import get_db
 
 from .models import Task, TaskStatus

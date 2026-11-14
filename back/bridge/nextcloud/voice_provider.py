@@ -50,7 +50,7 @@ class NextcloudTalkVoiceProvider(CallProvider):
     ) -> int:
         from app.connection import connection_service
         from app.messenger import kind_for_tool
-        from app.tools import tool_service
+        from app.services import service
 
         lang = _language(language)
         if connection_id:
@@ -67,7 +67,7 @@ class NextcloudTalkVoiceProvider(CallProvider):
                 raise ValueError(
                     _message(lang, "connection_inactive", connection_id=connection_id)
                 )
-            tool = await tool_service.get_tool_by_id(connection.tool_id)
+            tool = await service.get_service_by_id(connection.service_id)
             if (
                 not tool
                 or kind_for_tool(tool) != self.kind
@@ -109,7 +109,7 @@ class NextcloudTalkVoiceProvider(CallProvider):
         for candidate in connections:
             if not candidate.active:
                 continue
-            tool = await tool_service.get_tool_by_id(candidate.tool_id)
+            tool = await service.get_service_by_id(candidate.service_id)
             if (
                 tool
                 and kind_for_tool(tool) == self.kind

@@ -33,13 +33,13 @@ front/app/chat
 
 Le bootstrap déclare les modules dans `back/modules.py` et `front/modules.ts`, importe le provider
 avant la résolution Messenger, enregistre la politique WebSocket et planifie la réconciliation du
-stockage. Le Tool intégré `chat` n’expose aucun outil MCP, auto-connecte chaque agent actif et
+stockage. Le Service intégré `chat` n’expose aucun outil MCP, auto-connecte chaque agent actif et
 ne réactive jamais une connexion désactivée lors d’une synchronisation ultérieure.
 
 Chaque route est protégée par un privilège global. Les routes portant un UUID de room ajoutent
 `ChatRoomAccessAssertion`; les mutations internes gardent `InternalRoomAccessAssertion`. L’identité
 humaine vient de la session et de la correspondance exacte `messenger_users.galaris_user_id` pour
-chaque Tool externe. La fusion des
+chaque Service externe. La fusion des
 paramètres d’autorisation applique les paramètres de path en dernier, de sorte qu’un body ou une
 query ne peut masquer `room_id` ou `file_id`. Les services revérifient le membership sous verrou
 avant les mutations.
@@ -91,14 +91,14 @@ l’échelle horizontale. Aucune réserve ne bloque la livraison mono-backend de
 Chat réutilise les tables canoniques Messenger sans dupliquer leur contenu visible.
 Ses préférences propres, dont les usages d’émojis et les abonnements push, restent dans son domaine. La colonne nullable
 `messenger_users.galaris_user_id` relie une identité distante à un compte Galaris ; l’unicité
-`(tool_id, galaris_user_id)` garantit une seule identité courante par Tool et par compte.
+`(service_id, galaris_user_id)` garantit une seule identité courante par Service et par compte.
 
 | Table | Colonnes et invariants utilisés | Accès critique |
 |---|---|---|
 | `tools` | `code='chat'`, `messenger_config.service='internal'` | unicité de `code` |
-| `connections` | `tool_id`, `agent_id`, `active` | unicité `(tool_id, agent_id)`, connexion revérifiée avant admission/appel |
+| `connections` | `service_id`, `agent_id`, `active` | unicité `(service_id, agent_id)`, connexion revérifiée avant admission/appel |
 | `messenger_rooms` | UUID, connexion, external ID, label, kind direct, type, timestamps | unicité `(connection_id, external_id)`, un couple utilisateur-agent |
-| `messenger_users` | Tool, external ID, `agent_id`, `galaris_user_id`, `is_ai` | unicités `(tool_id, external_id)` et `(tool_id, galaris_user_id)` |
+| `messenger_users` | Service, external ID, `agent_id`, `galaris_user_id`, `is_ai` | unicités `(service_id, external_id)` et `(service_id, galaris_user_id)` |
 | `messenger_room_users` | room/user, `role`, `joined_at`, `muted`, `archived`, `last_read_message_id`, `read_through_position` | exactement le propriétaire humain et l'agent pour l'IHM interne |
 | `messenger_messages` | room, expéditeur, direction, external ID, réponse, statut, dates | idempotence canonique et pagination `(created_at,id)` |
 | `messenger_files` / `messenger_attachments` | UUID, connexion, nom non fiable, MIME, taille, ordre | fichier accessible seulement via un message de la room |
@@ -112,7 +112,7 @@ Le non-lu dépend de `read_through_position`, la plus haute position du journal 
 qui reste monotone même lors d’un import d’historique ancien. `last_read_message_id` reste une
 vraie FK ; supprimer le message référencé la remet à `NULL` sans reculer la position lue.
 
-L’écran « Mon profil » permet de définir ou retirer la correspondance pour chaque Tool externe.
+L’écran « Mon profil » permet de définir ou retirer la correspondance pour chaque Service externe.
 Chat n’affiche ensuite que les rooms dont cette identité est membre. Les rooms externes sont
 consultables, paginées par lots de 100 messages au scroll et strictement en lecture seule. Le badge
 de source distingue notamment Nextcloud Talk et Telegram. Les rooms techniques Mail sont exclues

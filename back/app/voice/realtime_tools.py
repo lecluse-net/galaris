@@ -470,8 +470,8 @@ def realtime_tools(
 
     def governed(tool: RealtimeTool):
         async def execute(arguments: dict[str, Any]) -> dict[str, Any]:
-            from app.tools import McpToolContext, load_mcp_tools
-            from app.tools.facade import bind_native_action, claim_action, finish_action, authorized_request, AuthorizationAction
+            from app.services import McpToolContext, load_mcp_tools
+            from app.services.facade import bind_native_action, claim_action, finish_action, authorized_request, AuthorizationAction
             from jsonschema import validators  # pyright: ignore[reportMissingTypeStubs]
             cast(Any, validators).validator_for(tool.definition.parameters)(tool.definition.parameters).validate(arguments)
             definition = next((item for item in load_mcp_tools() if item.name == tool.definition.name), None)
@@ -488,7 +488,7 @@ def realtime_tools(
                 else:
                     # Realtime Memory search is SDK-only and may pay for query embeddings.
                     # It remains a conservative local-runtime action, with no invented MCP alias.
-                    from app.tools.contracts import current_tool_execution
+                    from app.services.contracts import current_tool_execution
                     execution = current_tool_execution()
                     action = AuthorizationAction(agent_id=agent_id, runtime="internal", context_key=context_key,
                         callback_key=str(execution.operation_id if execution else uuid4()), source="runtime",
@@ -525,7 +525,7 @@ async def execute_realtime_tool(
         if not isinstance(raw, dict):
             raise ValueError("tool arguments must be an object")
         raw_mapping = cast(dict[object, object], raw)
-        from app.tools.contracts import tool_execution, ToolExecutionContext
+        from app.services.contracts import tool_execution, ToolExecutionContext
         token = _bound_round.set(None if round_id == "current" else (round_id,))
         try:
             with tool_execution(ToolExecutionContext(operation_id=operation_id or uuid4(), tool_name=name)):
@@ -534,7 +534,7 @@ async def execute_realtime_tool(
             _bound_round.reset(token)
         return json.dumps({"ok": True, "result": result}, ensure_ascii=False)
     except Exception as exc:
-        from app.tools.facade import AuthorizationRequired, AuthorizationClosed
+        from app.services.facade import AuthorizationRequired, AuthorizationClosed
         if isinstance(exc, AuthorizationRequired):
             return json.dumps({"authorization_required": str(exc.request_id)})
         if isinstance(exc, AuthorizationClosed):

@@ -17,13 +17,13 @@ supports qualification of those choices.
 
 ## Enable access
 
-1. In **Configure → Tools & connections → Connections** (`/tools?tab=connections`),
+1. In **Configure → Services & connections → Connections** (`/services?tab=connections`),
    enable the agent's **Administration** connection.
 2. Keep `documentation_catalog` and `documentation_search` enabled in its function permissions.
 3. For documentation-only access, disable `conversation_round_get`, `voice_turn_get`, `llm_call`
    and `llm_calls`. These inspection functions expose sensitive execution data and are not
    required to understand the product.
-4. Enable the Tool's **conversation mode** to expose these functions in Chat.
+4. Enable the Service's **conversation mode** to expose these functions in Chat.
 5. Authorize `galaris-knowledge` for the agent in skill assignments. Its global default is
    disabled; skill and category overrides still apply. Its effective projection additionally
    requires `documentation_catalog` permission.
@@ -60,7 +60,7 @@ grants no rights and activates no skills; this skill's global default remains di
 User skills can supply the same file through their resource editor. External harnesses
 retain their own loading mechanism.
 
-Tools remain those authorized in the current context. If search is only available in Tasks,
+Services remain those authorized in the current context. If search is only available in Tasks,
 `file_read` can still read a known source with documentation access; a Task can perform the
 search. Realtime voice retains its limited inventory and Task handoff. Skills without explicit
 configuration retain their usual loading policy. These instructions and retrieval do not by themselves guarantee every

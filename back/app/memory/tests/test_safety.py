@@ -51,7 +51,7 @@ def test_redaction_remains_idempotent_for_supported_placeholders(placeholder):
 
 
 def test_credential_rejection_explains_the_cause_without_echoing_content():
-    from app.tools.tool_errors import classify_tool_failure
+    from app.services.tool_errors import classify_tool_failure
 
     with pytest.raises(ValueError) as error:
         assert_safe_text("secret: synthetic-credential")

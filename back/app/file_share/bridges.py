@@ -17,7 +17,7 @@ from core.i18n import render_prompt, t
 from .transport import FileTransport
 from .file_contracts import FileEntry
 from .service_references import normalize_source_reference
-from app.tools.contracts import FileIndexingMode
+from app.services.contracts import FileIndexingMode
 
 
 class AffineResourceTransport(AffineFileClient):

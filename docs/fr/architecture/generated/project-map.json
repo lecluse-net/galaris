@@ -55,6 +55,19 @@
       },
       {
         "files": [
+          "back/app/agent/admin_authorization.py",
+          "back/app/agent/agent_service.py",
+          "back/app/agent/defaults.py",
+          "back/app/agent/executor_service.py",
+          "back/app/agent/facade.py",
+          "back/app/agent/mcp.py",
+          "back/app/agent/planner_service.py"
+        ],
+        "source": "app.agent",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/agent/share_directory.py"
         ],
         "source": "app.agent",
@@ -70,19 +83,6 @@
         ],
         "source": "app.agent",
         "target": "app.skill"
-      },
-      {
-        "files": [
-          "back/app/agent/admin_authorization.py",
-          "back/app/agent/agent_service.py",
-          "back/app/agent/defaults.py",
-          "back/app/agent/executor_service.py",
-          "back/app/agent/facade.py",
-          "back/app/agent/mcp.py",
-          "back/app/agent/planner_service.py"
-        ],
-        "source": "app.agent",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -260,17 +260,17 @@
       },
       {
         "files": [
+          "back/app/audio/mcp.py"
+        ],
+        "source": "app.audio",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/audio/summary_service.py"
         ],
         "source": "app.audio",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/audio/mcp.py"
-        ],
-        "source": "app.audio",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -324,7 +324,7 @@
           "back/app/browser/service.py"
         ],
         "source": "app.browser",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -443,7 +443,7 @@
           "back/app/calendar/synchronization.py"
         ],
         "source": "app.calendar",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -727,7 +727,7 @@
           "back/app/connection/router.py"
         ],
         "source": "app.connection",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -829,7 +829,7 @@
           "back/app/console/ssh_client.py"
         ],
         "source": "app.console",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -909,17 +909,17 @@
       },
       {
         "files": [
+          "back/app/contact/mcp.py"
+        ],
+        "source": "app.contact",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/contact/service.py"
         ],
         "source": "app.contact",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/contact/mcp.py"
-        ],
-        "source": "app.contact",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -1074,6 +1074,19 @@
       },
       {
         "files": [
+          "back/app/conversation/mcp.py",
+          "back/app/conversation/process_admission.py",
+          "back/app/conversation/process_inputs.py",
+          "back/app/conversation/process_interactions.py",
+          "back/app/conversation/repository_display.py",
+          "back/app/conversation/resource_facade.py",
+          "back/app/conversation/service.py"
+        ],
+        "source": "app.conversation",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/conversation/contracts.py",
           "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
@@ -1089,19 +1102,6 @@
         ],
         "source": "app.conversation",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/conversation/mcp.py",
-          "back/app/conversation/process_admission.py",
-          "back/app/conversation/process_inputs.py",
-          "back/app/conversation/process_interactions.py",
-          "back/app/conversation/repository_display.py",
-          "back/app/conversation/resource_facade.py",
-          "back/app/conversation/service.py"
-        ],
-        "source": "app.conversation",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -1370,6 +1370,15 @@
       },
       {
         "files": [
+          "back/app/document/data/mcp.py",
+          "back/app/document/item_sharing.py",
+          "back/app/document/mcp.py"
+        ],
+        "source": "app.document",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/document/access.py",
           "back/app/document/data/access.py",
           "back/app/document/data/compatibility.py",
@@ -1401,15 +1410,6 @@
         ],
         "source": "app.document",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/document/data/mcp.py",
-          "back/app/document/item_sharing.py",
-          "back/app/document/mcp.py"
-        ],
-        "source": "app.document",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -2088,24 +2088,6 @@
       },
       {
         "files": [
-          "back/app/file_share/browser.py",
-          "back/app/file_share/galaris_provider.py",
-          "back/app/file_share/mcp.py",
-          "back/app/file_share/skill_provider.py"
-        ],
-        "source": "app.file_share",
-        "target": "app.skill"
-      },
-      {
-        "files": [
-          "back/app/file_share/galaris_provider.py",
-          "back/app/file_share/messenger_transport.py"
-        ],
-        "source": "app.file_share",
-        "target": "app.task"
-      },
-      {
-        "files": [
           "back/app/file_share/__init__.py",
           "back/app/file_share/bridges.py",
           "back/app/file_share/catalogue.py",
@@ -2122,7 +2104,25 @@
           "back/app/file_share/transport.py"
         ],
         "source": "app.file_share",
-        "target": "app.tools"
+        "target": "app.services"
+      },
+      {
+        "files": [
+          "back/app/file_share/browser.py",
+          "back/app/file_share/galaris_provider.py",
+          "back/app/file_share/mcp.py",
+          "back/app/file_share/skill_provider.py"
+        ],
+        "source": "app.file_share",
+        "target": "app.skill"
+      },
+      {
+        "files": [
+          "back/app/file_share/galaris_provider.py",
+          "back/app/file_share/messenger_transport.py"
+        ],
+        "source": "app.file_share",
+        "target": "app.task"
       },
       {
         "files": [
@@ -2316,6 +2316,14 @@
       },
       {
         "files": [
+          "back/app/goal/access.py",
+          "back/app/goal/mcp.py"
+        ],
+        "source": "app.goal",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/goal/calendar.py",
           "back/app/goal/goal_service.py",
           "back/app/goal/models.py",
@@ -2326,14 +2334,6 @@
         ],
         "source": "app.goal",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/goal/access.py",
-          "back/app/goal/mcp.py"
-        ],
-        "source": "app.goal",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -2483,14 +2483,6 @@
       },
       {
         "files": [
-          "back/app/harness/__init__.py",
-          "back/app/harness/skills.py"
-        ],
-        "source": "app.harness",
-        "target": "app.skill"
-      },
-      {
-        "files": [
           "back/app/harness/checkpoint.py",
           "back/app/harness/conversation.py",
           "back/app/harness/executor.py",
@@ -2498,7 +2490,15 @@
           "back/app/harness/runtime.py"
         ],
         "source": "app.harness",
-        "target": "app.tools"
+        "target": "app.services"
+      },
+      {
+        "files": [
+          "back/app/harness/__init__.py",
+          "back/app/harness/skills.py"
+        ],
+        "source": "app.harness",
+        "target": "app.skill"
       },
       {
         "files": [
@@ -2578,7 +2578,7 @@
           "back/app/harnesses/openai_client.py"
         ],
         "source": "app.harnesses",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -2640,7 +2640,7 @@
           "back/app/image/mcp.py"
         ],
         "source": "app.image",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -2672,7 +2672,7 @@
           "back/app/incident/mcp.py"
         ],
         "source": "app.incident",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -2818,6 +2818,20 @@
       },
       {
         "files": [
+          "back/app/lab/evidence_service.py",
+          "back/app/lab/mcp.py",
+          "back/app/lab/mcp_access.py",
+          "back/app/lab/mcp_service.py",
+          "back/app/lab/operation_execution.py",
+          "back/app/lab/operation_worker.py",
+          "back/app/lab/operations.py",
+          "back/app/lab/run_claims.py"
+        ],
+        "source": "app.lab",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/lab/evidence_service.py"
         ],
         "source": "app.lab",
@@ -2834,20 +2848,6 @@
         ],
         "source": "app.lab",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/lab/evidence_service.py",
-          "back/app/lab/mcp.py",
-          "back/app/lab/mcp_access.py",
-          "back/app/lab/mcp_service.py",
-          "back/app/lab/operation_execution.py",
-          "back/app/lab/operation_worker.py",
-          "back/app/lab/operations.py",
-          "back/app/lab/run_claims.py"
-        ],
-        "source": "app.lab",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -3046,6 +3046,14 @@
       },
       {
         "files": [
+          "back/app/llm/document_service.py",
+          "back/app/llm/mcp.py"
+        ],
+        "source": "app.llm",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/llm/events.py",
           "back/app/llm/llm_call_service.py",
           "back/app/llm/mcp.py",
@@ -3056,14 +3064,6 @@
         ],
         "source": "app.llm",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/llm/document_service.py",
-          "back/app/llm/mcp.py"
-        ],
-        "source": "app.llm",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -3238,7 +3238,7 @@
           "back/app/mcp/runtime_adapter.py"
         ],
         "source": "app.mcp",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -3357,6 +3357,13 @@
       },
       {
         "files": [
+          "back/app/memory/mcp.py"
+        ],
+        "source": "app.memory",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/memory/automation.py",
           "back/app/memory/link_reconciliation.py",
           "back/app/memory/mcp.py",
@@ -3365,13 +3372,6 @@
         ],
         "source": "app.memory",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/memory/mcp.py"
-        ],
-        "source": "app.memory",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -3607,15 +3607,6 @@
       },
       {
         "files": [
-          "back/app/messenger/contact_memory.py",
-          "back/app/messenger/mcp.py",
-          "back/app/messenger/service.py"
-        ],
-        "source": "app.messenger",
-        "target": "app.task"
-      },
-      {
-        "files": [
           "back/app/messenger/__init__.py",
           "back/app/messenger/configuration.py",
           "back/app/messenger/connection_diagnostics.py",
@@ -3630,7 +3621,16 @@
           "back/app/messenger/user_service.py"
         ],
         "source": "app.messenger",
-        "target": "app.tools"
+        "target": "app.services"
+      },
+      {
+        "files": [
+          "back/app/messenger/contact_memory.py",
+          "back/app/messenger/mcp.py",
+          "back/app/messenger/service.py"
+        ],
+        "source": "app.messenger",
+        "target": "app.task"
       },
       {
         "files": [
@@ -3772,7 +3772,7 @@
           "back/app/multimedia/service.py"
         ],
         "source": "app.multimedia",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -3852,14 +3852,14 @@
           "back/app/onboarding/services.py"
         ],
         "source": "app.onboarding",
-        "target": "app.skill"
+        "target": "app.services"
       },
       {
         "files": [
           "back/app/onboarding/services.py"
         ],
         "source": "app.onboarding",
-        "target": "app.tools"
+        "target": "app.skill"
       },
       {
         "files": [
@@ -3981,6 +3981,26 @@
       },
       {
         "files": [
+          "back/app/process/__init__.py",
+          "back/app/process/activity_jobs.py",
+          "back/app/process/bpmn.py",
+          "back/app/process/catalogue.py",
+          "back/app/process/dbadmin.py",
+          "back/app/process/input_preparation.py",
+          "back/app/process/mcp.py",
+          "back/app/process/native_access.py",
+          "back/app/process/native_definitions.py",
+          "back/app/process/native_engine.py",
+          "back/app/process/native_runs.py",
+          "back/app/process/process_service.py",
+          "back/app/process/resource_facade.py",
+          "back/app/process/run_resources.py"
+        ],
+        "source": "app.process",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/process/definition_migration.py",
           "back/app/process/models.py",
           "back/app/process/native_access.py",
@@ -4002,25 +4022,6 @@
         ],
         "source": "app.process",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/process/__init__.py",
-          "back/app/process/activity_jobs.py",
-          "back/app/process/catalogue.py",
-          "back/app/process/dbadmin.py",
-          "back/app/process/input_preparation.py",
-          "back/app/process/mcp.py",
-          "back/app/process/native_access.py",
-          "back/app/process/native_definitions.py",
-          "back/app/process/native_engine.py",
-          "back/app/process/native_runs.py",
-          "back/app/process/process_service.py",
-          "back/app/process/resource_facade.py",
-          "back/app/process/run_resources.py"
-        ],
-        "source": "app.process",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -4149,6 +4150,220 @@
       },
       {
         "files": [
+          "back/app/services/admin_service.py",
+          "back/app/services/agent_registry.py",
+          "back/app/services/authorization.py",
+          "back/app/services/authorization_notifications.py",
+          "back/app/services/authorization_router.py",
+          "back/app/services/catalog.py",
+          "back/app/services/catalog_refresh_service.py",
+          "back/app/services/connection_functions.py",
+          "back/app/services/dbadmin.py",
+          "back/app/services/management_scope.py",
+          "back/app/services/mcp_loader.py",
+          "back/app/services/permission_catalog.py",
+          "back/app/services/resource_effects.py",
+          "back/app/services/router.py",
+          "back/app/services/runtime_authorization.py",
+          "back/app/services/runtime_permissions.py"
+        ],
+        "source": "app.services",
+        "target": "app.agent"
+      },
+      {
+        "files": [
+          "back/app/services/admin_access.py",
+          "back/app/services/admin_candidates.py",
+          "back/app/services/admin_contracts.py",
+          "back/app/services/admin_service.py",
+          "back/app/services/agent_registry.py",
+          "back/app/services/authorization.py",
+          "back/app/services/connection_diagnostics.py",
+          "back/app/services/connection_functions.py",
+          "back/app/services/dbadmin.py",
+          "back/app/services/documentation_service.py",
+          "back/app/services/facade.py",
+          "back/app/services/management_scope.py",
+          "back/app/services/mandatory_services.py",
+          "back/app/services/mcp.py",
+          "back/app/services/mcp_authorization.py",
+          "back/app/services/mcp_loader.py",
+          "back/app/services/permission_catalog.py",
+          "back/app/services/protocols.py",
+          "back/app/services/rest.py",
+          "back/app/services/service.py"
+        ],
+        "source": "app.services",
+        "target": "app.connection"
+      },
+      {
+        "files": [
+          "back/app/services/mcp_loader.py"
+        ],
+        "source": "app.services",
+        "target": "app.console"
+      },
+      {
+        "files": [
+          "back/app/services/documentation_service.py"
+        ],
+        "source": "app.services",
+        "target": "app.documentation"
+      },
+      {
+        "files": [
+          "back/app/services/capabilities.py",
+          "back/app/services/parameter_definitions.py",
+          "back/app/services/resource_effects.py",
+          "back/app/services/router.py",
+          "back/app/services/service.py"
+        ],
+        "source": "app.services",
+        "target": "app.file_share"
+      },
+      {
+        "files": [
+          "back/app/services/documentation_service.py",
+          "back/app/services/mcp_loader.py",
+          "back/app/services/tool_search_service.py"
+        ],
+        "source": "app.services",
+        "target": "app.llm"
+      },
+      {
+        "files": [
+          "back/app/services/authorization_notifications.py",
+          "back/app/services/capabilities.py",
+          "back/app/services/mcp_loader.py",
+          "back/app/services/service.py"
+        ],
+        "source": "app.services",
+        "target": "app.messenger"
+      },
+      {
+        "files": [
+          "back/app/services/mcp_loader.py"
+        ],
+        "source": "app.services",
+        "target": "app.task"
+      },
+      {
+        "files": [
+          "back/app/services/search_tool.py"
+        ],
+        "source": "app.services",
+        "target": "app.util"
+      },
+      {
+        "files": [
+          "back/app/services/assertions.py",
+          "back/app/services/authorization.py",
+          "back/app/services/authorization_notifications.py",
+          "back/app/services/authorization_router.py",
+          "back/app/services/router.py",
+          "back/app/services/runtime_authorization_router.py"
+        ],
+        "source": "app.services",
+        "target": "core.authorize"
+      },
+      {
+        "files": [
+          "back/app/services/admin_service.py",
+          "back/app/services/administration_lock.py",
+          "back/app/services/authorization.py",
+          "back/app/services/authorization_models.py",
+          "back/app/services/authorization_notifications.py",
+          "back/app/services/authorization_router.py",
+          "back/app/services/authorization_views.py",
+          "back/app/services/catalog_refresh_service.py",
+          "back/app/services/deletion.py",
+          "back/app/services/documentation_service.py",
+          "back/app/services/mandatory_services.py",
+          "back/app/services/mcp_loader.py",
+          "back/app/services/models.py",
+          "back/app/services/runtime_authorization.py",
+          "back/app/services/runtime_authorization_router.py",
+          "back/app/services/runtime_permissions.py",
+          "back/app/services/service.py",
+          "back/app/services/tool_search_service.py"
+        ],
+        "source": "app.services",
+        "target": "core.database"
+      },
+      {
+        "files": [
+          "back/app/services/capability_migration.py",
+          "back/app/services/dbadmin.py",
+          "back/app/services/mandatory_services.py",
+          "back/app/services/naming_migration.py",
+          "back/app/services/protocol_migration.py"
+        ],
+        "source": "app.services",
+        "target": "core.dbadmin"
+      },
+      {
+        "files": [
+          "back/app/services/mcp_loader.py"
+        ],
+        "source": "app.services",
+        "target": "core.failure_journal"
+      },
+      {
+        "files": [
+          "back/app/services/agent_registry.py",
+          "back/app/services/authorization_notifications.py",
+          "back/app/services/authorization_presentation.py",
+          "back/app/services/authorization_router.py",
+          "back/app/services/connection_diagnostics.py",
+          "back/app/services/connection_functions.py",
+          "back/app/services/mcp.py",
+          "back/app/services/mcp_diagnostics.py",
+          "back/app/services/mcp_loader.py",
+          "back/app/services/router.py",
+          "back/app/services/search_tool.py",
+          "back/app/services/service.py",
+          "back/app/services/tool_errors.py"
+        ],
+        "source": "app.services",
+        "target": "core.i18n"
+      },
+      {
+        "files": [
+          "back/app/services/mandatory_services.py",
+          "back/app/services/mcp_loader.py"
+        ],
+        "source": "app.services",
+        "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/services/authorization.py",
+          "back/app/services/authorization_notifications.py",
+          "back/app/services/authorization_router.py"
+        ],
+        "source": "app.services",
+        "target": "core.user"
+      },
+      {
+        "files": [
+          "back/app/services/admin_candidates.py",
+          "back/app/services/admin_service.py",
+          "back/app/services/agent_registry.py",
+          "back/app/services/assertions.py",
+          "back/app/services/authorization.py",
+          "back/app/services/authorization_notifications.py",
+          "back/app/services/authorization_router.py",
+          "back/app/services/authorization_views.py",
+          "back/app/services/catalog.py",
+          "back/app/services/runtime_authorization.py",
+          "back/app/services/secrets.py",
+          "back/app/services/service.py"
+        ],
+        "source": "app.services",
+        "target": "core.util"
+      },
+      {
+        "files": [
           "back/app/share/models.py",
           "back/app/share/service.py"
         ],
@@ -4191,7 +4406,7 @@
           "back/app/skill/skill_service.py"
         ],
         "source": "app.skill",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -4315,7 +4530,7 @@
           "back/app/task/work_tracking.py"
         ],
         "source": "app.task",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -4417,219 +4632,6 @@
       },
       {
         "files": [
-          "back/app/tools/admin_service.py",
-          "back/app/tools/agent_registry.py",
-          "back/app/tools/authorization.py",
-          "back/app/tools/authorization_notifications.py",
-          "back/app/tools/authorization_router.py",
-          "back/app/tools/catalog.py",
-          "back/app/tools/catalog_refresh_service.py",
-          "back/app/tools/connection_functions.py",
-          "back/app/tools/dbadmin.py",
-          "back/app/tools/management_scope.py",
-          "back/app/tools/mcp_loader.py",
-          "back/app/tools/permission_catalog.py",
-          "back/app/tools/resource_effects.py",
-          "back/app/tools/router.py",
-          "back/app/tools/runtime_authorization.py",
-          "back/app/tools/runtime_permissions.py"
-        ],
-        "source": "app.tools",
-        "target": "app.agent"
-      },
-      {
-        "files": [
-          "back/app/tools/admin_access.py",
-          "back/app/tools/admin_candidates.py",
-          "back/app/tools/admin_contracts.py",
-          "back/app/tools/admin_service.py",
-          "back/app/tools/agent_registry.py",
-          "back/app/tools/authorization.py",
-          "back/app/tools/connection_diagnostics.py",
-          "back/app/tools/connection_functions.py",
-          "back/app/tools/dbadmin.py",
-          "back/app/tools/documentation_service.py",
-          "back/app/tools/facade.py",
-          "back/app/tools/management_scope.py",
-          "back/app/tools/mandatory_tools.py",
-          "back/app/tools/mcp.py",
-          "back/app/tools/mcp_authorization.py",
-          "back/app/tools/mcp_loader.py",
-          "back/app/tools/permission_catalog.py",
-          "back/app/tools/protocols.py",
-          "back/app/tools/rest.py",
-          "back/app/tools/tool_service.py"
-        ],
-        "source": "app.tools",
-        "target": "app.connection"
-      },
-      {
-        "files": [
-          "back/app/tools/mcp_loader.py"
-        ],
-        "source": "app.tools",
-        "target": "app.console"
-      },
-      {
-        "files": [
-          "back/app/tools/documentation_service.py"
-        ],
-        "source": "app.tools",
-        "target": "app.documentation"
-      },
-      {
-        "files": [
-          "back/app/tools/capabilities.py",
-          "back/app/tools/parameter_definitions.py",
-          "back/app/tools/resource_effects.py",
-          "back/app/tools/router.py",
-          "back/app/tools/tool_service.py"
-        ],
-        "source": "app.tools",
-        "target": "app.file_share"
-      },
-      {
-        "files": [
-          "back/app/tools/documentation_service.py",
-          "back/app/tools/mcp_loader.py",
-          "back/app/tools/tool_search_service.py"
-        ],
-        "source": "app.tools",
-        "target": "app.llm"
-      },
-      {
-        "files": [
-          "back/app/tools/authorization_notifications.py",
-          "back/app/tools/capabilities.py",
-          "back/app/tools/mcp_loader.py",
-          "back/app/tools/tool_service.py"
-        ],
-        "source": "app.tools",
-        "target": "app.messenger"
-      },
-      {
-        "files": [
-          "back/app/tools/mcp_loader.py"
-        ],
-        "source": "app.tools",
-        "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/tools/search_tool.py"
-        ],
-        "source": "app.tools",
-        "target": "app.util"
-      },
-      {
-        "files": [
-          "back/app/tools/assertions.py",
-          "back/app/tools/authorization.py",
-          "back/app/tools/authorization_notifications.py",
-          "back/app/tools/authorization_router.py",
-          "back/app/tools/router.py",
-          "back/app/tools/runtime_authorization_router.py"
-        ],
-        "source": "app.tools",
-        "target": "core.authorize"
-      },
-      {
-        "files": [
-          "back/app/tools/admin_service.py",
-          "back/app/tools/administration_lock.py",
-          "back/app/tools/authorization.py",
-          "back/app/tools/authorization_models.py",
-          "back/app/tools/authorization_notifications.py",
-          "back/app/tools/authorization_router.py",
-          "back/app/tools/authorization_views.py",
-          "back/app/tools/catalog_refresh_service.py",
-          "back/app/tools/deletion.py",
-          "back/app/tools/documentation_service.py",
-          "back/app/tools/mandatory_tools.py",
-          "back/app/tools/mcp_loader.py",
-          "back/app/tools/models.py",
-          "back/app/tools/runtime_authorization.py",
-          "back/app/tools/runtime_authorization_router.py",
-          "back/app/tools/runtime_permissions.py",
-          "back/app/tools/tool_search_service.py",
-          "back/app/tools/tool_service.py"
-        ],
-        "source": "app.tools",
-        "target": "core.database"
-      },
-      {
-        "files": [
-          "back/app/tools/capability_migration.py",
-          "back/app/tools/dbadmin.py",
-          "back/app/tools/mandatory_tools.py",
-          "back/app/tools/protocol_migration.py"
-        ],
-        "source": "app.tools",
-        "target": "core.dbadmin"
-      },
-      {
-        "files": [
-          "back/app/tools/mcp_loader.py"
-        ],
-        "source": "app.tools",
-        "target": "core.failure_journal"
-      },
-      {
-        "files": [
-          "back/app/tools/agent_registry.py",
-          "back/app/tools/authorization_notifications.py",
-          "back/app/tools/authorization_presentation.py",
-          "back/app/tools/authorization_router.py",
-          "back/app/tools/connection_diagnostics.py",
-          "back/app/tools/connection_functions.py",
-          "back/app/tools/mcp.py",
-          "back/app/tools/mcp_diagnostics.py",
-          "back/app/tools/mcp_loader.py",
-          "back/app/tools/router.py",
-          "back/app/tools/search_tool.py",
-          "back/app/tools/tool_errors.py",
-          "back/app/tools/tool_service.py"
-        ],
-        "source": "app.tools",
-        "target": "core.i18n"
-      },
-      {
-        "files": [
-          "back/app/tools/mandatory_tools.py",
-          "back/app/tools/mcp_loader.py"
-        ],
-        "source": "app.tools",
-        "target": "core.params"
-      },
-      {
-        "files": [
-          "back/app/tools/authorization.py",
-          "back/app/tools/authorization_notifications.py",
-          "back/app/tools/authorization_router.py"
-        ],
-        "source": "app.tools",
-        "target": "core.user"
-      },
-      {
-        "files": [
-          "back/app/tools/admin_candidates.py",
-          "back/app/tools/admin_service.py",
-          "back/app/tools/agent_registry.py",
-          "back/app/tools/assertions.py",
-          "back/app/tools/authorization.py",
-          "back/app/tools/authorization_notifications.py",
-          "back/app/tools/authorization_router.py",
-          "back/app/tools/authorization_views.py",
-          "back/app/tools/catalog.py",
-          "back/app/tools/runtime_authorization.py",
-          "back/app/tools/secrets.py",
-          "back/app/tools/tool_service.py"
-        ],
-        "source": "app.tools",
-        "target": "core.util"
-      },
-      {
-        "files": [
           "back/app/topic/evaluation.py",
           "back/app/topic/router.py",
           "back/app/topic/sequential_detection.py",
@@ -4705,17 +4707,17 @@
       },
       {
         "files": [
+          "back/app/topic/mcp.py"
+        ],
+        "source": "app.topic",
+        "target": "app.services"
+      },
+      {
+        "files": [
           "back/app/topic/service.py"
         ],
         "source": "app.topic",
         "target": "app.task"
-      },
-      {
-        "files": [
-          "back/app/topic/mcp.py"
-        ],
-        "source": "app.topic",
-        "target": "app.tools"
       },
       {
         "files": [
@@ -4853,13 +4855,6 @@
       },
       {
         "files": [
-          "back/app/voice/mcp.py"
-        ],
-        "source": "app.voice",
-        "target": "app.task"
-      },
-      {
-        "files": [
           "back/app/voice/conversation_service.py",
           "back/app/voice/management_service.py",
           "back/app/voice/mcp.py",
@@ -4867,7 +4862,14 @@
           "back/app/voice/realtime_tools.py"
         ],
         "source": "app.voice",
-        "target": "app.tools"
+        "target": "app.services"
+      },
+      {
+        "files": [
+          "back/app/voice/mcp.py"
+        ],
+        "source": "app.voice",
+        "target": "app.task"
       },
       {
         "files": [
@@ -4955,14 +4957,14 @@
           "back/app/webhook/functions.py"
         ],
         "source": "app.webhook",
-        "target": "app.task"
+        "target": "app.services"
       },
       {
         "files": [
           "back/app/webhook/functions.py"
         ],
         "source": "app.webhook",
-        "target": "app.tools"
+        "target": "app.task"
       },
       {
         "files": [
@@ -5456,21 +5458,21 @@
       },
       {
         "files": [
-          "back/bridge/hermes/prompt.py",
-          "back/bridge/hermes/skill_sync.py"
-        ],
-        "source": "bridge.hermes",
-        "target": "app.skill"
-      },
-      {
-        "files": [
           "back/bridge/hermes/agent_driver.py",
           "back/bridge/hermes/executor.py",
           "back/bridge/hermes/manager.py",
           "back/bridge/hermes/prompt.py"
         ],
         "source": "bridge.hermes",
-        "target": "app.tools"
+        "target": "app.services"
+      },
+      {
+        "files": [
+          "back/bridge/hermes/prompt.py",
+          "back/bridge/hermes/skill_sync.py"
+        ],
+        "source": "bridge.hermes",
+        "target": "app.skill"
       },
       {
         "files": [
@@ -5622,7 +5624,7 @@
           "back/bridge/mail/service.py"
         ],
         "source": "bridge.mail",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -5737,7 +5739,7 @@
           "back/bridge/matrix/voice_provider.py"
         ],
         "source": "bridge.matrix",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -5885,7 +5887,7 @@
           "back/bridge/nextcloud/voice_provider.py"
         ],
         "source": "bridge.nextcloud",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -6181,7 +6183,7 @@
           "back/bridge/whatsapp/router.py"
         ],
         "source": "bridge.whatsapp",
-        "target": "app.tools"
+        "target": "app.services"
       },
       {
         "files": [
@@ -6695,15 +6697,15 @@
         ],
         [
           "app.agent",
-          "app.skill"
+          "app.services"
         ],
         [
           "app.agent",
-          "app.tools"
+          "app.skill"
         ],
         [
           "app.connection",
-          "app.tools"
+          "app.services"
         ],
         [
           "app.console",
@@ -6711,7 +6713,7 @@
         ],
         [
           "app.console",
-          "app.tools"
+          "app.services"
         ],
         [
           "app.conversation",
@@ -6751,7 +6753,7 @@
         ],
         [
           "app.file_share",
-          "app.tools"
+          "app.services"
         ],
         [
           "app.goal",
@@ -6767,11 +6769,11 @@
         ],
         [
           "app.llm",
-          "app.task"
+          "app.services"
         ],
         [
           "app.llm",
-          "app.tools"
+          "app.task"
         ],
         [
           "app.memory",
@@ -6787,15 +6789,15 @@
         ],
         [
           "app.messenger",
-          "app.task"
+          "app.services"
         ],
         [
           "app.messenger",
-          "app.tools"
+          "app.task"
         ],
         [
-          "app.task",
-          "app.tools"
+          "app.services",
+          "app.task"
         ]
       ],
       "domain_edges": 307,
@@ -6820,8 +6822,8 @@
             "app.multimedia",
             "app.onboarding",
             "app.process",
+            "app.services",
             "app.task",
-            "app.tools",
             "app.topic",
             "app.voice",
             "bridge.anthropic",
@@ -6876,9 +6878,9 @@
             "app.multimedia",
             "app.onboarding",
             "app.process",
+            "app.services",
             "app.skill",
             "app.task",
-            "app.tools",
             "app.topic",
             "app.voice",
             "app.webhook",
@@ -6894,7 +6896,7 @@
         },
         {
           "count": 33,
-          "module": "app.tools",
+          "module": "app.services",
           "modules": [
             "app.agent",
             "app.audio",
@@ -6948,8 +6950,8 @@
             "app.lab",
             "app.llm",
             "app.onboarding",
+            "app.services",
             "app.task",
-            "app.tools",
             "app.topic",
             "app.voice",
             "bridge.hermes",
@@ -6976,8 +6978,8 @@
             "app.llm",
             "app.messenger",
             "app.onboarding",
+            "app.services",
             "app.skill",
-            "app.tools",
             "app.topic",
             "app.voice",
             "app.webhook",
@@ -7006,7 +7008,7 @@
             "app.messenger",
             "app.multimedia",
             "app.process",
-            "app.tools",
+            "app.services",
             "bridge.calendar",
             "bridge.code_server",
             "bridge.hermes",
@@ -7032,7 +7034,7 @@
             "app.memory",
             "app.messenger",
             "app.process",
-            "app.tools",
+            "app.services",
             "app.topic",
             "app.voice",
             "app.webhook"
@@ -7153,7 +7155,7 @@
             "app.file_share",
             "app.harness",
             "app.process",
-            "app.tools",
+            "app.services",
             "bridge.code_server"
           ]
         },
@@ -7240,7 +7242,7 @@
           "module": "app.documentation",
           "modules": [
             "app.file_share",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7276,7 +7278,7 @@
           "count": 1,
           "module": "app.util",
           "modules": [
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7331,9 +7333,9 @@
             "app.memory",
             "app.messenger",
             "app.process",
+            "app.services",
             "app.skill",
             "app.task",
-            "app.tools",
             "bridge.affine"
           ]
         },
@@ -7351,9 +7353,9 @@
             "app.memory",
             "app.messenger",
             "app.process",
+            "app.services",
             "app.skill",
             "app.task",
-            "app.tools",
             "app.topic",
             "app.voice"
           ]
@@ -7371,8 +7373,8 @@
             "app.memory",
             "app.messenger",
             "app.process",
+            "app.services",
             "app.skill",
-            "app.tools",
             "bridge.harness"
           ]
         },
@@ -7389,8 +7391,8 @@
             "app.memory",
             "app.messenger",
             "app.process",
-            "app.task",
-            "app.tools"
+            "app.services",
+            "app.task"
           ]
         },
         {
@@ -7404,9 +7406,9 @@
             "app.llm",
             "app.memory",
             "app.process",
+            "app.services",
             "app.share",
-            "app.task",
-            "app.tools"
+            "app.task"
           ]
         },
         {
@@ -7419,8 +7421,8 @@
             "app.goal",
             "app.llm",
             "app.process",
+            "app.services",
             "app.task",
-            "app.tools",
             "app.topic",
             "app.voice"
           ]
@@ -7436,9 +7438,9 @@
             "app.file_share",
             "app.llm",
             "app.memory",
+            "app.services",
             "app.share",
-            "app.task",
-            "app.tools"
+            "app.task"
           ]
         },
         {
@@ -7452,8 +7454,8 @@
             "app.llm",
             "app.messenger",
             "app.process",
-            "app.task",
-            "app.tools"
+            "app.services",
+            "app.task"
           ]
         },
         {
@@ -7467,8 +7469,8 @@
             "app.llm",
             "app.messenger",
             "app.process",
-            "app.skill",
-            "app.tools"
+            "app.services",
+            "app.skill"
           ]
         },
         {
@@ -7482,13 +7484,13 @@
             "app.mcp",
             "app.messenger",
             "app.process",
-            "app.task",
-            "app.tools"
+            "app.services",
+            "app.task"
           ]
         },
         {
           "count": 9,
-          "module": "app.tools",
+          "module": "app.services",
           "modules": [
             "app.agent",
             "app.connection",
@@ -7512,8 +7514,8 @@
             "app.memory",
             "app.messenger",
             "app.process",
-            "app.task",
-            "app.tools"
+            "app.services",
+            "app.task"
           ]
         },
         {
@@ -7525,9 +7527,9 @@
             "app.llm",
             "app.messenger",
             "app.process",
+            "app.services",
             "app.share",
-            "app.skill",
-            "app.tools"
+            "app.skill"
           ]
         },
         {
@@ -7554,8 +7556,8 @@
             "app.file_share",
             "app.llm",
             "app.memory",
-            "app.task",
-            "app.tools"
+            "app.services",
+            "app.task"
           ]
         },
         {
@@ -7567,8 +7569,8 @@
             "app.llm",
             "app.memory",
             "app.messenger",
-            "app.task",
-            "app.tools"
+            "app.services",
+            "app.task"
           ]
         },
         {
@@ -7580,8 +7582,8 @@
             "app.llm",
             "app.messenger",
             "app.process",
-            "app.skill",
-            "app.tools"
+            "app.services",
+            "app.skill"
           ]
         },
         {
@@ -7591,8 +7593,8 @@
             "app.file_share",
             "app.llm",
             "app.messenger",
+            "app.services",
             "app.task",
-            "app.tools",
             "bridge.youtube"
           ]
         },
@@ -7605,7 +7607,7 @@
             "app.contact",
             "app.file_share",
             "app.memory",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7616,8 +7618,8 @@
             "app.connection",
             "app.llm",
             "app.messenger",
-            "app.task",
-            "app.tools"
+            "app.services",
+            "app.task"
           ]
         },
         {
@@ -7653,7 +7655,7 @@
             "app.contact",
             "app.file_share",
             "app.messenger",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7664,7 +7666,7 @@
             "app.connection",
             "app.file_share",
             "app.messenger",
-            "app.tools",
+            "app.services",
             "app.voice"
           ]
         },
@@ -7676,7 +7678,7 @@
             "app.goal",
             "app.llm",
             "app.messenger",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7697,7 +7699,7 @@
             "app.agent",
             "app.connection",
             "app.messenger",
-            "app.tools",
+            "app.services",
             "app.voice"
           ]
         },
@@ -7708,7 +7710,7 @@
             "app.connection",
             "app.file_share",
             "app.messenger",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7718,7 +7720,7 @@
             "app.agent",
             "app.connection",
             "app.file_share",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7728,7 +7730,7 @@
             "app.agent",
             "app.file_share",
             "app.llm",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7737,8 +7739,8 @@
           "modules": [
             "app.agent",
             "app.connection",
-            "app.task",
-            "app.tools"
+            "app.services",
+            "app.task"
           ]
         },
         {
@@ -7766,7 +7768,7 @@
           "modules": [
             "app.file_share",
             "app.llm",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7775,7 +7777,7 @@
           "modules": [
             "app.agent",
             "app.connection",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7784,7 +7786,7 @@
           "modules": [
             "app.connection",
             "app.messenger",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7792,7 +7794,7 @@
           "module": "app.connection",
           "modules": [
             "app.agent",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7800,7 +7802,7 @@
           "module": "app.harnesses",
           "modules": [
             "app.agent",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7808,7 +7810,7 @@
           "module": "app.mcp",
           "modules": [
             "app.agent",
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -7838,7 +7840,7 @@
           "count": 1,
           "module": "app.incident",
           "modules": [
-            "app.tools"
+            "app.services"
           ]
         },
         {
@@ -8033,9 +8035,9 @@
           "app.memory",
           "app.messenger",
           "app.process",
+          "app.services",
           "app.skill",
           "app.task",
-          "app.tools",
           "app.topic",
           "app.voice"
         ]
@@ -8315,6 +8317,14 @@
         "namespace": "agent_admin"
       },
       {
+        "file": "back/app/connection/agent_admin_mcp.py",
+        "handler": "agent_service_list",
+        "line": 11,
+        "module": "app.connection",
+        "name": "agent_service_list",
+        "namespace": "agent_admin"
+      },
+      {
         "file": "back/app/agent/mcp.py",
         "handler": "agent_team_list",
         "line": 173,
@@ -8360,14 +8370,6 @@
         "line": 200,
         "module": "app.agent",
         "name": "agent_title_update",
-        "namespace": "agent_admin"
-      },
-      {
-        "file": "back/app/connection/agent_admin_mcp.py",
-        "handler": "agent_tool_list",
-        "line": 11,
-        "module": "app.connection",
-        "name": "agent_tool_list",
         "namespace": "agent_admin"
       },
       {
@@ -9131,6 +9133,14 @@
         "namespace": "galaris"
       },
       {
+        "file": "back/app/services/mcp.py",
+        "handler": "list_mcp_tools",
+        "line": 90,
+        "module": "app.services",
+        "name": "services_list",
+        "namespace": "galaris"
+      },
+      {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_get_task",
         "line": 91,
@@ -9176,14 +9186,6 @@
         "line": 86,
         "module": "app.agent",
         "name": "team_members",
-        "namespace": "galaris"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "list_mcp_tools",
-        "line": 90,
-        "module": "app.tools",
-        "name": "tools_list",
         "namespace": "galaris"
       },
       {
@@ -9939,18 +9941,18 @@
         "namespace": "platform_admin"
       },
       {
-        "file": "back/app/tools/mcp.py",
+        "file": "back/app/services/mcp.py",
         "handler": "documentation_catalog",
         "line": 37,
-        "module": "app.tools",
+        "module": "app.services",
         "name": "documentation_catalog",
         "namespace": "platform_admin"
       },
       {
-        "file": "back/app/tools/mcp.py",
+        "file": "back/app/services/mcp.py",
         "handler": "documentation_search",
         "line": 50,
-        "module": "app.tools",
+        "module": "app.services",
         "name": "documentation_search",
         "namespace": "platform_admin"
       },
@@ -10115,12 +10117,196 @@
         "namespace": "process_admin"
       },
       {
-        "file": "back/app/tools/mcp.py",
+        "file": "back/app/services/mcp.py",
         "handler": "search_web",
         "line": 74,
-        "module": "app.tools",
+        "module": "app.services",
         "name": "search_web",
         "namespace": "search"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_catalog_refresh",
+        "line": 399,
+        "module": "app.services",
+        "name": "service_admin_catalog_refresh",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_create",
+        "line": 20,
+        "module": "app.connection",
+        "name": "service_admin_connection_create",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_delete",
+        "line": 30,
+        "module": "app.connection",
+        "name": "service_admin_connection_delete",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_function_list",
+        "line": 50,
+        "module": "app.connection",
+        "name": "service_admin_connection_function_list",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_function_set",
+        "line": 55,
+        "module": "app.connection",
+        "name": "service_admin_connection_function_set",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_get",
+        "line": 15,
+        "module": "app.connection",
+        "name": "service_admin_connection_get",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_list",
+        "line": 10,
+        "module": "app.connection",
+        "name": "service_admin_connection_list",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_param_delete",
+        "line": 40,
+        "module": "app.connection",
+        "name": "service_admin_connection_param_delete",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_params_set",
+        "line": 35,
+        "module": "app.connection",
+        "name": "service_admin_connection_params_set",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_test",
+        "line": 45,
+        "module": "app.connection",
+        "name": "service_admin_connection_test",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/connection/mcp.py",
+        "handler": "service_admin_connection_update",
+        "line": 25,
+        "module": "app.connection",
+        "name": "service_admin_connection_update",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_conversation_set",
+        "line": 369,
+        "module": "app.services",
+        "name": "service_admin_conversation_set",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_create",
+        "line": 339,
+        "module": "app.services",
+        "name": "service_admin_create",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_delete",
+        "line": 357,
+        "module": "app.services",
+        "name": "service_admin_delete",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_function_get",
+        "line": 387,
+        "module": "app.services",
+        "name": "service_admin_function_get",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_function_list",
+        "line": 381,
+        "module": "app.services",
+        "name": "service_admin_function_list",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_function_set",
+        "line": 393,
+        "module": "app.services",
+        "name": "service_admin_function_set",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_get",
+        "line": 333,
+        "module": "app.services",
+        "name": "service_admin_get",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_global_params_set",
+        "line": 363,
+        "module": "app.services",
+        "name": "service_admin_global_params_set",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_impact",
+        "line": 351,
+        "module": "app.services",
+        "name": "service_admin_impact",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_list",
+        "line": 327,
+        "module": "app.services",
+        "name": "service_admin_list",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_mcp_test",
+        "line": 375,
+        "module": "app.services",
+        "name": "service_admin_mcp_test",
+        "namespace": "service_admin"
+      },
+      {
+        "file": "back/app/services/mcp.py",
+        "handler": "service_admin_update",
+        "line": 345,
+        "module": "app.services",
+        "name": "service_admin_update",
+        "namespace": "service_admin"
       },
       {
         "file": "back/app/skill/mcp.py",
@@ -10185,190 +10371,6 @@
         "module": "app.skill",
         "name": "skills_list",
         "namespace": "skills"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_catalog_refresh",
-        "line": 399,
-        "module": "app.tools",
-        "name": "tool_admin_catalog_refresh",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_create",
-        "line": 20,
-        "module": "app.connection",
-        "name": "tool_admin_connection_create",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_delete",
-        "line": 30,
-        "module": "app.connection",
-        "name": "tool_admin_connection_delete",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_function_list",
-        "line": 50,
-        "module": "app.connection",
-        "name": "tool_admin_connection_function_list",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_function_set",
-        "line": 55,
-        "module": "app.connection",
-        "name": "tool_admin_connection_function_set",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_get",
-        "line": 15,
-        "module": "app.connection",
-        "name": "tool_admin_connection_get",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_list",
-        "line": 10,
-        "module": "app.connection",
-        "name": "tool_admin_connection_list",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_param_delete",
-        "line": 40,
-        "module": "app.connection",
-        "name": "tool_admin_connection_param_delete",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_params_set",
-        "line": 35,
-        "module": "app.connection",
-        "name": "tool_admin_connection_params_set",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_test",
-        "line": 45,
-        "module": "app.connection",
-        "name": "tool_admin_connection_test",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/connection/mcp.py",
-        "handler": "tool_admin_connection_update",
-        "line": 25,
-        "module": "app.connection",
-        "name": "tool_admin_connection_update",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_conversation_set",
-        "line": 369,
-        "module": "app.tools",
-        "name": "tool_admin_conversation_set",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_create",
-        "line": 339,
-        "module": "app.tools",
-        "name": "tool_admin_create",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_delete",
-        "line": 357,
-        "module": "app.tools",
-        "name": "tool_admin_delete",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_function_get",
-        "line": 387,
-        "module": "app.tools",
-        "name": "tool_admin_function_get",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_function_list",
-        "line": 381,
-        "module": "app.tools",
-        "name": "tool_admin_function_list",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_function_set",
-        "line": 393,
-        "module": "app.tools",
-        "name": "tool_admin_function_set",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_get",
-        "line": 333,
-        "module": "app.tools",
-        "name": "tool_admin_get",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_global_params_set",
-        "line": 363,
-        "module": "app.tools",
-        "name": "tool_admin_global_params_set",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_impact",
-        "line": 351,
-        "module": "app.tools",
-        "name": "tool_admin_impact",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_list",
-        "line": 327,
-        "module": "app.tools",
-        "name": "tool_admin_list",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_mcp_test",
-        "line": 375,
-        "module": "app.tools",
-        "name": "tool_admin_mcp_test",
-        "namespace": "tool_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "tool_admin_update",
-        "line": 345,
-        "module": "app.tools",
-        "name": "tool_admin_update",
-        "namespace": "tool_admin"
       },
       {
         "file": "back/app/voice/mcp.py",
@@ -10786,7 +10788,7 @@
         "file": "back/app/connection/models.py",
         "foreign_keys": [
           "agents.id",
-          "tools.id"
+          "services.id"
         ],
         "history_mixin": false,
         "line": 7,
@@ -11850,7 +11852,7 @@
         "foreign_keys": [
           "agents.id",
           "connections.id",
-          "tool_action_authorizations.id"
+          "service_action_authorizations.id"
         ],
         "history_mixin": false,
         "line": 137,
@@ -11863,7 +11865,7 @@
         "foreign_keys": [
           "agents.id",
           "connections.id",
-          "tool_action_authorizations.id",
+          "service_action_authorizations.id",
           "users.id"
         ],
         "history_mixin": false,
@@ -12199,7 +12201,7 @@
         "file": "back/app/messenger/models.py",
         "foreign_keys": [
           "agents.id",
-          "tools.id",
+          "services.id",
           "users.id"
         ],
         "history_mixin": true,
@@ -12325,7 +12327,7 @@
         "foreign_keys": [
           "agents.id",
           "documents.id",
-          "tools.id",
+          "services.id",
           "users.id"
         ],
         "history_mixin": true,
@@ -12430,27 +12432,64 @@
       },
       {
         "class_name": "RuntimeActionPermission",
-        "file": "back/app/tools/authorization_models.py",
+        "file": "back/app/services/authorization_models.py",
         "foreign_keys": [
           "agents.id",
           "users.id"
         ],
         "history_mixin": false,
         "line": 64,
-        "module": "app.tools",
+        "module": "app.services",
         "table": "runtime_action_permissions"
       },
       {
         "class_name": "RuntimeRunGrant",
-        "file": "back/app/tools/authorization_models.py",
+        "file": "back/app/services/authorization_models.py",
         "foreign_keys": [
           "agent_mcp_tokens.id",
           "agents.id"
         ],
         "history_mixin": false,
         "line": 82,
-        "module": "app.tools",
+        "module": "app.services",
         "table": "runtime_run_grants"
+      },
+      {
+        "class_name": "ActionAuthorization",
+        "file": "back/app/services/authorization_models.py",
+        "foreign_keys": [
+          "agents.id",
+          "connections.id",
+          "messenger_interactions.id",
+          "runtime_action_permissions.id",
+          "runtime_run_grants.id",
+          "services.id",
+          "users.id"
+        ],
+        "history_mixin": false,
+        "line": 13,
+        "module": "app.services",
+        "table": "service_action_authorizations"
+      },
+      {
+        "class_name": "ServiceFunctionState",
+        "file": "back/app/connection/models.py",
+        "foreign_keys": [
+          "services.id"
+        ],
+        "history_mixin": false,
+        "line": 84,
+        "module": "app.connection",
+        "table": "service_function_state"
+      },
+      {
+        "class_name": "Service",
+        "file": "back/app/services/models.py",
+        "foreign_keys": [],
+        "history_mixin": false,
+        "line": 24,
+        "module": "app.services",
+        "table": "services"
       },
       {
         "class_name": "ShareConfig",
@@ -12591,50 +12630,13 @@
         "table": "titles"
       },
       {
-        "class_name": "ActionAuthorization",
-        "file": "back/app/tools/authorization_models.py",
-        "foreign_keys": [
-          "agents.id",
-          "connections.id",
-          "messenger_interactions.id",
-          "runtime_action_permissions.id",
-          "runtime_run_grants.id",
-          "tools.id",
-          "users.id"
-        ],
-        "history_mixin": false,
-        "line": 13,
-        "module": "app.tools",
-        "table": "tool_action_authorizations"
-      },
-      {
-        "class_name": "ToolFunctionState",
-        "file": "back/app/connection/models.py",
-        "foreign_keys": [
-          "tools.id"
-        ],
-        "history_mixin": false,
-        "line": 84,
-        "module": "app.connection",
-        "table": "tool_function_state"
-      },
-      {
         "class_name": "ToolSearchDocument",
-        "file": "back/app/tools/models.py",
+        "file": "back/app/services/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 80,
-        "module": "app.tools",
+        "line": 82,
+        "module": "app.services",
         "table": "tool_search_documents"
-      },
-      {
-        "class_name": "Tool",
-        "file": "back/app/tools/models.py",
-        "foreign_keys": [],
-        "history_mixin": false,
-        "line": 24,
-        "module": "app.tools",
-        "table": "tools"
       },
       {
         "class_name": "Topic",
@@ -12841,8 +12843,8 @@
         "conditional": false,
         "exists": true,
         "layer": "app",
-        "name": "app.tools",
-        "path": "back/app/tools"
+        "name": "app.services",
+        "path": "back/app/services"
       },
       {
         "capabilities": [
@@ -14412,6 +14414,41 @@
         "value": "privilege.PROCESS_READ"
       },
       {
+        "constant": "PERMISSION_ACCESS",
+        "file": "back/app/services/privileges.py",
+        "line": 7,
+        "module": "app.services",
+        "value": "privilege.PERMISSION_ACCESS"
+      },
+      {
+        "constant": "PERMISSION_DECIDE",
+        "file": "back/app/services/privileges.py",
+        "line": 8,
+        "module": "app.services",
+        "value": "privilege.PERMISSION_DECIDE"
+      },
+      {
+        "constant": "PERMISSION_REVOKE",
+        "file": "back/app/services/privileges.py",
+        "line": 9,
+        "module": "app.services",
+        "value": "privilege.PERMISSION_REVOKE"
+      },
+      {
+        "constant": "SERVICE_ACCESS",
+        "file": "back/app/services/privileges.py",
+        "line": 5,
+        "module": "app.services",
+        "value": "privilege.SERVICE_ACCESS"
+      },
+      {
+        "constant": "SERVICE_EDIT",
+        "file": "back/app/services/privileges.py",
+        "line": 6,
+        "module": "app.services",
+        "value": "privilege.SERVICE_EDIT"
+      },
+      {
         "constant": "SKILL_ACCESS",
         "file": "back/app/skill/privileges.py",
         "line": 3,
@@ -14466,41 +14503,6 @@
         "line": 7,
         "module": "app.task",
         "value": "privilege.TASK_PURGE"
-      },
-      {
-        "constant": "PERMISSION_ACCESS",
-        "file": "back/app/tools/privileges.py",
-        "line": 7,
-        "module": "app.tools",
-        "value": "privilege.PERMISSION_ACCESS"
-      },
-      {
-        "constant": "PERMISSION_DECIDE",
-        "file": "back/app/tools/privileges.py",
-        "line": 8,
-        "module": "app.tools",
-        "value": "privilege.PERMISSION_DECIDE"
-      },
-      {
-        "constant": "PERMISSION_REVOKE",
-        "file": "back/app/tools/privileges.py",
-        "line": 9,
-        "module": "app.tools",
-        "value": "privilege.PERMISSION_REVOKE"
-      },
-      {
-        "constant": "TOOL_ACCESS",
-        "file": "back/app/tools/privileges.py",
-        "line": 5,
-        "module": "app.tools",
-        "value": "privilege.TOOL_ACCESS"
-      },
-      {
-        "constant": "TOOL_EDIT",
-        "file": "back/app/tools/privileges.py",
-        "line": 6,
-        "module": "app.tools",
-        "value": "privilege.TOOL_EDIT"
       },
       {
         "constant": "TOPIC_ACCESS",
@@ -14724,74 +14726,74 @@
       {
         "authorized": true,
         "declared_path": "/action-authorizations",
-        "file": "back/app/tools/authorization_router.py",
+        "file": "back/app/services/authorization_router.py",
         "handler": "list_requests",
         "line": 39,
         "method": "GET",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": true,
         "declared_path": "/action-authorizations/runtime-permissions",
-        "file": "back/app/tools/authorization_router.py",
+        "file": "back/app/services/authorization_router.py",
         "handler": "list_runtime_permissions",
         "line": 68,
         "method": "GET",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": true,
         "declared_path": "/action-authorizations/runtime-permissions/{identifier}",
-        "file": "back/app/tools/authorization_router.py",
+        "file": "back/app/services/authorization_router.py",
         "handler": "delete_runtime_permission",
         "line": 77,
         "method": "DELETE",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": true,
         "declared_path": "/action-authorizations/runtime-policies",
-        "file": "back/app/tools/authorization_router.py",
+        "file": "back/app/services/authorization_router.py",
         "handler": "read_runtime_policies",
         "line": 87,
         "method": "GET",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": true,
         "declared_path": "/action-authorizations/runtime-policies",
-        "file": "back/app/tools/authorization_router.py",
+        "file": "back/app/services/authorization_router.py",
         "handler": "update_runtime_policy",
         "line": 104,
         "method": "PUT",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": true,
         "declared_path": "/action-authorizations/{identifier}",
-        "file": "back/app/tools/authorization_router.py",
+        "file": "back/app/services/authorization_router.py",
         "handler": "get_request",
         "line": 124,
         "method": "GET",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": true,
         "declared_path": "/action-authorizations/{identifier}/answer",
-        "file": "back/app/tools/authorization_router.py",
+        "file": "back/app/services/authorization_router.py",
         "handler": "answer_request",
         "line": 154,
         "method": "POST",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": true,
         "declared_path": "/action-authorizations/{identifier}/cancel",
-        "file": "back/app/tools/authorization_router.py",
+        "file": "back/app/services/authorization_router.py",
         "handler": "cancel_request",
         "line": 166,
         "method": "POST",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": true,
@@ -15965,7 +15967,7 @@
       },
       {
         "authorized": true,
-        "declared_path": "/chat/identities/{tool_id}",
+        "declared_path": "/chat/identities/{service_id}",
         "file": "back/app/chat/router.py",
         "handler": "delete_identity_mapping",
         "line": 429,
@@ -15974,7 +15976,7 @@
       },
       {
         "authorized": true,
-        "declared_path": "/chat/identities/{tool_id}",
+        "declared_path": "/chat/identities/{service_id}",
         "file": "back/app/chat/router.py",
         "handler": "update_identity_mapping",
         "line": 408,
@@ -16577,6 +16579,15 @@
       },
       {
         "authorized": true,
+        "declared_path": "/connections/service-options",
+        "file": "back/app/connection/router.py",
+        "handler": "connection_tool_options",
+        "line": 114,
+        "method": "GET",
+        "module": "app.connection"
+      },
+      {
+        "authorized": true,
         "declared_path": "/connections/sync-integrated",
         "file": "back/app/connection/router.py",
         "handler": "sync_integrated_connections",
@@ -16591,15 +16602,6 @@
         "handler": "test_mcp_tools",
         "line": 641,
         "method": "POST",
-        "module": "app.connection"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/connections/tool-options",
-        "file": "back/app/connection/router.py",
-        "handler": "connection_tool_options",
-        "line": 114,
-        "method": "GET",
         "module": "app.connection"
       },
       {
@@ -20979,38 +20981,218 @@
       {
         "authorized": false,
         "declared_path": "/runtime-authorizations",
-        "file": "back/app/tools/runtime_authorization_router.py",
+        "file": "back/app/services/runtime_authorization_router.py",
         "handler": "request_action",
         "line": 47,
         "method": "POST",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": false,
         "declared_path": "/runtime-authorizations/context",
-        "file": "back/app/tools/runtime_authorization_router.py",
+        "file": "back/app/services/runtime_authorization_router.py",
         "handler": "context_status",
         "line": 75,
         "method": "GET",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": false,
         "declared_path": "/runtime-authorizations/receipt",
-        "file": "back/app/tools/runtime_authorization_router.py",
+        "file": "back/app/services/runtime_authorization_router.py",
         "handler": "action_receipt",
         "line": 96,
         "method": "POST",
-        "module": "app.tools"
+        "module": "app.services"
       },
       {
         "authorized": false,
         "declared_path": "/runtime-authorizations/{identifier}",
-        "file": "back/app/tools/runtime_authorization_router.py",
+        "file": "back/app/services/runtime_authorization_router.py",
         "handler": "action_status",
         "line": 84,
         "method": "GET",
-        "module": "app.tools"
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services",
+        "file": "back/app/process/router.py",
+        "handler": "read_process_tools",
+        "line": 130,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services",
+        "file": "back/app/services/router.py",
+        "handler": "list_services",
+        "line": 100,
+        "method": "GET",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services",
+        "file": "back/app/services/router.py",
+        "handler": "create_service",
+        "line": 204,
+        "method": "POST",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/agents/{agent_id}/mcp-tools",
+        "file": "back/app/services/router.py",
+        "handler": "list_agent_mcp_tools",
+        "line": 110,
+        "method": "GET",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/agents/{agent_id}/permissions",
+        "file": "back/app/services/router.py",
+        "handler": "read_agent_permission_catalog",
+        "line": 119,
+        "method": "GET",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/capabilities",
+        "file": "back/app/services/router.py",
+        "handler": "list_supported_capabilities",
+        "line": 52,
+        "method": "GET",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/catalog",
+        "file": "back/app/services/router.py",
+        "handler": "service_catalogue",
+        "line": 40,
+        "method": "GET",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/catalog/refresh",
+        "file": "back/app/services/router.py",
+        "handler": "refresh_service_catalogue",
+        "line": 46,
+        "method": "POST",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/import",
+        "file": "back/app/services/router.py",
+        "handler": "import_service",
+        "line": 308,
+        "method": "POST",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/mcp-candidates",
+        "file": "back/app/services/router.py",
+        "handler": "prepare_mcp_candidate",
+        "line": 62,
+        "method": "POST",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/test-mcp",
+        "file": "back/app/services/router.py",
+        "handler": "test_mcp_connection",
+        "line": 132,
+        "method": "POST",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/{service_code}/health",
+        "file": "back/app/process/router.py",
+        "handler": "read_process_tool_health",
+        "line": 136,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/{service_id}",
+        "file": "back/app/services/router.py",
+        "handler": "delete_service",
+        "line": 268,
+        "method": "DELETE",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/{service_id}",
+        "file": "back/app/services/router.py",
+        "handler": "get_service",
+        "line": 152,
+        "method": "GET",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/{service_id}",
+        "file": "back/app/services/router.py",
+        "handler": "update_service",
+        "line": 220,
+        "method": "PUT",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/{service_id}/conversation-access",
+        "file": "back/app/services/router.py",
+        "handler": "update_conversation_access",
+        "line": 236,
+        "method": "PATCH",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/{service_id}/deletion-impact",
+        "file": "back/app/services/router.py",
+        "handler": "service_deletion_impact",
+        "line": 256,
+        "method": "GET",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/{service_id}/export",
+        "file": "back/app/services/router.py",
+        "handler": "export_service",
+        "line": 285,
+        "method": "GET",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/{service_id}/global-params",
+        "file": "back/app/services/router.py",
+        "handler": "get_global_params",
+        "line": 164,
+        "method": "GET",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/{service_id}/global-params",
+        "file": "back/app/services/router.py",
+        "handler": "update_global_params",
+        "line": 181,
+        "method": "PUT",
+        "module": "app.services"
       },
       {
         "authorized": true,
@@ -21572,168 +21754,6 @@
       },
       {
         "authorized": true,
-        "declared_path": "/tools",
-        "file": "back/app/process/router.py",
-        "handler": "read_process_tools",
-        "line": 130,
-        "method": "GET",
-        "module": "app.process"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools",
-        "file": "back/app/tools/router.py",
-        "handler": "list_tools",
-        "line": 85,
-        "method": "GET",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools",
-        "file": "back/app/tools/router.py",
-        "handler": "create_tool",
-        "line": 189,
-        "method": "POST",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/agents/{agent_id}/mcp-tools",
-        "file": "back/app/tools/router.py",
-        "handler": "list_agent_mcp_tools",
-        "line": 95,
-        "method": "GET",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/agents/{agent_id}/permissions",
-        "file": "back/app/tools/router.py",
-        "handler": "read_agent_permission_catalog",
-        "line": 104,
-        "method": "GET",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/capabilities",
-        "file": "back/app/tools/router.py",
-        "handler": "list_supported_capabilities",
-        "line": 37,
-        "method": "GET",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/import",
-        "file": "back/app/tools/router.py",
-        "handler": "import_tool",
-        "line": 293,
-        "method": "POST",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/mcp-candidates",
-        "file": "back/app/tools/router.py",
-        "handler": "prepare_mcp_candidate",
-        "line": 47,
-        "method": "POST",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/test-mcp",
-        "file": "back/app/tools/router.py",
-        "handler": "test_mcp_connection",
-        "line": 117,
-        "method": "POST",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/{tool_code}/health",
-        "file": "back/app/process/router.py",
-        "handler": "read_process_tool_health",
-        "line": 136,
-        "method": "GET",
-        "module": "app.process"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/{tool_id}",
-        "file": "back/app/tools/router.py",
-        "handler": "delete_tool",
-        "line": 253,
-        "method": "DELETE",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/{tool_id}",
-        "file": "back/app/tools/router.py",
-        "handler": "get_tool",
-        "line": 137,
-        "method": "GET",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/{tool_id}",
-        "file": "back/app/tools/router.py",
-        "handler": "update_tool",
-        "line": 205,
-        "method": "PUT",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/{tool_id}/conversation-access",
-        "file": "back/app/tools/router.py",
-        "handler": "update_conversation_access",
-        "line": 221,
-        "method": "PATCH",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/{tool_id}/deletion-impact",
-        "file": "back/app/tools/router.py",
-        "handler": "tool_deletion_impact",
-        "line": 241,
-        "method": "GET",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/{tool_id}/export",
-        "file": "back/app/tools/router.py",
-        "handler": "export_tool",
-        "line": 270,
-        "method": "GET",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/{tool_id}/global-params",
-        "file": "back/app/tools/router.py",
-        "handler": "get_global_params",
-        "line": 149,
-        "method": "GET",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/tools/{tool_id}/global-params",
-        "file": "back/app/tools/router.py",
-        "handler": "update_global_params",
-        "line": 166,
-        "method": "PUT",
-        "module": "app.tools"
-      },
-      {
-        "authorized": true,
         "declared_path": "/topics",
         "file": "back/app/topic/router.py",
         "handler": "read_topics",
@@ -22022,7 +22042,7 @@
       },
       {
         "authorized": false,
-        "declared_path": "/whatsapp/webhook/{tool_id}",
+        "declared_path": "/whatsapp/webhook/{service_id}",
         "file": "back/bridge/whatsapp/router.py",
         "handler": "verify_tool_webhook",
         "line": 100,
@@ -22031,7 +22051,7 @@
       },
       {
         "authorized": false,
-        "declared_path": "/whatsapp/webhook/{tool_id}",
+        "declared_path": "/whatsapp/webhook/{service_id}",
         "file": "back/bridge/whatsapp/router.py",
         "handler": "receive_tool_webhook",
         "line": 262,
@@ -22456,7 +22476,7 @@
           "front/app/connection/services/connectionService.ts"
         ],
         "source": "app/connection",
-        "target": "app/tools"
+        "target": "app/services"
       },
       {
         "files": [
@@ -23543,6 +23563,51 @@
       },
       {
         "files": [
+          "front/app/services/components/ServicesList.vue",
+          "front/app/services/pages/index.vue",
+          "front/app/services/stores/serviceStore.ts"
+        ],
+        "source": "app/services",
+        "target": "app/connection"
+      },
+      {
+        "files": [
+          "front/app/services/components/ServicesList.vue",
+          "front/app/services/services/serviceApi.ts"
+        ],
+        "source": "app/services",
+        "target": "core/api"
+      },
+      {
+        "files": [
+          "front/app/services/components/MatrixServiceSetup.vue",
+          "front/app/services/components/ServiceCatalog.vue",
+          "front/app/services/components/ServicesList.vue",
+          "front/app/services/components/TelegramServiceSetup.vue",
+          "front/app/services/navigation.ts",
+          "front/app/services/pages/index.vue"
+        ],
+        "source": "app/services",
+        "target": "core/authorize"
+      },
+      {
+        "files": [
+          "front/app/services/navigation.ts",
+          "front/app/services/pages/index.vue"
+        ],
+        "source": "app/services",
+        "target": "core/navigation"
+      },
+      {
+        "files": [
+          "front/app/services/components/ServicesList.vue",
+          "front/app/services/pages/index.vue"
+        ],
+        "source": "app/services",
+        "target": "core/util"
+      },
+      {
+        "files": [
           "front/app/share/components/OwnerAvatar.vue",
           "front/app/share/components/OwnerSelect.vue",
           "front/app/share/components/ResourceSharingPanel.vue",
@@ -23746,50 +23811,6 @@
         ],
         "source": "app/task",
         "target": "core/websocket"
-      },
-      {
-        "files": [
-          "front/app/tools/components/ToolsList.vue",
-          "front/app/tools/pages/index.vue",
-          "front/app/tools/stores/toolStore.ts"
-        ],
-        "source": "app/tools",
-        "target": "app/connection"
-      },
-      {
-        "files": [
-          "front/app/tools/components/ToolsList.vue",
-          "front/app/tools/services/toolService.ts"
-        ],
-        "source": "app/tools",
-        "target": "core/api"
-      },
-      {
-        "files": [
-          "front/app/tools/components/MatrixToolSetup.vue",
-          "front/app/tools/components/TelegramToolSetup.vue",
-          "front/app/tools/components/ToolsList.vue",
-          "front/app/tools/navigation.ts",
-          "front/app/tools/pages/index.vue"
-        ],
-        "source": "app/tools",
-        "target": "core/authorize"
-      },
-      {
-        "files": [
-          "front/app/tools/navigation.ts",
-          "front/app/tools/pages/index.vue"
-        ],
-        "source": "app/tools",
-        "target": "core/navigation"
-      },
-      {
-        "files": [
-          "front/app/tools/components/ToolsList.vue",
-          "front/app/tools/pages/index.vue"
-        ],
-        "source": "app/tools",
-        "target": "core/util"
       },
       {
         "files": [
@@ -24325,7 +24346,7 @@
         ],
         [
           "app/connection",
-          "app/tools"
+          "app/services"
         ],
         [
           "app/conversation",
@@ -24432,7 +24453,7 @@
           "module": "app/connection",
           "modules": [
             "app/browser",
-            "app/tools"
+            "app/services"
           ]
         },
         {
@@ -24509,7 +24530,7 @@
         },
         {
           "count": 1,
-          "module": "app/tools",
+          "module": "app/services",
           "modules": [
             "app/connection"
           ]
@@ -24576,7 +24597,7 @@
             "app/agent",
             "app/calendar",
             "app/console",
-            "app/tools"
+            "app/services"
           ]
         },
         {
@@ -24686,16 +24707,16 @@
         },
         {
           "count": 1,
-          "module": "app/skill",
+          "module": "app/services",
           "modules": [
-            "app/agent"
+            "app/connection"
           ]
         },
         {
           "count": 1,
-          "module": "app/tools",
+          "module": "app/skill",
           "modules": [
-            "app/connection"
+            "app/agent"
           ]
         },
         {
@@ -24727,7 +24748,7 @@
         ],
         [
           "app/connection",
-          "app/tools"
+          "app/services"
         ]
       ]
     },
@@ -24951,15 +24972,20 @@
         ],
         "exists": true,
         "layer": "app",
-        "name": "app/tools",
+        "name": "app/services",
         "pages": [
           {
-            "file": "front/app/tools/pages/index.vue",
-            "module": "app/tools",
+            "file": "front/app/services/pages/index.vue",
+            "module": "app/services",
+            "route_hint": "/services"
+          },
+          {
+            "file": "front/app/services/pages/legacy.vue",
+            "module": "app/services",
             "route_hint": "/tools"
           }
         ],
-        "path": "front/app/tools"
+        "path": "front/app/services"
       },
       {
         "capabilities": [
@@ -25798,6 +25824,11 @@
         "route_hint": "/process/new-internal"
       },
       {
+        "file": "front/app/services/pages/index.vue",
+        "module": "app/services",
+        "route_hint": "/services"
+      },
+      {
         "file": "front/app/skill/pages/index.vue",
         "module": "app/skill",
         "route_hint": "/skill"
@@ -25813,8 +25844,8 @@
         "route_hint": "/team"
       },
       {
-        "file": "front/app/tools/pages/index.vue",
-        "module": "app/tools",
+        "file": "front/app/services/pages/legacy.vue",
+        "module": "app/services",
         "route_hint": "/tools"
       },
       {

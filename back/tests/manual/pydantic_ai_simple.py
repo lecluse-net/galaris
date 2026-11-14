@@ -27,7 +27,7 @@ sys.path.insert(0, "/app")
 
 from app.llm import llm_provider_service, llm_service, model_usages
 from app.harness.mcp_toolset import get_agent_mcp_servers
-from app.tools.search_tool import search_web
+from app.services.search_tool import search_web
 from app.agent import agent_service
 
 

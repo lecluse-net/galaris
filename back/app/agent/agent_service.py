@@ -301,9 +301,9 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
     )
     new_agent = result.scalar_one()
 
-    from app.tools.mandatory_tools import sync_integrated_tool_connections
+    from app.services.mandatory_services import sync_integrated_service_connections
 
-    await sync_integrated_tool_connections(new_agent.id)
+    await sync_integrated_service_connections(new_agent.id)
     await db.commit()
     await _set_transient_flags(new_agent)
 

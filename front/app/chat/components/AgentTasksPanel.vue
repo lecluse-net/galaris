@@ -128,10 +128,10 @@
                       class="agent-task-action"
                       :loading="taskAction(row.task.id) === 'delete'"
                       :disable="taskAction(row.task.id) !== null"
-                      :aria-label="t('task.detail.deleteTooltip')"
+                      :aria-label="t('task.detail.deleteServicetip')"
                       @click.stop="confirmTaskDelete(row.task)"
                     >
-                      <q-tooltip>{{ t('task.detail.deleteTooltip') }}</q-tooltip>
+                      <q-tooltip>{{ t('task.detail.deleteServicetip') }}</q-tooltip>
                     </q-btn>
                   </div>
                   <q-icon
@@ -787,7 +787,7 @@ function taskContextActions(task: Task): ContextAction[] {
   if (canResumeTask(task)) actions.push({ key: 'resume', icon: 'play_arrow', label: t('task.detail.resumeTooltip'), disabled, run: () => resumeTask(task) })
   if (canRetryTask(task)) actions.push({ key: 'retry', icon: 'replay', label: t('task.detail.retry'), disabled, run: () => startTask(task, 'retry') })
   if (canForceTerminateTask(task)) actions.push({ key: 'terminate', icon: 'cancel', label: t('task.detail.forceTerminateTooltip'), negative: true, disabled, run: () => confirmTaskForceTerminate(task) })
-  actions.push({ key: 'delete', icon: 'delete', label: t('task.detail.deleteTooltip'), negative: true, separator: true, disabled, run: () => confirmTaskDelete(task) })
+  actions.push({ key: 'delete', icon: 'delete', label: t('task.detail.deleteServicetip'), negative: true, separator: true, disabled, run: () => confirmTaskDelete(task) })
   return actions
 }
 function openTask(taskId: string): void {

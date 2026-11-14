@@ -75,10 +75,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         register_replacement_coordinator("process", coordinate_replacement)
         task_scheduler.register_periodic_job("task-replacements", reconcile_replacements, interval=2.0)
         register_llm_scheduler_jobs(task_scheduler.register_periodic_job)
-        from app.tools.authorization_notifications import deliver_authorization_notifications, reconcile_authorizations
+        from app.services.authorization_notifications import deliver_authorization_notifications, reconcile_authorizations
         task_scheduler.register_periodic_job("action-authorization-notifications", deliver_authorization_notifications, interval=2.0)
         task_scheduler.register_periodic_job("action-authorization-reconciliation", reconcile_authorizations, interval=30.0)
-        from app.tools.documentation_service import refresh_documentation_index
+        from app.services.documentation_service import refresh_documentation_index
         task_scheduler.register_periodic_job(
             "documentation-index", refresh_documentation_index, interval=30.0, timeout=90.0,
         )
@@ -307,7 +307,7 @@ class GoalContactDirectoryAdapter:
         return tuple(
             GoalHumanContact(
                 connection_id=contact.connection_id,
-                tool_id=contact.tool_id,
+                service_id=contact.service_id,
                 platform=contact.platform,
                 user_id=contact.user_id,
                 display_name=contact.display_name,

@@ -10,18 +10,18 @@ default: dict[str, object] = {
             "webdav_download": "WebDAV download",
             "share_creation": "share creation",
         },
-        "upload_failed": "Upload through ${tool_code} failed: ${error}",
+        "upload_failed": "Upload through ${service_code} failed: ${error}",
         "affine_upload_path": (
             "AFFiNE upload failed: put the workspace at the start of destination "
             "(for example, company/my_file)."
         ),
-        "upload_ok": "File uploaded through ${tool_code} (${service}, ${size} bytes): ${location}",
-        "download_failed": "Download through ${tool_code} failed: ${error}",
+        "upload_ok": "File uploaded through ${service_code} (${service}, ${size} bytes): ${location}",
+        "download_failed": "Download through ${service_code} failed: ${error}",
         "affine_download_path": (
             "AFFiNE download failed: put the workspace at the start of remote "
             "(for example, company/<key>)."
         ),
-        "download_ok": "File downloaded through ${tool_code} (${service}, ${size} bytes): ${location}",
+        "download_ok": "File downloaded through ${service_code} (${service}, ${size} bytes): ${location}",
         "destination_required": "Transfer failed: dest_path is required.",
         "transfer_ok": (
             "File transferred ${source} -> ${destination} (${size} bytes): ${location}"
@@ -32,7 +32,7 @@ default: dict[str, object] = {
             "No file-sharing service is connected to your account. Ask an administrator to "
             "enable a file-sharing connection."
         ),
-        "targets_heading": "Connected file-sharing services (value for tool_code):",
+        "targets_heading": "Connected file-sharing services (value for service_code):",
         "messenger_label": "Your messaging service",
         "messenger_description": "Internal transport: exchange files through your messaging service.",
         "errors": {
@@ -41,7 +41,7 @@ default: dict[str, object] = {
                 "(mapped connection parameter: '${connection_parameter}')."
             ),
             "connection_not_found": (
-                "No active 'file_share/${tool_code}' connection is configured for agent "
+                "No active 'file_share/${service_code}' connection is configured for agent "
                 "${agent_id}."
             ),
             "service_connection_not_found": (

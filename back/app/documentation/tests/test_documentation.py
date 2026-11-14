@@ -375,8 +375,8 @@ async def test_index_status_counts_only_current_corpus_in_one_read(db, sources, 
 async def indexing_agent(committed_database, monkeypatch):
     from app.connection.models import Connection
     from app.agent.models import Agent, Title
-    from app.tools.models import Tool
-    from app.tools import documentation_service, mandatory_tools
+    from app.services.models import Service
+    from app.services import documentation_service, mandatory_services
     from core.database import get_db_session
     from core.user.models import User
 
@@ -392,9 +392,9 @@ async def indexing_agent(committed_database, monkeypatch):
         db.add(agent)
         await db.flush()
         agent_id = agent.id
-        await mandatory_tools.sync_integrated_tool_connections(agent_id)
-        connection = await db.scalar(select(Connection).join(Tool).where(
-            Connection.agent_id == agent_id, Tool.code == "platform_admin"))
+        await mandatory_services.sync_integrated_service_connections(agent_id)
+        connection = await db.scalar(select(Connection).join(Service).where(
+            Connection.agent_id == agent_id, Service.code == "platform_admin"))
         connection.active = True
     return agent_id
 
@@ -403,7 +403,7 @@ async def indexing_agent(committed_database, monkeypatch):
 async def test_background_index_keeps_search_and_other_embeddings_concurrent(
     indexing_agent, sources, monkeypatch,
 ):
-    from app.tools import documentation_service
+    from app.services import documentation_service
     from core.database import get_db_session
 
     started, release = asyncio.Event(), asyncio.Event()
@@ -449,7 +449,7 @@ async def test_background_index_backs_off_preserves_progress_and_recovers(
 ):
     import httpx
     from app.llm import EmbeddingError
-    from app.tools import documentation_service
+    from app.services import documentation_service
     from core.database import get_db_session
 
     # More than two maintenance batches, using only synthetic source data.
@@ -506,7 +506,7 @@ async def test_background_index_backs_off_preserves_progress_and_recovers(
 async def test_background_index_releases_lock_on_deadline_or_cancellation(
     indexing_agent, sources, monkeypatch, outcome,
 ):
-    from app.tools import documentation_service
+    from app.services import documentation_service
     from core.database import get_db_session
 
     started = asyncio.Event()
@@ -552,9 +552,9 @@ async def test_background_index_releases_lock_on_deadline_or_cancellation(
 async def test_documentation_access_can_exclude_audits_and_is_revoked_live(db, sources):
     from app.agent.models import Agent, Title
     from app.connection.models import Connection, ConnectionFunctionState
-    from app.tools.models import Tool
-    from app.tools import mandatory_tools
-    from app.tools import documentation_service
+    from app.services.models import Service
+    from app.services import mandatory_services
+    from app.services import documentation_service
     from app.file_share import resource_service
     from app.file_share.resource_contracts import ResourceContext
     from app.skill import skill_service
@@ -565,8 +565,8 @@ async def test_documentation_access_can_exclude_audits_and_is_revoked_live(db, s
     agent = Agent(title_id=title.id, code="knowledge-test", first_name="Product", last_name="Guide", agent_driver="internal")
     db.add(agent)
     await db.flush()
-    await mandatory_tools.sync_integrated_tool_connections(agent.id)
-    connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent.id, Tool.code == "platform_admin"))
+    await mandatory_services.sync_integrated_service_connections(agent.id)
+    connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent.id, Service.code == "platform_admin"))
     ctx = ResourceContext(agent_id=agent.id, runtime="internal")
     uri = "galaris://documentation/docs/fr/user/documents.md"
     with pytest.raises(PermissionError):
@@ -629,8 +629,8 @@ async def test_mcp_documentation_only_search_read_and_live_revocation(committed_
     from fastmcp import Client
     from app.agent.models import Agent, Title
     from app.connection.models import Connection, ConnectionFunctionState
-    from app.tools.models import Tool
-    from app.tools import mandatory_tools, mcp_loader, documentation_service
+    from app.services.models import Service
+    from app.services import mandatory_services, mcp_loader, documentation_service
     from core.database import get_db_session
     from core.user.models import User
 
@@ -646,11 +646,11 @@ async def test_mcp_documentation_only_search_read_and_live_revocation(committed_
         db.add(agent)
         await db.flush()
         agent_id = agent.id
-        await mandatory_tools.sync_integrated_tool_connections(agent_id)
-        connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent_id, Tool.code == "platform_admin"))
+        await mandatory_services.sync_integrated_service_connections(agent_id)
+        connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent_id, Service.code == "platform_admin"))
         connection.active = True
         connection_id = connection.id
-        tool = await db.get(Tool, connection.tool_id)
+        tool = await db.get(Service, connection.service_id)
         tool.conversation_enabled = True
         for name in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
             db.add(ConnectionFunctionState(connection_id=connection_id, function_name=name, enabled=False))

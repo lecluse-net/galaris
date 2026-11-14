@@ -69,7 +69,7 @@ async def sync_input_run(*, agent_id: int, workflow_id: str, invocation_key: str
         await validate_assignments(graph, agent_id)
         data = _prepared_data(graph, values)
         snapshot: dict[str, Any] = {"version": 1, "workflow_id": workflow_id,
-            "process_label": saved["title"], "tool_code": "galaris", "input": values, "files": [],
+            "process_label": saved["title"], "service_code": "galaris", "input": values, "files": [],
             "definition": {key: saved[key] for key in ("xml", "graph", "revision")}}
         snapshot["participant_agents"] = participant_agents(snapshot, agent_id)
         run = ProcessRun(id=uuid4(), process_id=definition.id, launcher_agent_id=agent_id,
@@ -138,7 +138,7 @@ async def start_input_run(agent_id: int, identity: UUID, values: dict[str, Any],
     supplied = await validate_launch_input_patch(agent_id, declarations, values, typed_values=typed_values)
     data = initialize_variables(graph.variables, supplied, inputs=graph.inputs)
     snapshot = {**run.launch_snapshot, "input": data}
-    from app.tools.facade import register_deferred_dispatch
+    from app.services.facade import register_deferred_dispatch
     permit = await register_deferred_dispatch(snapshot)
     if permit is not None:
         snapshot["authorization_permit"] = str(permit)
@@ -152,6 +152,6 @@ async def start_input_run(agent_id: int, identity: UUID, values: dict[str, Any],
     run.engine_metadata = {**run.engine_metadata, "input_preparation": {
         **run.engine_metadata["input_preparation"], "status": "completed", "missing": [], "issues": {}}}
     db.add(ProcessStartJob(run_id=run.id))
-    await append_event(run, "engine.start.requested", payload={"tool_code": run.engine_code})
+    await append_event(run, "engine.start.requested", payload={"service_code": run.engine_code})
     await db.flush()
     return await start_response(run, definition, deduplicated=False)

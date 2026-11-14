@@ -24,7 +24,7 @@ Les limites et garanties du code courant ne sont pas une qualification de cette 
 Les définitions BPMN, données et fichiers de runs appartiennent à Process. Aucun
 Dataset documentaire ne devient leur stockage. Les petites applications HTML du
 [plan documentaire](programmes-documentaires-json.md) ont un autre runtime.
-La capacité REST existante de Tools et ses connexions sont réutilisées selon
+La capacité REST existante de Services et ses connexions sont réutilisées selon
 [0182](../decisions/0182-tool-rest-capability.md).
 
 ## Lots ouverts et réception
@@ -55,7 +55,7 @@ Le programme demande une opération par un protocole limité. Un intermédiaire 
 - enregistre intentions et reçus. Un redémarrage ne rejoue pas les appels précédents d'un
   programme dont les effets sont incertains.
 
-Réutiliser `app.tools.execute_rest_request`. Le confinement à l'adresse configurée
+Réutiliser `app.services.execute_rest_request`. Le confinement à l'adresse configurée
 protège les identifiants ; il est distinct des permissions métier du tiers.
 Les réponses rendues au programme ne restituent pas les secrets de transport.
 Le code utilise les capacités de son exécutant, jamais celles de son auteur.

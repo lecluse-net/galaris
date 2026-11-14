@@ -19,7 +19,7 @@ from app.messenger import (
     RoomUser,
     voice_journal,
 )
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.topic import Topic
 from app.voice import (
     conversation_service,
@@ -56,9 +56,9 @@ async def _session(
     transport_kind: str,
     room_id: str,
 ):
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == transport_kind))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == transport_kind))
     if tool is None:
-        tool = ToolModel(
+        tool = ServiceModel(
             code=transport_kind,
             label=f"Voice monitoring {transport_kind}",
             description="",
@@ -68,12 +68,12 @@ async def _session(
         await db.flush()
     connection = await db.scalar(
         select(Connection).where(
-            Connection.tool_id == tool.id,
+            Connection.service_id == tool.id,
             Connection.agent_id == agent.id,
         )
     )
     if connection is None:
-        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
         db.add(connection)
         await db.flush()
     room = Room(
@@ -86,7 +86,7 @@ async def _session(
     db.add(room)
     await db.flush()
     caller = MessengerUser(
-        tool_id=tool.id,
+        service_id=tool.id,
         external_id=f"caller-{room_id}",
         display_name="Nicolas",
         is_ai=False,
@@ -112,9 +112,9 @@ async def test_voice_monitoring_lists_and_details_transcribed_turns(
     async def get_messenger(connection_id: int):
         connection = await db.get(Connection, connection_id)
         assert connection is not None
-        tool = await db.get(ToolModel, connection.tool_id)
+        tool = await db.get(ServiceModel, connection.service_id)
         assert tool is not None
-        return SimpleNamespace(tool_id=tool.id, self_id=None, kind=tool.code)
+        return SimpleNamespace(service_id=tool.id, self_id=None, kind=tool.code)
 
     monkeypatch.setattr(voice_journal, "get_messenger", get_messenger)
     agent = await _agent(db)

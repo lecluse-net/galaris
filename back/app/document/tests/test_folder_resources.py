@@ -313,7 +313,7 @@ async def test_folder_tree_pages_are_complete_json_and_preserve_parentage(db, ag
     from unittest.mock import AsyncMock
     from app.document import Document, DocumentTagAssignment
     from app.file_share import mcp
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
     from core.storage import get_storage
     from tests.sharing_fixtures import bind_private_shares
 

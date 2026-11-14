@@ -135,11 +135,11 @@ default: dict[str, object] = {
             "connection_not_found": "Connection ${connection_id} not found",
             "connection_inactive": "Messaging connection ${connection_id} is inactive",
             "tool_not_registered": (
-                "Tool ${tool_id} is not a registered messaging tool"
+                "Tool ${service_id} is not a registered messaging tool"
             ),
             "bridge_not_registered": "No bridge is registered for kind '${kind}'",
             "identity_connection_not_found": (
-                "No connection exists for tool_id=${tool_id} and self_id=${self_id}"
+                "No connection exists for service_id=${service_id} and self_id=${self_id}"
             ),
             "default_not_configured": (
                 "The application default messaging service is not configured"

@@ -28,8 +28,8 @@ et aucun harnais externe n'est affecté. L'avatar initial est le logo PNG de l'a
 embarqué dans le backend ; les synchronisations suivantes ne le remplacent ni ne le
 rétablissent après suppression. Les connexions et skills ordinaires sont
 initialisés ; seule la création active en plus `galaris_admin`, qui autorise
-notamment la consultation de la documentation, et `tool_admin`, qui délègue
-l’administration du catalogue et des connexions selon la [décision 0150](0150-tool-administration.md),
+notamment la consultation de la documentation, et `service_admin`, qui délègue
+l’administration du catalogue et des connexions selon la [décision 0150](0150-service-administration.md),
 et `agent_admin`, qui délègue l’administration des agents selon la [décision 0148](0148-agent-admin-delegation.md),
 ainsi que l’autorisation individuelle des
 skills `galaris-lab` et `galaris-knowledge`. Leurs défauts globaux et la connexion Lab restent désactivés.

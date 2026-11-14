@@ -19,7 +19,7 @@ from app.messenger.models import (
     Room,
     MessengerUser,
 )
-from app.tools.mcp_loader import McpToolContext
+from app.services.mcp_loader import McpToolContext
 
 
 @pytest.mark.asyncio
@@ -46,9 +46,9 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
     from app.agent.models import Agent, AgentTeam, Title
     from app.connection import Connection, ConnectionParam
     from app.task import Task, TaskStatus, runner
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.messenger.facade import require_internal_peer_contact
-    from app.tools.contracts import ToolExecutionContext, tool_execution
+    from app.services.contracts import ToolExecutionContext, tool_execution
     from core.params import runtime_settings
     from core.team import TeamModel
     from sqlalchemy import delete, select
@@ -65,7 +65,7 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
                    title_id=title.id, agent_driver="internal")
     peer = Agent(code=f"peer-{uuid4().hex}", first_name="Peer", last_name="Test",
                  title_id=title.id, agent_driver="internal")
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
     assert tool is not None
     db.add_all([sender, peer])
     await db.flush()
@@ -77,26 +77,26 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
     if reverse:
         sender, peer = peer, sender
         left, right = right, left
-    identity = MessengerUser(tool_id=tool.id, external_id=f"agent:{peer.id}",
+    identity = MessengerUser(service_id=tool.id, external_id=f"agent:{peer.id}",
                              display_name="Peer Test", agent_id=peer.id, is_ai=True)
     db.add(identity)
-    connection = Connection(agent_id=sender.id, tool_id=tool.id, active=True)
-    peer_connection = Connection(agent_id=peer.id, tool_id=tool.id, active=scenario != "receiver_inactive")
+    connection = Connection(agent_id=sender.id, service_id=tool.id, active=True)
+    peer_connection = Connection(agent_id=peer.id, service_id=tool.id, active=scenario != "receiver_inactive")
     parent = Task(agent_id=sender.id, label="Synthetic update", objective="<p>Ask the peer.</p>",
                   status=TaskStatus.EXEC, data={"language": "en"})
     db.add_all([connection, peer_connection, parent])
     await db.flush()
     if matrix:
-        db.add_all([ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value=left),
-                    ConnectionParam(connection_id=peer_connection.id, param_name="tools.management_scope", param_value=right)])
+        db.add_all([ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value=left),
+                    ConnectionParam(connection_id=peer_connection.id, param_name="services.management_scope", param_value=right)])
     scopes = {"scope_none": "none", "scope_all": "all", "scope_invalid": "personal"}
     if scenario in scopes:
-        db.add(ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value=scopes[scenario]))
+        db.add(ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value=scopes[scenario]))
     if scenario in {"receiver_none", "scope_all"}:
-        db.add(ConnectionParam(connection_id=peer_connection.id, param_name="tools.management_scope",
+        db.add(ConnectionParam(connection_id=peer_connection.id, param_name="services.management_scope",
                                param_value="none" if scenario == "receiver_none" else "all"))
     if scenario == "receiver_invalid":
-        db.add(ConnectionParam(connection_id=peer_connection.id, param_name="tools.management_scope", param_value="personal"))
+        db.add(ConnectionParam(connection_id=peer_connection.id, param_name="services.management_scope", param_value="personal"))
     if scenario == "paused":
         parent.paused = True
         parent.data = {"language": "en", "pause_reasons": ["user"]}
@@ -107,7 +107,7 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
     await db.flush()
     if scenario.endswith("_scope_revoked") or scenario.endswith("_scope_restored"):
         changing_connection = connection if scenario.startswith("sender") else peer_connection
-        setting = ConnectionParam(connection_id=changing_connection.id, param_name="tools.management_scope",
+        setting = ConnectionParam(connection_id=changing_connection.id, param_name="services.management_scope",
                                   param_value="none" if scenario.endswith("_scope_restored") else "team")
         db.add(setting)
         await db.flush()
@@ -225,7 +225,7 @@ async def test_messaging_binding_respects_explicit_channel_and_rejects_unavailab
 @pytest.mark.parametrize("wait_for_reply", [False, True])
 async def test_delivery_reuses_the_authorized_connection_without_selecting_again(db, monkeypatch, wait_for_reply):
     from app.messenger import service
-    from app.tools.contracts import ToolExecutionContext, tool_execution
+    from app.services.contracts import ToolExecutionContext, tool_execution
 
     messenger = SimpleNamespace(kind="telegram", connection_id=23, supports=lambda capability: True,
         send_to_user=AsyncMock())
@@ -362,7 +362,7 @@ async def test_search_users_exposes_exact_ids_without_contact_state(
                     "matrix",
                     MessengerUser(
                         id=local_user_id,
-                        tool_id=3,
+                        service_id=3,
                         external_id="@nicolas:example.test",
                         display_name="Nicolas",
                         agent_id=agent_id,
@@ -387,7 +387,7 @@ async def test_search_users_exposes_exact_ids_without_contact_state(
     assert f"id: {local_user_id}" in result
     assert "external_id: @nicolas:example.test" in result
     assert "connection_id: 19" in result
-    assert "tool_id: 3" in result
+    assert "service_id: 3" in result
     assert "channel: matrix" in result
     assert f"type: {expected_type}" in result
     assert ("agent_id: 42" in result) == (agent_id is not None)
@@ -405,7 +405,7 @@ async def test_room_history_returns_structured_page_and_forwards_cursor(
     file_id = uuid4()
     sender = MessengerUser(
         id=sender_id,
-        tool_id=3,
+        service_id=3,
         external_id="@alice:test",
         display_name="Alice",
     )
@@ -430,7 +430,7 @@ async def test_room_history_returns_structured_page_and_forwards_cursor(
     message = Message(
         id=(message_id := uuid4()),
         connection_id=19,
-        tool_id=3,
+        service_id=3,
         platform="matrix",
         remote_message_id="message-7",
         direction="inbound",
@@ -441,7 +441,7 @@ async def test_room_history_returns_structured_page_and_forwards_cursor(
     message.sender = sender
     message.room = room
     message.files = [attachment]
-    message.tool_code = "matrix-primary"
+    message.service_code = "matrix-primary"
     history_page = AsyncMock(
         return_value=HistoryPage(
             messages=[message],

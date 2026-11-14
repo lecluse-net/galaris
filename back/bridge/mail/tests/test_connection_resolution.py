@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.connection import Connection
-from app.tools.protocols import ProtocolConfig
+from app.services.protocols import ProtocolConfig
 from bridge.mail import connection_service
 
 
@@ -21,10 +21,10 @@ async def test_mail_uses_email_and_one_password_for_imap_and_smtp(
     allowed, expected,
     separate_smtp,
 ) -> None:
-    connection = Connection(id=9, tool_id=4, agent_id=3, active=True)
+    connection = Connection(id=9, service_id=4, agent_id=3, active=True)
     monkeypatch.setattr(
-        connection_service.tool_service,
-        "get_tool_by_id",
+        connection_service.service,
+        "get_service_by_id",
         AsyncMock(return_value=SimpleNamespace(code="mail", mail=ProtocolConfig(param_map={"smtp_username": "relay_username", "smtp_password": "relay_secret"} if separate_smtp else {}), file_share=None)),
     )
     monkeypatch.setattr(

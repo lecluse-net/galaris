@@ -48,7 +48,7 @@ MODULES = [
     "core.dbadmin",
     "core.storage",
     "app.incident",
-    "app.tools",
+    "app.services",
     "app.documentation",
     "app.agent",
     "app.share",

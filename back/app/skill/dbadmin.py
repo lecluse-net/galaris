@@ -17,24 +17,24 @@ from .contracts import SKILL_CATALOGUE_LOCK
 
 
 async def _tool_renamed(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     reserved = await session.scalar(select(Skill.id).where(Skill.owner_agent_id.is_(None), Skill.code == "personnal"))
-    return reserved is None and await session.scalar(select(ToolModel.id).where(ToolModel.code == "skill_management")) is None
+    return reserved is None and await session.scalar(select(ServiceModel.id).where(ServiceModel.code == "skill_management")) is None
 
 
 async def _rename_tool(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.connection import Connection, ConnectionParam
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    from app.services.contracts import MANAGEMENT_SCOPE_PARAM
     if await session.scalar(select(Skill.id).where(Skill.owner_agent_id.is_(None), Skill.code == "personnal")) is not None:
         raise RuntimeError("Historical generic skill 'personnal' must be renamed explicitly before reserving that URI branch; its files and record are preserved")
-    legacy = await session.scalar(select(ToolModel).where(ToolModel.code == "skill_management").with_for_update())
+    legacy = await session.scalar(select(ServiceModel).where(ServiceModel.code == "skill_management").with_for_update())
     if legacy is None:
         return
-    if await session.scalar(select(ToolModel.id).where(ToolModel.code == "skills")) is not None:
+    if await session.scalar(select(ServiceModel.id).where(ServiceModel.code == "skills")) is not None:
         raise RuntimeError("Conflicting Skills Tool identities; migration requires review")
     for connection_id in await session.scalars(select(Connection.id).where(
-        Connection.tool_id == legacy.id, Connection.active.is_(True),
+        Connection.service_id == legacy.id, Connection.active.is_(True),
     )):
         if await session.scalar(select(ConnectionParam.id).where(
             ConnectionParam.connection_id == connection_id, ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM)) is None:
@@ -159,7 +159,7 @@ def datasets() -> tuple[DbAdminDataset, ...]:
             rows=_system_skill_rows,
             # global_enabled is an installation default and remains admin-owned.
             update_columns=("label", "system"),
-            depends_on=("app.tools.mandatory.connections",),
+            depends_on=("app.services.mandatory.connections",),
         ),
         DbAdminDataset(
             key="app.skill.installed",

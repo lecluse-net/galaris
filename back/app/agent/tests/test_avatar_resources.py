@@ -80,7 +80,7 @@ async def test_peer_portrait_discovery_and_binary_transports(db, directory, tmp_
 async def test_image_tool_consumes_peer_photo_and_persists_description(db, directory, monkeypatch):
     from app.image import mcp as image_mcp
     from app.memory.models import MemoryItem
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
     from sqlalchemy import select
 
     caller, peer, _ = directory

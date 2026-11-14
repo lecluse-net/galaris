@@ -21,7 +21,7 @@ class ResolvedMessengerConfiguration:
 
     connection_id: int
     agent_id: int
-    tool_id: int
+    service_id: int
     service: str
     settings: dict[str, str]
     params: dict[str, Any]
@@ -66,26 +66,26 @@ async def resolve_messenger_configuration(
     """Resolve and validate one Messenger-capable Tool connection."""
 
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
     connection = await connection_service.get_connection(connection_id)
     if connection is None:
         raise ValueError(f"Messaging connection {connection_id} was not found.")
     if not connection.active:
         raise ValueError(f"Messaging connection {connection_id} is inactive.")
-    tool = await tool_service.get_tool_by_id(int(connection.tool_id))
+    tool = await service.get_service_by_id(int(connection.service_id))
     if tool is None:
-        raise ValueError(f"Messaging Tool {connection.tool_id} was not found.")
+        raise ValueError(f"Messaging Tool {connection.service_id} was not found.")
 
     service = facade.kind_for_tool(
         tool,
         preferred_kind=runtime_settings.MESSENGER_DRIVER,
     )
     if service is None:
-        raise ValueError(f"Tool {connection.tool_id} has no Messenger service.")
+        raise ValueError(f"Tool {connection.service_id} has no Messenger service.")
     if expected_service is not None and service != expected_service:
         raise ValueError(
-            f"Tool {connection.tool_id} selects Messenger service {service}, "
+            f"Tool {connection.service_id} selects Messenger service {service}, "
             f"not {expected_service}."
         )
     spec = facade.get_spec(service)
@@ -123,7 +123,7 @@ async def resolve_messenger_configuration(
     return ResolvedMessengerConfiguration(
         connection_id=int(connection.id),
         agent_id=int(connection.agent_id),
-        tool_id=int(connection.tool_id),
+        service_id=int(connection.service_id),
         service=service,
         settings=settings,
         params=resolved_params,

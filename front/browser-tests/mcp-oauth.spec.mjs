@@ -18,8 +18,8 @@ for (const [kind, width] of [['google', 390], ['microsoft', 1440]]) test(`calend
   const tool = { id: 8, code: 'synthetic_calendar', label: 'Synthetic Calendar', has_calendar: true,
     calendar_config: { settings: { source_kind: kind } }, mcp_config: { type: 'http' }, global_params: {}, connection_schema: { params: {} } }
   await mount(page, 'app/connection/components/ConnectionForm.vue', { privileges: ['CONNECTION_EDIT'], props: {
-    connection: { id: 42, agent_id: 7, tool_id: 8, active: true }, connectionParams: {}, tools: [tool],
-    agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }], toolOptions: [{ id: 8, label: 'Synthetic Calendar' }],
+    connection: { id: 42, agent_id: 7, service_id: 8, active: true }, connectionParams: {}, tools: [tool],
+    agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }], serviceOptions: [{ id: 8, label: 'Synthetic Calendar' }],
   } })
   const calendar = page.locator('.q-card').filter({ has: page.getByText('Calendar account authorization', { exact: true }) })
   await expect(calendar.getByRole('alert')).toContainText('Synthetic calendar authorization unavailable')
@@ -171,7 +171,7 @@ test('local OAuth relay downloads on the browser computer and completes in a new
 
 for (const scenario of ['listed', 'hidden', 'concurrent', 'edited']) {
 test(`OAuth reuses an existing connection and its saved parameters (${scenario})`, async ({ page }) => {
-  const existing = { id: 42, agent_id: 7, tool_id: 19, active: false }
+  const existing = { id: 42, agent_id: 7, service_id: 19, active: false }
   const writes = []
   let starts = 0
   let lookups = 0
@@ -184,14 +184,14 @@ test(`OAuth reuses an existing connection and its saved parameters (${scenario})
       region: { type: 'string', label: 'Service region', default: 'eu', required: false },
       secret: { type: 'password', label: 'Service secret', required: false },
     } } }]
-  await jsonRoute(page, '**/api/tools', tools)
-  await jsonRoute(page, '**/api/connections/tool-options', tools)
+  await jsonRoute(page, '**/api/services', tools)
+  await jsonRoute(page, '**/api/connections/service-options', tools)
   await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic Agent', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/mail/approvers', [])
   await page.route('**/api/connections?*', route => {
     const params = new URL(route.request().url()).searchParams
-    const targeted = params.get('agent_id') === '7' && params.get('tool_id') === '19'
+    const targeted = params.get('agent_id') === '7' && params.get('service_id') === '19'
     if (targeted) lookups++
     return route.fulfill({ json: scenario === 'listed' || (targeted && (scenario !== 'concurrent' || lookups > 1)) ? [existing] : [] })
   })
@@ -206,7 +206,7 @@ test(`OAuth reuses an existing connection and its saved parameters (${scenario})
     return route.fulfill({ json: existing })
   })
   await page.route('**/api/connections/42/params?*', route => route.fulfill({ json: {
-    connection_id: 42, tool_id: 19, agent_id: 7,
+    connection_id: 42, service_id: 19, agent_id: 7,
     params: { region: savedRegion, secret: null }, configured_params: ['region', 'secret'],
   } }))
   await page.route('**/api/connections/42/params/bulk', route => {
@@ -240,10 +240,10 @@ test(`OAuth reuses an existing connection and its saved parameters (${scenario})
   await expect(page.getByText('Synthetic account sign-in', { exact: true })).toBeVisible()
   expect(starts).toBe(2)
   expect(writes).toEqual([
-    ...(scenario === 'concurrent' ? [{ method: 'POST', body: { agent_id: 7, tool_id: 19, active: true } }] : []),
+    ...(scenario === 'concurrent' ? [{ method: 'POST', body: { agent_id: 7, service_id: 19, active: true } }] : []),
     { method: 'PATCH', body: { active: true } },
     ...(scenario === 'edited' ? [
-      { method: 'PATCH', body: { agent_id: 7, tool_id: 19, active: true } },
+      { method: 'PATCH', body: { agent_id: 7, service_id: 19, active: true } },
       { method: 'POST', body: { connection_id: 42, params: { region: 'ap' } } },
     ] : []),
   ])
@@ -260,8 +260,8 @@ test('OAuth retries a parameter save without recreating the connection or losing
   const tools = [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
     mcp_config: { type: 'http', auth: { type: 'none' } },
     connection_schema: { params: { region: { type: 'string', label: 'Service region', required: false } } } }]
-  await jsonRoute(page, '**/api/tools', tools)
-  await jsonRoute(page, '**/api/connections/tool-options', tools)
+  await jsonRoute(page, '**/api/services', tools)
+  await jsonRoute(page, '**/api/connections/service-options', tools)
   await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic Agent', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/mail/approvers', [])
@@ -280,7 +280,7 @@ test('OAuth retries a parameter save without recreating the connection or losing
       ? { status: 503, json: { detail: 'Synthetic parameter save failure' } }
       : { json: [] })
   })
-  await jsonRoute(page, '**/api/connections/42/params?*', { connection_id: 42, tool_id: 19, agent_id: 7,
+  await jsonRoute(page, '**/api/connections/42/params?*', { connection_id: 42, service_id: 19, agent_id: 7,
     params: { region: 'us' }, configured_params: ['region'] })
   await page.route('**/api/connections/42/oauth/start', route => {
     starts++
@@ -321,9 +321,9 @@ for (const transport of ['http', 'sse', 'stdio']) {
     await mount(page, 'app/connection/components/ConnectionForm.vue', {
       privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL'],
       props: {
-        connection: { id: 42, agent_id: 7, tool_id: 19, active: true },
+        connection: { id: 42, agent_id: 7, service_id: 19, active: true },
         agentOptions: [{ value: 7, label: 'Synthetic agent', agentDriver: 'internal' }],
-        toolOptions: [{ id: 19, label: 'Synthetic MCP' }],
+        serviceOptions: [{ id: 19, label: 'Synthetic MCP' }],
         tools: [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
           mcp_config: { type: transport, auth: { type: 'none' } }, connection_schema: { params: {} } }],
       },
@@ -350,7 +350,7 @@ test(`account authorization saves first and retries errors (connection changes: 
     props: {
       defaultAgentId: 7, defaultToolId: 19,
       agentOptions: [{ value: 7, label: 'Synthetic agent', agentDriver: 'internal' }],
-      toolOptions: [{ id: 19, label: 'Synthetic MCP' }],
+      serviceOptions: [{ id: 19, label: 'Synthetic MCP' }],
       tools: [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
         mcp_config: { type: 'http', auth: { type: 'none' } }, connection_schema: { params: {} } }],
     },
@@ -359,7 +359,7 @@ test(`account authorization saves first and retries errors (connection changes: 
     window.connectionSaveAttempts ??= 0
     window.connectionSaveAttempts++
     if (window.connectionSaveAttempts === 1) throw new Error('Synthetic save failure')
-    if (payload.data.agent_id !== 7 || payload.data.tool_id !== 19 || !payload.data.active) throw new Error('Incorrect connection')
+    if (payload.data.agent_id !== 7 || payload.data.service_id !== 19 || !payload.data.active) throw new Error('Incorrect connection')
     if (window.connectionSaveAttempts === 2) return new Promise(resolve => {
       window.releaseConnectionSave = () => resolve({ id: 42, ...payload.data })
     })
@@ -372,7 +372,7 @@ test(`account authorization saves first and retries errors (connection changes: 
   expect(starts).toEqual([])
   await connect.click()
   await page.waitForFunction(() => !!window.releaseConnectionSave)
-  if (changeConnection) await page.evaluate(() => window.testApp.setProps({ connection: { id: 84, agent_id: 7, tool_id: 19, active: true } }))
+  if (changeConnection) await page.evaluate(() => window.testApp.setProps({ connection: { id: 84, agent_id: 7, service_id: 19, active: true } }))
   await page.evaluate(() => window.releaseConnectionSave())
   if (changeConnection) {
     await expect(connect).toBeEnabled()

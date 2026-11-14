@@ -108,7 +108,7 @@ est identifié par lecture du code ; il n'est pas couvert par cette reproduction
 | Catalogue et listes de privilèges | `READ_PRIVILEGE`, `MANAGE_PRIVILEGE` |
 | Équipes et membres | `TEAM_ACCESS`, `TEAM_EDIT`, `TEAM_MEMBERS_EDIT` |
 | Agents, périmètre global et API Agent | `AGENT_ACCESS`, `AGENT_EDIT`, `AGENT_MANAGE_ALL`, `AGENT_API_ACCESS` |
-| Outils et connexions | `TOOL_ACCESS`, `TOOL_EDIT`, `CONNECTION_ACCESS`, `CONNECTION_EDIT` |
+| Outils et connexions | `SERVICE_ACCESS`, `SERVICE_EDIT`, `CONNECTION_ACCESS`, `CONNECTION_EDIT` |
 | Permissions et accords communs | `PERMISSION_ACCESS`, `PERMISSION_DECIDE`, `PERMISSION_REVOKE` ; exception Mail ci-dessus |
 | Documents et attribution globale | `DOCUMENT_ACCESS`, `DOCUMENT_EDIT`, `DOCUMENT_ADMIN`, `DOCUMENT_ASSIGN_ALL_USERS` |
 | Datasets | `DATASET_READ`, `DATASET_EDIT`, `DATASET_ADMIN` |
@@ -148,7 +148,7 @@ est identifié par lecture du code ; il n'est pas couvert par cette reproduction
 
 Les calendriers sont actuellement des flux configurés dans une connexion, sans écran de
 calendrier humain autonome. Browser est ici son écran de configuration ; son exécution
-agentique suit les capacités Tool et sa politique réseau. Ces mutualisations sont des
+agentique suit les capacités Service et sa politique réseau. Ces mutualisations sont des
 limites de granularité, pas des accès non authentifiés. Une délégation indépendante demande
 un choix de domaine explicite, puis des contrôles dans les API et Params, des métadonnées
 minimales et une projection des rôles revue.

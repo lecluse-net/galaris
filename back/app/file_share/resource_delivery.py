@@ -36,13 +36,13 @@ async def deliver_resource_to_messenger(
             language=ctx.language,
         ).upload_from(path, display, target=str(room_id))
 
-    tool_code = str(getattr(messenger, "tool_code", "") or "").strip()
-    if not tool_code:
+    service_code = str(getattr(messenger, "service_code", "") or "").strip()
+    if not service_code:
         raise RuntimeError(
             "The Messenger transport did not expose its Tool code; a provider URI cannot "
             "be produced."
         )
-    destination_uri = str(parse_resource_uri(f"{tool_code}://{location}"))
+    destination_uri = str(parse_resource_uri(f"{service_code}://{location}"))
     return DeliveredResource(
         source_uri=materialized.uri,
         uri=destination_uri,

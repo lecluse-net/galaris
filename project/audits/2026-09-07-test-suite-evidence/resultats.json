@@ -2100,7 +2100,7 @@
         "message": ""
       }
     ],
-    "front/app/tools/responsiveToolDialog.test.mjs": [
+    "front/app/services/responsiveToolDialog.test.mjs": [
       {
         "name": "the tool editor uses readable stacked layouts on mobile",
         "status": "passed",
@@ -6540,9 +6540,9 @@
         "message": ""
       }
     ],
-    "app.connection.tests.test_service.TestConnectionService.test_get_connection_by_agent_tool": [
+    "app.connection.tests.test_service.TestConnectionService.test_get_connection_by_agent_service": [
       {
-        "name": "test_get_connection_by_agent_tool",
+        "name": "test_get_connection_by_agent_service",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
@@ -8334,9 +8334,9 @@
         "message": ""
       }
     ],
-    "app.file_share.tests.test_file_share.test_resolve_transport_uses_tool_code": [
+    "app.file_share.tests.test_file_share.test_resolve_transport_uses_service_code": [
       {
-        "name": "test_resolve_transport_uses_tool_code",
+        "name": "test_resolve_transport_uses_service_code",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
@@ -8750,9 +8750,9 @@
         "message": ""
       }
     ],
-    "app.file_share.tests.test_resource_service.test_scheme_listing_uses_connected_tool_codes_not_capability_names": [
+    "app.file_share.tests.test_resource_service.test_scheme_listing_uses_connected_service_codes_not_capability_names": [
       {
-        "name": "test_scheme_listing_uses_connected_tool_codes_not_capability_names",
+        "name": "test_scheme_listing_uses_connected_service_codes_not_capability_names",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
@@ -8862,9 +8862,9 @@
         "message": ""
       }
     ],
-    "app.file_share.tests.test_resource_service.test_messenger_listing_uses_tool_code_room_locator_and_local_file_uuid": [
+    "app.file_share.tests.test_resource_service.test_messenger_listing_uses_service_code_room_locator_and_local_file_uuid": [
       {
-        "name": "test_messenger_listing_uses_tool_code_room_locator_and_local_file_uuid",
+        "name": "test_messenger_listing_uses_service_code_room_locator_and_local_file_uuid",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
@@ -8936,73 +8936,73 @@
         "message": ""
       }
     ],
-    "app.file_share.tests.test_resource_uri.test_reserved_tool_codes_are_rejected": [
+    "app.file_share.tests.test_resource_uri.test_reserved_service_codes_are_rejected": [
       {
-        "name": "test_reserved_tool_codes_are_rejected[http]",
+        "name": "test_reserved_service_codes_are_rejected[http]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_reserved_tool_codes_are_rejected[https]",
+        "name": "test_reserved_service_codes_are_rejected[https]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_reserved_tool_codes_are_rejected[ssh]",
+        "name": "test_reserved_service_codes_are_rejected[ssh]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_reserved_tool_codes_are_rejected[workspace]",
+        "name": "test_reserved_service_codes_are_rejected[workspace]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_reserved_tool_codes_are_rejected[messenger]",
+        "name": "test_reserved_service_codes_are_rejected[messenger]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_reserved_tool_codes_are_rejected[galaris]",
+        "name": "test_reserved_service_codes_are_rejected[galaris]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_reserved_tool_codes_are_rejected[image]",
+        "name": "test_reserved_service_codes_are_rejected[image]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_reserved_tool_codes_are_rejected[n8n]",
+        "name": "test_reserved_service_codes_are_rejected[n8n]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_reserved_tool_codes_are_rejected[task]",
+        "name": "test_reserved_service_codes_are_rejected[task]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       }
     ],
-    "app.file_share.tests.test_resource_uri.test_file_share_tool_code_must_be_a_uri_scheme": [
+    "app.file_share.tests.test_resource_uri.test_file_share_service_code_must_be_a_uri_scheme": [
       {
-        "name": "test_file_share_tool_code_must_be_a_uri_scheme",
+        "name": "test_file_share_service_code_must_be_a_uri_scheme",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       }
     ],
-    "app.file_share.tests.test_resource_uri.test_messenger_tool_code_must_also_be_a_uri_scheme": [
+    "app.file_share.tests.test_resource_uri.test_messenger_service_code_must_also_be_a_uri_scheme": [
       {
-        "name": "test_messenger_tool_code_must_also_be_a_uri_scheme",
+        "name": "test_messenger_service_code_must_also_be_a_uri_scheme",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
@@ -14960,9 +14960,9 @@
         "message": ""
       }
     ],
-    "app.messenger.tests.test_resource_reference.test_attachment_resource_uri_uses_exact_tool_code_and_provider_room": [
+    "app.messenger.tests.test_resource_reference.test_attachment_resource_uri_uses_exact_service_code_and_provider_room": [
       {
-        "name": "test_attachment_resource_uri_uses_exact_tool_code_and_provider_room",
+        "name": "test_attachment_resource_uri_uses_exact_service_code_and_provider_room",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
@@ -17642,7 +17642,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_admin_access.test_galaris_admin_access_requires_an_active_connection": [
+    "app.services.tests.test_admin_access.test_galaris_admin_access_requires_an_active_connection": [
       {
         "name": "test_galaris_admin_access_requires_an_active_connection",
         "status": "passed",
@@ -17650,7 +17650,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_admin_access.test_galaris_admin_access_accepts_an_active_connection": [
+    "app.services.tests.test_admin_access.test_galaris_admin_access_accepts_an_active_connection": [
       {
         "name": "test_galaris_admin_access_accepts_an_active_connection",
         "status": "passed",
@@ -17658,7 +17658,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_agent_context_routes_youtube_urls_through_audio_transcribe": [
+    "app.services.tests.test_agent_registry.test_agent_context_routes_youtube_urls_through_audio_transcribe": [
       {
         "name": "test_agent_context_routes_youtube_urls_through_audio_transcribe",
         "status": "passed",
@@ -17666,7 +17666,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_agent_context_exposes_only_one_local_filesystem": [
+    "app.services.tests.test_agent_registry.test_agent_context_exposes_only_one_local_filesystem": [
       {
         "name": "test_agent_context_exposes_only_one_local_filesystem",
         "status": "passed",
@@ -17674,7 +17674,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_internal_mcp_toolset_uses_internal_runtime": [
+    "app.services.tests.test_agent_registry.test_internal_mcp_toolset_uses_internal_runtime": [
       {
         "name": "test_internal_mcp_toolset_uses_internal_runtime",
         "status": "passed",
@@ -17682,7 +17682,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_internal_mcp_toolset_defers_tools_outside_preselected_scope": [
+    "app.services.tests.test_agent_registry.test_internal_mcp_toolset_defers_tools_outside_preselected_scope": [
       {
         "name": "test_internal_mcp_toolset_defers_tools_outside_preselected_scope",
         "status": "passed",
@@ -17690,7 +17690,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_resource_uri_tools_are_available_to_both_runtimes": [
+    "app.services.tests.test_agent_registry.test_resource_uri_tools_are_available_to_both_runtimes": [
       {
         "name": "test_resource_uri_tools_are_available_to_both_runtimes",
         "status": "passed",
@@ -17698,7 +17698,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_tool_advertisement_contains_only_projected_native_functions": [
+    "app.services.tests.test_agent_registry.test_tool_advertisement_contains_only_projected_native_functions": [
       {
         "name": "test_tool_advertisement_contains_only_projected_native_functions",
         "status": "passed",
@@ -17706,7 +17706,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_conversation_advertisement_lists_only_task_only_application_tools": [
+    "app.services.tests.test_agent_registry.test_conversation_advertisement_lists_only_task_only_application_tools": [
       {
         "name": "test_conversation_advertisement_lists_only_task_only_application_tools",
         "status": "passed",
@@ -17714,7 +17714,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_tool_advertisement_exposes_one_local_filesystem_policy": [
+    "app.services.tests.test_agent_registry.test_tool_advertisement_exposes_one_local_filesystem_policy": [
       {
         "name": "test_tool_advertisement_exposes_one_local_filesystem_policy",
         "status": "passed",
@@ -17722,7 +17722,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_conversation_toolset_uses_complete_checked_tool_projection": [
+    "app.services.tests.test_agent_registry.test_conversation_toolset_uses_complete_checked_tool_projection": [
       {
         "name": "test_conversation_toolset_uses_complete_checked_tool_projection",
         "status": "passed",
@@ -17730,7 +17730,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_native_compatibility_toolsets_keep_short_mcp_names": [
+    "app.services.tests.test_agent_registry.test_native_compatibility_toolsets_keep_short_mcp_names": [
       {
         "name": "test_native_compatibility_toolsets_keep_short_mcp_names",
         "status": "passed",
@@ -17738,7 +17738,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_tool_advertisement_encourages_shared_documents_when_available": [
+    "app.services.tests.test_agent_registry.test_tool_advertisement_encourages_shared_documents_when_available": [
       {
         "name": "test_tool_advertisement_encourages_shared_documents_when_available",
         "status": "passed",
@@ -17746,7 +17746,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_agent_registry.test_tool_advertisement_requires_memory_lookup_for_named_mail_recipient": [
+    "app.services.tests.test_agent_registry.test_tool_advertisement_requires_memory_lookup_for_named_mail_recipient": [
       {
         "name": "test_tool_advertisement_requires_memory_lookup_for_named_mail_recipient",
         "status": "passed",
@@ -17754,7 +17754,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_catalog_refresh_service.test_full_refresh_reconciles_index_only_after_complete_discovery": [
+    "app.services.tests.test_catalog_refresh_service.test_full_refresh_reconciles_index_only_after_complete_discovery": [
       {
         "name": "test_full_refresh_reconciles_index_only_after_complete_discovery",
         "status": "passed",
@@ -17762,7 +17762,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_catalog_refresh_service.test_targeted_refresh_does_not_force_or_prune_embeddings": [
+    "app.services.tests.test_catalog_refresh_service.test_targeted_refresh_does_not_force_or_prune_embeddings": [
       {
         "name": "test_targeted_refresh_does_not_force_or_prune_embeddings",
         "status": "passed",
@@ -17770,7 +17770,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_conversation_admin_mcp.test_text_round_admin_tool_maps_uuid_to_complete_inspection": [
+    "app.services.tests.test_conversation_admin_mcp.test_text_round_admin_tool_maps_uuid_to_complete_inspection": [
       {
         "name": "test_text_round_admin_tool_maps_uuid_to_complete_inspection",
         "status": "passed",
@@ -17778,7 +17778,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_conversation_admin_mcp.test_voice_turn_admin_tool_maps_uuid_to_complete_inspection": [
+    "app.services.tests.test_conversation_admin_mcp.test_voice_turn_admin_tool_maps_uuid_to_complete_inspection": [
       {
         "name": "test_voice_turn_admin_tool_maps_uuid_to_complete_inspection",
         "status": "passed",
@@ -17786,7 +17786,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_conversation_admin_mcp.test_admin_tools_reject_non_uuid_identifiers": [
+    "app.services.tests.test_conversation_admin_mcp.test_admin_tools_reject_non_uuid_identifiers": [
       {
         "name": "test_admin_tools_reject_non_uuid_identifiers",
         "status": "passed",
@@ -17794,7 +17794,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_global_params.test_new_schema_defaults_are_merged_without_overwriting_global_values": [
+    "app.services.tests.test_global_params.test_new_schema_defaults_are_merged_without_overwriting_global_values": [
       {
         "name": "test_new_schema_defaults_are_merged_without_overwriting_global_values",
         "status": "passed",
@@ -17802,7 +17802,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_global_params.test_global_params_encrypt_secrets_and_preserve_them_on_empty_write": [
+    "app.services.tests.test_global_params.test_global_params_encrypt_secrets_and_preserve_them_on_empty_write": [
       {
         "name": "test_global_params_encrypt_secrets_and_preserve_them_on_empty_write",
         "status": "passed",
@@ -17810,7 +17810,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_global_params.test_global_param_clear_removes_value_and_lock": [
+    "app.services.tests.test_global_params.test_global_param_clear_removes_value_and_lock": [
       {
         "name": "test_global_param_clear_removes_value_and_lock",
         "status": "passed",
@@ -17818,7 +17818,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_sync_integrated_connections_delegates_to_dbadmin_merge": [
+    "app.services.tests.test_mandatory_tools.test_sync_integrated_connections_delegates_to_dbadmin_merge": [
       {
         "name": "test_sync_integrated_connections_delegates_to_dbadmin_merge",
         "status": "passed",
@@ -17826,7 +17826,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_connection_dataset_is_idempotent_and_preserves_admin_activation": [
+    "app.services.tests.test_mandatory_tools.test_connection_dataset_is_idempotent_and_preserves_admin_activation": [
       {
         "name": "test_connection_dataset_is_idempotent_and_preserves_admin_activation",
         "status": "passed",
@@ -17834,7 +17834,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_management_tool_packages_are_connected_inactive_by_default": [
+    "app.services.tests.test_mandatory_tools.test_management_tool_packages_are_connected_inactive_by_default": [
       {
         "name": "test_management_tool_packages_are_connected_inactive_by_default",
         "status": "passed",
@@ -17842,7 +17842,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_fast_core_tools_are_enabled_for_new_conversation_installations": [
+    "app.services.tests.test_mandatory_tools.test_fast_core_tools_are_enabled_for_new_conversation_installations": [
       {
         "name": "test_fast_core_tools_are_enabled_for_new_conversation_installations",
         "status": "passed",
@@ -17850,7 +17850,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_chat_is_auto_connected_active_without_mcp_tools": [
+    "app.services.tests.test_mandatory_tools.test_chat_is_auto_connected_active_without_mcp_tools": [
       {
         "name": "test_chat_is_auto_connected_active_without_mcp_tools",
         "status": "passed",
@@ -17858,7 +17858,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_browser_package_is_configurable_and_inactive_by_default": [
+    "app.services.tests.test_mandatory_tools.test_browser_package_is_configurable_and_inactive_by_default": [
       {
         "name": "test_browser_package_is_configurable_and_inactive_by_default",
         "status": "passed",
@@ -17866,7 +17866,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_console_host_key_is_a_write_only_connection_parameter": [
+    "app.services.tests.test_mandatory_tools.test_console_host_key_is_a_write_only_connection_parameter": [
       {
         "name": "test_console_host_key_is_a_write_only_connection_parameter",
         "status": "passed",
@@ -17874,7 +17874,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_mail_connection_parameters_have_a_stable_logical_order": [
+    "app.services.tests.test_mandatory_tools.test_mail_connection_parameters_have_a_stable_logical_order": [
       {
         "name": "test_mail_connection_parameters_have_a_stable_logical_order",
         "status": "passed",
@@ -17882,7 +17882,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_calendar_requires_an_administrator_connection": [
+    "app.services.tests.test_mandatory_tools.test_calendar_requires_an_administrator_connection": [
       {
         "name": "test_calendar_requires_an_administrator_connection",
         "status": "passed",
@@ -17890,7 +17890,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_topic_tool_is_seeded_without_agent_connections": [
+    "app.services.tests.test_mandatory_tools.test_topic_tool_is_seeded_without_agent_connections": [
       {
         "name": "test_topic_tool_is_seeded_without_agent_connections",
         "status": "passed",
@@ -17898,7 +17898,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mandatory_tools.test_messaging_bridges_are_not_mandatory_tools": [
+    "app.services.tests.test_mandatory_tools.test_messaging_bridges_are_not_mandatory_tools": [
       {
         "name": "test_messaging_bridges_are_not_mandatory_tools",
         "status": "passed",
@@ -17906,7 +17906,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp.test_tools_list_omits_every_unauthorized_function_and_group": [
+    "app.services.tests.test_mcp.test_tools_list_omits_every_unauthorized_function_and_group": [
       {
         "name": "test_tools_list_omits_every_unauthorized_function_and_group",
         "status": "passed",
@@ -17914,7 +17914,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_diagnostics.test_classify_mcp_exception": [
+    "app.services.tests.test_mcp_diagnostics.test_classify_mcp_exception": [
       {
         "name": "test_classify_mcp_exception[error0-authentication]",
         "status": "passed",
@@ -17964,7 +17964,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_diagnostics.test_probe_reports_dns_tcp_and_tls_details": [
+    "app.services.tests.test_mcp_diagnostics.test_probe_reports_dns_tcp_and_tls_details": [
       {
         "name": "test_probe_reports_dns_tcp_and_tls_details",
         "status": "passed",
@@ -17972,7 +17972,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_diagnostics.test_diagnostic_uses_preview_config_and_ephemeral_params": [
+    "app.services.tests.test_mcp_diagnostics.test_diagnostic_uses_preview_config_and_ephemeral_params": [
       {
         "name": "test_diagnostic_uses_preview_config_and_ephemeral_params",
         "status": "passed",
@@ -17980,7 +17980,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_diagnostics.test_diagnostic_reports_authentication_rejection": [
+    "app.services.tests.test_mcp_diagnostics.test_diagnostic_reports_authentication_rejection": [
       {
         "name": "test_diagnostic_reports_authentication_rejection",
         "status": "passed",
@@ -17988,7 +17988,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_execute_native_tool_reuses_authorization_and_effect_projection": [
+    "app.services.tests.test_mcp_loader.test_execute_native_tool_reuses_authorization_and_effect_projection": [
       {
         "name": "test_execute_native_tool_reuses_authorization_and_effect_projection",
         "status": "passed",
@@ -17996,7 +17996,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_native_tool_timeout_is_bounded_and_cancels_the_operation": [
+    "app.services.tests.test_mcp_loader.test_native_tool_timeout_is_bounded_and_cancels_the_operation": [
       {
         "name": "test_native_tool_timeout_is_bounded_and_cancels_the_operation",
         "status": "passed",
@@ -18004,7 +18004,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_parallel_native_tools_receive_distinct_database_sessions": [
+    "app.services.tests.test_mcp_loader.test_parallel_native_tools_receive_distinct_database_sessions": [
       {
         "name": "test_parallel_native_tools_receive_distinct_database_sessions",
         "status": "passed",
@@ -18012,7 +18012,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_recoverable_native_tool_error_keeps_its_actionable_message": [
+    "app.services.tests.test_mcp_loader.test_recoverable_native_tool_error_keeps_its_actionable_message": [
       {
         "name": "test_recoverable_native_tool_error_keeps_its_actionable_message",
         "status": "passed",
@@ -18020,15 +18020,15 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_mcp_loader_discovers_decorated_tools_by_tool_code": [
+    "app.services.tests.test_mcp_loader.test_mcp_loader_discovers_decorated_tools_by_service_code": [
       {
-        "name": "test_mcp_loader_discovers_decorated_tools_by_tool_code",
+        "name": "test_mcp_loader_discovers_decorated_tools_by_service_code",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_tool_execution_policy_is_explicit_and_conservative": [
+    "app.services.tests.test_mcp_loader.test_tool_execution_policy_is_explicit_and_conservative": [
       {
         "name": "test_tool_execution_policy_is_explicit_and_conservative",
         "status": "passed",
@@ -18036,15 +18036,15 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_tool_code_does_not_implicitly_authorize_messenger": [
+    "app.services.tests.test_mcp_loader.test_service_code_does_not_implicitly_authorize_messenger": [
       {
-        "name": "test_tool_code_does_not_implicitly_authorize_messenger",
+        "name": "test_service_code_does_not_implicitly_authorize_messenger",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_disabled_bridge_removes_only_explicit_messaging_family": [
+    "app.services.tests.test_mcp_loader.test_disabled_bridge_removes_only_explicit_messaging_family": [
       {
         "name": "test_disabled_bridge_removes_only_explicit_messaging_family",
         "status": "passed",
@@ -18052,7 +18052,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_concrete_tool_requires_explicit_messenger_capability": [
+    "app.services.tests.test_mcp_loader.test_concrete_tool_requires_explicit_messenger_capability": [
       {
         "name": "test_concrete_tool_requires_explicit_messenger_capability",
         "status": "passed",
@@ -18060,7 +18060,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_agent_catalog_accumulates_mcp_messenger_and_file_share_capabilities": [
+    "app.services.tests.test_mcp_loader.test_agent_catalog_accumulates_mcp_messenger_and_file_share_capabilities": [
       {
         "name": "test_agent_catalog_accumulates_mcp_messenger_and_file_share_capabilities",
         "status": "passed",
@@ -18068,7 +18068,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_enabled_native_definition_projection_applies_every_visibility_filter": [
+    "app.services.tests.test_mcp_loader.test_enabled_native_definition_projection_applies_every_visibility_filter": [
       {
         "name": "test_enabled_native_definition_projection_applies_every_visibility_filter",
         "status": "passed",
@@ -18076,7 +18076,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_conversation_projection_intersects_checkbox_and_function_policy": [
+    "app.services.tests.test_mcp_loader.test_conversation_projection_intersects_checkbox_and_function_policy": [
       {
         "name": "test_conversation_projection_intersects_checkbox_and_function_policy",
         "status": "passed",
@@ -18084,7 +18084,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_conversation_projection_keeps_voice_stop_as_call_control": [
+    "app.services.tests.test_mcp_loader.test_conversation_projection_keeps_voice_stop_as_call_control": [
       {
         "name": "test_conversation_projection_keeps_voice_stop_as_call_control",
         "status": "passed",
@@ -18092,7 +18092,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_task_projection_excludes_conversation_control_tools": [
+    "app.services.tests.test_mcp_loader.test_task_projection_excludes_conversation_control_tools": [
       {
         "name": "test_task_projection_excludes_conversation_control_tools",
         "status": "passed",
@@ -18100,7 +18100,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_checked_search_is_available_in_conversation_mode": [
+    "app.services.tests.test_mcp_loader.test_checked_search_is_available_in_conversation_mode": [
       {
         "name": "test_checked_search_is_available_in_conversation_mode",
         "status": "passed",
@@ -18108,7 +18108,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_conversation_projection_maps_checked_bridge_to_messenger_family": [
+    "app.services.tests.test_mcp_loader.test_conversation_projection_maps_checked_bridge_to_messenger_family": [
       {
         "name": "test_conversation_projection_maps_checked_bridge_to_messenger_family",
         "status": "passed",
@@ -18116,7 +18116,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_conversation_aggregate_skips_unchecked_external_mcp": [
+    "app.services.tests.test_mcp_loader.test_conversation_aggregate_skips_unchecked_external_mcp": [
       {
         "name": "test_conversation_aggregate_skips_unchecked_external_mcp",
         "status": "passed",
@@ -18124,7 +18124,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_mcp_loader_filters_by_tool_and_runtime": [
+    "app.services.tests.test_mcp_loader.test_mcp_loader_filters_by_tool_and_runtime": [
       {
         "name": "test_mcp_loader_filters_by_tool_and_runtime",
         "status": "passed",
@@ -18132,7 +18132,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_wrapped_mcp_tool_returns_recoverable_error": [
+    "app.services.tests.test_mcp_loader.test_wrapped_mcp_tool_returns_recoverable_error": [
       {
         "name": "test_wrapped_mcp_tool_returns_recoverable_error",
         "status": "passed",
@@ -18140,7 +18140,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_file_create_reports_missing_remote_parent_and_recovery": [
+    "app.services.tests.test_mcp_loader.test_file_create_reports_missing_remote_parent_and_recovery": [
       {
         "name": "test_file_create_reports_missing_remote_parent_and_recovery",
         "status": "passed",
@@ -18148,7 +18148,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_native_tool_failures_have_stable_actionable_categories": [
+    "app.services.tests.test_mcp_loader.test_native_tool_failures_have_stable_actionable_categories": [
       {
         "name": "test_native_tool_failures_have_stable_actionable_categories[exc0-not_found]",
         "status": "passed",
@@ -18246,7 +18246,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_native_mcp_validation_detail_is_precise_and_secret_redacted": [
+    "app.services.tests.test_mcp_loader.test_native_mcp_validation_detail_is_precise_and_secret_redacted": [
       {
         "name": "test_native_mcp_validation_detail_is_precise_and_secret_redacted",
         "status": "passed",
@@ -18254,7 +18254,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_internal_model_rejection_is_not_an_mcp_argument_error": [
+    "app.services.tests.test_mcp_loader.test_internal_model_rejection_is_not_an_mcp_argument_error": [
       {
         "name": "test_internal_model_rejection_is_not_an_mcp_argument_error[400-provider]",
         "status": "passed",
@@ -18280,7 +18280,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_mcp_loader.test_native_domain_not_found_message_selects_lookup_recovery": [
+    "app.services.tests.test_mcp_loader.test_native_domain_not_found_message_selects_lookup_recovery": [
       {
         "name": "test_native_domain_not_found_message_selects_lookup_recovery",
         "status": "passed",
@@ -18288,7 +18288,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_nextcloud_configuration.test_nextcloud_messenger_and_file_share_configs_are_independent": [
+    "app.services.tests.test_nextcloud_configuration.test_nextcloud_messenger_and_file_share_configs_are_independent": [
       {
         "name": "test_nextcloud_messenger_and_file_share_configs_are_independent",
         "status": "passed",
@@ -18296,7 +18296,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_resource_effects.test_multimedia_process_promotes_only_completed_canonical_outputs": [
+    "app.services.tests.test_resource_effects.test_multimedia_process_promotes_only_completed_canonical_outputs": [
       {
         "name": "test_multimedia_process_promotes_only_completed_canonical_outputs",
         "status": "passed",
@@ -18304,7 +18304,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_resource_effects.test_document_result_records_exact_role_and_revision": [
+    "app.services.tests.test_resource_effects.test_document_result_records_exact_role_and_revision": [
       {
         "name": "test_document_result_records_exact_role_and_revision",
         "status": "passed",
@@ -18312,7 +18312,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_resource_effects.test_file_delivery_records_artifact_and_receipt": [
+    "app.services.tests.test_resource_effects.test_file_delivery_records_artifact_and_receipt": [
       {
         "name": "test_file_delivery_records_artifact_and_receipt",
         "status": "passed",
@@ -18320,7 +18320,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_resource_effects.test_audio_delivery_records_artifact_and_receipt": [
+    "app.services.tests.test_resource_effects.test_audio_delivery_records_artifact_and_receipt": [
       {
         "name": "test_audio_delivery_records_artifact_and_receipt",
         "status": "passed",
@@ -18328,7 +18328,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_resource_effects.test_cross_provider_delivery_records_exact_source_and_destination_uris": [
+    "app.services.tests.test_resource_effects.test_cross_provider_delivery_records_exact_source_and_destination_uris": [
       {
         "name": "test_cross_provider_delivery_records_exact_source_and_destination_uris",
         "status": "passed",
@@ -18336,7 +18336,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_resource_effects.test_complete_binary_write_records_a_produced_console_artifact": [
+    "app.services.tests.test_resource_effects.test_complete_binary_write_records_a_produced_console_artifact": [
       {
         "name": "test_complete_binary_write_records_a_produced_console_artifact",
         "status": "passed",
@@ -18344,7 +18344,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_resource_effects.test_file_upload_records_remote_artifact_and_receipt": [
+    "app.services.tests.test_resource_effects.test_file_upload_records_remote_artifact_and_receipt": [
       {
         "name": "test_file_upload_records_remote_artifact_and_receipt",
         "status": "passed",
@@ -18352,7 +18352,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_resource_effects.test_successful_git_push_records_a_durable_delivery_receipt": [
+    "app.services.tests.test_resource_effects.test_successful_git_push_records_a_durable_delivery_receipt": [
       {
         "name": "test_successful_git_push_records_a_durable_delivery_receipt",
         "status": "passed",
@@ -18360,7 +18360,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_resource_effects.test_console_command_without_push_records_no_delivery_receipt": [
+    "app.services.tests.test_resource_effects.test_console_command_without_push_records_no_delivery_receipt": [
       {
         "name": "test_console_command_without_push_records_no_delivery_receipt",
         "status": "passed",
@@ -18368,7 +18368,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_router.test_mcp_connection_delegates_with_existing_secret_config": [
+    "app.services.tests.test_router.test_mcp_connection_delegates_with_existing_secret_config": [
       {
         "name": "test_mcp_connection_delegates_with_existing_secret_config",
         "status": "passed",
@@ -18376,7 +18376,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_router.test_integrated_tool_global_params_can_be_updated": [
+    "app.services.tests.test_router.test_integrated_tool_global_params_can_be_updated": [
       {
         "name": "test_integrated_tool_global_params_can_be_updated",
         "status": "passed",
@@ -18384,7 +18384,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_secrets.test_mcp_literals_are_encrypted_at_rest_and_write_only": [
+    "app.services.tests.test_secrets.test_mcp_literals_are_encrypted_at_rest_and_write_only": [
       {
         "name": "test_mcp_literals_are_encrypted_at_rest_and_write_only",
         "status": "passed",
@@ -18392,7 +18392,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_secrets.test_write_only_placeholders_preserve_existing_values": [
+    "app.services.tests.test_secrets.test_write_only_placeholders_preserve_existing_values": [
       {
         "name": "test_write_only_placeholders_preserve_existing_values",
         "status": "passed",
@@ -18400,7 +18400,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_secrets.test_listener_token_is_encrypted_masked_and_removable": [
+    "app.services.tests.test_secrets.test_listener_token_is_encrypted_masked_and_removable": [
       {
         "name": "test_listener_token_is_encrypted_masked_and_removable",
         "status": "passed",
@@ -18408,7 +18408,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_secrets.test_connection_references_resolve_only_at_runtime": [
+    "app.services.tests.test_secrets.test_connection_references_resolve_only_at_runtime": [
       {
         "name": "test_connection_references_resolve_only_at_runtime",
         "status": "passed",
@@ -18416,7 +18416,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_secrets.test_password_defaults_are_detected_and_never_projected": [
+    "app.services.tests.test_secrets.test_password_defaults_are_detected_and_never_projected": [
       {
         "name": "test_password_defaults_are_detected_and_never_projected",
         "status": "passed",
@@ -18424,7 +18424,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_secrets.test_public_tool_projection_contains_presence_flags_only": [
+    "app.services.tests.test_secrets.test_public_tool_projection_contains_presence_flags_only": [
       {
         "name": "test_public_tool_projection_contains_presence_flags_only",
         "status": "passed",
@@ -18432,7 +18432,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_tool_catalog.test_effective_catalog_is_rights_filtered_and_secret_free": [
+    "app.services.tests.test_tool_catalog.test_effective_catalog_is_rights_filtered_and_secret_free": [
       {
         "name": "test_effective_catalog_is_rights_filtered_and_secret_free",
         "status": "passed",
@@ -18440,7 +18440,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_tool_catalog.test_catalog_version_changes_with_public_definition": [
+    "app.services.tests.test_tool_catalog.test_catalog_version_changes_with_public_definition": [
       {
         "name": "test_catalog_version_changes_with_public_definition",
         "status": "passed",
@@ -18448,7 +18448,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_tool_catalog.test_catalog_rejects_ambiguous_normalized_names": [
+    "app.services.tests.test_tool_catalog.test_catalog_rejects_ambiguous_normalized_names": [
       {
         "name": "test_catalog_rejects_ambiguous_normalized_names",
         "status": "passed",
@@ -18456,7 +18456,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_tool_search_service.test_lexical_search_indexes_only_effective_catalog": [
+    "app.services.tests.test_tool_search_service.test_lexical_search_indexes_only_effective_catalog": [
       {
         "name": "test_lexical_search_indexes_only_effective_catalog",
         "status": "passed",
@@ -18464,7 +18464,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_tool_search_service.test_hybrid_search_prefilters_authorized_fingerprints": [
+    "app.services.tests.test_tool_search_service.test_hybrid_search_prefilters_authorized_fingerprints": [
       {
         "name": "test_hybrid_search_prefilters_authorized_fingerprints",
         "status": "passed",
@@ -18472,7 +18472,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_tool_search_service.test_hybrid_search_reembeds_when_provider_dimensions_change": [
+    "app.services.tests.test_tool_search_service.test_hybrid_search_reembeds_when_provider_dimensions_change": [
       {
         "name": "test_hybrid_search_reembeds_when_provider_dimensions_change",
         "status": "passed",
@@ -18480,7 +18480,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_tool_search_service.test_forced_refresh_prunes_stale_documents_after_complete_snapshot": [
+    "app.services.tests.test_tool_search_service.test_forced_refresh_prunes_stale_documents_after_complete_snapshot": [
       {
         "name": "test_forced_refresh_prunes_stale_documents_after_complete_snapshot",
         "status": "passed",
@@ -18488,7 +18488,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_tool_search_service.test_lexical_discovery_corpus_returns_expected_tool_first": [
+    "app.services.tests.test_tool_search_service.test_lexical_discovery_corpus_returns_expected_tool_first": [
       {
         "name": "test_lexical_discovery_corpus_returns_expected_tool_first[send a message to a room-messenger_room_send_message]",
         "status": "passed",
@@ -18514,7 +18514,7 @@
         "message": ""
       }
     ],
-    "app.tools.tests.test_tool_search_service.test_isolated_search_rolls_back_before_database_free_fallback": [
+    "app.services.tests.test_tool_search_service.test_isolated_search_rolls_back_before_database_free_fallback": [
       {
         "name": "test_isolated_search_rolls_back_before_database_free_fallback",
         "status": "passed",
@@ -28074,41 +28074,41 @@
         "message": ""
       }
     ],
-    "tests.test_tool_import_export.test_create_rejects_reserved_tool_codes_before_writing": [
+    "tests.test_tool_import_export.test_create_rejects_reserved_service_codes_before_writing": [
       {
-        "name": "test_create_rejects_reserved_tool_codes_before_writing[http]",
+        "name": "test_create_rejects_reserved_service_codes_before_writing[http]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_create_rejects_reserved_tool_codes_before_writing[https]",
+        "name": "test_create_rejects_reserved_service_codes_before_writing[https]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_create_rejects_reserved_tool_codes_before_writing[workspace]",
+        "name": "test_create_rejects_reserved_service_codes_before_writing[workspace]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_create_rejects_reserved_tool_codes_before_writing[messenger]",
+        "name": "test_create_rejects_reserved_service_codes_before_writing[messenger]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       },
       {
-        "name": "test_create_rejects_reserved_tool_codes_before_writing[galaris]",
+        "name": "test_create_rejects_reserved_service_codes_before_writing[galaris]",
         "status": "passed",
         "seconds": 0.001,
         "message": ""
       }
     ],
-    "tests.test_tool_import_export.test_file_share_tool_code_must_be_uri_compatible": [
+    "tests.test_tool_import_export.test_file_share_service_code_must_be_uri_compatible": [
       {
-        "name": "test_file_share_tool_code_must_be_uri_compatible",
+        "name": "test_file_share_service_code_must_be_uri_compatible",
         "status": "passed",
         "seconds": 0.001,
         "message": ""

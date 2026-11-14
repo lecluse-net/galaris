@@ -39,14 +39,14 @@ def _phone_ref(value: str, secret: str) -> str:
 async def _connection_for_phone_number_id(
     phone_number_id: str,
     *,
-    tool_id: int | None = None,
+    service_id: int | None = None,
 ) -> int | None:
     from app.connection import connection_service
     from app.messenger import messaging_tool_records
 
     matches: list[int] = []
     for tool in await messaging_tool_records("whatsapp"):
-        if tool_id is not None and int(tool.id) != tool_id:
+        if service_id is not None and int(tool.id) != service_id:
             continue
         messenger_config = cast(dict[str, Any], tool.messenger_config or {})
         param_map = cast(dict[str, Any], messenger_config.get("param_map") or {})
@@ -66,11 +66,11 @@ async def _connection_for_phone_number_id(
     return matches[0] if matches else None
 
 
-async def _tool_settings(tool_id: int) -> dict[str, str]:
+async def _tool_settings(service_id: int) -> dict[str, str]:
     from app.messenger import kind_for_tool
-    from app.tools import tool_service
+    from app.services import service
 
-    tool = await tool_service.get_tool_by_id(tool_id)
+    tool = await service.get_service_by_id(service_id)
     if tool is None or kind_for_tool(tool) != "whatsapp" or tool.messenger is None:
         return {}
     return dict(tool.messenger.settings)
@@ -95,10 +95,10 @@ async def verify_webhook(
     return Response(content=challenge, media_type="text/plain")
 
 
-@router.get("/webhook/{tool_id}", response_class=Response)
+@router.get("/webhook/{service_id}", response_class=Response)
 @independent_auth(reason="Tool-specific Meta webhook challenge token")
 async def verify_tool_webhook(
-    tool_id: int,
+    service_id: int,
     mode: str = Query(default="", alias="hub.mode"),
     verify_token: str = Query(default="", alias="hub.verify_token"),
     challenge: str = Query(default="", alias="hub.challenge"),
@@ -107,7 +107,7 @@ async def verify_tool_webhook(
 
     if not is_kind_enabled("whatsapp"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    configured = (await _tool_settings(tool_id)).get("verify_token", "")
+    configured = (await _tool_settings(service_id)).get("verify_token", "")
     if not configured:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
     if mode != "subscribe" or not challenge:
@@ -133,7 +133,7 @@ def _contacts(value: dict[str, Any]) -> dict[str, str]:
 async def _process_value(
     value: dict[str, Any],
     *,
-    tool_id: int | None = None,
+    service_id: int | None = None,
     signature_secret: str,
 ) -> None:
     if not is_kind_enabled("whatsapp"):
@@ -144,7 +144,7 @@ async def _process_value(
         return
     connection_id = await _connection_for_phone_number_id(
         phone_number_id,
-        tool_id=tool_id,
+        service_id=service_id,
     )
     if connection_id is None:
         logger.warning("WhatsApp webhook has no unique active connection")
@@ -183,7 +183,7 @@ async def _process_value(
                 raw,
                 contacts=contacts,
                 phone_number_id=phone_number_id,
-                tool_id=messenger.tool_id,
+                service_id=messenger.service_id,
                 connection_id=connection_id,
                 agent_id=messenger.agent_id,
             )
@@ -202,7 +202,7 @@ async def _process_value(
 async def _receive_webhook(
     request: Request,
     *,
-    tool_id: int | None,
+    service_id: int | None,
 ) -> dict[str, str]:
     if not is_kind_enabled("whatsapp"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -220,8 +220,8 @@ async def _receive_webhook(
         body.extend(chunk)
     raw = bytes(body)
     secret = (
-        (await _tool_settings(tool_id)).get("app_secret", "")
-        if tool_id is not None
+        (await _tool_settings(service_id)).get("app_secret", "")
+        if service_id is not None
         else runtime_settings.MESSENGER_WHATSAPP_APP_SECRET
     )
     if not secret:
@@ -243,7 +243,7 @@ async def _receive_webhook(
             if change.field == "messages":
                 await _process_value(
                     change.value,
-                    tool_id=tool_id,
+                    service_id=service_id,
                     signature_secret=secret,
                 )
     return {"status": "ok"}
@@ -254,15 +254,15 @@ async def _receive_webhook(
 async def receive_webhook(request: Request) -> dict[str, str]:
     """Compatibility endpoint using the former global Meta application."""
 
-    return await _receive_webhook(request, tool_id=None)
+    return await _receive_webhook(request, service_id=None)
 
 
-@router.post("/webhook/{tool_id}")
+@router.post("/webhook/{service_id}")
 @independent_auth(reason="Tool-specific Meta payload signature")
 async def receive_tool_webhook(
     request: Request,
-    tool_id: int,
+    service_id: int,
 ) -> dict[str, str]:
     """Receive events for one Tool-selected WhatsApp bridge."""
 
-    return await _receive_webhook(request, tool_id=tool_id)
+    return await _receive_webhook(request, service_id=service_id)

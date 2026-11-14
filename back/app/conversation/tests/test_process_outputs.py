@@ -29,7 +29,7 @@ async def test_process_outputs_are_named_and_attached_despite_a_summary(
     message = await _message(db, connection, room, 1, "Prépare le bilan")
     await admit_message(message, agent_id=agent.id, connection_id=connection.id, language="fr")
     round_ = await claim_next_round("process-output-test")
-    definition = ProcessDefinition(agent_id=agent.id, tool_id=connection.tool_id,
+    definition = ProcessDefinition(agent_id=agent.id, service_id=connection.service_id,
         engine_process_id=f"synthetic-{uuid4()}", label="Bilan")
     db.add(definition)
     await db.flush()

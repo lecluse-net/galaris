@@ -65,7 +65,7 @@ This path covers installation and operations:
 - Docker, `.env`, secrets, the PostgreSQL database, and Atlas updates;
 - LLM providers and the models used by each function;
 - execution harness selection and configuration;
-- messaging, Tools, durable Goals, Skills, multimedia and YouTube transcription, n8n, voice,
+- messaging, Services, durable Goals, Skills, multimedia and YouTube transcription, n8n, voice,
   permissions, and accounts;
 - hybrid memory, Dream, learning, isolated browser, and real-time supervision;
 - scheduler tuning, backups, logs, and troubleshooting.

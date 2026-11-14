@@ -1,7 +1,7 @@
 """Resolve and connect streaming file transports for Galaris agents.
 
-External shares are configured like MCP servers: a Tool selects one or more capabilities and each
-agent supplies credentials through a connection. Resource URI schemes always use that Tool's
+External shares are configured like MCP servers: a Service selects one or more capabilities and each
+agent supplies credentials through a connection. Resource URI schemes always use that Service's
 code; Messenger and file sharing are capability-specific transports behind the same namespace.
 """
 
@@ -10,9 +10,9 @@ from __future__ import annotations
 from typing import Any, cast
 
 from app.connection import connection_service
-from app.tools import tool_service
-from app.tools import FileShareConfig, Tool
-from app.tools.contracts import FILE_INDEXING_PARAM, FileIndexingMode
+from app.services import service as service_catalog
+from app.services import FileShareConfig, Service
+from app.services.contracts import FILE_INDEXING_PARAM, FileIndexingMode
 from core.i18n import render_prompt, t
 
 from .bridges import BRIDGES, get_bridge
@@ -25,8 +25,8 @@ def _message(key: str, language: str | None = None, **values: Any) -> str:
     return render_prompt(t(f"file_share.errors.{key}", language), **values)
 
 
-def _has_messenger_files(tool: Tool) -> bool:
-    """Return whether the Tool's Messenger bridge exposes file resources."""
+def _has_messenger_files(tool: Service) -> bool:
+    """Return whether the Service's Messenger bridge exposes file resources."""
 
     if tool.messenger is None:
         return False
@@ -64,7 +64,7 @@ def build_client(
 
 async def _resolve_tool_config(
     agent_id: int,
-    tool_code: str,
+    service_code: str,
     *,
     language: str | None = None,
 ) -> tuple[FileShareConfig, dict[str, object]]:
@@ -73,8 +73,8 @@ async def _resolve_tool_config(
     for connection in connections:
         if not connection.active:
             continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
-        if not tool or tool.code != tool_code or not tool.file_share:
+        tool = await service_catalog.get_service_by_id(connection.service_id)
+        if not tool or tool.code != service_code or not tool.file_share:
             continue
         _, params = await connection_service.get_params_as_dict(
             connection, decrypt_passwords=True
@@ -83,29 +83,29 @@ async def _resolve_tool_config(
     raise ValueError(_message(
         "connection_not_found",
         language,
-        tool_code=tool_code,
+        service_code=service_code,
         agent_id=agent_id,
     ))
 
 
 async def _resolve_connected_tool(
     agent_id: int,
-    tool_code: str,
+    service_code: str,
     *,
     language: str | None = None,
     connection_id: int | None = None,
     inspect_mail_accounts: bool = False,
-) -> tuple[Any, Tool]:
-    """Resolve one active agent connection and its exact Tool code."""
+) -> tuple[Any, Service]:
+    """Resolve one active agent connection and its exact Service code."""
 
-    matches: list[tuple[Any, Tool]] = []
+    matches: list[tuple[Any, Service]] = []
     for connection in await connection_service.get_connections_by_agent(agent_id):
         if not connection.active:
             continue
         if connection_id is not None and connection.id != connection_id:
             continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
-        if tool is not None and tool.code == tool_code:
+        tool = await service_catalog.get_service_by_id(connection.service_id)
+        if tool is not None and tool.code == service_code:
             matches.append((connection, tool))
     if len(matches) == 1 or matches and inspect_mail_accounts and matches[0][1].mail is not None:
         return matches[0]
@@ -114,7 +114,7 @@ async def _resolve_connected_tool(
     raise ValueError(_message(
         "connection_not_found",
         language,
-        tool_code=tool_code,
+        service_code=service_code,
         agent_id=agent_id,
     ))
 
@@ -130,7 +130,7 @@ async def _resolve_client_by_bridge_service(
     for connection in connections:
         if not connection.active:
             continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+        tool = await service_catalog.get_service_by_id(connection.service_id)
         if not tool or not tool.file_share or tool.file_share.service != service:
             continue
         _, params = await connection_service.get_params_as_dict(
@@ -145,30 +145,30 @@ async def _resolve_client_by_bridge_service(
     ))
 
 
-async def list_tool_codes(agent_id: int) -> list[str]:
-    """List active Tool codes carrying file-share or Messenger resources."""
-    tool_codes: list[str] = []
+async def list_service_codes(agent_id: int) -> list[str]:
+    """List active Service codes carrying file-share or Messenger resources."""
+    service_codes: list[str] = []
     for connection in await connection_service.get_connections_by_agent(agent_id):
         if not connection.active:
             continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+        tool = await service_catalog.get_service_by_id(connection.service_id)
         if tool and (tool.file_share is not None or _has_messenger_files(tool)):
-            tool_codes.append(tool.code)
-    return sorted(set(tool_codes))
+            service_codes.append(tool.code)
+    return sorted(set(service_codes))
 
 
 async def list_services(agent_id: int) -> list[str]:
     """Return connected file-sharing tool codes."""
-    return await list_tool_codes(agent_id)
+    return await list_service_codes(agent_id)
 
 
-async def effective_file_indexing_mode(agent_id: int, tool_code: str) -> FileIndexingMode:
+async def effective_file_indexing_mode(agent_id: int, service_code: str) -> FileIndexingMode:
     """Read the ordinary parameter of an active connection without decrypting secrets."""
-    tool = await tool_service.get_tool_record(tool_code)
+    tool = await service_catalog.get_service_record(service_code)
     if tool is None:
         return "excluded"
     try:
-        connection = await connection_service.get_connection_by_agent_tool(tool.id, agent_id)
+        connection = await connection_service.get_connection_by_agent_service(tool.id, agent_id)
     except ValueError:
         # Mail accounts do not support implicit cross-account indexing.
         return "excluded"
@@ -188,15 +188,15 @@ async def describe_targets(
     targets: list[dict[str, Any]] = []
     seen: set[str] = set()
     connections = await connection_service.get_connections_by_agent(agent_id)
-    tools = await tool_service.get_tools_by_ids({connection.tool_id for connection in connections if connection.active})
+    tools = await service_catalog.get_services_by_ids({connection.service_id for connection in connections if connection.active})
     for connection in connections:
         if not connection.active:
             continue
-        tool = tools.get(connection.tool_id)
+        tool = tools.get(connection.service_id)
         if not tool or tool.code in seen:
             continue
         if tool.code == "console":
-            # console:// is a native provider. Its file-share configuration marks the Tool's
+            # console:// is a native provider. Its file-share configuration marks the Service's
             # capability in the catalog but is described by resource_service with the complete
             # SSH-home capability matrix.
             continue
@@ -228,26 +228,26 @@ async def describe_targets(
 
 async def resolve_resource_transport_with_service(
     agent_id: int,
-    tool_code: str,
+    service_code: str,
     locator: str,
     *,
     language: str | None = None,
 ) -> tuple[FileTransport, str]:
-    """Resolve a resource transport from Tool code and provider locator.
+    """Resolve a resource transport from Service code and provider locator.
 
-    A Tool carrying only Messenger always uses its messaging bridge. When it also carries a
+    A Service carrying only Messenger always uses its messaging bridge. When it also carries a
     file-share capability, a first locator segment matching one of that connection's known rooms
     selects Messenger; all other paths select the file-share bridge.
     """
 
-    if tool_code == "console":
+    if service_code == "console":
         return await resolve_transport_with_service(
             agent_id,
-            tool_code,
+            service_code,
             language=language,
         )
 
-    connection, tool = await _resolve_connected_tool(agent_id, tool_code, language=language, inspect_mail_accounts=True)
+    connection, tool = await _resolve_connected_tool(agent_id, service_code, language=language, inspect_mail_accounts=True)
     account_prefix = ""
     selected_account: int | None = None
     if tool.mail is not None:
@@ -259,9 +259,9 @@ async def resolve_resource_transport_with_service(
             selected_account = int(raw)
             account_prefix = base + f"account/{selected_account}/"
         elif locator in {base, base + "placeholder"}:
-            connection_tool_id = connection.tool_id
+            connection_service_id = connection.service_id
             accounts = [connection for connection in await connection_service.get_connections_by_agent(agent_id)
-                if connection.active and connection.tool_id == connection_tool_id]
+                if connection.active and connection.service_id == connection_service_id]
             if len(accounts) > 1:
                 factory = resource_transport_factory("mail")
                 if factory is None:
@@ -277,7 +277,7 @@ async def resolve_resource_transport_with_service(
                 return binder(labels, tool.code, prefix=base), "mail"
 
     if tool.mail is not None:
-        connection, tool = await _resolve_connected_tool(agent_id, tool_code, language=language, connection_id=selected_account)
+        connection, tool = await _resolve_connected_tool(agent_id, service_code, language=language, connection_id=selected_account)
     if tool.mail is not None and (tool.file_share is None or tool.file_share.service == "mail" or locator.startswith("mail/")):
         factory = resource_transport_factory("mail")
         if factory is None:
@@ -310,7 +310,7 @@ async def resolve_resource_transport_with_service(
         raise ValueError(_message(
             "connection_not_found",
             language,
-            tool_code=tool_code,
+            service_code=service_code,
             agent_id=agent_id,
         ))
     _, params = await connection_service.get_params_as_dict(
@@ -326,40 +326,40 @@ async def resolve_resource_transport_with_service(
 
 async def resolve_transport_with_service(
     agent_id: int,
-    tool_code: str,
+    service_code: str,
     *,
     language: str | None = None,
 ) -> tuple[FileTransport, str]:
     """Build a file-sharing tool transport and return its bridge service name."""
-    if tool_code == "image":
+    if service_code == "image":
         from app.image import ImageFileTransport
 
         return ImageFileTransport(), "image"
-    if tool_code == "console":
+    if service_code == "console":
         from app.console import build_run_resource
 
         return (await build_run_resource(agent_id)).files, "console"
-    if factory := resource_transport_factory(tool_code):
+    if factory := resource_transport_factory(service_code):
         # Resolve first so an inactive or missing Mail account cannot be used as a
-        # resource provider merely because the built-in Tool exists.
-        await _resolve_connected_tool(agent_id, tool_code, language=language)
-        return factory(agent_id), tool_code
+        # resource provider merely because the built-in Service exists.
+        await _resolve_connected_tool(agent_id, service_code, language=language)
+        return factory(agent_id), service_code
 
     config, params = await _resolve_tool_config(
-        agent_id, tool_code, language=language
+        agent_id, service_code, language=language
     )
     return build_client(config, params, language=language), config.service
 
 
 async def resolve_transport(
     agent_id: int,
-    tool_code: str,
+    service_code: str,
     *,
     language: str | None = None,
 ) -> FileTransport:
     """Build the ``FileTransport`` for an agent's tool code."""
     transport, _service = await resolve_transport_with_service(
-        agent_id, tool_code, language=language
+        agent_id, service_code, language=language
     )
     return transport
 

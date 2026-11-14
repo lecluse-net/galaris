@@ -95,7 +95,7 @@ Ne pas utiliser un texte final du modèle comme preuve qu’un outil a réelleme
 S’appuyer sur les événements et résultats structurés.
 
 Le Working Set conserve des URI de ressources canoniques (`console://` seulement si une console
-est active, `document://`, `galaris://`, schémas exacts de Tool), jamais des chemins relatifs,
+est active, `document://`, `galaris://`, schémas exacts de Service), jamais des chemins relatifs,
 chemins hôte ou contenu. Sans console, il n'existe aucun fallback local. Une livraison n'est
 prouvée que par un artefact final et un reçu enregistrés après succès du transport.
 
@@ -117,7 +117,7 @@ complète `galaris://task/<uuid>`. L'UUID nu reste réservé aux champs techniqu
 d'outils doivent exposer ou privilégier l'URI complète.
 
 L'historique conversationnel conserve chaque fichier dans son message d'origine sous forme de
-référence `<tool.code>://<room-locator-provider>/<file-uuid-local>`. Les runtimes doivent garder un message qui ne
+référence `<service.code>://<room-locator-provider>/<file-uuid-local>`. Les runtimes doivent garder un message qui ne
 contient qu'un fichier et rendre cette référence au modèle ; ils ne reconstruisent ni chemin local,
 ni URL de provider, ni liste parallèle détachée de la chronologie.
 

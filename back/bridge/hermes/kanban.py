@@ -361,7 +361,7 @@ async def _provisional_result(
     ]
 
     ordered_messages: list[AIMessage] = []
-    ordered_tool_ids: set[str] = set()
+    ordered_service_ids: set[str] = set()
     for call in calls:
         call_id = str(getattr(call, "id", "") or "")
         reasoning = str(getattr(call, "reasoning", "") or "").strip()
@@ -381,7 +381,7 @@ async def _provisional_result(
             if message is None:
                 continue
             ordered_messages.append(message)
-            ordered_tool_ids.add(tool_call_id)
+            ordered_service_ids.add(tool_call_id)
 
         error = str(getattr(call, "error", "") or "").strip()
         if error and not reasoning and not raw_tools:
@@ -399,7 +399,7 @@ async def _provisional_result(
     ordered_messages.extend(
         message
         for tool_call_id, message in tool_messages.items()
-        if tool_call_id not in ordered_tool_ids
+        if tool_call_id not in ordered_service_ids
     )
     result.messages = ordered_messages
     result.cost = sum(float(getattr(call, "cost", 0.0) or 0.0) for call in calls)

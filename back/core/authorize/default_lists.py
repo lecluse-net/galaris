@@ -91,9 +91,9 @@ DEFAULT_PRIVILEGE_LISTS = (
         "MEMORY_ACCESS", "MEMORY_ADMIN", "MEMORY_EDIT", "TOPIC_ACCESS", "TOPIC_EDIT",
     )),
     DefaultPrivilegeList("goals", "Objectifs", ("GOAL_ACCESS", "GOAL_EDIT")),
-    DefaultPrivilegeList("toolsSkills", "Outils & compétences", (
+    DefaultPrivilegeList("servicesSkills", "Services & compétences", (
         "CODE_ACCESS", "CONNECTION_ACCESS", "CONNECTION_EDIT", "PERMISSION_ACCESS",
-        "SKILL_ACCESS", "SKILL_ASSIGN", "SKILL_EDIT", "TOOL_ACCESS", "TOOL_EDIT",
+        "SKILL_ACCESS", "SKILL_ASSIGN", "SKILL_EDIT", "SERVICE_ACCESS", "SERVICE_EDIT",
     )),
     DefaultPrivilegeList("processes", "Processus", (
         "PROCESS_ADMIN", "PROCESS_EDIT", "PROCESS_LAUNCH", "PROCESS_READ",

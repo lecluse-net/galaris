@@ -38,7 +38,7 @@ Welcome reste l’accueil par défaut jusqu’au clic sur **Configuration termin
 même si l’instance est préconfigurée. Le logo Galaris permet donc d’y revenir pendant la préparation.
 La confirmation est propre à votre compte ; `/welcome` reste disponible ensuite.
 
-Dans **Outils → Connexions**, **Périmètres et autorisations** ouvre Permissions pour l’agent filtré,
+Dans **Services → Connexions**, **Périmètres et autorisations** ouvre Permissions pour l’agent filtré,
 ou propose d’en sélectionner un. **Actualiser les outils** recharge les catalogues des services
 connectés et reconstruit leur index de recherche. Le bilan reste affiché après l’opération,
 y compris en cas d’actualisation partielle. Un échec permet de réessayer sans perdre la liste.
@@ -111,7 +111,7 @@ La route est exclue des constructions des autres environnements.
 
 | Section | Ce qu’on y trouve |
 |---|---|
-| **Configurer** | Fournisseurs & modèles, Agents, Outils & connexions, Compétences |
+| **Configurer** | Fournisseurs & modèles, Agents, Services & connexions, Compétences |
 | **Agir** | Discussion, Objectifs, Processus |
 | **Connaissances** | Documents, Fichiers, Mémoire, Agenda, Contacts, Sujets |
 | **Superviser** | Tableau de bord, Activité, Dream, Permissions, Journal des mails, Journal des échecs |
@@ -128,7 +128,7 @@ pas autant de menus supplémentaires.
 **Connaissances → Agenda** (`/calendar`) permet de sélectionner un agent et ses agendas,
 de naviguer par mois, semaine, jour ou Planning et de suivre les Tasks par événement.
 La consultation demande `CALENDAR_ACCESS` ou `CALENDAR_EDIT` ; la modification demande
-`CALENDAR_EDIT`. La création de connexions reste dans Outils & connexions.
+`CALENDAR_EDIT`. La création de connexions reste dans Services & connexions.
 Voir [Agenda et lancements de tâches](calendar.md). L’ancien lien `/connection/calendars`
 ouvre le même espace.
 L’entrée Agenda se trouve juste sous Mémoire.
@@ -265,7 +265,7 @@ de sa réponse ; un flux déjà transmis conserve son fournisseur. Les modèles 
 explicitement par l'API de profils et la voix native suivent leurs contrats propres.
 
 Pour déléguer cette administration à un agent, activez sa connexion optionnelle **AgentAdmin**
-dans **Outils & connexions**. Elle est active par défaut à la création de l’assistant **Galaris** ;
+dans **Services & connexions**. Elle est active par défaut à la création de l’assistant **Galaris** ;
 une désactivation ultérieure est conservée. Ses 34 fonctions restent limitées aux droits et au périmètre de
 son responsable humain. Le portrait généré utilise le modèle image de l’appelant ; attendez
 la confirmation d’enregistrement, puis rouvrez la fiche de la cible.
@@ -286,23 +286,23 @@ y compris un avatar remplacé puis restauré.
 
 ## Outils, connexions et compétences
 
-**Configurer → Outils & connexions** (`/tools`) sépare trois besoins :
+**Configurer → Services & connexions** (`/services`) sépare trois besoins :
 
 | Onglet | Usage | Lien direct |
 |---|---|---|
-| Outils | Consulter les Tools et leurs fonctions | `/tools?tab=tools` |
-| Connexions | Configurer les connexions associées aux agents | `/tools?tab=connections` |
-| Autorisations | Administrer les règles d’accès aux outils et fonctions | `/tools?tab=authorizations` |
+| Services | Consulter les Services et leurs fonctions | `/services` |
+| Connexions | Configurer les connexions associées aux agents | `/services?tab=connections` |
+| Autorisations | Administrer les règles d’accès aux services et fonctions | `/services?tab=authorizations` |
 
 Dans **Connexions**, les connexions des agents historisés sont masquées. Les paramètres
 s’actualisent après l’enregistrement et à chaque retour dans l’onglet. Les filtres
 s’appliquent à la liste chargée ; si son chargement échoue, utilisez **Réessayer**.
 
-Dans **Outils**, **Outils internes à Galaris** regroupe les définitions intégrées protégées par le
-logiciel. Les Tools créés ou importés restent dans **Outils personnalisés**, y compris
+Dans **Services**, **Services internes à Galaris** regroupe les définitions intégrées protégées par le
+logiciel. Les Services créés ou importés restent dans **Services personnalisés**, y compris
 lorsqu’ils utilisent un bridge dédié comme Nextcloud ou AFFiNE. Le nom du bridge ne
-détermine pas l’origine du Tool. n8n n’est pas créé comme Tool standard ; une ancienne
-entrée n8n est conservée comme Tool personnalisé avec ses références de processus.
+détermine pas l’origine du Service. n8n n’est pas créé comme Service standard ; une ancienne
+entrée n8n est conservée comme Service personnalisé avec ses références de processus.
 
 Dans **Autorisations**, seules les connexions des agents non historisés sont proposées.
 Chaque fonction dispose des colonnes **Global (tous)** et **Cette connexion**,
@@ -321,7 +321,7 @@ Memory ; Dream peut ensuite enrichir les fichiers pris en charge. Le mode
 par travail, sans LLM, quand Galaris est disponible. **Préférences > Dream > Reparcours des
 fichiers** règle l'actualisation périodique, chaque lundi à minuit par défaut.
 Les réglages existants, y compris une désactivation explicite, restent conservés. Voir le
-[parcours d’indexation](../admin/tool-administration.md).
+[parcours d’indexation](../admin/service-administration.md).
 
 Dream regroupe les copies identiques d'un fichier **par agent**, grâce au SHA-256 de ses
 octets complets. La fiche commune conserve les différents emplacements et un résumé partagé.
@@ -332,7 +332,7 @@ aux miniatures et au téléchargement de l'original, ainsi qu'à l'aperçu plein
 les formats disposant d'un lecteur. Les droits de
 chaque source restent applicables ; une copie modifiée ne remplace pas les autres.
 
-Dans la définition d’un Tool personnalisé, chaque paramètre de connexion peut recevoir un
+Dans la définition d’un Service personnalisé, chaque paramètre de connexion peut recevoir un
 libellé, une description et une valeur par défaut. Pour un texte ou un entier, **Ajouter un
 choix fixe** permet de définir les valeurs proposées et leurs libellés : le formulaire affiche
 alors une liste déroulante. Le code technique reste visible sous le libellé. Ces contrôles sont
@@ -340,11 +340,11 @@ communs aux connexions des agents, aux paramètres globaux et au test MCP. Sans 
 la saisie reste libre ; les mots de passe restent masqués. Les choix et libellés sont conservés
 lors de l’export et de l’import YAML.
 
-Pour déléguer la gestion du catalogue et des connexions, activer explicitement **ToolAdmin**
-et suivre le [parcours d’administration déléguée](../admin/tool-administration.md).
+Pour déléguer la gestion du catalogue et des connexions, activer explicitement **ServiceAdmin**
+et suivre le [parcours d’administration déléguée](../admin/service-administration.md).
 L’assistant Galaris reçoit cette connexion active lors de sa création initiale ; une
 désactivation ultérieure est conservée.
-Le candidat MCP se prépare depuis **Outils → Nouvel outil → Tester la connexion** ; seul
+Le candidat MCP se prépare depuis **Services → Nouveau service → Tester la connexion** ; seul
 sa référence temporaire est transmise à l’agent, les secrets restent côté serveur.
 
 Les nouvelles demandes d’autorisation présentent l’action et ses paramètres par champs lisibles.
@@ -401,9 +401,9 @@ d’accès demandé. En mode **Autorisation par site**, supprimez l’accord « 
 ces accès nécessitent à nouveau un choix. Revenir à ce mode ne crée aucun accord implicite. Les anciens accords limités à un seul site conservent cette portée.
 **Superviser → Permissions** (`/permissions`) ouvre le tableau de bord d’un agent, sans onglets.
 Choisissez l’agent, puis utilisez la recherche et le filtre d’état sur toutes les sections :
-approbations en attente, Tools et fonctions, types d’action des harnais, contacts et accès réseau.
-La liste présente deux niveaux : chaque Tool de l’agent, puis ses fonctions et prompts.
-Les connexions désactivées restent présentes pour pouvoir les réactiver ; les Tools sans connexion
+approbations en attente, Services et fonctions, types d’action des harnais, contacts et accès réseau.
+La liste présente deux niveaux : chaque Service de l’agent, puis ses fonctions et prompts.
+Les connexions désactivées restent présentes pour pouvoir les réactiver ; les Services sans connexion
 sont exclus. Cette page propose uniquement l’activation et les autorisations, sans configuration
 technique ni bouton de connexion. Les skills et les droits sur les ressources se gèrent sur leurs pages dédiées.
 Examinez les demandes sans réponse, puis autorisez l’action, refusez-la ou choisissez
@@ -416,20 +416,20 @@ Le filtre Agent s’applique à toute la page. Les demandes traitées quittent c
 d’action expirées n’y figurent plus. Une réponse ponctuelle ne crée aucune autorisation permanente.
 
 Les sections affichent les autorisations, interdictions, valeurs par défaut et règles héritées.
-Les connexions montrent la règle locale de `tools.management_scope` et une bascule avec
-les choix propres au Tool. Un gestionnaire global disposant du droit de modifier les connexions
+Les connexions montrent la règle locale de `services.management_scope` et une bascule avec
+les choix propres au Service. Un gestionnaire global disposant du droit de modifier les connexions
 peut changer ce périmètre ou revenir à sa valeur par défaut. Ce réglage reste local à la connexion.
-La section **Fonctions et prompts des outils** rassemble les fonctions de tous les Tools connectés,
-y compris celles interdites ou sur demande. Sélectionnez un Tool dans la liste à gauche pour
+La section **Fonctions et prompts des outils** rassemble les fonctions de tous les Services connectés,
+y compris celles interdites ou sur demande. Sélectionnez un Service dans la liste à gauche pour
 voir ses fonctions et autorisations à droite. Les réglages de périmètre et d’activation sont
-en tête de ce panneau. Sur mobile, la liste précède les détails du Tool sélectionné.
-La liste de gauche affiche tous les Tools correspondants, sans pagination ni défilement interne.
+en tête de ce panneau. Sur mobile, la liste précède les détails du Service sélectionné.
+La liste de gauche affiche tous les Services correspondants, sans pagination ni défilement interne.
 Les compteurs **Autorisés**, **Interdits**, **Sur demande** et **En attente** filtrent toute la page ;
 cliquez de nouveau sur le compteur actif pour revenir à tous les états. Ils remplacent le sélecteur
 de décision et se combinent avec la recherche. Les fonctions à droite restent paginées à 50 éléments par défaut.
-**Paramétrages personnalisés** affiche les règles de fonctions propres à l’agent sur ses Tools actifs,
+**Paramétrages personnalisés** affiche les règles de fonctions propres à l’agent sur ses Services actifs,
 et les périmètres locaux, lorsqu’ils diffèrent de la règle héritée, ainsi que les décisions mémorisées
-des harnais, contacts et accès réseau. Les règles globales sont exclues. Un Tool désactivé compte
+des harnais, contacts et accès réseau. Les règles globales sont exclues. Un Service désactivé compte
 une fois au niveau de sa connexion ; ses fonctions ne sont ni listées ni comptées dans ce filtre.
 Les demandes en attente sont alors masquées. **Réinitialiser les filtres** efface la recherche,
 le filtre d’état et le filtre des paramétrages personnalisés, sans changer l’agent sélectionné.
@@ -440,7 +440,7 @@ Les boutons affichent des icônes comme les autorisations des skills : vert pour
 rouge pour interdire, orange pour demander ou attendre, gris pour hériter. Une infobulle
 précise chaque choix ; double coche et symbole d’interdiction distinguent les décisions permanentes.
 Pour une fonction, choisissez **Autoriser**, **Interdire**, **Sur demande** ou **Hériter**.
-La sélection indique la règle locale ; l’état effectif tient aussi compte de l’activation du Tool
+La sélection indique la règle locale ; l’état effectif tient aussi compte de l’activation du Service
 et reste affiché séparément. Une erreur d’enregistrement conserve la sélection enregistrée.
 **Sur demande** impose une approbation même si le réglage global est actif ; **Hériter** rétablit
 la règle globale ou celle du logiciel. Les décisions mémorisées des harnais, contacts et accès réseau
@@ -456,25 +456,25 @@ formulaires ne sont pas resoumis automatiquement.
 Pour donner la connaissance du produit à un agent, partez de **Connexions**, trouvez sa
 connexion **Administration**, puis suivez le [guide de connaissance produit](../admin/product-knowledge.md).
 Une compétence fournit des instructions ; l’accès effectif aux fonctions dépend aussi
-des Tools et connexions autorisés.
+des Services et connexions autorisés.
 
 **Configurer → Compétences** (`/skill`) contient **Compétences** (`?tab=skills`),
 **Compétences personnelles** (`?tab=personal`), y compris les packages appris par Dream, et
 **Autorisations** (`?tab=authorizations`) avec le privilège `SKILL_ASSIGN`.
 Cette dernière page gère l’affectation des compétences ; elle ne remplace pas les autorisations
-des Tools ni les rôles du compte humain.
+des Services ni les rôles du compte humain.
 
 L'onglet personnel permet de lire et modifier les packages des agents gérés, de les activer
 ou supprimer, de changer leur propriétaire et, avec la gestion globale, de les convertir
 entre personnel et générique. Le [guide des compétences](skills.md) précise les révisions,
-les quotas et la délégation locale du Tool `skills`. La gestion ne donne pas l'usage d'un
+les quotas et la délégation locale du Service `skills`. La gestion ne donne pas l'usage d'un
 package personnel étranger.
 
 Les nouvelles connexions Compétences sont actives par défaut avec le choix
 **Usage + gestion de ses compétences personnelles** (`personal`) :
 l'agent peut créer et entretenir ses propres packages sans modifier ni réaffecter les
 compétences générales administrées. Les désactivations existantes et les
-portées explicites restent prioritaires ; voir **Outils & connexions → Connexions** pour les changer.
+portées explicites restent prioritaires ; voir **Services & connexions → Connexions** pour les changer.
 
 Ses colonnes **Global (tous)**, **Catégorie** et **Cet agent** proposent Actif/Bloqué et mettent
 en évidence la règle applicable. La règle de catégorie concerne l’agent sélectionné.
@@ -699,7 +699,7 @@ plus tard, selon l'espace entre voisins, jusqu'à la taille réelle en pixels de
 Masquer une nature réorganise et recadre les éléments restants ; réafficher toutes les natures
 restaure les positions enregistrées.
 Les répertoires racines gardent leur titre visible même en vue éloignée. La mémoire enregistre
-le libellé du Tool comme titre, ou son schéma sans libellé, par exemple `nextcloud://`.
+le libellé du Service comme titre, ou son schéma sans libellé, par exemple `nextcloud://`.
 Les anciens titres « . » et « / » sont corrigés lors de la synchronisation ; les titres
 personnalisés valides sont conservés. Le graphe utilise ce titre enregistré.
 
@@ -805,7 +805,7 @@ Système, Langue, Messagerie, Mémoire, Dream, Voix, Audio, Processus, Tâches e
 Harnais, Recherche, Navigateur, Janus, Instructions et Journaux. La
 [carte générée](../architecture/generated/navigation.md) donne la route de chaque rubrique.
 
-Dans **Préférences → Messagerie** et l’onglet **Messagerie** d’un Tool, les indications réseau
+Dans **Préférences → Messagerie** et l’onglet **Messagerie** d’un Service, les indications réseau
 permettent de préparer les [tests des passerelles depuis une instance locale](../bridges/telegram-whatsapp.md).
 Telegram, Matrix et Nextcloud Talk n’exigent pas d’URL publique Galaris pour les messages.
 WhatsApp nécessite un webhook HTTPS public ; son avertissement apparaît avec une adresse locale,

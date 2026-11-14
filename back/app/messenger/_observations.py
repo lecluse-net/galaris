@@ -21,7 +21,7 @@ class ObservedMessengerUser(BaseModel):
     agent_id: int | None = None
     is_ai: bool = False
     connection_id: int | None = None
-    tool_id: int | None = None
+    service_id: int | None = None
     profile: dict[str, str | bool] = Field(default_factory=dict[str, str | bool])
 
     model_config = ConfigDict(extra="ignore", validate_assignment=True)
@@ -46,7 +46,7 @@ class ObservedMessengerRoom(BaseModel):
     )
     users_complete: bool = False
     connection_id: int | None = None
-    tool_id: int | None = None
+    service_id: int | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -70,7 +70,7 @@ class ObservedMessengerMessage(BaseModel):
     id: str = ""
     local_id: UUID | None = None
     platform: str = ""
-    tool_id: int | None = None
+    service_id: int | None = None
     sender: ObservedMessengerUser | None = None
     recipient: ObservedMessengerUser | None = None
     room: ObservedMessengerRoom | None = None

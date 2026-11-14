@@ -152,7 +152,7 @@ def _journal_message(
     remaining = 8_000 - min(len(text), text_limit)
     for file in row.files[:20]:
         try:
-            uri = attachment_resource_uri(row.tool_code, row.room_id or "", file.id)
+            uri = attachment_resource_uri(row.service_code, row.room_id or "", file.id)
         except ValueError:
             continue
         transcript = safe_memory_text(transcripts.get(str(file.id), "")) if file.kind == "audio" else ""

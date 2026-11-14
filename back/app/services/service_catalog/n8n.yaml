@@ -1,0 +1,46 @@
+code: n8n
+label: n8n
+description: |-
+  n8n REST API for workflow administration. Business process execution uses the n8n bridge and its existing contracts.
+
+  API REST n8n pour administrer les workflows. L’exécution de processus métier suit le bridge n8n et ses contrats habituels.
+
+  https://docs.n8n.io/api/authentication/
+catalog:
+  format_version: 1
+  version: 1.0.0
+  minimum_galaris_version: 0.1.0
+  summary:
+    fr: API REST n8n pour administrer les workflows. L’exécution de processus métier
+      suit le bridge n8n et ses contrats habituels.
+    en: n8n REST API for workflow administration. Business process execution uses
+      the n8n bridge and its existing contracts.
+  documentation: https://docs.n8n.io/api/authentication/
+  icon_credit: Simple Icons contributors, CC0-1.0; n8n.svg at cd796c98565fc466923fc1128b962e133fa3c612.
+    Monochrome adaptation to Solaire blue. Brand names and marks belong to their owners.
+icon:
+  media_type: image/svg+xml
+  encoding: text
+  data: |-
+    <svg fill="#087FF5" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>n8n</title><path d="M4.8 16.8c.45 0 .6-.15.6-.6V15c0-1.8.6-2.4 2.4-2.4H9c1.8 0 2.4.6 2.4 2.4v1.2c0 .45.15.6.6.6s.6-.15.6-.6V15c0-1.8.6-2.4 2.4-2.4h1.2c1.8 0 2.4.6 2.4 2.4v1.2c0 .45.15.6.6.6s.6-.15.6-.6V15c0-1.8.6-2.4 2.4-2.4h1.2c.45 0 .6-.15.6-.6s-.15-.6-.6-.6h-1.2c-1.8 0-2.4-.6-2.4-2.4V7.8c0-.45-.15-.6-.6-.6s-.6.15-.6.6V9c0 1.8-.6 2.4-2.4 2.4H15c-1.8 0-2.4-.6-2.4-2.4V7.8c0-.45-.15-.6-.6-.6s-.6.15-.6.6V9c0 1.8-.6 2.4-2.4 2.4H7.8c-1.8 0-2.4-.6-2.4-2.4V7.8c0-.45-.15-.6-.6-.6s-.6.15-.6.6V9c0 1.8-.6 2.4-2.4 2.4H.6c-.45 0-.6.15-.6.6s.15.6.6.6h1.2c1.8 0 2.4.6 2.4 2.4v1.2c0 .45.15.6.6.6"/></svg>
+conversation_enabled: false
+capabilities:
+- rest.api
+rest_config:
+  base_url: ${connection:url}
+  auth:
+    type: header
+    header_name: X-N8N-API-KEY
+    param: token
+connection_schema:
+  params:
+    token:
+      type: password
+      label: Token
+      description: API key with the permissions required for this agent.
+      required: true
+    url:
+      type: string
+      label: API URL
+      description: Instance API root, for example https://n8n.example.org/api/v1
+      required: true

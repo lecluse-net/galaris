@@ -12,10 +12,10 @@ from fastmcp.tools import ToolResult
 from app.browser import mcp as browser_mcp
 from app.browser.schemas import BrowserContent, BrowserScreenshot, BrowserScreenshotPart
 from app.browser.service import BrowserExecutor
-from app.tools.mcp_loader import (
+from app.services.mcp_loader import (
     McpToolContext,
     add_galaris_tools,
-    mcp_tool_names_by_tool_code,
+    mcp_tool_names_by_service_code,
 )
 from app.harness.run_control import RunResources
 
@@ -48,7 +48,7 @@ async def test_missing_session_never_replays_an_action_and_allows_explicit_reope
 
 
 def test_browser_native_tool_family_is_complete() -> None:
-    assert set(mcp_tool_names_by_tool_code()["browser"]) == {
+    assert set(mcp_tool_names_by_service_code()["browser"]) == {
         "browser_open",
         "browser_navigate",
         "browser_content",
@@ -65,7 +65,7 @@ def test_browser_native_tool_family_is_complete() -> None:
 @pytest.mark.asyncio
 async def test_browser_tool_schema_exposes_bounded_optional_viewport() -> None:
     mcp = FastMCP("test")
-    add_galaris_tools(mcp, 1, runtime="internal", enabled_tool_codes={"browser"})
+    add_galaris_tools(mcp, 1, runtime="internal", enabled_service_codes={"browser"})
 
     tools = {tool.name: tool for tool in await mcp.list_tools()}
     assert "local and private-network URLs" in (tools["browser_open"].description or "")

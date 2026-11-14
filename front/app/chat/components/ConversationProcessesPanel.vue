@@ -24,7 +24,7 @@
         <q-item-section>
           <q-item-label class="text-weight-medium">{{ processLabel(run) }}</q-item-label>
           <q-item-label caption>
-            {{ formatDate(run.created_at) }} · {{ run.tool_code }}
+            {{ formatDate(run.created_at) }} · {{ run.service_code }}
           </q-item-label>
           <q-item-label v-if="run.error_message" caption class="text-negative ellipsis-2-lines">
             {{ run.error_message }}
@@ -94,7 +94,7 @@ const selectedProcess = computed(() => (
 const processList = useTemplateRef<{ $el: HTMLElement }>('processList')
 
 // Prepare the diagram code while the user reads the list; run data stays fetched on opening.
-watch(() => props.canRead && processes.value.some(run => run.tool_code === 'galaris'), available => {
+watch(() => props.canRead && processes.value.some(run => run.service_code === 'galaris'), available => {
   if (available) void preloadResourceDetail('process_run').catch(() => { /* Opening the dialog offers the normal download retry. */ })
 })
 

@@ -43,7 +43,7 @@ chaque requête authentifiée ; le sidecar valide ses propres bornes et conserve
 instantané dans l’opération, sans modifier les requêtes concurrentes. Un viewport par
 défaut modifié concerne les nouvelles fenêtres. La page Navigateur n’est disponible que
 lorsqu’au moins une connexion `browser` est active, sous les droits `PARAMS_ACCESS` ou
-`PARAMS_EDIT`. Aucun historique d’appels n’est nécessaire pour configurer un Tool activé.
+`PARAMS_EDIT`. Aucun historique d’appels n’est nécessaire pour configurer un Service activé.
 
 Pour ces dix paramètres déplacés uniquement, le dataset DbAdmin reprend une ancienne
 valeur d’environnement validée si la ligne est absente. Une ligne existante, y compris

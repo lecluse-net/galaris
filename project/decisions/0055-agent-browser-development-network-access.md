@@ -10,7 +10,7 @@ loopback après résolution DNS. Cette politique limitait les risques SSRF, mais
 agent d’observer les applications et outils qu’il construit sur un service Docker, une machine du
 LAN ou l’hôte de développement.
 
-L’activation du Tool `browser` constitue déjà une autorisation explicite par agent. Ses sessions
+L’activation du Service `browser` constitue déjà une autorisation explicite par agent. Ses sessions
 restent isolées par couple agent/Task, éphémères et bornées, et le sidecar n’expose aucun port sur
 l’hôte.
 
@@ -32,7 +32,7 @@ l’isolation des `BrowserContext` ne changent pas.
 - Les agents peuvent générer des aperçus de services en construction sans publication Internet.
 - `localhost` désigne le sidecar; un autre conteneur doit être appelé par son nom DNS Docker et
   l’hôte par `host.docker.internal`.
-- Un agent autorisé au Tool peut atteindre les services HTTP(S) visibles depuis `executor_net`,
+- Un agent autorisé au Service peut atteindre les services HTTP(S) visibles depuis `executor_net`,
   `browser_egress` ou l’hôte. L’administrateur doit donc traiter l’activation de la connexion
   `browser` comme un droit réseau puissant et peut toujours désactiver ses fonctions.
 - La décision 0017 reste applicable pour l’isolation, la gouvernance et les limites, mais sa

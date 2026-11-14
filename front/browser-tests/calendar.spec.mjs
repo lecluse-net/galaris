@@ -4,7 +4,7 @@ import { agent, document, goal, result } from './data.mjs'
 const id = '00000000-0000-0000-0000-000000000091'
 const taskId = '00000000-0000-0000-0000-000000000092'
 const reviewTaskId = '00000000-0000-0000-0000-000000000094'
-const feed = { id: 9, connection_id: 42, agent_id: 7, label: 'Synthetic agenda', tool_label: 'Synthetic Calendar', source_kind: 'internal', timezone: 'Europe/Paris', is_default: true, active: true, writable: true, initialized: true, actions_enabled: true, last_synced_at: null, last_error: null }
+const feed = { id: 9, connection_id: 42, agent_id: 7, label: 'Synthetic agenda', service_label: 'Synthetic Calendar', source_kind: 'internal', timezone: 'Europe/Paris', is_default: true, active: true, writable: true, initialized: true, actions_enabled: true, last_synced_at: null, last_error: null }
 const event = { event_id: id, occurrence_id: id, recurrence_key: '20261112T090000Z', revision: 1, recurring: false, sync_state: 'local', calendar_id: 9, calendar_label: feed.label, uid: 'synthetic-event@example.test', summary: 'Prepare synthetic review', description: 'Synthetic event content', location: 'Meeting room', start: '2026-11-12T09:00:00Z', end: '2026-11-12T10:00:00Z', all_day: false, start_date: null, end_date: null, timezone_name: 'Europe/Paris', status: '', transparent: false }
 const detail = { ...event, timezone: 'Europe/Paris', deleted: false, rrule: null, rdates: [], exdates: [], alarms: [], ical: 'BEGIN:VCALENDAR\nEND:VCALENDAR' }
 const execution = { id: '00000000-0000-0000-0000-000000000093', calendar_id: 9, calendar_label: feed.label, event_id: id, recurrence_key: event.recurrence_key, action_key: 'synthetic-action', event_summary: event.summary, reminder_at: event.start, task_uri: `galaris://task/${taskId}`, state: 'done', task_status: 'SUCCESS', dispatch_status: 'submitted', treated: true }
@@ -657,11 +657,11 @@ for (const width of [390, 1440]) test(`synchronized agenda opens its exact conne
   await page.setViewportSize({ width, height: 1000 })
   await calendar(page, { feeds: [{ ...feed, source_kind: 'caldav' }] })
   await jsonRoute(page, '**/api/calendars/9/conflicts?*', [])
-  const connection = { id: 42, agent_id: 7, tool_id: 8, active: true }
+  const connection = { id: 42, agent_id: 7, service_id: 8, active: true }
   const params = { url: 'https://selected.example.test/calendar' }
   const tool = { id: 8, code: 'synthetic_calendar', label: 'Synthetic Calendar', can_edit: true, can_disable: true, has_calendar: true,
     global_params: {}, connection_schema: { params: { url: { type: 'string', label: 'Calendar URL', required: false } } } }
-  await jsonRoute(page, '**/api/connections/tool-options', [tool])
+  await jsonRoute(page, '**/api/connections/service-options', [tool])
   await jsonRoute(page, '**/api/mail/approvers', [])
   await page.route('**/api/connections/overview?*', route => route.fulfill({ json: [
     { ...connection, id: 99, agent_id: 8, params: { url: 'https://other.example.test/calendar' }, configured_params: [] },
@@ -670,7 +670,7 @@ for (const width of [390, 1440]) test(`synchronized agenda opens its exact conne
   let fail = true
   await page.route('**/api/connections/42/params?*', route => {
     if (fail) { fail = false; return route.fulfill({ status: 503, json: { detail: 'Synthetic connection read failure' } }) }
-    return route.fulfill({ json: { connection_id: 42, agent_id: 7, tool_id: 8, params, configured_params: [] } })
+    return route.fulfill({ json: { connection_id: 42, agent_id: 7, service_id: 8, params, configured_params: [] } })
   })
   const writes = []
   await page.route('**/api/connections/42', route => { writes.push(route.request().postDataJSON()); return route.fulfill({ json: connection }) })
@@ -808,7 +808,7 @@ test('a late response for a previous period cannot replace the current calendar;
 
 test('the personal default remains protected alongside calendars identified by their external Tool', async ({ page }) => {
   await calendar(page, { feeds: [{ ...feed, id: 10, label: 'Synthetic external calendar', source_kind: 'caldav',
-    is_default: false, tool_label: 'Synthetic calendar provider' }, { ...feed }] })
+    is_default: false, service_label: 'Synthetic calendar provider' }, { ...feed }] })
   await start(page)
   await expect(page.getByText('Synthetic calendar provider', { exact: true })).toBeVisible()
   const personalCheckbox = page.getByRole('checkbox', { name: feed.label, exact: true })

@@ -31,7 +31,7 @@ Il ne crée pas un second état canonique et ne modifie pas directement les tabl
 
 | Identifiant | Contrat actuel |
 |---|---|
-| `engine.code` / `Tool.code` | Même code stable, par exemple `example` ; le registry sélectionne ce moteur. |
+| `engine.code` / `Service.code` | Même code stable, par exemple `example` ; le registry sélectionne ce moteur. |
 | `engine_process_id` / `workflow_id` | Opération externe ; `workflow_id` est le nom public utilisé au lancement et dans les URI. |
 | `ProcessDefinition.id` | Identifiant SQL interne, utilisé par le CRUD administratif. |
 | `run.id` | UUID Galaris canonique de l'exécution. |
@@ -39,7 +39,7 @@ Il ne crée pas un second état canonique et ne modifie pas directement les tabl
 | `run.correlation_id` | Identité stable de livraison, à transmettre au logiciel pour dédupliquer ses effets. |
 | `run.callback_token` | Secret propre au run pour ses callbacks et téléchargements ; jamais une sortie métier. |
 
-La base impose l'unicité d'une définition active par `(tool_id, engine_process_id)`.
+La base impose l'unicité d'une définition active par `(service_id, engine_process_id)`.
 Les appels personnels résolvent pourtant `workflow_id` dans le périmètre de l'agent sans
 paramètre moteur. Choisir des identifiants publics distincts entre moteurs, idéalement
 avec un préfixe, évite une résolution ambiguë. Une même définition active porte une seule
@@ -212,14 +212,14 @@ class ExampleProcessEngine:
             await self._request("GET", "/health")
         except ProcessEngineError as exc:
             return ProcessEngineHealth(
-                tool_code=self.code, status="error",
+                service_code=self.code, status="error",
                 reachable=exc.code != "engine_unreachable",
                 authenticated=exc.code != "unauthorized",
                 supports_cancel=True, cancel_mode="supported",
                 message=exc.message, checked_at=datetime.now(timezone.utc),
             )
         return ProcessEngineHealth(
-            tool_code=self.code, status="healthy", reachable=True, authenticated=True,
+            service_code=self.code, status="healthy", reachable=True, authenticated=True,
             supports_cancel=True, cancel_mode="supported",
             message="External service available", checked_at=datetime.now(timezone.utc),
         )
@@ -295,26 +295,26 @@ pas confirmé par ce service.
    `api_token` et `callback_base_url` de l'exemple sont des arguments Python, pas de
    nouveaux réglages déjà disponibles. Ne pas placer un secret dans la définition,
    `input`, le snapshot de lancement ou une description visible au modèle.
-3. Créer un Tool dont `code` correspond au moteur. Pour une contribution livrée,
+3. Créer un Service dont `code` correspond au moteur. Pour une contribution livrée,
    déclarer la donnée avec le mécanisme DbAdmin du propriétaire ; pour une installation,
-   utiliser le CRUD Tool autorisé. Une ligne Tool ne charge pas le code du moteur,
+   utiliser le CRUD Service autorisé. Une ligne Service ne charge pas le code du moteur,
    et l'enregistrement Python ne crée pas cette ligne.
-4. Avec les droits d'administration, lire `GET /api/processes/tools`, vérifier
-   `GET /api/processes/tools/example/health`, puis appeler
-   `POST /api/processes/definitions/sync?tool_code=example`.
+4. Avec les droits d'administration, lire `GET /api/processes/services`, vérifier
+   `GET /api/processes/services/example/health`, puis appeler
+   `POST /api/processes/definitions/sync?service_code=example`.
    La « synchronisation » retourne le catalogue externe ; elle ne crée ni n'affecte
    automatiquement de `ProcessDefinition`.
 5. Créer explicitement la définition par `POST /api/processes/definitions` :
-   `{"tool_id": 123, "engine_process_id": "example:invoice-intake", "label": "Invoice intake",
+   `{"service_id": 123, "engine_process_id": "example:invoice-intake", "label": "Invoice intake",
    "description": "Input format; one source file; output result_uri.", "agent_id": 7}`.
-   Ces nombres sont synthétiques : prendre le Tool et l'agent réels autorisés.
+   Ces nombres sont synthétiques : prendre le Service et l'agent réels autorisés.
    Le CRUD utilise `PROCESS_ADMIN` et le périmètre de gestion ; la découverte HTTP
    globale requiert également le périmètre global.
 6. L'agent utilise `process_list`, `process_get`, puis `process_start` du package
    socle `galaris`. Ces fonctions et l'affectation doivent être autorisées.
    Le contrôleur conversationnel utilise `conversation_process_start`.
    Le package optionnel `process_admin`, inactif par défaut, fournit les équivalents
-   administratifs ; préciser `tool_code="example"` car plusieurs valeurs par défaut
+   administratifs ; préciser `service_code="example"` car plusieurs valeurs par défaut
    restent `n8n`.
 7. Régénérer et vérifier la documentation et l'architecture. En développement,
    `make sync-db` applique les données déclarées. L'ajout d'un module ou de sa
@@ -334,7 +334,7 @@ registry.register(ExampleProcessEngine(base_url, api_token, callback_base_url))
 
 Les endpoints humains suivent le RBAC et le périmètre de gestion ; les outils personnels
 filtrent l'agent appelant. La présence d'un moteur ne donne pas accès à toutes ses opérations.
-L'affectation, le Tool et l'identifiant de la définition sont modifiables par le CRUD
+L'affectation, le Service et l'identifiant de la définition sont modifiables par le CRUD
 autorisé, avec validation d'unicité ; ne pas les changer pendant une exécution en cours.
 
 ## 6. Lancement, reprise et erreurs réseau
@@ -479,7 +479,7 @@ de développement ; le déploiement normal `make update` indexe les sources pré
 
 - Le registry accepte plusieurs moteurs et le scheduler crée des jobs par moteur.
   Le réglage du moteur par défaut reste limité à `n8n` ; un nouveau moteur est choisi
-  par le Tool de sa définition, pas en changeant ce réglage.
+  par le Service de sa définition, pas en changeant ce réglage.
 - Il n'existe pas de connexion/instance de moteur dans `ProcessDefinition`.
   Plusieurs installations du même logiciel nécessitent une stratégie explicite dans
   le bridge et des identités sans collision ; ce n'est pas un réglage multi-instance prêt à l'emploi.

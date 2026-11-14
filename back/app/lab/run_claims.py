@@ -42,7 +42,7 @@ async def claim_next_run() -> ClaimResult:
     if run is None:
         return ClaimResult(0)
     if run.requester_action is not None:
-        from app.tools import McpToolContext
+        from app.services import McpToolContext
         from .mcp_access import authorize
 
         try:

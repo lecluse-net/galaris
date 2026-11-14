@@ -52,7 +52,7 @@ def receipt_matches_artifact(artifact: WorkingResource, receipt: WorkingResource
     if artifact_destination and artifact_destination != destination:
         return False
     artifact_tool = artifact.metadata.get("file_share_tool")
-    if artifact_tool is not None and artifact_tool != receipt.metadata.get("tool_code"):
+    if artifact_tool is not None and artifact_tool != receipt.metadata.get("service_code"):
         return False
     if not destination_uri and "://" in destination:
         destination_uri = destination

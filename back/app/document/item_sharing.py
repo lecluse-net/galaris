@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import load_only, raiseload
 
 from app.agent import AgentManagementScope
-from app.tools.contracts import current_tool_execution
+from app.services.contracts import current_tool_execution
 from core.authorize import Privileges, check_privilege
 from core.database import get_db
 from core.user import HumanActor, get_user_record

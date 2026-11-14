@@ -88,7 +88,7 @@ async def read_managed_file_thumbnail(file_id: UUID, agent_id: int) -> Response:
 
 
 @router.get("/bridges", response_model=list[FileShareBridgeInfo])
-@authorize(privileges=[Privileges.TOOL_ACCESS, Privileges.TOOL_EDIT])
+@authorize(privileges=[Privileges.SERVICE_ACCESS, Privileges.SERVICE_EDIT])
 async def list_bridges() -> list[FileShareBridgeInfo]:
     """List available file-sharing bridges and required parameters."""
     return available_bridges()

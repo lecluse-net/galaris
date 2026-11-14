@@ -6,7 +6,7 @@ Le bridge **Samba / SMB 2–3** donne accès aux fichiers d'un partage depuis le
 de **Partage de fichiers**. Le serveur doit être joignable depuis le backend Galaris,
 habituellement sur le port TCP 445. Aucun montage de disque dans Galaris n'est nécessaire.
 
-1. Dans **Outils**, créez un Tool avec un code tel que `team-share`, activez sa capacité
+1. Dans **Services**, créez un Service avec un code tel que `team-share`, activez sa capacité
    de partage de fichiers et sélectionnez **Samba / SMB 2–3**.
 2. Dans l’onglet **Partage de fichiers**, renseignez **Adresse du partage (base_url)**.
    `smb://files.example.test` donne accès aux partages du serveur : l’agent liste
@@ -41,19 +41,19 @@ le bridge n'ajoute aucune fonction SMB dédiée à son catalogue.
 | `smb://files.example.test/shared` | Contenu de `shared` | `team-share://reports/result.txt` |
 | `smb://files.example.test/shared/team` | Contenu de `shared/team` | `team-share://reports/result.txt` |
 
-Le schéma est toujours le code du Tool ; les chemins sont relatifs à la racine
+Le schéma est toujours le code du Service ; les chemins sont relatifs à la racine
 configurée. Réutilisez les URI exactes retournées, notamment pour les espaces,
 accents et caractères encodés. Les identifiants sont résolus côté serveur.
-Plusieurs Tools peuvent viser des serveurs ou racines différents.
+Plusieurs Services peuvent viser des serveurs ou racines différents.
 
-Un Tool qui ne porte que cette capacité de fichiers n'est pas un catalogue de
+Un Service qui ne porte que cette capacité de fichiers n'est pas un catalogue de
 fonctions réservé aux tâches : ses ressources passent par les fonctions `file_*`
 autorisées dans le contexte courant.
 
 ## Droits et limites
 
 L’agent ne reçoit ni l’adresse SMB ni les identifiants : il utilise uniquement les URI
-du Tool et les fonctions `file_*`. Avec une racine serveur, la liste utilise SRVSVC
+du Service et les fonctions `file_*`. Avec une racine serveur, la liste utilise SRVSVC
 sur SMB authentifié et ne montre que les partages disque accessibles au compte.
 Les imprimantes et IPC ne sont pas des dossiers. Les droits du serveur restent appliqués
 lors de chaque accès. Un serveur qui ne propose pas SRVSVC exige une racine de partage
@@ -82,7 +82,7 @@ un dossier plus grand exige une racine plus petite.
 
 - Un refus du **Nom technique** signifie que le code ne respecte pas le format
   indiqué : saisissez `team-share`, puis l'adresse SMB dans `base_url`.
-- Une erreur de configuration `base_url` doit être corrigée dans le Tool ;
+- Une erreur de configuration `base_url` doit être corrigée dans le Service ;
   l'agent conserve ses URI `team-share://`.
 - Un refus d'authentification concerne le login ou le mot de passe de la connexion.
   Un partage absent de la liste peut aussi être interdit à ce compte.

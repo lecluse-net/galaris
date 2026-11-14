@@ -68,7 +68,7 @@ class N8NProcessEngine:
             workflows = await (await self._client()).list_workflows()
         except N8NError as exc:
             return ProcessEngineHealth(
-                tool_code=self.code,
+                service_code=self.code,
                 status="error",
                 reachable=exc.code != "engine_unreachable",
                 authenticated=exc.code != "unauthorized",
@@ -79,7 +79,7 @@ class N8NProcessEngine:
                 checked_at=datetime.now(timezone.utc),
             )
         return ProcessEngineHealth(
-            tool_code=self.code,
+            service_code=self.code,
             status="healthy",
             reachable=True,
             authenticated=True,

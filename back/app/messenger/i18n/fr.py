@@ -139,13 +139,13 @@ default: dict[str, object] = {
             "connection_not_found": "Connexion ${connection_id} introuvable",
             "connection_inactive": "La connexion de messagerie ${connection_id} est inactive",
             "tool_not_registered": (
-                "L’outil ${tool_id} n’est pas un outil de messagerie enregistré"
+                "L’outil ${service_id} n’est pas un outil de messagerie enregistré"
             ),
             "bridge_not_registered": (
                 "Aucun bridge n’est enregistré pour le type « ${kind} »"
             ),
             "identity_connection_not_found": (
-                "Aucune connexion pour tool_id=${tool_id} et self_id=${self_id}"
+                "Aucune connexion pour service_id=${service_id} et self_id=${self_id}"
             ),
             "default_not_configured": (
                 "Le service de messagerie par défaut de l’application n’est pas configuré"

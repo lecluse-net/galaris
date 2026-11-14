@@ -13,7 +13,7 @@ from app.conversation.facade import active_work_snapshot
 from app.harness.conversation import _system_prompt
 from app.process.models import ProcessDefinition, ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 from app.task.models import Task, TaskStatus
-from app.tools.models import Tool
+from app.services.models import Service
 from core.params import Params, prompt_default
 
 
@@ -22,7 +22,7 @@ async def test_live_work_prompt_keeps_old_waits_and_excludes_finished_stopped_an
     db: AsyncSession,
 ) -> None:
     title = Title(label="Synthetic activity", gender="X")
-    tool = Tool(code=f"active-work-{uuid4().hex}", label="Synthetic engine", connection_schema={})
+    tool = Service(code=f"active-work-{uuid4().hex}", label="Synthetic engine", connection_schema={})
     db.add_all([title, tool])
     await db.flush()
     agents = [Agent(title_id=title.id, first_name=name, last_name="Synthetic", code=uuid4().hex)
@@ -46,7 +46,7 @@ async def test_live_work_prompt_keeps_old_waits_and_excludes_finished_stopped_an
             data={"working_set": {"resources": "must not parse historical data"}})
             for status in (TaskStatus.SUCCESS, TaskStatus.ERROR)],
     ]
-    definition = ProcessDefinition(agent_id=owner.id, tool_id=tool.id,
+    definition = ProcessDefinition(agent_id=owner.id, service_id=tool.id,
         engine_process_id=uuid4().hex, label="Synthetic workflow", code=uuid4().hex, bpmn_xml="<synthetic/>")
     db.add_all([*tasks, definition])
     await db.flush()
@@ -126,7 +126,7 @@ async def test_active_work_api_enforces_privileges_scope_and_pagination(client) 
             hashed_password=encrypt_password(password)) for i in range(4)]
         roles = [Role(code=f"active-work-{i}-{suffix}") for i in range(3)]
         title = Title(label="Synthetic monitoring", gender="X")
-        tool = Tool(code=f"monitor-{suffix}", label="Synthetic engine", connection_schema={})
+        tool = Service(code=f"monitor-{suffix}", label="Synthetic engine", connection_schema={})
         db.add_all([*users, *roles, title, tool])
         await db.flush()
         privileges = {p.code: p.id for p in await db.scalars(select(Privilege).where(
@@ -139,7 +139,7 @@ async def test_active_work_api_enforces_privileges_scope_and_pagination(client) 
         agent = Agent(user_id=users[0].id, title_id=title.id, first_name="Monitor", last_name="Synthetic", code=suffix)
         db.add(agent)
         await db.flush()
-        definition = ProcessDefinition(agent_id=agent.id, tool_id=tool.id,
+        definition = ProcessDefinition(agent_id=agent.id, service_id=tool.id,
             engine_process_id=suffix, label="Synthetic monitoring process", code=suffix, bpmn_xml="<synthetic/>")
         db.add(definition)
         await db.flush()

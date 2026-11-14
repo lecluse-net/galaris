@@ -10,33 +10,33 @@ from app.process.dbadmin import _purge_avatar_processes, _purge_catalog_refresh_
 from app.process.models import ProcessDefinition, ProcessRun, ProcessRunEvent, ProcessStartJob
 from app.process.tests.test_recovery import waiting_run
 from app.task.models import TaskStatus
-from app.tools import ToolModel
+from app.services import ServiceModel
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("archived_definition", [False, True])
-@pytest.mark.parametrize("tool_code,operation,purge", [
+@pytest.mark.parametrize("service_code,operation,purge", [
     ("agent_admin", "avatar", _purge_avatar_processes),
-    ("tool_admin", "catalog_refresh", _purge_catalog_refresh_processes),
+    ("service_admin", "catalog_refresh", _purge_catalog_refresh_processes),
 ])
 async def test_technical_purge_removes_history_and_jobs_wakes_waiter_and_preserves_other_workflows(
-        db, waiting_run, archived_definition, tool_code, operation, purge):
+        db, waiting_run, archived_definition, service_code, operation, purge):
     run, parent, child = waiting_run
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == tool_code))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == service_code))
     definition = await db.get(ProcessDefinition, run.process_id)
-    definition.tool_id = tool.id
-    definition.engine_process_id = f"{tool_code}:{run.launcher_agent_id}:{operation}"
+    definition.service_id = tool.id
+    definition.engine_process_id = f"{service_code}:{run.launcher_agent_id}:{operation}"
     if archived_definition:
         definition.deleted_at = datetime.now(timezone.utc)
-    run.engine_code = tool_code
+    run.engine_code = service_code
     definition_id, run_id, agent_id = definition.id, run.id, run.launcher_agent_id
-    unrelated = ProcessDefinition(agent_id=agent_id, tool_id=tool.id,
+    unrelated = ProcessDefinition(agent_id=agent_id, service_id=tool.id,
         engine_process_id="synthetic-business-workflow", label="Synthetic business workflow")
     db.add(unrelated)
     await db.flush()
     other_run = ProcessRun(process_id=unrelated.id, launcher_agent_id=agent_id, engine_code="fake",
         correlation_id=uuid4().hex, callback_token=uuid4().hex, status="success", output={"kept": True})
-    archived = ProcessRun(process_id=definition_id, launcher_agent_id=agent_id, engine_code=tool_code,
+    archived = ProcessRun(process_id=definition_id, launcher_agent_id=agent_id, engine_code=service_code,
         correlation_id=uuid4().hex, callback_token=uuid4().hex, status="success",
         deleted_at=datetime.now(timezone.utc))
     db.add_all([other_run, archived, ProcessStartJob(run_id=run_id),

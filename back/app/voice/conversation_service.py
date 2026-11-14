@@ -20,7 +20,7 @@ from .models import VoiceConversationSession, VoiceConversationStatus, VoiceTurn
 async def save_turn_checkpoint(turn_id: UUID, checkpoint: Any) -> None:
     from core.database import get_db_session
     from core.util import get_encryption_service
-    from app.tools.facade import canonical_authorization_snapshot
+    from app.services.facade import canonical_authorization_snapshot
 
     async with get_db_session() as db:
         round_ = await db.scalar(
@@ -75,7 +75,7 @@ async def _authorization_context_snapshot(agent_id: int, context_key: str) -> di
 async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
     if not context_key.startswith("voice:"):
         return False
-    from app.tools.facade import authorization_context_pending, invalidate_authorization_context
+    from app.services.facade import authorization_context_pending, invalidate_authorization_context
     from core.database import get_db_session
     from app.conversation import wake
 
@@ -105,7 +105,7 @@ async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
     return True
 
 
-from app.tools.facade import register_authorization_context_guard, register_authorization_waker
+from app.services.facade import register_authorization_context_guard, register_authorization_waker
 
 register_authorization_context_guard("voice", _authorization_context_snapshot)
 register_authorization_waker("voice", _wake_authorization_context)
@@ -458,7 +458,7 @@ async def finish_session(
             )
         ).all()
     )
-    from app.tools.facade import invalidate_authorization_context
+    from app.services.facade import invalidate_authorization_context
 
     _, owner_agent, _ = await message_context(session)
     for active_round in active_rounds:
@@ -534,7 +534,7 @@ async def start_turn(
             )
         ).all()
     )
-    from app.tools.facade import invalidate_authorization_context
+    from app.services.facade import invalidate_authorization_context
 
     for previous in waiting:
         _, owner_agent, _ = await message_context(session)

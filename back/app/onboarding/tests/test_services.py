@@ -13,7 +13,7 @@ from app.agent import AgentManagementScope
 from app.connection.models import Connection
 from app.llm import LLM, LLMProvider
 from app.process import ProcessDefinition
-from app.tools.models import Tool as ToolModel
+from app.services.models import Service as ServiceModel
 
 from .. import services
 from ..services import (
@@ -180,9 +180,9 @@ async def test_messaging_status_requires_an_active_enabled_bridge_connection(
     db.add(agent)
     await db.flush()
     ordinary_tool = (
-        await db.execute(select(ToolModel).where(ToolModel.code == "galaris"))
+        await db.execute(select(ServiceModel).where(ServiceModel.code == "galaris"))
     ).scalar_one()
-    messaging_tool = ToolModel(
+    messaging_tool = ServiceModel(
         code="welcome-telegram",
         label="Welcome Telegram",
         description="",
@@ -202,7 +202,7 @@ async def test_messaging_status_requires_an_active_enabled_bridge_connection(
     db.add(
         Connection(
             agent_id=agent.id,
-            tool_id=ordinary_tool.id,
+            service_id=ordinary_tool.id,
             active=True,
         )
     )
@@ -212,7 +212,7 @@ async def test_messaging_status_requires_an_active_enabled_bridge_connection(
 
     messaging_connection = Connection(
         agent_id=agent.id,
-        tool_id=messaging_tool.id,
+        service_id=messaging_tool.id,
         active=False,
     )
     db.add(messaging_connection)
@@ -231,12 +231,12 @@ async def test_optional_capability_statuses_report_existing_configuration(db) ->
     assert await check_skills_status() is True
 
     tool = (
-        await db.execute(select(ToolModel).where(ToolModel.code == "galaris"))
+        await db.execute(select(ServiceModel).where(ServiceModel.code == "galaris"))
     ).scalar_one()
     db.add(
         ProcessDefinition(
             agent_id=None,
-            tool_id=tool.id,
+            service_id=tool.id,
             engine_process_id="onboarding-configured-process",
             label="Onboarding configured process",
         )

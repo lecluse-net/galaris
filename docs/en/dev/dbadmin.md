@@ -338,8 +338,8 @@ Datasets are ordered by `depends_on`. Reconcilers then run and may also depend o
 The `app.agent.initial_galaris` dataset proposes **Galaris** once, managed by the
 first active administrator, with its dedicated avatar bundled in the backend, the internal Harness,
 the current default LLM profile, active `platform_admin` (including documentation access),
-`tool_admin`, `agent_admin`, `process_admin`, `goal_management`, `skills` and `chat`
-connections with `tools.management_scope=all`, and an
+`service_admin`, `agent_admin`, `process_admin`, `goal_management`, `skills` and `chat`
+connections with `services.management_scope=all`, and an
 individual authorization for the `galaris-lab` and `galaris-knowledge` skills. Their global defaults remain disabled.
 If no administrator exists yet, the first signup replays the same dataset.
 The internal global `galaris.agent_id` parameter retains the agent's ID after renaming and deletion:

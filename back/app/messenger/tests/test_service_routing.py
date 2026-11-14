@@ -23,7 +23,7 @@ async def test_task_messaging_keeps_exact_connection_and_platform(
     from core.params import runtime_settings
 
     monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["matrix", "telegram"]')
-    connection = SimpleNamespace(id=73, agent_id=7, tool_id=9, active=True)
+    connection = SimpleNamespace(id=73, agent_id=7, service_id=9, active=True)
     messenger = SimpleNamespace(kind=messenger_kind)
     get_connection = AsyncMock(return_value=connection)
     monkeypatch.setattr(
@@ -60,16 +60,16 @@ async def test_task_messaging_keeps_exact_connection_and_platform(
 async def test_task_messaging_rejects_another_agents_pinned_connection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    connection = SimpleNamespace(id=73, agent_id=99, tool_id=9, active=True)
+    connection = SimpleNamespace(id=73, agent_id=99, service_id=9, active=True)
     monkeypatch.setattr(
         connection_service,
         "get_connection",
         AsyncMock(return_value=connection),
     )
-    from app.tools import tool_service
+    from app.services import service
 
-    get_tool_record = AsyncMock(return_value=SimpleNamespace(id=9))
-    monkeypatch.setattr(tool_service, "get_tool_record", get_tool_record)
+    get_service_record = AsyncMock(return_value=SimpleNamespace(id=9))
+    monkeypatch.setattr(service, "get_service_record", get_service_record)
     task = SimpleNamespace(
         id=uuid4(),
         agent_id=7,
@@ -82,14 +82,14 @@ async def test_task_messaging_rejects_another_agents_pinned_connection(
 
     assert resolved is None
     assert self_id is None
-    get_tool_record.assert_not_awaited()
+    get_service_record.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_task_messaging_rejects_inactive_pinned_connection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    connection = SimpleNamespace(id=73, agent_id=7, tool_id=9, active=False)
+    connection = SimpleNamespace(id=73, agent_id=7, service_id=9, active=False)
     monkeypatch.setattr(
         connection_service,
         "get_connection",
@@ -118,11 +118,11 @@ async def test_agent_messenger_chooses_chat_then_a_stable_available_connection(
     monkeypatch: pytest.MonkeyPatch,
     internal: bool,
 ) -> None:
-    from app.tools import tool_service
+    from app.services import service
 
     connections = [
-        SimpleNamespace(id=17, agent_id=7, tool_id=3, active=True),
-        SimpleNamespace(id=29, agent_id=7, tool_id=4, active=True),
+        SimpleNamespace(id=17, agent_id=7, service_id=3, active=True),
+        SimpleNamespace(id=29, agent_id=7, service_id=4, active=True),
     ]
     tools = {
         3: SimpleNamespace(
@@ -140,9 +140,9 @@ async def test_agent_messenger_chooses_chat_then_a_stable_available_connection(
         AsyncMock(return_value=connections),
     )
     monkeypatch.setattr(
-        tool_service,
-        "get_tool_by_id",
-        AsyncMock(side_effect=lambda tool_id: tools[tool_id]),
+        service,
+        "get_service_by_id",
+        AsyncMock(side_effect=lambda service_id: tools[service_id]),
     )
     monkeypatch.setattr(service.facade, "is_kind_enabled", lambda _kind: True)
     monkeypatch.setattr(service.facade, "get_factory", lambda _kind: object)
@@ -159,10 +159,10 @@ async def test_user_search_combines_every_connection_without_collapsing_ids(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.messenger import directory
-    from app.tools import tool_service
+    from app.services import service
 
-    telegram = SimpleNamespace(id=17, agent_id=7, tool_id=3, active=True)
-    matrix = SimpleNamespace(id=29, agent_id=7, tool_id=4, active=True)
+    telegram = SimpleNamespace(id=17, agent_id=7, service_id=3, active=True)
+    matrix = SimpleNamespace(id=29, agent_id=7, service_id=4, active=True)
     tools = {
         3: SimpleNamespace(
             code="custom-telegram",
@@ -199,7 +199,7 @@ async def test_user_search_combines_every_connection_without_collapsing_ids(
             users=[
                 MessengerUser(
                     id=uuid4(),
-                    tool_id=3,
+                    service_id=3,
                     external_id="shared-42",
                     display_name="Nicolas Telegram",
                 )
@@ -211,13 +211,13 @@ async def test_user_search_combines_every_connection_without_collapsing_ids(
             users=[
                 MessengerUser(
                     id=uuid4(),
-                    tool_id=4,
+                    service_id=4,
                     external_id="shared-42",
                     display_name="Nicolas Matrix",
                 ),
                 MessengerUser(
                     id=uuid4(),
-                    tool_id=4,
+                    service_id=4,
                     external_id="@sarah:example.test",
                     display_name="Sarah",
                 ),
@@ -231,9 +231,9 @@ async def test_user_search_combines_every_connection_without_collapsing_ids(
         AsyncMock(return_value=[telegram, matrix]),
     )
     monkeypatch.setattr(
-        tool_service,
-        "get_tool_by_id",
-        AsyncMock(side_effect=lambda tool_id: tools[tool_id]),
+        service,
+        "get_service_by_id",
+        AsyncMock(side_effect=lambda service_id: tools[service_id]),
     )
     monkeypatch.setattr(service.facade, "is_kind_enabled", lambda _kind: True)
     monkeypatch.setattr(service.facade, "get_factory", lambda _kind: object)
@@ -262,7 +262,7 @@ async def test_user_search_combines_every_connection_without_collapsing_ids(
         (17, "telegram", "shared-42"),
         (29, "matrix", "@sarah:example.test"),
     ]
-    assert all(user.tool_id == tool_id for _, tool_id, _, user in results)
+    assert all(user.service_id == service_id for _, service_id, _, user in results)
     assert get_messenger.await_count == 2
     messengers[17].close.assert_awaited_once()
     messengers[29].close.assert_awaited_once()

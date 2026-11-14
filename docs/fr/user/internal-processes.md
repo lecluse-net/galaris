@@ -199,10 +199,10 @@ Pour **Document**, le type **Texte** ou **Données** est facultatif. Pour **Fich
 recherchable permet de choisir le format attendu, par exemple PDF ou Images ; un type MIME
 personnalisé peut aussi être saisi. Laissez ce champ vide pour accepter tout format.
 Le format est vérifié via les métadonnées et les droits de la ressource avant son intégration.
-Si vous fournissez un PDF pour un champ qui exige une image, l’agent peut utiliser le Tool
+Si vous fournissez un PDF pour un champ qui exige une image, l’agent peut utiliser le Service
 **Image** (`image_from_pdf`) pour rendre la page concernée en PNG avant de la transmettre.
 Il réutilise l’URI de cette image pour le lancement ou la réponse humaine ; le PDF original
-reste intact. Cette conversion n’exige aucun modèle génératif ni console. Le Tool doit être
+reste intact. Cette conversion n’exige aucun modèle génératif ni console. Le Service doit être
 actif et autorisé dans le contexte utilisé ; une sélection de page ambiguë nécessite une précision.
 Dans l’autre sens, `file_to_pdf` permet à l’agent de fournir un PDF depuis une image, un document
 Word/Excel/PowerPoint ou OpenDocument, du RTF, du HTML/SVG/Markdown ou un contenu textuel.
@@ -376,7 +376,7 @@ est remplacée par ces échanges dans la messagerie.
 Durées et coûts sont des mesures sans budget Process bloquant en v1. Un coût indisponible
 ou partiel n'est pas présenté comme nul. Le total inclusif ajoute les enfants accessibles
 et conserve la distinction des coûts estimés. Une reprise réattache les tâches/Runs admis ;
-un effet Tool sans reçu certain n'est pas rejoué automatiquement.
+un effet Service sans reçu certain n'est pas rejoué automatiquement.
 Le montant facturé et la valeur d'inférence sont séparés, notamment sous abonnement.
 La table détaille ces mesures pour chaque occurrence, y compris les boucles et retries.
 Archiver une définition conserve son BPMN, son historique et les liens de ses runs.
@@ -385,14 +385,14 @@ Archiver une définition conserve son BPMN, son historique et les liens de ses r
 
 Les agents autorisés inspectent la définition complète par MCP, ses prompts, acteurs et
 historique, puis proposent ou appliquent une correction selon leurs droits.
-Une capacité Tool ne remplace pas l'accès au processus et à ses données.
+Une capacité Service ne remplace pas l'accès au processus et à ses données.
 
 **Lab → Processus** prépare des cas inventés, éventuellement générés par le modèle Lab,
 puis lance une campagne réelle. Chaque cas conserve son run, ses mesures et un contrôle
-exact facultatif de sortie. Les vrais Tools autorisés sont utilisés ; les mocks sont
+exact facultatif de sortie. Les vrais Services autorisés sont utilisés ; les mocks sont
 reportés à une seconde phase.
 
-Les secrets restent dans les Connections. Les nœuds Tool appellent des opérations MCP
+Les secrets restent dans les Connections. Les nœuds Service appellent des opérations MCP
 déclarées. L'activité API REST utilise la connexion de son agent et une requête relative
 à l'API configurée ; un refus HTTP arrête l'activité. Les activités Code et les scripts
 facultatifs de préparation/intégration utilisent un interpréteur Python limité et isolé,

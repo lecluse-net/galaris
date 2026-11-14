@@ -143,7 +143,7 @@ le stockage Memory. Ajouter deux constantes au routeur ne suffit pas à qualifie
 
 Le domaine File Share expose 23 enregistrements HTTP, dont un accès média avec authentification
 indépendante. Les principales lectures, mutations et commandes d’indexation réemploient Mémoire ;
-la liste des bridges utilise Tools. Voir [le navigateur](../../back/app/file_share/browser_router.py)
+la liste des bridges utilise Services. Voir [le navigateur](../../back/app/file_share/browser_router.py)
 et [les opérations de fichiers](../../back/app/file_share/router.py).
 
 Leurs consommateurs dépassent la page Fichiers : souvenirs, sélecteurs de ressources, pièces
@@ -185,7 +185,7 @@ pas dépendre d’un rôle humain choisi pour un écran.
 
 ### Permissions : le droit de décider ne remplace pas l’identité du décideur
 
-Les [accords d’actions](../../back/app/tools/authorization_router.py), les
+Les [accords d’actions](../../back/app/services/authorization_router.py), les
 [décisions réseau](../../back/app/messenger/permission_router.py) et les fonctions des connexions
 réemploient `CONNECTION_*`. Les services imposent en plus l’identité de l’approbateur,
 la politique actuelle de l’agent et la validité de la demande.

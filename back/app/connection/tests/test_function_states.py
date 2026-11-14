@@ -6,9 +6,9 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.tools import connection_functions
+from app.services import connection_functions
 from .. import connection_service
-from ..models import Connection, ConnectionFunctionState, ToolFunctionState
+from ..models import Connection, ConnectionFunctionState, ServiceFunctionState
 
 
 class TestFunctionResolution:
@@ -36,18 +36,18 @@ class TestDisabledFunctionNames:
 
     @pytest.mark.asyncio
     async def test_blacklist_follows_cascade(self, monkeypatch):
-        monkeypatch.setattr(connection_service, "tool_can_disable", AsyncMock(return_value=True))
-        connection = Connection(id=1, tool_id=7, agent_id=3, active=True)
+        monkeypatch.setattr(connection_service, "service_can_disable", AsyncMock(return_value=True))
+        connection = Connection(id=1, service_id=7, agent_id=3, active=True)
         conn_rows = [
             # Re-enabled at connection level despite the global block, so it is exposed.
             ConnectionFunctionState(connection_id=1, function_name="a", enabled=True),
         ]
         tool_rows = [
-            ToolFunctionState(tool_id=7, function_name="a", enabled=False),
-            ToolFunctionState(tool_id=7, function_name="b", enabled=False),  # Blocked via Tool.
+            ServiceFunctionState(service_id=7, function_name="a", enabled=False),
+            ServiceFunctionState(service_id=7, function_name="b", enabled=False),  # Blocked via Tool.
         ]
         with patch.object(connection_service, "list_function_states", AsyncMock(return_value=conn_rows)), \
-             patch.object(connection_service, "list_tool_function_states", AsyncMock(return_value=tool_rows)):
+             patch.object(connection_service, "list_service_function_states", AsyncMock(return_value=tool_rows)):
             disabled = await connection_service.get_disabled_function_names(connection)
 
         assert disabled == {"b"}
@@ -58,7 +58,7 @@ class TestAvailableFunctions:
 
     @pytest.mark.asyncio
     async def test_mixed_tool_lists_every_source_active_by_default(self):
-        connection = Connection(id=11, tool_id=35, agent_id=1, active=True)
+        connection = Connection(id=11, service_id=35, agent_id=1, active=True)
         tool = SimpleNamespace(
             code="nextcloud",
             can_disable=True,
@@ -72,7 +72,7 @@ class TestAvailableFunctions:
                 AsyncMock(return_value=connection),
             ),
             patch(
-                "app.tools.tool_service.get_tool_by_id",
+                "app.services.service.get_service_by_id",
                 AsyncMock(return_value=tool),
             ),
             patch.object(
@@ -82,17 +82,17 @@ class TestAvailableFunctions:
             ),
             patch.object(
                 connection_functions,
-                "list_tool_function_states",
+                "list_service_function_states",
                 AsyncMock(return_value=[]),
             ),
             patch.object(
                 connection_functions,
-                "native_tool_codes_for_tool",
+                "native_service_codes_for_service",
                 return_value=frozenset({"messenger", "nextcloud"}),
             ),
             patch.object(
                 connection_functions,
-                "mcp_tools_by_tool_code",
+                "mcp_tools_by_service_code",
                 return_value={"messenger": []},
             ),
             patch.object(
@@ -134,7 +134,7 @@ class TestAvailableFunctions:
 
     @pytest.mark.asyncio
     async def test_local_functions_remain_configurable_when_external_source_fails(self):
-        connection = Connection(id=11, tool_id=35, agent_id=1, active=True)
+        connection = Connection(id=11, service_id=35, agent_id=1, active=True)
         tool = SimpleNamespace(
             code="nextcloud",
             can_disable=True,
@@ -148,7 +148,7 @@ class TestAvailableFunctions:
                 AsyncMock(return_value=connection),
             ),
             patch(
-                "app.tools.tool_service.get_tool_by_id",
+                "app.services.service.get_service_by_id",
                 AsyncMock(return_value=tool),
             ),
             patch.object(
@@ -158,17 +158,17 @@ class TestAvailableFunctions:
             ),
             patch.object(
                 connection_functions,
-                "list_tool_function_states",
+                "list_service_function_states",
                 AsyncMock(return_value=[]),
             ),
             patch.object(
                 connection_functions,
-                "native_tool_codes_for_tool",
+                "native_service_codes_for_service",
                 return_value=frozenset({"messenger", "nextcloud"}),
             ),
             patch.object(
                 connection_functions,
-                "mcp_tools_by_tool_code",
+                "mcp_tools_by_service_code",
                 return_value={"messenger": []},
             ),
             patch.object(
@@ -207,8 +207,8 @@ class TestSetConnectionFunctionState:
     @pytest.fixture
     def mock_db(self, monkeypatch):
         # Persistence units; complete policy enforcement is exercised against PostgreSQL.
-        monkeypatch.setattr(connection_service, "get_connection", AsyncMock(return_value=Connection(id=1, tool_id=7, agent_id=3)))
-        monkeypatch.setattr(connection_service, "lock_tools", AsyncMock())
+        monkeypatch.setattr(connection_service, "get_connection", AsyncMock(return_value=Connection(id=1, service_id=7, agent_id=3)))
+        monkeypatch.setattr(connection_service, "lock_services", AsyncMock())
         return AsyncMock(spec=AsyncSession)
 
     @pytest.mark.asyncio

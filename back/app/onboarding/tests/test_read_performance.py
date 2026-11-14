@@ -1,4 +1,4 @@
-"""The home overview checks Tool existence without loading their configurations."""
+"""The home overview checks Service existence without loading their configurations."""
 
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.onboarding.services import check_tools_status
-from app.tools.models import Tool
+from app.services.models import Service
 from core.database import get_db_session
 from core.user import UserModel
 from core.user.user_service import encrypt_password
@@ -16,14 +16,14 @@ from core.user.user_service import encrypt_password
 
 @pytest.mark.asyncio
 async def test_tools_status_does_not_materialize_the_catalogue(db):
-    db.add_all([Tool(code=f"synthetic-welcome-tool-{index}", label=f"Synthetic Tool {index}",
+    db.add_all([Service(code=f"synthetic-welcome-tool-{index}", label=f"Synthetic Service {index}",
                      description="Synthetic description. " * 5000) for index in range(41)])
     await db.commit()
     db.expunge_all()
     loaded = []
 
     def materialized(_session, instance):
-        if isinstance(instance, Tool):
+        if isinstance(instance, Service):
             loaded.append(instance)
 
     event.listen(Session, "loaded_as_persistent", materialized)

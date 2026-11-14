@@ -16,7 +16,7 @@ augmenterait en outre fortement la consommation au repos.
 
 ## Décision
 
-Galaris fournit un Tool `browser`, inactif par défaut et activable par agent. Un sidecar unique
+Galaris fournit un Service `browser`, inactif par défaut et activable par agent. Un sidecar unique
 héberge un processus Chromium partagé. Chaque session utilise toutefois son propre
 `BrowserContext`, appartient au couple agent/tâche, expire automatiquement et ne partage aucun
 état web avec les autres sessions.
@@ -31,7 +31,7 @@ page complète découpée en bandes verticales bornées; chaque bande est renvoy
 MCP et, lorsqu’une console est active, déposée sous une URI `console://`. Sans console, aucune
 destination locale implicite n’existe. Une troncature est toujours explicite.
 
-Quand ce Tool est actif pour Hermès, son toolset navigateur natif est désactivé. La connexion
+Quand ce Service est actif pour Hermès, son toolset navigateur natif est désactivé. La connexion
 Galaris et ses états de fonctions restent ainsi l’unique décision d’autorisation.
 
 ## Conséquences

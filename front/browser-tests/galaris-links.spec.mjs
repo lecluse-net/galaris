@@ -194,7 +194,7 @@ const lastValue = page => page.evaluate(() => {
 })
 async function pickerFixtures(page) {
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'galaris', label: 'Galaris', capabilities: ['list'], native: true }])
-  await jsonRoute(page, '**/api/file-share/browser/entries?*', { entries: [{ uri: `galaris://goal/${goalId}`, name: 'Synthetic goal', is_collection: false, media_type: 'text/html', size: null, capabilities: ['read'], metadata: { tool_code: 'galaris' } }], next_cursor: null, truncated: false })
+  await jsonRoute(page, '**/api/file-share/browser/entries?*', { entries: [{ uri: `galaris://goal/${goalId}`, name: 'Synthetic goal', is_collection: false, media_type: 'text/html', size: null, capabilities: ['read'], metadata: { service_code: 'galaris' } }], next_cursor: null, truncated: false })
   await page.route('**/api/file-share/browser/thumbnail?*', route => route.fulfill({ status: 404 }))
 }
 async function openPicker(page, width = 1440) {

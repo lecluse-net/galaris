@@ -8,16 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.messenger import available_bridges
 from app.messenger.schemas import MessengerBridgeInfo, MessengerBridgeParam
-from app.tools import (
+from app.services import (
     ConnectionParamDef,
     ConnectionSchema,
     MessengerConfig,
-    ToolCreate,
-    ToolUpdate,
-    tool_service,
+    ServiceCreate,
+    ServiceUpdate,
+    service,
 )
-from app.tools import router as tool_router
-from app.tools.secrets import runtime_messenger_config
+from app.services import router as tool_router
+from app.services.secrets import runtime_messenger_config
 from core.util import SECRET_MASK, get_encryption_service
 
 
@@ -27,7 +27,7 @@ async def test_reception_checks_only_existing_active_connections_for_the_provide
     from app.agent.models import Agent, Title
     from app.connection import Connection
     from app.messenger import facade, service
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from core.params import runtime_settings
 
     kinds = ["internal", "telegram", "matrix", "nextcloud_talk", "one_bot", "whatsapp"]
@@ -35,7 +35,7 @@ async def test_reception_checks_only_existing_active_connections_for_the_provide
     service.register_messaging()
     suffix = uuid4().hex
     title = Title(label="Synthetic reception check", gender="X")
-    tools = {kind: ToolModel(code=f"reception-{kind}-{suffix}", label=f"Synthetic {kind}",
+    tools = {kind: ServiceModel(code=f"reception-{kind}-{suffix}", label=f"Synthetic {kind}",
         description="", connection_schema={}, messenger_config={"service": kind}) for kind in kinds}
     db.add_all([title, *tools.values()])
     await db.flush()
@@ -43,16 +43,16 @@ async def test_reception_checks_only_existing_active_connections_for_the_provide
         first_name="Synthetic", last_name=f"Receiver {index}", agent_driver="internal") for index in range(4)]
     db.add_all(agents)
     await db.flush()
-    selected = Connection(agent_id=agents[0].id, tool_id=tools[provider].id, active=True)
-    inactive = Connection(agent_id=agents[3].id, tool_id=tools[provider].id, active=False)
+    selected = Connection(agent_id=agents[0].id, service_id=tools[provider].id, active=True)
+    inactive = Connection(agent_id=agents[3].id, service_id=tools[provider].id, active=False)
     # Agent 1 has only other providers; agent 2 has no messaging connection at all.
-    others = [Connection(agent_id=agents[1].id, tool_id=tool.id, active=True)
+    others = [Connection(agent_id=agents[1].id, service_id=tool.id, active=True)
         for kind, tool in tools.items() if kind != provider]
     db.add_all([selected, inactive, *others])
     await db.flush()
     builders = {}
     for kind in kinds:
-        transport = SimpleNamespace(kind=kind, self_id="synthetic-bot", tool_id=tools[kind].id,
+        transport = SimpleNamespace(kind=kind, self_id="synthetic-bot", service_id=tools[kind].id,
             check_connection=AsyncMock(return_value="Synthetic reception available"), close=AsyncMock())
         factory = facade.get_factory(kind)
         assert factory is not None
@@ -141,8 +141,8 @@ async def test_tool_creation_rejects_a_missing_required_messenger_mapping(
 ) -> None:
     del db
     with pytest.raises(ValueError, match="login"):
-        await tool_service.create_tool(
-            ToolCreate(
+        await service.create_service(
+            ServiceCreate(
                 code="invalid-nextcloud-messenger",
                 label="Invalid Nextcloud",
                 messenger_config=MessengerConfig(
@@ -166,8 +166,8 @@ async def test_whatsapp_server_secrets_are_encrypted_and_write_only(
     del db
     app_secret = "whatsapp-app-secret-sentinel"
     verify_token = "whatsapp-verify-token-sentinel"
-    record = await tool_service.create_tool(
-        ToolCreate(
+    record = await service.create_service(
+        ServiceCreate(
             code="whatsapp-secret-storage",
             label="WhatsApp",
             messenger_config=MessengerConfig(
@@ -216,8 +216,8 @@ async def test_tool_update_can_disable_messenger_capability(
     db: AsyncSession,
 ) -> None:
     del db
-    record = await tool_service.create_tool(
-        ToolCreate(
+    record = await service.create_service(
+        ServiceCreate(
             code="disable-messenger-capability",
             label="Telegram",
             messenger_config=MessengerConfig(
@@ -232,9 +232,9 @@ async def test_tool_update_can_disable_messenger_capability(
         )
     )
 
-    updated = await tool_service.update_tool(
+    updated = await service.update_service(
         int(record.id),
-        ToolUpdate(messenger_config=None),
+        ServiceUpdate(messenger_config=None),
     )
 
     assert updated is not None

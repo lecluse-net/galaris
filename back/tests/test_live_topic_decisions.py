@@ -48,14 +48,14 @@ async def context(decisions, runtime, *, specialized=True):
     previous = await db.scalar(select(Message).where(Message.messenger_room_id == room.id))
     previous.topic_id = topic.id
     sender = MessengerUser(
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         external_id=f"human-{uuid4()}",
         display_name="Morgan",
         galaris_user_id=task.agent.user_id,
         is_ai=False,
     )
     recipient = MessengerUser(
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         external_id=f"agent-{uuid4()}",
         agent_id=task.agent_id,
         is_ai=True,
@@ -70,7 +70,7 @@ async def message(db, scope, *, text="And how should I water the tomatoes?", top
     task, _, _, room, connection, sender, recipient, _ = scope
     row = Message(
         connection_id=connection.id,
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         platform="internal",
         remote_message_id=f"live-{uuid4()}",
         direction="inbound",
@@ -184,7 +184,7 @@ async def test_live_topic_runs_alongside_admission_and_dispatch_then_dream_skips
         from app.memory import mcp as memory_tools
         from app.memory import AtomicMemoryFact
         from app.memory.models import MemoryTopicContactItem, MemoryTopicContactScope
-        from app.tools.mcp_loader import McpToolContext
+        from app.services.mcp_loader import McpToolContext
 
         await db.refresh(topic)
         assert topic.memory_item_id is not None

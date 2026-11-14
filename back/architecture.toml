@@ -30,10 +30,10 @@ max_domain_fan_out = 0
 
 [module."app.incident"]
 # The read-only MCP adapter consumes the public Tools decorator and live administration scope.
-allowed_dependencies = ["app.tools"]
+allowed_dependencies = ["app.services"]
 max_domain_fan_out = 1
 
-[module."app.tools"]
+[module."app.services"]
 allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.documentation", "app.file_share", "app.llm", "app.messenger", "app.task", "app.util"]
 max_domain_fan_out = 9
 
@@ -42,50 +42,50 @@ allowed_dependencies = []
 max_domain_fan_out = 0
 
 [module."app.agent"]
-allowed_dependencies = ["app.file_share", "app.image", "app.llm", "app.messenger", "app.process", "app.share", "app.skill", "app.tools"]
+allowed_dependencies = ["app.file_share", "app.image", "app.llm", "app.messenger", "app.process", "app.share", "app.skill", "app.services"]
 max_domain_fan_out = 8
 
 [module."app.harness"]
-allowed_dependencies = ["app.agent", "app.console", "app.conversation", "app.file_share", "app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
+allowed_dependencies = ["app.agent", "app.console", "app.conversation", "app.file_share", "app.llm", "app.messenger", "app.process", "app.skill", "app.services"]
 max_domain_fan_out = 9
 
 [module."app.harnesses"]
-allowed_dependencies = ["app.agent", "app.tools"]
+allowed_dependencies = ["app.agent", "app.services"]
 max_domain_fan_out = 2
 
 [module."app.connection"]
-allowed_dependencies = ["app.agent", "app.tools"]
+allowed_dependencies = ["app.agent", "app.services"]
 max_domain_fan_out = 2
 
 [module."app.skill"]
-allowed_dependencies = ["app.agent", "app.connection", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.services"]
 max_domain_fan_out = 3
 
 [module."app.webhook"]
-allowed_dependencies = ["app.agent", "app.connection", "app.task", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.task", "app.services"]
 max_domain_fan_out = 4
 
 [module."app.llm"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.file_share", "app.mcp", "app.messenger", "app.process", "app.task", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.file_share", "app.mcp", "app.messenger", "app.process", "app.task", "app.services"]
 max_domain_fan_out = 9
 
 [module."app.topic"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.document", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.document", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.services"]
 max_domain_fan_out = 11
 
 # Documentary responsibilities extracted from Memory; reviewed in ADR 0223.
 [module."app.document"]
-allowed_dependencies = ["app.agent", "app.conversation", "app.file_share", "app.goal", "app.llm", "app.memory", "app.process", "app.share", "app.task", "app.tools"]
+allowed_dependencies = ["app.agent", "app.conversation", "app.file_share", "app.goal", "app.llm", "app.memory", "app.process", "app.share", "app.task", "app.services"]
 max_domain_fan_out = 10
 
 [module."app.memory"]
-allowed_dependencies = ["app.agent", "app.conversation", "app.document", "app.goal", "app.llm", "app.process", "app.task", "app.tools", "app.topic", "app.voice"]
+allowed_dependencies = ["app.agent", "app.conversation", "app.document", "app.goal", "app.llm", "app.process", "app.task", "app.services", "app.topic", "app.voice"]
 max_domain_fan_out = 10
 
 [module."app.contact"]
 # Contact attribution invokes bounded LLM decisions; reviewed in ADR 0256.
-# The self-service MCP adapter uses app.tools' public decorator/context; reviewed in ADR 0254.
-allowed_dependencies = ["app.agent", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.task", "app.tools"]
+# The self-service MCP adapter uses app.services' public decorator/context; reviewed in ADR 0254.
+allowed_dependencies = ["app.agent", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.task", "app.services"]
 max_domain_fan_out = 7
 
 [module."app.dream"]
@@ -94,11 +94,11 @@ allowed_dependencies = ["app.agent", "app.connection", "app.contact", "app.conve
 max_domain_fan_out = 15
 
 [module."app.task"]
-allowed_dependencies = ["app.agent", "app.goal", "app.llm", "app.messenger", "app.tools"]
+allowed_dependencies = ["app.agent", "app.goal", "app.llm", "app.messenger", "app.services"]
 max_domain_fan_out = 5
 
 [module."app.goal"]
-allowed_dependencies = ["app.agent", "app.connection", "app.llm", "app.messenger", "app.task", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.llm", "app.messenger", "app.task", "app.services"]
 max_domain_fan_out = 6
 
 [module."app.dashboard"]
@@ -106,11 +106,11 @@ allowed_dependencies = ["app.agent", "app.llm", "app.task"]
 max_domain_fan_out = 3
 
 [module."app.lab"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.dream", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "app.topic", "app.voice"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.dream", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.services", "app.topic", "app.voice"]
 max_domain_fan_out = 15
 
 [module."app.messenger"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.file_share", "app.llm", "app.memory", "app.task", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.file_share", "app.llm", "app.memory", "app.task", "app.services"]
 max_domain_fan_out = 8
 
 [module."app.chat"]
@@ -118,35 +118,35 @@ allowed_dependencies = ["app.agent", "app.browser", "app.code", "app.conversatio
 max_domain_fan_out = 8
 
 [module."app.conversation"]
-allowed_dependencies = ["app.agent", "app.code", "app.connection", "app.file_share", "app.llm", "app.messenger", "app.process", "app.task", "app.tools"]
+allowed_dependencies = ["app.agent", "app.code", "app.connection", "app.file_share", "app.llm", "app.messenger", "app.process", "app.task", "app.services"]
 max_domain_fan_out = 9
 
 [module."app.browser"]
-allowed_dependencies = ["app.connection", "app.file_share", "app.messenger", "app.tools"]
+allowed_dependencies = ["app.connection", "app.file_share", "app.messenger", "app.services"]
 max_domain_fan_out = 4
 
 [module."app.image"]
-allowed_dependencies = ["app.file_share", "app.llm", "app.tools"]
+allowed_dependencies = ["app.file_share", "app.llm", "app.services"]
 max_domain_fan_out = 3
 
 [module."app.audio"]
-allowed_dependencies = ["app.file_share", "app.llm", "app.messenger", "app.task", "app.tools", "bridge.youtube"]
+allowed_dependencies = ["app.file_share", "app.llm", "app.messenger", "app.task", "app.services", "bridge.youtube"]
 max_domain_fan_out = 6
 
 [module."app.onboarding"]
-allowed_dependencies = ["app.agent", "app.connection", "app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.llm", "app.messenger", "app.process", "app.skill", "app.services"]
 max_domain_fan_out = 7
 
 [module."app.voice"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.services"]
 max_domain_fan_out = 9
 
 [module."app.file_share"]
-allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.conversation", "app.documentation", "app.document", "app.goal", "app.image", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "bridge.affine"]
+allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.conversation", "app.documentation", "app.document", "app.goal", "app.image", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.services", "bridge.affine"]
 max_domain_fan_out = 15
 
 [module."app.console"]
-allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.services"]
 max_domain_fan_out = 4
 
 [module."app.code"]
@@ -158,7 +158,7 @@ allowed_dependencies = ["app.agent", "app.code", "app.console", "app.file_share"
 max_domain_fan_out = 4
 
 [module."app.process"]
-allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.document", "app.file_share", "app.llm", "app.memory", "app.share", "app.task", "app.tools"]
+allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.document", "app.file_share", "app.llm", "app.memory", "app.share", "app.task", "app.services"]
 max_domain_fan_out = 10
 
 [module."app.dataset"]
@@ -166,7 +166,7 @@ allowed_dependencies = ["app.document"]
 max_domain_fan_out = 1
 
 [module."app.multimedia"]
-allowed_dependencies = ["app.agent", "app.file_share", "app.llm", "app.tools"]
+allowed_dependencies = ["app.agent", "app.file_share", "app.llm", "app.services"]
 max_domain_fan_out = 4
 
 [module."bridge.sunoapi"]
@@ -182,7 +182,7 @@ allowed_dependencies = ["app.llm"]
 max_domain_fan_out = 1
 
 [module."app.mcp"]
-allowed_dependencies = ["app.agent", "app.tools"]
+allowed_dependencies = ["app.agent", "app.services"]
 max_domain_fan_out = 2
 
 [module."bridge.harness"]
@@ -206,7 +206,7 @@ allowed_dependencies = ["app.process"]
 max_domain_fan_out = 1
 
 [module."bridge.mail"]
-allowed_dependencies = ["app.agent", "app.connection", "app.contact", "app.file_share", "app.messenger", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.contact", "app.file_share", "app.messenger", "app.services"]
 max_domain_fan_out = 6
 
 [module."bridge.calendar"]
@@ -215,11 +215,11 @@ max_domain_fan_out = 2
 
 [module."app.calendar"]
 # Contact lifecycle hooks (ADR 0287) and native resource registration (ADR 0289).
-allowed_dependencies = ["app.agent", "app.connection", "app.contact", "app.file_share", "app.memory", "app.tools"]
+allowed_dependencies = ["app.agent", "app.connection", "app.contact", "app.file_share", "app.memory", "app.services"]
 max_domain_fan_out = 6
 
 [module."bridge.hermes"]
-allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.harnesses", "app.llm", "app.mcp", "app.memory", "app.messenger", "app.process", "app.skill", "app.tools", "bridge.harness"]
+allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.harnesses", "app.llm", "app.mcp", "app.memory", "app.messenger", "app.process", "app.skill", "app.services", "bridge.harness"]
 max_domain_fan_out = 12
 
 [module."bridge.one_bot"]
@@ -227,11 +227,11 @@ allowed_dependencies = ["app.connection", "app.messenger"]
 max_domain_fan_out = 2
 
 [module."bridge.matrix"]
-allowed_dependencies = ["app.agent", "app.connection", "app.messenger", "app.tools", "app.voice"]
+allowed_dependencies = ["app.agent", "app.connection", "app.messenger", "app.services", "app.voice"]
 max_domain_fan_out = 5
 
 [module."bridge.nextcloud"]
-allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.messenger", "app.tools", "app.voice"]
+allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.messenger", "app.services", "app.voice"]
 max_domain_fan_out = 6
 
 [module."bridge.samba"]
@@ -243,7 +243,7 @@ allowed_dependencies = ["app.messenger"]
 max_domain_fan_out = 1
 
 [module."bridge.whatsapp"]
-allowed_dependencies = ["app.connection", "app.messenger", "app.tools"]
+allowed_dependencies = ["app.connection", "app.messenger", "app.services"]
 max_domain_fan_out = 3
 
 [module."bridge.openrouter"]

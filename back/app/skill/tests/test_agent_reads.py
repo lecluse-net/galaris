@@ -77,7 +77,7 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
     password = "synthetic-skill-reader-password"
     async with get_db_session() as db:
         from app.connection import Connection
-        from app.tools import ToolModel
+        from app.services import ServiceModel
         privilege = await db.scalar(select(Privilege).where(Privilege.code == "SKILL_ACCESS"))
         role = Role(code="synthetic-skill-reader", privileges=[privilege])
         password_hash = encrypt_password(password)
@@ -94,8 +94,8 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
         await db.flush()
         owner_id = agents[0].id
         other_id = agents[1].id
-        tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == 'skills'))
-        connection = Connection(agent_id=owner_id, tool_id=tool_id, active=True)
+        service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == 'skills'))
+        connection = Connection(agent_id=owner_id, service_id=service_id, active=True)
         db.add(connection)
         await db.flush()
         connection_id = connection.id
@@ -157,10 +157,10 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
     mutation_path = f"{personal_path}/{package_ids[0]}"
     assert (await client.put(mutation_path, headers=headers[0], json={"expected_revision": 1, "label": "Forbidden"})).status_code == 403
     def scope_data(value):
-        return {'connection_id': connection_id, 'params': {'tools.management_scope': value}}
+        return {'connection_id': connection_id, 'params': {'services.management_scope': value}}
     assert (await client.post(scope_path, headers=headers[0], json=scope_data('all'))).status_code == 403
     assert (await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
-        'active': False, 'params': {'tools.management_scope': 'all'},
+        'active': False, 'params': {'services.management_scope': 'all'},
     })).status_code == 403
     from sqlalchemy.orm import selectinload
     async with get_db_session() as db:
@@ -171,7 +171,7 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
         same_manager = Agent(user_id=users[0].id, title_id=title.id, code='synthetic-scope-same-manager',
             first_name='Synthetic', last_name='Same manager', agent_driver='internal')
         db.add(same_manager)
-        db.add(ConnectionParam(connection_id=connection_id, param_name='tools.management_scope', param_value='all'))
+        db.add(ConnectionParam(connection_id=connection_id, param_name='services.management_scope', param_value='all'))
         await db.flush()
         same_manager_id = same_manager.id
     assert (await client.put(f"{personal_path}/{package_ids[1]}", headers=headers[0], json={"expected_revision": 1, "label": "Forbidden"})).status_code == 404
@@ -246,7 +246,7 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
         'agent_id': same_manager_id,
     })).status_code == 403
     assert (await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
-        'active': False, 'params': {'tools.management_scope': 'personal'},
+        'active': False, 'params': {'services.management_scope': 'personal'},
     })).status_code == 403
     unchanged = (await client.get(f'/api/connections/{connection_id}', headers=headers[0])).json()
     assert unchanged['active'] and unchanged['agent_id'] == owner_id
@@ -264,25 +264,25 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
     assert (await client.put(f'/api/skills/{package_ids[0]}/enabled', headers=headers[0],
                              json={"enabled": False, "expected_revision": 6})).status_code == 404
     assert (await client.post(scope_path, headers=headers[0], json=scope_data('personal'))).status_code == 201
-    assert (await client.get(f'/api/connections/{connection_id}/params', headers=headers[0])).json()['params']['tools.management_scope'] == 'personal'
+    assert (await client.get(f'/api/connections/{connection_id}/params', headers=headers[0])).json()['params']['services.management_scope'] == 'personal'
     assert (await client.post(scope_path, headers=headers[0], json=scope_data('team'))).status_code == 201
     assert (await client.post(scope_path, headers=headers[0], json=scope_data('unknown'))).status_code == 422
     configured = await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
-        'active': False, 'params': {'tools.management_scope': 'all'},
+        'active': False, 'params': {'services.management_scope': 'all'},
     })
     assert configured.status_code == 200 and not configured.json()['active']
     failed = await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
-        'active': True, 'params': {'tools.management_scope': 'unknown'},
+        'active': True, 'params': {'services.management_scope': 'unknown'},
     })
     assert failed.status_code == 422
     assert not (await client.get(f'/api/connections/{connection_id}', headers=headers[0])).json()['active']
-    assert (await client.get(f'/api/connections/{connection_id}/params', headers=headers[0])).json()['params']['tools.management_scope'] == 'all'
+    assert (await client.get(f'/api/connections/{connection_id}/params', headers=headers[0])).json()['params']['services.management_scope'] == 'all'
     assert (await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
-        'active': True, 'params': {'tools.management_scope': 'team'},
+        'active': True, 'params': {'services.management_scope': 'team'},
     })).status_code == 200
     failed_creation = await client.post('/api/connections', headers=headers[0], json={
-        'agent_id': other_id, 'tool_id': tool_id, 'active': True,
-        'params': {'tools.management_scope': 'unknown'},
+        'agent_id': other_id, 'service_id': service_id, 'active': True,
+        'params': {'services.management_scope': 'unknown'},
     })
     assert failed_creation.status_code == 422
     assert (await client.get('/api/connections', headers=headers[0], params={'agent_id': other_id})).json() == []

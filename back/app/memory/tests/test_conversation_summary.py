@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 
 from app.memory import conversation_summary, mcp
 from app.memory.models import MemoryItem
-from app.tools import McpToolContext
+from app.services import McpToolContext
 
 
 @pytest.mark.asyncio

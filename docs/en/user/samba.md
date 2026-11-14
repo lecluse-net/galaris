@@ -6,7 +6,7 @@ The **Samba / SMB 2–3** bridge exposes share files through **File sharing** fu
 The server must be reachable from the Galaris backend, usually on TCP port 445.
 Galaris does not require a mounted drive.
 
-1. In **Tools**, create a Tool with a code such as `team-share`, enable its file-sharing
+1. In **Services**, create a Service with a code such as `team-share`, enable its file-sharing
    capability and select **Samba / SMB 2–3**.
 2. In the **File sharing** tab, set **Share address (base_url)**.
    `smb://files.example.test` exposes the server’s shares: the agent lists
@@ -39,17 +39,17 @@ to its catalogue.
 | `smb://files.example.test/shared` | Contents of `shared` | `team-share://reports/result.txt` |
 | `smb://files.example.test/shared/team` | Contents of `shared/team` | `team-share://reports/result.txt` |
 
-The scheme always matches the Tool code; paths are relative to the configured root.
+The scheme always matches the Service code; paths are relative to the configured root.
 Reuse the exact returned URIs, including spaces, accents and encoded characters.
-Credentials are resolved on the server. Separate Tools can target different servers
+Credentials are resolved on the server. Separate Services can target different servers
 or roots.
 
-A Tool carrying only this file capability is not a Task-only function catalogue:
+A Service carrying only this file capability is not a Task-only function catalogue:
 its resources use the `file_*` functions authorized in the current context.
 
 ## Permissions and limits
 
-The agent receives neither the SMB address nor credentials: it uses only Tool URIs
+The agent receives neither the SMB address nor credentials: it uses only Service URIs
 and `file_*` functions. A server root uses SRVSVC over authenticated SMB and lists
 only disk shares accessible to the account. Printers and IPC endpoints are not folders.
 Server permissions remain enforced on every access. Servers without SRVSVC require
@@ -76,7 +76,7 @@ page and 10,000 entries per directory; a larger directory requires a smaller roo
 
 - A rejected **Technical name** means the code does not match the indicated format:
   enter `team-share`, then put the SMB address in `base_url`.
-- A `base_url` configuration error must be corrected in the Tool; the agent keeps
+- A `base_url` configuration error must be corrected in the Service; the agent keeps
   using its `team-share://` URIs.
 - An authentication denial concerns the connection login or password.
   A missing share may also be forbidden for that account.

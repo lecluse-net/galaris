@@ -29,7 +29,7 @@ from app.process.schemas import (
     ProcessEngineHealth,
     ProcessStartPayload,
 )
-from app.tools import ToolModel
+from app.services import ServiceModel
 
 
 class FlakyFakeEngine:
@@ -42,7 +42,7 @@ class FlakyFakeEngine:
 
     async def health(self) -> ProcessEngineHealth:
         return ProcessEngineHealth(
-            tool_code=self.code,
+            service_code=self.code,
             status="healthy",
             reachable=True,
             authenticated=True,
@@ -76,7 +76,7 @@ class FlakyFakeEngine:
 async def main() -> None:
     workflow_id = f"manual-workflow-{uuid4().hex[:8]}"
     process_id: int | None = None
-    tool_id: int | None = None
+    service_id: int | None = None
     created_tool = False
     run_id: UUID | None = None
     extra_run_ids: list[UUID] = []
@@ -86,17 +86,17 @@ async def main() -> None:
     if agent is None:
         raise RuntimeError("The scenario requires at least one existing agent.")
     try:
-        tool = (await db.execute(select(ToolModel).where(ToolModel.code == "fake"))).scalar_one_or_none()
+        tool = (await db.execute(select(ServiceModel).where(ServiceModel.code == "fake"))).scalar_one_or_none()
         if tool is None:
-            tool = ToolModel(code="fake", label="Fake", description="Internal test engine")
+            tool = ServiceModel(code="fake", label="Fake", description="Internal test engine")
             db.add(tool)
             await db.flush()
             created_tool = True
-        tool_id = tool.id
+        service_id = tool.id
         registry.get(tool.code)
         process = await process_service.create_definition(ProcessDefinitionCreate(
             agent_id=agent.id,
-            tool_id=tool.id,
+            service_id=tool.id,
             engine_process_id=workflow_id,
             label="Manual fake process",
         ))
@@ -255,8 +255,8 @@ async def main() -> None:
             await db.execute(sa_delete(ProcessRun).where(ProcessRun.id == run_id))
         if process_id is not None:
             await db.execute(sa_delete(ProcessDefinition).where(ProcessDefinition.id == process_id))
-        if created_tool and tool_id is not None:
-            await db.execute(sa_delete(ToolModel).where(ToolModel.id == tool_id))
+        if created_tool and service_id is not None:
+            await db.execute(sa_delete(ServiceModel).where(ServiceModel.id == service_id))
         await db.commit()
 
 

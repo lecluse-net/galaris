@@ -108,7 +108,7 @@ son nom DAV unique ; le bridge ne renvoie plus l'identifiant vide qui empêchait
 
 ## Preuves dans le code
 
-`back/app/task/working_set.py`, `back/app/tools/resource_effects.py`,
+`back/app/task/working_set.py`, `back/app/services/resource_effects.py`,
 `back/app/memory/mcp.py`, `back/app/agent/planner_service.py`,
 `back/app/agent/executor_service.py`, `back/app/agent/facade.py`,
 `back/app/harness/runtime.py`, `back/app/conversation/artifact_delivery.py`,

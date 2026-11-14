@@ -37,20 +37,20 @@ async def test_multilingual_search_has_bounded_queries_and_preserves_private_sco
     if derived:
         from app.connection import Connection
         from app.messenger import Message, Room
-        from app.tools import ToolModel
+        from app.services import ServiceModel
         from sqlalchemy import select
         from uuid import uuid4
 
-        tool = ToolModel(code=f"synthetic-memory-{uuid4().hex[:10]}", label="Synthetic written source", description="", connection_schema={})
+        tool = ServiceModel(code=f"synthetic-memory-{uuid4().hex[:10]}", label="Synthetic written source", description="", connection_schema={})
         db.add(tool)
         await db.flush()
-        channel = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+        channel = Connection(service_id=tool.id, agent_id=owner.id, active=True)
         db.add(channel)
         await db.flush()
         room = Room(connection_id=channel.id, external_id="synthetic-room", label="Synthetic room", kind="direct", conversation_type="text")
         db.add(room)
         await db.flush()
-        message = Message(connection_id=channel.id, tool_id=tool.id, platform="synthetic",
+        message = Message(connection_id=channel.id, service_id=tool.id, platform="synthetic",
             remote_message_id=str(uuid4()), direction="inbound", messenger_room_id=room.id,
             room_id=room.external_id, text="Synthetic multilingual budget evidence.")
         db.add(message)

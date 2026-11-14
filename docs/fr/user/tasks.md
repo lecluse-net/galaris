@@ -78,7 +78,7 @@ Dans le Chat natif, `@task` placé n’importe où dans le message crée immédi
 avec le texte restant comme objectif, sans appel au LLM de conversation. Pour le harnais interne
 Galaris, `@plan` suffit lui aussi à créer la tâche et à forcer sa planification, sans ajouter `@task`.
 Ces directives se combinent, sans ordre imposé, avec `@standard` et `@high`. `@approve` ne donne
-aucun accord. Les actions sensibles utilisent [les autorisations](../admin/tool-administration.md). Le Chat
+aucun accord. Les actions sensibles utilisent [les autorisations](../admin/service-administration.md). Le Chat
 conserve le round et publie aussitôt une confirmation déterministe
 dans la room ; le résultat de la tâche y sera publié à sa terminaison. Le bouton `@` du composeur
 affiche uniquement les directives compatibles avec le driver de l’agent sélectionné.
@@ -289,7 +289,7 @@ globalement ou pour un agent : les nouveaux sites publics ne
 déclenchent alors plus de demandes réseau par site. Les instances existantes gardent leur
 comportement ; **Autorisation par site** reste disponible.
 Localhost et les réseaux privés restent bloqués par défaut ; les filtres et refus explicites
-restent actifs. Voir [l’administration du Navigateur](../admin/tool-administration.md).
+restent actifs. Voir [l’administration du Navigateur](../admin/service-administration.md).
 
 Pour créer puis compléter un document, l’agent peut demander un accord de création et
 confier la suite à une tâche de fond sur le même document. Si l’écriture est **Sur demande**,

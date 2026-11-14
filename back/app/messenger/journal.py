@@ -214,11 +214,11 @@ async def record(
     user = message.sender if direction == "inbound" else message.recipient
     sender = message.sender
     recipient = message.recipient
-    tool_id = message.tool_id or next(
+    service_id = message.service_id or next(
         (
-            identity.tool_id
+            identity.service_id
             for identity in (sender, recipient)
-            if identity is not None and identity.tool_id is not None
+            if identity is not None and identity.service_id is not None
         ),
         None,
     )
@@ -233,15 +233,15 @@ async def record(
         ),
         key=lambda identity: identity.id,
     )
-    if identities and tool_id is None:
+    if identities and service_id is None:
         raise ValueError("A Messenger message with identities requires a local Tool.")
     identity_ids: dict[str, UUID] = {}
-    if tool_id is not None:
+    if service_id is not None:
         for identity in identities:
             if identity.id in identity_ids:
                 continue
             identity_ids[identity.id] = await resolve_observed_user(
-                tool_id=tool_id,
+                service_id=service_id,
                 user=identity,
             )
     messenger_user_id = identity_ids.get(user.id) if user is not None else None
@@ -284,7 +284,7 @@ async def record(
         pg_insert(Message)
         .values(
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
             platform=platform,
             remote_message_id=_bounded(message.id, 512),
             direction=direction,
@@ -344,7 +344,7 @@ async def record(
             Message.id == existing_id,
         )
         .values(
-            tool_id=tool_id,
+            service_id=service_id,
             platform=platform,
             messenger_room_id=messenger_room_id,
             messenger_user_id=messenger_user_id,
@@ -375,11 +375,11 @@ async def observe_file_catalogue(connection_id: int, room_locator: str | None, f
     if not room_locator or not files:
         return
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.file_share import observe_received_resources, ResourceDescriptor
     from .resource_reference import attachment_resource_uri
     from loguru import logger
-    code = await get_db().scalar(select(ToolModel.code).join(Connection, Connection.tool_id == ToolModel.id)
+    code = await get_db().scalar(select(ServiceModel.code).join(Connection, Connection.service_id == ServiceModel.id)
         .where(Connection.id == connection_id))
     if not code:
         return
@@ -437,7 +437,7 @@ def _message_from_record(
     users_by_key: dict[tuple[int, str], MessengerUser],
     rooms_by_id: dict[UUID, Room],
     files: list[File],
-    tool_codes: dict[int, str],
+    service_codes: dict[int, str],
 ) -> Message:
     metadata = row.metadata_
     sender_id = (
@@ -453,9 +453,9 @@ def _message_from_record(
     def local_user(external_id: str | None) -> MessengerUser | None:
         if not external_id:
             return None
-        if row.tool_id is None:
+        if row.service_id is None:
             raise RuntimeError("A stored Messenger identity has no local Tool scope.")
-        stored = users_by_key.get((row.tool_id, external_id))
+        stored = users_by_key.get((row.service_id, external_id))
         if stored is None:
             raise RuntimeError(
                 "A stored Messenger message references an identity absent from messenger_users."
@@ -474,7 +474,7 @@ def _message_from_record(
         else None
     )
     row.files = files
-    row.tool_code = tool_codes.get(int(row.tool_id or 0), "")
+    row.service_code = service_codes.get(int(row.service_id or 0), "")
     return row
 
 
@@ -483,10 +483,10 @@ async def _messages_from_records(
 ) -> list[Message]:
     """Build public messages only from journal and Messenger-user rows."""
 
-    tool_ids = {row.tool_id for row in rows if row.tool_id is not None}
-    from app.tools import get_tool_codes
+    service_ids = {row.service_id for row in rows if row.service_id is not None}
+    from app.services import get_service_codes
 
-    tool_codes = await get_tool_codes(tool_ids)
+    service_codes = await get_service_codes(service_ids)
     external_ids: set[str] = set()
     for row in rows:
         metadata = row.metadata_
@@ -501,18 +501,18 @@ async def _messages_from_records(
                 await get_db().scalars(
                     select(MessengerUser)
                     .where(
-                        MessengerUser.tool_id.in_(tool_ids),
+                        MessengerUser.service_id.in_(service_ids),
                         MessengerUser.external_id.in_(external_ids),
                     )
                     .execution_options(include_historized=True)
                 )
             ).all()
         )
-        if tool_ids and external_ids
+        if service_ids and external_ids
         else []
     )
     await enrich_messenger_users(users)
-    users_by_key = {(user.tool_id, user.external_id): user for user in users}
+    users_by_key = {(user.service_id, user.external_id): user for user in users}
     room_ids = {
         row.messenger_room_id
         for row in rows
@@ -563,7 +563,7 @@ async def _messages_from_records(
             users_by_key,
             rooms_by_id,
             files_by_message.get(row.id, []),
-            tool_codes,
+            service_codes,
         )
         for row in rows
     ]
@@ -596,7 +596,7 @@ async def stored_message(
 async def synchronize_messages(
     *,
     connection_id: int,
-    tool_id: int,
+    service_id: int,
     self_id: str,
     messages: list[ObservedMessengerMessage],
     counts_as_unread: bool = False,
@@ -609,14 +609,14 @@ async def synchronize_messages(
             if not source.id:
                 continue
             message = source.model_copy(deep=True)
-            message.tool_id = tool_id
+            message.service_id = service_id
             if message.room is not None:
                 message.room.connection_id = connection_id
-                message.room.tool_id = tool_id
+                message.room.service_id = service_id
             for identity in (message.sender, message.recipient):
                 if identity is not None:
                     identity.connection_id = connection_id
-                    identity.tool_id = tool_id
+                    identity.service_id = service_id
             direction: Direction = (
                 "outbound"
                 if message.sender is not None and message.sender.id == self_id

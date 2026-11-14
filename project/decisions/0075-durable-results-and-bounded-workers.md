@@ -39,7 +39,7 @@ Le décodeur vocal produit au plus 50 trames par lot. La sortie Talk admet 100 t
 de 20 ms puis attend le consommateur ; une génération invalide les fragments d'avant
 une interruption, y compris ceux d'un producteur bloqué.
 
-Les transports de fichiers propres à un Tool sont enregistrés par leur bridge via
+Les transports de fichiers propres à un Service sont enregistrés par leur bridge via
 `app.file_share.interface`. La façade vérifie la connexion avant de construire le transport ;
 elle ne sélectionne plus directement une classe privée du bridge Mail.
 

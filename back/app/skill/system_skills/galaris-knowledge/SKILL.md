@@ -12,7 +12,7 @@ product behavior; it does not prove a particular user's rights or an installatio
 ## Conceptual foundation
 
 - An **Agent** combines a mission, personality, model/harness, tools and skills. A skill supplies
-  reusable instructions; a Tool exposes executable capabilities through a connection. Knowing
+  reusable instructions; a Service exposes executable capabilities through a connection. Knowing
   a procedure never grants permission to execute its tools.
 - A **Conversation** carries interactive exchanges. A **Task** owns tracked work, attempts,
   progress and waiting states. A **Goal** owns a durable objective and successive work cycles.
@@ -26,7 +26,7 @@ product behavior; it does not prove a particular user's rights or an installatio
   **Files** under `file://` are independently managed resources; they do not require a Console.
   Console provides shell execution and a persistent SSH filesystem when configured.
   Sharing a link does not grant access to its resource.
-- **Connections** attach Tools to agents. Tool/function permissions, conversation availability,
+- **Connections** attach Services to agents. Service/function permissions, conversation availability,
   resource ACLs and runtime compatibility can independently affect what is available.
 - **Bridges** connect external systems and channels to Galaris. Their activation, credentials
   and supported capabilities determine which interactions work.
@@ -91,7 +91,7 @@ unverified answer in the conversation. Use current source-backed instructions to
 
 ## Help without inventing context
 
-Use the actual rights-filtered tool inventory for what you can inspect. `tools_list` describes
+Use the actual rights-filtered tool inventory for what you can inspect. `services_list` describes
 your authorized functions and, when known, whether they are mounted in this run. A listed but
 absent function needs a new compatible context; loading a skill cannot mount it or enable it.
 This inventory does not describe the human user's permissions. Documentation access alone does not grant

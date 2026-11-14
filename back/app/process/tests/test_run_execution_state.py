@@ -86,7 +86,7 @@ async def test_task_mcp_attachment_creation_checks_parent_scope_and_live_process
     from app.connection import Connection, ConnectionFunctionState
     from app.task import TaskCreate, task_service
     from app.task.agent_adapter import SqlAlchemyAgentTaskAdapter
-    from app.tools import ToolModel, build_agent_galaris_fastmcp
+    from app.services import ServiceModel, build_agent_galaris_fastmcp
     from .test_native_bpmn import graph
 
     db = inference_db
@@ -105,8 +105,8 @@ async def test_task_mcp_attachment_creation_checks_parent_scope_and_live_process
     db.add(task)
     await db.flush()
     task.data = {"execution_scope": admitted_scope(task.id, task.objective).model_dump(mode="json")}
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "file_sharing"))
-    connection = Connection(agent_id=actor.id, tool_id=tool.id, active=True)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "file_sharing"))
+    connection = Connection(agent_id=actor.id, service_id=tool.id, active=True)
     db.add(connection)
     await db.flush()
     functions = {"file_create", "file_read"}

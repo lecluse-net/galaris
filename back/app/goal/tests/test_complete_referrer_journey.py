@@ -30,10 +30,10 @@ from app.messenger import create_internal_room, publish_internal_message
 from app.messenger.models import Interaction, Message
 from app.task import scheduler, task_service
 from app.task.models import Task, TaskStatus
-from app.tools import ToolModel
-from app.tools.authorization import answer_action
-from app.tools.authorization_notifications import reconcile_authorizations
-from app.tools.authorization_models import ActionAuthorization
+from app.services import ServiceModel
+from app.services.authorization import answer_action
+from app.services.authorization_notifications import reconcile_authorizations
+from app.services.authorization_models import ActionAuthorization
 from core.database import get_db_session
 from core.user import UserModel, user_service
 
@@ -74,8 +74,8 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
                   code=f"qualified-{uuid4().hex}", first_name="Synthetic", last_name="Operator",
                   agent_driver="internal", job_description="<p>Obtain authorized decisions and record evidence. Create content only when the mission requires it.</p>"),
                   actor_user_id=owner.id)
-    connection = await db.scalar(select(Connection).join(ToolModel).where(
-        Connection.agent_id == agent.id, ToolModel.code == "galaris"))
+    connection = await db.scalar(select(Connection).join(ServiceModel).where(
+        Connection.agent_id == agent.id, ServiceModel.code == "galaris"))
     assert connection is not None
     native_connection_id = connection.id
     await connections.set_connection_function_state(connection.id, "goal_ask_referrer", "enabled")

@@ -8,7 +8,7 @@ from core.dbadmin import DbAdminAction, DbAdminPhase, DbAdminRegistry, SchemaTra
 
 def _needed(delta: SchemaTransitionSet) -> bool:
     return any(delta.column_added(table, "state") for table in (
-        "connection_function_state", "tool_function_state",
+        "connection_function_state", "service_function_state",
     ))
 
 
@@ -18,7 +18,7 @@ async def _complete(session: AsyncSession, _: SchemaTransitionSet) -> bool:
         return False
     missing = await session.scalar(text("""
         SELECT (SELECT count(*) FROM connection_function_state WHERE state IS NULL)
-             + (SELECT count(*) FROM tool_function_state WHERE state IS NULL)
+             + (SELECT count(*) FROM service_function_state WHERE state IS NULL)
     """))
     done = await session.scalar(text("SELECT count(*) FROM galaris_migration.function_modes_completed WHERE checksum = 'v1-binary-system-audit-mail'"))
     return missing == 0 and done == 1
@@ -40,8 +40,8 @@ async def _convert(session: AsyncSession, _: SchemaTransitionSet) -> None:
         CREATE TABLE IF NOT EXISTS galaris_migration.function_modes_completed (checksum text PRIMARY KEY)
     """))
     for table, join in (
-        ("tool_function_state", "JOIN tools t ON t.id = s.tool_id"),
-        ("connection_function_state", "JOIN connections c ON c.id = s.connection_id JOIN tools t ON t.id = c.tool_id"),
+        ("service_function_state", "JOIN services t ON t.id = s.service_id"),
+        ("connection_function_state", "JOIN connections c ON c.id = s.connection_id JOIN services t ON t.id = c.service_id"),
     ):
         # Table names and JOIN clauses come only from the fixed tuple above.
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
@@ -69,12 +69,12 @@ async def _convert(session: AsyncSession, _: SchemaTransitionSet) -> None:
     await session.execute(text("""
         INSERT INTO connection_function_state (connection_id, function_name, capability_kind, state, enabled)
         SELECT c.id, f.name, 'tool', 'ask', false FROM connections c
-        JOIN tools t ON t.id = c.tool_id
+        JOIN services t ON t.id = c.service_id
         LEFT JOIN connection_params p ON p.connection_id = c.id AND p.param_name = 'approval_required'
         CROSS JOIN (VALUES ('mail_send'), ('mail_reply'), ('mail_forward')) f(name)
         LEFT JOIN connection_function_state l ON l.connection_id = c.id
             AND l.capability_kind = 'tool' AND l.function_name = f.name
-        LEFT JOIN tool_function_state g ON g.tool_id = c.tool_id
+        LEFT JOIN service_function_state g ON g.service_id = c.service_id
             AND g.capability_kind = 'tool' AND g.function_name = f.name
         WHERE t.code = 'mail' AND lower(CASE
             WHEN coalesce(t.global_params->'approval_required'->>'forced', 'false') = 'true'
@@ -106,8 +106,8 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
 async def _mail_setting_retired(session: AsyncSession, _: SchemaTransitionSet) -> bool:
     remaining = await session.scalar(text("""
         SELECT (SELECT count(*) FROM connection_params p JOIN connections c ON c.id = p.connection_id
-            JOIN tools t ON t.id = c.tool_id WHERE t.code = 'mail' AND p.param_name = 'approval_required')
-            + (SELECT count(*) FROM tools WHERE code = 'mail' AND global_params ? 'approval_required')
+            JOIN services t ON t.id = c.service_id WHERE t.code = 'mail' AND p.param_name = 'approval_required')
+            + (SELECT count(*) FROM services WHERE code = 'mail' AND global_params ? 'approval_required')
     """))
     return remaining == 0
 
@@ -125,16 +125,16 @@ async def _retire_mail_setting(session: AsyncSession, delta: SchemaTransitionSet
     await session.execute(text("""
         INSERT INTO galaris_migration.retired_mail_approval_settings
         SELECT 'connection_params', p.id, to_jsonb(p) FROM connection_params p
-        JOIN connections c ON c.id = p.connection_id JOIN tools t ON t.id = c.tool_id
+        JOIN connections c ON c.id = p.connection_id JOIN services t ON t.id = c.service_id
         WHERE t.code = 'mail' AND p.param_name = 'approval_required' ON CONFLICT DO NOTHING
     """))
     await session.execute(text("""
         INSERT INTO galaris_migration.retired_mail_approval_settings
         SELECT 'tools', id, jsonb_build_object('approval_required', global_params->'approval_required')
-        FROM tools WHERE code = 'mail' AND global_params ? 'approval_required' ON CONFLICT DO NOTHING
+        FROM services WHERE code = 'mail' AND global_params ? 'approval_required' ON CONFLICT DO NOTHING
     """))
     await session.execute(text("""
-        DELETE FROM connection_params p USING connections c, tools t
-        WHERE p.connection_id = c.id AND c.tool_id = t.id AND t.code = 'mail' AND p.param_name = 'approval_required'
+        DELETE FROM connection_params p USING connections c, services t
+        WHERE p.connection_id = c.id AND c.service_id = t.id AND t.code = 'mail' AND p.param_name = 'approval_required'
     """))
-    await session.execute(text("UPDATE tools SET global_params = global_params - 'approval_required' WHERE code = 'mail'"))
+    await session.execute(text("UPDATE services SET global_params = global_params - 'approval_required' WHERE code = 'mail'"))

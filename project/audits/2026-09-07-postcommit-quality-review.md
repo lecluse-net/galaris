@@ -350,7 +350,7 @@ et la restauration sur un volume représentatif ; distinguer sauvegarde quiescen
 | Core API, User, Authorize, Params, WebSocket | Contrats, middleware/sessions, tests globaux, contrôles de routes et lifecycle frontend | A08 ; conserver les courses de révocation déjà corrigées |
 | Database, DbAdmin, runtime et utilitaires | Lecture des réservations, transactions, superviseur, URL Atlas ; sondes ciblées | A01, A04, A09, A17 |
 | Agent, Harness, Harnesses, Task, Goal | Contrats d'exécution, scheduler, comparaison des leases Goal/Lab, tests et inventaire des grandes unités | A06, A15, A16 ; matrice de crash de chaque driver à étendre |
-| Process, Tools, MCP, Connection | Admission, refresh, checkpoints, rétention, exposition MCP et frontières | A01, A02, A07, A12, A16 |
+| Process, Services, MCP, Connection | Admission, refresh, checkpoints, rétention, exposition MCP et frontières | A01, A02, A07, A12, A16 |
 | LLM, multimédia, Audio, Image, Voice | Transports Media/TTS, états fournisseur, livraison, tests et E2E | A01, A02, A10 ; contrats fournisseurs réels non exercés |
 | Messenger, Chat, Conversation | Contrats, journal, transport de fichiers, reconnexion et stores ; E2E | A07, A08, A12 |
 | FileShare, Memory, documents, Contact, Topic | Stockage natif, listes/révisions, ACL et projections par contrats/tests | A03, A13, A16 ; Contact/Topic n'ont pas une nouvelle revue ligne par ligne |

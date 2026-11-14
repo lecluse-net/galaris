@@ -13,7 +13,7 @@ from app.llm.models import LLMCall
 from app.llm.purposes import LLMCallPurpose
 from app.messenger import Room
 from app.task.models import Task, TaskAttempt, TaskStatus
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 @pytest.mark.asyncio
@@ -176,7 +176,7 @@ async def test_one_call_is_visible_from_both_task_and_conversation_round(
 ) -> None:
     suffix = uuid4().hex[:10]
     title = Title(label=f"LLM lineage {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"llm-lineage-{suffix}",
         label="LLM lineage transport",
         description="",
@@ -193,7 +193,7 @@ async def test_one_call_is_visible_from_both_task_and_conversation_round(
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(

@@ -31,7 +31,7 @@ It must not create a second canonical state or mutate Process tables directly.
 
 | Identifier | Current contract |
 |---|---|
-| `engine.code` / `Tool.code` | The same stable code, such as `example`; the registry selects that engine. |
+| `engine.code` / `Service.code` | The same stable code, such as `example`; the registry selects that engine. |
 | `engine_process_id` / `workflow_id` | External operation; `workflow_id` is its public name in launch calls and URIs. |
 | `ProcessDefinition.id` | Internal SQL identifier used by administrative CRUD. |
 | `run.id` | Canonical Galaris execution UUID. |
@@ -39,7 +39,7 @@ It must not create a second canonical state or mutate Process tables directly.
 | `run.correlation_id` | Stable delivery identity, passed to the software to deduplicate its effects. |
 | `run.callback_token` | Per-run secret for callbacks and downloads; never a business result. |
 
-The database enforces uniqueness of active definitions by `(tool_id, engine_process_id)`.
+The database enforces uniqueness of active definitions by `(service_id, engine_process_id)`.
 However, personal calls resolve `workflow_id` within the agent's scope without an
 engine argument. Choose distinct public identifiers across engines, preferably with a
 prefix, to avoid ambiguous resolution. An active definition has a single `agent_id`
@@ -211,14 +211,14 @@ class ExampleProcessEngine:
             await self._request("GET", "/health")
         except ProcessEngineError as exc:
             return ProcessEngineHealth(
-                tool_code=self.code, status="error",
+                service_code=self.code, status="error",
                 reachable=exc.code != "engine_unreachable",
                 authenticated=exc.code != "unauthorized",
                 supports_cancel=True, cancel_mode="supported",
                 message=exc.message, checked_at=datetime.now(timezone.utc),
             )
         return ProcessEngineHealth(
-            tool_code=self.code, status="healthy", reachable=True, authenticated=True,
+            service_code=self.code, status="healthy", reachable=True, authenticated=True,
             supports_cancel=True, cancel_mode="supported",
             message="External service available", checked_at=datetime.now(timezone.utc),
         )
@@ -294,26 +294,26 @@ physical termination.
    `base_url`, `api_token` and `callback_base_url` are Python arguments, not new
    settings already available in Galaris. Never place a secret in the definition,
    `input`, launch snapshot or description visible to the model.
-3. Create a Tool whose `code` matches the engine. For a shipped contribution,
+3. Create a Service whose `code` matches the engine. For a shipped contribution,
    declare this data through its owner's DbAdmin mechanism; for an installation,
-   use authorized Tool CRUD. A Tool row does not load engine code, and Python
+   use authorized Service CRUD. A Service row does not load engine code, and Python
    registration does not create that row.
-4. With administrative rights, read `GET /api/processes/tools`, check
-   `GET /api/processes/tools/example/health`, then call
-   `POST /api/processes/definitions/sync?tool_code=example`.
+4. With administrative rights, read `GET /api/processes/services`, check
+   `GET /api/processes/services/example/health`, then call
+   `POST /api/processes/definitions/sync?service_code=example`.
    “Synchronization” returns the external catalogue; it does not automatically
    create or assign a `ProcessDefinition`.
 5. Explicitly create the definition with `POST /api/processes/definitions`:
-   `{"tool_id": 123, "engine_process_id": "example:invoice-intake", "label": "Invoice intake",
+   `{"service_id": 123, "engine_process_id": "example:invoice-intake", "label": "Invoice intake",
    "description": "Input format; one source file; output result_uri.", "agent_id": 7}`.
-   These numbers are synthetic: use the actual authorized Tool and agent.
+   These numbers are synthetic: use the actual authorized Service and agent.
    CRUD uses `PROCESS_ADMIN` and the management scope; global HTTP discovery
    also requires the global scope.
 6. The agent uses `process_list`, `process_get`, then `process_start` from the
    base `galaris` package. Those functions and the assignment must be authorized.
    The conversation controller uses `conversation_process_start`.
    The optional `process_admin` package, inactive by default, provides administrative
-   equivalents; supply `tool_code="example"` because several defaults remain `n8n`.
+   equivalents; supply `service_code="example"` because several defaults remain `n8n`.
 7. Regenerate and check documentation and architecture. In development,
    `make sync-db` applies declared data. Adding a module or its activation
    configuration requires loading it during bootstrap; ordinary hot reload of
@@ -332,7 +332,7 @@ registry.register(ExampleProcessEngine(base_url, api_token, callback_base_url))
 
 Human endpoints follow RBAC and management scope; personal tools filter by calling
 agent. An engine's presence does not grant access to every operation.
-Assignment, Tool and definition identifier can be changed through authorized CRUD
+Assignment, Service and definition identifier can be changed through authorized CRUD
 with uniqueness validation; do not change them during an active execution.
 
 ## 6. Launch, recovery and network errors
@@ -477,7 +477,7 @@ search; the normal `make update` deployment indexes prepared sources.
 
 - The registry accepts multiple engines and the scheduler creates jobs per engine.
   The default engine setting remains restricted to `n8n`; a new engine is selected
-  by its definition's Tool rather than by changing that setting.
+  by its definition's Service rather than by changing that setting.
 - `ProcessDefinition` has no engine connection/instance field.
   Multiple installations of the same software require an explicit bridge strategy
   and collision-free identities; there is no ready-made multi-instance setting.

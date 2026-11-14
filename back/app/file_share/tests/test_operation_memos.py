@@ -18,7 +18,7 @@ from app.file_share.operation_memos import conversion_key, converted_resource, s
 from app.image.mcp import image_from_pdf
 from app.image.tests.test_pdf_conversion import pdf_bytes
 from app.process.tests.test_native_bpmn import native as native
-from app.tools import McpToolContext, RecoverableToolError
+from app.services import McpToolContext, RecoverableToolError
 
 
 @pytest.mark.asyncio

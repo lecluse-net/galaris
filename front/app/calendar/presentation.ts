@@ -13,5 +13,5 @@ export function calendarLabel(feed: CalendarFeed, translate: (key: string) => st
 }
 
 export function calendarSourceLabel(feed: CalendarFeed, translate: (key: string) => string): string {
-  return feed.source_kind === 'internal' ? translate('agenda.sources.internal') : feed.tool_label
+  return feed.source_kind === 'internal' ? translate('agenda.sources.internal') : feed.service_label
 }

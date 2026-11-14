@@ -50,7 +50,7 @@ runs restent distincts des datasets de test du Lab.
 
 Les mocks d'applications sont une seconde phase, sans conditionner la livraison du socle.
 Ils pourront simuler état, réponses/fichiers, délais, erreurs et callbacks aux frontières
-Tools/Process, avec journal d'effets et bindings isolés sous droits Lab. Pas de repli
+Services/Process, avec journal d'effets et bindings isolés sous droits Lab. Pas de repli
 implicite vers une application réelle ni de secrets métier dans les fixtures. Qualifier
 leur conformité aux vrais contrats et distinguer simulation, intégration et agents réels
 quand cette extension sera réalisée ; un coût synthétique ne prouve pas une dépense réelle.

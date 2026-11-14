@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from core.database import get_db_session
 from core.user.models import User
 from app.agent.models import Agent, Title
-from app.tools.models import Tool
+from app.services.models import Service
 from app.process.models import ProcessDefinition, ProcessRun
 from app.multimedia.models import MediaGeneration
 
@@ -19,14 +19,14 @@ async def seed_run(*, media=False):
         code = uuid4().hex
         user = User(email=f"{code}@example.test", hashed_password="unused", is_active=True)
         title = Title(label=code, gender="X")
-        tool = Tool(code=code, label=code, connection_schema={})
+        tool = Service(code=code, label=code, connection_schema={})
         db.add_all([user, title, tool]); await db.flush()
         agent = Agent(user_id=user.id, title_id=title.id, code=code, first_name="Concurrent", last_name="Test")
         db.add(agent); await db.flush()
         if media:
             run = MediaGeneration(agent_id=agent.id, callback_token="unused", status="running", input={})
         else:
-            definition = ProcessDefinition(agent_id=agent.id, tool_id=tool.id, engine_process_id=code, label=code)
+            definition = ProcessDefinition(agent_id=agent.id, service_id=tool.id, engine_process_id=code, label=code)
             db.add(definition); await db.flush()
             run = ProcessRun(process_id=definition.id, launcher_agent_id=agent.id, engine_code="fake",
                 correlation_id=code, callback_token="unused", status="running", input={})

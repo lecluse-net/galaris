@@ -69,7 +69,7 @@ NATIVE_RESOURCE_SCHEMES = frozenset(
     }
 )
 RETIRED_RESOURCE_SCHEMES = frozenset({"workspace", "processus"})
-SYSTEM_TOOL_CODES = frozenset(
+SYSTEM_SERVICE_CODES = frozenset(
     {
         "audio",
         "browser",
@@ -94,7 +94,7 @@ RESERVED_TOOL_CODES = (
     PROTOCOL_SCHEMES
     | NATIVE_RESOURCE_SCHEMES
     | RETIRED_RESOURCE_SCHEMES
-    | SYSTEM_TOOL_CODES
+    | SYSTEM_SERVICE_CODES
     | FUTURE_RESOURCE_SCHEMES
 )
 
@@ -107,8 +107,8 @@ class ResourceValidationError(ValueError):
     """A model-safe explanation of a rejected resource operation."""
 
 
-class InvalidResourceToolCodeError(ValueError):
-    """A Tool code cannot serve as a resource URI scheme."""
+class InvalidResourceServiceCodeError(ValueError):
+    """A Service code cannot serve as a resource URI scheme."""
 
 
 class ResourceRevisionConflict(RuntimeError):
@@ -293,7 +293,7 @@ def parse_resource_uri(
     return ResourceUri(scheme, normalized)
 
 
-def validate_external_tool_code(
+def validate_external_service_code(
     code: str,
     *,
     file_share: bool,
@@ -310,8 +310,8 @@ def validate_external_tool_code(
         normalized != normalized.lower()
         or RESOURCE_SCHEME_PATTERN.fullmatch(normalized) is None
     ):
-        raise InvalidResourceToolCodeError(
-            "A resource-capable Tool code must be a lowercase URI scheme matching "
+        raise InvalidResourceServiceCodeError(
+            "A resource-capable Service code must be a lowercase URI scheme matching "
             "[a-z][a-z0-9+.-]*."
         )
     return normalized
@@ -320,15 +320,15 @@ def validate_external_tool_code(
 __all__ = [
     "NATIVE_RESOURCE_SCHEMES",
     "PROTOCOL_SCHEMES",
-    "SYSTEM_TOOL_CODES",
+    "SYSTEM_SERVICE_CODES",
     "FUTURE_RESOURCE_SCHEMES",
     "RESERVED_TOOL_CODES",
     "RESOURCE_SCHEME_PATTERN",
     "ResourceUri",
     "ResourceUriError",
     "ResourceValidationError",
-    "InvalidResourceToolCodeError",
+    "InvalidResourceServiceCodeError",
     "ResourceRevisionConflict",
     "parse_resource_uri",
-    "validate_external_tool_code",
+    "validate_external_service_code",
 ]

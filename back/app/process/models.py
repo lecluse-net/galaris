@@ -34,8 +34,8 @@ class ProcessDefinition(Shareable, HistoryMixin, Base):
     agent_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    tool_id: Mapped[int] = mapped_column(
-        ForeignKey("tools.id", ondelete="RESTRICT"), nullable=False, index=True
+    service_id: Mapped[int] = mapped_column(
+        ForeignKey("services.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     engine_process_id: Mapped[str] = mapped_column(
         String(255), nullable=False, index=True
@@ -63,7 +63,7 @@ class ProcessDefinition(Shareable, HistoryMixin, Base):
         CheckConstraint("global_access IN (0,1,2) AND group_access IN (0,1,2)", name="ck_process_definition_access"),
         Index(
             "uq_process_definitions_active_engine_process",
-            "tool_id",
+            "service_id",
             "engine_process_id",
             unique=True,
             postgresql_where=sql_text("deleted_at IS NULL"),

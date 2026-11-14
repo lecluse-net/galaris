@@ -101,8 +101,8 @@ class MessengerUser(HistoryMixin, Base):
     id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), primary_key=True, default=uuid4
     )
-    tool_id: Mapped[int] = mapped_column(
-        ForeignKey("tools.id", ondelete="RESTRICT"), nullable=False, index=True
+    service_id: Mapped[int] = mapped_column(
+        ForeignKey("services.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     agent_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
@@ -124,12 +124,12 @@ class MessengerUser(HistoryMixin, Base):
             name="ck_messenger_user_agent_is_ai",
         ),
         UniqueConstraint(
-            "tool_id",
+            "service_id",
             "external_id",
             name="uq_messenger_user_tool_external",
         ),
         UniqueConstraint(
-            "tool_id",
+            "service_id",
             "galaris_user_id",
             name="uq_messenger_user_tool_galaris_user",
         ),
@@ -206,7 +206,7 @@ class Interaction(Base):
     connection_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("connections.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    tool_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    service_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     room_id: Mapped[Optional[str]] = mapped_column(String(512), nullable=True, index=True)
     user_id: Mapped[Optional[str]] = mapped_column(String(512), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -269,7 +269,7 @@ class Message(HistoryMixin, Base):
     connection_id: Mapped[int] = mapped_column(
         ForeignKey("connections.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    tool_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    service_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     platform: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     remote_message_id: Mapped[str] = mapped_column(String(512), nullable=False)
     direction: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
@@ -354,14 +354,14 @@ class Message(HistoryMixin, Base):
     )
 
     @property
-    def tool_code(self) -> str:
+    def service_code(self) -> str:
         """Exact Tool code hydrated with this message for resource URI projection."""
 
-        return getattr(self, "_messenger_tool_code", "")
+        return getattr(self, "_messenger_service_code", "")
 
-    @tool_code.setter
-    def tool_code(self, value: str) -> None:
-        self._messenger_tool_code = value
+    @service_code.setter
+    def service_code(self, value: str) -> None:
+        self._messenger_service_code = value
 
     @property
     def sender(self) -> MessengerUser | None:

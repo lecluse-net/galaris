@@ -2,7 +2,7 @@
 
 # Flux du navigateur agentique
 
-Le navigateur intégré est un Tool Galaris gouverné comme les autres capacités MCP. Une connexion
+Le navigateur intégré est un Service Galaris gouverné comme les autres capacités MCP. Une connexion
 `browser` est créée automatiquement pour chaque agent. Son
 activation, puis les éventuelles désactivations fonction par fonction, déterminent exactement ce
 que le harnais interne et Hermès voient dans leur catalogue.
@@ -42,9 +42,9 @@ de nettoyage toutes les 10 secondes. Le premier appel après mise en veille supp
 le coût du lancement. `/health` reste sain pendant la veille ; une déconnexion inattendue de
 Chromium termine toujours le sidecar en erreur pour permettre sa récupération.
 
-L’interface générique des connexions permet d’activer le Tool pour un
+L’interface générique des connexions permet d’activer le Service pour un
 agent et d’autoriser ou retirer séparément `open`, `content`, `screenshot` et les actions. Lorsque
-le Tool Galaris est actif pour un agent Hermès, le manager désactive le toolset navigateur natif
+le Service Galaris est actif pour un agent Hermès, le manager désactive le toolset navigateur natif
 d’Hermès afin de conserver une seule frontière d’autorisation et d’audit.
 
 ## Sorties
@@ -143,7 +143,7 @@ contenu, HTML, dimensions par défaut, bandes et octets
 sont stockés dans `params`, configurables sous **Préférences → Navigateur** lorsqu’au moins
 une connexion `browser` est active. Le backend expose cette disponibilité via
 `GET /api/browser/status`, réservé aux droits de préférences. Une URL directe masque aussi
-les champs lorsque le Tool n’est pas utilisé.
+les champs lorsque le Service n’est pas utilisé.
 
 Chaque appel au sidecar transporte un instantané des préférences dans `settings`, après
 authentification avec le token du volume partagé. Le sidecar valide les bornes et
@@ -158,9 +158,9 @@ jamais une session occupée. Les exports PDF conservent leur propre limite de co
 
 ## Points d’entrée à lire
 
-- Tool et client : `back/app/browser/mcp.py`, `service.py`, `schemas.py`.
+- Service et client : `back/app/browser/mcp.py`, `service.py`, `schemas.py`.
 - Exécuteur : `browser-executor/server.mjs`, `network-proxy.mjs` et `lib.mjs`.
 - Politique et décisions : `back/app/browser/network.py`, `back/app/messenger/permissions.py`.
-- Gouvernance des connexions : `back/app/tools/mandatory_tools.py`,
-  `back/app/tools/mcp_loader.py`.
+- Gouvernance des connexions : `back/app/services/mandatory_services.py`,
+  `back/app/services/mcp_loader.py`.
 - Alignement Hermès : `back/bridge/hermes/manager.py`.

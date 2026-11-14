@@ -17,7 +17,7 @@ from app.process.tests.test_native_bpmn import graph
 from app.skill.models import Skill, AgentSkill
 from app.skill import storage
 from app.task import Task
-from app.tools.models import Tool
+from app.services.models import Service
 from core.authorize.models import Assignment, Privilege, Role
 from core.database import get_db_session
 from core.user import UserModel
@@ -66,8 +66,8 @@ async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage, 
         db.add(LabTask(task_id=selected.id))
         db.add_all([LLM(llm_provider_id=provider.id, code=f"synthetic-http-{capability}", llm_name=f"synthetic/{capability}",
                         label=f"Synthetic {capability}", service_capabilities=[capability]) for capability in ("chat", "speech")])
-        tool_id = await db.scalar(select(Tool.id).where(Tool.code == "galaris"))
-        process = ProcessDefinition(agent_id=owner_id, tool_id=tool_id, engine_process_id="synthetic_http_read",
+        service_id = await db.scalar(select(Service.id).where(Service.code == "galaris"))
+        process = ProcessDefinition(agent_id=owner_id, service_id=service_id, engine_process_id="synthetic_http_read",
                                     code="synthetic_http_read", label="Synthetic Process",
                                     bpmn_xml=to_bpmn(graph(), "synthetic_http_read"))
         db.add(process)

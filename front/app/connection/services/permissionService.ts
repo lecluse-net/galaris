@@ -51,19 +51,19 @@ export interface ActionAuthorization {
 }
 
 export async function listActionAuthorizations(params: { agent_id?: number; status?: string; q?: string; offset: number; limit: number }, signal?: AbortSignal) {
-  return (await api.get<{ items: ActionAuthorization[]; total: number }>('/tools/action-authorizations', { params, signal })).data
+  return (await api.get<{ items: ActionAuthorization[]; total: number }>('/services/action-authorizations', { params, signal })).data
 }
 
 export async function getActionAuthorization(id: string, signal?: AbortSignal) {
-  return (await api.get<ActionAuthorization>(`/tools/action-authorizations/${id}`, { signal })).data
+  return (await api.get<ActionAuthorization>(`/services/action-authorizations/${id}`, { signal })).data
 }
 
 export async function answerActionAuthorization(id: string, approved: boolean, remember = false) {
-  await api.post(`/tools/action-authorizations/${id}/answer`, { approved, ...(remember ? { remember: true } : {}) })
+  await api.post(`/services/action-authorizations/${id}/answer`, { approved, ...(remember ? { remember: true } : {}) })
 }
 
 export async function cancelActionAuthorization(id: string) {
-  await api.post(`/tools/action-authorizations/${id}/cancel`)
+  await api.post(`/services/action-authorizations/${id}/cancel`)
 }
 
 export interface RuntimePermission {
@@ -81,7 +81,7 @@ export interface FunctionPermission {
   id: string
   agent_id: number
   connection_id: number
-  tool_label: string
+  service_label: string
   capability_name: string
   active: boolean
   allowed: boolean
@@ -97,9 +97,9 @@ export async function revokeFunctionPermission(permission: FunctionPermission) {
 }
 
 export async function listRuntimePermissions(params: { agent_id?: number; offset: number; limit: number }, signal?: AbortSignal) {
-  return (await api.get<{ items: RuntimePermission[]; total: number }>('/tools/action-authorizations/runtime-permissions', { params, signal })).data
+  return (await api.get<{ items: RuntimePermission[]; total: number }>('/services/action-authorizations/runtime-permissions', { params, signal })).data
 }
 
 export async function revokeRuntimePermission(id: string) {
-  await api.delete(`/tools/action-authorizations/runtime-permissions/${id}`)
+  await api.delete(`/services/action-authorizations/runtime-permissions/${id}`)
 }

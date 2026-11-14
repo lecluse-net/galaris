@@ -18,7 +18,7 @@ Les sections suivantes détaillent les options d’administration.
 | Installer et mettre à jour | [Installation](installation.md) |
 | Déléguer les accès et les réglages par fonction | [Privilèges et rôles](privileges.md) |
 | Régler la concurrence des modèles | [Admission des fournisseurs](provider-admission.md) |
-| Configurer les outils, REST, OAuth et autorisations | [Administration des outils](tool-administration.md) |
+| Configurer les outils, REST, OAuth et autorisations | [Administration des outils](service-administration.md) |
 | Préparer l'éditeur Git et ses accès | [Éditeur de code](code-editor.md) |
 | Donner accès aux connaissances du produit | [Documentation pour les agents](product-knowledge.md) |
 
@@ -842,7 +842,7 @@ utilise toujours la connexion et la room exactes de la conversation d'origine. P
 échange hors conversation, recherchez l'utilisateur puis fournissez son identifiant distant et le
 canal choisi ; un canal indisponible échoue sans repli silencieux.
 
-Créez une connexion distincte par plateforme dans **Outils → Messagerie**. Le healthcheck agrège
+Créez une connexion distincte par plateforme dans **Services → Messagerie**. Le healthcheck agrège
 tous les comptes actifs et chaque listener est supervisé indépendamment. Le réglage historique
 `MESSENGER_DRIVER` n'est plus un sélecteur de plateforme active ; il subsiste uniquement pour la
 compatibilité des anciennes connexions génériques.
@@ -861,7 +861,7 @@ restent dans leurs connexions chiffrées.
 Pour Nextcloud Talk, configurez au minimum l’URL de base et le mode entrant (`polling` ou
 `signaling`). Les réglages généraux de voix se trouvent dans **Préférences → Voix**.
 
-Les outils intégrés sont synchronisés au démarrage du backend. Galaris, Conversation, Document, Memory
+Les services intégrés sont synchronisés au démarrage du backend. Galaris, Conversation, Document, Memory
 et File Sharing gardent leurs définitions et connexions actives protégées ; un humain peut
 configurer les modes Actif, Bloqué et Sur demande de leurs fonctions. Les connexions optionnelles
 restent activables et désactivables par agent dans l’interface. Un driver n’obtient une fonction native
@@ -873,7 +873,7 @@ Le catalogue envoyé au driver respecte d’abord les droits de l’agent et les
 Lorsque le runtime le permet, la découverte est différée : le modèle reçoit un index borné puis
 charge uniquement les packages pertinents. Une recherche d’outil ne contourne jamais une
 connexion inactive ni un privilège absent. Utilisez le diagnostic de connexion MCP dans
-**Outils** pour distinguer une erreur réseau, d’authentification ou de découverte.
+**Services** pour distinguer une erreur réseau, d’authentification ou de découverte.
 
 ### Conversations et voix temps réel
 
@@ -922,14 +922,14 @@ les dimensions par défaut concernent les nouvelles fenêtres. Réduire la capac
 pas les sessions existantes : seules les nouvelles ouvertures sont limitées. Une session
 reprend le délai d’inactivité courant lors de sa prochaine action.
 
-Dans **Outils & connexions → Outils**, ouvrez les **Paramètres globaux** du Navigateur.
+Dans **Services & connexions → Outils**, ouvrez les **Paramètres globaux** du Navigateur.
 **Accès aux sites publics → Sites publics autorisés** est le choix initial des nouvelles installations pour éviter les demandes
 site par site. Les instances existantes conservent leur comportement, y compris si ce paramètre
 était absent. **Autorisation par site** reste disponible. Dans **Connexions**,
 chaque agent peut personnaliser ce choix, sauf si le réglage global est imposé. Les filtres
 et les refus explicites restent actifs dans les deux modes.
 
-Dans **Outils & connexions → Connexions**, le paramètre `allow_local_network` de la connexion
+Dans **Services & connexions → Connexions**, le paramètre `allow_local_network` de la connexion
 Navigateur interdit le réseau local par défaut. Activez-le pour permettre une demande de
 permission, puis répondez depuis la messagerie de l’agent. `network_filter_mode` (`block` ou
 `allow`) et `network_filter` limitent les destinations ; `permission_methods` demande par défaut
@@ -950,7 +950,7 @@ La table `permission_decisions` converge avec DbAdmin. Une mise à jour nécessi
 Le résultat textuel normal est un snapshot accessible paginé. Les captures visuelles sont
 découpées en tuiles, écrites sous `console://browser/…` lorsqu’une console est active et
 explicitement tronquées si elles dépassent les limites. Sans console, aucune destination locale
-implicite n’est disponible. Lorsque ce Tool est actif pour Hermès, son navigateur natif est désactivé afin de
+implicite n’est disponible. Lorsque ce Service est actif pour Hermès, son navigateur natif est désactivé afin de
 conserver une seule politique d’autorisation.
 
 ### Réserver les capacités d’administration aux agents spécialisés
@@ -976,8 +976,8 @@ L’activation d’une connexion contrôle ce que le modèle peut appeler. Le RB
 les utilisateurs capables de modifier cette configuration dans l’interface : ce sont deux niveaux
 distincts et cumulatifs.
 
-Configurez aussi `tools.management_scope` dans la connexion : une activation seule ne donne
-aucune administration globale. Voir [les portées déléguées](tool-administration.md).
+Configurez aussi `services.management_scope` dans la connexion : une activation seule ne donne
+aucune administration globale. Voir [les portées déléguées](service-administration.md).
 
 `goal_create` choisit explicitement l’agent propriétaire et un agent référent différent. Les
 commandes de modification et de cycle utilisent `expected_revision`, obtenue par `file_read`
@@ -1016,7 +1016,7 @@ sur la portion retenue.
 
 Après la mise à jour qui introduit la fonction :
 
-1. `make update` synchronise automatiquement le Tool et crée les connexions manquantes ;
+1. `make update` synchronise automatiquement le Service et crée les connexions manquantes ;
 2. activez la connexion intégrée **Audio** sur chaque agent autorisé à l’utiliser ;
 3. pour les fichiers audio ou vidéo, configurez un fournisseur actif capable de transcription ;
 4. ajoutez ou sélectionnez une ressource portant la capacité `transcription` ;
@@ -1081,7 +1081,7 @@ gabarit importable sont décrits dans la [documentation n8n](../n8n/README.md).
 
 Un logiciel tiers peut être appelé depuis un workflow n8n ou intégré directement par un
 bridge de moteur. L'intégration directe nécessite du code et une configuration serveur ;
-créer seulement un Tool ne suffit pas. Le
+créer seulement un Service ne suffit pas. Le
 [guide des moteurs externes](../dev/process-engines.md) décrit ce parcours.
 La découverte retourne les opérations disponibles ; créez ensuite leur définition et
 leur affectation explicitement. Plusieurs moteurs peuvent coexister, mais le réglage

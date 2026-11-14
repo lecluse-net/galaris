@@ -35,7 +35,7 @@ Laboratory adds privileges from `access.ts`. Harnesses can add entries from the 
 catalog. Those names and identifiers depend on the installation and are not frozen in documentation.
 
 Tabs belong to Vue pages and components. A tab name does not automatically define a URL
-parameter. The user guide documents actual `?tab=` links for Tools, Skills, LLM and Activity,
+parameter. The user guide documents actual `?tab=` links for Services, Skills, LLM and Activity,
 and interactions without direct links such as Memory tabs. The account menu is a separate
 component with profile, tokens, personal preferences and role switching.
 

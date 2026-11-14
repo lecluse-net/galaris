@@ -226,7 +226,7 @@ def test_external_mcp_read_annotations_make_checkpoint_replay_safe(
     monkeypatch: pytest.MonkeyPatch,
     destructive: bool,
 ) -> None:
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
 
     monkeypatch.setattr(
         mcp_loader,
@@ -434,8 +434,8 @@ async def test_unfinished_effect_blocks_automatic_resume() -> None:
     "unexpected password=synthetic-secret",
 ])
 async def test_recorded_tool_failure_does_not_block_resume_or_reexecute(authorization_state: str | None) -> None:
-    from app.tools.contracts import current_tool_execution
-    from app.tools.facade import AuthorizationClosed
+    from app.services.contracts import current_tool_execution
+    from app.services.facade import AuthorizationClosed
 
     request_id = uuid4()
 
@@ -671,7 +671,7 @@ async def test_interrupted_read_is_closed_and_may_be_retried(destructive) -> Non
 async def test_resume_repairs_legacy_conservative_policy_for_safe_tool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
 
     save = AsyncMock()
     first = HarnessRunCheckpoint(_request(save_checkpoint=save))
@@ -750,7 +750,7 @@ async def test_cancelled_run_persists_interrupted_pydantic_history() -> None:
 async def test_safe_tools_run_concurrently_but_exclusive_tool_is_a_barrier(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
 
     policies = {
         "read_a": ("read", "safe"),

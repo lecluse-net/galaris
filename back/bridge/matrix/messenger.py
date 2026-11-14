@@ -132,7 +132,7 @@ def matrix_to_message(
     event: MatrixMessageEvent,
     room_id: str,
     self_id: str,
-    tool_id: int = 0,
+    service_id: int = 0,
     connection_id: int | None = None,
     room_kind: Literal["direct", "group"] = "group",
 ) -> ObservedMessengerMessage:
@@ -144,10 +144,10 @@ def matrix_to_message(
     return ObservedMessengerMessage(
         id=event.event_id,
         platform=_KIND,
-        tool_id=tool_id,
-        sender=ObservedMessengerUser(id=event.sender, connection_id=connection_id, tool_id=tool_id),
+        service_id=service_id,
+        sender=ObservedMessengerUser(id=event.sender, connection_id=connection_id, service_id=service_id),
         recipient=(
-            ObservedMessengerUser(id=self_id, connection_id=connection_id, tool_id=tool_id)
+            ObservedMessengerUser(id=self_id, connection_id=connection_id, service_id=service_id)
             if event.sender != self_id
             else None
         ),
@@ -155,7 +155,7 @@ def matrix_to_message(
             id=room_id or (event.room_id or ""),
             kind=room_kind,
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
         ),
         # Matrix timestamps are milliseconds; canonical messages use seconds.
         text=_canonical_text(event, attachment),
@@ -173,7 +173,7 @@ class MatrixMessenger(Messenger):
 
     def __init__(self, matrix: Matrix, connection_id: Optional[int] = None) -> None:
         self._matrix = matrix
-        self.tool_id = matrix.tool_id
+        self.service_id = matrix.service_id
         self.self_id = matrix.user_id
         self.connection_id = connection_id
         self._direct_room_ids: frozenset[str] = frozenset()
@@ -211,17 +211,17 @@ class MatrixMessenger(Messenger):
         return ObservedMessengerMessage(
             id=event_id,
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=ObservedMessengerUser(
                 id=self.self_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             room=ObservedMessengerRoom(
                 id=room_id,
                 kind="direct" if room_id in self._direct_room_ids else "group",
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=text,
             reply_to=reply_to,
@@ -268,7 +268,7 @@ class MatrixMessenger(Messenger):
                     event,
                     room_id,
                     self.self_id,
-                    self.tool_id,
+                    self.service_id,
                     self.connection_id,
                     "direct" if room_id in direct_rooms else "group",
                 )
@@ -285,7 +285,7 @@ class MatrixMessenger(Messenger):
                 id=str(item.get("user_id") or ""),
                 display_name=str(item.get("display_name") or item.get("user_id") or ""),
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             )
             for item in await self._matrix.search_users(query)
             if item.get("user_id")
@@ -300,7 +300,7 @@ class MatrixMessenger(Messenger):
             id=room_id,
             kind="direct",
             connection_id=self.connection_id,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
         )
 
     # -- Attachments -----------------------------------------------------------
@@ -345,17 +345,17 @@ class MatrixMessenger(Messenger):
         return ObservedMessengerMessage(
             id=event_id,
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=ObservedMessengerUser(
                 id=self.self_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             room=ObservedMessengerRoom(
                 id=room_id,
                 kind="direct" if room_id in self._direct_room_ids else "group",
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=caption,
             attachments=[attachment],
@@ -698,7 +698,7 @@ class MatrixMessenger(Messenger):
                     event,
                     room_id,
                     self.self_id,
-                    self.tool_id,
+                    self.service_id,
                     self.connection_id,
                     "direct" if room_id in self._direct_room_ids else "group",
                 )

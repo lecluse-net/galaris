@@ -23,12 +23,12 @@ async def conversation_round(db, *, voice=False):
     from app.connection import Connection
     from app.conversation import ConversationRound
     from app.messenger import Room
-    from app.tools.models import Tool
+    from app.services.models import Service
     from app.voice.models import VoiceConversationSession
     from core.user.models import User
 
     title = Title(label="Synthetic admission", gender="X")
-    tool = Tool(code=f"admission-{uuid4()}", label="Synthetic transport", connection_schema={})
+    tool = Service(code=f"admission-{uuid4()}", label="Synthetic transport", connection_schema={})
     user = User(email=f"admission-{uuid4()}@example.test", hashed_password="unused-synthetic-hash")
     db.add_all([title, tool, user])
     await db.flush()
@@ -36,7 +36,7 @@ async def conversation_round(db, *, voice=False):
                   title_id=title.id, user_id=user.id)
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(connection_id=connection.id, external_id="synthetic-admission", kind="direct",
@@ -89,13 +89,13 @@ async def test_independent_owners_get_capacity_before_another_call_from_the_acti
         first_owner, second_owner = (agent.id for agent in agents)
     elif owner_kind == "process":
         from app.process.models import ProcessDefinition, ProcessRun
-        from app.tools.models import Tool
+        from app.services.models import Service
 
         _, agent = await conversation_round(db)
-        tool = Tool(code=f"admission-workflow-{uuid4()}", label="Synthetic workflow engine", connection_schema={})
+        tool = Service(code=f"admission-workflow-{uuid4()}", label="Synthetic workflow engine", connection_schema={})
         db.add(tool)
         await db.flush()
-        definition = ProcessDefinition(tool_id=tool.id, engine_process_id="synthetic-workflow", label="Synthetic workflow")
+        definition = ProcessDefinition(service_id=tool.id, engine_process_id="synthetic-workflow", label="Synthetic workflow")
         db.add(definition)
         await db.flush()
         db.add_all([ProcessRun(id=key, process_id=definition.id, launcher_agent_id=agent.id,

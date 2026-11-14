@@ -11,7 +11,7 @@ from sqlalchemy import select
 from app.code import link_repository, register_repository
 from app.messenger import get_agent_chat_room, get_internal_room
 from app.task import Task, TaskStatus
-from app.tools import McpToolContext
+from app.services import McpToolContext
 from core.database import get_db
 
 from .contracts import ConversationTurn

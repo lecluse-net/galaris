@@ -1,0 +1,4 @@
+interface:
+  display_name: "Galaris Services and Processes"
+  short_description: "Work on services, their catalog, MCP tools and processes"
+  default_prompt: "Use $galaris-process-services to trace and change this Galaris service or process flow safely."

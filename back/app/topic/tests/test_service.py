@@ -43,7 +43,7 @@ from app.topic.schemas import (
     TopicSplitRequest,
     TopicUpdate,
 )
-from app.tools.models import Tool
+from app.services.models import Service
 from app.voice.models import (
     VoiceConversationSession,
     VoiceConversationStatus,
@@ -148,7 +148,7 @@ async def test_manual_crud_split_and_merge_preserve_memory_items(
             agent_id=owner.id,
             topic_id=updated.id,
         )
-        tool = Tool(
+        tool = Service(
             code=f"topic-admin-messenger-{uuid4().hex[:10]}",
             label="Topic admin messenger",
             description="",
@@ -156,7 +156,7 @@ async def test_manual_crud_split_and_merge_preserve_memory_items(
         )
         db.add_all([task, tool])
         await db.flush()
-        connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
         db.add(connection)
         await db.flush()
         room = Room(
@@ -471,7 +471,7 @@ async def test_topic_content_recaps_tasks_rooms_and_round_kinds(
 ) -> None:
     suffix = uuid4().hex[:8]
     title = Title(label=f"Topic recap {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"topic-recap-{suffix}",
         label="Topic recap",
         description="",
@@ -489,7 +489,7 @@ async def test_topic_content_recaps_tasks_rooms_and_round_kinds(
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(
@@ -553,7 +553,7 @@ async def test_list_page_aggregates_monthly_llm_costs_from_topic_activities(
     monkeypatch.setenv("TZ", "Europe/Paris")
     suffix = uuid4().hex[:8]
     title = Title(label=f"Topic costs {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"topic-costs-{suffix}",
         label="Topic costs",
         description="",
@@ -572,7 +572,7 @@ async def test_list_page_aggregates_monthly_llm_costs_from_topic_activities(
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     task = Task(
         label="Compare solar quotes",
         status=TaskStatus.SUCCESS,
@@ -622,7 +622,7 @@ async def test_list_page_aggregates_monthly_llm_costs_from_topic_activities(
     await db.flush()
     process = ProcessDefinition(
         agent_id=agent.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         engine_process_id=f"topic-cost-process-{suffix}",
         label="Topic cost process",
     )

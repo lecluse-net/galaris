@@ -126,8 +126,8 @@ async def test_obsolete_process_markers_do_not_override_dataset_deletion_rights(
 async def test_missing_dataset_content_is_rejected_then_corrected_without_extra_resources(db, agents, path, options, empty):
     from sqlalchemy import func
     from app.file_share.mcp import create_file
-    from app.tools.contracts import ToolCallRejectedError
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.contracts import ToolCallRejectedError
+    from app.services.mcp_loader import McpToolContext
     import json
 
     owner, _ = agents

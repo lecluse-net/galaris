@@ -225,11 +225,11 @@ async def test_external_console_resolution_uses_effective_decrypted_connection_p
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
-    connection = SimpleNamespace(id=4, tool_id=9, active=True)
+    connection = SimpleNamespace(id=4, service_id=9, active=True)
     get_connections = AsyncMock(return_value=[connection])
-    get_tool = AsyncMock(return_value=SimpleNamespace(code="console"))
+    get_service = AsyncMock(return_value=SimpleNamespace(code="console"))
     get_params = AsyncMock(
         return_value=(
             connection,
@@ -251,7 +251,7 @@ async def test_external_console_resolution_uses_effective_decrypted_connection_p
         get_connections,
     )
     monkeypatch.setattr(connection_service, "get_params_as_dict", get_params)
-    monkeypatch.setattr(tool_service, "get_tool_by_id", get_tool)
+    monkeypatch.setattr(service, "get_service_by_id", get_service)
 
     resolved = await manager_module._resolve_external_console_ssh(7)
 

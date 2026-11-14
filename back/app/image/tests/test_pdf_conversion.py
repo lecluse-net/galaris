@@ -19,8 +19,8 @@ from app.process.bpmn import Flow, Node, Workflow
 from app.process.native_definitions import create
 from app.process.tests.test_native_bpmn import native as native, finish_run
 from app.process.values import Variable, ValueContractError
-from app.tools import RecoverableToolError
-from app.tools.mcp_loader import McpToolContext, add_galaris_tools
+from app.services import RecoverableToolError
+from app.services.mcp_loader import McpToolContext, add_galaris_tools
 from core.document import render_pdf_page
 
 
@@ -39,14 +39,14 @@ async def test_pdf_image_is_a_real_page_and_launches_an_image_constrained_proces
     from app.connection import Connection
     from app.conversation.mcp import conversation_process_start
     from app.conversation.tests.test_process_admission import conversation, context, provider
-    from app.tools.models import Tool
-    from app.tools.mcp_loader import list_enabled_native_mcp_definitions
+    from app.services.models import Service
+    from app.services.mcp_loader import list_enabled_native_mcp_definitions
 
     owner, other = native
-    image_tool = await db.scalar(select(Tool).where(Tool.code == "image"))
-    connection = await db.scalar(select(Connection).where(Connection.agent_id == owner.id, Connection.tool_id == image_tool.id))
+    image_tool = await db.scalar(select(Service).where(Service.code == "image"))
+    connection = await db.scalar(select(Connection).where(Connection.agent_id == owner.id, Connection.service_id == image_tool.id))
     if connection is None:
-        db.add(Connection(agent_id=owner.id, tool_id=image_tool.id, active=True))
+        db.add(Connection(agent_id=owner.id, service_id=image_tool.id, active=True))
     else:
         connection.active = True
     image_tool.conversation_enabled = False
@@ -219,7 +219,7 @@ async def test_pdf_render_cancellation_kills_and_drains_the_worker(monkeypatch, 
 @pytest.mark.asyncio
 async def test_pdf_conversion_is_exposed_with_an_explicit_destination_and_positive_page():
     mcp = FastMCP("test")
-    add_galaris_tools(mcp, 1, runtime="internal", enabled_tool_codes={"image"})
+    add_galaris_tools(mcp, 1, runtime="internal", enabled_service_codes={"image"})
     tools = {tool.name: tool for tool in await mcp.list_tools()}
     schema = tools["image_from_pdf"].parameters
     assert schema["required"] == ["file", "destination"]

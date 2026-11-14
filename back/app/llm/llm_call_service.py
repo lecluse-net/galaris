@@ -869,9 +869,9 @@ async def attach_tool_results(
     candidates: dict[str, list[tuple[UUID, int]]] = {}
     for call in calls:
         for index, tool in enumerate(tools_by_call[call.id]):
-            tool_id = str(tool.get("id") or "")
-            if tool_id in results and "result" not in tool:
-                candidates.setdefault(tool_id, []).append((call.id, index))
+            service_id = str(tool.get("id") or "")
+            if service_id in results and "result" not in tool:
+                candidates.setdefault(service_id, []).append((call.id, index))
 
     if not candidates:
         return
@@ -882,7 +882,7 @@ async def attach_tool_results(
     call_by_id = {call.id: call for call in matched}
     now = datetime.now(timezone.utc).isoformat()
     dirty: set[UUID] = set()
-    for tool_id, hits in candidates.items():
+    for service_id, hits in candidates.items():
         hits = [hit for hit in hits if hit[0] in call_by_id]
         if not hits:
             continue  # A trace deleted between the two reads must not be recreated.
@@ -893,7 +893,7 @@ async def attach_tool_results(
         tool = tools_by_call[call_id][index]
         if "started_at" not in tool:
             tool["started_at"] = call_by_id[call_id].started_at.isoformat()
-        tool["result"] = results[tool_id]
+        tool["result"] = results[service_id]
         tool["status"] = "completed"
         tool["completed_at"] = now
         dirty.add(call_id)

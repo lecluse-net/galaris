@@ -84,7 +84,7 @@ async def test_attachment_inline_limit_changes_without_reload(monkeypatch):
     from core.params import runtime_settings
 
     attachment = File(id=uuid4(), connection_id=7, external_identifier='provider-file', name='image.png', mime_type='image/png', size_bytes=2 * 1024 * 1024, kind='image')
-    messenger = SimpleNamespace(tool_id=3)
+    messenger = SimpleNamespace(service_id=3)
     fetch = AsyncMock(return_value=b'image-content')
     monkeypatch.setattr(ingest, 'fetch_bytes', fetch)
     for limit, accepted in [(1, False), (2, True), (2_000_000 / 1_048_576, False), (1, False)]:
@@ -113,7 +113,7 @@ def _audio_message() -> tuple[Message, File]:
     message = Message(
         id=uuid4(),
         connection_id=7,
-        tool_id=3,
+        service_id=3,
         platform="internal",
         remote_message_id="audio-message",
         direction="inbound",
@@ -168,7 +168,7 @@ async def test_audio_is_transcribed_when_model_or_transport_cannot_accept_it(
     projected = session._record_message(  # pyright: ignore[reportPrivateUsage]
         message,
         agent_id=11,
-        tool_code="chat",
+        service_code="chat",
     )
     assert projected["text"] == message.conversation_text
 

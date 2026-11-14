@@ -29,8 +29,8 @@ async def test_internal_direct_send_uses_the_existing_canonical_room(
 ) -> None:
     messenger = InternalMessenger(
         connection_id=7,
-        tool_id=8,
-        tool_code="chat",
+        service_id=8,
+        service_code="chat",
         agent_id=9,
         self_id="agent:9",
     )

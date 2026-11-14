@@ -62,13 +62,13 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     from app.llm import llm_call_service
     from app.messenger.models import Room
     from app.process.models import ProcessDefinition, ProcessRun
-    from app.tools.models import Tool
+    from app.services.models import Service
     from app.voice.models import VoiceConversationSession
     from core.authorize import role_id_ctx
     from core.user import user_service
 
     documents = [Document(owner_agent_id=agents[0].id, provider_code="native", resource_id=f"test/{suffix}/{i}", content_hash="0" * 64, title=f"Private {i}", node_kind="document") for i in range(2)]
-    tool = Tool(code=suffix, label="Private tool")
+    tool = Service(code=suffix, label="Private tool")
     call = LLMCall(task_id=task.id, prompt="Private prompt")  # Visibility inherited from the Task.
     db.add_all([*documents, tool, call])
     await db.flush()
@@ -77,8 +77,8 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     db.add(tracking)
     await db.flush()
     goal = Goal(agent_id=agents[0].id, title="Private goal", description="<p>Synthetic objective</p>", tracking_document_id=tracking.id)
-    connection = Connection(agent_id=agents[0].id, tool_id=tool.id, active=True)
-    definition = ProcessDefinition(agent_id=agents[0].id, tool_id=tool.id, engine_process_id=suffix, label="Private process")
+    connection = Connection(agent_id=agents[0].id, service_id=tool.id, active=True)
+    definition = ProcessDefinition(agent_id=agents[0].id, service_id=tool.id, engine_process_id=suffix, label="Private process")
     db.add_all([goal, connection, definition])
     await db.flush()
     room = Room(connection_id=connection.id, external_id=suffix, label="Private call", conversation_type="audio")

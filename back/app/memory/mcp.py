@@ -9,7 +9,7 @@ from uuid import UUID
 
 from loguru import logger
 from app.task.facade import memory_scope_for_task
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.i18n import t
 
 from . import acquisition_service, service

@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, text
 
 from app.connection import facade as connections
-from app.tools import McpToolContext, RecoverableToolError, require_galaris_admin_access
+from app.services import McpToolContext, RecoverableToolError, require_galaris_admin_access
 from core.database import get_db
 
 from .capture_service import CaptureParametersMismatch
@@ -37,12 +37,12 @@ def fingerprint(value: Any) -> str:
 
 
 async def authorize(ctx: McpToolContext, action: str, *, sources: bool = False) -> None:
-    if not await connections.has_active_tool_function(ctx.agent_id, "lab", action):
+    if not await connections.has_active_service_function(ctx.agent_id, "lab", action):
         raise PermissionError("An active lab connection with this function enabled is required.")
     if sources:
         await require_galaris_admin_access(ctx.agent_id)
         for function in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
-            if not await connections.has_active_tool_function(
+            if not await connections.has_active_service_function(
                 ctx.agent_id, "platform_admin", function
             ):
                 raise PermissionError(

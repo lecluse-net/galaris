@@ -44,7 +44,7 @@ Quality controls appear under [operations](#exploitation).
 14. [Topics](#sujets)
 15. [Dream and learning](#dream)
 16. [Skill library](#skills)
-17. [Tools, connections and MCP server](#outils)
+17. [Services, connections and MCP server](#outils)
 18. [Files and resources](#fichiers)
 19. [Web search and browser](#web)
 20. [Console, Linux environment and source code](#console)
@@ -74,10 +74,10 @@ Quality controls appear under [operations](#exploitation).
 | **Model profile** | Coherent AI resource selection | Assigns four text levels and specialized uses; may be current, agent-specific or selected by a person. |
 | **Decision model** | Closed-choice resource | Selects allowed answers for routing, topics or memory; writing stays with the same profile's text model. |
 | **Harness** | The program running an agent | Executes the model–tool loop, reports progress and returns a result. |
-| **Tool** | Integration or capability set | Declares functions, parameters and optional messaging, file or event services. |
-| **Connection** | An agent's access to a Tool | Holds activation, configuration, credentials and allowed functions; the five system-service connections are mandatory and protected. |
+| **Service** | Integration or capability set | Declares functions, parameters and optional messaging, file or event services. |
+| **Connection** | An agent's access to a Service | Holds activation, configuration, credentials and allowed functions; the five system-service connections are mandatory and protected. |
 | **Durable inference** | Model request recorded before execution | Freezes request/authority, retains attempts/results and supports reading, subscription, pause, stop, resume and replay. |
-| **Skill** | Packaged instructions and resources | Describes a reusable method, possibly with files; grants no Tool permissions. |
+| **Skill** | Packaged instructions and resources | Describes a reusable method, possibly with files; grants no Service permissions. |
 | **Conversation / room** | An exchange on a channel | Retains messages, authors, files, topics and resulting work. |
 | **Round** | Processing of incoming messages | Aggregates input, executes a short response and records actions, attempts and deliveries. |
 | **Task** | Work with an identifiable result | Retains a self-contained objective, agent, optional steps, attempts and durable result. |
@@ -114,7 +114,7 @@ flowchart TD
     G --> Y[Cycle]
     Y --> T
     T --> P[Plan and subtasks]
-    T --> O[Tools and colleagues]
+    T --> O[Services and colleagues]
     C --> X[BPMN or external process]
     O --> X
     O --> D[Documents and files]
@@ -151,7 +151,7 @@ transport result. Resource origins, executed tools, results and available delive
   project presentation or work plan with editable synthetic examples. It creates a conversation,
   submits a durable Task to the chosen agent and retains progress in the browser tab. Sending
   again uses the same message identity. Completed work and an available document to review are
-  distinct; no rights or Tools are enabled, and ordinary model costs apply.
+  distinct; no rights or Services are enabled, and ordinary model costs apply.
 - **Contextual help:** explains domain concepts/workflows. Closing or selecting “Got it”
   dismisses help for the account across devices. Failed saves leave it visible for retry.
 - **Domain navigation:** chat, agents, activity, goals, documents, memory, topics, Dream, Lab,
@@ -328,7 +328,7 @@ and then restored; the current state is preserved.
 
 Sources: [AgentAdmin contract](../dev/agent-admin.md),
 [delegation and MCP journeys](../../../back/app/agent/tests/test_agent_admin.py),
-[permissions administration](../admin/tool-administration.md).
+[permissions administration](../admin/service-administration.md).
 
 ### The Galaris assistant offered at installation
 
@@ -336,7 +336,7 @@ Sources: [AgentAdmin contract](../dev/agent-admin.md),
 **internal harness**, follows the **current LLM profile** and belongs to the first active
 administrator. Fresh installs wait for registration; existing installs receive the offer at DB sync.
 
-Ordinary skills/connections are initialized. **Administration**, **AgentAdmin** and **ToolAdmin**
+Ordinary skills/connections are initialized. **Administration**, **AgentAdmin** and **ServiceAdmin**
 are enabled at creation. Administration covers product documentation and permitted execution
 inspections, unlike its inactive default for other
 agents. The assistant individually receives `galaris-knowledge` and `galaris-lab` at creation,
@@ -1119,10 +1119,10 @@ Additional references: [Chat schemas](../../../back/app/chat/schemas.py),
 
 New installations enable only **internal Chat**. External channels must be explicitly enabled
 in **Preferences → Messaging**; upgrades preserve configured channels. **OneBot 11** and **WhatsApp**
-are labelled experimental. Telegram and Matrix guides can prepare their Tool when no existing
-Tool uses the bridge, then direct users to each agent's account configuration.
+are labelled experimental. Telegram and Matrix guides can prepare their Service when no existing
+Service uses the bridge, then direct users to each agent's account configuration.
 
-**Preferences → Messaging** and a Tool's **Messaging** tab show each bridge's network requirements.
+**Preferences → Messaging** and a Service's **Messaging** tab show each bridge's network requirements.
 Telegram polling, Matrix and Nextcloud Talk do not require a public Galaris URL for messages.
 WhatsApp requires a public HTTPS webhook; local, private or non-HTTPS addresses trigger a warning.
 OneBot needs an address reachable by its adapter, including through a LAN or VPN. These notices
@@ -1232,7 +1232,7 @@ previous local settings are ignored. **Enable audio** unlocks browser-blocked pl
 routing and Bluetooth profiles remain controlled by Android and the browser.
 
 Agent hangup (`voice_call_stop`) is active by default without additional approval. Explicit **Ask**
-or **Blocked** rules remain effective. Tools → Authorizations can change the Voice connection's rule;
+or **Blocked** rules remain effective. Services → Authorizations can change the Voice connection's rule;
 **Always allow this function** on a request remembers consent for that connection.
 
 Realtime voice supports interruption during slow tool calls: playback stops and the previous
@@ -1665,7 +1665,7 @@ sources and temporal scope. Contradictions preserve both claims and their source
 conflicts never silently overwrite current content.
 
 Agent instructions, delegated work and Goal cycles remain attributed to AI. They cannot alone
-establish human preferences or personal facts. Tool evidence remains separate from final claims;
+establish human preferences or personal facts. Service evidence remains separate from final claims;
 repeated extraction of one origin does not become independent corroboration. Accessible
 counterclaims are exposed without automatically declaring one true. Recall protects space for
 ordinary memories when calendar matches would fill the budget; additional matches remain
@@ -1787,7 +1787,7 @@ network errors allow retry, and a retried save does not restore an obsolete came
 Items hidden by filters, folding or framing enlarge their visible representatives up to four
 times their normal diameter. Weight propagates through hidden parents and includes known unloaded
 children; reappearance removes it without moving nodes. The counter also includes items without
-representatives. Representative captions remain visible. Roots use the Tool label stored in Memory,
+representatives. Representative captions remain visible. Roots use the Service label stored in Memory,
 or its scheme; synchronization corrects old “.” and “/” titles while preserving custom titles.
 
 Every five minutes while the tab is visible, background updates apply additions, changes and
@@ -2548,7 +2548,7 @@ conversions retain identity/files, reject collisions and preserve a recovery rec
 Administration never makes another agent's personal package usable by its administrator.
 See the [Skills guide](../user/skills.md).
 
-The single **Skills** Tool (`skills`) replaces `skill_management`, preserving connections and
+The single **Skills** Service (`skills`) replaces `skill_management`, preserving connections and
 settings. A human delegates its local `usage`, `personal`, `team` or `all` scope. `team` follows
 the union of the agent's active teams; `all` permits generic catalogue management and conversions.
 Files use `galaris://skill/`, with personal packages at
@@ -2582,7 +2582,7 @@ harness reloads capabilities normally; a network harness without projection reta
 System skills `galaris-knowledge` and `galaris-lab` support product documentation and experiments.
 Both are globally off by default and individually granted when the initial Galaris assistant is
 created. Documentation access alone does not assign them to other agents. Updates preserve saved
-assignments/revocations, and administrators can change permissions. Assignment does not replace Tool
+assignments/revocations, and administrators can change permissions. Assignment does not replace Service
 permissions, particularly the Lab connection, which remains inactive by default.
 
 A **Galaris** category initially groups system `galaris` and `galaris-*` skills without a category,
@@ -2594,23 +2594,23 @@ Sources: [API](../../../back/app/skill/router.py), [schemas](../../../back/app/s
 [synchronisation tests](../../../back/app/harnesses/tests/test_skill_sync.py).
 
 <a id="outils"></a>
-## 17. Tools, connections and the MCP server
+## 17. Services, connections and the MCP server
 
 ### Catalogue and configuration
 
-**Custom Tools**, initially selected, is separate from **Galaris internal Tools**. Connection
+**Custom Services**, initially selected, is separate from **Galaris internal Services**. Connection
 and authorisation selectors retain this origin, including when opening the Connections
 catalogue with a restricted role; using a dedicated bridge does not make a
-user-created Tool internal. Creating a custom Tool requires at least one active capability.
+user-created Service internal. Creating a custom Service requires at least one active capability.
 
 Deleting it through the interface previews dependent connections, settings, permissions,
 approvals and affected business references. Human confirmation permits transactional deletion;
 a stale impact preview is rejected and refreshed. Independent resources and external data
-remain. This cascade is separate from ToolAdmin MCP, which refuses deletion while dependencies exist.
+remain. This cascade is separate from ServiceAdmin MCP, which refuses deletion while dependencies exist.
 
-A Tool can expose MCP functions, file services, messaging and a listener. It includes parameter
+A Service can expose MCP functions, file services, messaging and a listener. It includes parameter
 schemas and may define a Task template populated from incoming-event variables. Users can browse
-built-in/added Tools and search functions/descriptions; open substantive role/capability/example/
+built-in/added Services and search functions/descriptions; open substantive role/capability/example/
 limitation descriptions (no empty description links); and create/edit/delete/import/export eligible
 definitions. Remote MCP supports HTTP/SSE and command-based stdio. Configuration includes URL,
 command, arguments, environment, headers, timeout and bearer/custom-header/basic authentication
@@ -2627,7 +2627,7 @@ and accents. Clearing the search restores the list; an empty match has a dedicat
 (`file_sharing`)** belong to every agent. `can_disable=false` is a software property, not a user
 setting. DbAdmin creates/reactivates connections and conversational access. Definitions and
 connections stay protected; humans can configure functions with the same **Active**, **Blocked**,
-**On request** modes and inheritance as other Tools. Historical ignored system restrictions are
+**On request** modes and inheritance as other Services. Historical ignored system restrictions are
 archived during migration. Mandatory activation never bypasses business ACLs or harness/context limits.
 
 The admission/status/control `conversation_*` commands and `document_show` belong to Conversation.
@@ -2638,7 +2638,7 @@ and preserves custom descriptions.
 
 ### Optional connections and shared settings
 
-For optional Tools, users can add/activate/edit/delete agent connections, fill parameters individually
+For optional Services, users can add/activate/edit/delete agent connections, fill parameters individually
 or in bulk, centralise global values with per-connection overrides unless enforced, discover/toggle
 individual functions and global function rules, refresh catalogues/connections and synchronise
 missing built-ins. Secrets are encrypted and masked. Per-agent diagnostics show native/external/mixed
@@ -2648,7 +2648,7 @@ removes an override. Parameter labels, descriptions and fixed choices appear con
 connections, global settings and MCP tests. Values outside a choice list are rejected and YAML
 import/export preserves this metadata.
 
-Connection forms display inherited global values when the reader also has Tool viewing or
+Connection forms display inherited global values when the reader also has Service viewing or
 editing rights. Connection-only access does not reveal those values; secrets and transport
 configuration remain protected. A failed catalogue refresh keeps the connection list and
 diagnostic available, with retry without recreating the connection.
@@ -2661,13 +2661,13 @@ system services, whose definitions and connections remain protected.
 
 Browser, Search, Image and Multimedia connections start active. Browser and Search receive
 conversation eligibility at first initialisation. **Console SSH, Image, Mail and Multimedia**
-require explicit conversation-mode activation in the Tool catalogue; this does not disable their
+require explicit conversation-mode activation in the Service catalogue; this does not disable their
 Task access. Updates preserve saved choices, restrictions and credentials. Connection activation
 and conversation permission are distinct settings. Multimedia still needs compatible profile resources.
 
 ### REST APIs and MCP OAuth authentication
 
-A configurable Tool can expose **MCP and REST** together. Its REST tab configures base URL,
+A configurable Service can expose **MCP and REST** together. Its REST tab configures base URL,
 none/Bearer/header/Basic/query authentication, extra headers, timeout and response-size limit.
 Credentials reference connection parameter names with global inheritance, overrides, encryption
 and masking; no OpenAPI catalogue is required. The facade serves native Process activities without
@@ -2689,29 +2689,29 @@ connection and invalidate when target/configuration changes; late callbacks cann
 access. Diagnostics expose HTTP/OAuth codes without secrets. This flow covers neither stdio nor
 REST and does not change Galaris function permissions.
 
-Sources: [REST/OAuth journey](../admin/tool-administration.md),
+Sources: [REST/OAuth journey](../admin/service-administration.md),
 [OAuth contracts](../../../back/app/connection/tests/test_mcp_oauth.py).
 
-### Delegating Tool configuration
+### Delegating Service configuration
 
-The **management scope** (`tools.management_scope`) is local to each administrative connection:
+The **management scope** (`services.management_scope`) is local to each administrative connection:
 `usage` grants no administration, `personal` covers the agent's resources, `team` the union of
-its active teams and `all` the global scope. It applies to ToolAdmin, Administration, Goals,
+its active teams and `all` the global scope. It applies to ServiceAdmin, Administration, Goals,
 Processes and Skills. Each call rechecks connection, scope, functions and membership. Only an
 authorised human can change delegation; global parameters cannot widen it. Older connections
 without an explicit scope need configuration. AgentAdmin offers `usage`, `team`, `all`, also
 intersects the human manager's rights and scope, and prohibits self-administration.
 
-**ToolAdmin** provides 23 functions to inspect/create/update/delete custom Tools, configure shared
+**ServiceAdmin** provides 23 functions to inspect/create/update/delete custom Services, configure shared
 values and connections, set permissions and refresh catalogues. `personal` and `team` limit
 management to relevant connections; global definitions, values and permissions require `all`.
-ToolAdmin does not inherit AgentAdmin's human scope. Built-in Tools
+ServiceAdmin does not inherit AgentAdmin's human scope. Built-in Services
 stay protected and only humans assign administrative capabilities.
 
 A human prepares an HTTP/SSE candidate with credentials in **Test connection**, then shares its
 temporary agent-bound reference. Testing discovers functions without executing them; explicit
 creation after success adopts the candidate. Secrets remain server-side and new connections start
-inactive. ToolAdmin cannot configure or execute `stdio`; existing definitions are redacted with
+inactive. ServiceAdmin cannot configure or execute `stdio`; existing definitions are redacted with
 read-only settings. Mutations require `expected_version`; batches are atomic and direct dependencies
 block deletion without a cascade. Conflicts require rereading and reconciliation.
 
@@ -2719,9 +2719,9 @@ Catalogue refresh runs directly with a 20-second budget and no technical Process
 completed agents are retained; partial results identify connections to refresh without replaying the saved mutation.
 Incomplete catalogues never trigger pruning.
 
-Sources: [ToolAdmin journey](../admin/tool-administration.md),
-[local scopes](../../../back/app/tools/tests/test_management_scopes.py),
-[delegation, secrets and conflicts](../../../back/app/tools/tests/test_tool_admin.py).
+Sources: [ServiceAdmin journey](../admin/service-administration.md),
+[local scopes](../../../back/app/services/tests/test_management_scopes.py),
+[delegation, secrets and conflicts](../../../back/app/services/tests/test_service_admin.py).
 
 ### Authorising an action or remembering consent
 
@@ -2751,10 +2751,10 @@ Stored approvals and refusals can be changed or removed without replaying blocke
 Disabled connections remain available. Technical configuration, skills and resource rights retain
 their own screens. An unavailable external catalogue preserves its known rules.
 
-Sources: [requests and preconditions](../../../back/app/tools/tests/test_action_authorizations.py),
-[permissions](../admin/tool-administration.md).
+Sources: [requests and preconditions](../../../back/app/services/tests/test_action_authorizations.py),
+[permissions](../admin/service-administration.md).
 
-### Tool arguments and correction advice
+### Service arguments and correction advice
 
 If a model adds an unknown key to a closed input schema, the MCP boundary removes it before
 validation and authorization for native functions and external proxies. The result preserves
@@ -2768,16 +2768,16 @@ parameters and invalid values remain rejections. Consent covers the arguments ac
 rights, revocation, credentials and preconditions remain checked.
 
 Sources: [contract and limits](../../../project/decisions/0164-tolerant-tool-arguments.md),
-[normalization](../../../back/app/tools/tool_arguments.py),
-[schema guarantees](../../../back/app/tools/tests/test_tool_arguments.py),
+[normalization](../../../back/app/services/tool_arguments.py),
+[schema guarantees](../../../back/app/services/tests/test_tool_arguments.py),
 [warning and replay](../../../back/app/harness/tests/test_execution_evidence.py).
 
 ### On-demand loading
 
 Agents receive a permission/connection-filtered catalogue. On-demand discovery loads relevant
-capabilities instead of injecting every detailed schema. Tool search can use semantic indexing with
+capabilities instead of injecting every detailed schema. Service search can use semantic indexing with
 lexical fallback. Filtering precedes selection; indexes grant no rights. Invocation and deferred
-supervisory execution recheck restrictions. `tools_list` distinguishes current-run functions from
+supervisory execution recheck restrictions. `services_list` distinguishes current-run functions from
 those requiring a new context. Reactivation permits a previously loaded function without silently
 adding other functions to an active run. The Planner retains allowed names; assigned Processes
 appear as business capabilities with input contracts, not invented tools.
@@ -2789,7 +2789,7 @@ identity. The UI supplies URL/client configuration and named per-client tokens w
 revocation. Secrets appear at creation and are subsequently masked. External clients receive only
 the agent's permitted scope, not implicit global administration.
 
-AgentAdmin, ToolAdmin, Administration, Lab, Goal Management, Skill Management, Topics and Process Administration
+AgentAdmin, ServiceAdmin, Administration, Lab, Goal Management, Skill Management, Topics and Process Administration
 separate specialised functions. Lab is initially inactive; its functions are inventoried below.
 
 ### Installed product documentation for agents
@@ -2826,9 +2826,9 @@ The corpus ships in images and refreshes on update; development sources can refr
 Fingerprints identify sources even without a build reference. Existing chat answers are not
 rewritten; new reads use refreshed sources.
 
-Sources: [Tool schemas](../../../back/app/tools/schemas.py), [API](../../../back/app/tools/router.py),
+Sources: [Service schemas](../../../back/app/services/schemas.py), [API](../../../back/app/services/router.py),
 [connections](../../../back/app/connection/router.py), [MCP](../../../back/app/mcp/router.py),
-[mandatory Tools](../../../back/app/tools/mandatory_tools.py),
+[mandatory Services](../../../back/app/services/mandatory_services.py),
 [product knowledge setup](../admin/product-knowledge.md),
 [documentation contracts](../../../back/app/documentation/contracts.py),
 [access/search tests](../../../back/app/documentation/tests/test_documentation.py).
@@ -2860,8 +2860,8 @@ controlling access; a display name is not its identity.
 | `galaris://contact/<uuid>` | Private agent contact; current JSON reads and conditional name/coordinate edits using `expected_etag`. |
 | `galaris://processes/runs/<uuid>` | Authorised native run snapshot; `data` and `attachments/` subresources follow Process/profile rules. |
 | `galaris://documentation/` | Installed read-only corpus under Admin and `documentation_catalog`. |
-| Connected file Tool URI | Provider files/collections, such as Nextcloud or Samba / SMB 2–3; the exact Tool code is the scheme. |
-| Messenger attachment URI | Original Tool/room retained; conversation access governs reads. |
+| Connected file Service URI | Provider files/collections, such as Nextcloud or Samba / SMB 2–3; the exact Service code is the scheme. |
+| Messenger attachment URI | Original Service/room retained; conversation access governs reads. |
 | `mail://` | IMAP folders, messages and attachments; read/copy without generic mutation, with separate human consultation and agent processing rules. |
 | Public HTTPS | Bounded web reads/transfers under provider controls. |
 
@@ -2906,7 +2906,7 @@ Source: [file rights and mutations](../../../back/app/file_share/tests/test_brow
 
 ### Resource reads and mutations
 
-`file_schemes` discovers capabilities. Tools list collections and metadata (size/type/name/capabilities),
+`file_schemes` discovers capabilities. Services list collections and metadata (size/type/name/capabilities),
 search names/content including hybrid Memory search, page text with a cursor or read bounded binary,
 create text/binary files, replace/append/edit ranges, copy across providers, rename/move/delete where
 supported, preserve source names into target collections with explicit overwrite, add/delete document
@@ -2934,9 +2934,9 @@ in text and semantic modes. Collection-search semantics and provider permissions
 ### Samba and Windows shares
 
 The **Samba / SMB 2–3** bridge exposes a server, share or subdirectory without mounting a disk.
-A file-sharing Tool sets `base_url` to `smb://server[/share[/directory]]`; its connection holds
+A file-sharing Service sets `base_url` to `smb://server[/share[/directory]]`; its connection holds
 login, password and optional SMB 3 encryption. The backend must reach the server, usually on TCP 445.
-Agents use the Tool's exact scheme and generic `file_*` functions without receiving the SMB address
+Agents use the Service's exact scheme and generic `file_*` functions without receiving the SMB address
 or credentials. Signing is required; the remote account's permissions apply to every access.
 
 A server root enumerates accessible disk shares through authenticated SRVSVC; servers without it
@@ -2959,7 +2959,7 @@ Sources: [Samba journey](../user/samba.md), [bridge contracts](../../../back/bri
 
 **File indexing** selects Disabled, **Known files only** (the compatible-provider default), or
 recursive discovery where supported. Global values, connection overrides and enforced values follow
-ordinary Tool parameters. Nextcloud supports discovery; Console and AFFiNE use known URIs;
+ordinary Service parameters. Nextcloud supports discovery; Console and AFFiNE use known URIs;
 Mail is excluded. Messenger attachments enter the catalogue on receipt or history import.
 
 Authorised listing and search immediately project observed files/directories as private Memory
@@ -2984,7 +2984,7 @@ notes; directories do not receive automatic summaries.
 Indexing has independent viewing and control rights without requiring Dream or file-explorer
 access.
 
-Sources: [configuration and journey](../admin/tool-administration.md),
+Sources: [configuration and journey](../admin/service-administration.md),
 [catalogue, coverage and rights](../../../back/app/memory/tests/test_file_catalogue.py),
 [copy identity](../../../back/app/memory/tests/test_file_identity.py).
 
@@ -3002,8 +3002,8 @@ can leave an unknown outcome that forbids blind replay. Both paths clean tempora
 missing parents after path resolution, confined to the home; losing a response after rename publication
 still leaves an uncertain outcome.
 
-When configured through a connected Tool, the **AFFiNE** file transport reads metadata, downloads
-and copies workspace blobs, and uploads files. References use the Tool code, workspace and blob key,
+When configured through a connected Service, the **AFFiNE** file transport reads metadata, downloads
+and copies workspace blobs, and uploads files. References use the Service code, workspace and blob key,
 including exported `blob/` or `blobs/` prefixes. Remote headers supply MIME type/size; copying may add
 an extension to the name without changing the source URI. Access refusals and download limits remain
 enforced. An application HTML shell returned instead of a blob is rejected; genuine HTML attachments
@@ -3097,7 +3097,7 @@ Sessions are not persistent personal browser profiles, and Chromium presence doe
 arbitrary automation API beyond the exposed actions.
 
 Sources: [browser tools](../../../back/app/browser/mcp.py),
-[browser flow](../architecture/flows/browser.md), [search](../../../back/app/tools/mcp.py).
+[browser flow](../architecture/flows/browser.md), [search](../../../back/app/services/mcp.py).
 
 <a id="console"></a>
 ## 20. Console, Linux environment and source code
@@ -3361,12 +3361,12 @@ Sources: [calendar flow](../architecture/flows/calendar.md), [API](../../../back
 A business process carries a workflow defined independently of the functions performing its
 activities. Workflows execute in Galaris's native BPMN engine or through n8n; a standalone MCP function, media generation
 or Lab operation retains its own domain state without a Process definition or run, even when long
-and recoverable. Multiple engines can coexist; each definition selects its engine through its Tool.
+and recoverable. Multiple engines can coexist; each definition selects its engine through its Service.
 Other software requires an installed bridge conforming to the shared contract; the
 [external engine guide](../dev/process-engines.md) explains that integration.
 
 A native Process owns BPMN, revisions, owner and permissions within Process. An external Process
-references an engine Tool and workflow identifier, label, description and agent assignment.
+references an engine Service and workflow identifier, label, description and agent assignment.
 Neither BPMN definitions nor run data are Documents. Users list/test engines for connectivity, authentication
 and cancellation support; synchronise workflows; create definitions and edit/delete assignments.
 Agents discover/start personal Processes, while Process Administration governs all-agent definitions
@@ -4170,8 +4170,8 @@ for subsequent calls without editing client files. Logs retain token name and ac
 |---|---|
 | Integrated capability | May require a privilege, active connection, credentials and compatible resource. |
 | System services | Galaris, Conversation, Document, Memory and File Sharing are mandatory without granting new resource rights. |
-| Initial assistant | Created once with internal harness, Administration, AgentAdmin and ToolAdmin; later edits/revocation/deletion persist. A usable model is still required. |
-| Delegated administration | Each connection's local scope bounds delegation; AgentAdmin also checks the manager's rights. ToolAdmin requires `all` for the global catalogue. Agents cannot grant themselves administrative capabilities. |
+| Initial assistant | Created once with internal harness, Administration, AgentAdmin and ServiceAdmin; later edits/revocation/deletion persist. A usable model is still required. |
+| Delegated administration | Each connection's local scope bounds delegation; AgentAdmin also checks the manager's rights. ServiceAdmin requires `all` for the global catalogue. Agents cannot grant themselves administrative capabilities. |
 | Permanent consent | Enables one connection function without bypassing ACLs, blocks or resource preconditions. |
 | File indexing | Private per-agent catalogue with current source access and SHA-256 copy identity; discovery depends on providers and partial traversals are not exhaustive. |
 | Memory graph | 3D only, client spatial loading, hidden-item representatives and updates preserving navigation; WebGL required. Server map remains planned. |
@@ -4207,7 +4207,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Recovery | Requires valid state/effect evidence; ambiguous external action may need explicit resolution. |
 | Task replacement | Explicit; coordinates descendants and Process runs with stop evidence for each. Goals and unsupported waits are refused; uncertain remote termination blocks the successor. |
 | Independent work | Original request and context remain separate; independent work/refused amendments do not silently replace Tasks. |
-| Tool errors | Observed errors return for agent decisions; interrupted unknown outcomes require reconciliation; global budgets still apply. |
+| Service errors | Observed errors return for agent decisions; interrupted unknown outcomes require reconciliation; global budgets still apply. |
 | Local storage | Agent-local files require an active configured console. |
 | PWA | Installable with persistent sessions; processing needs the server. |
 | Memory | Bounded governed recall, not every memory on every request. |
@@ -4249,8 +4249,8 @@ mechanisms are not counted as additional native functions.
 Families follow effective ownership: Conversation handles conversational commands; optional Admin
 handles detailed inspection and documentation (initially inactive except on initial Galaris creation);
 optional Lab handles experiments. Mandatory services still respect execution context. Family columns
-show declared namespaces or the Topics Tool's explicit selection; Messenger's transport connection
-selects the concrete Tool.
+show declared namespaces or the Topics Service's explicit selection; Messenger's transport connection
+selects the concrete Service.
 
 ### Agents, Tasks and conversations
 
@@ -4297,7 +4297,7 @@ These 34 functions require AgentAdmin, current function permissions and the mana
 | `agent_avatar_generate` | `agent_admin` | Generate with the caller's image model and await registration. |
 | `agent_team_list` | `agent_admin` | List an authorised agent's team memberships. |
 | `agent_team_set` | `agent_admin` | Explicitly replace eligible memberships. |
-| `agent_tool_list` | `agent_admin` | List available Tools for a manageable target. |
+| `agent_service_list` | `agent_admin` | List available Services for a manageable target. |
 | `agent_connection_list` | `agent_admin` | List target connections within delegated scope. |
 | `agent_connection_get` | `agent_admin` | Read a connection with masked secrets and inheritance. |
 | `agent_connection_create` | `agent_admin` | Create an eligible optional connection. |
@@ -4323,35 +4323,35 @@ These 34 functions require AgentAdmin, current function permissions and the mana
 | `agent_group_update` | `agent_admin` | Update a shared group with global rights. |
 | `agent_group_delete` | `agent_admin` | Delete a group, detaching associated links and access. |
 
-### Delegated Tool administration
+### Delegated Service administration
 
-These 23 functions require ToolAdmin. Built-in definitions and human delegations stay protected.
+These 23 functions require ServiceAdmin. Built-in definitions and human delegations stay protected.
 
 | Function | Family | Action and result |
 |---|---|---|
-| `tool_admin_list` | `tool_admin` | List Tools in the global catalogue. |
-| `tool_admin_get` | `tool_admin` | Read a definition, version and redacted settings. |
-| `tool_admin_create` | `tool_admin` | Create a secret-free definition or adopt a tested human candidate. |
-| `tool_admin_update` | `tool_admin` | Update a custom definition at the expected version. |
-| `tool_admin_impact` | `tool_admin` | Inspect direct dependencies before deletion. |
-| `tool_admin_delete` | `tool_admin` | Delete a dependency-free definition without an implicit cascade. |
-| `tool_admin_global_params_set` | `tool_admin` | Atomically set global values and enforcement. |
-| `tool_admin_conversation_set` | `tool_admin` | Set an optional Tool's conversational access. |
-| `tool_admin_mcp_test` | `tool_admin` | Test an HTTP/SSE candidate without saving or business calls. |
-| `tool_admin_function_list` | `tool_admin` | List functions and global state. |
-| `tool_admin_function_get` | `tool_admin` | Read a function's detailed schema and state. |
-| `tool_admin_function_set` | `tool_admin` | Set global mode and report local overrides. |
-| `tool_admin_connection_list` | `tool_admin` | List connections with pagination. |
-| `tool_admin_connection_get` | `tool_admin` | Read a connection and masked values. |
-| `tool_admin_connection_create` | `tool_admin` | Create an initially inactive connection. |
-| `tool_admin_connection_update` | `tool_admin` | Update a connection at the expected version. |
-| `tool_admin_connection_delete` | `tool_admin` | Delete an authorised optional connection. |
-| `tool_admin_connection_params_set` | `tool_admin` | Write local parameters atomically in a batch. |
-| `tool_admin_connection_param_delete` | `tool_admin` | Explicitly remove a local parameter. |
-| `tool_admin_connection_test` | `tool_admin` | Diagnose a connection, even inactive, without activating it. |
-| `tool_admin_connection_function_list` | `tool_admin` | List effective permissions and local availability. |
-| `tool_admin_connection_function_set` | `tool_admin` | Set local mode or restore inheritance. |
-| `tool_admin_catalog_refresh` | `tool_admin` | Refresh catalogues directly with partial results and targeted retry. |
+| `service_admin_list` | `service_admin` | List Services in the global catalogue. |
+| `service_admin_get` | `service_admin` | Read a definition, version and redacted settings. |
+| `service_admin_create` | `service_admin` | Create a secret-free definition or adopt a tested human candidate. |
+| `service_admin_update` | `service_admin` | Update a custom definition at the expected version. |
+| `service_admin_impact` | `service_admin` | Inspect direct dependencies before deletion. |
+| `service_admin_delete` | `service_admin` | Delete a dependency-free definition without an implicit cascade. |
+| `service_admin_global_params_set` | `service_admin` | Atomically set global values and enforcement. |
+| `service_admin_conversation_set` | `service_admin` | Set an optional Service's conversational access. |
+| `service_admin_mcp_test` | `service_admin` | Test an HTTP/SSE candidate without saving or business calls. |
+| `service_admin_function_list` | `service_admin` | List functions and global state. |
+| `service_admin_function_get` | `service_admin` | Read a function's detailed schema and state. |
+| `service_admin_function_set` | `service_admin` | Set global mode and report local overrides. |
+| `service_admin_connection_list` | `service_admin` | List connections with pagination. |
+| `service_admin_connection_get` | `service_admin` | Read a connection and masked values. |
+| `service_admin_connection_create` | `service_admin` | Create an initially inactive connection. |
+| `service_admin_connection_update` | `service_admin` | Update a connection at the expected version. |
+| `service_admin_connection_delete` | `service_admin` | Delete an authorised optional connection. |
+| `service_admin_connection_params_set` | `service_admin` | Write local parameters atomically in a batch. |
+| `service_admin_connection_param_delete` | `service_admin` | Explicitly remove a local parameter. |
+| `service_admin_connection_test` | `service_admin` | Diagnose a connection, even inactive, without activating it. |
+| `service_admin_connection_function_list` | `service_admin` | List effective permissions and local availability. |
+| `service_admin_connection_function_set` | `service_admin` | Set local mode or restore inheritance. |
+| `service_admin_catalog_refresh` | `service_admin` | Refresh catalogues directly with partial results and targeted retry. |
 
 ### Document analysis
 
@@ -4446,7 +4446,7 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 | Function | Family | Action/result |
 |---|---|---|
 | `search_web` | `search` | Query SearXNG, return sources and report partial/degraded/failed search. |
-| `tools_list` | `galaris` | Inspect permitted functions and distinguish current-run availability from a required new context. |
+| `services_list` | `galaris` | Inspect permitted functions and distinguish current-run availability from a required new context. |
 | `browser_open` | `browser` | Open an isolated session with optional viewport. |
 | `browser_navigate` | `browser` | Change session URL. |
 | `browser_content` | `browser` | Read accessible content/element references, continuing by offset. |
@@ -4706,7 +4706,7 @@ All **78 declared modules** map to one or more sections; runtime activation/conf
 | `core.dbadmin` | [Schema/dataset convergence and updates](#exploitation) |
 | `core.storage` | [Byte registry, aliases, names, hashes and recoverable purges](#fichiers), [storage and migrations](#exploitation) |
 | `app.incident` | [Failure journal and remediation](#supervision) |
-| `app.tools` | [Catalogue, integrations, search and function restrictions](#outils) |
+| `app.services` | [Catalogue, integrations, search and function restrictions](#outils) |
 | `app.documentation` | [Installed corpus, provenance, hybrid search and agent access](#outils), [shared-index refresh](#exploitation) |
 | `app.agent` | [Identity, delegated administration and portraits](#agents), [adaptive organization, scope, plans and delivery evidence](#taches), [agent API/Janus](#modeles) |
 | `app.share` | [Shared permissions, exclusive resource policies, groups and revocation](#documents) |
@@ -4793,7 +4793,7 @@ rather than independent applications.
 | `app/index` | Home, welcome, dashboard, About, credits, licence and unknown-page handling |
 | `app/agent` | Profiles, avatars, teams, forms of address and configuration |
 | `app/harnesses` | Catalogue, details, Compose and manager diagnostics |
-| `app/tools` | Catalogue, editing, import/export, parameters/functions |
+| `app/services` | Catalogue, editing, import/export, parameters/functions |
 | `app/browser` | Session/action/read/capture preferences |
 | `app/connection` | Connection setup and Mails |
 | `app/skill` | Library, categories, permissions, files and learned procedures |

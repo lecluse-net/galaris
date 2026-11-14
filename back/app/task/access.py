@@ -3,14 +3,14 @@
 from sqlalchemy import or_, true
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.tools import has_galaris_admin_access
+from app.services import has_galaris_admin_access
 
 from .models import Task
 
 
 async def agent_task_filter(agent_id: int, *, manage: bool = False) -> ColumnElement[bool]:
     """Membership alone grants no management; explicit administration is scoped."""
-    from app.tools.facade import administration_scope
+    from app.services.facade import administration_scope
     scope = await administration_scope(agent_id, "platform_admin")
     administrative = true() if scope.is_global else Task.agent_id.in_(scope.agent_ids or ())
     owner = Task.agent_id == agent_id

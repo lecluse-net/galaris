@@ -167,7 +167,7 @@ class MessengerResolver(Protocol):
 
     async def messenger_for_connection(self, connection_id: int) -> Messenger: ...
 
-    async def messenger_for(self, tool_id: int, self_id: str) -> Messenger: ...
+    async def messenger_for(self, service_id: int, self_id: str) -> Messenger: ...
 
     async def default_messenger(self) -> Messenger: ...
 
@@ -211,9 +211,9 @@ async def get_messenger(connection_id: int) -> MessengerFacade:
     return MessengerFacade(resolved, connection_id)
 
 
-async def get_messenger_for(tool_id: int, self_id: str) -> MessengerFacade:
+async def get_messenger_for(service_id: int, self_id: str) -> MessengerFacade:
     """Return the messenger for a tool and bot identity."""
-    resolved = await _require_resolver().messenger_for(tool_id, self_id)
+    resolved = await _require_resolver().messenger_for(service_id, self_id)
     connection_id = getattr(resolved, "connection_id", None)
     if not isinstance(connection_id, int):
         raise RuntimeError("The resolved Messenger has no canonical connection scope.")
@@ -244,12 +244,12 @@ class MessengerFacade:
         return self._connection_id
 
     @property
-    def tool_id(self) -> int:
-        return self._delegate.tool_id
+    def service_id(self) -> int:
+        return self._delegate.service_id
 
     @property
-    def tool_code(self) -> str:
-        return self._delegate.tool_code
+    def service_code(self) -> str:
+        return self._delegate.service_code
 
     @property
     def kind(self) -> str:
@@ -319,7 +319,7 @@ class MessengerFacade:
         external_id = await get_db().scalar(
             select(MessengerUser.external_id).where(
                 MessengerUser.id == local_id,
-                MessengerUser.tool_id == self._delegate.tool_id,
+                MessengerUser.service_id == self._delegate.service_id,
             )
         )
         if external_id is None:
@@ -340,13 +340,13 @@ class MessengerFacade:
 
         canonical = message.model_copy(deep=True)
         canonical.platform = canonical.platform or self._delegate.kind or "messenger"
-        canonical.tool_id = canonical.tool_id or self._delegate.tool_id
+        canonical.service_id = canonical.service_id or self._delegate.service_id
         if room_id and canonical.room is None:
             canonical.room = ObservedMessengerRoom(
                 id=room_id,
                 kind="direct" if user_id else "group",
                 connection_id=self._connection_id,
-                tool_id=canonical.tool_id or self._delegate.tool_id,
+                service_id=canonical.service_id or self._delegate.service_id,
             )
         elif canonical.room is not None and canonical.room.connection_id is None:
             canonical.room.connection_id = self._connection_id
@@ -354,7 +354,7 @@ class MessengerFacade:
             canonical.recipient = ObservedMessengerUser(
                 id=user_id,
                 connection_id=self._connection_id,
-                tool_id=canonical.tool_id or self._delegate.tool_id,
+                service_id=canonical.service_id or self._delegate.service_id,
             )
         try:
             await journal.persist_outbound(
@@ -396,7 +396,7 @@ class MessengerFacade:
         remote = await self._delegate.history(external_room_id, limit)
         return await journal.synchronize_messages(
             connection_id=self._connection_id,
-            tool_id=self._delegate.tool_id,
+            service_id=self._delegate.service_id,
             self_id=self._delegate.self_id,
             messages=remote,
             counts_as_unread=False,
@@ -421,7 +421,7 @@ class MessengerFacade:
         remote = await self._delegate.history_page(external_room_id, limit, cursor)
         messages = await journal.synchronize_messages(
             connection_id=self._connection_id,
-            tool_id=self._delegate.tool_id,
+            service_id=self._delegate.service_id,
             self_id=self._delegate.self_id,
             messages=remote.messages,
             counts_as_unread=False,
@@ -439,7 +439,7 @@ class MessengerFacade:
         remote = await self._delegate.unread(await self._external_room_id(room_id))
         return await journal.synchronize_messages(
             connection_id=self._connection_id,
-            tool_id=self._delegate.tool_id,
+            service_id=self._delegate.service_id,
             self_id=self._delegate.self_id,
             messages=remote,
             counts_as_unread=True,
@@ -480,7 +480,7 @@ class MessengerFacade:
         remote = await self._delegate.rooms()
         return await synchronize_rooms(
             connection_id=self._connection_id,
-            tool_id=self._delegate.tool_id,
+            service_id=self._delegate.service_id,
             rooms=remote,
             authoritative=bool(
                 getattr(self._delegate, "rooms_snapshot_complete", False)
@@ -495,7 +495,7 @@ class MessengerFacade:
             return None
         rooms = await synchronize_rooms(
             connection_id=self._connection_id,
-            tool_id=self._delegate.tool_id,
+            service_id=self._delegate.service_id,
             rooms=[remote],
         )
         return rooms[0] if rooms else None
@@ -513,11 +513,11 @@ class MessengerFacade:
                 ObservedMessengerUser(
                     id=self._delegate.self_id,
                     connection_id=self._connection_id,
-                    tool_id=self._delegate.tool_id,
+                    service_id=self._delegate.service_id,
                 )
             )
         users = await synchronize_users(
-            tool_id=self._delegate.tool_id,
+            service_id=self._delegate.service_id,
             users=remote,
             connection_id=self._connection_id,
             authoritative=authoritative,
@@ -527,14 +527,14 @@ class MessengerFacade:
     async def ensure_direct_room(self, user_id: UUID | str) -> Room:
         from app.messenger.room_service import synchronize_rooms
         from .contact_access import require_outgoing_user
-        await require_outgoing_user(self._connection_id, self.tool_id, await self._external_user_id(user_id))
+        await require_outgoing_user(self._connection_id, self.service_id, await self._external_user_id(user_id))
 
         remote = await self._delegate.ensure_direct_room(
             await self._external_user_id(user_id)
         )
         rooms = await synchronize_rooms(
             connection_id=self._connection_id,
-            tool_id=self._delegate.tool_id,
+            service_id=self._delegate.service_id,
             rooms=[remote],
         )
         if not rooms:
@@ -547,7 +547,7 @@ class MessengerFacade:
         from app.messenger.room_service import synchronize_rooms
         from .contact_access import require_outgoing_user
         for invitee in invitees:
-            await require_outgoing_user(self._connection_id, self.tool_id, await self._external_user_id(invitee))
+            await require_outgoing_user(self._connection_id, self.service_id, await self._external_user_id(invitee))
 
         remote = await self._delegate.create_room(
             label,
@@ -556,7 +556,7 @@ class MessengerFacade:
         )
         rooms = await synchronize_rooms(
             connection_id=self._connection_id,
-            tool_id=self._delegate.tool_id,
+            service_id=self._delegate.service_id,
             rooms=[remote],
         )
         if not rooms:
@@ -565,7 +565,7 @@ class MessengerFacade:
 
     async def add_user(self, room_id: UUID | str, user_id: UUID | str) -> None:
         from .contact_access import require_outgoing_user
-        await require_outgoing_user(self._connection_id, self.tool_id, await self._external_user_id(user_id))
+        await require_outgoing_user(self._connection_id, self.service_id, await self._external_user_id(user_id))
         await self._delegate.add_user(
             await self._external_room_id(room_id),
             await self._external_user_id(user_id),
@@ -603,7 +603,7 @@ class MessengerFacade:
     ) -> Message:
         external_user_id = await self._external_user_id(user_id)
         from .contact_access import require_outgoing_user
-        await require_outgoing_user(self._connection_id, self.tool_id, external_user_id)
+        await require_outgoing_user(self._connection_id, self.service_id, external_user_id)
         message = await self._delegate.send_to_user(external_user_id, text)
         return await self._record(
             message,

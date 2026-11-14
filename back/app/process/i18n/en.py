@@ -45,7 +45,7 @@ default = {
             "run_not_found": "Run not found.",
             "file_not_found": "File not found",
             "agent_not_found": "Agent not found.",
-            "tool_not_found": "Process tool not found.",
+            "tool_not_found": "Process service not found.",
             "already_linked": "This engine process is already linked to Galaris.",
             "workflow_without_agent": "Galaris workflow not found or has no associated agent.",
             "wrong_workflow": "The run does not belong to the specified workflow.",

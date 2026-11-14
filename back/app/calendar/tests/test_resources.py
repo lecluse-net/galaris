@@ -69,7 +69,7 @@ async def test_calendar_resource_http_reads_require_calendar_privilege_and_owner
     other = await owned_agent(other_user)
     async with get_db_session() as db:
         tool = await protocol_tool(db, "calendar")
-        connections = [Connection(agent_id=identity, tool_id=tool.id, active=True) for identity in (own, other)]
+        connections = [Connection(agent_id=identity, service_id=tool.id, active=True) for identity in (own, other)]
         db.add_all(connections)
         await db.flush()
         feeds = [CalendarFeed(connection_id=connection.id, label="Synthetic resource calendar", source_kind="caldav") for connection in connections]

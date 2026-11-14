@@ -10,7 +10,7 @@
             <q-btn v-if="canOperateRuns" icon="refresh" :label="t('processes.refresh')" @click="refreshRun" />
             <q-btn v-if="canAnalyze" color="secondary" icon="analytics" :label="t('processes.analyze')" @click="emit('analyze')" />
             <q-btn v-if="canOperateRuns && ['error', 'cancelled'].includes(run.status)" color="primary" icon="replay" :label="t('processes.retry')" @click="emit('retry')" />
-            <q-btn v-if="canOperateRuns && run.tool_code !== 'galaris' && !terminal(run.status)" color="negative" icon="cancel" :label="t('processes.cancel')" @click="emit('cancel')" />
+            <q-btn v-if="canOperateRuns && run.service_code !== 'galaris' && !terminal(run.status)" color="negative" icon="cancel" :label="t('processes.cancel')" @click="emit('cancel')" />
             <span v-if="canAdmin">
               <q-btn color="negative" icon="delete" :label="t('processes.deleteRun')" :disable="!terminal(run.status)" @click="emit('delete', run)" />
               <q-tooltip v-if="!terminal(run.status)">{{ t('processes.runActiveDeleteHint') }}</q-tooltip>

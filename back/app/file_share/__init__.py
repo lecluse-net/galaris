@@ -5,7 +5,7 @@ directly with bounded memory; legacy transports retain a temporary-file fallback
 services are registered bridges and Messenger attachments keep their provider identity.
 """
 
-from app.tools import register_connection_probe
+from app.services import register_connection_probe
 from .connection_diagnostics import test_saved_connection as _test_saved_connection
 
 register_connection_probe("file_share", _test_saved_connection)
@@ -88,14 +88,14 @@ from .resource_uri import (
     PROTOCOL_SCHEMES,
     FUTURE_RESOURCE_SCHEMES,
     RESERVED_TOOL_CODES,
-    SYSTEM_TOOL_CODES,
+    SYSTEM_SERVICE_CODES,
     ResourceUri,
     ResourceUriError,
     ResourceRevisionConflict,
     ResourceValidationError,
-    InvalidResourceToolCodeError,
+    InvalidResourceServiceCodeError,
     parse_resource_uri,
-    validate_external_tool_code,
+    validate_external_service_code,
 )
 from .file_contracts import (
     FileResourceTransport,
@@ -142,7 +142,7 @@ __all__ = [
     "PROTOCOL_SCHEMES",
     "FUTURE_RESOURCE_SCHEMES",
     "RESERVED_TOOL_CODES",
-    "SYSTEM_TOOL_CODES",
+    "SYSTEM_SERVICE_CODES",
     "ResourceCapability",
     "DeliveredResource",
     "MaterializedResource",
@@ -160,7 +160,7 @@ __all__ = [
     "ResourceUriError",
     "ResourceRevisionConflict",
     "ResourceValidationError",
-    "InvalidResourceToolCodeError",
+    "InvalidResourceServiceCodeError",
     "FileResourceTransport",
     "FileEntry",
     "FileListing",
@@ -185,7 +185,7 @@ __all__ = [
     "resource_edit",
     "resource_search",
     "resource_write",
-    "validate_external_tool_code",
+    "validate_external_service_code",
 ]
 
 from .web_preview import WebMetadata, web_metadata

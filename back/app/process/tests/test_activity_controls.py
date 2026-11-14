@@ -25,9 +25,9 @@ from app.process.native_definitions import create
 from app.process.values import Variable
 from app.task import TaskCreate, TaskStatus, task_service
 from app.task.workflow import transition, TaskEvent
-from app.tools import McpToolContext
-from app.tools.models import Tool
-from app.tools import RecoverableToolError
+from app.services import McpToolContext
+from app.services.models import Service
+from app.services import RecoverableToolError
 from core.user import UserModel
 
 from .test_native_bpmn import native as native, committed_native as committed_native
@@ -56,19 +56,19 @@ async def setup_activity(db, native, monkeypatch, *, delegated=False, human_mana
         graph.actors = [Actor(id="performer", name="Synthetic performer", kind="agent", agent_id=other.id)]
         graph.nodes[1].config["actor"] = "performer"
     definition = await create(actor_agent_id=owner.id, title="Synthetic interactive process", graph=graph)
-    chat = await db.scalar(select(Tool).where(Tool.code == "chat"))
-    connection = Connection(agent_id=owner.id, tool_id=chat.id, active=True)
+    chat = await db.scalar(select(Service).where(Service.code == "chat"))
+    connection = Connection(agent_id=owner.id, service_id=chat.id, active=True)
     db.add(connection); await db.flush()
     room = Room(connection_id=connection.id, external_id="synthetic-activity-origin",
         label="Synthetic origin", kind="direct", conversation_type="text")
-    sender = MessengerUser(tool_id=chat.id, external_id=f"user:{user.id}",
+    sender = MessengerUser(service_id=chat.id, external_id=f"user:{user.id}",
         display_name="Synthetic requester", is_ai=False, galaris_user_id=user.id)
-    bot = MessengerUser(tool_id=chat.id, external_id=f"agent:{owner.id}",
+    bot = MessengerUser(service_id=chat.id, external_id=f"agent:{owner.id}",
         display_name="Synthetic agent", is_ai=True, agent_id=owner.id)
     db.add_all([room, sender, bot]); await db.flush()
     db.add_all([RoomUser(room_id=room.id, user_id=sender.id), RoomUser(room_id=room.id, user_id=bot.id)])
     round_ = ConversationRound(room_id=room.id, requester_user_id=user.id, status="SUCCEEDED")
-    message = Message(connection_id=connection.id, tool_id=chat.id, platform="internal",
+    message = Message(connection_id=connection.id, service_id=chat.id, platform="internal",
         direction="inbound", text="Launch the synthetic process", remote_message_id=uuid4().hex,
         messenger_room_id=room.id, sender_messenger_user_id=sender.id, requester_user_id=user.id)
     db.add_all([round_, message]); await db.flush()
@@ -146,7 +146,7 @@ async def test_ai_activity_asks_in_origin_room_resumes_and_passes_data_to_next_t
     assert choice.room_id == str(room.id) and choice.metadata_["question_id"]
     turn = ConversationTurn(room_id=room.id, round_id=uuid4(), agent_id=owner.id, language="en",
         objective="37", messages=({"text": "37"},), messaging_context={
-            "connection_id": choice.connection_id, "tool_id": choice.tool_id,
+            "connection_id": choice.connection_id, "service_id": choice.service_id,
             "participant_id": choice.user_id, "requester_user_id": user.id})
     reply_ctx = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
     with pytest.raises(RecoverableToolError, match="expected type int"):
@@ -225,7 +225,7 @@ async def test_delegated_activity_asks_and_receives_input_in_the_launch_conversa
     assert choice is not None and choice.agent_id == owner.id and choice.room_id == str(room.id)
     turn = ConversationTurn(room_id=room.id, round_id=uuid4(), agent_id=owner.id, language="en",
         objective="37", messages=({"text": "37"},), messaging_context={"connection_id": choice.connection_id,
-            "tool_id": choice.tool_id, "participant_id": choice.user_id, "requester_user_id": user.id})
+            "service_id": choice.service_id, "participant_id": choice.user_id, "requester_user_id": user.id})
     reply = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
     await conversation_process_respond(reply, reference=choice.reference, output={"age": 37})
     await db.refresh(task)
@@ -272,7 +272,7 @@ async def test_old_question_snapshot_is_not_offered_after_a_followup_opens(db, n
     await deliver_human_requests()
     choice = await db.scalar(select(Interaction).where(Interaction.kind == "process_human_activity"))
     captured = await list_pending_choices(agent_id=owner.id, connection_id=choice.connection_id,
-        tool_id=choice.tool_id, room_id=choice.room_id, user_id=choice.user_id)
+        service_id=choice.service_id, room_id=choice.room_id, user_id=choice.user_id)
     occurrence = await db.get(ProcessNodeRun, attempt.node_run_id)
     await answer_input(await db.get(ProcessRun, run_id), occurrence,
         question_id=UUID(occurrence.context["activity_question"]["id"]), user_id=user.id,
@@ -322,7 +322,7 @@ async def test_withdrawal_of_an_old_question_cannot_close_a_new_question(db, nat
     await db.refresh(choice)
     from app.messenger import list_pending_choices
     remaining = await list_pending_choices(agent_id=owner.id, connection_id=choice.connection_id,
-        tool_id=choice.tool_id, room_id=choice.room_id, user_id=choice.user_id)
+        service_id=choice.service_id, room_id=choice.room_id, user_id=choice.user_id)
     assert choice.id not in {item.id for item in remaining}
 
 
@@ -385,12 +385,12 @@ async def test_activity_controls_reject_foreign_tasks_and_cancelled_questions(db
 @pytest.mark.asyncio
 async def test_activity_tools_are_available_and_callable_through_the_real_mcp_boundary(inference_db, committed_native, monkeypatch):
     from fastmcp import Client
-    from app.tools.mcp_loader import build_agent_galaris_fastmcp
-    from app.tools.mandatory_tools import sync_integrated_tool_connections
+    from app.services.mcp_loader import build_agent_galaris_fastmcp
+    from app.services.mandatory_services import sync_integrated_service_connections
 
     db = inference_db
     owner, _, _, _, _, task, _ = await setup_activity(db, committed_native, monkeypatch)
-    await sync_integrated_tool_connections(owner.id)
+    await sync_integrated_service_connections(owner.id)
     await db.commit()
     server = await build_agent_galaris_fastmcp(owner.id, runtime="internal", task_id=task.id)
     async with Client(server) as client:
@@ -414,8 +414,8 @@ async def test_managed_deepseek_http_mcp_uses_its_driver_and_keeps_activity_task
     from app.agent.tests.test_driver_testkit import _request
     from app.harnesses.models import AgentHarness
     from app.mcp.service import rotate_system_token
-    from app.tools.facade import issue_runtime_run_grant
-    from app.tools.mandatory_tools import sync_integrated_tool_connections
+    from app.services.facade import issue_runtime_run_grant
+    from app.services.mandatory_services import sync_integrated_service_connections
     from app.task import scheduler
     from app.task.models import TaskAttempt
     from main import app
@@ -434,7 +434,7 @@ async def test_managed_deepseek_http_mcp_uses_its_driver_and_keeps_activity_task
     await db.flush()
     assignment_id = assignment.id
     bearer = await rotate_system_token(owner.id)
-    await sync_integrated_tool_connections(owner.id)
+    await sync_integrated_service_connections(owner.id)
     await db.commit()
     request = replace(_request(), task_id=task.id, driver_code="openai_messages",
         agent=AgentSnapshot(id=owner.id, code=owner.code, first_name="Synthetic", last_name="Runtime", driver_code="openai_messages"),
@@ -483,7 +483,7 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
     from app.mcp.service import rotate_system_token
     from app.task import scheduler
     from app.conversation.service import claim_next_process_notification, deliver_process_notification
-    from app.tools.mandatory_tools import sync_integrated_tool_connections
+    from app.services.mandatory_services import sync_integrated_service_connections
     from main import app
 
     db = inference_db
@@ -496,7 +496,7 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
     db.add(profile); await db.flush()
     owner.profile_id = profile.id
     owner.agent_driver = "openai_messages"
-    await sync_integrated_tool_connections(owner.id)
+    await sync_integrated_service_connections(owner.id)
     bearer = await rotate_system_token(owner.id)
     db.add(AgentHarness(agent_id=owner.id, provider_code="deepseek_harness",
         lifecycle_status="ready", runtime_base_url="http://synthetic-harness.invalid/v1", runtime_model="synthetic",
@@ -600,7 +600,7 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
     choice = await db.scalar(select(Interaction).where(Interaction.kind == "process_human_activity"))
     turn = ConversationTurn(room_id=room.id, round_id=uuid4(), agent_id=owner.id, language="en",
         objective="37", messages=({"text": "37"},), messaging_context={"connection_id": choice.connection_id,
-            "tool_id": choice.tool_id, "participant_id": choice.user_id, "requester_user_id": user.id})
+            "service_id": choice.service_id, "participant_id": choice.user_id, "requester_user_id": user.id})
     reply = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
     await conversation_process_respond(reply, reference=choice.reference, output={"age": 37})
     if transport_loss:

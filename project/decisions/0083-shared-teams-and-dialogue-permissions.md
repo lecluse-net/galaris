@@ -25,7 +25,7 @@ manager de l’agent ou équipe commune. Sans l’un de ces trois cas, le dialog
 Aucune exception individuelle, liaison entre équipes ou règle héritée n’est conservée.
 
 Pour deux agents, la messagerie applique depuis le 23 octobre 2026 le paramètre local protégé
-`tools.management_scope` de la connexion : `none`, `team` ou `all`, sans portée personnelle.
+`services.management_scope` de la connexion : `none`, `team` ou `all`, sans portée personnelle.
 Le défaut `team` exige une équipe commune ; `none` bloque les contacts inter-agents et `all`
 permet le contact entre agents actifs sans équipe commune. Les accès d'équipe ne sont jamais
 transitifs. Le retrait de la dernière équipe commune révoque le contact en portée `team`.
@@ -85,7 +85,7 @@ préservent les équipes homonymes et distinguent chaque membre par `(kind, id)`
 excluent les humains inactifs et les agents/équipes supprimés. Les humains sans nom affiché
 reçoivent un libellé neutre fondé sur leur identifiant, sans révéler leur email de connexion.
 Les appartenances sont relues sans cache. L'activation des fonctions reste gouvernée par
-Tools ; cette découverte ne change ni les droits de contact, ni les ACL, ni l'administration.
+Services ; cette découverte ne change ni les droits de contact, ni les ACL, ni l'administration.
 
 ### Gestion des équipes
 

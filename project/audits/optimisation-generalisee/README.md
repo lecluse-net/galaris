@@ -4,7 +4,7 @@ Campagne lancée le 24 octobre 2026 conformément au
 [plan d'optimisation](../../plans/optimisation-generalisee.md). Les corrections doivent
 conserver les résultats métier, droits, révisions, reprises, annulations et effets durables.
 L'inventaire et les premiers contrôles de référence sont établis. Quinze lots indépendants
-sont intégrés au worktree : onze optimisations ciblées des catalogues Tools, du retrait
+sont intégrés au worktree : onze optimisations ciblées des catalogues Services, du retrait
 des références de fichiers, des résumés Process, des recherches Contact, des métriques
 Topics, des pointeurs natifs Document et du démarrage frontend ; quatre corrections de stabilisation préservent
 l'ouverture des pièces jointes Memory, la langue initiale, les liens directs Activité
@@ -101,23 +101,23 @@ lectures et l'égalité des résultats constituent les preuves structurelles pri
 Après ces contrôles, des changements indépendants sont apparus dans les composants Chat,
 un nouveau CSS de conversation et un test Goal. Ils sont conservés et repris dans le
 manifeste courant. Les E2E et tailles de build ci-dessus portent sur leur référence de
-lancement, pas sur la version ultérieure de ces écrans. Les preuves SQL Process/Tools/
+lancement, pas sur la version ultérieure de ces écrans. Les preuves SQL Process/Services/
 Storage ne sont pas affectées par ces fichiers ; toute modification de leurs propres
 sources impose une nouvelle comparaison.
 
-## Expériences Tools et Storage
+## Expériences Services et Storage
 
 Deux autres frontières ont été comparées sans changer leur implémentation applicative,
 avec un échauffement puis six paires alternées. Les quatre sondes réussissent.
 
 | Scénario synthétique | Lectures référence | Lectures prototype | Médiane référence | Médiane prototype |
 |---|---:|---:|---:|---:|
-| Catalogue de 10 Tools | 11 | 2 | 3,210 ms | 1,421 ms |
-| Catalogue de 50 Tools | 51 | 2 | 13,593 ms | 2,378 ms |
+| Catalogue de 10 Services | 11 | 2 | 3,210 ms | 1,421 ms |
+| Catalogue de 50 Services | 51 | 2 | 13,593 ms | 2,378 ms |
 | Retrait des références de 10 fichiers | 22 | 4 | 8,828 ms | 3,207 ms |
 | Retrait des références de 100 fichiers | 202 | 4 | 88,945 ms | 16,147 ms |
 
-Le prototype Tools conserve une relecture groupée fraîche et la projection publique,
+Le prototype Services conserve une relecture groupée fraîche et la projection publique,
 avec comparaison des pages partielles, recherches vides et recherche Unicode `STRASSE` /
 `Straße`. Il ne déplace pas la recherche vers SQL et ne crée aucun cache de droits.
 Les modifications concurrentes et consommateurs administratifs restent à exercer.
@@ -129,7 +129,7 @@ passage. Les sessions d'enregistrement concurrentes, le commit réel et la repri
 purgeur avec le prototype restent à qualifier avant intégration.
 
 L'audit SQL du 17 octobre doit être requalifié : la résolution Console recherche déjà le
-Tool puis sa connexion. Les lectures Process par élément ont été qualifiées puis corrigées
+Service puis sa connexion. Les lectures Process par élément ont été qualifiées puis corrigées
 dans le lot L03 ci-dessous. Les sous-requêtes corrélées d'attribution Topic restent
 présentes dans les sources inspectées ; leur gain actuel et les cas de droits/historique
 restent à vérifier.
@@ -149,14 +149,14 @@ des temps, sur des sessions dont l'identity map est vidée. Elles ne représente
 
 | Cas synthétique | Lectures avant → après | Médiane avant → après | Pic Python avant → après |
 |---|---:|---:|---:|
-| 50 Tools, schéma simple | 51 → 2 | 14,550 → 2,808 ms | 526 503 → 575 262 octets |
-| 500 Tools, schéma simple | 501 → 2 | 143,393 → 18,445 ms | 2 604 862 → 3 358 900 octets |
-| 500 Tools, 20 paramètres descriptifs | 501 → 2 | 211,556 → 68,804 ms | 12 544 850 → 19 237 926 octets |
+| 50 Services, schéma simple | 51 → 2 | 14,550 → 2,808 ms | 526 503 → 575 262 octets |
+| 500 Services, schéma simple | 501 → 2 | 143,393 → 18,445 ms | 2 604 862 → 3 358 900 octets |
+| 500 Services, 20 paramètres descriptifs | 501 → 2 | 211,556 → 68,804 ms | 12 544 850 → 19 237 926 octets |
 | Retrait de 10 fichiers | 22 → 4 | 10,133 → 3,955 ms | 309 424 → 341 130 octets |
 | Retrait de 100 fichiers | 202 → 4 | 101,388 → 19,343 ms | 407 301 → 702 905 octets |
 | Retrait de 1 001 fichiers | 2 004 → 6 | 1 015,752 → 181,768 ms | 707 690 → 2 785 940 octets |
 
-Le lot **L01 / SQL05** remplace les relectures par Tool dans
+Le lot **L01 / SQL05** remplace les relectures par Service dans
 `app.connection.agent_admin_service.list_tools` par une relecture groupée existante.
 Il garde la recherche Python Unicode, le total, l'ordre, les droits de délégation,
 le masquage et la fraîcheur des configurations. Les DTO internes sont libérés avant la
@@ -172,8 +172,8 @@ croissance sans borne des paramètres SQL et de l'état ORM chargé. Les octets 
 intacts avant le commit ; les tests réels de deux sessions montrent qu'un enregistrement
 concurrent attend, réussit après rollback et refuse la résurrection après commit.
 
-Les nouveaux budgets SQL échouaient avant les corrections (11/51/501 lectures Tools,
-22/202 pour le retrait) puis réussissent après. Les 53 tests ciblés AgentAdmin/Tools/
+Les nouveaux budgets SQL échouaient avant les corrections (11/51/501 lectures Services,
+22/202 pour le retrait) puis réussissent après. Les 53 tests ciblés AgentAdmin/Services/
 fonctions/portées passent. La qualification Storage et de ses consommateurs a détecté
 un test HTTP périmé : il utilisait `/api/memory/documents`, retiré lors de la séparation
 Document/Memory, et échouait avant d'atteindre la suppression. Le même échec a été
@@ -220,8 +220,8 @@ changement tardif et résultat relu après commit d'une session indépendante. P
 vue-tsc, les 439 unités frontend et la parité i18n passent aussi.
 
 Le premier parcours Chromium a vérifié les résumés puis échoué sur une fixture externe
-qui supposait l'existence du Tool n8n. La trace montre que la base isolée n'exposait que
-le moteur natif dans ce catalogue. Le test crée désormais son Tool externe via l'API
+qui supposait l'existence du Service n8n. La trace montre que la base isolée n'exposait que
+le moteur natif dans ce catalogue. Le test crée désormais son Service externe via l'API
 administrative réelle, en conservant toutes ses assertions. Le parcours Chromium
 complet passe : résumés, réouverture, édition native et externe sur ordinateur/mobile.
 Les 33 contrôles d'architecture et la préparation documentaire passent aussi.
@@ -398,7 +398,7 @@ La branche vide du lot L04 est requalifiée dans ces tests ; ses mesures initial
 des références historiques. Les sources et changements indépendants du worktree sont conservés,
 y compris une suppression Git de source, distinguée d'une erreur de lecture dans l'inventaire.
 
-### Configurations Tools hors page — L07 / SQL09
+### Configurations Services hors page — L07 / SQL09
 
 Le catalogue délégué charge d'abord uniquement les identifiants, codes et libellés.
 La recherche Python `casefold`, l'ordre du catalogue et la pagination restent identiques.
@@ -406,12 +406,12 @@ La page conserve sa relecture complète groupée et fraîche, sa validation et l
 des secrets. Les appels sans projection gardent leur configuration complète : seul
 AgentAdmin demande explicitement cette première passe légère. Aucun cache, droit ou
 schéma de stockage n'est modifié. Les autres consommateurs recensés sont le chargement
-MCP, Messenger, la liste HTTP Tools et `get_all_tools`.
+MCP, Messenger, la liste HTTP Services et `get_all_services`.
 
-Le budget de régression utilise dix Tools affichés et 0 ou 500 configurations volumineuses
+Le budget de régression utilise dix Services affichés et 0 ou 500 configurations volumineuses
 hors page. Avant correction, ce dernier cas atteint 69,5 Mo Python et dépasse le budget
 de 6 Mo ; après correction les deux cas passent. La même session peut ensuite relire
-la configuration complète des Tools sélectionnés et non sélectionnés.
+la configuration complète des Services sélectionnés et non sélectionnés.
 
 Les deux sources de référence sauvegardées après L01 sont comparées au correctif réel
 sur les mêmes catalogues synthétiques. Chaque appel vide l'identity map ; un échauffement
@@ -420,7 +420,7 @@ y compris la recherche Unicode, une page décalée, une recherche vide et une pa
 catalogue. Les allocations sont mesurées séparément sur quatre passages. Le ramasse-miettes
 reste actif ; une seconde série mesure aussi ses pauses, sans les retirer des temps.
 
-| Tools / taille de page | SELECT avant → après | Médiane avant → après | Étendue avant → après | Pic Python avant → après |
+| Services / taille de page | SELECT avant → après | Médiane avant → après | Étendue avant → après | Pic Python avant → après |
 |---|---:|---:|---:|---:|
 | 10 / 10 | 2 → 2 | 3,927 → 4,977 ms | 2,851–7,809 → 1,954–9,921 ms | 1,036 → 0,796 Mo |
 | 510 / 10 | 2 → 2 | 21,395 → 8,293 ms | 21,068–25,317 → 7,079–9,307 ms | 19,178 → 1,681 Mo |
@@ -436,7 +436,7 @@ première série donnait 2,316 → 1,854 ms, la seconde environ 1,05 ms de plus.
 Python ne sont pas le RSS. Les métadonnées de tout le catalogue restent chargées et les
 configurations de la page restent intégralement lues et validées.
 
-Les 80 contrôles applicatifs catalogue/AgentAdmin/secrets/ToolAdmin réussissent, puis
+Les 80 contrôles applicatifs catalogue/AgentAdmin/secrets/ServiceAdmin réussissent, puis
 les 14 contrôles finaux catalogue/Messenger, les quatre comparaisons et le parcours
 Chromium de création, consultation et refus après révocation. La première invocation
 du diagnostic hors du backend ne chargeait pas sa fixture DB ; elle a été relancée
@@ -449,7 +449,7 @@ Les preuves locales sont dans `artifacts/optimisation-generalisee/2026-10-24-too
 Les mesures et empreintes de L01 restent historiques ; ses garanties concernées sont
 requalifiées par ce lot.
 
-### Métadonnées ToolAdmin — L08 / SQL10
+### Métadonnées ServiceAdmin — L08 / SQL10
 
 La liste administrative MCP ne charge désormais que les colonnes correspondant à ses
 métadonnées publiques. La requête de comptage, les filtres de type et de capacité,
@@ -458,7 +458,7 @@ valide les configurations d'exécution ; celles-ci restent dans le détail, relu
 contrat habituel. Le parcours vérifie cette ouverture dans la même session après la liste,
 avec sa description complète, sa configuration et le masquage des secrets.
 
-Le budget automatisé couvre 10 et 500 Tools contenant des descriptions privées
+Le budget automatisé couvre 10 et 500 Services contenant des descriptions privées
 volumineuses. À 500, la référence atteint 69,8 Mo Python et dépasse le budget de 6 Mo ;
 les deux cas corrigés passent. Les comparaisons de la source sauvegardée et du correctif
 réel utilisent un échauffement exclu, six paires alternées et une identity map vidée
@@ -466,7 +466,7 @@ avant chaque appel ; les quatre mesures d'allocations sont séparées. Le GC res
 et ses pauses sont enregistrées. Les réponses JSON complètes sont égales pour les pages,
 les décalages et les filtres exercés.
 
-| Tools / taille de page | SELECT avant → après | Médiane avant → après | Pic Python avant → après |
+| Services / taille de page | SELECT avant → après | Médiane avant → après | Pic Python avant → après |
 |---|---:|---:|---:|
 | 10 / 10 | 2 → 2 | 1,672 → 1,506 ms | 0,417 → 0,295 Mo |
 | 500 / 500 | 2 → 2 | 8,366 → 5,205 ms | 10,303 → 1,084 Mo |
@@ -478,8 +478,8 @@ cette série ; aucune amélioration universelle de latence n'est annoncée. Les 
 ne mesurent pas le RSS. La charge concurrente, l'endurance, les autres opérations du
 service et les distributions générales restent ouvertes.
 
-Les 78 tests finaux catalogue/ToolAdmin/AgentAdmin/accès passent, ainsi que les quatre
-comparaisons et les deux parcours Chromium ToolAdmin sur ordinateur et mobile. Ils
+Les 78 tests finaux catalogue/ServiceAdmin/AgentAdmin/accès passent, ainsi que les quatre
+comparaisons et les deux parcours Chromium ServiceAdmin sur ordinateur et mobile. Ils
 préservent notamment les filtres de capacité, les secrets, la réouverture et les refus
 après révocation. Pyright, vue-tsc, les 439 unités frontend et la parité i18n passent
 avec cette dernière source applicative. Les preuves locales sont dans

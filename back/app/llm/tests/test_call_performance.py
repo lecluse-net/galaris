@@ -61,7 +61,7 @@ async def test_tool_results_read_full_payloads_only_for_matching_calls(db, monke
     tools = (await db.execute(select(LLMCall.id, LLMCall.tool_calls))).all()
     assert len(tools) == 24
     assert [call_id for call_id, calls in tools if "result" in calls[0]] == [ids[0]]
-    measurement(f"llm-tool-result-performance-{reused}", {"calls": len(ids), "reused_tool_id": reused,
+    measurement(f"llm-tool-result-performance-{reused}", {"calls": len(ids), "reused_service_id": reused,
         "logical_large_payload_bytes": len(ids) * 2 * len(payload.encode()), "python_peak_bytes": peak})
     assert peak < 4 * 1024 * 1024, f"Attaching one tool result allocated {peak} bytes of trace history"
 
@@ -72,7 +72,7 @@ async def test_supervision_preserves_order_context_and_costs_with_bulk_reads(db)
     from app.process.models import ProcessDefinition, ProcessRun
 
     agent, connection, _room = await _scope(db)
-    definition = ProcessDefinition(agent_id=agent.id, tool_id=connection.tool_id,
+    definition = ProcessDefinition(agent_id=agent.id, service_id=connection.service_id,
         engine_process_id="synthetic-supervision", label="Synthetic process")
     db.add(definition)
     await db.flush()

@@ -125,10 +125,10 @@ async def resolve_default_output(agent_id: int) -> BrowserOutput:
     """Resolve the per-agent connection preference, falling back to content."""
 
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
     for connection in await connection_service.get_connections_by_agent(agent_id):
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+        tool = await service.get_service_by_id(connection.service_id)
         if tool is None or tool.code != "browser":
             continue
         _, params = await connection_service.get_params_as_dict(

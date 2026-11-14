@@ -5,14 +5,14 @@ from sqlalchemy import select
 from loguru import logger
 
 from core.database import get_db
-from app.tools.facade import HUMAN_ONLY_TOOL_CODES
+from app.services.facade import HUMAN_ONLY_SERVICE_CODES
 from . import connection_service as service
 from .models import Connection
 from .schemas import Connection as ConnectionRead, FunctionState
 
 
 async def refresh_after_mutation(agent_id: int) -> None:
-    from app.tools import refresh_agent_tool_catalog
+    from app.services import refresh_agent_tool_catalog
     try:
         await refresh_agent_tool_catalog(agent_id)
         await get_db().commit()
@@ -22,14 +22,14 @@ async def refresh_after_mutation(agent_id: int) -> None:
 
 
 async def require_connection(connection_id: int, *, editable: bool = False) -> Connection:
-    from app.tools.facade import get_tool_by_id
+    from app.services.facade import get_service_by_id
     connection = await service.get_connection(connection_id)
     if connection is None:
         raise LookupError("Connection not found")
     if editable:
         await service.require_editable_connection(connection_id)
-        tool = await get_tool_by_id(connection.tool_id)
-        if tool and tool.code in HUMAN_ONLY_TOOL_CODES:
+        tool = await get_service_by_id(connection.service_id)
+        if tool and tool.code in HUMAN_ONLY_SERVICE_CODES:
             raise PermissionError("Administrative delegation can only be changed by a human")
     return connection
 
@@ -41,16 +41,16 @@ async def projection(connection_id: int) -> dict[str, Any]:
     return result
 
 
-async def create(agent_id: int, tool_id: int, active: bool) -> dict[str, Any]:
-    from app.tools.facade import lock_tools, get_tool_by_id
-    await lock_tools([tool_id])
-    tool = await get_tool_by_id(tool_id)
+async def create(agent_id: int, service_id: int, active: bool) -> dict[str, Any]:
+    from app.services.facade import lock_services, get_service_by_id
+    await lock_services([service_id])
+    tool = await get_service_by_id(service_id)
     if tool is None:
-        raise LookupError("Tool not found")
-    await service.require_editable_tool(tool_id)
-    if tool.code in HUMAN_ONLY_TOOL_CODES:
+        raise LookupError("Service not found")
+    await service.require_editable_tool(service_id)
+    if tool.code in HUMAN_ONLY_SERVICE_CODES:
         raise PermissionError("Only humans can grant administrative capabilities")
-    connection = await service.create_connection(tool_id, agent_id, active=active)
+    connection = await service.create_connection(service_id, agent_id, active=active)
     await refresh_after_mutation(agent_id)
     return await projection(connection.id)
 
@@ -74,7 +74,7 @@ async def params_set(connection_id: int, params: dict[str, str | None]) -> dict[
     connection = await require_connection(connection_id, editable=True)
     if len(params) > 100 or any(v is not None and len(v) > 100_000 for v in params.values()):
         raise ValueError("Connection parameters exceed the supported limit")
-    await service.validate_params(connection.tool_id, params)
+    await service.validate_params(connection.service_id, params)
     await service.set_params_bulk(connection_id, params)
     await refresh_after_mutation(connection.agent_id)
     return await projection(connection_id)
@@ -89,10 +89,10 @@ async def param_delete(connection_id: int, name: str) -> dict[str, Any]:
 
 async def functions(connection_id: int) -> dict[str, Any]:
     connection = await require_connection(connection_id)
-    from app.tools import list_available_connection_functions, load_mcp_tools
-    from app.tools.facade import get_tool_by_id
-    tool = await get_tool_by_id(connection.tool_id)
-    native = [d for d in load_mcp_tools() if tool and d.tool_code == tool.code]
+    from app.services import list_available_connection_functions, load_mcp_tools
+    from app.services.facade import get_service_by_id
+    tool = await get_service_by_id(connection.service_id)
+    native = [d for d in load_mcp_tools() if tool and d.service_code == tool.code]
     if native:
         rows: list[dict[str, Any]] = []
         for definition in native:
@@ -115,10 +115,10 @@ async def function_set(connection_id: int, name: str, state: FunctionState) -> d
     return result
 
 
-async def list_connections(agent_id: int, tool_id: int | None, active_only: bool, skip: int, limit: int) -> dict[str, Any]:
+async def list_connections(agent_id: int, service_id: int | None, active_only: bool, skip: int, limit: int) -> dict[str, Any]:
     query = select(Connection).where(Connection.agent_id == agent_id).order_by(Connection.id)
-    if tool_id is not None:
-        query = query.where(Connection.tool_id == tool_id)
+    if service_id is not None:
+        query = query.where(Connection.service_id == service_id)
     if active_only:
         query = query.where(Connection.active.is_(True))
     connections = (await get_db().scalars(query.offset(skip).limit(limit))).all()
@@ -126,17 +126,17 @@ async def list_connections(agent_id: int, tool_id: int | None, active_only: bool
 
 
 async def list_tools(search: str, skip: int, limit: int) -> dict[str, Any]:
-    from app.tools import tool_service
-    from app.tools.facade import get_tools_by_ids, public_connection_schema
-    records = [t for t in await tool_service.get_all_tool_records(summary_only=True)
+    from app.services import service
+    from app.services.facade import get_services_by_ids, public_connection_schema
+    records = [t for t in await service.get_all_service_records(summary_only=True)
                if not search or search.casefold() in f"{t.code} {t.label}".casefold()]
     selected = records[skip:skip + limit]
-    current = set(await get_tools_by_ids({record.id for record in selected}))
+    current = set(await get_services_by_ids({record.id for record in selected}))
     values: list[dict[str, Any]] = []
     for record in selected:
         if record.id in current:
             values.append({"id": record.id, "code": record.code, "label": record.label,
                            "mandatory": not record.can_disable,
-                           "human_only": record.code in HUMAN_ONLY_TOOL_CODES,
+                           "human_only": record.code in HUMAN_ONLY_SERVICE_CODES,
                            "connection_schema": public_connection_schema(record.connection_schema or {})})
     return {"items": values, "total": len(records), "skip": skip, "limit": limit}

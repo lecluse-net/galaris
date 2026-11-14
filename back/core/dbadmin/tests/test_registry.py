@@ -78,7 +78,7 @@ def test_composition_compiles_every_permanent_dataset_and_reconciler() -> None:
     assert {
         "app.llm",
         "app.skill",
-        "app.tools",
+        "app.services",
         "core.authorize",
         "core.params",
     } <= source_keys
@@ -91,8 +91,8 @@ def test_composition_compiles_every_permanent_dataset_and_reconciler() -> None:
         "app.skill.assignments",
         "app.skill.installed",
         "app.skill.system",
-        "app.tools.mandatory.connections",
-        "app.tools.mandatory.tools",
+        "app.services.mandatory.connections",
+        "app.services.mandatory.services",
         "core.authorize.admin_grants",
         "core.authorize.admin_role",
         "core.authorize.privileges",

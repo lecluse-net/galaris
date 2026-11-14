@@ -17,7 +17,7 @@ from app.conversation.service import (
 )
 from app.conversation.contracts import ConversationLeaseLostError, ConversationOutcome
 from app.messenger.models import Message, Room
-from app.tools.models import Tool
+from app.services.models import Service
 from app.task import scheduler as task_scheduler
 from app.task.models import Task, TaskAttempt, TaskStatus
 from core.database import get_db_session
@@ -29,19 +29,19 @@ async def seed_round():
     async with get_db_session() as db:
         user = User(email=f"{suffix}@example.test", hashed_password="unused")
         title = Title(label=suffix, gender="X")
-        tool = Tool(code=suffix, label=suffix, description="", connection_schema={})
+        tool = Service(code=suffix, label=suffix, description="", connection_schema={})
         db.add_all([user, title, tool])
         await db.flush()
         agent = Agent(user_id=user.id, title_id=title.id, first_name="Race", last_name="Test", code=suffix)
         db.add(agent)
         await db.flush()
-        connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
+        connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
         room = Room(connection_id=connection.id, external_id=suffix, label="Race room", kind="direct", conversation_type="text")
         db.add(room)
         await db.flush()
-        message = Message(connection_id=connection.id, tool_id=tool.id, platform="internal", remote_message_id=suffix, direction="inbound", messenger_room_id=room.id, room_id=suffix, text="race")
+        message = Message(connection_id=connection.id, service_id=tool.id, platform="internal", remote_message_id=suffix, direction="inbound", messenger_room_id=room.id, room_id=suffix, text="race")
         round_ = ConversationRound(room_id=room.id, status="FROZEN")
         db.add_all([message, round_])
         await db.flush()

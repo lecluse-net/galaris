@@ -131,7 +131,7 @@ Les mesures brutes restent sous `artifacts/` ; les conclusions versionnées sont
 ### R01 — Qualifier tôt la dépendance à Pydantic AI
 
 1. Inventorier les imports et usages directs, différés, réexportés et persistés dans tout
-   le backend : `app.harness`, `app.llm`, Lab, Tools, voix et bridges providers notamment.
+   le backend : `app.harness`, `app.llm`, Lab, Services, voix et bridges providers notamment.
 2. Compléter la matrice ci-dessous avec les symboles, consommateurs, versions verrouillées,
    tests disponibles et trous de couverture. Distinguer Pydantic validation, Pydantic AI,
    les SDK fournisseurs et Monty ; ce sont des remplacements différents.
@@ -269,7 +269,7 @@ admissions Python. Conserver les formats et lecteurs nécessaires aux opération
    et protocoles. Désigner une seule boucle propriétaire des appels d'outils et des retries.
 4. Exécuter texte -> outil de lecture -> suite -> résultat unique, puis erreur d'outil,
    JSON invalide, réponse incomplète, interruption, reprise et autorisation différée.
-5. Conserver les façades `app.agent`, `app.llm`, `app.tools` et le journal des effets.
+5. Conserver les façades `app.agent`, `app.llm`, `app.services` et le journal des effets.
    Chaque appel physique reste comptabilisé ; aucune route fournisseur directe de contournement.
 6. Réutiliser le testkit de driver. Qualifier d'abord la compatibilité déterministe puis
    un parcours assemblé avec de vrais services et, dans une campagne distincte, fournisseurs.
@@ -589,7 +589,7 @@ adaptateur du harnais Rust : événements, contexte, arrêt et checkpoint versio
     |
 état agentique Rig piloté par un hôte Galaris
     |-- demande de modèle -> app.llm -> adaptateur fournisseur -> transport autorisé
-    |-- demande d'outil  -> app.tools -> droits, autorisation, effet et reçu
+    |-- demande d'outil  -> app.services -> droits, autorisation, effet et reçu
     `-- état à sauver   -> propriétaire durable actuel -> PostgreSQL
 ```
 
@@ -783,14 +783,14 @@ ils ne signifient pas que ces tests sont suffisants ni qu'ils ont été exécut�
 | Historique et compaction | Rôles, ordre, instructions, fragments, résultats d'outils, références médias, contenu natif et signatures opaques conservés ; aller-retour de l'existant. | `test_agent_history_compaction.py`, `test_local_executor_history.py`, `test_checkpoint.py` dans `app/harness/tests`. |
 | Sorties structurées | Schémas et validation métier équivalents : absents/null, unions, nombres, champs supplémentaires, refus/incomplet et retry borné ; aucune sortie invalide acceptée. | `back/app/llm/tests/test_structured_service.py`, `structured_service.py`, `decision_service.py`. |
 | Streaming et terminalité | Fragments corrélés, un seul terminal et rien après, absence de faux succès à la fermeture, sortie partielle conservée. | `back/app/agent/tests/test_driver_testkit.py`, `test_executor_streaming.py`, `test_runtime_guards.py`. |
-| Outils natifs et MCP | Noms/arguments/résultats/erreurs, contexte et droits réévalués ; découverte filtrée ; identités réutilisées entre tours sans mélange. | `test_tool_discovery.py`, `test_checkpoint.py`, suites `app/tools/tests`. |
+| Outils natifs et MCP | Noms/arguments/résultats/erreurs, contexte et droits réévalués ; découverte filtrée ; identités réutilisées entre tours sans mélange. | `test_tool_discovery.py`, `test_checkpoint.py`, suites `app/services/tests`. |
 | Autorisations différées et compétences | Suspendre avant effet, conserver les arguments exacts, reprendre l'appel approuvé après revalidation ; découverte à la demande et politique eager conservées. | `test_runtime_cancellation.py`, `test_skills.py`, `checkpoint.py`, `skills.py`. |
 | Concurrence des outils | Lectures sûres concurrentes, mutations exclusives comme barrière, ordre/résultats stables, aucune session DB partagée. | `test_checkpoint.py` : concurrence sûre, appels en attente et snapshots immuables. |
 | Effets, checkpoints et reprise | Journal avant effet, reçu après effet, aucun rejeu aveugle, issue inconnue bloquante, vieux formats traités explicitement. | `test_checkpoint.py`, `test_ssh_checkpoint_recovery.py`, `test_execution_evidence.py`. |
 | Annulation et récupération d'appel | Demande distincte de l'arrêt confirmé, transport fermé, effets engagés drainés, budget original conservé et checkpoint durable. | `test_runtime_cancellation.py`, `test_call_recovery.py`, `test_run_control.py`. |
 | Budgets, gardes et coûts | Compter tous les appels physiques et retries, plafonds/échéances conservés, détection des boucles, cache et consommation renseignés sans double compte. | `test_runtime_budget_wrapup.py`, `test_runtime_guards.py`, suites usage/inférence de `app.llm`. |
 | Multimodal et voix | Pièce jointe seule, historique avec média, octets temporaires bornés, URI canonique, interruption/reprise par tour et priorité voix. | `test_native_media.py`, `test_media_resource_policy.py`, suites `app/voice/tests`. |
-| Consommateurs hors harnais | Décisions Dispatcher/Planner, Lab, Tools, providers et façades publiques continuent de fonctionner sans types SDK qui s'échappent. | Imports réels de `app/llm`, `app/lab`, `app/tools`, `bridge/*` et tests de leurs consommateurs. |
+| Consommateurs hors harnais | Décisions Dispatcher/Planner, Lab, Services, providers et façades publiques continuent de fonctionner sans types SDK qui s'échappent. | Imports réels de `app/llm`, `app/lab`, `app/services`, `bridge/*` et tests de leurs consommateurs. |
 
 La compatibilité du harnais ne suffit pas à retirer Pydantic validation des contrats/API.
 Monty et les moteurs externes sont aussi inventoriés séparément ; les remplacer n'est pas

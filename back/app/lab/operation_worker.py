@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 from sqlalchemy import and_, or_, select, update
 from app.llm import LLMExecutionAuthority, llm_execution_scope
-from app.tools.facade import AuthorizationClosed, AuthorizationSuspended, continued_deferred_dispatch, claim_deferred_dispatch, finish_action
+from app.services.facade import AuthorizationClosed, AuthorizationSuspended, continued_deferred_dispatch, claim_deferred_dispatch, finish_action
 from core.database import get_db
 from .operation_contracts import LabOperationError, LabOperationSnapshot
 from .operation_store import TERMINAL_STATUSES, publish, snapshot

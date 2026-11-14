@@ -20,7 +20,7 @@ from app.process.bpmn import Flow, Node, Workflow
 from app.process.native_definitions import create
 from app.process.tests.test_native_bpmn import native as native, finish_run
 from app.process.values import Variable
-from app.tools.mcp_loader import McpToolContext, list_enabled_native_mcp_definitions
+from app.services.mcp_loader import McpToolContext, list_enabled_native_mcp_definitions
 from core.document import convert_to_pdf
 
 
@@ -127,12 +127,12 @@ async def test_unsupported_and_corrupt_sources_never_become_a_successful_pdf(tmp
 @pytest.mark.asyncio
 async def test_pdf_tool_is_available_in_conversation_and_feeds_a_pdf_constrained_process(db, native, tmp_path):
     from sqlalchemy import select, func
-    from app.tools import RecoverableToolError
-    from app.tools.mandatory_tools import sync_integrated_tool_connections
+    from app.services import RecoverableToolError
+    from app.services.mandatory_services import sync_integrated_service_connections
     from core.storage import StoredFile
 
     owner, other = native
-    await sync_integrated_tool_connections(agent_id=owner.id)
+    await sync_integrated_service_connections(agent_id=owner.id)
     await db.commit()
     assert "file_to_pdf" in {item.name for item in await list_enabled_native_mcp_definitions(
         owner.id, runtime="internal", conversation_only=True)}

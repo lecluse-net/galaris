@@ -57,7 +57,7 @@ before acting, then load only the references you need.
 | Pinia, routes, or translations | `pinia-skilld`, `vue-router-skilld`, `vue-i18n-skilld` depending on imports |
 | Agent, task, driver, planner | `galaris-agent-execution`; add `building-pydantic-ai-agents` for the internal harness |
 | Messaging or conversational bridges | `galaris-messaging-bridges`; add `onebot-11` for OneBot |
-| MCP, tools, processes, n8n, files | `galaris-process-tools` |
+| MCP, tools, processes, n8n, files | `galaris-process-services` |
 | Logfire | The `logfire-*` skill matching instrumentation, querying, or UI work |
 | Property-based tests and generated counterexamples | `property-based-testing` |
 | Playwright component/E2E tests, flaky browser tests, and accessibility testing | `playwright-best-practices` |
@@ -236,18 +236,18 @@ journal, and dispatch. Matrix, Nextcloud Talk, OneBot, Telegram, and WhatsApp ar
 they convert their protocol, then call the canonical facade. Do not reimplement the task
 workflow inside a bridge.
 
-Incoming files and media retain the URI of the Tool that received them. A runtime receives
+Incoming files and media retain the URI of the Service that received them. A runtime receives
 only a bounded temporary materialization when a library requires bytes; that temporary
 materialization is neither durable nor addressable by the agent. Consult the
 `galaris-messaging-bridges` skill and the `messaging.md` and `media-resources.md` flows.
 
-### Tools and processes
+### Services and processes
 
-Reserve `galaris` / `Galaris` exclusively for the built-in Galaris Tool. No other Tool
+Reserve `galaris` / `Galaris` exclusively for the built-in Galaris Service. No other Service
 code or label may contain that name, regardless of case or Unicode compatibility forms.
 Use service or domain names, such as `platform_admin` / `Administration` and `lab` / `Lab`.
 
-MCP tools, connections, and files use the contracts of `app.tools`, `app.mcp`,
+MCP tools, connections, and files use the contracts of `app.services`, `app.mcp`,
 `app.connection`, and `app.file_share`. Business workflows use `app.process`: external
 workflows can execute through the n8n bridge, and the native engine executes BPMN processes. See
 `docs/fr/dev/native-processes.md` for its supported executable profile and remaining limits.
@@ -256,7 +256,7 @@ Never create a process definition, run, or engine adapter to wrap a standalone f
 MCP tool, or technical operation. Duration, callbacks, retries, and durable tracking do
 not make an operation a business workflow; its owning domain retains that state.
 Callbacks and process transitions must be idempotent, and terminal states must be
-immutable. Consult the `galaris-process-tools` skill.
+immutable. Consult the `galaris-process-services` skill.
 
 ## Code conventions
 

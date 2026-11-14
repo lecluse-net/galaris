@@ -13,7 +13,7 @@ from bridge.nextcloud.messenger import NextcloudTalkMessenger
 def test_to_message_preserves_receiver_connection_id() -> None:
     messenger = NextcloudTalkMessenger(
         client=None,  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -46,7 +46,7 @@ async def test_unread_counts_use_one_room_snapshot_for_requested_tokens() -> Non
     )
     messenger = NextcloudTalkMessenger(
         client=SimpleNamespace(get_rooms=get_rooms),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -62,7 +62,7 @@ async def test_mark_read_uses_the_last_displayed_talk_message() -> None:
     mark_room_as_read = AsyncMock(return_value={"success": True})
     messenger = NextcloudTalkMessenger(
         client=SimpleNamespace(mark_room_as_read=mark_room_as_read),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -77,7 +77,7 @@ async def test_mark_read_refuses_to_advance_without_a_displayed_talk_message() -
     mark_room_as_read = AsyncMock(return_value={"success": True})
     messenger = NextcloudTalkMessenger(
         client=SimpleNamespace(mark_room_as_read=mark_room_as_read),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -139,7 +139,7 @@ async def test_upload_file_path_returns_the_created_talk_message_id() -> None:
             share_file_to_room=share_file_to_room,
             get_messages=get_messages,
         ),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -164,7 +164,7 @@ async def test_file_share_fallback_never_returns_an_empty_message_id() -> None:
 
     messenger = NextcloudTalkMessenger(
         client=SimpleNamespace(get_messages=get_messages),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -188,7 +188,7 @@ async def test_file_share_history_failure_keeps_a_unique_accepted_reference() ->
 
     messenger = NextcloudTalkMessenger(
         client=SimpleNamespace(get_messages=get_messages),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -227,7 +227,7 @@ async def test_history_page_continues_to_older_talk_messages() -> None:
 
     messenger = NextcloudTalkMessenger(
         client=SimpleNamespace(get_messages_page=get_messages_page),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -284,7 +284,7 @@ async def test_history_page_aggregates_provider_batches_up_to_500() -> None:
 
     messenger = NextcloudTalkMessenger(
         client=SimpleNamespace(get_messages_page=get_messages_page),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -311,7 +311,7 @@ async def test_inbound_cursor_advances_only_after_successful_dispatch(
     monkeypatch.setattr(messenger_module, "dispatch_incoming", dispatch)
     messenger = NextcloudTalkMessenger(
         client=None,  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -345,7 +345,7 @@ async def test_polling_restarts_a_completed_room_worker() -> None:
 
     messenger = NextcloudTalkMessenger(
         client=SimpleNamespace(get_rooms=get_rooms),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -381,7 +381,7 @@ async def test_polling_ignores_archived_rooms() -> None:
 
     messenger = NextcloudTalkMessenger(
         client=SimpleNamespace(get_rooms=get_rooms),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )
@@ -437,7 +437,7 @@ async def test_signaling_stops_a_room_when_it_becomes_archived(
             base_url="https://cloud.test",
             get_rooms=get_rooms,
         ),  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
         inbound="signaling",
@@ -471,7 +471,7 @@ async def test_from_connection_id_reads_runtime_and_connection_params(
             login="bot",
             password="app-password",
             self_id="bot-user",
-            tool_id=7,
+            service_id=7,
         )
 
     monkeypatch.setattr(messenger_module, "resolve_nextcloud_connection", resolve)
@@ -508,7 +508,7 @@ def _messenger_for_rooms(
     )
     messenger = NextcloudTalkMessenger(
         client=client,  # type: ignore[arg-type]
-        tool_id=7,
+        service_id=7,
         self_id="bot",
         connection_id=42,
     )

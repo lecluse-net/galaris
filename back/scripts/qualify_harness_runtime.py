@@ -60,7 +60,7 @@ class ModelService(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
         calls.append(self.path)
-        if "/tools/runtime-authorizations" in self.path:
+        if "/services/runtime-authorizations" in self.path:
             if self.path.endswith("/receipt"):
                 gate.setdefault("receipts", []).append(body)
                 self.send({"recorded": True})
@@ -246,7 +246,7 @@ async def qualify_hermes_managed(origin: str) -> None:
     """Exercise the real SDK's native and MCP boundaries with the run-bound collector."""
     from types import SimpleNamespace
     authorization = importlib.import_module("galaris_authorization")
-    handlers = importlib.import_module("tools.mcp_tool_handlers")
+    handlers = importlib.import_module("services.mcp_tool_handlers")
     for mcp_call in (False, True):
         for allowed in (False, True):
             gate.clear()
@@ -416,8 +416,8 @@ def main() -> None:
         assert ANSWER in json.dumps(result), str(result)[:2000]
         # The pinned dispatcher, file tool, collector and model transport are real.
         # Only the responsible human's once/deny decision is synthetic.
-        approvals = importlib.import_module("tools.approval")
-        approval_context = importlib.import_module("tools.approval_context")
+        approvals = importlib.import_module("services.approval")
+        approval_context = importlib.import_module("services.approval_context")
         os.environ.update(TERMINAL_CWD="/workspace", TERMINAL_ENV="local", HERMES_WRITE_SAFE_ROOT="/workspace")
         for allowed in (False, True):
             gate.clear()

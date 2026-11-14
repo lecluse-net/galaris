@@ -31,7 +31,7 @@ class ActionApprovals:
     def __init__(self, *, mcp_url: str, token: str, run_context: str,
                  session: str, on_pending: Callable[[str], None], on_running: Callable[[], None] | None = None,
                  on_children: Callable[[list[dict[str, Any]]], None] | None = None) -> None:
-        self.url = mcp_url.split("/mcp/", 1)[0] + "/tools/runtime-authorizations"
+        self.url = mcp_url.split("/mcp/", 1)[0] + "/services/runtime-authorizations"
         if "/mcp/" not in mcp_url:
             raise PermissionError("The managed MCP endpoint is required")
         self.token, self.run_context, self.session = token, run_context, session

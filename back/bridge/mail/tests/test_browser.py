@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 
 from app.agent.models import Agent, Title
 from app.connection.models import Connection, ConnectionParam
-from app.tools.models import Tool
-from app.tools.authorization_models import ActionAuthorization
+from app.services.models import Service
+from app.services.authorization_models import ActionAuthorization
 from core.authorize.models import Assignment, Privilege, Role
 from core.database import get_db_session
 from core.user import UserModel
@@ -36,9 +36,9 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
         agents = [Agent(user_id=user.id, title_id=title.id, code=f"synthetic-imap-browser-{i}", first_name="Synthetic", last_name=str(i)) for i, user in enumerate(users)]
         db.add_all(agents)
         await db.flush()
-        tool = await db.scalar(select(Tool).where(Tool.code == provider_code))
+        tool = await db.scalar(select(Service).where(Service.code == provider_code))
         if tool is None:
-            tool = Tool(code=provider_code, label="Synthetic mailbox", mail_config={})
+            tool = Service(code=provider_code, label="Synthetic mailbox", mail_config={})
             db.add(tool)
             await db.flush()
         modern = provider_code != "mail"
@@ -52,7 +52,7 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
                 "email": {"type": "string"}, "login": {"type": "string"},
                 "secret": {"type": "password"}, "folders": {"type": "string", "widget": "mail_folder_tree"},
             }}
-        connection = Connection(tool_id=tool.id, agent_id=agents[0].id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=agents[0].id, active=True)
         db.add(connection)
         await db.flush()
         params = ({"email": "mail-reader@example.com", "login": "synthetic-imap-login", "secret": "synthetic-imap-secret"}
@@ -63,7 +63,7 @@ async def test_imap_browser_folders_messages_content_and_isolation(client, monke
         owner, foreign, connection_id = agents[0].id, agents[2].id, connection.id
         second_connection_id = None
         if provider_code == "synthetic-multi-provider":
-            second = Connection(tool_id=tool.id, agent_id=owner, active=True, singleton_key=None)
+            second = Connection(service_id=tool.id, agent_id=owner, active=True, singleton_key=None)
             db.add(second)
             await db.flush()
             second_connection_id = second.id

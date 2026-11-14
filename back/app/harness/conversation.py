@@ -58,8 +58,8 @@ from app.messenger import build_conversation_session
 from app.agent.contracts import TaskMessage as Message
 from app.agent.contracts import AgentRunControl, ResolvedModel, ConversationWorkAnalysis
 from app.process import build_agent_process_advertisement, agent_process_dispatch_candidates
-from app.tools.agent_registry import build_agent_tool_advertisement
-from app.tools.mcp_loader import McpToolContext
+from app.services.agent_registry import build_agent_tool_advertisement
+from app.services.mcp_loader import McpToolContext
 from core.database import get_db_session, release_db_transaction
 from core.i18n import t
 from core.params import Params, params_service

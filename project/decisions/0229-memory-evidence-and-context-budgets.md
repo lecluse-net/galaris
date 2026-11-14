@@ -11,7 +11,7 @@ place. A decision about an outdated candidate cannot discard new content.
 
 Dream factual extraction includes successful child Tasks and Goal-cycle Tasks.
 Prepared, delegated and Goal instructions are attributed to AI; a root human
-request uses its preserved original demand when available. Tool observations
+request uses its preserved original demand when available. Service observations
 remain separate from final narrative claims. AI-only sources cannot create or
 edit human preferences, personal facts, relationships or explicit human corrections,
 even if the model selects that retention category. Capture opt-out propagates through

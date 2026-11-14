@@ -54,33 +54,33 @@ async def _wire_common(
     kind: str = "nextcloud_talk",
 ) -> tuple[AsyncMock, AsyncMock]:
     """Patch ``_process_incoming`` surroundings and return task/contact calls."""
-    from app.tools import tool_service
+    from app.services import service
     from app.connection import connection_service
     from app.agent import agent_service
     from app.messenger import contact_memory, interactions, directory, facade, ingest
     from app import conversation
     from app.task import task_service, runner, collab
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from core.database import get_db
 
     # Admission now revalidates the exact durable connection, even when workflow
     # ports below are isolated. Keep that authorization boundary real.
     db = get_db()
-    if await db.get(ToolModel, 3) is None:
-        db.add(ToolModel(id=3, code="incoming-choice-test", label="Synthetic transport",
+    if await db.get(ServiceModel, 3) is None:
+        db.add(ServiceModel(id=3, code="incoming-choice-test", label="Synthetic transport",
                          description="", connection_schema={}))
         await db.flush()
-    db.add(Connection(id=7, tool_id=3, agent_id=agent_id, active=True))
+    db.add(Connection(id=7, service_id=3, agent_id=agent_id, active=True))
     await db.flush()
 
     tool = SimpleNamespace(
         code="mail" if kind == "mail" else "custom-nextcloud",
         messenger=SimpleNamespace(service=kind),
     )
-    connection = SimpleNamespace(id=7, tool_id=3, agent_id=agent_id, active=True)
+    connection = SimpleNamespace(id=7, service_id=3, agent_id=agent_id, active=True)
 
-    monkeypatch.setattr(tool_service, "get_tool_by_id", AsyncMock(return_value=tool))
+    monkeypatch.setattr(service, "get_service_by_id", AsyncMock(return_value=tool))
     monkeypatch.setattr(connection_service, "get_connection", AsyncMock(return_value=connection))
     monkeypatch.setattr(
         connection_service, "get_connections_by_param", AsyncMock(return_value=[connection])
@@ -120,7 +120,7 @@ def _incoming(sender_agent_id: Optional[int]) -> Message:
     message = Message(
         id=uuid4(),
         connection_id=7,
-        tool_id=3,
+        service_id=3,
         platform="nextcloud_talk",
         remote_message_id="m1",
         direction="inbound",
@@ -129,7 +129,7 @@ def _incoming(sender_agent_id: Optional[int]) -> Message:
     )
     message.sender = MessengerUser(
         id=_SENDER_ID,
-        tool_id=3,
+        service_id=3,
         external_id="astertest",
         display_name="Aster",
         agent_id=sender_agent_id,
@@ -138,7 +138,7 @@ def _incoming(sender_agent_id: Optional[int]) -> Message:
     )
     message.recipient = MessengerUser(
         id=_RECIPIENT_ID,
-        tool_id=3,
+        service_id=3,
         external_id="orion-demo-test",
         is_ai=True,
     )
@@ -434,7 +434,7 @@ async def test_interaction_reply_is_projected_before_it_is_consumed(
     await interactions.create_choice(
         SimpleNamespace(
             connection_id=7,
-            tool_id=3,
+            service_id=3,
             send_to_room=AsyncMock(return_value=SimpleNamespace(id="approval-prompt")),
         ),
         agent_id=1519,
@@ -526,7 +526,7 @@ async def test_memory_failure_does_not_prevent_interaction_resolution(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "sender",
-    [None, MessengerUser(id=uuid4(), tool_id=3, external_id="")],
+    [None, MessengerUser(id=uuid4(), service_id=3, external_id="")],
 )
 async def test_absent_or_empty_sender_is_not_projected(
     monkeypatch: pytest.MonkeyPatch,

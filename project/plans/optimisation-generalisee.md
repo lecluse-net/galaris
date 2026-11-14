@@ -13,7 +13,7 @@ La revue exhaustive et la qualification combinée du système restent à termine
 1. **Process/MCP** : mesurer les chargements et contrôles de droits encore réalisés
    par élément. Inventorier les consommateurs et préserver scopes, révocation,
    fraîcheur et contrats des listes avant toute généralisation.
-2. **Tools et Contacts** : mesurer le coût des métadonnées globales et des grands
+2. **Services et Contacts** : mesurer le coût des métadonnées globales et des grands
    ensembles de destinataires. Les gains supplémentaires restent à démontrer.
 3. **Ressources et charge** : compléter la référence au repos, mesurer le RSS réel,
    la concurrence et l’endurance. Distinguer allocations locales, mémoire totale,

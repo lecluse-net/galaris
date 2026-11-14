@@ -99,7 +99,7 @@ from app.messenger.models import (
 
 class _FakeMessenger:
     connection_id = 0
-    tool_id = 42
+    service_id = 42
 
     def __init__(self) -> None:
         self.sent: list[tuple[str, str]] = []
@@ -115,7 +115,7 @@ def _incoming(
     message = MessageModel(
         id=uuid4(),
         connection_id=cast(int, None),
-        tool_id=42,
+        service_id=42,
         platform="test",
         remote_message_id="answer-1",
         direction="inbound",
@@ -139,7 +139,7 @@ async def test_a_process_reply_is_interpreted_before_any_other_pending_approval(
         request=ChoiceRequest(kind="closed-test", title="Another approval",
             options=[ChoiceOption(id="once", label="Approve once", aliases=["yes"])]))
     assert await resolve_from_message(_incoming("yes"), agent_id=7) is None
-    assert len(await list_pending_choices(agent_id=7, connection_id=None, tool_id=42,
+    assert len(await list_pending_choices(agent_id=7, connection_id=None, service_id=42,
         room_id="room-1", user_id="alice")) == 2
     assert await resolve_from_message(_incoming(f"#{approval.reference} yes"), agent_id=7) is not None
     await _reset_for_tests()
@@ -352,7 +352,7 @@ async def test_conversation_controller_can_resolve_a_scoped_closed_choice(db) ->
     choices = await list_pending_choices(
         agent_id=7,
         connection_id=None,
-        tool_id=42,
+        service_id=42,
         room_id="room-1",
         user_id="alice",
     )
@@ -360,7 +360,7 @@ async def test_conversation_controller_can_resolve_a_scoped_closed_choice(db) ->
     assert not await list_pending_choices(
         agent_id=7,
         connection_id=None,
-        tool_id=42,
+        service_id=42,
         room_id="room-1",
         user_id="mallory",
     )
@@ -371,7 +371,7 @@ async def test_conversation_controller_can_resolve_a_scoped_closed_choice(db) ->
         response_text="Ne fais surtout pas ça.",
         agent_id=7,
         connection_id=None,
-        tool_id=42,
+        service_id=42,
         room_id="room-1",
         user_id="alice",
     )
@@ -387,7 +387,7 @@ async def test_conversation_controller_can_resolve_a_scoped_closed_choice(db) ->
         response_text="Ne fais surtout pas ça.",
         agent_id=7,
         connection_id=None,
-        tool_id=42,
+        service_id=42,
         room_id="room-1",
         user_id="alice",
     )
@@ -402,7 +402,7 @@ async def test_conversation_controller_can_resolve_a_scoped_closed_choice(db) ->
             response_text="Actually approve it.",
             agent_id=7,
             connection_id=None,
-            tool_id=42,
+            service_id=42,
             room_id="room-1",
             user_id="alice",
         )

@@ -189,7 +189,7 @@ async def test_generated_native_image_can_be_copied_and_embedded_in_a_document(
     from app.file_share import ResourceContext, resource_copy, resource_service
     from app.file_share.tests.local_file_transport import TemporaryFileTransport
     from app.image import mcp as image_mcp
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
     from app.document.schemas import DocumentUpdate
 
     owner, reader = agents

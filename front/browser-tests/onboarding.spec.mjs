@@ -3,8 +3,8 @@ import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 const routes = [
   ['Configure an LLM', '/llm?tab=providers'],
   ['Create your first agent', '/agent'],
-  ['Configure messaging', '/tools?tab=connections'],
-  ['Add tools', '/tools'],
+  ['Configure messaging', '/services?tab=connections'],
+  ['Add tools', '/services'],
   ['Choose skills', '/skill'],
   ['Prepare processes', '/process'],
 ]

@@ -233,18 +233,18 @@
                   <q-btn
                     v-if="canManageAgent(agent)"
                     class="agent-action-button"
-                    flat color="secondary" icon="edit" :label="$t('common.edit')" :aria-label="$t('agent.editTooltip')" size="sm"
+                    flat color="secondary" icon="edit" :label="$t('common.edit')" :aria-label="$t('agent.editServicetip')" size="sm"
                     @click="openAgentDialog(agent)"
                   >
-                    <q-tooltip>{{ $t('agent.editTooltip') }}</q-tooltip>
+                    <q-tooltip>{{ $t('agent.editServicetip') }}</q-tooltip>
                   </q-btn>
                   <q-btn
                     v-if="canManageAgent(agent)"
                     class="agent-action-button"
-                    flat color="negative" icon="delete" :label="$t('common.delete')" :aria-label="$t('agent.deleteTooltip')" size="sm"
+                    flat color="negative" icon="delete" :label="$t('common.delete')" :aria-label="$t('agent.deleteServicetip')" size="sm"
                     @click="confirmDeleteAgent(agent)"
                   >
-                    <q-tooltip>{{ $t('agent.deleteTooltip') }}</q-tooltip>
+                    <q-tooltip>{{ $t('agent.deleteServicetip') }}</q-tooltip>
                   </q-btn>
                 </div>
               </q-card-actions>

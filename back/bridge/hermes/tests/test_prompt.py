@@ -6,7 +6,7 @@ import pytest
 from app.agent import AgentSnapshot
 from app.task import TaskMessage
 from app.task.models import Task, TaskStatus
-from app.tools.agent_registry import AgentToolAdvertisement
+from app.services.agent_registry import AgentToolAdvertisement
 from bridge.hermes import prompt
 from bridge.hermes.prompt import build_message_context
 

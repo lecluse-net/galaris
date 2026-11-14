@@ -14,7 +14,7 @@ from sqlalchemy import and_, func, or_, select, text, update
 
 from app.connection import Connection
 from app.connection.facade import calendar_access_token, invalidate_calendar_token
-from app.tools.facade import get_tool_by_id
+from app.services.facade import get_service_by_id
 from core.database import get_db
 from . import ical, store
 from .calculation import CalendarCalculationError
@@ -280,7 +280,7 @@ async def synchronize_calendar(calendar_id: int, *, agent_id: int, automatic: bo
             batch = RemoteChanges((), None, False) if response.status_code == 304 else RemoteChanges((RemoteChange(url, response.headers.get("etag"), response.content),), None, True)
         else:
             connection = await get_db().get(Connection, connection_id)
-            tool = await get_tool_by_id(connection.tool_id) if connection else None
+            tool = await get_service_by_id(connection.service_id) if connection else None
             oauth = feed.source_kind in ("google", "microsoft") or bool(feed.source_kind == "caldav" and tool and tool.calendar and tool.calendar.settings.get("auth_type") == "oauth")
             if oauth:
                 _, bearer = await calendar_access_token(connection_id)

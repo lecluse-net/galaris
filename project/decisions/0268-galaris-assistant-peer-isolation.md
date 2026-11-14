@@ -12,7 +12,7 @@ recreates the assistant merely because its original name is available.
 Other agents cannot exchange messages or delegated Tasks with that assistant, in either
 direction. The agent domain owns a shared rejection based on this identity. Messaging applies
 it at its canonical contact boundary, including direct delivery, rooms and media. A shared
-team, global contact scope or administrative Tool connection cannot override this prohibition.
+team, global contact scope or administrative Service connection cannot override this prohibition.
 The caller receives an explicit permission error mentioning Galaris.
 
 Task admission checks the requester and the parent/source agents, even when the request

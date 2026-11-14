@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.agent import AgentManagementScope
-from app.tools.facade import ToolDeletionSelection, AfterToolDeletion
+from app.services.facade import ServiceDeletionSelection, AfterServiceDeletion
 from core.database import get_db
 from core.storage import DiskFileDriver, StoredFile, retire_file_reference, retire_file_references, rename_stored_file
 from core.util import complete_io
@@ -34,7 +34,7 @@ async def run_variable_resource(identity: UUID, name: str, actor: int | AgentMan
     return run.launcher_agent_id, envelope["value"]
 
 
-async def prepare_tool_deletion(selection: ToolDeletionSelection) -> AfterToolDeletion | None:
+async def prepare_tool_deletion(selection: ServiceDeletionSelection) -> AfterServiceDeletion | None:
     """Retire owned file aliases; settle collaboration waits after the purge commits."""
     from .models import ProcessRun
     run_ids = [key[0] for key in selection.get("process_runs", ()) if isinstance(key[0], UUID)]
@@ -68,7 +68,7 @@ async def read_run_data(identity: UUID, actor: int | AgentManagementScope) -> di
     can_write = bool(await get_db().scalar(select(ProcessDefinition.id).where(
         ProcessDefinition.id == run.process_id, accessible_clause(actor, write=True))))
     from .process_service import TERMINAL_STATUSES
-    from app.tools import has_process_admin_access
+    from app.services import has_process_admin_access
     if isinstance(actor, int) and await has_process_admin_access(actor, target_agent_id=run.launcher_agent_id):
         can_write = True
     native = run.engine_metadata.get("native", {})

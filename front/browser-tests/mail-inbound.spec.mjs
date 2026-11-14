@@ -29,10 +29,10 @@ for (const width of [390, 1440]) {
         return route.fulfill({ json: { items: [receipt], total: 1, offset: 0, limit: 50 } })
       })
       await jsonRoute(page, '**/api/mail/inbound/synthetic-receipt', { ...receipt, content: null })
-      await jsonRoute(page, '**/api/tools/action-authorizations/synthetic-authorization', {
+      await jsonRoute(page, '**/api/services/action-authorizations/synthetic-authorization', {
         id: receipt.authorization_id, can_answer: true, can_remember: true,
       })
-      await page.route('**/api/tools/action-authorizations/synthetic-authorization/answer', async route => {
+      await page.route('**/api/services/action-authorizations/synthetic-authorization/answer', async route => {
         answers.push(route.request().postDataJSON())
         await route.fulfill({ json: { accepted: true } })
       })
@@ -92,11 +92,11 @@ test('a late processing decision preserves the next opened email', async ({ page
   await jsonRoute(page, '**/api/mail/inbound?*', { items: [receipt, next], total: 2 })
   await jsonRoute(page, '**/api/mail/inbound/synthetic-receipt', { ...receipt, content: null })
   await jsonRoute(page, '**/api/mail/inbound/synthetic-next', { ...next, content: null })
-  await jsonRoute(page, '**/api/tools/action-authorizations/synthetic-authorization', {
+  await jsonRoute(page, '**/api/services/action-authorizations/synthetic-authorization', {
     id: receipt.authorization_id, can_answer: true, can_remember: false,
   })
   let answerRoute
-  await page.route('**/api/tools/action-authorizations/synthetic-authorization/answer', route => { answerRoute = route })
+  await page.route('**/api/services/action-authorizations/synthetic-authorization/answer', route => { answerRoute = route })
   await setup(page)
   await page.getByRole('row').filter({ hasText: receipt.subject }).getByRole('button', { name: 'View email' }).click()
   const dialog = page.getByRole('dialog')

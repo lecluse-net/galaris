@@ -36,7 +36,7 @@ share that registry and declare no local variables. Each variable has `name`,
 `type`, `nullable` and an optional typed `default`. Duplicate names, invalid default types
 and null defaults for notnull variables fail at save time. Values use the envelope
 `{"type":"int","value":7}`. The shared codec supports scalars, `array`, `object` and business
-references. `Agent`, `User`, `Team`, `Tool`, `Connection`, `Model` and `Skill` carry positive
+references. `Agent`, `User`, `Team`, `Service`, `Connection`, `Model` and `Skill` carry positive
 integer identities; `Topic`, `Conversation` and `VoiceSession` use UUIDs.
 `Task`, `Goal`, `GoalCycle`, `Contact`, `ConversationRound`, `VoiceConversation` and `CodeWorkspace`
 use their existing `galaris://` URIs (`task`, `goal`, `goal_cycle`, `contact`, `text`, `voice`, `code`).
@@ -200,8 +200,8 @@ conflict; a concurrent human hold prevents the turn from starting.
 MCP and REST explicitly adapt values to external contracts. `external_output` maps the
 raw response (`result`) to declared names. `external_output_typed: true` explicitly
 selects already typed envelopes; ordinary business objects containing `type` and `value`
-keys otherwise remain objects. REST uses `tool_code` and `request` through
-the existing Tools facade under the execution agent; HTTP errors are preserved.
+keys otherwise remain objects. REST uses `service_code` and `request` through
+the existing Services facade under the execution agent; HTTP errors are preserved.
 Typed child calls receive local inputs; other profiles receive ordinary JSON.
 Activated predecessors converge without a mandatory gateway, including nested splits;
 an unselected IF branch does not block convergence. File references keep their
@@ -267,7 +267,7 @@ one end, no unreachable nodes and no raw cycles. Business loops use structured F
 | `program` | `program_uri` and a qualified executor registered by its owning module. |
 | `end` | Completes the flow; output is the current run JSON. |
 
-Tool arguments may use `{"$expr": "data.amount"}`. Context contains `input`, `data`,
+Service arguments may use `{"$expr": "data.amount"}`. Context contains `input`, `data`,
 `results`, `files`, and activity-specific `output`, `error`, `item`, `index`.
 Simple arithmetic, boolean operators, comparisons and JSON access are allowed;
 calls, private attributes, comprehensions and exponentiation are rejected. Missing
@@ -290,13 +290,13 @@ admissions and requests cancellation of active tasks and child runs. After confi
 stops, the run becomes `error`. Inspection returns `error_code`, also shown in the UI.
 A child's error code is preserved; an ordinary activity failure uses `node_failed`.
 Legacy `catch`, `retry` and `error_handler` settings are ignored; their exclusive recovery
-paths are removed when reading old definitions. Ambiguous Tool effects are not replayed.
+paths are removed when reading old definitions. Ambiguous Service effects are not replayed.
 A write against a stale revision fails; the task rereads and reapplies its
 change while preserving other tasks' data.
 An ambiguous effect also stops admissions and requests cancellation, returning
 `effect_outcome_unknown`. The debugger refuses resume/step until reconciliation; requested
 cancellation remains uncertain until external termination is confirmed.
-Tool activities own a non-agent context Task under a lease and the Harness capacity
+Service activities own a non-agent context Task under a lease and the Harness capacity
 limit. An authorization request suspends that Task; its decision continues the same
 attempt, while a known rejection closes both the Task and its attempt.
 
@@ -373,7 +373,7 @@ and their form are removed.
 
 A `process_human_activity` request requires interpretation: the deterministic matcher never
 consumes an arbitrary next message. Conversation context exposes pending requests in the
-exact agent/connection/Tool/room/sender scope. `conversation_process_pending` provides full
+exact agent/connection/Service/room/sender scope. `conversation_process_pending` provides full
 contracts and pagination; `conversation_process_respond` accepts the selected reference and
 typed outputs. File-only messages remain in history with their source URI; File Sharing checks
 `File` values without downloading or persistently copying them. Incomplete or ambiguous replies

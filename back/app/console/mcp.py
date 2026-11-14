@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from app.tools.mcp_loader import McpToolContext, mcp_tool
-from app.tools.contracts import current_tool_execution
+from app.services.mcp_loader import McpToolContext, mcp_tool
+from app.services.contracts import current_tool_execution
 
 from .console_service import ConsoleRunResource
 

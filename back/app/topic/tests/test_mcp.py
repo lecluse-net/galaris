@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.tools import McpToolContext
+from app.services import McpToolContext
 from app.topic import mcp
 from app.topic.schemas import TopicItemMutationResult, TopicItemRead
 
@@ -21,7 +21,7 @@ def test_topic_mcp_functions_are_grouped_in_the_dedicated_tool() -> None:
     )
 
     assert {
-        getattr(function, "__galaris_mcp_tool__").tool_code
+        getattr(function, "__galaris_mcp_tool__").service_code
         for function in functions
     } == {"topic"}
     assert getattr(mcp.mcp_topic_list, "__galaris_mcp_tool__").effect_policy == "read"

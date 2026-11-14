@@ -1,6 +1,6 @@
 import api, { sessionGeneration, SupersededSessionError } from '@/core/api'
 import type { AxiosRequestConfig, AxiosResponse } from 'axios'
-import type { Tool } from '@/app/tools'
+import type { Service } from '@/app/services'
 import { CONNECTIONS_CHANGED_EVENT } from '../events'
 
 function connectionsChanged<T>(response: T): T {
@@ -14,7 +14,7 @@ function connectionsChanged<T>(response: T): T {
 
 export interface Connection {
     id: number
-    tool_id: number
+    service_id: number
     agent_id: number
     active: boolean
 }
@@ -25,10 +25,10 @@ export interface ConnectionOverview extends Connection {
 }
 
 export interface PermissionConnectionOption extends Connection {
-    tool_code: string
-    tool_label: string
-    tool_can_edit: boolean
-    tool_can_disable: boolean
+    service_code: string
+    service_label: string
+    service_can_edit: boolean
+    service_can_disable: boolean
 }
 
 export async function permissionConnectionOptions(skip: number, limit: number): Promise<PermissionConnectionOption[]> {
@@ -41,14 +41,14 @@ export interface ConnectionActionResult extends Connection {
 }
 
 export interface ConnectionCreate {
-    tool_id: number
+    service_id: number
     agent_id: number
     active?: boolean
     params?: Record<string, string | null>
 }
 
 export interface ConnectionUpdate {
-    tool_id?: number
+    service_id?: number
     agent_id?: number
     active?: boolean
     params?: Record<string, string | null>
@@ -77,7 +77,7 @@ export interface ConnectionParamUpdate {
 
 export interface ConnectionParamsResponse {
     connection_id: number
-    tool_id: number
+    service_id: number
     agent_id: number
     params: Record<string, unknown>
     configured_params: string[]
@@ -184,7 +184,7 @@ export function saveFunctionPolicy(
     capability: Pick<ConnectionFunctionInfo, 'name' | 'capability_kind'>,
     change: FunctionPolicyChange,
 ): Promise<AxiosResponse<FunctionStateResolved>> {
-    const key = `${connection.tool_id}:${JSON.stringify([capability.capability_kind, capability.name])}`
+    const key = `${connection.service_id}:${JSON.stringify([capability.capability_kind, capability.name])}`
     const generation = sessionGeneration()
     const config: AxiosRequestConfig & { _sessionGeneration: string } = { _sessionGeneration: generation }
     const previous = functionPolicyWrites.get(key)
@@ -213,22 +213,22 @@ export default {
     testConnection(connectionId: number): Promise<AxiosResponse<ConnectionTestResult>> {
         return api.post(`/connections/${connectionId}/test`)
     },
-    async getToolOptions(): Promise<Tool[]> {
-        return (await api.get<Tool[]>('/connections/tool-options')).data
+    async getServiceOptions(): Promise<Service[]> {
+        return (await api.get<Service[]>('/connections/service-options')).data
     },
     getConnectionOverviews(skip = 0, limit = 500): Promise<AxiosResponse<ConnectionOverview[]>> {
         return api.get('/connections/overview', { params: { skip, limit } })
     },
 
     getConnections(
-        tool_id?: number,
+        service_id?: number,
         agent_id?: number,
         active_only?: boolean,
         skip?: number,
         limit?: number
     ): Promise<AxiosResponse<Connection[]>> {
         const params: Record<string, unknown> = {}
-        if (tool_id !== undefined) params.tool_id = tool_id
+        if (service_id !== undefined) params.service_id = service_id
         if (agent_id !== undefined) params.agent_id = agent_id
         if (active_only !== undefined) params.active_only = active_only
         if (skip !== undefined) params.skip = skip
@@ -298,15 +298,15 @@ export default {
         paramValue: string
     ): Promise<AxiosResponse<AgentByParamResponse>> {
         return api.get('/connections/find-by-param', {
-            params: { tool_id: toolId, param_name: paramName, param_value: paramValue }
+            params: { service_id: toolId, param_name: paramName, param_value: paramValue }
         })
     },
 
     testMcpTools(
-        tool_id: number,
+        service_id: number,
         params: Record<string, string | null>
     ): Promise<AxiosResponse<TestMcpToolsResponse>> {
-        return api.post<TestMcpToolsResponse>('/connections/test-mcp-tools', { tool_id, params })
+        return api.post<TestMcpToolsResponse>('/connections/test-mcp-tools', { service_id, params })
     },
 
     getConnectionFunctions(connectionId: number): Promise<AxiosResponse<ConnectionFunctionsResponse>> {

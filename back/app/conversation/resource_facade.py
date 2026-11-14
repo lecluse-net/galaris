@@ -13,7 +13,7 @@ from core.database import get_db
 
 from .inspection_service import inspect_round
 from .models import ConversationRound, ConversationRoundMessage
-from app.tools.facade import administration_scope
+from app.services.facade import administration_scope
 
 
 ConversationResourceMedium = Literal["text", "voice"]

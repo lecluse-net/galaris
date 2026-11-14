@@ -10,11 +10,11 @@ import pytest
 from sqlalchemy import select
 
 from app.connection import facade as connections
-from app.tools.authorization import (
+from app.services.authorization import (
     AuthorizationAction, AuthorizationClosed, AuthorizationRequired, answer_action,
     prepared_authorization,
 )
-from app.tools.authorization_models import ActionAuthorization
+from app.services.authorization_models import ActionAuthorization
 from core.database import get_db_session
 from bridge.mail import service
 from bridge.mail.models import MailOutboundDelivery as MailDelivery
@@ -57,7 +57,7 @@ async def test_common_approval_binds_frozen_mime_and_sends_once(committed_databa
         connection = await connections.get_connection(config.connection_id)
         await connections.set_connection_function_state(connection.id, "mail_send", "ask")
         action = AuthorizationAction(agent_id=config.agent_id, connection_id=connection.id,
-            tool_id=connection.tool_id, runtime="internal", context_key="principal:synthetic-mail",
+            service_id=connection.service_id, runtime="internal", context_key="principal:synthetic-mail",
             callback_key=str(uuid4()), name="mail_send", arguments={"subject": "Bonjour"},
             configuration={"account": "synthetic-account"})
         with prepared_authorization(action):
@@ -102,7 +102,7 @@ async def test_only_the_designated_mail_approver_can_answer(committed_database, 
         connection = await connections.get_connection(config.connection_id)
         await connections.set_connection_function_state(connection.id, "mail_send", "ask")
         action = AuthorizationAction(agent_id=config.agent_id, connection_id=connection.id,
-            tool_id=connection.tool_id, runtime="internal", context_key="principal:synthetic-mail",
+            service_id=connection.service_id, runtime="internal", context_key="principal:synthetic-mail",
             callback_key=str(uuid4()), name="mail_send", arguments={}, configuration={"account": "synthetic"})
         with prepared_authorization(action):
             with pytest.raises(AuthorizationRequired) as caught:
@@ -131,7 +131,7 @@ async def test_only_the_designated_mail_approver_can_answer(committed_database, 
 async def test_mail_journal_and_conversation_resolve_the_same_prepared_authorization(committed_database, monkeypatch, channel, approved, legacy_link):
     from app.messenger import answer_internal_interaction
     from app.messenger.models import Interaction
-    from app.tools.authorization_notifications import deliver_authorization_notifications
+    from app.services.authorization_notifications import deliver_authorization_notifications
     from core.database import get_db
     from uuid import UUID
 
@@ -140,7 +140,7 @@ async def test_mail_journal_and_conversation_resolve_the_same_prepared_authoriza
         connection = await connections.get_connection(config.connection_id)
         await connections.set_connection_function_state(connection.id, 'mail_send', 'ask')
         action = AuthorizationAction(agent_id=config.agent_id, connection_id=connection.id,
-            tool_id=connection.tool_id, runtime='internal', context_key='principal:journal-convergence',
+            service_id=connection.service_id, runtime='internal', context_key='principal:journal-convergence',
             callback_key=str(uuid4()), name='mail_send', arguments={'subject': 'Bonjour'},
             configuration={'account': 'synthetic-account'})
         with prepared_authorization(action):

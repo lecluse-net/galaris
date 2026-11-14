@@ -4,8 +4,8 @@ Statut : accepté. Date : 2026-10-11.
 
 `bridge.samba` traduit SMB 2/3 vers les contrats publics de `app.file_share` avec
 `smbprotocol`. Il n'ajoute ni modèle, ni route, ni outil MCP dédié. Le formulaire
-de Tool existant découvre le bridge ; la connexion de chaque agent possède les
-identifiants, et le code du Tool reste le schéma de ses URI.
+de Service existant découvre le bridge ; la connexion de chaque agent possède les
+identifiants, et le code du Service reste le schéma de ses URI.
 
 Chaque opération synchrone possède une connexion signée et un pool privé, exécutés
 hors de la boucle asyncio. Les réponses SMB et la durée cumulée sont bornées.

@@ -18,12 +18,12 @@ UPDATED = INITIAL + "<p>Background task contribution.</p>"
 
 async def seed(agent_id):
     from app.connection import Connection, facade as connections
-    from app.tools import ToolModel, sync_integrated_tool_connections
+    from app.services import ServiceModel, sync_integrated_service_connections
 
-    await sync_integrated_tool_connections(agent_id)
+    await sync_integrated_service_connections(agent_id)
     db = get_db()
-    rows = (await db.execute(select(Connection, ToolModel.code).join(ToolModel).where(
-        Connection.agent_id == agent_id, ToolModel.code.in_(("file_sharing", "conversation")),
+    rows = (await db.execute(select(Connection, ServiceModel.code).join(ServiceModel).where(
+        Connection.agent_id == agent_id, ServiceModel.code.in_(("file_sharing", "conversation")),
     ))).all()
     assert len(rows) == 2
     for connection, code in rows:
@@ -110,7 +110,7 @@ async def build_model(_llm, *, agent_id, purpose=None, **_kwargs):
 async def snapshot(agent_id: int):
     from app.document.models import Document, DocumentRevision
     from app.task.models import Task, TaskAttempt
-    from app.tools.authorization_models import ActionAuthorization
+    from app.services.authorization_models import ActionAuthorization
 
     async with get_db_session() as db:
         documents = list(await db.scalars(select(Document).where(Document.owner_agent_id == agent_id)))

@@ -4,10 +4,10 @@ Statut : accepté — 2026-09-06
 
 ## Décision
 
-`app.multimedia` possède un Tool intégré et cinq opérations : `audio_read`, `video_read`,
+`app.multimedia` possède un Service intégré et cinq opérations : `audio_read`, `video_read`,
 `sound_generate`, `music_generate`, `video_generate`. La voix, la transcription, les images
-et le texte conservent leurs usages et Tools existants. Les connexions Multimedia sont
-créées par les datasets Tools et laissées inactives, y compris pour les nouveaux agents.
+et le texte conservent leurs usages et Services existants. Les connexions Multimedia sont
+créées par les datasets Services et laissées inactives, y compris pour les nouveaux agents.
 
 Le profil effectif fournit les cinq ressources. Une ressource doit avoir la bonne capacité,
 un fournisseur actif, une clé et un adaptateur compatible. Le catalogue MCP est filtré à

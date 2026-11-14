@@ -377,7 +377,7 @@ class OpenAIHarnessClient:
                 if state.get("stopped") is True and status in {"running", "waiting_for_authorization"}:
                     status = "outcome_unknown"
                 if status == "waiting_for_authorization":
-                    from app.tools.facade import runtime_authorizations_ready
+                    from app.services.facade import runtime_authorizations_ready
 
                     pending_ids = [UUID(str(value)) for value in cast(Sequence[object], state.get("authorization_requests") or [])]
                     if await runtime_authorizations_ready(self.run_context, agent_id=envelope.agent_id, identifiers=pending_ids):

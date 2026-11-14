@@ -27,7 +27,7 @@ de base adaptée ; le dataset sert alors à créer la valeur et à réparer une 
 Exemples vivants à inspecter :
 
 - `back/core/params/dbadmin.py` : existence imposée, valeur administrateur préservée ;
-- `back/app/tools/dbadmin.py` : colonnes logicielles imposées, activation administrable et fusion
+- `back/app/services/dbadmin.py` : colonnes logicielles imposées, activation administrable et fusion
   additive de paramètres globaux ;
 - `back/app/chat/dbadmin.py` : affectation initiale seulement si la colonne est `NULL` ;
 - `back/app/llm/dbadmin.py` : fournisseurs async évalués après leurs dépendances.

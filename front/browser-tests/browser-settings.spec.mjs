@@ -3,7 +3,7 @@ import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 test('Browser preferences appear only for an active connection and refresh after connection changes', async ({ page }) => {
   let enabled = false
   await page.route('**/api/browser/status', route => route.fulfill({ json: { enabled } }))
-  await jsonRoute(page, '**/api/connections/7', { id: 7, tool_id: 2, agent_id: 1, active: true })
+  await jsonRoute(page, '**/api/connections/7', { id: 7, service_id: 2, agent_id: 1, active: true })
   await mount(page, 'core/params/pages/index.vue', { privileges: ['BROWSER_CONFIG_ACCESS', 'BROWSER_CONFIG_EDIT'] })
   const link = page.getByRole('link', { name: /Browser/ })
   await expect(link).toHaveCount(0)

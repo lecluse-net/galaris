@@ -11,9 +11,9 @@ from app.connection import facade as connections
 from app.contact.facade import is_known_mail_contact
 from app.memory import create_mail_contact, forget_messenger_contact
 from app.task import Task
-from app.tools.authorization import answer_action, can_remember_action
-from app.tools.authorization_models import ActionAuthorization
-from app.tools.models import Tool
+from app.services.authorization import answer_action, can_remember_action
+from app.services.authorization_models import ActionAuthorization
+from app.services.models import Service
 from core.database import get_db_session
 from bridge.mail import inbound, service
 from bridge.mail.contracts import MailMessageDetail, MailMessageRef, MailSearchPage, MailSearchQuery
@@ -28,7 +28,7 @@ async def inbox(committed_database, monkeypatch):
         config, manager, outsider, _smtp = await _setup_mail_chat(db, monkeypatch)
         connection = await connections.get_connection(config.connection_id)
         mail_tool = await protocol_tool(db, "mail")
-        connection.tool_id = mail_tool.id
+        connection.service_id = mail_tool.id
         await db.commit()
         manager_id, outsider_id = manager.id, outsider.id
     config = config.model_copy(update={"approval_required": False})
@@ -239,7 +239,7 @@ async def test_contact_default_and_explicit_processing_modes(inbox, mode):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation", ["get", "attachment", "reply", "forward", "mime-export"])
 async def test_alternate_read_paths_cannot_download_unknown_mail_before_consent(inbox, monkeypatch, operation):
-    from app.tools.authorization import AuthorizationRequired
+    from app.services.authorization import AuthorizationRequired
     config, _manager, _outsider, read = inbox
     from bridge.mail import browser_service
     monkeypatch.setattr(browser_service, "resolve_mail_connection", AsyncMock(return_value=config))
@@ -282,7 +282,7 @@ async def test_repeated_admission_survives_concurrent_delivery_and_revocation(in
         assert await db.scalar(select(func.count()).select_from(Task)) == 1
         row = await db.scalar(select(MailInboundReceipt))
         connection = await connections.get_connection(config.connection_id)
-        message = MailMessenger(config, tool_id=connection.tool_id).message(_summary(71))
+        message = MailMessenger(config, service_id=connection.service_id).message(_summary(71))
         # A different provider identifier cannot reuse the approved mail's room.
         message.id = 'forged-provider-message'
         await dispatch_incoming(message)
@@ -335,8 +335,8 @@ async def test_consent_claim_is_recovered_before_dispatch_after_a_crash(inbox, m
 @pytest.mark.asyncio
 async def test_generic_file_read_keeps_its_waiting_context_for_consent(inbox):
     from uuid import uuid4
-    from app.tools.contracts import ToolExecutionContext, tool_execution
-    from app.tools.authorization import AuthorizationRequired
+    from app.services.contracts import ToolExecutionContext, tool_execution
+    from app.services.authorization import AuthorizationRequired
 
     config, _manager, _outsider, read = inbox
     context = f"task:{uuid4()}"
@@ -352,7 +352,7 @@ async def test_generic_file_read_keeps_its_waiting_context_for_consent(inbox):
 @pytest.mark.asyncio
 async def test_mail_search_schema_rejects_unsupported_filter_before_imap(inbox, monkeypatch):
     from fastmcp import Client
-    from app.tools import build_agent_galaris_fastmcp
+    from app.services import build_agent_galaris_fastmcp
     from bridge.mail.contracts import MailSearchPage
 
     config, _manager, _outsider, _read = inbox
@@ -373,7 +373,7 @@ async def test_mail_search_schema_rejects_unsupported_filter_before_imap(inbox, 
 @pytest.mark.asyncio
 async def test_empty_flag_change_is_rejected_before_requesting_consent(inbox, monkeypatch):
     from fastmcp import Client
-    from app.tools import build_agent_galaris_fastmcp
+    from app.services import build_agent_galaris_fastmcp
 
     config, _manager, _outsider, _read = inbox
     mutate = AsyncMock()
@@ -408,9 +408,9 @@ async def test_managed_mail_read_resumes_only_its_registered_waiter(inbox, monke
     from app.task import task_service
     from app.task.agent_adapter import SqlAlchemyAgentTaskAdapter
     from app.task.models import TaskAttempt, TaskStatus
-    from app.tools import build_agent_galaris_fastmcp
-    from app.tools.authorization_models import RuntimeRunGrant
-    from app.tools.runtime_authorization import issue_runtime_run_grant, renew_runtime_run_grant, runtime_authorizations_ready
+    from app.services import build_agent_galaris_fastmcp
+    from app.services.authorization_models import RuntimeRunGrant
+    from app.services.runtime_authorization import issue_runtime_run_grant, renew_runtime_run_grant, runtime_authorizations_ready
     from core.params import Params, params_service
     from main import app
 
@@ -448,14 +448,14 @@ async def test_managed_mail_read_resumes_only_its_registered_waiter(inbox, monke
         identifier = UUID(pending.meta["galaris.authorization/v1"]["request_id"])
         read.assert_not_called()
         headers = {"Authorization": f"Bearer {bearer}", "X-Galaris-Run-Context": credential}
-        endpoint = f"/api/tools/runtime-authorizations/{identifier}"
+        endpoint = f"/api/services/runtime-authorizations/{identifier}"
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as http:
             response = await http.get(endpoint, headers=headers)
             assert response.status_code == 200, response.text
             assert response.json()["status"] == "pending"
             # Knowing a UUID does not register a waiter or authorize a receipt write.
-            assert (await http.get(f"/api/tools/runtime-authorizations/{uuid4()}", headers=headers)).status_code == 404
-            assert (await http.post("/api/tools/runtime-authorizations/receipt", headers=headers,
+            assert (await http.get(f"/api/services/runtime-authorizations/{uuid4()}", headers=headers)).status_code == 404
+            assert (await http.post("/api/services/runtime-authorizations/receipt", headers=headers,
                 json={"request_id": str(identifier), "outcome": "completed", "receipt": {}})).status_code == 404
             async with get_db_session() as db:
                 receipt = await db.scalar(select(MailInboundReceipt).where(MailInboundReceipt.authorization_id == identifier))

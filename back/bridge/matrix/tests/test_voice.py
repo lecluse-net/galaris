@@ -10,7 +10,7 @@ import pytest
 
 import bridge.matrix.voice_provider as voice_provider_module
 from app.connection import connection_service
-from app.tools import tool_service
+from app.services import service
 from bridge.matrix.call import (
     MatrixCall,
     _MatrixCallHandle,
@@ -187,7 +187,7 @@ async def test_matrix_provider_validates_the_exact_connection(
     connection = SimpleNamespace(
         id=42,
         agent_id=7,
-        tool_id=5,
+        service_id=5,
         active=True,
     )
     monkeypatch.setattr(
@@ -196,8 +196,8 @@ async def test_matrix_provider_validates_the_exact_connection(
         AsyncMock(return_value=connection),
     )
     monkeypatch.setattr(
-        tool_service,
-        "get_tool_by_id",
+        service,
+        "get_service_by_id",
         AsyncMock(
             return_value=SimpleNamespace(
                 code="custom-matrix",

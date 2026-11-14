@@ -35,7 +35,7 @@ agents gérés restent nécessaires ; `AGENT_MANAGE_ALL` est une délégation di
 | Historique vocal | `VOICE_HISTORY_ACCESS` | `VOICE_HISTORY_CONTROL` |
 | Configuration partagée des harnais | `HARNESS_CONFIG_ACCESS` | `HARNESS_CONFIG_EDIT` |
 | Processus | `PROCESS_READ` | `PROCESS_EDIT`, lancement `PROCESS_LAUNCH`, administration `PROCESS_ADMIN` |
-| Catalogue des outils | `TOOL_ACCESS` | `TOOL_EDIT` |
+| Catalogue des outils | `SERVICE_ACCESS` | `SERVICE_EDIT` |
 | Connexions | `CONNECTION_ACCESS` | `CONNECTION_EDIT` |
 | Journal des mails | `MAIL_ACCESS` | `MAIL_EDIT` ; décisions d'envoi : aussi `PERMISSION_DECIDE` |
 | Calendriers | `CALENDAR_ACCESS` | `CALENDAR_EDIT` |
@@ -123,8 +123,8 @@ pièce jointe autorisée d'un Document n'exige pas un accès global aux Fichiers
 médias revérifient la session, le rôle, l'agent et la source à chaque lecture, y compris
 partielle. Un lien partagé ne donne jamais les droits manquants.
 
-Les autorisations de fonction MCP et les portées locales `tools.management_scope` constituent
-encore des contrôles distincts. Voir [l'administration des outils](tool-administration.md)
+Les autorisations de fonction MCP et les portées locales `services.management_scope` constituent
+encore des contrôles distincts. Voir [l'administration des outils](service-administration.md)
 et [le partage des ressources](../dev/sharing.md).
 
 ## Organiser les catégories et mettre à jour les rôles

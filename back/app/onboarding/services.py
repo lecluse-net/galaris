@@ -17,7 +17,7 @@ from app.connection.models import Connection
 from app.messenger import enabled_specs, kind_for_tool
 from app.process import has_process_definitions
 from app.skill import has_configured_skills
-from app.tools.models import Tool as ToolModel
+from app.services.models import Service as ServiceModel
 
 
 async def check_llm_status() -> bool:
@@ -96,9 +96,9 @@ async def check_messaging_status(
         return False
 
     query = (
-        select(ToolModel)
-            .options(load_only(ToolModel.id, ToolModel.messenger_config, raiseload=True))
-            .join(Connection, ToolModel.id == Connection.tool_id)
+        select(ServiceModel)
+            .options(load_only(ServiceModel.id, ServiceModel.messenger_config, raiseload=True))
+            .join(Connection, ServiceModel.id == Connection.service_id)
             .where(Connection.active.is_(True))
             .distinct()
     )
@@ -118,7 +118,7 @@ async def check_tools_status() -> bool:
     Returns:
         Whether the database contains a configured tool.
     """
-    return await get_db().scalar(select(ToolModel.id).limit(1)) is not None
+    return await get_db().scalar(select(ServiceModel.id).limit(1)) is not None
 
 
 async def check_skills_status() -> bool:

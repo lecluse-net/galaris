@@ -130,7 +130,7 @@ class Params:
     LOCALIZATION = "LOCALIZATION"
 
     # Messaging provider and bridge-wide configuration. Per-agent credentials
-    # remain connection parameters in app.tools.
+    # remain connection parameters in app.services.
     MESSENGER_DRIVER = "MESSENGER_DRIVER"
     MESSENGER_ENABLED_CHANNELS = "MESSENGER_ENABLED_CHANNELS"
     MESSENGER_NEXTCLOUD_TALK_BASE_URL = "MESSENGER_NEXTCLOUD_TALK_BASE_URL"

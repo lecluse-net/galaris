@@ -1,4 +1,4 @@
-# ADR 0034 — Le courriel comme Tool borné, distinct de Messenger
+# ADR 0034 — Le courriel comme Service borné, distinct de Messenger
 
 - Statut : Accepted
 - Date : 2026-08-14
@@ -12,13 +12,13 @@ déduplication résistante aux redémarrages. Créer un scheduler propre au brid
 
 ## Décision
 
-Le code stable `mail` désigne un Tool intégré non auto-connecté, implémenté par `bridge.mail`.
+Le code stable `mail` désigne un Service intégré non auto-connecté, implémenté par `bridge.mail`.
 Une connexion active associe un agent à une boîte. Elle porte son adresse et son mot de passe,
-tandis que les paramètres IMAP/SMTP héritent du Tool selon l'ADR 0035.
+tandis que les paramètres IMAP/SMTP héritent du Service selon l'ADR 0035.
 Les opérations sont des fonctions MCP natives bornées et interdites au chemin conversationnel
 court. Une identité de message repose sur `mailbox + UIDVALIDITY + UID`.
 
-La connexion Mail expose aussi une capacité Messenger entrante gérée par le Tool, sans interrupteur
+La connexion Mail expose aussi une capacité Messenger entrante gérée par le Service, sans interrupteur
 global de canal supplémentaire. Le superviseur canonique lance un polling IMAP toutes les
 `poll_interval_s` secondes, 60 par défaut et de 5 à 86 400 secondes. Sa première lecture établit
 une baseline sans rejouer les anciens messages. Chaque UID ultérieur traverse le journal entrant
@@ -65,5 +65,5 @@ Le journal reste utilisable lorsque le Chat est indisponible ou que la question 
 
 ## Preuves dans le code
 
-`back/bridge/mail/`, `back/app/tools/mandatory_tools.py`,
+`back/bridge/mail/`, `back/app/services/mandatory_services.py`,
 `back/app/file_share/resource_service.py`, `front/app/connection/` et les tests associés.

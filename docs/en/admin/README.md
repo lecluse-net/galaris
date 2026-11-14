@@ -17,7 +17,7 @@ The following sections detail administration options.
 | Install and update | [Installation](installation.md) |
 | Delegate access and settings by function | [Privileges and roles](privileges.md) |
 | Configure model concurrency | [Provider admission](provider-admission.md) |
-| Configure tools, REST, OAuth and authorizations | [Tool administration](tool-administration.md) |
+| Configure tools, REST, OAuth and authorizations | [Service administration](service-administration.md) |
 | Prepare the Git editor and its access | [Code editor](code-editor.md) |
 | Give agents product knowledge | [Documentation for agents](product-knowledge.md) |
 
@@ -403,7 +403,7 @@ creation, reuse, and no classification; and **Create automatically** creates one
 after enhanced reuse checks fail. A proposal without an exploitable human conversation is never
 created implicitly. The **Dream** usage, selected under **AI Models → Usages**, must reference a
 small text model. Without a selected model, no subject requiring inference is requested. Dream
-executes one mechanism at a time, without a driver or Tool, yields priority to Tasks, and stops as
+executes one mechanism at a time, without a driver or Service, yields priority to Tasks, and stops as
 soon as a Voice conversation begins.
 
 The **Dream** page displays its current state, the requested mechanism and subject, phase,
@@ -536,7 +536,7 @@ The backend entrypoint is idempotent. Before starting the API, it:
 
 - compares the SQLAlchemy models with the PostgreSQL schema using Atlas;
 - applies the declarative evolution;
-- synchronizes privileges, settings, and system Tools;
+- synchronizes privileges, settings, and system Services;
 - synchronizes reference data and repairable projections.
 
 Then open `APP_HOST`. The first registered user is automatically assigned the `admin` role
@@ -604,7 +604,7 @@ See [decision 0180](../../../project/decisions/0180-agent-secondary-llm-profile.
 | Audio | multimodal audio understanding when supported by the provider |
 | Video | multimodal video understanding when supported by the provider |
 | Image | image generation and editing |
-| Transcription | dedicated STT model for voice messages and the `audio_transcribe` Tool |
+| Transcription | dedicated STT model for voice messages and the `audio_transcribe` Service |
 
 An empty usage remains empty in the selected profile. A personal profile never borrows a value
 from the current profile. The absence of an executor or conversation model prevents the relevant
@@ -786,11 +786,11 @@ groups them by intent:
 - scheduler, parallelism, leases, and maximum action duration;
 - short retries for application errors and a long window for network failures;
 - plan depth, number of steps, and number of plan leaves;
-- model requests, Tool calls, and cumulative token budgets;
+- model requests, Service calls, and cumulative token budgets;
 - waiting and number of turns during collaboration between Agents.
 
 Start with few simultaneous Tasks, then increase them while monitoring the connection pool,
-LLM quotas, and Tool load. A lease that is too short may make an action
+LLM quotas, and Service load. A lease that is too short may make an action
 recoverable while it is still working; a lease that is too long delays recovery after
 a crash. Changes apply to new actions without restarting the backend.
 
@@ -804,10 +804,10 @@ recovered, and a plan parent can be reconciled with a completed child step.
 
 The internal and Hermes drivers explicitly announce their cancellation capability. The internal
 driver cancels the run, cleans up Console/MCP/Browser sessions, and resumes from persisted
-Tool checkpoints; Hermes relays cancellation to the correlated run. **Force finish** remains a
+Service checkpoints; Hermes relays cancellation to the correlated run. **Force finish** remains a
 recovery operation when normal cancellation can no longer reach the runtime.
 
-## 7. Messaging, Tools, and Processes
+## 7. Messaging, Services, and Processes
 
 The common settings under **Preferences → Messaging** limit attachments included directly
 in model requests to 4 MiB by default. This limit is independent of the maximum download
@@ -820,7 +820,7 @@ always uses the exact connection and room from the original conversation. To ini
 exchange outside a conversation, search for the user, then provide their remote identifier and
 the selected channel; an unavailable channel fails without silent fallback.
 
-Create a separate connection per platform under **Tools → Messaging**. The health check aggregates
+Create a separate connection per platform under **Services → Messaging**. The health check aggregates
 all active accounts, and each listener is supervised independently. The historical
 `MESSENGER_DRIVER` setting is no longer an active-platform selector; it remains only for
 compatibility with old generic connections.
@@ -838,7 +838,7 @@ remain in their encrypted connections.
 For Nextcloud Talk, configure at least the base URL and incoming mode (`polling` or
 `signaling`). General voice settings are under **Preferences → Voice**.
 
-Built-in Tools are synchronized when the backend starts. Galaris, Conversation, Document, Memory and File
+Built-in Services are synchronized when the backend starts. Galaris, Conversation, Document, Memory and File
 Sharing retain protected active definitions and connections; humans can configure Enabled,
 Disabled and Ask for their functions. Optional connections can still be enabled or disabled
 per agent in the interface. A driver obtains a native function
@@ -849,9 +849,9 @@ default.
 
 The catalog sent to the driver first respects the Agent's permissions and disabled functions.
 When the runtime allows it, discovery is deferred: the model receives a bounded index and then
-loads only relevant packages. An Tool search never bypasses an
+loads only relevant packages. An Service search never bypasses an
 inactive connection or a missing privilege. Use the MCP connection diagnostic in
-**Tools** to distinguish a network, authentication, or discovery error.
+**Services** to distinguish a network, authentication, or discovery error.
 
 ### Real-Time Conversations and Voice
 
@@ -899,13 +899,13 @@ Changes apply to subsequent operations without restarting; default dimensions af
 Lowering capacity preserves existing sessions and limits new admissions. Each session adopts
 the current idle timeout on its next action.
 
-Under **Tools & connections → Tools**, open the Browser's **Global parameters**.
+Under **Services & connections → Services**, open the Browser's **Global parameters**.
 **Public site access → Public sites allowed** is the initial choice for new installations to avoid
 per-site requests. Existing instances keep their behaviour, including when this parameter was absent.
 **Per-site approval** remains available. Under **Connections**, each agent can override this choice
 unless the global setting is forced. Filters and explicit denials remain active in both modes.
 
-Under **Tools & connections → Connections**, the Browser connection's `allow_local_network`
+Under **Services & connections → Connections**, the Browser connection's `allow_local_network`
 parameter blocks local access by default. Enable it to allow a permission request, then
 answer through the agent's messaging channel. `network_filter_mode` (`block` or `allow`)
 and `network_filter` constrain destinations; `permission_methods` defaults to requiring approval
@@ -925,7 +925,7 @@ An update also requires rebuilding the `browser-executor` image to activate the 
 The normal text result is an accessible paginated snapshot. Visual captures are split
 into tiles, written under `console://browser/…` when a Console is active, and
 explicitly truncated if they exceed the limits. Without a Console, no implicit local
-destination is available. When this Tool is active for Hermes, its native browser is disabled in order to
+destination is available. When this Service is active for Hermes, its native browser is disabled in order to
 preserve a single authorization policy.
 
 ### Reserve Administration Capabilities for Specialized Agents
@@ -952,8 +952,8 @@ Activating a connection controls what the model can call. HTTP RBAC controls whi
 users can modify this configuration in the interface: these are two distinct and cumulative
 levels.
 
-Also configure the connection's `tools.management_scope`: activation alone grants no global
-administration. See [delegated scopes](tool-administration.md).
+Also configure the connection's `services.management_scope`: activation alone grants no global
+administration. See [delegated scopes](service-administration.md).
 
 `goal_create` explicitly chooses the owning Agent and a different referring Agent. The
 modification and cycle commands use `expected_revision`, obtained through `file_read` on
@@ -970,7 +970,7 @@ library; it exposes no other file in the package.
 
 ### Transcription of Audio and Video Files and YouTube Links
 
-The built-in `audio` Tool exposes the following MCP function:
+The built-in `audio` Service exposes the following MCP function:
 
 ```text
 audio_transcribe(file: str, destination: str = "", language: str = "", minutes: float | None = None) -> str
@@ -991,7 +991,7 @@ the selected portion.
 
 After the update that introduces the function:
 
-1. `make update` automatically synchronizes the Tool and creates missing connections;
+1. `make update` automatically synchronizes the Service and creates missing connections;
 2. activate the integrated **Audio** connection on each Agent authorized to use it;
 3. for audio or video files, configure an active provider capable of transcription;
 4. add or select a resource with the `transcription` capability;
@@ -1004,7 +1004,7 @@ OpenAI-compatible providers according to their configured transcription endpoint
 with subtitles does not require an STT model, but still requires the **Audio** connection.
 
 An Agent asked to perform a transcription must therefore have its **Audio** connection active. If
-the Tool is absent, the executor stops with a configuration error. For a local file, it
+the Service is absent, the executor stops with a configuration error. For a local file, it
 also stops if dedicated STT is not configured; it must never attempt a fallback through the
 Console or its own chat model.
 
@@ -1040,7 +1040,7 @@ The original media is never added as multimodal input to the executor model, eve
 model declares that it accepts audio or video and even if the file is smaller than the
 generic upload limit. The prompt receives only the canonical URI of the source; only the normalized
 MP3 is sent to the dedicated STT provider. This separation prevents media from being counted
-again in the context on every Tool turn and exhausting the Task's cumulative token budget before
+again in the context on every Service turn and exhausting the Task's cumulative token budget before
 transcription.
 
 Provide enough temporary space for the source media and normalized MP3, as well as a provider
@@ -1056,7 +1056,7 @@ importable template are described in the [n8n documentation](../n8n/README.md).
 
 Third-party software can be called from an n8n workflow or integrated directly through
 an engine bridge. Direct integration requires code and server configuration;
-creating a Tool alone is insufficient. The
+creating a Service alone is insufficient. The
 [external engine guide](../dev/process-engines.md) describes that path.
 Discovery returns available operations; explicitly create their definitions and
 assignments afterward. Multiple engines can coexist, but the default engine setting

@@ -89,9 +89,9 @@ default: dict[str, object] = {
         "errors": {
             "connection_not_found": "未找到连接 ${connection_id}",
             "connection_inactive": "消息连接 ${connection_id} 未启用",
-            "tool_not_registered": "工具 ${tool_id} 不是已注册的消息工具",
+            "tool_not_registered": "工具 ${service_id} 不是已注册的消息工具",
             "bridge_not_registered": "类型 '${kind}' 没有注册的桥接器",
-            "identity_connection_not_found": "不存在 tool_id=${tool_id} 且 self_id=${self_id} 的连接",
+            "identity_connection_not_found": "不存在 service_id=${service_id} 且 self_id=${self_id} 的连接",
             "default_not_configured": "应用的默认消息服务未配置",
             "onebot_platform_required": "请在工具的消息设置中配置 OneBot 平台",
             "matrix_homeserver_required": "请在偏好设置 → 消息中配置 Matrix 主服务器",

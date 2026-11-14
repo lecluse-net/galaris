@@ -80,9 +80,9 @@ supplémentaire de communication ou d’administration.
 Le dialogue humain-agent repose sur une équipe commune, le manager de l’agent ou l’accès
 administrateur (`AGENT_MANAGE_ALL`). Il n’y a aucun réglage « Hériter / Autoriser / Refuser »
 pour les échanges hors équipe. Un accès ne se propage jamais par un troisième membre.
-Pour les échanges entre agents, **Outils & connexions → Connexions → Communication inter-agents**
+Pour les échanges entre agents, **Services & connexions → Connexions → Communication inter-agents**
 propose `none` (aucun), `team` (équipes communes, défaut) ou `all` (autres agents actifs).
-Ce paramètre local `tools.management_scope`, réservé au gestionnaire humain global, est
+Ce paramètre local `services.management_scope`, réservé au gestionnaire humain global, est
 revérifié à chaque échange. Les connexions de l'émetteur et du destinataire restent contrôlées.
 Il ne modifie pas les droits de contact humain ni les droits documentaires.
 

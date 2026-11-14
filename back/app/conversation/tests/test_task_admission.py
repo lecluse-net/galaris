@@ -24,7 +24,7 @@ from app.task import amendment_service
 from app.task.models import Task, TaskStatus
 from app.task.schemas import TaskCreate
 from app.task.working_set import WORKING_SET_DATA_KEY
-from app.tools import McpToolContext
+from app.services import McpToolContext
 
 
 def _turn(
@@ -43,7 +43,7 @@ def _turn(
         messages=messages,
         messaging_context={
             "connection_id": 19,
-            "tool_id": 23,
+            "service_id": 23,
             "platform": "matrix",
             "room_id": "room-1",
             "participant_id": "nicolas",
@@ -330,7 +330,7 @@ async def test_free_form_choice_resolution_uses_the_exact_turn_scope(
         response_text="Non, surtout pas comme ça.",
         agent_id=7,
         connection_id=19,
-        tool_id=23,
+        service_id=23,
         room_id="room-1",
         user_id="nicolas",
     )

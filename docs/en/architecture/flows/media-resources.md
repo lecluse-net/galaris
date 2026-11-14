@@ -127,7 +127,7 @@ to run again; it does not implicitly mount new functions in the run.
 
 ```text
 Canonical attachment
-  → <tool.code>://<room-locator-provider>/<attachment-uuid-local>
+  → <service.code>://<room-locator-provider>/<attachment-uuid-local>
   → prompt and tools with this exact URI
   → bounded temporary materialization only if a consumer requires bytes
   → deletion of the temporary file
@@ -175,7 +175,7 @@ The reference exchanged between tools, Tasks, and providers is canonical: `conso
 `document://uuid/attachments/attachment-uuid`,
 `galaris://process/workflow-id`, `galaris://skill/skill-code/SKILL.md`, `https://host/path`, or
 `<code-tool>://locator`. `file_schemes`
-and the other `file_*` functions belong to the built-in `file_sharing` Tool, even for the
+and the other `file_*` functions belong to the built-in `file_sharing` Service, even for the
 `galaris://` provider. `file_schemes` announces the effective capabilities, `file_write` writes complete UTF-8 or base64-encoded binary content, and `file_copy` streams between two schemes. Relative paths and former implicit local schemes are rejected: no implicit conversion chooses storage on behalf of the agent.
 The `galaris://` provider exposes only name and text search; semantic search belongs to `memory://`. A copy from `galaris://`, `memory://`, or `document://`
 uses the file's general binary limit rather than the limit for a single text write.
@@ -213,7 +213,7 @@ by time, memory and output size, then creates the image through `resource_create
 destination. The whole page is retained at up to 144 dpi, with a 3000-pixel longest side.
 The result includes source and derivative URIs, page, page count, dimensions and MIME.
 The source is unchanged and existing destinations are never overwritten. Cancellation kills
-and drains the worker before removing temporaries. The Image Tool and both resources' permissions
+and drains the worker before removing temporaries. The Image Service and both resources' permissions
 remain applicable, including in conversations. A Process requiring `image/*` receives the PNG URI,
 never a renamed PDF.
 
@@ -331,7 +331,7 @@ not prove decoded text or exhaustive coverage. Confirmed external deletion retai
 `state=deleted` if extraction cleanup fails, with `indexing_status=failed`, so callers
 are not encouraged to replay the source mutation.
 
-In history, an attachment remains nested in the message that transported it and exposes its URI constructed with the exact Tool code, the room's provider locator, and the file's local UUID. The projection provided to runtimes prefixes the message with its posting timestamp, sender, and human or AI nature; this rule applies to conversational executions, Tasks, and audio-turn history. Messenger and file-share are capabilities and create no schemes. File-only messages are not eliminated by session or runtime projections.
+In history, an attachment remains nested in the message that transported it and exposes its URI constructed with the exact Service code, the room's provider locator, and the file's local UUID. The projection provided to runtimes prefixes the message with its posting timestamp, sender, and human or AI nature; this rule applies to conversational executions, Tasks, and audio-turn history. Messenger and file-share are capabilities and create no schemes. File-only messages are not eliminated by session or runtime projections.
 
 Internal resources attached from a Chat composer are stored in the message's
 `resource_uris` metadata and exposed separately from its text. Publication checks the

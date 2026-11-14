@@ -82,7 +82,7 @@ The frontend attachment picker uses the shared rich-content search contribution 
 to `data`; it adds no static Memory-to-Dataset dependency.
 
 The reviewed static graph adds Dataset to the existing application component that
-already contains Agent, Process, Memory, Tools and File Sharing. Process imports the
+already contains Agent, Process, Memory, Services and File Sharing. Process imports the
 lightweight public value codec; loading that surface does not load Dataset services
 or models. Dataset consumes the public Agent, Memory and File Sharing surfaces.
 Memory and File Sharing delegate through registered ports and do not import Dataset.

@@ -152,7 +152,7 @@ must be confirmed by the transport.
 
 Standalone Markdown/HTML files remain appropriate for an explicitly requested format, source
 code or an interactive page. Short conversational answers stay in chat; concise durable facts
-belong in `memory_remember`. Tool-produced technical artifacts, including transcripts and
+belong in `memory_remember`. Service-produced technical artifacts, including transcripts and
 `.summary.md` files, keep their contracts; authored synthesis from those sources prefers a
 document. A temporary failure is not deactivation and does not justify silently replacing
 the document with a file.

@@ -121,7 +121,7 @@ const definitionAgentOptions = computed(() => [
 const n8nDialog = ref(false), syncingN8n = ref(false), healthLoading = ref(false)
 const syncError = ref(''), healthError = ref('')
 let healthRequest = 0, disposed = false
-const n8nConnectionError = computed(() => store.health?.tool_code === 'n8n' && store.health.status === 'error' && !(store.health.details ?? []).includes('not_configured'))
+const n8nConnectionError = computed(() => store.health?.service_code === 'n8n' && store.health.status === 'error' && !(store.health.details ?? []).includes('not_configured'))
 async function syncN8n(): Promise<void> {
   if (!canAdmin.value) return
   n8nDialog.value = true

@@ -5,7 +5,7 @@ Statut : Accepted
 ## Décision
 
 Les connexions Browser, Search, Image et Multimedia sont initialisées actives.
-Ces Tools et Console sont autorisés en conversation lors de leur première
+Ces Services et Console sont autorisés en conversation lors de leur première
 initialisation. La cascade des fonctions reste permissive en l'absence de refus
 explicite. Ces capacités restent optionnelles : les réglages et restrictions
 existants sont conservés par DbAdmin.

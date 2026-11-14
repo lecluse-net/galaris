@@ -16,7 +16,7 @@ from app.conversation.context import (
 from app.conversation.models import ConversationRound
 from app.memory import MessengerContactObservation, observe_messenger_contact
 from app.messenger import Room
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 def test_document_references_only_accept_exact_successful_tool_resources() -> None:
@@ -57,7 +57,7 @@ async def test_direct_conversation_documents_are_scoped_to_agent_and_contact(
 ) -> None:
     suffix = uuid4().hex[:8]
     title = Title(label=f"Conversation documents {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"conversation-docs-{suffix}",
         label="Conversation documents",
         description="",
@@ -75,7 +75,7 @@ async def test_direct_conversation_documents_are_scoped_to_agent_and_contact(
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(

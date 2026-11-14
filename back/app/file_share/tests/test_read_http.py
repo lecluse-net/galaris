@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.agent.models import Agent, Title
 from app.connection.models import Connection
 from app.file_share.models import FileIndexRun
-from app.tools.models import Tool
+from app.services.models import Service
 from core.authorize.models import Assignment, Privilege, Role
 from core.database import get_db_session
 from core.user import UserModel
@@ -30,14 +30,14 @@ async def test_file_read_http_permissions_isolation_and_reopening(client):
         db.add(Assignment(user_id=users[0].id, role_id=role.id, is_default=True))
         agents = [Agent(user_id=user.id, title_id=title.id, code=f"file-read-http-{index}",
                         first_name="Synthetic", last_name=str(index)) for index, user in enumerate(users)]
-        tools = [Tool(code=f"synthetic-http-files-{index}", label=f"Synthetic source {index}",
+        tools = [Service(code=f"synthetic-http-files-{index}", label=f"Synthetic source {index}",
                       file_share_config={"service": "nextcloud", "base_url": "https://files.example.com"})
                  for index in range(2)]
         db.add_all([*agents, *tools])
         await db.flush()
         now = datetime.now(timezone.utc)
         for agent, tool in zip(agents, tools, strict=True):
-            db.add(Connection(agent_id=agent.id, tool_id=tool.id, active=True))
+            db.add(Connection(agent_id=agent.id, service_id=tool.id, active=True))
             db.add(FileIndexRun(agent_id=agent.id, binding_stamp="synthetic", root_uri=f"{tool.code}://",
                                 frontier=[{"uri": f"{tool.code}://private-path"}],
                                 started_at=now, updated_at=now, next_attempt_at=now))

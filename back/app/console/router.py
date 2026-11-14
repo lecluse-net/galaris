@@ -8,7 +8,7 @@ from loguru import logger
 
 from app.agent import AgentOwnerAssertion, agent_service, current_management_scope
 from app.connection import connection_service
-from app.tools import tool_service
+from app.services import service
 from core.authorize import Privileges, authorize
 
 from .connection_service import is_embedded_executor_in_use, resolve_connection
@@ -52,8 +52,8 @@ async def _require_global_scope() -> None:
         )
 
 
-async def _console_tool_id() -> int:
-    record = await tool_service.get_tool_record("console")
+async def _console_service_id() -> int:
+    record = await service.get_service_record("console")
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -85,7 +85,7 @@ async def scan_host_key(data: HostKeyScanRequest) -> HostKeyScanResult:
 @authorize(privileges=Privileges.CONNECTION_EDIT)
 async def generate_connection_key(connection_id: int) -> GeneratedConsoleKey:
     config_connection = await _managed_connection(connection_id)
-    if config_connection.tool_id != await _console_tool_id():
+    if config_connection.service_id != await _console_service_id():
         raise HTTPException(status_code=400, detail="Connection is not an SSH console")
     private_key, public_key = generate_ed25519_keypair()
     await connection_service.set_param(connection_id, "private_key", private_key)

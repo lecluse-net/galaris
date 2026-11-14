@@ -421,7 +421,7 @@ ci-dessous désignent explicitement les modules partageant la même surface tech
 | `core.params` | Lecture, secrets masqués, paramètres et prompts, application à chaud | Pas de constat supplémentaire |
 | `core.dbadmin` | Orchestration, verrou, schéma, datasets, transitions et tests PostgreSQL | Tests exécutés ; pas de constat supplémentaire |
 | `app.incident` | Liste, détail, regroupements, statut, purge et accès | Pas de constat supplémentaire |
-| `app.tools` | Catalogue effectif, refresh MCP, index et dégradation de découverte | AUD-18 pour la documentation des outils natifs |
+| `app.services` | Catalogue effectif, refresh MCP, index et dégradation de découverte | AUD-18 pour la documentation des outils natifs |
 | `app.agent` | Registre, dispatcher, briefing/planner, contrat de stream, checkpoints, management | AUD-15, 20 |
 | `app.harness` | Exécution interne, historique, médias, budget, interruption | Tests exécutés ; pas de constat supplémentaire |
 | `app.harnesses` | Choix du runtime, catalogue, client réseau, capacités et supervision | Tests exécutés ; pas de constat supplémentaire |
@@ -494,7 +494,7 @@ et les WebSockets demandent une nouvelle validation une fois stabilisés.
 | `app/index` | Shell responsive, accueil, onboarding, dashboard | AUD-13 |
 | `app/agent` | Liste, édition, managers, avatars, harnais, tokens MCP | AUD-15 |
 | `app/harnesses` | Détail et sélection de harnais | Aucun constat supplémentaire |
-| `app/tools` | Catalogue, configuration et tests de connexion | AUD-18 côté guide des outils |
+| `app/services` | Catalogue, configuration et tests de connexion | AUD-18 côté guide des outils |
 | `app/connection` | Paramètres, autorisations et courrier | Aucun constat supplémentaire |
 | `app/skill` | Catalogue, autorisations et skills appris | AUD-18 |
 | `app/llm` | Modèles, profils, fournisseurs et historique d’appels | AUD-13 |

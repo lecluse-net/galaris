@@ -126,8 +126,8 @@ async def test_query_obeys_live_acl_revision_and_never_writes(db, agents):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("runtime", ["internal", "hermes"])
 async def test_dataset_query_is_a_typed_read_on_the_file_sharing_tool(runtime):
-    from app.tools.mcp_loader import build_galaris_fastmcp
-    server = build_galaris_fastmcp(1, runtime=runtime, enabled_tool_codes={"file_sharing"})
+    from app.services.mcp_loader import build_galaris_fastmcp
+    server = build_galaris_fastmcp(1, runtime=runtime, enabled_service_codes={"file_sharing"})
     tools = {tool.name: tool for tool in await server.list_tools()}
     schema = tools["dataset_query"].parameters
     assert set(schema["required"]) == {"uri", "query"}
@@ -138,7 +138,7 @@ async def test_dataset_query_is_a_typed_read_on_the_file_sharing_tool(runtime):
 @pytest.mark.asyncio
 async def test_dataset_query_mcp_uses_canonical_uri_and_real_dataset_permissions(db, agents):
     from app.dataset.mcp import dataset_query
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
     owner, peer = agents
     dataset = await service.create(owner.id, title="Synthetic query", content='[{"value":0.1},{"value":0.2}]')
     query = DatasetQuery.model_validate({"include_rows": False, "expected_revision": 1,

@@ -10,7 +10,7 @@ from app.agent import context as agent_context
 from app.agent.contracts import AgentContextContribution, AgentContextRequest, AgentSnapshot
 from app.calendar import context, service
 from app.calendar.schemas import CalendarEventCreate, CalendarEventUpdate, CalendarEventDelete
-from app.connection.facade import set_connection_function_state, set_tool_function_state
+from app.connection.facade import set_connection_function_state, set_service_function_state
 
 
 NOW = datetime(2026, 11, 14, 12, tzinfo=timezone.utc)
@@ -21,7 +21,7 @@ NOW = datetime(2026, 11, 14, 12, tzinfo=timezone.utc)
 async def test_personal_agenda_tools_are_available_in_tasks_and_conversations_with_live_permissions(
     db, agent, personal, conversation_only,
 ):
-    from app.tools.mcp_loader import list_enabled_native_mcp_definitions
+    from app.services.mcp_loader import list_enabled_native_mcp_definitions
 
     connection, _feed = personal
     definitions = await list_enabled_native_mcp_definitions(
@@ -102,7 +102,7 @@ async def test_automatic_context_cannot_bypass_disabled_or_on_request_reads(db, 
     await service.create_calendar_event(feed.id, agent.id, CalendarEventCreate(summary="Synthetic private",
         start=NOW + timedelta(hours=1), end=NOW + timedelta(hours=2)))
     if global_policy:
-        await set_tool_function_state(connection.tool_id, "calendar_events", state)
+        await set_service_function_state(connection.service_id, "calendar_events", state)
     else:
         await set_connection_function_state(connection.id, "calendar_events", state)
     contribution = await context.calendar_context_provider(request(agent))

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import TypeVar
 
 from app.agent import current_management_scope
-from app.tools.contracts import current_tool_execution
+from app.services.contracts import current_tool_execution
 from core.authorize import Privileges, check_privilege
 from core.database import get_db
 from core.user import get_current_user

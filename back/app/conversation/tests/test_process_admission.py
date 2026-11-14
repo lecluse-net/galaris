@@ -22,16 +22,16 @@ from app.messenger import Message, Room
 from app.process.models import ProcessRun
 from app.process.native_definitions import create
 from app.process.tests.test_native_bpmn import graph, native as native, committed_native as committed_native
-from app.tools import McpToolContext, RecoverableToolError
-from app.tools.contracts import ToolCallRejectedError
-from app.tools.models import Tool
+from app.services import McpToolContext, RecoverableToolError
+from app.services.contracts import ToolCallRejectedError
+from app.services.models import Service
 from core.database import get_db_session
 
 
 async def conversation(db, owner, text, *, room=None):
     if room is None:
-        tool = await db.scalar(select(Tool).where(Tool.code == "chat"))
-        connection = Connection(agent_id=owner.id, tool_id=tool.id, active=True)
+        tool = await db.scalar(select(Service).where(Service.code == "chat"))
+        connection = Connection(agent_id=owner.id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
         room = Room(connection_id=connection.id, external_id=uuid4().hex, label="Synthetic room",

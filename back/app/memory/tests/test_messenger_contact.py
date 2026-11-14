@@ -44,22 +44,22 @@ async def test_contact_startup_reconciliation_replays_existing_senders_without_i
     from app.connection import Connection
     from app.messenger import Message, MessengerUser
     from app.messenger.dbadmin import _reconcile_contacts
-    from app.tools import ToolModel
+    from app.services import ServiceModel
 
     owner, _ = agents
     owner_id = owner.id
-    tool = ToolModel(code="synthetic-contact-backfill", label="Synthetic contact backfill",
+    tool = ServiceModel(code="synthetic-contact-backfill", label="Synthetic contact backfill",
         messenger_config={"service": "matrix"}, connection_schema={})
     db.add(tool)
     await db.flush()
-    connection = Connection(agent_id=owner_id, tool_id=tool.id, active=True)
+    connection = Connection(agent_id=owner_id, service_id=tool.id, active=True)
     db.add(connection)
     await db.flush()
     connection_id = connection.id
     for index in range(3):
         identity = f"@synthetic-{index}:example.test"
-        db.add(MessengerUser(tool_id=tool.id, external_id=identity, display_name=f"Synthetic sender {index}"))
-        message = Message(connection_id=connection_id, tool_id=tool.id, platform="matrix",
+        db.add(MessengerUser(service_id=tool.id, external_id=identity, display_name=f"Synthetic sender {index}"))
+        message = Message(connection_id=connection_id, service_id=tool.id, platform="matrix",
             user_id=identity, remote_message_id=f"synthetic-inbound-{index}", direction="inbound",
             text="Entirely synthetic content", metadata_={"sender_display_name": f"Synthetic sender {index}"})
         db.add(message)
@@ -70,7 +70,7 @@ async def test_contact_startup_reconciliation_replays_existing_senders_without_i
         # A contact projection may recover from a rollback or refresh the shared
         # session. Reconciliation must not rely on live ORM snapshots across it.
         for instance in tuple(session.identity_map.values()):
-            if isinstance(instance, (Connection, ToolModel)):
+            if isinstance(instance, (Connection, ServiceModel)):
                 session.expire(instance)
 
     interrupted = False

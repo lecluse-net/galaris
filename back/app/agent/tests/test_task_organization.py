@@ -89,7 +89,7 @@ async def test_answer_reassesses_organization_and_ignores_late_replies(monkeypat
     schedule = lambda _: None
     monkeypatch.setattr(planner_service, "go_next", schedule)
     interaction = PendingChoice(id=uuid4(), kind="planner_clarification", agent_id=1,
-        tool_id=None, room_id="synthetic", user_id=None, title="Scope", body="Which scope?",
+        service_id=None, room_id="synthetic", user_id=None, title="Scope", body="Which scope?",
         options=[], metadata={"task_id": str(current.id)}, expires_at=datetime.now(timezone.utc))
     answer = ChoiceResolution(interaction_id=interaction.id, kind=interaction.kind, text="The complete collection",
                               option_id=None, metadata={})
@@ -128,7 +128,7 @@ async def test_answered_organization_can_wait_again_then_resume(db, monkeypatch)
     monkeypatch.setattr(dispatcher_service, "get_dispatcher", lambda: SimpleNamespace(run=inference))
     send = AsyncMock(return_value=SimpleNamespace(id=uuid4()))
     monkeypatch.setattr(messenger_module, "resolve_task_messaging", AsyncMock(return_value=(
-        SimpleNamespace(connection_id=None, tool_id=None, send_to_room=send), "self",
+        SimpleNamespace(connection_id=None, service_id=None, send_to_room=send), "self",
     )))
     monkeypatch.setattr(planner_service, "go_next", lambda _: None)
 
@@ -140,7 +140,7 @@ async def test_answered_organization_can_wait_again_then_resume(db, monkeypatch)
         ))
         assert interaction is not None
         return PendingChoice(id=interaction.id, kind=interaction.kind, agent_id=None,
-            tool_id=None, room_id=interaction.room_id, user_id=None, title=interaction.title,
+            service_id=None, room_id=interaction.room_id, user_id=None, title=interaction.title,
             body=interaction.body, options=[], metadata=interaction.metadata_,
             expires_at=interaction.expires_at)
 
@@ -206,7 +206,7 @@ async def test_fast_followup_answer_does_not_restore_closed_wait(committed_datab
 
     async def deliver(_messenger, *, request, **kwargs):
         interaction = interactions.PendingChoice(id=uuid4(), kind=request.kind, agent_id=None,
-            tool_id=None, room_id="synthetic-room", user_id=None, title=request.title,
+            service_id=None, room_id="synthetic-room", user_id=None, title=request.title,
             body=request.body, options=[], metadata=request.metadata,
             expires_at=datetime.now(timezone.utc))
         legacy = replace(interaction, id=uuid4(), metadata={"task_id": str(current.id)})

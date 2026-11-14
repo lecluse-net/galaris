@@ -27,7 +27,7 @@ async def test_authorized_product_guide_loads_without_agent_identity_and_respect
     from app.agent.models import Agent, Title
     from app.connection import Connection
     from app.connection.facade import set_connection_function_state
-    from app.tools import ToolModel, initialize_admin_agent_connections
+    from app.services import ServiceModel, initialize_admin_agent_connections
     from core.user import UserModel
 
     user = UserModel(email="product-guide@example.test", hashed_password="unused")
@@ -49,8 +49,8 @@ async def test_authorized_product_guide_loads_without_agent_identity_and_respect
                        title_id=title.id, user_id=user.id)
     db.add(unassigned)
     await db.flush()
-    connections = (await db.scalars(select(Connection).join(ToolModel).where(
-        Connection.agent_id.in_([assistant.id, other.id]), ToolModel.code == "platform_admin",
+    connections = (await db.scalars(select(Connection).join(ServiceModel).where(
+        Connection.agent_id.in_([assistant.id, other.id]), ServiceModel.code == "platform_admin",
     ))).all()
     before = [(connection.id, connection.active) for connection in connections]
 

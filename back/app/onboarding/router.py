@@ -40,7 +40,7 @@ async def get_onboarding_overview(
     """
     # Resolve privileges through the standard authorization service.
     has_llm_privilege = await check_privilege(current_user, Privileges.LLM_PROVIDER_EDIT, db)
-    has_tools_privilege = await check_privilege(current_user, Privileges.TOOL_ACCESS, db)
+    has_tools_privilege = await check_privilege(current_user, Privileges.SERVICE_ACCESS, db)
     has_connections_privilege = await check_privilege(current_user, Privileges.CONNECTION_EDIT, db)
     has_agents_privilege = await check_privilege(current_user, Privileges.AGENT_EDIT, db)
     has_skills_access = await check_privilege(

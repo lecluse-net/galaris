@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 
 from . import goal_service
 from .access import owner_scope, readable_agents
-from app.tools.facade import administration_scope
+from app.services.facade import administration_scope
 from .models import GoalStatus
 from .referrer_wait import ask_human_referrer
 from .schemas import (

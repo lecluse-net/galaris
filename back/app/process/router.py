@@ -125,17 +125,17 @@ async def export_process_run(
     return await export_run(run_id, after_event=after_event, page_size=page_size)
 
 
-@routes.get("/tools", response_model=list[ProcessToolRead])
+@routes.get("/services", response_model=list[ProcessToolRead])
 @authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def read_process_tools() -> list[Any]:
     return await process_service.list_process_tools()
 
 
-@routes.get("/tools/{tool_code}/health", response_model=ProcessEngineHealth)
+@routes.get("/services/{service_code}/health", response_model=ProcessEngineHealth)
 @authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
-async def read_process_tool_health(tool_code: str) -> ProcessEngineHealth:
+async def read_process_tool_health(service_code: str) -> ProcessEngineHealth:
     try:
-        return await process_service.get_tool_health(tool_code)
+        return await process_service.get_tool_health(service_code)
     except LookupError as exc:
         raise _not_found(str(exc)) from exc
 
@@ -178,10 +178,10 @@ async def create_definition(data: ProcessDefinitionCreate) -> Any:
 
 @routes.post("/definitions/sync")
 @authorize(privileges=Privileges.PROCESS_ADMIN)
-async def sync_definitions(tool_code: str = "n8n") -> list[dict[str, Any]]:
+async def sync_definitions(service_code: str = "n8n") -> list[dict[str, Any]]:
     try:
         await _require_global_scope()
-        return await process_service.sync_tool_definitions(tool_code)
+        return await process_service.sync_tool_definitions(service_code)
     except HTTPException:
         raise
     except (LookupError, RuntimeError) as exc:

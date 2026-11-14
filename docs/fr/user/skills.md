@@ -38,7 +38,7 @@ conservent leur activation habituelle.
 Les mêmes actions permettent d'éditer, désactiver, supprimer ou transférer ces packages.
 Un renforcement ne réactive jamais un package désactivé ; une révision Dream tardive n'écrase
 pas une édition intervenue entre-temps. Dream utilise la délégation de gestion personnelle du
-Tool `skills`. Les modes désactivé et observation ne créent aucun package.
+Service `skills`. Les modes désactivé et observation ne créent aucun package.
 
 La mise à jour transfère les anciennes compétences apprises, leur historique et leurs suspensions
 vers les packages personnels. Un nom déjà utilisé est conservé et la compétence transférée reçoit
@@ -94,7 +94,7 @@ dans le catalogue générique.
 
 ## Déléguer la gestion à un agent
 
-Dans **Outils & connexions → Connexions**, configurez la connexion **Compétences** (`skills`).
+Dans **Services & connexions → Connexions**, configurez la connexion **Compétences** (`skills`).
 Les nouvelles connexions sont actives par défaut. Sans portée locale explicite, l'agent peut
 gérer ses propres packages avec `personal`. Une portée `usage` explicite retire cette gestion.
 Le choix **Usage + gestion de ses compétences personnelles** permet de créer, modifier,
@@ -103,7 +103,7 @@ Il ne permet de modifier ni les fichiers, ni l'activation, ni les affectations d
 générales administrées. Leur gestion relève des niveaux équipe ou global selon l'opération.
 Les connexions existantes, y compris leurs désactivations, et leurs portées explicites sont
 conservées lors des mises à jour ; réactivez une ancienne connexion désactivée si nécessaire.
-Sa portée locale `tools.management_scope` n'a ni valeur globale ni héritage :
+Sa portée locale `services.management_scope` n'a ni valeur globale ni héritage :
 
 | Portée | Possibilité |
 |---|---|
@@ -125,7 +125,7 @@ commence par un `SKILL.md` valide dans l'espace de l'agent authentifié. Les fon
 `skill_set_category_authorization` et `skill_release_ownership` gardent leurs contrôles
 de portée, de révision et de permission à chaque appel.
 
-L'ancien Tool `skill_management` est remplacé par `skills` en conservant ses connexions
+L'ancien Service `skill_management` est remplacé par `skills` en conservant ses connexions
 et leurs réglages. Une connexion désactivée reste désactivée.
 
 ## Quand les changements prennent effet
@@ -136,5 +136,5 @@ le départ avec une copie périmée et reste réessayable. Une tâche déjà lan
 contexte ; une reprise avec checkpoint conserve celui de l'opération qu'elle réconcilie.
 Les prochaines lectures et mutations revérifient néanmoins les droits courants.
 
-Voir aussi [les privilèges](../admin/privileges.md), [l'administration des outils](../admin/tool-administration.md)
+Voir aussi [les privilèges](../admin/privileges.md), [l'administration des outils](../admin/service-administration.md)
 et [la navigation](navigation.md).

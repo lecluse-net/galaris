@@ -102,7 +102,7 @@
                             <q-btn v-if="canEdit" size="sm" color="negative" icon="delete" :label="$t('common.delete')" @click="onDelete"
                                 :disable="isSystemTask">
                                 <q-tooltip v-if="isSystemTask">{{ $t('task.detail.systemCantDelete') }}</q-tooltip>
-                                <q-tooltip v-else>{{ $t('task.detail.deleteTooltip') }}</q-tooltip>
+                                <q-tooltip v-else>{{ $t('task.detail.deleteServicetip') }}</q-tooltip>
                             </q-btn>
                         </div>
                     </div>

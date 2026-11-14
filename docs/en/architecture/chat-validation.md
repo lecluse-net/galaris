@@ -26,9 +26,9 @@ front/app/chat
        -> app.voice (browser CallTransport)
 ```
 
-The bootstrap declares the modules in `back/modules.py` and `front/modules.ts`, imports the provider before Messenger resolution, registers the WebSocket policy, and schedules storage reconciliation. The integrated `chat` Tool exposes no MCP tools, auto-connects every active agent, and never reactivates a disabled connection during a later synchronization.
+The bootstrap declares the modules in `back/modules.py` and `front/modules.ts`, imports the provider before Messenger resolution, registers the WebSocket policy, and schedules storage reconciliation. The integrated `chat` Service exposes no MCP tools, auto-connects every active agent, and never reactivates a disabled connection during a later synchronization.
 
-Each route is protected by a global privilege. Routes carrying a room UUID add `ChatRoomAccessAssertion`; internal mutations retain `InternalRoomAccessAssertion`. Human identity comes from the session and the exact `messenger_users.galaris_user_id` match for each external Tool. Authorization parameter merging applies path parameters last, so a body or query cannot mask `room_id` or `file_id`. Services recheck membership under lock before mutations. Decorator policy (required privileges, fallback and ownership) remains authoritative over client input; assertions use the same identity source as handlers.
+Each route is protected by a global privilege. Routes carrying a room UUID add `ChatRoomAccessAssertion`; internal mutations retain `InternalRoomAccessAssertion`. Human identity comes from the session and the exact `messenger_users.galaris_user_id` match for each external Service. Authorization parameter merging applies path parameters last, so a body or query cannot mask `room_id` or `file_id`. Services recheck membership under lock before mutations. Decorator policy (required privileges, fallback and ownership) remains authoritative over client input; assertions use the same identity source as handlers.
 
 | Surface | Privilege | Resource policy |
 |---|---|---|
@@ -53,14 +53,14 @@ Accepted caveats: the active-call registry is local to the backend process; a mu
 ## Validation B — mapping of existing data
 
 Chat reuses the canonical Messenger tables without duplicating their visible content.
-Its own preferences, including emoji usage and push subscriptions, remain in its domain. The nullable `messenger_users.galaris_user_id` column links a remote identity to a Galaris account; the uniqueness of `(tool_id, galaris_user_id)` guarantees a single current identity per Tool and account.
+Its own preferences, including emoji usage and push subscriptions, remain in its domain. The nullable `messenger_users.galaris_user_id` column links a remote identity to a Galaris account; the uniqueness of `(service_id, galaris_user_id)` guarantees a single current identity per Service and account.
 
 | Table | Columns and invariants used | Critical access |
 |---|---|---|
 | `tools` | `code='chat'`, `messenger_config.service='internal'` | uniqueness of `code` |
-| `connections` | `tool_id`, `agent_id`, `active` | uniqueness of `(tool_id, agent_id)`, connection rechecked before admission/call |
+| `connections` | `service_id`, `agent_id`, `active` | uniqueness of `(service_id, agent_id)`, connection rechecked before admission/call |
 | `messenger_rooms` | UUID, connection, external ID, label, direct kind, type, timestamps | uniqueness of `(connection_id, external_id)`, one user-agent pair |
-| `messenger_users` | Tool, external ID, `agent_id`, `galaris_user_id`, `is_ai` | uniqueness of `(tool_id, external_id)` and `(tool_id, galaris_user_id)` |
+| `messenger_users` | Service, external ID, `agent_id`, `galaris_user_id`, `is_ai` | uniqueness of `(service_id, external_id)` and `(service_id, galaris_user_id)` |
 | `messenger_room_users` | room/user, `role`, `joined_at`, `muted`, `archived`, `last_read_message_id`, `read_through_position` | exactly the human owner and the agent for the internal UI |
 | `messenger_messages` | room, sender, direction, external ID, response, status, dates | canonical idempotence and `(created_at,id)` pagination |
 | `messenger_files` / `messenger_attachments` | UUID, connection, untrusted name, MIME, size, order | file accessible only through a message in the room |
@@ -70,7 +70,7 @@ Its own preferences, including emoji usage and push subscriptions, remain in its
 
 On `messenger_room_users`, `role` identifies the human owner of a direct room, `joined_at` preserves the audit trail, and `muted` and `archived` carry personal preferences. Unread state depends on `read_through_position`, the highest journal position actually seen, which remains monotonic even when older history is imported. `last_read_message_id` remains a real FK; deleting the referenced message resets it to `NULL` without moving the read position backwards.
 
-The “My Profile” screen allows users to set or remove the mapping for each external Tool. Chat then displays only the rooms in which that identity is a member. External rooms are viewable, paginated in batches of 100 messages on scroll, and strictly read-only. The source badge distinguishes, in particular, Nextcloud Talk and Telegram. Technical Mail rooms are excluded from this projection: incoming emails remain journaled and are admitted as Tasks without creating a message-visible conversation. The `CHAT_IMPERSONATE` privilege exposes a separate selector for viewing the same projection from the canonical identity of an AI agent.
+The “My Profile” screen allows users to set or remove the mapping for each external Service. Chat then displays only the rooms in which that identity is a member. External rooms are viewable, paginated in batches of 100 messages on scroll, and strictly read-only. The source badge distinguishes, in particular, Nextcloud Talk and Telegram. Technical Mail rooms are excluded from this projection: incoming emails remain journaled and are admitted as Tasks without creating a message-visible conversation. The `CHAT_IMPERSONATE` privilege exposes a separate selector for viewing the same projection from the canonical identity of an AI agent.
 
 The emoji picker maintains a private, atomic ranking for each account by frequency and then recency. Its first 25 values form the highlighted “Frequently Used” category; this ranking depends neither on the current room nor on the browser used.
 

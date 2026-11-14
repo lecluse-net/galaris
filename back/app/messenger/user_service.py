@@ -11,7 +11,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 
 from core.database import get_db
 
-from app.tools import ToolModel
+from app.services import ServiceModel
 
 from . import directory
 from ._observations import ObservedMessengerUser
@@ -39,7 +39,7 @@ class MessengerAgentIdentityReconciliationResult:
 
 async def resolve_messenger_user(
     *,
-    tool_id: int,
+    service_id: int,
     external_id: str,
     display_name: str = "",
     agent_id: int | None = None,
@@ -58,7 +58,7 @@ async def resolve_messenger_user(
         pg_insert(MessengerUser)
         .values(
             id=uuid4(),
-            tool_id=tool_id,
+            service_id=service_id,
             agent_id=agent_id,
             galaris_user_id=galaris_user_id,
             external_id=normalized_external_id,
@@ -74,7 +74,7 @@ async def resolve_messenger_user(
     existing = await get_db().scalar(
         select(MessengerUser)
         .where(
-            MessengerUser.tool_id == tool_id,
+            MessengerUser.service_id == service_id,
             MessengerUser.external_id == normalized_external_id,
         )
         .execution_options(include_historized=True)
@@ -103,13 +103,13 @@ async def resolve_messenger_user(
     return existing.id
 
 
-async def resolve_observed_user(*, tool_id: int, user: ObservedMessengerUser) -> UUID:
+async def resolve_observed_user(*, service_id: int, user: ObservedMessengerUser) -> UUID:
     """Resolve one transport identity through local directory state and persist it."""
 
-    resolved = await directory.resolve_user(tool_id, user.id)
+    resolved = await directory.resolve_user(service_id, user.id)
     agent_id = user.agent_id if user.agent_id is not None else resolved.agent_id
     return await resolve_messenger_user(
-        tool_id=tool_id,
+        service_id=service_id,
         external_id=user.id,
         display_name=user.display_name,
         agent_id=agent_id,
@@ -123,10 +123,10 @@ async def enrich_messenger_users(users: list[MessengerUser]) -> None:
     unresolved_by_tool: dict[int, list[MessengerUser]] = {}
     for user in users:
         if user.agent_id is None:
-            unresolved_by_tool.setdefault(user.tool_id, []).append(user)
-    for tool_id, unresolved in unresolved_by_tool.items():
+            unresolved_by_tool.setdefault(user.service_id, []).append(user)
+    for service_id, unresolved in unresolved_by_tool.items():
         resolved = await directory.resolve_agent_ids(
-            tool_id,
+            service_id,
             (user.external_id for user in unresolved),
         )
         for user in unresolved:
@@ -144,17 +144,17 @@ async def reconcile_nextcloud_agent_identities(
     tools = list(
         (
             await get_db().scalars(
-                select(ToolModel).where(ToolModel.messenger_config.is_not(None))
+                select(ServiceModel).where(ServiceModel.messenger_config.is_not(None))
             )
         ).all()
     )
-    tool_ids = [
+    service_ids = [
         tool.id
         for tool in tools
         if str((tool.messenger_config or {}).get("service") or "")
         == "nextcloud_talk"
     ]
-    if not tool_ids:
+    if not service_ids:
         return MessengerAgentIdentityReconciliationResult()
 
     users_scanned = 0
@@ -163,7 +163,7 @@ async def reconcile_nextcloud_agent_identities(
     links_cleared = 0
     cursor: UUID | None = None
     while True:
-        query = select(MessengerUser).where(MessengerUser.tool_id.in_(tool_ids))
+        query = select(MessengerUser).where(MessengerUser.service_id.in_(service_ids))
         if cursor is not None:
             query = query.where(MessengerUser.id > cursor)
         query = (
@@ -178,10 +178,10 @@ async def reconcile_nextcloud_agent_identities(
 
         users_by_tool: dict[int, list[MessengerUser]] = {}
         for user in users:
-            users_by_tool.setdefault(user.tool_id, []).append(user)
-        for tool_id, tool_users in users_by_tool.items():
+            users_by_tool.setdefault(user.service_id, []).append(user)
+        for service_id, tool_users in users_by_tool.items():
             resolved = await directory.resolve_agent_ids(
-                tool_id,
+                service_id,
                 (user.external_id for user in tool_users),
             )
             for user in tool_users:
@@ -214,7 +214,7 @@ async def reconcile_nextcloud_agent_identities(
 
 async def synchronize_users(
     *,
-    tool_id: int,
+    service_id: int,
     users: list[ObservedMessengerUser],
     connection_id: int | None = None,
     authoritative: bool = False,
@@ -233,7 +233,7 @@ async def synchronize_users(
     for external_id, user in unique.items():
         current_ids.append(
             await resolve_observed_user(
-                tool_id=tool_id,
+                service_id=service_id,
                 user=user,
             )
         )
@@ -241,7 +241,7 @@ async def synchronize_users(
 
     if authoritative:
         stale = update(MessengerUser).where(
-            MessengerUser.tool_id == tool_id,
+            MessengerUser.service_id == service_id,
             MessengerUser.deleted_at.is_(None),
         )
         if current_ids:

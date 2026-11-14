@@ -6,9 +6,9 @@ Galaris peut faire fonctionner simultanément tous les bridges configurés d'un 
 techniques restent `nextcloud_talk`, `matrix`, `one_bot`, `telegram` et `whatsapp`; l'ordre affiché
 dans **Préférences → Messagerie** sert seulement à départager des endpoints sans échange antérieur.
 
-La messagerie est activée sur un Tool choisi par l’administrateur. Les secrets propres à un agent
-sont enregistrés dans sa connexion à ce Tool et chiffrés comme paramètres `password`. Les valeurs
-serveur invariantes sont enregistrées dans l’onglet Messenger du Tool. Le code du Tool est libre et
+La messagerie est activée sur un Service choisi par l’administrateur. Les secrets propres à un agent
+sont enregistrés dans sa connexion à ce Service et chiffrés comme paramètres `password`. Les valeurs
+serveur invariantes sont enregistrées dans l’onglet Messenger du Service. Le code du Service est libre et
 ne détermine pas le bridge.
 
 **Tester la réception** vérifie uniquement les connexions actives de la messagerie affichée.
@@ -29,11 +29,11 @@ d’une URL publique dépend du sens de la connexion, pas du fait que la message
 | OneBot 11 | Selon l’emplacement de l’adaptateur | L’adaptateur doit joindre le WebSocket Galaris ; réseau local ou VPN suffisant s’il permet cette connexion. |
 
 Pour WhatsApp, Galaris peut rester sur la machine de développement : un tunnel HTTPS public
-vers `/api/whatsapp/webhook/<tool_id>` suffit, sans rendre toute l’interface publique.
+vers `/api/whatsapp/webhook/<service_id>` suffit, sans rendre toute l’interface publique.
 Configurer cette URL publique et son verify token dans Meta. Ce bridge utilise uniquement
 l’API officielle WhatsApp Business Cloud ; il ne connecte pas un compte WhatsApp personnel.
 
-Dans **Préférences → Messagerie** et dans l’onglet **Messagerie** d’un Tool, une indication
+Dans **Préférences → Messagerie** et dans l’onglet **Messagerie** d’un Service, une indication
 précise le besoin réseau de la passerelle. WhatsApp affiche un avertissement si l’adresse du
 navigateur est locale, privée ou sans HTTPS ; OneBot avertit pour une adresse locale ou privée,
 sans exiger une exposition publique. La détection reconnaît notamment `localhost`, les noms
@@ -53,14 +53,14 @@ Nextcloud Talk nécessitent aussi une connectivité WebRTC adaptée, éventuelle
 1. Créer le bot auprès de [BotFather](https://t.me/BotFather) et conserver son token.
 2. Dans **Configuration → Messagerie → Telegram**, consulter le **Guide de configuration**, ouvert par défaut comme pour les autres messageries,
    et cliquer sur **Créer l’outil Telegram** (droit de modification des outils requis),
-   proposé uniquement si aucun Tool n’utilise déjà la messagerie via le bridge `telegram`,
-   quel que soit son code. Le bouton prépare le Tool de code `telegram`, libellé `Telegram`, avec la Messagerie
+   proposé uniquement si aucun Service n’utilise déjà la messagerie via le bridge `telegram`,
+   quel que soit son code. Le bouton prépare le Service de code `telegram`, libellé `Telegram`, avec la Messagerie
    activée sur le bridge `telegram` et un paramètre de connexion secret `token`, requis
    et vide, associé au token du bridge. Si un outil utilise déjà ce bridge, créer les
    connexions sur cet outil. Si seul le code `telegram` est occupé par un autre outil,
-   sa configuration doit être vérifiée dans **Outils** avant de poursuivre.
-3. La même configuration peut être saisie manuellement dans **Outils**.
-4. Dans **Outils → Connexions**, créer une connexion à cet outil pour chaque agent et
+   sa configuration doit être vérifiée dans **Services** avant de poursuivre.
+3. La même configuration peut être saisie manuellement dans **Services**.
+4. Dans **Services → Connexions**, créer une connexion à cet outil pour chaque agent et
    y coller le token transmis par BotFather. Utiliser un bot distinct par agent.
    Le bouton **Configurer les comptes des agents** du guide ouvre directement cet onglet.
 5. Envoyer un message au bot depuis Telegram. Sans droit de dialogue déjà reconnu, le message
@@ -121,12 +121,12 @@ personnel et n’utilise ni WhatsApp Web ni Baileys.
 5. Exposer en HTTPS l’URL publique suivante :
 
    ```text
-   https://galaris.example/api/whatsapp/webhook/<tool_id>
+   https://galaris.example/api/whatsapp/webhook/<service_id>
    ```
 
 6. Configurer cette URL et le verify token dans Meta, puis abonner le WABA au champ `messages`.
 
-Dans l’onglet Messenger du Tool, sélectionner `whatsapp`, puis renseigner `app_secret` et
+Dans l’onglet Messenger du Service, sélectionner `whatsapp`, puis renseigner `app_secret` et
 `verify_token`. Dans le schéma de connexion, faire correspondre `access_token` et
 `phone_number_id`; chaque connexion d’agent fournit ses propres valeurs.
 
@@ -212,16 +212,16 @@ Référence : [collection officielle WhatsApp Business Platform de Meta](https:/
 
 ### 1. Configurer le homeserver et le compte de l’agent
 
-Dans **Préférences → Messagerie → Matrix**, renseignez le homeserver. Si aucun Tool
+Dans **Préférences → Messagerie → Matrix**, renseignez le homeserver. Si aucun Service
 n’utilise déjà le bridge `matrix`, le guide propose **Créer l’outil Matrix** aux utilisateurs
-disposant du droit de modifier les Tools. Ce bouton crée le Tool `matrix`, reprend le
+disposant du droit de modifier les Services. Ce bouton crée le Service `matrix`, reprend le
 homeserver renseigné et configure les paramètres de connexion ci-dessous, sans identifiants
-préremplis. Un Tool Matrix existant, quel que soit son code, masque la création ; un code
-`matrix` déjà occupé par un autre Tool invite à vérifier sa configuration.
-Ouvrez ensuite **Outils → Connexions** pour configurer les comptes des agents.
+préremplis. Un Service Matrix existant, quel que soit son code, masque la création ; un code
+`matrix` déjà occupé par un autre Service invite à vérifier sa configuration.
+Ouvrez ensuite **Services → Connexions** pour configurer les comptes des agents.
 
-Le Tool sélectionne `matrix` et porte le réglage `homeserver`. Le timeout de sync demeure un
-paramètre technique global. Chaque agent utilise sa propre connexion au Tool :
+Le Service sélectionne `matrix` et porte le réglage `homeserver`. Le timeout de sync demeure un
+paramètre technique global. Chaque agent utilise sa propre connexion au Service :
 
 - `user_id` : identifiant complet du bot, par exemple `@agent:example.org` ;
 - `token` : token longue durée facultatif ;
@@ -266,7 +266,7 @@ Le bridge prend en charge :
 - notes vocales OGG/Opus envoyées comme `m.audio`, avec le marqueur vocal compris par les clients
   Element.
 
-Les pièces jointes conservent l’URI du Tool Matrix et ne sont téléchargées qu’à la demande dans un
+Les pièces jointes conservent l’URI du Service Matrix et ne sont téléchargées qu’à la demande dans un
 temporaire serveur nettoyé après l’appel. Les noms, tailles annoncées et octets réellement
 transférés sont bornés. Les `m.notice` ne créent
 jamais de tâche afin d’éviter les boucles entre bots. Une édition `m.replace` n’est pas interprétée
@@ -283,9 +283,9 @@ Référence : [spécification Matrix Client-Server](https://spec.matrix.org/late
 
 ### 1. Configurer le compte et l’adaptateur
 
-1. Dans **Outils**, activer la Messagerie, sélectionner `one_bot` et renseigner le réglage
-   Tool `platform`, par exemple `qq`.
-2. Associer `user_id` et `token` au schéma de connexion. Dans **Outils → Connexions**,
+1. Dans **Services**, activer la Messagerie, sélectionner `one_bot` et renseigner le réglage
+   Service `platform`, par exemple `qq`.
+2. Associer `user_id` et `token` au schéma de connexion. Dans **Services → Connexions**,
    chaque agent fournit l’identifiant de son bot et son secret Bearer.
 3. Configurer l’adaptateur en **WebSocket inverse Universal**, avec les messages au format
    **tableau de segments**. L’endpoint est `wss://votre-galaris/ws/onebot/<platform>/<user_id>` ;
@@ -295,7 +295,7 @@ Référence : [spécification Matrix Client-Server](https://spec.matrix.org/late
    `X-Client-Role: Universal`. Les connexions séparées `API` et `Event` sont refusées.
 
 Les anciens réglages globaux restent un mécanisme de compatibilité ; une nouvelle configuration
-utilise le Tool et les connexions de ses agents. **Tester la réception** appelle `get_login_info`
+utilise le Service et les connexions de ses agents. **Tester la réception** appelle `get_login_info`
 et vérifie l’identité du bot ; ce contrôle ne prouve pas qu’un message humain est arrivé.
 
 ### 2. Réception, droits et reconnexion

@@ -37,11 +37,11 @@ async function load() {
   const request = controller = new AbortController()
   loading.value = true; error.value = false; entries.value = []; warnings.value = []
   try {
-    await waitForFunctionPolicyWrites(props.connection.tool_id)
+    await waitForFunctionPolicyWrites(props.connection.service_id)
     if (current !== generation || disposed) return
     const panel = dashboard.panels.find(panel => panel.id === 'functions')!
     const page = await panel.load!({ agentId: props.connection.agent_id, search: search.value ?? '', state: 'all',
-      offset: 0, limit: 500, signal: request.signal, toolId: props.connection.tool_id })
+      offset: 0, limit: 500, signal: request.signal, toolId: props.connection.service_id })
     if (current !== generation || disposed) return
     entries.value = page.items.flatMap(row => row.children ?? []); warnings.value = page.warnings ?? []
   } catch { if (current === generation && !disposed) error.value = true }
@@ -62,7 +62,7 @@ async function save(row: PermissionEntry, control: PermissionControl, value: str
     }
   }
 }
-watch(() => [props.connection.id, props.connection.agent_id, props.connection.tool_id], () => {
+watch(() => [props.connection.id, props.connection.agent_id, props.connection.service_id], () => {
   actionError.value = false
   dashboard.dispose(); dashboard = createPermissionDashboard(t, [], props.connection.id); void load()
 })

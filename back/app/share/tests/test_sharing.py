@@ -14,7 +14,7 @@ from app.document import document_service
 from app.memory.models import MemoryItem
 from app.document import Document
 from app.process.models import ProcessDefinition
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.share import ShareConfig, ShareGrant, SharingUpdate
 from app.share.dbadmin import needs_transfer
 from app.share.migration import transfer, complete
@@ -102,8 +102,8 @@ async def test_acl_upgrade_preserves_existing_access_tombstones_and_replays_with
         for source, principal in (("memory_item_grants", "agent"), ("document_user_grants", "user"), ("document_team_grants", "team")):
             await db.execute(text(f"CREATE TABLE {source} (item_id uuid, {principal}_id integer, can_write boolean)"))
     else:
-        tool = await db.scalar(select(ToolModel.id).where(ToolModel.code == "galaris"))
-        resource = ProcessDefinition(agent_id=owner.id, tool_id=tool, label="Synthetic old resource",
+        tool = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "galaris"))
+        resource = ProcessDefinition(agent_id=owner.id, service_id=tool, label="Synthetic old resource",
             code="synthetic_migration", engine_process_id="synthetic_migration")
         db.add(resource)
         await db.flush()

@@ -92,9 +92,9 @@ async def test_existing_personal_calendar_is_adopted_without_creating_a_duplicat
 
 
 @pytest.mark.asyncio
-async def test_external_calendars_expose_their_tool_label_and_never_the_personal_default_marker(db, agent, personal, calendar_connection):
-    from app.tools.models import Tool
-    tool = await db.get(Tool, calendar_connection.tool_id)
+async def test_external_calendars_expose_their_service_label_and_never_the_personal_default_marker(db, agent, personal, calendar_connection):
+    from app.services.models import Service
+    tool = await db.get(Service, calendar_connection.service_id)
     tool.label = "Synthetic calendar provider"
     external = CalendarFeed(connection_id=calendar_connection.id, label="Synthetic external calendar",
         source_kind="caldav", is_default=True, active=True, initialized=True)
@@ -102,11 +102,11 @@ async def test_external_calendars_expose_their_tool_label_and_never_the_personal
     await db.commit()
     rows = await service.list_feeds(agent_id=agent.id)
     assert [row.id for row in rows if row.is_default] == [personal[1].id]
-    assert next(row for row in rows if row.id == external.id).tool_label == tool.label
+    assert next(row for row in rows if row.id == external.id).service_label == tool.label
     tool.label = "Renamed synthetic provider"
     await db.commit()
     rows = await service.list_feeds(agent_id=agent.id)
-    assert next(row for row in rows if row.id == external.id).tool_label == tool.label
+    assert next(row for row in rows if row.id == external.id).service_label == tool.label
     assert external.is_default  # Synchronization keeps its private discovery-root marker.
 
 

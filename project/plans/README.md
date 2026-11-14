@@ -22,7 +22,7 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 | Plan | Statut | Reste à faire |
 |---|---|---|
-| [optimisation-generalisee.md](optimisation-generalisee.md) | `in-progress` | Process/MCP par élément, métadonnées Tools, grands ensembles Contact, repos/RSS/concurrence/endurance, qualification combinée et couverture restante. |
+| [optimisation-generalisee.md](optimisation-generalisee.md) | `in-progress` | Process/MCP par élément, métadonnées Services, grands ensembles Contact, repos/RSS/concurrence/endurance, qualification combinée et couverture restante. |
 | [processus-metier-internes-bpmn.md](processus-metier-internes-bpmn.md) | `partial` | Python généraliste sur VM/hôte dédié, broker de capacités, worker Process distinct et qualifications de charge, reprise et multi-harnais. |
 | [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Embeddings réels, analyses partielles/échouées, recherche précise dans les pièces jointes, campagnes générales de rappel/acquisition et organisation des Topics après preuve de gain. |
 | [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `partial` | Générations serveur, occurrences de fichiers, placement préparé, lecture régionale et qualification des très grands volumes. |

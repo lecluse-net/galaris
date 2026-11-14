@@ -19,7 +19,7 @@ from app.file_share import (
     resource_create,
     resource_write,
 )
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.i18n import render_prompt, t
 from core.params import runtime_settings
 
@@ -229,7 +229,7 @@ async def _action(
     output: RequestedOutput,
     **values: Any,
 ) -> str | ToolResult:
-    from app.tools.facade import current_prepared_authorization, claim_prepared_action, AuthorizationRequired, AuthorizationClosed
+    from app.services.facade import current_prepared_authorization, claim_prepared_action, AuthorizationRequired, AuthorizationClosed
     try:
         _track_owner_cleanup(ctx)
         resolved = await _resolve_output(ctx, output)

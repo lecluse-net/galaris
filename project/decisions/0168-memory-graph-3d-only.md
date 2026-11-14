@@ -33,11 +33,11 @@ Les changements de session et invalidations explicites des droits gardent leur r
 données protégées. Les anciens fichiers d'un répertoire encore partiellement parcouru
 restent en place jusqu'à ce qu'un inventaire complet puisse confirmer leur disparition.
 
-Le catalogue enregistre le libellé du Tool comme titre de sa racine, ou son schéma en repli.
+Le catalogue enregistre le libellé du Service comme titre de sa racine, ou son schéma en repli.
 Les noms techniques « . » et « / » sont réparés dans la projection Memory, par un reconciler
-DbAdmin idempotent. Un changement du libellé du Tool met aussi ces titres à jour dans la
+DbAdmin idempotent. Un changement du libellé du Service met aussi ces titres à jour dans la
 même transaction ; les titres personnalisés valides restent préservés. Le graphe ne résout
-aucun libellé de Tool et expose uniquement le titre mémorisé.
+aucun libellé de Service et expose uniquement le titre mémorisé.
 
 Les éléments non affichés transfèrent leur poids à leurs représentants visibles, via les
 parents, les branches repliées et les liens confirmés. Les enfants connus mais non chargés

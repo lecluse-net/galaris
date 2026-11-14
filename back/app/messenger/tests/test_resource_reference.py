@@ -5,7 +5,7 @@ import pytest
 from app.messenger.resource_reference import attachment_resource_uri
 
 
-def test_attachment_resource_uri_uses_exact_tool_code_and_provider_room() -> None:
+def test_attachment_resource_uri_uses_exact_service_code_and_provider_room() -> None:
     file_id = uuid4()
 
     assert attachment_resource_uri("chat", "chat:direct:1:7", file_id) == (
@@ -19,9 +19,9 @@ def test_attachment_resource_uri_uses_exact_tool_code_and_provider_room() -> Non
     )
 
 
-@pytest.mark.parametrize("tool_code", ["", "Messenger", "messenger", "workspace"])
+@pytest.mark.parametrize("service_code", ["", "Messenger", "messenger", "workspace"])
 def test_attachment_resource_uri_rejects_capability_or_native_schemes(
-    tool_code: str,
+    service_code: str,
 ) -> None:
     with pytest.raises(ValueError, match="Tool code"):
-        attachment_resource_uri(tool_code, "room", uuid4())
+        attachment_resource_uri(service_code, "room", uuid4())

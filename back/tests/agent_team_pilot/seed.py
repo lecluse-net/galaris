@@ -49,8 +49,8 @@ async def seed(directory: Path, case_code: str, mode: str, config: dict, *, exec
     from app.document.schemas import DocumentGrantUpdate
     from app.llm import LLM, LLMProvider, model_usages, profile_service
     from app.messenger import create_internal_room
-    from app.tools.mandatory_tools import INTEGRATED_TOOL_SPECS, SYSTEM_TOOL_CODES, sync_integrated_tool_connections
-    from app.tools import mcp_tools_by_tool_code
+    from app.services.mandatory_services import INTEGRATED_SERVICE_SPECS, SYSTEM_SERVICE_CODES, sync_integrated_service_connections
+    from app.services import mcp_tools_by_service_code
     from core.authorize.models import Assignment, Role
     from core.database import get_db_session
     from core.params import params_service
@@ -137,29 +137,29 @@ async def seed(directory: Path, case_code: str, mode: str, config: dict, *, exec
                     job_description=f"<p>{job}</p>", agent_driver="internal")
                 db.add(agent)
                 await db.flush()
-                await sync_integrated_tool_connections(agent.id)
+                await sync_integrated_service_connections(agent.id)
                 agents.append(agent)
             for agent in agents:
                 updated = await agent_service.update(agent.id, AgentUpdate(team_ids=[team.id]), actor_user_id=owner.id)
                 assert updated is not None
-            allowed = {"agent_list", "agent_get", "task_get", "task_work_update", "tools_list", "document_show",
+            allowed = {"agent_list", "agent_get", "task_get", "task_work_update", "services_list", "document_show",
                        "file_list", "file_search", "file_read", "file_write", "file_edit", "file_append",
                        "document_share", "document_sharing", "conversation_task_submit",
                        "conversation_task_list", "conversation_task_status"}
             if mode != "solo":
                 allowed.update({"task_run", "messenger_send_message_to_user"})
-            specs = {spec.code: spec for spec in INTEGRATED_TOOL_SPECS}
-            definitions = mcp_tools_by_tool_code()
-            from app.tools.models import Tool
+            specs = {spec.code: spec for spec in INTEGRATED_SERVICE_SPECS}
+            definitions = mcp_tools_by_service_code()
+            from app.services.models import Service
             for agent in agents:
-                rows = (await db.execute(select(Connection, Tool.code).join(Tool).where(Connection.agent_id == agent.id))).all()
-                for connection, tool_code in rows:
-                    connection.active = tool_code in SYSTEM_TOOL_CODES or tool_code == "chat"
-                    if tool_code in specs:
-                        names = set(specs[tool_code].mcp_tools) | {definition.name for definition in definitions.get(tool_code, [])}
+                rows = (await db.execute(select(Connection, Service.code).join(Service).where(Connection.agent_id == agent.id))).all()
+                for connection, service_code in rows:
+                    connection.active = service_code in SYSTEM_SERVICE_CODES or service_code == "chat"
+                    if service_code in specs:
+                        names = set(specs[service_code].mcp_tools) | {definition.name for definition in definitions.get(service_code, [])}
                         # Internal Chat also exposes the generic Messenger family.
                         # Its functions must obey solo/colleague policy as well.
-                        if tool_code == "chat":
+                        if service_code == "chat":
                             names.update(definition.name for definition in definitions.get("messenger", []))
                         for function in sorted(names):
                             await connections.set_connection_function_state(connection.id, function,

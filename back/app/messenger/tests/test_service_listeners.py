@@ -18,7 +18,7 @@ async def _stable_signatures(connection_ids: set[int]) -> dict[int, str]:
 @pytest.mark.parametrize("mode,mail_configured", [("sync", True), ("push", True), ("sync", False)])
 async def test_mail_polling_composes_with_messaging_without_starting_a_push_listener(monkeypatch, mode, mail_configured):
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
     primary_started, mail_started = asyncio.Event(), asyncio.Event()
     blocked = asyncio.Event()
     async def primary_listen():
@@ -39,8 +39,8 @@ async def test_mail_polling_composes_with_messaging_without_starting_a_push_list
     monkeypatch.setattr(service.facade, "get_messenger", AsyncMock(return_value=primary))
     monkeypatch.setattr(service.facade, "get_spec", lambda _kind: BridgeSpec(kind="matrix", inbound_modes=[mode]))
     monkeypatch.setattr(service.facade, "get_factory", lambda _kind: factory)
-    monkeypatch.setattr(connection_service, "get_connection", AsyncMock(return_value=SimpleNamespace(tool_id=3)))
-    monkeypatch.setattr(tool_service, "get_tool_by_id", AsyncMock(return_value=SimpleNamespace(mail=object())))
+    monkeypatch.setattr(connection_service, "get_connection", AsyncMock(return_value=SimpleNamespace(service_id=3)))
+    monkeypatch.setattr(service, "get_service_by_id", AsyncMock(return_value=SimpleNamespace(mail=object())))
     pending = asyncio.create_task(service._run_listener(12))
     try:
         if mode == "sync":
@@ -294,10 +294,10 @@ async def test_resolver_builds_registered_bridge_tool(
 ) -> None:
     from core.params import runtime_settings
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
     monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["one_bot"]')
-    connection = SimpleNamespace(id=7, tool_id=3, active=True)
+    connection = SimpleNamespace(id=7, service_id=3, active=True)
     tool = SimpleNamespace(
         code="custom-chat",
         messenger=SimpleNamespace(service="one_bot"),
@@ -307,8 +307,8 @@ async def test_resolver_builds_registered_bridge_tool(
         assert connection_id == 7
         return connection
 
-    async def get_tool_by_id(tool_id: int) -> object:
-        assert tool_id == 3
+    async def get_service_by_id(service_id: int) -> object:
+        assert service_id == 3
         return tool
 
     class FakeBridge:
@@ -317,7 +317,7 @@ async def test_resolver_builds_registered_bridge_tool(
             return SimpleNamespace(marker="messenger", connection_id=connection_id)
 
     monkeypatch.setattr(connection_service, "get_connection", get_connection)
-    monkeypatch.setattr(tool_service, "get_tool_by_id", get_tool_by_id)
+    monkeypatch.setattr(service, "get_service_by_id", get_service_by_id)
     monkeypatch.setattr(
         service.facade,
         "get_factory",
@@ -328,4 +328,4 @@ async def test_resolver_builds_registered_bridge_tool(
 
     assert messenger.marker == "messenger"
     assert messenger.connection_id == 7
-    assert messenger.tool_code == "custom-chat"
+    assert messenger.service_code == "custom-chat"

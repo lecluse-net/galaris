@@ -13,7 +13,7 @@ CapabilityKind = Literal["tool", "resource", "prompt"]
 # =============================================================================
 
 class ConnectionBase(BaseModel):
-    tool_id: int
+    service_id: int
     agent_id: int
     active: bool = True
 
@@ -23,7 +23,7 @@ class ConnectionCreate(ConnectionBase):
 
 
 class ConnectionUpdate(BaseModel):
-    tool_id: Optional[int] = None
+    service_id: Optional[int] = None
     agent_id: Optional[int] = None
     active: Optional[bool] = None
     params: Dict[str, Optional[str]] | None = None
@@ -44,10 +44,10 @@ class ConnectionOverview(Connection):
 
 class PermissionConnectionOption(Connection):
     """Metadata needed by the policy editor, without connection parameters."""
-    tool_code: str
-    tool_label: str
-    tool_can_edit: bool
-    tool_can_disable: bool
+    service_code: str
+    service_label: str
+    service_can_edit: bool
+    service_can_disable: bool
 
 
 # =============================================================================
@@ -86,7 +86,7 @@ class ConnectionParamBulkCreate(BaseModel):
 
 class ConnectionParamsResponse(BaseModel):
     connection_id: int
-    tool_id: int
+    service_id: int
     agent_id: int
     params: Dict[str, Any]
     configured_params: List[str] = []
@@ -95,7 +95,7 @@ class ConnectionParamsResponse(BaseModel):
 
 
 class AgentByParamQuery(BaseModel):
-    tool_id: int
+    service_id: int
     param_name: str
     param_value: str
 
@@ -136,7 +136,7 @@ class McpToolInfo(BaseModel):
 
 
 class TestMcpToolsRequest(BaseModel):
-    tool_id: int
+    service_id: int
     params: Dict[str, Optional[str]] = {}
 
 

@@ -39,11 +39,11 @@ async def observe_received_resources(connection_id: int, descriptors: list[Resou
     """Journal admission observes attachment metadata without downloading bytes."""
     from sqlalchemy import select
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from .catalogue import binding_stamp, indexing_mode_expression
     db = get_db()
     row = (await db.execute(select(Connection.agent_id, binding_stamp(), indexing_mode_expression()).join(
-        ToolModel, ToolModel.id == Connection.tool_id,
+        ServiceModel, ServiceModel.id == Connection.service_id,
     ).where(Connection.id == connection_id, Connection.active.is_(True)))).one_or_none()
     if row is None or row[2] == "excluded":
         return

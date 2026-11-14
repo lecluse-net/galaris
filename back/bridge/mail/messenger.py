@@ -74,11 +74,11 @@ class MailMessenger(Messenger):
         self,
         config: MailConnectionConfig,
         *,
-        tool_id: int,
+        service_id: int,
     ) -> None:
         self.config = config
         self.connection_id = config.connection_id
-        self.tool_id = tool_id
+        self.service_id = service_id
         self.self_id = str(config.email_address)
 
     @classmethod
@@ -89,7 +89,7 @@ class MailMessenger(Messenger):
             raise ValueError("Mail connection is unavailable")
         return cls(
             await resolve_connection(connection_id, require_active=True),
-            tool_id=connection.tool_id,
+            service_id=connection.service_id,
         )
 
     async def check_connection(self) -> str:
@@ -126,26 +126,26 @@ class MailMessenger(Messenger):
         return ObservedMessengerMessage(
             id=f"{ref.uid_validity}:{ref.uid}",
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=ObservedMessengerUser(
                 id=summary.from_address or "unknown-sender",
                 display_name=summary.from_name or summary.from_address,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             recipient=ObservedMessengerUser(
                 id=self.self_id,
                 display_name=self.self_id,
                 is_ai=True,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             room=ObservedMessengerRoom(
                 id=summary.ref,
                 label=summary.subject or summary.from_address or "Mail",
                 kind="direct",
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=_objective(summary),
             time=timestamp,

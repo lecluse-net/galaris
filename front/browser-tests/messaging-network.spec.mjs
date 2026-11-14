@@ -34,7 +34,7 @@ test('reception checks are scoped to the selected messaging provider', async ({ 
     await page.getByRole('tab', { name: label, exact: true }).click()
     await page.getByRole('button', { name: 'Test reception', exact: true }).click()
     await expect.poll(() => providers.at(-1)).toBe(provider)
-    await expect(page.getByText('No active agent connection for this messaging provider. Configure an account in Tools → Connections.', { exact: true })).toBeVisible()
+    await expect(page.getByText('No active agent connection for this messaging provider. Configure an account in Services → Connections.', { exact: true })).toBeVisible()
   }
   let release
   const pending = new Promise(resolve => { release = resolve })
@@ -109,7 +109,7 @@ test(`${provider} setup creates secret connection parameters once and recovers f
   let fail = true
   const tools = []
   const writes = []
-  await page.route('**/api/tools', route => {
+  await page.route('**/api/services', route => {
     if (fail) return route.fulfill({ status: 503, json: { detail: 'Synthetic temporary failure' } })
     if (route.request().method() === 'GET') return route.fulfill({ json: tools })
     const body = route.request().postDataJSON()
@@ -117,10 +117,10 @@ test(`${provider} setup creates secret connection parameters once and recovers f
     tools.push({ id: 82, ...body })
     return route.fulfill({ json: tools[0] })
   })
-  await mount(page, 'core/params/components/MessagingSettingsPanel.vue', { privileges: ['TOOL_EDIT', 'CONNECTION_ACCESS'] })
+  await mount(page, 'core/params/components/MessagingSettingsPanel.vue', { privileges: ['SERVICE_EDIT', 'CONNECTION_ACCESS'] })
   await page.getByRole('tab', { name: provider, exact: true }).click()
   const guide = page.getByRole('region', { name: 'Setup guide', exact: true })
-  await expect(guide.getByRole('link', { name: 'Configure agent accounts', exact: true })).toHaveAttribute('href', '/tools?tab=connections')
+  await expect(guide.getByRole('link', { name: 'Configure agent accounts', exact: true })).toHaveAttribute('href', '/services?tab=connections')
   const create = page.getByRole('button', { name: `Create ${provider} Tool`, exact: true })
   await expect(guide.getByRole('alert')).toContainText(`Unable to prepare the ${provider} Tool`)
   await expect(create).toHaveCount(0)
@@ -165,14 +165,14 @@ test(`${provider} setup creates secret connection parameters once and recovers f
 
 test(`${provider} setup preserves an existing Tool with conflicting configuration`, async ({ page }) => {
   const requests = []
-  await page.route('**/api/tools', route => {
+  await page.route('**/api/services', route => {
     requests.push(route.request().method())
     return route.fulfill({ json: [{ id: 83, code: service, label: 'Synthetic existing Tool',
       messenger_config: null, connection_schema: { params: {} } }] })
   })
-  await mount(page, `app/tools/components/${provider}ToolSetup.vue`, { privileges: [] })
+  await mount(page, `app/services/components/${provider}ToolSetup.vue`, { privileges: [] })
   await expect(page.getByRole('button', { name: `Create ${provider} Tool` })).toHaveCount(0)
-  await setPrivileges(page, ['TOOL_EDIT'])
+  await setPrivileges(page, ['SERVICE_EDIT'])
   await expect(page.getByRole('status')).toContainText('already used by a Tool with different settings')
   await expect(page.getByRole('button', { name: `Create ${provider} Tool` })).toHaveCount(0)
   expect(requests).toEqual(['GET'])
@@ -182,14 +182,14 @@ test(`${provider} setup never offers creation when another code already uses the
   const requests = []
   let release
   const pending = new Promise(resolve => { release = resolve })
-  await page.route('**/api/tools', async route => {
+  await page.route('**/api/services', async route => {
     requests.push(route.request().method())
     await pending
     await route.fulfill({ json: [{ id: 84, code: 'synthetic_legacy_messaging', label: 'Existing channel',
       messenger_config: { service, settings: {}, param_map: { token: 'bot_secret' } },
       connection_schema: { params: { bot_secret: { type: 'password', required: true, default: '' } } } }] })
   })
-  await mount(page, `app/tools/components/${provider}ToolSetup.vue`, { privileges: ['TOOL_EDIT'] })
+  await mount(page, `app/services/components/${provider}ToolSetup.vue`, { privileges: ['SERVICE_EDIT'] })
   const create = page.getByRole('button', { name: `Create ${provider} Tool`, exact: true })
   await expect(create).toHaveCount(0)
   release()
@@ -202,13 +202,13 @@ test(`${provider} setup never offers creation when another code already uses the
 test(`${provider} setup rechecks the bridge before creation to avoid a newly configured Tool`, async ({ page }) => {
   let checks = 0
   const writes = []
-  await page.route('**/api/tools', route => {
+  await page.route('**/api/services', route => {
     if (route.request().method() !== 'GET') writes.push(route.request().method())
     checks += 1
     return route.fulfill({ json: checks === 1 ? [] : [{ id: 85, code: 'synthetic_added_later', label: 'New channel',
       messenger_config: { service, settings: {}, param_map: {} } }] })
   })
-  await mount(page, `app/tools/components/${provider}ToolSetup.vue`, { privileges: ['TOOL_EDIT'] })
+  await mount(page, `app/services/components/${provider}ToolSetup.vue`, { privileges: ['SERVICE_EDIT'] })
   if (service === 'matrix') await page.evaluate(() => window.testApp.setProps({
     settings: { MESSENGER_MATRIX_HOMESERVER: 'https://matrix.example.test' },
   }))
@@ -225,19 +225,19 @@ test('the Tool messaging warning allows saving and remains accurate on reopening
     messenger_config: { service: 'whatsapp', settings: {}, param_map: {} } }
   let saved = tool
   const writes = []
-  await page.route('**/api/tools', route => route.fulfill({ json: [saved] }))
+  await page.route('**/api/services', route => route.fulfill({ json: [saved] }))
   await jsonRoute(page, '**/api/file-share/bridges', [])
   await jsonRoute(page, '**/api/messenger/bridges', [
     { service: 'whatsapp', label: 'WhatsApp', settings: [], params: [] },
     { service: 'telegram', label: 'Telegram', settings: [], params: [] },
   ])
-  await page.route('**/api/tools/81', route => {
+  await page.route('**/api/services/81', route => {
     const data = route.request().postDataJSON()
     writes.push(data)
     saved = { ...tool, ...data }
     return route.fulfill({ json: saved })
   })
-  await mount(page, 'app/tools/components/ToolsList.vue', { privileges: ['TOOL_ACCESS', 'TOOL_EDIT'] })
+  await mount(page, 'app/services/components/ServicesList.vue', { privileges: ['SERVICE_ACCESS', 'SERVICE_EDIT'] })
   const edit = page.locator('tbody tr').filter({ hasText: tool.label }).getByRole('button', { name: 'Edit tool', exact: true })
   await edit.click()
   const dialog = page.getByRole('dialog')

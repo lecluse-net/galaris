@@ -17,7 +17,7 @@ from app.file_share import ResourceContext, resource_create, resource_delete
 from app.process.models import ProcessRun, ProcessStartJob, ProcessRunEvent
 from app.process.tests.test_native_bpmn import native as native, committed_native as committed_native
 from app.process.values import Variable
-from app.tools import RecoverableToolError
+from app.services import RecoverableToolError
 from core.database import get_db, get_db_session
 
 

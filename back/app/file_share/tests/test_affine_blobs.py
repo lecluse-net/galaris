@@ -11,7 +11,7 @@ from app.file_share.bridges import AffineResourceTransport
 from app.file_share.resource_contracts import ResourceContext
 from bridge.affine import AffineFileClient
 from bridge.affine import client as affine_client
-from app.tools.tool_errors import classify_tool_failure, render_tool_failure
+from app.services.tool_errors import classify_tool_failure, render_tool_failure
 from .local_file_transport import TemporaryFileTransport
 
 

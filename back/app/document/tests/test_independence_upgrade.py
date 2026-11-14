@@ -77,15 +77,15 @@ async def old_schema(session):
     await session.execute(text("ALTER TABLE memory_items ALTER COLUMN share_id SET NOT NULL, ALTER COLUMN share_kind SET NOT NULL"))
     from app.connection import Connection
     from app.messenger import Message
-    from app.tools import ToolModel
-    tool = ToolModel(code="synthetic-upgrade-mail", label="Synthetic upgrade Mail",
+    from app.services import ServiceModel
+    tool = ServiceModel(code="synthetic-upgrade-mail", label="Synthetic upgrade Mail",
         messenger_config={"service": "mail"}, connection_schema={})
     session.add(tool)
     await session.flush()
-    connection = Connection(agent_id=owner.id, tool_id=tool.id, active=True)
+    connection = Connection(agent_id=owner.id, service_id=tool.id, active=True)
     session.add(connection)
     await session.flush()
-    message = Message(connection_id=connection.id, tool_id=tool.id, platform="mail",
+    message = Message(connection_id=connection.id, service_id=tool.id, platform="mail",
         user_id="synthetic-sender@example.org", remote_message_id="synthetic-upgrade-message",
         direction="inbound", text="Entirely synthetic upgrade input",
         metadata_={"sender_display_name": "Synthetic upgrade sender"})

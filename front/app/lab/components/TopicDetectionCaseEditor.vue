@@ -210,7 +210,7 @@ function addMessage(): void {
   model.value.messages.push({
     id: `lab-message-${Date.now()}`,
     platform: 'lab',
-    tool_id: null,
+    service_id: null,
     sender: { id: ai ? 'assistant' : 'human', display_name: '', agent_id: ai ? 1 : null },
     recipient: null,
     room: { id: 'exchange', label: '', kind: 'direct', users: [] },

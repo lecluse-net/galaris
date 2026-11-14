@@ -88,14 +88,14 @@ test('the process catalogue loads summaries and opens its editor with the real A
   const tools = await toolsResponse.json()
   let externalTool = tools.find(tool => tool.code === 'n8n')
   if (!externalTool) {
-    const toolResponse = await request.post('/api/tools', { headers, data: {
+    const toolResponse = await request.post('/api/services', { headers, data: {
       code: 'n8n', label: 'Synthetic external engine',
     } })
     expect(toolResponse.ok(), await toolResponse.text()).toBeTruthy()
     externalTool = await toolResponse.json()
   }
   const externalResponse = await request.post('/api/processes/definitions', { headers, data: {
-    agent_id: fixture.agent_id, tool_id: externalTool.id,
+    agent_id: fixture.agent_id, service_id: externalTool.id,
     engine_process_id: `synthetic-external-catalogue-${fixture.agent_id}`, label: externalTitle, description: 'Synthetic original description',
   } })
   expect(externalResponse.ok(), await externalResponse.text()).toBeTruthy()

@@ -456,13 +456,13 @@ async def test_create_internal_harness_materializes_skill_assignments(
         ensure_skill_assignment_matrix,
     )
 
-    from app.tools import mandatory_tools
+    from app.services import mandatory_services
 
-    sync_integrated_tool_connections = AsyncMock(return_value=0)
+    sync_integrated_service_connections = AsyncMock(return_value=0)
     monkeypatch.setattr(
-        mandatory_tools,
-        "sync_integrated_tool_connections",
-        sync_integrated_tool_connections,
+        mandatory_services,
+        "sync_integrated_service_connections",
+        sync_integrated_service_connections,
     )
 
     created = await agent_service.create(
@@ -478,7 +478,7 @@ async def test_create_internal_harness_materializes_skill_assignments(
 
     assert created is created_agents[0]
     ensure_skill_assignment_matrix.assert_awaited_once_with(42)
-    sync_integrated_tool_connections.assert_awaited_once_with(42)
+    sync_integrated_service_connections.assert_awaited_once_with(42)
 
 
 @pytest.mark.asyncio

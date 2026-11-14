@@ -15,8 +15,8 @@ for (const width of [390, 1440]) {
         { label: 'Pièces jointes', value: 'fleurs.txt' },
         { label: 'Version HTML (texte source)', value: '<script>window.syntheticMailExecuted = true</script>' },
       ] } }
-    await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [row], total: 1 })
-    await jsonRoute(page, '**/api/tools/action-authorizations/mail-review', row)
+    await jsonRoute(page, '**/api/services/action-authorizations?*', { items: [row], total: 1 })
+    await jsonRoute(page, '**/api/services/action-authorizations/mail-review', row)
     await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
       locale: 'fr', privileges: ['PERMISSION_ACCESS', 'PERMISSION_DECIDE', 'PERMISSION_REVOKE'],
     })
@@ -48,12 +48,12 @@ for (const [locale, reviewName, allowName] of [
         { label: 'Path', value: 'console://example.txt' }, { label: 'Content', value: 'synthetic' },
       ] } }
     const answers = [], queries = []
-    await page.route('**/api/tools/action-authorizations?*', route => {
+    await page.route('**/api/services/action-authorizations?*', route => {
       queries.push(Object.fromEntries(new URL(route.request().url()).searchParams))
       return route.fulfill({ json: { items: [row], total: 1 } })
     })
-    await page.route('**/api/tools/action-authorizations/action-a', route => route.fulfill({ json: row }))
-    await page.route('**/api/tools/action-authorizations/action-a/answer', route => {
+    await page.route('**/api/services/action-authorizations/action-a', route => route.fulfill({ json: row }))
+    await page.route('**/api/services/action-authorizations/action-a/answer', route => {
       answers.push(route.request().postDataJSON())
       row.status = 'approved'; row.can_answer = false; row.decision_source = 'human'
       return route.fulfill({ json: { accepted: true } })
@@ -80,8 +80,8 @@ test('mobile viewers can inspect a pending action without answering for another 
   await page.setViewportSize({ width: 390, height: 844 })
   const row = { id: 'read-only', agent_id: 7, approver_user_id: 2, source: 'runtime',
     capability_kind: 'tool', capability_name: 'shell', status: 'pending', preview: 'Synthetic command', can_answer: false }
-  await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [row], total: 1 })
-  await jsonRoute(page, '**/api/tools/action-authorizations/read-only', row)
+  await jsonRoute(page, '**/api/services/action-authorizations?*', { items: [row], total: 1 })
+  await jsonRoute(page, '**/api/services/action-authorizations/read-only', row)
   await mount(page, 'app/connection/components/ActionAuthorizations.vue', { privileges: ['PERMISSION_ACCESS'] })
   await page.getByRole('button', { name: 'Review request' }).click()
   await expect(page.getByRole('dialog')).toContainText(row.preview)
@@ -103,9 +103,9 @@ for (const [locale, inspect, functionAlways, runtimeAlways, functionDeny, runtim
       capability_kind: 'tool', capability_name: 'topic_create', status: 'pending',
       preview: 'Create a synthetic topic', can_answer: true, can_remember: true }
     const answers = []
-    await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [row], total: 1 })
-    await page.route('**/api/tools/action-authorizations/topic-approval', route => route.fulfill({ json: row }))
-    await page.route('**/api/tools/action-authorizations/topic-approval/answer', route => {
+    await jsonRoute(page, '**/api/services/action-authorizations?*', { items: [row], total: 1 })
+    await page.route('**/api/services/action-authorizations/topic-approval', route => route.fulfill({ json: row }))
+    await page.route('**/api/services/action-authorizations/topic-approval/answer', route => {
       answers.push(route.request().postDataJSON())
       if (answers.length === 1) return route.fulfill({ status: 409, json: { detail: 'Synthetic temporary failure' } })
       row.status = approved ? 'approved' : 'denied'; row.can_answer = false; row.can_remember = false; row.remembered = true
@@ -139,8 +139,8 @@ for (const allowed of [true, false]) test(`remembered Harness decision ${allowed
   const row = { id: 'synthetic-rule', agent_id: 7, runtime: 'deepseek_harness', capability_name: 'write_file', active: true, allowed, can_revoke: true }
   let removed = false
   const writes = []
-  await page.route('**/api/tools/action-authorizations/runtime-permissions?*', route => route.fulfill({ json: { items: removed ? [] : [row], total: removed ? 0 : 1 } }))
-  await page.route('**/api/tools/action-authorizations/runtime-permissions/synthetic-rule', route => {
+  await page.route('**/api/services/action-authorizations/runtime-permissions?*', route => route.fulfill({ json: { items: removed ? [] : [row], total: removed ? 0 : 1 } }))
+  await page.route('**/api/services/action-authorizations/runtime-permissions/synthetic-rule', route => {
     writes.push(route.request().method())
     if (writes.length === 1) return route.fulfill({ status: 409, json: {} })
     removed = true

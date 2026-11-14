@@ -8,6 +8,7 @@ par le [tour des fonctionnalités](../features.md).
 
 | Votre besoin | Guide |
 |---|---|
+| Ajouter un service depuis le catalogue | [Services](services.md) |
 | Trouver un menu ou un écran | [Navigation et parcours](navigation.md), [carte générée](../architecture/generated/navigation.md) |
 | Confier et suivre un travail | [tâches, jalons et reprise](tasks.md) |
 | Organiser les contenus rédigés | [Bibliothèque documentaire](documents.md) |
@@ -99,12 +100,12 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 | Dream | suivre le travail de fond, consulter son historique et gérer l’indexation des fichiers par agent |
 | Lab IA | analyser une tâche et mesurer les mécanismes IA sur des jeux de cas reproductibles |
 | Processus | construire et suivre un workflow BPMN interne, ou lancer un workflow externe comme n8n |
-| Outils | voir les capacités MCP et API REST et les connexions des agents ; principalement destiné aux responsables |
+| Services | voir les capacités MCP et API REST et les connexions des agents ; principalement destiné aux responsables |
 
-La liste **Outils** s'ouvre sur **Outils personnalisés** ; **Outils internes à Galaris** suit.
-Le champ **Outil** d'une connexion regroupe aussi les choix sous **Galaris** et **Personnalisé**.
-Dans **Nouvel outil**, activer au moins un protocole pour rendre le bouton **Créer** disponible.
-Un Tool représente le fournisseur, par exemple **Ionos**, et peut cumuler API, MCP, partage,
+La liste **Services** s'ouvre sur **Services personnalisés** ; **Services internes à Galaris** suit.
+Le champ **Service** d'une connexion regroupe aussi les choix sous **Galaris** et **Personnalisé**.
+Dans **Nouveau service**, activer au moins un protocole pour rendre le bouton **Créer** disponible.
+Un Service représente le fournisseur, par exemple **Ionos**, et peut cumuler API, MCP, partage,
 messagerie, écouteur, Mail et Calendrier. Mail et CalDAV sont des protocoles de fournisseurs optionnels.
 Chaque agent dispose aussi d’un **Agenda personnel** interne par défaut, sans connexion externe.
 Demander à l’agent de prendre un rendez-vous ou de prévoir un rappel suffit ; il utilise les
@@ -112,7 +113,7 @@ fonctions autorisées de son agenda. Les objectifs conservent le suivi durable e
 un rappel ne doit pas dupliquer un cycle d’objectif déjà programmé.
 Pour Ionos Mail, créer **Ionos**, activer **Mail**, renseigner les serveurs dans ses paramètres
 globaux, puis créer une connexion Ionos par agent avec son adresse et son mot de passe.
-Les anciennes connexions Mail et Calendrier sont migrées automatiquement vers des Tools
+Les anciennes connexions Mail et Calendrier sont migrées automatiquement vers des Services
 personnalisés, sans perte de leurs paramètres et historiques.
 
 Pour une source **CalDAV**, associer dans l’onglet du protocole l’URL et les identifiants HTTP
@@ -130,22 +131,22 @@ sans action ne crée aucune tâche. L’**Historique d’exécution** suit sépa
 avec le lien vers sa tâche et son état. Seule une tâche terminée avec succès est marquée traitée.
 Elle peut lancer un processus si nécessaire, avec les autorisations ordinaires de ses outils.
 
-Pour configurer une intégration REST, un responsable active **API** sur le Tool, puis
+Pour configurer une intégration REST, un responsable active **API** sur le Service, puis
 saisit directement l'adresse dans l'onglet **API REST**. Cette adresse est commune à toutes
-les connexions de l'outil. Les identifiants se renseignent dans ses paramètres globaux ou
+les connexions du service. Les identifiants se renseignent dans ses paramètres globaux ou
 dans la connexion de l'agent. Les droits de l'API sont ceux du token chez le service tiers. Voir
-[l'administration des Tools](../admin/tool-administration.md).
+[l'administration des Services](../admin/service-administration.md).
 
 Dans les listes de paramètres des drivers, **Nouveau paramètre…** crée un paramètre et
-l'associe automatiquement au champ courant. Enregistrer l'outil pour conserver cet ajout.
+l'associe automatiquement au champ courant. Enregistrer le service pour conserver cet ajout.
 La suppression d'un paramètre utilisé demande confirmation ; annuler conserve ses associations.
 
 Pour connecter un compte à un serveur MCP, ouvrir la connexion de l’agent et cliquer sur
 **Connecter le compte**. Le fournisseur demande l’accord directement ; Galaris récupère
 le token sans saisie technique. OAuth se gère uniquement dans la connexion, jamais dans
-le Tool. Chaque connexion possède son autorisation et son bouton de déconnexion.
+le Service. Chaque connexion possède son autorisation et son bouton de déconnexion.
 Le renouvellement des jetons est automatique si le fournisseur le permet. Voir le
-[guide des Tools](../admin/tool-administration.md).
+[guide des Services](../admin/service-administration.md).
 
 Dans **Fournisseurs**, un administrateur peut régler le nombre d'appels LLM simultanés
 par connexion. Les conversations vocales puis textuelles ont priorité sur le travail de
@@ -385,7 +386,7 @@ mettre en pause, les reprendre, déclencher un cycle immédiatement, les clôtur
 lorsqu’aucun cycle n’est en cours. Les modifications sensibles utilisent la révision courante de
 l’objectif afin de ne pas écraser une évolution concurrente.
 
-Le Tool unique **Compétences** distingue quatre portées serveur : `usage` pour utiliser les
+Le Service unique **Compétences** distingue quatre portées serveur : `usage` pour utiliser les
 génériques autorisés et ses personnels actifs ; `personal` pour gérer ses propres packages ;
 `team` pour gérer aussi les packages des agents de l'une de ses équipes et leurs autorisations
 génériques ; `all` pour administrer tout le catalogue et toutes les autorisations. Les écritures
@@ -421,7 +422,7 @@ Dans **Compétences → Compétences personnelles**, consultez les packages priv
 de votre périmètre de gestion, même lorsque Dream est désactivé. La liste indique le
 propriétaire, l'activation, la validité, les fichiers et la dernière modification. Filtrez
 par agent ou recherchez un nom/code, puis utilisez **Voir** pour lire le `SKILL.md` et ses
-références. La portée se règle dans **Tools → Connexions → modifier la connexion Compétences →
+références. La portée se règle dans **Services → Connexions → modifier la connexion Compétences →
 Portée de gestion**, avec `usage`, `personal`, `team` ou `all`. Ce paramètre est propre à
 la connexion, sans héritage global ; sa modification demande édition des connexions et
 gestion globale des agents. Un agent dans trois équipes peut administrer les agents inclus
@@ -448,8 +449,8 @@ reste effectuée par l'agent. Les packages personnels ne sont pas partageables.
 
 ### Déléguer une administration à un agent
 
-Dans **Tools → Connexions → modifier une connexion → Portée de gestion**,
-`tools.management_scope` configure aussi Administration des processus, ToolAdmin,
+Dans **Services → Connexions → modifier une connexion → Portée de gestion**,
+`services.management_scope` configure aussi Administration des processus, ServiceAdmin,
 Gestion des objectifs, Administration et AgentAdmin. Les niveaux sont `usage` (aucune
 administration), `personal` (ses ressources), `team` (agents partageant une équipe
 active) et `all` (global). Seul un humain avec édition des connexions et gestion globale
@@ -457,9 +458,9 @@ des agents peut changer cette valeur locale. Les autorisations des fonctions res
 nécessaires. Les retraits d'équipe prennent effet dès l'appel suivant.
 
 À sa création, l'assistant **Galaris** reçoit le périmètre global (`all`) sur toutes
-ses connexions intégrées proposant une portée : Administration, ToolAdmin, AgentAdmin,
+ses connexions intégrées proposant une portée : Administration, ServiceAdmin, AgentAdmin,
 Administration des processus, Gestion des objectifs, Compétences et Chat. Ces connexions
-sont actives. Les autres tools internes sans compte externe à configurer, dont Sujets,
+sont actives. Les autres services internes sans compte externe à configurer, dont Sujets,
 sont aussi actifs, et les fonctions natives sont autorisées. Les prérequis de modèle et les
 droits propres aux ressources restent applicables. Les synchronisations suivantes conservent vos restrictions et désactivations ;
 un assistant déjà initialisé se configure dans le formulaire de chaque connexion.
@@ -468,7 +469,7 @@ Les autres agents ne peuvent pas échanger de messages, fichiers ou tâches avec
 même avec une portée globale ou une équipe commune : ils reçoivent une interdiction explicite.
 Son identité interne persiste après renommage ; nommer un autre agent « Galaris » ne le protège pas.
 
-ToolAdmin limite les niveaux personnel et équipe aux connexions ; les définitions et
+ServiceAdmin limite les niveaux personnel et équipe aux connexions ; les définitions et
 réglages partagés exigent `all`. Les définitions de processus suivent l'agent affecté,
 les exécutions leur lanceur et les objectifs leur responsable. Administration applique
 la portée aux tâches, conversations et traces LLM sans élargir les droits des documents
@@ -490,8 +491,8 @@ Nextcloud Talk actif ne détourne donc pas les messages d'un objectif rattaché 
 Pour un envoi sans canal fixé, Galaris reprend le dernier échange entrant avec le destinataire,
 puis choisit le chat interne par défaut. L'agent peut demander explicitement un autre canal.
 
-Dans **Tools → Connexions → modifier la connexion de messagerie**, un gestionnaire global
-peut régler **Communication inter-agents** (`tools.management_scope`) : **Aucune** (`none`),
+Dans **Services → Connexions → modifier la connexion de messagerie**, un gestionnaire global
+peut régler **Communication inter-agents** (`services.management_scope`) : **Aucune** (`none`),
 **Agents de ses équipes** (`team`) ou **Tous les agents** (`all`). Le défaut `team` conserve
 les échanges entre agents partageant au moins une équipe. Ce réglage s'applique aux envois et
 aux réceptions de la connexion ; il ne change pas les droits de contact avec les humains.
@@ -684,7 +685,7 @@ dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
 Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.
 Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
-Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers** et le Tool
+Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers** et le Service
 du fournisseur portant le protocole Mail,
 puis un dossier IMAP et un message. Cette lecture ne donne aucun accord de traitement à l’agent.
 
@@ -725,7 +726,7 @@ perte de l’appel.
 
 Le raccrochage par l’agent (`voice_call_stop`) est actif par défaut, sans demande
 d’autorisation supplémentaire. Pour modifier une règle déjà enregistrée, ouvrez
-**Outils → Autorisations**, sélectionnez la connexion **Voice**, recherchez
+**Services → Autorisations**, sélectionnez la connexion **Voice**, recherchez
 `voice_call_stop`, puis choisissez **Actif** pour cette connexion ou au niveau
 **Global (tous)**. Les choix explicites **Sur demande** et **Bloqué** restent prioritaires
 sur le défaut logiciel. Une demande d’accord propose aussi **Toujours autoriser cette
@@ -776,7 +777,7 @@ exemple :
 > Résume en français cette vidéo, relève ses idées principales et conserve les timestamps utiles :
 > `https://www.youtube.com/watch?v=…`
 
-Galaris traite le média comme une ressource volumineuse : il conserve l’URI du Tool d’origine sans
+Galaris traite le média comme une ressource volumineuse : il conserve l’URI du Service d’origine sans
 copier ses octets dans la conversation, le matérialise temporairement, extrait sa première piste
 audio, ignore la vidéo et normalise le son en MP3 mono 32 kHz à 96 kbit/s. Le modèle de transcription reçoit ce fichier
 audio normalisé et Galaris écrit son résultat dans un fichier `.txt`.

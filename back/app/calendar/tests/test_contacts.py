@@ -15,7 +15,7 @@ from app.contact import service as contacts
 from app.contact.schemas import ContactCreate
 from app.memory.tests.conftest import memory_storage as memory_storage
 from app.task.models import Task
-from app.tools import McpToolContext
+from app.services import McpToolContext
 
 NOW = datetime(2026, 12, 2, 10, tzinfo=timezone.utc)
 

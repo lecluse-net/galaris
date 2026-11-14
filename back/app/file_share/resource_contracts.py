@@ -10,7 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, computed_field
 
 from app.agent.contracts import RuntimeName
-from app.tools.contracts import FileIndexingMode
+from app.services.contracts import FileIndexingMode
 
 from .resource_uri import parse_resource_uri
 

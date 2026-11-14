@@ -21,7 +21,7 @@ from sqlalchemy import Text, and_, cast as sql_cast, func, or_, select, union_al
 from sqlalchemy.dialects.postgresql import insert
 
 from app.agent.contracts import RuntimeName
-from app.tools.facade import AuthorizationReview, authorization_reviews, pending_authorization_ids
+from app.services.facade import AuthorizationReview, authorization_reviews, pending_authorization_ids
 from app.file_share import ResourceContext, materialize_resource
 from core.database import get_db
 from core.user import UserModel
@@ -365,7 +365,7 @@ async def _claim_delivery(
         )
     db = get_db()
     delivery_id = uuid4()
-    from app.tools.facade import current_prepared_authorization
+    from app.services.facade import current_prepared_authorization
     prepared = current_prepared_authorization()
     common_approval = prepared is not None and prepared.action.agent_id == config.agent_id and prepared.action.connection_id == config.connection_id
     statement = (
@@ -627,7 +627,7 @@ async def send_outgoing(
             delivery,
             await _reconcile_uncertain(config, delivery),
         )
-    from app.tools.facade import claim_prepared_action, current_prepared_authorization, finish_action
+    from app.services.facade import claim_prepared_action, current_prepared_authorization, finish_action
     prepared = current_prepared_authorization()
     identifier = None
     if prepared is not None:
@@ -643,7 +643,7 @@ async def send_outgoing(
             "subject": delivery.subject, "body": delivery.body, "html_body": delivery.html_body,
             "attachments": delivery.attachment_metadata,
         }
-        from app.tools.facade import AuthorizationRequired, AuthorizationClosed
+        from app.services.facade import AuthorizationRequired, AuthorizationClosed
         try:
             identifier = await claim_prepared_action(snapshot=snapshot, approver_user_id=config.approver_user_id)
         except (AuthorizationRequired, AuthorizationClosed) as decision:
@@ -1094,7 +1094,7 @@ async def approve_delivery(
 
 
 async def _answer_delivery_authorization(delivery: MailOutboundDelivery, *, current_user_id: int, approved: bool) -> None:
-    from app.tools.facade import answer_action
+    from app.services.facade import answer_action
 
     identifier = delivery.authorization_id
     if identifier is None:

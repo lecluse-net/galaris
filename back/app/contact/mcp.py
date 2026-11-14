@@ -8,7 +8,7 @@ from uuid import UUID
 from pydantic import Field
 
 from app.memory import ContactCoordinates
-from app.tools import McpToolContext, mcp_tool
+from app.services import McpToolContext, mcp_tool
 
 from . import service
 from .directory import lock_contact_directory

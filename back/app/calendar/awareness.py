@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from app.connection.facade import has_active_tool_function
+from app.connection.facade import has_active_service_function
 from app.memory.facade import MemoryAgendaOccurrence, memory_agenda
 
 from .schemas import CalendarEventRead, CalendarEventWindow
@@ -22,7 +22,7 @@ def memory_event(item: MemoryAgendaOccurrence) -> CalendarEventRead:
 
 
 async def memory_read_enabled(agent_id: int) -> bool:
-    return await has_active_tool_function(agent_id, "memory", "memory_upcoming")
+    return await has_active_service_function(agent_id, "memory", "memory_upcoming")
 
 
 async def with_memory_events(

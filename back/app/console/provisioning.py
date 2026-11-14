@@ -7,7 +7,7 @@ from loguru import logger
 
 from app.agent import Agent, get_agent_record
 from app.connection import connection_service
-from app.tools import tool_service
+from app.services import service
 
 from .connection_service import resolve_connection
 from .keys import generate_ed25519_keypair
@@ -19,11 +19,11 @@ from .ssh_client import SshExecutionTransport
 async def provision_embedded_console(agent: Agent) -> EmbeddedProvisionResult:
     if agent.agent_driver != "internal":
         raise ValueError("SSH console provisioning is available only with the internal harness")
-    tool = await tool_service.get_tool_record("console")
+    tool = await service.get_service_record("console")
     if tool is None:
         raise RuntimeError("The built-in console tool has not been synchronized yet")
-    tool_id = tool.id
-    connection = await connection_service.get_or_create_connection(tool_id, agent.id)
+    service_id = tool.id
+    connection = await connection_service.get_or_create_connection(service_id, agent.id)
     _, previous_params = await connection_service.get_params_as_dict(
         connection.id,
         decrypt_passwords=True,
@@ -135,9 +135,9 @@ async def provision_new_agent_console(agent_id: int, action: str) -> None:
     agent = await get_agent_record(agent_id)
     if agent is None or agent.agent_driver != "internal":
         return
-    tool = await tool_service.get_tool_record("console")
+    tool = await service.get_service_record("console")
     if tool is None:
         raise RuntimeError("The built-in console tool has not been synchronized yet")
-    if await connection_service.get_connection_by_agent_tool(tool.id, agent.id) is not None:
+    if await connection_service.get_connection_by_agent_service(tool.id, agent.id) is not None:
         return
     await provision_embedded_console(agent)

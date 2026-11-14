@@ -11,7 +11,7 @@ from app.connection import Connection, connection_service
 from app.console import provisioning
 from app.console.connection_service import resolve_ssh_connection
 from app.console.contracts import ConsoleStatus
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 @pytest.mark.asyncio
@@ -38,8 +38,8 @@ async def test_agent_creation_provisions_only_internal_console(db, monkeypatch, 
     await notify_agent_profile(agent.id, "create")
 
     connection = await db.scalar(
-        select(Connection).join(Tool).where(
-            Connection.agent_id == agent.id, Tool.code == "console",
+        select(Connection).join(Service).where(
+            Connection.agent_id == agent.id, Service.code == "console",
         )
     )
     if driver != "internal":
@@ -92,8 +92,8 @@ async def test_failed_default_provisioning_keeps_console_inactive(db, monkeypatc
         await provisioning.provision_new_agent_console(agent.id, "create")
 
     connection = await db.scalar(
-        select(Connection).join(Tool).where(
-            Connection.agent_id == agent.id, Tool.code == "console",
+        select(Connection).join(Service).where(
+            Connection.agent_id == agent.id, Service.code == "console",
         )
     )
     assert connection is not None and not connection.active

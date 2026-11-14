@@ -30,9 +30,9 @@ from .resource_facade import list_process_resources, list_process_run_resources,
 from .resource_previews import process_reference, process_resource_preview
 from .run_resources import read_run_data, write_run_data, run_file_path, add_run_file, delete_run_file
 from .run_resources import prepare_tool_deletion
-from app.tools.facade import register_tool_deletion_cleanup
+from app.services.facade import register_service_deletion_cleanup
 
-register_tool_deletion_cleanup("process", prepare_tool_deletion)
+register_service_deletion_cleanup("process", prepare_tool_deletion)
 from .process_service import has_process_definitions, list_run_summaries_page_for_scope
 from . import process_service, registry
 from .retention import register_retention_guard

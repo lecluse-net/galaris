@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from app.tools.mcp_loader import McpToolContext, mcp_tool
+from app.services.mcp_loader import McpToolContext, mcp_tool
 from . import interface, skill_service
 from .schemas import SkillAuthorizationState, SkillCategoryAuthorizationState
 

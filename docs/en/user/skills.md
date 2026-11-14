@@ -36,7 +36,7 @@ Manually authored personal packages retain their ordinary activation policy.
 
 Use the same personal package actions to edit, disable, delete or transfer learned procedures.
 Reinforcement never reactivates a disabled package, and a late Dream revision cannot overwrite
-an intervening edit. Dream uses the personal management delegation of the `skills` Tool.
+an intervening edit. Dream uses the personal management delegation of the `skills` Service.
 Disabled and observation modes create no package. Upgrades transfer existing procedures,
 evidence and suspensions; name collisions preserve both packages under distinct codes.
 The former `?tab=learned` link now opens personal skills.
@@ -87,7 +87,7 @@ conversion. Transferring between agents remains separate from publishing in the 
 
 ## Delegate management to an agent
 
-Under **Tools & connections → Connections**, configure **Skills** (`skills`).
+Under **Services & connections → Connections**, configure **Skills** (`skills`).
 New connections are active by default. Without an explicit local scope, agents can manage
 their own packages with `personal`. An explicit `usage` scope removes management access.
 **Use skills and manage own personal skills** allows agents to create, edit, enable or delete
@@ -96,7 +96,7 @@ activation or assignments of administered general skills. Those operations requi
 or global management depending on the action.
 Updates preserve existing connections, including deactivations, and their explicit scopes;
 reactivate an older disabled connection when needed. Its local
-`tools.management_scope` has no global value or inheritance:
+`services.management_scope` has no global value or inheritance:
 
 | Scope | Capability |
 |---|---|
@@ -117,7 +117,7 @@ agent's space. `skill_update`, `skill_set_enabled`, `skill_delete`, `skill_set_a
 `skill_set_category_authorization` and `skill_release_ownership` recheck scope, revision and
 permissions on every call.
 
-The former `skill_management` Tool is replaced by `skills`, preserving connections and
+The former `skill_management` Service is replaced by `skills`, preserving connections and
 settings. Disabled connections stay disabled.
 
 ## When changes take effect
@@ -128,5 +128,5 @@ stale copy and remains retryable. An already running Task keeps its loaded conte
 checkpoint resume keeps the context of the operation being reconciled. Future reads and
 mutations still recheck current rights.
 
-See also [privileges](../admin/privileges.md), [Tool administration](../admin/tool-administration.md)
+See also [privileges](../admin/privileges.md), [Service administration](../admin/service-administration.md)
 and [navigation](navigation.md).

@@ -11,7 +11,7 @@ def test_generic_orchestration_does_not_branch_on_concrete_harness_names():
     root = Path(__file__).resolve().parents[1]
     names = {spec.code for spec in all_driver_specs()} | {provider.code for provider in all_providers()}
     paths = [*root.joinpath("app/agent").glob("*.py"), *root.joinpath("app/task").glob("*.py"),
-             root / "app/tools/mcp_loader.py"]
+             root / "app/services/mcp_loader.py"]
     violations = []
     for path in paths:
         if path.name == "registry.py":

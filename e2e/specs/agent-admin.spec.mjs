@@ -53,7 +53,7 @@ test('AgentAdmin creates an agent and generated portraits remain visible after r
   } })
   expect(created.is_error).toBe(false)
   const target = created.data
-  const catalogue = await invoke('agent_tool_list', { agent_id: target.id, search: 'browser', limit: 500 })
+  const catalogue = await invoke('agent_service_list', { agent_id: target.id, search: 'browser', limit: 500 })
   expect(catalogue.is_error).toBe(false)
   expect(catalogue.data.items.some(tool => tool.code === 'browser')).toBe(true)
   const errors = []
@@ -98,7 +98,7 @@ test('AgentAdmin creates an agent and generated portraits remain visible after r
   expect(read.has_avatar).toBe(true)
   expect(read.personality).toBe('<p>Observatrice patiente.</p>')
   await request.post(`${prefix}/revoke`)
-  expect((await invoke('agent_tool_list', { agent_id: target.id })).is_error).toBe(true)
+  expect((await invoke('agent_service_list', { agent_id: target.id })).is_error).toBe(true)
   expect((await invoke('agent_update', { agent_id: target.id, changes: { job_title: 'Refusé' } })).is_error).toBe(true)
   expect((await (await request.get(`/api/agents/${target.id}`, { headers })).json()).job_title).toBe('Astronome')
   expect([...errors, ...pageErrors()]).toEqual([])

@@ -12,7 +12,7 @@ class ReachableHumanContact:
     """One deduplicated human together with an exact messaging route."""
 
     connection_id: int
-    tool_id: int
+    service_id: int
     platform: str
     user_id: str
     display_name: str

@@ -92,7 +92,7 @@ async def test_conversation_links_delivery_retries_and_process_completion_wake(p
         agent, connection, room = await scope(db)
         round_ = ConversationRound(room_id=room.id, status="FROZEN")
         task = Task(label="Synthetic result", agent_id=agent.id, status=TaskStatus.CREATE)
-        definition = ProcessDefinition(tool_id=connection.tool_id, engine_process_id="wake-test", label="Wake test")
+        definition = ProcessDefinition(service_id=connection.service_id, engine_process_id="wake-test", label="Wake test")
         db.add_all([round_, task, definition])
         await db.flush()
         run = ProcessRun(process_id=definition.id, launcher_agent_id=agent.id,

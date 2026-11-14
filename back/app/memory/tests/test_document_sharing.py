@@ -88,7 +88,7 @@ async def test_human_can_delete_own_document_but_not_a_shared_document(db, agent
 @pytest.mark.parametrize("administrative", [False, True])
 async def test_document_memory_cannot_be_forgotten_or_merged(db, agents, memory_storage, administrative):
     from app.memory import mcp
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
 
     owner, _ = agents
     item = await document(owner)

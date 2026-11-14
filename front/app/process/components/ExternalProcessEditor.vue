@@ -5,7 +5,7 @@
       <q-btn color="warning" icon="arrow_back" :label="t('processes.backToList')" to="/process" />
       <q-space />
       <q-btn v-if="canAdmin && !loading && !loadError" color="primary" icon="save" :label="t('processes.save')"
-        :loading="saving" :disable="!id && (!definitionForm.tool_id || !definitionForm.engine_process_id || !definitionForm.label)" @click="saveDefinition" />
+        :loading="saving" :disable="!id && (!definitionForm.service_id || !definitionForm.engine_process_id || !definitionForm.label)" @click="saveDefinition" />
       <q-btn v-if="id && canAdmin && !loading && !loadError" color="negative" icon="delete" :label="t('processes.delete')" :disable="saving" @click="removeDefinition" />
     </div>
     <div v-if="loading" class="flex flex-center q-pa-lg"><q-spinner color="primary" size="2.5em" /></div>
@@ -22,8 +22,8 @@
             {{ t('processes.creationNotice') }}
           </q-banner>
           <q-select
-            v-model="definitionForm.tool_id"
-            :options="toolOptions"
+            v-model="definitionForm.service_id"
+            :options="serviceOptions"
             emit-value
             map-options
             dense
@@ -67,7 +67,7 @@
             <div class="process-metadata">
               <div class="process-metadata-item">
                 <q-avatar size="32px" color="grey-3" text-color="grey-7"><q-icon name="extension" size="20px" /></q-avatar>
-                <div><div class="metadata-label">{{ t('processes.tool') }}</div><div class="text-weight-bold">{{ toolLabel(definitionForm.tool_id) }}</div></div>
+                <div><div class="metadata-label">{{ t('processes.tool') }}</div><div class="text-weight-bold">{{ toolLabel(definitionForm.service_id) }}</div></div>
               </div>
               <div class="process-metadata-item">
                 <AgentAvatar v-if="definitionForm.agent_id !== null" :agent-id="definitionForm.agent_id" :name="agentLabel(definitionForm.agent_id)" :has-avatar="agentHasAvatar(definitionForm.agent_id)" size="32px" />
@@ -98,16 +98,16 @@ import { AgentAvatar, AgentSelect } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { PageHeader, showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
-import { processService, type AgentOption, type ProcessTool, type ToolProcessDefinition } from '../services/processService'
+import { processService, type AgentOption, type ProcessService, type ServiceProcessDefinition } from '../services/processService'
 
 const props = defineProps<{ id?: number }>()
 const { t } = useI18n(), $q = useQuasar(), router = useRouter(), privilegeStore = usePrivilegeStore()
 const canAdmin = computed(() => privilegeStore.hasPrivilege(privileges.PROCESS_ADMIN))
 const loading = ref(false), loadError = ref(false), saving = ref(false)
-const processTools = ref<ProcessTool[]>([]), agents = ref<AgentOption[]>([]), discovered = ref<ToolProcessDefinition[]>([])
-const definitionForm = reactive({ agent_id: null as number | null, tool_id: null as number | null, engine_process_id: '', label: '', description: null as string | null })
-const toolOptions = computed(() => processTools.value.map(tool => ({ label: tool.label, value: tool.id })))
-const selectedToolCode = computed(() => processTools.value.find(tool => tool.id === definitionForm.tool_id)?.code ?? '')
+const processTools = ref<ProcessService[]>([]), agents = ref<AgentOption[]>([]), discovered = ref<ServiceProcessDefinition[]>([])
+const definitionForm = reactive({ agent_id: null as number | null, service_id: null as number | null, engine_process_id: '', label: '', description: null as string | null })
+const serviceOptions = computed(() => processTools.value.map(tool => ({ label: tool.label, value: tool.id })))
+const selectedToolCode = computed(() => processTools.value.find(tool => tool.id === definitionForm.service_id)?.code ?? '')
 const workflowOptions = computed(() => discovered.value.map(workflow => ({ label: workflow.label, value: workflow.engine_process_id, disable: !workflow.active })))
 const agentOptions = computed(() => agents.value.map(agent => ({ label: agent.label, value: agent.id })))
 let generation = 0
@@ -137,7 +137,7 @@ async function load(): Promise<void> {
   const token = ++generation
   confirmation?.hide(); confirmation = null
   loading.value = true; loadError.value = false; saving.value = false; discovered.value = []
-  Object.assign(definitionForm, { agent_id: null, tool_id: null, engine_process_id: '', label: '', description: null })
+  Object.assign(definitionForm, { agent_id: null, service_id: null, engine_process_id: '', label: '', description: null })
   try {
     if (props.id !== undefined && (!Number.isSafeInteger(props.id) || props.id <= 0)) throw new Error('Invalid process identifier')
     const [tools, options, definition] = await Promise.all([
@@ -145,19 +145,19 @@ async function load(): Promise<void> {
     ])
     if (token !== generation) return
     processTools.value = tools; agents.value = options
-    if (definition) Object.assign(definitionForm, { agent_id: definition.agent_id, tool_id: definition.tool_id, engine_process_id: definition.engine_process_id, label: definition.label, description: definition.description })
-    else definitionForm.tool_id = tools.find(tool => tool.code === 'n8n')?.id ?? tools[0]?.id ?? null
+    if (definition) Object.assign(definitionForm, { agent_id: definition.agent_id, service_id: definition.service_id, engine_process_id: definition.engine_process_id, label: definition.label, description: definition.description })
+    else definitionForm.service_id = tools.find(tool => tool.code === 'n8n')?.id ?? tools[0]?.id ?? null
   } catch { if (token === generation) loadError.value = true }
   finally { if (token === generation) loading.value = false }
 }
 async function saveDefinition(): Promise<void> {
-  if (!canAdmin.value || saving.value || loading.value || loadError.value || !definitionForm.tool_id) return
+  if (!canAdmin.value || saving.value || loading.value || loadError.value || !definitionForm.service_id) return
   if (props.id === undefined && (!definitionForm.engine_process_id || !definitionForm.label)) return
   const token = generation, id = props.id
   saving.value = true
   try {
     const record = id === undefined
-      ? await processService.createDefinition({ ...definitionForm, tool_id: definitionForm.tool_id })
+      ? await processService.createDefinition({ ...definitionForm, service_id: definitionForm.service_id })
       : await processService.updateDefinition(id, { description: definitionForm.description })
     if (token !== generation) return
     definitionForm.description = record.description

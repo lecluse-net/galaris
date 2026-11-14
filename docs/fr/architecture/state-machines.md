@@ -7,7 +7,7 @@ l’autorité. Toute modification de matrice doit mettre à jour ce fichier dans
 
 ## Autorisations d’action
 
-Le journal `tool_action_authorizations` porte les états `pending`, `approved`, `denied`,
+Le journal `service_action_authorizations` porte les états `pending`, `approved`, `denied`,
 `expired`, `invalidated`, `executing`, `completed`, `failed` et `outcome_unknown`.
 
 | Événement | Source | Cible |

@@ -6,10 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from core.database import get_db
 from app.task import TaskCreate, TaskStatus, task_service
-from app.tools import tool_service
+from app.services import service
 from app.connection.models import Connection as ConnectionModel, ConnectionParam
 from app.agent.models import Agent as AgentModel
-from app.tools.schemas import Tool
+from app.services.schemas import Service
 from app.task import runner
 from core.i18n import default_language, is_supported, render_prompt, t
 
@@ -18,12 +18,12 @@ class WebhookIdentityConflict(ValueError):
     """An emitter reused a delivery identity for a different payload."""
 
 
-async def _get_tool_by_name(tool_name: str) -> Optional[Tool]:  # pyright: ignore[reportUnusedFunction]
+async def _get_tool_by_name(tool_name: str) -> Optional[Service]:  # pyright: ignore[reportUnusedFunction]
     """Resolve a tool from the name embedded in a webhook URL."""
-    record = await tool_service.get_tool_record(tool_name)
+    record = await service.get_service_record(tool_name)
     if record is None:
         return None
-    from app.tools.tool_service import _to_internal  # pyright: ignore[reportPrivateUsage]
+    from app.services.service import _to_internal  # pyright: ignore[reportPrivateUsage]
     return _to_internal(record)
 
 
@@ -38,7 +38,7 @@ async def webhook_make_task(
     if not tool_name:
         raise ValueError(t("webhook.errors.tool_name_required", language))
 
-    tool_record = await tool_service.get_tool_record(tool_name)
+    tool_record = await service.get_service_record(tool_name)
     if not tool_record:
         raise LookupError(
             render_prompt(
@@ -47,8 +47,8 @@ async def webhook_make_task(
             )
         )
 
-    from app.tools.tool_service import _to_internal  # pyright: ignore[reportPrivateUsage]
-    tool: Tool = _to_internal(tool_record)
+    from app.services.service import _to_internal  # pyright: ignore[reportPrivateUsage]
+    tool: Service = _to_internal(tool_record)
 
     if not tool.listener or not tool.listener.connection_key:
         raise LookupError(
@@ -76,7 +76,7 @@ async def webhook_make_task(
         .join(ConnectionParam)
         .join(AgentModel, AgentModel.id == ConnectionModel.agent_id)
         .where(
-            ConnectionModel.tool_id == tool_record.id,
+            ConnectionModel.service_id == tool_record.id,
             ConnectionParam.param_name == connection_key,
             ConnectionParam.param_value == str(connection_value),
             ConnectionModel.active == True

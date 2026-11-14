@@ -7,7 +7,7 @@ HERMES_APPROVAL_INTERACTION = "hermes_approval"
 
 async def _handle_hermes_approval(interaction: PendingChoice, resolution: ChoiceResolution) -> None:
     # Old run-only identities cannot identify the current SDK callback. All options,
-    # including denial, are obsolete; app.tools owns current one-action decisions.
+    # including denial, are obsolete; app.services owns current one-action decisions.
     return
 
 

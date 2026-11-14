@@ -14,7 +14,7 @@ la frontière avec Goal restent applicables.
 
 `app.calendar` devient le domaine canonique des agendas, sources et reçus de rappels.
 Le service système `agenda`, connecté et actif par défaut, donne à chaque agent un agenda
-personnel sans compte externe. L’ancien Tool externe `calendar` n’est pas recréé : le bridge
+personnel sans compte externe. L’ancien Service externe `calendar` n’est pas recréé : le bridge
 iCalendar reste un protocole optionnel de fournisseur.
 
 Les tables `calendar_feeds` et `calendar_triggers` conservent leurs identités. Une source native

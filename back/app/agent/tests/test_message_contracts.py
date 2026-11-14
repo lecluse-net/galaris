@@ -140,7 +140,7 @@ def test_historical_provider_attachment_uses_parallel_local_file_id() -> None:
             "external_message_id": "provider-message-1",
             "room_id": str(room_id),
             "room_external_id": "talk-token",
-            "tool_code": "nextcloud",
+            "service_code": "nextcloud",
             "file_ids": [str(file_id)],
             "attachments": [
                 {
@@ -171,7 +171,7 @@ def test_historical_local_id_replaces_provider_attachment_id() -> None:
     message = TaskMessage.model_validate(
         {
             "id": "provider-message-1",
-            "tool_code": "nextcloud",
+            "service_code": "nextcloud",
             "room": {"local_id": str(room_id), "id": "provider-room-1"},
             "attachments": [
                 {

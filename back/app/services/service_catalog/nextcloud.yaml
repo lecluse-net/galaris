@@ -1,0 +1,53 @@
+code: nextcloud
+label: Nextcloud
+description: |-
+  WebDAV files and Nextcloud Talk. Enter your instance URL in both protocols.
+
+  Fichiers WebDAV et messagerie Nextcloud Talk. Renseignez l’adresse de votre instance dans les deux protocoles.
+
+  https://docs.nextcloud.com/server/latest/user_manual/en/files/access_webdav.html
+catalog:
+  format_version: 1
+  version: 1.0.0
+  minimum_galaris_version: 0.1.0
+  summary:
+    fr: Fichiers WebDAV et messagerie Nextcloud Talk. Renseignez l’adresse de votre
+      instance dans les deux protocoles.
+    en: WebDAV files and Nextcloud Talk. Enter your instance URL in both protocols.
+  documentation: https://docs.nextcloud.com/server/latest/user_manual/en/files/access_webdav.html
+  icon_credit: Simple Icons contributors, CC0-1.0; nextcloud.svg at cd796c98565fc466923fc1128b962e133fa3c612.
+    Monochrome adaptation to Solaire blue. Brand names and marks belong to their owners.
+icon:
+  media_type: image/svg+xml
+  encoding: text
+  data: |-
+    <svg fill="#087FF5" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Nextcloud</title><path d="M12.018 6.537c-2.5 0-4.6 1.712-5.241 4.015-.56-1.232-1.793-2.105-3.225-2.105A3.569 3.569 0 0 0 0 12a3.569 3.569 0 0 0 3.552 3.553c1.432 0 2.664-.874 3.224-2.106.641 2.304 2.742 4.016 5.242 4.016 2.487 0 4.576-1.693 5.231-3.977.569 1.21 1.783 2.067 3.198 2.067A3.568 3.568 0 0 0 24 12a3.569 3.569 0 0 0-3.553-3.553c-1.416 0-2.63.858-3.199 2.067-.654-2.284-2.743-3.978-5.23-3.977zm0 2.085c1.878 0 3.378 1.5 3.378 3.378 0 1.878-1.5 3.378-3.378 3.378A3.362 3.362 0 0 1 8.641 12c0-1.878 1.5-3.378 3.377-3.378zm-8.466 1.91c.822 0 1.467.645 1.467 1.468s-.644 1.467-1.467 1.468A1.452 1.452 0 0 1 2.085 12c0-.823.644-1.467 1.467-1.467zm16.895 0c.823 0 1.468.645 1.468 1.468s-.645 1.468-1.468 1.468A1.452 1.452 0 0 1 18.98 12c0-.823.644-1.467 1.467-1.467z"/></svg>
+conversation_enabled: false
+capabilities:
+- nextcloud.file_share
+- nextcloud_talk.messenger
+file_share_config:
+  service: nextcloud
+  base_url: ''
+  param_map:
+    login: login
+    password: password
+messenger_config:
+  service: nextcloud_talk
+  settings:
+    base_url: ''
+  param_map:
+    login: login
+    password: password
+connection_schema:
+  params:
+    login:
+      type: string
+      label: Login
+      description: ''
+      required: true
+    password:
+      type: password
+      label: Application password
+      description: ''
+      required: true

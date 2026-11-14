@@ -211,7 +211,7 @@ async def test_migration_preserves_document_body_history_and_never_fetches_exter
     agents, memory_storage, db, tmp_path, monkeypatch,
 ):
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.messenger.models import File
     from app.messenger import native_facade
     from app.file_share import file_share_service
@@ -225,10 +225,10 @@ async def test_migration_preserves_document_body_history_and_never_fetches_exter
     await attachments.delete_document_attachment(item.id, attachment.id, actor_agent_id=owner.id)
     snapshot = deepcopy(item.metadata_)
     body = (await service.get_item(item.id, agent_id=owner.id))[1]
-    tool = ToolModel(code=f"offline-{uuid4().hex}", label="Offline synthetic Nextcloud", description="", connection_schema={})
+    tool = ServiceModel(code=f"offline-{uuid4().hex}", label="Offline synthetic Nextcloud", description="", connection_schema={})
     db.add(tool)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     external = File(connection_id=connection.id, name="External.txt", mime_type="text/plain", kind="file",
@@ -295,7 +295,7 @@ async def test_detached_cleanup_worker_keeps_its_database_context_until_purge_fi
 @pytest.mark.asyncio
 async def test_native_chat_migration_preserves_journal_and_provider_alias(agents, db, tmp_path, monkeypatch):
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.messenger import create_internal_room
     from app.messenger import journal
     from app.messenger._observations import ObservedMessengerFile, ObservedMessengerMessage, ObservedMessengerRoom
@@ -304,9 +304,9 @@ async def test_native_chat_migration_preserves_journal_and_provider_alias(agents
 
     owner, stranger = agents
     monkeypatch.setattr(type(settings), "GALARIS_INTERNAL_MESSENGER_ROOT", str(tmp_path / "chat"))
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
     assert tool is not None
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = await create_internal_room(actor_user_id=owner.user_id, agent_id=owner.id)
@@ -317,7 +317,7 @@ async def test_native_chat_migration_preserves_journal_and_provider_alias(agents
     old.source.parent.mkdir(parents=True, exist_ok=True)
     old.source.write_bytes(b"synthetic legacy chat")
     remote_identifier = f"synthetic-legacy-{uuid4()}"
-    assert await journal.record(ObservedMessengerMessage(id=remote_identifier, tool_id=tool.id,
+    assert await journal.record(ObservedMessengerMessage(id=remote_identifier, service_id=tool.id,
         room=ObservedMessengerRoom(id=room.external_id), text="Synthetic attachment receipt",
         attachments=[ObservedMessengerFile(local_id=identifier, name=old.name, mime=old.media_type, size=21)]),
         connection_id=connection.id, platform="internal", direction="outbound", status="sent")
@@ -390,7 +390,7 @@ async def test_populated_upgrade_through_dbadmin_preserves_content_and_resumes_a
     from sqlalchemy import text
     from app.agent import Agent, Title
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.messenger import create_internal_room, journal
     from app.messenger._observations import ObservedMessengerFile, ObservedMessengerMessage, ObservedMessengerRoom
     from app.memory.schemas import MemoryItemUpdate
@@ -431,15 +431,15 @@ async def test_populated_upgrade_through_dbadmin_preserves_content_and_resumes_a
     await finish_document_deletion(forgotten.id, actor_agent_id=owner.id)
     assert not file_path(forgotten_attachment.id).exists()
 
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = await create_internal_room(actor_user_id=owner.user_id, agent_id=owner.id)
     chat_file = LegacyFile("chat", str(uuid4()), "Preserved chat.txt", "text/plain", ())
     chat_file.source.parent.mkdir(parents=True, exist_ok=True)
     chat_file.source.write_bytes(b"preserved chat bytes")
-    await journal.record(ObservedMessengerMessage(id=f"upgrade-{uuid4()}", tool_id=tool.id,
+    await journal.record(ObservedMessengerMessage(id=f"upgrade-{uuid4()}", service_id=tool.id,
         room=ObservedMessengerRoom(id=room.external_id), text="Synthetic preserved conversation",
         attachments=[ObservedMessengerFile(local_id=UUID(chat_file.uuid), name=chat_file.name, mime=chat_file.media_type, size=20)]),
         connection_id=connection.id, platform="internal", direction="outbound", status="sent")

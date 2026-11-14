@@ -10,7 +10,7 @@ from app.connection import Connection, ConnectionFunctionState
 from app.skill import interface, storage
 from app.skill.models import Skill
 from app.skill.tests.test_personal_packages import agents, personal, set_scope
-from app.tools import ToolModel, build_agent_galaris_fastmcp
+from app.services import ServiceModel, build_agent_galaris_fastmcp
 
 
 @pytest.mark.asyncio
@@ -18,8 +18,8 @@ from app.tools import ToolModel, build_agent_galaris_fastmcp
 async def test_first_personal_package_reports_denial_then_creates_after_delegation(db, agents, denial):
     owner, _, _ = agents
     actor_id = owner.id
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "file_sharing"))
-    connection = Connection(agent_id=actor_id, tool_id=tool.id, active=True)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "file_sharing"))
+    connection = Connection(agent_id=actor_id, service_id=tool.id, active=True)
     db.add(connection)
     await db.flush()
     db.add(ConnectionFunctionState(connection_id=connection.id, function_name="file_create",
@@ -31,8 +31,8 @@ async def test_first_personal_package_reports_denial_then_creates_after_delegati
     server = await build_agent_galaris_fastmcp(actor_id, runtime="internal",
                                               allowed_tool_names={"file_create"})
     async with Client(server) as client:
-        skills_connection = await db.scalar(select(Connection).join(ToolModel).where(
-            Connection.agent_id == actor_id, ToolModel.code == "skills"))
+        skills_connection = await db.scalar(select(Connection).join(ServiceModel).where(
+            Connection.agent_id == actor_id, ServiceModel.code == "skills"))
         if denial == "inactive":
             skills_connection.active = False
             await db.commit()

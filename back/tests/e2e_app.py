@@ -49,13 +49,13 @@ from app.conversation.task_objective import PreparedTaskFields
 from app.conversation.task_objective import generate_task_fields as original_task_fields
 from app.conversation.models import ConversationRound
 from app.messenger import create_internal_room
-from app.tools.models import Tool
+from app.services.models import Service
 from core.authorize.models import Assignment, Role
 from core.database import get_db_session
 from core import websocket
 from core.user.models import User
 from core.user.user_service import encrypt_password
-from tests.e2e_tool_admin import router as tool_admin_fixture, remote_app as tool_admin_remote
+from tests.e2e_service_admin import router as service_admin_fixture, remote_app as service_admin_remote
 from tests import e2e_call_recovery
 from tests import e2e_conversation_control
 from tests import e2e_process_conversations
@@ -238,20 +238,20 @@ async def lifespan(_app: FastAPI):
         patches.enter_context(patch("bridge.mail.imap_client.ImapClient.poll_inbox",
                                     return_value=MailPollBatch(uid_validity=1, latest_uid=0)))
         async with main.app.other_asgi_app.router.lifespan_context(main.app.other_asgi_app):
-            async with tool_admin_remote.router.lifespan_context(tool_admin_remote):
+            async with service_admin_remote.router.lifespan_context(service_admin_remote):
                 # Keep durable approval/outbox behavior, with a short isolated-test
                 # cadence instead of the production maintenance interval.
                 from app.task import scheduler as task_scheduler
-                from app.tools.authorization_notifications import reconcile_authorizations
+                from app.services.authorization_notifications import reconcile_authorizations
                 task_scheduler.register_periodic_job("action-authorization-reconciliation", reconcile_authorizations, interval=.5)
                 register_controller(ScriptedController())
                 yield
 
 
 app = FastAPI(lifespan=lifespan)
-app.include_router(tool_admin_fixture)
+app.include_router(service_admin_fixture)
 app.include_router(e2e_document_authorization.router)
-app.mount("/api/__test/mcp", tool_admin_remote)
+app.mount("/api/__test/mcp", service_admin_remote)
 
 
 @app.get("/api/__test/ready")
@@ -394,15 +394,15 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
         )
         db.add(agent)
         await db.flush()
-        tool = await db.scalar(select(Tool).where(Tool.code == "chat"))
+        tool = await db.scalar(select(Service).where(Service.code == "chat"))
         assert tool is not None
-        db.add(Connection(tool_id=tool.id, agent_id=agent.id, active=True))
+        db.add(Connection(service_id=tool.id, agent_id=agent.id, active=True))
         await db.commit()
         if mode == "first-mission":
             first_mission_agents.add(agent.id)
         if mode == "process-human":
-            from app.tools import sync_integrated_tool_connections
-            await sync_integrated_tool_connections(agent.id)
+            from app.services import sync_integrated_service_connections
+            await sync_integrated_service_connections(agent.id)
             await db.commit()
         rooms = []
         for _ in range(2):
@@ -428,11 +428,11 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             db.add(recipient)
             await db.flush()
             fixture.update({"recipient_id": recipient.id, "recipient_label": f"Recipient {suffix}"})
-            skill_tool = await db.scalar(select(Tool).where(Tool.code == "skills"))
-            connection = Connection(tool_id=skill_tool.id, agent_id=agent.id, active=True)
+            skill_tool = await db.scalar(select(Service).where(Service.code == "skills"))
+            connection = Connection(service_id=skill_tool.id, agent_id=agent.id, active=True)
             db.add(connection)
             await db.flush()
-            db.add(ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value="personal"))
+            db.add(ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value="personal"))
             await db.commit()
             packages = []
             for label in ("A Synthetic private guide", "B Synthetic disposable guide"):
@@ -474,9 +474,9 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             from bridge.mail.contracts import OutgoingAttachment, OutgoingMail
             from bridge.mail.service import send_outgoing
             from core.util.encryption import encrypt_value
-            mail = await db.scalar(select(Tool).where(Tool.code == "mail"))
+            mail = await db.scalar(select(Service).where(Service.code == "mail"))
             assert mail is not None
-            connection = Connection(tool_id=mail.id, agent_id=agent.id, active=True)
+            connection = Connection(service_id=mail.id, agent_id=agent.id, active=True)
             db.add(connection)
             await db.flush()
             params = {
@@ -533,7 +533,7 @@ async def unknown_notifications(round_id: UUID):
         connection = await db.get(Connection, room.connection_id)
         assert connection is not None
         task = Task(agent_id=connection.agent_id, label="Notification E2E", status=TaskStatus.SUCCESS)
-        definition = ProcessDefinition(agent_id=connection.agent_id, tool_id=connection.tool_id,
+        definition = ProcessDefinition(agent_id=connection.agent_id, service_id=connection.service_id,
                                        engine_process_id=uuid4().hex, label="Notification E2E")
         db.add_all([task, definition])
         await db.flush()

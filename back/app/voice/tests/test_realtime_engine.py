@@ -186,7 +186,7 @@ async def test_realtime_tool_batch_resumes_once_after_all_ordered_results(monkey
 @pytest.mark.asyncio
 @pytest.mark.parametrize("waiting_approval", [False, True])
 async def test_realtime_tool_backlog_is_bounded_and_shutdown_cancels_active_tool(monkeypatch, waiting_approval):
-    from app.tools.facade import AuthorizationRequired
+    from app.services.facade import AuthorizationRequired
 
     started, cancelled = asyncio.Event(), asyncio.Event()
 
@@ -228,7 +228,7 @@ async def test_realtime_tool_backlog_is_bounded_and_shutdown_cancels_active_tool
 
 @pytest.mark.asyncio
 async def test_realtime_authorizations_resume_only_after_all_results(monkeypatch):
-    from app.tools.facade import AuthorizationRequired
+    from app.services.facade import AuthorizationRequired
 
     attempts = [0, 0]
     checking = [asyncio.Event(), asyncio.Event()]
@@ -267,7 +267,7 @@ async def test_realtime_authorizations_resume_only_after_all_results(monkeypatch
 
 @pytest.mark.asyncio
 async def test_barge_in_cancels_authorization_continuations(monkeypatch):
-    from app.tools.facade import AuthorizationRequired
+    from app.services.facade import AuthorizationRequired
 
     checked = asyncio.Event()
 
@@ -423,7 +423,7 @@ async def test_realtime_audio_journals_input_output_and_greeting(
 
 @pytest.mark.asyncio
 async def test_realtime_stop_waits_for_audio_drain_then_ends_call(monkeypatch) -> None:
-    from app.tools import facade
+    from app.services import facade
     monkeypatch.setattr(facade, "bind_native_action", AsyncMock(return_value=object()))
     monkeypatch.setattr(facade, "claim_action", AsyncMock(return_value=None))
     configuration = realtime_engine._RealtimeConfiguration(

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.connection import connection_service
 from app.messenger import request_permission, get_permission_decision
-from app.tools import tool_service
+from app.services import service
 from core.i18n import current_language, render_prompt, t
 
 from .schemas import BrowserOwner
@@ -96,7 +96,7 @@ async def authorize_network(request: NetworkRequest) -> NetworkDecision:
     if request.owner.agent_id is not None:
         found = False
         for connection in await connection_service.get_connections_by_agent(request.owner.agent_id):
-            tool = await tool_service.get_tool_by_id(connection.tool_id)
+            tool = await service.get_service_by_id(connection.service_id)
             if tool is not None and tool.code == "browser":
                 if not connection.active:
                     return NetworkDecision(allowed=False, code="connection_inactive")
@@ -134,7 +134,7 @@ async def authorize_network(request: NetworkRequest) -> NetworkDecision:
         return NetworkDecision(allowed=not required, code="blocked_url" if required else "allowed")
     decisions: list[bool | None] = []
     keys: list[str] = []
-    from app.tools.facade import agent_authorization_policy as authorization_policy
+    from app.services.facade import agent_authorization_policy as authorization_policy
     policy = await authorization_policy(request.owner.agent_id)
     all_sites_key = "browser:v1:all-sites"
     all_sites = await get_permission_decision(request.owner.agent_id, all_sites_key) if required else None

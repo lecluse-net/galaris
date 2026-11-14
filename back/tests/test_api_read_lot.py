@@ -34,7 +34,7 @@ from app.skill import personal_catalogue, skill_service, storage
 from app.skill import router as skills
 from app.skill.models import AgentSkill, AgentSkillCategory, Skill, SkillCategory
 from app.task import Task, TaskStatus
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 @pytest_asyncio.fixture
@@ -119,8 +119,8 @@ async def test_process_history_does_not_load_current_xml_but_detail_does(db, rea
     owner, peer = read_actors
     owner_id, peer_id = owner.id, peer.id
     xml = to_bpmn(graph("Synthetic activity " * 6000), "synthetic_history")
-    tool_id = await db.scalar(select(Tool.id).where(Tool.code == "galaris"))
-    record = ProcessDefinition(agent_id=owner_id, tool_id=tool_id, engine_process_id="synthetic_history",
+    service_id = await db.scalar(select(Service.id).where(Service.code == "galaris"))
+    record = ProcessDefinition(agent_id=owner_id, service_id=service_id, engine_process_id="synthetic_history",
                                code="synthetic_history", label="Synthetic Process", bpmn_xml=xml, revision=3)
     db.add(record)
     await db.flush()

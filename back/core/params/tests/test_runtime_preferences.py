@@ -197,7 +197,7 @@ async def test_browser_preferences_follow_active_usage_and_parameter_rights(clie
     from sqlalchemy import update
     from app.agent.models import Agent, Title
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from core.user import token_service
     from core.user.models import User
 
@@ -205,19 +205,19 @@ async def test_browser_preferences_follow_active_usage_and_parameter_rights(clie
     assert (await client.get(path)).status_code == 401
     # Start without browser usage, including the default assistant's connection.
     async with get_db_session() as db:
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'browser'))
-        await db.execute(update(Connection).where(Connection.tool_id == tool.id).values(active=False))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'browser'))
+        await db.execute(update(Connection).where(Connection.service_id == tool.id).values(active=False))
     assert (await client.get(path, headers=administrator)).json() == {"enabled": False}
     user_id = (await client.get('/api/auth/me', headers=administrator)).json()['id']
     async with get_db_session() as db:
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'browser'))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'browser'))
         title = Title(label='Browser test', gender='X')
         db.add(title)
         await db.flush()
         agent = Agent(user_id=user_id, title_id=title.id, code=f'browser-{uuid4().hex}', first_name='Browser', last_name='Tester')
         db.add(agent)
         await db.flush()
-        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=False)
+        connection = Connection(service_id=tool.id, agent_id=agent.id, active=False)
         db.add(connection)
         await db.flush()
         connection_id = connection.id

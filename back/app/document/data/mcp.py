@@ -3,7 +3,7 @@
 import json
 from uuid import UUID
 
-from app.tools import McpToolContext, mcp_tool
+from app.services import McpToolContext, mcp_tool
 
 from .query import DatasetQuery, query_dataset
 

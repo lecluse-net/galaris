@@ -138,7 +138,7 @@ fonction déjà montée ; elle ne monte pas implicitement de nouvelles fonctions
 
 ```text
 Attachment canonique
-  → <tool.code>://<room-locator-provider>/<attachment-uuid-local>
+  → <service.code>://<room-locator-provider>/<attachment-uuid-local>
   → prompt et outils avec cette URI exacte
   → matérialisation temporaire bornée seulement si un consommateur exige des octets
   → suppression du temporaire
@@ -199,7 +199,7 @@ La référence échangée entre tools, tâches et providers est canonique : `con
 `document://uuid/attachments/attachment-uuid`,
 `galaris://process/workflow-id`, `galaris://skill/skill-code/SKILL.md`, `https://host/path` ou
 `<code-tool>://locator`. `file_schemes`
-et les autres fonctions `file_*` appartiennent au Tool intégré `file_sharing`, même pour le
+et les autres fonctions `file_*` appartiennent au Service intégré `file_sharing`, même pour le
 provider `galaris://`. `file_schemes` annonce les capacités effectives, `file_write` écrit un
 contenu complet UTF-8 ou binaire encodé en
 base64 et `file_copy` streame entre deux schémas. Les chemins relatifs et les anciens schémas locaux implicites sont
@@ -253,7 +253,7 @@ borné (temps, mémoire, taille de sortie), puis crée l’image via `resource_c
 destination explicite. Le rendu conserve la page entière à 144 dpi au plus, avec 3000 pixels
 sur le plus grand côté. Le résultat expose URI source et dérivée, page, nombre de pages,
 dimensions et MIME. L’original reste inchangé et aucune destination existante n’est remplacée.
-L’annulation tue et attend le worker avant de supprimer les temporaires. Le Tool Image et
+L’annulation tue et attend le worker avant de supprimer les temporaires. Le Service Image et
 les droits des deux ressources restent applicables, y compris en conversation. Un processus
 exigeant `image/*` reçoit l’URI PNG, jamais le PDF renommé.
 
@@ -393,7 +393,7 @@ Une suppression externe confirmée reste `state=deleted` si le nettoyage d'extra
 avec `indexing_status=failed`, afin de ne pas inciter à rejouer la mutation.
 
 Dans l'historique, une pièce jointe reste imbriquée dans le message qui l'a transportée et expose
-son URI construite avec le code exact du Tool, le locator provider de la room et l'UUID local du
+son URI construite avec le code exact du Service, le locator provider de la room et l'UUID local du
 fichier. La projection remise aux runtimes préfixe le message avec son horodatage de post, son
 émetteur et sa nature humaine ou IA ; cette règle vaut pour les exécutions conversationnelles,
 les tâches et l'historique des tours audio. Messenger et file-share sont des capabilities et ne

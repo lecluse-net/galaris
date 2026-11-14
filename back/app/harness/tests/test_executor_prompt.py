@@ -26,7 +26,7 @@ def test_common_system_prompt_does_not_include_runtime_specific_tools() -> None:
     )
 
     assert "# Galaris tools" not in prompt
-    assert "tools_list()" not in prompt
+    assert "services_list()" not in prompt
     assert "# Your identity" in prompt
     assert "**Your name:** **Ada Lovelace**" in prompt
     assert "# Your personality\n\nRigorous" in prompt

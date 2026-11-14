@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
 
-test('five administrative Tools retain a human-selected scope and enforce it on native MCP calls', async ({ page, request }) => {
+test('five administrative Services retain a human-selected scope and enforce it on native MCP calls', async ({ page, request }) => {
   test.setTimeout(180_000)
   const errors = collectPageErrors(page)
   const checked = async response => {
@@ -32,11 +32,11 @@ test('five administrative Tools retain a human-selected scope and enforce it on 
   for (const agent of [fixture.agent_id, peer.id]) {
     await checked(await request.put(`/api/agents/teams/${team.id}/members/${agent}`, { headers, data: { present: true } }))
   }
-  const tools = await checked(await request.get('/api/tools', { headers }))
+  const tools = await checked(await request.get('/api/services', { headers }))
   const connectionFor = async (code, agentId) => {
     const tool = tools.find(item => item.code === code)
-    const records = await checked(await request.get(`/api/connections?tool_id=${tool.id}&agent_id=${agentId}`, { headers }))
-    return records[0] ?? checked(await request.post('/api/connections', { headers, data: { tool_id: tool.id, agent_id: agentId, active: true } }))
+    const records = await checked(await request.get(`/api/connections?service_id=${tool.id}&agent_id=${agentId}`, { headers }))
+    return records[0] ?? checked(await request.post('/api/connections', { headers, data: { service_id: tool.id, agent_id: agentId, active: true } }))
   }
   const chat = await connectionFor('chat', peer.id)
   await checked(await request.patch(`/api/connections/${chat.id}`, { headers, data: { active: true } }))
@@ -57,7 +57,7 @@ test('five administrative Tools retain a human-selected scope and enforce it on 
   } }))
   const domains = [
     { code: 'agent_admin', label: 'AgentAdmin', function: 'agent_update', args: { agent_id: peer.id, changes: { job_title: 'Synthetic scoped update' } } },
-    { code: 'tool_admin', label: 'ToolAdmin', function: 'tool_admin_connection_list', args: { agent_id: peer.id } },
+    { code: 'service_admin', label: 'ServiceAdmin', function: 'service_admin_connection_list', args: { agent_id: peer.id } },
     { code: 'process_admin', label: 'Administration des processus', function: 'process_admin_get', args: { process_id: process.id } },
     { code: 'goal_management', label: 'Gestion des objectifs', function: 'goal_update', args: { goal_id: goal.id, expected_revision: goal.revision, title: 'Synthetic updated Goal' } },
     { code: 'platform_admin', label: 'Administration', function: 'llm_calls', args: { date_debut: '2026-01-01T00:00:00Z', date_fin: '2026-12-31T23:59:59Z' } },
@@ -68,19 +68,19 @@ test('five administrative Tools retain a human-selected scope and enforce it on 
       domain.args.expected_revision = current.revision
     }
     const result = await checked(await request.post(`${prefix}/call/${domain.function}`, { data: domain.args }))
-    const data = domain.code === 'tool_admin' && typeof result.data === 'string' ? JSON.parse(result.data) : result.data
+    const data = domain.code === 'service_admin' && typeof result.data === 'string' ? JSON.parse(result.data) : result.data
     return { ...result, data, is_error: result.is_error || data?.success === false }
   }
   const caller = await checked(await request.get(`/api/agents/${fixture.agent_id}`, { headers }))
   for (const domain of domains) {
     const connection = await connectionFor(domain.code, fixture.agent_id)
     const scope = async value => checked(await request.patch(`/api/connections/${connection.id}`, {
-      headers, data: { active: true, params: { 'tools.management_scope': value } },
+      headers, data: { active: true, params: { 'services.management_scope': value } },
     }))
     await scope('usage')
     await checked(await request.put(`/api/connections/${connection.id}/functions/${domain.function}`, { headers, data: { state: 'enabled' } }))
     expect((await invoke(domain)).is_error, `${domain.code}: usage must not administer`).toBe(true)
-    await page.goto('/tools?tab=connections')
+    await page.goto('/services?tab=connections')
     await errors.settle()
     await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${caller.first_name} ${caller.last_name}`)
     const row = page.locator('tbody tr').filter({ hasText: domain.label })

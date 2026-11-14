@@ -2,11 +2,11 @@
 
 # AgentAdmin
 
-AgentAdmin (`agent_admin`) is an optional built-in Tool with 34 functions. Its connection
+AgentAdmin (`agent_admin`) is an optional built-in Service with 34 functions. Its connection
 starts inactive for ordinary agents. The **Galaris** assistant proposed by the installation
 receives an active connection when first created. Catalogue synchronization never reactivates
 disabled connections or changes previously initialized agents. A human can enable it in
-**Configure → Tools & connections → Connections**.
+**Configure → Services & connections → Connections**.
 `agent_list` and `agent_get` remain in the mandatory Galaris system service.
 
 The `agent_list(offset=0, limit=50)` directory returns compact JSON: `items`
@@ -27,7 +27,7 @@ role never replaces this delegation.
 | Operations | Manager privileges, in addition to connection/function authorization |
 |---|---|
 | All | `AGENT_EDIT` |
-| Tools and connections | `CONNECTION_EDIT` |
+| Services and connections | `CONNECTION_EDIT` |
 | Team and group reads | `TEAM_ACCESS` |
 | Membership | `TEAM_ACCESS`, `TEAM_MEMBERS_EDIT` |
 | Group creation/update/deletion | `TEAM_ACCESS`, `TEAM_EDIT`, `AGENT_MANAGE_ALL` |
@@ -38,7 +38,7 @@ role never replaces this delegation.
 The caller cannot delete itself or change its own manager. System connections are protected.
 Connections granting administrative capabilities are human-controlled: AgentAdmin cannot
 grant itself rights, delegate AgentAdmin to another agent or enable another administrative
-Tool. Connection targets are resolved by the server. Revocation also blocks invocations on
+Service. Connection targets are resolved by the server. Revocation also blocks invocations on
 an already mounted MCP server, whose discovery evaluates current rights.
 [Decision 0148](../../../project/decisions/0148-agent-admin-delegation.md) defines this contract.
 
@@ -49,7 +49,7 @@ an already mounted MCP server, whose discovery evaluates current rights.
 | Agents | `agent_create`, `agent_update`, `agent_delete`, `agent_options` |
 | Avatars | `agent_avatar_set`, `agent_avatar_delete`, `agent_avatar_generate` |
 | Membership | `agent_team_list`, `agent_team_set` |
-| Tools | `agent_tool_list` |
+| Services | `agent_service_list` |
 | Connections | `agent_connection_list`, `agent_connection_get`, `agent_connection_create`, `agent_connection_update`, `agent_connection_delete`, `agent_connection_params_set`, `agent_connection_param_delete`, `agent_connection_function_list`, `agent_connection_function_set` |
 | Harnesses | `agent_harness_get`, `agent_harness_set`, `agent_harness_reset`, `agent_harness_status`, `agent_harness_action`, `agent_harness_logs`, `agent_harness_blockers` |
 | Titles | `agent_title_list`, `agent_title_create`, `agent_title_update`, `agent_title_delete` |
@@ -63,7 +63,7 @@ a technical reference, without secrets.
 
 Parameters use existing encrypted storage; reads mask secrets and distinguish local, inherited
 and forced settings. Function permissions are local (`default`, `enabled`, `disabled`, `ask`) and
-never change global rules. Each agent/Tool pair has one connection. Group deletion detaches
+never change global rules. Each agent/Service pair has one connection. Group deletion detaches
 legacy references and revokes associated access. Referenced titles cannot be deleted, including
 those still used by archived agents.
 
@@ -88,7 +88,7 @@ as descriptive text and remains unchanged in storage. Optional instructions, lim
 They also determine the style, including realistic human portraits; a non-human appearance
 is never imposed. Regeneration replaces the existing avatar on success and does not require
 the separate Image connection. Before concluding that generation is unavailable, the agent
-checks `tools_list` and distinguishes the authorised catalogue from the current context.
+checks `services_list` and distinguishes the authorised catalogue from the current context.
 
 In the agent profile, **Generate avatar** opens a dialog for optional instructions.
 Generation starts only after submission in this dialog and uses the installation's default
@@ -129,7 +129,7 @@ Persistence tests also exercise real URI materialization behind a synthetic prov
 temporary cleanup and the Harness MCP journey with blocking Tasks.
 These tests do not measure a real provider’s photographic quality.
 
-Commands: `make tests ARGS='app/agent/tests app/connection/tests app/harnesses/tests app/tools/tests app/image/tests app/process/tests core/team/tests'`,
+Commands: `make tests ARGS='app/agent/tests app/connection/tests app/harnesses/tests app/services/tests app/image/tests app/process/tests core/team/tests'`,
 `make tests-e2e ARGS='agent-admin.spec.mjs --project=chromium'`, `make typecheck`,
 `make docs-prepare`, `make architecture-check`. DbAdmin removes the former avatar revision
 column through `make sync-db` in development.

@@ -11,7 +11,7 @@ from app.connection import Connection, ConnectionParam
 from app.messenger import contact_access
 from app.messenger.facade import MessengerFacade
 from app.messenger.models import Message, MessengerUser, Room, RoomUser
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.team import TeamModel
 from core.user import UserModel
 
@@ -29,9 +29,9 @@ async def test_peer_scope_protects_transport_boundaries_and_rechecks_revocation(
     title = Title(label="Synthetic contact", gender="X")
     team = TeamModel(name=f"Synthetic contact team {uuid4().hex}")
     # A forged global value must never override the local contact policy.
-    tool = ToolModel(code=f"synthetic-contact-{uuid4().hex}", label="Synthetic messenger",
+    tool = ServiceModel(code=f"synthetic-contact-{uuid4().hex}", label="Synthetic messenger",
                      description="", connection_schema={}, messenger_config={"service": "matrix"},
-                     global_params={"tools.management_scope": {"value": "all", "forced": True}})
+                     global_params={"services.management_scope": {"value": "all", "forced": True}})
     db.add_all([manager, title, team, tool])
     await db.flush()
     caller = Agent(code=f"caller-{uuid4().hex}", first_name="Caller", last_name="Synthetic",
@@ -43,14 +43,14 @@ async def test_peer_scope_protects_transport_boundaries_and_rechecks_revocation(
     db.add(AgentTeam(agent_id=caller.id, team_id=team.id))
     if shared:
         db.add(AgentTeam(agent_id=peer.id, team_id=team.id))
-    connection = Connection(tool_id=tool.id, agent_id=caller.id, active=True)
-    identity = MessengerUser(tool_id=tool.id, external_id="synthetic-peer", agent_id=peer.id, is_ai=True)
-    human = MessengerUser(tool_id=tool.id, external_id="synthetic-manager", galaris_user_id=manager.id)
+    connection = Connection(service_id=tool.id, agent_id=caller.id, active=True)
+    identity = MessengerUser(service_id=tool.id, external_id="synthetic-peer", agent_id=peer.id, is_ai=True)
+    human = MessengerUser(service_id=tool.id, external_id="synthetic-manager", galaris_user_id=manager.id)
     db.add_all([connection, identity, human])
     await db.flush()
     setting = None
     if scope is not None:
-        setting = ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value=scope)
+        setting = ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value=scope)
         db.add(setting)
     room = Room(connection_id=connection.id, external_id="synthetic-room", label="Synthetic room",
                 kind="group", conversation_type="text")
@@ -68,7 +68,7 @@ async def test_peer_scope_protects_transport_boundaries_and_rechecks_revocation(
         for check in checks:
             await check()
         if setting is None:
-            setting = ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value="none")
+            setting = ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value="none")
             db.add(setting)
         else:
             setting.param_value = "none"
@@ -80,7 +80,7 @@ async def test_peer_scope_protects_transport_boundaries_and_rechecks_revocation(
             await check()
     human_consent.assert_not_awaited()
     transport = AsyncMock()
-    messenger = MessengerFacade(SimpleNamespace(tool_id=tool.id, send_to_user=transport), connection.id)
+    messenger = MessengerFacade(SimpleNamespace(service_id=tool.id, send_to_user=transport), connection.id)
     with pytest.raises(PermissionError):
         await messenger.send_to_user(identity.external_id, "Synthetic denied message")
     transport.assert_not_awaited()
@@ -98,13 +98,13 @@ async def test_peer_scope_protects_transport_boundaries_and_rechecks_revocation(
         await db.flush()
 
     # A different connection carrying all must not authorize this one.
-    other_tool = ToolModel(code=f"synthetic-other-{uuid4().hex}", label="Other", description="", connection_schema={})
+    other_tool = ServiceModel(code=f"synthetic-other-{uuid4().hex}", label="Other", description="", connection_schema={})
     db.add(other_tool)
     await db.flush()
-    other = Connection(tool_id=other_tool.id, agent_id=caller.id, active=True)
+    other = Connection(service_id=other_tool.id, agent_id=caller.id, active=True)
     db.add(other)
     await db.flush()
-    db.add(ConnectionParam(connection_id=other.id, param_name="tools.management_scope", param_value="all"))
+    db.add(ConnectionParam(connection_id=other.id, param_name="services.management_scope", param_value="all"))
     await db.flush()
     for check in checks:
         with pytest.raises(PermissionError):
@@ -129,7 +129,7 @@ async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_typ
 
     title = Title(label="Synthetic reciprocal contact", gender="X")
     team = TeamModel(name=f"Synthetic reciprocal team {uuid4().hex}")
-    tool = ToolModel(code=f"synthetic-reciprocal-{uuid4().hex}", label="Synthetic messenger",
+    tool = ServiceModel(code=f"synthetic-reciprocal-{uuid4().hex}", label="Synthetic messenger",
                      description="", connection_schema={}, messenger_config={"service": "matrix"})
     db.add_all([title, team, tool])
     await db.flush()
@@ -144,13 +144,13 @@ async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_typ
     db.add(AgentTeam(agent_id=agents[0].id, team_id=team.id))
     if shared_team:
         db.add(AgentTeam(agent_id=agents[1].id, team_id=team.id))
-    connections = [Connection(agent_id=agent.id, tool_id=tool.id, active=True) for agent in agents]
-    identities = [MessengerUser(tool_id=tool.id, external_id=f"synthetic-agent-{agent.id}",
+    connections = [Connection(agent_id=agent.id, service_id=tool.id, active=True) for agent in agents]
+    identities = [MessengerUser(service_id=tool.id, external_id=f"synthetic-agent-{agent.id}",
                                 agent_id=agent.id, is_ai=True) for agent in agents]
     db.add_all([*connections, *identities])
     await db.flush()
     scopes = [left_scope, right_scope]
-    db.add_all([ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value=scope)
+    db.add_all([ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value=scope)
                 for connection, scope in zip(connections, scopes, strict=True)])
     rooms = [Room(connection_id=connection.id, external_id=f"synthetic-room-{connection.id}",
                   label="Synthetic reciprocal room", kind="group", conversation_type="text")
@@ -167,7 +167,7 @@ async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_typ
             "send_to_user", "send_to_room", "upload_file", "upload_file_path", "send_voice_note",
             "ensure_direct_room", "create_room", "add_user",
         )}
-        messenger = MessengerFacade(SimpleNamespace(tool_id=tool.id, **transports), connections[source].id)
+        messenger = MessengerFacade(SimpleNamespace(service_id=tool.id, **transports), connections[source].id)
         peer = identities[target].external_id
         room = rooms[source].id
         deliveries = {
@@ -231,13 +231,13 @@ async def test_messaging_scope_http_requires_global_web_delegation_and_preserves
                       title_id=title.id, user_id=users[0].id)
         db.add(agent)
         await db.flush()
-        tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == "chat"))
-        assert tool_id is not None
-        connection = Connection(agent_id=agent.id, tool_id=tool_id, active=True)
+        service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "chat"))
+        assert service_id is not None
+        connection = Connection(agent_id=agent.id, service_id=service_id, active=True)
         db.add(connection)
         await db.flush()
         connection_id, agent_id = connection.id, agent.id
-        db.add(ConnectionParam(connection_id=connection_id, param_name="tools.management_scope", param_value="none"))
+        db.add(ConnectionParam(connection_id=connection_id, param_name="services.management_scope", param_value="none"))
 
     headers = []
     for index in range(3):
@@ -253,7 +253,7 @@ async def test_messaging_scope_http_requires_global_web_delegation_and_preserves
     assert token.status_code == 201, token.text
     api_headers = {"Authorization": f"Bearer {token.json()['token']}"}
     prefix = f"/api/connections/{connection_id}"
-    scope_name = "tools.management_scope"
+    scope_name = "services.management_scope"
 
     async def state():
         record = await client.get(prefix, headers=headers[2])

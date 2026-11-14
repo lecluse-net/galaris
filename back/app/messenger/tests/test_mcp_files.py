@@ -10,7 +10,7 @@ import pytest
 
 from app.file_share import MaterializedResource
 from app.messenger import mcp as messenger_mcp
-from app.tools.mcp_loader import McpToolContext
+from app.services.mcp_loader import McpToolContext
 
 
 class _FakeMessenger:
@@ -102,7 +102,7 @@ async def test_deliver_agent_file_sends_message_after_successful_transfer(
     events: list[str] = []
 
     class Messenger(_FakeMessenger):
-        tool_code = "nextcloud"
+        service_code = "nextcloud"
 
         async def send_to_room(self, room_id: str, message: str) -> None:
             events.append(f"message:{message}")

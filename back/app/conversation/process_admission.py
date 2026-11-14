@@ -16,8 +16,8 @@ from app.llm import LLMCallPurpose, llm_service, model_usages, reasoning_effort_
 from app.llm.facade import register_inference_output
 from app.messenger import Message, MessengerUser, Room
 from app.process import ProcessRun, process_service
-from app.tools import RecoverableToolError
-from app.tools.contracts import ToolCallRejectedError
+from app.services import RecoverableToolError
+from app.services.contracts import ToolCallRejectedError
 from core.database import get_db
 
 from .contracts import ConversationTurn

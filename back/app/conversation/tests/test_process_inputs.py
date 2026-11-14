@@ -27,7 +27,7 @@ from app.process.models import ProcessRun, ProcessStartJob, ProcessNodeRun
 from app.process.native_definitions import create
 from app.process.tests.test_native_bpmn import native as native, committed_native as committed_native, finish_run
 from app.process.values import Variable, ValueContractError
-from app.tools import RecoverableToolError
+from app.services import RecoverableToolError
 from core.user import UserModel
 from core.database import get_db_session
 

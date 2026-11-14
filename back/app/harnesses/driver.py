@@ -100,7 +100,7 @@ class OpenAIMessagesDriver:
     async def _managed_run(self, request: AgentRunRequest, *, on_progress: Callable[[AIMessage], Awaitable[None]] | None = None) -> ExecutionResult:
         import hashlib
         from app.agent.facade import RUN_RETRY_CHECKPOINT_DATA_KEY
-        from app.tools.facade import issue_runtime_run_grant, renew_runtime_run_grant, close_runtime_run_grant, revoke_runtime_run_grant
+        from app.services.facade import issue_runtime_run_grant, renew_runtime_run_grant, close_runtime_run_grant, revoke_runtime_run_grant
         from core.util import get_encryption_service
         client = await self._client(request)
         await client.verify_authorization_control()
@@ -167,7 +167,7 @@ class OpenAIMessagesDriver:
 
     async def request_cancellation(self, run_id: UUID):
         from app.agent.contracts import HarnessCancellationReceipt
-        from app.tools.facade import revoke_runtime_run_grant
+        from app.services.facade import revoke_runtime_run_grant
         grant = await revoke_runtime_run_grant(run_id)
         if grant is None:
             return HarnessCancellationReceipt(run_id=run_id, scope="remote", state="unknown")

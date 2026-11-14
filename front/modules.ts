@@ -6,7 +6,7 @@ export const modules = [
     'app/index',
     'app/agent',
     'app/harnesses',
-    'app/tools',
+    'app/services',
     'app/browser',
     'app/connection',
     'app/calendar',

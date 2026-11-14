@@ -2,11 +2,11 @@
 
 # AgentAdmin
 
-AgentAdmin (`agent_admin`) est un Tool intégré optionnel de 34 fonctions. Sa connexion
+AgentAdmin (`agent_admin`) est un Service intégré optionnel de 34 fonctions. Sa connexion
 est créée inactive pour les agents ordinaires. L’assistant **Galaris** proposé par
 l’installation la reçoit active dès sa création. Une synchronisation du catalogue ne
 réactive jamais une connexion désactivée et ne modifie pas les agents déjà initialisés.
-Un humain peut l’activer dans **Configurer → Outils & connexions → Connexions**.
+Un humain peut l’activer dans **Configurer → Services & connexions → Connexions**.
 `agent_list` et `agent_get` restent dans le service système Galaris.
 
 L’annuaire `agent_list(offset=0, limit=50)` retourne du JSON compact : `items`
@@ -28,7 +28,7 @@ n’est nécessaire et aucun rôle sélectionné dans une requête HTTP ne rempl
 | Opérations | Droits du responsable, en plus de la connexion et de la fonction |
 |---|---|
 | Toutes | `AGENT_EDIT` |
-| Tools et connexions | `CONNECTION_EDIT` |
+| Services et connexions | `CONNECTION_EDIT` |
 | Lecture des équipes et groupes | `TEAM_ACCESS` |
 | Appartenances | `TEAM_ACCESS`, `TEAM_MEMBERS_EDIT` |
 | Création/modification/suppression des groupes | `TEAM_ACCESS`, `TEAM_EDIT`, `AGENT_MANAGE_ALL` |
@@ -39,7 +39,7 @@ n’est nécessaire et aucun rôle sélectionné dans une requête HTTP ne rempl
 L’appelant ne peut ni se supprimer ni changer son propre responsable. Les connexions
 des services système sont protégées. Les connexions donnant des pouvoirs administratifs
 sont modifiables uniquement par les humains : AgentAdmin ne peut pas s’auto-attribuer des
-droits, déléguer AgentAdmin à un autre agent ou activer un autre Tool administratif.
+droits, déléguer AgentAdmin à un autre agent ou activer un autre Service administratif.
 La cible d’une connexion est résolue côté serveur. Une révocation bloque aussi les appels
 sur un serveur MCP déjà monté ; la découverte se recalcule avec les droits courants.
 La [décision 0148](../../../project/decisions/0148-agent-admin-delegation.md) fixe ce contrat.
@@ -51,7 +51,7 @@ La [décision 0148](../../../project/decisions/0148-agent-admin-delegation.md) f
 | Agents | `agent_create`, `agent_update`, `agent_delete`, `agent_options` |
 | Avatars | `agent_avatar_set`, `agent_avatar_delete`, `agent_avatar_generate` |
 | Appartenances | `agent_team_list`, `agent_team_set` |
-| Tools | `agent_tool_list` |
+| Services | `agent_service_list` |
 | Connexions | `agent_connection_list`, `agent_connection_get`, `agent_connection_create`, `agent_connection_update`, `agent_connection_delete`, `agent_connection_params_set`, `agent_connection_param_delete`, `agent_connection_function_list`, `agent_connection_function_set` |
 | Harnais | `agent_harness_get`, `agent_harness_set`, `agent_harness_reset`, `agent_harness_status`, `agent_harness_action`, `agent_harness_logs`, `agent_harness_blockers` |
 | Civilités | `agent_title_list`, `agent_title_create`, `agent_title_update`, `agent_title_delete` |
@@ -66,7 +66,7 @@ Les erreurs MCP incluent un objet `error` avec `kind` et une référence techniq
 Les paramètres utilisent le stockage chiffré existant ; les lectures masquent les secrets
 et distinguent configuration locale, valeur héritée et valeur imposée. Les autorisations
 de fonctions sont locales (`default`, `enabled`, `disabled`, `ask`) et ne modifient pas les règles
-globales. Un couple agent/Tool ne possède qu’une connexion. La suppression des groupes
+globales. Un couple agent/Service ne possède qu’une connexion. La suppression des groupes
 détache le groupe historique et révoque les accès associés ; une civilité référencée ne
 peut pas être supprimée, y compris lorsqu’un agent archivé la référence encore.
 
@@ -92,7 +92,7 @@ facultatives, au plus 4 000 caractères, précisent apparence, cadrage ou ambian
 Elles déterminent aussi le style, y compris un portrait humain réaliste ; aucune apparence
 non humaine n’est imposée. La régénération remplace l’avatar existant après succès et ne
 nécessite pas la connexion Image distincte. Avant de conclure à une fonction indisponible,
-l’agent consulte `tools_list` et distingue le catalogue autorisé du contexte courant.
+l’agent consulte `services_list` et distingue le catalogue autorisé du contexte courant.
 
 Dans la fiche agent, **Générer un avatar** ouvre une modale de consignes facultatives.
 La génération commence uniquement après validation dans cette modale et utilise le profil
@@ -137,7 +137,7 @@ création, génération, remplacement, réouverture par navigation Vue sans rech
 civilité renommée et refus après révocation.
 Ces tests ne mesurent pas la qualité photographique d’un fournisseur réel.
 
-Commandes : `make tests ARGS='app/agent/tests app/connection/tests app/harnesses/tests app/tools/tests app/image/tests app/process/tests core/team/tests'`,
+Commandes : `make tests ARGS='app/agent/tests app/connection/tests app/harnesses/tests app/services/tests app/image/tests app/process/tests core/team/tests'`,
 `make tests-e2e ARGS='agent-admin.spec.mjs --project=chromium'`, `make typecheck`,
 `make docs-prepare`, `make architecture-check`. DbAdmin supprime l'ancienne colonne de
 révision d'avatar avec `make sync-db` en développement.

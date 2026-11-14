@@ -71,7 +71,7 @@ live under `/instances/{agent.code}`. Creation deliberately produces an empty di
 `data/SOUL.md`, scripts, plugins, and Hermes Skills. Compose overrides remain specific to the
 affected Agent.
 
-## Native Tools
+## Native Services
 
 Synchronization maintains a single authority for capabilities already provided by Galaris. When
 the MCP functions `image_generate` or `image_read` are actually visible to the Hermes Agent, the

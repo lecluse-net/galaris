@@ -54,7 +54,7 @@ def test_runtime_lifespan_does_not_reconcile_reference_data() -> None:
     source = (BACK_ROOT / "main.py").read_text(encoding="utf-8")
 
     assert "params_service.sync()" not in source
-    assert "sync_mandatory_tools()" not in source
+    assert "sync_mandatory_services()" not in source
     assert "profile_service.ensure_default_profile()" not in source
     assert "skill_service.sync_from_disk()" not in source
 

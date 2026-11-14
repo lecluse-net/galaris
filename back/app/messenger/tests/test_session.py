@@ -23,13 +23,13 @@ from app.messenger import session as session_module
 from app.messenger.models import Room as PersistedRoom
 from app.messenger.models import MessengerUser as PersistedUser
 from app.messenger.session import ConversationSessionSnapshot, build_conversation_session
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 async def _connection(db: AsyncSession) -> tuple[Connection, Agent]:
     suffix = uuid4().hex[:10]
     title = Title(label=f"Session {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"session-messenger-{suffix}",
         label="Session messenger",
         description="",
@@ -46,7 +46,7 @@ async def _connection(db: AsyncSession) -> tuple[Connection, Agent]:
     )
     db.add(agent)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     return connection, agent
@@ -55,8 +55,8 @@ async def _connection(db: AsyncSession) -> tuple[Connection, Agent]:
 class _FakeMessenger(Messenger):
     kind = "telegram"
 
-    def __init__(self, tool_id: int, connection_id: int, agent_id: int) -> None:
-        self.tool_id = tool_id
+    def __init__(self, service_id: int, connection_id: int, agent_id: int) -> None:
+        self.service_id = service_id
         self._connection_id = connection_id
         self._agent_id = agent_id
         self._counter = 0
@@ -68,7 +68,7 @@ class _FakeMessenger(Messenger):
         return Message(
             id=f"out-{self._counter}",
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=User(
                 id="bot",
                 connection_id=self._connection_id,
@@ -149,8 +149,8 @@ class _Resolver:
         del connection_id
         return self.messenger
 
-    async def messenger_for(self, tool_id: int, self_id: str) -> Messenger:
-        del tool_id, self_id
+    async def messenger_for(self, service_id: int, self_id: str) -> Messenger:
+        del service_id, self_id
         return self.messenger
 
     async def default_messenger(self) -> Messenger:
@@ -167,7 +167,7 @@ async def test_outbound_delivery_populates_bounded_canonical_session(
     inbound = Message(
         id="in-1",
         platform="telegram",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(
             id="human",
             display_name="Nicolas",
@@ -193,12 +193,12 @@ async def test_outbound_delivery_populates_bounded_canonical_session(
     )
     # The external sender is linked by the server to the agent's human manager.
     await db.execute(update(PersistedUser).where(
-        PersistedUser.tool_id == connection.tool_id, PersistedUser.external_id == "human",
+        PersistedUser.service_id == connection.service_id, PersistedUser.external_id == "human",
     ).values(galaris_user_id=agent.user_id))
 
     original_resolver = facade._resolver  # pyright: ignore[reportPrivateUsage]
     try:
-        delegate = _FakeMessenger(connection.tool_id, connection.id, agent.id)
+        delegate = _FakeMessenger(connection.service_id, connection.id, agent.id)
         facade.set_resolver(_Resolver(delegate))
         messenger = await facade.get_messenger(connection.id)
         sent = await messenger.send_to_room(room_id, "Bonsoir Nicolas")
@@ -252,7 +252,7 @@ async def test_outbound_delivery_populates_bounded_canonical_session(
     assert cast(list[dict[str, object]], snapshot.messages[0]["attachments"])[0][
         "uri"
     ] == (
-        f"{snapshot.messages[0]['tool_code']}://{snapshot.messages[0]['room_external_id']}/"
+        f"{snapshot.messages[0]['service_code']}://{snapshot.messages[0]['room_external_id']}/"
         f"{cast(list[object], snapshot.messages[0]['file_ids'])[0]}"
     )
     assert snapshot.messages[1]["sender_display_name"] == "Agent"
@@ -379,7 +379,7 @@ async def test_canonical_session_keeps_persisted_file_only_message(
     file_message = Message(
         id="file-only",
         platform="telegram",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(
             id="human",
             display_name="Nicolas",
@@ -430,7 +430,7 @@ async def test_canonical_session_keeps_persisted_file_only_message(
     attachments = cast(list[dict[str, object]], historical["attachments"])
     assert len(attachments) == 1
     assert attachments[0]["uri"] == (
-        f"{historical['tool_code']}://{historical['room_external_id']}/"
+        f"{historical['service_code']}://{historical['room_external_id']}/"
         f"{attachments[0]['id']}"
     )
 
@@ -573,7 +573,7 @@ async def test_voice_context_keeps_answered_history_without_repeating_pending_in
             Message(
                 id=f"voice-input-{index}",
                 platform="voice:test",
-                tool_id=connection.tool_id,
+                service_id=connection.service_id,
                 sender=User(id="caller", connection_id=connection.id),
                 room=Room(id="voice-room"),
                 text=text,

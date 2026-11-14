@@ -577,7 +577,7 @@ async def _run_delivery_recovery(task: Any) -> ExecutionResult | None:
             metadata={"delivery_recovery": "invalid"},
         )
 
-    from app.tools import execute_native_mcp_tool
+    from app.services import execute_native_mcp_tool
 
     arguments = {
         "room_id": destination,

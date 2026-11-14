@@ -1,21 +1,21 @@
-# 0219 — Human-confirmed cascading Tool deletion
+# 0219 — Human-confirmed cascading Service deletion
 
 Status: accepted, 2026-10-23.
 
 ## Context
 
-The human Tools page offered deletion but the owning service refused any connected
-Tool. Its generic error did not explain the dependency refusal. Administrators need
+The human Services page offered deletion but the owning service refused any connected
+Service. Its generic error did not explain the dependency refusal. Administrators need
 to remove a custom integration and its configuration together after reviewing impact.
 
 ## Decision
 
-`GET /tools/{tool_id}/deletion-impact` requires `TOOL_EDIT` and an editable definition.
+`GET /tools/{service_id}/deletion-impact` requires `SERVICE_EDIT` and an editable definition.
 It exposes aggregate categories and an opaque confirmation version, never credentials
 or dependency content. The human client submits that version with `cascade=true` to
-`DELETE /tools/{tool_id}`. Protected integrated definitions remain immutable.
+`DELETE /tools/{service_id}`. Protected integrated definitions remain immutable.
 
-The server locks the Tool and affected dependent rows, recomputes the identity graph
+The server locks the Service and affected dependent rows, recomputes the identity graph
 and rejects a stale confirmation with 409. The graph follows inbound FK constraints
 as complete tuples, including composite keys. Non-null and cascading dependencies
 are removed together; nullable internal cycles are broken before deletion. Independent
@@ -30,7 +30,7 @@ External service data and already dispatched remote actions are outside this ope
 
 The dialog supports loading, errors, retry, dismissal and review after 409. A closed
 dialog cannot accept a late preview. Successful deletion invalidates connection state
-and parameter caches, including views already mounted in another Tools tab.
+and parameter caches, including views already mounted in another Services tab.
 
 The existing dependency-free service/MCP deletion remains the default for callers
 without this explicit human confirmation. No schema or foreign-key policy is changed.

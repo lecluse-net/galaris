@@ -76,7 +76,7 @@ The inventory includes:
 
 - Document attachments, imported images and link cards, including retained attachments;
 - revision manifests and the Document/Memory split archive when present;
-- files owned by the native Chat Tool, including uploads and voice notes.
+- files owned by the native Chat Service, including uploads and voice notes.
 
 A description pointer left by an already forgotten document is not a source: the old
 store may legitimately have erased its bytes. References still held by a manifest,

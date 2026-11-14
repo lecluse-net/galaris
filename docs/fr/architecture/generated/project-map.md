@@ -17,10 +17,10 @@ tests restent l’autorité sur le comportement.
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 815 handlers HTTP/WebSocket détectés ;
+- 817 handlers HTTP/WebSocket détectés ;
 - 196 tables SQLAlchemy détectées ;
 - 294 outils MCP natifs détectés ;
-- 56 pages Vue détectées.
+- 57 pages Vue détectées.
 
 ## Modules backend
 
@@ -33,7 +33,7 @@ tests restent l’autorité sur le comportement.
 | `core.dbadmin` | core | non | oui | `contracts.py`, `models.py`, `tests/` |
 | `core.storage` | core | non | oui | `models.py`, `tests/` |
 | `app.incident` | app | non | oui | `contracts.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
-| `app.tools` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
+| `app.services` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.documentation` | app | non | oui | `contracts.py`, `facade.py`, `models.py`, `tests/` |
 | `app.agent` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.share` | app | non | oui | `contracts.py`, `models.py`, `tests/` |
@@ -117,7 +117,7 @@ tests restent l’autorité sur le comportement.
 | `app/index` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 7 |
 | `app/agent` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/harnesses` | oui | `components`, `i18n.ts`, `pages`, `services` | 1 |
-| `app/tools` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 1 |
+| `app/services` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
 | `app/browser` | oui | `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/connection` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 5 |
 | `app/calendar` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
@@ -160,9 +160,9 @@ tests restent l’autorité sur le comportement.
 | `app.agent` | `app.llm` | `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/conversation_dispatch.py`, `back/app/agent/dispatcher.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/models.py`, `back/app/agent/openai_router.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
 | `app.agent` | `app.messenger` | `back/app/agent/planner_service.py` |
 | `app.agent` | `app.process` | `back/app/agent/janus.py`, `back/app/agent/openai_router.py`, `back/app/agent/realtime.py` |
+| `app.agent` | `app.services` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
 | `app.agent` | `app.share` | `back/app/agent/share_directory.py` |
 | `app.agent` | `app.skill` | `back/app/agent/__init__.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/facade.py`, `back/app/agent/models.py` |
-| `app.agent` | `app.tools` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
 | `app.agent` | `core.authorize` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/assertions.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py` |
 | `app.agent` | `core.database` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/authorization.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/avatars.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/mcp.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/planner_service.py`, `back/app/agent/resource_facade.py`, `back/app/agent/router.py`, `back/app/agent/selection.py`, `back/app/agent/share_directory.py`, `back/app/agent/team_directory.py`, `back/app/agent/team_router.py`, `back/app/agent/title_service.py` |
 | `app.agent` | `core.dbadmin` | `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/html_migration.py` |
@@ -175,15 +175,15 @@ tests restent l’autorité sur le comportement.
 | `app.audio` | `app.file_share` | `back/app/audio/mcp.py` |
 | `app.audio` | `app.llm` | `back/app/audio/mcp.py`, `back/app/audio/summary_service.py` |
 | `app.audio` | `app.messenger` | `back/app/audio/mcp.py` |
+| `app.audio` | `app.services` | `back/app/audio/mcp.py` |
 | `app.audio` | `app.task` | `back/app/audio/summary_service.py` |
-| `app.audio` | `app.tools` | `back/app/audio/mcp.py` |
 | `app.audio` | `bridge.youtube` | `back/app/audio/mcp.py` |
 | `app.audio` | `core.i18n` | `back/app/audio/mcp.py` |
 | `app.audio` | `core.params` | `back/app/audio/summary_service.py` |
 | `app.browser` | `app.connection` | `back/app/browser/network.py`, `back/app/browser/router.py`, `back/app/browser/service.py` |
 | `app.browser` | `app.file_share` | `back/app/browser/__init__.py`, `back/app/browser/mcp.py` |
 | `app.browser` | `app.messenger` | `back/app/browser/network.py` |
-| `app.browser` | `app.tools` | `back/app/browser/mcp.py`, `back/app/browser/network.py`, `back/app/browser/service.py` |
+| `app.browser` | `app.services` | `back/app/browser/mcp.py`, `back/app/browser/network.py`, `back/app/browser/service.py` |
 | `app.browser` | `core.authorize` | `back/app/browser/router.py` |
 | `app.browser` | `core.i18n` | `back/app/browser/mcp.py`, `back/app/browser/network.py` |
 | `app.browser` | `core.params` | `back/app/browser/mcp.py`, `back/app/browser/service.py` |
@@ -196,7 +196,7 @@ tests restent l’autorité sur le comportement.
 | `app.calendar` | `app.contact` | `back/app/calendar/__init__.py`, `back/app/calendar/service.py` |
 | `app.calendar` | `app.file_share` | `back/app/calendar/__init__.py` |
 | `app.calendar` | `app.memory` | `back/app/calendar/awareness.py`, `back/app/calendar/context.py`, `back/app/calendar/mcp.py` |
-| `app.calendar` | `app.tools` | `back/app/calendar/__init__.py`, `back/app/calendar/connection_diagnostics.py`, `back/app/calendar/dbadmin.py`, `back/app/calendar/mcp.py`, `back/app/calendar/service.py`, `back/app/calendar/synchronization.py` |
+| `app.calendar` | `app.services` | `back/app/calendar/__init__.py`, `back/app/calendar/connection_diagnostics.py`, `back/app/calendar/dbadmin.py`, `back/app/calendar/mcp.py`, `back/app/calendar/service.py`, `back/app/calendar/synchronization.py` |
 | `app.calendar` | `core.authorize` | `back/app/calendar/router.py` |
 | `app.calendar` | `core.database` | `back/app/calendar/connection_diagnostics.py`, `back/app/calendar/contact_links.py`, `back/app/calendar/dispatch.py`, `back/app/calendar/maintenance.py`, `back/app/calendar/models.py`, `back/app/calendar/resources.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py`, `back/app/calendar/sync_progress.py`, `back/app/calendar/synchronization.py` |
 | `app.calendar` | `core.dbadmin` | `back/app/calendar/dbadmin.py` |
@@ -225,7 +225,7 @@ tests restent l’autorité sur le comportement.
 | `app.code` | `core.settings` | `back/app/code/gateway.py`, `back/app/code/service.py` |
 | `app.code` | `core.user` | `back/app/code/lifecycle.py`, `back/app/code/router.py`, `back/app/code/service.py` |
 | `app.connection` | `app.agent` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_mcp.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/router.py` |
-| `app.connection` | `app.tools` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_mcp.py`, `back/app/connection/agent_admin_service.py`, `back/app/connection/calendar_oauth.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/mcp.py`, `back/app/connection/oauth_service.py`, `back/app/connection/router.py` |
+| `app.connection` | `app.services` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_mcp.py`, `back/app/connection/agent_admin_service.py`, `back/app/connection/calendar_oauth.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/mcp.py`, `back/app/connection/oauth_service.py`, `back/app/connection/router.py` |
 | `app.connection` | `core.authorize` | `back/app/connection/assertions.py`, `back/app/connection/router.py` |
 | `app.connection` | `core.database` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_service.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/models.py`, `back/app/connection/oauth_runtime.py`, `back/app/connection/oauth_service.py`, `back/app/connection/router.py` |
 | `app.connection` | `core.dbadmin` | `back/app/connection/dbadmin.py` |
@@ -236,7 +236,7 @@ tests restent l’autorité sur le comportement.
 | `app.console` | `app.agent` | `back/app/console/__init__.py`, `back/app/console/connection_service.py`, `back/app/console/editor_service.py`, `back/app/console/provisioning.py`, `back/app/console/router.py` |
 | `app.console` | `app.connection` | `back/app/console/connection_service.py`, `back/app/console/editor_service.py`, `back/app/console/provisioning.py`, `back/app/console/router.py` |
 | `app.console` | `app.file_share` | `back/app/console/file_transport.py` |
-| `app.console` | `app.tools` | `back/app/console/__init__.py`, `back/app/console/connection_service.py`, `back/app/console/editor_service.py`, `back/app/console/file_transport.py`, `back/app/console/mcp.py`, `back/app/console/provisioning.py`, `back/app/console/router.py`, `back/app/console/ssh_client.py` |
+| `app.console` | `app.services` | `back/app/console/__init__.py`, `back/app/console/connection_service.py`, `back/app/console/editor_service.py`, `back/app/console/file_transport.py`, `back/app/console/mcp.py`, `back/app/console/provisioning.py`, `back/app/console/router.py`, `back/app/console/ssh_client.py` |
 | `app.console` | `core.authorize` | `back/app/console/router.py` |
 | `app.console` | `core.database` | `back/app/console/connection_service.py`, `back/app/console/editor_service.py` |
 | `app.console` | `core.i18n` | `back/app/console/connection_service.py` |
@@ -246,8 +246,8 @@ tests restent l’autorité sur le comportement.
 | `app.contact` | `app.llm` | `back/app/contact/discovery.py`, `back/app/contact/discovery_inference.py` |
 | `app.contact` | `app.memory` | `back/app/contact/countries.py`, `back/app/contact/directory.py`, `back/app/contact/discovery.py`, `back/app/contact/discovery_inference.py`, `back/app/contact/facade.py`, `back/app/contact/mcp.py`, `back/app/contact/reconciliation.py`, `back/app/contact/resources.py`, `back/app/contact/router.py`, `back/app/contact/schemas.py`, `back/app/contact/service.py` |
 | `app.contact` | `app.messenger` | `back/app/contact/service.py` |
+| `app.contact` | `app.services` | `back/app/contact/mcp.py` |
 | `app.contact` | `app.task` | `back/app/contact/service.py` |
-| `app.contact` | `app.tools` | `back/app/contact/mcp.py` |
 | `app.contact` | `core.authorize` | `back/app/contact/router.py` |
 | `app.contact` | `core.database` | `back/app/contact/directory.py`, `back/app/contact/discovery.py`, `back/app/contact/discovery_inference.py`, `back/app/contact/models.py`, `back/app/contact/reconciliation.py`, `back/app/contact/service.py` |
 | `app.contact` | `core.params` | `back/app/contact/countries.py`, `back/app/contact/discovery.py`, `back/app/contact/reconciliation.py` |
@@ -259,8 +259,8 @@ tests restent l’autorité sur le comportement.
 | `app.conversation` | `app.llm` | `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/management_service.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/process_admission.py`, `back/app/conversation/process_inputs.py`, `back/app/conversation/schemas.py`, `back/app/conversation/service.py`, `back/app/conversation/task_objective.py` |
 | `app.conversation` | `app.messenger` | `back/app/conversation/contact_authorization.py`, `back/app/conversation/context.py`, `back/app/conversation/document_display.py`, `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/mcp.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/process_admission.py`, `back/app/conversation/process_inputs.py`, `back/app/conversation/process_interactions.py`, `back/app/conversation/process_outputs.py`, `back/app/conversation/repository_display.py`, `back/app/conversation/resource_facade.py`, `back/app/conversation/scheduler.py`, `back/app/conversation/service.py`, `back/app/conversation/task_projection.py`, `back/app/conversation/work_projection.py` |
 | `app.conversation` | `app.process` | `back/app/conversation/contracts.py`, `back/app/conversation/facade.py`, `back/app/conversation/mcp.py`, `back/app/conversation/process_admission.py`, `back/app/conversation/process_inputs.py`, `back/app/conversation/process_interactions.py`, `back/app/conversation/progress.py`, `back/app/conversation/scheduler.py`, `back/app/conversation/service.py`, `back/app/conversation/work_projection.py` |
+| `app.conversation` | `app.services` | `back/app/conversation/mcp.py`, `back/app/conversation/process_admission.py`, `back/app/conversation/process_inputs.py`, `back/app/conversation/process_interactions.py`, `back/app/conversation/repository_display.py`, `back/app/conversation/resource_facade.py`, `back/app/conversation/service.py` |
 | `app.conversation` | `app.task` | `back/app/conversation/contracts.py`, `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/mcp.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/progress.py`, `back/app/conversation/repository_display.py`, `back/app/conversation/scheduler.py`, `back/app/conversation/schemas.py`, `back/app/conversation/service.py`, `back/app/conversation/task_projection.py`, `back/app/conversation/work_projection.py` |
-| `app.conversation` | `app.tools` | `back/app/conversation/mcp.py`, `back/app/conversation/process_admission.py`, `back/app/conversation/process_inputs.py`, `back/app/conversation/process_interactions.py`, `back/app/conversation/repository_display.py`, `back/app/conversation/resource_facade.py`, `back/app/conversation/service.py` |
 | `app.conversation` | `core.authorize` | `back/app/conversation/router.py` |
 | `app.conversation` | `core.database` | `back/app/conversation/activity_facade.py`, `back/app/conversation/contact_authorization.py`, `back/app/conversation/context.py`, `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/management_service.py`, `back/app/conversation/mcp.py`, `back/app/conversation/models.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/process_admission.py`, `back/app/conversation/process_inputs.py`, `back/app/conversation/process_interactions.py`, `back/app/conversation/process_outputs.py`, `back/app/conversation/progress.py`, `back/app/conversation/repository_display.py`, `back/app/conversation/resource_facade.py`, `back/app/conversation/scheduler.py`, `back/app/conversation/service.py`, `back/app/conversation/task_projection.py`, `back/app/conversation/work_projection.py` |
 | `app.conversation` | `core.failure_journal` | `back/app/conversation/scheduler.py` |
@@ -283,9 +283,9 @@ tests restent l’autorité sur le comportement.
 | `app.document` | `app.llm` | `back/app/document/data/search.py`, `back/app/document/data/search_index.py`, `back/app/document/summary_service.py` |
 | `app.document` | `app.memory` | `back/app/document/data/provider.py`, `back/app/document/data/router.py`, `back/app/document/data/service.py` |
 | `app.document` | `app.process` | `back/app/document/internal_attachments.py`, `back/app/document/process_references.py` |
+| `app.document` | `app.services` | `back/app/document/data/mcp.py`, `back/app/document/item_sharing.py`, `back/app/document/mcp.py` |
 | `app.document` | `app.share` | `back/app/document/access.py`, `back/app/document/data/access.py`, `back/app/document/data/compatibility.py`, `back/app/document/data/dbadmin.py`, `back/app/document/data/library.py`, `back/app/document/data/models.py`, `back/app/document/data/ownership.py`, `back/app/document/data/router.py`, `back/app/document/data/service.py`, `back/app/document/data/sharing.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/item_sharing.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/resource_service.py`, `back/app/document/schemas.py`, `back/app/document/sharing_inheritance.py` |
 | `app.document` | `app.task` | `back/app/document/resource_service.py` |
-| `app.document` | `app.tools` | `back/app/document/data/mcp.py`, `back/app/document/item_sharing.py`, `back/app/document/mcp.py` |
 | `app.document` | `core.authorize` | `back/app/document/access.py`, `back/app/document/assertions.py`, `back/app/document/bulk_moves.py`, `back/app/document/data/access.py`, `back/app/document/data/bootstrap.py`, `back/app/document/data/router.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_policy.py`, `back/app/document/item_sharing.py`, `back/app/document/router.py` |
 | `app.document` | `core.database` | `back/app/document/access.py`, `back/app/document/agent_library.py`, `back/app/document/automation.py`, `back/app/document/bulk_moves.py`, `back/app/document/content.py`, `back/app/document/conversation_document_adapter.py`, `back/app/document/data/access.py`, `back/app/document/data/apps.py`, `back/app/document/data/attachments.py`, `back/app/document/data/bootstrap.py`, `back/app/document/data/compatibility.py`, `back/app/document/data/library.py`, `back/app/document/data/migration.py`, `back/app/document/data/models.py`, `back/app/document/data/organization.py`, `back/app/document/data/ownership.py`, `back/app/document/data/projection.py`, `back/app/document/data/provider.py`, `back/app/document/data/resource_summaries.py`, `back/app/document/data/router.py`, `back/app/document/data/search.py`, `back/app/document/data/search_index.py`, `back/app/document/data/service.py`, `back/app/document/data/sharing.py`, `back/app/document/data/topic_assignment.py`, `back/app/document/data/usage.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_security.py`, `back/app/document/document_app_service.py`, `back/app/document/document_attachment_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_library_filters.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_service.py`, `back/app/document/document_structure.py`, `back/app/document/document_tags.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/events.py`, `back/app/document/file_facade.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_sharing.py`, `back/app/document/folder_tree.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/inline_content.py`, `back/app/document/interface.py`, `back/app/document/item_sharing.py`, `back/app/document/keyword_actions.py`, `back/app/document/library_queries.py`, `back/app/document/lifecycle.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/query_policy.py`, `back/app/document/resource_service.py`, `back/app/document/resource_summaries.py`, `back/app/document/revision_batching.py`, `back/app/document/revision_queries.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/topic_assignment.py`, `back/app/document/topic_library.py`, `back/app/document/workflow_documents.py` |
 | `app.document` | `core.dbadmin` | `back/app/document/data/dbadmin.py`, `back/app/document/dbadmin.py`, `back/app/document/document_backup.py`, `back/app/document/format_migration.py`, `back/app/document/independence.py`, `back/app/document/privilege_migration.py`, `back/app/document/summary_retirement.py`, `back/app/document/tool_migration.py`, `back/app/document/unification.py` |
@@ -334,9 +334,9 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `app.memory` | `back/app/file_share/__init__.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.messenger` | `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py` |
 | `app.file_share` | `app.process` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/process_provider.py` |
+| `app.file_share` | `app.services` | `back/app/file_share/__init__.py`, `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/connection_diagnostics.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `app.skill` | `back/app/file_share/browser.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py`, `back/app/file_share/skill_provider.py` |
 | `app.file_share` | `app.task` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/messenger_transport.py` |
-| `app.file_share` | `app.tools` | `back/app/file_share/__init__.py`, `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/connection_diagnostics.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `bridge.affine` | `back/app/file_share/bridges.py` |
 | `app.file_share` | `core.authorize` | `back/app/file_share/browser_policy.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/document_import.py`, `back/app/file_share/facade.py`, `back/app/file_share/media_access.py`, `back/app/file_share/media_router.py`, `back/app/file_share/router.py` |
 | `app.file_share` | `core.database` | `back/app/file_share/browser_policy.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/document_import.py`, `back/app/file_share/document_rag_cache.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/facade.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_access.py`, `back/app/file_share/models.py`, `back/app/file_share/operation_memos.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/thumbnail_service.py` |
@@ -354,8 +354,8 @@ tests restent l’autorité sur le comportement.
 | `app.goal` | `app.connection` | `back/app/goal/models.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.messenger` | `back/app/goal/goal_service.py`, `back/app/goal/referrer_wait.py` |
+| `app.goal` | `app.services` | `back/app/goal/access.py`, `back/app/goal/mcp.py` |
 | `app.goal` | `app.task` | `back/app/goal/calendar.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
-| `app.goal` | `app.tools` | `back/app/goal/access.py`, `back/app/goal/mcp.py` |
 | `app.goal` | `core.authorize` | `back/app/goal/router.py` |
 | `app.goal` | `core.database` | `back/app/goal/calendar.py`, `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.dbadmin` | `back/app/goal/agenda_upgrade.py`, `back/app/goal/dbadmin.py` |
@@ -372,8 +372,8 @@ tests restent l’autorité sur le comportement.
 | `app.harness` | `app.llm` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `app.messenger` | `back/app/harness/conversation.py`, `back/app/harness/executor.py` |
 | `app.harness` | `app.process` | `back/app/harness/conversation.py`, `back/app/harness/executor.py` |
+| `app.harness` | `app.services` | `back/app/harness/checkpoint.py`, `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `app.skill` | `back/app/harness/__init__.py`, `back/app/harness/skills.py` |
-| `app.harness` | `app.tools` | `back/app/harness/checkpoint.py`, `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `core.authorize` | `back/app/harness/router.py` |
 | `app.harness` | `core.database` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `core.document` | `back/app/harness/media.py` |
@@ -381,7 +381,7 @@ tests restent l’autorité sur le comportement.
 | `app.harness` | `core.i18n` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `core.params` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
 | `app.harnesses` | `app.agent` | `back/app/harnesses/agent_adapter.py`, `back/app/harnesses/agent_driver.py`, `back/app/harnesses/checkpoint_policy.py`, `back/app/harnesses/configuration.py`, `back/app/harnesses/contracts.py`, `back/app/harnesses/dbadmin.py`, `back/app/harnesses/driver.py`, `back/app/harnesses/facade.py`, `back/app/harnesses/mcp.py`, `back/app/harnesses/models.py`, `back/app/harnesses/openai_client.py`, `back/app/harnesses/openai_provider.py`, `back/app/harnesses/router.py`, `back/app/harnesses/service.py`, `back/app/harnesses/skill_sync.py`, `back/app/harnesses/supervision.py` |
-| `app.harnesses` | `app.tools` | `back/app/harnesses/driver.py`, `back/app/harnesses/mcp.py`, `back/app/harnesses/openai_client.py` |
+| `app.harnesses` | `app.services` | `back/app/harnesses/driver.py`, `back/app/harnesses/mcp.py`, `back/app/harnesses/openai_client.py` |
 | `app.harnesses` | `core.authorize` | `back/app/harnesses/router.py` |
 | `app.harnesses` | `core.database` | `back/app/harnesses/configuration.py`, `back/app/harnesses/models.py`, `back/app/harnesses/service.py`, `back/app/harnesses/skill_sync.py` |
 | `app.harnesses` | `core.dbadmin` | `back/app/harnesses/dbadmin.py` |
@@ -389,11 +389,11 @@ tests restent l’autorité sur le comportement.
 | `app.harnesses` | `core.util` | `back/app/harnesses/driver.py`, `back/app/harnesses/service.py` |
 | `app.image` | `app.file_share` | `back/app/image/mcp.py` |
 | `app.image` | `app.llm` | `back/app/image/image_service.py`, `back/app/image/mcp.py` |
-| `app.image` | `app.tools` | `back/app/image/mcp.py` |
+| `app.image` | `app.services` | `back/app/image/mcp.py` |
 | `app.image` | `core.document` | `back/app/image/mcp.py` |
 | `app.image` | `core.i18n` | `back/app/image/image_service.py`, `back/app/image/mcp.py`, `back/app/image/transport.py` |
 | `app.image` | `core.util` | `back/app/image/image_service.py`, `back/app/image/mcp.py`, `back/app/image/transport.py` |
-| `app.incident` | `app.tools` | `back/app/incident/mcp.py` |
+| `app.incident` | `app.services` | `back/app/incident/mcp.py` |
 | `app.incident` | `core.authorize` | `back/app/incident/router.py` |
 | `app.incident` | `core.database` | `back/app/incident/models.py`, `back/app/incident/retention.py`, `back/app/incident/service.py` |
 | `app.incident` | `core.failure_journal` | `back/app/incident/__init__.py`, `back/app/incident/contracts.py` |
@@ -408,9 +408,9 @@ tests restent l’autorité sur le comportement.
 | `app.lab` | `app.memory` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `app.messenger` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.process` | `back/app/lab/evidence_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/process_evaluation.py` |
+| `app.lab` | `app.services` | `back/app/lab/evidence_service.py`, `back/app/lab/mcp.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py` |
 | `app.lab` | `app.skill` | `back/app/lab/evidence_service.py` |
 | `app.lab` | `app.task` | `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
-| `app.lab` | `app.tools` | `back/app/lab/evidence_service.py`, `back/app/lab/mcp.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py` |
 | `app.lab` | `app.topic` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.voice` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `core.authorize` | `back/app/lab/access.py`, `back/app/lab/assertions.py`, `back/app/lab/process_evaluation_router.py`, `back/app/lab/router.py` |
@@ -427,8 +427,8 @@ tests restent l’autorité sur le comportement.
 | `app.llm` | `app.mcp` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py` |
 | `app.llm` | `app.messenger` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.process` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `app.services` | `back/app/llm/document_service.py`, `back/app/llm/mcp.py` |
 | `app.llm` | `app.task` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
-| `app.llm` | `app.tools` | `back/app/llm/document_service.py`, `back/app/llm/mcp.py` |
 | `app.llm` | `core.authorize` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/provider_router.py` |
 | `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/cost_report.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py`, `back/app/llm/document_store.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_notifications.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
 | `app.llm` | `core.dbadmin` | `back/app/llm/dbadmin.py`, `back/app/llm/initial_configuration.py` |
@@ -440,7 +440,7 @@ tests restent l’autorité sur le comportement.
 | `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_service.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.util` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py`, `back/app/llm/document_rag.py`, `back/app/llm/document_responses.py`, `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_generation_service.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_facade.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_stream.py`, `back/app/llm/responses_trace.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
 | `app.mcp` | `app.agent` | `back/app/mcp/router.py` |
-| `app.mcp` | `app.tools` | `back/app/mcp/router.py`, `back/app/mcp/runtime_adapter.py` |
+| `app.mcp` | `app.services` | `back/app/mcp/router.py`, `back/app/mcp/runtime_adapter.py` |
 | `app.mcp` | `core.authorize` | `back/app/mcp/router.py` |
 | `app.mcp` | `core.database` | `back/app/mcp/models.py`, `back/app/mcp/router.py`, `back/app/mcp/runtime_adapter.py`, `back/app/mcp/service.py` |
 | `app.mcp` | `core.i18n` | `back/app/mcp/router.py` |
@@ -452,8 +452,8 @@ tests restent l’autorité sur le comportement.
 | `app.memory` | `app.goal` | `back/app/memory/bootstrap.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/source_projection.py` |
 | `app.memory` | `app.llm` | `back/app/memory/__init__.py`, `back/app/memory/acquisition_service.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/embedding.py` |
 | `app.memory` | `app.process` | `back/app/memory/link_reconciliation.py`, `back/app/memory/process_projection.py` |
+| `app.memory` | `app.services` | `back/app/memory/mcp.py` |
 | `app.memory` | `app.task` | `back/app/memory/automation.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/mcp.py`, `back/app/memory/recall_scope.py`, `back/app/memory/service.py` |
-| `app.memory` | `app.tools` | `back/app/memory/mcp.py` |
 | `app.memory` | `app.topic` | `back/app/memory/link_reconciliation.py` |
 | `app.memory` | `app.voice` | `back/app/memory/automation.py` |
 | `app.memory` | `core.authorize` | `back/app/memory/assertions.py`, `back/app/memory/router.py` |
@@ -471,8 +471,8 @@ tests restent l’autorité sur le comportement.
 | `app.messenger` | `app.file_share` | `back/app/messenger/journal.py`, `back/app/messenger/link_preview.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_resources.py` |
 | `app.messenger` | `app.llm` | `back/app/messenger/ingest.py`, `back/app/messenger/mcp.py` |
 | `app.messenger` | `app.memory` | `back/app/messenger/agent_identity.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
+| `app.messenger` | `app.services` | `back/app/messenger/__init__.py`, `back/app/messenger/configuration.py`, `back/app/messenger/connection_diagnostics.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py` |
 | `app.messenger` | `app.task` | `back/app/messenger/contact_memory.py`, `back/app/messenger/mcp.py`, `back/app/messenger/service.py` |
-| `app.messenger` | `app.tools` | `back/app/messenger/__init__.py`, `back/app/messenger/configuration.py`, `back/app/messenger/connection_diagnostics.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py` |
 | `app.messenger` | `core.authorize` | `back/app/messenger/interactions.py`, `back/app/messenger/native_resources.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py` |
 | `app.messenger` | `core.database` | `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/facade.py`, `back/app/messenger/ingest.py`, `back/app/messenger/interactions.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/models.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/native_resources.py`, `back/app/messenger/permissions.py`, `back/app/messenger/room_service.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py`, `back/app/messenger/voice_journal.py` |
 | `app.messenger` | `core.dbadmin` | `back/app/messenger/dbadmin.py` |
@@ -485,7 +485,7 @@ tests restent l’autorité sur le comportement.
 | `app.multimedia` | `app.agent` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/router.py` |
 | `app.multimedia` | `app.file_share` | `back/app/multimedia/delivery.py`, `back/app/multimedia/generation_execution.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
 | `app.multimedia` | `app.llm` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
-| `app.multimedia` | `app.tools` | `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/service.py` |
+| `app.multimedia` | `app.services` | `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/service.py` |
 | `app.multimedia` | `core.authorize` | `back/app/multimedia/router.py` |
 | `app.multimedia` | `core.database` | `back/app/multimedia/delivery.py`, `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_store.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/models.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/router.py` |
 | `app.multimedia` | `core.user` | `back/app/multimedia/generation_service.py` |
@@ -495,8 +495,8 @@ tests restent l’autorité sur le comportement.
 | `app.onboarding` | `app.llm` | `back/app/onboarding/services.py` |
 | `app.onboarding` | `app.messenger` | `back/app/onboarding/services.py` |
 | `app.onboarding` | `app.process` | `back/app/onboarding/services.py` |
+| `app.onboarding` | `app.services` | `back/app/onboarding/services.py` |
 | `app.onboarding` | `app.skill` | `back/app/onboarding/services.py` |
-| `app.onboarding` | `app.tools` | `back/app/onboarding/services.py` |
 | `app.onboarding` | `core.authorize` | `back/app/onboarding/router.py` |
 | `app.onboarding` | `core.database` | `back/app/onboarding/router.py`, `back/app/onboarding/services.py` |
 | `app.onboarding` | `core.params` | `back/app/onboarding/router.py` |
@@ -508,9 +508,9 @@ tests restent l’autorité sur le comportement.
 | `app.process` | `app.file_share` | `back/app/process/facade.py`, `back/app/process/input_provenance.py`, `back/app/process/native_engine.py`, `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/router.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py`, `back/app/process/values.py` |
 | `app.process` | `app.llm` | `back/app/process/__init__.py`, `back/app/process/agent_capabilities.py`, `back/app/process/dbadmin.py`, `back/app/process/llm_decisions.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py` |
 | `app.process` | `app.memory` | `back/app/process/events.py`, `back/app/process/native_actors.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/router.py` |
+| `app.process` | `app.services` | `back/app/process/__init__.py`, `back/app/process/activity_jobs.py`, `back/app/process/bpmn.py`, `back/app/process/catalogue.py`, `back/app/process/dbadmin.py`, `back/app/process/input_preparation.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.share` | `back/app/process/definition_migration.py`, `back/app/process/models.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py` |
 | `app.process` | `app.task` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py` |
-| `app.process` | `app.tools` | `back/app/process/__init__.py`, `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/dbadmin.py`, `back/app/process/input_preparation.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/run_resources.py` |
 | `app.process` | `core.authorize` | `back/app/process/dataset_usage.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py`, `back/app/process/router.py` |
 | `app.process` | `core.database` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/export.py`, `back/app/process/facade.py`, `back/app/process/human_requests.py`, `back/app/process/input_editing.py`, `back/app/process/input_preparation.py`, `back/app/process/input_provenance.py`, `back/app/process/interface.py`, `back/app/process/llm_decisions.py`, `back/app/process/mcp.py`, `back/app/process/models.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/progress.py`, `back/app/process/query_policy.py`, `back/app/process/replacement.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/retention.py`, `back/app/process/run_data.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py`, `back/app/process/workers.py` |
 | `app.process` | `core.dbadmin` | `back/app/process/dbadmin.py`, `back/app/process/definition_migration.py`, `back/app/process/document_format_migration.py` |
@@ -520,11 +520,28 @@ tests restent l’autorité sur le comportement.
 | `app.process` | `core.storage` | `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
 | `app.process` | `core.user` | `back/app/process/activity_controls.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/process_service.py` |
 | `app.process` | `core.util` | `back/app/process/input_editing.py`, `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
+| `app.services` | `app.agent` | `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/catalog.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/connection_functions.py`, `back/app/services/dbadmin.py`, `back/app/services/management_scope.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_permissions.py` |
+| `app.services` | `app.connection` | `back/app/services/admin_access.py`, `back/app/services/admin_candidates.py`, `back/app/services/admin_contracts.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/dbadmin.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/management_scope.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp.py`, `back/app/services/mcp_authorization.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/protocols.py`, `back/app/services/rest.py`, `back/app/services/service.py` |
+| `app.services` | `app.console` | `back/app/services/mcp_loader.py` |
+| `app.services` | `app.documentation` | `back/app/services/documentation_service.py` |
+| `app.services` | `app.file_share` | `back/app/services/capabilities.py`, `back/app/services/parameter_definitions.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/service.py` |
+| `app.services` | `app.llm` | `back/app/services/documentation_service.py`, `back/app/services/mcp_loader.py`, `back/app/services/tool_search_service.py` |
+| `app.services` | `app.messenger` | `back/app/services/authorization_notifications.py`, `back/app/services/capabilities.py`, `back/app/services/mcp_loader.py`, `back/app/services/service.py` |
+| `app.services` | `app.task` | `back/app/services/mcp_loader.py` |
+| `app.services` | `app.util` | `back/app/services/search_tool.py` |
+| `app.services` | `core.authorize` | `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization_router.py` |
+| `app.services` | `core.database` | `back/app/services/admin_service.py`, `back/app/services/administration_lock.py`, `back/app/services/authorization.py`, `back/app/services/authorization_models.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/deletion.py`, `back/app/services/documentation_service.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py`, `back/app/services/models.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_authorization_router.py`, `back/app/services/runtime_permissions.py`, `back/app/services/service.py`, `back/app/services/tool_search_service.py` |
+| `app.services` | `core.dbadmin` | `back/app/services/capability_migration.py`, `back/app/services/dbadmin.py`, `back/app/services/mandatory_services.py`, `back/app/services/naming_migration.py`, `back/app/services/protocol_migration.py` |
+| `app.services` | `core.failure_journal` | `back/app/services/mcp_loader.py` |
+| `app.services` | `core.i18n` | `back/app/services/agent_registry.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/mcp.py`, `back/app/services/mcp_diagnostics.py`, `back/app/services/mcp_loader.py`, `back/app/services/router.py`, `back/app/services/search_tool.py`, `back/app/services/service.py`, `back/app/services/tool_errors.py` |
+| `app.services` | `core.params` | `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py` |
+| `app.services` | `core.user` | `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py` |
+| `app.services` | `core.util` | `back/app/services/admin_candidates.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog.py`, `back/app/services/runtime_authorization.py`, `back/app/services/secrets.py`, `back/app/services/service.py` |
 | `app.share` | `core.database` | `back/app/share/models.py`, `back/app/share/service.py` |
 | `app.share` | `core.dbadmin` | `back/app/share/dbadmin.py` |
 | `app.skill` | `app.agent` | `back/app/skill/dbadmin.py`, `back/app/skill/interface.py`, `back/app/skill/learning_service.py`, `back/app/skill/models.py`, `back/app/skill/ownership_recovery.py`, `back/app/skill/personal_catalogue.py`, `back/app/skill/router.py`, `back/app/skill/skill_service.py` |
 | `app.skill` | `app.connection` | `back/app/skill/dbadmin.py`, `back/app/skill/interface.py` |
-| `app.skill` | `app.tools` | `back/app/skill/dbadmin.py`, `back/app/skill/mcp.py`, `back/app/skill/skill_service.py` |
+| `app.skill` | `app.services` | `back/app/skill/dbadmin.py`, `back/app/skill/mcp.py`, `back/app/skill/skill_service.py` |
 | `app.skill` | `core.authorize` | `back/app/skill/router.py` |
 | `app.skill` | `core.database` | `back/app/skill/interface.py`, `back/app/skill/learning_policy.py`, `back/app/skill/learning_service.py`, `back/app/skill/models.py`, `back/app/skill/personal_catalogue.py`, `back/app/skill/router.py`, `back/app/skill/skill_service.py` |
 | `app.skill` | `core.dbadmin` | `back/app/skill/dbadmin.py`, `back/app/skill/learning_upgrade.py`, `back/app/skill/skill_service.py` |
@@ -535,7 +552,7 @@ tests restent l’autorité sur le comportement.
 | `app.task` | `app.goal` | `back/app/task/models.py`, `back/app/task/router.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.llm` | `back/app/task/budget.py`, `back/app/task/cost_report.py`, `back/app/task/mcp.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.messenger` | `back/app/task/collab.py`, `back/app/task/facade.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
-| `app.task` | `app.tools` | `back/app/task/access.py`, `back/app/task/agent_adapter.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/work_tracking.py` |
+| `app.task` | `app.services` | `back/app/task/access.py`, `back/app/task/agent_adapter.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/work_tracking.py` |
 | `app.task` | `core.authorize` | `back/app/task/router.py`, `back/app/task/run_events.py` |
 | `app.task` | `core.database` | `back/app/task/active_lease.py`, `back/app/task/activity.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/call_recovery.py`, `back/app/task/collab.py`, `back/app/task/conversation.py`, `back/app/task/cost_report.py`, `back/app/task/execution_scope.py`, `back/app/task/facade.py`, `back/app/task/input_requests.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/outcome.py`, `back/app/task/progress.py`, `back/app/task/replacement.py`, `back/app/task/replacement_tree.py`, `back/app/task/resource_facade.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/scheduler.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py`, `back/app/task/work_projection.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
 | `app.task` | `core.dbadmin` | `back/app/task/dbadmin.py`, `back/app/task/html_migration.py` |
@@ -543,23 +560,6 @@ tests restent l’autorité sur le comportement.
 | `app.task` | `core.params` | `back/app/task/budget.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/scheduler.py`, `back/app/task/settings_service.py` |
 | `app.task` | `core.user` | `back/app/task/mcp.py`, `back/app/task/run_events.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.util` | `back/app/task/activity_snapshot.py`, `back/app/task/facade.py`, `back/app/task/html_migration.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/router.py`, `back/app/task/schemas.py` |
-| `app.tools` | `app.agent` | `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/management_scope.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/permission_catalog.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_permissions.py` |
-| `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_diagnostics.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/management_scope.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/permission_catalog.py`, `back/app/tools/protocols.py`, `back/app/tools/rest.py`, `back/app/tools/tool_service.py` |
-| `app.tools` | `app.console` | `back/app/tools/mcp_loader.py` |
-| `app.tools` | `app.documentation` | `back/app/tools/documentation_service.py` |
-| `app.tools` | `app.file_share` | `back/app/tools/capabilities.py`, `back/app/tools/parameter_definitions.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/tool_service.py` |
-| `app.tools` | `app.llm` | `back/app/tools/documentation_service.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_search_service.py` |
-| `app.tools` | `app.messenger` | `back/app/tools/authorization_notifications.py`, `back/app/tools/capabilities.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_service.py` |
-| `app.tools` | `app.task` | `back/app/tools/mcp_loader.py` |
-| `app.tools` | `app.util` | `back/app/tools/search_tool.py` |
-| `app.tools` | `core.authorize` | `back/app/tools/assertions.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization_router.py` |
-| `app.tools` | `core.database` | `back/app/tools/admin_service.py`, `back/app/tools/administration_lock.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_models.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/authorization_views.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/deletion.py`, `back/app/tools/documentation_service.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/models.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_authorization_router.py`, `back/app/tools/runtime_permissions.py`, `back/app/tools/tool_search_service.py`, `back/app/tools/tool_service.py` |
-| `app.tools` | `core.dbadmin` | `back/app/tools/capability_migration.py`, `back/app/tools/dbadmin.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/protocol_migration.py` |
-| `app.tools` | `core.failure_journal` | `back/app/tools/mcp_loader.py` |
-| `app.tools` | `core.i18n` | `back/app/tools/agent_registry.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_presentation.py`, `back/app/tools/authorization_router.py`, `back/app/tools/connection_diagnostics.py`, `back/app/tools/connection_functions.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_diagnostics.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/router.py`, `back/app/tools/search_tool.py`, `back/app/tools/tool_errors.py`, `back/app/tools/tool_service.py` |
-| `app.tools` | `core.params` | `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py` |
-| `app.tools` | `core.user` | `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py` |
-| `app.tools` | `core.util` | `back/app/tools/admin_candidates.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/assertions.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/authorization_views.py`, `back/app/tools/catalog.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/secrets.py`, `back/app/tools/tool_service.py` |
 | `app.topic` | `app.agent` | `back/app/topic/evaluation.py`, `back/app/topic/router.py`, `back/app/topic/sequential_detection.py`, `back/app/topic/service.py` |
 | `app.topic` | `app.connection` | `back/app/topic/mcp.py`, `back/app/topic/router.py`, `back/app/topic/service.py` |
 | `app.topic` | `app.conversation` | `back/app/topic/service.py` |
@@ -569,8 +569,8 @@ tests restent l’autorité sur le comportement.
 | `app.topic` | `app.memory` | `back/app/topic/router.py`, `back/app/topic/service.py` |
 | `app.topic` | `app.messenger` | `back/app/topic/service.py` |
 | `app.topic` | `app.process` | `back/app/topic/service.py` |
+| `app.topic` | `app.services` | `back/app/topic/mcp.py` |
 | `app.topic` | `app.task` | `back/app/topic/service.py` |
-| `app.topic` | `app.tools` | `back/app/topic/mcp.py` |
 | `app.topic` | `core.authorize` | `back/app/topic/router.py` |
 | `app.topic` | `core.database` | `back/app/topic/models.py`, `back/app/topic/router.py`, `back/app/topic/runtime_detection.py`, `back/app/topic/service.py` |
 | `app.topic` | `core.i18n` | `back/app/topic/classifier.py`, `back/app/topic/service.py` |
@@ -585,8 +585,8 @@ tests restent l’autorité sur le comportement.
 | `app.voice` | `app.memory` | `back/app/voice/realtime_tools.py`, `back/app/voice/session.py` |
 | `app.voice` | `app.messenger` | `back/app/voice/conversation_service.py`, `back/app/voice/events.py`, `back/app/voice/facade.py`, `back/app/voice/mcp.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/session.py` |
 | `app.voice` | `app.process` | `back/app/voice/realtime_tools.py` |
+| `app.voice` | `app.services` | `back/app/voice/conversation_service.py`, `back/app/voice/management_service.py`, `back/app/voice/mcp.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_tools.py` |
 | `app.voice` | `app.task` | `back/app/voice/mcp.py` |
-| `app.voice` | `app.tools` | `back/app/voice/conversation_service.py`, `back/app/voice/management_service.py`, `back/app/voice/mcp.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_tools.py` |
 | `app.voice` | `core.authorize` | `back/app/voice/router.py` |
 | `app.voice` | `core.database` | `back/app/voice/conversation_service.py`, `back/app/voice/engine.py`, `back/app/voice/events.py`, `back/app/voice/inspection_service.py`, `back/app/voice/management_service.py`, `back/app/voice/models.py`, `back/app/voice/monitoring_service.py`, `back/app/voice/realtime_engine.py`, `back/app/voice/realtime_tools.py`, `back/app/voice/runtime_control.py`, `back/app/voice/session.py` |
 | `app.voice` | `core.i18n` | `back/app/voice/call_manager.py`, `back/app/voice/engine.py`, `back/app/voice/mcp.py`, `back/app/voice/realtime_engine.py`, `back/app/voice/relay.py`, `back/app/voice/router.py` |
@@ -596,8 +596,8 @@ tests restent l’autorité sur le comportement.
 | `app.voice` | `core.util` | `back/app/voice/audio.py`, `back/app/voice/conversation_service.py` |
 | `app.webhook` | `app.agent` | `back/app/webhook/functions.py` |
 | `app.webhook` | `app.connection` | `back/app/webhook/functions.py` |
+| `app.webhook` | `app.services` | `back/app/webhook/functions.py` |
 | `app.webhook` | `app.task` | `back/app/webhook/functions.py` |
-| `app.webhook` | `app.tools` | `back/app/webhook/functions.py` |
 | `app.webhook` | `core.database` | `back/app/webhook/functions.py` |
 | `app.webhook` | `core.i18n` | `back/app/webhook/functions.py` |
 | `bridge.affine` | `core.i18n` | `back/bridge/affine/client.py` |
@@ -659,8 +659,8 @@ tests restent l’autorité sur le comportement.
 | `bridge.hermes` | `app.memory` | `back/bridge/hermes/router.py`, `back/bridge/hermes/schemas.py` |
 | `bridge.hermes` | `app.messenger` | `back/bridge/hermes/approvals.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/media.py` |
 | `bridge.hermes` | `app.process` | `back/bridge/hermes/prompt.py` |
+| `bridge.hermes` | `app.services` | `back/bridge/hermes/agent_driver.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/prompt.py` |
 | `bridge.hermes` | `app.skill` | `back/bridge/hermes/prompt.py`, `back/bridge/hermes/skill_sync.py` |
-| `bridge.hermes` | `app.tools` | `back/bridge/hermes/agent_driver.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/prompt.py` |
 | `bridge.hermes` | `bridge.harness` | `back/bridge/hermes/manager.py` |
 | `bridge.hermes` | `core.authorize` | `back/bridge/hermes/router.py` |
 | `bridge.hermes` | `core.database` | `back/bridge/hermes/agent_driver.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/media.py`, `back/bridge/hermes/models.py`, `back/bridge/hermes/session_binding.py`, `back/bridge/hermes/skill_sync.py` |
@@ -675,7 +675,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.mail` | `app.contact` | `back/bridge/mail/inbound.py` |
 | `bridge.mail` | `app.file_share` | `back/bridge/mail/__init__.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `app.messenger` | `back/bridge/mail/__init__.py`, `back/bridge/mail/approvals.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `app.tools` | `back/bridge/mail/__init__.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `app.services` | `back/bridge/mail/__init__.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.authorize` | `back/bridge/mail/approvals.py`, `back/bridge/mail/assertions.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/router.py` |
 | `bridge.mail` | `core.database` | `back/bridge/mail/approvals.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/models.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.dbadmin` | `back/bridge/mail/dbadmin.py` |
@@ -687,7 +687,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.matrix` | `app.agent` | `back/bridge/matrix/voice_listener.py` |
 | `bridge.matrix` | `app.connection` | `back/bridge/matrix/client.py`, `back/bridge/matrix/voice_listener.py`, `back/bridge/matrix/voice_provider.py` |
 | `bridge.matrix` | `app.messenger` | `back/bridge/matrix/__init__.py`, `back/bridge/matrix/client.py`, `back/bridge/matrix/messenger.py`, `back/bridge/matrix/voice_listener.py`, `back/bridge/matrix/voice_provider.py` |
-| `bridge.matrix` | `app.tools` | `back/bridge/matrix/voice_listener.py`, `back/bridge/matrix/voice_provider.py` |
+| `bridge.matrix` | `app.services` | `back/bridge/matrix/voice_listener.py`, `back/bridge/matrix/voice_provider.py` |
 | `bridge.matrix` | `app.voice` | `back/bridge/matrix/__init__.py`, `back/bridge/matrix/call.py`, `back/bridge/matrix/voice_listener.py`, `back/bridge/matrix/voice_provider.py` |
 | `bridge.matrix` | `core.database` | `back/bridge/matrix/voice_listener.py` |
 | `bridge.matrix` | `core.i18n` | `back/bridge/matrix/client.py`, `back/bridge/matrix/messenger.py` |
@@ -705,7 +705,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.nextcloud` | `app.connection` | `back/bridge/nextcloud/call_listener.py`, `back/bridge/nextcloud/voice_provider.py` |
 | `bridge.nextcloud` | `app.file_share` | `back/bridge/nextcloud/__init__.py`, `back/bridge/nextcloud/file_share.py` |
 | `bridge.nextcloud` | `app.messenger` | `back/bridge/nextcloud/__init__.py`, `back/bridge/nextcloud/call_listener.py`, `back/bridge/nextcloud/client.py`, `back/bridge/nextcloud/credentials.py`, `back/bridge/nextcloud/messenger.py`, `back/bridge/nextcloud/voice_provider.py` |
-| `bridge.nextcloud` | `app.tools` | `back/bridge/nextcloud/call_listener.py`, `back/bridge/nextcloud/voice_provider.py` |
+| `bridge.nextcloud` | `app.services` | `back/bridge/nextcloud/call_listener.py`, `back/bridge/nextcloud/voice_provider.py` |
 | `bridge.nextcloud` | `app.voice` | `back/bridge/nextcloud/__init__.py`, `back/bridge/nextcloud/call.py`, `back/bridge/nextcloud/call_listener.py`, `back/bridge/nextcloud/voice_provider.py` |
 | `bridge.nextcloud` | `core.database` | `back/bridge/nextcloud/call_listener.py` |
 | `bridge.nextcloud` | `core.i18n` | `back/bridge/nextcloud/call.py`, `back/bridge/nextcloud/client.py`, `back/bridge/nextcloud/credentials.py`, `back/bridge/nextcloud/file_share.py`, `back/bridge/nextcloud/messenger.py`, `back/bridge/nextcloud/signaling.py`, `back/bridge/nextcloud/voice_provider.py` |
@@ -739,7 +739,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.together` | `app.llm` | `back/bridge/together/__init__.py` |
 | `bridge.whatsapp` | `app.connection` | `back/bridge/whatsapp/router.py` |
 | `bridge.whatsapp` | `app.messenger` | `back/bridge/whatsapp/__init__.py`, `back/bridge/whatsapp/client.py`, `back/bridge/whatsapp/messenger.py`, `back/bridge/whatsapp/router.py` |
-| `bridge.whatsapp` | `app.tools` | `back/bridge/whatsapp/router.py` |
+| `bridge.whatsapp` | `app.services` | `back/bridge/whatsapp/router.py` |
 | `bridge.whatsapp` | `core.authorize` | `back/bridge/whatsapp/router.py` |
 | `bridge.whatsapp` | `core.params` | `back/bridge/whatsapp/messenger.py`, `back/bridge/whatsapp/router.py` |
 | `bridge.whatsapp` | `core.util` | `back/bridge/whatsapp/client.py`, `back/bridge/whatsapp/messenger.py`, `back/bridge/whatsapp/router.py` |
@@ -841,7 +841,7 @@ tests restent l’autorité sur le comportement.
 | `app/connection` | `app/agent` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/McpCandidateAgent.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
 | `app/connection` | `app/calendar` | `front/app/connection/pages/calendars.vue`, `front/app/connection/services/calendarService.ts` |
 | `app/connection` | `app/console` | `front/app/connection/components/ConnectionForm.vue` |
-| `app/connection` | `app/tools` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/services/connectionService.ts` |
+| `app/connection` | `app/services` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/services/connectionService.ts` |
 | `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/McpOAuthConnection.vue`, `front/app/connection/pages/oauth-callback.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/mcpOAuthService.ts`, `front/app/connection/services/permissionDashboardSources.ts`, `front/app/connection/services/permissionService.ts`, `front/app/connection/stores/connectionStore.ts` |
 | `app/connection` | `core/authorize` | `front/app/connection/availability.ts`, `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/PermissionDashboardPanel.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
 | `app/connection` | `core/navigation` | `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue` |
@@ -943,6 +943,11 @@ tests restent l’autorité sur le comportement.
 | `app/process` | `core/navigation` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/navigation.ts`, `front/app/process/pages/index.vue` |
 | `app/process` | `core/util` | `front/app/process/components/BpmnCanvas.vue`, `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/ExternalProcessRuns.vue`, `front/app/process/components/ExternalRunDialog.vue`, `front/app/process/components/NativeActivityDetails.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/NativeRunDialog.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/NativeRunsTable.vue`, `front/app/process/components/ProcessPreview.vue`, `front/app/process/components/ProcessRunDetailContent.vue`, `front/app/process/components/ProcessRunStatusBadge.vue`, `front/app/process/components/ProcessRunVariables.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/components/ProcessThumbnail.vue`, `front/app/process/components/ProcessVariableDeclarations.vue`, `front/app/process/contracts.ts`, `front/app/process/pages/index.vue`, `front/app/process/richContent.ts` |
 | `app/process` | `core/websocket` | `front/app/process/components/ExternalRunDialog.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/composables/useProcessRunRefresh.ts` |
+| `app/services` | `app/connection` | `front/app/services/components/ServicesList.vue`, `front/app/services/pages/index.vue`, `front/app/services/stores/serviceStore.ts` |
+| `app/services` | `core/api` | `front/app/services/components/ServicesList.vue`, `front/app/services/services/serviceApi.ts` |
+| `app/services` | `core/authorize` | `front/app/services/components/MatrixServiceSetup.vue`, `front/app/services/components/ServiceCatalog.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/components/TelegramServiceSetup.vue`, `front/app/services/navigation.ts`, `front/app/services/pages/index.vue` |
+| `app/services` | `core/navigation` | `front/app/services/navigation.ts`, `front/app/services/pages/index.vue` |
+| `app/services` | `core/util` | `front/app/services/components/ServicesList.vue`, `front/app/services/pages/index.vue` |
 | `app/share` | `core/util` | `front/app/share/components/OwnerAvatar.vue`, `front/app/share/components/OwnerSelect.vue`, `front/app/share/components/ResourceSharingPanel.vue`, `front/app/share/components/SharingPanel.vue`, `front/app/share/components/SharingRecipients.vue`, `front/app/share/ownerCache.ts`, `front/app/share/ownerGroups.ts`, `front/app/share/panel.ts` |
 | `app/skill` | `app/agent` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillAuthorizationManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue` |
 | `app/skill` | `core/api` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue`, `front/app/skill/pages/index.vue`, `front/app/skill/services/skillService.ts` |
@@ -964,11 +969,6 @@ tests restent l’autorité sur le comportement.
 | `app/task` | `core/user` | `front/app/task/components/TaskDetail.vue`, `front/app/task/stores/taskStore.ts` |
 | `app/task` | `core/util` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/DispatchResult.vue`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/MemoryItemCard.vue`, `front/app/task/components/PlannerResult.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/components/TaskRowMenu.vue`, `front/app/task/index.ts`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskStatusService.ts` |
 | `app/task` | `core/websocket` | `front/app/task/stores/taskStore.ts`, `front/app/task/useTaskActivity.ts` |
-| `app/tools` | `app/connection` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/pages/index.vue`, `front/app/tools/stores/toolStore.ts` |
-| `app/tools` | `core/api` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/services/toolService.ts` |
-| `app/tools` | `core/authorize` | `front/app/tools/components/MatrixToolSetup.vue`, `front/app/tools/components/TelegramToolSetup.vue`, `front/app/tools/components/ToolsList.vue`, `front/app/tools/navigation.ts`, `front/app/tools/pages/index.vue` |
-| `app/tools` | `core/navigation` | `front/app/tools/navigation.ts`, `front/app/tools/pages/index.vue` |
-| `app/tools` | `core/util` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/pages/index.vue` |
 | `app/topic` | `core/api` | `front/app/topic/components/TopicBadge.vue`, `front/app/topic/components/TopicSelect.vue`, `front/app/topic/services/topicService.ts` |
 | `app/topic` | `core/authorize` | `front/app/topic/components/TopicBadge.vue`, `front/app/topic/components/TopicSelect.vue`, `front/app/topic/navigation.ts`, `front/app/topic/pages/index.vue` |
 | `app/topic` | `core/navigation` | `front/app/topic/components/TopicDetail.vue`, `front/app/topic/navigation.ts`, `front/app/topic/pages/index.vue` |
@@ -1043,49 +1043,49 @@ tests restent l’autorité sur le comportement.
 | Module | Nombre | Dépendances |
 |---|---:|---|
 | `app.dream` | 15 | `app.agent`, `app.connection`, `app.contact`, `app.conversation`, `app.dataset`, `app.document`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice` |
-| `app.file_share` | 15 | `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.document`, `app.documentation`, `app.goal`, `app.image`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `bridge.affine` |
-| `app.lab` | 15 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.dream`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice` |
-| `bridge.hermes` | 12 | `app.agent`, `app.connection`, `app.file_share`, `app.harnesses`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.tools`, `bridge.harness` |
-| `app.topic` | 11 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.document`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
-| `app.document` | 10 | `app.agent`, `app.conversation`, `app.file_share`, `app.goal`, `app.llm`, `app.memory`, `app.process`, `app.share`, `app.task`, `app.tools` |
-| `app.memory` | 10 | `app.agent`, `app.conversation`, `app.document`, `app.goal`, `app.llm`, `app.process`, `app.task`, `app.tools`, `app.topic`, `app.voice` |
-| `app.process` | 10 | `app.agent`, `app.console`, `app.dataset`, `app.document`, `app.file_share`, `app.llm`, `app.memory`, `app.share`, `app.task`, `app.tools` |
-| `app.conversation` | 9 | `app.agent`, `app.code`, `app.connection`, `app.file_share`, `app.llm`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
-| `app.harness` | 9 | `app.agent`, `app.console`, `app.conversation`, `app.file_share`, `app.llm`, `app.messenger`, `app.process`, `app.skill`, `app.tools` |
-| `app.llm` | 9 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.mcp`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
-| `app.tools` | 9 | `app.agent`, `app.connection`, `app.console`, `app.documentation`, `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.util` |
-| `app.voice` | 9 | `app.agent`, `app.connection`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
-| `app.agent` | 8 | `app.file_share`, `app.image`, `app.llm`, `app.messenger`, `app.process`, `app.share`, `app.skill`, `app.tools` |
+| `app.file_share` | 15 | `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.document`, `app.documentation`, `app.goal`, `app.image`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.skill`, `app.task`, `bridge.affine` |
+| `app.lab` | 15 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.dream`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.skill`, `app.task`, `app.topic`, `app.voice` |
+| `bridge.hermes` | 12 | `app.agent`, `app.connection`, `app.file_share`, `app.harnesses`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.skill`, `bridge.harness` |
+| `app.topic` | 11 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.document`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.task` |
+| `app.document` | 10 | `app.agent`, `app.conversation`, `app.file_share`, `app.goal`, `app.llm`, `app.memory`, `app.process`, `app.services`, `app.share`, `app.task` |
+| `app.memory` | 10 | `app.agent`, `app.conversation`, `app.document`, `app.goal`, `app.llm`, `app.process`, `app.services`, `app.task`, `app.topic`, `app.voice` |
+| `app.process` | 10 | `app.agent`, `app.console`, `app.dataset`, `app.document`, `app.file_share`, `app.llm`, `app.memory`, `app.services`, `app.share`, `app.task` |
+| `app.conversation` | 9 | `app.agent`, `app.code`, `app.connection`, `app.file_share`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.task` |
+| `app.harness` | 9 | `app.agent`, `app.console`, `app.conversation`, `app.file_share`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.skill` |
+| `app.llm` | 9 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.mcp`, `app.messenger`, `app.process`, `app.services`, `app.task` |
+| `app.services` | 9 | `app.agent`, `app.connection`, `app.console`, `app.documentation`, `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.util` |
+| `app.voice` | 9 | `app.agent`, `app.connection`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.task` |
+| `app.agent` | 8 | `app.file_share`, `app.image`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.share`, `app.skill` |
 | `app.chat` | 8 | `app.agent`, `app.browser`, `app.code`, `app.conversation`, `app.document`, `app.messenger`, `app.topic`, `app.voice` |
-| `app.messenger` | 8 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.llm`, `app.memory`, `app.task`, `app.tools` |
-| `app.contact` | 7 | `app.agent`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.task`, `app.tools` |
-| `app.onboarding` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.skill`, `app.tools` |
-| `app.audio` | 6 | `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.tools`, `bridge.youtube` |
-| `app.calendar` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.memory`, `app.tools` |
-| `app.goal` | 6 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.task`, `app.tools` |
+| `app.messenger` | 8 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.llm`, `app.memory`, `app.services`, `app.task` |
+| `app.contact` | 7 | `app.agent`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.services`, `app.task` |
+| `app.onboarding` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.skill` |
+| `app.audio` | 6 | `app.file_share`, `app.llm`, `app.messenger`, `app.services`, `app.task`, `bridge.youtube` |
+| `app.calendar` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.memory`, `app.services` |
+| `app.goal` | 6 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.services`, `app.task` |
 | `bridge.codex` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.deepseek_harness` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
-| `bridge.mail` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.messenger`, `app.tools` |
-| `bridge.nextcloud` | 6 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.tools`, `app.voice` |
-| `app.task` | 5 | `app.agent`, `app.goal`, `app.llm`, `app.messenger`, `app.tools` |
+| `bridge.mail` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.messenger`, `app.services` |
+| `bridge.nextcloud` | 6 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.services`, `app.voice` |
+| `app.task` | 5 | `app.agent`, `app.goal`, `app.llm`, `app.messenger`, `app.services` |
 | `bridge.claude_agent` | 5 | `app.agent`, `app.harnesses`, `app.mcp`, `app.skill`, `bridge.harness` |
-| `bridge.matrix` | 5 | `app.agent`, `app.connection`, `app.messenger`, `app.tools`, `app.voice` |
-| `app.browser` | 4 | `app.connection`, `app.file_share`, `app.messenger`, `app.tools` |
-| `app.console` | 4 | `app.agent`, `app.connection`, `app.file_share`, `app.tools` |
-| `app.multimedia` | 4 | `app.agent`, `app.file_share`, `app.llm`, `app.tools` |
-| `app.webhook` | 4 | `app.agent`, `app.connection`, `app.task`, `app.tools` |
+| `bridge.matrix` | 5 | `app.agent`, `app.connection`, `app.messenger`, `app.services`, `app.voice` |
+| `app.browser` | 4 | `app.connection`, `app.file_share`, `app.messenger`, `app.services` |
+| `app.console` | 4 | `app.agent`, `app.connection`, `app.file_share`, `app.services` |
+| `app.multimedia` | 4 | `app.agent`, `app.file_share`, `app.llm`, `app.services` |
+| `app.webhook` | 4 | `app.agent`, `app.connection`, `app.services`, `app.task` |
 | `bridge.code_server` | 4 | `app.agent`, `app.code`, `app.console`, `app.file_share` |
 | `app.dashboard` | 3 | `app.agent`, `app.llm`, `app.task` |
-| `app.image` | 3 | `app.file_share`, `app.llm`, `app.tools` |
-| `app.skill` | 3 | `app.agent`, `app.connection`, `app.tools` |
-| `bridge.whatsapp` | 3 | `app.connection`, `app.messenger`, `app.tools` |
-| `app.connection` | 2 | `app.agent`, `app.tools` |
-| `app.harnesses` | 2 | `app.agent`, `app.tools` |
-| `app.mcp` | 2 | `app.agent`, `app.tools` |
+| `app.image` | 3 | `app.file_share`, `app.llm`, `app.services` |
+| `app.skill` | 3 | `app.agent`, `app.connection`, `app.services` |
+| `bridge.whatsapp` | 3 | `app.connection`, `app.messenger`, `app.services` |
+| `app.connection` | 2 | `app.agent`, `app.services` |
+| `app.harnesses` | 2 | `app.agent`, `app.services` |
+| `app.mcp` | 2 | `app.agent`, `app.services` |
 | `bridge.calendar` | 2 | `app.calendar`, `app.file_share` |
 | `bridge.one_bot` | 2 | `app.connection`, `app.messenger` |
 | `app.dataset` | 1 | `app.document` |
-| `app.incident` | 1 | `app.tools` |
+| `app.incident` | 1 | `app.services` |
 | `bridge.anthropic` | 1 | `app.llm` |
 | `bridge.azure_speech` | 1 | `app.llm` |
 | `bridge.byteplus` | 1 | `app.llm` |
@@ -1116,13 +1116,13 @@ tests restent l’autorité sur le comportement.
 
 | Module | Nombre | Dépendants |
 |---|---:|---|
-| `app.llm` | 45 | `app.agent`, `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
-| `app.agent` | 35 | `app.calendar`, `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
-| `app.tools` | 33 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
-| `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
-| `app.connection` | 22 | `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
-| `app.file_share` | 20 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
-| `app.task` | 17 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.tools`, `app.topic`, `app.voice`, `app.webhook` |
+| `app.llm` | 45 | `app.agent`, `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.services`, `app.task`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
+| `app.agent` | 35 | `app.calendar`, `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.services`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
+| `app.services` | 33 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
+| `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.services`, `app.task`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
+| `app.connection` | 22 | `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.services`, `app.skill`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
+| `app.file_share` | 20 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.services`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
+| `app.task` | 17 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.topic`, `app.voice`, `app.webhook` |
 | `app.process` | 14 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.memory` | 11 | `app.calendar`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
@@ -1130,7 +1130,7 @@ tests restent l’autorité sur le comportement.
 | `app.document` | 7 | `app.chat`, `app.dataset`, `app.dream`, `app.file_share`, `app.memory`, `app.process`, `app.topic` |
 | `app.goal` | 6 | `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.memory`, `app.task` |
 | `app.voice` | 6 | `app.chat`, `app.dream`, `app.lab`, `app.memory`, `bridge.matrix`, `bridge.nextcloud` |
-| `app.console` | 5 | `app.file_share`, `app.harness`, `app.process`, `app.tools`, `bridge.code_server` |
+| `app.console` | 5 | `app.file_share`, `app.harness`, `app.process`, `app.services`, `bridge.code_server` |
 | `app.mcp` | 5 | `app.llm`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
 | `app.dataset` | 4 | `app.dream`, `app.lab`, `app.process`, `app.topic` |
 | `app.harnesses` | 4 | `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
@@ -1139,12 +1139,12 @@ tests restent l’autorité sur le comportement.
 | `app.code` | 3 | `app.chat`, `app.conversation`, `bridge.code_server` |
 | `app.contact` | 3 | `app.calendar`, `app.dream`, `bridge.mail` |
 | `app.share` | 3 | `app.agent`, `app.document`, `app.process` |
-| `app.documentation` | 2 | `app.file_share`, `app.tools` |
+| `app.documentation` | 2 | `app.file_share`, `app.services` |
 | `app.image` | 2 | `app.agent`, `app.file_share` |
 | `app.browser` | 1 | `app.chat` |
 | `app.calendar` | 1 | `bridge.calendar` |
 | `app.dream` | 1 | `app.lab` |
-| `app.util` | 1 | `app.tools` |
+| `app.util` | 1 | `app.services` |
 | `bridge.affine` | 1 | `app.file_share` |
 | `bridge.youtube` | 1 | `app.audio` |
 
@@ -1154,11 +1154,11 @@ tests restent l’autorité sur le comportement.
 - `app.agent` ↔ `app.llm`
 - `app.agent` ↔ `app.messenger`
 - `app.agent` ↔ `app.process`
+- `app.agent` ↔ `app.services`
 - `app.agent` ↔ `app.skill`
-- `app.agent` ↔ `app.tools`
-- `app.connection` ↔ `app.tools`
+- `app.connection` ↔ `app.services`
 - `app.console` ↔ `app.file_share`
-- `app.console` ↔ `app.tools`
+- `app.console` ↔ `app.services`
 - `app.conversation` ↔ `app.file_share`
 - `app.conversation` ↔ `app.llm`
 - `app.conversation` ↔ `app.messenger`
@@ -1168,22 +1168,22 @@ tests restent l’autorité sur le comportement.
 - `app.file_share` ↔ `app.image`
 - `app.file_share` ↔ `app.messenger`
 - `app.file_share` ↔ `app.process`
-- `app.file_share` ↔ `app.tools`
+- `app.file_share` ↔ `app.services`
 - `app.goal` ↔ `app.task`
 - `app.llm` ↔ `app.messenger`
 - `app.llm` ↔ `app.process`
+- `app.llm` ↔ `app.services`
 - `app.llm` ↔ `app.task`
-- `app.llm` ↔ `app.tools`
 - `app.memory` ↔ `app.process`
 - `app.memory` ↔ `app.topic`
 - `app.memory` ↔ `app.voice`
+- `app.messenger` ↔ `app.services`
 - `app.messenger` ↔ `app.task`
-- `app.messenger` ↔ `app.tools`
-- `app.task` ↔ `app.tools`
+- `app.services` ↔ `app.task`
 
 ### Composantes fortement connexes
 
-- `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.dataset`, `app.document`, `app.file_share`, `app.goal`, `app.image`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`
+- `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.dataset`, `app.document`, `app.file_share`, `app.goal`, `app.image`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.skill`, `app.task`, `app.topic`, `app.voice`
 
 ## Métriques de couplage des domaines frontend
 
@@ -1197,7 +1197,7 @@ tests restent l’autorité sur le comportement.
 | `app/conversation` | 5 | `app/agent`, `app/lab`, `app/llm`, `app/task`, `app/topic` |
 | `app/voice` | 5 | `app/agent`, `app/lab`, `app/llm`, `app/task`, `app/topic` |
 | `app/chat` | 4 | `app/agent`, `app/conversation`, `app/task`, `app/topic` |
-| `app/connection` | 4 | `app/agent`, `app/calendar`, `app/console`, `app/tools` |
+| `app/connection` | 4 | `app/agent`, `app/calendar`, `app/console`, `app/services` |
 | `app/index` | 4 | `app/agent`, `app/llm`, `app/onboarding`, `app/task` |
 | `app/process` | 4 | `app/agent`, `app/dataset`, `app/share`, `app/task` |
 | `app/calendar` | 3 | `app/agent`, `app/goal`, `app/memory` |
@@ -1211,8 +1211,8 @@ tests restent l’autorité sur le comportement.
 | `app/file_share` | 1 | `app/agent` |
 | `app/goal` | 1 | `app/agent` |
 | `app/lab` | 1 | `app/task` |
+| `app/services` | 1 | `app/connection` |
 | `app/skill` | 1 | `app/agent` |
-| `app/tools` | 1 | `app/connection` |
 | `bridge/hermes` | 1 | `app/agent` |
 | `bridge/ollama` | 1 | `app/llm` |
 
@@ -1226,7 +1226,7 @@ tests restent l’autorité sur le comportement.
 | `app/topic` | 5 | `app/chat`, `app/conversation`, `app/document`, `app/task`, `app/voice` |
 | `app/share` | 4 | `app/dataset`, `app/document`, `app/memory`, `app/process` |
 | `app/lab` | 3 | `app/conversation`, `app/task`, `app/voice` |
-| `app/connection` | 2 | `app/browser`, `app/tools` |
+| `app/connection` | 2 | `app/browser`, `app/services` |
 | `app/conversation` | 2 | `app/chat`, `app/task` |
 | `app/memory` | 2 | `app/calendar`, `app/task` |
 | `app/calendar` | 1 | `app/connection` |
@@ -1237,13 +1237,13 @@ tests restent l’autorité sur le comportement.
 | `app/harnesses` | 1 | `app/agent` |
 | `app/onboarding` | 1 | `app/index` |
 | `app/process` | 1 | `app/task` |
-| `app/tools` | 1 | `app/connection` |
+| `app/services` | 1 | `app/connection` |
 | `app/voice` | 1 | `app/task` |
 
 ### Cycles directs frontend
 
 - `app/agent` ↔ `app/llm`
-- `app/connection` ↔ `app/tools`
+- `app/connection` ↔ `app/services`
 - `app/conversation` ↔ `app/task`
 - `app/lab` ↔ `app/task`
 - `app/llm` ↔ `app/task`
@@ -1253,7 +1253,7 @@ tests restent l’autorité sur le comportement.
 ### Composantes fortement connexes frontend
 
 - `app/agent`, `app/conversation`, `app/document`, `app/lab`, `app/llm`, `app/memory`, `app/process`, `app/task`, `app/voice`
-- `app/connection`, `app/tools`
+- `app/connection`, `app/services`
 
 ## Routes backend déclarées
 
@@ -1262,14 +1262,14 @@ tests restent l’autorité sur le comportement.
 
 | Méthode | Chemin déclaré | Module | Handler | RBAC local | Source |
 |---|---|---|---|---:|---|
-| GET | `/action-authorizations` | `app.tools` | `list_requests` | oui | `back/app/tools/authorization_router.py:39` |
-| GET | `/action-authorizations/runtime-permissions` | `app.tools` | `list_runtime_permissions` | oui | `back/app/tools/authorization_router.py:68` |
-| DELETE | `/action-authorizations/runtime-permissions/{identifier}` | `app.tools` | `delete_runtime_permission` | oui | `back/app/tools/authorization_router.py:77` |
-| GET | `/action-authorizations/runtime-policies` | `app.tools` | `read_runtime_policies` | oui | `back/app/tools/authorization_router.py:87` |
-| PUT | `/action-authorizations/runtime-policies` | `app.tools` | `update_runtime_policy` | oui | `back/app/tools/authorization_router.py:104` |
-| GET | `/action-authorizations/{identifier}` | `app.tools` | `get_request` | oui | `back/app/tools/authorization_router.py:124` |
-| POST | `/action-authorizations/{identifier}/answer` | `app.tools` | `answer_request` | oui | `back/app/tools/authorization_router.py:154` |
-| POST | `/action-authorizations/{identifier}/cancel` | `app.tools` | `cancel_request` | oui | `back/app/tools/authorization_router.py:166` |
+| GET | `/action-authorizations` | `app.services` | `list_requests` | oui | `back/app/services/authorization_router.py:39` |
+| GET | `/action-authorizations/runtime-permissions` | `app.services` | `list_runtime_permissions` | oui | `back/app/services/authorization_router.py:68` |
+| DELETE | `/action-authorizations/runtime-permissions/{identifier}` | `app.services` | `delete_runtime_permission` | oui | `back/app/services/authorization_router.py:77` |
+| GET | `/action-authorizations/runtime-policies` | `app.services` | `read_runtime_policies` | oui | `back/app/services/authorization_router.py:87` |
+| PUT | `/action-authorizations/runtime-policies` | `app.services` | `update_runtime_policy` | oui | `back/app/services/authorization_router.py:104` |
+| GET | `/action-authorizations/{identifier}` | `app.services` | `get_request` | oui | `back/app/services/authorization_router.py:124` |
+| POST | `/action-authorizations/{identifier}/answer` | `app.services` | `answer_request` | oui | `back/app/services/authorization_router.py:154` |
+| POST | `/action-authorizations/{identifier}/cancel` | `app.services` | `cancel_request` | oui | `back/app/services/authorization_router.py:166` |
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | oui | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | oui | `back/app/agent/openai_router.py:66` |
 | GET | `/agents` | `app.agent` | `read_agents` | oui | `back/app/agent/router.py:202` |
@@ -1400,8 +1400,8 @@ tests restent l’autorité sur le comportement.
 | GET | `/chat/emojis/frequent` | `app.chat` | `read_frequent_emojis` | oui | `back/app/chat/router.py:380` |
 | POST | `/chat/emojis/usage` | `app.chat` | `create_emoji_usage` | oui | `back/app/chat/router.py:389` |
 | GET | `/chat/identities` | `app.chat` | `read_identity_mappings` | oui | `back/app/chat/router.py:399` |
-| DELETE | `/chat/identities/{tool_id}` | `app.chat` | `delete_identity_mapping` | oui | `back/app/chat/router.py:429` |
-| PUT | `/chat/identities/{tool_id}` | `app.chat` | `update_identity_mapping` | oui | `back/app/chat/router.py:408` |
+| DELETE | `/chat/identities/{service_id}` | `app.chat` | `delete_identity_mapping` | oui | `back/app/chat/router.py:429` |
+| PUT | `/chat/identities/{service_id}` | `app.chat` | `update_identity_mapping` | oui | `back/app/chat/router.py:408` |
 | GET | `/chat/inbox` | `app.chat` | `read_inbox` | oui | `back/app/chat/router.py:341` |
 | GET | `/chat/push/configuration` | `app.chat` | `read_push_configuration` | oui | `back/app/chat/router.py:347` |
 | DELETE | `/chat/push/subscriptions` | `app.chat` | `remove_push_subscription` | oui | `back/app/chat/router.py:370` |
@@ -1468,9 +1468,9 @@ tests restent l’autorité sur le comportement.
 | GET | `/connections/overview` | `app.connection` | `list_connection_overviews` | oui | `back/app/connection/router.py:316` |
 | GET | `/connections/permission-options` | `app.connection` | `permission_connection_options` | oui | `back/app/connection/router.py:122` |
 | POST | `/connections/refresh-tools` | `app.connection` | `refresh_connections_and_tool_catalogs` | oui | `back/app/connection/router.py:276` |
+| GET | `/connections/service-options` | `app.connection` | `connection_tool_options` | oui | `back/app/connection/router.py:114` |
 | POST | `/connections/sync-integrated` | `app.connection` | `sync_integrated_connections` | oui | `back/app/connection/router.py:288` |
 | POST | `/connections/test-mcp-tools` | `app.connection` | `test_mcp_tools` | oui | `back/app/connection/router.py:641` |
-| GET | `/connections/tool-options` | `app.connection` | `connection_tool_options` | oui | `back/app/connection/router.py:114` |
 | DELETE | `/connections/{connection_id}` | `app.connection` | `delete_connection` | oui | `back/app/connection/router.py:452` |
 | GET | `/connections/{connection_id}` | `app.connection` | `get_connection` | oui | `back/app/connection/router.py:345` |
 | PATCH | `/connections/{connection_id}` | `app.connection` | `update_connection` | oui | `back/app/connection/router.py:390` |
@@ -1957,10 +1957,30 @@ tests restent l’autorité sur le comportement.
 | POST | `/runs/{run_id}/refresh` | `app.process` | `refresh_run` | oui | `back/app/process/router.py:342` |
 | POST | `/runs/{run_id}/retry` | `app.process` | `retry_run` | oui | `back/app/process/router.py:380` |
 | POST | `/runtime-agents/{id}/sync-skills` | `app.harness` | `sync_harness_skills` | oui | `back/app/harness/router.py:99` |
-| POST | `/runtime-authorizations` | `app.tools` | `request_action` | non | `back/app/tools/runtime_authorization_router.py:47` |
-| GET | `/runtime-authorizations/context` | `app.tools` | `context_status` | non | `back/app/tools/runtime_authorization_router.py:75` |
-| POST | `/runtime-authorizations/receipt` | `app.tools` | `action_receipt` | non | `back/app/tools/runtime_authorization_router.py:96` |
-| GET | `/runtime-authorizations/{identifier}` | `app.tools` | `action_status` | non | `back/app/tools/runtime_authorization_router.py:84` |
+| POST | `/runtime-authorizations` | `app.services` | `request_action` | non | `back/app/services/runtime_authorization_router.py:47` |
+| GET | `/runtime-authorizations/context` | `app.services` | `context_status` | non | `back/app/services/runtime_authorization_router.py:75` |
+| POST | `/runtime-authorizations/receipt` | `app.services` | `action_receipt` | non | `back/app/services/runtime_authorization_router.py:96` |
+| GET | `/runtime-authorizations/{identifier}` | `app.services` | `action_status` | non | `back/app/services/runtime_authorization_router.py:84` |
+| GET | `/services` | `app.process` | `read_process_tools` | oui | `back/app/process/router.py:130` |
+| GET | `/services` | `app.services` | `list_services` | oui | `back/app/services/router.py:100` |
+| POST | `/services` | `app.services` | `create_service` | oui | `back/app/services/router.py:204` |
+| GET | `/services/agents/{agent_id}/mcp-tools` | `app.services` | `list_agent_mcp_tools` | oui | `back/app/services/router.py:110` |
+| GET | `/services/agents/{agent_id}/permissions` | `app.services` | `read_agent_permission_catalog` | oui | `back/app/services/router.py:119` |
+| GET | `/services/capabilities` | `app.services` | `list_supported_capabilities` | oui | `back/app/services/router.py:52` |
+| GET | `/services/catalog` | `app.services` | `service_catalogue` | oui | `back/app/services/router.py:40` |
+| POST | `/services/catalog/refresh` | `app.services` | `refresh_service_catalogue` | oui | `back/app/services/router.py:46` |
+| POST | `/services/import` | `app.services` | `import_service` | oui | `back/app/services/router.py:308` |
+| POST | `/services/mcp-candidates` | `app.services` | `prepare_mcp_candidate` | oui | `back/app/services/router.py:62` |
+| POST | `/services/test-mcp` | `app.services` | `test_mcp_connection` | oui | `back/app/services/router.py:132` |
+| GET | `/services/{service_code}/health` | `app.process` | `read_process_tool_health` | oui | `back/app/process/router.py:136` |
+| DELETE | `/services/{service_id}` | `app.services` | `delete_service` | oui | `back/app/services/router.py:268` |
+| GET | `/services/{service_id}` | `app.services` | `get_service` | oui | `back/app/services/router.py:152` |
+| PUT | `/services/{service_id}` | `app.services` | `update_service` | oui | `back/app/services/router.py:220` |
+| PATCH | `/services/{service_id}/conversation-access` | `app.services` | `update_conversation_access` | oui | `back/app/services/router.py:236` |
+| GET | `/services/{service_id}/deletion-impact` | `app.services` | `service_deletion_impact` | oui | `back/app/services/router.py:256` |
+| GET | `/services/{service_id}/export` | `app.services` | `export_service` | oui | `back/app/services/router.py:285` |
+| GET | `/services/{service_id}/global-params` | `app.services` | `get_global_params` | oui | `back/app/services/router.py:164` |
+| PUT | `/services/{service_id}/global-params` | `app.services` | `update_global_params` | oui | `back/app/services/router.py:181` |
 | GET | `/skills` | `app.skill` | `list_skills` | oui | `back/app/skill/router.py:159` |
 | POST | `/skills` | `app.skill` | `create_skill` | oui | `back/app/skill/router.py:422` |
 | GET | `/skills/agents` | `app.skill` | `list_skill_agents` | oui | `back/app/skill/router.py:295` |
@@ -2023,24 +2043,6 @@ tests restent l’autorité sur le comportement.
 | GET | `/teams/{team_id}/humans` | `core.team` | `team_humans` | oui | `back/core/team/router.py:76` |
 | PUT | `/teams/{team_id}/humans/{user_id}` | `core.team` | `set_human_membership` | oui | `back/core/team/router.py:85` |
 | PUT | `/teams/{team_id}/position` | `core.team` | `move_team` | oui | `back/core/team/router.py:66` |
-| GET | `/tools` | `app.process` | `read_process_tools` | oui | `back/app/process/router.py:130` |
-| GET | `/tools` | `app.tools` | `list_tools` | oui | `back/app/tools/router.py:85` |
-| POST | `/tools` | `app.tools` | `create_tool` | oui | `back/app/tools/router.py:189` |
-| GET | `/tools/agents/{agent_id}/mcp-tools` | `app.tools` | `list_agent_mcp_tools` | oui | `back/app/tools/router.py:95` |
-| GET | `/tools/agents/{agent_id}/permissions` | `app.tools` | `read_agent_permission_catalog` | oui | `back/app/tools/router.py:104` |
-| GET | `/tools/capabilities` | `app.tools` | `list_supported_capabilities` | oui | `back/app/tools/router.py:37` |
-| POST | `/tools/import` | `app.tools` | `import_tool` | oui | `back/app/tools/router.py:293` |
-| POST | `/tools/mcp-candidates` | `app.tools` | `prepare_mcp_candidate` | oui | `back/app/tools/router.py:47` |
-| POST | `/tools/test-mcp` | `app.tools` | `test_mcp_connection` | oui | `back/app/tools/router.py:117` |
-| GET | `/tools/{tool_code}/health` | `app.process` | `read_process_tool_health` | oui | `back/app/process/router.py:136` |
-| DELETE | `/tools/{tool_id}` | `app.tools` | `delete_tool` | oui | `back/app/tools/router.py:253` |
-| GET | `/tools/{tool_id}` | `app.tools` | `get_tool` | oui | `back/app/tools/router.py:137` |
-| PUT | `/tools/{tool_id}` | `app.tools` | `update_tool` | oui | `back/app/tools/router.py:205` |
-| PATCH | `/tools/{tool_id}/conversation-access` | `app.tools` | `update_conversation_access` | oui | `back/app/tools/router.py:221` |
-| GET | `/tools/{tool_id}/deletion-impact` | `app.tools` | `tool_deletion_impact` | oui | `back/app/tools/router.py:241` |
-| GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | oui | `back/app/tools/router.py:270` |
-| GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | oui | `back/app/tools/router.py:149` |
-| PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | oui | `back/app/tools/router.py:166` |
 | GET | `/topics` | `app.topic` | `read_topics` | oui | `back/app/topic/router.py:49` |
 | POST | `/topics` | `app.topic` | `create_topic` | oui | `back/app/topic/router.py:106` |
 | GET | `/topics/conversation` | `app.topic` | `read_conversation_topics` | oui | `back/app/topic/router.py:68` |
@@ -2073,8 +2075,8 @@ tests restent l’autorité sur le comportement.
 | GET | `/voice/conversations/{conversation_id}` | `app.voice` | `read_voice_conversation` | oui | `back/app/voice/router.py:183` |
 | GET | `/whatsapp/webhook` | `bridge.whatsapp` | `verify_webhook` | non | `back/bridge/whatsapp/router.py:81` |
 | POST | `/whatsapp/webhook` | `bridge.whatsapp` | `receive_webhook` | non | `back/bridge/whatsapp/router.py:254` |
-| GET | `/whatsapp/webhook/{tool_id}` | `bridge.whatsapp` | `verify_tool_webhook` | non | `back/bridge/whatsapp/router.py:100` |
-| POST | `/whatsapp/webhook/{tool_id}` | `bridge.whatsapp` | `receive_tool_webhook` | non | `back/bridge/whatsapp/router.py:262` |
+| GET | `/whatsapp/webhook/{service_id}` | `bridge.whatsapp` | `verify_tool_webhook` | non | `back/bridge/whatsapp/router.py:100` |
+| POST | `/whatsapp/webhook/{service_id}` | `bridge.whatsapp` | `receive_tool_webhook` | non | `back/bridge/whatsapp/router.py:262` |
 | POST | `/workflows/{workflow_id}/runs/{engine_run_id}/sync` | `app.process` | `sync_engine_run` | oui | `back/app/process/router.py:254` |
 | WEBSOCKET | `/ws/onebot/{platform}/{user_id}` | `bridge.one_bot` | `onebot_endpoint` | non | `back/bridge/one_bot/router.py:161` |
 
@@ -2114,7 +2116,7 @@ tests restent l’autorité sur le comportement.
 | `connection_function_state` | `ConnectionFunctionState` | `app.connection` | non | `connections.id` | `back/app/connection/models.py:55` |
 | `connection_oauth` | `ConnectionOAuth` | `app.connection` | non | `connections.id` | `back/app/connection/models.py:110` |
 | `connection_params` | `ConnectionParam` | `app.connection` | non | `connections.id` | `back/app/connection/models.py:36` |
-| `connections` | `Connection` | `app.connection` | non | `agents.id`, `tools.id` | `back/app/connection/models.py:7` |
+| `connections` | `Connection` | `app.connection` | non | `agents.id`, `services.id` | `back/app/connection/models.py:7` |
 | `contact_discovery_jobs` | `ContactDiscoveryJob` | `app.contact` | oui | `agents.id`, `memory_items.id` | `back/app/contact/models.py:15` |
 | `conversation_delivery_resolutions` | `ConversationDeliveryResolution` | `app.conversation` | non | `conversation_rounds.id`, `users.id` | `back/app/conversation/models.py:27` |
 | `conversation_notification_resolutions` | `ConversationNotificationResolution` | `app.conversation` | non | `conversation_process_links.id`, `conversation_task_links.id`, `users.id` | `back/app/conversation/models.py:39` |
@@ -2203,8 +2205,8 @@ tests restent l’autorité sur le comportement.
 | `llm_profiles` | `LlmProfile` | `app.llm` | non | `llms.id` | `back/app/llm/profile_models.py:19` |
 | `llm_providers` | `LLMProvider` | `app.llm` | oui | `users.id` | `back/app/llm/provider_models.py:10` |
 | `llms` | `LLM` | `app.llm` | oui | `llm_providers.id` | `back/app/llm/provider_models.py:124` |
-| `mail_inbound_receipts` | `MailInboundReceipt` | `bridge.mail` | non | `agents.id`, `connections.id`, `tool_action_authorizations.id` | `back/bridge/mail/models.py:137` |
-| `mail_outbound_deliveries` | `MailOutboundDelivery` | `bridge.mail` | non | `agents.id`, `connections.id`, `tool_action_authorizations.id`, `users.id` | `back/bridge/mail/models.py:28` |
+| `mail_inbound_receipts` | `MailInboundReceipt` | `bridge.mail` | non | `agents.id`, `connections.id`, `service_action_authorizations.id` | `back/bridge/mail/models.py:137` |
+| `mail_outbound_deliveries` | `MailOutboundDelivery` | `bridge.mail` | non | `agents.id`, `connections.id`, `service_action_authorizations.id`, `users.id` | `back/bridge/mail/models.py:28` |
 | `memory_associations` | `MemoryAssociation` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:980` |
 | `memory_automation_jobs` | `MemoryAutomationJob` | `app.memory` | non | — | `back/app/memory/models.py:1162` |
 | `memory_candidates` | `MemoryAcquisition` | `app.memory` | oui | `agents.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:892` |
@@ -2232,7 +2234,7 @@ tests restent l’autorité sur le comportement.
 | `messenger_messages` | `Message` | `app.messenger` | oui | `connections.id`, `memory_items.id`, `messenger_rooms.id`, `messenger_users.id`, `topics.id`, `users.id` | `back/app/messenger/models.py:254` |
 | `messenger_room_users` | `RoomUser` | `app.messenger` | non | `messenger_messages.id`, `messenger_rooms.id`, `messenger_users.id` | `back/app/messenger/models.py:139` |
 | `messenger_rooms` | `Room` | `app.messenger` | oui | `connections.id`, `topics.id` | `back/app/messenger/models.py:63` |
-| `messenger_users` | `MessengerUser` | `app.messenger` | oui | `agents.id`, `tools.id`, `users.id` | `back/app/messenger/models.py:96` |
+| `messenger_users` | `MessengerUser` | `app.messenger` | oui | `agents.id`, `services.id`, `users.id` | `back/app/messenger/models.py:96` |
 | `multimedia_delivery_resolutions` | `MediaDeliveryResolution` | `app.multimedia` | non | `multimedia_output_receipts.id`, `users.id` | `back/app/multimedia/models.py:58` |
 | `multimedia_generations` | `MediaGeneration` | `app.multimedia` | non | `agents.id`, `tasks.id` | `back/app/multimedia/models.py:15` |
 | `multimedia_output_receipts` | `MediaOutputReceipt` | `app.multimedia` | non | `multimedia_generations.id` | `back/app/multimedia/models.py:40` |
@@ -2243,7 +2245,7 @@ tests restent l’autorité sur le comportement.
 | `privileges` | `Privilege` | `core.authorize` | non | `privilege_lists.id` | `back/core/authorize/models.py:23` |
 | `process_definition_grants` | `ProcessDefinitionGrant` | `app.process` | non | `agent_groups.id`, `agents.id`, `process_definitions.id`, `users.id` | `back/app/process/models.py:74` |
 | `process_definition_revisions` | `ProcessDefinitionRevision` | `app.process` | non | `agents.id`, `process_definitions.id` | `back/app/process/models.py:89` |
-| `process_definitions` | `ProcessDefinition` | `app.process` | oui | `agents.id`, `documents.id`, `tools.id`, `users.id` | `back/app/process/models.py:29` |
+| `process_definitions` | `ProcessDefinition` | `app.process` | oui | `agents.id`, `documents.id`, `services.id`, `users.id` | `back/app/process/models.py:29` |
 | `process_node_attempts` | `ProcessNodeAttempt` | `app.process` | non | `process_node_runs.id`, `process_runs.id`, `tasks.id` | `back/app/process/models.py:263` |
 | `process_node_runs` | `ProcessNodeRun` | `app.process` | non | `process_runs.id` | `back/app/process/models.py:246` |
 | `process_run_events` | `ProcessRunEvent` | `app.process` | non | `process_runs.id` | `back/app/process/models.py:203` |
@@ -2252,8 +2254,11 @@ tests restent l’autorité sur le comportement.
 | `process_start_jobs` | `ProcessStartJob` | `app.process` | non | `process_runs.id` | `back/app/process/models.py:225` |
 | `role_privileges` | `RolePrivilege` | `core.authorize` | non | `privileges.id`, `roles.id` | `back/core/authorize/models.py:12` |
 | `roles` | `Role` | `core.authorize` | non | — | `back/core/authorize/models.py:65` |
-| `runtime_action_permissions` | `RuntimeActionPermission` | `app.tools` | non | `agents.id`, `users.id` | `back/app/tools/authorization_models.py:64` |
-| `runtime_run_grants` | `RuntimeRunGrant` | `app.tools` | non | `agent_mcp_tokens.id`, `agents.id` | `back/app/tools/authorization_models.py:82` |
+| `runtime_action_permissions` | `RuntimeActionPermission` | `app.services` | non | `agents.id`, `users.id` | `back/app/services/authorization_models.py:64` |
+| `runtime_run_grants` | `RuntimeRunGrant` | `app.services` | non | `agent_mcp_tokens.id`, `agents.id` | `back/app/services/authorization_models.py:82` |
+| `service_action_authorizations` | `ActionAuthorization` | `app.services` | non | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_action_permissions.id`, `runtime_run_grants.id`, `services.id`, `users.id` | `back/app/services/authorization_models.py:13` |
+| `service_function_state` | `ServiceFunctionState` | `app.connection` | non | `services.id` | `back/app/connection/models.py:84` |
+| `services` | `Service` | `app.services` | non | — | `back/app/services/models.py:24` |
 | `share_configs` | `ShareConfig` | `app.share` | oui | — | `back/app/share/models.py:23` |
 | `share_grants` | `ShareGrant` | `app.share` | non | `agent_groups.id`, `agents.id`, `share_configs.id`, `users.id` | `back/app/share/models.py:46` |
 | `skill_categories` | `SkillCategory` | `app.skill` | oui | — | `back/app/skill/models.py:31` |
@@ -2266,10 +2271,7 @@ tests restent l’autorité sur le comportement.
 | `team_audit` | `TeamAudit` | `core.team` | oui | — | `back/core/team/models.py:28` |
 | `team_users` | `TeamUser` | `core.team` | non | `agent_groups.id`, `users.id` | `back/core/team/models.py:19` |
 | `titles` | `Title` | `app.agent` | non | — | `back/app/agent/models.py:27` |
-| `tool_action_authorizations` | `ActionAuthorization` | `app.tools` | non | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_action_permissions.id`, `runtime_run_grants.id`, `tools.id`, `users.id` | `back/app/tools/authorization_models.py:13` |
-| `tool_function_state` | `ToolFunctionState` | `app.connection` | non | `tools.id` | `back/app/connection/models.py:84` |
-| `tool_search_documents` | `ToolSearchDocument` | `app.tools` | non | — | `back/app/tools/models.py:80` |
-| `tools` | `Tool` | `app.tools` | non | — | `back/app/tools/models.py:24` |
+| `tool_search_documents` | `ToolSearchDocument` | `app.services` | non | — | `back/app/services/models.py:82` |
 | `topics` | `Topic` | `app.topic` | oui | `memory_items.id` | `back/app/topic/models.py:15` |
 | `user_help_dismissals` | `UserHelpDismissal` | `core.user` | non | `users.id` | `back/core/user/models.py:83` |
 | `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | non | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:111` |
@@ -2317,13 +2319,13 @@ tests restent l’autorité sur le comportement.
 | `agent_harness_set` | `agent_admin` | `app.harnesses` | `agent_harness_set` | `back/app/harnesses/mcp.py:24` |
 | `agent_harness_status` | `agent_admin` | `app.harnesses` | `agent_harness_status` | `back/app/harnesses/mcp.py:51` |
 | `agent_options` | `agent_admin` | `app.agent` | `agent_options` | `back/app/agent/mcp.py:159` |
+| `agent_service_list` | `agent_admin` | `app.connection` | `agent_service_list` | `back/app/connection/agent_admin_mcp.py:11` |
 | `agent_team_list` | `agent_admin` | `app.agent` | `agent_team_list` | `back/app/agent/mcp.py:173` |
 | `agent_team_set` | `agent_admin` | `app.agent` | `agent_team_set` | `back/app/agent/mcp.py:180` |
 | `agent_title_create` | `agent_admin` | `app.agent` | `agent_title_create` | `back/app/agent/mcp.py:194` |
 | `agent_title_delete` | `agent_admin` | `app.agent` | `agent_title_delete` | `back/app/agent/mcp.py:212` |
 | `agent_title_list` | `agent_admin` | `app.agent` | `agent_title_list` | `back/app/agent/mcp.py:188` |
 | `agent_title_update` | `agent_admin` | `app.agent` | `agent_title_update` | `back/app/agent/mcp.py:200` |
-| `agent_tool_list` | `agent_admin` | `app.connection` | `agent_tool_list` | `back/app/connection/agent_admin_mcp.py:11` |
 | `agent_update` | `agent_admin` | `app.agent` | `agent_update` | `back/app/agent/mcp.py:127` |
 | `audio_transcribe` | `audio` | `app.audio` | `transcribe_audio_file` | `back/app/audio/mcp.py:303` |
 | `browser_back` | `browser` | `app.browser` | `browser_back` | `back/app/browser/mcp.py:478` |
@@ -2419,13 +2421,13 @@ tests restent l’autorité sur le comportement.
 | `process_update` | `galaris` | `app.process` | `process_update` | `back/app/process/mcp.py:197` |
 | `process_validate` | `galaris` | `app.process` | `process_validate` | `back/app/process/mcp.py:205` |
 | `processus_get` | `galaris` | `app.process` | `processus_get` | `back/app/process/mcp.py:30` |
+| `services_list` | `galaris` | `app.services` | `list_mcp_tools` | `back/app/services/mcp.py:90` |
 | `task_get` | `galaris` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:91` |
 | `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:203` |
 | `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:179` |
 | `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:119` |
 | `team_list` | `galaris` | `app.agent` | `team_list` | `back/app/agent/mcp.py:68` |
 | `team_members` | `galaris` | `app.agent` | `team_members` | `back/app/agent/mcp.py:86` |
-| `tools_list` | `galaris` | `app.tools` | `list_mcp_tools` | `back/app/tools/mcp.py:90` |
 | `goal_complete` | `goal_management` | `app.goal` | `mcp_goal_complete` | `back/app/goal/mcp.py:419` |
 | `goal_create` | `goal_management` | `app.goal` | `mcp_goal_create` | `back/app/goal/mcp.py:153` |
 | `goal_delete` | `goal_management` | `app.goal` | `mcp_goal_delete` | `back/app/goal/mcp.py:473` |
@@ -2520,8 +2522,8 @@ tests restent l’autorité sur le comportement.
 | `video_generate` | `multimedia` | `app.multimedia` | `video_generate` | `back/app/multimedia/mcp.py:43` |
 | `video_read` | `multimedia` | `app.multimedia` | `video_read` | `back/app/multimedia/mcp.py:18` |
 | `conversation_round_get` | `platform_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:248` |
-| `documentation_catalog` | `platform_admin` | `app.tools` | `documentation_catalog` | `back/app/tools/mcp.py:37` |
-| `documentation_search` | `platform_admin` | `app.tools` | `documentation_search` | `back/app/tools/mcp.py:50` |
+| `documentation_catalog` | `platform_admin` | `app.services` | `documentation_catalog` | `back/app/services/mcp.py:37` |
+| `documentation_search` | `platform_admin` | `app.services` | `documentation_search` | `back/app/services/mcp.py:50` |
 | `incident_get` | `platform_admin` | `app.incident` | `incident_get` | `back/app/incident/mcp.py:76` |
 | `incidents_list` | `platform_admin` | `app.incident` | `incidents_list` | `back/app/incident/mcp.py:31` |
 | `llm_call` | `platform_admin` | `app.llm` | `mcp_llm_call` | `back/app/llm/mcp.py:70` |
@@ -2542,7 +2544,30 @@ tests restent l’autorité sur le comportement.
 | `process_admin_start` | `process_admin` | `app.process` | `process_admin_start` | `back/app/process/mcp.py:591` |
 | `process_admin_sync` | `process_admin` | `app.process` | `process_admin_sync` | `back/app/process/mcp.py:420` |
 | `process_admin_update` | `process_admin` | `app.process` | `process_admin_update` | `back/app/process/mcp.py:519` |
-| `search_web` | `search` | `app.tools` | `search_web` | `back/app/tools/mcp.py:74` |
+| `search_web` | `search` | `app.services` | `search_web` | `back/app/services/mcp.py:74` |
+| `service_admin_catalog_refresh` | `service_admin` | `app.services` | `service_admin_catalog_refresh` | `back/app/services/mcp.py:399` |
+| `service_admin_connection_create` | `service_admin` | `app.connection` | `service_admin_connection_create` | `back/app/connection/mcp.py:20` |
+| `service_admin_connection_delete` | `service_admin` | `app.connection` | `service_admin_connection_delete` | `back/app/connection/mcp.py:30` |
+| `service_admin_connection_function_list` | `service_admin` | `app.connection` | `service_admin_connection_function_list` | `back/app/connection/mcp.py:50` |
+| `service_admin_connection_function_set` | `service_admin` | `app.connection` | `service_admin_connection_function_set` | `back/app/connection/mcp.py:55` |
+| `service_admin_connection_get` | `service_admin` | `app.connection` | `service_admin_connection_get` | `back/app/connection/mcp.py:15` |
+| `service_admin_connection_list` | `service_admin` | `app.connection` | `service_admin_connection_list` | `back/app/connection/mcp.py:10` |
+| `service_admin_connection_param_delete` | `service_admin` | `app.connection` | `service_admin_connection_param_delete` | `back/app/connection/mcp.py:40` |
+| `service_admin_connection_params_set` | `service_admin` | `app.connection` | `service_admin_connection_params_set` | `back/app/connection/mcp.py:35` |
+| `service_admin_connection_test` | `service_admin` | `app.connection` | `service_admin_connection_test` | `back/app/connection/mcp.py:45` |
+| `service_admin_connection_update` | `service_admin` | `app.connection` | `service_admin_connection_update` | `back/app/connection/mcp.py:25` |
+| `service_admin_conversation_set` | `service_admin` | `app.services` | `service_admin_conversation_set` | `back/app/services/mcp.py:369` |
+| `service_admin_create` | `service_admin` | `app.services` | `service_admin_create` | `back/app/services/mcp.py:339` |
+| `service_admin_delete` | `service_admin` | `app.services` | `service_admin_delete` | `back/app/services/mcp.py:357` |
+| `service_admin_function_get` | `service_admin` | `app.services` | `service_admin_function_get` | `back/app/services/mcp.py:387` |
+| `service_admin_function_list` | `service_admin` | `app.services` | `service_admin_function_list` | `back/app/services/mcp.py:381` |
+| `service_admin_function_set` | `service_admin` | `app.services` | `service_admin_function_set` | `back/app/services/mcp.py:393` |
+| `service_admin_get` | `service_admin` | `app.services` | `service_admin_get` | `back/app/services/mcp.py:333` |
+| `service_admin_global_params_set` | `service_admin` | `app.services` | `service_admin_global_params_set` | `back/app/services/mcp.py:363` |
+| `service_admin_impact` | `service_admin` | `app.services` | `service_admin_impact` | `back/app/services/mcp.py:351` |
+| `service_admin_list` | `service_admin` | `app.services` | `service_admin_list` | `back/app/services/mcp.py:327` |
+| `service_admin_mcp_test` | `service_admin` | `app.services` | `service_admin_mcp_test` | `back/app/services/mcp.py:375` |
+| `service_admin_update` | `service_admin` | `app.services` | `service_admin_update` | `back/app/services/mcp.py:345` |
 | `skill_delete` | `skills` | `app.skill` | `mcp_skill_delete` | `back/app/skill/mcp.py:62` |
 | `skill_read` | `skills` | `app.skill` | `mcp_skill_read` | `back/app/skill/mcp.py:29` |
 | `skill_release_ownership` | `skills` | `app.skill` | `mcp_skill_release_ownership` | `back/app/skill/mcp.py:88` |
@@ -2551,29 +2576,6 @@ tests restent l’autorité sur le comportement.
 | `skill_set_enabled` | `skills` | `app.skill` | `mcp_skill_set_enabled` | `back/app/skill/mcp.py:54` |
 | `skill_update` | `skills` | `app.skill` | `mcp_skill_update` | `back/app/skill/mcp.py:46` |
 | `skills_list` | `skills` | `app.skill` | `mcp_skills_list` | `back/app/skill/mcp.py:13` |
-| `tool_admin_catalog_refresh` | `tool_admin` | `app.tools` | `tool_admin_catalog_refresh` | `back/app/tools/mcp.py:399` |
-| `tool_admin_connection_create` | `tool_admin` | `app.connection` | `tool_admin_connection_create` | `back/app/connection/mcp.py:20` |
-| `tool_admin_connection_delete` | `tool_admin` | `app.connection` | `tool_admin_connection_delete` | `back/app/connection/mcp.py:30` |
-| `tool_admin_connection_function_list` | `tool_admin` | `app.connection` | `tool_admin_connection_function_list` | `back/app/connection/mcp.py:50` |
-| `tool_admin_connection_function_set` | `tool_admin` | `app.connection` | `tool_admin_connection_function_set` | `back/app/connection/mcp.py:55` |
-| `tool_admin_connection_get` | `tool_admin` | `app.connection` | `tool_admin_connection_get` | `back/app/connection/mcp.py:15` |
-| `tool_admin_connection_list` | `tool_admin` | `app.connection` | `tool_admin_connection_list` | `back/app/connection/mcp.py:10` |
-| `tool_admin_connection_param_delete` | `tool_admin` | `app.connection` | `tool_admin_connection_param_delete` | `back/app/connection/mcp.py:40` |
-| `tool_admin_connection_params_set` | `tool_admin` | `app.connection` | `tool_admin_connection_params_set` | `back/app/connection/mcp.py:35` |
-| `tool_admin_connection_test` | `tool_admin` | `app.connection` | `tool_admin_connection_test` | `back/app/connection/mcp.py:45` |
-| `tool_admin_connection_update` | `tool_admin` | `app.connection` | `tool_admin_connection_update` | `back/app/connection/mcp.py:25` |
-| `tool_admin_conversation_set` | `tool_admin` | `app.tools` | `tool_admin_conversation_set` | `back/app/tools/mcp.py:369` |
-| `tool_admin_create` | `tool_admin` | `app.tools` | `tool_admin_create` | `back/app/tools/mcp.py:339` |
-| `tool_admin_delete` | `tool_admin` | `app.tools` | `tool_admin_delete` | `back/app/tools/mcp.py:357` |
-| `tool_admin_function_get` | `tool_admin` | `app.tools` | `tool_admin_function_get` | `back/app/tools/mcp.py:387` |
-| `tool_admin_function_list` | `tool_admin` | `app.tools` | `tool_admin_function_list` | `back/app/tools/mcp.py:381` |
-| `tool_admin_function_set` | `tool_admin` | `app.tools` | `tool_admin_function_set` | `back/app/tools/mcp.py:393` |
-| `tool_admin_get` | `tool_admin` | `app.tools` | `tool_admin_get` | `back/app/tools/mcp.py:333` |
-| `tool_admin_global_params_set` | `tool_admin` | `app.tools` | `tool_admin_global_params_set` | `back/app/tools/mcp.py:363` |
-| `tool_admin_impact` | `tool_admin` | `app.tools` | `tool_admin_impact` | `back/app/tools/mcp.py:351` |
-| `tool_admin_list` | `tool_admin` | `app.tools` | `tool_admin_list` | `back/app/tools/mcp.py:327` |
-| `tool_admin_mcp_test` | `tool_admin` | `app.tools` | `tool_admin_mcp_test` | `back/app/tools/mcp.py:375` |
-| `tool_admin_update` | `tool_admin` | `app.tools` | `tool_admin_update` | `back/app/tools/mcp.py:345` |
 | `voice_call_list` | `voice` | `app.voice` | `mcp_list_voice_calls` | `back/app/voice/mcp.py:355` |
 | `voice_call_start` | `voice` | `app.voice` | `mcp_start_voice_call` | `back/app/voice/mcp.py:298` |
 | `voice_call_stop` | `voice` | `app.voice` | `mcp_stop_voice_call` | `back/app/voice/mcp.py:323` |
@@ -2678,6 +2680,11 @@ tests restent l’autorité sur le comportement.
 | `PROCESS_EDIT` | `app.process` | privilege.PROCESS_EDIT | `back/app/process/privileges.py:4` |
 | `PROCESS_LAUNCH` | `app.process` | privilege.PROCESS_LAUNCH | `back/app/process/privileges.py:5` |
 | `PROCESS_READ` | `app.process` | privilege.PROCESS_READ | `back/app/process/privileges.py:3` |
+| `PERMISSION_ACCESS` | `app.services` | privilege.PERMISSION_ACCESS | `back/app/services/privileges.py:7` |
+| `PERMISSION_DECIDE` | `app.services` | privilege.PERMISSION_DECIDE | `back/app/services/privileges.py:8` |
+| `PERMISSION_REVOKE` | `app.services` | privilege.PERMISSION_REVOKE | `back/app/services/privileges.py:9` |
+| `SERVICE_ACCESS` | `app.services` | privilege.SERVICE_ACCESS | `back/app/services/privileges.py:5` |
+| `SERVICE_EDIT` | `app.services` | privilege.SERVICE_EDIT | `back/app/services/privileges.py:6` |
 | `SKILL_ACCESS` | `app.skill` | privilege.SKILL_ACCESS | `back/app/skill/privileges.py:3` |
 | `SKILL_ASSIGN` | `app.skill` | privilege.SKILL_ASSIGN | `back/app/skill/privileges.py:5` |
 | `SKILL_EDIT` | `app.skill` | privilege.SKILL_EDIT | `back/app/skill/privileges.py:4` |
@@ -2686,11 +2693,6 @@ tests restent l’autorité sur le comportement.
 | `TASK_CONFIG_EDIT` | `app.task` | privilege.TASK_CONFIG_EDIT | `back/app/task/privileges.py:11` |
 | `TASK_EDIT` | `app.task` | privilege.TASK_EDIT | `back/app/task/privileges.py:6` |
 | `TASK_PURGE` | `app.task` | privilege.TASK_PURGE | `back/app/task/privileges.py:7` |
-| `PERMISSION_ACCESS` | `app.tools` | privilege.PERMISSION_ACCESS | `back/app/tools/privileges.py:7` |
-| `PERMISSION_DECIDE` | `app.tools` | privilege.PERMISSION_DECIDE | `back/app/tools/privileges.py:8` |
-| `PERMISSION_REVOKE` | `app.tools` | privilege.PERMISSION_REVOKE | `back/app/tools/privileges.py:9` |
-| `TOOL_ACCESS` | `app.tools` | privilege.TOOL_ACCESS | `back/app/tools/privileges.py:5` |
-| `TOOL_EDIT` | `app.tools` | privilege.TOOL_EDIT | `back/app/tools/privileges.py:6` |
 | `TOPIC_ACCESS` | `app.topic` | privilege.TOPIC_ACCESS | `back/app/topic/privileges.py:3` |
 | `TOPIC_EDIT` | `app.topic` | privilege.TOPIC_EDIT | `back/app/topic/privileges.py:4` |
 | `VOICE_CONFIG_ACCESS` | `app.voice` | privilege.VOICE_CONFIG_ACCESS | `back/app/voice/privileges.py:4` |
@@ -2773,10 +2775,11 @@ tests restent l’autorité sur le comportement.
 | `/process/internal/run/:id` | `app/process` | `front/app/process/pages/internal/run/[id].vue` |
 | `/process/new-external` | `app/process` | `front/app/process/pages/new-external.vue` |
 | `/process/new-internal` | `app/process` | `front/app/process/pages/new-internal.vue` |
+| `/services` | `app/services` | `front/app/services/pages/index.vue` |
 | `/skill` | `app/skill` | `front/app/skill/pages/index.vue` |
 | `/task` | `app/task` | `front/app/task/pages/index.vue` |
 | `/team` | `core/team` | `front/core/team/pages/index.vue` |
-| `/tools` | `app/tools` | `front/app/tools/pages/index.vue` |
+| `/tools` | `app/services` | `front/app/services/pages/legacy.vue` |
 | `/topic` | `app/topic` | `front/app/topic/pages/index.vue` |
 | `/topic/:id` | `app/topic` | `front/app/topic/pages/[id].vue` |
 | `/user/login` | `core/user` | `front/core/user/pages/login.vue` |

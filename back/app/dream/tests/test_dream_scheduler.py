@@ -47,7 +47,7 @@ from core.storage import (
 )
 from app.task.models import Task, TaskStatus
 from app.messenger import Interaction, Message, Room
-from app.tools.models import Tool
+from app.services.models import Service
 from app.topic.models import Topic
 from core.authorize import Privileges
 from core.database import get_db
@@ -986,7 +986,7 @@ async def test_monitoring_previews_and_searches_conversation_round_messages(
 ) -> None:
     owner = await _owner(db)
     suffix = uuid4().hex[:10]
-    tool = Tool(
+    tool = Service(
         code=f"dream-monitoring-{suffix}",
         label="Dream monitoring",
         description="",
@@ -994,7 +994,7 @@ async def test_monitoring_previews_and_searches_conversation_round_messages(
     )
     db.add(tool)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(
@@ -1009,7 +1009,7 @@ async def test_monitoring_previews_and_searches_conversation_round_messages(
     message_text = "Début reconnaissable du round Dream. " + ("suite " * 80)
     message = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="telegram",
         remote_message_id=f"dream-message-{suffix}",
         direction="inbound",
@@ -1058,7 +1058,7 @@ async def test_topic_assignment_audit_follows_message_round_and_task_lineage(
 ) -> None:
     owner = await _owner(db)
     suffix = uuid4().hex[:10]
-    tool = Tool(
+    tool = Service(
         code=f"topic-audit-{suffix}",
         label="Topic assignment audit",
         description="",
@@ -1066,7 +1066,7 @@ async def test_topic_assignment_audit_follows_message_round_and_task_lineage(
     )
     db.add(tool)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(
@@ -1082,7 +1082,7 @@ async def test_topic_assignment_audit_follows_message_round_and_task_lineage(
     await db.flush()
     message = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="internal",
         remote_message_id=f"topic-audit-message-{suffix}",
         direction="inbound",

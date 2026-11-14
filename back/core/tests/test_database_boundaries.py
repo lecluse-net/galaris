@@ -68,13 +68,13 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/task/live_checkpoint.py",  # Agent event callback persists independently of the run transaction.
     "app/task/agent_adapter.py",
     "app/task/scheduler.py",
-    "app/tools/mcp_loader.py",
-    "app/tools/authorization.py",  # Durable one-use claims and short worker permit transactions.
-    "app/tools/runtime_authorization.py",  # Orchestrator-owned run credential admission and revocation.
-    "app/tools/authorization_notifications.py",  # Detached notification and wake outbox workers.
-    "app/tools/authorization_router.py",  # Serialized human cancellation boundary.
-    "app/tools/runtime_authorization_router.py",  # Independent scoped runtime control gateway.
-    "app/tools/tool_search_service.py",
+    "app/services/mcp_loader.py",
+    "app/services/authorization.py",  # Durable one-use claims and short worker permit transactions.
+    "app/services/runtime_authorization.py",  # Orchestrator-owned run credential admission and revocation.
+    "app/services/authorization_notifications.py",  # Detached notification and wake outbox workers.
+    "app/services/authorization_router.py",  # Serialized human cancellation boundary.
+    "app/services/runtime_authorization_router.py",  # Independent scoped runtime control gateway.
+    "app/services/tool_search_service.py",
     "app/voice/engine.py",
     "app/voice/conversation_service.py",  # Detached authorization wake and voice context guards.
     "app/voice/realtime_engine.py",

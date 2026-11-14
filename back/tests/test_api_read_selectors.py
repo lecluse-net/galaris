@@ -17,7 +17,7 @@ from app.messenger import Message, Room
 from app.skill import resource_facade, skill_service, storage
 from app.skill.models import AgentSkill, AgentSkillCategory, Skill, SkillCategory
 from app.task import Task, TaskStatus
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.topic import Topic, service as topics
 from core.team import service as teams
 from core.team.models import Team, TeamUser
@@ -151,8 +151,8 @@ async def test_memory_source_picker_preserves_task_and_round_scope_search_and_or
     topic = Topic(title="Synthetic source topic")
     item = contact(1)
     db.add_all([topic, item])
-    tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == "galaris"))
-    connection = Connection(agent_id=owner.id, tool_id=tool_id, active=True)
+    service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "galaris"))
+    connection = Connection(agent_id=owner.id, service_id=service_id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(connection_id=connection.id, external_id="synthetic-source-room", label="Synthetic Room", conversation_type="text")
@@ -227,16 +227,16 @@ async def test_skill_file_catalogues_keep_live_access_without_loading_assignment
     monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(tmp_path / "skills"))
     monkeypatch.setattr(storage, "SYSTEM_SKILLS", ())
     category = SkillCategory(label="Synthetic resource category")
-    tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == "skills"))
-    if tool_id is None:
-        tool = ToolModel(code="skills", label="Synthetic Skills")
+    service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "skills"))
+    if service_id is None:
+        tool = ServiceModel(code="skills", label="Synthetic Skills")
         db.add(tool)
         await db.flush()
-        tool_id = tool.id
-    connection = Connection(agent_id=owner.id, tool_id=tool_id, active=True)
+        service_id = tool.id
+    connection = Connection(agent_id=owner.id, service_id=service_id, active=True)
     db.add_all([category, connection])
     await db.flush()
-    db.add(ConnectionParam(connection_id=connection.id, param_name='tools.management_scope', param_value='all'))
+    db.add(ConnectionParam(connection_id=connection.id, param_name='services.management_scope', param_value='all'))
     skills = [Skill(code=f"synthetic-resource-{index:02d}", label=f"Synthetic resource {index:02d}", category_id=category.id) for index in range(41)]
     db.add_all(skills)
     await db.flush()

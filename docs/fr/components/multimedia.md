@@ -2,7 +2,7 @@
 
 # Multimédia
 
-Le Tool Multimedia analyse les sons, la musique et les vidéos et génère des bruitages,
+Le Service Multimedia analyse les sons, la musique et les vidéos et génère des bruitages,
 des morceaux ou des vidéos. La transcription vocale, les conversations Voice, les images
 et le texte restent configurés séparément.
 
@@ -15,7 +15,7 @@ et le texte restent configurés séparément.
    personnalisé ne reprend pas la valeur du profil courant.
 4. Vérifier la connexion **Multimedia** de l’agent. Elle est créée automatiquement et active
    par défaut ; les désactivations enregistrées restent conservées. Le mode conversation du
-   Tool exige une activation explicite. Sans ressource compatible, la fonction reste absente
+   Service exige une activation explicite. Sans ressource compatible, la fonction reste absente
    du catalogue MCP.
 
 Le catalogue MCP et chaque appel revérifient connexion, capacité, fournisseur et ressource
@@ -37,7 +37,7 @@ ne modifie pas les runs : Galaris récupère l'état auprès du fournisseur avec
 
 ## Utilisation par les agents
 
-Les lectures prennent `uri` et une question `prompt`. Les fichiers restent dans leur Tool
+Les lectures prennent `uri` et une question `prompt`. Les fichiers restent dans leur Service
 d'origine ; l'analyse dispose d'un temporaire borné à 32 Mio et 20 minutes, validé par FFprobe,
 sans copie durable.
 

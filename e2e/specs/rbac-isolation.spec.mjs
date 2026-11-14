@@ -16,8 +16,8 @@ const cases = [
     ['GOAL', '/goal'], ['GOAL_CONFIG', '/goal'], ['SKILL', '/skill'],
     ['TOPIC', '/topic'], ['TASK', '/task?tab=tasks'],
     ['LLM_PROVIDER', '/llm?tab=providers'], ['LLM_MODEL', '/llm?tab=models'],
-    ['LLM_PROFILE', '/llm?tab=profiles'], ['TOOL', '/tools?tab=tools'],
-    ['CONNECTION', '/tools?tab=connections'], ['MAIL', '/connection/mail'],
+    ['LLM_PROFILE', '/llm?tab=profiles'], ['TOOL', '/services?tab=tools'],
+    ['CONNECTION', '/services?tab=connections'], ['MAIL', '/connection/mail'],
     ['CALENDAR', '/connection/calendars'],
   ].flatMap(([prefix, path]) => ['ACCESS', 'EDIT'].map(suffix => [`${prefix}_${suffix}`, path])),
   // DbAdmin upgrades legacy Dataset roles to the corresponding Document privilege.

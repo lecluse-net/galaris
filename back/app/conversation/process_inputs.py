@@ -22,7 +22,7 @@ from app.process.facade import (prepare_launch_inputs, validate_launch_input_fie
     input_run, sync_input_run, validate_input_run_replay)
 from core.database import get_db
 from core.i18n import t, render_prompt
-from app.tools import RecoverableToolError
+from app.services import RecoverableToolError
 
 from .contracts import ConversationTurn
 from .models import ConversationProcessLink, ConversationRound, ConversationRoundMessage

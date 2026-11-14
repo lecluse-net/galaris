@@ -9,7 +9,7 @@ import pytest
 
 from app.task import mcp as task_mcp
 from app.task.models import Task, TaskStatus
-from app.tools.mcp_loader import McpToolContext
+from app.services.mcp_loader import McpToolContext
 
 
 async def _persist_inspected_task(db, task):
@@ -178,7 +178,7 @@ async def test_task_run_returns_canonical_task_uri(
     from core.team import TeamModel
     from app.agent.models import Agent, Title
     from app.agent.dialogue_service import set_agent_membership
-    from app.tools.contracts import ToolExecutionContext, tool_execution
+    from app.services.contracts import ToolExecutionContext, tool_execution
 
     team = TeamModel(name="Delegation team")
     title = Title(label="Mx", gender="M")
@@ -225,10 +225,10 @@ async def test_task_run_returns_canonical_task_uri(
 
     from sqlalchemy import select
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
 
-    admin_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "platform_admin"))
-    connection = Connection(agent_id=7, tool_id=admin_tool.id, active=True)
+    admin_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "platform_admin"))
+    connection = Connection(agent_id=7, service_id=admin_tool.id, active=True)
     db.add(connection)
     await db.flush()
     with pytest.raises(PermissionError):
@@ -237,7 +237,7 @@ async def test_task_run_returns_canonical_task_uri(
             agent_id=8, label="Undelegated administration", objective="Execute",
         )
     from app.connection.facade import set_params_bulk
-    await set_params_bulk(connection.id, {"tools.management_scope": "all"}, commit=False, scope_edit_authorized=True)
+    await set_params_bulk(connection.id, {"services.management_scope": "all"}, commit=False, scope_edit_authorized=True)
     result = await task_mcp.mcp_run_task(
         McpToolContext(agent_id=7, runtime="internal"),
         agent_id=8, label="Administrative delegation", objective="Execute",

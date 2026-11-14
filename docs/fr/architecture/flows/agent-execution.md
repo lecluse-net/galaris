@@ -160,7 +160,7 @@ Voir [0214](../../../../project/decisions/0214-explicit-task-retry-fresh-inferen
 ## Inférence élémentaire
 
 Les actions locales de tous les harnais externes gérés peuvent recevoir un accord humain **Toujours autoriser
-ce type d’action**, limité à l’agent, au harnais et au nom exact de l’action. `app.tools`
+ce type d’action**, limité à l’agent, au harnais et au nom exact de l’action. `app.services`
 conserve cet accord et son empreinte de configuration, puis réclame une autorisation unitaire
 pour chaque opération. La révocation bloque les départs non consommés ; les gardes de contexte,
 de run et de ressources restent applicables. Le harnais interne est exclu de ce mécanisme.
@@ -804,7 +804,7 @@ contenu d'un document ni les octets d'un fichier. Une nouvelle référence activ
 classe l'ancienne comme `superseded` sans la supprimer ; les sous-tâches lisent et mettent à jour
 le registre de leur racine sous verrou.
 
-Après la réussite réelle d'un outil natif, `app.tools.resource_effects` promeut son effet dans ce
+Après la réussite réelle d'un outil natif, `app.services.resource_effects` promeut son effet dans ce
 registre. Le premier document créé reçoit le rôle `primary_working_document`; les créations
 suivantes gardent chacune leur URI et un rôle de référence. Les étapes suivantes doivent les lire
 ou les éditer par UUID. Les
@@ -902,7 +902,7 @@ Son scheduler ne réclame ni tâche, ni slot d’agent et lance un round court a
 Pydantic AI et le niveau texte `low` du profil effectif de l’agent. Une colonne vide est
 une erreur de configuration et ne reprend ni l’exécuteur ni le profil courant lorsque l’agent a un
 profil personnel. Le driver Hermès n’est jamais repris. Le toolset est une
-projection dédiée : connexion active, case `Tool.conversation_enabled`, fonction déclarée
+projection dédiée : connexion active, case `Service.conversation_enabled`, fonction déclarée
 `short` ou `deferred` pour les fonctions natives, droits effectifs et profil du runtime. Un
 connecteur MCP externe explicitement coché est monté avec ses états de fonctions courants ; ceux
 qui ne sont pas cochés ne sont même pas résolus.
@@ -919,7 +919,7 @@ déterministes produits localement.
 Le prompt système conversationnel est distinct de celui de l'executor, mais reprend son contrat
 d'identité : nom, genre, poste, personnalité et fiche de poste. Il ajoute le contexte temporel et
 social courant, l'inventaire natif autorisé et le catalogue compact des Process affectés à
-l'agent. Il rend séparément les Tools des connexions actives réservés au mode tâche, sans répéter
+l'agent. Il rend séparément les Services des connexions actives réservés au mode tâche, sans répéter
 ceux autorisés dans la conversation, et interdit d'en déduire une absence d'accès : si la demande
 requiert l'un d'eux, l'admission par `conversation_task_submit` est obligatoire. Ses règles
 demandent une réponse immédiate pour le travail court ; un travail long lance d'abord un Process
@@ -1254,7 +1254,7 @@ depuis l’ADR 0058 et la reprise échoue explicitement.
   `model_resolver.py`.
 - Harnais interne : `back/app/harness/driver.py`, `executor.py`, `run_control.py`,
   `checkpoint.py`.
-- Découverte des outils : `back/app/tools/catalog.py`, `tool_search_service.py` et
+- Découverte des outils : `back/app/services/catalog.py`, `tool_search_service.py` et
   `back/app/harness/mcp_toolset.py`.
 - Persistance : `back/app/task/agent_adapter.py`, `workflow.py`, `scheduler.py`, `models.py`.
 - Tests de frontière : `back/app/agent/tests/test_architecture.py`.
@@ -1284,7 +1284,7 @@ exigence omise, identifiant inconnu et cible non sourcée ; elle vérifie la cou
 déclarée, sans remplacer une évaluation sémantique du résultat. Une clarification nécessaire
 utilise la même tâche. Le scope est transmis aux runtimes et dans `AgentRunEnvelopeV1`.
 
-Le catalogue filtré `app.tools` expose facultativement `EffectDescriptorV1`. Ses propriétaires
+Le catalogue filtré `app.services` expose facultativement `EffectDescriptorV1`. Ses propriétaires
 déclarent capacité, nature, cibles, visibilité, réversibilité, idempotence et reçu. Le préflight
 est persisté avant l'effet, puis la révision est revérifiée après l'autorisation native.
 Lecture et création ordinaire selon le descripteur restent autonomes. La création vérifiée

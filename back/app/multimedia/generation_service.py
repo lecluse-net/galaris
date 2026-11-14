@@ -8,8 +8,8 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from app.llm import LLMExecutionAuthority, current_execution_authority
-from app.tools import McpToolContext
-from app.tools.facade import finish_action, register_deferred_dispatch
+from app.services import McpToolContext
+from app.services.facade import finish_action, register_deferred_dispatch
 from core.database import get_db
 from core.user import get_current_user_id
 from .models import MediaGeneration

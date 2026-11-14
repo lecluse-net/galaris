@@ -167,7 +167,7 @@
                   </div>
                   <div>
                     <div class="metadata-label">{{ t('processes.tool') }}</div>
-                    <div class="ellipsis">{{ props.row.tool_code }}</div>
+                    <div class="ellipsis">{{ props.row.service_code }}</div>
                   </div>
                   <div>
                     <div class="metadata-label">{{ t('processes.duration') }}</div>
@@ -192,7 +192,7 @@
       </q-table>
     </q-card>
 
-    <NativeRunDialog v-if="selectedRun?.tool_code === 'galaris'" :run-id="selectedRun.id" :title="processLabel(selectedRun)" @close="selectedRun = null" />
+    <NativeRunDialog v-if="selectedRun?.service_code === 'galaris'" :run-id="selectedRun.id" :title="processLabel(selectedRun)" @close="selectedRun = null" />
     <ExternalRunDialog v-else-if="selectedRun" :run-id="selectedRun.id" @close="selectedRun = null" />
   </div>
 </template>
@@ -282,9 +282,9 @@ const columns = computed<QTableColumn[]>(() => [
     sortable: true,
   },
   {
-    name: 'tool_code',
+    name: 'service_code',
     label: t('processes.tool'),
-    field: 'tool_code',
+    field: 'service_code',
     align: 'left',
   },
   {

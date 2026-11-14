@@ -20,7 +20,7 @@ from app.messenger.models import (
     Room,
     RoomUser,
 )
-from app.tools.models import Tool
+from app.services.models import Service
 from app.voice import conversation_service
 from app.voice.models import (
     VoiceConversationSession,
@@ -53,7 +53,7 @@ async def _messenger_connection(
     agent_id: int,
 ) -> Connection:
     suffix = uuid4().hex[:10]
-    tool = Tool(
+    tool = Service(
         code=f"voice-messenger-{suffix}",
         label="Voice Messenger test",
         description="",
@@ -61,7 +61,7 @@ async def _messenger_connection(
     )
     db.add(tool)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent_id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent_id, active=True)
     db.add(connection)
     await db.flush()
     return connection
@@ -80,7 +80,7 @@ async def _start_test_session(
         "get_messenger",
         AsyncMock(
             return_value=SimpleNamespace(
-                tool_id=connection.tool_id,
+                service_id=connection.service_id,
                 self_id="voice-agent",
                 kind="test",
             )
@@ -103,9 +103,9 @@ async def test_early_authorization_decision_is_retried_after_voice_turn_suspends
     from datetime import datetime, timedelta, timezone
     from unittest.mock import Mock
     from app.agent import ExecutionResult
-    from app.tools.authorization import AuthorizationAction, AuthorizationRequired, answer_action, claim_action
-    from app.tools.authorization_models import ActionAuthorization
-    from app.tools.authorization_notifications import reconcile_authorizations
+    from app.services.authorization import AuthorizationAction, AuthorizationRequired, answer_action, claim_action
+    from app.services.authorization_models import ActionAuthorization
+    from app.services.authorization_notifications import reconcile_authorizations
     from core.database import get_db_session
     from core.user import UserModel
 
@@ -207,7 +207,7 @@ async def test_audio_call_is_journaled_as_distinct_canonical_messages(
     agent_id = await _agent_id(db)
     connection = await _messenger_connection(db, agent_id=agent_id)
     messenger = SimpleNamespace(
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         self_id="voice-agent",
         kind="nextcloud_talk",
     )
@@ -217,7 +217,7 @@ async def test_audio_call_is_journaled_as_distinct_canonical_messages(
         AsyncMock(return_value=messenger),
     )
     known_caller = MessengerUser(
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         external_id="caller-42",
         display_name="Nicolas",
         is_ai=False,
@@ -360,21 +360,21 @@ async def test_calls_reuse_an_existing_messenger_conversation(
         "get_messenger",
         AsyncMock(
             return_value=SimpleNamespace(
-                tool_id=connection.tool_id,
+                service_id=connection.service_id,
                 self_id="voice-agent",
                 kind="internal",
             )
         ),
     )
     agent_identity = MessengerUser(
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         external_id="voice-agent",
         display_name="Voice Tester",
         agent_id=agent_id,
         is_ai=True,
     )
     caller = MessengerUser(
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         external_id="user:42",
         display_name="Nicolas",
         is_ai=False,

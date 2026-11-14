@@ -30,7 +30,7 @@ from core.params import runtime_settings
 from core.util import as_dict, as_list
 from app.llm import LLM, LLMCallPurpose, model_usages
 from app.llm.structured_service import run_structured
-from app.tools import AgentToolCatalog
+from app.services import AgentToolCatalog
 from .contracts import (
     AgentTaskDraft,
     AgentTask,
@@ -2110,7 +2110,7 @@ async def _build_plan(
         human_prompt = "\n".join(
             block for block in (human_prompt, catalog_block, search_block) if block
         )
-        from app.tools.metrics import observe_planner_prompt
+        from app.services.metrics import observe_planner_prompt
 
         observe_planner_prompt(characters=len(catalog_block) + len(search_block))
     llm = llm_override or await require_agent_profile_model(task.agent, model_usages.PLANNER)
@@ -2130,7 +2130,7 @@ async def _build_plan(
     )
     if catalog is not None:
         selected_names = _plan_tool_names(result.output)
-        from app.tools.metrics import observe_planner_selection
+        from app.services.metrics import observe_planner_selection
 
         observe_planner_selection(
             selected_tools=len(selected_names),
@@ -2198,7 +2198,7 @@ async def _build_blocked_recovery(
     if catalog is not None:
         recovery_plan = Plan(steps=result.output.steps)
         selected_names = _plan_tool_names(recovery_plan)
-        from app.tools.metrics import observe_planner_selection
+        from app.services.metrics import observe_planner_selection
 
         observe_planner_selection(
             selected_tools=len(selected_names),
@@ -2311,7 +2311,7 @@ async def _effective_tool_catalog(task: Task) -> AgentToolCatalog | None:
         except Exception:
             agent = None
         from app.agent import validate_agent_driver
-        from app.tools import build_effective_tool_catalog
+        from app.services import build_effective_tool_catalog
 
         runtime = validate_agent_driver(
             getattr(agent, "agent_driver", None),
@@ -2363,7 +2363,7 @@ async def _tool_search_results_block(
 ) -> tuple[str, frozenset[str]]:
     """Return detailed top matches without changing the exhaustive manifest."""
     try:
-        from app.tools import search_catalog
+        from app.services import search_catalog
 
         result = await search_catalog(
             catalog,

@@ -20,7 +20,7 @@ from app.memory import service as memory_service
 from app.memory import describe_file_resource, read_file_resource_text
 from app.memory.models import MemoryItem
 from app.memory.tests.conftest import agents, memory_storage
-from app.tools import McpToolContext
+from app.services import McpToolContext
 from core.authorize.models import Assignment, Privilege, Role
 from core.database import get_db_session
 from core.user import UserModel

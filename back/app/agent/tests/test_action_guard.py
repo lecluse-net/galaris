@@ -53,7 +53,7 @@ async def test_delivery_recovery_bypasses_model_and_calls_exact_tool(
     db.add_all([agent, parent])
     await db.flush()
     execute_tool = AsyncMock(return_value="File sent: final.html")
-    monkeypatch.setattr("app.tools.execute_native_mcp_tool", execute_tool)
+    monkeypatch.setattr("app.services.execute_native_mcp_tool", execute_tool)
     task = Task(
         id=uuid4(),
         parent_id=parent.id,

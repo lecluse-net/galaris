@@ -24,13 +24,13 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : —
 - Sources : `front/app/agent/navigation.ts`
 
-## Configure → Tools & connections
+## Configure → Services & connections
 
-- Route : `/tools`
-- Purpose : Tool management
-- Menu visibility (privileges) : (TOOL_ACCESS OR TOOL_EDIT OR CONNECTION_ACCESS OR CONNECTION_EDIT OR PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
+- Route : `/services`
+- Purpose : Service management
+- Menu visibility (privileges) : (SERVICE_ACCESS OR SERVICE_EDIT OR CONNECTION_ACCESS OR CONNECTION_EDIT OR PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
 - Additional conditions : —
-- Sources : `front/app/tools/navigation.ts`
+- Sources : `front/app/services/navigation.ts`
 
 ## Configure → Skills
 

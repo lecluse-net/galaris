@@ -12,8 +12,8 @@
         />
       </div>
       <div class="col">
-        <ToolFilterSelect
-          v-model="form.tool_id"
+        <ServiceFilterSelect
+          v-model="form.service_id"
           :tools="selectableTools"
           :label="t('connection.tool')"
           :clearable="false"
@@ -60,16 +60,16 @@
 
     <McpOAuthConnection
       v-if="selectedTool?.mcp_config?.type === 'http' || selectedTool?.mcp_config?.type === 'sse'"
-      :key="`${form.agent_id}:${form.tool_id}`"
-      :connection-id="props.connection?.agent_id === form.agent_id && props.connection?.tool_id === form.tool_id ? form.id : null"
+      :key="`${form.agent_id}:${form.service_id}`"
+      :connection-id="props.connection?.agent_id === form.agent_id && props.connection?.service_id === form.service_id ? form.id : null"
       :can-edit="canEdit"
       :prepare-connection="isValidForm && props.persistForAction ? prepareOAuthConnection : undefined"
     />
 
     <McpOAuthConnection
       v-if="['google', 'microsoft'].includes(selectedTool?.calendar_config?.settings?.source_kind ?? '') || ((selectedTool?.calendar_config?.settings?.source_kind ?? 'caldav') === 'caldav' && selectedTool?.calendar_config?.settings?.auth_type === 'oauth')"
-      :key="`calendar:${form.agent_id}:${form.tool_id}`" purpose="calendar"
-      :connection-id="props.connection?.agent_id === form.agent_id && props.connection?.tool_id === form.tool_id ? form.id : null"
+      :key="`calendar:${form.agent_id}:${form.service_id}`" purpose="calendar"
+      :connection-id="props.connection?.agent_id === form.agent_id && props.connection?.service_id === form.service_id ? form.id : null"
       :can-edit="canEdit"
       :prepare-connection="isValidForm && props.persistForAction ? prepareOAuthConnection : undefined"
     />
@@ -113,7 +113,7 @@
               :tool-code="selectedTool?.code"
               :user-options="approverOptions"
               :loading-users="approversLoading"
-              :disable="param.name === 'tools.management_scope' && !canDelegateScope"
+              :disable="param.name === 'services.management_scope' && !canDelegateScope"
               @update:model-value="paramValues[param.name] = $event ?? ''"
             />
           </div>
@@ -152,7 +152,7 @@
       </q-card>
     </q-expansion-item>
 
-    <q-banner v-else-if="form.tool_id && selectedTool?.code !== 'console' && !showSchemaParameters" class="bg-grey-2 text-grey-8" dense>
+    <q-banner v-else-if="form.service_id && selectedTool?.code !== 'console' && !showSchemaParameters" class="bg-grey-2 text-grey-8" dense>
       <template v-slot:avatar>
         <q-icon name="info" color="grey-6" />
       </template>
@@ -384,8 +384,8 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { connectionParamLabel, connectionParamMessageKey, connectionParamOptions, sortedConnectionParamEntries } from '@/app/tools/presentation'
-import { ConnectionParamInput, ToolFilterSelect, type ConnectionParamDef } from '@/app/tools'
+import { connectionParamLabel, connectionParamMessageKey, connectionParamOptions, sortedConnectionParamEntries } from '@/app/services/presentation'
+import { ConnectionParamInput, ServiceFilterSelect, type ConnectionParamDef } from '@/app/services'
 import { AgentSelect } from '@/app/agent'
 import { consoleService, type ConsoleConnectionStatus } from '@/app/console/services/consoleService'
 import { mailService, type MailApproverOption } from '@/app/connection/services/mailService'
@@ -411,12 +411,12 @@ interface AgentOption {
   agentDriver: string
 }
 
-interface ToolOption {
+interface ServiceOption {
   id: number
   label: string
 }
 
-interface Tool {
+interface Service {
   id: number
   has_mail?: boolean
   has_calendar?: boolean
@@ -440,7 +440,7 @@ interface Tool {
 interface Connection {
   id: number
   agent_id: number
-  tool_id: number
+  service_id: number
   active: boolean
 }
 
@@ -456,7 +456,7 @@ interface ConnectionSubmitPayload {
   reuseExisting?: boolean
   data: {
     agent_id: number
-    tool_id: number
+    service_id: number
     active: boolean
   }
   params: Record<string, string | null>
@@ -475,8 +475,8 @@ const props = defineProps<{
   configuredParams?: string[]
   loading?: boolean
   agentOptions: AgentOption[]
-  toolOptions: ToolOption[]
-  tools: Tool[]
+  serviceOptions: ServiceOption[]
+  tools: Service[]
   defaultAgentId?: number | null
   defaultToolId?: number | null
   persistForAction?: (payload: ConnectionSubmitPayload) => Promise<ConnectionActionResult>
@@ -491,7 +491,7 @@ const emit = defineEmits<{
 const form = ref({
   id: null as number | null,
   agent_id: null as number | null,
-  tool_id: null as number | null,
+  service_id: null as number | null,
   active: true,
 })
 let oauthSavedDraft: string | null = null
@@ -524,13 +524,13 @@ const approverOptions = computed(() => approvers.value.map(user => ({
 
 const isEdit = computed(() => !!form.value.id)
 
-const selectableTools = computed(() => props.toolOptions.map(option => {
+const selectableTools = computed(() => props.serviceOptions.map(option => {
   const tool = props.tools.find(item => item.id === option.id)
   return { id: option.id, label: option.label, code: tool?.code ?? '', can_edit: tool?.can_edit ?? false }
 }))
 
 const selectedTool = computed(() =>
-  form.value.tool_id ? props.tools.find(t => t.id === form.value.tool_id) ?? null : null
+  form.value.service_id ? props.tools.find(t => t.id === form.value.service_id) ?? null : null
 )
 
 const selectedAgent = computed(() =>
@@ -540,7 +540,7 @@ const selectedAgent = computed(() =>
 const selectedAgentIsInternal = computed(() => selectedAgent.value?.agentDriver === 'internal')
 const canPersistConsoleDraft = computed(() => (
   form.value.agent_id !== null
-  && form.value.tool_id !== null
+  && form.value.service_id !== null
   && selectedTool.value?.code === 'console'
   && consoleTarget.value === 'external'
 ))
@@ -677,7 +677,7 @@ function effectiveParamValue(name: string): string {
 }
 
 const isValidForm = computed(() => {
-  if (form.value.agent_id === null || form.value.tool_id === null) return false
+  if (form.value.agent_id === null || form.value.service_id === null) return false
   if (
     selectedTool.value?.has_mail
     && effectiveParamValue('approval_required') === 'true'
@@ -733,12 +733,12 @@ function resetForm() {
   form.value = {
     id: null,
     agent_id: props.defaultAgentId ?? null,
-    tool_id: props.defaultToolId ?? null,
+    service_id: props.defaultToolId ?? null,
     active: true,
   }
   paramValues.value = {}
   paramOverrides.value = {}
-  if (form.value.tool_id !== null) {
+  if (form.value.service_id !== null) {
     onToolChange()
   }
 }
@@ -761,7 +761,7 @@ function initForm(connection?: Connection, params?: Record<string, unknown> | nu
     form.value = {
       id: connection.id,
       agent_id: connection.agent_id,
-      tool_id: connection.tool_id,
+      service_id: connection.service_id,
       active: connection.active,
     }
     const values: Record<string, string> = Object.fromEntries(
@@ -772,7 +772,7 @@ function initForm(connection?: Connection, params?: Record<string, unknown> | nu
     )
     if (params) {
       for (const [key, val] of Object.entries(params)) {
-        if (key === 'tools.management_scope' && (val === null || val === '')) continue
+        if (key === 'services.management_scope' && (val === null || val === '')) continue
         values[key] = val !== null && val !== undefined ? String(val) : ''
       }
     }
@@ -794,7 +794,7 @@ function initForm(connection?: Connection, params?: Record<string, unknown> | nu
 }
 
 function buildSubmitPayload(active: boolean = form.value.active): ConnectionSubmitPayload | null {
-  if (form.value.agent_id === null || form.value.tool_id === null) return null
+  if (form.value.agent_id === null || form.value.service_id === null) return null
   const filteredParams: Record<string, string | null> = {}
   const configured = new Set([
     ...(props.configuredParams ?? []),
@@ -802,7 +802,7 @@ function buildSubmitPayload(active: boolean = form.value.active): ConnectionSubm
   ])
   for (const definition of schemaParameters.value) {
     const key = definition.name
-    if (key === 'tools.management_scope' && !canDelegateScope.value) continue
+    if (key === 'services.management_scope' && !canDelegateScope.value) continue
     if (consoleTarget.value === 'embedded' && isConsoleManagedParam(key)) continue
     const value = paramValues.value[key] ?? ''
     if (isGloballyForced(key)) {
@@ -825,7 +825,7 @@ function buildSubmitPayload(active: boolean = form.value.active): ConnectionSubm
     id: form.value.id,
     data: {
       agent_id: form.value.agent_id,
-      tool_id: form.value.tool_id,
+      service_id: form.value.service_id,
       active,
     },
     params: filteredParams,
@@ -879,7 +879,7 @@ async function persistConsoleDraft(active = false): Promise<Connection> {
     return {
       id: form.value.id,
       agent_id: form.value.agent_id!,
-      tool_id: form.value.tool_id!,
+      service_id: form.value.service_id!,
       active: form.value.active,
     }
   }
@@ -900,7 +900,7 @@ async function prepareOAuthConnection(): Promise<number> {
   const parameters = JSON.stringify(payload.params)
   const connection = await props.persistForAction({ ...payload, reuseExisting: true })
   if (form.value !== draft || form.value.agent_id !== payload.data.agent_id
-    || form.value.tool_id !== payload.data.tool_id
+    || form.value.service_id !== payload.data.service_id
     || JSON.stringify(buildSubmitPayload(true)?.params) !== parameters) throw new Error(t('connection.saveError'))
   if (connection.savedParams) {
     initForm(connection, connection.savedParams.params, connection.savedParams.configured_params)

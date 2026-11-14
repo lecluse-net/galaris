@@ -19,7 +19,7 @@ dans un espace réservé aux jetons MCP de chaque agent. Aucune transaction rés
 retenue par cette opération. Une incohérence de chiffrement ou d'empreinte échoue sans
 rotation implicite. La suppression du runtime garde sa révocation explicite.
 
-Les grants de `app.tools`, liés au run, à l'affectation, au contexte et à leur expiration,
+Les grants de `app.services`, liés au run, à l'affectation, au contexte et à leur expiration,
 restent obligatoires. Un jeton de principal stable ne suffit pas à autoriser une action.
 La reconstruction d'un runtime conserve les contrôles existants de changement d'affectation.
 

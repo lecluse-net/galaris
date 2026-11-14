@@ -58,7 +58,7 @@ from app.agent.conversation_context import (
     message_prompt,
     strip_leading_message_metadata,
 )
-from app.tools import (
+from app.services import (
     catalog_entry_from_definition,
     catalog_from_entries,
     search_catalog_in_isolated_session,
@@ -1147,7 +1147,7 @@ class Agent(AgentRuntime):
         pydantic_history: List[_pydantic_messages.ModelMessage] = []
         if active_checkpoint is not None:
             await active_checkpoint.prepare_resume()
-            from app.tools.facade import AuthorizationRequired
+            from app.services.facade import AuthorizationRequired
             if not self._response_only:
                 try:
                     deferred_results = await active_checkpoint.deferred_results()
@@ -1589,7 +1589,7 @@ class Agent(AgentRuntime):
         """Persist the tool error before its user-facing trace is compacted."""
 
         from core.failure_journal import FailureEvent, record_failure_event
-        from app.tools import native_failure_key
+        from app.services import native_failure_key
 
         call_part = tool_call_event.part if tool_call_event is not None else None
         result_part = event.part

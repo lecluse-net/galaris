@@ -1,0 +1,9 @@
+format_version: 1
+services:
+- qonto.yaml
+- nextcloud.yaml
+- gitlab.yaml
+- matrix.yaml
+- n8n.yaml
+- redmine.yaml
+- telegram.yaml

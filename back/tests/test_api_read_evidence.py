@@ -19,7 +19,7 @@ from app.llm.profile_models import LlmProfile, PROFILE_MODEL_FIELDS
 from app.llm.provider_models import LLM, LLMProvider
 from app.messenger import Message, Room
 from app.task import Task, TaskStatus
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.topic import service as topics
 from app.topic.models import Topic
 from app.voice.models import VoiceConversationSession
@@ -163,11 +163,11 @@ async def test_comparison_batches_headers_preserving_latest_judge_and_same_run(d
 @pytest_asyncio.fixture
 async def evidence_content(db, read_actors):
     owner, peer = read_actors
-    tool = ToolModel(code="synthetic-evidence", label="Synthetic evidence")
+    tool = ServiceModel(code="synthetic-evidence", label="Synthetic evidence")
     topic = Topic(title="Synthetic evidence dossier")
     db.add_all([tool, topic])
     await db.flush()
-    connections = [Connection(agent_id=agent.id, tool_id=tool.id) for agent in (owner, peer)]
+    connections = [Connection(agent_id=agent.id, service_id=tool.id) for agent in (owner, peer)]
     db.add_all(connections)
     await db.flush()
     rooms = [Room(connection_id=connection.id, external_id=f"synthetic-evidence-{index}", label=f"Synthetic room {index}", conversation_type="text") for index, connection in enumerate(connections)]

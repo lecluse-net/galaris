@@ -12,7 +12,7 @@ première bêta et ne valent pas autorisation d'implémentation.
 
 Étendre les propriétaires existants : Agent pour exécution/résolution, Task pour
 persistance/reprise, Goal pour autonomie, Messenger pour admission, Memory pour
-connaissances, Lab pour mesures, Tools/MCP/File Share/Process pour effets.
+connaissances, Lab pour mesures, Services/MCP/File Share/Process pour effets.
 Nouveau domaine seulement si responsabilité durable distincte démontrée.
 Aucun second moteur de Task/conversation, domaine d'évaluation concurrent ou routine générique.
 

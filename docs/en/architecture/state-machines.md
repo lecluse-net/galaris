@@ -6,7 +6,7 @@ This document makes states searchable, but the code constants and tests remain a
 
 ## Action authorizations
 
-The `tool_action_authorizations` journal has `pending`, `approved`, `denied`, `expired`,
+The `service_action_authorizations` journal has `pending`, `approved`, `denied`, `expired`,
 `invalidated`, `executing`, `completed`, `failed`, and `outcome_unknown` states.
 
 | Event | Source | Target |

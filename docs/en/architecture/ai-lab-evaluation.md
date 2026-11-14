@@ -9,7 +9,7 @@ Repository contracts and tests remain authoritative.
 
 ## 1. Treatment contracts
 
-The native `lab` Tool exposes fifty `lab_*` functions, guided by the optional `galaris-lab`
+The native `lab` Service exposes fifty `lab_*` functions, guided by the optional `galaris-lab`
 system skill. It reuses Workbench services and records. Short commands have atomic,
 idempotent receipts; long operations outside benchmarks use `LabOperation` and the Lab
 worker. Agent assessments retain their

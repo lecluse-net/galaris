@@ -23,15 +23,15 @@ from app.messenger.models import (
 )
 from app.task import collab, task_service
 from app.task.models import Task, TaskStatus
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 class _FakeMessenger:
     kind = "test_messenger"
     self_id = "goal-agent"
 
-    def __init__(self, tool_id: int) -> None:
-        self.tool_id = tool_id
+    def __init__(self, service_id: int) -> None:
+        self.service_id = service_id
         self.sent: list[tuple[str, str]] = []
 
     async def ensure_direct_room(self, user_id: str) -> Room:
@@ -53,7 +53,7 @@ class _FakeMessenger:
         return Message(
             id=uuid4(),
             connection_id=cast(int, None),
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             platform=self.kind,
             remote_message_id=f"sent-{len(self.sent)}",
             direction="outbound",
@@ -86,7 +86,7 @@ async def test_human_question_reminds_once_pauses_then_answer_resumes(
     db, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     agent = await _new_agent(db)
-    tool = Tool(
+    tool = Service(
         code=f"goal-wait-{uuid4().hex[:8]}",
         label="Goal wait test",
         description="",
@@ -94,7 +94,7 @@ async def test_human_question_reminds_once_pauses_then_answer_resumes(
     )
     db.add(tool)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     goal = await make_goal(
@@ -156,7 +156,7 @@ async def test_human_question_reminds_once_pauses_then_answer_resumes(
     wait_id = wait.id
     interaction_id = interaction.id
     interaction_reference = interaction.reference
-    tool_id = tool.id
+    service_id = tool.id
     agent_id = agent.id
 
     # Executor finalization discovers the awaited child and suspends the Goal Task.
@@ -203,7 +203,7 @@ async def test_human_question_reminds_once_pauses_then_answer_resumes(
     incoming = Message(
         id=uuid4(),
         connection_id=cast(int, None),
-        tool_id=tool_id,
+        service_id=service_id,
         platform="test_messenger",
         remote_message_id="human-answer",
         direction="inbound",
@@ -212,13 +212,13 @@ async def test_human_question_reminds_once_pauses_then_answer_resumes(
     )
     incoming.sender = MessengerUser(
         id=uuid4(),
-        tool_id=tool_id,
+        service_id=service_id,
         external_id="human-referrer",
         display_name="Human Referrer",
     )
     incoming.recipient = MessengerUser(
         id=uuid4(),
-        tool_id=tool_id,
+        service_id=service_id,
         external_id="goal-agent",
         agent_id=agent_id,
         is_ai=True,

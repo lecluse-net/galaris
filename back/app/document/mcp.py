@@ -4,7 +4,7 @@ import json
 from typing import Literal
 from uuid import UUID
 
-from app.tools import McpToolContext, mcp_tool
+from app.services import McpToolContext, mcp_tool
 
 from . import item_sharing
 

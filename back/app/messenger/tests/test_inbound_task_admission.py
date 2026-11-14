@@ -18,11 +18,11 @@ def _message() -> ObservedMessengerMessage:
     return ObservedMessengerMessage(
         id="9:42",
         platform="mail",
-        tool_id=3,
+        service_id=3,
         recipient=ObservedMessengerUser(
             id="agent@example.org",
             connection_id=7,
-            tool_id=3,
+            service_id=3,
         ),
         text="Read with mail_get.",
     )
@@ -34,7 +34,7 @@ def _stored(status: str = "accepted", platform: str = "mail") -> SimpleNamespace
         direction="inbound",
         created_at=datetime.now(timezone.utc),
         status=status,
-        tool_id=3,
+        service_id=3,
         connection_id=7,
         remote_message_id="9:42",
     )

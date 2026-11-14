@@ -7,7 +7,7 @@
         <div role="status">{{ message }}</div>
       </q-card-section>
       <q-card-actions>
-        <q-btn v-if="!loading" color="primary" :label="t('connection.oauth.back')" to="/tools?tab=connections" />
+        <q-btn v-if="!loading" color="primary" :label="t('connection.oauth.back')" to="/services?tab=connections" />
       </q-card-actions>
     </q-card>
   </q-page>

@@ -42,7 +42,7 @@ def _sync(next_batch: str, *events: dict[str, Any]) -> dict[str, Any]:
 
 
 class FakeMatrix:
-    tool_id = 7
+    service_id = 7
     user_id = "@bot:test"
     allowed_user_ids: frozenset[str] = frozenset()
     allowed_room_ids: frozenset[str] = frozenset()
@@ -327,7 +327,7 @@ def test_matrix_message_preserves_reply_media_and_direct_room() -> None:
         event,
         "!direct:test",
         "@bot:test",
-        tool_id=7,
+        service_id=7,
         connection_id=41,
         room_kind="direct",
     )

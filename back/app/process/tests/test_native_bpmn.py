@@ -25,7 +25,27 @@ from app.process.native_definitions import create, read, update, restore, Defini
 from app.process.native_engine import NativeProcessEngine
 from app.task import TaskStatus, task_service
 from app.task.workflow import TaskEvent, transition
-from app.tools.tests.test_rest import api_server
+from app.services.tests.test_rest import api_server
+
+
+def test_legacy_service_references_in_saved_bpmn_and_run_snapshots_remain_readable():
+    from app.services.facade import canonical_service_call
+
+    workflow = Workflow(schema_version="galaris.bpmn/v2", nodes=[Node(id="start", kind="start"),
+        Node(id="api", kind="rest", config={"service_code": "synthetic-provider"}), Node(id="end", kind="end")],
+        flows=[Flow(id="first", source="start", target="api"), Flow(id="last", source="api", target="end")])
+    legacy_xml = to_bpmn(workflow).replace('"service_code":', '"tool_code":')
+    assert compile_bpmn(legacy_xml).node("api").config == {"service_code": "synthetic-provider"}
+    snapshot = workflow.model_dump()
+    snapshot["nodes"][1]["config"] = {"tool_code": "synthetic-provider"}
+    assert Workflow.model_validate(snapshot).node("api").config == {"service_code": "synthetic-provider"}
+    assert snapshot["nodes"][1]["config"] == {"tool_code": "synthetic-provider"}
+    legacy_call = Node(id="read", kind="tool_call", config={"tool": "tool_admin_get", "tool_arguments": {"tool_id": 7}})
+    assert legacy_call.config == {"tool": "service_admin_get", "tool_arguments": {"service_id": 7}}
+    assert canonical_service_call("agent_connection_create", {"tool_id": 7}) == ("agent_connection_create", {"service_id": 7})
+    assert canonical_service_call("external_lookup", {"tool_id": "provider-defined"}) == ("external_lookup", {"tool_id": "provider-defined"})
+    with pytest.raises(ValueError, match="Conflicting"):
+        canonical_service_call("service_admin_get", {"tool_id": 7, "service_id": 8})
 
 
 
@@ -226,7 +246,7 @@ async def test_human_activity_waits_for_assignee_and_replays_one_receipt(db, nat
 @pytest.mark.parametrize("actor_kind", ["human", "agent"])
 async def test_unused_actor_does_not_block_launch_or_grant_execution_access(db, native, actor_kind):
     from app.process import mcp
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
 
     owner, _ = native
     value = graph()
@@ -618,7 +638,7 @@ async def test_definition_acl_current_save_history_restore_and_frozen_run(db, na
     await process_service.process_start_jobs(engine_code="galaris")
     await finish_run(db, first.run_id)
     from app.process import mcp
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
     caller = McpToolContext(agent_id=owner.id, runtime="internal")
     retry = await mcp.process_run_retry(caller, str(first.run_id), "synthetic-retry")
     assert (await mcp.process_run_retry(caller, str(first.run_id), "synthetic-retry"))["run_id"] == retry["run_id"]
@@ -788,7 +808,7 @@ async def test_selected_process_boundaries_and_activity_variables_are_frozen_per
     value.nodes[1].outputs = ["accepted"]
     definition = await create(actor_agent_id=owner.id, title="Synthetic selected variables", graph=value)
     from app.process import mcp
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
     expected = await mcp.process_get(McpToolContext(agent_id=owner.id, runtime="internal"), definition.code)
     assert expected["inputs"] == ["amount"]
     assert len(expected["variables"]) == 4
@@ -829,7 +849,7 @@ async def test_activity_cannot_write_an_unselected_global_variable(db, native):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("surface", ["service", "mcp"])
 async def test_retry_does_not_submit_internal_defaults_as_process_inputs(db, native, surface):
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
     from app.process import mcp
     owner, _ = native
     value = typed_graph()
@@ -1238,19 +1258,19 @@ async def test_typed_parallel_end_events_validate_output_only_after_all_branches
 @pytest.mark.asyncio
 @pytest.mark.parametrize("denied", [False, True])
 async def test_typed_rest_activity_uses_the_live_connection_and_retains_remote_denials(db, native, api_server, denied):
-    from app.tools import tool_service
-    from app.tools.schemas import ToolCreate
+    from app.services import service
+    from app.services.schemas import ServiceCreate
     from app.connection import connection_service
     from app.process.values import Variable
     owner, _ = native
     base, requests = api_server
-    tool = await tool_service.create_tool(ToolCreate(code=f"synthetic_api_{uuid4().hex}", label="Synthetic API",
+    tool = await service.create_service(ServiceCreate(code=f"synthetic_api_{uuid4().hex}", label="Synthetic API",
         rest_config={"base_url": base, "auth": {"type": "none"}}))
     await connection_service.get_or_create_connection(tool.id, owner.id)
     output = Variable(name="method", type="string", nullable=False)
     value = Workflow(schema_version="galaris.bpmn/v2", variables=[output],
         nodes=[Node(id="start", kind="start"), Node(id="api", kind="rest", outputs=["method"],
-            config={"tool_code": tool.code, "request": {"method": "POST", "path": "denied" if denied else "synthetic"},
+            config={"service_code": tool.code, "request": {"method": "POST", "path": "denied" if denied else "synthetic"},
                 "external_output": {"method": {"$expr": "result.body.method"}}}), Node(id="end", kind="end", outputs=["method"])],
         flows=[Flow(id="a", source="start", target="api"), Flow(id="b", source="api", target="end")])
     definition = await create(actor_agent_id=owner.id, title="Synthetic REST activity", graph=value)
@@ -1399,8 +1419,8 @@ async def test_slow_rest_activity_does_not_block_its_human_branch_or_allow_doubl
     from core.database import get_db_session
     from core.user import UserModel
     from app.agent import AgentManagementScope
-    from app.tools import tool_service
-    from app.tools.schemas import ToolCreate
+    from app.services import service
+    from app.services.schemas import ServiceCreate
     from app.connection import connection_service
     from app.process.activity_jobs import execute_external_activity
     from app.process.native_actors import human_work, complete_human_work
@@ -1422,7 +1442,7 @@ async def test_slow_rest_activity_does_not_block_its_human_branch_or_allow_doubl
     server = await asyncio.start_server(handle, "127.0.0.1", 0)
     worker = None
     try:
-        tool = await tool_service.create_tool(ToolCreate(code=f"synthetic_slow_{uuid4().hex}", label="Synthetic gated API",
+        tool = await service.create_service(ServiceCreate(code=f"synthetic_slow_{uuid4().hex}", label="Synthetic gated API",
             rest_config={"base_url": f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}"}))
         await connection_service.get_or_create_connection(tool.id, owner.id)
         user = UserModel(email=f"synthetic-fast-{uuid4().hex}@example.invalid", hashed_password="unused", is_active=True)
@@ -1432,7 +1452,7 @@ async def test_slow_rest_activity_does_not_block_its_human_branch_or_allow_doubl
         definition = await create(actor_agent_id=owner.id, title="Synthetic independent branches", graph=Workflow(
             schema_version="galaris.bpmn/v2", variables=[output],
             actors=[Actor(id="reviewer", name="Reviewer", kind="human", user_id=user.id)],
-            nodes=[Node(id="start", kind="start"), Node(id="slow", kind="rest", config={"tool_code": tool.code, "external_output": {}}),
+            nodes=[Node(id="start", kind="start"), Node(id="slow", kind="rest", config={"service_code": tool.code, "external_output": {}}),
                 Node(id="fast", kind="human_task", config={"prompt": "Synthetic fast branch", "actor": "reviewer"}),
                 Node(id="end", kind="end")], flows=[Flow(id="a", source="start", target="slow"), Flow(id="b", source="start", target="fast"),
                     Flow(id="c", source="slow", target="end"), Flow(id="d", source="fast", target="end")]))
@@ -1789,7 +1809,7 @@ async def test_native_admission_recovery_rechecks_human_scope_after_archive(db, 
 @pytest.mark.asyncio
 async def test_managed_human_can_still_launch_an_assigned_external_process(db, native):
     from core.user import UserModel
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.process import FakeProcessEngine
     from app.process.schemas import ProcessDefinitionCreate, ProcessCallbackEvent
 
@@ -1798,20 +1818,20 @@ async def test_managed_human_can_still_launch_an_assigned_external_process(db, n
     db.add(human)
     await db.flush()
     owner.user_id = human.id
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "fake"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "fake"))
     if tool is None:
-        tool = ToolModel(code="fake", label="Synthetic external engine", connection_schema={})
+        tool = ServiceModel(code="fake", label="Synthetic external engine", connection_schema={})
         db.add(tool)
         await db.flush()
     registry.register(FakeProcessEngine())
-    definition = await process_service.create_definition(ProcessDefinitionCreate(agent_id=owner.id, tool_id=tool.id,
+    definition = await process_service.create_definition(ProcessDefinitionCreate(agent_id=owner.id, service_id=tool.id,
         engine_process_id="synthetic-external-" + uuid4().hex, label="Synthetic external process"))
-    native_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
+    native_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
     from app.process.schemas import ProcessDefinitionUpdate
     with pytest.raises(ValueError):
-        await process_service.update_definition(definition.id, ProcessDefinitionUpdate(tool_id=native_tool.id))
-    saved = await process_service.update_definition(definition.id, ProcessDefinitionUpdate(tool_id=tool.id, label="Synthetic external renamed"))
-    assert saved.tool_id == tool.id and saved.document_id is None and saved.label == "Synthetic external renamed"
+        await process_service.update_definition(definition.id, ProcessDefinitionUpdate(service_id=native_tool.id))
+    saved = await process_service.update_definition(definition.id, ProcessDefinitionUpdate(service_id=tool.id, label="Synthetic external renamed"))
+    assert saved.service_id == tool.id and saved.document_id is None and saved.label == "Synthetic external renamed"
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.engine_process_id,
         input_data={"synthetic": True}, requester_user_id=human.id)
     run = await db.get(ProcessRun, launched.run_id)
@@ -1837,7 +1857,7 @@ async def test_task_launched_process_preserves_causality_and_rejects_callbacks_o
     parent = await create(actor_agent_id=owner.id, title="Synthetic task parent", graph=graph())
     child = await create(actor_agent_id=owner.id, title="Synthetic task child", graph=graph())
     with pytest.raises(ValueError):
-        await process_service.create_definition(ProcessDefinitionCreate(agent_id=owner.id, tool_id=parent.tool_id,
+        await process_service.create_definition(ProcessDefinitionCreate(agent_id=owner.id, service_id=parent.service_id,
             engine_process_id="legacy-native", label="Synthetic bypass"))
     with pytest.raises(ValueError):
         await process_service.update_definition(parent.id, ProcessDefinitionUpdate(label="Synthetic bypass"))
@@ -1924,7 +1944,7 @@ async def test_task_launched_process_preserves_causality_and_rejects_callbacks_o
 async def test_tool_activity_uses_live_mcp_rights_and_finishes_its_context(inference_db, committed_native, function_state, typed):
     from app.connection import Connection
     from app.connection.facade import set_connection_function_state
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     db = inference_db
     owner, other = committed_native
     approver = None
@@ -1936,8 +1956,8 @@ async def test_tool_activity_uses_live_mcp_rights_and_finishes_its_context(infer
         from tests.authorization_fixtures import grant_privileges
         await grant_privileges(db, approver.id, "PERMISSION_DECIDE")
         owner.user_id = approver.id
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     state = "ask" if approver else "enabled" if function_state == "denied_resource" else function_state
@@ -1962,8 +1982,8 @@ async def test_tool_activity_uses_live_mcp_rights_and_finishes_its_context(infer
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
     if approver:
-        from app.tools.authorization_models import ActionAuthorization
-        from app.tools.facade import answer_action
+        from app.services.authorization_models import ActionAuthorization
+        from app.services.facade import answer_action
         for _ in range(5):
             await tick_run(db, launched.run_id)
         attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == launched.run_id))
@@ -2011,12 +2031,12 @@ async def test_ambiguous_tool_effect_blocks_retries_handlers_and_new_admissions(
     from unittest.mock import AsyncMock
     from app.browser import mcp as browser_mcp
     from app.connection import Connection, facade as connections
-    from app.tools import ToolModel, mcp_loader
+    from app.services import ServiceModel, mcp_loader
     from app.process.native_runs import control_run
     db = inference_db
     owner, _ = committed_native
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "browser"))
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "browser"))
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     await connections.set_connection_function_state(connection.id, "browser_open", "enabled")
@@ -2389,12 +2409,12 @@ async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, nati
 async def test_lab_real_campaign_idempotency_exact_evidence_and_private_inputs(db, native):
     from app.lab import process_evaluation as lab
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.lab.process_evaluation_models import LabProcessCase
     from uuid import UUID
     owner, stranger = native
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     from app.connection.facade import set_connection_function_state
@@ -2444,12 +2464,12 @@ async def test_lab_rechecks_launch_rights_and_can_cancel_admitted_runs_after_cam
     from app.lab.process_evaluation_models import LabProcessCase
     from app.connection import Connection
     from app.connection.facade import set_connection_function_state
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.process.facade import launch_current
     from uuid import UUID
     owner, _ = native
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     await set_connection_function_state(connection.id, "process_start", "enabled")

@@ -16,7 +16,7 @@ from app.connection import Connection
 from app.conversation import ConversationRound, ConversationRoundMessage
 from app.llm import LLMCall
 from app.messenger import Message, MessengerUser, Room, RoomUser
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.database import get_db
 
 from .models import VoiceConversationSession, VoiceConversationStatus, VoiceTurnStatus
@@ -87,7 +87,7 @@ def _session_filters(
         is_active = VoiceConversationSession.status == VoiceConversationStatus.ACTIVE.value
         filters.append(is_active if active else ~is_active)
     if transport_kind:
-        filters.append(ToolModel.code == transport_kind)
+        filters.append(ServiceModel.code == transport_kind)
     if topic_id is not None:
         filters.append(
             select(ConversationRound.id)
@@ -140,7 +140,7 @@ def _session_filters(
             or_(
                 Room.external_id.ilike(pattern),
                 Room.label.ilike(pattern),
-                ToolModel.code.ilike(pattern),
+                ServiceModel.code.ilike(pattern),
                 Agent.first_name.ilike(pattern),
                 Agent.last_name.ilike(pattern),
                 Agent.code.ilike(pattern),
@@ -155,7 +155,7 @@ def _session_joins(statement: Any) -> Any:
     return (
         statement.outerjoin(Room, Room.id == VoiceConversationSession.messenger_room_id)
         .outerjoin(Connection, Connection.id == Room.connection_id)
-        .outerjoin(ToolModel, ToolModel.id == Connection.tool_id)
+        .outerjoin(ServiceModel, ServiceModel.id == Connection.service_id)
         .outerjoin(Agent, Agent.id == Connection.agent_id)
     )
 
@@ -340,7 +340,7 @@ def _summary_statement(stats: Any) -> Any:
             VoiceConversationSession,
             Room.connection_id,
             Room.external_id,
-            ToolModel.code,
+            ServiceModel.code,
             Connection.agent_id,
             Agent.first_name,
             Agent.last_name,
@@ -510,7 +510,7 @@ async def get_turn(turn_id: UUID) -> VoiceConversationTurnDetail | None:
                     VoiceConversationSession,
                     Room.connection_id,
                     Room.external_id,
-                    ToolModel.code,
+                    ServiceModel.code,
                     Connection.agent_id,
                     Agent.first_name,
                     Agent.last_name,

@@ -115,7 +115,7 @@ et le nom de chaque agent. Le sélecteur de pièces jointes permet toujours de p
 fichiers du skill.
 
 Un agent peut posséder plusieurs boîtes chez le même fournisseur : créez plusieurs connexions
-au même Tool doté du protocole Mail, avec une adresse et des identifiants par connexion.
+au même Service doté du protocole Mail, avec une adresse et des identifiants par connexion.
 Le navigateur du fournisseur présente les comptes séparément lorsque plusieurs boîtes sont actives.
 
 Dans **Mail**, les dossiers IMAP reprennent la hiérarchie de la boîte connectée à l’agent,

@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 from app.connection import Connection, ConnectionParam, ConnectionFunctionState
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.dbadmin import SchemaTransitionSet
 from app.skill import dbadmin, interface, storage
 from app.skill.contracts import SkillScope
@@ -17,14 +17,14 @@ from .test_personal_packages import agents, personal, set_scope
 @pytest.mark.asyncio
 async def test_upgrade_preserves_the_single_tool_connections_settings_and_delegation(db, agents):
     a, b, _ = agents
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'skills'))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'skills'))
     original_id = tool.id
     tool.code = 'skill_management'
-    connections = list((await db.scalars(select(Connection).where(Connection.tool_id == original_id))).all())
+    connections = list((await db.scalars(select(Connection).where(Connection.service_id == original_id))).all())
     active = next(item for item in connections if item.agent_id == a.id)
     inactive = next(item for item in connections if item.agent_id == b.id)
     inactive.active = False
-    for policy in (await db.scalars(select(ConnectionParam).where(ConnectionParam.param_name == 'tools.management_scope'))).all():
+    for policy in (await db.scalars(select(ConnectionParam).where(ConnectionParam.param_name == 'services.management_scope'))).all():
         await db.delete(policy)
     db.add(ConnectionParam(connection_id=active.id, param_name='synthetic', param_value='preserved'))
     db.add(ConnectionFunctionState(connection_id=active.id, function_name='skill_read', state='ask', enabled=False))
@@ -34,13 +34,13 @@ async def test_upgrade_preserves_the_single_tool_connections_settings_and_delega
     await db.commit()
     await dbadmin._rename_tool(db, SchemaTransitionSet())
     assert await dbadmin._tool_renamed(db, SchemaTransitionSet())
-    assert (await db.scalar(select(ToolModel).where(ToolModel.code == 'skills'))).id == original_id
+    assert (await db.scalar(select(ServiceModel).where(ServiceModel.code == 'skills'))).id == original_id
     assert await interface.get_agent_scope(a.id) == SkillScope.ALL
     assert await interface.get_agent_scope(b.id) == SkillScope.USAGE
     assert not inactive.active
     assert (await db.scalar(select(ConnectionParam).where(ConnectionParam.connection_id == active.id))).param_value == 'preserved'
     assert (await db.scalar(select(ConnectionFunctionState).where(ConnectionFunctionState.connection_id == active.id))).state == 'ask'
-    assert len((await db.scalars(select(ToolModel).where(ToolModel.code.in_(('skills', 'skill_management'))))).all()) == 1
+    assert len((await db.scalars(select(ServiceModel).where(ServiceModel.code.in_(('skills', 'skill_management'))))).all()) == 1
 
 
 @pytest.mark.asyncio
@@ -163,11 +163,11 @@ async def test_concurrent_creations_and_same_operation_release_share_database_lo
         db.add(agent)
         await db.flush()
         actor = agent.id
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'skills'))
-        connection = Connection(agent_id=actor, tool_id=tool.id, active=True)
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'skills'))
+        connection = Connection(agent_id=actor, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
-        db.add(ConnectionParam(connection_id=connection.id, param_name='tools.management_scope', param_value='all'))
+        db.add(ConnectionParam(connection_id=connection.id, param_name='services.management_scope', param_value='all'))
     async def create():
         async with get_db_session():
             return await interface.create_package(personal(), actor_agent_id=actor)

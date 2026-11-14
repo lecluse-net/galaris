@@ -14,7 +14,7 @@ from .models import ProcessDefinition
 async def read_process_run_resource(identity: UUID, *, actor_agent_id: int, management_scope: AgentManagementScope | None = None) -> dict[str, Any]:
     """Observe an authorized run without refreshing or advancing its engine."""
     from . import native_runs
-    from app.tools import has_process_admin_access
+    from app.services import has_process_admin_access
 
     run = await process_service.get_run(identity)
     if run is None:
@@ -31,7 +31,7 @@ async def read_process_run_resource(identity: UUID, *, actor_agent_id: int, mana
     return {**payload, "resource_uri": f"galaris://processes/runs/{identity}"}
 
 
-async def _tool_codes() -> dict[int, str]:
+async def _service_codes() -> dict[int, str]:
     return {
         tool.id: tool.code
         for tool in await process_service.list_process_tools()
@@ -41,7 +41,7 @@ async def _tool_codes() -> dict[int, str]:
 def _payload(
     definition: ProcessDefinition,
     *,
-    tool_codes: dict[int, str],
+    service_codes: dict[int, str],
 ) -> dict[str, Any]:
     created_at = definition.created_at
     updated_at = definition.updated_at
@@ -50,8 +50,8 @@ def _payload(
         "native_code": definition.code,
         "label": definition.label,
         "description": definition.description,
-        "tool_id": definition.tool_id,
-        "tool_code": tool_codes.get(definition.tool_id, ""),
+        "service_id": definition.service_id,
+        "service_code": service_codes.get(definition.service_id, ""),
         "created_at": created_at.isoformat(),
         "updated_at": (
             updated_at.isoformat()
@@ -75,7 +75,7 @@ async def read_process_resource(
         definition = await process_service.get_for_agent(actor_agent_id, workflow_id)
     if definition is None:
         return None
-    return _payload(definition, tool_codes=await _tool_codes())
+    return _payload(definition, service_codes=await _service_codes())
 
 
 async def list_process_resources(
@@ -93,8 +93,8 @@ async def list_process_resources(
         limit=limit,
         management_scope=management_scope,
     )
-    tool_codes = await _tool_codes()
-    return [_payload(definition, tool_codes=tool_codes) for definition in definitions]
+    service_codes = await _service_codes()
+    return [_payload(definition, service_codes=service_codes) for definition in definitions]
 
 
 async def list_process_run_resources(*, actor_agent_id: int | AgentManagementScope, query: str = "", offset: int = 0,

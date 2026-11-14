@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
 
-test('REST Tool configuration persists with connection credentials kept write-only', async ({ page, request }, testInfo) => {
+test('REST Service configuration persists with connection credentials kept write-only', async ({ page, request }, testInfo) => {
   const pageErrors = collectPageErrors(page)
   const fixture = await (await request.post('/api/__test/seed')).json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
@@ -22,7 +22,7 @@ test('REST Tool configuration persists with connection credentials kept write-on
     }
   })
   await pageErrors.settle()
-  await page.goto('/tools')
+  await page.goto('/services')
   await page.getByRole('button', { name: 'Nouvel outil', exact: true }).click()
   const editor = page.getByRole('dialog')
   const code = `synthetic_rest_${fixture.agent_id}`
@@ -44,13 +44,13 @@ test('REST Tool configuration persists with connection credentials kept write-on
   await parameterConfirmation.getByRole('button', { name: 'Annuler', exact: true }).click()
   await expect(parameterConfirmation).toHaveCount(0)
   await expect(editor.getByText('api_token_2', { exact: true })).toBeVisible()
-  const create = page.waitForResponse(response => response.url().endsWith('/api/tools') && response.request().method() === 'POST')
+  const create = page.waitForResponse(response => response.url().endsWith('/api/services') && response.request().method() === 'POST')
   await editor.getByRole('button', { name: 'Créer', exact: true }).click()
   const createdResponse = await create
   expect(createdResponse.ok(), await createdResponse.text()).toBe(true)
   const tool = await createdResponse.json()
   await expect(editor).toHaveCount(0)
-  await expect(page.getByRole('tab', { name: 'Outils personnalisés', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Services personnalisés', exact: true })).toHaveAttribute('aria-selected', 'true')
   expect(tool.has_api).toBe(true)
   expect(tool.rest_config.base_url).toBe('https://api.example.test/v1')
   expect(tool.rest_config.auth.param).toBe('api_token_2')
@@ -88,7 +88,7 @@ test('REST Tool configuration persists with connection credentials kept write-on
   expect(connectionResponse.ok(), await connectionResponse.text()).toBe(true)
   const connection = await connectionResponse.json()
   await expect(connectionEditor).toHaveCount(0)
-  const globals = await request.put(`/api/tools/${tool.id}/global-params`, { headers, data: { params: {
+  const globals = await request.put(`/api/services/${tool.id}/global-params`, { headers, data: { params: {
     api_token_2: { value: token },
   } } })
   expect(globals.ok(), await globals.text()).toBe(true)
@@ -96,7 +96,7 @@ test('REST Tool configuration persists with connection credentials kept write-on
   const projection = await request.get(`/api/connections/${connection.id}/params`, { headers })
   expect(projection.ok(), await projection.text()).toBe(true)
   expect(await projection.text()).not.toContain(token)
-  const exported = await request.get(`/api/tools/${tool.id}/export`, { headers })
+  const exported = await request.get(`/api/services/${tool.id}/export`, { headers })
   expect(await exported.text()).not.toContain(token)
   for (const tab of ['connections', 'authorizations']) {
     await pageErrors.settle()
@@ -112,26 +112,26 @@ test('REST Tool configuration persists with connection credentials kept write-on
     }
   }
   await pageErrors.settle()
-  await page.goto('/tools')
-  await page.getByRole('tab', { name: 'Outils personnalisés', exact: true }).click()
+  await page.goto('/services')
+  await page.getByRole('tab', { name: 'Services personnalisés', exact: true }).click()
   const row = page.getByRole('row').filter({ hasText: code })
   await row.getByRole('button', { name: "Modifier l'outil", exact: true }).click()
   await editor.getByRole('tab', { name: 'API REST', exact: true }).click()
   await expect(editor.getByLabel('Adresse de base de l’API', { exact: true })).toHaveValue('https://api.example.test/v1')
   await expect(editor.getByText('api_token_2', { exact: true })).toBeVisible()
   await editor.getByRole('switch', { name: 'Activer API', exact: true }).click()
-  const save = page.waitForResponse(response => response.url().endsWith(`/api/tools/${tool.id}`) && response.request().method() === 'PUT')
+  const save = page.waitForResponse(response => response.url().endsWith(`/api/services/${tool.id}`) && response.request().method() === 'PUT')
   await editor.getByRole('button', { name: 'Enregistrer', exact: true }).click()
   const updated = await save
   expect(updated.ok(), await updated.text()).toBe(true)
   expect((await updated.json()).rest_config).toBeNull()
   await expect(editor).toHaveCount(0)
-  // Prime the kept-alive Connections view before deleting the shared Tool.
+  // Prime the kept-alive Connections view before deleting the shared Service.
   await page.getByRole('tab', { name: 'Connexions', exact: true }).click()
   await expect(row).toBeHidden()
   await expect(page.getByRole('row').filter({ hasText: toolLabel })).toBeVisible()
   await page.getByRole('tab', { name: 'Outils', exact: true }).click()
-  await page.getByRole('tab', { name: 'Outils personnalisés', exact: true }).click()
+  await page.getByRole('tab', { name: 'Services personnalisés', exact: true }).click()
   await row.getByRole('button', { name: 'Supprimer', exact: true }).click()
   const deletion = page.getByRole('dialog')
   await expect(deletion).toContainText('Connexions des agents : 1')
@@ -142,12 +142,12 @@ test('REST Tool configuration persists with connection credentials kept write-on
   await row.getByRole('button', { name: 'Supprimer', exact: true }).click()
   await expect(deletion).toContainText('Connexions des agents : 1')
   await page.screenshot({ path: testInfo.outputPath('tool-deletion-impact.png'), animations: 'disabled' })
-  const removal = page.waitForResponse(response => response.request().method() === 'DELETE' && new URL(response.url()).pathname === `/api/tools/${tool.id}`)
+  const removal = page.waitForResponse(response => response.request().method() === 'DELETE' && new URL(response.url()).pathname === `/api/services/${tool.id}`)
   await deletion.getByRole('button', { name: 'Supprimer', exact: true }).click()
   expect((await removal).status()).toBe(204)
   await expect(deletion).toHaveCount(0)
   await expect(row).toHaveCount(0)
-  const remaining = await request.get(`/api/connections?tool_id=${tool.id}`, { headers })
+  const remaining = await request.get(`/api/connections?service_id=${tool.id}`, { headers })
   expect(await remaining.json()).toEqual([])
   await page.getByRole('tab', { name: 'Connexions', exact: true }).click()
   await expect(page.getByRole('row').filter({ hasText: toolLabel })).toHaveCount(0)

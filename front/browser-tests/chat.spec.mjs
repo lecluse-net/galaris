@@ -281,7 +281,7 @@ for (const width of [390, 1280]) {
 }
 
 test('conversation process states and opening details follow the loaded data', async ({ page }) => {
-  const run = { id: 'process-a', tool_code: 'n8n', process_label: 'Synthetic image export', summary: 'Synthetic image export',
+  const run = { id: 'process-a', service_code: 'n8n', process_label: 'Synthetic image export', summary: 'Synthetic image export',
     status: 'running', input: { format: 'png' }, output: null, engine_metadata: {},
     error_message: null, created_at: '2026-09-01T12:00:00Z', task_ids: [], events: [], llm_calls: [] }
   await jsonRoute(page, '**/api/chat/rooms/room-a/processes?*', { items: [run], total: 1 })
@@ -311,7 +311,7 @@ for (const width of [390, 1280]) test(`conversation processes place recent runs 
   await page.setViewportSize({ width, height: 900 })
   const runs = Array.from({ length: 56 }, (_, index) => ({
     id: `process-${String(index + 1).padStart(3, '0')}`, process_label: `Synthetic run ${String(index + 1).padStart(3, '0')}`,
-    tool_code: 'n8n', status: 'success', created_at: new Date(Date.UTC(2026, 8, 1, 12, 0, index)).toISOString(),
+    service_code: 'n8n', status: 'success', created_at: new Date(Date.UTC(2026, 8, 1, 12, 0, index)).toISOString(),
   })).reverse()
   let reads = 0
   await page.route('**/api/chat/rooms/room-a/processes?*', route => {

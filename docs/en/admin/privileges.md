@@ -35,7 +35,7 @@ another privilege. Resource permissions and managed-agent scope still apply;
 | Voice history | `VOICE_HISTORY_ACCESS` | `VOICE_HISTORY_CONTROL` |
 | Shared harness configuration | `HARNESS_CONFIG_ACCESS` | `HARNESS_CONFIG_EDIT` |
 | Processes | `PROCESS_READ` | `PROCESS_EDIT`, launch `PROCESS_LAUNCH`, administration `PROCESS_ADMIN` |
-| Tool catalogue | `TOOL_ACCESS` | `TOOL_EDIT` |
+| Service catalogue | `SERVICE_ACCESS` | `SERVICE_EDIT` |
 | Connections | `CONNECTION_ACCESS` | `CONNECTION_EDIT` |
 | Mail journal | `MAIL_ACCESS` | `MAIL_EDIT`; send decisions also require `PERMISSION_DECIDE` |
 | Calendars | `CALENDAR_ACCESS` | `CALENDAR_EDIT` |
@@ -121,8 +121,8 @@ authorized Document attachment does not require global Files access. Media links
 session, role, agent and source on every read, including range reads. Sharing a link never
 supplies missing permissions.
 
-MCP function permissions and local `tools.management_scope` are further independent checks.
-See [Tool administration](tool-administration.md) and [resource sharing](../dev/sharing.md).
+MCP function permissions and local `services.management_scope` are further independent checks.
+See [Service administration](service-administration.md) and [resource sharing](../dev/sharing.md).
 
 ## Organize categories and update roles
 

@@ -93,12 +93,12 @@ for (const width of [390, 1440]) {
     }
     if (width >= 1024) {
       await page.getByRole('complementary', { name: 'Outil', exact: true }).getByRole('button', { name: 'AgentAdmin', exact: true }).click()
-      const scope = page.getByRole('group', { name: 'Périmètre de AgentAdmin (tools.management_scope)', exact: true })
+      const scope = page.getByRole('group', { name: 'Périmètre de AgentAdmin (services.management_scope)', exact: true })
       await expect(scope.getByRole('button', { name: "Gestion pour l'agent uniquement", exact: true })).toHaveCount(0)
       await scope.getByRole('button', { name: 'Gestion de niveau équipe', exact: true }).click()
       await expect(scope.getByRole('button', { name: 'Gestion de niveau équipe', exact: true })).toHaveAttribute('aria-pressed', 'true')
       const saved = await request.get(`/api/connections/${setup.connection_id}/params`, { headers })
-      expect((await saved.json()).params['tools.management_scope']).toBe('team')
+      expect((await saved.json()).params['services.management_scope']).toBe('team')
       await scope.getByRole('button', { name: 'Gestion globale sans restriction', exact: true }).click()
       await expect(scope.getByRole('button', { name: 'Gestion globale sans restriction', exact: true })).toHaveAttribute('aria-pressed', 'true')
     }
@@ -131,7 +131,7 @@ for (const width of [390, 1440]) {
       expect(created.ok(), await created.text()).toBeTruthy()
     }
     await errors.settle()
-    await page.goto('/tools')
+    await page.goto('/services')
     if (width < 1024) {
       await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), async backdrop => {
         await backdrop.click({ position: { x: width - 10, y: 200 } })

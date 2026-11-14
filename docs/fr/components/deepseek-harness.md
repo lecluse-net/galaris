@@ -75,7 +75,7 @@ ne servent que de repli en l'absence d'appel corrélé.
 Les compétences effectivement autorisées sont copiées sous `data/skills`; le provider filesystem DSH
 est isolé avec `includeDefaultRoots: false`. La mémoire durable, les fichiers canoniques et les
 effets externes passent par le MCP Galaris. Le workspace DSH local reste un espace de calcul : un
-fichier n'est durable que lorsqu'un Tool Galaris enregistre son URI et son effet.
+fichier n'est durable que lorsqu'un Service Galaris enregistre son URI et son effet.
 
 L'outil natif `read` valide le contexte de run courant sans demander de permis de
 modification, y compris pour lire une compétence projetée hors du workspace. Un contexte

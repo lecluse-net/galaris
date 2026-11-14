@@ -81,7 +81,7 @@ L'inventaire couvre :
 
 - les PJ Documents, images importées et cartes de liens, y compris les PJ retenues ;
 - les manifests des révisions et l'archive de séparation Document/Memory si elle existe ;
-- les octets des fichiers appartenant au Tool Chat interne, uploads et notes vocales inclus.
+- les octets des fichiers appartenant au Service Chat interne, uploads et notes vocales inclus.
 
 Un simple pointeur de description laissé par un document déjà oublié n'est pas une
 source : l'ancien stockage peut avoir légitimement effacé ses octets. Les références

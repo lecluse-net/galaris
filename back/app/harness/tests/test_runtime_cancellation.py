@@ -117,7 +117,7 @@ async def test_mcp_disconnect_resumes_pending_safe_call_before_model_decision(ef
     from app.harness.mcp_toolset import ExecutionEvidenceClient
     from app.harness.checkpoint import ToolOutcomeUnknownError
     from fastmcp.server.dependencies import get_context
-    from app.tools.contracts import EXECUTION_META_KEY
+    from app.services.contracts import EXECUTION_META_KEY
 
     server = FastMCP("synthetic-interrupted-admission")
     interrupted = True
@@ -196,7 +196,7 @@ async def test_authorization_resume_preserves_arguments_and_current_context(db, 
     from pydantic_ai import DeferredToolRequests
     from pydantic_ai.models.function import DeltaToolCall
     from pydantic_ai.toolsets import FunctionToolset
-    from app.tools.facade import AuthorizationRequired
+    from app.services.facade import AuthorizationRequired
     from app.harness import checkpoint as checkpoint_module
 
     save = AsyncMock()

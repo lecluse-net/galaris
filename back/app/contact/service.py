@@ -91,7 +91,7 @@ async def list_reachable_humans(
             if user.galaris_user_id is not None},
     )
     contacts: dict[tuple[str, object], ReachableHumanContact] = {}
-    for connection_id, tool_id, platform, user in identities:
+    for connection_id, service_id, platform, user in identities:
         canonical = by_messenger.get((platform, user.external_id))
         if canonical is None and user.galaris_user_id is not None:
             canonical = by_galaris_user.get(user.galaris_user_id)
@@ -105,7 +105,7 @@ async def list_reachable_humans(
             key,
             ReachableHumanContact(
                 connection_id=connection_id,
-                tool_id=tool_id,
+                service_id=service_id,
                 platform=platform,
                 user_id=user.external_id,
                 display_name=(

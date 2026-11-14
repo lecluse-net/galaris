@@ -8,7 +8,7 @@ class Connection(Base):
     __tablename__ = "connections"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    tool_id: Mapped[int] = mapped_column(ForeignKey("tools.id"), index=True)
+    service_id: Mapped[int] = mapped_column(ForeignKey("services.id"), index=True)
     agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), index=True)
     active: Mapped[bool] = mapped_column(default=True)
     # NULL permits distinct Mail accounts; other connections share the unique zero slot.
@@ -28,7 +28,7 @@ class Connection(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("tool_id", "agent_id", "singleton_key", name="uq_connection_agent_tool"),
+        UniqueConstraint("service_id", "agent_id", "singleton_key", name="uq_connection_agent_service"),
         CheckConstraint("singleton_key IS NULL OR singleton_key = 0", name="ck_connection_singleton_key"),
     )
 
@@ -81,18 +81,18 @@ class ConnectionFunctionState(Base):
     )
 
 
-class ToolFunctionState(Base):
+class ServiceFunctionState(Base):
     """Tool-level global MCP function exposure override.
 
     This state applies to every connection unless a connection-level override exists. Missing
     rows leave the function enabled by default.
     """
 
-    __tablename__ = "tool_function_state"
+    __tablename__ = "service_function_state"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    tool_id: Mapped[int] = mapped_column(
-        ForeignKey("tools.id", ondelete="CASCADE"),
+    service_id: Mapped[int] = mapped_column(
+        ForeignKey("services.id", ondelete="CASCADE"),
         index=True
     )
     function_name: Mapped[str] = mapped_column(String(2000))
@@ -101,9 +101,9 @@ class ToolFunctionState(Base):
     capability_kind: Mapped[str] = mapped_column(String(8), default="tool", server_default="tool")
 
     __table_args__ = (
-        UniqueConstraint("tool_id", "capability_kind", "function_name", name="uq_tool_function"),
-        CheckConstraint("state IS NULL OR state IN ('enabled', 'disabled', 'ask')", name="ck_tool_function_state"),
-        CheckConstraint("capability_kind IN ('tool', 'resource', 'prompt')", name="ck_tool_capability_kind"),
+        UniqueConstraint("service_id", "capability_kind", "function_name", name="uq_service_function"),
+        CheckConstraint("state IS NULL OR state IN ('enabled', 'disabled', 'ask')", name="ck_service_function_state"),
+        CheckConstraint("capability_kind IN ('tool', 'resource', 'prompt')", name="ck_service_capability_kind"),
     )
 
 

@@ -39,8 +39,8 @@ history and voice capabilities vary by channel.
 
 Every agent has a durable identity, mission, personality, skills and tools. Specialists can join
 teams of humans and agents, with access suited to their roles.
-Optional **AgentAdmin** and **ToolAdmin** also delegate configuration: AgentAdmin respects
-the human manager's rights; ToolAdmin manages the global catalogue through granted functions.
+Optional **AgentAdmin** and **ServiceAdmin** also delegate configuration: AgentAdmin respects
+the human manager's rights; ServiceAdmin manages the global catalogue through granted functions.
 Secrets stay server-side and humans assign administrative delegations.
 
 While preparing a study, an agent can ask a colleague for research or review. That contribution
@@ -88,7 +88,7 @@ static view of the displayed result for sharing or archiving a state of the work
 
 ## Recover context over time
 
-Files observed through Tools can enter a private catalogue with locations and thumbnails.
+Files observed through Services can enter a private catalogue with locations and thumbnails.
 Dream identifies identical copies per agent, prepares previews and traverses compatible providers,
 including Samba / SMB, under indexing settings. The 3D graph folds large branches and preserves
 framing during exploration.
@@ -127,7 +127,7 @@ ownership transfer. Generic methods remain assignable across agents. Native Proc
 conditions can either delegate work to an agent or request a boolean decision directly from
 an explicitly selected model, without tools or an auxiliary Task.
 
-Tools cover web search, interactive browsing, files and, for equipped agents, a Linux console.
+Services cover web search, interactive browsing, files and, for equipped agents, a Linux console.
 Agents can consult sources, manipulate resources, work on a repository, start a long command and
 check results in a browser. URIs identify the same files across tools.
 
@@ -156,7 +156,7 @@ sending waits for a human to approve the exact content. Calendars add availabili
 search and event management.
 
 Mail approval is available in the reviewer's private chat and in the mail journal. Permanent
-consent for a Tool function can avoid later prompts on that connection; resource rights and
+consent for a Service function can avoid later prompts on that connection; resource rights and
 versions remain checked.
 
 Incoming mail initially records headers only: unknown senders need consent before body

@@ -1,0 +1,219 @@
+---
+name: galaris-process-services
+description: Architecture Galaris des services, du catalogue YAML et des exécutions longues — app.services, app.mcp, connexions, file_share, app.process et bridge n8n. À utiliser pour tracer, créer ou modifier un service, un outil MCP, une connexion, un fichier, un processus ou leur exposition aux agents.
+---
+
+# Services, outils MCP et processus Galaris
+
+## Charger le flux
+
+Lire `docs/fr/architecture/flows/process.md`,
+`docs/fr/architecture/flows/media-resources.md` et les contrats du module concerné. Consulter la
+section MCP du guide `docs/fr/dev/README.md` avant de changer l’exposition d’un outil.
+
+## Distinguer les responsabilités
+
+| Domaine | Responsabilité |
+|---|---|
+| `app.services` | Catalogue, sélection et règles d’exposition des outils |
+| `app.mcp` | Contrats et serveur MCP Galaris |
+| `app.connection` | Configuration et secrets référencés des intégrations |
+| `app.file_share` | URI canoniques, providers et transferts streamés de ressources |
+| `app.process` | Définitions et exécutions de processus métier, progression, annulation et callbacks |
+| `bridge.n8n` | Traduction entre workflows n8n et contrats Galaris |
+
+Un **Service** est la définition Galaris d'un fournisseur ou d'une fonction intégrée,
+avec ses protocoles, paramètres et connexions. Un **outil MCP** est une fonction appelable.
+Conserver les noms imposés par MCP, FastMCP et Pydantic AI, dont `Tool`, `ToolResult`,
+`tools/list` et les toolsets : ils ne désignent pas l'ancien domaine Galaris.
+
+Le catalogue sous `back/app/services/service_catalog/` distribue une fiche YAML autonome
+par service, avec ses métadonnées et son icône embarquée. Lire
+`docs/fr/dev/service-catalog.md` avant de modifier ce format. Réutiliser les schémas et
+l'éditeur ordinaires : une fiche crée une copie locale uniquement sur enregistrement,
+sans connexion automatique ni droit supplémentaire. Une actualisation GitHub remplace
+atomiquement le catalogue en cache, jamais les services installés ni leurs réglages.
+Les secrets restent dans les Connexions. Ne pas introduire de fichier d'icône séparé.
+
+Ne pas faire dépendre le catalogue d’outils d’un client concret. Un bridge externe traduit
+vers `app.process` et les façades métier au lieu de posséder un second état canonique.
+
+Un processus métier porte un workflow défini indépendamment des fonctions qui exécutent
+ses activités. Les workflows externes sont notamment exécutés par n8n. Le moteur natif Galaris
+exécute le profil BPMN décrit dans `docs/fr/dev/native-processes.md` : Process possède son BPMN,
+son historique, les données et fichiers de ses runs ; ne pas les stocker dans Documents
+ou Dataset. La création UI native reste temporairement réservée au mode `dev`.
+Ne jamais envelopper une fonction, un tool MCP ou une opération technique dans une
+`ProcessDefinition` ou un `ProcessRun`. Leur durée, leurs callbacks, leurs retries ou leur
+besoin de suivi durable ne changent pas leur nature : leur domaine possède cet état.
+
+## Ajouter ou modifier un outil MCP
+
+### Agendas et objectifs
+
+`app.calendar` possède les agendas, événements iCalendar historisés, projections locales,
+actions et exécutions liées aux Tasks. `bridge.calendar` traduit CalDAV (protocole de référence)
+et les abonnements iCalendar HTTPS en lecture seule. Les consultations et commandes restent
+locales ; la synchronisation bidirectionnelle utilise un outbox transactionnel, les jetons
+CalDAV, les ETag et des écritures conditionnelles, sans écrasement des conflits.
+Le service système `agenda` est actif par défaut et sans identifiants externes ; une source
+externe est optionnelle. Les fonctions `calendar_*` gardent leurs contrôles habituels et choisissent
+l’agenda personnel par défaut. Un identifiant de calendrier lie l’appel à sa connexion réelle.
+Les actions admettent des Tasks idempotentes indépendamment des périodes consultées. Les
+modifications contrôlent les révisions et l'identité d'origine des occurrences. Une admission
+dont le reçu a été perdu est réconciliée avant modification ou relance ; une création de Task
+ne vaut pas traitement réussi. `pending` ne vaut jamais confirmation d'une écriture externe.
+L’agenda porte les engagements datés et rappels ponctuels. Goal conserve le suivi d’un résultat
+durable et ses cycles : ne pas créer un rappel qui duplique un cycle Goal déjà planifié.
+
+1. Définir un nom stable, une description actionnable et un schéma d’entrée borné.
+2. Valider les paramètres avant l’accès réseau, disque ou base.
+3. Résoudre les connexions et secrets côté serveur ; ne jamais les exposer au modèle.
+4. Retourner une sortie structurée et concise, avec identifiants corrélables.
+5. Pour une opération longue, conserver un état durable dans son domaine propriétaire.
+   Le rattachement à `app.process` exige un véritable workflow métier défini et exécutable.
+6. Ajouter des tests du schéma, des autorisations, des erreurs et du résultat.
+7. Régénérer la cartographie pour inventorier le nouvel outil.
+
+## Gérer l'exécution d'un processus métier
+
+- Appliquer uniquement les transitions autorisées de `app.process.process_service`.
+- Considérer `success`, `error` et `cancelled` comme terminaux.
+- Rendre callbacks et redeliveries idempotents.
+- Corréler l’identifiant externe à un seul process Galaris.
+- Distinguer demande d’annulation (`cancelling`) et confirmation (`cancelled`).
+- Ne jamais remplacer un état terminal par un événement tardif.
+
+Documenter toute nouvelle transition dans `docs/fr/architecture/state-machines.md` et la couvrir
+par un test de matrice.
+
+Les fichiers d'entrée d'un Process suivent exactement la même règle : chaque élément porte une
+clé `uri` canonique et une description optionnelle. Le snapshot de run conserve l'URI source ;
+l'URL machine temporaire matérialise cette ressource via `app.file_share` au moment où l'engine la
+télécharge. Ne limiter ni le planner ni le process à un stockage local.
+
+## Fichiers et ressources
+
+Galaris, Conversation, Memory et File Sharing sont des services système obligatoires
+(`can_disable=false`, propriété gérée par le logiciel). Lorsque les capacités nécessaires sont autorisées,
+les documents `document://` sont le support canonique des contenus rédigés durables requis par
+le résultat. Une Task ne nécessite pas à elle seule un document ; privilégier le document
+pertinent existant et ne pas remplacer une ressource métier par un document.
+Créer avec `file_create(path="document://", name=..., content=...)` où
+`content` est un fragment HTML éditorial UTF-8. Réutiliser l'URI et les révisions plutôt que créer
+des copies Markdown ou HTML ; lier les sources et pièces jointes. Les documents, résumés,
+versions et droits appartiennent à `app.document`, indépendamment des souvenirs privés
+de l'agent. Partager avec `document_sharing`
+puis `document_share` avant de transmettre l'URI aux destinataires. Un lien ne donne pas accès.
+La synchronisation réactive leurs connexions. Leurs fonctions gardent les modes
+Actif/Bloqué/Sur demande et l'héritage global/local des autres Services ; les définitions
+et l'activation des connexions système sont protégées. Les Services optionnels conservent
+leurs désactivations explicites. Un accord ne lève ni ACL ni restriction de contexte.
+Le choix d'un fichier pour un format explicitement demandé ou un artefact technique reste possible.
+Voir `docs/fr/dev/editorial-html.md`, section « Documents comme pivot de l'information ».
+
+Pour les documents éditoriaux, appliquer `docs/fr/dev/editorial-html.md` : les outils écrivent
+des fragments HTML, les offsets sont des blocs HTML (même si un argument s'appelle
+`start_line`), et toute mutation de contenu existant fournit `expected_revision` lu au préalable.
+Les autres providers conservent leur format et leur unité d'offset. Adapter les exemples du
+skill runtime Galaris et tester la conservation du contenu, les conflits de révision et les
+refus de HTML hors profil ; ne pas figer un ancien bouton d'éditeur.
+
+Les documents Données appartiennent à `app.document.data` et se créent avec
+`file_create(path="data://", name=..., content=...)`. Le contenu reste du JSON UTF-8 libre,
+sans schéma associé ; les métadonnées, droits et historique sont communs aux Documents. Les lectures JSON
+paginent en caractères et `file_edit` travaille en lignes ; chaque écriture produit un JSON
+complet valide et contrôle `expected_revision`. L'ancien `document_type="dataset"` dans
+`document://` reste un adaptateur vers `data://`, réservé aux consommateurs historiques.
+`app.dataset` est un relais de compatibilité ; les identités vérifiées et les anciens liens
+restent utilisables. Voir `docs/fr/dev/datasets.md` pour la migration et la décision 0252.
+
+Pour les entrées d'un processus, l'agent recueille les informations manquantes et prépare
+les variables attendues ; Process les valide à sa frontière d'exécution avec le codec commun.
+Les applications HTML collectent leurs données par le pont Dataset existant, avec consentement.
+
+Les formulaires et scripts restent du HTML ordinaire dans les documents :
+`file_create`/`file_write`/`file_edit` acceptent directement `form`, `style` et `script`.
+Lire `docs/fr/dev/document-apps.md` pour les attributs Dataset et le SDK. Aucune fonction MCP
+d'exécution JavaScript n'est créée ; l'exécution isolée appartient au navigateur du lecteur.
+Partager page et datasets séparément ; le code n'hérite jamais des droits de son auteur.
+
+Lire [le contrat des URI de ressources](references/resource-uris.md) avant de modifier un Service
+file-share, une opération de fichier ou sa projection dans le Working Set. `app.file_share` est la
+façade de fichiers virtuelle : ne pas recréer une résolution de schéma dans `app.services`, un bridge
+ou un runtime.
+
+Le Service intégré `file_sharing` possède et expose l'unique surface MCP générique :
+`file_schemes`, `file_list`, `file_info`,
+`file_search`, `file_read`, `file_create`, `file_write`, `file_append`, `file_edit`, `file_copy`,
+`file_move`, `file_rename` et `file_delete`. `file_rename` modifie le titre des Documents et Datasets
+à URI stable, avec `expected_lock_version` issu de `file_info`, sans révision de contenu.
+Ne pas réintroduire un lecteur ou un transfert dédié lorsqu'une URI couvre déjà
+l'intention. Les actions métier qui portent une sémantique supplémentaire restent dans leur
+domaine et dans leur propre Service. En particulier, `galaris://` est un schéma pris en charge par
+`app.file_share`, pas une raison de rattacher les fonctions `file_*` au Service `galaris`.
+
+Les pièces jointes d'un document passent par la collection
+`document://<document-uuid>/attachments/`. `file_list` les énumère ; leur URI exacte peut être
+passée à `file_info`, `file_read`, `file_copy` ou à un outil spécialisé. `file_create` avec un
+`name`, ou `file_copy` vers la collection, ajoute une pièce jointe immuable ; `file_delete` sur
+l'URI exacte la supprime. La lecture suit le droit de lecture du document parent, les mutations
+exigent son droit d'écriture, et ni l'ajout ni la suppression ne créent de révision du contenu.
+
+Les documents HTML de profil `document` affichent aussi les sons et vidéos avec un lecteur
+intégré, en lecture comme en édition. Via MCP, réutiliser une PJ ou copier le média avec
+`file_copy(source, "document://<uuid>/attachments/")`, puis insérer une carte dans le corps avec
+`file_append` ou `file_edit` et la révision lue. Le HTML est
+`<blockquote class="galaris-link-card galaris-media-audio"><p><a href="URI_RENDUE">Libellé</a></p></blockquote>` ;
+remplacer `galaris-media-audio` par `galaris-media-video` pour une vidéo et échapper le libellé.
+Joindre le fichier seul n'insère pas le lecteur. Conserver l'URI canonique retournée ; les
+lecteurs et URL `blob:` sont ajoutés au rendu, pas enregistrés dans le contenu.
+Ce parcours n'exige ni modèle Multimedia ni transcription pour un fichier existant, et ne
+s'applique pas aux corps Dataset ni aux profils `rich-text`. Maintenir cette procédure dans
+le skill runtime `back/app/skill/system_skills/galaris/SKILL.md`.
+
+Toute fonction métier qui reçoit ou rend un fichier échange une URI canonique de `app.file_share`,
+jamais un chemin hôte ni un chemin implicitement propre à son domaine. Lorsqu'un outil spécialisé
+doit donner les octets à une bibliothèque locale (`image_read`, génération avec pièces jointes,
+transcription audio/vidéo, livraison Messenger, etc.), il appelle `materialize_resource` dans un
+répertoire temporaire borné et automatiquement nettoyé. L'appelant passe donc directement une URI
+`nextcloud://`, `console://`, HTTPS, Mail ou Messenger : il ne prépare pas une copie locale.
+`file_copy` reste réservé à la création intentionnelle d'une copie persistante dans un
+autre provider.
+
+Le provider natif `galaris://` projette en lecture seule les collections `task/`, `text/`, `voice/`,
+`goal/` et `goal_cycle/`. Sa couche provider route l'URI, mais chaque domaine possède la requête, les ACL
+et la sérialisation de sa projection publique. La collection `skill/` est une exception administrée :
+elle expose les fichiers des packages uniquement à un agent dont la connexion `skill_management` est
+active. Les skills système y restent en lecture seule. Les autres opérations génériques de mutation
+sur `galaris://` sont refusées ; `file_copy` peut exporter un snapshot JSON vers un autre schéma.
+
+Valider taille, type, nom, URI et destination. Une destination collection conserve par défaut le
+nom exposé par les métadonnées de la source, y compris lorsque son locator est un identifiant opaque.
+Le runtime ou la bibliothèque locale ne reçoit qu'un temporaire serveur borné, jamais une
+référence durable ni un chemin arbitraire de l’hôte. Sans console active, aucun stockage local
+n'est annoncé : l'agent conserve l'URI Messenger courante ou écrit vers un provider compatible
+file-share. Les transferts sont streamés, bornés et nettoyés. Vérifier
+l’isolation entre agents, la connexion active, les ACL du domaine et l'overwrite explicite lors de
+chaque nouveau transport. Un nouveau provider expose ses capacités par protocoles optionnels ; il
+ne prétend pas supporter list, move ou delete sans implémentation réelle.
+
+Les fonctions de contrôle `conversation_*` appartiennent au Service `conversation` et restent
+limitées au contrôleur conversationnel, y compris les réponses aux activités humaines.
+`repository_show` appartient au même Service et accepte aussi les Tasks explicitement liées
+au Chat interne ; il ne clone, ne committe et ne publie aucun dépôt.
+`conversation_round_get`, `voice_turn_get`, `llm_call` et
+`llm_calls` appartiennent à `platform_admin`, optionnel, avec vérification de sa connexion active
+à chaque appel. Ne pas exposer les inspections LLM dans le service système `galaris`.
+
+## Sécurité et observabilité
+
+- Masquer tokens, credentials, entêtes d’authentification et contenu sensible.
+- Ajouter timeouts, limites de taille et gestion explicite des erreurs externes.
+- Journaliser les transitions avec process, outil, connexion et trace, sans payload secret.
+- Pour une instrumentation Logfire, charger le skill `logfire-instrumentation`.
+
+## Valider
+
+Exécuter les tests ciblés, les tests d’idempotence et d’annulation, puis `make typecheck`,
+`make project-context` et `make architecture-check`.

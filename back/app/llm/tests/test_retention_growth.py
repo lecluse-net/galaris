@@ -22,7 +22,7 @@ from core.params import runtime_settings
 @pytest.mark.asyncio
 async def test_twelve_weeks_reach_a_trace_plateau_without_losing_pending_evidence(db, monkeypatch):
     agent, connection, room = await _scope(db)
-    definition = ProcessDefinition(agent_id=agent.id, tool_id=connection.tool_id,
+    definition = ProcessDefinition(agent_id=agent.id, service_id=connection.service_id,
                                    engine_process_id="retention-growth", label="Retention growth")
     db.add(definition)
     await db.flush()

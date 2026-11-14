@@ -27,7 +27,7 @@ from app.agent.planner_service import (
     resume_parent,
 )
 from app.agent.contracts import AgentRunContext, WorkingResource, WorkingSet
-from app.tools.catalog import catalog_entry_from_definition, catalog_from_entries
+from app.services.catalog import catalog_entry_from_definition, catalog_from_entries
 from app.task.schemas import TaskCreate
 from core.params import Params
 
@@ -413,7 +413,7 @@ async def test_build_plan_passes_canonical_history_to_prompt(
 async def test_tool_catalog_keeps_every_authorized_tool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
 
     tools = [
         SimpleNamespace(
@@ -452,7 +452,7 @@ async def test_tool_catalog_keeps_every_authorized_tool(
 async def test_tool_catalog_failure_does_not_run_planner_blind(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
 
     monkeypatch.setattr(
         mcp_loader,
@@ -2265,7 +2265,7 @@ async def test_clarification_answer_resumes_planning(mocks: dict[str, Any]) -> N
     mocks["get_by_id"].return_value = parent
 
     interaction = PendingChoice(
-        id=uuid4(), kind="planner_clarification", agent_id=7, tool_id=None,
+        id=uuid4(), kind="planner_clarification", agent_id=7, service_id=None,
         room_id="room1", user_id=None, title="t", body="b", options=[],
         metadata={"task_id": str(parent.id)},
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),

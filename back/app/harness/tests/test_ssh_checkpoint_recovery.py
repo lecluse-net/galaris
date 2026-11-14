@@ -23,8 +23,8 @@ from app.harness.mcp_toolset import ExecutionEvidenceClient
 from app.harness.tests.test_checkpoint import _request
 from app.task.agent_adapter import SqlAlchemyAgentTaskAdapter
 from app.task.models import Task, TaskAttempt, TaskStatus
-from app.tools.contracts import current_tool_execution
-from app.tools.execution_evidence import ExecutionEvidenceMiddleware
+from app.services.contracts import current_tool_execution
+from app.services.execution_evidence import ExecutionEvidenceMiddleware
 
 
 @pytest.mark.asyncio

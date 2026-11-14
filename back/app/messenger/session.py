@@ -69,7 +69,7 @@ def _fallback_message(
         and not isinstance(raw_attachments, (str, bytes))
         else []
     )
-    tool_code = str(raw.get("tool_code") or "").strip()
+    service_code = str(raw.get("service_code") or "").strip()
     room_id = str(
         raw.get("room_external_id") or raw.get("room_id") or ""
     ).strip()
@@ -78,7 +78,7 @@ def _fallback_message(
         if local_id and room_id and not item.get("uri"):
             try:
                 item["uri"] = attachment_resource_uri(
-                    tool_code,
+                    service_code,
                     room_id,
                     local_id,
                 )
@@ -113,7 +113,7 @@ def _fallback_message(
         "role": "assistant" if is_ai else "user",
         "text": text,
         "platform": str(raw.get("platform") or ""),
-        "tool_code": tool_code,
+        "service_code": service_code,
         "room_external_id": room_id,
         "sender_contact_id": raw.get("sender_contact_id"),
         "sender": {
@@ -135,7 +135,7 @@ def _record_message(
     row: Message,
     *,
     agent_id: int,
-    tool_code: str,
+    service_code: str,
     file_ids: Sequence[UUID] = (),
 ) -> dict[str, Any]:
     """Serialize one journal row without discarding its canonical identities."""
@@ -158,7 +158,7 @@ def _record_message(
             item["local_id"] = str(file_id)
             if row.messenger_room_id is not None:
                 item["uri"] = attachment_resource_uri(
-                    tool_code,
+                    service_code,
                     row.room_id or "",
                     file_id,
                 )
@@ -173,8 +173,8 @@ def _record_message(
         "text": row.conversation_text,
         "resource_uris": row.resource_uris,
         "platform": row.platform,
-        "tool_id": row.tool_id,
-        "tool_code": tool_code,
+        "service_id": row.service_id,
+        "service_code": service_code,
         "sender_external_id": "" if assistant else (row.user_id or ""),
         "sender_display_name": sender_display_name,
         "sender_contact_id": str(row.contact_memory_item_id) if row.contact_memory_item_id and not assistant else None,
@@ -347,13 +347,13 @@ async def build_conversation_session(
         ).scalars().all()
         for link in links:
             attachment_ids.setdefault(link.message_id, []).append(link.file_id)
-    from app.tools import tool_service
+    from app.services import service
 
-    tool_codes: dict[int, str] = {}
-    for tool_id in {row.tool_id for row in rows if row.tool_id is not None}:
-        tool = await tool_service.get_tool_by_id(int(tool_id))
+    service_codes: dict[int, str] = {}
+    for service_id in {row.service_id for row in rows if row.service_id is not None}:
+        tool = await service.get_service_by_id(int(service_id))
         if tool is not None:
-            tool_codes[int(tool_id)] = str(tool.code)
+            service_codes[int(service_id)] = str(tool.code)
 
     excluded_ids = frozenset(
         message_id for message_id in excluded_message_ids if message_id
@@ -391,7 +391,7 @@ async def build_conversation_session(
         merged[f"remote:{row.remote_message_id}:{row.direction}"] = _record_message(
             row,
             agent_id=agent_id,
-            tool_code=tool_codes.get(int(row.tool_id or 0), ""),
+            service_code=service_codes.get(int(row.service_id or 0), ""),
             file_ids=attachment_ids.get(row.id, ()),
         )
     ordered = sorted(

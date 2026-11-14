@@ -44,13 +44,13 @@ from app.messenger.models import (
 )
 from app.task.models import Task, TaskStatus
 from app.topic import Topic, TopicClassification
-from app.tools.models import Tool
+from app.services.models import Service
 from core.database import get_db
 from core.params.runtime_settings import runtime_settings
 
 
 class _FakeMessenger:
-    tool_id = 42
+    service_id = 42
     connection_id = 0
 
     def __init__(self) -> None:
@@ -67,7 +67,7 @@ def _interaction_answer(sender_id: str, remote_id: str) -> Message:
     message = Message(
         id=uuid4(),
         connection_id=cast(int, None),
-        tool_id=42,
+        service_id=42,
         platform="test",
         remote_message_id=remote_id,
         direction="inbound",
@@ -77,7 +77,7 @@ def _interaction_answer(sender_id: str, remote_id: str) -> Message:
     message.room = cast(Room, SimpleNamespace(id="private-room"))
     message.sender = MessengerUser(
         id=uuid4(),
-        tool_id=42,
+        service_id=42,
         external_id=sender_id,
     )
     return message
@@ -99,7 +99,7 @@ async def test_expired_topic_approval_no_longer_blocks_message_classification(
         code=f"topic-expiry-{suffix}",
         agent_driver="internal",
     )
-    tool = Tool(
+    tool = Service(
         code=f"topic-expiry-messenger-{suffix}",
         label="Topic Expiry Messenger",
         description="",
@@ -107,7 +107,7 @@ async def test_expired_topic_approval_no_longer_blocks_message_classification(
     )
     db.add_all([owner, tool])
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     expired_room = Room(
@@ -128,7 +128,7 @@ async def test_expired_topic_approval_no_longer_blocks_message_classification(
     await db.flush()
     expired_message = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="test",
         remote_message_id=f"expired-message-{suffix}",
         direction="inbound",
@@ -139,7 +139,7 @@ async def test_expired_topic_approval_no_longer_blocks_message_classification(
     )
     active_message = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="test",
         remote_message_id=f"active-message-{suffix}",
         direction="inbound",
@@ -157,7 +157,7 @@ async def test_expired_topic_approval_no_longer_blocks_message_classification(
                 kind=TOPIC_APPROVAL_INTERACTION,
                 status="PENDING",
                 connection_id=connection.id,
-                tool_id=tool.id,
+                service_id=tool.id,
                 room_id=str(expired_room.id),
                 title="Expired topic approval",
                 expires_at=now - timedelta(seconds=1),
@@ -167,7 +167,7 @@ async def test_expired_topic_approval_no_longer_blocks_message_classification(
                 kind=TOPIC_APPROVAL_INTERACTION,
                 status="PENDING",
                 connection_id=connection.id,
-                tool_id=tool.id,
+                service_id=tool.id,
                 room_id=str(active_room.id),
                 title="Active topic approval",
                 expires_at=now + timedelta(minutes=5),
@@ -204,7 +204,7 @@ async def test_message_topic_approval_preserves_language_and_resolves_without_in
     try:
         suffix = uuid4().hex[:8]
         title = Title(label=f"Message approval {suffix}", gender="X")
-        tool = Tool(
+        tool = Service(
             code=f"approval-{suffix}", label="Approval", description="", connection_schema={}
         )
         db.add_all([title, tool])
@@ -214,13 +214,13 @@ async def test_message_topic_approval_preserves_language_and_resolves_without_in
         )
         db.add(agent)
         await db.flush()
-        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
         db.add(connection)
         await db.flush()
         observation = ObservedMessengerMessage(
             id=f"source-{suffix}",
             platform="internal",
-            tool_id=tool.id,
+            service_id=tool.id,
             sender=ObservedMessengerUser(id="user:1", connection_id=connection.id),
             room=ObservedMessengerRoom(id=f"provider-room-{suffix}", kind="direct"),
             text="salut",
@@ -262,7 +262,7 @@ async def test_message_topic_approval_preserves_language_and_resolves_without_in
         )
         messenger = _FakeMessenger()
         messenger.connection_id = connection.id
-        messenger.tool_id = tool.id
+        messenger.service_id = tool.id
         monkeypatch.setattr(
             "app.dream.mechanisms.topic_classification.messenger_for_agent_connection",
             AsyncMock(return_value=messenger),
@@ -284,7 +284,7 @@ async def test_message_topic_approval_preserves_language_and_resolves_without_in
         scope = dict(
             agent_id=agent.id,
             connection_id=connection.id,
-            tool_id=tool.id,
+            service_id=tool.id,
             room_id=str(source.messenger_room_id),
         )
         if answer_mode == "legacy":
@@ -310,7 +310,7 @@ async def test_message_topic_approval_preserves_language_and_resolves_without_in
         assert len(choices) == 1
         answer = _interaction_answer("user:1", f"reply-{suffix}")
         answer.connection_id = connection.id
-        answer.tool_id = tool.id
+        answer.service_id = tool.id
         answer.room = source.room
         if answer_mode in {"number", "legacy"}:
             resolution = await resolve_from_message(answer, agent_id=agent.id)
@@ -345,7 +345,7 @@ async def test_room_default_topic_skips_message_classification(
     suffix = uuid4().hex[:8]
     title = Title(label=f"Room Topic {suffix}", gender="X")
     topic = Topic(title=f"Default {suffix}", description="", keywords=[])
-    tool = Tool(
+    tool = Service(
         code=f"room-topic-messenger-{suffix}",
         label="Room Topic Messenger",
         description="",
@@ -362,7 +362,7 @@ async def test_room_default_topic_skips_message_classification(
     )
     db.add(owner)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(
@@ -378,7 +378,7 @@ async def test_room_default_topic_skips_message_classification(
     db.add(
         Message(
             connection_id=connection.id,
-            tool_id=tool.id,
+            service_id=tool.id,
             platform="test",
             remote_message_id=f"room-topic-message-{suffix}",
             direction="inbound",
@@ -399,7 +399,7 @@ async def test_outbound_message_is_not_classified_again_by_dream(
 ) -> None:
     suffix = uuid4().hex[:8]
     title = Title(label=f"Outbound Topic {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"outbound-topic-messenger-{suffix}",
         label="Outbound Topic Messenger",
         description="",
@@ -416,7 +416,7 @@ async def test_outbound_message_is_not_classified_again_by_dream(
     )
     db.add(owner)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(
@@ -430,7 +430,7 @@ async def test_outbound_message_is_not_classified_again_by_dream(
     await db.flush()
     outbound = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="internal",
         remote_message_id=f"outbound-topic-message-{suffix}",
         direction="outbound",
@@ -471,7 +471,7 @@ async def test_late_message_classification_updates_its_derived_task(
         code=f"late-topic-{suffix}",
         agent_driver="internal",
     )
-    tool = Tool(
+    tool = Service(
         code=f"late-topic-messenger-{suffix}",
         label="Late Topic Messenger",
         description="",
@@ -479,13 +479,13 @@ async def test_late_message_classification_updates_its_derived_task(
     )
     db.add_all([owner, tool])
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     message = ObservedMessengerMessage(
         id=f"late-topic-message-{suffix}",
         platform="telegram",
-        tool_id=tool.id,
+        service_id=tool.id,
         sender=ObservedMessengerUser(id="human", connection_id=connection.id),
         recipient=ObservedMessengerUser(id="agent", connection_id=connection.id),
         room=ObservedMessengerRoom(id=f"late-topic-room-{suffix}", kind="direct"),
@@ -525,7 +525,7 @@ async def test_late_message_classification_updates_its_derived_task(
     )
     output = Message(
         connection_id=connection.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         platform="telegram",
         remote_message_id=f"late-topic-output-{suffix}",
         direction="outbound",
@@ -573,7 +573,7 @@ async def test_task_classifier_leaves_conversation_task_topic_to_its_round(
 ) -> None:
     suffix = uuid4().hex[:8]
     title = Title(label=f"Conversation topic {suffix}", gender="X")
-    tool = Tool(
+    tool = Service(
         code=f"conversation-topic-{suffix}",
         label="Conversation topic messenger",
         description="",
@@ -590,7 +590,7 @@ async def test_task_classifier_leaves_conversation_task_topic_to_its_round(
     )
     db.add(owner)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     room = Room(

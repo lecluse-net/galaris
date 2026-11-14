@@ -12,8 +12,8 @@ from app.agent.models import Agent, Title
 from app.task import mcp, scheduler, task_service
 from app.task.models import Task, TaskStatus
 from app.task.schemas import TaskCreate
-from app.tools import initialize_admin_agent_connections
-from app.tools.mcp_loader import McpToolContext
+from app.services import initialize_admin_agent_connections
+from app.services.mcp_loader import McpToolContext
 from core.authorize import Assignment, Role
 from core.params import Param, Params
 from core.user import UserModel
@@ -73,7 +73,7 @@ async def test_peer_task_admission_rejects_galaris_even_for_an_admin_agent(db, p
 @pytest.mark.asyncio
 async def test_mounted_tool_returns_an_explicit_permission_error(db, peers):
     from fastmcp import Client
-    from app.tools.mcp_loader import build_agent_galaris_fastmcp
+    from app.services.mcp_loader import build_agent_galaris_fastmcp
 
     assistant, peer, _human = peers
     await db.commit()

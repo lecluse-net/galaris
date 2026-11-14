@@ -2,14 +2,14 @@ import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
 for (const active of [true, false]) {
   test(`testing and deploying a Console preserve its saved activation after cancel and reopen (${active})`, async ({ page }) => {
-    const connection = { id: 42, agent_id: 7, tool_id: 8, active }
+    const connection = { id: 42, agent_id: 7, service_id: 8, active }
     const params = { host: 'console.example.test' }
     const writes = []
     await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Alice', last_name: 'Example', agent_driver: 'internal' }])
     const tools = [{ id: 8, code: 'console', label: 'Console', can_disable: true, can_edit: false,
       connection_schema: { params: { host: { type: 'string' } } }, global_params: {} }]
-    await jsonRoute(page, '**/api/tools', tools)
-    await jsonRoute(page, '**/api/connections/tool-options', tools)
+    await jsonRoute(page, '**/api/services', tools)
+    await jsonRoute(page, '**/api/connections/service-options', tools)
     for (const endpoint of ['file-share/bridges', 'messenger/bridges', 'mail/approvers']) {
       await jsonRoute(page, `**/api/${endpoint}`, [])
     }
@@ -75,10 +75,10 @@ test('a legacy console helper can be upgraded, retried after failure and recheck
   await mount(page, 'app/connection/components/ConnectionForm.vue', {
     privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'],
     props: {
-      connection: { id: 42, agent_id: 7, tool_id: 8, active: true },
+      connection: { id: 42, agent_id: 7, service_id: 8, active: true },
       connectionParams: { host: 'console.example.test' },
       agentOptions: [{ value: 7, label: 'Alice', agentDriver: 'internal' }],
-      toolOptions: [{ id: 8, label: 'Console' }],
+      serviceOptions: [{ id: 8, label: 'Console' }],
       tools: [{ id: 8, label: 'Console', code: 'console', connection_schema: { params: { host: { type: 'string' } } } }],
     },
   })
@@ -127,9 +127,9 @@ test('the code editor deploys directly without a prior SSH test, retries failure
   await mount(page, 'app/connection/components/ConnectionForm.vue', {
     privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'],
     props: {
-      connection: { id: 42, agent_id: 7, tool_id: 8, active: true },
+      connection: { id: 42, agent_id: 7, service_id: 8, active: true },
       connectionParams: { host: 'console.example.test' },
-      agentOptions: [{ value: 7, label: 'Alice', agentDriver: 'internal' }], toolOptions: [{ id: 8, label: 'Console' }],
+      agentOptions: [{ value: 7, label: 'Alice', agentDriver: 'internal' }], serviceOptions: [{ id: 8, label: 'Console' }],
       tools: [{ id: 8, label: 'Console', code: 'console', connection_schema: { params: {
         host: { type: 'string' }, code_runtime_port: { type: 'integer' }, code_runtime_token: { type: 'password' },
       } } }],
@@ -157,14 +157,14 @@ test('the code editor deploys directly without a prior SSH test, retries failure
   await expect(page.getByText('Editors on active SSH connections are checked on every Galaris update', { exact: false })).toBeVisible()
   // A configured editor is maintained by deployment; a new connection can still install it.
   await page.evaluate(() => window.testApp.setProps({
-    connection: { id: 42, agent_id: 7, tool_id: 8, active: true },
+    connection: { id: 42, agent_id: 7, service_id: 8, active: true },
     connectionParams: { host: 'console.example.test' },
   }))
   const pending = page.waitForRequest('**/api/console/connections/42/install-editor*')
   await deploy.click()
   await pending
   await page.evaluate(() => window.testApp.setProps({
-    connection: { id: 84, agent_id: 7, tool_id: 8, active: true },
+    connection: { id: 84, agent_id: 7, service_id: 8, active: true },
     connectionParams: { host: 'second-console.example.test' },
   }))
   await expect(page.getByRole('button', { name: 'Test', exact: true })).toBeEnabled()

@@ -123,7 +123,7 @@ def test_external_json_objects_do_not_infer_envelopes_from_business_keys(boundar
 
 @pytest.mark.parametrize("kind", sorted(ACTIVITY_KINDS))
 def test_every_activity_uses_process_declarations_and_preserves_them_in_xml(kind):
-    configuration = {"prompt": "Synthetic work", "tool": "synthetic", "tool_code": "synthetic", "process_code": "synthetic", "code": "output = {}"}
+    configuration = {"prompt": "Synthetic work", "tool": "synthetic", "service_code": "synthetic", "process_code": "synthetic", "code": "output = {}"}
     config = deepcopy(configuration)
     if kind == "human_task":
         config["actor"] = "reviewer"

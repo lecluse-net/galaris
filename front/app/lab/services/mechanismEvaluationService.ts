@@ -29,7 +29,7 @@ export interface TopicLabIdentity {
   display_name: string
   agent_id?: number | null
   connection_id?: number | null
-  tool_id?: number | null
+  service_id?: number | null
 }
 
 export interface TopicLabRoom {
@@ -38,13 +38,13 @@ export interface TopicLabRoom {
   kind: 'direct' | 'group'
   users: TopicLabIdentity[]
   connection_id?: number | null
-  tool_id?: number | null
+  service_id?: number | null
 }
 
 export interface TopicLabMessage {
   id: string
   platform: string
-  tool_id?: number | null
+  service_id?: number | null
   sender: TopicLabIdentity | null
   recipient?: TopicLabIdentity | null
   room: TopicLabRoom | null

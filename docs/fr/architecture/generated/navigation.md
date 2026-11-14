@@ -24,13 +24,13 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : —
 - Sources : `front/app/agent/navigation.ts`
 
-## Configurer → Outils & connexions
+## Configurer → Services & connexions
 
-- Route : `/tools`
-- Usage : Gestion des outils
-- Visibilité du menu (privilèges) : (TOOL_ACCESS OR TOOL_EDIT OR CONNECTION_ACCESS OR CONNECTION_EDIT OR PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
+- Route : `/services`
+- Usage : Gestion des services
+- Visibilité du menu (privilèges) : (SERVICE_ACCESS OR SERVICE_EDIT OR CONNECTION_ACCESS OR CONNECTION_EDIT OR PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
 - Conditions supplémentaires : —
-- Sources : `front/app/tools/navigation.ts`
+- Sources : `front/app/services/navigation.ts`
 
 ## Configurer → Compétences
 

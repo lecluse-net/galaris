@@ -38,13 +38,13 @@ async def scoped_task(committed_database):
 async def _native_creation_server(task_id, agent_id, functions, management_scopes=None):
     from sqlalchemy import select
     from app.connection import Connection, ConnectionFunctionState, ConnectionParam
-    from app.tools import ToolModel, build_agent_galaris_fastmcp
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    from app.services import ServiceModel, build_agent_galaris_fastmcp
+    from app.services.contracts import MANAGEMENT_SCOPE_PARAM
 
     async with get_db_session() as db:
         for code, names in functions.items():
-            tool = await db.scalar(select(ToolModel).where(ToolModel.code == code))
-            connection = Connection(agent_id=agent_id, tool_id=tool.id, active=True)
+            tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == code))
+            connection = Connection(agent_id=agent_id, service_id=tool.id, active=True)
             db.add(connection)
             await db.flush()
             db.add_all([ConnectionFunctionState(connection_id=connection.id, function_name=name,
@@ -149,15 +149,15 @@ async def test_goal_creation_with_task_needs_no_future_uri_and_rechecks_manageme
     from app.agent.task_port import task_port
     from app.connection import Connection
     from app.goal.models import Goal, GoalStatus
-    from app.tools import ToolModel
+    from app.services import ServiceModel
 
     task_id, agent_id = scoped_task
     monkeypatch.setattr(task_port, "record_scope_preflight", SqlAlchemyAgentTaskAdapter().record_scope_preflight)
     server = await _native_creation_server(task_id, agent_id,
         {"goal_management": ["goal_create"], "chat": []}, {"goal_management": "personal"})
     async with get_db_session() as db:
-        chat_connection = await db.scalar(select(Connection).join(ToolModel).where(
-            Connection.agent_id == agent_id, ToolModel.code == "chat"))
+        chat_connection = await db.scalar(select(Connection).join(ServiceModel).where(
+            Connection.agent_id == agent_id, ServiceModel.code == "chat"))
         user_id = (await db.get(Agent, agent_id)).user_id
         before = await db.scalar(select(func.count()).select_from(Goal))
     arguments = {"agent_id": agent_id, "referrer_connection_id": chat_connection.id,
@@ -171,8 +171,8 @@ async def test_goal_creation_with_task_needs_no_future_uri_and_rechecks_manageme
             assert goal.agent_id == agent_id and goal.status == GoalStatus.PAUSED
             assert await db.scalar(select(func.count()).select_from(Goal)) == before + 1
             assert not parse_scope((await db.get(Task, task_id)).data).grants
-            management = await db.scalar(select(Connection).join(ToolModel).where(
-                Connection.agent_id == agent_id, ToolModel.code == "goal_management"))
+            management = await db.scalar(select(Connection).join(ServiceModel).where(
+                Connection.agent_id == agent_id, ServiceModel.code == "goal_management"))
             management.active = False
         denied = await client.call_tool("goal_create", {**arguments, "title": "Denied synthetic Goal"}, raise_on_error=False)
         assert denied.is_error
@@ -191,8 +191,8 @@ async def test_native_file_creation_reaches_personal_skills_without_an_exact_uri
     from app.connection import Connection, ConnectionFunctionState, ConnectionParam
     from app.skill import interface, storage
     from app.skill.models import AgentSkill, Skill
-    from app.tools import ToolModel, build_agent_galaris_fastmcp
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    from app.services import ServiceModel, build_agent_galaris_fastmcp
+    from app.services.contracts import MANAGEMENT_SCOPE_PARAM
 
     task_id, agent_id = scoped_task
     monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(tmp_path / "skills"))
@@ -203,8 +203,8 @@ async def test_native_file_creation_reaches_personal_skills_without_an_exact_uri
         task.objective = "<p>Create a reusable personal procedure without accessing external services.</p>"
         task.data = {"execution_scope": admitted_scope(task_id, task.objective).model_dump(mode="json")}
         for code, names in functions.items():
-            tool = await db.scalar(select(ToolModel).where(ToolModel.code == code))
-            connection = Connection(agent_id=agent_id, tool_id=tool.id, active=True)
+            tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == code))
+            connection = Connection(agent_id=agent_id, service_id=tool.id, active=True)
             db.add(connection)
             await db.flush()
             db.add_all([ConnectionFunctionState(connection_id=connection.id, function_name=name,
@@ -412,8 +412,8 @@ async def test_live_preflight_uses_attempt_journal_without_invalidating_checkpoi
 @pytest.mark.parametrize("language", ["fr", "en"])
 async def test_native_wrapper_persists_refusal_before_any_effect(scoped_task, monkeypatch, change_after_admission, language):
     from fastmcp.exceptions import ToolError
-    from app.tools import mcp_loader
-    from app.tools.mcp_loader import McpToolContext, McpToolDefinition
+    from app.services import mcp_loader
+    from app.services.mcp_loader import McpToolContext, McpToolDefinition
     from app.agent.task_port import task_port
 
     task_id, agent_id = scoped_task
@@ -426,7 +426,7 @@ async def test_native_wrapper_persists_refusal_before_any_effect(scoped_task, mo
     async def send(ctx, uri):
         observed.append(uri)
         return "sent"
-    definition = McpToolDefinition(tool_code="synthetic", name="synthetic_send", description="Send", required_capabilities=frozenset(), function=send,
+    definition = McpToolDefinition(service_code="synthetic", name="synthetic_send", description="Send", required_capabilities=frozenset(), function=send,
         effect_descriptor=EffectDescriptorV1(capability="synthetic.send", kind="transport", target_arguments=("uri",)))
     monkeypatch.setattr("app.agent.effective_capabilities", AsyncMock(return_value=frozenset({"execute"})))
     monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
@@ -440,7 +440,7 @@ async def test_native_wrapper_persists_refusal_before_any_effect(scoped_task, mo
                 updated = amend_scope(parse_scope(task.data), "<p>Add a new requirement.</p>", "galaris://task/amendment/2")
                 task.data = {**task.data, "execution_scope": updated.model_dump(mode="json")}
         authorize.side_effect = amend_during_authorization
-    monkeypatch.setattr("app.tools.mcp_authorization.authorize_native_call", authorize)
+    monkeypatch.setattr("app.services.mcp_authorization.authorize_native_call", authorize)
     wrapper = mcp_loader._wrap_tool(definition, McpToolContext(agent_id=agent_id, runtime="internal", task_id=task_id))
     with pytest.raises(ToolError) as failure:
         await wrapper(uri="synthetic://profile-target")
@@ -474,8 +474,8 @@ async def test_scope_clarification_reaches_model_and_resumes_only_after_sourced_
     from app.harness.checkpoint import HarnessRunCheckpoint, wrap_toolsets
     from app.harness.mcp_toolset import ExecutionEvidenceClient
     from app.harness.tests.test_checkpoint import _request
-    from app.tools import mcp_loader
-    from app.tools.execution_evidence import ExecutionEvidenceMiddleware
+    from app.services import mcp_loader
+    from app.services.execution_evidence import ExecutionEvidenceMiddleware
 
     task_id, agent_id = scoped_task
     target = f"document://{uuid4()}"
@@ -486,14 +486,14 @@ async def test_scope_clarification_reaches_model_and_resumes_only_after_sourced_
         return {"uri": uri}
 
     definition = mcp_loader.McpToolDefinition(
-        tool_code="synthetic", name=tool_name, description="Update the synthetic report.",
+        service_code="synthetic", name=tool_name, description="Update the synthetic report.",
         required_capabilities=frozenset(), function=update,
         effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",)),
     )
     monkeypatch.setattr("app.agent.effective_capabilities", AsyncMock(return_value=frozenset({"execute"})))
     monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
     monkeypatch.setattr(mcp_loader, "context_language", AsyncMock(return_value="en"))
-    monkeypatch.setattr("app.tools.mcp_authorization.authorize_native_call", AsyncMock(return_value=None))
+    monkeypatch.setattr("app.services.mcp_authorization.authorize_native_call", AsyncMock(return_value=None))
     server = FastMCP("synthetic-scope-clarification")
     server.add_middleware(ExecutionEvidenceMiddleware({tool_name}))
     server.tool(name=tool_name)(mcp_loader._wrap_tool(

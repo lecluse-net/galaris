@@ -14,7 +14,7 @@ from app.memory.process_projection import (
     sync_process_run_projection,
 )
 from app.process.models import ProcessDefinition, ProcessRun
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 @pytest.mark.asyncio
@@ -25,7 +25,7 @@ async def test_process_projection_is_private_bounded_and_source_managed(
 ) -> None:
     del memory_storage
     owner, _peer = agents
-    tool = Tool(
+    tool = Service(
         code=f"process-memory-{uuid4().hex[:8]}",
         label="Process memory engine",
         description="",
@@ -35,7 +35,7 @@ async def test_process_projection_is_private_bounded_and_source_managed(
     await db.flush()
     definition = ProcessDefinition(
         agent_id=owner.id,
-        tool_id=tool.id,
+        service_id=tool.id,
         engine_process_id=f"workflow-{uuid4().hex}",
         label="Publication quotidienne",
         description="Publier le rapport quotidien validé.",

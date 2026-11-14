@@ -14,8 +14,8 @@ from mcp.shared.exceptions import MCPError
 from mcp.types import CONNECTION_CLOSED, TextContent
 
 from app.agent.contracts import normalize_tool_name
-from app.tools.contracts import EXECUTION_META_KEY, TOOL_ARGUMENTS_META_KEY, current_tool_execution
-from app.tools.agent_registry import (
+from app.services.contracts import EXECUTION_META_KEY, TOOL_ARGUMENTS_META_KEY, current_tool_execution
+from app.services.agent_registry import (
     build_agent_galaris_fastmcp,
     build_galaris_fastmcp,
 )
@@ -33,7 +33,7 @@ class ExecutionEvidenceClient(Client[Any]):
     async def call_tool(
         self, name: str, arguments: dict[str, Any] | None = None, **kwargs: Any
     ) -> Any:
-        from app.tools.facade import AUTHORIZATION_META_KEY, AuthorizationRequired, AuthorizationClosed
+        from app.services.facade import AUTHORIZATION_META_KEY, AuthorizationRequired, AuthorizationClosed
 
         execution = current_tool_execution()
         if execution is not None:
@@ -148,7 +148,7 @@ async def build_conversation_toolset(
 
     from pydantic_ai.mcp import MCPToolset
 
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
 
     return MCPToolset(
         ExecutionEvidenceClient(
@@ -176,7 +176,7 @@ async def build_agent_mcp_toolset(
     resources: dict[str, Any] | None = None,
 ) -> Any:
     from pydantic_ai.mcp import MCPToolset
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
 
     mcp = await mcp_loader.build_agent_mcp(
         agent_id,
@@ -194,11 +194,11 @@ async def build_agent_mcp_toolset(
         return toolset
     tools = await mcp.list_tools()
     if expected_catalog_version:
-        from app.tools import (
+        from app.services import (
             catalog_entry_from_definition,
             catalog_from_entries,
         )
-        from app.tools.metrics import observe_catalog_snapshot
+        from app.services.metrics import observe_catalog_snapshot
 
         catalog = catalog_from_entries(
             agent_id=agent_id,
@@ -240,7 +240,7 @@ async def build_agent_mcp_toolset(
 
 async def get_agent_mcp_servers(agent_id: int) -> list[Any]:
     """Compatibility entry point for manual Pydantic AI scripts."""
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
 
     return await mcp_loader.get_agent_mcp_servers(agent_id)
 

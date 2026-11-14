@@ -5,7 +5,7 @@ Accepted on 2026-10-01.
 The agent YOLO provisions below are superseded by
 [0199 — Retrait du mode YOLO des agents](0199-remove-agent-yolo.md).
 
-`app.tools` owns durable authorization requests, one-use claims, private payloads,
+`app.services` owns durable authorization requests, one-use claims, private payloads,
 receipts and notification/wake outboxes. `app.agent` owns the human manager and
 versioned agent YOLO policy. Task, conversation and voice contribute lifecycle
 guards and wake ports. A reusable MCP credential identifies an agent; it never
@@ -16,12 +16,12 @@ selects whichever Task happens to be running.
 Every native MCP function declares an explicit `enabled` or `ask` default and a
 reason. Sensitive mutations, delivery, paid processing and execution default to
 `ask`. Third-party capabilities default to `enabled`; their annotations cannot
-grant authority. Resolution is connection override, global Tool override, then
+grant authority. Resolution is connection override, global Service override, then
 software default. `disabled` denies before effect. Absence of an override means
-inheritance. Tool, resource and prompt identities are separate.
+inheritance. Service, resource and prompt identities are separate.
 
 Mandatory service connections remain mandatory, while humans can configure their
-individual functions. Agent ToolAdmin cannot alter mandatory or administrative
+individual functions. Agent ServiceAdmin cannot alter mandatory or administrative
 grants. Function policy never bypasses an inactive connection, access rights,
 provider safeguards, network restrictions or runtime isolation.
 

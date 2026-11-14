@@ -21,7 +21,7 @@ from app.file_share import (
     resource_write,
 )
 from app.llm import transcription_service
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from bridge.youtube import transcript_service as youtube_service
 from core.i18n import render_prompt, t
 

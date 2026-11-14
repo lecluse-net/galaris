@@ -143,7 +143,7 @@ def telegram_to_message(
     messages: Sequence[TelegramMessage],
     *,
     self_user: TelegramUser,
-    tool_id: int,
+    service_id: int,
     connection_id: int,
     agent_id: int | None = None,
 ) -> ObservedMessengerMessage:
@@ -163,12 +163,12 @@ def telegram_to_message(
     return ObservedMessengerMessage(
         id=_canonical_id(chat.id, primary.message_id),
         platform=_KIND,
-        tool_id=tool_id,
+        service_id=service_id,
         sender=ObservedMessengerUser(
             id=str(sender.id) if sender is not None else "",
             display_name=display_name,
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
             profile={
                 key: value
                 for key in ("first_name", "last_name", "username", "language_code", "is_bot", "is_premium")
@@ -179,7 +179,7 @@ def telegram_to_message(
             id=str(self_user.id),
             display_name=self_user.full_name,
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
             agent_id=agent_id,
         ),
         room=ObservedMessengerRoom(
@@ -187,7 +187,7 @@ def telegram_to_message(
             label=chat.title or chat.full_name or chat.username or str(chat.id),
             kind="direct" if chat_type == "private" else "group",
             connection_id=connection_id,
-            tool_id=tool_id,
+            service_id=service_id,
         ),
         text=text,
         attachments=_telegram_attachments(messages),
@@ -209,7 +209,7 @@ class TelegramMessenger(Messenger):
         config: TelegramConnectionConfig,
         self_user: TelegramUser,
         *,
-        tool_id: int,
+        service_id: int,
         connection_id: int,
         agent_id: int | None = None,
     ) -> None:
@@ -217,7 +217,7 @@ class TelegramMessenger(Messenger):
         self.config = config
         self.self_user = self_user
         self.self_id = str(self_user.id)
-        self.tool_id = tool_id
+        self.service_id = service_id
         self.connection_id = connection_id
         self.agent_id = agent_id
 
@@ -253,7 +253,7 @@ class TelegramMessenger(Messenger):
             client,
             config,
             self_user,
-            tool_id=resolved.tool_id,
+            service_id=resolved.service_id,
             connection_id=connection_id,
             agent_id=resolved.agent_id,
         )
@@ -277,18 +277,18 @@ class TelegramMessenger(Messenger):
         return ObservedMessengerMessage(
             id=_canonical_id(room_id, native.message_id),
             platform=self.kind,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             sender=ObservedMessengerUser(
                 id=self.self_id,
                 display_name=self.self_user.full_name,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
                 agent_id=self.agent_id,
             ),
             room=ObservedMessengerRoom(
                 id=room_id,
                 connection_id=self.connection_id,
-                tool_id=self.tool_id,
+                service_id=self.service_id,
             ),
             text=text,
             attachments=[attachment] if attachment is not None else [],
@@ -359,7 +359,7 @@ class TelegramMessenger(Messenger):
             id=user_id,
             kind="direct",
             connection_id=self.connection_id,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
         )
 
     async def upload_file(
@@ -504,7 +504,7 @@ class TelegramMessenger(Messenger):
         canonical = telegram_to_message(
             messages,
             self_user=self.self_user,
-            tool_id=self.tool_id,
+            service_id=self.service_id,
             connection_id=self.connection_id,
             agent_id=self.agent_id,
         )

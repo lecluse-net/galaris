@@ -16,8 +16,8 @@ class TestConnectionService:
         """Isolate persistence; system-service refusals use PostgreSQL in test_system_tools."""
         monkeypatch.setattr(connection_service, "require_editable_connection", AsyncMock())
         monkeypatch.setattr(connection_service, "require_editable_tool", AsyncMock())
-        # Shared locks and whole-batch validation use PostgreSQL in test_tool_admin.
-        monkeypatch.setattr(connection_service, "lock_tools", AsyncMock())
+        # Shared locks and whole-batch validation use PostgreSQL in test_service_admin.
+        monkeypatch.setattr(connection_service, "lock_services", AsyncMock())
         monkeypatch.setattr(connection_service, "validate_params", AsyncMock())
         return AsyncMock(spec=AsyncSession)
 
@@ -36,11 +36,11 @@ class TestConnectionService:
         with patch.object(connection_service, 'get_db', return_value=mock_db):
             # Act
             connection = await connection_service.get_or_create_connection(
-                tool_id=1, agent_id=1
+                service_id=1, agent_id=1
             )
 
         # Assert
-        assert connection.tool_id == 1
+        assert connection.service_id == 1
         assert connection.agent_id == 1
         assert connection.active is True
         mock_db.add.assert_called_once()
@@ -50,7 +50,7 @@ class TestConnectionService:
     async def test_get_or_create_connection_get_existing(self, mock_db):
         """Test retrieving an existing connection."""
         # Arrange: an existing connection.
-        existing = Connection(id=1, tool_id=1, agent_id=1, active=True)
+        existing = Connection(id=1, service_id=1, agent_id=1, active=True)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = existing
         mock_db.execute.return_value = mock_result
@@ -58,19 +58,19 @@ class TestConnectionService:
         with patch.object(connection_service, 'get_db', return_value=mock_db):
             # Act
             connection = await connection_service.get_or_create_connection(
-                tool_id=1, agent_id=1
+                service_id=1, agent_id=1
             )
 
         # Assert
         assert connection.id == 1
-        assert connection.tool_id == 1
+        assert connection.service_id == 1
         mock_db.add.assert_not_called()  # No creation.
 
     @pytest.mark.asyncio
     async def test_get_connection_by_id(self, mock_db):
         """Test retrieving a connection by ID."""
         # Arrange
-        existing = Connection(id=42, tool_id=1, agent_id=1, active=True)
+        existing = Connection(id=42, service_id=1, agent_id=1, active=True)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = existing
         mock_db.execute.return_value = mock_result
@@ -84,10 +84,10 @@ class TestConnectionService:
         assert connection.id == 42
 
     @pytest.mark.asyncio
-    async def test_get_connection_by_agent_tool(self, mock_db):
+    async def test_get_connection_by_agent_service(self, mock_db):
         """Test retrieving a connection by agent and tool."""
         # Arrange
-        existing = Connection(id=1, tool_id=1, agent_id=5, active=True)
+        existing = Connection(id=1, service_id=1, agent_id=5, active=True)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = existing
         mock_result.scalars.return_value.all.return_value = [existing]
@@ -95,14 +95,14 @@ class TestConnectionService:
 
         with patch.object(connection_service, 'get_db', return_value=mock_db):
             # Act
-            connection = await connection_service.get_connection_by_agent_tool(
-                tool_id=1, agent_id=5
+            connection = await connection_service.get_connection_by_agent_service(
+                service_id=1, agent_id=5
             )
 
         # Assert
         assert connection is not None
         assert connection.agent_id == 5
-        assert connection.tool_id == 1
+        assert connection.service_id == 1
 
     @pytest.mark.asyncio
     async def test_has_active_tool_connection_returns_database_result(self, mock_db):
@@ -113,7 +113,7 @@ class TestConnectionService:
         with patch.object(connection_service, "get_db", return_value=mock_db):
             active = await connection_service.has_active_tool_connection(
                 agent_id=5,
-                tool_code="messenger",
+                service_code="messenger",
                 connection_id=42,
             )
 
@@ -129,7 +129,7 @@ class TestConnectionService:
         with patch.object(connection_service, "get_db", return_value=mock_db):
             active = await connection_service.has_active_tool_connection(
                 agent_id=5,
-                tool_code="voice",
+                service_code="voice",
             )
 
         assert active is False
@@ -150,7 +150,7 @@ class TestConnectionService:
     async def test_set_connection_active(self, mock_db):
         """Test enabling and disabling a connection."""
         # Arrange
-        existing = Connection(id=1, tool_id=1, agent_id=1, active=True)
+        existing = Connection(id=1, service_id=1, agent_id=1, active=True)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = existing
         mock_db.execute.return_value = mock_result
@@ -169,7 +169,7 @@ class TestConnectionService:
     async def test_delete_connection(self, mock_db):
         """Test deleting a connection."""
         # Arrange
-        existing = Connection(id=1, tool_id=1, agent_id=1, active=True)
+        existing = Connection(id=1, service_id=1, agent_id=1, active=True)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = existing
         mock_db.execute.return_value = mock_result
@@ -191,7 +191,7 @@ class TestConnectionService:
     async def test_global_values_are_inherited_and_local_values_override(self):
         global_values = {"host": "shared.example.test", "port": "22"}
         with patch(
-            'app.tools.tool_service.get_runtime_global_params',
+            'app.services.service.get_runtime_global_params',
             new=AsyncMock(return_value=(global_values, set())),
         ):
             resolved = await connection_service.merge_with_global_params(
@@ -208,7 +208,7 @@ class TestConnectionService:
     @pytest.mark.asyncio
     async def test_forced_global_value_ignores_local_override(self):
         with patch(
-            'app.tools.tool_service.get_runtime_global_params',
+            'app.services.service.get_runtime_global_params',
             new=AsyncMock(return_value=({"host": "forced.example.test"}, {"host"})),
         ):
             resolved = await connection_service.merge_with_global_params(
@@ -220,11 +220,11 @@ class TestConnectionService:
 
     @pytest.mark.asyncio
     async def test_forced_global_value_rejects_new_local_override(self, mock_db):
-        connection = Connection(id=1, tool_id=7, agent_id=1, active=True)
+        connection = Connection(id=1, service_id=7, agent_id=1, active=True)
         with patch.object(connection_service, 'get_db', return_value=mock_db), \
              patch.object(connection_service, 'get_connection', new=AsyncMock(return_value=connection)), \
              patch(
-                 'app.tools.tool_service.get_runtime_global_params',
+                 'app.services.service.get_runtime_global_params',
                  new=AsyncMock(return_value=({"host": "forced.example.test"}, {"host"})),
              ):
             with pytest.raises(ValueError, match="imposed globally"):
@@ -234,7 +234,7 @@ class TestConnectionService:
     async def test_get_params_as_dict(self, mock_db):
         """Test retrieving parameters as a dictionary."""
         # Arrange
-        connection = Connection(id=1, tool_id=1, agent_id=1, active=True)
+        connection = Connection(id=1, service_id=1, agent_id=1, active=True)
 
         # Mock get_connection
         mock_conn_result = MagicMock()
@@ -260,7 +260,7 @@ class TestConnectionService:
 
         with patch.object(connection_service, 'get_db', return_value=mock_db), \
              patch.object(connection_service, '_get_tool_schema', new=AsyncMock(return_value=None)), \
-             patch('app.tools.tool_service.get_runtime_global_params', new=AsyncMock(return_value=({}, set()))):
+             patch('app.services.service.get_runtime_global_params', new=AsyncMock(return_value=({}, set()))):
             # Act
             conn, params = await connection_service.get_params_as_dict(connection=1)
 
@@ -273,7 +273,7 @@ class TestConnectionService:
     async def test_set_param_create_new(self, mock_db):
         """Test creating a new parameter."""
         # Arrange
-        connection = Connection(id=1, tool_id=1, agent_id=1, active=True)
+        connection = Connection(id=1, service_id=1, agent_id=1, active=True)
 
         mock_conn_result = MagicMock()
         mock_conn_result.scalar_one_or_none.return_value = connection
@@ -293,7 +293,7 @@ class TestConnectionService:
 
         with patch.object(connection_service, 'get_db', return_value=mock_db), \
              patch.object(connection_service, '_get_tool_schema', new=AsyncMock(return_value=None)), \
-             patch('app.tools.tool_service.get_runtime_global_params', new=AsyncMock(return_value=({}, set()))):
+             patch('app.services.service.get_runtime_global_params', new=AsyncMock(return_value=({}, set()))):
             # Act
             param = await connection_service.set_param(
                 connection_id=1, param_name="api_key", param_value="secret123"
@@ -309,7 +309,7 @@ class TestConnectionService:
     async def test_set_param_update_existing(self, mock_db):
         """Test updating an existing parameter."""
         # Arrange
-        connection = Connection(id=1, tool_id=1, agent_id=1, active=True)
+        connection = Connection(id=1, service_id=1, agent_id=1, active=True)
         existing_param = ConnectionParam(id=1, connection_id=1, param_name="api_key", param_value="old_value")
 
         mock_conn_result = MagicMock()
@@ -330,7 +330,7 @@ class TestConnectionService:
 
         with patch.object(connection_service, 'get_db', return_value=mock_db), \
              patch.object(connection_service, '_get_tool_schema', new=AsyncMock(return_value=None)), \
-             patch('app.tools.tool_service.get_runtime_global_params', new=AsyncMock(return_value=({}, set()))):
+             patch('app.services.service.get_runtime_global_params', new=AsyncMock(return_value=({}, set()))):
             # Act
             param = await connection_service.set_param(
                 connection_id=1, param_name="api_key", param_value="new_value"
@@ -376,7 +376,7 @@ class TestConnectionService:
     async def test_get_param(self, mock_db):
         """Test retrieving a specific parameter."""
         # Arrange
-        connection = Connection(id=1, tool_id=1, agent_id=1, active=True)
+        connection = Connection(id=1, service_id=1, agent_id=1, active=True)
         param = ConnectionParam(id=1, connection_id=1, param_name="user_id", param_value="123")
 
         mock_conn_result = MagicMock()
@@ -398,7 +398,7 @@ class TestConnectionService:
 
         with patch.object(connection_service, 'get_db', return_value=mock_db), \
              patch.object(connection_service, '_get_tool_schema', new=AsyncMock(return_value=None)), \
-             patch('app.tools.tool_service.get_runtime_global_params', new=AsyncMock(return_value=({}, set()))):
+             patch('app.services.service.get_runtime_global_params', new=AsyncMock(return_value=({}, set()))):
             # Act
             value = await connection_service.get_param(
                 connection_id=1, param_name="user_id"
@@ -416,7 +416,7 @@ class TestConnectionService:
         """Test finding agents by parameter value."""
         # Arrange
         connections = [
-            Connection(id=index, tool_id=1, agent_id=index, active=True)
+            Connection(id=index, service_id=1, agent_id=index, active=True)
             for index in (1, 2, 3)
         ]
 
@@ -427,7 +427,7 @@ class TestConnectionService:
         ):
             # Act
             agent_ids = await connection_service.find_agents_by_param(
-                tool_id=1, param_name="user_id", param_value="123"
+                service_id=1, param_name="user_id", param_value="123"
             )
 
         # Assert
@@ -437,20 +437,20 @@ class TestConnectionService:
     async def test_get_connections_by_param(self, mock_db):
         """Test finding connections by parameter value."""
         # Arrange
-        conn1 = Connection(id=1, tool_id=1, agent_id=1, active=True)
-        conn2 = Connection(id=2, tool_id=1, agent_id=2, active=True)
+        conn1 = Connection(id=1, service_id=1, agent_id=1, active=True)
+        conn2 = Connection(id=2, service_id=1, agent_id=2, active=True)
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [conn1, conn2]
         mock_db.execute.return_value = mock_result
 
         with patch.object(connection_service, 'get_db', return_value=mock_db), \
              patch(
-                 'app.tools.tool_service.get_runtime_global_params',
+                 'app.services.service.get_runtime_global_params',
                  new=AsyncMock(return_value=({}, set())),
              ):
             # Act
             connections = await connection_service.get_connections_by_param(
-                tool_id=1, param_name="user_id", param_value="123"
+                service_id=1, param_name="user_id", param_value="123"
             )
 
         # Assert
@@ -461,18 +461,18 @@ class TestConnectionService:
     @pytest.mark.asyncio
     async def test_get_connections_by_param_accepts_inherited_global(self, mock_db):
         """A matching global value also selects connections without a local override."""
-        connection = Connection(id=1, tool_id=1, agent_id=1, active=True)
+        connection = Connection(id=1, service_id=1, agent_id=1, active=True)
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [connection]
         mock_db.execute.return_value = mock_result
 
         with patch.object(connection_service, 'get_db', return_value=mock_db), \
              patch(
-                 'app.tools.tool_service.get_runtime_global_params',
+                 'app.services.service.get_runtime_global_params',
                  new=AsyncMock(return_value=({"user_id": "123"}, set())),
              ):
             connections = await connection_service.get_connections_by_param(
-                tool_id=1, param_name="user_id", param_value="123"
+                service_id=1, param_name="user_id", param_value="123"
             )
 
         assert connections == [connection]
@@ -483,13 +483,13 @@ class TestConnectionService:
         """A forced global value makes every conflicting local value inactive."""
         with patch.object(connection_service, 'get_db', return_value=mock_db), \
              patch(
-                 'app.tools.tool_service.get_runtime_global_params',
+                 'app.services.service.get_runtime_global_params',
                  new=AsyncMock(
                      return_value=({"user_id": "global"}, {"user_id"})
                  ),
              ):
             connections = await connection_service.get_connections_by_param(
-                tool_id=1, param_name="user_id", param_value="local"
+                service_id=1, param_name="user_id", param_value="local"
             )
 
         assert connections == []

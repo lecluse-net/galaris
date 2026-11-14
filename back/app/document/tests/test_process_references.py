@@ -145,13 +145,13 @@ async def test_document_process_reference_manifests_are_bounded_and_validated(db
 async def test_native_definition_references_do_not_shadow_external_workflow_identifiers(db, native):
     from app.file_share import resource_info
     from app.process.models import ProcessDefinition
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     owner, other = native
     definition = await create(actor_agent_id=other.id, title="Synthetic private native process", code="synthetic_collision", graph=graph())
-    tool = ToolModel(code="synthetic-preview-engine", label="Synthetic external engine", description="", connection_schema={})
+    tool = ServiceModel(code="synthetic-preview-engine", label="Synthetic external engine", description="", connection_schema={})
     db.add(tool)
     await db.flush()
-    db.add(ProcessDefinition(agent_id=owner.id, tool_id=tool.id, engine_process_id=definition.code, label="Synthetic external workflow"))
+    db.add(ProcessDefinition(agent_id=owner.id, service_id=tool.id, engine_process_id=definition.code, label="Synthetic external workflow"))
     await db.commit()
     context = ResourceContext(agent_id=owner.id, runtime="internal")
     external = await resource_info(context, f"galaris://process/{definition.code}")

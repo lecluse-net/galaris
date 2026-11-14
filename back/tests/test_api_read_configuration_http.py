@@ -15,7 +15,7 @@ from app.connection import Connection
 from app.goal.tests.factories import make_goal
 from app.memory.tests.conftest import memory_storage as memory_storage
 from app.messenger import Room
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.voice.models import VoiceConversationSession
 from core.authorize import Assignment, Privilege, Role
 from core.database import get_db_session
@@ -37,10 +37,10 @@ async def test_configuration_http_keeps_scopes_secrets_atomicity_and_reopening(c
         hashed_password = encrypt_password(password)
         users = [UserModel(email=f"synthetic-config-{index}@example.com", hashed_password=hashed_password, is_active=True) for index in range(4)]
         title = Title(label="Synthetic Config HTTP", gender="N")
-        tool = ToolModel(code="synthetic-config-http", label="Synthetic Configuration", connection_schema={"params": {
+        tool = ServiceModel(code="synthetic-config-http", label="Synthetic Configuration", connection_schema={"params": {
             **{f"value{index}": {"type": "string"} for index in range(41)}, "token": {"type": "password"}, "count": {"type": "integer"},
         }})
-        protected = ToolModel(code="synthetic-config-protected", label="Synthetic protected Tool", can_disable=False)
+        protected = ServiceModel(code="synthetic-config-protected", label="Synthetic protected Tool", can_disable=False)
         db.add_all([role, global_role, title, tool, protected, *users])
         await db.flush()
         db.add_all([Assignment(user_id=users[index].id, role_id=role.id, is_default=True) for index in (0, 1)])
@@ -48,8 +48,8 @@ async def test_configuration_http_keeps_scopes_secrets_atomicity_and_reopening(c
         agents = [Agent(user_id=users[index].id, title_id=title.id, code=f"synthetic-config-http-{index}", first_name="Synthetic", last_name=str(index)) for index in (0, 1)]
         db.add_all(agents)
         await db.flush()
-        connections = [Connection(agent_id=agent.id, tool_id=tool.id, active=True) for agent in agents]
-        locked_connection = Connection(agent_id=agents[0].id, tool_id=protected.id, active=True)
+        connections = [Connection(agent_id=agent.id, service_id=tool.id, active=True) for agent in agents]
+        locked_connection = Connection(agent_id=agents[0].id, service_id=protected.id, active=True)
         db.add_all([*connections, locked_connection])
         await db.flush()
         goals = []
@@ -133,7 +133,7 @@ async def test_parameter_batches_serialize_on_independent_committed_connections(
     async with get_db_session() as db:
         user = UserModel(email="synthetic-batch-concurrency@example.com", hashed_password="unused", is_active=True)
         title = Title(label="Synthetic batch concurrency", gender="N")
-        tool = ToolModel(code="synthetic-batch-concurrency", label="Synthetic concurrent batches", connection_schema={"params": {
+        tool = ServiceModel(code="synthetic-batch-concurrency", label="Synthetic concurrent batches", connection_schema={"params": {
             f"field{index}": {"type": "string"} for index in range(41)
         }})
         db.add_all([user, title, tool])
@@ -141,7 +141,7 @@ async def test_parameter_batches_serialize_on_independent_committed_connections(
         agent = Agent(user_id=user.id, title_id=title.id, code="synthetic-batch-concurrency", first_name="Synthetic", last_name="Writer")
         db.add(agent)
         await db.flush()
-        connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
+        connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
         identifier = connection.id

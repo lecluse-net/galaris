@@ -36,7 +36,7 @@ from app.task import task_service
 from app.task.models import Task
 from app.task.schemas import TaskCreate
 from app.topic import Topic, TopicClassification
-from app.tools.models import Tool
+from app.services.models import Service
 from core.dbadmin import DbAdminRegistry
 from core.user.models import User as GalarisUser
 
@@ -53,7 +53,7 @@ async def _connection(db: AsyncSession) -> Connection:
         code=f"bridge-{suffix}",
         agent_driver="internal",
     )
-    tool = Tool(
+    tool = Service(
         code=f"messenger-{suffix}",
         label="Messenger test",
         description="",
@@ -61,7 +61,7 @@ async def _connection(db: AsyncSession) -> Connection:
     )
     db.add_all([agent, tool])
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
     db.add(connection)
     await db.flush()
     return connection
@@ -75,7 +75,7 @@ async def test_private_message_search_and_delivery_keep_a_durable_receipt(
     import asyncio
     from app.messenger import mcp, events
     from app.messenger.models import Capability
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
     from core.database import get_db_session
 
     async with get_db_session() as db:
@@ -89,16 +89,16 @@ async def test_private_message_search_and_delivery_keep_a_durable_receipt(
         agent = Agent(user_id=owner.id if delivery == "denied" else recipient.id,
                       title_id=title.id, first_name="Test", last_name="Sender",
                       code=f"receipt-{uuid4().hex}", agent_driver="internal")
-        tool = Tool(code=f"receipt-{uuid4().hex}", label="Synthetic messenger",
+        tool = Service(code=f"receipt-{uuid4().hex}", label="Synthetic messenger",
                     description="", connection_schema={})
         db.add_all([agent, tool])
         await db.flush()
-        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
         db.add(connection)
         await db.flush()
-        db.add(MessengerUser(tool_id=tool.id, external_id="human", display_name="Old name",
+        db.add(MessengerUser(service_id=tool.id, external_id="human", display_name="Old name",
                              galaris_user_id=recipient.id))
-        agent_id, tool_id, connection_id = agent.id, tool.id, connection.id
+        agent_id, service_id, connection_id = agent.id, tool.id, connection.id
 
     class Provider:
         kind = "telegram"
@@ -110,18 +110,18 @@ async def test_private_message_search_and_delivery_keep_a_durable_receipt(
             return capability in {Capability.SEND, Capability.SEARCH_USERS}
 
         async def search_users(self, query):
-            return [User(id="human", display_name="Synthetic recipient", tool_id=tool_id)]
+            return [User(id="human", display_name="Synthetic recipient", service_id=service_id)]
 
         async def send_to_user(self, user_id, message):
             if delivery == "provider_error":
                 raise ConnectionError("Synthetic provider unavailable")
             self.sent += 1
-            return Message(id="accepted-message", platform=self.kind, tool_id=tool_id,
-                           recipient=User(id=user_id, tool_id=tool_id),
+            return Message(id="accepted-message", platform=self.kind, service_id=service_id,
+                           recipient=User(id=user_id, service_id=service_id),
                            room=Room(id="direct-room", kind="direct"), text=message)
 
     provider = Provider()
-    provider.tool_id = tool_id
+    provider.service_id = service_id
     messenger = facade.MessengerFacade(provider, connection_id)
     monkeypatch.setattr(mcp, "_resolve_context_messenger", AsyncMock(return_value=messenger))
     monkeypatch.setattr(events, "message_sent", Signal("synthetic_outbound"))
@@ -155,7 +155,7 @@ async def test_journal_deduplicates_and_returns_chronological_history(
     message = Message(
         id="chat:7",
         platform="telegram",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="42", connection_id=connection.id),
         recipient=User(id="bot", connection_id=connection.id),
         room=Room(id="chat"),
@@ -197,15 +197,15 @@ async def test_journal_resolves_message_identities_in_stable_order(
     observed_order: list[str] = []
     resolve_observed_user = journal.resolve_observed_user
 
-    async def record_resolution(*, tool_id: int, user: User):
+    async def record_resolution(*, service_id: int, user: User):
         observed_order.append(user.id)
-        return await resolve_observed_user(tool_id=tool_id, user=user)
+        return await resolve_observed_user(service_id=service_id, user=user)
 
     monkeypatch.setattr(journal, "resolve_observed_user", record_resolution)
     message = Message(
         id="chat:stable-identity-lock-order",
         platform="nextcloud_talk",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="z-sender", connection_id=connection.id),
         recipient=User(id="a-recipient", connection_id=connection.id),
         room=Room(id="chat"),
@@ -229,7 +229,7 @@ async def test_journal_redelivery_preserves_server_audio_transcription_metadata(
     observed = Message(
         id="chat:audio-redelivery",
         platform="telegram",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="42", connection_id=connection.id),
         recipient=User(id="bot", connection_id=connection.id),
         room=Room(id="chat"),
@@ -278,7 +278,7 @@ async def test_journal_redelivery_preserves_server_owned_topic(
     observed = Message(
         id="chat:topic-redelivery",
         platform="nextcloud_talk",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="42", connection_id=connection.id),
         recipient=User(id="bot", connection_id=connection.id),
         room=Room(id="chat"),
@@ -334,7 +334,7 @@ async def test_message_topic_classifier_replays_only_a_lost_successful_assignmen
         observed = Message(
             id=remote_id,
             platform="nextcloud_talk",
-            tool_id=connection.tool_id,
+            service_id=connection.service_id,
             sender=User(id="42", connection_id=connection.id),
             recipient=User(id="bot", connection_id=connection.id),
             room=Room(id="dream-recovery"),
@@ -409,7 +409,7 @@ async def test_dream_dbadmin_restores_checkpointed_message_topic_idempotently(
     observed = Message(
         id="dbadmin-lost-topic",
         platform="nextcloud_talk",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="42", connection_id=connection.id),
         recipient=User(id="bot", connection_id=connection.id),
         room=Room(id="dream-dbadmin-recovery"),
@@ -482,7 +482,7 @@ async def test_task_admission_is_idempotent_after_effect_commit(
     observed = Message(
         id="chat:durable-effect",
         platform="mail",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="human", connection_id=connection.id),
         recipient=User(id="bot", connection_id=connection.id),
         room=Room(id="mailbox"),
@@ -552,7 +552,7 @@ async def test_inbound_requester_is_frozen_and_propagated_to_the_task(
     observed = Message(
         id="chat:requester-snapshot",
         platform="telegram",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="linked-human", connection_id=connection.id),
         recipient=User(id="bot", connection_id=connection.id),
         room=Room(id="chat"),
@@ -569,7 +569,7 @@ async def test_inbound_requester_is_frozen_and_propagated_to_the_task(
     )
     identity = await db.scalar(
         select(MessengerUser).where(
-            MessengerUser.tool_id == connection.tool_id,
+            MessengerUser.service_id == connection.service_id,
             MessengerUser.external_id == "linked-human",
         )
     )
@@ -624,7 +624,7 @@ async def test_stale_instant_message_is_journalled_for_dream_without_run(
     observed = Message(
         id="historical-room-message",
         platform="nextcloud_talk",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="human", connection_id=connection.id),
         recipient=User(id="bot", connection_id=connection.id),
         room=Room(id="historical-room", kind="group"),
@@ -700,7 +700,7 @@ async def test_recent_user_room_uses_latest_inbound_room_and_contact_id(
             Message(
                 id=message_id,
                 platform="internal",
-                tool_id=connection.tool_id,
+                service_id=connection.service_id,
                 sender=sender,
                 recipient=recipient,
                 room=Room(id=room_id),
@@ -745,21 +745,21 @@ async def test_recent_user_room_uses_latest_inbound_room_and_contact_id(
 async def test_unpinned_message_uses_the_recipients_latest_channel(db, monkeypatch):
     from types import SimpleNamespace
     from app.messenger import mcp
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
 
     older = await _connection(db)
-    tool = await db.get(Tool, older.tool_id)
+    tool = await db.get(Service, older.service_id)
     tool.messenger_config = {"service": "nextcloud_talk"}
-    chat_tool = Tool(code=f"synthetic-chat-{uuid4().hex}", label="Synthetic Chat",
+    chat_tool = Service(code=f"synthetic-chat-{uuid4().hex}", label="Synthetic Chat",
                      messenger_config={"service": "internal"})
     db.add(chat_tool)
     await db.flush()
-    latest = Connection(agent_id=older.agent_id, tool_id=chat_tool.id, active=True)
+    latest = Connection(agent_id=older.agent_id, service_id=chat_tool.id, active=True)
     db.add(latest)
     await db.flush()
     for connection, timestamp, platform in ((older, 100, "nextcloud_talk"), (latest, 300, "internal")):
         await journal.persist_inbound(Message(id=f"inbound-{connection.id}", platform=platform,
-            tool_id=connection.tool_id, sender=User(id="human-42", display_name="Synthetic human"),
+            service_id=connection.service_id, sender=User(id="human-42", display_name="Synthetic human"),
             recipient=User(id="bot"), room=Room(id=f"room-{connection.id}"), text="Synthetic greeting",
             time=timestamp), connection_id=connection.id, platform=platform)
     get_messenger = AsyncMock(side_effect=lambda connection_id: SimpleNamespace(
@@ -780,7 +780,7 @@ async def test_journal_preserves_native_attachment_uuid(db: AsyncSession) -> Non
     message = Message(
         id="native-file-message",
         platform="internal",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="human", connection_id=connection.id),
         recipient=User(id="agent", connection_id=connection.id),
         room=Room(id="native-room"),
@@ -841,7 +841,7 @@ async def test_journal_history_pages_are_stable_complete_and_room_scoped(
             Message(
                 id=f"message-{index}",
                 platform="telegram",
-                tool_id=connection.tool_id,
+                service_id=connection.service_id,
                 sender=User(
                     id="42",
                     display_name="Alice",
@@ -922,7 +922,7 @@ async def test_journal_updates_delivery_status_and_listener_cursor(
     outbound = Message(
         id="wamid.out",
         platform="whatsapp",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="business", connection_id=connection.id),
         recipient=User(id="331234", connection_id=connection.id),
         room=Room(id="331234", kind="direct"),
@@ -977,7 +977,7 @@ def test_in_memory_deduplication_is_scoped_to_connection() -> None:
     inbound._reset_dedup_for_tests()  # pyright: ignore[reportPrivateUsage]
     message = MessageModel(
         connection_id=10,
-        tool_id=3,
+        service_id=3,
         platform="test",
         remote_message_id="same-remote-id",
         direction="inbound",
@@ -998,7 +998,7 @@ async def test_durable_redelivery_is_not_emitted_twice(
     message = Message(
         id="matrix:$redelivered",
         platform="matrix",
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         sender=User(id="@alice:test", connection_id=connection.id),
         recipient=User(id="@bot:test", connection_id=connection.id),
         room=Room(id="!room:test"),

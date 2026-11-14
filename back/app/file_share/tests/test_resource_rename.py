@@ -15,7 +15,7 @@ from app.file_share import (ResourceContext, resource_create, resource_info, res
     resource_rename, resource_search, resource_write)
 from app.file_share import mcp as file_mcp, resource_service
 from app.memory.tests.conftest import agents as agents, memory_storage as memory_storage
-from app.tools.mcp_loader import McpToolContext, load_mcp_tools
+from app.services.mcp_loader import McpToolContext, load_mcp_tools
 from .local_file_transport import TemporaryFileTransport
 
 

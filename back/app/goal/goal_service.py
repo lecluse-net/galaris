@@ -742,14 +742,14 @@ async def _resolve_referrer(
         )
     from app.messenger import MessengerUser, directory
 
-    resolved_user = await directory.resolve_user(messenger.tool_id, referrer.user_id)
+    resolved_user = await directory.resolve_user(messenger.service_id, referrer.user_id)
     if resolved_user.agent_id is not None:
         raise GoalConflictError(
             "This Messenger identity belongs to an agent. Select it from the agent list."
         )
     requester_user_id = await get_db().scalar(
         select(MessengerUser.galaris_user_id).where(
-            MessengerUser.tool_id == messenger.tool_id,
+            MessengerUser.service_id == messenger.service_id,
             MessengerUser.external_id == referrer.user_id,
         )
     )
@@ -820,7 +820,7 @@ async def assert_referrer_available(goal: Goal) -> None:
         from app.messenger import MessengerUser, directory
 
         resolved_user = await directory.resolve_user(
-            messenger.tool_id, goal.referrer_user_id
+            messenger.service_id, goal.referrer_user_id
         )
         if resolved_user.agent_id is not None:
             raise GoalConflictError(
@@ -831,7 +831,7 @@ async def assert_referrer_available(goal: Goal) -> None:
         if goal.requester_user_id is None:
             goal.requester_user_id = await get_db().scalar(
                 select(MessengerUser.galaris_user_id).where(
-                    MessengerUser.tool_id == messenger.tool_id,
+                    MessengerUser.service_id == messenger.service_id,
                     MessengerUser.external_id == goal.referrer_user_id,
                 )
             )
@@ -855,7 +855,7 @@ async def search_messenger_referrers(
     return [
         MessengerReferrerOption(
             connection_id=contact.connection_id,
-            tool_id=contact.tool_id,
+            service_id=contact.service_id,
             platform=contact.platform,
             user_id=contact.user_id,
             display_name=contact.display_name,

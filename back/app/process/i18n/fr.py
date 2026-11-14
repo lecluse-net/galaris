@@ -46,7 +46,7 @@ default = {
             "run_not_found": "Exécution introuvable.",
             "file_not_found": "Fichier introuvable",
             "agent_not_found": "Agent introuvable.",
-            "tool_not_found": "Outil de processus introuvable.",
+            "tool_not_found": "Service de processus introuvable.",
             "already_linked": "Ce processus du moteur est déjà lié à Galaris.",
             "workflow_without_agent": "Workflow Galaris introuvable ou sans agent associé.",
             "wrong_workflow": "L’exécution n’appartient pas au workflow indiqué.",

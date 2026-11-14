@@ -5,9 +5,9 @@ from uuid import uuid4
 from sqlalchemy import select
 
 from app.connection import facade as connections
-from app.tools.authorization import prepared_authorization
-from app.tools.facade import AuthorizationAction, AuthorizationRequired, AuthorizationClosed, register_authorization_waker
-from app.tools.authorization_notifications import deliver_authorization_notifications
+from app.services.authorization import prepared_authorization
+from app.services.facade import AuthorizationAction, AuthorizationRequired, AuthorizationClosed, register_authorization_waker
+from app.services.authorization_notifications import deliver_authorization_notifications
 from bridge.mail import service
 from bridge.mail.contracts import MailConnectionConfig, MailMessageDetail, MailMessageRef, MailMessageSummary, OutgoingMail
 from core.database import get_db
@@ -61,7 +61,7 @@ async def seed_common_mail(config: MailConnectionConfig, outgoing: OutgoingMail,
     assert connection is not None
     await connections.set_connection_function_state(connection.id, "mail_send", "ask")
     context_key = f"principal:synthetic-mail-runtime:{uuid4()}"
-    action = AuthorizationAction(agent_id=config.agent_id, connection_id=connection.id, tool_id=connection.tool_id,
+    action = AuthorizationAction(agent_id=config.agent_id, connection_id=connection.id, service_id=connection.service_id,
         runtime="internal", context_key=context_key, callback_key=str(uuid4()), name="mail_send",
         arguments={"to": list(outgoing.to), "subject": outgoing.subject, "body": outgoing.body}, configuration={})
     with prepared_authorization(action):

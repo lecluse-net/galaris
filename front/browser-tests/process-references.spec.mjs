@@ -20,7 +20,7 @@ test('file previews open a read-only Process modal and a Run modal with their di
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'galaris', label: 'Galaris', capabilities: ['list', 'read'], native: true }])
   await jsonRoute(page, '**/api/file-share/browser/entries?*', { uri: 'galaris://', entries: [processUri, runUri].map((uri, index) => ({
     uri, name: index ? 'Synthetic execution' : 'Synthetic process', media_type: 'application/json', size: null,
-    is_collection: false, capabilities: ['read', 'info'], metadata: { tool_code: 'galaris' },
+    is_collection: false, capabilities: ['read', 'info'], metadata: { service_code: 'galaris' },
   })), next_cursor: null, truncated: false })
   await jsonRoute(page, `**/api/processes/internal/runs/${runId}?*`, { id: runId, status: 'success', graph, nodes: [], total: 0,
     page: 1, page_size: 50, events: [], event_cursor: 0, breakpoints: [], node_statuses: {}, can_control: false, paused: false,
@@ -78,7 +78,7 @@ for (const width of [1440, 390]) test(`document diagram citations preserve their
 test('the internal picker inserts Process and Run title links without attachment membership', async ({ page }) => {
   await previewRoute(page)
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'galaris', label: 'Galaris', capabilities: ['list'], native: true }])
-  await jsonRoute(page, '**/api/file-share/browser/entries?*', { entries: [processUri, runUri].map(uri => ({ uri, name: uri === processUri ? 'Synthetic process' : 'Synthetic execution', is_collection: false, media_type: 'application/json', size: null, capabilities: ['read'], metadata: { tool_code: 'galaris' } })), truncated: false, next_cursor: null })
+  await jsonRoute(page, '**/api/file-share/browser/entries?*', { entries: [processUri, runUri].map(uri => ({ uri, name: uri === processUri ? 'Synthetic process' : 'Synthetic execution', is_collection: false, media_type: 'application/json', size: null, capabilities: ['read'], metadata: { service_code: 'galaris' } })), truncated: false, next_cursor: null })
   await mount(page, 'documentResourceReferences.vue', { props: { documentId: 'synthetic-document', agentId: 7, editable: true, pickerOpen: true } })
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('button', { name: 'Open Galaris', exact: true }).click()

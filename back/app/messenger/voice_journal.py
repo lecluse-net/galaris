@@ -72,14 +72,14 @@ async def open_audio_room(
     if messenger.self_id:
         user_ids.append(
             await resolve_observed_user(
-                tool_id=messenger.tool_id,
+                service_id=messenger.service_id,
                 user=ObservedMessengerUser(
                     id=messenger.self_id,
                     display_name=agent_display_name,
                     agent_id=agent_id,
                     is_ai=True,
                     connection_id=connection_id,
-                    tool_id=messenger.tool_id,
+                    service_id=messenger.service_id,
                 ),
             )
         )
@@ -89,11 +89,11 @@ async def open_audio_room(
             continue
         user_ids.append(
             await resolve_observed_user(
-                tool_id=messenger.tool_id,
+                service_id=messenger.service_id,
                 user=ObservedMessengerUser(
                     id=normalized,
                     connection_id=connection_id,
-                    tool_id=messenger.tool_id,
+                    service_id=messenger.service_id,
                 ),
             )
         )
@@ -186,7 +186,7 @@ def _observation_user(
         agent_id=user.agent_id,
         is_ai=user.is_ai,
         connection_id=connection_id,
-        tool_id=user.tool_id,
+        service_id=user.service_id,
     )
 
 
@@ -215,7 +215,7 @@ async def record_audio_message(
     observation = ObservedMessengerMessage(
         id=external_identifier[:512],
         platform=messenger.kind,
-        tool_id=messenger.tool_id,
+        service_id=messenger.service_id,
         sender=_observation_user(sender, connection_id=connection_id),
         recipient=_observation_user(recipient, connection_id=connection_id),
         room=ObservedMessengerRoom(
@@ -228,7 +228,7 @@ async def record_audio_message(
                 room.conversation_type,
             ),
             connection_id=connection_id,
-            tool_id=messenger.tool_id,
+            service_id=messenger.service_id,
         ),
         text=text,
         time=int((occurred_at or datetime.now(timezone.utc)).timestamp()),

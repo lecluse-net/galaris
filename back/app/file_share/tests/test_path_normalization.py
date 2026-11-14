@@ -7,7 +7,7 @@ import pytest
 import pytest_asyncio
 
 from app.console.file_transport import SshAgentFileTransport
-from app.tools.contracts import ToolCallRejectedError
+from app.services.contracts import ToolCallRejectedError
 from app.file_share.path_normalization import (
     FilePathError,
     normalize_transport_reference,

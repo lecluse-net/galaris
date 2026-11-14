@@ -27,20 +27,20 @@ le propriétaire du contexte authentifié, jamais du frontmatter ou d'un argumen
 Aucune affectation étrangère, copie hors package ou modification du propriétaire n'est
 permise. Les budgets sont de 100 packages et 200 Mio cumulés par propriétaire.
 
-Un seul Tool `skills` remplace `skill_management` en conservant sa clé primaire,
+Un seul Service `skills` remplace `skill_management` en conservant sa clé primaire,
 ses connexions et leurs réglages. Les connexions historiques actives conservent leur
 administration globale ; les connexions désactivées ne sont pas réactivées. Une collision
-de Tools ou un ancien générique nommé `personnal` bloque explicitement la migration,
+de Services ou un ancien générique nommé `personnal` bloque explicitement la migration,
 sans effacement des données.
 
-Le paramètre dédié `tools.management_scope` appartient à la connexion Skills et propose
+Le paramètre dédié `services.management_scope` appartient à la connexion Skills et propose
 `usage`, `personal`, `team`, `all`. Depuis le 26 octobre 2026, les nouvelles connexions Skills
 sont actives par défaut et l'absence de portée locale sur une connexion active signifie
 `personal`. Une connexion absente ou inactive reste en `usage` sans droit de gestion.
 Les portées explicites, notamment `usage`, et les désactivations existantes sont conservées.
 Ce défaut personnel ne donne ni gestion d'autres agents ni administration générique.
 Sa déclaration est
-réutilisable par d'autres Tools internes, qui devront appliquer leurs règles métier.
+réutilisable par d'autres Services internes, qui devront appliquer leurs règles métier.
 Il n'a ni valeur globale ni héritage. Seul un humain authentifié par session web ayant
 édition des connexions et management global peut le modifier. Les écritures par les services
 agentiques sont refusées, même avec une connexion d'administration. Chaque appel relit la
@@ -55,10 +55,10 @@ Cette portée administre les personnels correspondants et leurs affectations gé
 elle ne donne ni usage des personnels étrangers, ni modification du catalogue générique,
 ni retrait de propriété. Ces deux dernières opérations exigent `all`.
 
-`app.skill.interface` porte les règles partagées entre MCP et File Share. Le Tool
+`app.skill.interface` porte les règles partagées entre MCP et File Share. Le Service
 Skills expose découverte, lecture du `SKILL.md`, métadonnées, activation, suppression,
 autorisations génériques et retrait de propriété. Les fichiers et références restent
-sur les fonctions `file_*` du Tool File Sharing. La vue MCP administrative est explicite.
+sur les fonctions `file_*` du Service File Sharing. La vue MCP administrative est explicite.
 La création via `file_create` dans l'espace personnel du seul agent authentifié fait partie
 de la production privée ordinaire d'une Task : l'URI du nouveau package n'a pas à figurer
 dans sa demande source. Le descripteur d'effet déclare ce préfixe avec l'identité serveur ;
@@ -109,7 +109,7 @@ prend jamais l'identité de l'agent filtré. L'édition humaine des fichiers et 
 l'activation et la suppression utilisent les mutations révisionnées du domaine. La
 conversion globale utilise sa route HTTP avec un reçu conservé pendant les réessais.
 
-La configuration des portées se trouve dans **Tools → Connexions**, dans le formulaire
+La configuration des portées se trouve dans **Services → Connexions**, dans le formulaire
 de la connexion. L'onglet personnel ne contient plus de délégation. La précision utilisateur
 retient l'union des équipes de l'agent, sans sélection d'équipes autorisées dans la connexion.
 
@@ -121,5 +121,5 @@ MCP réel en mémoire, File Share, chargement des harnais, suppression/restaurat
 concurrence, pannes de publication/commit/nettoyage et reprise. Les tests navigateur
 exercent consultation, périmètre humain et délégation. Ils ne constituent pas un essai
 avec des modèles externes réels. Après autorisation utilisateur, `make sync-db` a convergé
-en développement sans erreur ; la projection du Tool `skills` expose le paramètre et ses
+en développement sans erreur ; la projection du Service `skills` expose le paramètre et ses
 quatre valeurs. Aucun contrôle visuel supplémentaire sur le navigateur utilisateur n'est revendiqué.

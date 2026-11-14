@@ -7,7 +7,7 @@ from hashlib import sha256
 from sqlalchemy import Select, case, func, or_, select
 
 from app.connection import Connection
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.database import get_db
 from core.document import OFFICE_EXTENSIONS
 from core.preview import MODEL_EXTENSIONS, MODEL_TYPES
@@ -26,7 +26,7 @@ def pending_thumbnails(handled: Select[tuple[str]]) -> Select[tuple[FileCatalogE
     version = func.concat(FileCatalogEntry.source_version, ":", FileCatalogEntry.binding_stamp, ":", FileCatalogEntry.file_sha256, renderer)
     identity = func.concat("file:", FileCatalogEntry.id, ":", func.encode(func.sha256(func.convert_to(version, "UTF8")), "hex"))
     return select(FileCatalogEntry).join(Connection, Connection.id == FileCatalogEntry.connection_id).join(
-        ToolModel, ToolModel.id == Connection.tool_id,
+        ServiceModel, ServiceModel.id == Connection.service_id,
     ).where(
         FileCatalogEntry.present.is_(True), FileCatalogEntry.memory_node_id.is_not(None),
         FileCatalogEntry.file_sha256.is_not(None),

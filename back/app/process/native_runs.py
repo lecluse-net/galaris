@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from app.agent import AgentManagementScope
 from .query_policy import prepare_process_read
-from app.tools import has_process_admin_access
+from app.services import has_process_admin_access
 from sqlalchemy.sql.elements import ColumnElement
 from core.database import get_db
 

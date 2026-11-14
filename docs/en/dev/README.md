@@ -7,6 +7,7 @@ and tests remain authoritative; plans describe extensions still open.
 
 | Need | Reference |
 |---|---|
+| Service catalog contract | [Services](service-catalog.md) |
 | Find modules, routes, models and tools | [Generated map](../architecture/generated/project-map.md) |
 | Understand boundaries and transitions | [Architecture, invariants and flows](../architecture/README.md) |
 | Understand structural choices | [Accepted decisions](../../../project/decisions/README.md) |
@@ -94,7 +95,7 @@ Main stack:
 - PostgreSQL 17 with pgvector, Atlas declarative schema;
 - Vue 3, Quasar 2, Pinia 4, Vue Router 5, vue-i18n 11, and TypeScript;
 - MCP/FastMCP for tools;
-- Playwright/Chromium in an isolated sidecar for the browser Tool;
+- Playwright/Chromium in an isolated sidecar for the browser Service;
 - Docker Compose for the reproducible environment.
 
 LangGraph and Alembic are not part of the architecture.
@@ -151,8 +152,8 @@ execution. Its required surfaces propagate import failures. Conversation context
 projections through its facade without exposing ORM models.
 
 The vector model is resolved by `app.llm.configured_embedding_model` or its required variant.
-Memory, Tools and documentation share this contract while retaining their own timeouts and
-fallback policies. Persisted Memory/Tools fingerprints are preserved; the documentation index
+Memory, Services and documentation share this contract while retaining their own timeouts and
+fallback policies. Persisted Memory/Services fingerprints are preserved; the documentation index
 automatically converges to the same identity, with lexical search during rebuilding.
 
 Frontend modules are declared in `front/modules.ts`. Pages are discovered through
@@ -540,15 +541,15 @@ File references for this Working Set and the tools follow the URI contract of
 `document://uuid/attachments/attachment-uuid`,
 `galaris://task/uuid`, `galaris://process/workflow-id`,
 `galaris://skill/skill-code/SKILL.md`, a public HTTPS URL, or
-`<code-tool>://locator`. The code of a Tool
+`<code-tool>://locator`. The code of a Service
 that provides file sharing or Messenger is its scheme and must be lowercase;
 protocols (`http`, `https`, `file`, `ssh`, etc.) and native schemes are reserved.
-Messenger and file sharing are capabilities of the same Tool: they never add a generic scheme.
+Messenger and file sharing are capabilities of the same Service: they never add a generic scheme.
 Thus, a Talk attachment uses `nextcloud://<room-token>/<file-uuid>` and a
 Telegram attachment uses `telegram://<chat-id>/<file-uuid>`.
-The integrated `file_sharing` Tool, implemented by `app.file_share`, exposes `file_schemes` and
+The integrated `file_sharing` Service, implemented by `app.file_share`, exposes `file_schemes` and
 all `file_*` operations on both runtimes. This property does not depend on the manipulated
-scheme: `galaris://` is a provider for business projections, while the `galaris` Tool retains
+scheme: `galaris://` is a provider for business projections, while the `galaris` Service retains
 its business actions. `file_create` creates and returns a complete URI, `file_write` replaces an
 existing resource, and `file_read` returns paginated UTF-8 text or a small binary as base64;
 `file_copy` is the sole primitive for persistent streamed copying. Specialized tools that consume
@@ -560,19 +561,19 @@ is opaque. `galaris://` projects Tasks, conversation rounds, Goals, Goal cycles,
 Processes as read-only, with their domain ACLs. Under `galaris://skill/`, an active
 `skills` connection allows reading authorized skills and administering packages within its local
 scope. Personal packages use `galaris://skill/personnal/<agent>/<code>/`; system definitions
-remain read-only. The integrated `console` Tool declares its `file_share_config`
+remain read-only. The integrated `console` Service declares its `file_share_config`
 flag with the native `console` service; `console://` directly designates the SSH home and is not
 duplicated as an external provider. Thus, `console://my_file` means exactly `~/my_file`, and no
 layer prefixes its URI with a virtual `main/` segment. When available, the console is the only
 local space announced to the agent and the automatic destination for tools that allow a default.
 Without a console, no local fallback exists: `file_list` requires a provider URI, producer tools
 require a writable destination, and attachments retain the exact scheme of their originating
-Tool. Relative paths and former implicit local schemes are rejected.
+Service. Relative paths and former implicit local schemes are rejected.
 
 All native MCP functions pass through the same error rendering. A failure exposes to the runtime
 a categorized cause, technical type, next action, and a short correlatable reference; a file
 error adapts its advice notably for `file_create`, reads, and replacements. The server log repeats
-this reference with the Tool, category, type, and only the code locations from the stack. It
+this reference with the Service, category, type, and only the code locations from the stack. It
 records neither arguments, content, nor arbitrary provider text. Only explicitly declared safe
 business errors may transmit their details to the model; the others remain scrubbed while
 retaining an actionable diagnosis.
@@ -818,7 +819,7 @@ The `result` text is authoritative. An agentic runtime may have streamed provisi
 before a tool call; its adapter then retains this progress as a semantic `thinking` block
 and replaces the terminal text with the exact final response. For network Harnesses,
 `galaris.agent-result/v1.result` carries this authoritative response while Chat
-Completions chunks remain ephemeral live events. Tool completions and public reasoning
+Completions chunks remain ephemeral live events. Service completions and public reasoning
 use `galaris.agent-message/v1` and are never reconstructed from the final text.
 The frontend retains these live events exclusively as a list of `AIMessage`s; it does
 not create a partial `ExecutionResult`. At termination, only the persistent `ExecutionResult` of
@@ -855,7 +856,7 @@ without a final artifact; a Messenger origin additionally requires a receipt. Su
 automatically emit their terminal text into the conversation, even though they may explicitly
 use a Messenger tool required by their step.
 
-Tools in the internal harness explicitly declared `safe` may execute in parallel under
+Services in the internal harness explicitly declared `safe` may execute in parallel under
 a bounded limit; `exclusive` tools remain barriers. Each native call opens its own short
 SQLAlchemy session. The checkpoint journal serializes only its writes and persists them in
 independent transactions that reload the locked Task. An error and its rollback therefore cannot
@@ -1164,7 +1165,7 @@ a restart. See the [API cache decision](../../../project/decisions/0138-request-
 ### Agentic Management MCP Packages
 
 `app.contact.mcp` exposes `contact_list`, `contact_get`, `contact_create` and `contact_update`
-under the `galaris` system Tool, in Tasks and conversations. Ownership always comes from
+under the `galaris` system Service, in Tasks and conversations. Ownership always comes from
 `ctx.agent_id`, without an elevation parameter. Mutations reuse the Contacts contracts and
 preserve identities and omitted coordinates. Writes require approval by default.
 
@@ -1176,13 +1177,13 @@ metadata remain unchanged; a partial object preserves omitted fields. Other busi
 projections and deletion, relocation and append operations remain protected.
 
 Native MCP functions are discovered in the `mcp.py` of each declared module. The decorator
-`mcp_tool(tool_code, name=...)` attaches a function to an integrated tool; the agent's active
+`mcp_tool(service_code, name=...)` attaches a function to an integrated tool; the agent's active
 connection then selects the groups actually mounted in its toolset. Function states at the
 tool and connection levels further refine this exposure.
 
 Each driver's prompt receives a compact inventory built from this same authorization projection:
 active connection, runtime capability, function state, and any task scope. It must never contain
-a static list of functions. `tools_list` follows the same principle and completely omits
+a static list of functions. `services_list` follows the same principle and completely omits
 unauthorized groups and functions instead of reporting them as unavailable.
 
 The internal harness exposes exact native names (`task_get`, `file_read`, `process_start`, etc.)
@@ -1190,7 +1191,7 @@ without adding a `galaris_` prefix. Historical names already present in a trace 
 are normalized on read. An external MCP server, however, retains its connection code as a
 namespace to avoid collisions between providers.
 
-Self-service Goal reads pass through the `file_sharing` Tool, via
+Self-service Goal reads pass through the `file_sharing` Service, via
 `file_list`, `file_search`, and `file_read` under `galaris://goal/`.
 The commands `goal_update_suivi`, `goal_run_now`, and
 `goal_ask_referrer` belong to the core `galaris` package. `app.goal` enforces server-side that
@@ -1218,11 +1219,11 @@ Browser, Search, Image, and Multimedia connections start active by default. The
 embedded Console is provisioned when an agent using the internal harness is
 created and activated after SSH/SFTP verification. If the executor is unavailable,
 the connection remains inactive; provisioning can be retried from Connections.
-These five Tools are enabled for conversations on first initialization. Existing
+These five Services are enabled for conversations on first initialization. Existing
 settings and restrictions are preserved.
 
 The `goal_management`, `skills`, and `process_admin` packages are declared in
-`app.tools.mandatory_tools` with `default_active=False`. Synchronization therefore creates a
+`app.services.mandatory_services` with `default_active=False`. Synchronization therefore creates a
 connection for every compatible agent, but grants it no functions by default. An active
 `goal_management` connection with administrative scope broadens shared Goal functions to agents
 within its local `personal`, `team` or `all` scope and exposes only the
@@ -1234,24 +1235,24 @@ when each administrative command is called, even if the function had already bee
 toolset. Without this witness, shared functions inject the calling agent's identifier into the
 service request and respond as if every foreign Goal were nonexistent.
 
-The `galaris`, `conversation`, `document`, `memory` and `file_sharing` Tools carry `can_disable=false`.
+The `galaris`, `conversation`, `document`, `memory` and `file_sharing` Services carry `can_disable=false`.
 This persisted property is software-owned and absent from write contracts. Their connections are
 created for every agent and converge to active, including previously disabled connections. The API protects their definitions, active connections and system parameters from ordinary
 mutations. Their functions retain Enabled/Disabled/Ask modes and the global/agent cascade,
 configurable by humans. The UI displays a mandatory-service icon; the Authorizations matrix
-remains usable for their functions. Optional Tools retain
+remains usable for their functions. Optional Services retain
 administrator-owned activation and restrictions. Business ACLs, harness compatibility and
 context restrictions still apply.
 
 The `conversation_*` control functions, including responses to Process human requests,
-belong to the `conversation` Tool alongside
-`document_show`; they remain limited to the conversation controller. Clicking a described Tool
+belong to the `conversation` Service alongside
+`document_show`; they remain limited to the conversation controller. Clicking a described Service
 opens its description; empty descriptions have no link. The shipped catalog describes every
-native Tool and known messaging/file bridge. Synchronization fills empty bridge descriptions
+native Service and known messaging/file bridge. Synchronization fills empty bridge descriptions
 and upgrades unchanged original short defaults without overwriting custom prose. Descriptions
 use Markdown headings and lists for purpose, capabilities, example use cases and access conditions.
-Source descriptions live in `app.tools.descriptions`; UI translations live in
-`front/app/tools/i18n.ts`.
+Source descriptions live in `app.services.descriptions`; UI translations live in
+`front/app/services/i18n.ts`.
 
 `memory_summarize` synthesizes up to 200 messages and the latest 32,000 characters through the
 agent's model. Attributed facts, decisions, commitments and open questions are stored as editorial
@@ -1288,7 +1289,7 @@ The tracking Document is retained. No description history is imported; missing s
 divergent content block the transfer. See [decision 0253](../../../project/decisions/0253-goal-current-html-columns.md).
 
 `app.skill.mcp` exposes discovery, `SKILL.md` reads, metadata, activation, deletion, generic
-authorizations and ownership release under the `skills` Tool. `app.skill.interface` checks
+authorizations and ownership release under the `skills` Service. `app.skill.interface` checks
 local scopes and revisions for both MCP and File Sharing. `skill_read` reads only the main
 file; scripts, references and assets use `file_*`. Personal packages are private to their
 owner and excluded from the generic matrix. See the [Skills guide](../user/skills.md).
@@ -1403,23 +1404,23 @@ typed `load_capability` result, while retaining the call and its identifier so t
 remains active. Do not remove either protection: active instructions would otherwise be duplicated
 and re-billed on every tool turn.
 
-### Tool REST facade
+### Service REST facade
 
 An optional `rest_config` capability uses existing global parameters and connections.
-Its public contract is exported by `app.tools` and `app.tools.facade`:
+Its public contract is exported by `app.services` and `app.services.facade`:
 
 ```python
-from app.tools import RestRequest, execute_rest_request
+from app.services import RestRequest, execute_rest_request
 
 response = await execute_rest_request(
     agent_id=executing_agent_id,
-    tool_code="billing",
+    service_code="billing",
     request=RestRequest(method="POST", path="invoices", json_body={"amount": 12}),
 )
 ```
 
 The caller must supply an authenticated execution context. The facade resolves only an
-active connection belonging to the same agent and Tool, then resolves the address and
+active connection belonging to the same agent and Service, then resolves the address and
 credentials server-side. Endpoint permissions belong to the remote token, without MCP
 policy or a REST operation catalogue. `RestResponse` retains `status_code`, `headers`
 and `body` (JSON or text), including HTTP error responses. `RestError` reports configuration
@@ -1428,7 +1429,7 @@ Paths stay relative to the base URL and redirects are not followed. An absent bo
 from `json_body=None`, which sends JSON `null`. The REST facade does not create Process runs
 or job tracking on its own. Native BPMN REST activities consume it under their own execution
 and recovery contract. See
-[administrator configuration](../admin/tool-administration.md).
+[administrator configuration](../admin/service-administration.md).
 
 ### Processes and external engines
 
@@ -1445,7 +1446,7 @@ persistence logic.
 The [external engine integration guide](process-engines.md) covers contracts,
 registration, configuration, assignments and a processing adapter independent of n8n,
 along with the recovery guarantees to verify. Multiple engines can coexist;
-each definition's Tool selects its engine.
+each definition's Service selects its engine.
 
 The six personal functions for discovery, launch and external monitoring belong to the
 core `galaris` package, extended by native commands; there is

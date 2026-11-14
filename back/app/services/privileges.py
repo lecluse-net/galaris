@@ -1,0 +1,9 @@
+"""
+Privileges constants for the Services module
+"""
+
+SERVICE_ACCESS = "privilege.SERVICE_ACCESS"
+SERVICE_EDIT = "privilege.SERVICE_EDIT"
+PERMISSION_ACCESS = "privilege.PERMISSION_ACCESS"
+PERMISSION_DECIDE = "privilege.PERMISSION_DECIDE"
+PERMISSION_REVOKE = "privilege.PERMISSION_REVOKE"

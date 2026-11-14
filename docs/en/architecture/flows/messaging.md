@@ -19,10 +19,10 @@ in activity monitoring. The manager receives the same durable request listed in
 Consent applies to this person on this connection, remains revocable and creates no Galaris
 account or resource share. Manual pauses, native Chat and Mail consent retain separate rules.
 
-Galaris exposes the native provider in `app.chat`, identified by the built-in `chat` Tool. It
+Galaris exposes the native provider in `app.chat`, identified by the built-in `chat` Service. It
 reuses the canonical journal and rooms, without a network listener or secret. The user application
 `/chat` is also the unified read-only view of rooms originating from external bridges. The former
-local-loop `EmployeeMessenger` and its `galaris_messenger` Tool remain removed.
+local-loop `EmployeeMessenger` and its `galaris_messenger` Service remain removed.
 
 From a Task, `messenger_send_message_to_user` addresses an internal colleague with
 `agent:<ID>` or their canonical Messenger identity. The Task facade admits a child Task
@@ -32,7 +32,7 @@ The receipt returns the request URI, without claiming a reply or completed actio
 and document permissions, human pauses and collaboration limits still apply.
 This path requires a current Task; it does not create a Task from a short conversation.
 
-Each messaging connection has a protected local `tools.management_scope` parameter:
+Each messaging connection has a protected local `services.management_scope` parameter:
 `none` denies peer contacts, `team` requires a shared team, and `all` permits other active
 agents. There is no personal scope. Without a local value, `team` preserves existing behavior;
 unknown values or inactive connections deny contact. Global parameters cannot widen this scope.
@@ -56,7 +56,7 @@ metadata without changing the message text. Turn construction adds this context 
 prompt using only the newest incoming message, never treating an older message's displayed
 document as current UI state. Closing the document or losing access removes the indication
 from subsequent sends.
-The Conversation Tool's `document_show(document=...)` requests opening a document in this same pane
+The Conversation Service's `document_show(document=...)` requests opening a document in this same pane
 (or the mobile viewer). It accepts a UUID, a `document://` URI or a Galaris URL of the form
 `/documents?document_id=...` (or its legacy `/memory/documents` path). Availability requires an active Conversation connection, Conversation
 enabled for conversations and a text round in the agent's own internal room. The tool catalog
@@ -66,7 +66,7 @@ and is not a read receipt. The client ignores other rooms and saves current edit
 the document API still enforces viewer access. The action lives in `app.conversation.mcp` with
 `task_enabled=False`: all Tasks, including those launched from Chat, and voice exclude this tool.
 Memory provides document authorization through its adapter registered at bootstrap; its connection
-is not required. The Conversation Tool and its connections are mandatory system services: built-in datasets
+is not required. The Conversation Service and its connections are mandatory system services: built-in datasets
 initialize or reactivate them, and activation remains protected. Humans can still configure
 their function modes.
 This descriptive context must not trigger automatic attachment redelivery; editing
@@ -80,7 +80,7 @@ name.
 For an authorized internal room, the scheduler publishes a `started` event over WebSocket before
 calling the controller, followed by an ordered projection of the `AIMessage`s and finally
 `finished`. Visible text is grouped into small batches to feed a temporary bubble without creating
-one canonical message per delta. Trace types and tool calls are displayed in this bubble. Tool
+one canonical message per delta. Trace types and tool calls are displayed in this bubble. Service
 WebSocket events contain their name, content, success, duration, cost, and bounded structured data.
 The technical `thinking` block also carries the reflection content provided by the runtime. This
 projection is limited to the authorized room and removes sensitive keys and common credential
@@ -234,31 +234,31 @@ In the absence of a corresponding Dream decision, it appears as a manual assignm
 | Mail | IMAP polling | Incoming UID to canonical journal, then direct reading Task |
 | Internal | Galaris API + WebSocket per room | Native human message to foreground round; long work to linked Task |
 
-The native provider retains the technical kind `internal`, while its public Tool is `chat`.
+The native provider retains the technical kind `internal`, while its public Service is `chat`.
 Its attachment URIs therefore use the `chat://` scheme.
 
 The exact list of parameters, capabilities, and incoming modes comes from each `BridgeSpec`
 registered in the bridge package.
 The same contract also declares `identity_param`, the remote-account key that links an observed
-identity to its agent’s `Connection`. Messenger then applies the Tool’s `param_map` before
+identity to its agent’s `Connection`. Messenger then applies the Service’s `param_map` before
 searching: Nextcloud thus uses its `login`, while Matrix and OneBot use `user_id`. This resolution
 takes place during ingestion and when hydrating old rows, so Chat, avatars, and TTS all consume
 the same canonical `agent_id`.
 
 All these bridges may be active for the same agent. Messenger is an optional capability of a
-`Tool`, at the same level as MCP and File Share. `messenger_config.service` selects the bridge,
-`settings` carries server values common to all connections of that Tool, and `param_map` links the
-bridge contract to the connection parameters specific to the agent. Tool code never implicitly
+`Service`, at the same level as MCP and File Share. `messenger_config.service` selects the bridge,
+`settings` carries server values common to all connections of that Service, and `param_map` links the
+bridge contract to the connection parameters specific to the agent. Service code never implicitly
 selects a bridge.
 
 Per-connection parameters are `login`/`password` for Nextcloud Talk,
 `user_id`/`token`/`password` for Matrix (token and password individually optional),
 `token` for Telegram, `access_token`/`phone_number_id` for WhatsApp, and `user_id`/`token` for
-OneBot. The required Tool settings are respectively `base_url`, `homeserver`, none,
+OneBot. The required Service settings are respectively `base_url`, `homeserver`, none,
 `app_secret`/`verify_token`, and `platform`.
 
-Each messaging Tool directly declares this contract. `MESSENGER_DRIVER` configures the service of
-the generic `messenger` Tool when it is enabled; bridge-specific Tools declare their service
+Each messaging Service directly declares this contract. `MESSENGER_DRIVER` configures the service of
+the generic `messenger` Service when it is enabled; bridge-specific Services declare their service
 explicitly.
 
 `MESSENGER_ENABLED_CHANNELS` is the global availability indicator. It contains a duplicate-free
@@ -287,7 +287,7 @@ external transport
 ```
 
 The durable key for a message is `(connection_id, remote_message_id, direction)`. The connection
-is part of the identity because one Tool may represent multiple accounts. A duplicate webhook
+is part of the identity because one Service may represent multiple accounts. A duplicate webhook
 already `admitted` is acknowledged according to the protocol but does not retrigger business
 processing.
 
@@ -377,7 +377,7 @@ structured identity.
 The recent session is reconstructed from the canonical Messenger journal and retains, for each
 entry, the internal UUIDs of the message, room, and files, the external identifiers, sender, and
 attachments. Each file remains nested within its message and carries the reference
-`<tool.code>://<room-locator-provider>/<file-uuid-local>`; a message with no text containing only a
+`<service.code>://<room-locator-provider>/<file-uuid-local>`; a message with no text containing only a
 file remains a complete chronological entry. This same projection is frozen in every Task admitted
 from the round: a planner or driver therefore receives the complete authorized Messenger history,
 not only the latest text. An explicit request to attach a version already present is resolved by
@@ -471,7 +471,7 @@ Lab transfer, and deletion actions remain explicit administrative operations; th
 intervene in admission or scheduler leases.
 
 Nextcloud is a unified bridge: `bridge.nextcloud` registers both the Talk adapter with
-`app.messenger` and the WebDAV transport with `app.file_share`. A single Tool may enable MCP, File
+`app.messenger` and the WebDAV transport with `app.file_share`. A single Service may enable MCP, File
 Share, and Messenger. The two bridge capabilities nevertheless remain independent: each has its
 own service selector, URL, and `param_map`. A connection can therefore use two Nextcloud servers
 or two different parameter pairs for files and messaging.
@@ -496,7 +496,7 @@ A response that unambiguously designates a number, identifier, label, or alias o
 interaction remains deterministically resolved before the conversational controller. If the text
 does not match any option, it is neither lost nor forced into a choice: it becomes a normal round.
 The round then receives the bounded projection of interactions still active for the exact
-connection, Tool, room, agent, and sender. The conversational LLM may call
+connection, Service, room, agent, and sender. The conversational LLM may call
 `conversation_choice_resolve` with the reference and identifier of a persisted option, or ask a
 question if the intent remains ambiguous. The command relocks the same scope, refuses any invented
 option, and returns resolution to the original idempotent handler. A redirection can therefore
@@ -505,7 +505,7 @@ refuse an approval that has become obsolete and then amend the relevant Task in 
 Internal Chat also projects choice messages as structured titles, bodies, options and durable
 states, without domain metadata or processing tokens. Buttons are reserved for the human
 recipient and retain the selected option after reloading. The answer command checks the room,
-connection, Tool, agent and recipient, then calls the deterministic resolver directly, without
+connection, Service, agent and recipient, then calls the deterministic resolver directly, without
 a round or LLM. Submitting the same choice twice is idempotent; a different or expired choice is
 rejected. Capturing a button answer also journals a human message containing the selected label,
 question and reference. It belongs to the history supplied to agents and to the canonical contact,
@@ -555,14 +555,14 @@ and then the projection and its identities are purged. A new interaction with th
 creates a new contact and does not reactivate any forgotten data.
 
 `messenger_users` is the canonical repository of observable remote identities. A row is internally
-identified by UUID and remains unique by `(tool_id, external_id)`; it retains the display name
+identified by UUID and remains unique by `(service_id, external_id)`; it retains the display name
 provided by the remote system and its history. Its nullable `agent_id` may explicitly link it to a
 Galaris agent; multiple remote identities may designate the same agent. The `is_ai` Boolean, false
 by default, explicitly qualifies an automated identity without requiring that it already be linked
 to an agent. A constraint guarantees that a non-null `agent_id` always implies `is_ai = true`,
 without imposing the converse for external AI agents.
 
-Two identities belonging to different Tools remain two Messenger rows, even when they designate the
+Two identities belonging to different Services remain two Messenger rows, even when they designate the
 same person. Their association with a shared Memory contact is a proven Galaris identity or an
 explicit administrative decision; name similarity is never sufficient.
 
@@ -593,7 +593,7 @@ appear in current reads. A later observation of the same remote key restores the
 rather than creating a duplicate.
 
 The journal allows missed observations to be repaired. `make rebuild-messenger-contacts` rereads
-the latest incoming senders from each connection in batches, resolves the Tool, durable kind, and
+the latest incoming senders from each connection in batches, resolves the Service, durable kind, and
 AI identity again, then calls the same projector as the runtime. The journal’s historical
 `platform` field is never authoritative. Deleting a connection does not delete a profile already
 known: the technical route is not the source of the human identity.
@@ -713,9 +713,9 @@ by Goal and Process still require an existing internal direct room.
 Messenger search traverses all active connections of available bridges that expose the
 `SEARCH_USERS` capability. Each remote directory is queried, results are synchronized into
 `messenger_users`, and the response is rebuilt from this repository. Each result separately
-retains `user_id`, `messaging_id` (the exact connection), `tool_id`, and the platform. Two identical
+retains `user_id`, `messaging_id` (the exact connection), `service_id`, and the platform. Two identical
 identifiers on two connections remain two distinct routes, even if their local row is shared at
-the Tool level. This historical API field `messaging_id: int` is a route selector equivalent to
+the Service level. This historical API field `messaging_id: int` is a route selector equivalent to
 `connection_id`; it must not be confused with the `messaging_id: str` of the projected social
 address, which is the bridge code.
 
@@ -896,7 +896,7 @@ A call has no application-level maximum duration: it remains active until a part
 a `voice_call_stop` request is made, or the service owning the session stops.
 
 Choice scope combines the canonical room UUID with the participant's external identifier,
-connection, Tool and agent. Dream approvals follow the same contract: an unambiguous numeric
+connection, Service and agent. Dream approvals follow the same contract: an unambiguous numeric
 answer applies the choice without a conversation round or LLM call. DbAdmin repairs pending
 classification requests whose recipient was an internal UUID only when the source message proves
 the same identity and scope, without capturing a decision. Chat sends its UI language with text
@@ -938,8 +938,8 @@ and disable memory capture for the turn, without heuristic cross-platform matchi
 - User search and outbound routing: `service.py`, `mcp.py`, `router.py`.
 - Adaptation: `back/bridge/<transport>/`.
 - Attachment transfer: `back/app/file_share/messenger_transport.py`.
-- Canonical file reference: `<tool.code>://<room-locator-provider>/<attachment-uuid-local>`,
-  resolved by `app.file_share` with connection, room, and agent checks. Messenger remains a Tool
+- Canonical file reference: `<service.code>://<room-locator-provider>/<attachment-uuid-local>`,
+  resolved by `app.file_share` with connection, room, and agent checks. Messenger remains a Service
   capability and owns no dedicated schema.
 
 Test the canonical contract and protocol fixtures separately. A new transport must converge on

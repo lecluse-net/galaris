@@ -9,10 +9,10 @@ from pydantic_ai.messages import ModelRequest, ModelResponse, ToolCallPart, Tool
 @pytest.mark.asyncio
 async def test_directory_mcp_exposes_optional_bounded_team_filters():
     from fastmcp import FastMCP
-    from app.tools.mcp_loader import add_galaris_tools
+    from app.services.mcp_loader import add_galaris_tools
 
     server = FastMCP("Synthetic agent directory")
-    add_galaris_tools(server, 1, runtime="internal", enabled_tool_codes={"galaris"})
+    add_galaris_tools(server, 1, runtime="internal", enabled_service_codes={"galaris"})
     directory = next(tool for tool in await server.list_tools() if tool.name == "agent_list")
     properties = directory.parameters["properties"]
     assert "ctx" not in properties
@@ -118,7 +118,7 @@ async def test_directory_filters_current_team_members_before_pagination(db, sele
 
     from app.agent import agent_service, mcp
     from app.agent.models import Agent, AgentTeam, Title
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
     from core.team import TeamModel
     from core.user import UserModel
     from sqlalchemy import delete

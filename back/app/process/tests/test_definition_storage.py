@@ -67,11 +67,11 @@ async def legacy_definition(db, owner, reader, revision_clock, *, valid=True):
         entry.content = to_bpmn(graph(), code) if entry.revision == 1 else content
         entry.content_hash = sha256(entry.content.encode()).hexdigest()
         entry.media_type, entry.content_profile_version = source.media_type, None
-    tool = await db.scalar(select(ProcessDefinition.tool_id).where(ProcessDefinition.code.is_not(None)).limit(1))
+    tool = await db.scalar(select(ProcessDefinition.service_id).where(ProcessDefinition.code.is_not(None)).limit(1))
     if tool is None:
-        from app.tools import ToolModel
-        tool = await db.scalar(select(ToolModel.id).where(ToolModel.code == "galaris"))
-    record = ProcessDefinition(agent_id=owner.id, tool_id=tool, code=code, engine_process_id=code,
+        from app.services import ServiceModel
+        tool = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "galaris"))
+    record = ProcessDefinition(agent_id=owner.id, service_id=tool, code=code, engine_process_id=code,
         label=source.title, document_id=source.id)
     db.add(record)
     await db.commit()

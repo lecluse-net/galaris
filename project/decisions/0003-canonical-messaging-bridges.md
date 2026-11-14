@@ -33,7 +33,7 @@ capacités optionnelles sont déclarées et vérifiées avant appel.
 `bridge.one_bot`, `bridge.matrix`, `bridge.nextcloud`, `bridge.telegram`,
 `bridge.whatsapp`.
 
-Messenger est une capacité déclarative de `app.tools`, indépendante du code du Tool. Un Tool peut
+Messenger est une capacité déclarative de `app.services`, indépendante du code du Service. Un Service peut
 cumuler MCP, File Share et Messenger. Chaque capacité choisit son bridge et ses mappings sans
 partager implicitement son URL ni ses identifiants avec les autres.
 
@@ -44,5 +44,5 @@ bornée d’admission pour conserver le traitement des réponses API pendant le 
 Les livraisons incertaines ne sont pas rejouées automatiquement.
 
 `bridge.nextcloud` expose Talk vers `app.messenger` et WebDAV/OCS vers `app.file_share`. Ces deux
-adaptations peuvent être sélectionnées sur le même Tool tout en utilisant des configurations et
+adaptations peuvent être sélectionnées sur le même Service tout en utilisant des configurations et
 des mappings distincts.

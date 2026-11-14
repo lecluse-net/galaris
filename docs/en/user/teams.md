@@ -77,9 +77,9 @@ Human–agent Chat access requires a shared team, management of the agent, or ad
 (`AGENT_MANAGE_ALL`). There are no Inherit / Allow / Deny settings for contacts outside
 a team. Access never propagates through a third member.
 
-For agent-to-agent exchanges, **Tools & connections → Connections → Inter-agent communication**
+For agent-to-agent exchanges, **Services & connections → Connections → Inter-agent communication**
 offers `none` (no peers), `team` (shared teams, default) or `all` (other active agents).
-This local `tools.management_scope` is reserved to global human managers and rechecked on
+This local `services.management_scope` is reserved to global human managers and rechecked on
 every exchange. Both sender and recipient connections are checked. It changes neither
 human contact rights nor document permissions.
 
@@ -104,7 +104,7 @@ described in the [Mail journal](tasks.md). Permissions do not enable new channel
 human ↔ agent. Delegated agent tasks also enforce contact permissions.
 The remote user identifier remains visible in message details. The optional mapping in
 **My profile** only identifies a remote account and a Galaris account as the same person.
-For Telegram, the [setup guide](../bridges/telegram-whatsapp.md) prepares the Tool and explains
+For Telegram, the [setup guide](../bridges/telegram-whatsapp.md) prepares the Service and explains
 each agent's connection and BotFather token.
 
 ## Privileges

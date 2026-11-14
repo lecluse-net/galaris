@@ -75,29 +75,29 @@
     {
       "id": "configure.tools",
       "labels": {
-        "fr": "Outils & connexions",
-        "en": "Tools & connections"
+        "fr": "Services & connexions",
+        "en": "Services & connections"
       },
       "breadcrumbs": {
         "fr": [
           "Configurer",
-          "Outils & connexions"
+          "Services & connexions"
         ],
         "en": [
           "Configure",
-          "Tools & connections"
+          "Services & connections"
         ]
       },
-      "route": "/tools",
+      "route": "/services",
       "href": null,
       "description": {
-        "fr": "Gestion des outils",
-        "en": "Tool management"
+        "fr": "Gestion des services",
+        "en": "Service management"
       },
       "privilege_groups": [
         [
-          "TOOL_ACCESS",
-          "TOOL_EDIT",
+          "SERVICE_ACCESS",
+          "SERVICE_EDIT",
           "CONNECTION_ACCESS",
           "CONNECTION_EDIT",
           "PERMISSION_ACCESS",
@@ -107,7 +107,7 @@
       ],
       "conditions": [],
       "sources": [
-        "front/app/tools/navigation.ts"
+        "front/app/services/navigation.ts"
       ]
     },
     {

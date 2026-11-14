@@ -19,12 +19,12 @@ minimale et privée dans Memory.
 
 ## Décision
 
-Chaque Tool peut activer la capacité Messenger et sélectionner explicitement un bridge. Cette
-capacité aliasse la famille de fonctions MCP canonique `messenger`; le code du Tool reste une
+Chaque Service peut activer la capacité Messenger et sélectionner explicitement un bridge. Cette
+capacité aliasse la famille de fonctions MCP canonique `messenger`; le code du Service reste une
 identité administrative libre. Toutes les connexions actives peuvent écouter simultanément.
-`MESSENGER_DRIVER` ne sert plus qu’au backfill de l’ancien Tool générique.
+`MESSENGER_DRIVER` ne sert plus qu’au backfill de l’ancien Service générique.
 
-Le Tool porte les paramètres serveur invariants et un mapping vers les paramètres propres à chaque
+Le Service porte les paramètres serveur invariants et un mapping vers les paramètres propres à chaque
 connexion d’agent. File Share et Messenger possèdent deux configurations indépendantes, même
 lorsqu’ils choisissent tous deux `bridge.nextcloud`.
 
@@ -34,7 +34,7 @@ recherche, des aliases MCP et des listeners texte/voix, mais reste configurable 
 préférences.
 
 Une conversation est adressée par l'UUID de sa `Room`. Cette ligne persistée porte la
-connexion exacte et l'identifiant distant opaque ; le kind concret se déduit du Tool de la
+connexion exacte et l'identifiant distant opaque ; le kind concret se déduit du Service de la
 connexion. La Task conserve cette origine durable pour les enfants de plan, Goals, interactions,
 attentes de collaboration, drivers, garde anti-double-réponse et sessions Hermès.
 
@@ -48,7 +48,7 @@ ne partagent ni conversation ni session.
 
 La recherche d'utilisateurs parcourt toutes les connexions actives et disponibles de l'agent dont
 le `BridgeSpec` expose `SEARCH_USERS`. Elle interroge chaque annuaire natif, déduplique uniquement
-une même paire `(connection_id, remote_user_id)` et conserve `user_id`, `messaging_id`, `tool_id` et
+une même paire `(connection_id, remote_user_id)` et conserve `user_id`, `messaging_id`, `service_id` et
 la plateforme dans chaque résultat. Dans cette API historique, `messaging_id` désigne la connexion
 technique exacte. Les résultats sont éphémères : la recherche seule ne crée aucune fiche, aucun
 rapprochement d'identités et aucune préférence de canal. Un protocole sans annuaire
@@ -74,7 +74,7 @@ n'existe ni ordre global de préférence, ni sélection depuis le dernier échan
   connexions.
 - Galaris n'expose ni API CRUD, ni écran, ni table de contacts ; la fiche sociale est un
   `MemoryItem` source-managed.
-- Les anciens Tools de bridge reçoivent une capacité explicite en place, sans renommage, fusion ni
+- Les anciens Services de bridge reçoivent une capacité explicite en place, sans renommage, fusion ni
   changement de leurs connexions.
 - Une Task historique n'est backfillée que depuis une preuve de connexion non ambiguë ; sinon elle
   reste non routable.

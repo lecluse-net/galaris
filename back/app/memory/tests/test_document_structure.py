@@ -194,8 +194,8 @@ async def test_personal_moves_preserve_content_links_without_reading_payload(db,
 async def test_image_read_saves_real_attachment_description_and_never_reports_success_when_storage_fails(db, agents, memory_storage, monkeypatch):
     from unittest.mock import AsyncMock
     from app.image import mcp as image_mcp
-    from app.tools import RecoverableToolError
-    from app.tools.mcp_loader import McpToolContext
+    from app.services import RecoverableToolError
+    from app.services.mcp_loader import McpToolContext
 
     owner, _ = agents
     source = await document(owner, "Gallery")

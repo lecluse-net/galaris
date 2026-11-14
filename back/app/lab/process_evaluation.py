@@ -81,8 +81,8 @@ async def start_campaign(actor: int | AgentManagementScope, *, agent_id: int, co
     else:
         if actor != agent_id:
             raise PermissionError("Campaign launcher access denied")
-        from app.connection.facade import has_active_tool_function
-        if not await has_active_tool_function(actor, "galaris", "process_start"):
+        from app.connection.facade import has_active_service_function
+        if not await has_active_service_function(actor, "galaris", "process_start"):
             raise PermissionError("The campaign agent requires the process_start capability")
     source = await dataset_record(dataset_id, actor)
     value = json.loads(source.content)
@@ -170,8 +170,8 @@ async def tick() -> None:
                     continue
                 if case.run_id is None:
                     if isinstance(actor, int):
-                        from app.connection.facade import has_active_tool_function
-                        if not await has_active_tool_function(actor, "galaris", "process_start"):
+                        from app.connection.facade import has_active_service_function
+                        if not await has_active_service_function(actor, "galaris", "process_start"):
                             raise PermissionError("The campaign agent requires the process_start capability")
                     # Durable case ID is the admission key even if the reply was lost.
                     case.run_id = await launch_current(campaign.process_code, actor, agent_id=campaign.owner_agent_id,

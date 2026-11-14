@@ -10,7 +10,7 @@ from app.agent import AgentManagementScope
 from app.process import catalogue, native_definitions, process_service
 from app.process.models import ProcessDefinition, ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 from app.process.schemas import ProcessDefinitionRead
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.share import set_grant
 from core.user import UserModel
 from tests.sql_reads import measured_reads
@@ -27,9 +27,9 @@ async def test_catalogue_shares_native_run_rights_but_isolates_external_launcher
     visible = await native_definitions.create(actor_agent_id=owner.id, title="Visible native", graph=graph(),
         description="Searchable native description")
     hidden = await native_definitions.create(actor_agent_id=outsider.id, title="Private native", graph=graph())
-    external = ProcessDefinition(agent_id=owner.id, tool_id=visible.tool_id, engine_process_id=uuid4().hex,
+    external = ProcessDefinition(agent_id=owner.id, service_id=visible.service_id, engine_process_id=uuid4().hex,
         label="Visible external")
-    private_external = ProcessDefinition(agent_id=outsider.id, tool_id=visible.tool_id,
+    private_external = ProcessDefinition(agent_id=outsider.id, service_id=visible.service_id,
         engine_process_id=uuid4().hex, label="Private external")
     db.add_all([external, private_external])
     await db.flush()
@@ -92,11 +92,11 @@ async def test_catalogue_shares_native_run_rights_but_isolates_external_launcher
 async def test_catalogue_paginates_beyond_500_without_loading_all_definitions(db, native):
     owner, _ = native
     user = UserModel(email=f"catalogue-page-{uuid4()}@example.test", hashed_password="synthetic", is_active=True)
-    tool = ToolModel(code=f"catalogue-{uuid4().hex}", label="Synthetic engine", connection_schema={})
+    tool = ServiceModel(code=f"catalogue-{uuid4().hex}", label="Synthetic engine", connection_schema={})
     db.add_all([user, tool])
     await db.flush()
     owner.user_id = user.id
-    db.add_all([ProcessDefinition(agent_id=owner.id, tool_id=tool.id, engine_process_id=f"synthetic-{index}",
+    db.add_all([ProcessDefinition(agent_id=owner.id, service_id=tool.id, engine_process_id=f"synthetic-{index}",
         label=f"Synthetic {index:04}", description="Synthetic description " * 50) for index in range(505)])
     await db.flush()
     scope = AgentManagementScope(user.id, frozenset({owner.id}))

@@ -150,7 +150,7 @@
     },
     {
       "source": "app/connection",
-      "target": "app/tools"
+      "target": "app/services"
     },
     {
       "source": "app/connection",
@@ -641,23 +641,23 @@
       "target": "core/websocket"
     },
     {
-      "source": "app/tools",
+      "source": "app/services",
       "target": "app/connection"
     },
     {
-      "source": "app/tools",
+      "source": "app/services",
       "target": "core/api"
     },
     {
-      "source": "app/tools",
+      "source": "app/services",
       "target": "core/authorize"
     },
     {
-      "source": "app/tools",
+      "source": "app/services",
       "target": "core/navigation"
     },
     {
-      "source": "app/tools",
+      "source": "app/services",
       "target": "core/util"
     },
     {
@@ -940,7 +940,7 @@
     },
     {
       "source": "front/app/connection/components/AuthorizationManager.vue",
-      "target": "@/app/tools/presentation"
+      "target": "@/app/services/presentation"
     },
     {
       "source": "front/app/connection/components/ConnectionForm.vue",
@@ -952,11 +952,11 @@
     },
     {
       "source": "front/app/connection/components/ConnectionForm.vue",
-      "target": "@/app/tools/presentation"
+      "target": "@/app/services/presentation"
     },
     {
       "source": "front/app/connection/components/ConnectionList.vue",
-      "target": "@/app/tools/presentation"
+      "target": "@/app/services/presentation"
     },
     {
       "source": "front/app/conversation/components/ConversationHistory.vue",
@@ -1187,11 +1187,11 @@
       "target": "@/core/user/stores/authStore"
     },
     {
-      "source": "front/app/tools/pages/index.vue",
+      "source": "front/app/services/pages/index.vue",
       "target": "@/app/connection/components/AuthorizationManager.vue"
     },
     {
-      "source": "front/app/tools/pages/index.vue",
+      "source": "front/app/services/pages/index.vue",
       "target": "@/app/connection/components/ConnectionList.vue"
     },
     {
@@ -1358,7 +1358,7 @@
     ],
     [
       "app/connection",
-      "app/tools"
+      "app/services"
     ]
   ]
 }

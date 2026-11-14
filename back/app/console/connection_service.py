@@ -10,7 +10,7 @@ from sqlalchemy import select
 from app.agent import Agent
 from app.connection import Connection
 from app.connection import connection_service
-from app.tools import tool_service
+from app.services import service
 from core.database import get_db
 from core.i18n import render_prompt, tr
 
@@ -45,7 +45,7 @@ def _bounded_number(
 
 
 async def _config_from_connection(connection: Connection) -> SshConnectionConfig:
-    tool = await tool_service.get_tool_by_id(connection.tool_id)
+    tool = await service.get_service_by_id(connection.service_id)
     if tool is None or tool.code != "console":
         raise ValueError("Connection is not an SSH console connection")
     _, params = await connection_service.get_params_as_dict(
@@ -101,13 +101,13 @@ async def resolve_active_connection(connection_id: int) -> SshConnectionConfig:
 
 async def resolve_ssh_connection(agent_id: int) -> SshConnectionConfig | None:
     """Return the active console connection, decrypted once for the current run."""
-    tool = await tool_service.get_tool_record("console")
+    tool = await service.get_service_record("console")
     if tool is None:
         return None
     connection = await get_db().scalar(
         select(Connection).where(
             Connection.agent_id == agent_id,
-            Connection.tool_id == tool.id,
+            Connection.service_id == tool.id,
             Connection.active.is_(True),
         ).execution_options(populate_existing=True)
     )
@@ -123,12 +123,12 @@ async def require_ssh_connection(agent_id: int) -> SshConnectionConfig:
 
 async def is_embedded_executor_in_use() -> bool:
     """Return whether an agent using the internal harness has an embedded SSH console."""
-    tool = await tool_service.get_tool_record("console")
+    tool = await service.get_service_record("console")
     if tool is None:
         return False
 
     connections = await connection_service.get_connections_by_param(
-        tool_id=tool.id,
+        service_id=tool.id,
         param_name="host",
         param_value="ssh-executor",
     )

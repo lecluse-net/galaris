@@ -1985,7 +1985,7 @@ function prepareGoalForm(goal: Goal): void {
     && goal.referrer.user_id
     ? {
         connection_id: goal.referrer.connection_id,
-        tool_id: 0,
+        service_id: 0,
         platform: goal.referrer.platform || 'messenger',
         user_id: goal.referrer.user_id,
         display_name: goal.referrer.display_name,

@@ -16,7 +16,7 @@ from app.agent.contracts import ExecutionEffort, ExecutionResult, ForcedRoute
 from app.agent.models import Agent
 from app.task.models import Task, TaskAmendment, TaskAttempt, TaskStatus
 from app.task.schemas import Task as TaskSchema, TaskCreate
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
 from core.util import as_dict, visible_text
@@ -224,7 +224,7 @@ async def mcp_run_task(
             _message("agent_not_found", language, agent_id=agent_id)
         )
     from app.agent import require_agent_contact
-    from app.tools import has_galaris_admin_access
+    from app.services import has_galaris_admin_access
     if not await has_galaris_admin_access(ctx.agent_id):
         await require_agent_contact(ctx.agent_id, peer_agent_id=agent_id)
     task_id = await run_task(

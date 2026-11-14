@@ -25,7 +25,7 @@ Les recommandations ci-dessous décrivent l’état de l’investigation ; le
 | Surface | Garantie constatée dans le code/tests | Limite pour #166 |
 |---|---|---|
 | [checkpoint.py](../../back/app/harness/checkpoint.py), `started/completed/prepare_resume` | UUID écrit avant dispatch, arguments et politique ; snapshot détaché ; effet inconnu interdit au rejeu ; réconciliation avant reprise | Ne détermine pas seul les effets du monde extérieur |
-| [contracts.py](../../back/app/tools/contracts.py), [execution_evidence.py](../../back/app/tools/execution_evidence.py) | Rejet natif corrélé à l’opération et au nom ; refus de preuves externes forgées | Une erreur générique après dispatch reste inconnue, même si elle semble sans effet |
+| [contracts.py](../../back/app/services/contracts.py), [execution_evidence.py](../../back/app/services/execution_evidence.py) | Rejet natif corrélé à l’opération et au nom ; refus de preuves externes forgées | Une erreur générique après dispatch reste inconnue, même si elle semble sans effet |
 | [executor.py](../../back/app/harness/executor.py), `recover_console_effect` | Récupération bornée aux outils console et au même scope connexion/hôte/port/utilisateur/clé hôte | Scope présent ne signifie pas helper v2 disponible ; changement de cible bloque |
 | [ssh_client.py](../../back/app/console/ssh_client.py), `exec_operation/recover_operation` | Helper v2 utilisé si disponible ; sinon SSH conservateur ; UUID de résultat vérifié | `recover_operation` accepte aussi `running` ; résultat retrouvé ne signifie donc pas opération métier achevée |
 | [galaris-exec](../../back/app/console/assets/galaris-exec) | Intention, empreinte commande/cwd/task, verrou et superviseur ; doublons du même UUID retrouvent l’opération ; conflit d’arguments refusé | Au plus une exécution par UUID, pas atomicité d’une séquence shell ; home/reçus à conserver |
@@ -34,7 +34,7 @@ Les recommandations ci-dessous décrivent l’état de l’investigation ; le
 | [checkpoint.py](../../back/app/harness/checkpoint.py), `take_replay` | Résultats non idempotents acquittés réutilisés dans une file par signature nom+arguments | Signature insuffisante pour distinguer un nouvel appel intentionnel aux mêmes arguments d’une reprise ; garantie à tester avant généralisation |
 | [process_service.py](../../back/app/process/process_service.py) | Clés d’idempotence, corrélation engine, refresh, états terminaux et résolution d’attente durable | Contrat Process, pas un wrapper universel de toute commande console/copie |
 | [resource_service.py](../../back/app/file_share/resource_service.py), `resource_copy` | URI, droits, bornes et contrôle d’overwrite ; création/mutation selon le provider | Pas de réconciliation générique par opération du transfert ; absence actuelle du fichier insuffisante |
-| [resource_effects.py](../../back/app/tools/resource_effects.py) | Projection d’artefacts et reçus après retour | Reçu Git heuristique : faux positif vérifié ; ne pas l’utiliser comme autorité de reprise |
+| [resource_effects.py](../../back/app/services/resource_effects.py) | Projection d’artefacts et reçus après retour | Reçu Git heuristique : faux positif vérifié ; ne pas l’utiliser comme autorité de reprise |
 
 Attention : `galaris-exec poll` lance le superviseur si l’intention est encore `prepared`.
 **Ce n’est pas une inspection forensique purement en lecture.** Pour préserver les preuves,

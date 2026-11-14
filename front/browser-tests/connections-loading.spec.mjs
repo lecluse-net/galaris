@@ -6,15 +6,15 @@ for (const width of [390, 1440]) test(`Calendar connection owns its interval wit
     calendar_config: { settings: { source_kind: 'caldav' }, param_map: { sync_interval_hours: 'sync_interval_hours' } },
     global_params: {}, connection_schema: { params: { sync_interval_hours: { type: 'integer', required: false, default: '2',
       label: 'Synchronization interval (hours)', description: 'Shared interval for this connection' } } } }
-  const props = { connection: { id: 42, agent_id: 7, tool_id: 8, active: true }, connectionParams: { sync_interval_hours: '2' }, tools: [tool],
-    agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }], toolOptions: [{ id: 8, label: 'Synthetic Calendar' }] }
+  const props = { connection: { id: 42, agent_id: 7, service_id: 8, active: true }, connectionParams: { sync_interval_hours: '2' }, tools: [tool],
+    agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }], serviceOptions: [{ id: 8, label: 'Synthetic Calendar' }] }
   await mount(page, 'app/connection/components/ConnectionForm.vue', { privileges: ['CONNECTION_EDIT', 'CALENDAR_EDIT'], props })
   const input = page.getByRole('spinbutton', { name: 'Synchronization interval (hours)', exact: true })
   await expect(input).toHaveValue('2')
   await input.fill('3')
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.testApp.events.find(event => event.name === 'submit')?.value))
-    .toMatchObject({ id: 42, data: { tool_id: 8, agent_id: 7 }, params: { sync_interval_hours: '3' } })
+    .toMatchObject({ id: 42, data: { service_id: 8, agent_id: 7 }, params: { sync_interval_hours: '3' } })
   await mount(page, 'app/connection/components/ConnectionForm.vue', {
     privileges: ['CONNECTION_EDIT'], props: { ...props, connectionParams: { sync_interval_hours: '3' } },
   })
@@ -30,8 +30,8 @@ for (const width of [390, 1440]) test(`One Mail provider retains multiple accoun
   const tool = { id: 8, code: 'synthetic_mail', label: 'Synthetic Mail', can_disable: true, has_mail: true,
     mail_config: { param_map: { email_address: 'email' }, settings: {} }, global_params: {},
     connection_schema: { params: { email: { type: 'string', label: 'Mailbox address', required: true } } } }
-  const accounts = [{ id: 42, tool_id: 8, agent_id: 7, active: true, params: { email: 'first@example.org' }, configured_params: [] }]
-  await jsonRoute(page, '**/api/connections/tool-options', [tool])
+  const accounts = [{ id: 42, service_id: 8, agent_id: 7, active: true, params: { email: 'first@example.org' }, configured_params: [] }]
+  await jsonRoute(page, '**/api/connections/service-options', [tool])
   await jsonRoute(page, '**/api/mail/approvers', [])
   await jsonRoute(page, '**/api/mail/status', { enabled: true })
   await page.route('**/api/connections/overview?*', route => route.fulfill({ json: accounts }))
@@ -49,13 +49,13 @@ for (const width of [390, 1440]) test(`One Mail provider retains multiple accoun
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('combobox', { name: 'Agent', exact: true }).click()
   await page.getByRole('option', { name: 'Alice Example', exact: true }).click()
-  await dialog.getByRole('combobox', { name: 'Tool', exact: true }).click()
+  await dialog.getByRole('combobox', { name: 'Service', exact: true }).click()
   await page.getByRole('option', { name: 'Synthetic Mail', exact: true }).click()
   await dialog.getByLabel('Mailbox address *', { exact: true }).fill('second@example.org')
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   expect(writes).toHaveLength(1)
-  expect(writes[0]).toMatchObject({ tool_id: 8, agent_id: 7, params: { email: 'second@example.org' } })
+  expect(writes[0]).toMatchObject({ service_id: 8, agent_id: 7, params: { email: 'second@example.org' } })
   await expect(page.getByText('first@example.org', { exact: true })).toBeVisible()
   await expect(page.getByText('second@example.org', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('same-provider-mail-accounts.png'), fullPage: true })
@@ -80,10 +80,10 @@ for (const width of [390, 1440]) test(`Mail folders can be listed, checked and s
       description: 'Allowed IMAP folders' } } } }
   await mount(page, 'app/connection/components/ConnectionForm.vue', {
     privileges: ['CONNECTION_EDIT'],
-    props: { connection: { id: 42, agent_id: 7, tool_id: 8, active: true, name: '' },
+    props: { connection: { id: 42, agent_id: 7, service_id: 8, active: true, name: '' },
       connectionParams: { [folderParam]: 'INBOX' }, tools: [tool],
       agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }],
-      toolOptions: [{ id: 8, label: 'Mail' }] },
+      serviceOptions: [{ id: 8, label: 'Mail' }] },
   })
   await expect(page.locator('.mail-folder-access').getByRole('alert')).toContainText('Unable to load folders')
   await expect(page.getByRole('checkbox', { name: 'INBOX', exact: true })).toBeChecked()
@@ -130,14 +130,14 @@ test('Mail folder discovery follows the selected account and ignores late respon
 for (const width of [390, 1440]) {
   test(`Connections load together, refresh on reopening and recover from errors (${width})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
-    const connection = { id: 42, tool_id: 8, agent_id: 7, active: true }
+    const connection = { id: 42, service_id: 8, agent_id: 7, active: true }
     const params = { host: 'initial.example.test', token: null }
     const tool = { id: 8, code: 'synthetic_connector', label: 'Synthetic connector', can_disable: true, can_edit: true,
       has_function_permissions: true,
       connection_schema: { params: { host: { type: 'string', label: 'Service host', required: false }, token: { type: 'password', label: 'Token', required: false } } }, global_params: {} }
-    await jsonRoute(page, '**/api/tools', [tool])
-    await jsonRoute(page, '**/api/tools/capabilities', [])
-    await jsonRoute(page, '**/api/connections/tool-options', [tool])
+    await jsonRoute(page, '**/api/services', [tool])
+    await jsonRoute(page, '**/api/services/capabilities', [])
+    await jsonRoute(page, '**/api/connections/service-options', [tool])
     await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
     for (const endpoint of ['mail/approvers', 'file-share/bridges', 'messenger/bridges']) {
       await jsonRoute(page, `**/api/${endpoint}`, [])
@@ -156,7 +156,7 @@ for (const width of [390, 1440]) {
     })
     await page.route('**/api/connections/42/params?*', route => {
       parameterReads++
-      return route.fulfill({ json: { connection_id: 42, tool_id: 8, agent_id: 7, params, configured_params: ['token'] } })
+      return route.fulfill({ json: { connection_id: 42, service_id: 8, agent_id: 7, params, configured_params: ['token'] } })
     })
     await page.route('**/api/connections/42', route => {
       Object.assign(connection, route.request().postDataJSON())
@@ -166,26 +166,26 @@ for (const width of [390, 1440]) {
       Object.assign(params, route.request().postDataJSON().params)
       return route.fulfill({ json: [] })
     })
-    await mount(page, 'app/tools/pages/index.vue', {
-      route: '/tools?tab=connections',
-      privileges: ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL', 'PERMISSION_ACCESS'],
+    await mount(page, 'app/services/pages/index.vue', {
+      route: '/services?tab=connections',
+      privileges: ['SERVICE_ACCESS', 'SERVICE_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL', 'PERMISSION_ACCESS'],
     })
     const rows = page.locator(width < 1024 ? '.connection-mobile-card' : '.connection-table tbody tr')
     await expect(rows).toContainText('initial.example.test')
     expect(overviewReads).toBe(1)
     expect(parameterReads).toBe(0)
     // Filtering uses the same complete snapshot, with no per-row parameter fan-out.
-    await page.getByRole('combobox', { name: 'Filter by tool', exact: true }).click()
+    await page.getByRole('combobox', { name: 'Filter by service', exact: true }).click()
     await page.getByRole('option', { name: 'Synthetic connector', exact: true }).click()
     await expect(rows).toContainText('initial.example.test')
     expect(overviewReads).toBe(1)
-    await page.getByRole('tab', { name: 'Tools', exact: true }).click()
+    await page.getByRole('tab', { name: 'Services', exact: true }).click()
     params.host = 'reopened.example.test'
     await page.getByRole('tab', { name: 'Connections', exact: true }).click()
     await expect(rows).toContainText('reopened.example.test')
     expect(overviewReads).toBe(2)
     expect(parameterReads).toBe(0)
-    await page.getByRole('tab', { name: 'Tools', exact: true }).click()
+    await page.getByRole('tab', { name: 'Services', exact: true }).click()
     failNext = true
     await page.getByRole('tab', { name: 'Connections', exact: true }).click()
     await expect(page.getByRole('alert')).toContainText('Error while loading available connections')
@@ -203,13 +203,13 @@ for (const width of [390, 1440]) {
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByLabel('Service host', { exact: true })).toHaveValue('reopened.example.test')
     expect(parameterReads).toBe(1)
-    const policies = { connections: [{ tool_id: 8, tool_code: tool.code, tool_label: tool.label, connection_id: 42,
-      active: true, can_disable: true, parameters: {} }], capabilities: [{ id: '8:tool:lookup', tool_id: 8, tool_label: tool.label,
+    const policies = { connections: [{ service_id: 8, service_code: tool.code, service_label: tool.label, connection_id: 42,
+      active: true, can_disable: true, parameters: {} }], capabilities: [{ id: '8:tool:lookup', service_id: 8, service_label: tool.label,
       connection_id: 42, name: 'lookup', description: 'Synthetic lookup', capability_kind: 'tool', connection_state: 'default',
       global_state: 'default', default_state: 'ask', effective_state: 'ask', policy_state: 'ask', policy_source: 'software',
       available: true, runtime_supported: true }], unavailable_catalogs: [] }
     let catalogReads = 0
-    await page.route('**/api/tools/agents/7/permissions?connection_id=42', route => { catalogReads++; return route.fulfill({ json: policies }) })
+    await page.route('**/api/services/agents/7/permissions?connection_id=42', route => { catalogReads++; return route.fulfill({ json: policies }) })
     await expect(dialog.getByRole('tab', { name: 'Permissions', exact: true })).toBeVisible()
     expect(catalogReads).toBe(0)
     await dialog.getByRole('tab', { name: 'Permissions', exact: true }).click()
@@ -223,7 +223,7 @@ for (const width of [390, 1440]) {
     await page.screenshot({ path: testInfo.outputPath('connection-permissions-dark.png'), fullPage: true, animations: 'disabled' })
     await page.evaluate(() => window.testApp.dark(false))
     await dialog.getByRole('tab', { name: 'Settings', exact: true }).click()
-    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/tools?tab=connections')
+    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/services?tab=connections')
     await page.screenshot({ path: testInfo.outputPath('connection-dialog-light.png'), fullPage: true, animations: 'disabled' })
     await page.evaluate(() => window.testApp.dark(true))
     await page.screenshot({ path: testInfo.outputPath('connection-dialog-dark.png'), fullPage: true, animations: 'disabled' })

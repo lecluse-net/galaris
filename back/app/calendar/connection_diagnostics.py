@@ -3,7 +3,7 @@
 from sqlalchemy import select
 
 from app.connection.facade import get_connection, get_params_as_dict, calendar_access_token
-from app.tools.facade import get_tool_by_id
+from app.services.facade import get_service_by_id
 from core.database import get_db
 
 from .contracts import calendar_provider
@@ -14,7 +14,7 @@ from .transport import read_calendar, validate_calendar_url
 
 async def test_saved_connection(connection_id: int) -> bool:
     connection = await get_connection(connection_id)
-    tool = await get_tool_by_id(connection.tool_id) if connection else None
+    tool = await get_service_by_id(connection.service_id) if connection else None
     if tool is None or tool.calendar is None:
         raise ValueError("Calendar provider not found")
     _, params = await get_params_as_dict(connection_id, decrypt_passwords=True)

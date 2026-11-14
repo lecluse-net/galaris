@@ -359,7 +359,7 @@ La cartographie signale **28 paires backend bidirectionnelles**, une composante 
 connexe et **7 paires frontend bidirectionnelles**. Le contrôle actuel empêche la dette
 de croître ; sa réussite ne signifie pas disparition de la dette.
 
-Priorités suggérées : `file_share` et ses providers, le couple Tools/Connection,
+Priorités suggérées : `file_share` et ses providers, le couple Services/Connection,
 les relations Memory/Topic et les projections de suivi. `app.file_share` autorise
 actuellement 15 dépendances de domaines ; Lab en autorise 14 et Dream 12.
 
@@ -392,7 +392,7 @@ comportement. Éviter les fichiers `utils` fourre-tout et les microfonctions san
 ### Q18 — P2 — Renforcer les contrats typés et l'évolution des snapshots
 
 Pyright strict est réellement actif, mais les données dynamiques restent nombreuses
-dans Agent, LLM, Tools, Lab et Process. `AgentTaskPort` expose encore plusieurs
+dans Agent, LLM, Services, Lab et Process. `AgentTaskPort` expose encore plusieurs
 `Mapping[str, Any]` ; Task et les résultats transportent des données JSON évolutives.
 
 Définir des DTO nommés pour les données qui traversent plusieurs domaines, distinguer
@@ -529,7 +529,7 @@ Les regroupements ne constituent pas un décompte exhaustif des fonctions lues.
 | Mail, Calendar, n8n | Adaptation, reçus et reprises corrigés, API/outils, tests backend | Tests de contrats avec serveurs simulés, puis smoke tests sur comptes dédiés |
 | Process, Goal | Transitions, attentes et résolution, cycles, UI d'administration | Q09, Q18, Q20, Q21 |
 | Memory, Topic, Contact, Dream | ACL, recherche/index, projections, graphe, maintenance, mécanismes asynchrones | Q16–Q18, Q22, tests de pertinence multilingue et de non-fuite |
-| Tools, MCP, Connection | Catalogue et exposition, gestion des connexions, erreurs et ressources | Q16, Q18, Q19, Q24 ; contrats d'autorisation par outil |
+| Services, MCP, Connection | Catalogue et exposition, gestion des connexions, erreurs et ressources | Q16, Q18, Q19, Q24 ; contrats d'autorisation par outil |
 | File Share, Console | URI, transferts, matérialisation et exécution distante | Q01, Q05, Q07, Q08 |
 | Browser, Image, Audio, Voice | Isolation, sessions, médias, parsing, timeouts et streaming | Q06, Q08, Q11 ; stress borné et nettoyage après annulation |
 | LLM et bridges fournisseurs | Registre, modèles, proxies, coûts, compatibilité, limites et tests | Q13, Q18, Q20, Q22 ; matrice de capacités provider |

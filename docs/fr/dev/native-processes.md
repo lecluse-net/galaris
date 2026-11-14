@@ -36,7 +36,7 @@ FOR/WHILE utilisent ce registre et ne déclarent aucune variable locale. Chaque 
 `name`, `type`, `nullable` et un `default` typé facultatif. Noms dupliqués, défauts mal typés
 et défauts nuls notnull sont refusés à la sauvegarde. Les valeurs suivent l'enveloppe
 `{"type":"int","value":7}`. Le codec commun prend en charge les scalaires, `array`, `object`
-et les références métier. `Agent`, `User`, `Team`, `Tool`, `Connection`, `Model` et `Skill`
+et les références métier. `Agent`, `User`, `Team`, `Service`, `Connection`, `Model` et `Skill`
 portent un identifiant entier positif ; `Topic`, `Conversation` et `VoiceSession` un UUID.
 `Task`, `Goal`, `GoalCycle`, `Contact`, `ConversationRound`, `VoiceConversation` et `CodeWorkspace`
 emploient leurs URI `galaris://` existantes (`task`, `goal`, `goal_cycle`, `contact`, `text`, `voice`, `code`).
@@ -216,8 +216,8 @@ le départ du tour.
 MCP et REST adaptent explicitement les valeurs aux contrats externes. `external_output`
 associe la réponse brute (`result`) aux noms déclarés. `external_output_typed: true` indique
 explicitement que ce mapping fournit déjà des enveloppes typées ; les objets métier ordinaires
-contenant des clés `type` et `value` restent sinon des objets. REST utilise `tool_code` et `request`
-avec la façade Tools existante et l'agent exécutant ; les erreurs HTTP sont conservées.
+contenant des clés `type` et `value` restent sinon des objets. REST utilise `service_code` et `request`
+avec la façade Services existante et l'agent exécutant ; les erreurs HTTP sont conservées.
 Les appels d'enfants typés transmettent les entrées locales ; les autres contrats reçoivent
 leur JSON ordinaire. Les prédécesseurs activés convergent sans gateway imposée, y compris
 après des splits imbriqués ; une branche IF non choisie ne bloque pas la convergence.
@@ -312,12 +312,12 @@ des tâches et Runs enfants actifs. Une fois les arrêts confirmés, le run term
 fourni par un moteur enfant est conservé, sinon l'échec d'activité est `node_failed`.
 Les anciens `catch`, `retry` et `error_handler` sont ignorés ; les branches réservées
 à leurs traitements de secours sont retirées à la lecture des anciennes définitions.
-Un effet Tool ambigu n'est pas rejoué. Une écriture sur une révision dépassée échoue ;
+Un effet Service ambigu n'est pas rejoué. Une écriture sur une révision dépassée échoue ;
 la tâche relit puis réapplique sa modification en préservant les autres données.
 Un effet ambigu arrête aussi les nouvelles admissions et demande l'arrêt du run,
 avec le code `effect_outcome_unknown`. Le debugger refuse reprise/pas avant réconciliation ; l'arrêt
 reste incertaine tant que l'arrêt externe n'est pas confirmé.
-Les activités Tool ont une tâche de contexte non agentique, sous lease et soumise à la
+Les activités Service ont une tâche de contexte non agentique, sous lease et soumise à la
 capacité du harnais. Une demande d'autorisation suspend cette tâche ; sa décision reprend
 la même tentative, tandis qu'un refus connu ferme proprement tâche et tentative.
 
@@ -396,7 +396,7 @@ ce compte. Les routes `/human-work` et son formulaire sont retirés.
 
 La demande `process_human_activity` exige une interprétation : le matcher déterministe ne
 consomme jamais le prochain message arbitrairement. Le contexte conversationnel expose les
-attentes de la portée exacte agent/connexion/Tool/room/auteur. `conversation_process_pending`
+attentes de la portée exacte agent/connexion/Service/room/auteur. `conversation_process_pending`
 fournit les contrats complets et la pagination ; `conversation_process_respond` reçoit la
 référence choisie et les sorties typées. Les pièces jointes seules restent dans l'historique
 avec leur URI source ; les valeurs `File` sont vérifiées par File Sharing, sans téléchargement

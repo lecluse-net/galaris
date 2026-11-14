@@ -25,7 +25,7 @@ from core.user import UserModel as User
 
 from app.agent import Agent
 from app.connection import Connection
-from app.tools import ToolModel as Tool
+from app.services import ServiceModel as Service
 
 from . import journal
 from .document_focus import DocumentFocus
@@ -96,19 +96,19 @@ def _visible_message_text(value: str) -> str:
     return _VISIBLE_TASK_CONTROL_DIRECTIVE_RE.sub("", value).strip()
 
 
-async def _internal_tool() -> Tool | None:
-    return await get_db().scalar(select(Tool).where(Tool.code == CHAT_TOOL_CODE))
+async def _internal_tool() -> Service | None:
+    return await get_db().scalar(select(Service).where(Service.code == CHAT_TOOL_CODE))
 
 
 async def internal_connection(connection_id: int) -> NativeMessengerConnection | None:
     row = (
         await get_db().execute(
-            select(Connection, Tool, Agent)
-            .join(Tool, Tool.id == Connection.tool_id)
+            select(Connection, Service, Agent)
+            .join(Service, Service.id == Connection.service_id)
             .join(Agent, Agent.id == Connection.agent_id)
             .where(
                 Connection.id == connection_id,
-                Tool.code == CHAT_TOOL_CODE,
+                Service.code == CHAT_TOOL_CODE,
             )
         )
     ).one_or_none()
@@ -120,8 +120,8 @@ async def internal_connection(connection_id: int) -> NativeMessengerConnection |
     ).strip() or agent.code
     return NativeMessengerConnection(
         connection_id=connection.id,
-        tool_id=tool.id,
-        tool_code=tool.code,
+        service_id=tool.id,
+        service_code=tool.code,
         agent_id=agent.id,
         agent_code=agent.code,
         agent_name=name,
@@ -172,19 +172,19 @@ async def search_internal_users(
     for user in users:
         # Preserve the proven account link when the ordinary Messenger boundary
         # synchronizes this identity, including users who have never opened Chat.
-        await _ensure_human(scope.tool_id, user)
+        await _ensure_human(scope.service_id, user)
         people.append(ObservedMessengerUser(
             id=human_external_id(user.id),
             display_name=user.display_name or user.email,
             connection_id=connection_id,
-            tool_id=scope.tool_id,
+            service_id=scope.service_id,
         ))
     people.extend(ObservedMessengerUser(
         id=agent_external_id(agent.id),
         display_name=" ".join(part for part in (agent.first_name, agent.last_name) if part) or agent.code,
         agent_id=agent.id,
         connection_id=connection_id,
-        tool_id=scope.tool_id,
+        service_id=scope.service_id,
     ) for agent in agents)
     return sorted(people, key=lambda person: (person.display_name.casefold(), person.id))
 
@@ -247,9 +247,9 @@ async def list_internal_agent_page(
 ) -> tuple[list[NativeMessengerAgent], int]:
     query = (
         select(Connection, Agent)
-            .join(Tool, Tool.id == Connection.tool_id)
+            .join(Service, Service.id == Connection.service_id)
             .join(Agent, Agent.id == Connection.agent_id)
-            .where(Tool.code == CHAT_TOOL_CODE)
+            .where(Service.code == CHAT_TOOL_CODE)
             .order_by(Agent.first_name, Agent.last_name, Agent.id)
     )
     if agent_ids is not None:
@@ -293,36 +293,36 @@ async def list_internal_agent_page(
     return agents, total
 
 
-def _tool_source(tool: Tool) -> str:
+def _tool_source(tool: Service) -> str:
     config = tool.messenger_config or {}
     return str(config.get("service") or tool.code).strip().lower()
 
 
 async def list_chat_identity_mappings(user_id: int) -> list[NativeMessengerIdentityMapping]:
-    """List the current user's external identity for each messaging Tool."""
+    """List the current user's external identity for each messaging Service."""
 
     rows = (
         await get_db().execute(
-            select(Tool, MessengerUser)
+            select(Service, MessengerUser)
             .outerjoin(
                 MessengerUser,
                 and_(
-                    MessengerUser.tool_id == Tool.id,
+                    MessengerUser.service_id == Service.id,
                     MessengerUser.galaris_user_id == user_id,
                 ),
             )
             .where(
-                Tool.messenger_config.is_not(None),
-                Tool.code != CHAT_TOOL_CODE,
+                Service.messenger_config.is_not(None),
+                Service.code != CHAT_TOOL_CODE,
             )
-            .order_by(Tool.label, Tool.id)
+            .order_by(Service.label, Service.id)
         )
     ).all()
     return [
         NativeMessengerIdentityMapping(
-            tool_id=tool.id,
-            tool_code=tool.code,
-            tool_label=tool.label,
+            service_id=tool.id,
+            service_code=tool.code,
+            service_label=tool.label,
             source=_tool_source(tool),
             external_id=identity.external_id if identity is not None else None,
             display_name=identity.display_name if identity is not None else None,
@@ -362,7 +362,7 @@ async def list_chat_viewer_agents(
 
 async def set_chat_identity_mapping(
     user_id: int,
-    tool_id: int,
+    service_id: int,
     external_id: str,
 ) -> NativeMessengerIdentityMapping | None:
     """Link one exact remote identity to the authenticated Galaris user."""
@@ -370,7 +370,7 @@ async def set_chat_identity_mapping(
     normalized = external_id[:512].strip()
     if not normalized:
         raise ValueError("An external Messenger identity is required.")
-    tool = await get_db().get(Tool, tool_id)
+    tool = await get_db().get(Service, service_id)
     if (
         tool is None
         or tool.code == CHAT_TOOL_CODE
@@ -380,7 +380,7 @@ async def set_chat_identity_mapping(
     target = await get_db().scalar(
         select(MessengerUser)
         .where(
-            MessengerUser.tool_id == tool_id,
+            MessengerUser.service_id == service_id,
             MessengerUser.external_id == normalized,
         )
         .with_for_update()
@@ -390,7 +390,7 @@ async def set_chat_identity_mapping(
     await get_db().execute(
         update(MessengerUser)
         .where(
-            MessengerUser.tool_id == tool_id,
+            MessengerUser.service_id == service_id,
             MessengerUser.galaris_user_id == user_id,
             MessengerUser.external_id != normalized,
         )
@@ -398,7 +398,7 @@ async def set_chat_identity_mapping(
     )
     if target is None:
         identity_id = await resolve_messenger_user(
-            tool_id=tool_id,
+            service_id=service_id,
             external_id=normalized,
             display_name=normalized,
             galaris_user_id=user_id,
@@ -410,20 +410,20 @@ async def set_chat_identity_mapping(
     if target is None:
         return None
     return NativeMessengerIdentityMapping(
-        tool_id=tool.id,
-        tool_code=tool.code,
-        tool_label=tool.label,
+        service_id=tool.id,
+        service_code=tool.code,
+        service_label=tool.label,
         source=_tool_source(tool),
         external_id=target.external_id,
         display_name=target.display_name,
     )
 
 
-async def clear_chat_identity_mapping(user_id: int, tool_id: int) -> bool:
+async def clear_chat_identity_mapping(user_id: int, service_id: int) -> bool:
     cleared_id = await get_db().scalar(
         update(MessengerUser)
         .where(
-            MessengerUser.tool_id == tool_id,
+            MessengerUser.service_id == service_id,
             MessengerUser.galaris_user_id == user_id,
         )
         .values(galaris_user_id=None)
@@ -441,9 +441,9 @@ async def internal_agent_avatar(agent_id: int) -> bytes | None:
     )
 
 
-async def _ensure_human(tool_id: int, user: User) -> UUID:
+async def _ensure_human(service_id: int, user: User) -> UUID:
     return await resolve_messenger_user(
-        tool_id=tool_id,
+        service_id=service_id,
         external_id=human_external_id(user.id),
         display_name=user.display_name or user.email,
         galaris_user_id=user.id,
@@ -451,12 +451,12 @@ async def _ensure_human(tool_id: int, user: User) -> UUID:
     )
 
 
-async def _ensure_agent(tool_id: int, agent: Agent) -> UUID:
+async def _ensure_agent(service_id: int, agent: Agent) -> UUID:
     display_name = " ".join(
         part for part in (agent.first_name, agent.last_name) if part
     ).strip() or agent.code
     return await resolve_messenger_user(
-        tool_id=tool_id,
+        service_id=service_id,
         external_id=agent_external_id(agent.id),
         display_name=display_name,
         agent_id=agent.id,
@@ -509,7 +509,7 @@ def _next_internal_room_label(
         suffix_number += 1
 
 
-async def _human_identity(user_id: int) -> tuple[Tool, MessengerUser] | None:
+async def _human_identity(user_id: int) -> tuple[Service, MessengerUser] | None:
     tool = await _internal_tool()
     if tool is None:
         return None
@@ -538,7 +538,7 @@ async def create_internal_room(
             select(Connection, Agent)
             .join(Agent, Agent.id == Connection.agent_id)
             .where(
-                Connection.tool_id == tool.id,
+                Connection.service_id == tool.id,
                 Connection.agent_id == agent_id,
                 Connection.active.is_(True),
             )
@@ -605,13 +605,13 @@ async def room_membership(
     statement = (
         select(Room, RoomUser, MessengerUser, Connection)
         .join(Connection, Connection.id == Room.connection_id)
-        .join(Tool, Tool.id == Connection.tool_id)
+        .join(Service, Service.id == Connection.service_id)
         .join(RoomUser, RoomUser.room_id == Room.id)
         .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
         .where(
             Room.id == room_id,
             Room.kind == "direct",
-            Tool.code == CHAT_TOOL_CODE,
+            Service.code == CHAT_TOOL_CODE,
             MessengerUser.external_id == human_external_id(user_id),
             RoomUser.role == "owner",
         )
@@ -631,11 +631,11 @@ async def chat_room_membership(
     room_id: UUID,
     *,
     lock: bool = False,
-) -> tuple[Room, RoomUser, MessengerUser, Connection, Tool] | None:
+) -> tuple[Room, RoomUser, MessengerUser, Connection, Service] | None:
     statement = (
-        select(Room, RoomUser, MessengerUser, Connection, Tool)
+        select(Room, RoomUser, MessengerUser, Connection, Service)
         .join(Connection, Connection.id == Room.connection_id)
-        .join(Tool, Tool.id == Connection.tool_id)
+        .join(Service, Service.id == Connection.service_id)
         .join(RoomUser, RoomUser.room_id == Room.id)
         .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
         .where(
@@ -644,7 +644,7 @@ async def chat_room_membership(
             or_(
                 MessengerUser.galaris_user_id == user_id,
                 and_(
-                    Tool.code == CHAT_TOOL_CODE,
+                    Service.code == CHAT_TOOL_CODE,
                     MessengerUser.external_id == human_external_id(user_id),
                 ),
             ),
@@ -654,7 +654,7 @@ async def chat_room_membership(
         statement = statement.with_for_update(of=RoomUser)
     row = (await get_db().execute(statement)).one_or_none()
     return cast(
-        tuple[Room, RoomUser, MessengerUser, Connection, Tool] | None,
+        tuple[Room, RoomUser, MessengerUser, Connection, Service] | None,
         row,
     )
 
@@ -790,7 +790,7 @@ async def _message_dto(
         NativeMessengerFile(
             id=file.id,
             uri=attachment_resource_uri(
-                message.tool_code or message.platform,
+                message.service_code or message.platform,
                 message.room.external_id if message.room is not None else str(message.messenger_room_id),
                 file.id,
             ),
@@ -885,7 +885,7 @@ async def _room_dto(
     room: Room,
     membership: RoomUser | None,
     connection: Connection,
-    tool: Tool,
+    tool: Service,
     agent: Agent,
     *,
     include_members: bool,
@@ -983,11 +983,11 @@ async def count_chat_unread(user_id: int) -> int:
             .join(Message, Message.messenger_room_id == RoomUser.room_id)
             .join(Room, Room.id == RoomUser.room_id)
             .join(Connection, Connection.id == Room.connection_id)
-            .join(Tool, Tool.id == Connection.tool_id)
+            .join(Service, Service.id == Connection.service_id)
             .where(
                 MessengerUser.galaris_user_id == user_id,
                 Room.conversation_type == "text",
-                Tool.code == CHAT_TOOL_CODE,
+                Service.code == CHAT_TOOL_CODE,
                 Message.counts_as_unread.is_(True),
                 Message.journal_position
                 > func.coalesce(RoomUser.read_through_position, 0),
@@ -1005,7 +1005,7 @@ async def list_internal_rooms(
     user_id: int, *, page: int = 1, page_size: int = 50, search: str = ""
 ) -> NativeMessengerRoomPage:
     filters = [
-        Tool.code == CHAT_TOOL_CODE,
+        Service.code == CHAT_TOOL_CODE,
         Room.kind == "direct",
         MessengerUser.external_id == human_external_id(user_id),
         RoomUser.role == "owner",
@@ -1017,9 +1017,9 @@ async def list_internal_rooms(
             )
         )
     base = (
-        select(Room, RoomUser, Connection, Tool, Agent)
+        select(Room, RoomUser, Connection, Service, Agent)
         .join(Connection, Connection.id == Room.connection_id)
-        .join(Tool, Tool.id == Connection.tool_id)
+        .join(Service, Service.id == Connection.service_id)
         .join(Agent, Agent.id == Connection.agent_id)
         .join(RoomUser, RoomUser.room_id == Room.id)
         .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
@@ -1058,7 +1058,7 @@ async def get_internal_room(user_id: int, room_id: UUID) -> NativeMessengerRoom 
     if membership is None:
         return None
     room, relation, _identity, connection = membership
-    tool = await get_db().get(Tool, connection.tool_id)
+    tool = await get_db().get(Service, connection.service_id)
     agent = await get_db().get(Agent, connection.agent_id)
     if tool is None or agent is None:
         return None
@@ -1091,21 +1091,21 @@ async def list_chat_rooms(
         else or_(
             MessengerUser.galaris_user_id == user_id,
             and_(
-                Tool.code == CHAT_TOOL_CODE,
+                Service.code == CHAT_TOOL_CODE,
                 MessengerUser.external_id == human_external_id(user_id),
             ),
         )
     )
     base = (
-        select(Room, RoomUser, Connection, Tool, Agent)
+        select(Room, RoomUser, Connection, Service, Agent)
         .join(Connection, Connection.id == Room.connection_id)
-        .join(Tool, Tool.id == Connection.tool_id)
+        .join(Service, Service.id == Connection.service_id)
         .join(Agent, Agent.id == Connection.agent_id)
         .join(RoomUser, RoomUser.room_id == Room.id)
         .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
         .where(
             identity_filter,
-            Tool.code != MAIL_TOOL_CODE,
+            Service.code != MAIL_TOOL_CODE,
             Room.conversation_type == "text",
         )
     )
@@ -1122,12 +1122,12 @@ async def list_chat_rooms(
             )
         )
     if not include_external:
-        base = base.where(Tool.code == CHAT_TOOL_CODE)
+        base = base.where(Service.code == CHAT_TOOL_CODE)
     if not include_archived:
         base = base.where(RoomUser.archived.is_(False))
     if unread_only:
         base = base.where(
-            Tool.code == CHAT_TOOL_CODE,
+            Service.code == CHAT_TOOL_CODE,
             select(Message.id).where(
                 Message.messenger_room_id == Room.id,
                 Message.counts_as_unread.is_(True),
@@ -1262,9 +1262,9 @@ async def get_agent_chat_room(
 ) -> NativeMessengerRoom | None:
     row = (
         await get_db().execute(
-            select(Room, RoomUser, Connection, Tool)
+            select(Room, RoomUser, Connection, Service)
             .join(Connection, Connection.id == Room.connection_id)
-            .join(Tool, Tool.id == Connection.tool_id)
+            .join(Service, Service.id == Connection.service_id)
             .join(RoomUser, RoomUser.room_id == Room.id)
             .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
             .where(
@@ -1301,9 +1301,9 @@ async def _synchronize_nextcloud_room_history_page(
 
     row = (
         await get_db().execute(
-            select(Room, Connection, Tool)
+            select(Room, Connection, Service)
             .join(Connection, Connection.id == Room.connection_id)
-            .join(Tool, Tool.id == Connection.tool_id)
+            .join(Service, Service.id == Connection.service_id)
             .where(Room.id == room_id)
         )
     ).one_or_none()
@@ -1915,8 +1915,8 @@ async def live_internal_file_ids() -> set[UUID]:
             await get_db().scalars(
                 select(File.id)
                 .join(Connection, Connection.id == File.connection_id)
-                .join(Tool, Tool.id == Connection.tool_id)
-                .where(Tool.code == CHAT_TOOL_CODE)
+                .join(Service, Service.id == Connection.service_id)
+                .where(Service.code == CHAT_TOOL_CODE)
             )
         ).all()
     )
@@ -1965,7 +1965,7 @@ async def publish_internal_message(
             raise LookupError("The replied-to message is inaccessible.")
     agent_identity = await get_db().scalar(
         select(MessengerUser).where(
-            MessengerUser.tool_id == scope.tool_id,
+            MessengerUser.service_id == scope.service_id,
             MessengerUser.agent_id == scope.agent_id,
         )
     )
@@ -1973,19 +1973,19 @@ async def publish_internal_message(
         agent = await get_db().get(Agent, scope.agent_id)
         if agent is None:
             raise LookupError("The room agent no longer exists.")
-        agent_identity_id = await _ensure_agent(scope.tool_id, agent)
+        agent_identity_id = await _ensure_agent(scope.service_id, agent)
         agent_identity = await get_db().get(MessengerUser, agent_identity_id)
     assert agent_identity is not None
     observation = ObservedMessengerMessage(
         id=str(client_message_id),
         platform=INTERNAL_PLATFORM,
-        tool_id=scope.tool_id,
+        service_id=scope.service_id,
         sender=ObservedMessengerUser(
             id=human.external_id,
             display_name=human.display_name,
             is_ai=False,
             connection_id=connection.id,
-            tool_id=scope.tool_id,
+            service_id=scope.service_id,
         ),
         recipient=ObservedMessengerUser(
             id=agent_identity.external_id,
@@ -1993,7 +1993,7 @@ async def publish_internal_message(
             agent_id=scope.agent_id,
             is_ai=True,
             connection_id=connection.id,
-            tool_id=scope.tool_id,
+            service_id=scope.service_id,
         ),
         room=ObservedMessengerRoom(
             id=room.external_id,
@@ -2002,7 +2002,7 @@ async def publish_internal_message(
             kind=cast(Literal["direct", "group"], room.kind),
             conversation_type="text",
             connection_id=connection.id,
-            tool_id=scope.tool_id,
+            service_id=scope.service_id,
         ),
         text=text,
         attachments=list(attachments or []),
@@ -2130,7 +2130,7 @@ async def internal_outbound_observation(
         raise PermissionError("The Chat room must contain its unique agent.")
     agent = await get_db().scalar(
         select(MessengerUser).where(
-            MessengerUser.tool_id == scope.tool_id,
+            MessengerUser.service_id == scope.service_id,
             MessengerUser.agent_id == scope.agent_id,
         )
     )
@@ -2149,21 +2149,21 @@ async def internal_outbound_observation(
     return ObservedMessengerMessage(
         id=str(uuid4()),
         platform=INTERNAL_PLATFORM,
-        tool_id=scope.tool_id,
+        service_id=scope.service_id,
         sender=ObservedMessengerUser(
             id=agent.external_id,
             display_name=agent.display_name,
             agent_id=agent.agent_id,
             is_ai=True,
             connection_id=connection_id,
-            tool_id=scope.tool_id,
+            service_id=scope.service_id,
         ),
         recipient=(
             ObservedMessengerUser(
                 id=recipient.external_id,
                 display_name=recipient.display_name,
                 connection_id=connection_id,
-                tool_id=scope.tool_id,
+                service_id=scope.service_id,
             )
             if recipient is not None
             else None
@@ -2175,7 +2175,7 @@ async def internal_outbound_observation(
             kind=cast(Literal["direct", "group"], room.kind),
             conversation_type=cast(Literal["audio", "text"], room.conversation_type),
             connection_id=connection_id,
-            tool_id=scope.tool_id,
+            service_id=scope.service_id,
         ),
         text=text,
         attachments=list(attachments or []),
@@ -2196,7 +2196,7 @@ async def internal_history_observations(
                 id=row.remote_message_id,
                 local_id=row.id,
                 platform=row.platform,
-                tool_id=row.tool_id,
+                service_id=row.service_id,
                 sender=(
                     ObservedMessengerUser(
                         id=row.sender.external_id,

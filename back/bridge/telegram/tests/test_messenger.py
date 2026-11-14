@@ -51,7 +51,7 @@ def _messenger(config: TelegramConnectionConfig) -> TelegramMessenger:
         client=SimpleNamespace(),  # type: ignore[arg-type]
         config=config,
         self_user=self_user,  # type: ignore[arg-type]
-        tool_id=3,
+        service_id=3,
         connection_id=8,
     )
 
@@ -74,7 +74,7 @@ def test_mapping_uses_chat_scoped_id_and_combines_album() -> None:
     message = telegram_to_message(
         [first, second],  # type: ignore[list-item]
         self_user=self_user,  # type: ignore[arg-type]
-        tool_id=3,
+        service_id=3,
         connection_id=8,
     )
 

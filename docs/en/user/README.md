@@ -19,6 +19,7 @@ Visible screens depend on your account's permissions. For an overview, start wit
 
 | Your need | Guide |
 |---|---|
+| Add a service from the catalog | [Services](services.md) |
 | Find a menu or screen | [Navigation and workflows](navigation.md), [generated map](../architecture/generated/navigation.md) |
 | Assign and track work | [Tasks, milestones and recovery](tasks.md) |
 | Organize authored content | [Document library](documents.md) |
@@ -46,7 +47,7 @@ Galaris is the orchestrator around these Agents. It receives a request, chooses 
 
 ## First Login and Orientation
 
-Open the address provided by your administrator, then log in with your email address and password. If open registration is displayed, you can create an account; this does not automatically grant you access to Agents or Tools.
+Open the address provided by your administrator, then log in with your email address and password. If open registration is displayed, you can create an account; this does not automatically grant you access to Agents or Services.
 
 On an instance with no accounts, the first signup creates the administrator. Registration
 then closes by default. **Preferences → System → Allow users to create their own accounts**
@@ -88,12 +89,12 @@ The sidebar shows only the screens authorized by your role:
 | Dream | track background work, inspect its history, and manage file indexing per agent |
 | AI Lab | analyze a Task and measure AI mechanisms on reproducible case sets |
 | Processes | build and track an internal BPMN workflow, or launch an external workflow such as n8n |
-| Tools | view MCP and REST API capabilities and agent connections; primarily intended for administrators |
+| Services | view MCP and REST API capabilities and agent connections; primarily intended for administrators |
 
-The **Tools** list opens on **Custom tools**, followed by **Galaris built-in tools**.
-A connection's **Tool** field also groups choices under **Galaris** and **Custom**.
-In **New tool**, enable at least one protocol to make **Create** available.
-A Tool represents the provider, for example **Ionos**, and can combine API, MCP, file sharing,
+The **Services** list opens on **Custom services**, followed by **Galaris built-in services**.
+A connection's **Service** field also groups choices under **Galaris** and **Custom**.
+In **New service**, enable at least one protocol to make **Create** available.
+A Service represents the provider, for example **Ionos**, and can combine API, MCP, file sharing,
 messaging, listener, Mail and Calendar. Mail and CalDAV are optional provider protocols.
 Every agent also has a default internal **Personal agenda** without an external connection.
 Ask the agent to book an appointment or set a reminder; it uses its authorized agenda functions.
@@ -101,7 +102,7 @@ Goals retain durable outcome tracking and their own reviews: a reminder must not
 already scheduled Goal cycle.
 For Ionos Mail, create **Ionos**, enable **Mail**, enter servers in its global parameters,
 then create an Ionos connection for each agent with its email address and password.
-Existing Mail and Calendar connections migrate automatically to custom Tools while keeping
+Existing Mail and Calendar connections migrate automatically to custom Services while keeping
 their parameters and history.
 
 For a **CalDAV** source, map its URL and HTTP credentials to standard `url`, `login` and
@@ -117,22 +118,22 @@ without an action creates no Task. **Execution history** follows each occurrence
 its Task link and state. Only a successfully completed Task is marked processed. The Task
 may start a Process when needed, subject to its ordinary tool permissions.
 
-To configure a REST integration, an administrator enables **API** on the Tool, then
-enters its address directly in the **REST API** tab. All Tool connections share this address.
+To configure a REST integration, an administrator enables **API** on the Service, then
+enters its address directly in the **REST API** tab. All Service connections share this address.
 Credentials are entered in global parameters or the agent's connection.
 API permissions come from the token at the third-party service. See
-[Tool administration](../admin/tool-administration.md).
+[Service administration](../admin/service-administration.md).
 
 In driver parameter lists, **New parameter…** creates a parameter and assigns it to the
-current field automatically. Save the Tool to keep this addition.
+current field automatically. Save the Service to keep this addition.
 Deleting a parameter in use requires confirmation; cancelling preserves its assignments.
 
 To connect an account to an MCP server, open the agent connection and click
 **Connect account**. The provider asks for consent directly; Galaris retrieves the token
-without technical fields to fill in. OAuth belongs only to the connection, never the Tool.
+without technical fields to fill in. OAuth belongs only to the connection, never the Service.
 Each connection owns its authorization and its disconnect button. Tokens refresh
 automatically when supported by the provider. See the
-[Tool guide](../admin/tool-administration.md).
+[Service guide](../admin/service-administration.md).
 
 In **Providers**, an administrator can adjust concurrent LLM calls for each connection.
 Voice conversations take priority, followed by text conversations and background work;
@@ -195,7 +196,7 @@ enable blocked tools.
 5. Leave **Mode** and **Effort** set to **Auto** for a first attempt.
 6. Click **Create & run**. **Create** alone saves a paused Task, which is useful for preparing or having the request reviewed before launch.
 
-Tool functions use Active, Blocked or On request policies. Handle one-time and permanent
+Service functions use Active, Blocked or On request policies. Handle one-time and permanent
 approvals and **Always deny** decisions under **Monitor → Permissions**. Both can be removed
 in the per-agent dashboard (`/permissions`); there is no global auto-approval mode. Consent
 remains limited to its connection or action type and does not automatically authorize
@@ -203,7 +204,7 @@ agents receiving delegated work.
 Conversation progress displays **Waiting for authorization** while approval is pending,
 without presenting this suspension as an execution failure.
 
-From the list, click a Task to open its details. There you will find the current phase, subtasks, Tool calls, related Processes, known LLM costs, and final response. The pause and resume buttons act on the work tree. **Force finish** is an administrative recovery action for a genuinely blocked execution: it marks the Task as failed and releases its lease; it is not an ordinary cancellation of the external work.
+From the list, click a Task to open its details. There you will find the current phase, subtasks, Service calls, related Processes, known LLM costs, and final response. The pause and resume buttons act on the work tree. **Force finish** is an administrative recovery action for a genuinely blocked execution: it marks the Task as failed and releases its lease; it is not an ordinary cancellation of the external work.
 
 A temporary provider error in DeepSeek triggers automatic continuation in the same session,
 retaining recorded work. Task retry limits apply; an action whose outcome remains unknown
@@ -226,7 +227,7 @@ still applies after confirmation. If an older Hermes instance remains waiting, a
 administrator to check its update status.
 
 With the internal harness, three identical errors or three repeated calls without progress
-prompt the agent to change approach, reread relevant skills, or check arguments. Tools remain
+prompt the agent to change approach, reread relevant skills, or check arguments. Services remain
 available so the agent can continue; if it cannot proceed, it explains the repeated errors
 and what remains blocked. Overall execution limits still apply.
 
@@ -239,7 +240,7 @@ pagination information. Such a preview proves neither missing source data nor ta
 If the Agent invents a top-level parameter for a tool whose schema strictly lists its
 accepted parameters, Galaris ignores it and tells the Agent which parameters are available
 in the result. Nested objects and composed schemas retain their validation. A missing required parameter or an
-invalid value still rejects the call; the Agent must correct it. Tools that accept
+invalid value still rejects the call; the Agent must correct it. Services that accept
 free-form parameters retain them.
 
 For a Hermès Agent configured with its own LLM provider, the Task and its result remain visible, but Galaris cannot display intermediate LLM calls or their detailed cost. This does not mean the Task was lost: these calls take place directly within Hermès.
@@ -260,7 +261,7 @@ Example: “Explain the difference between a quote and an invoice.”
 
 ### Perform an Action
 
-Specify the expected result, target, and useful constraints. If a Tool is required, the Agent must actually call it; a simple statement such as “done” with no Tool trace does not validate the action.
+Specify the expected result, target, and useful constraints. If a Service is required, the Agent must actually call it; a simple statement such as “done” with no Service trace does not validate the action.
 
 Example: “Send the `reunion.md` meeting report to the Alpha Project room.”
 
@@ -327,7 +328,7 @@ When an Agentic HR Agent has the corresponding management capabilities, you can 
 
 The HR Agent can then create the Goal with a distinct owner and referent, list or search an Agent’s Goals, view their tracking and cycles, modify them, pause them, resume them, trigger a cycle immediately, close them, or delete them when no cycle is in progress. Sensitive changes use the Goal’s current revision so as not to overwrite a concurrent change.
 
-The single **Skills** Tool has four server-owned scopes: `usage` to use authorized generic
+The single **Skills** Service has four server-owned scopes: `usage` to use authorized generic
 packages and active personal packages; `personal` to manage the agent's own packages; and
 `team` to also manage packages and generic permissions for agents in any of its teams;
 `all` to administer the entire catalogue and all permissions. Writes require an active Skills
@@ -361,7 +362,7 @@ preserved. If the owner already has the same code, choose another code; no skill
 In **Skills → Personal skills**, inspect private packages owned by agents within your
 management scope, even when Dream is disabled. The list shows the owner, activation,
 validity, files and last modification. Filter by agent or search by name/code, then use
-**View** to read `SKILL.md` and its references. Configure the scope in **Tools → Connections →
+**View** to read `SKILL.md` and its references. Configure the scope in **Services → Connections →
 edit the Skills connection → Management scope**, choosing `usage`, `personal`, `team` or `all`.
 This parameter belongs to the connection and has no global inheritance; editing it requires
 connection editing and global agent management. An agent in three teams can administer agents
@@ -387,9 +388,9 @@ remains an agent action. Personal packages cannot be shared.
 ### Delegating administration to an agent
 
 When first created, the **Galaris** assistant receives global scope (`all`) on all its
-built-in connections offering a scope: Administration, ToolAdmin, AgentAdmin, Process
+built-in connections offering a scope: Administration, ServiceAdmin, AgentAdmin, Process
 administration, Goal management, Skills and Chat. These connections start active.
-Other internal tools without a separately configured external account, including Topics,
+Other internal services without a separately configured external account, including Topics,
 also start active, with native functions enabled. Model prerequisites and resource permissions
 still apply.
 Later synchronizations preserve your restrictions and deactivations; configure an
@@ -399,14 +400,14 @@ Other agents cannot exchange messages, files or Tasks with this assistant, even 
 scope or a shared team: they receive an explicit permission refusal. Its internal identity
 survives renaming; naming another agent “Galaris” does not protect that agent.
 
-In **Tools → Connections → edit a connection → Management scope**,
-`tools.management_scope` also configures Process administration, ToolAdmin,
+In **Services → Connections → edit a connection → Management scope**,
+`services.management_scope` also configures Process administration, ServiceAdmin,
 Goal management, Administration and AgentAdmin. Levels are `usage` (no administration),
 `personal` (own resources), `team` (agents sharing an active team) and `all` (global).
 Only a human with connection editing and global agent management may change this local
 value. Function permissions still apply. Team removals take effect on the next call.
 
-ToolAdmin limits personal and team scopes to connections; shared definitions and global
+ServiceAdmin limits personal and team scopes to connections; shared definitions and global
 settings require `all`. Process definitions follow their assigned agent, runs their
 launcher and Goals their responsible agent. Administration scopes Tasks, conversations
 and LLM traces without widening Document or private-memory permissions.
@@ -426,7 +427,7 @@ In the default installation, `galaris-lab` and `galaris-knowledge` are globally 
 and individually enabled only for the **Galaris** Agent created during setup.
 Permissions remain configurable, and updates preserve previously saved choices.
 
-The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create separate direct conversations with an Agent, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and Tools from the round. Archiving a conversation removes it from the current list without deleting its history; you can find it again in the archives. Internal messaging does not offer group creation or participant management.
+The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create separate direct conversations with an Agent, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and Services from the round. Archiving a conversation removes it from the current list without deleting its history; you can find it again in the archives. Internal messaging does not offer group creation or participant management.
 
 On Android, including the installed PWA, use the phone’s physical buttons to adjust system
 volume during a call. Galaris retains Web Audio playback and echo reduction; output opens
@@ -539,8 +540,8 @@ Nextcloud Talk active therefore does not redirect messages from a Goal assigned 
 For an outgoing message without a fixed channel, Galaris uses the recipient's latest inbound
 exchange, then internal Chat by default. The Agent may explicitly request another channel.
 
-In **Tools → Connections → edit the messaging connection**, a global manager can set
-**Inter-agent communication** (`tools.management_scope`): **None** (`none`),
+In **Services → Connections → edit the messaging connection**, a global manager can set
+**Inter-agent communication** (`services.management_scope`): **None** (`none`),
 **Agents in its teams** (`team`) or **All agents** (`all`). The default `team` preserves
 communication between agents sharing at least one team. This setting applies to sending and
 receiving on that connection; human contact rights remain independent. Internal requests
@@ -586,14 +587,14 @@ their role, without creating a Task. Asking for a colleague's contribution follo
 action policy and contact permissions; reading a profile does not itself contact that Agent.
 
 On initialization, **Console SSH**, **Image**, and **Multimedia** are unavailable
-in conversation mode by default. An administrator can enable each Tool for conversations
-in the Tool catalog. This setting does not change access in Tasks; updates preserve
+in conversation mode by default. An administrator can enable each Service for conversations
+in the Service catalog. This setting does not change access in Tasks; updates preserve
 previously saved choices.
 
 If a Task waits for your consent to read an email, answer its authorization request.
 The Harness continues reading the same message once the Task resumes; denial keeps
 its content private. Reading consent does not authorize sending an email.
-To browse an agent’s mailbox yourself, open **Knowledge → Files**, select the provider Tool
+To browse an agent’s mailbox yourself, open **Knowledge → Files**, select the provider Service
 with the Mail protocol, then an IMAP folder
 and a message. Your reading does not authorize the agent to process the email.
 
@@ -608,7 +609,7 @@ allow your server's Sent folder.
 Reading a Skill already available in the DeepSeek Harness does not request mutation consent.
 Operations that modify files retain their authorization requirement.
 
-A received message is no longer systematically turned into a Task. The conversational controller aggregates messages arriving in bursts, reconstructs the useful history, and prepares a short response. When a Tool must produce a lasting effect or work will take time, it creates a background Task or Process and gives you its reference.
+A received message is no longer systematically turned into a Task. The conversational controller aggregates messages arriving in bursts, reconstructs the useful history, and prepares a short response. When a Service must produce a lasting effect or work will take time, it creates a background Task or Process and gives you its reference.
 
 In **Monitor → Activity → Text conversations**, you can see processed or pending messages, rounds, their attempts, LLM calls, delivery, and any errors. A response between two Agents is admitted only when a fresh request is waiting for it; this safeguard prevents automatic loops of polite exchanges.
 
@@ -622,7 +623,7 @@ do not prove delivery.
 When Matrix or Nextcloud Talk and a voice capability are configured, an Agent can participate in a call. Depending on the voice selected on its profile, Galaris uses either the transcription → Agent → synthesis pipeline or a low-latency native audio session. The second mode may retain no intermediate transcription: the absence of text in a native turn therefore does not indicate a lost call.
 
 Agent hangup (`voice_call_stop`) is active by default, without an additional approval
-request. To change a saved rule, open **Tools → Authorizations**, select the **Voice**
+request. To change a saved rule, open **Services → Authorizations**, select the **Voice**
 connection, search for `voice_call_stop`, and choose **Active** for this connection or
 under **Global (all)**. Explicit **Ask** and **Blocked** choices still override the
 software default. An approval request also offers **Always allow this function**,
@@ -651,7 +652,7 @@ Reopening follows the persisted request through temporary service interruptions.
 
 ### Summarizing Audio, Video, or a YouTube Video
 
-If the Agent has the Audio Tool, attach the recording and then directly request the expected deliverable, for example:
+If the Agent has the Audio Service, attach the recording and then directly request the expected deliverable, for example:
 
 > Transcribe `reunion-projet.mp4`, then summarize the topics discussed, decisions, owners, and actions with their deadlines. Also retain the complete transcription.
 
@@ -662,12 +663,12 @@ original remains unchanged. A limit longer than the recording simply processes a
 content. For YouTube, selection follows caption timestamps; a caption spanning the cutoff
 remains complete.
 
-The same Tool accepts a public YouTube URL directly. You therefore only need to ask, for example:
+The same Service accepts a public YouTube URL directly. You therefore only need to ask, for example:
 
 > Summarize this video in French, identify its main ideas, and retain the useful timestamps:
 > `https://www.youtube.com/watch?v=…`
 
-Galaris processes the media as a large resource: it retains the original Tool URI without copying its bytes into the conversation, temporarily materializes it, extracts its first audio track, ignores the video, and normalizes the sound to mono 32 kHz MP3 at 96 kbit/s. The transcription model receives this normalized audio file, and Galaris writes its result to a `.txt` file.
+Galaris processes the media as a large resource: it retains the original Service URI without copying its bytes into the conversation, temporarily materializes it, extracts its first audio track, ignores the video, and normalizes the sound to mono 32 kHz MP3 at 96 kbit/s. The transcription model receives this normalized audio file, and Galaris writes its result to a `.txt` file.
 
 Beyond approximately 10 minutes, Galaris warns you that processing will take longer, splits the audio into segments, transcribes and summarizes each segment, then merges these summaries into an overall `.summary.md` summary. The Agent reads this short summary to respond to you; the complete verbatim remains available without being loaded in full into its context. If the meeting is extremely long, several levels of reduction are applied automatically.
 
@@ -1007,6 +1008,6 @@ verification commands:
 
 All profiles share the URLs; the `model` field carries the complete selector.
 
-Claude Agent can also be selected directly as the **Task Engine** on an Agent’s profile. Galaris then provisions an isolated Claude Agent SDK container, provides it with the resolved internal model, the Agent’s Skills and MCP, and displays the text, Tool calls, LLM calls, and terminal result live. No direct Anthropic account or token is required.
+Claude Agent can also be selected directly as the **Task Engine** on an Agent’s profile. Galaris then provisions an isolated Claude Agent SDK container, provides it with the resolved internal model, the Agent’s Skills and MCP, and displays the text, Service calls, LLM calls, and terminal result live. No direct Anthropic account or token is required.
 
 - [Writing and linking rich content](rich-content.md): editor, links, document images and history.

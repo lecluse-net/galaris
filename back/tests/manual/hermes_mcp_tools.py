@@ -9,7 +9,7 @@ import os
 
 from loguru import logger
 
-from app.tools.mcp_loader import build_agent_mcp
+from app.services.mcp_loader import build_agent_mcp
 
 
 async def main() -> None:

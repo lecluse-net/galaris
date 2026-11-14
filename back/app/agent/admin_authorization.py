@@ -65,7 +65,7 @@ class AdminDelegation:
 async def delegated_admin(
     caller_id: int, function: str, *privileges: str, global_scope: bool = False,
 ) -> AsyncGenerator[AdminDelegation]:
-    from app.tools.facade import administration_scope, has_active_admin_function
+    from app.services.facade import administration_scope, has_active_admin_function
 
     if not await has_active_admin_function(caller_id, function):
         raise PermissionError("AgentAdmin delegation is inactive or revoked")
@@ -99,7 +99,7 @@ async def delegated_admin(
 
 async def admin_available(caller_id: int, *privileges: str, global_scope: bool = False) -> bool:
     """Live public catalogue predicate; mutations still check their exact function."""
-    from app.tools.facade import administration_scope
+    from app.services.facade import administration_scope
     delegated = await administration_scope(caller_id, "agent_admin")
     if delegated.level == "usage" or (global_scope and not delegated.is_global):
         return False

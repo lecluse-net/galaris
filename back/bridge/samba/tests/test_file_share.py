@@ -11,8 +11,8 @@ from app.file_share import (
     ResourceContext, ResourceRevisionConflict, ResourceValidationError, available_bridges,
     file_share_service, resource_service as files,
 )
-from app.tools import FileShareConfig
-from app.tools.schemas import Tool
+from app.services import FileShareConfig
+from app.services.schemas import Service
 from bridge.samba.file_share import SambaFileClient
 from bridge.samba import sdk
 from smbprotocol.header import NtStatus
@@ -79,17 +79,17 @@ def test_reject_invalid_external_root_before_network(url):
 @pytest.mark.asyncio
 async def test_invalid_tool_root_keeps_the_canonical_uri_in_error_guidance(monkeypatch):
     from types import SimpleNamespace
-    from app.tools.tool_errors import classify_tool_failure
+    from app.services.tool_errors import classify_tool_failure
 
-    tool = Tool(code="team-share", label="Synthetic share", file_share_config=FileShareConfig(
+    tool = Service(code="team-share", label="Synthetic share", file_share_config=FileShareConfig(
         service="samba", base_url="https://files.example.test",
         param_map={"login": "account", "password": "secret"},
     ))
 
     async def connections(agent_id):
-        return [SimpleNamespace(active=True, tool_id=42)]
+        return [SimpleNamespace(active=True, service_id=42)]
 
-    async def get_tool(tool_id):
+    async def get_service(service_id):
         return tool
 
     async def params(connection, **kwargs):
@@ -99,14 +99,14 @@ async def test_invalid_tool_root_keeps_the_canonical_uri_in_error_guidance(monke
         pytest.fail("Invalid configuration reached the SMB server")
 
     monkeypatch.setattr(file_share_service.connection_service, "get_connections_by_agent", connections)
-    monkeypatch.setattr(file_share_service.tool_service, "get_tool_by_id", get_tool)
+    monkeypatch.setattr(file_share_service.service, "get_service_by_id", get_service)
     monkeypatch.setattr(file_share_service.connection_service, "get_params_as_dict", params)
     monkeypatch.setattr(sdk, "session", unexpected_network)
     with pytest.raises(ResourceValidationError) as error:
         await files.resource_list(ResourceContext(agent_id=1, runtime="internal"), "team-share://")
     diagnostic = classify_tool_failure(error.value)
     assert diagnostic.kind == "actionable"
-    assert "Tool configuration" in diagnostic.detail
+    assert "Service configuration" in diagnostic.detail
     assert "base_url" in diagnostic.detail
     assert "existing share" in diagnostic.detail
     assert "Keep using" in diagnostic.detail and "code://" in diagnostic.detail
@@ -120,8 +120,8 @@ async def test_server_root_discovers_shares_and_supports_normal_file_journey(mon
         pytest.skip("Run make tests-samba for the isolated real SMB peer")
     client = SambaFileClient(f"smb://{host}/", "writer", "synthetic-writer-password", encrypt=True)
     reader = SambaFileClient(f"smb://{host}", "reader", "synthetic-reader-password", encrypt=True)
-    async def resolve(agent_id, tool_code, locator="", **kwargs):
-        assert tool_code == "team-share"
+    async def resolve(agent_id, service_code, locator="", **kwargs):
+        assert service_code == "team-share"
         return (reader if agent_id == 2 else client), "samba"
     monkeypatch.setattr(files, "resolve_resource_transport_with_service", resolve)
     ctx = ResourceContext(agent_id=1, runtime="internal")
@@ -214,8 +214,8 @@ def smb(monkeypatch):
         pytest.skip("Run make tests-samba for the isolated real SMB peer")
     client = SambaFileClient(f"smb://{host}/synthetic", "writer", "synthetic-writer-password", encrypt=True)
     reader = SambaFileClient(f"smb://{host}/synthetic", "reader", "synthetic-reader-password", encrypt=True)
-    async def resolve(agent_id, tool_code, locator="", **kwargs):
-        assert tool_code == "team-share"
+    async def resolve(agent_id, service_code, locator="", **kwargs):
+        assert service_code == "team-share"
         return (reader if agent_id == 2 else client), "samba"
     monkeypatch.setattr(files, "resolve_resource_transport_with_service", resolve)
     return client, reader, ResourceContext(agent_id=1, runtime="internal"), f"journey-{uuid4().hex}"

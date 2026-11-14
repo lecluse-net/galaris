@@ -10,10 +10,10 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart
 from app.harness.checkpoint import HarnessRunCheckpoint, wrap_toolsets
 from app.harness.mcp_toolset import ExecutionEvidenceClient
 from app.harness.tests.test_checkpoint import _request
-from app.tools.execution_evidence import ExecutionEvidenceMiddleware
-from app.tools.contracts import EXECUTION_META_KEY
+from app.services.execution_evidence import ExecutionEvidenceMiddleware
+from app.services.contracts import EXECUTION_META_KEY
 from fastmcp.tools import ToolResult
-from app.tools.tool_arguments import ToolArgumentsMiddleware
+from app.services.tool_arguments import ToolArgumentsMiddleware
 
 
 @pytest.mark.asyncio
@@ -96,7 +96,7 @@ async def test_agent_decides_after_tool_errors_without_exhausting_retry_budget(d
             if reported != "exception":
                 failure = {"ok": False, "error": "Source unavailable", "outcome": "rejected"}
                 if reported == "structured_warning":
-                    from app.tools.contracts import TOOL_ARGUMENTS_META_KEY
+                    from app.services.contracts import TOOL_ARGUMENTS_META_KEY
                     return ToolResult(content="Source unavailable", structured_content=failure,
                                       meta={TOOL_ARGUMENTS_META_KEY: {"ignored_keys": ["unexpected"]}})
                 return json.dumps(failure) if reported == "json" else failure
@@ -151,14 +151,14 @@ async def test_file_copy_source_failure_can_retry_but_lost_upload_cannot(
 ):
     # This journey diagnoses transport outcomes after authorization; the actual
     # approval boundary has separate real-DB dispatch/replay coverage.
-    monkeypatch.setattr("app.tools.mcp_authorization.authorize_native_call", AsyncMock(return_value=None))
+    monkeypatch.setattr("app.services.mcp_authorization.authorize_native_call", AsyncMock(return_value=None))
     import httpx
 
     from app import agent
     from app.file_share import mcp, resource_service, web_transport
     from app.file_share.resource_contracts import ResourceContext
     from app.file_share.tests.local_file_transport import TemporaryFileTransport
-    from app.tools import mcp_loader
+    from app.services import mcp_loader
 
     destination = TemporaryFileTransport(tmp_path / "console")
     marker = destination.root_path() / "report.xlsx"

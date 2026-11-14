@@ -85,7 +85,7 @@ async def test_file_mutation_diagnostics_preserve_document_content_and_revision(
     from app.file_share.resource_contracts import ResourceContext
     from app.file_share import resource_service
     from app.file_share.resource_uri import ResourceRevisionConflict, ResourceValidationError
-    from app.tools.tool_errors import classify_tool_failure
+    from app.services.tool_errors import classify_tool_failure
 
     owner, peer = agents
     document = await create_document(owner_agent_id=owner.id, title="Editable report", content="<p>First</p><p>Second</p>", task_id=None)

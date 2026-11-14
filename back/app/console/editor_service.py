@@ -6,7 +6,7 @@ from app.connection.facade import get_connection, set_params_bulk, validate_para
 from app.connection.facade import get_params_as_dict
 from app.connection import Connection
 from app.agent import current_management_scope
-from app.tools import tool_service
+from app.services import service
 from sqlalchemy import select
 from core.database import get_db
 
@@ -20,11 +20,11 @@ _installer: EditorInstaller | None = None
 
 async def configured_external_editor_connections() -> list[int]:
     """Update only active Consoles whose administrator already configured an editor."""
-    tool = await tool_service.get_tool_record("console")
+    tool = await service.get_service_record("console")
     if tool is None:
         return []
     connections = (await get_db().scalars(select(Connection).where(
-        Connection.tool_id == tool.id, Connection.active.is_(True),
+        Connection.service_id == tool.id, Connection.active.is_(True),
     ).order_by(Connection.id))).all()
     identifiers: list[int] = []
     for connection in connections:
@@ -46,7 +46,7 @@ async def install_connection_editor(connection_id: int, upgrade: bool = False) -
     if connection is None:
         raise ValueError("Console connection unavailable")
     # Reject globally imposed parameters before changing anything remotely.
-    await validate_params(connection.tool_id, {"code_runtime_port": "8766", "code_runtime_token": "deployment-preflight"})
+    await validate_params(connection.service_id, {"code_runtime_port": "8766", "code_runtime_token": "deployment-preflight"})
     await get_db().commit()
     return await _installer(connection_id, upgrade)
 

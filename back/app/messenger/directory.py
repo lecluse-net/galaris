@@ -11,12 +11,12 @@ from typing import Iterable, Optional
 from app.messenger._observations import ObservedMessengerMessage, ObservedMessengerUser
 
 
-async def _identity_param_for(tool_id: int) -> str | None:
-    from app.tools import tool_service
+async def _identity_param_for(service_id: int) -> str | None:
+    from app.services import service
 
     from . import facade
 
-    tool = await tool_service.get_tool_by_id(tool_id)
+    tool = await service.get_service_by_id(service_id)
     if tool is None:
         return None
     kind = facade.kind_for_tool(tool)
@@ -31,18 +31,18 @@ async def _identity_param_for(tool_id: int) -> str | None:
 
 
 async def _agent_for(
-    tool_id: int,
+    service_id: int,
     platform_user_id: str,
     *,
     identity_param: str | None = None,
 ) -> Optional[int]:
     from app.connection import connection_service
 
-    param_name = identity_param or await _identity_param_for(tool_id)
+    param_name = identity_param or await _identity_param_for(service_id)
     if not param_name:
         return None
     agent_ids = await connection_service.find_agents_by_param(
-        tool_id=tool_id,
+        service_id=service_id,
         param_name=param_name,
         param_value=platform_user_id,
     )
@@ -51,12 +51,12 @@ async def _agent_for(
 
 
 async def resolve_agent_ids(
-    tool_id: int,
+    service_id: int,
     platform_user_ids: Iterable[str],
 ) -> dict[str, int]:
     """Resolve distinct remote account IDs to configured agents for one Tool."""
 
-    identity_param = await _identity_param_for(tool_id)
+    identity_param = await _identity_param_for(service_id)
     if not identity_param:
         return {}
     resolved: dict[str, int] = {}
@@ -64,7 +64,7 @@ async def resolve_agent_ids(
         if not platform_user_id:
             continue
         agent_id = await _agent_for(
-            tool_id,
+            service_id,
             platform_user_id,
             identity_param=identity_param,
         )
@@ -73,19 +73,19 @@ async def resolve_agent_ids(
     return resolved
 
 
-async def resolve_user(tool_id: int, platform_user_id: str) -> ObservedMessengerUser:
+async def resolve_user(service_id: int, platform_user_id: str) -> ObservedMessengerUser:
     """Build a canonical user enriched with an AI agent identity when available."""
-    agent_id = await _agent_for(tool_id, platform_user_id)
-    return ObservedMessengerUser(id=platform_user_id, agent_id=agent_id, tool_id=tool_id)
+    agent_id = await _agent_for(service_id, platform_user_id)
+    return ObservedMessengerUser(id=platform_user_id, agent_id=agent_id, service_id=service_id)
 
 
-async def enrich_ai_identity(tool_id: int, messages: Iterable[ObservedMessengerMessage]) -> None:
+async def enrich_ai_identity(service_id: int, messages: Iterable[ObservedMessengerMessage]) -> None:
     """Resolve and assign ``sender.agent_id`` on each message in place.
 
     Bridges only know native sender identifiers. This function maps them to configured agent
     connections and caches repeated identifiers for the current batch.
     """
-    identity_param = await _identity_param_for(tool_id)
+    identity_param = await _identity_param_for(service_id)
     cache: dict[str, Optional[int]] = {}
     for msg in messages:
         sender = msg.sender
@@ -93,7 +93,7 @@ async def enrich_ai_identity(tool_id: int, messages: Iterable[ObservedMessengerM
             continue
         if sender.id not in cache:
             cache[sender.id] = await _agent_for(
-                tool_id,
+                service_id,
                 sender.id,
                 identity_param=identity_param,
             )

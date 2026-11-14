@@ -4,8 +4,8 @@ Date : 23 octobre 2026. Statut : accepté.
 
 ## Contrat
 
-Le paramètre existant `tools.management_scope`, validé pour Skills, configure aussi
-`process_admin`, `tool_admin`, `goal_management`, `galaris_admin` et `agent_admin`.
+Le paramètre existant `services.management_scope`, validé pour Skills, configure aussi
+`process_admin`, `service_admin`, `goal_management`, `galaris_admin` et `agent_admin`.
 Il conserve son stockage EAV et le formulaire commun de connexion ; aucune colonne
 de politique ou seconde interface de délégation n'est ajoutée.
 
@@ -29,9 +29,9 @@ refus d'écriture agentique du paramètre existants restent applicables.
   nouvelle affectation. Les définitions sans agent et la synchronisation du catalogue
   des moteurs nécessitent `all`. Les états terminaux, contrôles et ACL ordinaires restent
   applicables. Les fichiers et vues de run utilisent la même délégation.
-- ToolAdmin : `personal` et `team` administrent les connexions des agents concernés.
+- ServiceAdmin : `personal` et `team` administrent les connexions des agents concernés.
   Les définitions partagées, paramètres globaux, permissions globales et inventaires
-  d'impact nécessitent `all`. La définition d'un Tool n'a pas de propriétaire agent.
+  d'impact nécessitent `all`. La définition d'un Service n'a pas de propriétaire agent.
   Les délégations administratives, services système et exécutions stdio gardent leurs
   protections. Les rafraîchissements bornés revérifient chaque cible.
 - Goal : la portée suit l'agent responsable, indépendamment du référent. Elle couvre
@@ -55,11 +55,11 @@ Les connexions administratives existantes sans paramètre doivent recevoir une p
 explicite via leur formulaire humain : leur activation ne vaut plus administration
 globale. La création initiale de l'assistant système configure explicitement `all`
 pour toutes ses connexions intégrées proposant ce paramètre : `galaris_admin`,
-`tool_admin`, `agent_admin`, `process_admin`, `goal_management`, `skills` et `chat`.
+`service_admin`, `agent_admin`, `process_admin`, `goal_management`, `skills` et `chat`.
 Ces connexions sont actives à sa création ; la synchronisation ordinaire
 ne réactive ni n'élargit les connexions existantes. Skills conserve sa migration propre.
 
-`app/tools/tests/test_management_scopes.py` couvre les refus, la séparation entre Tools,
+`app/services/tests/test_management_scopes.py` couvre les refus, la séparation entre Services,
 les lectures indirectes, la pagination et les révocations avec PostgreSQL réel.
 Les scénarios AgentAdmin administrent désormais une cible distincte : l'ancienne
 possibilité de se modifier soi-même est retirée, tandis que les garanties de transfert,

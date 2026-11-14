@@ -14,7 +14,7 @@ from app.connection.models import ConnectionParam
 from app.console.connection_service import is_embedded_executor_in_use, resolve_ssh_connection
 from app.file_share.browser import browser_context
 from app.file_share.resource_service import list_schemes
-from app.tools.models import Tool
+from app.services.models import Service
 from core.authorize.models import Assignment, Privilege, Role
 from core.database import get_db_session
 from core.user import UserModel
@@ -59,22 +59,22 @@ async def owners(db, count=2, driver="internal"):
 async def test_browser_discovery_does_not_scan_unrelated_tools(db):
     owner, peer = await owners(db)
     owner_id, peer_id = owner.id, peer.id
-    console = await db.scalar(select(Tool).where(Tool.code == "console"))
+    console = await db.scalar(select(Service).where(Service.code == "console"))
     # A peer's active Console must not become the selected Agent's local filesystem.
-    db.add(Connection(agent_id=peer_id, tool_id=console.id, active=True))
-    source = Tool(code="synthetic-console-files", label="Synthetic files",
+    db.add(Connection(agent_id=peer_id, service_id=console.id, active=True))
+    source = Service(code="synthetic-console-files", label="Synthetic files",
                   file_share_config={"service": "nextcloud", "base_url": "https://files.example.com"})
     db.add(source)
     await db.flush()
-    db.add(Connection(tool_id=source.id, agent_id=owner_id, active=True))
+    db.add(Connection(service_id=source.id, agent_id=owner_id, active=True))
     await db.commit()
     reports = []
     for start, stop in ((0, 1), (1, 41)):
-        tools = [Tool(code=f"synthetic-console-ordinary-{index}", label=f"Synthetic Tool {index}")
+        tools = [Service(code=f"synthetic-console-ordinary-{index}", label=f"Synthetic Service {index}")
                  for index in range(start, stop)]
         db.add_all(tools)
         await db.flush()
-        db.add_all([Connection(tool_id=tool.id, agent_id=owner_id, active=True) for tool in tools])
+        db.add_all([Connection(service_id=tool.id, agent_id=owner_id, active=True) for tool in tools])
         await db.commit()
         db.expunge_all()
         async with count_queries(db) as statements:
@@ -93,7 +93,7 @@ async def test_browser_discovery_does_not_scan_unrelated_tools(db):
 async def test_console_resolution_keeps_secrets_globals_errors_and_freshness(db):
     owner, peer = await owners(db)
     owner_id, peer_id = owner.id, peer.id
-    tool = await db.scalar(select(Tool).where(Tool.code == "console"))
+    tool = await db.scalar(select(Service).where(Service.code == "console"))
     encryption = get_encryption_service()
     tool.global_params = {
         "host": {"value": "forced.example.com", "forced": True},
@@ -101,7 +101,7 @@ async def test_console_resolution_keeps_secrets_globals_errors_and_freshness(db)
         "private_key": {"value": encryption.encrypt("synthetic-private-key"), "forced": False},
         "known_host_key": {"value": encryption.encrypt("synthetic-pinned-key"), "forced": False},
     }
-    connection = Connection(tool_id=tool.id, agent_id=owner_id, active=False)
+    connection = Connection(service_id=tool.id, agent_id=owner_id, active=False)
     db.add(connection)
     await db.flush()
     db.add_all([ConnectionParam(connection_id=connection.id, param_name="host", param_value="local.example.com"),
@@ -141,8 +141,8 @@ async def test_console_resolution_keeps_secrets_globals_errors_and_freshness(db)
 async def test_executor_availability_batches_agents_and_keeps_effective_host_rules(db, count):
     """Cover the former mocked driver/activation cases through real configuration reads."""
     agents = await owners(db, count=count, driver="hermes")
-    tool = await db.scalar(select(Tool).where(Tool.code == "console"))
-    connections = [Connection(agent_id=agent.id, tool_id=tool.id, active=True) for agent in agents]
+    tool = await db.scalar(select(Service).where(Service.code == "console"))
+    connections = [Connection(agent_id=agent.id, service_id=tool.id, active=True) for agent in agents]
     db.add_all(connections)
     await db.flush()
     db.add_all([ConnectionParam(connection_id=connection.id, param_name="host", param_value="ssh-executor")
@@ -171,7 +171,7 @@ async def test_executor_availability_batches_agents_and_keeps_effective_host_rul
     assert await is_embedded_executor_in_use() is False
     agent = await db.scalar(select(Agent).where(Agent.id == agent_ids[-1]).execution_options(include_historized=True))
     agent.restore()
-    tool = await db.scalar(select(Tool).where(Tool.code == "console"))
+    tool = await db.scalar(select(Service).where(Service.code == "console"))
     tool.global_params = {"host": {"value": "remote.example.com", "forced": True}}
     await db.commit()
     assert await is_embedded_executor_in_use() is False
@@ -210,8 +210,8 @@ async def test_console_discovery_http_permissions_scopes_and_reopening(client):
                   for index, user in enumerate(users)]
         db.add_all(agents)
         await db.flush()
-        tool = await db.scalar(select(Tool).where(Tool.code == "console"))
-        connection = Connection(agent_id=agents[0].id, tool_id=tool.id, active=True)
+        tool = await db.scalar(select(Service).where(Service.code == "console"))
+        connection = Connection(agent_id=agents[0].id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
         db.add_all([ConnectionParam(connection_id=connection.id, param_name=name, param_value=value)

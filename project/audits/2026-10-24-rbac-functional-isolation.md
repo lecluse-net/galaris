@@ -26,7 +26,7 @@ l'ouverture du contenu Topics sans droit Topics.
 
 Les vues Mémoire, Documents et Activité utilisent des métadonnées Agents minimales.
 Les Calendriers ont un parcours indépendant des paramètres Connexions. La configuration
-des connexions reçoit des schémas publics sans secrets globaux Tools. Les rubriques Lab
+des connexions reçoit des schémas publics sans secrets globaux Services. Les rubriques Lab
 n'appellent plus le banc Task à l'ouverture d'un autre mécanisme. Les pages attendent
 le chargement des droits avant de choisir leurs lectures ou de refuser l'accès.
 
@@ -67,7 +67,7 @@ figurent une fois ; il ne s'agit pas d'une preuve comportementale pour chaque ro
 | `app.process` | `PROCESS_ADMIN`, `PROCESS_CONFIG_ACCESS`, `PROCESS_CONFIG_EDIT`, `PROCESS_EDIT`, `PROCESS_LAUNCH`, `PROCESS_READ` |
 | `app.skill` | `SKILL_ACCESS`, `SKILL_ASSIGN`, `SKILL_EDIT` |
 | `app.task` | `TASK_ACCESS`, `TASK_CONFIG_ACCESS`, `TASK_CONFIG_EDIT`, `TASK_EDIT`, `TASK_PURGE` |
-| `app.tools` | `PERMISSION_ACCESS`, `PERMISSION_DECIDE`, `PERMISSION_REVOKE`, `TOOL_ACCESS`, `TOOL_EDIT` |
+| `app.services` | `PERMISSION_ACCESS`, `PERMISSION_DECIDE`, `PERMISSION_REVOKE`, `SERVICE_ACCESS`, `SERVICE_EDIT` |
 | `app.topic` | `TOPIC_ACCESS`, `TOPIC_EDIT` |
 | `app.voice` | `VOICE_CONFIG_ACCESS`, `VOICE_CONFIG_EDIT`, `VOICE_HISTORY_ACCESS`, `VOICE_HISTORY_CONTROL` |
 | `bridge.calendar` | `CALENDAR_ACCESS`, `CALENDAR_EDIT` |

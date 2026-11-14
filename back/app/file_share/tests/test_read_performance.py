@@ -12,7 +12,7 @@ from app.connection.models import Connection, ConnectionParam
 from app.file_share import indexing, resource_service
 from app.file_share.models import FileIndexRun, FileObservationRepair
 from app.file_share.resource_contracts import ResourceContext
-from app.tools.models import Tool
+from app.services.models import Service
 
 
 def save_report(name, report):
@@ -36,27 +36,27 @@ async def owners(db):
 async def test_source_discovery_batches_tools_and_observes_configuration_changes(db):
     owner, peer = await owners(db)
     owner_id, peer_id = owner.id, peer.id
-    source = Tool(code="synthetic-files", label="Synthetic files",
+    source = Service(code="synthetic-files", label="Synthetic files",
                   file_share_config={"service": "nextcloud", "base_url": "https://files.example.com"},
-                  global_params={"tools.fileindexing": {"value": "known_uris", "forced": True}})
-    hidden = Tool(code="synthetic-hidden", label="Synthetic hidden",
+                  global_params={"services.fileindexing": {"value": "known_uris", "forced": True}})
+    hidden = Service(code="synthetic-hidden", label="Synthetic hidden",
                   file_share_config={"service": "nextcloud", "base_url": "https://hidden.example.com"})
     db.add_all([source, hidden])
     await db.flush()
     source_id = source.id
-    connection = Connection(tool_id=source.id, agent_id=owner_id, active=True)
-    db.add_all([connection, Connection(tool_id=hidden.id, agent_id=peer_id, active=True),
-                Connection(tool_id=hidden.id, agent_id=owner_id, active=False)])
+    connection = Connection(service_id=source.id, agent_id=owner_id, active=True)
+    db.add_all([connection, Connection(service_id=hidden.id, agent_id=peer_id, active=True),
+                Connection(service_id=hidden.id, agent_id=owner_id, active=False)])
     await db.flush()
-    db.add(ConnectionParam(connection_id=connection.id, param_name="tools.fileindexing", param_value="recursive"))
+    db.add(ConnectionParam(connection_id=connection.id, param_name="services.fileindexing", param_value="recursive"))
     await db.commit()
     reports = []
     for start, stop in ((0, 1), (1, 41)):
-        ordinary = [Tool(code=f"synthetic-ordinary-{index}", label=f"Synthetic ordinary {index}")
+        ordinary = [Service(code=f"synthetic-ordinary-{index}", label=f"Synthetic ordinary {index}")
                     for index in range(start, stop)]
         db.add_all(ordinary)
         await db.flush()
-        db.add_all([Connection(tool_id=tool.id, agent_id=owner_id, active=True) for tool in ordinary])
+        db.add_all([Connection(service_id=tool.id, agent_id=owner_id, active=True) for tool in ordinary])
         await db.commit()
         db.expunge_all()
         connection_db = await db.connection()
@@ -80,8 +80,8 @@ async def test_source_discovery_batches_tools_and_observes_configuration_changes
         assert list(by_scheme) == sorted(by_scheme)
         reports.append({"ordinary_tools": stop, "queries": len(statements)})
 
-    source = await db.get(Tool, source_id)
-    source.global_params = {"tools.fileindexing": {"value": "known_uris", "forced": False}}
+    source = await db.get(Service, source_id)
+    source.global_params = {"services.fileindexing": {"value": "known_uris", "forced": False}}
     await db.commit()
     schemes = await resource_service.list_schemes(ResourceContext(agent_id=owner_id, runtime="internal"))
     assert next(scheme for scheme in schemes if scheme.scheme == "synthetic-files").file_indexing_mode == "recursive"

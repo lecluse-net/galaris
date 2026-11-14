@@ -10,7 +10,7 @@ from sqlalchemy import delete, select
 
 from app.agent import list_team_directory, list_team_members
 from app.agent.models import Agent, AgentTeam, Title
-from app.tools import mandatory_tools, mcp_loader
+from app.services import mandatory_services, mcp_loader
 from core.team import TeamModel, TeamUserModel
 from core.user import UserModel
 
@@ -166,21 +166,21 @@ async def test_long_directory_pages_survive_history_compaction_without_omissions
 async def test_real_mcp_directory_needs_no_admin_and_rechecks_revocation(inference_db, runtime):
     from app.connection import facade as connections
     from app.connection.models import Connection
-    from app.tools.models import Tool
+    from app.services.models import Service
     from core.user import user_service
 
     db = inference_db
     data = await directory(db)
-    await mandatory_tools.sync_integrated_tool_connections(data.caller.id)
-    connection = await db.scalar(select(Connection).join(Tool).where(
-        Connection.agent_id == data.caller.id, Tool.code == "galaris"))
+    await mandatory_services.sync_integrated_service_connections(data.caller.id)
+    connection = await db.scalar(select(Connection).join(Service).where(
+        Connection.agent_id == data.caller.id, Service.code == "galaris"))
     await db.commit()
     user_service.set_current_user(None)
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         data.caller.id, runtime=runtime, conversation_only=True)
     assert {"team_list", "team_members"} <= {item.name for item in definitions}
-    assert not any(item.tool_code == "agent_admin" for item in definitions)
-    server = mcp_loader.build_galaris_fastmcp(data.caller.id, runtime=runtime, enabled_tool_codes={"galaris"})
+    assert not any(item.service_code == "agent_admin" for item in definitions)
+    server = mcp_loader.build_galaris_fastmcp(data.caller.id, runtime=runtime, enabled_service_codes={"galaris"})
     async with Client(server) as client:
         tools = {tool.name: tool for tool in await client.list_tools()}
         for name in ("team_list", "team_members"):
@@ -208,7 +208,7 @@ async def test_real_mcp_directory_needs_no_admin_and_rechecks_revocation(inferen
         await db.commit()
         assert "team_members" in {tool.name for tool in await client.list_tools()}
         assert not (await client.call_tool("team_members", {"team_id": data.empty.id})).is_error
-        await connections.set_tool_function_state(connection.tool_id, "team_list", "disabled")
+        await connections.set_service_function_state(connection.service_id, "team_list", "disabled")
         await db.commit()
         assert "team_list" not in {tool.name for tool in await client.list_tools()}
         assert (await client.call_tool("team_list", {}, raise_on_error=False)).is_error

@@ -65,7 +65,7 @@ async def _baseline_durable_unread_state(
                SET sender_messenger_user_id = sender.id
               FROM messenger_users AS sender
              WHERE message.sender_messenger_user_id IS NULL
-               AND message.tool_id = sender.tool_id
+               AND message.service_id = sender.service_id
                AND NULLIF(message.metadata ->> 'sender_id', '') = sender.external_id
             """
         )

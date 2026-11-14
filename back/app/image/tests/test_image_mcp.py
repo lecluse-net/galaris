@@ -8,13 +8,13 @@ from pydantic import ValidationError
 from PIL import Image
 
 from app.llm import ImageDimensionsError
-from app.tools import RecoverableToolError
+from app.services import RecoverableToolError
 from fastmcp import FastMCP
 
 from app.file_share import MaterializedResource, ResourceContext
 from app.image import mcp as image_mcp
 from app.image.mcp import _as_attachment_refs
-from app.tools.mcp_loader import McpToolContext, add_galaris_tools
+from app.services.mcp_loader import McpToolContext, add_galaris_tools
 
 
 def test_generate_image_normalizes_attachment_references() -> None:
@@ -77,7 +77,7 @@ def test_generated_image_defaults_to_console_or_requires_a_destination() -> None
 @pytest.mark.asyncio
 async def test_generate_image_schema_accepts_flexible_optional_args() -> None:
     mcp = FastMCP("test")
-    add_galaris_tools(mcp, 1, runtime="internal", enabled_tool_codes={"image"})
+    add_galaris_tools(mcp, 1, runtime="internal", enabled_service_codes={"image"})
 
     tools = {tool.name: tool for tool in await mcp.list_tools()}
     schema = tools["image_generate"].parameters
@@ -377,10 +377,10 @@ async def test_native_generation_failure_never_writes_destination(monkeypatch):
 ])
 async def test_image_failure_is_an_mcp_error_without_artifact_effects(db, monkeypatch, runtime, failure):
     from fastmcp import Client, FastMCP
-    from app.tools import mcp_loader, resource_effects
+    from app.services import mcp_loader, resource_effects
     from app.agent.models import Agent, Title
     from app.connection.models import Connection, ConnectionFunctionState
-    from app.tools.models import Tool
+    from app.services.models import Service
     from sqlalchemy import select
     title = Title(label="Synthetic image approver", gender="X")
     db.add(title)
@@ -388,8 +388,8 @@ async def test_image_failure_is_an_mcp_error_without_artifact_effects(db, monkey
     agent = Agent(code=f"image-failure-{uuid4().hex}", first_name="Synthetic", last_name="Image", title_id=title.id)
     db.add(agent)
     await db.flush()
-    image_tool = await db.scalar(select(Tool).where(Tool.code == "image"))
-    connection = Connection(agent_id=agent.id, tool_id=image_tool.id, active=True)
+    image_tool = await db.scalar(select(Service).where(Service.code == "image"))
+    connection = Connection(agent_id=agent.id, service_id=image_tool.id, active=True)
     db.add(connection)
     await db.flush()
     db.add(ConnectionFunctionState(connection_id=connection.id, function_name="image_generate", state="enabled", enabled=True))
@@ -407,7 +407,7 @@ async def test_image_failure_is_an_mcp_error_without_artifact_effects(db, monkey
     monkeypatch.setattr(image_mcp, "_store_image", store)
     monkeypatch.setattr(resource_effects, "record_tool_resources", effects)
     definition = mcp_loader.McpToolDefinition(
-        tool_code="image", name="image_generate", description="Generate an image.",
+        service_code="image", name="image_generate", description="Generate an image.",
         required_capabilities=frozenset(), function=image_mcp.generate_image,
     )
     wrapper = mcp_loader._wrap_tool(definition, McpToolContext(agent_id=agent.id, runtime=runtime))

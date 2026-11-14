@@ -9,7 +9,7 @@ import pytest
 
 from app.lab.contracts import resolve_input
 from app.lab.objective_checks import check_output
-from app.tools.mcp_loader import load_mcp_tools
+from app.services.mcp_loader import load_mcp_tools
 from core.util import validate_schema
 from scripts.benchmark_operating_knowledge import aggregate, load_cases, case_checks, model_failure
 

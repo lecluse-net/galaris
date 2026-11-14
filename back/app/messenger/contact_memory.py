@@ -13,7 +13,7 @@ from sqlalchemy.sql.selectable import Subquery
 
 from app.connection import Connection
 from app.memory import MemoryItem, MessengerContactObservation, observe_messenger_contact
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.database import get_db
 
 from . import directory, facade
@@ -217,20 +217,20 @@ async def rebuild_messenger_contacts(
         # Contact projection can commit or recover from a rollback in this
         # contextual session. Keep scalar snapshots, never expirable ORM rows.
         connections = {
-            int(identity): (int(tool_id), int(agent_id))
-            for identity, tool_id, agent_id in (
-                await db.execute(select(Connection.id, Connection.tool_id, Connection.agent_id)
+            int(identity): (int(service_id), int(agent_id))
+            for identity, service_id, agent_id in (
+                await db.execute(select(Connection.id, Connection.service_id, Connection.agent_id)
                     .where(Connection.id.in_(connection_ids)))
             ).all()
         }
-        tool_ids = {
-            tool_id for tool_id, _agent_id in connections.values()
+        service_ids = {
+            service_id for service_id, _agent_id in connections.values()
         }
         tools = {
-            int(tool_id): _messaging_kind(config)
-            for tool_id, config in (
-                await db.execute(select(ToolModel.id, ToolModel.messenger_config)
-                    .where(ToolModel.id.in_(tool_ids)))
+            int(service_id): _messaging_kind(config)
+            for service_id, config in (
+                await db.execute(select(ServiceModel.id, ServiceModel.messenger_config)
+                    .where(ServiceModel.id.in_(service_ids)))
             ).all()
         }
 
@@ -241,13 +241,13 @@ async def rebuild_messenger_contacts(
             if connection is None or not user_id.strip() or len(user_id) > 512:
                 invalid_senders_skipped += 1
                 continue
-            tool_id, owner_agent_id = connection
-            messaging_id = tools.get(tool_id)
+            service_id, owner_agent_id = connection
+            messaging_id = tools.get(service_id)
             if messaging_id is None:
                 invalid_senders_skipped += 1
                 continue
             resolved_sender = await directory.resolve_user(
-                tool_id,
+                service_id,
                 user_id,
             )
             if resolved_sender.is_ai:
@@ -255,7 +255,7 @@ async def rebuild_messenger_contacts(
                 continue
             galaris_user_id = await db.scalar(
                 select(MessengerUser.galaris_user_id).where(
-                    MessengerUser.tool_id == tool_id,
+                    MessengerUser.service_id == service_id,
                     MessengerUser.external_id == user_id,
                 )
             )

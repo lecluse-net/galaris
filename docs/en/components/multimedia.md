@@ -2,9 +2,9 @@
 
 # Multimedia
 
-The optional Multimedia Tool provides `audio_read`, `video_read`, `sound_generate`,
+The optional Multimedia Service provides `audio_read`, `video_read`, `sound_generate`,
 `music_generate`, and `video_generate`. Speech transcription, Voice conversations,
-text and images retain their existing configuration and Tools.
+text and images retain their existing configuration and Services.
 
 ## Configuration
 
@@ -12,7 +12,7 @@ text and images retain their existing configuration and Tools.
 2. Add resources from the provider's capability catalog.
 3. Select resources in the **Multimedia** section of the agent's effective LLM profile.
 4. Check the agent's **Multimedia** connection, created automatically and active by default.
-   Saved deactivations are preserved; the Tool's conversation mode requires explicit enabling.
+   Saved deactivations are preserved; the Service's conversation mode requires explicit enabling.
    Functions without a compatible resource remain absent from the MCP catalog.
 
 An agent with a custom profile uses that profile exclusively. Empty fields do not fall back
@@ -37,7 +37,7 @@ authenticated provider polling controls their state.
 
 ## Agent workflow
 
-Analysis accepts a canonical file `uri` and a `prompt`. Files remain in their original Tool;
+Analysis accepts a canonical file `uri` and a `prompt`. Files remain in their original Service;
 temporary materialization is limited to 32 MiB and 20 minutes, validated by FFprobe.
 
 Generation accepts a `prompt` and a writable binary-file collection `destination` ending in `/`.

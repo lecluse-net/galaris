@@ -15,14 +15,14 @@ from app.skill import interface, skill_service, storage
 from app.skill.contracts import SkillPackageCreate, SkillRevisionConflict, SkillScope
 from app.skill.models import AgentSkill, Skill
 from app.skill.schemas import SkillCreate
-from app.tools.models import Tool
-from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+from app.services.models import Service
+from app.services.contracts import MANAGEMENT_SCOPE_PARAM
 from core.database import get_db
 
 
 async def set_scope(agent_id: int, scope: str) -> None:
     db = get_db()
-    connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent_id, Tool.code == 'skills'))
+    connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent_id, Service.code == 'skills'))
     row = await db.scalar(select(ConnectionParam).where(ConnectionParam.connection_id == connection.id,
         ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM))
     if row is None:
@@ -49,16 +49,16 @@ async def agents(db: AsyncSession, tmp_path: Path, monkeypatch: pytest.MonkeyPat
     result = [Agent(title_id=title.id, code=f"private-{suffix}", first_name="Synthetic",
                     last_name=suffix, agent_driver="internal") for suffix in ("a", "b", "admin")]
     db.add_all(result)
-    tool = await db.scalar(select(Tool).where(Tool.code.in_(("skill_management", "skills"))))
+    tool = await db.scalar(select(Service).where(Service.code.in_(("skill_management", "skills"))))
     if tool is None:
-        tool = Tool(code="skills", label="Skills")
+        tool = Service(code="skills", label="Skills")
         db.add(tool)
     else:
-        # Exercise the new boundary with the future identity of the same Tool.
+        # Exercise the new boundary with the future identity of the same Service.
         tool.code = "skills"
     await db.flush()
     for agent, scope in zip(result, ("personal", "personal", "all"), strict=True):
-        db.add(Connection(agent_id=agent.id, tool_id=tool.id, active=True))
+        db.add(Connection(agent_id=agent.id, service_id=tool.id, active=True))
     await db.commit()
     for agent, scope in zip(result, ('personal', 'personal', 'all'), strict=True):
         await set_scope(agent.id, scope)
@@ -235,7 +235,7 @@ async def test_team_scope_is_the_live_union_of_all_memberships_and_never_grants_
     from app.agent import AgentTeamModel
     from core.team import TeamModel
     from app.skill import mcp
-    from app.tools.mcp_loader import McpToolContext
+    from app.services.mcp_loader import McpToolContext
     from app.file_share.resource_contracts import ResourceContext
     from app.file_share.skill_provider import info, listing
     from app.file_share.resource_uri import parse_resource_uri
@@ -253,8 +253,8 @@ async def test_team_scope_is_the_live_union_of_all_memberships_and_never_grants_
         db.add(AgentTeamModel(agent_id=colleague.id, team_id=team.id))
     db.add(AgentTeamModel(agent_id=peer.id, team_id=teams[1].id))  # Overlap deduplicates.
     for colleague in colleagues[2:]:
-        tool = await db.scalar(select(Tool).where(Tool.code == 'skills'))
-        connection = Connection(agent_id=colleague.id, tool_id=tool.id, active=True)
+        tool = await db.scalar(select(Service).where(Service.code == 'skills'))
+        connection = Connection(agent_id=colleague.id, service_id=tool.id, active=True)
         db.add(connection)
     await db.commit()
     for colleague in colleagues[2:]:
@@ -322,10 +322,10 @@ async def test_team_scope_is_the_live_union_of_all_memberships_and_never_grants_
 @pytest.mark.asyncio
 async def test_connection_scope_is_local_and_cannot_be_written_through_agent_parameter_services(db, agents):
     from app.connection import connection_service
-    from app.tools import tool_service
-    from app.tools.schemas import ToolGlobalParamsUpdate, ToolGlobalParamUpdate
+    from app.services import service
+    from app.services.schemas import ServiceGlobalParamsUpdate, ServiceGlobalParamUpdate
     a, _, _ = agents
-    connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == a.id, Tool.code == 'skills'))
+    connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == a.id, Service.code == 'skills'))
     for call in (
         lambda: connection_service.set_param(connection.id, MANAGEMENT_SCOPE_PARAM, 'all'),
         lambda: connection_service.set_params_bulk(connection.id, {MANAGEMENT_SCOPE_PARAM: 'all'}),
@@ -335,11 +335,11 @@ async def test_connection_scope_is_local_and_cannot_be_written_through_agent_par
             await call()
     assert await interface.get_agent_scope(a.id) == SkillScope.PERSONAL
     with pytest.raises(ValueError, match='per connection'):
-        await tool_service.update_global_params(connection.tool_id,
-            ToolGlobalParamsUpdate(params={MANAGEMENT_SCOPE_PARAM: ToolGlobalParamUpdate(value='all')}))
+        await service.update_global_params(connection.service_id,
+            ServiceGlobalParamsUpdate(params={MANAGEMENT_SCOPE_PARAM: ServiceGlobalParamUpdate(value='all')}))
     # Even a historical or forged global value must never override a local scope.
-    record = await db.get(Tool, connection.tool_id)
+    record = await db.get(Service, connection.service_id)
     record.global_params = {MANAGEMENT_SCOPE_PARAM: {'value': 'all', 'forced': True}}
     await db.commit()
-    assert MANAGEMENT_SCOPE_PARAM not in (await tool_service.get_runtime_global_params(record.id))[0]
+    assert MANAGEMENT_SCOPE_PARAM not in (await service.get_runtime_global_params(record.id))[0]
     assert await interface.get_agent_scope(a.id) == SkillScope.PERSONAL

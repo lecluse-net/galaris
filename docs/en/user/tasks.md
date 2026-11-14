@@ -80,7 +80,7 @@ consistency. Separate deliverables that can be accepted and resumed individually
 even when they must run sequentially and share a progress log. A small mechanical batch does not
 by itself require a plan.
 
-In native Chat, placing `@task` anywhere in the message immediately creates a durable Task with the remaining text as its objective, without calling the conversational LLM. For the internal Galaris harness, `@plan` is also sufficient to create the Task and force its planning, without adding `@task`. These directives can be combined, in any order, with `@standard` and `@high`. `@approve` grants no agreement. Sensitive actions use [authorization requests](../admin/tool-administration.md). Chat retains the round and immediately publishes a deterministic confirmation in the room; the Task result will be published there when it terminates. The composer’s `@` button displays only the directives compatible with the selected Agent’s driver.
+In native Chat, placing `@task` anywhere in the message immediately creates a durable Task with the remaining text as its objective, without calling the conversational LLM. For the internal Galaris harness, `@plan` is also sufficient to create the Task and force its planning, without adding `@task`. These directives can be combined, in any order, with `@standard` and `@high`. `@approve` grants no agreement. Sensitive actions use [authorization requests](../admin/service-administration.md). Chat retains the round and immediately publishes a deterministic confirmation in the room; the Task result will be published there when it terminates. The composer’s `@` button displays only the directives compatible with the selected Agent’s driver.
 
 The result automatically returns to the discussion even if a tool or attachment failed. If the
 Agent already sent that exact result to this discussion, Galaris does not send it again. An
@@ -110,7 +110,7 @@ mentioned in the discussion; their access controls still apply.
 1. The request created on this screen becomes a durable Task.
 2. The Dispatcher selects the route, effort and work organization.
 3. Missing clarification can suspend the request; the planner prepares decomposable work.
-4. The driver executes the Agent with its authorized Tools.
+4. The driver executes the Agent with its authorized Services.
 5. Galaris records the trace and result, then resumes any parent Tasks.
 
 Text and voice conversations follow their own configured controller and executor. They do not go through the Task Dispatcher; when they need durable work, they explicitly create a linked Task.
@@ -173,7 +173,7 @@ after reconnection. Large previews are explicitly truncated and secret keys are 
 older activity records that did not contain these details remain incomplete.
 
 During long reasoning, intermediate saves are spaced out so execution can keep moving.
-Tool results, errors and block completions are still saved immediately; reopening the
+Service results, errors and block completions are still saved immediately; reopening the
 Task restores its latest saved activity.
 
 When scope or expected depth substantially changes the work, Galaris can ask a question
@@ -258,7 +258,7 @@ a message alerts you and Galaris reloads the stored rules.
 For web browsing, **Public sites allowed** is the initial choice in the Browser parameters for new installations,
 globally or for one agent: new public sites then stop triggering per-site network requests.
 Existing instances keep their behaviour; **Per-site approval** remains available. Localhost and private networks remain blocked by
-default; filters and explicit denials stay active. See [Browser administration](../admin/tool-administration.md).
+default; filters and explicit denials stay active. See [Browser administration](../admin/service-administration.md).
 
 To create and then extend a document, the agent can request creation approval and hand the
 continuation to a background Task using the same document. If writing is set to **Ask**, a
@@ -332,7 +332,7 @@ persisted costs remain complete.
 | Displayed status | Practical meaning |
 |---|---|
 | Creation / dispatch | the request is being routed |
-| Execution | the Agent is working or calling Tools |
+| Execution | the Agent is working or calling Services |
 | Plan | Galaris is creating or advancing through the steps |
 | Paused | the Task is waiting for a response, a child step, or a resume |
 | Success | the workflow ended without a declared error |
@@ -340,7 +340,7 @@ persisted costs remain complete.
 
 The **Text conversations** and **Phone Calls** tabs use their own statuses. “Up to date” means that all known messages have been processed; “Waiting” means that a new round can be claimed; “In progress” means that a controller is currently responding.
 
-Technical success does not guarantee that the content is perfect. For an important action, verify the deliverable, destination, and Tools called.
+Technical success does not guarantee that the content is perfect. For an important action, verify the deliverable, destination, and Services called.
 
 Pausing preserves work; resuming follows the available evidence. Explicit replacement waits
 for confirmed stops of the previous Task, its descendants and associated processes.
@@ -376,7 +376,7 @@ To:
 ## If the Result Is Unexpected
 
 - Verify that the correct Agent and room were used.
-- Open the Task details and check the Tools actually called.
+- Open the Task details and check the Services actually called.
 - Rephrase the exact target rather than adding “be careful.”
 - If the action may have side effects, request verification before repeating it.
 - Give the administrator the Task identifier visible in the interface; it allows the traces to be found without sharing your secrets.

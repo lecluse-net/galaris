@@ -1,19 +1,19 @@
-# 0182 — Capacité REST des Tools et connexions
+# 0182 — Capacité REST des Services et connexions
 
 - Date : 2026-10-14.
 - Statut : accepté.
 
-La demande utilisateur ajoute une capacité REST facultative aux Tools, indépendante de MCP.
+La demande utilisateur ajoute une capacité REST facultative aux Services, indépendante de MCP.
 `rest_config` porte l'adresse de base HTTP(S), éventuellement référencée par un paramètre
 de connexion, les noms des paramètres d'authentification et d'en-têtes, un timeout et une
 limite de réponse. L'interface expose **Activer API**. Aucun secret littéral ne fait partie
 de ce contrat : les paramètres globaux et les connexions conservent leur héritage,
 chiffrement, masquage et protection de l'administration des destinations.
 
-`app.tools.execute_rest_request` et son export par `app.tools.facade` sont la surface
-publique asynchrone. L'appel désigne l'agent exécutant, le Tool et une requête typée
+`app.services.execute_rest_request` et son export par `app.services.facade` sont la surface
+publique asynchrone. L'appel désigne l'agent exécutant, le Service et une requête typée
 (méthode, chemin relatif, paramètres, en-têtes et corps JSON ou texte). La connexion est
-résolue côté serveur et doit être active et appartenir à cet agent et à ce Tool.
+résolue côté serveur et doit être active et appartenir à cet agent et à ce Service.
 La réponse conserve statut HTTP, en-têtes et corps JSON ou texte ; les secrets connus
 réfléchis par le serveur sont masqués. Un statut HTTP d'erreur est une réponse exploitable.
 

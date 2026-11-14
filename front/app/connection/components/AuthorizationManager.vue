@@ -28,7 +28,7 @@
         />
       </div>
       <div class="col-12 col-md-3">
-        <ToolFilterSelect
+        <ServiceFilterSelect
           v-model="filterTool"
           :tools="tools"
           :label="$t('connection.filterTool')"
@@ -62,11 +62,11 @@
           <template #option="scope">
             <q-item v-bind="scope.itemProps">
               <q-item-section>{{ scope.opt.label }}</q-item-section>
-              <q-item-section side><ToolOriginBadge :tool="scope.opt.tool" /></q-item-section>
+              <q-item-section side><ServiceOriginBadge :tool="scope.opt.tool" /></q-item-section>
             </q-item>
           </template>
           <template #selected-item="scope">
-            <span>{{ scope.opt.label }} <ToolOriginBadge :tool="scope.opt.tool" class="q-ml-sm" /></span>
+            <span>{{ scope.opt.label }} <ServiceOriginBadge :tool="scope.opt.tool" class="q-ml-sm" /></span>
           </template>
         </q-select>
       </div>
@@ -124,7 +124,7 @@
 
     <!-- Row 3: connection functions and actions -->
     <template v-if="selectedConnectionId !== null">
-      <p v-if="systemConnection"><SystemToolIcon /> {{ $t('tools.systemServiceHint') }}</p>
+      <p v-if="systemConnection"><SystemServiceIcon /> {{ $t('services.systemServiceHint') }}</p>
       <div class="row items-center q-mb-xs justify-between authorization-function-toolbar">
         <q-input
           v-model="search"
@@ -292,9 +292,9 @@ import { ref, computed, onActivated, onMounted, onUnmounted, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { toolMessageKey } from '@/app/tools/presentation'
+import { toolMessageKey } from '@/app/services/presentation'
 import { AgentSelect, getAgentSelection } from '@/app/agent'
-import { SystemToolIcon, ToolFilterSelect, ToolOriginBadge } from '@/app/tools'
+import { SystemServiceIcon, ServiceFilterSelect, ServiceOriginBadge } from '@/app/services'
 import connectionService, {
   saveFunctionPolicy,
   waitForFunctionPolicyWrites,
@@ -311,7 +311,7 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import FunctionPolicyToggle from './FunctionPolicyToggle.vue'
 
 const SESSION_FILTER_AGENT_KEY = 'authorization_filter_agent_id'
-const SESSION_FILTER_TOOL_KEY = 'authorization_filter_tool_id'
+const SESSION_FILTER_TOOL_KEY = 'authorization_filter_service_id'
 const SESSION_FILTER_STATE_KEY = 'authorization_filter_state'
 const CONNECTION_PAGE_SIZE = 500
 
@@ -320,9 +320,9 @@ type FilterState = 'active' | 'inactive' | 'ask' | 'all'
 const $q = useQuasar()
 const { t } = useI18n()
 const agents = ref<{ id: number; first_name: string; last_name: string }[]>([])
-const tools = computed(() => [...new Map(connections.value.map(connection => [connection.tool_id, {
-  id: connection.tool_id, code: connection.tool_code, label: connection.tool_label,
-  can_edit: connection.tool_can_edit, can_disable: connection.tool_can_disable,
+const tools = computed(() => [...new Map(connections.value.map(connection => [connection.service_id, {
+  id: connection.service_id, code: connection.service_code, label: connection.service_label,
+  can_edit: connection.service_can_edit, can_disable: connection.service_can_disable,
 }])).values()])
 async function loadAgents(): Promise<void> {
   try {
@@ -346,7 +346,7 @@ const selectedConnectionId = ref<number | null>(null)
 const connections = ref<PermissionConnectionOption[]>([])
 const systemConnection = computed(() => {
   const connection = connections.value.find(item => item.id === selectedConnectionId.value)
-  return tools.value.find(tool => tool.id === connection?.tool_id)?.can_disable === false
+  return tools.value.find(tool => tool.id === connection?.service_id)?.can_disable === false
 })
 const connectionsLoading = ref(true)
 const connectionsError = ref<string | null>(null)
@@ -400,17 +400,17 @@ function getToolLabel(toolId: number): string {
 
 // Only active connections can expose MCP functions and therefore be selected.
 const activeConnections = computed(() => connections.value.filter(connection =>
-  connection.active && tools.value.some(tool => tool.id === connection.tool_id)))
+  connection.active && tools.value.some(tool => tool.id === connection.service_id)))
 const hasConnectionFilters = computed(() => filterAgent.value !== null || filterTool.value !== null)
 
 const connectionOptions = computed(() =>
   activeConnections.value
     .filter(c => filterAgent.value === null || c.agent_id === filterAgent.value)
-    .filter(c => filterTool.value === null || c.tool_id === filterTool.value)
+    .filter(c => filterTool.value === null || c.service_id === filterTool.value)
     .map(c => ({
-      label: `${getAgentName(c.agent_id)} — ${getToolLabel(c.tool_id)}`,
+      label: `${getAgentName(c.agent_id)} — ${getToolLabel(c.service_id)}`,
       value: c.id,
-      tool: tools.value.find(tool => tool.id === c.tool_id),
+      tool: tools.value.find(tool => tool.id === c.service_id),
     }))
 )
 
@@ -504,7 +504,7 @@ async function loadFunctions(): Promise<void> {
   functions.value = []
   try {
     const connection = connections.value.find(item => item.id === connectionId)
-    if (connection) await waitForFunctionPolicyWrites(connection.tool_id)
+    if (connection) await waitForFunctionPolicyWrites(connection.service_id)
     if (disposed || requestId !== functionRequestId || selectedConnectionId.value !== connectionId) return
     const { data } = await connectionService.getConnectionFunctions(connectionId)
     if (disposed || requestId !== functionRequestId || selectedConnectionId.value !== connectionId) return

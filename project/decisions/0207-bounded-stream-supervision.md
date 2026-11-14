@@ -32,7 +32,7 @@ terminal persistence. Partial writes check and lock the running call before upda
 they never modify a terminal call. Terminal trace persistence remains authoritative.
 
 WebSocket `llm_call.progress` carries changing metadata and versioned text/reasoning
-appends or replacements, without prompts, request histories or raw responses. Tool
+appends or replacements, without prompts, request histories or raw responses. Service
 snapshots are sent only when changed. Create and terminal `update` events retain their
 full contracts. Every emission retains resource authorization, using an existence query
 instead of loading the full trace. Clients apply deltas only to the exact base revision,

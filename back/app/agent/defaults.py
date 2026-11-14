@@ -66,7 +66,7 @@ async def _after_merge(session: AsyncSession, result: DbAdminDatasetResult) -> N
     if not result.inserted:
         return
     from app.skill import initialize_galaris_agent_skills
-    from app.tools import initialize_admin_agent_connections
+    from app.services import initialize_admin_agent_connections
 
     stored_id = (await session.scalars(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID))).one()
     assert stored_id is not None

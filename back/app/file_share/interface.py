@@ -8,15 +8,15 @@ ResourceTransportFactory = Callable[[int], FileTransport]
 _resource_transports: dict[str, ResourceTransportFactory] = {}
 
 
-def register_resource_transport(tool_code: str, factory: ResourceTransportFactory) -> None:
-    _resource_transports[tool_code] = factory
+def register_resource_transport(service_code: str, factory: ResourceTransportFactory) -> None:
+    _resource_transports[service_code] = factory
 
 
-def connected_resource_transport(tool_code: str, agent_id: int) -> FileTransport | None:
+def connected_resource_transport(service_code: str, agent_id: int) -> FileTransport | None:
     """Call only after the caller has verified this agent's active connection."""
-    factory = _resource_transports.get(tool_code)
+    factory = _resource_transports.get(service_code)
     return factory(agent_id) if factory else None
 
 
-def resource_transport_factory(tool_code: str) -> ResourceTransportFactory | None:
-    return _resource_transports.get(tool_code)
+def resource_transport_factory(service_code: str) -> ResourceTransportFactory | None:
+    return _resource_transports.get(service_code)

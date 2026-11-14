@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import {
   processService,
   type AgentOption,
-  type ToolProcessDefinition,
+  type ServiceProcessDefinition,
   type ProcessAnalysis,
   type ProcessDefinition,
   type ProcessDefinitionCreate,
@@ -27,7 +27,7 @@ interface ProcessState {
   runsWorkflowId: string | null
   loadingRuns: boolean
   agents: AgentOption[]
-  discovered: ToolProcessDefinition[]
+  discovered: ServiceProcessDefinition[]
   currentRun: ProcessRun | null
   currentAnalysis: ProcessAnalysis | null
   health: ProcessEngineHealth | null

@@ -15,7 +15,7 @@ from app.code import CodeConnection, WorkspaceTarget
 from app.code.models import CodeGrant, CodeSession, CodeWorkspace
 from app.console import RepositoryTarget, SshConnectionConfig, connection_generation
 from app.connection import Connection
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.authorize import Assignment, Privilege, Role, RolePrivilege
 from core.user import UserModel
 
@@ -48,10 +48,10 @@ async def repository_scope(db, monkeypatch):
     agent = Agent(title_id=title.id, user_id=users[0].id, first_name="Synthetic", last_name="Developer",
                   code=f"code-{uuid4().hex[:12]}", agent_driver="internal")
     db.add(agent)
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "console"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "console"))
     assert tool is not None
     await db.flush()
-    connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
+    connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
     db.add(connection)
     privilege = await db.scalar(select(Privilege).where(Privilege.code == "CODE_ACCESS"))
     assert privilege is not None
@@ -120,9 +120,9 @@ async def test_chat_repository_discovery_and_opening_check_room_and_console_righ
     from core.user.refresh_session_service import create_refresh_session, family_for_token
 
     users, agent, _, target, runtime = repository_scope
-    chat_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+    chat_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
     assert chat_tool is not None
-    db.add(Connection(agent_id=agent.id, tool_id=chat_tool.id, active=True))
+    db.add(Connection(agent_id=agent.id, service_id=chat_tool.id, active=True))
     await db.flush()
     room = await create_internal_room(actor_user_id=users[0].id, agent_id=agent.id)
     assert room is not None
@@ -438,12 +438,12 @@ async def test_linked_live_task_presents_before_completion_and_superseded_round_
     from app.code.models import CodeDisplayRequest
     from app.messenger import create_internal_room
     from app.task import Task, TaskStatus
-    from app.tools import McpToolContext
+    from app.services import McpToolContext
 
     _, agent, _, _, _ = repository_scope
     for code in ("chat", "conversation"):
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == code))
-        db.add(Connection(agent_id=agent.id, tool_id=tool.id, active=True))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == code))
+        db.add(Connection(agent_id=agent.id, service_id=tool.id, active=True))
     await db.flush()
     room = await create_internal_room(actor_user_id=agent.user_id, agent_id=agent.id)
     origin = ConversationRound(room_id=room.id, requester_user_id=agent.user_id,
@@ -831,7 +831,7 @@ async def test_editor_update_reports_failures_without_secrets_and_continues_othe
     db.add(other)
     await db.flush()
     first = await db.get(Connection, config.connection_id)
-    second = Connection(agent_id=other.id, tool_id=first.tool_id, active=True)
+    second = Connection(agent_id=other.id, service_id=first.service_id, active=True)
     db.add(second)
     await db.flush()
     identifiers = [first.id, second.id]

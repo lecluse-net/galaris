@@ -47,5 +47,5 @@ donc pas produire une élévation de privilèges lors de la mise à niveau.
 ## Preuves dans le code
 
 `back/app/process/mcp.py`, `back/app/process/process_service.py`,
-`back/app/tools/mandatory_tools.py`, les prompts des drivers, le skill système `galaris` et les
-tests `back/app/process/tests/test_mcp.py` et `back/app/tools/tests/test_mandatory_tools.py`.
+`back/app/services/mandatory_services.py`, les prompts des drivers, le skill système `galaris` et les
+tests `back/app/process/tests/test_mcp.py` et `back/app/services/tests/test_mandatory_services.py`.

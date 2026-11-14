@@ -8,8 +8,8 @@ from uuid import uuid4
 import pytest
 
 from app.process import mcp
-from app.tools.mcp_loader import McpToolContext
-from app.tools.facade import AdministrationScope
+from app.services.mcp_loader import McpToolContext
+from app.services.facade import AdministrationScope
 
 
 @asynccontextmanager
@@ -106,7 +106,7 @@ async def test_process_admin_can_create_update_and_delete_for_another_agent(
         id=8,
         code=None,
         agent_id=77,
-        tool_id=tool.id,
+        service_id=tool.id,
         engine_process_id="invoice-workflow",
         label="Record invoice",
         description="Initial",
@@ -151,7 +151,7 @@ async def test_process_admin_can_create_update_and_delete_for_another_agent(
 
     create_data = create_definition.await_args.args[0]
     assert create_data.agent_id == 77
-    assert create_data.tool_id == tool.id
+    assert create_data.service_id == tool.id
     assert create_data.engine_process_id == "invoice-workflow"
     update_data = update_definition.await_args.args[1]
     assert update_data.model_dump(exclude_unset=True) == {
@@ -160,7 +160,7 @@ async def test_process_admin_can_create_update_and_delete_for_another_agent(
         "description": None,
     }
     assert created["agent_id"] == 77
-    assert created["tool_code"] == "n8n"
+    assert created["service_code"] == "n8n"
     assert updated["agent_id"] == 77
     assert deleted == {"process_id": 8, "deleted": True}
     delete_definition.assert_awaited_once_with(8)

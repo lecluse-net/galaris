@@ -14,7 +14,7 @@ from app.connection.models import Connection
 from app.messenger import answer_internal_interaction, read_internal_interaction
 from app.messenger.models import Interaction
 from app.chat.provider import InternalMessenger
-from app.tools.models import Tool
+from app.services.models import Service
 from core.authorize import Assignment, Privilege, Role, RolePrivilege
 from core.user.models import User
 from core.database import get_db_session
@@ -35,9 +35,9 @@ async def _setup_mail_chat(db, monkeypatch):
     connection_id, agent_id = await _persist_connection(db, user_id=approver.id)
     agent = await db.get(Agent, agent_id)
     agent.user_id = approver.id
-    tool = await db.scalar(select(Tool).where(Tool.code == "chat"))
+    tool = await db.scalar(select(Service).where(Service.code == "chat"))
     assert tool is not None
-    db.add(Connection(agent_id=agent_id, tool_id=tool.id, active=True))
+    db.add(Connection(agent_id=agent_id, service_id=tool.id, active=True))
     grants = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["MAIL_EDIT", "PERMISSION_DECIDE"]))))
     assert len(grants) == 2
     role = Role(code="mail-reviewer-test", display_name="Mail reviewer")
@@ -264,7 +264,7 @@ async def test_mail_request_uses_a_visible_room_private_to_its_approver(db, mail
         membership.archived = True
     else:
         connection = await db.get(Connection, room.connection_id)
-        identity = MessengerUser(tool_id=connection.tool_id, external_id=f"user:{outsider.id}",
+        identity = MessengerUser(service_id=connection.service_id, external_id=f"user:{outsider.id}",
                                  galaris_user_id=outsider.id, is_ai=False)
         db.add(identity)
         await db.flush()

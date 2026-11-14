@@ -37,7 +37,7 @@ and complete ordinary rows. Locators still address the canonical block and revis
 The semantic index generation is incremented to rebuild existing passages.
 
 Dataset owns its JSON, query engine and rebuildable embedding generations. It consumes the
-public `app.llm` embedding handle; its MCP read operation uses `app.tools` registration and
+public `app.llm` embedding handle; its MCP read operation uses `app.services` registration and
 the existing File Sharing connection. These consumers justify the two added declared
 dependencies. No Document, personal memory or Process is created for Dataset retrieval.
 

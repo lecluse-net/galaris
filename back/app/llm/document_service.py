@@ -9,7 +9,7 @@ from sqlalchemy import and_, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.file_share import ResourceContext, prepared_resource, resource_info
-from app.tools.facade import AuthorizationClosed, authorized_request, claim_deferred_dispatch, finish_action, register_deferred_dispatch
+from app.services.facade import AuthorizationClosed, authorized_request, claim_deferred_dispatch, finish_action, register_deferred_dispatch
 from core.database import get_db
 from core.user import get_current_user_id
 from .document_analysis import advance_step, cancel_step, prepare_input

@@ -6,7 +6,7 @@ from pydantic import Field
 
 from app.agent import get_agent_task_blockers
 from app.agent.facade import delegated_admin
-from app.tools import McpToolContext, mcp_tool
+from app.services import McpToolContext, mcp_tool
 from . import service, supervision
 from .contracts import HarnessAction
 from .facade import get_admin_harness

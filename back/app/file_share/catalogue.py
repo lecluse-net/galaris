@@ -16,8 +16,8 @@ from sqlalchemy.sql.selectable import CTE
 
 from app.connection import Connection, ConnectionParam
 from app.connection.facade import effective_param_value_expression
-from app.tools import ToolModel
-from app.tools.contracts import FILE_INDEXING_PARAM, FileIndexingMode
+from app.services import ServiceModel
+from app.services.contracts import FILE_INDEXING_PARAM, FileIndexingMode
 from app.memory import project_catalogue_entry, link_catalogue_entries, catalogue_projection_write, detach_catalogue_parent_links
 from app.memory import update_catalogue_file_locations, associate_memory_url, forget_resource_memories, MemoryURL, MemoryItem
 from core.database import get_db
@@ -30,14 +30,14 @@ from .resource_uri import PROTOCOL_SCHEMES, NATIVE_RESOURCE_SCHEMES, parse_resou
 
 
 def indexing_mode_expression() -> ColumnElement[str | None]:
-    return func.coalesce(effective_param_value_expression(ToolModel.global_params, ToolModel.connection_schema,
+    return func.coalesce(effective_param_value_expression(ServiceModel.global_params, ServiceModel.connection_schema,
                                            Connection.id, FILE_INDEXING_PARAM), literal("known_uris"))
 
 
-async def effective_file_indexing_mode(agent_id: int, tool_code: str) -> FileIndexingMode:
+async def effective_file_indexing_mode(agent_id: int, service_code: str) -> FileIndexingMode:
     value = await get_db().scalar(select(indexing_mode_expression()).select_from(Connection).join(
-        ToolModel, ToolModel.id == Connection.tool_id,
-    ).where(Connection.agent_id == agent_id, Connection.active.is_(True), ToolModel.code == tool_code))
+        ServiceModel, ServiceModel.id == Connection.service_id,
+    ).where(Connection.agent_id == agent_id, Connection.active.is_(True), ServiceModel.code == service_code))
     return cast(FileIndexingMode, value) if value in {"known_uris", "recursive"} else "excluded"
 
 
@@ -48,8 +48,8 @@ def binding_stamp() -> ColumnElement[str]:
         ConnectionParam.connection_id == Connection.id,
     ).correlate(Connection).scalar_subquery()
     snapshot = func.jsonb_build_array(
-        ToolModel.file_share_config, ToolModel.global_params,
-        ToolModel.connection_schema, ToolModel.mcp_config, params,
+        ServiceModel.file_share_config, ServiceModel.global_params,
+        ServiceModel.connection_schema, ServiceModel.mcp_config, params,
     ).cast(Text)
     return func.encode(func.sha256(func.convert_to(snapshot, "UTF8")), "hex")
 
@@ -70,7 +70,7 @@ def _catalogue_bindings() -> CTE:
     # Reuse the immutable SQL expression, never a result or authorization value.
     # Independent ACLs can then share one named, top-level materialized CTE.
     return select(Connection.id, Connection.agent_id, binding_stamp().label("stamp")).join(
-        ToolModel, ToolModel.id == Connection.tool_id,
+        ServiceModel, ServiceModel.id == Connection.service_id,
     ).where(Connection.active.is_(True), indexing_mode_expression().in_(("known_uris", "recursive"))).cte(
         "file_catalogue_bindings",
     ).prefix_with("MATERIALIZED", dialect="postgresql")
@@ -110,11 +110,11 @@ async def observation_scope(ctx: ResourceContext, uri: object) -> ObservationSco
     if reference.scheme in PROTOCOL_SCHEMES or reference.scheme in NATIVE_RESOURCE_SCHEMES - {"console"} or reference.scheme == "mail":
         return None
     db = get_db()
-    rows = (await db.execute(select(Connection.id, binding_stamp(), ToolModel.file_share_config,
+    rows = (await db.execute(select(Connection.id, binding_stamp(), ServiceModel.file_share_config,
                                   indexing_mode_expression()).join(
-        ToolModel, ToolModel.id == Connection.tool_id,
+        ServiceModel, ServiceModel.id == Connection.service_id,
     ).where(Connection.agent_id == ctx.agent_id, Connection.active.is_(True),
-            ToolModel.code == reference.scheme))).all()
+            ServiceModel.code == reference.scheme))).all()
     # A provider-wide URI cannot choose an indexing policy between multiple accounts.
     # Mail resources remain excluded from the file catalogue.
     if len(rows) != 1:
@@ -152,7 +152,7 @@ async def lock_observation_scopes(scopes: list[ObservationScope]) -> None:
 
 async def current_binding(scope: ObservationScope) -> bool:
     stamp = await get_db().scalar(select(binding_stamp()).select_from(Connection).join(
-        ToolModel, ToolModel.id == Connection.tool_id,
+        ServiceModel, ServiceModel.id == Connection.service_id,
     ).where(Connection.id == scope.connection_id, Connection.agent_id == scope.agent_id,
             Connection.active.is_(True), indexing_mode_expression().in_(("known_uris", "recursive"))))
     return stamp == scope.stamp
@@ -163,17 +163,17 @@ async def _catalogue_title(entry: FileCatalogEntry, descriptor: ResourceDescript
     if descriptor.is_collection and not reference.locator:
         # Resolve the source label at ingestion. Graphs and other Memory readers
         # consume the persisted title and never need to know about Tools.
-        label = await get_db().scalar(select(ToolModel.label).join(
-            Connection, Connection.tool_id == ToolModel.id,
-        ).where(Connection.id == entry.connection_id, ToolModel.code == reference.scheme)
-            .with_for_update(read=True, of=ToolModel))
+        label = await get_db().scalar(select(ServiceModel.label).join(
+            Connection, Connection.service_id == ServiceModel.id,
+        ).where(Connection.id == entry.connection_id, ServiceModel.code == reference.scheme)
+            .with_for_update(read=True, of=ServiceModel))
         return label.strip() if label and label.strip() not in {".", "/"} else f"{reference.scheme}://"
     if descriptor.is_collection and descriptor.name.strip() in {"", ".", "/"}:
         return reference.decoded_locator.rstrip("/").rsplit("/", 1)[-1] or str(reference)
     return descriptor.name or entry.uri
 
 
-async def reconcile_catalogue_root_titles(*, tool_id: int | None = None) -> None:
+async def reconcile_catalogue_root_titles(*, service_id: int | None = None) -> None:
     """Repair stored root labels locally, preserving notes, custom titles and history."""
     db = get_db()
     cursor: UUID | None = None
@@ -184,9 +184,9 @@ async def reconcile_catalogue_root_titles(*, tool_id: int | None = None) -> None
                 FileCatalogEntry.memory_url_id.is_not(None),
                 FileCatalogEntry.present.is_(True),
             )
-            if tool_id is not None:
+            if service_id is not None:
                 query = query.where(FileCatalogEntry.connection_id.in_(
-                    select(Connection.id).where(Connection.tool_id == tool_id),
+                    select(Connection.id).where(Connection.service_id == service_id),
                 ))
             if cursor is not None:
                 query = query.where(FileCatalogEntry.id > cursor)
@@ -455,7 +455,7 @@ async def catalogue_source_readable(item_id: UUID, agent_id: int) -> bool:
     db = get_db()
     entries = await db.scalars(select(FileCatalogEntry).join(
         Connection, Connection.id == FileCatalogEntry.connection_id,
-    ).join(ToolModel, ToolModel.id == Connection.tool_id).where(
+    ).join(ServiceModel, ServiceModel.id == Connection.service_id).where(
         FileCatalogEntry.memory_node_id == item_id, FileCatalogEntry.agent_id == agent_id,
         FileCatalogEntry.present.is_(True), live_catalogue_binding(),
     ))
@@ -487,9 +487,9 @@ async def catalogue_sources_readable(item_ids: Sequence[UUID], agent_id: int) ->
     from .resource_service import resource_info
     from .resource_observation import suspend_observations
 
-    rows = list((await get_db().execute(select(FileCatalogEntry, ToolModel.messenger_config).join(
+    rows = list((await get_db().execute(select(FileCatalogEntry, ServiceModel.messenger_config).join(
         Connection, Connection.id == FileCatalogEntry.connection_id,
-    ).join(ToolModel, ToolModel.id == Connection.tool_id).where(
+    ).join(ServiceModel, ServiceModel.id == Connection.service_id).where(
         FileCatalogEntry.memory_node_id.in_(item_ids), FileCatalogEntry.agent_id == agent_id,
         FileCatalogEntry.present.is_(True), live_catalogue_binding(),
     ))).all())

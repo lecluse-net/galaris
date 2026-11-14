@@ -12,7 +12,7 @@ from pydantic_ai.tools import ToolDefinition
 from app.harness import runtime
 from app.harness.runtime import Agent
 from app.llm import LLM
-from app.tools.tool_search_service import ToolSearchHit, ToolSearchResult
+from app.services.tool_search_service import ToolSearchHit, ToolSearchResult
 
 
 def _llm() -> LLM:

@@ -91,7 +91,7 @@ async def _room_models(room_ids: list[UUID]) -> list[Room]:
 async def synchronize_rooms(
     *,
     connection_id: int,
-    tool_id: int,
+    service_id: int,
     rooms: list[ObservedMessengerRoom],
     authoritative: bool = False,
 ) -> list[Room]:
@@ -114,7 +114,7 @@ async def synchronize_rooms(
                 continue
             member_ids.append(
                 await resolve_observed_user(
-                    tool_id=tool_id,
+                    service_id=service_id,
                     user=user,
                 )
             )

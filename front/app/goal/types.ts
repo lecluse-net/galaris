@@ -62,7 +62,7 @@ export type GoalReferrerInput = {
 
 export interface MessengerReferrerOption {
   connection_id: number
-  tool_id: number
+  service_id: number
   platform: string
   user_id: string
   display_name: string

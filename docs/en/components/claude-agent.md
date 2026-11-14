@@ -26,12 +26,12 @@ outside the `data` volume, has no Linux capabilities, and has process, CPU, and 
 The transport remains compatible with an ordinary Chat Completions server. For this provider,
 Galaris additionally enables two named and versioned SSE events:
 
-- `galaris.agent-message/v1` carries completed Tool calls and public reasoning blocks normalized
+- `galaris.agent-message/v1` carries completed Service calls and public reasoning blocks normalized
   as `AIMessage`;
 - `galaris.agent-result/v1` carries the authoritative final response, usage, cost, SDK session,
   terminal status, and permission denials for the single `ExecutionResult`.
 
-Text deltas remain standard OpenAI chunks and may contain provisional progress before a Tool call.
+Text deltas remain standard OpenAI chunks and may contain provisional progress before a Service call.
 At close, `ResultMessage.result` replaces that text in the durable result; the UI therefore receives
 live progress followed by the exact final response. In parallel, calls to the Anthropic gateway
 populate `LLMCall` records correlated with the `run_id` throughout execution. At termination, the
@@ -42,7 +42,7 @@ cannot hide an exact provider cost or a pricing estimate explicitly qualified by
 The SDK uses `permission_mode="default"`; its permission callback checks Galaris authorization
 for the exact action. A refusal prevents the effect; the runtime cannot simulate human approval.
 Remembered action-type grants remain bound to the agent, harness and configuration, with a
-single-action check before each effect. Turn and Tool counts follow the limits frozen in
+single-action check before each effect. Turn and Service counts follow the limits frozen in
 `AgentRunEnvelopeV1`.
 
 `start`, `restart`, and `update` build or recreate the image pinned by `requirements.txt`.

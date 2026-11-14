@@ -18,7 +18,7 @@ async def test_outbound_transport_and_stream_stop_when_permission_is_revoked(db)
     from unittest.mock import AsyncMock
     from core.authorize import Assignment, Privilege, Role
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
     from app.messenger.models import MessengerUser
     from app.messenger.facade import MessengerFacade
     from app.agent.openai_service import _authorized_stream
@@ -27,19 +27,19 @@ async def test_outbound_transport_and_stream_stop_when_permission_is_revoked(db)
     title = Title(label="Mx", gender="M")
     privilege = await db.scalar(select(Privilege).where(Privilege.code == "AGENT_API_ACCESS"))
     role = Role(code=f"stream-{uuid4().hex}", display_name="API", privileges=[privilege])
-    tool = ToolModel(code=f"team-{uuid4().hex}", label="Transport", description="", connection_schema={})
+    tool = ServiceModel(code=f"team-{uuid4().hex}", label="Transport", description="", connection_schema={})
     db.add_all([human, title, role, tool])
     await db.flush()
     agent = Agent(code=f"test-{uuid4().hex[:12]}", first_name="A", last_name="B", title_id=title.id)
     db.add(agent)
     db.add(Assignment(user_id=human.id, role_id=role.id))
     await db.flush()
-    connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
-    identity = MessengerUser(tool_id=tool.id, external_id="verified-human", galaris_user_id=human.id, is_ai=False)
+    connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
+    identity = MessengerUser(service_id=tool.id, external_id="verified-human", galaris_user_id=human.id, is_ai=False)
     db.add_all([connection, identity])
     await db.flush()
     transport = AsyncMock(side_effect=RuntimeError("transport reached"))
-    messenger = MessengerFacade(SimpleNamespace(tool_id=tool.id, send_to_user=transport), connection.id)
+    messenger = MessengerFacade(SimpleNamespace(service_id=tool.id, send_to_user=transport), connection.id)
     with pytest.raises(PermissionError):
         await messenger.send_to_user("verified-human", "denied")
     transport.assert_not_awaited()

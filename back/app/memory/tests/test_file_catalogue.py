@@ -15,7 +15,7 @@ import pytest_asyncio
 from sqlalchemy import select
 
 from app.connection import Connection
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.file_share import annotate_catalogue_entry, resource_service
 from app.file_share import catalogue, resource_observation
 from app.file_share.bridges import BRIDGES, FileShareBridge
@@ -65,9 +65,9 @@ async def console_catalogue(db, agents, memory_storage: Path, tmp_path: Path, mo
     from app.console import ConsoleRunResource
     from app.console.contracts import SshConnectionConfig
     owner, peer = agents
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "console"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "console"))
     assert tool is not None
-    connection = Connection(agent_id=owner.id, tool_id=tool.id)
+    connection = Connection(agent_id=owner.id, service_id=tool.id)
     db.add(connection)
     await db.flush()
     connection_id = connection.id
@@ -136,7 +136,7 @@ async def test_graph_checks_live_files_with_one_closed_console_per_page(console_
     from app.file_share import reconcile_catalogue_root_titles
     await reconcile_catalogue_root_titles()
     await get_db().commit()
-    tool = await get_db().get(ToolModel, connection.tool_id)
+    tool = await get_db().get(ServiceModel, connection.service_id)
     expected_title = tool.label if root_title in {".", "/"} else root_title
     for index in range(12):
         await resource_service.resource_write_text(ctx, f"console://graph/file-{index}.txt", f"Synthetic {index}")
@@ -180,7 +180,7 @@ async def test_graph_checks_live_files_with_one_closed_console_per_page(console_
 @pytest.mark.parametrize("label", ["Synthetic shared files", ""])
 async def test_catalogue_root_title_is_stored_from_tool_before_graph_reads(console_catalogue, db, operation, label):
     ctx, transport, connection, peer = console_catalogue
-    tool = await db.get(ToolModel, connection.tool_id)
+    tool = await db.get(ServiceModel, connection.service_id)
     tool.label = label
     await db.commit()
     operation_fn = resource_service.resource_info if operation == "info" else resource_service.resource_list
@@ -197,15 +197,15 @@ async def test_catalogue_root_title_is_stored_from_tool_before_graph_reads(conso
     from app.file_share import reconcile_catalogue_root_titles
     tool.label = "Synthetic renamed share"
     await db.flush()
-    await reconcile_catalogue_root_titles(tool_id=tool.id)
+    await reconcile_catalogue_root_titles(service_id=tool.id)
     await db.commit()
     assert root.title == tool.label
-    await reconcile_catalogue_root_titles(tool_id=tool.id)
+    await reconcile_catalogue_root_titles(service_id=tool.id)
     assert root.revision == revision + 1
     await service.update_item(root.id, MemoryItemUpdate(title="Personal root"), actor_agent_id=ctx.agent_id)
     tool.label = "Another synthetic label"
     await db.flush()
-    await reconcile_catalogue_root_titles(tool_id=tool.id)
+    await reconcile_catalogue_root_titles(service_id=tool.id)
     assert root.title == "Personal root"
 
 
@@ -301,7 +301,7 @@ async def test_graph_closes_console_and_hides_changed_bindings(console_catalogue
         if interruption == "revoke":
             connection.active = False
         else:
-            tool = await db.get(ToolModel, connection.tool_id)
+            tool = await db.get(ServiceModel, connection.service_id)
             tool.global_params = {**tool.global_params, "account": {"value": "synthetic-new-binding"}}
         await db.flush()
         return descriptor
@@ -326,11 +326,11 @@ async def test_content_identity_unifies_locations_summary_and_graph_per_agent(co
     mirror = SyntheticShare(tmp_path / 'mirror')
     monkeypatch.setitem(BRIDGES, 'mirror-test', FileShareBridge(service='mirror-test', label='Mirror', params=(),
         build=lambda _url, _params: mirror))
-    tool = ToolModel(code='mirror-test', label='Mirror', file_share_config={'service': 'mirror-test', 'base_url': 'https://synthetic.invalid'},
-        global_params={'tools.fileindexing': {'value': 'known_uris', 'forced': False}})
+    tool = ServiceModel(code='mirror-test', label='Mirror', file_share_config={'service': 'mirror-test', 'base_url': 'https://synthetic.invalid'},
+        global_params={'services.fileindexing': {'value': 'known_uris', 'forced': False}})
     db.add(tool)
     await db.flush()
-    db.add_all([Connection(tool_id=tool.id, agent_id=ctx.agent_id), Connection(tool_id=connection.tool_id, agent_id=peer.id)])
+    db.add_all([Connection(service_id=tool.id, agent_id=ctx.agent_id), Connection(service_id=connection.service_id, agent_id=peer.id)])
     await db.commit()
     data = 'Synthetic identical file bytes'
     await resource_service.resource_write_text(ctx, 'console://first/report.txt', data)
@@ -593,13 +593,13 @@ async def test_received_messenger_copy_unifies_with_file_provider_and_repairs_me
     ctx, _transport, _connection, _peer = console_catalogue
     data = b'Synthetic shared Messenger file'
     await resource_service.resource_write_text(ctx, 'console://shared.txt', data.decode())
-    tool = ToolModel(code='synthetic-talk', label='Synthetic Talk', messenger_config={'service': 'telegram'})
+    tool = ServiceModel(code='synthetic-talk', label='Synthetic Talk', messenger_config={'service': 'telegram'})
     db.add(tool)
     await db.flush()
-    connection = Connection(agent_id=ctx.agent_id, tool_id=tool.id)
+    connection = Connection(agent_id=ctx.agent_id, service_id=tool.id)
     db.add(connection)
     await db.flush()
-    message = ObservedMessengerMessage(id='synthetic-message', tool_id=tool.id, platform='telegram', time=100,
+    message = ObservedMessengerMessage(id='synthetic-message', service_id=tool.id, platform='telegram', time=100,
         sender=ObservedMessengerUser(id='synthetic-sender', connection_id=connection.id), room=ObservedMessengerRoom(id='synthetic-room'),
         attachments=[ObservedMessengerFile(id='synthetic-provider-file', name='shared-copy.txt', mime='text/plain', size=len(data))])
     original_projection = resource_observation.observe_descriptors
@@ -625,7 +625,7 @@ async def test_received_messenger_copy_unifies_with_file_provider_and_repairs_me
         return len(data)
     async def history(*_args):
         pytest.fail('A stored attachment must remain readable beyond the recent-history window')
-    delegate = SimpleNamespace(tool_id=tool.id, tool_code=tool.code, fetch_attachment_to_file=fetch, history=history)
+    delegate = SimpleNamespace(service_id=tool.id, service_code=tool.code, fetch_attachment_to_file=fetch, history=history)
     messenger = facade.MessengerFacade(delegate, connection.id)
     async def resolve(_agent_id, identity):
         assert identity == connection.id
@@ -792,7 +792,7 @@ async def test_encounters_are_lexical_private_idempotent_and_notes_survive(conso
     assert await annotate_catalogue_entry(ctx, written.uri, "Annual planning") == identity
     _, body, _, _, _ = await service.get_item(identity, agent_id=ctx.agent_id)
     assert body == b"<p>Annual planning</p>"
-    db.add(Connection(agent_id=peer.id, tool_id=_connection.tool_id))
+    db.add(Connection(agent_id=peer.id, service_id=_connection.service_id))
     await db.commit()
     peer_ctx = ResourceContext(agent_id=peer.id, runtime="internal", console_resource=object())
     await resource_service.resource_info(peer_ctx, written.uri)
@@ -833,7 +833,7 @@ async def test_lists_are_partial_and_revocation_or_rebinding_hides_old_results(c
     await db.commit()
     assert await hits(ctx.agent_id, "beta") == []
     connection.active = True
-    tool = await db.get(ToolModel, connection.tool_id)
+    tool = await db.get(ServiceModel, connection.service_id)
     tool.global_params = {**tool.global_params, "account": {"value": "another-synthetic-account"}}
     await db.commit()
     assert await hits(ctx.agent_id, "beta") == []
@@ -922,11 +922,11 @@ async def test_new_providers_use_common_facade_without_named_service_branches(db
         await transport.file_write_text("specification.txt", "synthetic bytes", overwrite=False)
         monkeypatch.setitem(BRIDGES, code, FileShareBridge(service=code, label=code, params=(),
                                                         build=lambda _url, _params, transport=transport: transport))
-        tool = ToolModel(code=code, label=code, file_share_config={"service": code, "base_url": "https://synthetic.invalid"},
-                         global_params={"tools.fileindexing": {"value": "known_uris", "forced": False}})
+        tool = ServiceModel(code=code, label=code, file_share_config={"service": code, "base_url": "https://synthetic.invalid"},
+                         global_params={"services.fileindexing": {"value": "known_uris", "forced": False}})
         db.add(tool)
         await db.flush()
-        db.add(Connection(tool_id=tool.id, agent_id=owner.id))
+        db.add(Connection(service_id=tool.id, agent_id=owner.id))
         await db.commit()
         result = await resource_service.resource_info(ctx, f"{code}://specification.txt")
         assert result.indexing_status == "indexed"
@@ -942,17 +942,17 @@ async def test_new_providers_use_common_facade_without_named_service_branches(db
 @pytest.mark.asyncio
 async def test_tool_exclusion_and_mail_are_preserved_but_messenger_is_observed(console_catalogue, db, monkeypatch):
     ctx, _transport, connection, _peer = console_catalogue
-    tool = await db.get(ToolModel, connection.tool_id)
-    tool.global_params = {**(tool.global_params or {}), "tools.fileindexing": {"value": "excluded", "forced": False}}
+    tool = await db.get(ServiceModel, connection.service_id)
+    tool.global_params = {**(tool.global_params or {}), "services.fileindexing": {"value": "excluded", "forced": False}}
     await db.commit()
     result = await resource_service.resource_write_text(ctx, "console://excluded.txt", "source")
     assert result.indexing_status == "excluded"
     assert await db.scalar(select(FileCatalogEntry.id)) is None
-    custom = ToolModel(code="custom-mail", label="Deferred mail", file_share_config={"service": "mail", "base_url": "https://synthetic.invalid"},
-                       global_params={"tools.fileindexing": {"value": "known_uris", "forced": False}})
+    custom = ServiceModel(code="custom-mail", label="Deferred mail", file_share_config={"service": "mail", "base_url": "https://synthetic.invalid"},
+                       global_params={"services.fileindexing": {"value": "known_uris", "forced": False}})
     db.add(custom)
     await db.flush()
-    db.add(Connection(agent_id=ctx.agent_id, tool_id=custom.id))
+    db.add(Connection(agent_id=ctx.agent_id, service_id=custom.id))
     await db.commit()
     assert await catalogue.observation_scope(ctx, "custom-mail://attachment/a") is None
     custom.file_share_config = {"service": "affine", "base_url": "https://synthetic.invalid"}
@@ -981,10 +981,10 @@ async def recursive_catalogue(db, agents, memory_storage, tmp_path, monkeypatch)
     transport = PagedShare(tmp_path / 'recursive')
     monkeypatch.setitem(BRIDGES, 'scan-test', FileShareBridge(service='scan-test', label='Synthetic share', params=(),
         build=lambda _url, _params: transport, indexing_modes=('excluded', 'known_uris', 'recursive')))
-    tool = ToolModel(code='scan-test', label='Synthetic share', file_share_config={'service': 'scan-test', 'base_url': 'https://synthetic.invalid'}, global_params={"tools.fileindexing": {"value": "recursive", "forced": False}})
+    tool = ServiceModel(code='scan-test', label='Synthetic share', file_share_config={'service': 'scan-test', 'base_url': 'https://synthetic.invalid'}, global_params={"services.fileindexing": {"value": "recursive", "forced": False}})
     db.add(tool)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=owner.id)
+    connection = Connection(service_id=tool.id, agent_id=owner.id)
     db.add(connection)
     await db.commit()
     return ResourceContext(agent_id=owner.id, runtime='internal'), transport, connection, peer
@@ -993,27 +993,27 @@ async def recursive_catalogue(db, agents, memory_storage, tmp_path, monkeypatch)
 @pytest.mark.asyncio
 async def test_connection_indexing_override_and_forced_global_control_catalogue_access(console_catalogue, db):
     from app.connection import connection_service
-    from app.tools import tool_service
-    from app.tools.schemas import ToolGlobalParamsUpdate
+    from app.services import service
+    from app.services.schemas import ServiceGlobalParamsUpdate
     ctx, transport, connection, peer = console_catalogue
     await transport.file_write_text('override.txt', 'synthetic content', overwrite=False)
-    other = Connection(agent_id=peer.id, tool_id=connection.tool_id)
+    other = Connection(agent_id=peer.id, service_id=connection.service_id)
     db.add(other)
     await db.flush()
-    await connection_service.set_params_bulk(connection.id, {'tools.fileindexing': 'excluded'})
+    await connection_service.set_params_bulk(connection.id, {'services.fileindexing': 'excluded'})
     excluded = await resource_service.resource_info(ctx, 'console://override.txt')
     assert excluded.indexing_status == 'excluded'
     peer_ctx = replace(ctx, agent_id=peer.id)
     assert (await resource_service.resource_info(peer_ctx, 'console://override.txt')).indexing_status == 'indexed'
     assert await hits(ctx.agent_id, 'override') == []
     assert len(await hits(peer.id, 'override')) == 1
-    await tool_service.update_global_params(connection.tool_id, ToolGlobalParamsUpdate.model_validate({
-        'params': {'tools.fileindexing': {'value': 'known_uris', 'forced': True}},
+    await service.update_global_params(connection.service_id, ServiceGlobalParamsUpdate.model_validate({
+        'params': {'services.fileindexing': {'value': 'known_uris', 'forced': True}},
     }))
     assert (await resource_service.resource_info(ctx, 'console://override.txt')).indexing_status == 'indexed'
     assert len(await hits(ctx.agent_id, 'override')) == 1
-    await tool_service.update_global_params(connection.tool_id, ToolGlobalParamsUpdate.model_validate({
-        'params': {'tools.fileindexing': {'value': 'excluded', 'forced': True}},
+    await service.update_global_params(connection.service_id, ServiceGlobalParamsUpdate.model_validate({
+        'params': {'services.fileindexing': {'value': 'excluded', 'forced': True}},
     }))
     assert await hits(ctx.agent_id, 'override') == []
     assert await hits(peer.id, 'override') == []
@@ -1025,19 +1025,19 @@ async def test_automatic_indexing_selection_respects_local_overrides(recursive_c
     from app.file_share.indexing import schedule_automatic_runs, start_index_run, process_index_page
     from app.file_share.models import FileIndexRun
     ctx, transport, connection, _peer = recursive_catalogue
-    await connection_service.set_params_bulk(connection.id, {'tools.fileindexing': 'excluded'})
+    await connection_service.set_params_bulk(connection.id, {'services.fileindexing': 'excluded'})
     await schedule_automatic_runs()
     assert list(await db.scalars(select(FileIndexRun))) == []
     with pytest.raises(PermissionError):
         await start_index_run(ctx, 'scan-test://')
-    await connection_service.set_params_bulk(connection.id, {'tools.fileindexing': 'known_uris'})
+    await connection_service.set_params_bulk(connection.id, {'services.fileindexing': 'known_uris'})
     with pytest.raises(PermissionError, match='automatic traversal'):
         await start_index_run(ctx, 'scan-test://')
-    await connection_service.set_params_bulk(connection.id, {'tools.fileindexing': 'recursive'})
+    await connection_service.set_params_bulk(connection.id, {'services.fileindexing': 'recursive'})
     await schedule_automatic_runs()
     run = await db.scalar(select(FileIndexRun))
     assert run is not None and run.connection_id == connection.id
-    await connection_service.set_params_bulk(connection.id, {'tools.fileindexing': 'excluded'})
+    await connection_service.set_params_bulk(connection.id, {'services.fileindexing': 'excluded'})
     await process_index_page(run)
     assert run.status == 'excluded'
 
@@ -1142,8 +1142,8 @@ async def test_versioned_enrichment_does_not_overwrite_personal_content(console_
     assert b'Personal text' in body
     await db.refresh(entry)
     assert entry.enrichment_text == 'Explicit synthetic conclusion'
-    tool = await db.get(ToolModel, connection.tool_id)
-    tool.global_params = {**tool.global_params, 'tools.fileindexing': {'value': 'excluded', 'forced': False}}
+    tool = await db.get(ServiceModel, connection.service_id)
+    tool.global_params = {**tool.global_params, 'services.fileindexing': {'value': 'excluded', 'forced': False}}
     await db.commit()
     assert not await FileCatalogueEnrichmentPort().candidates()
 

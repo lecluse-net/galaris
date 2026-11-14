@@ -8,10 +8,10 @@ from sqlalchemy import CursorResult, delete, exists, or_, select
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import joinedload
 
-from .models import Connection, ConnectionParam, ConnectionFunctionState, ToolFunctionState, ConnectionOAuth
+from .models import Connection, ConnectionParam, ConnectionFunctionState, ServiceFunctionState, ConnectionOAuth
 from .parameter_resolution import RuntimeConnectionParams
 from .schemas import FunctionState, EffectiveFunctionState, CapabilityKind, ConnectionOverview
-from app.tools.facade import lock_tools, finish_write
+from app.services.facade import lock_services, finish_write
 from core.util import get_encryption_service
 from core.database import get_db
 from core.i18n import render_prompt, tr
@@ -24,12 +24,12 @@ async def permission_connection_options(
     *, agent_ids: Collection[int] | None, skip: int, limit: int,
 ) -> list["PermissionConnectionOption"]:
     from app.agent import Agent
-    from app.tools import ToolModel
-    from app.tools.facade import tool_can_edit
+    from app.services import ServiceModel
+    from app.services.facade import service_can_edit
     from .schemas import PermissionConnectionOption
 
-    statement = select(Connection, ToolModel.code, ToolModel.label, ToolModel.can_disable).join(
-        ToolModel, ToolModel.id == Connection.tool_id
+    statement = select(Connection, ServiceModel.code, ServiceModel.label, ServiceModel.can_disable).join(
+        ServiceModel, ServiceModel.id == Connection.service_id
     ).join(Agent, Agent.id == Connection.agent_id).where(
         Connection.active.is_(True)
     ).order_by(Connection.id).offset(skip).limit(limit)
@@ -37,22 +37,22 @@ async def permission_connection_options(
         statement = statement.where(Connection.agent_id.in_(agent_ids))
     rows = (await get_db().execute(statement)).all()
     return [PermissionConnectionOption(id=connection.id, agent_id=connection.agent_id,
-        tool_id=connection.tool_id, active=connection.active, tool_code=code, tool_label=label,
-        tool_can_edit=can_disable and tool_can_edit(code), tool_can_disable=can_disable)
+        service_id=connection.service_id, active=connection.active, service_code=code, service_label=label,
+        service_can_edit=can_disable and service_can_edit(code), service_can_disable=can_disable)
         for connection, code, label, can_disable in rows]
 
 if TYPE_CHECKING:
-    from app.tools import Tool
+    from app.services import Service
     from .schemas import PermissionConnectionOption
 
 
-async def _get_tool_schema(tool_id: int) -> Optional[Dict[str, Any]]:
+async def _get_tool_schema(service_id: int) -> Optional[Dict[str, Any]]:
     """Return a tool's connection schema from the database."""
-    from app.tools import facade as tool_service
-    return _tool_schema(await tool_service.get_tool_by_id(tool_id))
+    from app.services import facade as service
+    return _tool_schema(await service.get_service_by_id(service_id))
 
 
-def _tool_schema(tool: Tool | None) -> Optional[Dict[str, Any]]:
+def _tool_schema(tool: Service | None) -> Optional[Dict[str, Any]]:
     if not tool or not tool.connection:
         return None
     return {
@@ -98,7 +98,7 @@ def _decrypt_if_needed(
 # ==========================================================================
 
 async def list_management_connections(
-    *, agent_ids: frozenset[int] | None, tool_id: int | None = None,
+    *, agent_ids: frozenset[int] | None, service_id: int | None = None,
     agent_id: int | None = None, active_only: bool = False,
     skip: int = 0, limit: int = 50,
 ) -> list[Connection]:
@@ -108,8 +108,8 @@ async def list_management_connections(
     query = select(Connection).join(Agent, Agent.id == Connection.agent_id)
     if agent_ids is not None:
         query = query.where(Connection.agent_id.in_(agent_ids))
-    if tool_id is not None:
-        query = query.where(Connection.tool_id == tool_id)
+    if service_id is not None:
+        query = query.where(Connection.service_id == service_id)
     if agent_id is not None:
         query = query.where(Connection.agent_id == agent_id)
     if active_only:
@@ -121,75 +121,75 @@ async def connection_overviews(connections: Collection[Connection]) -> list[Conn
     """Read local parameters and schemas once per page, never decrypting secrets."""
     if not connections:
         return []
-    from app.tools.facade import get_tools_by_ids
+    from app.services.facade import get_services_by_ids
 
-    tools = await get_tools_by_ids({connection.tool_id for connection in connections})
-    schemas = {tool_id: _tool_schema(tool) for tool_id, tool in tools.items()}
+    tools = await get_services_by_ids({connection.service_id for connection in connections})
+    schemas = {service_id: _tool_schema(tool) for service_id, tool in tools.items()}
     params = await get_db().scalars(select(ConnectionParam).where(
         ConnectionParam.connection_id.in_([connection.id for connection in connections]),
     ).execution_options(populate_existing=True))
     values: dict[int, dict[str, Any]] = {connection.id: {} for connection in connections}
     configured: dict[int, list[str]] = {connection.id: [] for connection in connections}
-    tool_ids = {connection.id: connection.tool_id for connection in connections}
+    service_ids = {connection.id: connection.service_id for connection in connections}
     for param in params:
-        secret = _is_password_field(param.param_name, schemas.get(tool_ids[param.connection_id]))
+        secret = _is_password_field(param.param_name, schemas.get(service_ids[param.connection_id]))
         values[param.connection_id][param.param_name] = None if secret else param.param_value
         if secret and param.param_value:
             configured[param.connection_id].append(param.param_name)
-    return [ConnectionOverview(id=connection.id, tool_id=connection.tool_id,
+    return [ConnectionOverview(id=connection.id, service_id=connection.service_id,
         agent_id=connection.agent_id, active=connection.active, params=values[connection.id],
         configured_params=sorted(configured[connection.id])) for connection in connections]
 
 
-async def tool_can_disable(tool_id: int) -> bool:
-    from app.tools import facade as tool_service
+async def service_can_disable(service_id: int) -> bool:
+    from app.services import facade as service
 
-    tool = await tool_service.get_tool_by_id(tool_id)
+    tool = await service.get_service_by_id(service_id)
     return tool is None or tool.can_disable
 
 
-async def require_editable_tool(tool_id: int) -> None:
-    await lock_tools([tool_id], db=get_db())
-    if not await tool_can_disable(tool_id):
-        raise ValueError(await tr("tools.errors.system_read_only"))
+async def require_editable_tool(service_id: int) -> None:
+    await lock_services([service_id], db=get_db())
+    if not await service_can_disable(service_id):
+        raise ValueError(await tr("services.errors.system_read_only"))
 
 
 async def require_editable_connection(connection_id: int) -> None:
     connection = await get_connection(connection_id)
     if connection is not None:
-        await require_editable_tool(connection.tool_id)
+        await require_editable_tool(connection.service_id)
 
-async def get_or_create_connection(tool_id: int, agent_id: int, *, active: bool = True, commit: bool = True) -> Connection:
-    await lock_tools([tool_id], db=get_db())
+async def get_or_create_connection(service_id: int, agent_id: int, *, active: bool = True, commit: bool = True) -> Connection:
+    await lock_services([service_id], db=get_db())
     db = get_db()
     result = await db.execute(
         select(Connection).where(
-            Connection.tool_id == tool_id,
+            Connection.service_id == service_id,
             Connection.agent_id == agent_id
         ).execution_options(populate_existing=True)
     )
     connection = result.scalar_one_or_none()
     if connection:
         return connection
-    new_connection = Connection(tool_id=tool_id, agent_id=agent_id, active=active)
+    new_connection = Connection(service_id=service_id, agent_id=agent_id, active=active)
     db.add(new_connection)
     await finish_write(commit=commit, db=get_db())
     await db.refresh(new_connection)
     return new_connection
 
 
-async def create_connection(tool_id: int, agent_id: int, *, active: bool = True, commit: bool = True) -> Connection:
+async def create_connection(service_id: int, agent_id: int, *, active: bool = True, commit: bool = True) -> Connection:
     """Create a distinct Mail account, preserving singleton behavior for other Tools."""
-    from app.tools.facade import get_tool_by_id
+    from app.services.facade import get_service_by_id
 
-    await lock_tools([tool_id], db=get_db())
-    tool = await get_tool_by_id(tool_id)
+    await lock_services([service_id], db=get_db())
+    tool = await get_service_by_id(service_id)
     if tool is None:
-        raise ValueError("Tool not found")
+        raise ValueError("Service not found")
     multiple = tool.mail is not None
-    if not multiple and await get_connection_by_agent_tool(tool_id, agent_id) is not None:
-        raise ValueError("A connection already exists for this agent and Tool")
-    connection = Connection(tool_id=tool_id, agent_id=agent_id, active=active, singleton_key=None if multiple else 0)
+    if not multiple and await get_connection_by_agent_service(service_id, agent_id) is not None:
+        raise ValueError("A connection already exists for this agent and Service")
+    connection = Connection(service_id=service_id, agent_id=agent_id, active=active, singleton_key=None if multiple else 0)
     get_db().add(connection)
     await finish_write(commit=commit, db=get_db())
     await get_db().refresh(connection)
@@ -204,14 +204,14 @@ async def get_connection(connection_id: int) -> Optional[Connection]:
     return result.scalar_one_or_none()
 
 
-async def get_connection_by_agent_tool(
-    tool_id: int,
+async def get_connection_by_agent_service(
+    service_id: int,
     agent_id: int
 ) -> Optional[Connection]:
     db = get_db()
     result = await db.execute(
         select(Connection).where(
-            Connection.tool_id == tool_id,
+            Connection.service_id == service_id,
             Connection.agent_id == agent_id
         )
     )
@@ -223,7 +223,7 @@ async def get_connection_by_agent_tool(
 
 async def has_active_tool_connection(
     agent_id: int,
-    tool_code: str,
+    service_code: str,
     *,
     connection_id: int | None = None,
 ) -> bool:
@@ -232,16 +232,16 @@ async def has_active_tool_connection(
     ``connection_id`` lets listeners revalidate the exact connection that started them. Deleted,
     reassigned, or disabled connections immediately become unavailable.
     """
-    from app.tools import ToolModel
+    from app.services import ServiceModel
 
     db = get_db()
     query = (
         select(Connection.id)
-        .join(ToolModel, ToolModel.id == Connection.tool_id)
+        .join(ServiceModel, ServiceModel.id == Connection.service_id)
         .where(
             Connection.agent_id == agent_id,
             Connection.active.is_(True),
-            ToolModel.code == tool_code,
+            ServiceModel.code == service_code,
         )
         .limit(1)
     )
@@ -252,22 +252,22 @@ async def has_active_tool_connection(
 
 
 async def get_management_scope(
-    agent_id: int, tool_code: str | None = None, *,
+    agent_id: int, service_code: str | None = None, *,
     connection_id: int | None = None, default: str | None = None,
 ) -> str:
     """Read local scope from a live connection; never inherit global parameters."""
-    from app.tools import ToolModel
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM, default_management_scope
-    if tool_code is None and connection_id is None:
-        raise ValueError("An exact connection or Tool code is required")
-    query = select(Connection.id, ToolModel.code, ConnectionParam.param_value).select_from(Connection)
+    from app.services import ServiceModel
+    from app.services.contracts import MANAGEMENT_SCOPE_PARAM, default_management_scope
+    if service_code is None and connection_id is None:
+        raise ValueError("An exact connection or Service code is required")
+    query = select(Connection.id, ServiceModel.code, ConnectionParam.param_value).select_from(Connection)
     query = (query
-        .join(ToolModel, ToolModel.id == Connection.tool_id)
+        .join(ServiceModel, ServiceModel.id == Connection.service_id)
         .outerjoin(ConnectionParam, (ConnectionParam.connection_id == Connection.id)
                    & (ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM))
         .where(Connection.agent_id == agent_id, Connection.active.is_(True)))
-    if tool_code is not None:
-        query = query.where(ToolModel.code == tool_code)
+    if service_code is not None:
+        query = query.where(ServiceModel.code == service_code)
     if connection_id is not None:
         query = query.where(Connection.id == connection_id)
     row = (await get_db().execute(query)).one_or_none()
@@ -278,41 +278,41 @@ async def get_management_scope(
     return default if default is not None else default_management_scope(row.code)
 
 
-async def has_active_tool_function(agent_id: int, tool_code: str, function_name: str) -> bool:
+async def has_active_service_function(agent_id: int, service_code: str, function_name: str) -> bool:
     """Check the live connection and its effective function authorization."""
-    from app.tools import ToolModel
+    from app.services import ServiceModel
 
-    connections = (await get_db().scalars(select(Connection).join(ToolModel).where(
-        Connection.agent_id == agent_id, Connection.active.is_(True), ToolModel.code == tool_code,
+    connections = (await get_db().scalars(select(Connection).join(ServiceModel).where(
+        Connection.agent_id == agent_id, Connection.active.is_(True), ServiceModel.code == service_code,
     ))).all()
     for connection in connections:
         policy = await resolve_function(connection, function_name)
         if policy["effective_state"] == "enabled":
             return True
         if policy["effective_state"] == "ask":
-            from app.tools.facade import current_action_covers
+            from app.services.facade import current_action_covers
             if await current_action_covers(agent_id, connection.id, function_name):
                 return True
     return False
 
 
 async def has_any_active_tool_connection(
-    tool_code: str,
+    service_code: str,
     *,
     protocol: bool = False,
     agent_ids: Collection[int] | None = None,
 ) -> bool:
     """Return whether at least one agent has an active connection to a tool."""
-    from app.tools import ToolModel
+    from app.services import ServiceModel
 
     query = (
         select(Connection.id)
-        .join(ToolModel, ToolModel.id == Connection.tool_id)
+        .join(ServiceModel, ServiceModel.id == Connection.service_id)
         .where(
             Connection.active.is_(True),
-            ((ToolModel.mail_config.is_not(None) & (ToolModel.mail_config != JSON.NULL)) if tool_code == "mail"
-             else (ToolModel.calendar_config.is_not(None) & (ToolModel.calendar_config != JSON.NULL)))
-            if protocol else ToolModel.code == tool_code,
+            ((ServiceModel.mail_config.is_not(None) & (ServiceModel.mail_config != JSON.NULL)) if service_code == "mail"
+             else (ServiceModel.calendar_config.is_not(None) & (ServiceModel.calendar_config != JSON.NULL)))
+            if protocol else ServiceModel.code == service_code,
         )
         .limit(1)
     )
@@ -373,7 +373,7 @@ async def _get_local_params_as_dict(
     )
     rows = result.all()
 
-    tool_schema = await _get_tool_schema(connection_obj.tool_id) if decrypt_passwords else None
+    tool_schema = await _get_tool_schema(connection_obj.service_id) if decrypt_passwords else None
 
     result_dict: Dict[str, Any] = {}
     for _, param in rows:
@@ -389,17 +389,17 @@ async def _get_local_params_as_dict(
 
 
 async def merge_with_global_params(
-    tool_id: int,
+    service_id: int,
     local_params: Dict[str, Any],
     *,
     decrypt_passwords: bool = True,
 ) -> Dict[str, Any]:
-    """Apply the common Tool inheritance rule to an arbitrary local parameter mapping."""
+    """Apply the common Service inheritance rule to an arbitrary local parameter mapping."""
 
-    from app.tools import facade as tool_service
+    from app.services import facade as service
 
-    global_params, forced = await tool_service.get_runtime_global_params(
-        tool_id,
+    global_params, forced = await service.get_runtime_global_params(
+        service_id,
         decrypt_passwords=decrypt_passwords,
     )
     resolved = dict(global_params)
@@ -414,7 +414,7 @@ async def get_params_as_dict(
     connection: "int | Connection",
     decrypt_passwords: bool = True,
 ) -> Tuple[Optional[Connection], Dict[str, Any]]:
-    """Return effective parameters: local override, then global Tool value."""
+    """Return effective parameters: local override, then global Service value."""
 
     connection_obj, local_params = await _get_local_params_as_dict(
         connection,
@@ -423,7 +423,7 @@ async def get_params_as_dict(
     if connection_obj is None:
         return None, {}
     params = await merge_with_global_params(
-        connection_obj.tool_id,
+        connection_obj.service_id,
         local_params,
         decrypt_passwords=decrypt_passwords,
     )
@@ -441,7 +441,7 @@ async def get_params_for_api(
     )
     if connection_obj is None:
         return None, {}, []
-    tool_schema = await _get_tool_schema(connection_obj.tool_id)
+    tool_schema = await _get_tool_schema(connection_obj.service_id)
     configured: List[str] = []
     safe: Dict[str, Any] = {}
     for name, value in params.items():
@@ -459,7 +459,7 @@ async def redact_param(param: ConnectionParam) -> ConnectionParam:
     connection = await get_connection(param.connection_id)
     if connection is None:
         return param
-    tool_schema = await _get_tool_schema(connection.tool_id)
+    tool_schema = await _get_tool_schema(connection.service_id)
     if not _is_password_field(param.param_name, tool_schema):
         return param
     return ConnectionParam(
@@ -471,33 +471,33 @@ async def redact_param(param: ConnectionParam) -> ConnectionParam:
 
 
 async def redact_params(params: Collection[ConnectionParam]) -> List[ConnectionParam]:
-    """Resolve each connection and Tool once for a whole API response."""
+    """Resolve each connection and Service once for a whole API response."""
     if not params:
         return []
-    from app.tools.facade import get_tools_by_ids
+    from app.services.facade import get_services_by_ids
 
-    rows = (await get_db().execute(select(Connection.id, Connection.tool_id).where(
+    rows = (await get_db().execute(select(Connection.id, Connection.service_id).where(
         Connection.id.in_({param.connection_id for param in params}),
     ))).all()
-    tool_ids = {identity: tool_id for identity, tool_id in rows}
-    tools = await get_tools_by_ids(set(tool_ids.values()))
-    schemas = {tool_id: _tool_schema(tool) for tool_id, tool in tools.items()}
+    service_ids = {identity: service_id for identity, service_id in rows}
+    tools = await get_services_by_ids(set(service_ids.values()))
+    schemas = {service_id: _tool_schema(tool) for service_id, tool in tools.items()}
     return [
         ConnectionParam(id=param.id, connection_id=param.connection_id,
                         param_name=param.param_name, param_value=None)
-        if _is_password_field(param.param_name, schemas.get(tool_ids.get(param.connection_id, -1)))
+        if _is_password_field(param.param_name, schemas.get(service_ids.get(param.connection_id, -1)))
         else param
         for param in params
     ]
 
 
 async def find_agents_by_param(
-    tool_id: int,
+    service_id: int,
     param_name: str,
     param_value: str
 ) -> List[int]:
     connections = await get_connections_by_param(
-        tool_id=tool_id,
+        service_id=service_id,
         param_name=param_name,
         param_value=param_value,
     )
@@ -505,20 +505,20 @@ async def find_agents_by_param(
 
 
 async def get_connections_by_param(
-    tool_id: int,
+    service_id: int,
     param_name: str,
     param_value: str
 ) -> List[Connection]:
     """Find connections whose effective value matches, including inherited globals."""
 
-    from app.tools import facade as tool_service
+    from app.services import facade as service
 
-    global_params, forced = await tool_service.get_runtime_global_params(tool_id)
+    global_params, forced = await service.get_runtime_global_params(service_id)
     global_matches = global_params.get(param_name) == param_value
     if param_name in forced:
         if not global_matches:
             return []
-        predicate = Connection.tool_id == tool_id
+        predicate = Connection.service_id == service_id
     else:
         local_match = exists(
             select(ConnectionParam.id).where(
@@ -539,7 +539,7 @@ async def get_connections_by_param(
             value_matches = or_(local_match, ~local_override)
         else:
             value_matches = local_match
-        predicate = (Connection.tool_id == tool_id) & value_matches
+        predicate = (Connection.service_id == service_id) & value_matches
 
     db = get_db()
     result = await db.execute(
@@ -550,17 +550,17 @@ async def get_connections_by_param(
 
 async def set_management_scope(connection_id: int, value: str | None, *, authorized: bool = False) -> None:
     """Delegate only the declared local scope, including on mandatory services."""
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    from app.services.contracts import MANAGEMENT_SCOPE_PARAM
 
     _require_scope_write({MANAGEMENT_SCOPE_PARAM: value}, authorized)
     connection = await get_connection(connection_id)
     if connection is None:
         raise ValueError("Connection not found")
-    await lock_tools([connection.tool_id], db=get_db())
+    await lock_services([connection.service_id], db=get_db())
     connection = await get_connection(connection_id)
     if connection is None or not connection.active:
         raise ValueError("Active connection required")
-    tool = await _validated_tool_params(connection.tool_id, {MANAGEMENT_SCOPE_PARAM: value})
+    tool = await _validated_tool_params(connection.service_id, {MANAGEMENT_SCOPE_PARAM: value})
     definition = tool.connection.params[MANAGEMENT_SCOPE_PARAM]
     if not definition.options:
         raise ValueError("Management scope requires declared choices")
@@ -595,18 +595,18 @@ async def set_param(
             )
         )
 
-    await validate_params(connection.tool_id, {param_name: param_value})
+    await validate_params(connection.service_id, {param_name: param_value})
 
-    from app.tools import facade as tool_service
+    from app.services import facade as service
 
-    _, forced = await tool_service.get_runtime_global_params(
-        connection.tool_id,
+    _, forced = await service.get_runtime_global_params(
+        connection.service_id,
         decrypt_passwords=False,
     )
     if param_name in forced and param_value not in (None, ""):
         raise ValueError(f"Connection parameter {param_name} is imposed globally")
 
-    tool_schema = await _get_tool_schema(connection.tool_id)
+    tool_schema = await _get_tool_schema(connection.service_id)
 
     result = await db.execute(
         select(ConnectionParam).where(
@@ -651,7 +651,7 @@ async def set_params_bulk(
     connection = await get_connection(connection_id)
     if connection is None:
         raise ValueError("Connection not found")
-    tool = await _validated_tool_params(connection.tool_id, params)
+    tool = await _validated_tool_params(connection.service_id, params)
     schema = _tool_schema(tool)
     existing: Dict[str, ConnectionParam] = {}
     names = list(params)
@@ -690,19 +690,19 @@ async def set_params_bulk(
     return saved
 
 
-async def validate_params(tool_id: int, params: Dict[str, Optional[str]]) -> None:
+async def validate_params(service_id: int, params: Dict[str, Optional[str]]) -> None:
     """Validate a whole parameter batch before writing any EAV row."""
-    await _validated_tool_params(tool_id, params)
+    await _validated_tool_params(service_id, params)
 
 
-async def _validated_tool_params(tool_id: int, params: Dict[str, Optional[str]]) -> Tool:
-    from app.tools.facade import get_tool_by_id, get_runtime_global_params
+async def _validated_tool_params(service_id: int, params: Dict[str, Optional[str]]) -> Service:
+    from app.services.facade import get_service_by_id, get_runtime_global_params
 
-    tool = await get_tool_by_id(tool_id)
+    tool = await get_service_by_id(service_id)
     if tool is None:
-        raise ValueError("Tool not found")
+        raise ValueError("Service not found")
     definitions = tool.connection.params
-    _, forced = await get_runtime_global_params(tool_id, decrypt_passwords=False)
+    _, forced = await get_runtime_global_params(service_id, decrypt_passwords=False)
     for name, value in params.items():
         definition = definitions.get(name)
         if definition is None:
@@ -732,7 +732,7 @@ def validate_param_value(type_name: str, value: str) -> None:
 
 
 def _require_scope_write(params: Mapping[str, object], authorized: bool) -> None:
-    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    from app.services.contracts import MANAGEMENT_SCOPE_PARAM
     if MANAGEMENT_SCOPE_PARAM in params and not authorized:
         raise PermissionError("Management scope requires explicit human global delegation")
 
@@ -757,7 +757,7 @@ async def delete_all_params(connection_id: int) -> int:
     db = get_db()
     result = await db.execute(
         delete(ConnectionParam).where(ConnectionParam.connection_id == connection_id,
-                                      ConnectionParam.param_name != "tools.management_scope")
+                                      ConnectionParam.param_name != "services.management_scope")
     )
     await db.commit()
     return cast(CursorResult[Any], result).rowcount
@@ -776,8 +776,8 @@ async def get_param(
     return str(value) if value not in (None, "") else None
 
 
-async def get_tools_by_agent(agent_id: int) -> List[Tool]:
-    from app.tools import facade as tool_service
+async def get_tools_by_agent(agent_id: int) -> List[Service]:
+    from app.services import facade as service
     db = get_db()
     result = await db.execute(
         select(Connection).where(
@@ -786,9 +786,9 @@ async def get_tools_by_agent(agent_id: int) -> List[Tool]:
         )
     )
     connections = result.scalars().all()
-    tools: List[Tool] = []
+    tools: List[Service] = []
     for connection in connections:
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+        tool = await service.get_service_by_id(connection.service_id)
         if tool:
             tools.append(tool)
     return tools
@@ -807,12 +807,12 @@ async def get_connections_by_agent(agent_id: int, *, active_only: bool = True) -
     return list(result.unique().scalars().all())
 
 
-async def get_agent_ids_by_tool(tool_id: int) -> List[int]:
+async def get_agent_ids_by_tool(service_id: int) -> List[int]:
     """Return agents whose catalog can be affected by a tool-level change."""
 
     result = await get_db().execute(
         select(Connection.agent_id)
-        .where(Connection.tool_id == tool_id)
+        .where(Connection.service_id == service_id)
         .distinct()
         .order_by(Connection.agent_id)
     )
@@ -840,7 +840,7 @@ def function_state_label(enabled: bool | str | None) -> FunctionState:
     return "enabled" if enabled else "disabled"
 
 
-def stored_function_state(row: ConnectionFunctionState | ToolFunctionState) -> EffectiveFunctionState:
+def stored_function_state(row: ConnectionFunctionState | ServiceFunctionState) -> EffectiveFunctionState:
     return cast(EffectiveFunctionState, function_state_label(row.state if row.state is not None else row.enabled))
 
 
@@ -887,11 +887,11 @@ async def list_function_states(connection_id: int) -> List[ConnectionFunctionSta
     return list(result.scalars().all())
 
 
-async def list_tool_function_states(tool_id: int) -> List[ToolFunctionState]:
+async def list_service_function_states(service_id: int) -> List[ServiceFunctionState]:
     """Return global tool-level state rows."""
     db = get_db()
     result = await db.execute(
-        select(ToolFunctionState).execution_options(populate_existing=True).where(ToolFunctionState.tool_id == tool_id)
+        select(ServiceFunctionState).execution_options(populate_existing=True).where(ServiceFunctionState.service_id == service_id)
     )
     return list(result.scalars().all())
 
@@ -899,7 +899,7 @@ async def list_tool_function_states(tool_id: int) -> List[ToolFunctionState]:
 async def get_disabled_function_names(connection: Connection, *, capability_kind: CapabilityKind = "tool") -> set[str]:
     """Return function names disabled for a connection after cascade resolution."""
     conn_states = {s.function_name: stored_function_state(s) for s in await list_function_states(connection.id) if (s.capability_kind or "tool") == capability_kind}
-    tool_states = {s.function_name: stored_function_state(s) for s in await list_tool_function_states(connection.tool_id) if (s.capability_kind or "tool") == capability_kind}
+    tool_states = {s.function_name: stored_function_state(s) for s in await list_service_function_states(connection.service_id) if (s.capability_kind or "tool") == capability_kind}
     return {
         name
         for name in (set(conn_states) | set(tool_states))
@@ -920,15 +920,15 @@ async def get_disabled_function_names_many(connections: Collection[Connection], 
     for row in rows:
         if (row.capability_kind or "tool") == capability_kind:
             local.setdefault(row.connection_id, {})[row.function_name] = stored_function_state(row)
-    global_rows = await get_db().scalars(select(ToolFunctionState).where(
-        ToolFunctionState.tool_id.in_({connection.tool_id for connection in connections}),
+    global_rows = await get_db().scalars(select(ServiceFunctionState).where(
+        ServiceFunctionState.service_id.in_({connection.service_id for connection in connections}),
     ).execution_options(populate_existing=True))
     for row in global_rows:
         if (row.capability_kind or "tool") == capability_kind:
-            global_states.setdefault(row.tool_id, {})[row.function_name] = stored_function_state(row)
+            global_states.setdefault(row.service_id, {})[row.function_name] = stored_function_state(row)
     result: dict[int, set[str]] = {}
     for connection in connections:
-        overrides, inherited = local.get(connection.id, {}), global_states.get(connection.tool_id, {})
+        overrides, inherited = local.get(connection.id, {}), global_states.get(connection.service_id, {})
         result[connection.id] = {name for name in overrides.keys() | inherited.keys()
                                  if not resolve_function_enabled(name, overrides, inherited)}
     return result
@@ -951,7 +951,7 @@ async def set_connection_function_state(
     connection = await get_connection(connection_id)
     if connection is None:
         raise ValueError("Connection not found")
-    await lock_tools([connection.tool_id], db=get_db())
+    await lock_services([connection.service_id], db=get_db())
     db = get_db()
     result = await db.execute(
         select(ConnectionFunctionState).execution_options(populate_existing=True).where(
@@ -983,8 +983,8 @@ async def set_connection_function_state(
     await finish_write(commit=commit, db=get_db())
 
 
-async def set_tool_function_state(
-    tool_id: int,
+async def set_service_function_state(
+    service_id: int,
     function_name: str,
     state: FunctionState,
     *, commit: bool = True,
@@ -992,13 +992,13 @@ async def set_tool_function_state(
 ) -> None:
     """Apply a tool-level state; ``default`` deletes the override row."""
     _validate_capability_name(function_name, capability_kind)
-    await lock_tools([tool_id], db=get_db())
+    await lock_services([service_id], db=get_db())
     db = get_db()
     result = await db.execute(
-        select(ToolFunctionState).execution_options(populate_existing=True).where(
-            ToolFunctionState.tool_id == tool_id,
-            ToolFunctionState.function_name == function_name,
-            ToolFunctionState.capability_kind == capability_kind,
+        select(ServiceFunctionState).execution_options(populate_existing=True).where(
+            ServiceFunctionState.service_id == service_id,
+            ServiceFunctionState.function_name == function_name,
+            ServiceFunctionState.capability_kind == capability_kind,
         )
     )
     row = result.scalar_one_or_none()
@@ -1014,8 +1014,8 @@ async def set_tool_function_state(
         row.enabled = enabled
         row.state = state
     else:
-        db.add(ToolFunctionState(
-            tool_id=tool_id,
+        db.add(ServiceFunctionState(
+            service_id=service_id,
             function_name=function_name,
             enabled=enabled,
             state=state,
@@ -1032,8 +1032,8 @@ async def set_global_function_state_and_inherit(
     capability_kind: CapabilityKind = "tool",
 ) -> None:
     """Save the global rule and clear only this connection's override atomically."""
-    await set_tool_function_state(
-        connection.tool_id, function_name, state, commit=False, capability_kind=capability_kind,
+    await set_service_function_state(
+        connection.service_id, function_name, state, commit=False, capability_kind=capability_kind,
     )
     await set_connection_function_state(
         connection.id, function_name, "default", commit=False, capability_kind=capability_kind,
@@ -1043,30 +1043,30 @@ async def set_global_function_state_and_inherit(
 
 async def resolve_function(connection: Connection, function_name: str, *, capability_kind: CapabilityKind = "tool") -> Dict[str, Any]:
     """Resolve connection, tool, and effective state without querying MCP."""
-    from app.tools import facade as tools
-    from app.tools import load_mcp_tools, native_tool_codes_for_tool
+    from app.services import facade as tools
+    from app.services import load_mcp_tools, native_service_codes_for_service
 
-    tool = await tools.get_tool_by_id(connection.tool_id)
+    tool = await tools.get_service_by_id(connection.service_id)
     default: EffectiveFunctionState = "enabled"
     native = False
     if tool is not None and capability_kind == "tool":
         for definition in load_mcp_tools():
-            if definition.name == function_name and definition.tool_code in native_tool_codes_for_tool(tool):
+            if definition.name == function_name and definition.service_code in native_service_codes_for_service(tool):
                 default = definition.approval
                 native = True
                 break
     conn_states = {s.function_name: stored_function_state(s) for s in await list_function_states(connection.id) if (s.capability_kind or "tool") == capability_kind}
-    tool_states = {s.function_name: stored_function_state(s) for s in await list_tool_function_states(connection.tool_id) if (s.capability_kind or "tool") == capability_kind}
+    tool_states = {s.function_name: stored_function_state(s) for s in await list_service_function_states(connection.service_id) if (s.capability_kind or "tool") == capability_kind}
     return project_function_policy(function_name, conn_states, tool_states, default=default,
                                    capability_kind=capability_kind, native=native)
 
 
 async def connection_tool_options(*, include_globals: bool = False) -> list[dict[str, Any]]:
-    from app.tools import tool_service, has_function_permissions
-    from app.tools.facade import public_connection_schema, tool_can_edit
-    records = await tool_service.get_all_tool_records()
+    from app.services import service, has_function_permissions
+    from app.services.facade import public_connection_schema, service_can_edit
+    records = await service.get_all_service_records()
     return [{"id": t.id, "code": t.code, "label": t.label, "description": t.description,
-             "can_disable": t.can_disable, "can_edit": tool_can_edit(t), "capabilities": t.capabilities or [],
+             "can_disable": t.can_disable, "can_edit": service_can_edit(t), "capabilities": t.capabilities or [],
              "has_mcp": bool(t.mcp_config), "has_api": bool(t.rest_config),
              "has_function_permissions": has_function_permissions(t),
              "has_file_share": bool(t.file_share_config), "has_messenger": bool(t.messenger_config),
@@ -1075,20 +1075,20 @@ async def connection_tool_options(*, include_globals: bool = False) -> list[dict
              "mcp_config": {"type": t.mcp_config.get("type")} if t.mcp_config else None,
              "calendar_config": {"settings": {name: t.calendar_config.get("settings", {}).get(name, "")
                  for name in ("source_kind", "auth_type")}} if t.calendar_config else None,
-             "connection_schema": public_connection_schema(tool_service.connection_schema_for_tool(t)),
-             "global_params": {name: value.model_dump(mode="json") for name, value in tool_service.public_global_params(t).items()} if include_globals else {},
+             "connection_schema": public_connection_schema(service.connection_schema_for_service(t)),
+             "global_params": {name: value.model_dump(mode="json") for name, value in service.public_global_params(t).items()} if include_globals else {},
              "created_at": t.created_at, "updated_at": t.updated_at}
             for t in records]
 
 
-async def tool_connection_options(tool_code: str, *, agent_ids: Collection[int] | None, protocol: bool = False) -> list[dict[str, Any]]:
-    from app.tools import ToolModel
+async def tool_connection_options(service_code: str, *, agent_ids: Collection[int] | None, protocol: bool = False) -> list[dict[str, Any]]:
+    from app.services import ServiceModel
     from app.agent import Agent
-    statement = select(Connection.id, Connection.agent_id, Agent.first_name, Agent.last_name, ToolModel.label).join(
-        ToolModel, ToolModel.id == Connection.tool_id).join(Agent, Agent.id == Connection.agent_id).where(
-        ((ToolModel.calendar_config.is_not(None) & (ToolModel.calendar_config != JSON.NULL)) if tool_code == "calendar"
-         else (ToolModel.mail_config.is_not(None) & (ToolModel.mail_config != JSON.NULL)))
-        if protocol else ToolModel.code == tool_code).order_by(Connection.id)
+    statement = select(Connection.id, Connection.agent_id, Agent.first_name, Agent.last_name, ServiceModel.label).join(
+        ServiceModel, ServiceModel.id == Connection.service_id).join(Agent, Agent.id == Connection.agent_id).where(
+        ((ServiceModel.calendar_config.is_not(None) & (ServiceModel.calendar_config != JSON.NULL)) if service_code == "calendar"
+         else (ServiceModel.mail_config.is_not(None) & (ServiceModel.mail_config != JSON.NULL)))
+        if protocol else ServiceModel.code == service_code).order_by(Connection.id)
     if agent_ids is not None:
         statement = statement.where(Connection.agent_id.in_(agent_ids))
     return [{"id": identity, "agent_id": agent_id, "label": f"{first} {last} · {provider}" if protocol else f"{first} {last}"}

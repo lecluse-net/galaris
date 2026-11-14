@@ -1127,7 +1127,7 @@ async def _record_tool_failure(
     """Driver-neutral fallback when a concrete runtime lacks a richer hook."""
 
     from core.failure_journal import FailureEvent, record_failure_event
-    from app.tools import native_failure_key
+    from app.services import native_failure_key
 
     external_id = message.tool_call_external_id
     key = external_id or f"sequence-{sequence}"

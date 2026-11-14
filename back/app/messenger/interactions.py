@@ -66,7 +66,7 @@ class PendingChoice:
     id: UUID
     kind: str
     agent_id: Optional[int]
-    tool_id: Optional[int]
+    service_id: Optional[int]
     room_id: Optional[str]
     user_id: Optional[str]
     title: str
@@ -206,7 +206,7 @@ async def create_choice(
         )
         if existing is not None:
             if (existing.agent_id != agent_id or existing.connection_id != (messenger.connection_id or None)
-                    or existing.tool_id != (messenger.tool_id or None) or existing.room_id != room_id
+                    or existing.service_id != (messenger.service_id or None) or existing.room_id != room_id
                     or existing.user_id != user_id):
                 raise PermissionError("The existing request belongs to another messaging scope")
             if existing.prompt_message_id is None and existing.status == "PENDING" and existing.expires_at > now:
@@ -225,7 +225,7 @@ async def create_choice(
         kind=request.kind,
         agent_id=agent_id,
         connection_id=int(getattr(messenger, "connection_id", 0) or 0) or None,
-        tool_id=getattr(messenger, "tool_id", None) or None,
+        service_id=getattr(messenger, "service_id", None) or None,
         room_id=room_id,
         user_id=user_id,
         title=request.title,
@@ -292,7 +292,7 @@ async def resolve_from_message(
         .where(
             Interaction.status == "PENDING",
             Interaction.expires_at > now,
-            Interaction.tool_id == message.tool_id,
+            Interaction.service_id == message.service_id,
             *scope_clauses,
         )
         .order_by(Interaction.created_at.desc())
@@ -360,7 +360,7 @@ async def list_pending_choices(
     *,
     agent_id: int,
     connection_id: int | None,
-    tool_id: int | None,
+    service_id: int | None,
     room_id: str,
     user_id: str | None,
     limit: int = 10,
@@ -390,7 +390,7 @@ async def list_pending_choices(
             Interaction.expires_at > now,
             Interaction.agent_id == agent_id,
             Interaction.connection_id == connection_id,
-            Interaction.tool_id == tool_id,
+            Interaction.service_id == service_id,
             Interaction.room_id == room_id,
             user_clause,
         )
@@ -408,7 +408,7 @@ async def list_pending_choices(
 
 async def apply_interpreted_response(
     *, reference: str, kind: str, agent_id: int, connection_id: int,
-    tool_id: int | None, room_id: str, user_id: str,
+    service_id: int | None, room_id: str, user_id: str,
     response: dict[str, Any], apply: Callable[[PendingChoice], Awaitable[None]],
     normalize_response: Callable[[PendingChoice, dict[str, Any]], dict[str, Any]] | None = None,
 ) -> bool:
@@ -421,7 +421,7 @@ async def apply_interpreted_response(
     record = await db.scalar(select(Interaction).where(
         Interaction.reference == reference.strip().lstrip("#").upper(),
         Interaction.kind == kind, Interaction.agent_id == agent_id,
-        Interaction.connection_id == connection_id, Interaction.tool_id == tool_id,
+        Interaction.connection_id == connection_id, Interaction.service_id == service_id,
         Interaction.room_id == room_id, Interaction.user_id == user_id,
     ).with_for_update().execution_options(populate_existing=True))
     if record is None or not record.metadata_.get("interpretation_required"):
@@ -450,7 +450,7 @@ async def resolve_pending_choice(
     response_text: str,
     agent_id: int,
     connection_id: int | None,
-    tool_id: int | None,
+    service_id: int | None,
     room_id: str,
     user_id: str | None,
     capture_response: Callable[[], Awaitable[None]] | None = None,
@@ -484,7 +484,7 @@ async def resolve_pending_choice(
             Interaction.reference == normalized_reference,
             Interaction.agent_id == agent_id,
             Interaction.connection_id == connection_id,
-            Interaction.tool_id == tool_id,
+            Interaction.service_id == service_id,
             Interaction.room_id == room_id,
             user_clause,
         )
@@ -545,7 +545,7 @@ def _pending_from_record(record: Interaction) -> PendingChoice:
         kind=record.kind,
         agent_id=record.agent_id,
         connection_id=record.connection_id,
-        tool_id=record.tool_id,
+        service_id=record.service_id,
         room_id=record.room_id,
         user_id=record.user_id,
         title=record.title,

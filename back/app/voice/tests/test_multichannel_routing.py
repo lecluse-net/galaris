@@ -9,8 +9,8 @@ import pytest
 import app.voice as voice_module
 from app.connection import connection_service
 from app.conversation import ConversationTurn
-from app.tools import McpToolContext
-from app.tools import tool_service
+from app.services import McpToolContext
+from app.services import service
 from app.voice import mcp as voice_mcp
 from app.voice.call_manager import VoiceCallInfo, VoiceCallManager
 from app.voice.interface import CallTransport
@@ -48,7 +48,7 @@ async def test_call_provider_comes_from_exact_connection(
     from core.params import runtime_settings
     monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["matrix"]')
     provider = object()
-    connection = SimpleNamespace(id=42, agent_id=7, tool_id=5, active=True)
+    connection = SimpleNamespace(id=42, agent_id=7, service_id=5, active=True)
     tool = SimpleNamespace(
         code="custom-matrix",
         messenger=SimpleNamespace(service="matrix"),
@@ -58,7 +58,7 @@ async def test_call_provider_comes_from_exact_connection(
         "get_connection",
         AsyncMock(return_value=connection),
     )
-    monkeypatch.setattr(tool_service, "get_tool_by_id", AsyncMock(return_value=tool))
+    monkeypatch.setattr(service, "get_service_by_id", AsyncMock(return_value=tool))
     monkeypatch.setattr(
         voice_module,
         "get_call_provider",

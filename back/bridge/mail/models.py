@@ -75,7 +75,7 @@ class MailOutboundDelivery(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
     authorization_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("tool_action_authorizations.id", ondelete="RESTRICT"), nullable=True, index=True,
+        ForeignKey("service_action_authorizations.id", ondelete="RESTRICT"), nullable=True, index=True,
     )
     approver_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
@@ -156,7 +156,7 @@ class MailInboundReceipt(Base):
     dispatch_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[str] = mapped_column(String(32), default="received")
     authorization_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("tool_action_authorizations.id", ondelete="RESTRICT"), index=True
+        ForeignKey("service_action_authorizations.id", ondelete="RESTRICT"), index=True
     )
     configuration_fingerprint: Mapped[str | None] = mapped_column(String(64))
     waiting_contexts: Mapped[list[str]] = mapped_column(JSONB, default=list)

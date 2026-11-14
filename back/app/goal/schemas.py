@@ -481,7 +481,7 @@ class GoalPage(BaseModel):
 
 class MessengerReferrerOption(BaseModel):
     connection_id: int
-    tool_id: int
+    service_id: int
     platform: str
     user_id: str
     display_name: str

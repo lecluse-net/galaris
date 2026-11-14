@@ -59,7 +59,7 @@ def main() -> None:
     if run["arm"] == "mcp":
         logging.disable(logging.NOTSET)
         logging.basicConfig(filename="/result/discovery.log", level=logging.INFO)
-        discover: Any = import_module("tools.mcp_tool_discovery")
+        discover: Any = import_module("services.mcp_tool_discovery")
         discovered = discover.register_mcp_servers(config["mcp_servers"])
         if not all(
             any(

@@ -14,14 +14,14 @@ from app.llm import LLMCall
 from app.messenger import Room
 from app.process import ProcessDefinition, ProcessRun
 from app.task import Task, TaskStatus
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.topic import service
 from app.topic.models import Topic
 
 
 async def seed_usage(db, *, repetitions=1, unrelated_tasks=0):
     title = Title(label="Synthetic attribution", gender="X")
-    tool = ToolModel(code=uuid4().hex, label="Synthetic attribution engine", connection_schema={})
+    tool = ServiceModel(code=uuid4().hex, label="Synthetic attribution engine", connection_schema={})
     topics = [Topic(title=f"Synthetic attribution {index}",
         created_at=datetime(2026, 1, index + 1, tzinfo=timezone.utc)) for index in range(4)]
     db.add_all([title, tool, *topics])
@@ -30,10 +30,10 @@ async def seed_usage(db, *, repetitions=1, unrelated_tasks=0):
         for index in range(3)]
     db.add_all(agents)
     await db.flush()
-    connection = Connection(tool_id=tool.id, agent_id=agents[1].id, active=True)
+    connection = Connection(service_id=tool.id, agent_id=agents[1].id, active=True)
     tasks = [Task(label="Synthetic attribution task", status=TaskStatus.SUCCESS, agent_id=agents[index].id,
         topic_id=topics[index].id) for index in range(2)]
-    definition = ProcessDefinition(agent_id=agents[2].id, tool_id=tool.id,
+    definition = ProcessDefinition(agent_id=agents[2].id, service_id=tool.id,
         engine_process_id=uuid4().hex, label="Synthetic attribution process")
     db.add_all([connection, definition, *tasks])
     await db.flush()

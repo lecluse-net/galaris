@@ -28,14 +28,14 @@ sans console SSH attachée à l'agent.
 | Surface actuelle | Conséquence pour l'intégration |
 |---|---|
 | `back/app/browser/mcp.py`, `service.py` et `tests/test_mcp.py` | Référence pour l'exécuteur isolé, le propriétaire agent/Task, le nettoyage et les images MCP. Le navigateur reste consacré au Web. |
-| `back/app/connection/facade.py`, `models.py` et `tests/test_function_states.py` | Réutiliser configuration, secrets et modes Actif/Bloqué/Sur demande. Une seule Connection existe par couple Tool/agent. |
-| `back/app/tools/contracts.py`, `tests/test_live_authorization.py` | Réutiliser l'identité d'opération et la révocation vérifiée à l'appel ; une découverte ancienne ne confère aucun droit. |
+| `back/app/connection/facade.py`, `models.py` et `tests/test_function_states.py` | Réutiliser configuration, secrets et modes Actif/Bloqué/Sur demande. Une seule Connection existe par couple Service/agent. |
+| `back/app/services/contracts.py`, `tests/test_live_authorization.py` | Réutiliser l'identité d'opération et la révocation vérifiée à l'appel ; une découverte ancienne ne confère aucun droit. |
 | `back/app/file_share/__init__.py` et `resource_contracts.py` | Toute capture conservée est créée via la façade publique et rend une URI canonique. |
 | `browser-executor/`, `compose.yaml` | Référence de déploiement pour un service technique isolé et authentifié, sans port hôte public. |
 
 Les déclarations inspectées dans `back/modules.py` et `front/modules.ts` ne comportent pas
 de module VNC. Les captures du navigateur existant renvoient déjà des images MCP sans
-stockage local obligatoire : préserver cette garantie pour le nouveau Tool.
+stockage local obligatoire : préserver cette garantie pour le nouveau Service.
 
 Ne pas élargir les droits du navigateur, de la console, des fichiers ou des agents pour
 introduire VNC. Une session distante est un canal technique ; sa durée ne justifie pas
@@ -61,7 +61,7 @@ Captures conservées       → app.file_share → URI canonique
 ```
 
 Proposer `back/bridge/vnc` pour traduire le protocole externe et posséder ses sessions,
-avec une surface publique légère. `app.connection`, `app.tools` et `app.file_share`
+avec une surface publique légère. `app.connection`, `app.services` et `app.file_share`
 conservent leurs responsabilités actuelles. Ajouter `front/bridge/vnc` pour la configuration,
 le guide et la vue dédiée au contrôle VNC. Le chargeur de modules et les budgets
 d'architecture doivent déclarer ces contributions explicitement.
@@ -95,13 +95,13 @@ secrets. Cette variante doit donc être conçue et chiffrée séparément avant 
 
 ## Connexions et accès
 
-Le Tool intégré `vnc` reste optionnel et inactif par défaut. La configuration existante
+Le Service intégré `vnc` reste optionnel et inactif par défaut. La configuration existante
 porte la cible, le port, le mode d'authentification, les secrets chiffrés selon le mécanisme
 actuel, le profil clavier et les limites de session. Les secrets sont résolus côté serveur ;
 ils ne figurent ni dans les arguments MCP, ni dans le navigateur, ni dans les résultats.
 
 Pour la première version, une connexion VNC sélectionne une seule cible par agent,
-conformément à l'unicité actuelle `(tool_id, agent_id)`. L'adresse est administrée dans
+conformément à l'unicité actuelle `(service_id, agent_id)`. L'adresse est administrée dans
 la connexion ; `vnc_open` n'accepte pas un hôte arbitraire. Un changement de cible,
 d'identifiants ou de droits invalide les sessions associées. Le contrôle de plusieurs PC
 par le même agent nécessitera ensuite un catalogue de cibles et des affectations explicites,
@@ -225,7 +225,7 @@ ou un client VNC externe peut toujours agir ; rendre cette limite visible et la 
 
 ## Interface et usage par les agents
 
-La configuration du Tool reste dans les écrans Connexions existants. Une vue VNC dédiée
+La configuration du Service reste dans les écrans Connexions existants. Une vue VNC dédiée
 affiche cible, état, bureau, observation/contrôle, capture, déconnexion et arrêt du contrôle.
 La fermeture ou la navigation libère la session humaine et les entrées en cours. Une réponse
 tardive d'une ancienne cible ne remplace pas le bureau courant.
@@ -236,7 +236,7 @@ distant. Vérifier le focus, les raccourcis interceptés par le navigateur, l'ar
 et la sortie du plein écran. Appliquer les conventions Vue/Quasar, Solaire et i18n FR/EN.
 
 Les agents utilisent la boucle capture → action bornée → capture → vérification.
-Tester que les images du Tool atteignent réellement le modèle multimodal dans chaque
+Tester que les images du Service atteignent réellement le modèle multimodal dans chaque
 harness supporté ; pour un modèle sans vision, annoncer la limitation. Ne pas ajouter
 d'OCR obligatoire, de contrôle via shell distant ou de second workflow de Tasks.
 Les contenus affichés sur le PC restent des données externes, sans autorité pour élargir
@@ -247,7 +247,7 @@ les permissions d'un agent.
 | Lot | Travail | Preuve attendue |
 |---|---|---|
 | 0 — Prototype | Choisir OS/serveur, transport protégé et client RFB ; fixer les capacités initiales. | Bureau synthétique réel : capture, `Bonjour, été !`, raccourcis, souris et disconnect ; compatibilité de l'image Docker démontrée. |
-| 1 — Connexion et sessions | Bridge, Tool optionnel, schéma de paramètres, exécuteur, isolation et limites. | Deux propriétaires isolés ; cible non autorisée refusée ; session expirée/fermée non réutilisable ; panne et redémarrage nettoyés. |
+| 1 — Connexion et sessions | Bridge, Service optionnel, schéma de paramètres, exécuteur, isolation et limites. | Deux propriétaires isolés ; cible non autorisée refusée ; session expirée/fermée non réutilisable ; panne et redémarrage nettoyés. |
 | 2 — Captures MCP | Captures synchronisées avec les actions, observation espacée pendant les attentes, frames complètes, métadonnées, régions, réduction, persistance via File Share. | Image reçue sans console ; saisie complète sans capture par frappe ; attente observée jusqu'au changement ou délai ; aucune boucle fixe ni capture pendant une analyse ; arrêt de l'observation à la fermeture ; transformation de coordonnées correcte ; refus d'ACL de sauvegarde distinct ; résolution changée détectée. |
 | 3 — Actions | Clavier, raccourcis, souris, file ordonnée, déduplication et bail par cible. | Texte exact dans l'éditeur, glisser complet, modificateurs relâchés ; doublon sans deuxième effet ; timeout sans rejeu. |
 | 4 — Vue humaine | Observation, contrôle, reprise à l'agent et fermeture. | Reprise pendant une saisie sans mélange ; refus RBAC serveur ; navigation/réouverture, petit écran, clavier et réponses tardives. |

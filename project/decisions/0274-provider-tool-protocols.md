@@ -1,4 +1,4 @@
-# 0274 — Capacités et protocoles des Tools fournisseurs
+# 0274 — Capacités et protocoles des Services fournisseurs
 
 Statut : accepté, implémenté.
 
@@ -7,22 +7,22 @@ les sources externes restent optionnelles, avec un agenda personnel natif par d�
 
 ## Décision
 
-Un Tool représente un service ou fournisseur, par exemple Ionos. MCP, API, partage,
+Un Service représente un service ou fournisseur, par exemple Ionos. MCP, API, partage,
 messagerie, Listener, Mail et Calendrier sont ses capacités fonctionnelles. Un protocole
 est la déclinaison technique d'une capacité : HTTP/SSE/stdio pour MCP, REST pour API,
 AFFiNE/Nextcloud/Samba pour le partage, IMAP & SMTP pour Mail et iCal pour Calendrier.
-Un Tool peut cumuler des capacités différentes, mais sélectionne un seul protocole par
+Un Service peut cumuler des capacités différentes, mais sélectionne un seul protocole par
 capacité. Le catalogue propose plusieurs protocoles pour une même capacité.
 
 Les capacités sont des codes chaînes ouverts, sans enum. Chaque protocole du catalogue
-expose sa chaîne `capability`. Les sélections du Tool sont conservées dans `capabilities`
+expose sa chaîne `capability`. Les sélections du Service sont conservées dans `capabilities`
 sous forme d'identifiants `protocole.capacité`, par exemple `http.mcp` ou `imap_smtp.mail`.
 Les configurations typées existantes conservent les réglages d'exécution ; la liste et les
 configurations doivent être cohérentes. Les anciens clients qui omettent cette liste restent
 acceptés. Les identifiants externes restent conservés lors des modifications et exports.
 Les libellés standards du catalogue sont des clés i18n ; les libellés et identifiants externes
 sont affichés littéralement. Une chaîne inconnue ne crée pas à elle seule un adapter d'exécution.
-La liste des Tools montre uniquement leurs capacités en badges Quasar, avec fond transparent,
+La liste des Services montre uniquement leurs capacités en badges Quasar, avec fond transparent,
 texte et bordure d'une même couleur. Les onglets distinguent leur origine sans badge redondant. Dans le
 formulaire, un bouton complet « Ajouter un protocole » est affiché en l'absence d'onglet ;
 il devient « + » après le premier choix. Il ouvre un menu déroulant de protocoles groupés
@@ -64,7 +64,7 @@ Task `SUCCESS` marque la relance comme traitée. Les occurrences récurrentes on
 Les fonctions MCP conservent leurs noms publics `mail_*` et `calendar_*`. Leur famille est
 résolue à partir du protocole, indépendamment du code du fournisseur. Une sélection explicite
 `connection_id` lie autorisation et exécution à la même connexion active de l'agent ; une
-ambiguïté est refusée. Les ressources Mail utilisent le code du Tool. Si le Tool possède aussi
+ambiguïté est refusée. Les ressources Mail utilisent le code du Service. Si le Service possède aussi
 un partage de fichiers, le préfixe `mail/` réserve son espace Mail. Les curseurs du polling Mail
 et de la messagerie sont séparés lorsqu'ils partagent une connexion.
 
@@ -77,18 +77,18 @@ de la bibliothèque de fichiers.
 
 ### Plusieurs comptes Mail par fournisseur
 
-Un Tool Mail peut avoir plusieurs connexions pour un même agent. L'unicité des autres Tools
-reste garantie en base par `(tool_id, agent_id, singleton_key)` : la clé interne vaut zéro
+Un Service Mail peut avoir plusieurs connexions pour un même agent. L'unicité des autres Services
+reste garantie en base par `(service_id, agent_id, singleton_key)` : la clé interne vaut zéro
 par défaut, et `NULL` pour les nouvelles connexions Mail. Les connexions existantes sont
-conservées. Les créations restent sérialisées par le verrou du Tool. Retirer Mail avec des
+conservées. Les créations restent sérialisées par le verrou du Service. Retirer Mail avec des
 doublons est refusé ; sans doublon, les connexions retrouvent la clé d'unicité zéro.
-Les opérations qui ne reçoivent que le couple agent/Tool refusent une sélection ambiguë.
+Les opérations qui ne reçoivent que le couple agent/Service refusent une sélection ambiguë.
 Les ressources Mail nouvelles portent `account/<connection_id>/` dans le locator. À la racine
 du fournisseur, plusieurs comptes sont présentés comme des répertoires distincts ; la
-résolution vérifie chaque fois l'agent, le Tool et l'activation de la connexion.
+résolution vérifie chaque fois l'agent, le Service et l'activation de la connexion.
 
-L'action DbAdmin `app.tools.mail_calendar_protocols` est déclenchée par l'ajout des nouvelles
-colonnes. Elle transforme les anciennes lignes `mail` et `calendar` en Tools personnalisés
+L'action DbAdmin `app.services.mail_calendar_protocols` est déclenchée par l'ajout des nouvelles
+colonnes. Elle transforme les anciennes lignes `mail` et `calendar` en Services personnalisés
 en conservant leurs clés, libellés, connexions, activations, valeurs globales, secrets,
 autorisations, reçus Mail et ressources CalendarFeed. Les anciennes configurations de transport
 Mail deviennent des capacités dérivées du protocole. Aucun déplacement de connexion ni nouvelle
@@ -98,8 +98,8 @@ Les installations neuves ne créent plus ces anciennes lignes. Les datasets ne l
 plus et ne les recréent pas après suppression. Une synchronisation ordinaire ne rejoue pas
 la migration et ne rétablit pas un protocole désactivé par l'administrateur.
 
-L'action `app.tools.capability_selections`, après les datasets, initialise la liste depuis
-les configurations existantes à l'ajout de la colonne `tools.capabilities`. Elle ne réécrit
+L'action `app.services.capability_selections`, après les datasets, initialise la liste depuis
+les configurations existantes à l'ajout de la colonne `services.capabilities`. Elle ne réécrit
 aucun accès, secret ou paramètre. Les doublons de capacité et les incohérences entre liste
 et configuration sont refusés à l'écriture.
 
@@ -107,7 +107,7 @@ et configuration sont refusés à l'écriture.
 
 ### Diagnostics et autorisations d’une connexion
 
-Le catalogue Tools possède un port de sonde par protocole, enregistré par son domaine
+Le catalogue Services possède un port de sonde par protocole, enregistré par son domaine
 propriétaire. Le test administratif résout les paramètres enregistrés côté serveur,
 borne chaque sonde et ne modifie ni activation ni règles de permission. Un protocole
 sans sonde renvoie un résultat non vérifié, jamais une réussite implicite. Les erreurs

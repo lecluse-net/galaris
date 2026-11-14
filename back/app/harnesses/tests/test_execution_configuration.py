@@ -90,7 +90,7 @@ async def test_concurrent_configuration_updates_have_one_winner(committed_databa
 @pytest.mark.asyncio
 async def test_configuration_is_rechecked_at_tool_execution(db, monkeypatch):
     from app.agent import agent_service
-    from app.tools import mcp_loader, resource_effects
+    from app.services import mcp_loader, resource_effects
     from fastmcp.exceptions import ToolError
 
     # The agent and transport are external to this policy test; the policy repository,
@@ -101,7 +101,7 @@ async def test_configuration_is_rechecked_at_tool_execution(db, monkeypatch):
     effect = AsyncMock(return_value="created")
     monkeypatch.setattr(resource_effects, "record_tool_resources", AsyncMock())
     definition = mcp_loader.McpToolDefinition(
-        tool_code="files", name="test_create", description="Create", function=effect,
+        service_code="files", name="test_create", description="Create", function=effect,
         required_capabilities=frozenset({"file_tools"}),
     )
     tool = mcp_loader._wrap_tool(definition, mcp_loader.McpToolContext(agent_id=7, runtime="internal"))

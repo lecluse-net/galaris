@@ -2,23 +2,23 @@
 
 from typing import Any
 from app.agent.facade import delegated_admin, PageLimit, PageOffset
-from app.tools import McpToolContext, mcp_tool
+from app.services import McpToolContext, mcp_tool
 from .schemas import FunctionState
 from . import agent_admin_service as service
 
 
-@mcp_tool("agent_admin", approval="enabled", approval_reason="Governed administrative read", name="agent_tool_list", description="List configurable Tools, public parameter schemas and mandatory status.", effect_policy="read", concurrency_policy="safe")
-async def agent_tool_list(ctx: McpToolContext, agent_id: int, search: str = "", skip: PageOffset = 0, limit: PageLimit = 50) -> dict[str, Any]:
-    async with delegated_admin(ctx.agent_id, "agent_tool_list", "AGENT_EDIT", "CONNECTION_EDIT") as grant:
+@mcp_tool("agent_admin", approval="enabled", approval_reason="Governed administrative read", name="agent_service_list", description="List configurable Services, public parameter schemas and mandatory status.", effect_policy="read", concurrency_policy="safe")
+async def agent_service_list(ctx: McpToolContext, agent_id: int, search: str = "", skip: PageOffset = 0, limit: PageLimit = 50) -> dict[str, Any]:
+    async with delegated_admin(ctx.agent_id, "agent_service_list", "AGENT_EDIT", "CONNECTION_EDIT") as grant:
         await grant.target(agent_id)
         return await service.list_tools(search, skip, limit)
 
 
 @mcp_tool("agent_admin", approval="enabled", approval_reason="Governed administrative read", name="agent_connection_list", description="List managed agent connections, including inactive connections.", effect_policy="read", concurrency_policy="safe")
-async def agent_connection_list(ctx: McpToolContext, agent_id: int, tool_id: int | None = None, active_only: bool = False, skip: PageOffset = 0, limit: PageLimit = 50) -> dict[str, Any]:
+async def agent_connection_list(ctx: McpToolContext, agent_id: int, service_id: int | None = None, active_only: bool = False, skip: PageOffset = 0, limit: PageLimit = 50) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_connection_list", "AGENT_EDIT", "CONNECTION_EDIT") as grant:
         await grant.target(agent_id)
-        return await service.list_connections(agent_id, tool_id, active_only, skip, limit)
+        return await service.list_connections(agent_id, service_id, active_only, skip, limit)
 
 
 @mcp_tool("agent_admin", approval="enabled", approval_reason="Governed administrative read", name="agent_connection_get", description="Read a connection and effective parameters with secrets masked.", effect_policy="read", concurrency_policy="safe")
@@ -29,14 +29,14 @@ async def agent_connection_get(ctx: McpToolContext, connection_id: int) -> dict[
         return await service.projection(connection_id)
 
 
-@mcp_tool("agent_admin", approval="ask", approval_reason="Administrative mutation requires one-action approval", name="agent_connection_create", description="Create one optional Tool connection for a managed agent. Administrative delegation requires a human.")
-async def agent_connection_create(ctx: McpToolContext, agent_id: int, tool_id: int, active: bool = False) -> dict[str, Any]:
+@mcp_tool("agent_admin", approval="ask", approval_reason="Administrative mutation requires one-action approval", name="agent_connection_create", description="Create one optional Service connection for a managed agent. Administrative delegation requires a human.")
+async def agent_connection_create(ctx: McpToolContext, agent_id: int, service_id: int, active: bool = False) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_connection_create", "AGENT_EDIT", "CONNECTION_EDIT") as grant:
         await grant.target(agent_id)
-        return await service.create(agent_id, tool_id, active)
+        return await service.create(agent_id, service_id, active)
 
 
-@mcp_tool("agent_admin", approval="ask", approval_reason="Administrative mutation requires one-action approval", name="agent_connection_update", description="Activate/deactivate a connection without changing its target or Tool.", effect_policy="idempotent")
+@mcp_tool("agent_admin", approval="ask", approval_reason="Administrative mutation requires one-action approval", name="agent_connection_update", description="Activate/deactivate a connection without changing its target or Service.", effect_policy="idempotent")
 async def agent_connection_update(ctx: McpToolContext, connection_id: int, active: bool) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_connection_update", "AGENT_EDIT", "CONNECTION_EDIT") as grant:
         connection = await service.require_connection(connection_id, editable=True)

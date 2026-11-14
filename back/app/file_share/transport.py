@@ -15,7 +15,7 @@ from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Protocol, runtime_checkable
 
 from loguru import logger
-from app.tools.contracts import ToolCallRejectedError
+from app.services.contracts import ToolCallRejectedError
 from core.util import DEFAULT_DOWNLOAD_BYTES
 from .file_contracts import FileEntry
 

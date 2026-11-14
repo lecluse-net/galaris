@@ -55,7 +55,7 @@ test('native Process and run references open their own detail with the selected 
   for (const suffix of ['/data', '/attachments/', `/attachments/${id}`]) {
     assert.equal(resourceTarget({ ...entry, uri: entry.uri + suffix }, 7), null)
   }
-  const definition = { uri: 'galaris://processes/synthetic_process', name: 'process.json', metadata: { label: 'Synthetic process', tool_code: 'galaris' } }
+  const definition = { uri: 'galaris://processes/synthetic_process', name: 'process.json', metadata: { label: 'Synthetic process', service_code: 'galaris' } }
   assert.deepEqual(resourceTarget(definition, 7), { kind: 'process', id: 'synthetic_process', title: 'Synthetic process', agentId: 7 })
-  assert.equal(resourceTarget({ ...definition, uri: 'galaris://process/synthetic_process', metadata: { tool_code: 'n8n' } }, 7), null)
+  assert.equal(resourceTarget({ ...definition, uri: 'galaris://process/synthetic_process', metadata: { service_code: 'n8n' } }, 7), null)
 })

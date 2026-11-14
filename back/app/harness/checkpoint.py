@@ -16,9 +16,9 @@ from datetime import datetime, timezone
 
 from pydantic_ai import ModelRetry, ApprovalRequired, DeferredToolResults, ToolDenied
 from pydantic_ai.messages import ModelMessage
-from app.tools.facade import AuthorizationClosed, AuthorizationRequired, authorization_status
+from app.services.facade import AuthorizationClosed, AuthorizationRequired, authorization_status
 from pydantic_core import to_jsonable_python
-from app.tools.contracts import ToolExecutionContext, tool_execution
+from app.services.contracts import ToolExecutionContext, tool_execution
 from .recovery_metrics import observe_recovery
 from .tool_results import TOOL_ERROR_SCHEMA, decode_tool_result, reported_tool_failure
 
@@ -184,7 +184,7 @@ def _execution_policy_for_toolset_tool(
 ) -> tuple[ToolEffectPolicy, ToolConcurrencyPolicy]:
     """Merge native policy with standard MCP effect annotations."""
 
-    from app.tools.mcp_loader import execution_policy_for_tool
+    from app.services.mcp_loader import execution_policy_for_tool
 
     effect_policy, concurrency_policy = execution_policy_for_tool(name)
     raw_metadata: object = getattr(getattr(tool, "tool_def", None), "metadata", None)
@@ -360,7 +360,7 @@ class HarnessRunCheckpoint:
     def _repair_conservative_effect_policies(self) -> None:
         """Upgrade legacy defaults only when the current native contract is replay-safe."""
 
-        from app.tools.mcp_loader import execution_policy_for_tool
+        from app.services.mcp_loader import execution_policy_for_tool
 
         for effect in self.effects:
             if effect.get("policy_version") == _CHECKPOINT_VERSION:

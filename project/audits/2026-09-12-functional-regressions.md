@@ -38,7 +38,7 @@ du worktree sont préservés ; les campagnes complètes utilisent des copies fig
    désormais les détails dans la même transaction. Le scénario vérifie le dernier verdict
    et les bornes de 100 détails et 4 000 caractères.
 3. **Découverte Process concurrente.** Après le conflit d'insertion, le rollback expirait
-   l'objet Tool ; sa relecture implicite déclenchait `MissingGreenlet`. Les valeurs utiles
+   l'objet Service ; sa relecture implicite déclenchait `MissingGreenlet`. Les valeurs utiles
    sont capturées avant le commit et la propriété du workflow est revérifiée à la reprise.
 
 `project/regressions.json` relie ces défauts aux tests JUnit et aux mutations. La campagne

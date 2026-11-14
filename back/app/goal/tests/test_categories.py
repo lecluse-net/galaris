@@ -19,7 +19,7 @@ from core.user.user_service import encrypt_password, user_identity_context
 @pytest.mark.parametrize("status", list(GoalStatus))
 async def test_classification_with_unchanged_inactive_messenger_referrer(client, status):
     from app.connection import Connection
-    from app.tools import ToolModel
+    from app.services import ServiceModel
 
     password = "synthetic-offline-classification-password"
     async with get_db_session() as db:
@@ -30,7 +30,7 @@ async def test_classification_with_unchanged_inactive_messenger_referrer(client,
         owner = User(email="synthetic-offline-goal@example.com",
                      hashed_password=encrypt_password(password), is_active=True)
         title = Title(label="Synthetic offline classification", gender="N")
-        tool = ToolModel(code="synthetic-offline-goal-messenger", label="Synthetic messenger")
+        tool = ServiceModel(code="synthetic-offline-goal-messenger", label="Synthetic messenger")
         db.add_all([role, owner, title, tool])
         await db.flush()
         db.add(Assignment(user_id=owner.id, role_id=role.id, is_default=True))
@@ -38,7 +38,7 @@ async def test_classification_with_unchanged_inactive_messenger_referrer(client,
                         first_name="Synthetic", last_name=str(i)) for i in range(2)]
         db.add_all(agents)
         await db.flush()
-        connections = [Connection(tool_id=tool.id, agent_id=agent.id, active=False) for agent in agents]
+        connections = [Connection(service_id=tool.id, agent_id=agent.id, active=False) for agent in agents]
         db.add_all(connections)
         await db.flush()
         goal = await make_goal(

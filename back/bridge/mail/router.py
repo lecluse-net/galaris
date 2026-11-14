@@ -47,7 +47,7 @@ async def read_browser_message(
 
     if not (await current_management_scope()).allows(agent_id):
         raise HTTPException(404, "Agent not found")
-    from app.tools import bind_protocol_connection, reset_protocol_connection
+    from app.services import bind_protocol_connection, reset_protocol_connection
     token = bind_protocol_connection("mail", agent_id, connection_id) if connection_id is not None else None
     try:
         async with asyncio.timeout(120):
@@ -159,7 +159,7 @@ async def list_outbound_mail_agents() -> list[MailDeliveryAgentOption]:
 @authorize(
     privileges=[
         Privileges.CONNECTION_ACCESS,
-        Privileges.TOOL_EDIT,
+        Privileges.SERVICE_EDIT,
         Privileges.CONNECTION_EDIT,
     ]
 )

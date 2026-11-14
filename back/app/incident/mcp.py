@@ -6,8 +6,8 @@ from uuid import UUID
 
 from pydantic import Field
 
-from app.tools.facade import administration_scope
-from app.tools import McpToolContext, mcp_tool
+from app.services.facade import administration_scope
+from app.services import McpToolContext, mcp_tool
 
 from . import service
 from .serialization import incident_detail, incident_read

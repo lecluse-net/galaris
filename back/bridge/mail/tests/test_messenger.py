@@ -59,7 +59,7 @@ def test_mail_cursor_is_versioned_and_rejects_invalid_values() -> None:
 
 
 def test_mail_sender_exposes_display_name_and_stable_email_identity() -> None:
-    observed = messenger.MailMessenger(_config(), tool_id=3).message(_summary(41))
+    observed = messenger.MailMessenger(_config(), service_id=3).message(_summary(41))
 
     assert observed.sender is not None
     assert observed.sender.id == "sender@example.org"
@@ -68,7 +68,7 @@ def test_mail_sender_exposes_display_name_and_stable_email_identity() -> None:
 
 @pytest.mark.asyncio
 async def test_excluding_inbox_suspends_polling_and_receipt_resumption(monkeypatch):
-    adapter = messenger.MailMessenger(_config().model_copy(update={"allowed_mailboxes": ("Projects",)}), tool_id=3)
+    adapter = messenger.MailMessenger(_config().model_copy(update={"allowed_mailboxes": ("Projects",)}), service_id=3)
     poll, resume = AsyncMock(), AsyncMock()
     monkeypatch.setattr(messenger.ImapClient, "poll_inbox", poll)
     monkeypatch.setattr(inbound, "resume_receipts", resume)
@@ -89,7 +89,7 @@ async def test_excluding_inbox_suspends_polling_and_receipt_resumption(monkeypat
 async def test_first_poll_establishes_baseline_and_uses_configured_interval(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    adapter = messenger.MailMessenger(_config(), tool_id=3)
+    adapter = messenger.MailMessenger(_config(), service_id=3)
     monkeypatch.setattr(inbound, "resume_receipts", AsyncMock())
     state = AsyncMock()
     monkeypatch.setattr(messenger.journal, "listener_cursor", AsyncMock(return_value=None))
@@ -124,7 +124,7 @@ async def test_first_poll_establishes_baseline_and_uses_configured_interval(
 async def test_poll_dispatches_new_uids_in_order_before_advancing_cursor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    adapter = messenger.MailMessenger(_config(), tool_id=3)
+    adapter = messenger.MailMessenger(_config(), service_id=3)
     monkeypatch.setattr(inbound, "resume_receipts", AsyncMock())
     state = AsyncMock()
     dispatch = AsyncMock(return_value=True)
@@ -211,7 +211,7 @@ async def test_rebuilt_mailbox_receives_the_next_uid_after_rebaselining(monkeypa
     monkeypatch.setattr(messenger, "asyncio", SimpleNamespace(
         to_thread=asyncio.to_thread, sleep=wait_for_next_poll, CancelledError=asyncio.CancelledError))
     with pytest.raises(asyncio.CancelledError):
-        await messenger.MailMessenger(_config(), tool_id=3).listen()
+        await messenger.MailMessenger(_config(), service_id=3).listen()
 
     assert queries == ["101:*", "8:*"]
     receive.assert_awaited_once()

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.tools.mcp_loader import McpToolContext
+from app.services.mcp_loader import McpToolContext
 from app.calendar import mcp
 from app.calendar.schemas import CalendarAvailability
 

@@ -18,9 +18,9 @@ from app.process.models import ProcessDefinition, ProcessRun, ProcessStartJob
 from app.process.schemas import EngineRunSnapshot, EngineStartResult, ProcessCallbackEvent
 from app.task import task_service
 from app.task.models import Task, TaskStatus
-from app.tools import ToolModel, build_agent_galaris_fastmcp
-from app.tools.authorization import AuthorizationClosed, answer_action
-from app.tools.authorization_models import ActionAuthorization
+from app.services import ServiceModel, build_agent_galaris_fastmcp
+from app.services.authorization import AuthorizationClosed, answer_action
+from app.services.authorization_models import ActionAuthorization
 from core.database import get_db_session
 from core.user import UserModel
 from core.util import BufferedAdmissionDeferred
@@ -33,7 +33,7 @@ async def governed_process(committed_database, monkeypatch):
     async with get_db_session() as db:
         user = UserModel(email=f"{code}@example.test", hashed_password="synthetic")
         title = Title(label=code, gender="X")
-        remote = ToolModel(code=code, label="Synthetic process engine", connection_schema={})
+        remote = ServiceModel(code=code, label="Synthetic process engine", connection_schema={})
         db.add_all([user, title, remote])
         await db.flush()
         await grant_privileges(db, user.id, "PERMISSION_DECIDE")
@@ -41,11 +41,11 @@ async def governed_process(committed_database, monkeypatch):
                       first_name="Process", last_name="Approval")
         db.add(agent)
         await db.flush()
-        tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
-        connection = Connection(agent_id=agent.id, tool_id=tool.id, active=True)
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+        connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
         task = Task(agent_id=agent.id, label="Synthetic workflow", status=TaskStatus.EXEC,
                     objective="<p>Prepare the approved result.</p>")
-        definition = ProcessDefinition(agent_id=agent.id, tool_id=remote.id,
+        definition = ProcessDefinition(agent_id=agent.id, service_id=remote.id,
                                        engine_process_id="approved-workflow", label="Approved workflow")
         db.add_all([connection, task, definition])
         await db.flush()

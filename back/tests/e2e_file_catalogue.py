@@ -12,7 +12,7 @@ from app.file_share import FileCatalogueEnrichmentPort, resource_service
 from app.file_share.models import FileCatalogEntry
 from app.file_share.resource_contracts import ResourceContext
 from app.file_share.tests.local_file_transport import TemporaryFileTransport
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.memory import detect_memory_findings, maintenance
 from app.memory.models import MemoryAutomationJob
 from app.document import document_attachment_service, resource_service as documents, DocumentItemCreate, DocumentPayload
@@ -31,9 +31,9 @@ class BrowserFileTransport(TemporaryFileTransport):
 
 async def seed_catalogue(agent_id: int, root: Path) -> dict[str, object]:
     db = get_db()
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == 'console'))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'console'))
     assert tool is not None
-    db.add(Connection(agent_id=agent_id, tool_id=tool.id, active=True))
+    db.add(Connection(agent_id=agent_id, service_id=tool.id, active=True))
     await db.commit()
     transport = BrowserFileTransport(root / str(agent_id))
     Image.new('RGB', (160, 100), 'turquoise').save(transport.resolve_path('first/synthetic.png'))

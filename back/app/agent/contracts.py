@@ -77,10 +77,10 @@ _NON_PROVIDER_RESOURCE_SCHEMES = frozenset(
 )
 
 
-def _attachment_uri(tool_code: str, room_locator: str, file_id: UUID) -> str:
+def _attachment_uri(service_code: str, room_locator: str, file_id: UUID) -> str:
     """Build a provider URI without importing a concrete messaging domain."""
 
-    scheme = tool_code.strip()
+    scheme = service_code.strip()
     room = room_locator.strip()
     if (
         not room
@@ -177,8 +177,8 @@ class TaskMessage(BaseModel):
     messenger_message_id: UUID | None = None
     external_message_id: str = ""
     platform: str = ""
-    tool_id: int | None = None
-    tool_code: str = ""
+    service_id: int | None = None
+    service_code: str = ""
     sender_id: UUID | None = None
     sender_external_id: str = ""
     sender_display_name: str = ""
@@ -217,7 +217,7 @@ class TaskMessage(BaseModel):
         for file_id in ordered_ids:
             item = by_id.get(file_id) or TaskMessageAttachment(id=file_id)
             canonical_uri = _attachment_uri(
-                self.tool_code,
+                self.service_code,
                 self.room_external_id,
                 file_id,
             )
@@ -277,8 +277,8 @@ class TaskMessage(BaseModel):
             "messenger_message_id": _uuid(source.get("local_id")),
             "external_message_id": str(source.get("id") or ""),
             "platform": str(source.get("platform") or ""),
-            "tool_id": source.get("tool_id"),
-            "tool_code": str(source.get("tool_code") or ""),
+            "service_id": source.get("service_id"),
+            "service_code": str(source.get("service_code") or ""),
             "sender_id": _uuid(sender.get("local_id")),
             "sender_external_id": str(sender.get("id") or ""),
             "sender_display_name": str(sender.get("display_name") or ""),
@@ -312,8 +312,8 @@ class TaskMessage(BaseModel):
             messenger_message_id=message.id,
             external_message_id=message.remote_message_id,
             platform=message.platform,
-            tool_id=message.tool_id,
-            tool_code=message.tool_code,
+            service_id=message.service_id,
+            service_code=message.service_code,
             sender_id=sender.id if sender is not None else None,
             sender_external_id=sender.external_id if sender is not None else "",
             sender_display_name=sender.display_name if sender is not None else "",
@@ -334,7 +334,7 @@ class TaskMessage(BaseModel):
                 TaskMessageAttachment(
                     id=file.id,
                     uri=_attachment_uri(
-                        message.tool_code,
+                        message.service_code,
                         room.external_id if room is not None else "",
                         file.id,
                     ),

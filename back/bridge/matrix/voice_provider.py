@@ -39,14 +39,14 @@ class MatrixVoiceProvider(CallProvider):
         del language
         from app.connection import connection_service
         from app.messenger import kind_for_tool
-        from app.tools import tool_service
+        from app.services import service
         if connection_id is not None:
             connection = await connection_service.get_connection(connection_id)
             if connection is None or connection.agent_id != agent_id:
                 raise ValueError("The Matrix connection does not belong to this agent")
             if not connection.active:
                 raise ValueError("The Matrix connection is inactive")
-            tool = await tool_service.get_tool_by_id(connection.tool_id)
+            tool = await service.get_service_by_id(connection.service_id)
             if (
                 tool is None
                 or kind_for_tool(tool) != self.kind
@@ -60,7 +60,7 @@ class MatrixVoiceProvider(CallProvider):
         for candidate in await connection_service.get_connections_by_agent(agent_id):
             if not candidate.active:
                 continue
-            tool = await tool_service.get_tool_by_id(candidate.tool_id)
+            tool = await service.get_service_by_id(candidate.service_id)
             if (
                 tool is not None
                 and kind_for_tool(tool) == self.kind

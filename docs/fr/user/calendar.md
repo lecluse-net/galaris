@@ -11,7 +11,7 @@ Galaris : il ne crée aucune invitation et n’est pas envoyé au calendrier ext
 
 Ouvrez **Connaissances → Agenda** (`/calendar`). Chaque agent possède un agenda personnel
 sans compte externe. Ses agendas CalDAV et abonnements iCalendar peuvent être affichés avec
-le même calendrier. Les connexions externes se configurent dans **Outils & connexions**,
+le même calendrier. Les connexions externes se configurent dans **Services & connexions**,
 avec les paramètres standards du protocole.
 Chaque agent dispose d’un unique agenda interne par défaut, créé automatiquement. Les réglages
 permettent de le renommer et de choisir sa couleur, mais pas de le supprimer, le désactiver ou
@@ -47,7 +47,7 @@ le contexte de l’agent. Les objectifs conservent leur propre fonctionnement.
 
 Chaque agenda occupe sa propre ligne, avec sa source en sous-libellé. Les agendas locaux,
 **Objectifs** et **Mémoire** portent la mention **Galaris**. Les agendas externes affichent
-le libellé du Tool d’origine, plutôt que le nom de son protocole.
+le libellé du Service d’origine, plutôt que le nom de son protocole.
 Une étoile identifie l’agenda par défaut. La case à cocher affiche ou masque ses
 événements ; le clic gauche sur le nom ou le reste de la ligne ouvre sa modale de réglages
 sans changer la sélection. La ligne s’ouvre aussi au clavier avec Entrée.
@@ -61,7 +61,7 @@ droit supplémentaire. Les couches **Objectifs** et **Mémoire** conservent leur
 Le nom proposé par défaut est **Agenda personnel** et suit la langue de l’interface ; les noms
 personnalisés sont conservés. Dans la modale de réglages d’un agenda, choisissez l’une des
 onze couleurs Solaire puis enregistrez, pour ses cases et ses événements en clair comme en sombre.
-La modale porte le nom de l’agenda, suivi d’un badge **Galaris** ou du libellé de son Tool.
+La modale porte le nom de l’agenda, suivi d’un badge **Galaris** ou du libellé de son Service.
 Ses onglets reprennent la présentation de la modale des objectifs : **Réglages** et, pour
 les agendas externes seulement, **Synchronisation**. L’agenda interne, **Objectifs** et
 **Mémoire** n’affichent aucune information ni action de synchronisation.
@@ -139,15 +139,15 @@ stable pour éviter les doublons.
 
 ## Synchronisation et droits
 
-Dans le protocole Agenda du Tool, choisissez **CalDAV**, **Google Agenda**, **Microsoft 365 /
+Dans le protocole Agenda du Service, choisissez **CalDAV**, **Google Agenda**, **Microsoft 365 /
 Outlook**, **Apple iCloud** ou **iCalendar privé**. Nextcloud utilise CalDAV. L’URL racine
-CalDAV commune à une instance se définit dans les paramètres globaux du Tool, avec héritage
+CalDAV commune à une instance se définit dans les paramètres globaux du Service, avec héritage
 imposé si nécessaire. Un lien ICS privé appartient à la connexion du compte. Google,
 Microsoft et iCloud utilisent leurs adresses de service prédéfinies.
 
 Pour Google et Microsoft, référencez les paramètres standards `client_id` et `client_secret`
 de l’application enregistrée chez le fournisseur, puis définissez leurs valeurs globales
-dans le Tool. Enregistrez l’URL de retour affichée par Galaris dans cette application.
+dans le Service. Enregistrez l’URL de retour affichée par Galaris dans cette application.
 Microsoft accepte `common` pour les comptes personnels et professionnels, ou l’annuaire
 de l’entreprise. Dans chaque connexion, **Autorisation du compte agenda → Connecter le
 compte** ouvre le consentement du fournisseur. Les jetons sont chiffrés et renouvelés
@@ -155,7 +155,7 @@ automatiquement ; une révocation exige une nouvelle autorisation. Les accès MC
 restent indépendants. Les règles de consentement de l’entreprise continuent de s’appliquer.
 
 CalDAV accepte un mot de passe d’application ou OAuth avec les adresses d’autorisation,
-de jetons et les scopes configurés dans le Tool. iCloud utilise l’identifiant Apple et un
+de jetons et les scopes configurés dans le Service. iCloud utilise l’identifiant Apple et un
 mot de passe spécifique à l’application. Les abonnements ICS, y compris les liens Google
 ou Outlook privés, restent en lecture seule.
 
@@ -167,7 +167,7 @@ Google/Microsoft utilisent actuellement un snapshot paginé complet, sans limite
 une réponse incomplète interrompt la synchronisation sans supprimer les événements locaux.
 
 La fréquence de synchronisation appartient à la **connexion** et s’applique à tous les
-agendas issus du même compte, Nextcloud compris. Dans la définition du Tool, associez le
+agendas issus du même compte, Nextcloud compris. Dans la définition du Service, associez le
 rôle **Intervalle de synchronisation (heures)** à un paramètre entier standard, par exemple
 `sync_interval_hours`. Sa valeur se gère ensuite dans les paramètres de la connexion :
 de 1 à 8760 heures, 2 par défaut, avec l’héritage global/local habituel. Aucun paramètre

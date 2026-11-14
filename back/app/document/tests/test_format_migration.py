@@ -84,8 +84,8 @@ async def test_dbadmin_renames_populated_documents_and_process_contracts_without
             session.add(DocumentRevision(document_id=item.id, revision=1, provider_code="native", resource_id=item.resource_id,
                 content=body, content_hash=item.content_hash, content_type="text", media_type=item.media_type, title=item.title))
             session.add(ShareGrant(share_id=item.share_id, user_id=owner.id, can_write=False))
-        tool = await session.scalar(text("SELECT id FROM tools WHERE code='galaris'"))
-        definition = ProcessDefinition(agent_id=agent.id, tool_id=tool, engine_process_id="synthetic_format_migration",
+        tool = await session.scalar(text("SELECT id FROM services WHERE code='galaris'"))
+        definition = ProcessDefinition(agent_id=agent.id, service_id=tool, engine_process_id="synthetic_format_migration",
             code="synthetic_format_migration", label="Synthetic format migration", bpmn_xml=xml)
         session.add(definition)
         await session.flush()

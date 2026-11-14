@@ -136,7 +136,7 @@ class Matrix:
             self._password_session = session
         self.sync_timeout_ms = sync_timeout_ms
         self.platform = ""
-        self.tool_id = 0
+        self.service_id = 0
         self.allowed_user_ids = allowed_user_ids
         self.allowed_room_ids = allowed_room_ids
         self.require_group_mention = require_group_mention
@@ -185,7 +185,7 @@ class Matrix:
         # Matrix connections remain Matrix regardless of the legacy default
         # provider kept for upgrade compatibility.
         instance.platform = "matrix"
-        instance.tool_id = int(connection.tool_id) if connection.tool_id else 0
+        instance.service_id = int(connection.service_id) if connection.service_id else 0
         return instance
 
     @classmethod

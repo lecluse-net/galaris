@@ -19,8 +19,8 @@ from app.agent.models import Agent, Title
 from app.agent import agent_service
 from app.connection.models import Connection, ConnectionFunctionState, ConnectionParam
 from app.connection import mcp as connections_mcp
-from app.tools import mandatory_tools, mcp_loader
-from app.tools.models import Tool
+from app.services import mandatory_services, mcp_loader
+from app.services.models import Service
 from core.authorize import Assignment, Privilege, Role
 from app.llm import LLM, LLMProvider, LlmProfile
 from core.user import UserModel
@@ -83,17 +83,17 @@ async def _make_admin_fixture(db):
     db.add(profile)
     await db.flush()
     caller.profile_id = profile.id
-    await mandatory_tools.sync_integrated_tool_connections(caller.id)
-    admin_tool = await db.scalar(select(Tool).where(Tool.code == "agent_admin"))
-    connection = await db.scalar(select(Connection).where(Connection.agent_id == caller.id, Connection.tool_id == admin_tool.id))
+    await mandatory_services.sync_integrated_service_connections(caller.id)
+    admin_tool = await db.scalar(select(Service).where(Service.code == "agent_admin"))
+    connection = await db.scalar(select(Connection).where(Connection.agent_id == caller.id, Connection.service_id == admin_tool.id))
     assert connection.active is False
     connection.active = True
-    db.add(ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value="all"))
+    db.add(ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value="all"))
     # Domain journeys below have a human-enabled function policy. The real MCP
     # one-action suspension is verified in Tools authorization integration tests.
     from app.connection import facade as connections
     for definition in mcp_loader.load_mcp_tools():
-        if definition.tool_code == "agent_admin":
+        if definition.service_code == "agent_admin":
             await connections.set_connection_function_state(connection.id, definition.name, "enabled")
     await db.commit()
     return caller, owner, other, outsider, title, role, connection
@@ -104,13 +104,13 @@ async def _make_admin_fixture(db):
 async def test_agent_administration_never_allows_self_mutation(db, admin_fixture, level):
     from app.connection import connection_service
     caller, _, _, _, _, _, connection = admin_fixture
-    await connection_service.set_param(connection.id, "tools.management_scope", level, scope_edit_authorized=True)
+    await connection_service.set_param(connection.id, "services.management_scope", level, scope_edit_authorized=True)
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
     with pytest.raises(PermissionError):
         await agent_mcp.agent_update(ctx, caller.id, AdminAgentUpdate(personality="<p>Forbidden change.</p>"))
     with pytest.raises(PermissionError):
         await agent_mcp.agent_delete(ctx, caller.id)
-    tool = await db.scalar(select(Tool).where(Tool.code == "browser"))
+    tool = await db.scalar(select(Service).where(Service.code == "browser"))
     with pytest.raises(PermissionError):
         await connections_mcp.agent_connection_create(ctx, caller.id, tool.id)
 
@@ -127,7 +127,7 @@ async def test_team_management_creates_in_scope_and_rechecks_membership(db, admi
     memberships = [AgentTeam(agent_id=agent.id, team_id=team.id) for agent in (caller, admin_subject)]
     db.add_all(memberships)
     await db.commit()
-    await connection_service.set_param(connection.id, "tools.management_scope", "team", scope_edit_authorized=True)
+    await connection_service.set_param(connection.id, "services.management_scope", "team", scope_edit_authorized=True)
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
     await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(job_title="Team observer"))
     with pytest.raises(PermissionError):
@@ -184,8 +184,8 @@ async def test_crud_journey_preserves_html_code_and_default_delegation(db, admin
     assert data["resource_uri"] == f"galaris://agent/{target_id}"
     assert "<strong>observer</strong>" in data["personality"]
     target_connections = (await db.scalars(select(Connection).where(Connection.agent_id == target_id))).all()
-    admin_tool = await db.scalar(select(Tool).where(Tool.code == "agent_admin"))
-    assert not next(c for c in target_connections if c.tool_id == admin_tool.id).active
+    admin_tool = await db.scalar(select(Service).where(Service.code == "agent_admin"))
+    assert not next(c for c in target_connections if c.service_id == admin_tool.id).active
     details = await agent_mcp.get_agent(ctx, target_id)
     assert "Lyra" in details
     data = await agent_mcp.agent_update(ctx, target_id, AdminAgentUpdate(job_title="Observer", personality=None))
@@ -209,17 +209,17 @@ async def test_crud_journey_preserves_html_code_and_default_delegation(db, admin
 async def test_real_connection_target_and_system_or_delegation_protections(db, admin_fixture, admin_subject):
     caller, _, _, outsider, _, _, _ = admin_fixture
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
-    catalogue = await connections_mcp.agent_tool_list(ctx, admin_subject.id, search="browser", limit=500)
+    catalogue = await connections_mcp.agent_service_list(ctx, admin_subject.id, search="browser", limit=500)
     assert any(item["code"] == "browser" for item in catalogue["items"])
     with pytest.raises(PermissionError):
-        await connections_mcp.agent_tool_list(ctx, outsider.id)
-    await mandatory_tools.sync_integrated_tool_connections(outsider.id)
+        await connections_mcp.agent_service_list(ctx, outsider.id)
+    await mandatory_services.sync_integrated_service_connections(outsider.id)
     outsider_connection = await db.scalar(select(Connection).where(Connection.agent_id == outsider.id))
     await db.commit()
     with pytest.raises(PermissionError):
         await connections_mcp.agent_connection_get(ctx, outsider_connection.id)
     for code in ("galaris", "agent_admin"):
-        connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == caller.id, Tool.code == code))
+        connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == caller.id, Service.code == code))
         with pytest.raises((ValueError, PermissionError)):
             await connections_mcp.agent_connection_update(ctx, connection.id, False)
 
@@ -238,15 +238,15 @@ async def test_catalogue_respects_scope_privileges_and_live_revocation(db, admin
     await db.commit()
     names = {d.name for d in await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal")}
     assert "agent_title_create" in names
-    await mandatory_tools.sync_integrated_tool_connections(caller.id)
+    await mandatory_services.sync_integrated_service_connections(caller.id)
     connection.active = False
     await db.commit()
-    await mandatory_tools.sync_integrated_tool_connections(caller.id)
+    await mandatory_services.sync_integrated_service_connections(caller.id)
     await db.refresh(connection)
     assert not connection.active
-    assert not any(d.tool_code == "agent_admin" for d in await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal"))
+    assert not any(d.service_code == "agent_admin" for d in await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal"))
     with pytest.raises(PermissionError):
-        await connections_mcp.agent_tool_list(mcp_loader.McpToolContext(caller.id, "internal"), admin_subject.id)
+        await connections_mcp.agent_service_list(mcp_loader.McpToolContext(caller.id, "internal"), admin_subject.id)
 
 
 @pytest.mark.asyncio
@@ -369,9 +369,9 @@ async def test_mounted_catalogue_has_exact_functions_and_rechecks_every_call(db,
     await db.refresh(role, ["privileges"])
     role.privileges.append(await db.scalar(select(Privilege).where(Privilege.code == "AGENT_MANAGE_ALL")))
     await db.commit()
-    spec = next(s for s in mandatory_tools.INTEGRATED_TOOL_SPECS if s.code == "agent_admin")
+    spec = next(s for s in mandatory_services.INTEGRATED_SERVICE_SPECS if s.code == "agent_admin")
     definitions = mcp_loader.load_mcp_tools()
-    assert {d.name for d in definitions if d.tool_code == "agent_admin"} == set(spec.mcp_tools)
+    assert {d.name for d in definitions if d.service_code == "agent_admin"} == set(spec.mcp_tools)
     assert len(spec.mcp_tools) == 34
     server = await mcp_loader.build_agent_galaris_fastmcp(caller.id)
     async with Client(server) as client:
@@ -423,9 +423,9 @@ async def test_avatar_requires_approval_and_approved_call_completes_without_repl
 ):
     from app.connection import facade as connections
     from app.task.models import Task, TaskStatus
-    from app.tools.authorization import AUTHORIZATION_META_KEY, answer_action
-    from app.tools.authorization_models import ActionAuthorization
-    from app.tools.contracts import ToolExecutionContext, tool_execution
+    from app.services.authorization import AUTHORIZATION_META_KEY, answer_action
+    from app.services.authorization_models import ActionAuthorization
+    from app.services.contracts import ToolExecutionContext, tool_execution
     db = inference_db
     caller, owner, _, _, _, _, connection = durable_admin_fixture
     await connections.set_connection_function_state(connection.id, "agent_avatar_generate", "ask")
@@ -554,7 +554,7 @@ async def test_direct_generation_without_image_model_fails_before_calling_provid
 async def test_connection_parameters_are_atomic_encrypted_and_masked(db, admin_fixture, admin_subject):
     caller = admin_fixture[0]
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
-    tool = Tool(code=f"synthetic_{uuid4().hex}", label="Synthetic optional connector",
+    tool = Service(code=f"synthetic_{uuid4().hex}", label="Synthetic optional connector",
                 connection_schema={"params": {"token": {"type": "password"}, "count": {"type": "integer", "default": "2"}}})
     db.add(tool)
     await db.commit()

@@ -34,7 +34,7 @@ Welcome remains the default home page until you select **Setup complete — open
 preconfigured instance. The Galaris logo returns to it during setup. Confirmation belongs to your
 account; `/welcome` remains available afterwards.
 
-In **Tools → Connections**, **Scopes and permissions** opens Permissions for the filtered agent,
+In **Services → Connections**, **Scopes and permissions** opens Permissions for the filtered agent,
 or lets you select one. **Refresh tools** reloads connected service catalogues and rebuilds their
 search index. The result stays visible afterwards, including partial refreshes. A failed refresh
 can be retried without losing the connection list.
@@ -99,7 +99,7 @@ The route is excluded from builds for other environments.
 
 | Section | Contents |
 |---|---|
-| **Configure** | Providers & models, Agents, Tools & connections, Skills |
+| **Configure** | Providers & models, Agents, Services & connections, Skills |
 | **Act** | Chat, Goals, Processes |
 | **Knowledge** | Documents, Files, Memory, Agenda, Contacts, Thematic dossiers |
 | **Monitor** | Dashboard, Activity, Dream, Permissions, Mail journal, Failure journal |
@@ -115,7 +115,7 @@ They are not additional sidebar menus. Use the generated map for labels in each 
 **Knowledge → Agenda** (`/calendar`) selects an agent and its calendars, offers Month, Week,
 Day and Schedule views and tracks Tasks per event. Reading requires `CALENDAR_ACCESS` or
 `CALENDAR_EDIT`; editing requires `CALENDAR_EDIT`. Connection creation remains under
-Tools & connections. See [Agenda and Task launches](calendar.md). The former
+Services & connections. See [Agenda and Task launches](calendar.md). The former
 `/connection/calendars` link opens the same workspace. Agenda appears directly below Memory.
 The Mail journal separately uses
 `MAIL_ACCESS` or `MAIL_EDIT`; send decisions also require `PERMISSION_DECIDE` and the
@@ -243,7 +243,7 @@ keeps its provider. Models explicitly selected through the profile API and nativ
 follow their own contracts.
 
 To delegate this administration to an agent, enable its optional **AgentAdmin** connection
-under **Tools & connections**. It starts active when the **Galaris** assistant is created;
+under **Services & connections**. It starts active when the **Galaris** assistant is created;
 later deactivation is preserved. Its 34 functions remain limited to its human manager’s rights
 and scope. Generated portraits use the caller’s image model; wait for registration
 to be confirmed, then reopen the target’s record. See the
@@ -261,25 +261,25 @@ to the model, then saves the result like any other avatar. An error preserves th
 avatar; any Agent update during generation prevents its replacement, including an avatar
 replaced and then restored.
 
-## Tools, connections and skills
+## Services, connections and skills
 
-**Configure → Tools & connections** (`/tools`) separates three needs:
+**Configure → Services & connections** (`/services`) separates three needs:
 
 | Tab | Purpose | Direct link |
 |---|---|---|
-| Tools | Browse Tools and their functions | `/tools?tab=tools` |
-| Connections | Configure connections associated with agents | `/tools?tab=connections` |
-| Authorizations | Administer access rules for tools and functions | `/tools?tab=authorizations` |
+| Services | Browse Services and their functions | `/services` |
+| Connections | Configure connections associated with agents | `/services?tab=connections` |
+| Authorizations | Administer access rules for services and functions | `/services?tab=authorizations` |
 
 In **Connections**, connections belonging to historized agents are hidden. Parameters
 refresh after saving and whenever you return to the tab. Filters apply to the loaded
 list; if loading fails, use **Retry**.
 
-Under **Tools**, **Galaris built-in tools** groups integrated definitions protected by the
-software. Created or imported Tools remain under **Custom tools**, including those
+Under **Services**, **Galaris built-in services** groups integrated definitions protected by the
+software. Created or imported Services remain under **Custom services**, including those
 using a dedicated bridge such as Nextcloud or AFFiNE. A bridge name does not determine
-Tool origin. n8n is not created as a standard Tool; an existing n8n entry is preserved
-as a custom Tool with its process references.
+Service origin. n8n is not created as a standard Service; an existing n8n entry is preserved
+as a custom Service with its process references.
 
 In **Authorizations**, only connections belonging to non-historized agents are offered.
 Each function has **Global (all)** and **This connection** columns offering Enabled,
@@ -297,7 +297,7 @@ searches become private Memory entries; Dream can later enrich supported files.
 without an LLM, while Galaris is idle. **Preferences > Dream > File rescanning** controls
 periodic refresh, every Monday at midnight by default.
 Existing settings, including explicit disabling, are preserved. See the
-[indexing journey](../admin/tool-administration.md).
+[indexing journey](../admin/service-administration.md).
 
 Dream groups identical file copies **per agent**, using SHA-256 over their complete bytes.
 The shared entry retains its locations and one common summary. Its primary preview URL
@@ -306,18 +306,18 @@ In an entry or the graph's
 file inspector, **File locations** provides thumbnails and original downloads, plus fullscreen
 previews for formats with a viewer. Each source's permissions still apply; changing one copy does not replace the others.
 
-In a custom Tool definition, each connection parameter can have a label, description and
+In a custom Service definition, each connection parameter can have a label, description and
 default value. For text or integers, **Add a fixed choice** defines allowed values and their
 display labels: the form then shows a dropdown. The technical code stays visible below the
 label. Agent connections, global parameters and MCP tests share these controls. Parameters
 without choices remain free text; passwords stay masked. YAML export and import preserve
 choices and labels.
 
-To delegate catalogue and connection management, explicitly enable **ToolAdmin** and follow
-the [delegated administration journey](../admin/tool-administration.md).
+To delegate catalogue and connection management, explicitly enable **ServiceAdmin** and follow
+the [delegated administration journey](../admin/service-administration.md).
 The Galaris assistant receives this active connection when first created; later deactivation
 is preserved. Prepare an MCP
-candidate under **Tools → New Tool → Test connection**; send only its temporary reference
+candidate under **Services → New Service → Test connection**; send only its temporary reference
 to the agent, keeping secrets server-side.
 
 New authorization requests show the action and its parameters as readable fields.
@@ -369,9 +369,9 @@ In **Per-site approval** mode, delete the all-sites agreement to require a choic
 accesses. Returning to that mode creates no implicit grant. Existing
 single-site agreements keep their original scope.
 **Monitor → Permissions** (`/permissions`) opens an agent dashboard without tabs. Select the agent,
-then search and filter all sections: pending approvals, Tools and functions, Harness action types,
-contacts and network access. The list has two levels: each agent Tool, then its functions and prompts.
-Inactive connections remain available for reactivation; unconnected Tools are excluded.
+then search and filter all sections: pending approvals, Services and functions, Harness action types,
+contacts and network access. The list has two levels: each agent Service, then its functions and prompts.
+Inactive connections remain available for reactivation; unconnected Services are excluded.
 This page offers activation and authorization controls without technical configuration or a connect
 button. Skills and resource access remain on their dedicated pages.
 Review unanswered requests, then allow the action, deny it or choose **Always allow** or
@@ -383,19 +383,19 @@ whole page. Answered requests leave the list; expired action requests are exclud
 A one-time approval creates no permanent permission.
 
 The sections show approvals, denials, defaults and inherited policies. Connections display the effective
-`tools.management_scope` rule and a toggle with that Tool’s supported choices. A global manager with
+`services.management_scope` rule and a toggle with that Service’s supported choices. A global manager with
 connection editing privileges can change the scope or reset its default. This setting stays local
-to the connection. **Tool functions and prompts** lists functions from every connected Tool,
-including denied and on-request functions. Select a Tool from the list on the left to
+to the connection. **Service functions and prompts** lists functions from every connected Service,
+including denied and on-request functions. Select a Service from the list on the left to
 view its functions and permissions on the right. Scope and activation controls appear
-at the top of that panel. On mobile, the list precedes the selected Tool's details.
-The left list displays every matching Tool, without pagination or internal scrolling.
+at the top of that panel. On mobile, the list precedes the selected Service's details.
+The left list displays every matching Service, without pagination or internal scrolling.
 The **Allowed**, **Denied**, **On request** and **Pending** counters filter the whole page;
 click the active counter again to restore all states. They replace the decision selector and
 combine with search. Functions on the right remain paginated, defaulting to 50 items.
-**Custom settings** shows agent-level function rules on active Tools, local scopes whose values
+**Custom settings** shows agent-level function rules on active Services, local scopes whose values
 differ from inherited rules, and remembered Harness, contact and network decisions. Global rules
-are excluded. A disabled Tool counts once at connection level; its functions are neither listed
+are excluded. A disabled Service counts once at connection level; its functions are neither listed
 nor counted in this filter. Pending requests
 are hidden in this view. **Reset filters** clears search, the state filter and the custom settings
 filter without changing the selected agent.
@@ -406,7 +406,7 @@ Buttons use icons like skill authorizations: green for allow, red for deny, oran
 or pending, gray for inherit. A tooltip describes each choice; double check and block
 symbols distinguish permanent decisions. For functions, choose
 **Allow**, **Deny**, **On request** or **Inherit**. Selection reflects the local rule; the separately
-displayed effective state also accounts for Tool activation. A failed save keeps the stored selection.
+displayed effective state also accounts for Service activation. A failed save keeps the stored selection.
 **On request** requires approval even if the global policy is active; **Inherit** restores the global
 or software rule. Remembered Harness, contact and network decisions can also be changed or withdrawn.
 An unavailable external catalog shows a warning and keeps known policies visible; unseen Harness
@@ -419,21 +419,21 @@ resubmitted automatically.
 
 To give an agent product knowledge, start in **Connections**, find its **Administration**
 connection, then follow the [product knowledge guide](../admin/product-knowledge.md).
-A skill provides instructions; actual function access also depends on authorized Tools and connections.
+A skill provides instructions; actual function access also depends on authorized Services and connections.
 
 **Configure → Skills** (`/skill`) contains **Skills** (`?tab=skills`), **Personal skills**
 (`?tab=personal`), including packages learned by Dream, and **Authorizations** (`?tab=authorizations`)
-with `SKILL_ASSIGN`. Skill assignments do not replace Tool permissions or human account roles.
+with `SKILL_ASSIGN`. Skill assignments do not replace Service permissions or human account roles.
 
 The personal tab supports reading/editing managed agents' packages, activation, deletion,
 owner changes and, with global management, conversion between personal and generic.
-The [Skills guide](skills.md) explains revisions, quotas and local `skills` Tool delegation.
+The [Skills guide](skills.md) explains revisions, quotas and local `skills` Service delegation.
 Administration does not grant usage of another agent's personal package.
 
 New Skills connections default to **Use skills and manage own personal skills** (`personal`),
 allowing agents to create and maintain their own packages without changing or reassigning
 administered general skills. Existing deactivations and explicit scopes remain authoritative;
-change them in **Tools & connections → Connections** when needed.
+change them in **Services & connections → Connections** when needed.
 
 Its **Global (all)**, **Category** and **This agent** columns offer Active/Blocked and highlight
 the applicable rule. Category rules concern the selected agent. Agent skill exceptions take
@@ -643,7 +643,7 @@ graph to the window and always centers it after panning; zoom can reach one mill
 this framing. Previews grow later, depending on neighbor spacing, up to their actual pixel
 dimensions. Hiding a kind reorganizes and frames the remaining items; showing all kinds
 restores the saved positions.
-Root directories keep their titles visible even when zoomed out. Memory stores the Tool's
+Root directories keep their titles visible even when zoomed out. Memory stores the Service's
 label as their title, falling back to its scheme, such as `nextcloud://`, when no label exists.
 Synchronization repairs old “.” and “/” titles while preserving valid custom titles.
 The graph uses this stored title.
@@ -739,7 +739,7 @@ Language, Messaging, Memory, Dream, Voice, Audio, Processes, Tasks and execution
 Harnesses, Search, Browser, Janus, Instructions and Logs. The
 [generated map](../architecture/generated/navigation.md) provides each route.
 
-In **Preferences → Messaging** and a Tool’s **Messaging** tab, network notices help prepare
+In **Preferences → Messaging** and a Service’s **Messaging** tab, network notices help prepare
 [bridge tests from a local instance](../bridges/telegram-whatsapp.md).
 Telegram, Matrix and Nextcloud Talk do not require a public Galaris URL for messages.
 WhatsApp requires a public HTTPS webhook; its warning appears for a local or private address

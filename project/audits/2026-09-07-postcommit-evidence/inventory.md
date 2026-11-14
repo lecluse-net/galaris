@@ -33,7 +33,7 @@ fichiers de tests n'est pas un taux de couverture. Voir le rapport pour les nive
 | `back/app/process` | 24 | 4346 | 7 | 1707 |
 | `back/app/skill` | 16 | 3474 | 7 | 973 |
 | `back/app/task` | 29 | 8154 | 20 | 5250 |
-| `back/app/tools` | 27 | 7630 | 16 | 3384 |
+| `back/app/services` | 27 | 7630 | 16 | 3384 |
 | `back/app/topic` | 15 | 4550 | 7 | 1835 |
 | `back/app/util` | 2 | 130 | 0 | 0 |
 | `back/app/voice` | 25 | 6351 | 10 | 3166 |
@@ -105,7 +105,7 @@ fichiers de tests n'est pas un taux de couverture. Voir le rapport pour les nive
 | `front/app/process` | 7 | 2120 | 3 | 117 |
 | `front/app/skill` | 8 | 3534 | 4 | 98 |
 | `front/app/task` | 24 | 7347 | 7 | 573 |
-| `front/app/tools` | 7 | 2705 | 1 | 15 |
+| `front/app/services` | 7 | 2705 | 1 | 15 |
 | `front/app/topic` | 12 | 2765 | 1 | 64 |
 | `front/app/voice` | 5 | 1799 | 0 | 0 |
 | `front/bridge/calendar` | 1 | 122 | 0 | 0 |

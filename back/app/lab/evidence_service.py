@@ -23,7 +23,7 @@ from app.process import process_service
 from app.skill import skill_service
 from app.task import Task, TaskStatus
 from app.task.models import TaskAttempt
-from app.tools import list_agent_mcp_tools
+from app.services import list_agent_mcp_tools
 from core.database import get_db
 from core.params import runtime_settings
 

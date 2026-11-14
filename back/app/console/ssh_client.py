@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 
 import asyncssh
 from loguru import logger
-from app.tools.contracts import ToolCallRejectedError
+from app.services.contracts import ToolCallRejectedError
 
 from .contracts import ConsoleResult, ConsoleStatus, SshConnectionConfig
 

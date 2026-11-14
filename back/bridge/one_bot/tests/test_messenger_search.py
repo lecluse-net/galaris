@@ -26,7 +26,7 @@ async def test_search_users_combines_friends_and_every_group_member() -> None:
     ]
     messenger = OneBotMessenger(
         cast(OneBot, client),
-        tool_id=3,
+        service_id=3,
         self_id="7",
         connection_id=19,
     )
@@ -45,6 +45,6 @@ async def test_search_users_combines_friends_and_every_group_member() -> None:
 async def test_failed_directory_response_is_not_an_empty_search():
     client = AsyncMock(spec=OneBot)
     client.get_friend_list.return_value = {"status": "failed", "retcode": 1404, "msg": "not found", "data": None}
-    messenger = OneBotMessenger(cast(OneBot, client), tool_id=3, self_id="7", connection_id=19)
+    messenger = OneBotMessenger(cast(OneBot, client), service_id=3, self_id="7", connection_id=19)
     with pytest.raises(RuntimeError, match="not found"):
         await messenger.search_users("")

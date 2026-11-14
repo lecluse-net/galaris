@@ -66,7 +66,7 @@ export function resourceTarget(entry: FileEntry, agentId: number, locale?: strin
   const run = /^galaris:\/\/processes\/runs\/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/.exec(entry.uri)
   if (run) return { kind: 'process_run', id: run[1]!, title, agentId }
   const process = /^galaris:\/\/process(?:es)?\/([A-Za-z_][A-Za-z0-9_.-]{0,254})$/.exec(entry.uri)
-  if (process && (entry.uri.startsWith('galaris://processes/') || entry.metadata?.tool_code === 'galaris')) return { kind: 'process', id: process[1]!, title, agentId }
+  if (process && (entry.uri.startsWith('galaris://processes/') || entry.metadata?.service_code === 'galaris')) return { kind: 'process', id: process[1]!, title, agentId }
   const business = /^galaris:\/\/(task|text|voice|goal)\/([^/]+)$/.exec(entry.uri)
   if (!business) return null
   return { kind: business[1] === 'text' ? 'round' : business[1]!, id: business[2]!, title: executionResourceLabel(entry, locale) ?? entry.name, agentId }

@@ -62,7 +62,7 @@ async def message_interactions(
             Message.id.in_(ids),
             Message.direction == "outbound",
             Interaction.connection_id == Message.connection_id,
-            Interaction.tool_id == Message.tool_id,
+            Interaction.service_id == Message.service_id,
             Interaction.room_id == cast(Message.messenger_room_id, String),
             Interaction.agent_id == Connection.agent_id,
         )
@@ -92,7 +92,7 @@ async def message_interaction_answers(
         .where(
             Message.id.in_(answers),
             Interaction.connection_id == Message.connection_id,
-            Interaction.tool_id == Message.tool_id,
+            Interaction.service_id == Message.service_id,
             Interaction.room_id == cast(Message.messenger_room_id, String),
             Interaction.agent_id == Connection.agent_id,
         )
@@ -129,7 +129,7 @@ async def _scoped_interaction(
         select(Interaction).where(
             Interaction.id == interaction_id,
             Interaction.connection_id == connection.id,
-            Interaction.tool_id == connection.tool_id,
+            Interaction.service_id == connection.service_id,
             Interaction.agent_id == connection.agent_id,
             Interaction.room_id == str(room.id),
         )
@@ -204,7 +204,7 @@ async def answer_internal_interaction(
         captured = Message(
             id=uuid4(),
             connection_id=connection.id,
-            tool_id=connection.tool_id,
+            service_id=connection.service_id,
             platform="internal",
             remote_message_id=f"interaction:{record.id}:answer",
             direction="inbound",
@@ -241,7 +241,7 @@ async def answer_internal_interaction(
         response_text=option.label,
         agent_id=connection.agent_id,
         connection_id=connection.id,
-        tool_id=connection.tool_id,
+        service_id=connection.service_id,
         room_id=str(room_id),
         user_id=human.external_id,
         capture_response=capture_response,

@@ -41,7 +41,7 @@ _text_cache: "OrderedDict[str, str]" = OrderedDict()
 
 
 def _key(messenger: MessengerFacade, att: File) -> str:
-    return f"{messenger.tool_id}:{att.id}"
+    return f"{messenger.service_id}:{att.id}"
 
 
 def _cache_put(cache: "OrderedDict[str, object]", key: str, value: object) -> None:

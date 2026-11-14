@@ -10,9 +10,9 @@ async def test_resolver_uses_messenger_config_independently_from_file_share(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
-    connection = SimpleNamespace(id=42, agent_id=9, tool_id=7, active=True)
+    connection = SimpleNamespace(id=42, agent_id=9, service_id=7, active=True)
     tool = SimpleNamespace(
         code="my-nextcloud",
         file_share=SimpleNamespace(
@@ -31,8 +31,8 @@ async def test_resolver_uses_messenger_config_independently_from_file_share(
         assert connection_id == 42
         return connection
 
-    async def get_tool_by_id(tool_id: int) -> SimpleNamespace:
-        assert tool_id == 7
+    async def get_service_by_id(service_id: int) -> SimpleNamespace:
+        assert service_id == 7
         return tool
 
     async def get_params_as_dict(
@@ -49,7 +49,7 @@ async def test_resolver_uses_messenger_config_independently_from_file_share(
 
     monkeypatch.setattr(connection_service, "get_connection", get_connection)
     monkeypatch.setattr(connection_service, "get_params_as_dict", get_params_as_dict)
-    monkeypatch.setattr(tool_service, "get_tool_by_id", get_tool_by_id)
+    monkeypatch.setattr(service, "get_service_by_id", get_service_by_id)
 
     config = await resolve_nextcloud_connection(42)
 
@@ -64,12 +64,12 @@ async def test_resolver_rejects_a_non_nextcloud_connection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
     async def get_connection(_connection_id: int) -> SimpleNamespace:
-        return SimpleNamespace(id=42, agent_id=9, tool_id=7, active=True)
+        return SimpleNamespace(id=42, agent_id=9, service_id=7, active=True)
 
-    async def get_tool_by_id(_tool_id: int) -> SimpleNamespace:
+    async def get_service_by_id(_service_id: int) -> SimpleNamespace:
         return SimpleNamespace(
             code="messenger",
             file_share=None,
@@ -78,7 +78,7 @@ async def test_resolver_rejects_a_non_nextcloud_connection(
         )
 
     monkeypatch.setattr(connection_service, "get_connection", get_connection)
-    monkeypatch.setattr(tool_service, "get_tool_by_id", get_tool_by_id)
+    monkeypatch.setattr(service, "get_service_by_id", get_service_by_id)
 
     with pytest.raises(ValueError, match="7"):
         await resolve_nextcloud_connection(42)

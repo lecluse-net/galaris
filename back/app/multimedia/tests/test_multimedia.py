@@ -19,8 +19,8 @@ from app.multimedia.models import MediaGeneration, MediaOutputReceipt
 from app.process import process_service
 from app.multimedia.generation_store import generation_checkpoint
 from app.process.models import ProcessDefinition, ProcessRun
-from app.tools import mandatory_tools, mcp_loader
-from app.tools.models import Tool
+from app.services import mandatory_services, mcp_loader
+from app.services.models import Service
 
 
 @pytest_asyncio.fixture
@@ -40,10 +40,10 @@ async def media_agent(db: AsyncSession):
     await db.flush()
     profile.music_generation_llm_id = model.id
     await db.commit()
-    await mandatory_tools.sync_integrated_tool_connections(agent.id)
+    await mandatory_services.sync_integrated_service_connections(agent.id)
     await db.commit()
-    connection = (await db.scalars(select(Connection).join(Tool).where(
-        Connection.agent_id == agent.id, Tool.code == "multimedia"))).one()
+    connection = (await db.scalars(select(Connection).join(Service).where(
+        Connection.agent_id == agent.id, Service.code == "multimedia"))).one()
     return SimpleNamespace(agent=agent, profile=profile, provider=provider, model=model, connection=connection)
 
 
@@ -75,7 +75,7 @@ async def test_live_mcp_catalog_and_execution_follow_profile_and_connection(db, 
         ) is None
     item.connection.active = True
     await db.commit()
-    await mandatory_tools.sync_integrated_tool_connections(item.agent.id)
+    await mandatory_services.sync_integrated_service_connections(item.agent.id)
     await db.refresh(item.connection)
     assert item.connection.active is True
 
@@ -210,7 +210,7 @@ async def test_100mb_delivery_traverses_resource_messenger_and_whatsapp_budgets(
         conversation_type="text",
     )
     identity = MessengerUser(
-        tool_id=media_agent.connection.tool_id,
+        service_id=media_agent.connection.service_id,
         external_id="15551234567",
         galaris_user_id=recipient.id,
         display_name="Media recipient",
@@ -229,7 +229,7 @@ async def test_100mb_delivery_traverses_resource_messenger_and_whatsapp_budgets(
         return "media-100mb"
     client = SimpleNamespace(upload_media=upload, send_media=AsyncMock(return_value={"messages": [{"id": "message-100mb"}]}))
     bridge = WhatsAppMessenger(client, WhatsAppConnectionConfig(access_token="test", phone_number_id="bot",
-        allowed_phone_numbers="15551234567"), tool_id=media_agent.connection.tool_id, connection_id=media_agent.connection.id)
+        allowed_phone_numbers="15551234567"), service_id=media_agent.connection.service_id, connection_id=media_agent.connection.id)
     monkeypatch.setattr(bridge, "_inside_service_window", AsyncMock(return_value=True))
     transport = MessengerFileTransport(MessengerFacade(bridge, media_agent.connection.id))
     monkeypatch.setattr(resource_service, "_connected_transport", AsyncMock(return_value=(transport, "messenger", "", "")))

@@ -217,21 +217,21 @@ Les décisions par test et leurs niveaux de preuve figurent dans [inventaire-tes
 | [back/app/task/tests/test_task_service.py](../../../back/app/task/tests/test_task_service.py) | 35 | conserver provisoirement: 35 |  |
 | [back/app/task/tests/test_workflow.py](../../../back/app/task/tests/test_workflow.py) | 12 | conserver: 12 |  |
 | [back/app/task/tests/test_working_set.py](../../../back/app/task/tests/test_working_set.py) | 6 | conserver provisoirement: 6 |  |
-| [back/app/tools/tests/test_admin_access.py](../../../back/app/tools/tests/test_admin_access.py) | 2 | conserver: 1; conserver provisoirement: 1 |  |
-| [back/app/tools/tests/test_agent_registry.py](../../../back/app/tools/tests/test_agent_registry.py) | 12 | conserver provisoirement: 12 |  |
-| [back/app/tools/tests/test_catalog_refresh_service.py](../../../back/app/tools/tests/test_catalog_refresh_service.py) | 2 | conserver provisoirement: 2 |  |
-| [back/app/tools/tests/test_conversation_admin_mcp.py](../../../back/app/tools/tests/test_conversation_admin_mcp.py) | 3 | conserver provisoirement: 3 |  |
-| [back/app/tools/tests/test_global_params.py](../../../back/app/tools/tests/test_global_params.py) | 3 | conserver provisoirement: 3 |  |
-| [back/app/tools/tests/test_mandatory_tools.py](../../../back/app/tools/tests/test_mandatory_tools.py) | 11 | conserver provisoirement: 11 |  |
-| [back/app/tools/tests/test_mcp.py](../../../back/app/tools/tests/test_mcp.py) | 1 | conserver provisoirement: 1 |  |
-| [back/app/tools/tests/test_mcp_diagnostics.py](../../../back/app/tools/tests/test_mcp_diagnostics.py) | 4 | conserver provisoirement: 4 |  |
-| [back/app/tools/tests/test_mcp_loader.py](../../../back/app/tools/tests/test_mcp_loader.py) | 24 | conserver provisoirement: 24 |  |
-| [back/app/tools/tests/test_nextcloud_configuration.py](../../../back/app/tools/tests/test_nextcloud_configuration.py) | 1 | conserver provisoirement: 1 |  |
-| [back/app/tools/tests/test_resource_effects.py](../../../back/app/tools/tests/test_resource_effects.py) | 9 | conserver provisoirement: 9 |  |
-| [back/app/tools/tests/test_router.py](../../../back/app/tools/tests/test_router.py) | 2 | conserver provisoirement: 2 |  |
-| [back/app/tools/tests/test_secrets.py](../../../back/app/tools/tests/test_secrets.py) | 6 | conserver provisoirement: 6 |  |
-| [back/app/tools/tests/test_tool_catalog.py](../../../back/app/tools/tests/test_tool_catalog.py) | 3 | conserver provisoirement: 3 |  |
-| [back/app/tools/tests/test_tool_search_service.py](../../../back/app/tools/tests/test_tool_search_service.py) | 6 | conserver provisoirement: 6 |  |
+| [back/app/services/tests/test_admin_access.py](../../../back/app/services/tests/test_admin_access.py) | 2 | conserver: 1; conserver provisoirement: 1 |  |
+| [back/app/services/tests/test_agent_registry.py](../../../back/app/services/tests/test_agent_registry.py) | 12 | conserver provisoirement: 12 |  |
+| [back/app/services/tests/test_catalog_refresh_service.py](../../../back/app/services/tests/test_catalog_refresh_service.py) | 2 | conserver provisoirement: 2 |  |
+| [back/app/services/tests/test_conversation_admin_mcp.py](../../../back/app/services/tests/test_conversation_admin_mcp.py) | 3 | conserver provisoirement: 3 |  |
+| [back/app/services/tests/test_global_params.py](../../../back/app/services/tests/test_global_params.py) | 3 | conserver provisoirement: 3 |  |
+| [back/app/services/tests/test_mandatory_services.py](../../../back/app/services/tests/test_mandatory_services.py) | 11 | conserver provisoirement: 11 |  |
+| [back/app/services/tests/test_mcp.py](../../../back/app/services/tests/test_mcp.py) | 1 | conserver provisoirement: 1 |  |
+| [back/app/services/tests/test_mcp_diagnostics.py](../../../back/app/services/tests/test_mcp_diagnostics.py) | 4 | conserver provisoirement: 4 |  |
+| [back/app/services/tests/test_mcp_loader.py](../../../back/app/services/tests/test_mcp_loader.py) | 24 | conserver provisoirement: 24 |  |
+| [back/app/services/tests/test_nextcloud_configuration.py](../../../back/app/services/tests/test_nextcloud_configuration.py) | 1 | conserver provisoirement: 1 |  |
+| [back/app/services/tests/test_resource_effects.py](../../../back/app/services/tests/test_resource_effects.py) | 9 | conserver provisoirement: 9 |  |
+| [back/app/services/tests/test_router.py](../../../back/app/services/tests/test_router.py) | 2 | conserver provisoirement: 2 |  |
+| [back/app/services/tests/test_secrets.py](../../../back/app/services/tests/test_secrets.py) | 6 | conserver provisoirement: 6 |  |
+| [back/app/services/tests/test_tool_catalog.py](../../../back/app/services/tests/test_tool_catalog.py) | 3 | conserver provisoirement: 3 |  |
+| [back/app/services/tests/test_tool_search_service.py](../../../back/app/services/tests/test_tool_search_service.py) | 6 | conserver provisoirement: 6 |  |
 | [back/app/topic/tests/test_classifier.py](../../../back/app/topic/tests/test_classifier.py) | 5 | conserver provisoirement: 5 |  |
 | [back/app/topic/tests/test_mcp.py](../../../back/app/topic/tests/test_mcp.py) | 3 | conserver provisoirement: 3 |  |
 | [back/app/topic/tests/test_qualification.py](../../../back/app/topic/tests/test_qualification.py) | 2 | conserver provisoirement: 2 |  |
@@ -397,7 +397,7 @@ Les décisions par test et leurs niveaux de preuve figurent dans [inventaire-tes
 | [back/tests/test_realtime_security.py](../../../back/tests/test_realtime_security.py) | 2 | conserver provisoirement: 2 |  |
 | [back/tests/test_release_qualification.py](../../../back/tests/test_release_qualification.py) | 3 | conserver provisoirement: 3 |  |
 | [back/tests/test_task_activity_service.py](../../../back/tests/test_task_activity_service.py) | 1 | conserver provisoirement: 1 |  |
-| [back/tests/test_tool_import_export.py](../../../back/tests/test_tool_import_export.py) | 6 | conserver provisoirement: 6 |  |
+| [back/tests/test_service_import_export.py](../../../back/tests/test_service_import_export.py) | 6 | conserver provisoirement: 6 |  |
 | [back/tests/test_transcription_service.py](../../../back/tests/test_transcription_service.py) | 5 | conserver provisoirement: 5 |  |
 | [back/tests/test_tts_service.py](../../../back/tests/test_tts_service.py) | 5 | conserver provisoirement: 5 |  |
 | [harness_manager/tests/test_main.py](../../../harness_manager/tests/test_main.py) | 21 | conserver: 21 |  |
@@ -481,7 +481,7 @@ Les décisions par test et leurs niveaux de preuve figurent dans [inventaire-tes
 | [front/app/task/recentTaskFilters.test.mjs](../../../front/app/task/recentTaskFilters.test.mjs) | 3 | renforcer ou remplacer l oracle: 3 | A02 |
 | [front/app/task/storeConcurrency.test.mjs](../../../front/app/task/storeConcurrency.test.mjs) | 1 | conserver: 1 |  |
 | [front/app/task/taskActivity.test.mjs](../../../front/app/task/taskActivity.test.mjs) | 5 | conserver provisoirement: 3; renforcer ou remplacer l oracle: 2 | A02 |
-| [front/app/tools/responsiveToolDialog.test.mjs](../../../front/app/tools/responsiveToolDialog.test.mjs) | 1 | renforcer ou remplacer l oracle: 1 | A02 |
+| [front/app/services/responsiveToolDialog.test.mjs](../../../front/app/services/responsiveToolDialog.test.mjs) | 1 | renforcer ou remplacer l oracle: 1 | A02 |
 | [front/app/topic/components/TopicSelect.test.mjs](../../../front/app/topic/components/TopicSelect.test.mjs) | 3 | conserver: 3 |  |
 | [front/core/api.test.mjs](../../../front/core/api.test.mjs) | 6 | conserver: 6 |  |
 | [front/core/authorize/authorizationLabels.test.mjs](../../../front/core/authorize/authorizationLabels.test.mjs) | 2 | renforcer ou remplacer l oracle: 2 | A02 |

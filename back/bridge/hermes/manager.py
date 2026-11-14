@@ -241,7 +241,7 @@ def _bounded_ssh_number(
 
 async def runtime_authorization_configuration(agent_id: int) -> dict[str, str]:
     from dataclasses import asdict
-    from app.tools.facade import authorization_fingerprint
+    from app.services.facade import authorization_fingerprint
     ssh = await _resolve_external_console_ssh(agent_id)
     return {"terminal_signature": authorization_fingerprint(asdict(ssh) if ssh else {"terminal": "local"})}
 
@@ -252,10 +252,10 @@ async def _resolve_external_console_ssh(
     """Resolve the active external Console through already allowed public domains."""
 
     from app.connection import connection_service
-    from app.tools import tool_service
+    from app.services import service
 
     for connection in await connection_service.get_connections_by_agent(agent_id):
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+        tool = await service.get_service_by_id(connection.service_id)
         if tool is None or tool.code != "console" or not connection.active:
             continue
         _, params = await connection_service.get_params_as_dict(
@@ -1289,7 +1289,7 @@ class HermesAgent:
     ) -> None:
         """Materialize and select an external Console connection for Hermes."""
         from dataclasses import asdict
-        from app.tools.facade import authorization_fingerprint
+        from app.services.facade import authorization_fingerprint
         data_env["GALARIS_TERMINAL_SIGNATURE"] = authorization_fingerprint(asdict(ssh) if ssh else {"terminal": "local"})
 
         if ssh is None:
@@ -1491,7 +1491,7 @@ class HermesAgent:
         if runtime.config:
             agent_config_dict = cast(dict[str, Any], yaml.safe_load(runtime.config) or {})  # type: ignore[reportUnknownMemberType]
         from app.connection import connection_service
-        from app.tools import list_enabled_native_mcp_definitions
+        from app.services import list_enabled_native_mcp_definitions
         from core.database import get_db_session
 
         async with get_db_session():

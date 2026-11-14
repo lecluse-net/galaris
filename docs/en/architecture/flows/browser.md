@@ -2,7 +2,7 @@
 
 # Agentic Browser Flow
 
-The integrated browser is a Galaris Tool governed like the other MCP capabilities. A
+The integrated browser is a Galaris Service governed like the other MCP capabilities. A
 `browser` connection is created automatically for each agent. Its
 activation, followed by any function-by-function deactivations, determines exactly what the internal
 harness and Hermes see in their catalog.
@@ -33,9 +33,9 @@ cannot take over this session. Chromium contexts share neither cookies, cache, n
 They expire after a bounded period of inactivity, and `browser_close` immediately releases their
 resources.
 
-The generic connection interface allows the Tool to be enabled for an
+The generic connection interface allows the Service to be enabled for an
 agent and to separately authorize or remove `open`, `content`, `screenshot`, and the actions. When
-the Galaris Tool is active for a Hermes agent, the manager disables Hermes's native browser toolset
+the Galaris Service is active for a Hermes agent, the manager disables Hermes's native browser toolset
 to preserve a single authorization and audit boundary.
 
 Chromium starts with the first session request, rather than during sidecar startup or health
@@ -136,7 +136,7 @@ Session idle time and capacity, operation timeout, content, HTML, default viewpo
 screenshot limits live in `params`, under **Preferences → Browser**.
 The page is available only when at least one `browser` connection is active. The
 `GET /api/browser/status` endpoint requires preference access or edit privileges; direct
-page access also hides the fields when the Tool is unused.
+page access also hides the fields when the Service is unused.
 
 Every authenticated sidecar operation receives a validated `settings` snapshot. The
 sidecar independently bounds it and applies it only to that operation, including operations
@@ -151,9 +151,9 @@ retain their separate concurrency limit.
 
 ## Entry Points to Read
 
-- Tool and client: `back/app/browser/mcp.py`, `service.py`, `schemas.py`.
+- Service and client: `back/app/browser/mcp.py`, `service.py`, `schemas.py`.
 - Executor: `browser-executor/server.mjs`, `network-proxy.mjs` and `lib.mjs`.
 - Policy and decisions: `back/app/browser/network.py`, `back/app/messenger/permissions.py`.
-- Connection governance: `back/app/tools/mandatory_tools.py`,
-  `back/app/tools/mcp_loader.py`.
+- Connection governance: `back/app/services/mandatory_services.py`,
+  `back/app/services/mcp_loader.py`.
 - Hermes alignment: `back/bridge/hermes/manager.py`.

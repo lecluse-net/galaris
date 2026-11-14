@@ -20,7 +20,7 @@ from PIL import Image
 from . import image_service
 from .schemas import ImageDimension, ImageGenerationOptions, PdfPageNumber
 from app.llm import ImageDimensionsError
-from app.tools import RecoverableToolError
+from app.services import RecoverableToolError
 from app.file_share import (
     ResourceContext,
     ResourceUri,
@@ -32,7 +32,7 @@ from app.file_share import (
     resource_write,
     record_resource_description,
 )
-from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.i18n import render_prompt, t
 from core.util import complete_io
 from core.document import render_pdf_page

@@ -87,7 +87,7 @@ connected providers. It respects the agents you can manage and each resource’s
 access rules.
 
 An agent can have several mailboxes at the same provider: create several connections to the
-same Mail-enabled Tool, with separate addresses and credentials. The provider browser lists
+same Mail-enabled Service, with separate addresses and credentials. The provider browser lists
 accounts separately when several mailboxes are active.
 
 In **Mail**, IMAP folders follow the connected agent’s mailbox hierarchy, including parent folders

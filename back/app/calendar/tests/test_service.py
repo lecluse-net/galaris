@@ -171,9 +171,9 @@ async def dav(monkeypatch):
 @pytest_asyncio.fixture
 async def external(db, agent, dav):
     from app.connection import connection_service
-    from app.tools import tool_service
-    from app.tools.schemas import ToolCreate
-    tool = await tool_service.create_tool(ToolCreate.model_validate({
+    from app.services import service
+    from app.services.schemas import ServiceCreate
+    tool = await service.create_service(ServiceCreate.model_validate({
         "code": "synthetic-caldav-provider", "label": "Synthetic external", "capabilities": ["caldav.calendar"],
         "connection_schema": {"params": {"url": {"type": "password", "required": True},
             "login": {"type": "string"}, "password": {"type": "password"}, "sync_interval_hours": {"type": "integer", "required": False, "default": "2"}}},
@@ -458,7 +458,7 @@ def test_caldav_paths_and_xml_entities_are_rejected():
 @pytest.mark.asyncio
 async def test_sync_lease_prevents_parallel_provider_reads_and_fences_configuration_changes(committed_database, monkeypatch, dav):
     from app.connection import Connection
-    from app.tools.models import Tool
+    from app.services.models import Service
     from app.agent.models import Agent, Title
     from core.database import get_db_session
     from core.user import UserModel
@@ -468,10 +468,10 @@ async def test_sync_lease_prevents_parallel_provider_reads_and_fences_configurat
         db.add_all([user,title])
         await db.flush()
         agent = Agent(title_id=title.id, user_id=user.id, first_name='Synthetic', last_name='Sync', code='synthetic-concurrent-sync')
-        tool = Tool(code='synthetic-caldav-concurrency', label='Synthetic CalDAV', calendar_config={})
+        tool = Service(code='synthetic-caldav-concurrency', label='Synthetic CalDAV', calendar_config={})
         db.add_all([agent,tool])
         await db.flush()
-        connection = Connection(tool_id=tool.id, agent_id=agent.id, active=True)
+        connection = Connection(service_id=tool.id, agent_id=agent.id, active=True)
         db.add(connection)
         await db.flush()
         feed = CalendarFeed(connection_id=connection.id, label='Synthetic calendar', source_kind='caldav',
@@ -530,10 +530,10 @@ async def test_invalid_source_configuration_keeps_reads_local_and_never_falls_ba
 @pytest.mark.asyncio
 async def test_ical_subscription_uses_conditional_reads_and_the_same_local_structure(db, agent, external, dav):
     from app.connection import connection_service
-    from app.tools import tool_service
-    from app.tools.schemas import ToolUpdate
+    from app.services import service
+    from app.services.schemas import ServiceUpdate
     connection = await connection_service.get_connection(external.connection_id)
-    await tool_service.update_tool(connection.tool_id, ToolUpdate(calendar_config={
+    await service.update_service(connection.service_id, ServiceUpdate(calendar_config={
         'settings': {'source_kind':'ical', 'timezone':'Europe/Paris'},
         'param_map': {'url':'url', 'username':'login', 'password':'password'}}))
     await service._refresh_parameter_feed(connection.id)

@@ -6,7 +6,7 @@
 
 `operating_knowledge_corpus_fr.json` and `_en.json` each add 16 synthetic cases: native Goal
 management (creation, pause, resume, immediate cycle, completion, settings and tracking),
-concurrency, access denial, injection, personal Memory, Tasks and Documents. Tool schemas
+concurrency, access denial, injection, personal Memory, Tasks and Documents. Service schemas
 come from actual MCP functions; effects remain simulated. Import using
 `import_lab_reference.py --corpus operating-fr --install` or `--corpus operating-en --install`.
 
@@ -301,7 +301,7 @@ harnesses or other native business journeys.
 
 The `latency_corpus_fr.json` and `latency_corpus_en.json` corpora each contain four
 `conversation_executor` cases: a simple calculation without tools, Memory search, Task
-status lookup and simulated Task admission. All data is synthetic. Tools return fixed
+status lookup and simulated Task admission. All data is synthetic. Services return fixed
 responses, reset for each observation; no real Task is created. Search uses Memory, not
 the web.
 

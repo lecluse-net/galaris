@@ -12,7 +12,7 @@ to the external calendar.
 Open **Knowledge → Agenda** (`/calendar`). Every agent has a personal agenda without an
 external account. Its CalDAV calendars and iCalendar subscriptions can be displayed in the
 same workspace. External connections use the standard protocol parameter editors in
-**Tools & connections**.
+**Services & connections**.
 Each agent has one internal default agenda, created automatically. Settings can rename it and
 change its color, but cannot delete or disable it or create additional internal agendas.
 External calendars supplement it. Any existing secondary internal agendas remain accessible
@@ -47,7 +47,7 @@ Goal behavior remains unchanged.
 
 Each calendar appears on its own row, with its source shown underneath. Local calendars,
 **Goals** and **Memory** carry the **Galaris** label. External calendars show their source
-Tool's label rather than its protocol name.
+Service's label rather than its protocol name.
 A star identifies the default calendar. Its checkbox shows or hides events; clicking
 the name or the rest of the row opens its settings dialog without changing the selection.
 Pressing Enter on a focused row also opens its settings.
@@ -62,7 +62,7 @@ The default **Personal agenda** name follows the interface language; custom name
 In the calendar settings dialog, choose one of the eleven Solaire colors and save to apply it
 to its checkbox and events in both light and dark themes. **Memory** defaults to yellow. Choices are
 saved per user in the current browser, including those for **Goals** and **Memory**.
-The dialog title is the calendar name, followed by a **Galaris** badge or its source Tool's
+The dialog title is the calendar name, followed by a **Galaris** badge or its source Service's
 label. Tabs follow the Goal dialog presentation: **Settings** and, for external calendars
 only, **Synchronization**. The internal calendar, **Goals** and **Memory** have no
 synchronization information or actions.
@@ -128,13 +128,13 @@ Retries of the same action save and manual relaunch use stable request keys to a
 ## Synchronization and access
 
 Select **CalDAV**, **Google Calendar**, **Microsoft 365 / Outlook**, **Apple iCloud** or
-**private iCalendar** in the Tool's calendar protocol. Nextcloud uses CalDAV. Configure
-a shared CalDAV root as a global Tool parameter with forced inheritance when needed.
+**private iCalendar** in the Service's calendar protocol. Nextcloud uses CalDAV. Configure
+a shared CalDAV root as a global Service parameter with forced inheritance when needed.
 A private ICS URL belongs to its account connection. Google, Microsoft and iCloud use
 predefined service endpoints.
 
 For Google and Microsoft, reference standard `client_id` and `client_secret` parameters
-for the registered provider application, then set their global Tool values. Register the
+for the registered provider application, then set their global Service values. Register the
 callback URL displayed by Galaris with that application. Microsoft accepts `common` for
 personal and work accounts, or an enterprise directory tenant. In each connection,
 **Calendar account authorization → Connect account** opens provider consent. Tokens are
@@ -142,7 +142,7 @@ encrypted and refreshed automatically; revoked access requires reauthorization. 
 authorization remains independent. Enterprise consent policies still apply.
 
 CalDAV supports an application password or OAuth using authorization/token endpoints
-and scopes configured in the Tool. iCloud uses the Apple account and an app-specific
+and scopes configured in the Service. iCloud uses the Apple account and an app-specific
 password. ICS subscriptions, including private Google/Outlook links, remain read only.
 
 Google/Microsoft single events can be created, updated and deleted in Galaris. Their
@@ -153,7 +153,7 @@ read complete paginated snapshots without a date window; an incomplete response 
 without deleting local events.
 
 The synchronization interval belongs to the **connection** and applies to every calendar
-from the same account, including Nextcloud. In the Tool definition, map the **Synchronization
+from the same account, including Nextcloud. In the Service definition, map the **Synchronization
 interval (hours)** role to a standard integer parameter, for example `sync_interval_hours`.
 Manage its value in the connection parameters: 1 to 8760 hours, default 2, with the usual
 global/local inheritance. Parameters are created only through an explicit action. Existing

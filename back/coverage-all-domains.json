@@ -216,9 +216,9 @@
     "line_min": 77,
     "branch_min": 62
   },
-  "app/tools/": {
+  "app/services/": {
     "prefixes": [
-      "app/tools/"
+      "app/services/"
     ],
     "line_min": 75,
     "branch_min": 58

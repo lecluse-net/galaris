@@ -18,7 +18,7 @@ class NextcloudConnectionConfig:
 
     connection_id: int
     agent_id: int
-    tool_id: int
+    service_id: int
     base_url: str
     login: str
     password: str
@@ -45,7 +45,7 @@ async def resolve_nextcloud_connection(connection_id: int) -> NextcloudConnectio
     return NextcloudConnectionConfig(
         connection_id=resolved.connection_id,
         agent_id=resolved.agent_id,
-        tool_id=resolved.tool_id,
+        service_id=resolved.service_id,
         base_url=base_url,
         login=login,
         password=password,

@@ -36,7 +36,7 @@ def test_cloud_audio_maps_to_lazy_canonical_attachment() -> None:
         },
         contacts={"33612345678": "Alice"},
         phone_number_id="phone-id",
-        tool_id=4,
+        service_id=4,
         connection_id=9,
         agent_id=12,
     )

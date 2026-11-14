@@ -11,7 +11,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import defer, undefer
 
 from app.agent import Agent, AgentManagementScope
-from app.tools import ToolModel
+from app.services import ServiceModel
 from core.database import get_db
 from core.user import get_user_record
 
@@ -42,11 +42,11 @@ async def create(*, actor_agent_id: int, title: str, graph: Workflow | None = No
         raise ValueError("This process code has already been used")
     content = to_bpmn(graph, identifier) if graph is not None else str(xml)
     compile_bpmn(content)
-    tool = await get_db().scalar(select(ToolModel).where(ToolModel.code == "galaris"))
+    tool = await get_db().scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
     if tool is None:
         raise ValueError("The Galaris system Tool is unavailable")
     record = ProcessDefinition(agent_id=actor_agent_id if owner_user_id is None else None,
-        owner_user_id=owner_user_id, tool_id=tool.id, engine_process_id=identifier,
+        owner_user_id=owner_user_id, service_id=tool.id, engine_process_id=identifier,
         code=identifier, label=title, description=description, bpmn_xml=content, revision=1, lock_version=1)
     get_db().add(record)
     await get_db().flush()

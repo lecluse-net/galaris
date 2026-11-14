@@ -10,7 +10,7 @@ from app.file_share.resource_contracts import (
     ResourceMutation,
     ResourceTransfer,
 )
-from app.tools.mcp_loader import McpToolContext, load_mcp_tools, mcp_tool_names_by_tool_code
+from app.services.mcp_loader import McpToolContext, load_mcp_tools, mcp_tool_names_by_service_code
 
 
 async def _language(_ctx: McpToolContext) -> str:
@@ -319,7 +319,7 @@ async def test_file_create_returns_the_assigned_complete_uri(
 
 
 def test_legacy_file_wrappers_are_not_exposed() -> None:
-    names_by_code = mcp_tool_names_by_tool_code()
+    names_by_code = mcp_tool_names_by_service_code()
     names = set(names_by_code["file_sharing"])
 
     assert {"file_upload", "file_download", "file_transfer", "file_targets"}.isdisjoint(

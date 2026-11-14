@@ -14,7 +14,7 @@ from app.llm.profile_models import LlmProfile
 from app.llm.provider_models import LLM, LLMProvider
 from app.messenger import Message, Room
 from app.task import Task, TaskStatus
-from app.tools import ToolModel
+from app.services import ServiceModel
 from app.topic.models import Topic
 from core.authorize import Assignment, Privilege, Role
 from core.database import get_db_session
@@ -34,7 +34,7 @@ async def test_evidence_routes_keep_scope_authorization_outputs_and_reopening(cl
         hashed = encrypt_password(password)
         users = [UserModel(email=f"synthetic-evidence-http-{index}@example.com", hashed_password=hashed, is_active=True) for index in range(3)]
         title = Title(label="Synthetic evidence HTTP", gender="N")
-        tool = ToolModel(code="synthetic-evidence-http", label="Synthetic evidence")
+        tool = ServiceModel(code="synthetic-evidence-http", label="Synthetic evidence")
         topic = Topic(title="Synthetic HTTP evidence")
         provider = LLMProvider(name="Synthetic HTTP model", base_url="https://models.example.com")
         profile = LlmProfile(label="Synthetic HTTP profile", code="synthetic-http-profile")
@@ -44,7 +44,7 @@ async def test_evidence_routes_keep_scope_authorization_outputs_and_reopening(cl
         agents = [Agent(user_id=user.id, title_id=title.id, code=f"synthetic-evidence-http-{index}", first_name="Synthetic", last_name=str(index)) for index, user in enumerate(users[:2])]
         db.add_all(agents)
         await db.flush()
-        connection = Connection(tool_id=tool.id, agent_id=agents[0].id)
+        connection = Connection(service_id=tool.id, agent_id=agents[0].id)
         model = LLM(llm_provider_id=provider.id, code="synthetic-http-evidence", llm_name="synthetic", label="Synthetic model")
         db.add_all([connection, model])
         await db.flush()

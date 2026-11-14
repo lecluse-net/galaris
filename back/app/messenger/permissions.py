@@ -125,7 +125,7 @@ async def answer_permission(identifier: UUID, *, user_id: int, option_id: str) -
         return False
     _, delivered = await resolve_pending_choice(reference=interaction.reference, option_id=option_id,
         response_text="", agent_id=record.agent_id, connection_id=interaction.connection_id,
-        tool_id=interaction.tool_id, room_id=interaction.room_id, user_id=interaction.user_id)
+        service_id=interaction.service_id, room_id=interaction.room_id, user_id=interaction.user_id)
     await db.refresh(record)
     return delivered and record.allowed is not None
 
@@ -248,7 +248,7 @@ async def _notify(record: PermissionDecision, *, always_key: str | None = None,
         if messenger is None:
             messenger = await messenger_for_agent_kind(record.agent_id, "internal")
         identity = await db.scalar(select(MessengerUser).where(
-            MessengerUser.tool_id == messenger.tool_id,
+            MessengerUser.service_id == messenger.service_id,
             MessengerUser.galaris_user_id == record.approver_user_id,
             MessengerUser.is_ai.is_(False),
         ).limit(1))

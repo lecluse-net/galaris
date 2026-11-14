@@ -45,7 +45,7 @@ async def _discover_connections() -> dict[int, int]:
         return {}
     from app.agent import list_driver_specs
     from app.messenger import messaging_tool_records
-    from app.tools import tool_service
+    from app.services import service
 
     voice_drivers = tuple(
         spec.code for spec in list_driver_specs() if spec.tool_profile.voice_calling
@@ -54,9 +54,9 @@ async def _discover_connections() -> dict[int, int]:
         return {}
     async with get_db_session() as db:
         messenger_tools = await messaging_tool_records("matrix")
-        tool_ids = [int(tool.id) for tool in messenger_tools]
-        voice_tool = await tool_service.get_tool_record("voice")
-        if not tool_ids or voice_tool is None:
+        service_ids = [int(tool.id) for tool in messenger_tools]
+        voice_tool = await service.get_service_record("voice")
+        if not service_ids or voice_tool is None:
             return {}
         voice_connection = aliased(Connection)
         rows = await db.execute(
@@ -64,9 +64,9 @@ async def _discover_connections() -> dict[int, int]:
             .join(Agent, Agent.id == Connection.agent_id)
             .join(voice_connection, voice_connection.agent_id == Connection.agent_id)
             .where(
-                Connection.tool_id.in_(tool_ids),
+                Connection.service_id.in_(service_ids),
                 Connection.active.is_(True),
-                voice_connection.tool_id == voice_tool.id,
+                voice_connection.service_id == voice_tool.id,
                 voice_connection.active.is_(True),
                 Agent.agent_driver.in_(voice_drivers),
             )

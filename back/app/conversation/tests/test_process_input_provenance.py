@@ -24,7 +24,7 @@ from app.process.models import ProcessRun, ProcessRunEvent
 from app.process.native_runs import inspect_run
 from app.process.tests.test_native_bpmn import native as native, committed_native as committed_native
 from app.process.values import Variable
-from app.tools import McpToolContext
+from app.services import McpToolContext
 from tests.sql_reads import measured_reads
 
 

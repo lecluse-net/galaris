@@ -100,7 +100,7 @@ Privilégier le document pertinent existant :
 une URI `document://` stable, enrichie au fil du travail, plutôt que des fichiers Markdown
 ou HTML concurrents. Galaris, Conversation, Document, Memory, File Sharing et Agenda sont des services système
 obligatoires dont les connexions restent actives. Leurs fonctions ont les mêmes modes
-Actif/Bloqué/Sur demande et héritage global/local que les autres Tools ; seules leurs
+Actif/Bloqué/Sur demande et héritage global/local que les autres Services ; seules leurs
 définitions sont protégées. Les ACL des ressources et les restrictions de contexte restent
 applicables après tout accord. Le contrat complet est dans
 la section « Documents comme pivot de l'information » de `docs/fr/dev/editorial-html.md`.

@@ -27,10 +27,10 @@ from app.memory.tests.document_fixtures import project_document, edit_document_s
 from app.memory.tests.fact_fixtures import remember_fact
 from app.messenger.models import Message, Room, MessengerUser
 from app.task.models import Task, TaskStatus
-from app.tools.mcp_loader import (
+from app.services.mcp_loader import (
     McpToolContext,
     load_mcp_tools,
-    mcp_tool_names_by_tool_code,
+    mcp_tool_names_by_service_code,
 )
 
 
@@ -41,7 +41,7 @@ async def share_document(ctx, *, document_id, **kwargs):
 
 
 def test_memory_mcp_family_is_discovered_once() -> None:
-    names = mcp_tool_names_by_tool_code()
+    names = mcp_tool_names_by_service_code()
     expected = {
         "memory_remember",
         "memory_upcoming",
@@ -207,9 +207,9 @@ async def test_contradiction_rechecks_revision_after_admission_and_can_retry_aft
 @pytest.mark.asyncio
 @pytest.mark.parametrize("runtime", ["internal", "hermes"])
 async def test_sharing_tools_expose_team_and_human_targets_without_breaking_agent_calls(runtime):
-    from app.tools.mcp_loader import build_galaris_fastmcp
+    from app.services.mcp_loader import build_galaris_fastmcp
 
-    server = build_galaris_fastmcp(1, runtime=runtime, enabled_tool_codes={"document"})
+    server = build_galaris_fastmcp(1, runtime=runtime, enabled_service_codes={"document"})
     tools = {tool.name: tool for tool in await server.list_tools()}
     for name in ("document_share",):
         parameters = tools[name].parameters
@@ -220,12 +220,12 @@ async def test_sharing_tools_expose_team_and_human_targets_without_breaking_agen
 
 @pytest.mark.asyncio
 async def test_memory_remember_schema_accepts_json_encoded_keywords() -> None:
-    from app.tools.mcp_loader import build_galaris_fastmcp
+    from app.services.mcp_loader import build_galaris_fastmcp
 
     server = build_galaris_fastmcp(
         1,
         runtime="internal",
-        enabled_tool_codes={"memory"},
+        enabled_service_codes={"memory"},
     )
     tools = {tool.name: tool for tool in await server.list_tools()}
 
@@ -461,7 +461,7 @@ async def test_memory_mcp_remember_search_read_and_summarize(
             message = Message(
                 id=uuid4(),
                 connection_id=1,
-                tool_id=1,
+                service_id=1,
                 platform="test",
                 remote_message_id="message-1",
                 direction="inbound",
@@ -469,7 +469,7 @@ async def test_memory_mcp_remember_search_read_and_summarize(
             )
             message.sender = MessengerUser(
                 id=uuid4(),
-                tool_id=1,
+                service_id=1,
                 external_id="nicolas",
                 display_name="Nicolas",
             )

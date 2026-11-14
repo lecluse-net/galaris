@@ -73,7 +73,7 @@ when no correlated call exists.
 Actually authorized Skills are copied under `data/skills`; the DSH filesystem provider is isolated
 with `includeDefaultRoots: false`. Durable memory, canonical files, and external effects pass
 through Galaris MCP. The local DSH workspace is a compute area: a file becomes durable only when a
-Galaris Tool records its URI and effect.
+Galaris Service records its URI and effect.
 
 The native `read` tool validates the current run context without requesting a mutation
 permit, including when reading a projected Skill outside the workspace. A revoked context
