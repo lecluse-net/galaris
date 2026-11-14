@@ -74,8 +74,11 @@ Voir `docs/fr/dev/document-apps.md` pour les règles de CSP, révisions et révo
   Réutiliser leurs composants réels, tokens, espacements et motifs d'interface ; une page
   voisine ne fait pas référence lorsqu'elle s'en écarte. La palette Solaire reste obligatoire.
 - Vérifier ensuite le rendu de l'écran concerné dans l'application, en clair, en sombre et
-  sur mobile. La galerie seule ne prouve pas la cohérence du consommateur. Si elle est
-  inaccessible, examiner son implémentation et signaler la limite de vérification visuelle.
+  sur mobile. Pour une correction de dimensions ou d'espacement, mesurer les styles calculés
+  dans le shell réel : ses sélecteurs et règles mobiles peuvent écraser les styles locaux.
+  Un montage isolé sans `MainLayout` ne vérifie pas cette cascade. La galerie seule ne prouve
+  pas la cohérence du consommateur. Si elle est inaccessible, examiner son implémentation et
+  signaler la limite de vérification visuelle.
 - Lors d'une harmonisation de plusieurs écrans, présenter le rendu final de chaque écran
   et attendre la validation de l'utilisateur avant de passer au suivant. Reporter les motifs
   communs validés dans la référence graphique et vérifier les consommateurs affectés par
